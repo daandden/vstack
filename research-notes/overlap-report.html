@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>vstack overlap report: matt-pocock vs pstack</title>
+<style>
+  :root { color-scheme: light; }
+  body { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.55; max-width: 72rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; color: #1a1a1a; }
+  h1 { font-size: 1.9rem; margin-bottom: 0.25rem; }
+  h2 { font-size: 1.4rem; margin-top: 2.5rem; border-bottom: 2px solid #e2e2e2; padding-bottom: 0.3rem; }
+  h3 { font-size: 1.1rem; margin-top: 1.75rem; }
+  .meta { color: #555; font-size: 0.95rem; }
+  .meta a { color: #0b5fff; }
+  table { border-collapse: collapse; width: 100%; margin: 0.75rem 0 1.25rem; font-size: 0.93rem; }
+  th, td { border: 1px solid #d5d5d5; padding: 0.5rem 0.6rem; text-align: left; vertical-align: top; }
+  th { background: #f4f4f4; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.88em; background: #f4f4f4; padding: 0.1em 0.3em; border-radius: 3px; }
+  .verdict { background: #f0f7ff; border-left: 4px solid #0b5fff; padding: 0.6rem 0.9rem; margin: 0.75rem 0 1.25rem; }
+  .verdict strong.t { display: block; margin-bottom: 0.2rem; }
+  .warn { background: #fff8e6; border-left: 4px solid #c98a00; padding: 0.6rem 0.9rem; margin: 0.75rem 0 1.25rem; }
+  .toc { background: #fafafa; border: 1px solid #e2e2e2; padding: 1rem 1.25rem; }
+  .toc ol { margin: 0.4rem 0; }
+  a { color: #0b5fff; }
+  footer { margin-top: 3rem; color: #666; font-size: 0.9rem; border-top: 1px solid #e2e2e2; padding-top: 1rem; }
+  .tag { display: inline-block; font-size: 0.78rem; font-weight: 700; padding: 0.1em 0.55em; border-radius: 999px; margin-right: 0.35rem; }
+  .keep { background: #e6f4ea; color: #137333; }
+  .merge { background: #e8f0fe; color: #1967d2; }
+  .drop { background: #fce8e6; color: #a50e0e; }
+  .rename { background: #fef7e0; color: #7a5c00; }
+</style>
+</head>
+<body>
+
+<h1>vstack overlap report: matt-pocock vs pstack</h1>
+<p class="meta">
+  Ticket <a href="https://github.com/daandden/vstack/issues/6">daandden/vstack#6</a>
+  (child of map <a href="https://github.com/daandden/vstack/issues/1">daandden/vstack#1</a>) &middot;
+  Researched 2026-09-15 &middot; Status: suggestions only &mdash; final per-overlap verdicts are decided in
+  <a href="https://github.com/daandden/vstack/issues/8">ticket #8</a>, not here.
+</p>
+
+<div class="warn">
+  <strong>How to read this report.</strong> Each pair ends with a <em>suggested</em> winner or merge rule and the
+  reason it would win. Nothing here is locked: ticket #8 grills every suggestion to a decision.
+  OMP adaptation notes assume the findings of ticket #2 (OMP consumption / model routing) and ticket #5
+  (vendor mirror + overlays layout). Model slugs below are Cursor literals from pstack sources; they are
+  <em>not</em> OMP provider IDs and must be mapped to verified OMP IDs (ticket #7 territory).
+</div>
+
+<div class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#sources">Sources and pins</a></li>
+    <li><a href="#inventories">Inventories at a glance</a></li>
+    <li><a href="#routing">Invocation, delegation, and model routing contrast</a></li>
+    <li><a href="#samename">Same-name overlaps</a></li>
+    <li><a href="#samepurpose">Same-purpose overlaps under different names</a></li>
+    <li><a href="#singletons">Singletons: import, adapt, or drop</a></li>
+    <li><a href="#importmap">Suggested import map (for ticket #8)</a></li>
+    <li><a href="#questions">Open questions for ticket #8</a></li>
+    <li><a href="#srclist">Source list</a></li>
+  </ol>
+</div>
+
+<h2 id="sources">1. Sources and pins</h2>
+<ul>
+  <li>matt-pocock upstream <code>mattpocock/skills</code>, observed HEAD <code>3cca18b368ae95cdbdebbff572ccafa662551015</code> (2026-09-04; candidate pin from ticket #3). Installed copies read locally under <code>/Users/vanguyen/.agents/skills/</code>.</li>
+  <li>pstack upstream <code>cursor/plugins</code>, surveyed tree SHA <code>c1c0a32802223f4be824112dd83d33ad29a8b26c</code> (ticket #4). Skill bodies re-read raw on 2026-09-15 for this report.</li>
+  <li>Prior resolutions reused: <a href="https://github.com/daandden/vstack/issues/2">ticket #2</a> (OMP consumption / model routing), <a href="https://github.com/daandden/vstack/issues/3">ticket #3</a> (matt seams), <a href="https://github.com/daandden/vstack/issues/4">ticket #4</a> (pstack link/subagent/model graph), <a href="https://github.com/daandden/vstack/issues/5">ticket #5</a> (layout: vendor mirror + overlays).</li>
+  <li>Verified 2026-09-15: <code>pstack/skills/prototype/SKILL.md</code> returns HTTP 404 &mdash; pstack has no standalone prototype skill; <q>prototype</q> exists only as a <code>poteto-mode</code> playbook.</li>
+</ul>
+
+<h2 id="inventories">2. Inventories at a glance</h2>
+
+<h3>2a. matt-pocock (25 stable skills vendored; ticket #3)</h3>
+<table>
+  <tr><th>Group</th><th>Skills</th><th>Notes</th></tr>
+  <tr><td>Engineering (18)</td><td>User-invoked (9): ask-matt, grill-with-docs, triage, improve-codebase-architecture, setup-matt-pocock-skills, to-spec, to-tickets, implement, wayfinder. Model-or-user-invoked (9): prototype, diagnosing-bugs, research, tdd, domain-modeling, codebase-design, code-review, resolving-merge-conflicts, wizard.</td><td>Vendoring boundary: complete <code>skills/engineering/&lt;skill&gt;/</code> directories (sibling references, templates, scripts, <code>agents/openai.yaml</code> included).</td></tr>
+  <tr><td>Productivity (7)</td><td>User-invoked (5): grill-me, handoff, teach, to-questionnaire, wait-what. Model-or-user-invoked (2): grilling, writing-for-agents.</td><td><code>grill-me</code> is a one-line router to <code>grilling</code>.</td></tr>
+  <tr><td>Excluded by default</td><td>misc (4, rarely used, non-promoted); in-progress (8, beta, incl. nonfunctional retro stub); deprecated/ (empty by policy).</td><td>Beta/misc imports need an explicit later opt-in.</td></tr>
+</table>
+
+<h3>2b. pstack (47 skills / 23 playbooks / 2 agents; ticket #4)</h3>
+<table>
+  <tr><th>Slice</th><th>Members</th><th>Notes</th></tr>
+  <tr><td>Workflow + setup (24)</td><td>poteto-mode, how, why, architect, arena, swarm, interrogate, reflect, teach, tdd, technical-writing, unslop, no-comments, show-me-your-work, recall, automate-me, figure-it-out, blast-radius, make-bot-ui, typescript-best-practices, create-verification-skill, maintain-verification-skill, setup-pstack, bro</td><td>Seven configured workflow families delegate to models (how, why, architect/arena, swarm, interrogate, reflect, no-comments); the rest are prompt disciplines or playbook-scoped helpers.</td></tr>
+  <tr><td>Principle leaves (23)</td><td>attack-the-premise, boundary-discipline, build-the-lever, encode-lessons-in-structure, exhaust-the-design-space, experience-first, fix-root-causes, foundational-thinking, guard-the-context-window, laziness-protocol, make-operations-idempotent, migrate-callers-then-delete-legacy-apis, minimize-reader-load, model-the-domain, never-block-on-the-human, outcome-oriented-execution, prove-it-works, redesign-from-first-principles, separate-before-serializing-shared-state, sequence-verifiable-units, subtract-before-you-add, test-behavior-not-implementation, type-system-discipline</td><td>Every principle has a conditional application edge from poteto-mode; they are the shared vocabulary other skills cite by name.</td></tr>
+  <tr><td>Playbooks (23, all under poteto-mode)</td><td>authoring-a-skill, autonomous-run, autopilot-full, autopilot-stack, babysit, bug-fix, eval, feature, hillclimb, investigation, multi-phase-plan, opening-a-pr, orchestrate, pause-safely, perf-issue, prototype, refactoring, runtime-forensics, session-pickup, shipping, trace-forensics, visual-parity, worktree-cleanup</td><td>opening-a-pr terminates every playbook (interrogate + deslop + no-comments).</td></tr>
+  <tr><td>Agents (2)</td><td>poteto-agent (<code>is_background: true</code>, no model field); Comment Sicko (exact type <code>Comment Sicko</code>, no model/background metadata; edits comments, flags scoped MUST KILL code targets, never application code).</td><td>Both need OMP agent-identity mapping (ticket #7).</td></tr>
+</table>
+
+<h2 id="routing">3. Invocation, delegation, and model routing contrast</h2>
+<table>
+  <tr><th>Seam</th><th>matt-pocock</th><th>pstack</th></tr>
+  <tr><td>Invocation metadata</td><td><code>SKILL.md</code> frontmatter <code>name</code> + <code>description</code>; user-invoked skills add <code>disable-model-invocation: true</code>. Sibling <code>agents/openai.yaml</code> carries Codex picker metadata + <code>policy.allow_implicit_invocation: false</code> for user-invoked skills. No model/provider/effort fields anywhere (ticket #3).</td><td>Frontmatter <code>name</code> + <code>description</code> (+ <code>disable-model-invocation: true</code> on trigger-gated skills, <code>paths</code> on typescript-best-practices). Routing is prose: poteto-mode selects a playbook and applies conditional skill/principle references. No executable router (ticket #4).</td></tr>
+  <tr><td>Delegation shape</td><td>Prompt-inline, no model routing: code-review spawns parallel Standards + Spec workers (&lt;400-word briefs); research spawns one background primary-source researcher; wayfinder chart step 5 fires one research worker per research ticket in parallel; grilling dispatches environment fact-finders without blocking the frontier. diagnosing-bugs spawns nothing (inline phases + HITL script).</td><td>Cursor Task wiring with exact fields per skill (see table below). Wrapper default from poteto-mode: <code>run_in_background: true</code>, agent mode (<code>readonly: false</code>), explicit role model, file pointers; <code>poteto-agent</code> type default inside playbook steps.</td></tr>
+  <tr><td>Model configuration</td><td>None upstream. Model routing is a harness concern (ticket #3); vstack central YAML role map is ticket #7.</td><td><code>setup-pstack</code> writes always-applied <code>~/.cursor/rules/pstack-models.mdc</code>: budget ladder (unlimited/large-xhigh/medium-high/small-medium) + 17 role lines. Aliases <code>inherit-parent</code>/<code>auto</code> both mean omit <code>Task.model</code>. Literal defaults: code roles (feature, refactoring, bug-fix, perf-issue, hillclimb) Grok <code>grok-4.6-fast-xhigh</code>; judgment/prose/hardest/how-explainer/why-synthesizer/reflect-judgment Fable <code>claude-fable-5-1-thinking-max</code>; reflect-tooling Sol <code>gpt-5.6-sol-max</code>; arena/architect/interrogate panels Fable+Sol+Grok+Opus <code>claude-opus-5-thinking-xhigh</code>; swarm workers Grok.</td></tr>
+  <tr><td>Setup seam</td><td><code>setup-matt-pocock-skills</code>: prompt-driven repo bootstrap; writes <code>docs/agents/issue-tracker.md</code>, <code>domain.md</code>, conditionally <code>triage-labels.md</code>; updates root Agent-skills block. Per-repo tracker/label/domain adaptation lives here, not in skill copies.</td><td><code>setup-pstack</code>: model-role configurator only (detect slugs, budget, confirm, idempotent rule rewrite, optional verification-skill offer). No repo files.</td></tr>
+  <tr><td>OMP translation (ticket #2)</td><td colspan="2">OMP consumes flat <code>&lt;root&gt;/&lt;skill&gt;/SKILL.md</code> via <code>skills.customDirectories</code>; subagent models resolve <code>task.agentModelOverrides[agent]</code> &gt; agent-definition frontmatter <code>model</code> &gt; parent/default (<code>modelRoles.default</code>). The task wire has <strong>no</strong> model/background/readonly/cloud fields (unknown keys deleted). So every pstack Task field below must become a per-role OMP agent identity + frontmatter/override, not a copied wire field; readonly-vs-MCP, cloud lifecycle, and Cursor slugs all need explicit mapping (ticket #7).</td></tr>
+</table>
+
+<h3>pstack exact Task wiring (from ticket #4; <code>&mdash;</code> = source does not set the field)</h3>
+<table>
+  <tr><th>Spawner / stage</th><th>Count &amp; type</th><th>Model / role</th><th>background</th><th>readonly</th><th>environment</th></tr>
+  <tr><td>how simple / complex</td><td>1 explainer; or 2&ndash;4 explorers + 1 explainer; generalPurpose</td><td>explorers Grok; explainer Fable</td><td>&mdash; (wrapper true)</td><td>true</td><td>&mdash;</td></tr>
+  <tr><td>why investigators + synthesizer</td><td>1 per evidence MCP + 1 synthesizer; generalPurpose</td><td>investigators Grok; synthesizer Fable</td><td>&mdash; (wrapper true)</td><td>explicitly false (preserves MCP)</td><td>&mdash;</td></tr>
+  <tr><td>arena candidates / cross-judge</td><td>N (no explicit type) / 1 judge</td><td>runners panel; judge pool, prefer different family</td><td>candidates true / &mdash;</td><td>&mdash; / judge readonly</td><td>separate worktrees or /tmp</td></tr>
+  <tr><td>swarm</td><td>N generalPurpose</td><td>swarm workers Grok; per-arm race overrides</td><td>true</td><td>&mdash; (agent mode)</td><td>cloud (local only for on-machine needs)</td></tr>
+  <tr><td>interrogate</td><td>1 generalPurpose per panel entry</td><td>reviewers panel</td><td>&mdash; (wrapper true)</td><td>true</td><td>&mdash;</td></tr>
+  <tr><td>reflect (3 reviewers + synthesizer)</td><td>4 generalPurpose</td><td>tooling Sol; judgment/divergent/synthesizer Fable</td><td>parallel</td><td>false (needs MCP)</td><td>&mdash;</td></tr>
+  <tr><td>no-comments</td><td>1 exact type <code>Comment Sicko</code></td><td>no dedicated role (wrapper judgment/prose default if applied)</td><td>&mdash; (wrapper true)</td><td>NOT readonly (edits comments)</td><td>&mdash;</td></tr>
+  <tr><td>recall / automate-me mining</td><td>parallel slices (e.g. 3)</td><td>fast/cheap, no exact slug or role</td><td>&mdash;</td><td>behavioral transcript reads</td><td>local corpus</td></tr>
+  <tr><td>show-me-your-work audit</td><td>1 reviewer</td><td>different family from worker, no slug</td><td>&mdash;</td><td>reads trail/transcript</td><td>transcript-locality</td></tr>
+</table>
+
+<h2 id="samename">4. Same-name overlaps</h2>
+
+<h3>4.1 <code>tdd</code> vs <code>tdd</code> <span class="tag merge">suggested: merge</span></h3>
+<table>
+  <tr><th></th><th>matt <code>tdd</code></th><th>pstack <code>tdd</code></th></tr>
+  <tr><td>Purpose</td><td>General red&rarr;green loop reference for features and fixes: seams, anti-patterns (implementation-coupled, tautological, horizontal slicing), loop rules (red first, one slice, vertical tracer bullets). Model-invoked reference consulted every cycle.</td><td>Narrow bug-fix regression gate: make the broken behavior executable before changing production code (failing-before, then passing-after), with an explicit <em>impractical-escape</em>: when a new test is impractical, say why and use the closest executable check instead. Never force a bad test. Ends with an evidence report (failing-before run, passing-after run, nearby validation).</td></tr>
+  <tr><td>Trigger</td><td>User asks for test-first / red-green-refactor / integration tests; <code>implement</code> routes here at pre-agreed seams.</td><td>User explicitly asks for TDD/regression test, or the bug has an obvious cheap local test target. <code>disable-model-invocation: true</code>. bug-fix playbook takes the cheap path through it.</td></tr>
+  <tr><td>Delegation / models</td><td>None. No model fields.</td><td>None (no subagent launch step). No model fields.</td></tr>
+</table>
+<div class="verdict"><strong class="t">Suggested rule: merge &mdash; matt owns the loop, pstack contributes the gate.</strong>
+  Keep matt <code>tdd</code> as the base discipline (seams, anti-patterns, vertical slices). Import pstack&rsquo;s failing-before/after evidence contract, the impractical-escape clause (say why, name the closest check), and the &ldquo;prefer no test over a bad test&rdquo; guardrail. No OMP model work: both sides are model-free prose.</div>
+
+<h3>4.2 <code>teach</code> vs <code>teach</code> <span class="tag rename">suggested: keep both, rename</span></h3>
+<table>
+  <tr><th></th><th>matt <code>teach</code> (user-invoked)</th><th>pstack <code>teach</code> (user-invoked)</th></tr>
+  <tr><td>Purpose</td><td>Stateful multi-session teaching workspace: MISSION.md, reference HTML docs, RESOURCES.md, learning-records, lessons/*.html, assets, NOTES.md. Fluency-vs-storage-strength philosophy, zone of proximal development, feedback loops, community delegation for wisdom.</td><td>One-shot plain-English explanation of a body of work: run <code>how</code> + <code>why</code> in parallel, weave into one account at the person&rsquo;s pace. Diagram build-up rule, unslop reply contract, keep <code>why</code>&rsquo;s confidence language intact.</td></tr>
+  <tr><td>Delegation / models</td><td>None inline (long-lived workspace files are the mechanism).</td><td>Composes <code>how</code> + <code>why</code> (their Task wiring applies transitively).</td></tr>
+</table>
+<div class="verdict"><strong class="t">Suggested rule: keep both, disambiguate by name.</strong>
+  Different jobs: explain-now vs teach-over-time. Suggested vstack names: pstack side &rarr; <code>explain</code>, matt side keeps <code>teach</code>. If only one name survives, the one-shot explainer is the more common agent call; the workspace is the rarer, heavier course-builder.</div>
+
+<h3>4.3 <code>prototype</code> (skill) vs <code>prototype</code> (playbook) <span class="tag merge">suggested: merge</span></h3>
+<table>
+  <tr><th></th><th>matt <code>prototype</code> (model-invoked)</th><th>pstack <code>prototype</code> playbook (no standalone skill; verified 404)</th></tr>
+  <tr><td>Purpose</td><td>Throwaway code that answers one design question. Branch picker: logic/state-model &rarr; LOGIC.md (single shareable HTML, free-play + guided walkthroughs); UI &rarr; UI.md (radically different variants behind a URL switcher + floating bar). Rules: throwaway from day one, trivial to run, no persistence, no polish, surface state, capture decision + branch pointer when done.</td><td>Throwaway instrument that owns the design decision; the real build follows Feature. Scope the decision, moodboard when open, build throwaway in isolated scratch (vanilla stack, CDN deps), variants behind one switcher (exhaust-the-design-space made cheap), verify on the matching surface (screenshots / observed timing), present alternatives + recommendation, hand to Feature/architect. Rigor is in picking the design cheaply.</td></tr>
+  <tr><td>Delegation / models</td><td>None. No model fields.</td><td>None (ad-hoc observation, not Task fan-out).</td></tr>
+</table>
+<div class="verdict"><strong class="t">Suggested rule: merge into one throwaway-prototype discipline.</strong>
+  Keep matt&rsquo;s branch picker (LOGIC vs UI) and capture-to-branch rule; import pstack&rsquo;s variant-switcher, verify-on-surface (screenshots for visual, observed output/timing for behavioral), and explicit hand-to-Feature. Scratch-dir isolation (pstack) vs next-to-module placement (matt) is the one deliberate conflict for ticket #8.</div>
+
+<h3>4.4 <code>grilling</code> vs <code>interrogate</code> <span class="tag keep">suggested: keep both (false friends)</span></h3>
+<table>
+  <tr><th></th><th>matt <code>grilling</code> (+ <code>grill-me</code> router)</th><th>pstack <code>interrogate</code></th></tr>
+  <tr><td>Purpose</td><td>HITL user interview: map the decision as a design tree, ask the whole frontier per round (numbered questions + recommended answer), facts via subagents, decisions by the human. Done when the frontier is empty and the user confirms shared understanding.</td><td>Multi-model adversarial code review: one generalPurpose reviewer per configured panel entry (default Fable/Sol/Grok/Opus), same prompt + rubric + code-quality lens, then consensus/lone-model synthesis and a lead-judgment verdict (Act on / Consider / Noted / Dismissed + agreement map). Deliverable is a verdict; never auto-applies changes.</td></tr>
+  <tr><td>Trigger</td><td>User wants to stress-test a plan/decision/idea, or says &lsquo;grill&rsquo;. Wayfinder grilling tickets invoke grilling + domain-modeling.</td><td>&ldquo;interrogate / adversarial review / tear this apart&rdquo;. <code>disable-model-invocation: true</code>. Terminates every playbook via opening-a-pr.</td></tr>
+  <tr><td>Delegation / models</td><td>Environment fact-finders; no model fields.</td><td>Panel reviewers generalPurpose, configured models, <code>readonly: true</code>; unresolvable-slug fallback (nearest same-family slug + repair PR); <code>inherit-parent</code>/<code>auto</code> omit model.</td></tr>
+</table>
+<div class="verdict"><strong class="t">Suggested rule: keep both; rename the pstack side.</strong>
+  Despite the ticket&rsquo;s grouping these are <em>false friends</em>: one interviews the human, the other reviews code with models. Suggested vstack names: <code>grilling</code> (human interview) vs <code>multi-model-review</code> (code interrogation). Merging them would destroy both contracts. OMP note: the reviewer panel becomes per-role OMP agent identities (ticket #7).</div>
+
+<h3>4.5 <code>writing-for-agents</code> vs <code>technical-writing</code> (+ <code>unslop</code>) <span class="tag keep">suggested: keep both</span></h3>
+<table>
+  <tr><th></th><th>matt <code>writing-for-agents</code></th><th>pstack <code>technical-writing</code> + <code>unslop</code></th></tr>
+  <tr><td>Purpose</td><td>Writing for <em>agent</em> readers (skills, AGENTS.md/CLAUDE.md, pointer-reached docs): context pointers (wording decides reach), two loads (context vs cognitive), information hierarchy (in-file step / in-file reference / disclosed reference), steps + completion criteria (clarity vs demand, premature completion), when to split, leading words, pruning (single source of truth, environment-as-truth, no-ops).</td><td><code>technical-writing</code>: writing for <em>human</em> engineers &mdash; Di&aacute;taxis modes, Google developer style, STE load-one-at-a-time rules, Global English no-ambiguity rules, unslop applied to every touched doc, real paths/symbols/counts. <code>unslop</code>: the shared slop-pattern catalog (rules 3&ndash;33: AI vocab, fancy <q>is</q>, rule-of-three, em dash/colon/bold tells, chatbot filler, abstract-metaphor nouns, mannered prose, over-compression) with scan&rarr;rewrite&rarr;self-audit process. Both <code>disable-model-invocation: true</code>.</td></tr>
+  <tr><td>Delegation / models</td><td>Reads SKILL-MECHANICS.md when the doc is a skill. None / no model fields.</td><td>None (revision discipline). No model fields. <code>technical-writing</code> proposes unslop additions by diff, never edits the skill directly.</td></tr>
+</table>
+<div class="verdict"><strong class="t">Suggested rule: keep both; <code>unslop</code> becomes shared substrate.</strong>
+  Complementary audiences: agent-facing docs vs human-facing docs. Import <code>unslop</code> as the prose substrate both cite; ticket #8 must reconcile style hard-rules (no em dash, no mid-sentence colon, abstract-metaphor bans, ReturnType-style conflicts) with the host&rsquo;s concise OMP policy rather than copying them wholesale.</div>
+
+<h2 id="samepurpose">5. Same-purpose overlaps under different names</h2>
+
+<h3>5a. Review: matt <code>code-review</code> vs pstack <code>interrogate</code> (+ <code>reflect</code>) <span class="tag merge">suggested: merge</span></h3>
+<p>matt <code>code-review</code>: two-axis review (Standards vs Spec) of the three-dot diff since a fixed point; parallel Standards + Spec workers with &lt;400-word briefs; Spec skipped when absent; aggregate verbatim, never merge/rerank; one-line per-axis summary. pstack <code>interrogate</code>: N-model adversarial review + lead-judgment buckets (see 4.4). pstack <code>reflect</code> additionally mines transcripts into skill edits (judgment/tooling/divergent reviewers + synthesizer, structural-enforcement check, explicit user approval before applying).</p>
+<div class="verdict"><strong class="t">Suggested rule: merge &mdash; matt&rsquo;s axes, pstack&rsquo;s panel.</strong>
+  Keep the two-axis frame (the Standards/Spec separation is load-bearing for the vstack tracker workflow) and run <em>each axis</em> through the multi-model panel + synthesis + lead-judgment buckets. Import reflect&rsquo;s approval gate verbatim if any reflection loop ships (skill edits affect every future agent: never auto-apply). OMP: two reviewer roles &times; panel = distinct OMP agent identities.</div>
+
+<h3>5b. Investigation: matt <code>research</code> vs pstack <code>how</code> / <code>why</code> / <code>investigation</code> playbook <span class="tag keep">suggested: keep all three, route by question</span></h3>
+<p>matt <code>research</code>: one background researcher against high-trust primary sources &rarr; single cited Markdown file. pstack <code>how</code>: codebase architecture explainer (simple: 1 explainer; complex: 2&ndash;4 explorers + synthesizer; readonly true; fixed output sections). pstack <code>why</code>: motive investigator across 7 evidence categories (source control always + tracker/docs/chat/observability/errors/analytics via MCP), one investigator per MCP, agent mode (readonly false preserves MCP), synthesizer with epistemics confidence tiers; null results are findings; output keeps What-We-Found vs Inference vs Don&rsquo;t-Know separated. The <code>investigation</code> playbook composes how+why into a read-only cited answer (no prototype/code by default).</p>
+<div class="verdict"><strong class="t">Suggested rule: keep, route by question.</strong>
+  Outside-the-repo question &rarr; matt <code>research</code>. How-does-it-work / where-should-it-live &rarr; <code>how</code>. Why-is-it-shaped-this-way &rarr; <code>why</code> (preserve its confidence language; <code>teach</code> already mandates this). Do not collapse them: their evidence contracts differ. OMP: why/reflect&rsquo;s readonly=false exists only to preserve MCP &mdash; map to OMP tool/policy scoping, not a boolean.</div>
+
+<h3>5c. Bug work: matt <code>diagnosing-bugs</code> vs pstack <code>bug-fix</code> playbook (+ <code>blast-radius</code>, forensics) <span class="tag merge">suggested: merge</span></h3>
+<p>matt <code>diagnosing-bugs</code>: 6-phase discipline &mdash; tight red-capable loop first (10 loop shapes incl. HITL script; tighten for speed/signal/determinism), reproduce + minimise to load-bearing elements, 3&ndash;5 ranked falsifiable hypotheses shown to the user, instrument (debugger &gt; targeted tagged logs; perf branch measures first), fix + regression test at a correct seam (missing seam is itself the finding), cleanup (re-run loop, tagged-log grep, hypothesis in commit message). No subagents. pstack <code>bug-fix</code> playbook: parent reproduces; how+why fanout; code-model fix delegate (Grok default); parent replays; cheap-path tdd. <code>blast-radius</code>: find the one safety fact and <em>prove it by running code</em> (said-so &rarr; line &rarr; walked &rarr; ran &rarr; reproduced ladder); big changes go to arena.</p>
+<div class="verdict"><strong class="t">Suggested rule: merge &mdash; matt owns the loop, pstack owns the fanout and the proof.</strong>
+  Keep the tight-loop-first discipline, minimisation, and falsifiable-hypothesis checkpoint. Import the parallel how+why investigation fanout and the blast-radius safety-fact proof ladder. Keep pstack&rsquo;s cheap-path tdd link (see 4.1).</div>
+
+<h3>5d. Design: matt <code>codebase-design</code> + <code>domain-modeling</code> vs pstack <code>architect</code> (+ <code>arena</code>) <span class="tag merge">suggested: merge</span></h3>
+<p>matt <code>codebase-design</code>: shared vocabulary for deep modules (module, interface, depth, seam, adapter, leverage, locality); a reference to consult, not a session. matt <code>domain-modeling</code>: active glossary/ADR discipline (challenge terms, sharpen fuzzy language, scenario-probe, cross-reference code, update CONTEXT.md inline, record ADRs). pstack <code>architect</code>: phased design-before-code (Ground via how, +why when ownership changes; Sketch via arena with &ge;2 structurally distinct candidates screened against design-red-flags; Agree opt-in checkpoint; Implement against sketch; Scrap on pattern-friction with re-ground &rarr; subtract &rarr; re-arena). Outputs: usage-first type sketch + rationale package.</p>
+<div class="verdict"><strong class="t">Suggested rule: merge &mdash; matt&rsquo;s vocabulary inside pstack&rsquo;s phases.</strong>
+  Keep architect&rsquo;s Ground&rarr;Sketch&rarr;Agree&rarr;Implement&rarr;Scrap spine and the &ge;2-candidates + red-flags screen. Wire Ground to consult codebase-design vocabulary and domain-modeling (glossary/ADR check becomes an explicit Ground step alongside why). OMP: arena runners become OMP panel identities; the ten-hardcoded-Grok-lanes in multi-phase-plan must become a configurable role (do not copy the literal).</div>
+
+<h3>5e. Large-work planning: matt <code>wayfinder</code> vs pstack <code>figure-it-out</code> / <code>multi-phase-plan</code> / <code>orchestrate</code> <span class="tag keep">suggested: wayfinder spine, import rigor + trail</span></h3>
+<p>matt <code>wayfinder</code>: plan-as-map (map issue, decision tickets with type labels, native blocking, frontier = open+unblocked+unclaimed, fog-of-war, plan-don&rsquo;t-do default, one ticket per session). pstack <code>figure-it-out</code>: bespoke auditable playbook when no playbook fits (falsifiable done-predicate, quantified scope, rigor biased high, riskiest-first atomic units, hypothesis loop with VERIFIED/NOT/INCONCLUSIVE, TSV trail via show-me-your-work, encode corrections as gates). <code>multi-phase-plan</code>: prototype uncertainties &rarr; checked plan &rarr; choose autopilot-full/stack/orchestrate (cloud execution + gates/perf/audit lanes). <code>orchestrate</code>: local code-free coordinator + cloud workers/verifiers, Task-only lifecycle, depth-3 assumption, different-family verification.</p>
+<div class="verdict"><strong class="t">Suggested rule: wayfinder stays the planning spine; import figure-it-out&rsquo;s rigor.</strong>
+  Keep wayfinder for decision-shaped work (this map is the proof). Import the falsifiable done-predicate, rigor-bias, riskiest-first sequencing, and the TSV decision trail (show-me-your-work incl. Attention review) as execution options. Gate orchestrate/autopilot-machinery on OMP capability mapping (cloud, wake chains, depth-3) &mdash; ticket #7, not a prose copy.</div>
+
+<h3>5f. Spec pipeline: matt <code>to-spec</code> / <code>to-tickets</code> / <code>implement</code> vs pstack <code>feature</code> / <code>refactoring</code> / <code>opening-a-pr</code> <span class="tag merge">suggested: merge</span></h3>
+<p>matt pipeline: conversation &rarr; spec (Problem/Solution/User-stories/Implementation+Testing decisions, no file paths) &rarr; tracer-bullet tickets with blocking edges (expand&ndash;contract for wide refactors) &rarr; implement at pre-agreed seams (tdd, typecheck, full suite once) &rarr; code-review. pstack <code>feature</code>: how + data shape + throughput checkpoint + mandatory code delegation (+arena when multiple shapes); parent verifies. <code>refactoring</code>: pin behavior via how + characterization, shape via architect, mechanical delegate, parent equivalence proof. <code>opening-a-pr</code>: worktree/ordered commits, delegate runs interrogate + deslop + no-comments, returns URL, no babysit.</p>
+<div class="verdict"><strong class="t">Suggested rule: merge &mdash; matt owns the tracker pipeline, pstack owns the delegation rigor.</strong>
+  Keep to-spec/to-tickets/implement shapes (incl. ready-for-agent labeling). Import mandatory-delegation, throughput checkpoints, parent-verifies, behavior-pinning + equivalence proof, and the pre-publish trio (interrogate + slop-pass + comment hygiene; deslop &rarr; unslop). OMP: the PR-opening delegate needs an approved-posting rule (this repo requires approval before GitHub writes).</div>
+
+<h3>5g. Triage: matt <code>triage</code> vs pstack <code>bugbot-triage</code> reference (+ <code>babysit</code>) <span class="tag keep">suggested: keep both</span></h3>
+<p>matt <code>triage</code>: issue state machine &mdash; category roles (bug/enhancement) &times; state roles (needs-triage/needs-info/ready-for-agent/ready-for-human/wontfix), AI-triage disclaimer on every tracker post, agent-brief + out-of-scope knowledge base. pstack <code>bugbot-triage</code>: PR review-bot comment disposition rubric &mdash; fix / dismiss / ask, learned skip-candidate patterns with confidence tiers, ask-by-default categories (security/privacy/data, high severity, migrations/concurrency). <code>babysit</code> drives the surrounding forge modes.</p>
+<div class="verdict"><strong class="t">Suggested rule: keep both; different surfaces.</strong>
+  Issue triage vs review-comment triage are different jobs on different objects. Suggested vstack names: <code>triage</code> vs <code>review-comment-triage</code>. The confidence-tier pattern format (candidate/recurring/strong with skip-when/do-not-skip-when) is worth reusing for any future vstack skip-rules.</div>
+
+<h3>5h. Setup: <code>setup-matt-pocock-skills</code> vs <code>setup-pstack</code> <span class="tag keep">suggested: keep both, compose later</span></h3>
+<p>See section 3: repo bootstrap (tracker/labels/domain/root block) vs model-role configurator (detect slugs, budget, confirm, rewrite rule). No functional overlap; the names collide only on the <code>setup-</code> prefix.</p>
+<div class="verdict"><strong class="t">Suggested rule: keep both; rename for clarity.</strong>
+  Suggested: <code>setup-repo</code> (matt side) vs <code>setup-models</code> (pstack side). Whether one setup composes both is ticket #7 territory.</div>
+
+<h3>5i. Continuity: matt <code>handoff</code> vs pstack <code>show-me-your-work</code> / <code>recall</code> / <code>session-pickup</code> <span class="tag merge">suggested: merge into one family</span></h3>
+<p>matt <code>handoff</code>: compact handoff doc for the next agent (suggested skills, paths/URLs not pasted blobs, redacted, saved to OS temp dir). pstack <code>show-me-your-work</code>: canonical append-only TSV decision log (ts/phase/decision/why/evidence/result) + transcript audit + cross-model Attention review. pstack <code>recall</code>: rebuild context from chat history (parallel sliced mining) + shared record (why-sweep) + live git/gh verification &rarr; capsule/threads/problems/next-move brief. <code>session-pickup</code> resumes one specific prior chat.</p>
+<div class="verdict"><strong class="t">Suggested rule: merge into one continuity family with distinct triggers.</strong>
+  Handoff doc (agent-to-agent), TSV trail (during long runs, committed when the reviewer needs it), recall brief (before starting/resuming). Adopt the append-only + audit-against-transcript + cross-model Attention rules for any trail vstack keeps. Privacy rule travels with all three: workspace-scoped transcripts only, never broad private-chat discovery; sanitize before public output.</div>
+
+<h3>5j. Parallel execution: matt <code>orchestration</code> vs pstack <code>swarm</code> / <code>orchestrate</code> / <code>arena</code> <span class="tag keep">suggested: no overlap; gate pstack side</span></h3>
+<p>matt <code>orchestration</code> is an Orca-runtime discovery stub (real Orca CLI state, worktrees, DAGs, coordinator loops) &mdash; not a generic fan-out pattern. pstack <code>swarm</code> (N cloud workers, slices/races, PASS/ISSUES/BLOCKED), <code>orchestrate</code> (local coordinator + cloud workers/verifiers), and <code>arena</code> (N candidates + cross-judge + graft + verify) are execution patterns with Cursor cloud/background/readonly semantics.</p>
+<div class="verdict"><strong class="t">Suggested rule: no overlap to resolve; do not merge.</strong>
+  Keep orchestration as-is (Orca-only). swarm/orchestrate/arena import is blocked on OMP capability mapping (background/cloud/worktrees/verifiers) &mdash; ticket #7. Arena&rsquo;s rubric + base-pick + graft + verify discipline can travel even where cloud cannot.</div>
+
+<h3>5k. Skill authoring: matt <code>skill-creator</code> vs pstack <code>authoring-a-skill</code> / <code>create-verification-skill</code> <span class="tag merge">suggested: merge</span></h3>
+<p>Both author skills through the host&rsquo;s built-in authoring path. pstack&rsquo;s playbook adds frontmatter + file + cross-skill link validation; <code>create-verification-skill</code> scaffolds project-local verification skills (also offered by setup-pstack step 7); <code>maintain-verification-skill</code> keeps them current. matt&rsquo;s writing-for-agents supplies the content contract (pointers, hierarchy, leading words, pruning).</p>
+<div class="verdict"><strong class="t">Suggested rule: merge into one authoring path.</strong>
+  One vstack authoring flow: content contract from writing-for-agents + link/frontmatter validation from authoring-a-skill + validator-gated edits (reflect step 5 pattern). Verification-skill scaffolding is the genuinely new capability &mdash; keep it.</div>
+
+<h2 id="singletons">6. Singletons: import, adapt, or drop</h2>
+<table>
+  <tr><th>Singleton</th><th>What it is</th><th>Suggested fate</th></tr>
+  <tr><td>pstack <code>unslop</code></td><td>Shared prose-pattern catalog cited by teach, technical-writing, show-me-your-work, blast-radius, recall.</td><td><span class="tag keep">import</span> as shared substrate (see 4.5); reconcile hard-rules with host style in #8.</td></tr>
+  <tr><td>pstack <code>no-comments</code> / Comment Sicko</td><td>Comment-hygiene reviewer with its own agent type; kills dead comments, identifies scoped MUST KILL code targets, never touches application code; constraint comments get cheapest-encoding offers with approval.</td><td><span class="tag keep">import gated</span>: hygiene-only scope, neutral reply style (drop the theatrical first line), dedicated OMP agent identity that retains comment-edit capability (never a generic readonly reviewer).</td></tr>
+  <tr><td>pstack <code>reflect</code></td><td>Transcript-mining &rarr; skill edits with structural-enforcement check + explicit user approval + backlog filing.</td><td><span class="tag keep">import</span> if vstack wants a learning loop; the approval gate is non-negotiable. (Matt&rsquo;s <code>retro</code> is a nonfunctional stub &mdash; no contest.)</td></tr>
+  <tr><td>pstack <code>blast-radius</code></td><td>Safety-fact proof discipline (see 5c).</td><td><span class="tag merge">fold</span> into the merged bug/design flow, not a standalone install.</td></tr>
+  <tr><td>pstack <code>typescript-best-practices</code></td><td>TS checklist (discriminated unions, branded types, no-<code>as</code>, boundary validation, schema-derived types incl. ReturnType, real tests, structured telemetry).</td><td><span class="tag keep">import opt-in</span> for TS repos; ticket #8 must resolve the ReturnType conflict (pstack recommends it; this OMP checkout bans it).</td></tr>
+  <tr><td>pstack <code>make-bot-ui</code> / <code>bro</code></td><td>Click-to-wake webhook bot via Tailscale; ambient persona skill.</td><td><span class="tag drop">drop</span>: Cursor/Tailscale-specific or persona; no OMP equivalent in scope.</td></tr>
+  <tr><td>pstack cloud lifecycle (autopilot-full/stack, shipping, babysit/cloud, /loop, wake chains)</td><td>Cloud PR owners, verifiers, wake-chain audits, transcript paths, sticky mode.</td><td><span class="tag drop">gate</span>: out of vstack scope until OMP capability mapping exists (ticket #7).</td></tr>
+  <tr><td>matt <code>to-questionnaire</code> / <code>grill-me</code> / <code>wait-what</code> / <code>to-tickets</code> extras</td><td>Async third-party questionnaire (grill-the-send), grilling router, jargon-buster, expand&ndash;contract wide-refactor sequencing.</td><td><span class="tag keep">keep</span>: no pstack counterparts; questionnaire and expand&ndash;contract are net-new capabilities.</td></tr>
+  <tr><td>matt <code>resolving-merge-conflicts</code> / <code>wizard</code> / <code>diagram-design</code> et al.</td><td>Focused workflow skills with no pstack equivalent.</td><td><span class="tag keep">keep</span>: untouched by this report.</td></tr>
+</table>
+
+<h2 id="importmap">7. Suggested import map (for ticket #8)</h2>
+<table>
+  <tr><th>vstack name (suggested)</th><th>Base</th><th>Imported additions</th><th>Shape</th></tr>
+  <tr><td><code>tdd</code></td><td>matt</td><td>pstack evidence contract + impractical-escape</td><td><span class="tag merge">merge</span></td></tr>
+  <tr><td><code>explain</code> / <code>teach</code></td><td>both</td><td>disambiguate; teach composes how+why</td><td><span class="tag rename">rename</span></td></tr>
+  <tr><td><code>prototype</code></td><td>matt</td><td>pstack switcher + verify-on-surface + hand-to-Feature</td><td><span class="tag merge">merge</span></td></tr>
+  <tr><td><code>grilling</code> / <code>multi-model-review</code></td><td>both</td><td>rename pstack side; never merge</td><td><span class="tag keep">keep</span></td></tr>
+  <tr><td><code>writing-for-agents</code> / <code>technical-writing</code> / <code>unslop</code></td><td>both</td><td>unslop as shared substrate</td><td><span class="tag keep">keep</span></td></tr>
+  <tr><td><code>code-review</code></td><td>matt axes</td><td>pstack panel + synthesis + lead-judgment</td><td><span class="tag merge">merge</span></td></tr>
+  <tr><td><code>research</code> / <code>how</code> / <code>why</code></td><td>all</td><td>route by question; keep confidence contract</td><td><span class="tag keep">keep</span></td></tr>
+  <tr><td><code>diagnose-and-fix</code></td><td>matt loop</td><td>pstack fanout + proof ladder</td><td><span class="tag merge">merge</span></td></tr>
+  <tr><td><code>architect</code></td><td>pstack phases</td><td>matt vocabulary + glossary/ADR ground step</td><td><span class="tag merge">merge</span></td></tr>
+  <tr><td><code>wayfinder</code></td><td>matt</td><td>figure-it-out predicate + rigor + TSV trail</td><td><span class="tag keep">keep+</span></td></tr>
+  <tr><td>spec pipeline</td><td>matt</td><td>mandatory delegation + checkpoints + pre-publish trio</td><td><span class="tag merge">merge</span></td></tr>
+  <tr><td><code>triage</code> / <code>review-comment-triage</code></td><td>both</td><td>rename pstack side</td><td><span class="tag keep">keep</span></td></tr>
+  <tr><td><code>setup-repo</code> / <code>setup-models</code></td><td>both</td><td>rename; compose later (#7)</td><td><span class="tag keep">keep</span></td></tr>
+  <tr><td>continuity family</td><td>both</td><td>handoff doc + TSV trail + recall brief</td><td><span class="tag merge">merge</span></td></tr>
+  <tr><td>skill authoring</td><td>both</td><td>content contract + link validation + verification scaffolding</td><td><span class="tag merge">merge</span></td></tr>
+</table>
+
+<h2 id="questions">8. Open questions for ticket #8</h2>
+<ol>
+  <li>Per-pair verdicts: accept, amend, or overturn each suggestion above (total: 5 same-name + 11 same-purpose + singletons).</li>
+  <li>Prototype placement: scratch-dir isolation (pstack) vs next-to-module (matt)?</li>
+  <li>Review fan-out cost: full 4-model panel per axis, or smaller default with escalation?</li>
+  <li>Style hard-rules: which unslop/technical-writing bans (em dash, mid-sentence colon, metaphor nouns) survive contact with the host concise style?</li>
+  <li>ReturnType: pstack recommends it, the OMP checkout bans it &mdash; which wins in vstack TS guidance?</li>
+  <li>Comment Sicko tone: neutral rewrite of the theatrical first line &mdash; exact replacement?</li>
+  <li>Reflection loop: does vstack ship <code>reflect</code> (with approval gate) or defer it?</li>
+  <li>Naming ratification: <code>explain</code>, <code>multi-model-review</code>, <code>review-comment-triage</code>, <code>setup-repo</code>/<code>setup-models</code>.</li>
+</ol>
+
+<h2 id="srclist">9. Source list</h2>
+<p>matt-pocock (upstream <code>mattpocock/skills</code>, pin <code>3cca18b</code>; local copies):</p>
+<ul>
+  <li><code>/Users/vanguyen/.agents/skills/tdd/SKILL.md</code>, <code>teach/SKILL.md</code>, <code>prototype/SKILL.md</code> (+ <code>LOGIC.md</code>, <code>UI.md</code>), <code>grilling/SKILL.md</code>, <code>grill-me/SKILL.md</code>, <code>writing-for-agents/SKILL.md</code>, <code>code-review/SKILL.md</code>, <code>diagnosing-bugs/SKILL.md</code>, <code>research/SKILL.md</code>, <code>domain-modeling/SKILL.md</code>, <code>codebase-design</code> (via ticket #3), <code>wayfinder/SKILL.md</code>, <code>orchestration/SKILL.md</code>, <code>to-spec/SKILL.md</code>, <code>to-tickets/SKILL.md</code>, <code>implement/SKILL.md</code>, <code>triage/SKILL.md</code> (+ <code>AGENT-BRIEF.md</code>, <code>OUT-OF-SCOPE.md</code>), <code>setup-matt-pocock-skills/SKILL.md</code>, <code>to-questionnaire/SKILL.md</code>, <code>handoff/SKILL.md</code></li>
+  <li>Resolutions: <a href="https://github.com/daandden/vstack/issues/3">ticket #3</a> + notes branch <code>research/matt-adaptation-seams</code>.</li>
+</ul>
+<p>pstack (upstream <code>cursor/plugins</code>, tree <code>c1c0a32</code>; re-read 2026-09-15):</p>
+<ul>
+  <li>Skills: <code>tdd</code>, <code>teach</code>, <code>interrogate</code> (+ <code>references/{reviewer-prompt,rubric,code-quality-review,lead-judgment}.md</code>), <code>technical-writing</code>, <code>unslop</code>, <code>no-comments</code>, <code>reflect</code> (+ judgment/tooling/divergent/synthesizer refs), <code>show-me-your-work</code>, <code>recall</code>, <code>automate-me</code>, <code>figure-it-out</code>, <code>blast-radius</code>, <code>how</code> (+ explorer/explainer refs), <code>why</code> (+ epistemics/investigator/source-playbook/sources/synthesizer refs), <code>architect</code> (+ runner/rationale/red-flags refs), <code>arena</code>, <code>swarm</code>, <code>setup-pstack</code>, <code>typescript-best-practices</code> (+ patterns ref), <code>poteto-mode</code> (+ <code>references/bugbot-triage.md</code>); agents <code>poteto-agent.md</code>, <code>comment-sicko.md</code>.</li>
+  <li>Playbooks: <code>prototype</code>, <code>feature</code>, <code>bug-fix</code>, <code>refactoring</code>, <code>opening-a-pr</code>, <code>multi-phase-plan</code>, <code>orchestrate</code>, <code>investigation</code> (plus the remaining 15 surveyed in ticket #4).</li>
+  <li>Resolution: <a href="https://github.com/daandden/vstack/issues/4">ticket #4</a> + notes branch <code>research/pstack-link-model-graph</code>.</li>
+</ul>
+<p>OMP + map: <a href="https://github.com/daandden/vstack/issues/2">ticket #2</a> (local OMP checkout), <a href="https://github.com/daandden/vstack/issues/5">ticket #5</a> (layout), map <a href="https://github.com/daandden/vstack/issues/1">ticket #1</a>.</p>
+
+<footer>
+  Produced for <a href="https://github.com/daandden/vstack/issues/6">daandden/vstack#6</a> on branch <code>research/overlap-report</code>.
+  Single-file report: no external assets. Suggestions only; ticket #8 decides.
+</footer>
+
+</body>
+</html>
