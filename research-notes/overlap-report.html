@@ -230,6 +230,7 @@
   <tr><td>pstack <code>typescript-best-practices</code></td><td>TS checklist (discriminated unions, branded types, no-<code>as</code>, boundary validation, schema-derived types incl. ReturnType, real tests, structured telemetry).</td><td><span class="tag keep">import opt-in</span> for TS repos; ticket #8 must resolve the ReturnType conflict (pstack recommends it; this OMP checkout bans it).</td></tr>
   <tr><td>pstack <code>make-bot-ui</code> / <code>bro</code></td><td>Click-to-wake webhook bot via Tailscale; ambient persona skill.</td><td><span class="tag drop">drop</span>: Cursor/Tailscale-specific or persona; no OMP equivalent in scope.</td></tr>
   <tr><td>pstack cloud lifecycle (autopilot-full/stack, shipping, babysit/cloud, /loop, wake chains)</td><td>Cloud PR owners, verifiers, wake-chain audits, transcript paths, sticky mode.</td><td><span class="tag drop">gate</span>: out of vstack scope until OMP capability mapping exists (ticket #7).</td></tr>
+  <tr><td>matt <code>to-questionnaire</code> / <code>grill-me</code> / <code>wait-what</code> / <code>to-tickets</code> extras, plus <code>ask-matt</code>, <code>grill-with-docs</code>, <code>improve-codebase-architecture</code>, <code>resolving-merge-conflicts</code>, <code>wizard</code></td><td>Async third-party questionnaire (grill-the-send), grilling router, jargon-buster, expand&ndash;contract wide-refactor sequencing, plus other upstream skills with no pstack counterpart.</td><td><span class="tag keep">keep</span>: no pstack counterparts; questionnaire and expand&ndash;contract are net-new capabilities.</td></tr>
   <tr><td>Local-only <code>skill-creator</code> / <code>orchestration</code> / <code>diagram-design</code> et al.</td><td>Skills present only in the local <code>/Users/vanguyen/.agents/skills/</code> dir, absent from the matt-pocock 25-skill allowlist and from pstack.</td><td><span class="tag keep">out of scope for this report</span>: neither matt-pocock nor pstack; ticket #8 decides nothing about them.</td></tr>
 </table>
 
@@ -254,8 +255,9 @@
 </table>
 
 <h2 id="questions">8. Open questions for ticket #8</h2>
+
 <ol>
-  <li>Per-pair verdicts: accept, amend, or overturn each suggestion above (total: 5 same-name + 11 same-purpose + singletons).</li>
+  <li>Per-pair verdicts: accept, amend, or overturn each suggestion above (total: 5 same-name + 9 same-purpose pairs + 2 non-pairs (5j no-overlap, 5k pstack singleton) + singletons).</li>
   <li>Prototype placement: scratch-dir isolation (pstack) vs next-to-module (matt)?</li>
   <li>Review fan-out cost: full 4-model panel per axis, or smaller default with escalation?</li>
   <li>Style hard-rules: which unslop/technical-writing bans (em dash, mid-sentence colon, metaphor nouns) survive contact with the host concise style?</li>
@@ -268,8 +270,7 @@
 <h2 id="srclist">9. Source list</h2>
 <p>matt-pocock (upstream <code>mattpocock/skills</code>, pin <code>3cca18b</code>):</p>
 <ul>
-  <li>Upstream bodies for the allowlisted skills (re-read raw at the pin for this report where overlap-relevant: <code>tdd</code>, <code>teach</code>, <code>prototype</code> (+ <code>LOGIC.md</code>, <code>UI.md</code>), <code>grilling</code>, <code>writing-for-agents</code>, <code>code-review</code>, <code>diagnosing-bugs</code>, <code>research</code>, <code>domain-modeling</code>, <code>codebase-design</code>, <code>wayfinder</code>, <code>to-spec</code>, <code>to-tickets</code>, <code>implement</code>, <code>triage</code> (+ <code>AGENT-BRIEF.md</code>, <code>OUT-OF-SCOPE.md</code>), <code>setup-matt-pocock-skills</code>, <code>grill-me</code>, <code>to-questionnaire</code>, <code>handoff</code>); <code>codebase-design</code> additionally via ticket #3. Local <code>/Users/vanguyen/.agents/skills/</code> paths were used only as a reading convenience, not as the inventory: <code>orchestration/SKILL.md</code> there is local-only and out of scope (see 5j).</li>
-  <li>Resolutions: <a href="https://github.com/daandden/vstack/issues/3">ticket #3</a> + notes branch <code>research/matt-adaptation-seams</code>.</li>
+  <li>Matt bodies read from the local installed copies under <code>/Users/vanguyen/.agents/skills/</code> (<code>tdd</code>, <code>teach</code>, <code>prototype</code> (+ <code>LOGIC.md</code>, <code>UI.md</code>), <code>grilling</code>, <code>grill-me</code>, <code>writing-for-agents</code>, <code>code-review</code>, <code>diagnosing-bugs</code>, <code>research</code>, <code>domain-modeling</code>, <code>wayfinder</code>, <code>to-spec</code>, <code>to-tickets</code>, <code>implement</code>, <code>triage</code> (+ <code>AGENT-BRIEF.md</code>, <code>OUT-OF-SCOPE.md</code>), <code>setup-matt-pocock-skills</code>, <code>to-questionnaire</code>, <code>handoff</code>; <code>codebase-design</code> via ticket #3); names cross-checked against the upstream <code>.claude-plugin/plugin.json</code> allowlist at the pin. Local copies may drift from upstream: where the report states an upstream fact (frontmatter flags, allowlist membership), the cited source is the pin/allowlist or ticket #3, not the local copy. <code>orchestration/SKILL.md</code> in the local dir is local-only and out of scope (see 5j).</li>
 </ul>
 <p>pstack (upstream <code>cursor/plugins</code>, tree <code>c1c0a32</code>; re-read 2026-09-15):</p>
 <ul>
