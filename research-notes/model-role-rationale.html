@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>vstack capability tiers and custom agents</title>
+<style>
+:root { color-scheme: light; }
+body { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif; line-height: 1.55; max-width: 72rem; margin: 0 auto; padding: 2rem 1.25rem 4rem; color: #1a1a1a; }
+h1 { font-size: 1.9rem; margin-bottom: .25rem; } h2 { font-size: 1.4rem; margin-top: 2.5rem; border-bottom: 2px solid #e2e2e2; padding-bottom: .3rem; } h3 { font-size: 1.1rem; }
+.meta { color: #555; font-size: .95rem; } a { color: #0b5fff; }
+table { border-collapse: collapse; width: 100%; margin: .75rem 0 1.25rem; font-size: .93rem; } th,td { border: 1px solid #d5d5d5; padding: .6rem; text-align: left; vertical-align: top; } th { background: #f4f4f4; }
+.table-wrap { overflow-x: auto; } code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .88em; background: #f4f4f4; padding: .1em .3em; border-radius: 3px; overflow-wrap: anywhere; }
+pre { background: #f4f4f4; padding: 1rem; overflow-x: auto; } pre code { padding: 0; }
+.verdict { background: #f0f7ff; border-left: 4px solid #0b5fff; padding: .8rem 1rem; }
+.warn { background: #fff8e6; border-left: 4px solid #c98a00; padding: .8rem 1rem; }
+.toc { background: #fafafa; border: 1px solid #e2e2e2; padding: 1rem 1.25rem; }
+footer { margin-top: 3rem; color: #555; border-top: 1px solid #e2e2e2; padding-top: 1rem; }
+@media (max-width: 600px) { body { padding: 1rem .8rem 2rem; } h1 { font-size: 1.55rem; } th,td { min-width: 9rem; } }
+@media print { body { max-width: none; padding: 0; } .table-wrap { overflow: visible; } h2,h3 { break-after: avoid; } tr { break-inside: avoid; } }
+</style>
+</head>
+<body>
+<header><p class="meta">Revised decision aid · 16 September 2026 · Tier and agent names proposed, not approved</p>
+<h1>Capability tiers and custom agents for vstack</h1>
+<p>Model roles say how much capability to allocate. Custom agents say what work to perform. Amp is used only as a structural reference for tiered difficulty — none of its models are copied or suggested as defaults.</p>
+<p>For <a href="https://github.com/daandden/vstack/issues/7">Decide sync contract and central model config schema</a>.</p></header>
+<main>
+<div class="warn"><strong>What changed.</strong> The earlier code/research/judgment/prose role taxonomy is withdrawn: it mixed responsibilities with model preferences. The Amp model lineup shown previously is also withdrawn as a suggestion. Researcher→standard and reviewer→deep below reflect the user-approved research outcome; the earlier researcher→low / reviewer→low defaults are superseded. Tiers, agents, bindings, and concrete selectors remain proposals until the resolution is recorded.</div>
+<h2 id="recommendation">1. Revised recommendation</h2>
+<div class="verdict"><strong>Five vstack capability tiers</strong> (<code>vstack_tiny</code>, <code>vstack_low</code>, <code>vstack_standard</code>, <code>vstack_deep</code>, <code>vstack_frontier</code>) <strong>plus eight agents</strong> (<code>vstack-swift</code>, <code>vstack-researcher</code>, <code>vstack-coder</code>, <code>vstack-reviewer</code>, <code>vstack-planner</code>, <code>vstack-scribe</code>, <code>vstack-candidate</code>, <code>vstack-sonic</code>). Researcher defaults to standard, reviewer to deep with a different family from the coder where practical. Tiers live in <code>modelRoles</code>; each agent binds to exactly one tier through <code>task.agentModelOverrides</code>.</div>
+<nav class="toc" aria-label="Report contents"><strong>Contents</strong><ol>
+<li><a href="#amp">Amp as structure only</a></li><li><a href="#tiers">Proposed capability tiers</a></li><li><a href="#agents">Proposed custom agents from matt and pstack</a></li><li><a href="#bindings">Proposed default bindings</a></li><li><a href="#omp">Native OMP wiring and validation notes</a></li><li><a href="#panels">Panels need explicit slots, not just tiers</a></li><li><a href="#setup">Setup and remaining decisions</a></li><li><a href="#sources">Sources and limits</a></li></ol></nav>
+<h2 id="amp">2. Amp as structure only</h2>
+<p>Amp’s dial separates difficulty positions from specialist responsibilities such as search, oracle, and librarian. Only that separation is borrowed: <em>tiers for difficulty, agents for responsibility</em>. No Amp model name, effort label, or routing behavior is carried over, and this report makes no claim to reproduce Amp performance.</p>
+<h2 id="tiers">3. Proposed capability tiers</h2>
+<div class="table-wrap"><table><thead><tr><th>Tier</th><th>Proposed selector</th><th>Meaning</th><th>Use when</th></tr></thead><tbody>
+<tr><td><code>vstack_tiny</code></td><td><code>gpt-5.6-luna:max</code></td><td>Minimum-cost capability for mechanical, checkable micro-work.</td><td>Comment-only cleanup, known-fact lookup, tiny bounded edits with an explicit checker.</td></tr>
+<tr><td><code>vstack_low</code></td><td><code>grok-4.6:high</code></td><td>Fast economical reasoning for scoped work.</td><td>Focused exploration, straightforward implementation, bounded review where inputs are clear.</td></tr>
+<tr><td><code>vstack_standard</code></td><td><code>gpt-6-astra:low</code></td><td>Ordinary default capability.</td><td>Most research, implementation, explanation, planning, and review where scope is understood.</td></tr>
+<tr><td><code>vstack_deep</code></td><td><code>gpt-6-astra:medium</code></td><td>Stronger reasoning for difficult or ambiguous work.</td><td>Contradictory evidence, distributed-state or security-sensitive design, hard debugging, substantive review.</td></tr>
+<tr><td><code>vstack_frontier</code></td><td><code>gpt-6-astra:xhigh</code></td><td>Maximum allocated capability for exceptional open-ended work.</td><td>Architecture deadlocks, hardest investigations, or high-consequence synthesis where the extra cost is explicitly justified.</td></tr>
+</tbody></table></div>
+<p><strong>Validation against the live entitled catalog (16 Sept 2026, via <code>omp models find</code>):</strong> <code>gpt-6-astra</code> resolves on <code>openai-codex</code> and <code>opencode-zen</code> with thinking levels <code>low, medium, high, xhigh, max</code>; <code>grok-4.6</code> resolves on <code>opencode-go</code>, <code>opencode-zen</code>, and <code>xai-oauth</code> with <code>minimal, low, medium, high, xhigh</code>; <code>gpt-5.6-luna</code> resolves on <code>openai-codex</code>, <code>opencode-go</code>, and <code>opencode-zen</code> with <code>low, medium, high, xhigh, max</code>. All three requested thinking suffixes (<code>:max</code>, <code>:high</code>, <code>:low</code>, <code>:medium</code>, <code>:xhigh</code>) are therefore valid OMP role-value selectors. Bare IDs are used deliberately: OMP resolves an exact bare id before provider-scoped fuzzy matching, and the provider is chosen at setup from live entitlement.</p>
+<p>Entitlement, not catalog existence, is the remaining setup check: the ids above exist in the catalog, but the account used at setup must expose them. The earlier report draft wrongly wrote <code>cursor/grok-4.6-high</code>; the canonical OMP form is <code>grok-4.6:high</code> (effort as suffix, not part of the id). Likewise <code>gpt-5.6-luna:max</code> and <code>gpt-6-astra:low|medium|xhigh</code>.</p>
+<h2 id="agents">4. Proposed custom agents from matt and pstack</h2>
+<p>Seven distinct agent identities — not five. The friendly label <code>swift</code> is one agent (fast retrieval/triage), not a shared name for scout, researcher, and reviewer. Each agent below maps to observed delegation in the two stacks. No agent is created by this report; names are proposals for the adaptation to define.</p>
+<h3 id="pstack-map">4a. Every pstack model lane maps to a tier-bound agent</h3>
+<p>Pstack's 17 literal role lines (ticket #4) collapse into shared capability tiers as follows. The collapse deliberately gives up per-workflow model tuning in exchange for tier-level tuning; the lost independence is marked.</p>
+<div class="table-wrap"><table><thead><tr><th>Pstack literal role</th><th>Upstream default</th><th>Proposed vstack agent</th><th>Default tier</th><th>Independence lost</th></tr></thead><tbody>
+<tr><td>how explorer</td><td>Grok</td><td><code>vstack-swift</code></td><td><code>@vstack_low</code></td><td>Explorer model can no longer change without researcher investigators.</td></tr>
+<tr><td>why investigators</td><td>Grok</td><td><code>vstack-researcher</code></td><td><code>@vstack_low</code></td><td>Same as above; swarm shares the tier too.</td></tr>
+<tr><td>swarm workers</td><td>Grok</td><td><code>vstack-coder</code></td><td><code>@vstack_standard</code></td><td>Swarm can no longer use a cheaper model than ordinary implementation without an explicit exception.</td></tr>
+<tr><td>feature / refactoring lanes</td><td>Grok</td><td><code>vstack-coder</code></td><td><code>@vstack_standard</code></td><td>Workflow lanes share one coder default; deviation needs an explicit variant.</td></tr>
+<tr><td>bug-fix / perf-issue / hillclimb lanes</td><td>Grok</td><td><code>vstack-coder</code></td><td><code>@vstack_standard</code></td><td>Same collapse as above.</td></tr>
+<tr><td>how explainer</td><td>Fable</td><td><code>vstack-scribe</code></td><td><code>@vstack_standard</code></td><td>Explainer, synthesizer, and judgment reviewers share tiers; prose can no longer tune alone without a scribe exception.</td></tr>
+<tr><td>why synthesizer</td><td>Fable</td><td><code>vstack-scribe</code></td><td><code>@vstack_standard</code></td><td>Same collapse.</td></tr>
+<tr><td>judgment and prose</td><td>Fable</td><td><code>vstack-reviewer</code> / <code>vstack-scribe</code></td><td><code>@vstack_low</code> / <code>@vstack_standard</code></td><td>Critique and prose split across reviewer/scribe at different defaults by user choice.</td></tr>
+<tr><td>hardest tasks</td><td>Fable</td><td>caller + <code>vstack-planner</code></td><td><code>@vstack_deep</code> via planner</td><td>Escalation is explicit (planner/deep or frontier variant), not an automatic lane upgrade.</td></tr>
+<tr><td>reflect tooling</td><td>Sol</td><td><code>vstack-reviewer</code></td><td><code>@vstack_low</code></td><td>Distinct Sol tooling preference is dropped; tooling perspective must come from agent instructions, not a separate model.</td></tr>
+<tr><td>reflect judgment / divergent / synthesizer</td><td>Fable</td><td><code>vstack-reviewer</code> / <code>vstack-scribe</code></td><td><code>@vstack_low</code> / <code>@vstack_standard</code></td><td>Same critique/prose split as above.</td></tr>
+<tr><td>arena runners</td><td>panel (4 models)</td><td><code>vstack-candidate</code> (new — see §7)</td><td>explicit slot bindings</td><td>Panel diversity must be explicit per-slot bindings, not a tier.</td></tr>
+<tr><td>architect runners</td><td>panel (4 models)</td><td><code>vstack-candidate</code></td><td>explicit slot bindings</td><td>Same as above.</td></tr>
+<tr><td>interrogate reviewers</td><td>panel (4 models)</td><td><code>vstack-reviewer</code> + <code>vstack-planner</code></td><td>explicit slot bindings</td><td>Panel review is per-slot reviewer/planner bindings.</td></tr>
+<tr><td>arena cross-judge pool</td><td>pool, prefer different family</td><td><code>vstack-reviewer</code> (cross-judge slot)</td><td>explicit slot binding</td><td>Family-diversity rule stays workflow logic, not a tier property.</td></tr>
+</tbody></table></div>
+<h3 id="matt-lanes">4b. Matt delegating skills map to the same agent set</h3>
+<div class="table-wrap"><table><thead><tr><th>Matt spawner (ticket #3)</th><th>Workers spawned</th><th>Proposed vstack agent</th></tr></thead><tbody>
+<tr><td>code-review</td><td>Standards + Spec workers (parallel, &lt;400-word briefs)</td><td><code>vstack-reviewer</code> (two aspect slots: standards, spec)</td></tr>
+<tr><td>research</td><td>Background primary-source researcher → cited md file</td><td><code>vstack-researcher</code></td></tr>
+<tr><td>wayfinder (chart step 5)</td><td>One research worker per research ticket, parallel</td><td><code>vstack-researcher</code> (fan-out; AFK research only)</td></tr>
+<tr><td>grilling</td><td>Environment fact-finders, non-blocking for independent frontier</td><td><code>vstack-swift</code> (bounded lookup) → escalate to researcher on conflict</td></tr>
+</tbody></table></div>
+<div class="table-wrap"><table><thead><tr><th>Proposed agent</th><th>Responsibility</th><th>Grounded in</th><th>Must not become</th></tr></thead><tbody>
+<tr><td><code>vstack-swift</code> (user label <code>swift</code>)</td><td>Fast retrieval and triage: locate declarations, callers, files, and discrete facts; report sources without deep synthesis.</td><td>Matt grilling fact-finders; pstack how-explorer lightweight retrieval.</td><td>A thorough investigator or a synthesizer.</td></tr>
+<tr><td><code>vstack-researcher</code> (user label <code>researcher</code>)</td><td>Thorough investigation: reconcile primary sources, preserve evidence labels, produce a cited findings file.</td><td>Matt research background worker; pstack why-investigators; wayfinder parallel research workers.</td><td>A quick lookup, or an implementation worker.</td></tr>
+<tr><td><code>vstack-coder</code> (user label <code>coder</code>)</td><td>Carry out an agreed change with verification: focused edits, tests, and reported diffs.</td><td>Matt implement; pstack swarm workers and multi-phase-plan live lanes.</td><td>A designer that re-scopes the change, or a reviewer of its own work.</td></tr>
+<tr><td><code>vstack-reviewer</code> (user label <code>reviewer</code>)</td><td>Evaluate a change or design against standards, spec, and failure modes; produce bounded findings.</td><td>Matt code-review Standards and Spec workers; pstack reflect reviewers, interrogate reviewers, arena cross-judge behavior.</td><td>An implementer, or a comment-rewriter beyond its review scope.</td></tr>
+<tr><td><code>vstack-planner</code> (user label <code>planner</code>)</td><td>Structured planning and clarification: turn ambiguous goals into verifiable steps and ask frontier questions one round at a time.</td><td>Matt grilling frontier discipline; pstack interrogate/architect planning behavior.</td><td>A decision-maker that answers its own questions, or a HITL substitute.</td></tr>
+<tr><td><code>vstack-scribe</code> (user label <code>scribe</code>)</td><td>Explanation and synthesis: turn evidence and decisions into clear prose, plans, and handoff notes.</td><td>Pstack how-explainer, why-synthesizer, reflect synthesizer, technical-writing; matt to-spec/to-tickets writing.</td><td>A critic: synthesis must preserve the underlying judgment, not invent new verdicts.</td></tr>
+<tr><td><code>vstack-candidate</code> — panel runner (fills the arena/architect gap)</td><td>Generate one competing candidate/sketch under panel instructions; no judging of siblings.</td><td>Pstack arena/architect runners (N background candidate generators).</td><td>A judge, a synthesizer, or an implementer outside the panel step.</td></tr>
+<tr><td><code>vstack-sonic</code> (user label <code>sonic</code> — renamed, see warning)</td><td>Scoped mechanical execution only: comment cleanup and other explicitly bounded micro-tasks.</td><td>Pstack Comment Sicko as adapted: comment edits plus scoped kill-target identification; neutral OMP style, no theatrics.</td><td>A general reviewer or a code editor.</td></tr>
+</tbody></table></div>
+<div class="warn"><strong>Name collisions that block the user's labels as written.</strong> <code>sonic</code> is a bundled OMP agent: vibe-mode always selects the bundled <code>sonic</code>/<code>task</code> definition, never a same-named custom agent, and <code>task.agentModelOverrides.sonic</code> would repoint OMP's fast vibe tier at the comment-editor model. Likewise <code>tiny</code> is a built-in OMP <code>modelRoles</code> entry driving titles, memory, and auto-thinking classification (falling back to <code>smol</code>); an unprefixed role or agent named <code>tiny</code> collides with it. The report therefore uses <code>vstack-sonic</code> / <code>vstack_tiny</code> throughout. Approving bare <code>sonic</code> or <code>tiny</code> must be an explicit intentional override, not a silent default.</div>
+<p>Permissions and tools belong to the agent definition, not the tier. Researchers keep needed MCP access rather than inheriting a boolean readonly flag that would strip it; the comment-editor keeps only its explicitly bounded capabilities and never becomes a generic reviewer. That is eight agent identities (seven user-named responsibilities plus the panel runner the seven-set was missing), not seven — the runner gap is fixed by adding <code>vstack-candidate</code>, not by overloading reviewer or coder.</p>
+<h2 id="bindings">5. Proposed default bindings</h2>
+<p>Defaults below incorporate the user-approved research outcome (<code>research-notes/researcher-reviewer-model-strength.md</code>): researcher moves to <code>@vstack_standard</code> and reviewer to <code>@vstack_deep</code>. The earlier researcher→low / reviewer→low defaults are superseded. Escalation across standard/deep/frontier is an <em>effort</em> change on one model (<code>gpt-6-astra</code>), expressible per spawn via the task tool's effort hint — no agent×tier variant cloning needed for that ladder. Model changes (e.g. low→standard) still need an explicit variant or rebinding.</p>
+<div class="table-wrap"><table><thead><tr><th>Agent</th><th>Approved default</th><th>Escalate when</th></tr></thead><tbody>
+<tr><td><code>vstack-swift</code></td><td><code>@vstack_low</code></td><td>Retrieval reveals conflicting or widely scattered evidence; hand off to researcher rather than upgrading silently.</td></tr>
+<tr><td><code>vstack-researcher</code></td><td><code>@vstack_standard</code></td><td>Low only for bounded retrieval with a stronger synthesis owner; deep for difficult causal/history inference or consequential conflicting evidence.</td></tr>
+<tr><td><code>vstack-coder</code></td><td><code>@vstack_standard</code></td><td>Subtle invariants or hard performance work; raise the per-spawn effort hint (medium→xhigh) on the same model, or use an explicit variant for a model change.</td></tr>
+<tr><td><code>vstack-reviewer</code></td><td><code>@vstack_deep</code>, prefer a different family from the coder where practical</td><td>Frontier for especially costly misses or review of frontier-level work. Standard for narrow low-risk review; low only for a mechanical checklist, never the sole substantive verdict.</td></tr>
+<tr><td><code>vstack-planner</code></td><td><code>@vstack_deep</code></td><td>Exceptional open-ended planning; per-spawn effort to xhigh (frontier-equivalent effort on the same model). Standard for routine, already-understood plans.</td></tr>
+<tr><td><code>vstack-scribe</code></td><td><code>@vstack_standard</code></td><td>Demanding synthesis across conflicting sources; raise effort per spawn.</td></tr>
+<tr><td><code>vstack-candidate</code></td><td>explicit panel slot bindings (§7)</td><td>Panel slots bind per-member models; effort hints apply within a slot.</td></tr>
+<tr><td><code>vstack-sonic</code></td><td><code>@vstack_tiny</code></td><td>Rarely: uncertain constraint comments invoke researcher/reviewer instead of upgrading the mechanical editor.</td></tr>
+</tbody></table></div>
+<h2 id="omp">6. Native OMP wiring, persistence, and validation notes</h2>
+<p>Keep tiers and bindings in <code>config/models.yml</code>, loaded as an OMP config overlay. Proposed starting point — not approved configuration:</p>
+<pre><code>modelRoles:
+  vstack_tiny: "gpt-5.6-luna:max"
+  vstack_low: "grok-4.6:high"
+  vstack_standard: "gpt-6-astra:low"
+  vstack_deep: "gpt-6-astra:medium"
+  vstack_frontier: "gpt-6-astra:xhigh"
+
+task:
+  agentModelOverrides:
+    vstack-swift: "@vstack_low"
+    vstack-researcher: "@vstack_standard"
+    vstack-coder: "@vstack_standard"
+    vstack-reviewer: "@vstack_deep"
+    vstack-planner: "@vstack_deep"
+    vstack-scribe: "@vstack_standard"
+    vstack-candidate: "@vstack_standard"
+    vstack-sonic: "@vstack_tiny"</code></pre>
+<ul><li>Each agent needs a discoverable definition; a YAML key alone creates no worker. <code>vstack-candidate</code> defaults to standard only as a placeholder — real panels bind per-slot models in §7.</li><li>Quote <code>@</code> aliases in YAML. A role value may append one thinking selector (<code>:xhigh</code> and <code>:max</code> included — the short docs list is illustrative, the resolver accepts the full effort ladder).</li><li>The task wire carries a per-spawn <em>effort</em> hint (capped by <code>task.maxSpawnEffort</code>) but no per-spawn <em>model</em> field: same-model escalation (astra low→medium→xhigh) needs no variant agents; only model changes do.</li><li><strong>Durability:</strong> <code>--config</code> overlays are process-local and must be passed on every launch. For a durable default, prefer <code>PI_CONFIG_FILES</code> or a project <code>.omp/config.yml</code> entry pointing at the same file — otherwise the roles silently vanish on any plain <code>omp</code> invocation. The resolution must record which load path is canonical.</li><li>Missing roles or unavailable models stop affected delegation under the already agreed rule; native fallback is not a substitute. That enforcement belongs to the eventual implementation.</li></ul>
+<h2 id="panels">7. Panels need explicit slots, not just tiers</h2>
+<p>Reviewers bound to the same tier share a model preference but not necessarily model diversity. Panel membership, runner count, cross-judge selection, and any required diversity remain workflow responsibilities under the already chosen explicit-slot approach. Approved approach: keep <code>modelRoles</code> tier-only and express any approved panel-model exception as an explicit agent binding in the same central YAML, so the exception is visible rather than hidden inside a tier name.</p>
+<h2 id="setup">8. Setup and remaining decisions</h2>
+<ol><li>Confirm account entitlement for the three ids at setup (<code>omp models find</code> already attests catalog existence on 16 Sept 2026 — see §3); record the chosen provider per bare id.</li><li>Concrete selectors above are user-supplied vstack proposals and supersede the earlier "choose during setup" answer — but they still need the entitlement confirmation in step 1 before being written.</li><li>Keep assignments user-controlled; upstream lineup changes never rewrite this config automatically.</li></ol>
+<p><strong>Still to decide:</strong> the five-tier ladder and prefixed agent ids; the user-supplied default bindings (three agents on low, only planner on deep); per-spawn effort escalation vs selective tier variants; explicit panel-model exceptions; the canonical durable load path (<code>PI_CONFIG_FILES</code> vs project <code>.omp/config.yml</code> vs <code>--config</code>); the matt-pocock tag pin (<code>v1.2.3</code> → <code>6acc160e…</code>, superseding ticket #3's <code>3cca18b…</code> HEAD candidate) alongside the pstack SHA-exception policy. The sync decisions (explicit checks, stable tags with an approved SHA exception for untagged pstack, whole-upstream approval, isolated candidates, metadata-only automatic updates, patches plus added files, one Markdown log per sync) are unchanged. No stack build is performed here.</p>
+<h2 id="sources">9. Sources and evidence limits</h2>
+<ul><li><a href="https://ampcode.com/modes">Amp Modes &amp; Models</a> — structural reference only for tiered difficulty and the tier/agent split; no model suggestions taken.</li><li><a href="https://github.com/daandden/vstack/issues/2">Research OMP skill consumption and subagent model routing</a> — native custom roles, override precedence, task-wire limits.</li><li><a href="https://github.com/daandden/vstack/issues/3">Research matt-pocock adaptation seams</a> — 25-skill inventory, prompt-inline delegation, no model fields; HEAD pin <code>3cca18b…</code> superseded by tag pin per §8.</li><li><a href="https://github.com/daandden/vstack/issues/4">Research pstack link, subagent, and model graph</a> — workflow delegation, panel/pool semantics, Comment Sicko and poteto-agent constraints.</li><li><a href="overlap-report.html">Local overlap report</a> — companion aid; no overlap verdicts adopted here.</li></ul>
+<p>Catalog existence for all three model ids plus their thinking levels was verified via <code>omp models find --json</code> on 16 Sept 2026 (see §3). Account entitlement at setup time remains the open check. Tier names, agent ids, default bindings, and concrete selectors are proposals awaiting the live decision.</p>
+</main>
+<footer>Planning artifact. Final decisions belong in <a href="https://github.com/daandden/vstack/issues/7">Decide sync contract and central model config schema</a> after the live discussion and approval.</footer>
+</body></html>
