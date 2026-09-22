@@ -67,6 +67,7 @@ test("explicit sync selects the highest stable tag and activates verified UI met
     f.commit("matt", "v1.9.0");
     f.save(join(f.upstreams.matt!, "skills/matt/resource.txt"), "Prerelease instructions\n");
     f.commit("matt", "v2.0.0-rc.1");
+    f.git(f.upstreams.matt!, "tag", "mattpocock-skills@1.0.0");
     const old = f.active().lock.sources[0].sha;
     f.ok("build"); expect(f.active().lock.sources[0].sha).toBe(old);
     const candidate = JSON.parse(f.ok("sync", "prepare", "matt"));

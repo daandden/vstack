@@ -33,7 +33,8 @@ function stableTag(cache: string, accepted: string | null): string {
   const prefix = accepted?.startsWith("v") ? "v" : "";
   for (const tag of tags) {
     const match = /^(v?)(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/.exec(tag);
-    check(match && match[1] === prefix, `Ambiguous tag naming (${tag}); source-policy decision required`);
+    if (!match) continue;
+    check(match[1] === prefix, `Ambiguous tag naming (${tag}); source-policy decision required`);
     if (match[5]) {
       check(match[5].split(".").every(part => !/^0\d+$/.test(part)), `Invalid prerelease (${tag}); source-policy decision required`);
       continue;

@@ -2,6 +2,8 @@
 
 Issue #15 adds `sync prepare`, `show`, `approve`, and `activate` to the existing stack CLI. Source checks run only on explicit preparation. Matt uses the highest unambiguous stable semantic-version tag; Pstack requires a nominated full SHA and a reviewed activation decision.
 
+Tag selection ignores names outside the full SemVer pattern, including package-prefixed tags such as `mattpocock-skills@1.0.0`. Previously, one unrelated tag incorrectly stopped the entire sync as ambiguous. The public CLI regression now includes that tag while preserving mixed-prefix and equal-precedence rejection.
+
 Candidates keep patched inputs, generated releases, and review evidence outside the active stack. Behavioral, uncertain, mixed, new-skill, moved-tag, and affected-adaptation transitions require whole-transition approval bound to the exact candidate. Only narrowly verified non-executable UI metadata or provenance-only transitions can omit approval. Activation regenerates and verifies the candidate with real OMP before publishing the complete active view. Each selected transition writes a dated Markdown audit record for the maintainer to commit with the accepted lock.
 
 Conflicting patches can be rebased outside the accepted tree and supplied to `prepare --patches <directory>`. The candidate binds those exact patch bytes; activation persists them only after review and verification. YAML UI classification uses a non-mutating projection so aliases into unknown instruction sections cannot bypass approval.
