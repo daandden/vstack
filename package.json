@@ -1,0 +1,15 @@
+{
+  "name": "vstack",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "bun scripts/stack.ts build",
+    "install:workspace": "bun scripts/stack.ts install",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "1.3.10",
+    "typescript": "5.9.3"
+  }
+}

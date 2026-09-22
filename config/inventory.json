@@ -1,0 +1,1150 @@
+[
+  {
+    "source": "matt",
+    "path": "skills/engineering/ask-matt/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "ask-matt"
+    ],
+    "owner": 16,
+    "status": "pending",
+    "reason": "Approved Matt source retained for ask-matt; preserve sibling resources and invocation policy (#12, #16)."
+  },
+  {
+    "source": "matt",
+    "path": "skills/engineering/code-review/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "code-review"
+    ],
+    "owner": 17,
+    "status": "pending",
+    "reason": "Approved Matt source retained for code-review; preserve sibling resources and invocation policy (#12, #17)."
+  },
+  {
+    "source": "matt",
+    "path": "skills/engineering/codebase-design/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "codebase-design"
+    ],
+    "owner": 16,
+    "status": "pending",
+    "reason": "Approved Matt source retained for codebase-design; preserve sibling resources and invocation policy (#12, #16)."
+  },
+  {
+    "source": "matt",
+    "path": "skills/engineering/diagnosing-bugs/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "diagnose-and-fix"
+    ],
+    "owner": 17,
+    "status": "pending",
+    "reason": "Approved Matt source retained for diagnose-and-fix; preserve sibling resources and invocation policy (#12, #17)."
+  },
+  {
+    "source": "matt",
+    "path": "skills/engineering/domain-modeling/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "domain-modeling"
+    ],
+    "owner": 16,
+    "status": "pending",
+    "reason": "Approved Matt source retained for domain-modeling; preserve sibling resources and invocation policy (#12, #16)."
+  },
+  {
+    "source": "matt",
+    "path": "skills/engineering/grill-with-docs/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "grill-with-docs"
+    ],
+    "owner": 16,
+    "status": "pending",
+    "reason": "Approved Matt source retained for grill-with-docs; preserve sibling resources and invocation policy (#12, #16)."
+  },
+  {
+    "source": "matt",
+    "path": "skills/engineering/implement/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "implement"
+    ],
+    "owner": 19,
+    "status": "pending",
+    "reason": "Approved Matt source retained for implement; preserve sibling resources and invocation policy (#12, #19)."
+  },
+  {
+    "source": "matt",
+    "path": "skills/engineering/improve-codebase-architecture/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "improve-codebase-architecture"
+    ],
+    "owner": 21,
+    "status": "pending",
+    "reason": "Approved Matt source retained for improve-codebase-architecture; preserve sibling resources and invocation policy (#12, #21)."
+  },
+  {
+    "source": "matt",
+    "path": "skills/engineering/prototype/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "prototype"
+    ],
+    "owner": 21,
+    "status": "pending",
+    "reason": "Approved Matt source retained for prototype; preserve sibling resources and invocation policy (#12, #21)."
+  },
+  {
+    "source": "matt",
+    "path": "skills/engineering/research/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "research"
+    ],
+    "owner": 16,
+    "status": "pending",
+    "reason": "Approved Matt source retained for research; preserve sibling resources and invocation policy (#12, #16)."
+  },
+  {
+    "source": "matt",
+    "path": "skills/engineering/resolving-merge-conflicts/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "resolving-merge-conflicts"
+    ],
+    "owner": 17,
+    "status": "pending",
+    "reason": "Approved Matt source retained for resolving-merge-conflicts; preserve sibling resources and invocation policy (#12, #17)."
+  },
+  {
+    "source": "matt",
+    "path": "skills/engineering/setup-matt-pocock-skills/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "setup-repo"
+    ],
+    "owner": 18,
+    "status": "pending",
+    "reason": "Approved Matt source retained for setup-repo; preserve sibling resources and invocation policy (#12, #18)."
+  },
+  {
+    "source": "matt",
+    "path": "skills/engineering/tdd/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "tdd"
+    ],
+    "owner": 17,
+    "status": "pending",
+    "reason": "Approved Matt source retained for tdd; preserve sibling resources and invocation policy (#12, #17)."
+  },
+  {
+    "source": "matt",
+    "path": "skills/engineering/to-spec/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "to-spec"
+    ],
+    "owner": 19,
+    "status": "pending",
+    "reason": "Approved Matt source retained for to-spec; preserve sibling resources and invocation policy (#12, #19)."
+  },
+  {
+    "source": "matt",
+    "path": "skills/engineering/to-tickets/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "to-tickets"
+    ],
+    "owner": 19,
+    "status": "pending",
+    "reason": "Approved Matt source retained for to-tickets; preserve sibling resources and invocation policy (#12, #19). Includes approved to-tickets extras; no replacement pipeline."
+  },
+  {
+    "source": "matt",
+    "path": "skills/engineering/triage/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "triage"
+    ],
+    "owner": 18,
+    "status": "pending",
+    "reason": "Approved Matt source retained for triage; preserve sibling resources and invocation policy (#12, #18)."
+  },
+  {
+    "source": "matt",
+    "path": "skills/engineering/wayfinder/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "wayfinder"
+    ],
+    "owner": 19,
+    "status": "pending",
+    "reason": "Approved Matt source retained for wayfinder; preserve sibling resources and invocation policy (#12, #19)."
+  },
+  {
+    "source": "matt",
+    "path": "skills/engineering/wizard/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "wizard"
+    ],
+    "owner": 13,
+    "status": "installed",
+    "reason": "Complete retained skill delivered by #13 with its supporting resources; #18 preserves it when composing repository setup."
+  },
+  {
+    "source": "matt",
+    "path": "skills/productivity/grill-me/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "grill-me"
+    ],
+    "owner": 19,
+    "status": "pending",
+    "reason": "Approved Matt source retained for grill-me; preserve sibling resources and invocation policy (#12, #19)."
+  },
+  {
+    "source": "matt",
+    "path": "skills/productivity/grilling/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "grilling"
+    ],
+    "owner": 19,
+    "status": "pending",
+    "reason": "Approved Matt source retained for grilling; preserve sibling resources and invocation policy (#12, #19)."
+  },
+  {
+    "source": "matt",
+    "path": "skills/productivity/handoff/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "handoff"
+    ],
+    "owner": 23,
+    "status": "pending",
+    "reason": "Approved Matt source retained for handoff; preserve sibling resources and invocation policy (#12, #23)."
+  },
+  {
+    "source": "matt",
+    "path": "skills/productivity/teach/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "teach"
+    ],
+    "owner": 16,
+    "status": "pending",
+    "reason": "Approved Matt source retained for teach; preserve sibling resources and invocation policy (#12, #16)."
+  },
+  {
+    "source": "matt",
+    "path": "skills/productivity/to-questionnaire/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "to-questionnaire"
+    ],
+    "owner": 16,
+    "status": "pending",
+    "reason": "Approved Matt source retained for to-questionnaire; preserve sibling resources and invocation policy (#12, #16)."
+  },
+  {
+    "source": "matt",
+    "path": "skills/productivity/wait-what/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "wait-what"
+    ],
+    "owner": 16,
+    "status": "pending",
+    "reason": "Approved Matt source retained for wait-what; preserve sibling resources and invocation policy (#12, #16)."
+  },
+  {
+    "source": "matt",
+    "path": "skills/productivity/writing-for-agents/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "writing-for-agents"
+    ],
+    "owner": 16,
+    "status": "pending",
+    "reason": "Approved Matt source retained for writing-for-agents; preserve sibling resources and invocation policy (#12, #16)."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/automations/benny/skills/reproduce-and-fix-issues/SKILL.md",
+    "kind": "skill",
+    "disposition": "drop",
+    "targets": [],
+    "owner": null,
+    "status": "dropped",
+    "reason": "Dormant Benny automation-pack entry outside the locked pstack/skills and pstack/LICENSE allowlist; inventoried for full-snapshot accountability, not an approved local-stack workflow (#12/#13). No activation or family implementation is implied."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/automations/benny/skills/setup-benny/SKILL.md",
+    "kind": "skill",
+    "disposition": "drop",
+    "targets": [],
+    "owner": null,
+    "status": "dropped",
+    "reason": "Dormant Benny automation-pack entry outside the locked pstack/skills and pstack/LICENSE allowlist; inventoried for full-snapshot accountability, not an approved local-stack workflow (#12/#13). No activation or family implementation is implied."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/automations/benny/skills/triage-issue-reports/SKILL.md",
+    "kind": "skill",
+    "disposition": "drop",
+    "targets": [],
+    "owner": null,
+    "status": "dropped",
+    "reason": "Dormant Benny automation-pack entry outside the locked pstack/skills and pstack/LICENSE allowlist; inventoried for full-snapshot accountability, not an approved local-stack workflow (#12/#13). No activation or family implementation is implied."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/architect/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "architect"
+    ],
+    "owner": 21,
+    "status": "pending",
+    "reason": "Retain approved architect behavior pending native OMP adaptation and valid intent-based handoffs (#12, #21)."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/arena/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "arena"
+    ],
+    "owner": 20,
+    "status": "pending",
+    "reason": "Retain approved arena behavior pending native OMP adaptation and valid intent-based handoffs (#12, #20)."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/automate-me/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "automate-me"
+    ],
+    "owner": 19,
+    "status": "pending",
+    "reason": "Retain approved automate-me behavior pending native OMP adaptation and valid intent-based handoffs (#12, #19). Only retained portions survive; remove excluded dispatcher, cloud and planning routes."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/blast-radius/SKILL.md",
+    "kind": "skill",
+    "disposition": "fold",
+    "targets": [
+      "diagnose-and-fix",
+      "architect"
+    ],
+    "owner": 17,
+    "status": "pending",
+    "reason": "Fold safety-fact proof ladder into bug/design flows, never a standalone install (#12). #17 owns diagnosis adaptation; #21 owns its design consumer."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/bro/SKILL.md",
+    "kind": "skill",
+    "disposition": "drop",
+    "targets": [],
+    "owner": null,
+    "status": "dropped",
+    "reason": "Explicit singleton exclusion in #8/#12."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/create-verification-skill/SKILL.md",
+    "kind": "skill",
+    "disposition": "drop",
+    "targets": [],
+    "owner": null,
+    "status": "dropped",
+    "reason": "Skill-authoring and verification-scaffolding exclusion in #8/#12."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/figure-it-out/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "figure-it-out"
+    ],
+    "owner": 19,
+    "status": "pending",
+    "reason": "Retain approved figure-it-out behavior pending native OMP adaptation and valid intent-based handoffs (#12, #19). Only retained portions survive; remove excluded dispatcher, cloud and planning routes."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/how/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "how"
+    ],
+    "owner": 16,
+    "status": "pending",
+    "reason": "Retain approved how behavior pending native OMP adaptation and valid intent-based handoffs (#12, #16)."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/interrogate/SKILL.md",
+    "kind": "skill",
+    "disposition": "drop",
+    "targets": [],
+    "owner": null,
+    "status": "dropped",
+    "reason": "Keep human grilling; exclude multi-model interrogation and its aliases (#8/#12)."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/maintain-verification-skill/SKILL.md",
+    "kind": "skill",
+    "disposition": "drop",
+    "targets": [],
+    "owner": null,
+    "status": "dropped",
+    "reason": "Skill-authoring and verification-scaffolding exclusion in #8/#12."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/make-bot-ui/SKILL.md",
+    "kind": "skill",
+    "disposition": "drop",
+    "targets": [],
+    "owner": null,
+    "status": "dropped",
+    "reason": "Explicit singleton exclusion in #8/#12."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/no-comments/SKILL.md",
+    "kind": "skill",
+    "disposition": "drop",
+    "targets": [],
+    "owner": null,
+    "status": "dropped",
+    "reason": "Comment Sicko/no-comments excluded without a replacement comment pass (#8/#11/#12)."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/poteto-mode/SKILL.md",
+    "kind": "skill",
+    "disposition": "drop",
+    "targets": [],
+    "owner": null,
+    "status": "dropped",
+    "reason": "Dispatcher excluded; surviving owners receive intent-based handoffs, not aliases (#9/#12)."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/principle-attack-the-premise/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "principle-attack-the-premise"
+    ],
+    "owner": 13,
+    "status": "pending",
+    "reason": "Inventoried supporting principle, pending retained-family dependency adaptation under #12/#13. Not approved as an independent active install or universal policy; preserve relevant support without importing excluded authority or cloud behavior."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/principle-boundary-discipline/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "principle-boundary-discipline"
+    ],
+    "owner": 13,
+    "status": "pending",
+    "reason": "Inventoried supporting principle, pending retained-family dependency adaptation under #12/#13. Not approved as an independent active install or universal policy; preserve relevant support without importing excluded authority or cloud behavior."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/principle-build-the-lever/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "principle-build-the-lever"
+    ],
+    "owner": 13,
+    "status": "pending",
+    "reason": "Inventoried supporting principle, pending retained-family dependency adaptation under #12/#13. Not approved as an independent active install or universal policy; preserve relevant support without importing excluded authority or cloud behavior."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/principle-encode-lessons-in-structure/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "principle-encode-lessons-in-structure"
+    ],
+    "owner": 13,
+    "status": "pending",
+    "reason": "Inventoried supporting principle, pending retained-family dependency adaptation under #12/#13. Not approved as an independent active install or universal policy; preserve relevant support without importing excluded authority or cloud behavior."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/principle-exhaust-the-design-space/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "principle-exhaust-the-design-space"
+    ],
+    "owner": 13,
+    "status": "pending",
+    "reason": "Inventoried supporting principle, pending retained-family dependency adaptation under #12/#13. Not approved as an independent active install or universal policy; preserve relevant support without importing excluded authority or cloud behavior."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/principle-experience-first/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "principle-experience-first"
+    ],
+    "owner": 13,
+    "status": "pending",
+    "reason": "Inventoried supporting principle, pending retained-family dependency adaptation under #12/#13. Not approved as an independent active install or universal policy; preserve relevant support without importing excluded authority or cloud behavior."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/principle-fix-root-causes/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "principle-fix-root-causes"
+    ],
+    "owner": 13,
+    "status": "pending",
+    "reason": "Inventoried supporting principle, pending retained-family dependency adaptation under #12/#13. Not approved as an independent active install or universal policy; preserve relevant support without importing excluded authority or cloud behavior."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/principle-foundational-thinking/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "principle-foundational-thinking"
+    ],
+    "owner": 13,
+    "status": "pending",
+    "reason": "Inventoried supporting principle, pending retained-family dependency adaptation under #12/#13. Not approved as an independent active install or universal policy; preserve relevant support without importing excluded authority or cloud behavior."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/principle-guard-the-context-window/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "principle-guard-the-context-window"
+    ],
+    "owner": 13,
+    "status": "pending",
+    "reason": "Inventoried supporting principle, pending retained-family dependency adaptation under #12/#13. Not approved as an independent active install or universal policy; preserve relevant support without importing excluded authority or cloud behavior."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/principle-laziness-protocol/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "principle-laziness-protocol"
+    ],
+    "owner": 13,
+    "status": "pending",
+    "reason": "Inventoried supporting principle, pending retained-family dependency adaptation under #12/#13. Not approved as an independent active install or universal policy; preserve relevant support without importing excluded authority or cloud behavior."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/principle-make-operations-idempotent/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "principle-make-operations-idempotent"
+    ],
+    "owner": 13,
+    "status": "pending",
+    "reason": "Inventoried supporting principle, pending retained-family dependency adaptation under #12/#13. Not approved as an independent active install or universal policy; preserve relevant support without importing excluded authority or cloud behavior."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/principle-migrate-callers-then-delete-legacy-apis/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "principle-migrate-callers-then-delete-legacy-apis"
+    ],
+    "owner": 13,
+    "status": "pending",
+    "reason": "Inventoried supporting principle, pending retained-family dependency adaptation under #12/#13. Not approved as an independent active install or universal policy; preserve relevant support without importing excluded authority or cloud behavior."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/principle-minimize-reader-load/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "principle-minimize-reader-load"
+    ],
+    "owner": 13,
+    "status": "pending",
+    "reason": "Inventoried supporting principle, pending retained-family dependency adaptation under #12/#13. Not approved as an independent active install or universal policy; preserve relevant support without importing excluded authority or cloud behavior."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/principle-model-the-domain/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "principle-model-the-domain"
+    ],
+    "owner": 13,
+    "status": "pending",
+    "reason": "Inventoried supporting principle, pending retained-family dependency adaptation under #12/#13. Not approved as an independent active install or universal policy; preserve relevant support without importing excluded authority or cloud behavior."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/principle-never-block-on-the-human/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "principle-never-block-on-the-human"
+    ],
+    "owner": 13,
+    "status": "pending",
+    "reason": "Inventoried supporting principle, pending retained-family dependency adaptation under #12/#13. Not approved as an independent active install or universal policy; preserve relevant support without importing excluded authority or cloud behavior."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/principle-outcome-oriented-execution/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "principle-outcome-oriented-execution"
+    ],
+    "owner": 13,
+    "status": "pending",
+    "reason": "Inventoried supporting principle, pending retained-family dependency adaptation under #12/#13. Not approved as an independent active install or universal policy; preserve relevant support without importing excluded authority or cloud behavior."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/principle-prove-it-works/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "principle-prove-it-works"
+    ],
+    "owner": 13,
+    "status": "pending",
+    "reason": "Inventoried supporting principle, pending retained-family dependency adaptation under #12/#13. Not approved as an independent active install or universal policy; preserve relevant support without importing excluded authority or cloud behavior."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/principle-redesign-from-first-principles/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "principle-redesign-from-first-principles"
+    ],
+    "owner": 13,
+    "status": "pending",
+    "reason": "Inventoried supporting principle, pending retained-family dependency adaptation under #12/#13. Not approved as an independent active install or universal policy; preserve relevant support without importing excluded authority or cloud behavior."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/principle-separate-before-serializing-shared-state/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "principle-separate-before-serializing-shared-state"
+    ],
+    "owner": 13,
+    "status": "pending",
+    "reason": "Inventoried supporting principle, pending retained-family dependency adaptation under #12/#13. Not approved as an independent active install or universal policy; preserve relevant support without importing excluded authority or cloud behavior."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/principle-sequence-verifiable-units/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "principle-sequence-verifiable-units"
+    ],
+    "owner": 13,
+    "status": "pending",
+    "reason": "Inventoried supporting principle, pending retained-family dependency adaptation under #12/#13. Not approved as an independent active install or universal policy; preserve relevant support without importing excluded authority or cloud behavior."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/principle-subtract-before-you-add/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "principle-subtract-before-you-add"
+    ],
+    "owner": 13,
+    "status": "pending",
+    "reason": "Inventoried supporting principle, pending retained-family dependency adaptation under #12/#13. Not approved as an independent active install or universal policy; preserve relevant support without importing excluded authority or cloud behavior."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/principle-test-behavior-not-implementation/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "principle-test-behavior-not-implementation"
+    ],
+    "owner": 13,
+    "status": "pending",
+    "reason": "Inventoried supporting principle, pending retained-family dependency adaptation under #12/#13. Not approved as an independent active install or universal policy; preserve relevant support without importing excluded authority or cloud behavior."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/principle-type-system-discipline/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "principle-type-system-discipline"
+    ],
+    "owner": 13,
+    "status": "pending",
+    "reason": "Inventoried supporting principle, pending retained-family dependency adaptation under #12/#13. Not approved as an independent active install or universal policy; preserve relevant support without importing excluded authority or cloud behavior."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/recall/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "recall"
+    ],
+    "owner": 23,
+    "status": "pending",
+    "reason": "Retain approved recall behavior pending native OMP adaptation and valid intent-based handoffs (#12, #23)."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/reflect/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "reflect"
+    ],
+    "owner": 24,
+    "status": "pending",
+    "reason": "Retain approved reflect behavior pending native OMP adaptation and valid intent-based handoffs (#12, #24)."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/setup-pstack/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "setup-models"
+    ],
+    "owner": 14,
+    "status": "pending",
+    "reason": "Retain approved setup-models behavior pending native OMP adaptation and valid intent-based handoffs (#12, #14)."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/show-me-your-work/SKILL.md",
+    "kind": "skill",
+    "disposition": "fold",
+    "targets": [
+      "trail",
+      "wayfinder"
+    ],
+    "owner": 23,
+    "status": "pending",
+    "reason": "Preserve append-only TSV, audit, and Attention within continuity trail (#23), also consumed by Wayfinder (#19); workspace-scoped evidence only (#12)."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/swarm/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "swarm"
+    ],
+    "owner": 20,
+    "status": "pending",
+    "reason": "Retain approved swarm behavior pending native OMP adaptation and valid intent-based handoffs (#12, #20)."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/tdd/SKILL.md",
+    "kind": "skill",
+    "disposition": "fold",
+    "targets": [
+      "tdd"
+    ],
+    "owner": 17,
+    "status": "pending",
+    "reason": "Merge failing-before/passing-after evidence, explicit impracticality explanation and closest check, and no-bad-test preference into Matt vertical-slice TDD (#12/#17)."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/teach/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "explain"
+    ],
+    "owner": 16,
+    "status": "pending",
+    "reason": "Retain approved explain behavior pending native OMP adaptation and valid intent-based handoffs (#12, #16)."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/technical-writing/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "technical-writing"
+    ],
+    "owner": 16,
+    "status": "pending",
+    "reason": "Retain approved technical-writing behavior pending native OMP adaptation and valid intent-based handoffs (#12, #16)."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/typescript-best-practices/SKILL.md",
+    "kind": "skill",
+    "disposition": "drop",
+    "targets": [],
+    "owner": null,
+    "status": "dropped",
+    "reason": "Explicit whole-skill exclusion in #8/#12."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/unslop/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "unslop"
+    ],
+    "owner": 16,
+    "status": "pending",
+    "reason": "Retain approved unslop behavior pending native OMP adaptation and valid intent-based handoffs (#12, #16)."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/why/SKILL.md",
+    "kind": "skill",
+    "disposition": "retain",
+    "targets": [
+      "why"
+    ],
+    "owner": 16,
+    "status": "pending",
+    "reason": "Retain approved why behavior pending native OMP adaptation and valid intent-based handoffs (#12, #16)."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/poteto-mode/playbooks/authoring-a-skill.md",
+    "kind": "playbook",
+    "disposition": "drop",
+    "targets": [],
+    "owner": null,
+    "status": "dropped",
+    "reason": "Explicit drop under final #9/#12 playbook disposition; omit discovery and active execution links, with no compatibility alias or substitute."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/poteto-mode/playbooks/autonomous-run.md",
+    "kind": "playbook",
+    "disposition": "drop",
+    "targets": [],
+    "owner": null,
+    "status": "dropped",
+    "reason": "Explicit drop under final #9/#12 playbook disposition; omit discovery and active execution links, with no compatibility alias or substitute."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/poteto-mode/playbooks/autopilot-full.md",
+    "kind": "playbook",
+    "disposition": "drop",
+    "targets": [],
+    "owner": null,
+    "status": "dropped",
+    "reason": "Explicit drop under final #9/#12 playbook disposition; omit discovery and active execution links, with no compatibility alias or substitute."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/poteto-mode/playbooks/autopilot-stack.md",
+    "kind": "playbook",
+    "disposition": "drop",
+    "targets": [],
+    "owner": null,
+    "status": "dropped",
+    "reason": "Explicit drop under final #9/#12 playbook disposition; omit discovery and active execution links, with no compatibility alias or substitute."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/poteto-mode/playbooks/babysit.md",
+    "kind": "playbook",
+    "disposition": "retain",
+    "targets": [
+      "babysit"
+    ],
+    "owner": 22,
+    "status": "pending",
+    "reason": "Explicit standalone playbook-derived babysit family under final #9/#12; pending #22, not a workflow stub."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/poteto-mode/playbooks/bug-fix.md",
+    "kind": "playbook",
+    "disposition": "fold",
+    "targets": [
+      "diagnose-and-fix"
+    ],
+    "owner": 17,
+    "status": "pending",
+    "reason": "Explicit fold into diagnose-and-fix under final #9/#12 disposition; implementation owned by #17."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/poteto-mode/playbooks/eval.md",
+    "kind": "playbook",
+    "disposition": "retain",
+    "targets": [
+      "agent-evaluation"
+    ],
+    "owner": 24,
+    "status": "pending",
+    "reason": "Explicit standalone playbook-derived agent-evaluation family under final #9/#12; pending #24, not a workflow stub."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/poteto-mode/playbooks/feature.md",
+    "kind": "playbook",
+    "disposition": "fold",
+    "targets": [
+      "to-spec",
+      "to-tickets",
+      "implement"
+    ],
+    "owner": 19,
+    "status": "pending",
+    "reason": "Explicit fold into to-spec, to-tickets, implement under final #9/#12 disposition; implementation owned by #19."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/poteto-mode/playbooks/hillclimb.md",
+    "kind": "playbook",
+    "disposition": "drop",
+    "targets": [],
+    "owner": null,
+    "status": "dropped",
+    "reason": "Explicit drop under final #9/#12 playbook disposition; omit discovery and active execution links, with no compatibility alias or substitute."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/poteto-mode/playbooks/investigation.md",
+    "kind": "playbook",
+    "disposition": "fold",
+    "targets": [
+      "investigation"
+    ],
+    "owner": 16,
+    "status": "pending",
+    "reason": "Explicit fold into investigation under final #9/#12 disposition; implementation owned by #16."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/poteto-mode/playbooks/multi-phase-plan.md",
+    "kind": "playbook",
+    "disposition": "drop",
+    "targets": [],
+    "owner": null,
+    "status": "dropped",
+    "reason": "Explicit drop under final #9/#12 playbook disposition; omit discovery and active execution links, with no compatibility alias or substitute. Includes template, validator, and added checks; no replacement verification-lane policy."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/poteto-mode/playbooks/opening-a-pr.md",
+    "kind": "playbook",
+    "disposition": "fold",
+    "targets": [
+      "implement"
+    ],
+    "owner": 19,
+    "status": "pending",
+    "reason": "Explicit fold into implement under final #9/#12 disposition; implementation owned by #19. Publication requires separate authorization; unslop is the only style pass."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/poteto-mode/playbooks/orchestrate.md",
+    "kind": "playbook",
+    "disposition": "drop",
+    "targets": [],
+    "owner": null,
+    "status": "dropped",
+    "reason": "Explicit drop under final #9/#12 playbook disposition; omit discovery and active execution links, with no compatibility alias or substitute."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/poteto-mode/playbooks/pause-safely.md",
+    "kind": "playbook",
+    "disposition": "fold",
+    "targets": [
+      "continuity"
+    ],
+    "owner": 23,
+    "status": "pending",
+    "reason": "Explicit fold into continuity under final #9/#12 disposition; implementation owned by #23. Preserve WIP and resume record; no discard, push, publication, or durable recovery authority."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/poteto-mode/playbooks/perf-issue.md",
+    "kind": "playbook",
+    "disposition": "fold",
+    "targets": [
+      "diagnose-and-fix"
+    ],
+    "owner": 17,
+    "status": "pending",
+    "reason": "Explicit fold into diagnose-and-fix under final #9/#12 disposition; implementation owned by #17. Preserve performance baseline and measured before/after evidence."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/poteto-mode/playbooks/prototype.md",
+    "kind": "playbook",
+    "disposition": "fold",
+    "targets": [
+      "prototype"
+    ],
+    "owner": 21,
+    "status": "pending",
+    "reason": "Explicit fold into prototype under final #9/#12 disposition; implementation owned by #21."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/poteto-mode/playbooks/refactoring.md",
+    "kind": "playbook",
+    "disposition": "fold",
+    "targets": [
+      "to-spec",
+      "to-tickets",
+      "implement"
+    ],
+    "owner": 19,
+    "status": "pending",
+    "reason": "Explicit fold into to-spec, to-tickets, implement under final #9/#12 disposition; implementation owned by #19. Preserve behavior-pinning and equivalence proof."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/poteto-mode/playbooks/runtime-forensics.md",
+    "kind": "playbook",
+    "disposition": "drop",
+    "targets": [],
+    "owner": null,
+    "status": "dropped",
+    "reason": "Explicit drop under final #9/#12 playbook disposition; omit discovery and active execution links, with no compatibility alias or substitute."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/poteto-mode/playbooks/session-pickup.md",
+    "kind": "playbook",
+    "disposition": "fold",
+    "targets": [
+      "pickup"
+    ],
+    "owner": 23,
+    "status": "pending",
+    "reason": "Explicit fold into pickup under final #9/#12 disposition; implementation owned by #23."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/poteto-mode/playbooks/shipping.md",
+    "kind": "playbook",
+    "disposition": "drop",
+    "targets": [],
+    "owner": null,
+    "status": "dropped",
+    "reason": "Explicit drop under final #9/#12 playbook disposition; omit discovery and active execution links, with no compatibility alias or substitute."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/poteto-mode/playbooks/trace-forensics.md",
+    "kind": "playbook",
+    "disposition": "drop",
+    "targets": [],
+    "owner": null,
+    "status": "dropped",
+    "reason": "Explicit drop under final #9/#12 playbook disposition; omit discovery and active execution links, with no compatibility alias or substitute."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/poteto-mode/playbooks/visual-parity.md",
+    "kind": "playbook",
+    "disposition": "drop",
+    "targets": [],
+    "owner": null,
+    "status": "dropped",
+    "reason": "Explicit drop under final #9/#12 playbook disposition; omit discovery and active execution links, with no compatibility alias or substitute."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/poteto-mode/playbooks/worktree-cleanup.md",
+    "kind": "playbook",
+    "disposition": "drop",
+    "targets": [],
+    "owner": null,
+    "status": "dropped",
+    "reason": "Explicit drop under final #9/#12 playbook disposition; omit discovery and active execution links, with no compatibility alias or substitute."
+  },
+  {
+    "source": "pstack",
+    "path": "pstack/skills/poteto-mode/references/bugbot-triage.md",
+    "kind": "reference",
+    "disposition": "retain",
+    "targets": [
+      "review-comment-triage"
+    ],
+    "owner": 18,
+    "status": "pending",
+    "reason": "Approved review-comment-triage family retains the disposition rubric and confidence-tier skip-pattern guidance (#12/#18); reference source is pending adaptation, not lost with the poteto-mode dispatcher."
+  }
+]

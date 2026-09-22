@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "Preserve",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noEmit": true,
+    "types": [
+      "bun"
+    ],
+    "skipLibCheck": true
+  },
+  "include": [
+    "scripts/**/*.ts",
+    "tests/**/*.ts"
+  ]
+}
