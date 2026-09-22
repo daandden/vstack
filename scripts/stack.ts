@@ -3,33 +3,31 @@ import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readdirSync, rea
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
-interface Source {
-  id: string; url: string; tag: string | null; sha: string; approval: string;
+export interface Source {
+  id: string; url: string; tag: string | null; sha: string; approval: string; tagObject?: string;
   allowlist: string[]; license: string; patches: string[];
 }
 interface Skill { name: string; source: string; path: string }
-interface Lock { version: number; sources: Source[]; skills: Skill[]; additions: { name: string; path: string }[] }
+export interface Lock { version: number; sources: Source[]; skills: Skill[]; additions: { name: string; path: string }[] }
 interface Disposition { source: string; path: string; status: string }
 
 const root = resolve(import.meta.dir, "..");
-const lock: Lock = JSON.parse(readFileSync(join(root, "config/sources.lock.json"), "utf8"));
-const inventory: Disposition[] = JSON.parse(readFileSync(join(root, "config/inventory.json"), "utf8"));
-function check(condition: unknown, message: string): asserts condition {
+export function check(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
 }
-function within(base: string, path: string): string {
+export function within(base: string, path: string): string {
   const target = resolve(base, path);
   check(path && !isAbsolute(path) && relative(base, target) !== ".." && !relative(base, target).startsWith(`..${sep}`) && target !== base, `Unsafe path: ${path}`);
   return target;
 }
-function run(args: string[], cwd = root): Buffer {
+export function run(args: string[], cwd = root): Buffer {
   const result = Bun.spawnSync(args, { cwd, stdout: "pipe", stderr: "pipe" });
   check(result.exitCode === 0, `${args[0]} failed: ${result.stderr.toString()}`);
   return result.stdout;
 }
 // Fingerprint bytes, relative names and executable bits; reject links rather than
 // letting a source or addition smuggle files from outside its declared boundary.
-function digest(directory: string): string {
+export function digest(directory: string): string {
   const hash = createHash("sha256");
   function walk(path: string) {
     for (const entry of readdirSync(path).sort()) {
@@ -44,7 +42,7 @@ function digest(directory: string): string {
   walk(directory);
   return hash.digest("hex");
 }
-function sourceTree(source: Source, destination: string): void {
+function sourceTree(root: string, source: Source, destination: string): void {
   check(/^[a-z][a-z0-9-]*$/.test(source.id), "Invalid source id");
   check(/^[a-f0-9]{40}$/.test(source.sha) && source.approval, `Unapproved pin: ${source.id}`);
   const cache = join(root, ".cache", `${source.id}.git`);
@@ -53,7 +51,7 @@ function sourceTree(source: Source, destination: string): void {
   // Never poll upstream on a cached build. Missing objects require an explicit
   // build from a clean cache; source transitions belong to the sync workflow.
   check(run(["git", `--git-dir=${cache}`, "rev-parse", `${source.sha}^{commit}`]).toString().trim() === source.sha, "Pin is not a commit");
-  if (source.tag) check(run(["git", `--git-dir=${cache}`, "rev-parse", `refs/tags/${source.tag}^{commit}`]).toString().trim() === source.sha, `Tag differs from approved SHA: ${source.id}`);
+  // The accepted SHA is authoritative; moved-tag detection belongs to explicit sync.
   for (const path of source.allowlist) within(destination, path);
   const archive = run(["git", `--git-dir=${cache}`, "archive", source.sha, "--", ...source.allowlist]);
   mkdirSync(destination, { recursive: true });
@@ -61,7 +59,7 @@ function sourceTree(source: Source, destination: string): void {
   check(unpack.exitCode === 0, `Cannot unpack ${source.id}: ${unpack.stderr.toString()}`);
   digest(destination);
   check(existsSync(within(destination, source.license)), `Missing license: ${source.id}`);
-  const mirror = join(root, "vendor", source.id);
+  const mirror = join(root, "vendor", source.id, source.sha);
   if (existsSync(mirror)) check(digest(mirror) === digest(destination), `Pristine mirror modified: ${mirror}; preserve your edits outside vendor before rebuilding`);
   else { mkdirSync(dirname(mirror), { recursive: true }); cpSync(destination, mirror, { recursive: true }); }
   for (const patch of source.patches) {
@@ -69,7 +67,9 @@ function sourceTree(source: Source, destination: string): void {
     run(["git", "apply", within(root, patch)], destination);
   }
 }
-function build(): void {
+export function build(root: string): string {
+  const lock: Lock = JSON.parse(readFileSync(join(root, "config/sources.lock.json"), "utf8"));
+  const inventory: Disposition[] = JSON.parse(readFileSync(join(root, "config/inventory.json"), "utf8"));
   check(lock.version === 1, "Unsupported lock version");
   check(new Set(lock.sources.map(s => s.id)).size === lock.sources.length, "Duplicate source id");
   const scratch = mkdtempSync(join(tmpdir(), "vstack-build-"));
@@ -79,7 +79,7 @@ function build(): void {
     mkdirSync(join(candidate, "licenses"));
     for (const source of lock.sources) {
       const staged = join(scratch, source.id);
-      sourceTree(source, staged);
+      sourceTree(root, source, staged);
       cpSync(within(staged, source.license), join(candidate, "licenses", `${source.id}.txt`));
     }
     const names = new Set<string>();
@@ -110,25 +110,39 @@ function build(): void {
     const provenance = { lock, inventory, patches: lock.sources.flatMap(s => s.patches.map(path => ({ path, sha256: createHash("sha256").update(readFileSync(within(root, path))).digest("hex") }))) };
     writeFileSync(join(candidate, "provenance.json"), JSON.stringify(provenance, null, 2) + "\n");
     const hash = digest(candidate);
-    const generated = join(root, "generated");
-    const release = join(generated, "releases", hash);
-    mkdirSync(dirname(release), { recursive: true });
-    if (existsSync(release)) check(digest(release) === hash, `Generated release modified: ${release}`);
-    else {
-      // Copy on the destination filesystem before publishing with rename.
-      const incoming = mkdtempSync(join(generated, ".incoming-"));
-      try { cpSync(candidate, incoming, { recursive: true }); renameSync(incoming, release); }
-      finally { rmSync(incoming, { recursive: true, force: true }); }
-    }
-    const current = join(generated, "current");
-    if (existsSync(current) || (() => { try { lstatSync(current); return true; } catch { return false; } })()) {
-      check(lstatSync(current).isSymbolicLink() && /^releases\/[a-f0-9]{64}$/.test(readlinkSync(current)), "Refusing to replace an unowned generated/current");
-    }
-    const next = join(generated, `.current-${process.pid}`);
-    try { symlinkSync(`releases/${hash}`, next); renameSync(next, current); }
-    finally { rmSync(next, { force: true }); }
-    console.log(`Generated ${names.size} skill(s): ${current}/skills\nRelease ${hash}`);
+    storeRelease(root, candidate, hash);
+    publish(root, hash);
+    return hash;
   } finally { rmSync(scratch, { recursive: true, force: true }); }
+}
+export function storeRelease(root: string, candidate: string, hash: string): void {
+  check(/^[a-f0-9]{64}$/.test(hash), "Invalid release digest");
+  const generated = join(root, "generated");
+  const release = join(generated, "releases", hash);
+  mkdirSync(dirname(release), { recursive: true });
+  if (existsSync(release)) check(digest(release) === hash, `Generated release modified: ${release}`);
+  else {
+    // Copy on the destination filesystem before publishing with rename.
+    const incoming = mkdtempSync(join(generated, ".incoming-"));
+    try {
+      cpSync(candidate, incoming, { recursive: true });
+      check(digest(incoming) === hash, "Candidate changed while storing release");
+      renameSync(incoming, release);
+    }
+    finally { rmSync(incoming, { recursive: true, force: true }); }
+  }
+}
+export function publish(root: string, hash: string): void {
+  check(/^[a-f0-9]{64}$/.test(hash), "Invalid release digest");
+  const generated = join(root, "generated");
+  const current = join(generated, "current");
+  if (existsSync(current) || (() => { try { lstatSync(current); return true; } catch { return false; } })()) {
+    check(lstatSync(current).isSymbolicLink() && /^releases\/[a-f0-9]{64}$/.test(readlinkSync(current)), "Refusing to replace an unowned generated/current");
+    check(digest(resolve(generated, readlinkSync(current))) === readlinkSync(current).slice("releases/".length), "Active release modified; preserve edits before activation");
+  }
+  const next = join(generated, `.current-${process.pid}`);
+  try { symlinkSync(`releases/${hash}`, next); renameSync(next, current); }
+  finally { rmSync(next, { force: true }); }
 }
 function object(value: unknown, label: string): Record<string, unknown> {
   check(value !== null && typeof value === "object" && !Array.isArray(value), `Expected mapping: ${label}`);
@@ -153,10 +167,17 @@ function install(workspace: string): void {
   } finally { rmSync(temp, { force: true }); }
   console.log(`Installed durable skills pointer in ${config}`);
 }
-try {
-  const [command, workspace, ...extra] = process.argv.slice(2);
-  check(extra.length === 0, "Too many arguments");
-  if (command === "build" && workspace === undefined) build();
-  else if (command === "install" && workspace) install(workspace);
-  else throw new Error("Usage: bun scripts/stack.ts build | install <workspace>");
-} catch (error) { console.error(error instanceof Error ? error.message : error); process.exitCode = 1; }
+if (import.meta.main) {
+  let held = false;
+  const mutex = join(root, "generated/.writer");
+  try {
+    mkdirSync(dirname(mutex), { recursive: true });
+    mkdirSync(mutex); held = true;
+    const [command, ...args] = process.argv.slice(2);
+    if (command === "build" && args.length === 0) console.log(`Release ${build(root)}`);
+    else if (command === "install" && args.length === 1) install(args[0]!);
+    else if (command === "sync") await (await import("./sync")).sync(root, args);
+    else throw new Error("Usage: bun scripts/stack.ts build | install <workspace> | sync <prepare|approve|activate|show> ...");
+  } catch (error) { console.error(error instanceof Error ? error.message : error); process.exitCode = 1; }
+  finally { if (held) rmSync(mutex, { recursive: true }); }
+}

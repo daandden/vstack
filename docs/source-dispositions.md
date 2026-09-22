@@ -7,7 +7,9 @@
 - Matt: `mattpocock/skills`, stable `v1.2.3`, commit `6acc160e4e0cd062dbbbd7a1b26ae92855edf07e`. Include complete stable `skills/engineering/` and `skills/productivity/` directories and `LICENSE`. This snapshot contains **25** stable `SKILL.md` files, counted from the files rather than assumed from a historical report. Deprecated, misc, in-progress, root steering, and build/distribution machinery are excluded.
 - Pstack: `cursor/plugins`, explicitly approved commit `c1c0a32802223f4be824112dd83d33ad29a8b26c`. The locked allowlist is `pstack/skills/` and `pstack/LICENSE`. It contains **47** skill entry points, **23** poteto-mode playbooks, and the retained **bugbot-triage reference**. The initial full snapshot also contains three dormant Benny automation skill files. They are recorded as dropped, outside the allowed source boundary, rather than silently omitted or treated as approved workflows.
 
-Each `path` is relative to its source mirror root: `vendor/matt/<path>` or `vendor/pstack/<path>`. For example, Matt wizard is `skills/engineering/wizard/SKILL.md`; pstack how is `pstack/skills/how/SKILL.md`. Each inventoried path identifies the actual source file, not a generated directory.
+Each `path` is relative to its source mirror root: `vendor/matt/<sha>/<path>` or `vendor/pstack/<sha>/<path>`. For example, Matt wizard is `skills/engineering/wizard/SKILL.md`; pstack how is `pstack/skills/how/SKILL.md`. Each inventoried path identifies the actual source file, not a generated directory. The pins above describe the initial accepted snapshot; `config/sources.lock.json` is authoritative after an approved transition. Cached builds never check remote tags.
+
+The delivered [explicit sync workflow](sync-workflow.md) prepares isolated candidates without changing this ledger or exposing pending skills. Matt selection requires consistent full stable SemVer tags, excludes prereleases, and rejects ambiguous highest equal-precedence tags. Pstack requires a nominated full SHA and approval before activation. Only no-source-tree-change or narrowly verified existing non-executable `agents/openai.yaml` UI changes (`display_name`, `short_description`, `brand_color`) are automatic-eligible. Unknown, mixed, new-skill, moved-tag, and affected-patch changes require whole-transition approval with per-path rationale and per-affected-patch semantic review. Source sync does not approve new selections or finish pending family adaptations.
 
 ## Ledger semantics
 
@@ -26,7 +28,7 @@ Supporting sibling references, scripts, templates, assets, and licensing travel 
 | --- | --- |
 | #13 | Complete wizard slice; pending source-accountability for the 23 supporting principle skills. |
 | #14 | Pstack setup-pstack becomes setup-models, with native model configuration and runtime checks. |
-| #15 | Explicit-request upstream sync and whole-transition approval. No additional source entry point is invented for this new implementation. |
+| #15 | Delivered public `sync prepare/show/approve/activate` CLI and whole-transition approval. No additional source entry point is invented. |
 | #16 | How, why, research, investigation, Matt teach, pstack explain, writing-for-agents, technical-writing, unslop, codebase-design/domain-modeling support, ask-matt, grill-with-docs, to-questionnaire, and wait-what. |
 | #17 | Matt-led merged TDD, diagnose-and-fix, code-review, resolving-merge-conflicts, and diagnosis's blast-radius fold. |
 | #18 | Matt setup becomes setup-repo; issue triage and reference-derived review-comment-triage. Preserve wizard when composing setup. |
