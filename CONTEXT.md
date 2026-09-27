@@ -37,7 +37,7 @@ Ship an Upstream item byte-for-byte as it is at the Pin, under its Upstream name
 _Avoid_: copy, vendor
 
 **Adapt**:
-Ship a changed copy of an Upstream item. Any change counts, including a rename, a swapped reference, an omp tool name, or a behavior change such as making Fan-out opt-in.
+Ship a changed copy of an Upstream item. Any change counts, including a rename, a swapped reference, an omp tool name, or a behavior change such as gating Fan-out on the complexity judgment.
 _Avoid_: port, fork
 
 **Merge**:
@@ -55,7 +55,7 @@ _Avoid_: manifest (for this table), ADR list
 ### Behavior
 
 **Fan-out**:
-A skill running several subagents at once. In vstack it only happens when the user opts in, and every subagent uses the parent's model.
+One skill step running two or more subagents at the same time. At each such step, a judgment of the job's complexity decides whether to fan out; the user's explicit words override that judgment either way. Every subagent uses the parent's model.
 _Avoid_: swarm, parallelism (unqualified)
 
 **Update**:
