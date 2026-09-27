@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Judged principle rules: letting jev decide which principle applies</title>
+<style>
+  :root { --bg:#0f1115; --card:#171a21; --ink:#e6e8ee; --dim:#9aa3b2; --line:#2a2f3a;
+          --ok:#6fcf97; --warn:#f0b35a; --bad:#e0707a; --code:#11141a; --a:#6ea8fe; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.55 -apple-system, system-ui, sans-serif; background:var(--bg); color:var(--ink); }
+  main { max-width:1180px; margin:0 auto; padding:32px 24px 64px; }
+  h1 { font-size:26px; margin:0 0 4px; }
+  h2 { font-size:19px; margin:36px 0 12px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  h3 { font-size:16px; margin:0 0 8px; }
+  p.lede { color:var(--dim); margin:0 0 20px; }
+  code { background:var(--code); padding:1px 5px; border-radius:4px; font-size:13px; }
+  pre { background:var(--code); border:1px solid var(--line); border-radius:8px; padding:12px; overflow:auto; font-size:12.5px; line-height:1.45; white-space:pre-wrap; margin:8px 0; }
+  .grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+  .grid2 { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; }
+  .card.rec { border-top:4px solid var(--ok); } .card.mid { border-top:4px solid var(--warn); } .card.low { border-top:4px solid var(--a); }
+  .tag { display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px; background:#232834; color:var(--dim); margin-bottom:8px; }
+  .tag.r { background:#1d3326; color:var(--ok); }
+  ul { padding-left:18px; margin:6px 0; } li { margin:3px 0; }
+  .pro::marker { content:"+  "; color:var(--ok); } .con::marker { content:"−  "; color:var(--bad); }
+  table { width:100%; border-collapse:collapse; font-size:13.5px; }
+  th, td { text-align:left; padding:7px 9px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--dim); font-weight:600; }
+  .hit { color:var(--ok); } .fp { color:var(--warn); } .miss { color:var(--bad); }
+  .flow { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:12px 0; font-size:13px; }
+  .box { border:1px solid var(--line); border-radius:6px; padding:6px 10px; background:#1c2029; }
+  .box.hot { border-color:var(--ok); color:var(--ok); }
+  .arrow { color:var(--dim); }
+  .note { color:var(--dim); font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>Judged principle rules: letting jev decide which principle applies</h1>
+<p class="lede">Your idea: keep citations and an always-on index, and let the jev judge decide which principle should be used. omp already ships this mechanism as <b>judged rules</b>: TTSR rules with a <code>question</code> field. This page explains how judged rules work, what they cost, and what they got right and wrong in a real run with the same judge model.</p>
+
+<h2>How it works in omp 18.3.1</h2>
+<div class="flow">
+  <span class="box">Agent finishes an output<br><span class="note">(its reply text, or each tool call)</span></span><span class="arrow">→</span>
+  <span class="box">omp sends <b>one</b> judge request with every principle's question</span><span class="arrow">→</span>
+  <span class="box">jev scores each question from 0 to 1</span><span class="arrow">→</span>
+  <span class="box hot">≥ 0.7 → hidden reminder injected<br>“check this against the principle”</span>
+</div>
+<p>Each principle becomes one rule file. Its body is only a pointer, so the principle text still lives in exactly one place:</p>
+<pre>---
+name: principle-fix-root-causes
+question: Does this output suppress a symptom (a guard, a catch, a retry, a raised timeout)
+  instead of fixing the underlying cause?
+interruptMode: never
+---
+Read `skill://principle-fix-root-causes` and apply it to what you just did.</pre>
+<p class="note">Source: <code>docs/ttsr-injection-lifecycle.md</code> §10 at omp v18.3.1. The judge runs <b>after</b> an output completes, never while it streams, so it can't interrupt. omp waits up to 5 s before yielding so that a late verdict still lands in the same run. The reminder uses omp's <code>ttsr-warning.md</code> template: “Rule judge flagged your … as likely violating a user-defined rule … real violation → fix it now; false positive → continue.”</p>
+
+<h2>Real run: 6 sample agent outputs × 23 principle questions</h2>
+<p class="note">This used <code>judge_batch</code> with <code>typesafe/jev-1.13.0</code>, the same model omp's judged rules use, at the same 0.7 threshold. The whole run cost $0.0002. It simulates the judge call only; the TTSR delivery path was not exercised, because <code>ttsr.enabled</code> is off on this machine.</p>
+<table>
+  <tr><th>Agent output (abridged)</th><th>Flagged (≥ 0.7)</th><th>Read</th></tr>
+  <tr><td>“TypeScript compiles cleanly, so the feature is done.”</td><td class="hit">prove-it-works 0.94</td><td>correct</td></tr>
+  <tr><td>Crash fixed by adding <code>if (!user) return null;</code></td><td class="hit">fix-root-causes 0.73</td><td>correct</td></tr>
+  <tr><td>Timeout raised 5 s → 10 s earlier, now → 30 s</td><td class="hit">attack-the-premise 0.93, fix-root-causes 0.88</td><td>correct</td></tr>
+  <tr><td>Renamed <code>cnt</code> → <code>count</code>, tests pass</td><td>nothing</td><td>correct (silent on normal work)</td></tr>
+  <tr><td>One-caller wrapper <code>getUserName</code> added “for readability”</td><td><span class="hit">laziness-protocol 0.79</span>, <span class="fp">prove-it-works 0.81</span></td><td>one hit, one noisy flag; <span class="miss">minimize-reader-load missed</span></td></tr>
+  <tr><td>Non-idempotent <code>ALTER TABLE … ADD COLUMN</code> migration</td><td><span class="hit">make-operations-idempotent 0.87</span>, <span class="fp">prove-it-works 0.82, type-system-discipline 0.76, exhaust-the-design-space 0.73, redesign-from-first-principles 0.72</span></td><td>one hit, four false positives</td></tr>
+</table>
+<p>In short, the judge caught every intended case and stayed silent on normal work, but on richer outputs it adds noise. Each question can be tuned; the questions above are a first draft.</p>
+
+<h2>Key differences from an index in the prompt</h2>
+<div class="grid2">
+  <div class="card">
+    <h3>Reactive, not proactive</h3>
+    <p>The judge sees what the agent <i>already did</i>. That suits <b>corrective</b> principles, which catch a mistake after the fact: fix-root-causes, prove-it-works, attack-the-premise, make-operations-idempotent, laziness-protocol. It fits poorly with <b>planning</b> principles, which should shape work before it starts: exhaust-the-design-space, foundational-thinking, experience-first, redesign-from-first-principles. By the time the judge fires on those, the design is written.</p>
+  </div>
+  <div class="card">
+    <h3>Duplication with the harness matters less</h3>
+    <p>A judged rule stays silent until the agent actually breaks the principle. So a principle the harness already states, such as prove-it-works, becomes an <i>enforcement check</i> rather than a second copy of the rule sitting in the prompt. Gate 2 mostly stops mattering, while Gate 1 becomes “can we write a question that is sharp enough?”</p>
+  </div>
+  <div class="card">
+    <h3>Setup changes your omp settings</h3>
+    <p>On this machine, <code>ttsr.enabled: false</code> and <code>ttsr.judge: "off"</code>. vstack setup would need <code>ttsr.enabled: true</code>, <code>ttsr.judge: auto</code>, and a judge role that resolves to TypeSafe jev, which you already have (<code>judge: typesafe/jev-latest</code>). With the judge off, question rules register but never fire.</p>
+  </div>
+  <div class="card">
+    <h3>A second model makes the call</h3>
+    <p>jev, not your session model, decides when a principle fires. The map's Notes rule out multi-model routing for <i>subagents</i>. jev is a classifier, not a subagent, and it never writes code or text. Still, it's a second model in the loop, so this is your call.</p>
+  </div>
+</div>
+
+<h2>Options</h2>
+<div class="grid3">
+  <div class="card rec">
+    <span class="tag r">recommended</span>
+    <h3>Citations + index for planning principles + judged rules for corrective ones</h3>
+    <ul>
+      <li class="pro">Planning principles reach the agent <i>before</i> it acts, through a small index line.</li>
+      <li class="pro">Corrective principles catch mistakes after the fact, with 0 prompt tokens.</li>
+      <li class="pro">Harness-covered principles get enforced instead of duplicated.</li>
+      <li class="con">Two mechanisms to maintain and install.</li>
+      <li class="con">Needs TTSR and the judge turned on.</li>
+    </ul>
+  </div>
+  <div class="card mid">
+    <h3>Citations + judged rules for every adopted principle</h3>
+    <p class="note">Your idea as stated: jev decides for all of them, and no index sits in the prompt.</p>
+    <ul>
+      <li class="pro">One mechanism, full coverage, 0 prompt tokens.</li>
+      <li class="con">Planning principles fire only after the work is done.</li>
+      <li class="con">More noise: 23 questions on every output.</li>
+    </ul>
+  </div>
+  <div class="card low">
+    <h3>Citations + small index (earlier choice)</h3>
+    <ul>
+      <li class="pro">No omp settings change, and no second model.</li>
+      <li class="con">No safety net for principles outside the index.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>What an Update would do</h2>
+<p>A judged rule's <code>question</code> is text vstack writes, the same as an index line. The Update flags it for review when the upstream principle changes. It can also re-run a stored set of sample outputs through <code>judge_batch</code>, like the table above, as a regression check on hits and false positives.</p>
+
+</main>
+</body>
+</html>
