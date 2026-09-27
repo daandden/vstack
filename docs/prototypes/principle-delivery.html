@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>How pstack principles reach the agent</title>
+<style>
+  :root { --bg:#0f1115; --card:#171a21; --ink:#e6e8ee; --dim:#9aa3b2; --line:#2a2f3a;
+          --a:#6ea8fe; --b:#f0b35a; --c:#e0707a; --ok:#6fcf97; --code:#11141a; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.55 -apple-system, system-ui, sans-serif; background:var(--bg); color:var(--ink); }
+  main { max-width:1180px; margin:0 auto; padding:32px 24px 64px; }
+  h1 { font-size:26px; margin:0 0 4px; }
+  h2 { font-size:19px; margin:40px 0 12px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  h3 { font-size:16px; margin:0 0 8px; }
+  p.lede { color:var(--dim); margin:0 0 24px; }
+  code { background:var(--code); padding:1px 5px; border-radius:4px; font-size:13px; }
+  pre { background:var(--code); border:1px solid var(--line); border-radius:8px; padding:12px; overflow:auto; font-size:12.5px; line-height:1.45; margin:8px 0; white-space:pre-wrap; }
+  .grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+  .grid2 { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; }
+  .card.a { border-top:4px solid var(--a); } .card.b { border-top:4px solid var(--b); } .card.c { border-top:4px solid var(--c); }
+  .tag { display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px; background:#232834; color:var(--dim); margin-bottom:8px; }
+  .rec { background:#1d3326; color:var(--ok); }
+  ul { padding-left:18px; margin:6px 0; } li { margin:3px 0; }
+  .pro::marker { content:"+  "; color:var(--ok); } .con::marker { content:"−  "; color:var(--c); }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--dim); font-weight:600; }
+  .flow { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:10px 0; font-size:13px; }
+  .box { border:1px solid var(--line); border-radius:6px; padding:6px 10px; background:#1c2029; }
+  .box.hot { border-color:var(--ok); color:var(--ok); }
+  .box.off { opacity:.45; text-decoration:line-through; }
+  .arrow { color:var(--dim); }
+  .prompt { font-family:ui-monospace, Menlo, monospace; font-size:12px; background:var(--code); border:1px solid var(--line); border-radius:8px; padding:10px; }
+  .prompt .sec { color:var(--dim); }
+  .prompt .hl { color:var(--ok); }
+  .prompt .none { color:#5b6373; font-style:italic; }
+  .note { color:var(--dim); font-size:13px; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>How pstack principles reach the agent</h1>
+<p class="lede">Explainer for “Decide how pstack principles are delivered” (#33). Everything here is already settled except <b>Q1: reach</b>, which is the choice between the three options below.</p>
+
+<h2>Already decided</h2>
+<table>
+  <tr><th>Question</th><th>Answer</th></tr>
+  <tr><td>File shape</td><td>One file per principle, mapped 1:1 to <code>pstack/skills/principle-&lt;name&gt;/SKILL.md</code>. Skills point at a principle and never copy its text.</td></tr>
+  <tr><td>Pointer form</td><td><code>skill://principle-&lt;name&gt;</code> written at the step it governs. The agent can read it directly, and grep and lint can find it.</td></tr>
+  <tr><td>Matt skills</td><td>A Matt skill gets principle pointers only if #31 is already adapting it for another reason.</td></tr>
+</table>
+
+<h2>Background: two facts that shape the choice</h2>
+<div class="grid2">
+  <div class="card">
+    <h3>1. What omp puts in the system prompt</h3>
+    <ul>
+      <li>A <b>visible skill</b> shows up as one line in the skill list, and omp's smol model <b>rewrites</b> that line to at most 12 words.</li>
+      <li>A <b>hidden skill</b> (<code>disable-model-invocation: true</code>) shows up <b>nowhere</b> in the prompt, but the agent can still read it through <code>skill://name</code>.</li>
+      <li>An <b>always-apply rule</b> is copied into the prompt word for word, on every turn.</li>
+      <li>Skill <b>bodies</b> never sit in the prompt. The agent reads a body only when it decides to.</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>2. How pstack itself does it</h3>
+    <ul>
+      <li>All 23 principles are <b>hidden</b> skills.</li>
+      <li>Workflows <b>cite</b> principles at specific steps. For example, architect says “Design it twice … the <b>exhaust-the-design-space</b> principle skill made concrete.”</li>
+      <li>The only <b>index</b> of all principles lives inside <code>poteto-mode</code>, so it loads only when that mode is on.</li>
+      <li>In practice, then, pstack is citations only, plus an opt-in index.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>A citation: what the agent actually sees</h2>
+<p>A citation is a pointer placed inside a skill step. Nothing about the principle is in the prompt until the agent reaches that step.</p>
+<pre>## diagnosing-bugs (vstack version, excerpt)
+
+3. Reproduce the failure before changing code.
+4. Trace the symptom to its root cause and fix it there
+   (read `skill://principle-fix-root-causes`).
+5. ...</pre>
+<div class="flow">
+  <span class="box">User: “this test is failing, debug it”</span><span class="arrow">→</span>
+  <span class="box">agent loads diagnosing-bugs</span><span class="arrow">→</span>
+  <span class="box">reaches step 4</span><span class="arrow">→</span>
+  <span class="box hot">reads principle-fix-root-causes</span>
+</div>
+<div class="flow">
+  <span class="box">User: “rename this variable”</span><span class="arrow">→</span>
+  <span class="box">no skill runs</span><span class="arrow">→</span>
+  <span class="box off">principle never loaded</span>
+</div>
+
+<h2>The three options</h2>
+<div class="grid3">
+
+  <div class="card a">
+    <span class="tag rec">recommended</span>
+    <h3>1. Citations only</h3>
+    <p class="note">Same as pstack without poteto-mode.</p>
+    <div class="prompt">
+      <div class="sec">&lt;system prompt&gt;</div>
+      <div class="none">… no principle text at all …</div>
+      <div class="sec">&lt;skills list&gt;</div>
+      <div>diagnosing-bugs: …</div>
+      <div>tdd: …</div>
+      <div class="none">(principles hidden)</div>
+    </div>
+    <p><b>Loads when</b>: a running skill reaches a step with a <code>skill://principle-…</code> pointer, or you type <code>/skill:principle-…</code>.</p>
+    <ul>
+      <li class="pro">Nothing is always on, so it costs 0 tokens per turn.</li>
+      <li class="pro">A vague principle only fires at the exact step that cites it.</li>
+      <li class="pro">No clash with omp's own harness rules, such as its rules on verification, root causes, and asking.</li>
+      <li class="con">Plain sessions with no skill running never use principles.</li>
+      <li class="con">A principle helps only where some skill cites it.</li>
+    </ul>
+  </div>
+
+  <div class="card b">
+    <span class="tag">middle</span>
+    <h3>2. Citations + small always-on index</h3>
+    <p class="note">Only principles the harness doesn't already cover.</p>
+    <div class="prompt">
+      <div class="sec">&lt;generic-rules&gt; vstack-principles</div>
+      <div class="hl">- Replacing an internal API → migrate every caller … skill://principle-migrate-callers-…</div>
+      <div class="hl">- Command that can crash or retry → converge … skill://principle-make-operations-idempotent</div>
+      <div class="hl">- … (a handful)</div>
+    </div>
+    <p><b>Loads when</b>: at a citation, as in option 1, or when a line in the index matches the work, in any session.</p>
+    <ul>
+      <li class="pro">A few distinctive principles reach every session.</li>
+      <li class="pro">Small cost, a few hundred tokens at most.</li>
+      <li class="con">Someone has to judge which principles overlap the harness, and re-judge at every Update.</li>
+      <li class="con">One more thing to install: a rules path next to the skills.</li>
+    </ul>
+  </div>
+
+  <div class="card c">
+    <span class="tag">max reach</span>
+    <h3>3. Citations + full always-on index</h3>
+    <p class="note">Prototype option A: all 23 lines.</p>
+    <div class="prompt">
+      <div class="sec">&lt;generic-rules&gt; vstack-principles</div>
+      <div class="hl">- Sizing a diff … → delete first … skill://principle-laziness-protocol</div>
+      <div class="hl">- Before writing logic → pick core types …</div>
+      <div class="hl">- About to declare done → exercise the real artifact …</div>
+      <div class="hl">- … 23 lines, about 860 tokens</div>
+    </div>
+    <p><b>Loads when</b>: any index line matches, in any session.</p>
+    <ul>
+      <li class="pro">Every principle reaches every session.</li>
+      <li class="con">Broad triggers such as “any non-trivial work” and “before writing logic” fire all the time, causing needless reads.</li>
+      <li class="con">Many lines repeat omp's harness rules, which states the same rule twice and risks the two versions drifting into conflict.</li>
+      <li class="con">About 860 tokens on every turn.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>Side by side</h2>
+<table>
+  <tr><th></th><th>1. Citations only</th><th>2. + small index</th><th>3. + full index</th></tr>
+  <tr><td>Always-on cost</td><td>0</td><td>~100–300 tokens</td><td>~860 tokens</td></tr>
+  <tr><td>Plain session (no skill)</td><td>never sees principles</td><td>sees the few in the index</td><td>sees all</td></tr>
+  <tr><td>Risk of unnecessary calls</td><td>lowest</td><td>low</td><td>high</td></tr>
+  <tr><td>Overlap with harness rules</td><td>none in prompt</td><td>curated away</td><td>high</td></tr>
+  <tr><td>Update burden</td><td>track pointers</td><td>pointers + curate index</td><td>pointers + 23 index lines</td></tr>
+  <tr><td>Install</td><td>skills only</td><td>skills + rule</td><td>skills + rule</td></tr>
+  <tr><td>Matches pstack</td><td>yes (minus poteto-mode)</td><td>partly</td><td>no (pstack's index is opt-in)</td></tr>
+</table>
+
+<p class="note">Whichever option wins, the concern that some principles are vague or duplicate the harness goes to #32 (“Choose which pstack skills and principles vstack adopts”) as input for rejecting or adapting individual principles.</p>
+
+</main>
+</body>
+</html>
