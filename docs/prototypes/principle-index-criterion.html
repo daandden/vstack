@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Which principles go in the always-on index?</title>
+<style>
+  :root { --bg:#0f1115; --card:#171a21; --ink:#e6e8ee; --dim:#9aa3b2; --line:#2a2f3a;
+          --ok:#6fcf97; --warn:#f0b35a; --bad:#e0707a; --code:#11141a; --a:#6ea8fe; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.55 -apple-system, system-ui, sans-serif; background:var(--bg); color:var(--ink); }
+  main { max-width:1180px; margin:0 auto; padding:32px 24px 64px; }
+  h1 { font-size:26px; margin:0 0 4px; }
+  h2 { font-size:19px; margin:36px 0 12px; border-bottom:1px solid var(--line); padding-bottom:6px; }
+  h3 { font-size:16px; margin:0 0 8px; }
+  p.lede { color:var(--dim); margin:0 0 20px; }
+  code { background:var(--code); padding:1px 5px; border-radius:4px; font-size:13px; }
+  .grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+  .grid2 { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; }
+  .card.rec { border-top:4px solid var(--ok); } .card.mid { border-top:4px solid var(--warn); } .card.low { border-top:4px solid var(--bad); }
+  .tag { display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px; background:#232834; color:var(--dim); margin-bottom:8px; }
+  .tag.r { background:#1d3326; color:var(--ok); }
+  ul { padding-left:18px; margin:6px 0; } li { margin:3px 0; }
+  .pro::marker { content:"+  "; color:var(--ok); } .con::marker { content:"−  "; color:var(--bad); }
+  table { width:100%; border-collapse:collapse; font-size:13.5px; }
+  th, td { text-align:left; padding:7px 9px; border-bottom:1px solid var(--line); vertical-align:top; }
+  th { color:var(--dim); font-weight:600; position:sticky; top:0; background:var(--bg); }
+  .y { color:var(--ok); font-weight:600; } .n { color:var(--bad); font-weight:600; } .m { color:var(--warn); font-weight:600; }
+  tr.in td:first-child { border-left:3px solid var(--ok); }
+  tr.out td:first-child { border-left:3px solid #3a3f4b; }
+  .gate { display:flex; gap:10px; align-items:stretch; flex-wrap:wrap; margin:12px 0; }
+  .step { flex:1; min-width:220px; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; }
+  .step b { color:var(--a); }
+  .note { color:var(--dim); font-size:13px; }
+  .quote { font-family:ui-monospace, Menlo, monospace; font-size:12px; color:var(--dim); }
+</style>
+</head>
+<body>
+<main>
+
+<h1>Which principles go in the always-on index?</h1>
+<p class="lede">Explainer for Q5 of “Decide how pstack principles are delivered” (#33). Decided so far: citations plus a <b>small</b> always-on index, where #32 decides membership, the rule file records it, vstack writes each line, and one always-apply rule carries the index. The open question is the <b>test</b> #32 uses to decide which principles earn an index line.</p>
+
+<h2>Why a test is needed at all</h2>
+<div class="grid2">
+  <div class="card">
+    <h3>Broad triggers fire all the time</h3>
+    <p>Some pstack triggers describe nearly every coding turn:</p>
+    <ul>
+      <li><code>build-the-lever</code>: “Apply to <b>any non-trivial work</b>”</li>
+      <li><code>foundational-thinking</code>: “Apply <b>before writing logic</b>”</li>
+      <li><code>type-system-discipline</code>: “…or writing code in <b>any statically-typed language</b>”</li>
+    </ul>
+    <p>Always on, these cause a skill read on almost every turn. That's the “unnecessary calling” worry.</p>
+  </div>
+  <div class="card">
+    <h3>Some principles repeat the harness</h3>
+    <p>The omp system prompt on this machine already says, for example:</p>
+    <ul>
+      <li class="quote">“NEVER yield without a smoke run … Tests alone are not proof.” → <code>prove-it-works</code></li>
+      <li class="quote">“Default clean cutover: migrate every caller … no shims.” → <code>migrate-callers-…</code>, <code>outcome-oriented-execution</code></li>
+      <li class="quote">“Bug: reproduce before; confirm after.” / “NEVER solve symptom” → <code>fix-root-causes</code></li>
+    </ul>
+    <p>Listing these as well states the same rule twice, and the two copies can drift into a conflict.</p>
+  </div>
+</div>
+
+<h2>The recommended test: two gates</h2>
+<div class="gate">
+  <div class="step"><b>Gate 1: Specific?</b><br>Does the trigger name a situation you can <i>observe</i>, one that happens in some turns and not others? For example, “two fixes sharing one premise failed the same gate” passes; “any non-trivial work” fails.</div>
+  <div class="step"><b>Gate 2: Not covered?</b><br>Is the rule absent from omp's harness prompt and from vstack's own always-apply rules? If the harness already says it, the index adds only duplication.</div>
+  <div class="step"><b>Both pass → index line.</b><br>A principle that fails either gate is still adopted if #32 says so. It is just reached through citations only.</div>
+</div>
+
+<h2>Dry run over all 23 principles</h2>
+<p class="note">This dry run is for illustration only; #32 makes the real call. “Covered” was checked against the omp system prompt as it looks in this session, which includes the user's <code>~/.agents/rules</code>. <b>[INFERENCE]</b> I can't tell exactly which lines come from omp's defaults and which come from local config. Amber means borderline.</p>
+<table>
+  <tr><th>Principle</th><th>Trigger (pstack)</th><th>Gate 1: specific</th><th>Gate 2: not covered</th><th>Index?</th></tr>
+  <tr class="in"><td>attack-the-premise</td><td>two fixes sharing one premise failed the same gate</td><td class="y">yes</td><td class="y">yes</td><td class="y">in</td></tr>
+  <tr class="in"><td>boundary-discipline</td><td>wiring validation, error handling, adapters</td><td class="y">yes</td><td class="y">yes</td><td class="y">in</td></tr>
+  <tr class="in"><td>experience-first</td><td>product, UX, or scope trade-off</td><td class="y">yes</td><td class="y">yes</td><td class="y">in</td></tr>
+  <tr class="in"><td>exhaust-the-design-space</td><td>novel interaction or architecture, no precedent</td><td class="y">yes</td><td class="y">yes</td><td class="y">in</td></tr>
+  <tr class="in"><td>make-operations-idempotent</td><td>commands or loops that can crash or retry</td><td class="y">yes</td><td class="y">yes</td><td class="y">in</td></tr>
+  <tr class="in"><td>separate-before-serializing-shared-state</td><td>concurrent writers on the same file, branch, key</td><td class="y">yes</td><td class="y">yes</td><td class="y">in</td></tr>
+  <tr class="in"><td>encode-lessons-in-structure</td><td>writing the same instruction a second time</td><td class="y">yes</td><td class="y">yes</td><td class="y">in</td></tr>
+  <tr class="in"><td>redesign-from-first-principles</td><td>fitting a new requirement into an existing design</td><td class="m">borderline</td><td class="y">yes</td><td class="m">likely in</td></tr>
+  <tr class="in"><td>minimize-reader-load</td><td>code that's hard to trace</td><td class="y">yes</td><td class="m">partly (“six-month maintainability”)</td><td class="m">likely in</td></tr>
+  <tr class="in"><td>model-the-domain</td><td>stateful logic, heavy branching, repeated shape</td><td class="m">borderline</td><td class="y">yes</td><td class="m">likely in</td></tr>
+  <tr class="out"><td>laziness-protocol</td><td>sizing a diff, tempted to add a layer</td><td class="y">yes</td><td class="n">no (“Delete dead weight; … needless abstraction”)</td><td class="n">out</td></tr>
+  <tr class="out"><td>subtract-before-you-add</td><td>sequencing an addition or refactor</td><td class="m">borderline</td><td class="n">no (same line)</td><td class="n">out</td></tr>
+  <tr class="out"><td>outcome-oriented-execution</td><td>planned phased rewrite</td><td class="y">yes</td><td class="n">no (“clean cutover … no shims”)</td><td class="n">out</td></tr>
+  <tr class="out"><td>migrate-callers-then-delete-legacy-apis</td><td>replacing an internal API</td><td class="y">yes</td><td class="n">no (“migrate every caller”)</td><td class="n">out</td></tr>
+  <tr class="out"><td>prove-it-works</td><td>before declaring done</td><td class="y">yes</td><td class="n">no (“NEVER yield without a smoke run”)</td><td class="n">out</td></tr>
+  <tr class="out"><td>fix-root-causes</td><td>debugging</td><td class="y">yes</td><td class="n">no (“reproduce before”, “NEVER solve symptom”)</td><td class="n">out</td></tr>
+  <tr class="out"><td>test-behavior-not-implementation</td><td>writing or keeping a test</td><td class="y">yes</td><td class="n">no (“Permanent tests MUST catch … consumer-visible bugs”)</td><td class="n">out</td></tr>
+  <tr class="out"><td>never-block-on-the-human</td><td>tempted to ask on reversible work</td><td class="y">yes</td><td class="n">no (“Default to action”)</td><td class="n">out</td></tr>
+  <tr class="out"><td>guard-the-context-window</td><td>context filling up, fan-out planning</td><td class="y">yes</td><td class="n">no (delegation rules); also pushes Fan-out, which vstack keeps opt-in</td><td class="n">out</td></tr>
+  <tr class="out"><td>build-the-lever</td><td>any non-trivial work</td><td class="n">no</td><td class="y">yes</td><td class="n">out</td></tr>
+  <tr class="out"><td>foundational-thinking</td><td>before writing logic</td><td class="n">no</td><td class="y">yes</td><td class="n">out</td></tr>
+  <tr class="out"><td>type-system-discipline</td><td>writing code in any typed language</td><td class="n">no</td><td class="y">yes</td><td class="n">out</td></tr>
+  <tr class="out"><td>sequence-verifiable-units</td><td>any multi-step work</td><td class="n">no</td><td class="m">partly (todo discipline)</td><td class="n">out</td></tr>
+</table>
+<p class="note">Outcome: about 10 of 23 principles get an index line, roughly 350 tokens. The other 13 stay reachable through citations, for example <code>fix-root-causes</code> from diagnosing-bugs and <code>test-behavior-not-implementation</code> from tdd.</p>
+
+<h2>The three options for Q5</h2>
+<div class="grid3">
+  <div class="card rec">
+    <span class="tag r">recommended</span>
+    <h3>Specific + not covered</h3>
+    <p>Both gates must pass.</p>
+    <ul>
+      <li class="pro">Smallest index, about 10 lines.</li>
+      <li class="pro">No broad triggers firing every turn.</li>
+      <li class="pro">No duplication of the harness.</li>
+      <li class="pro">It's a written test, so each Update can re-check against it.</li>
+      <li class="con">Principles such as <code>build-the-lever</code> never reach plain sessions.</li>
+    </ul>
+  </div>
+  <div class="card mid">
+    <h3>Not covered only</h3>
+    <p>Only Gate 2 applies.</p>
+    <ul>
+      <li class="pro">Also indexes <code>build-the-lever</code>, <code>foundational-thinking</code>, <code>type-system-discipline</code>, and <code>sequence-verifiable-units</code>.</li>
+      <li class="con">Those broad triggers fire on nearly every turn, which is exactly the unnecessary calling you were worried about.</li>
+    </ul>
+  </div>
+  <div class="card low">
+    <h3>Hand-picked, no test</h3>
+    <p>You pick members by taste.</p>
+    <ul>
+      <li class="pro">Quick, and fully in your control.</li>
+      <li class="con">Each Update has no rule for judging whether a new or changed principle belongs.</li>
+    </ul>
+  </div>
+</div>
+
+<h2>One caveat for any option</h2>
+<p>Gate 2 compares principles against omp's harness prompt, but omp isn't an Upstream and has no Pin. If a new omp version drops a rule, such as the smoke-run rule, a principle that was “covered” silently stops being covered. It's worth deciding whether the Update process re-runs Gate 2 against the current omp prompt.</p>
+
+</main>
+</body>
+</html>
