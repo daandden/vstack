@@ -1,0 +1,81 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Principle selection: context for jev, and the harness extension spike</title>
+<style>
+:root { --bg:#0f1115; --card:#171a21; --ink:#e6e8ee; --dim:#9aa3b2; --line:#2a2f3a; --ok:#6fcf97; --warn:#f0b35a; --bad:#e0707a; --code:#11141a; --a:#6ea8fe; }
+* { box-sizing:border-box; } body { margin:0; font:15px/1.55 -apple-system, system-ui, sans-serif; background:var(--bg); color:var(--ink); }
+main { max-width:1180px; margin:0 auto; padding:32px 24px 64px; }
+h1 { font-size:26px; margin:0 0 4px; } h2 { font-size:19px; margin:36px 0 12px; border-bottom:1px solid var(--line); padding-bottom:6px; } h3 { font-size:16px; margin:0 0 8px; }
+p.lede { color:var(--dim); } code { background:var(--code); padding:1px 5px; border-radius:4px; font-size:13px; }
+pre { background:var(--code); border:1px solid var(--line); border-radius:8px; padding:12px; font-size:12.5px; white-space:pre-wrap; }
+.grid2 { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; } .grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; }
+.card.rec { border-top:4px solid var(--ok); } .card.mid { border-top:4px solid var(--warn); } .card.low { border-top:4px solid var(--a); }
+.tag { display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px; background:#1d3326; color:var(--ok); margin-bottom:8px; }
+ul { padding-left:18px; margin:6px 0; } li { margin:3px 0; } .pro::marker { content:"+  "; color:var(--ok); } .con::marker { content:"−  "; color:var(--bad); }
+table { width:100%; border-collapse:collapse; font-size:13.5px; } th, td { text-align:left; padding:7px 9px; border-bottom:1px solid var(--line); vertical-align:top; } th { color:var(--dim); font-weight:600; }
+.hit { color:var(--ok); } .dim { color:#6b7383; } .note { color:var(--dim); font-size:13px; } .okb { color:var(--ok); font-weight:600; }
+</style></head><body><main>
+
+<h1>Principle selection: what context jev sees, and the harness extension spike</h1>
+<p class="lede">Follow-up for “Decide how pstack principles are delivered” (#33). Settled so far: v3 question wording, every principle scoring ≥ 0.75 is selected with no cap, prove-it-works stays selectable, citations stay, selection is skipped when the judge isn't jev, and selection runs in the harness. typescript-best-practices is dropped at your request.</p>
+
+<h2>1. How omp auto-thinking feeds context to jev</h2>
+<p>It sends <b>only the current user prompt</b>. The state is <code>{ request: preprocessTinyMessage(promptText) }</code> (<code>src/auto-thinking/classifier.ts</code>, v18.3.1). <code>preprocessTinyMessage</code> (<code>src/tiny/message-preproc.ts</code>) does the following:</p>
+<ul>
+  <li>Strips ANSI escapes, paired XML or tool envelopes (<code>&lt;user&gt;…&lt;/user&gt;</code>), and fenced code blocks, because small models copy literal noise.</li>
+  <li>Shortens long hex runs, such as commit SHAs, to 7 characters.</li>
+  <li>Middle-truncates to <b>2,000 characters</b>, keeping 2/3 from the head and 1/3 from the tail with an omission marker.</li>
+</ul>
+<p>It sends no history, no repo facts, and no session state. It also has a 4 s timeout; on failure it keeps the last level. By comparison, omp's judged TTSR rules send up to <b>32,000 jev tokens</b> of content, just under jev's limit of about 33k tokens. So jev can take far more context than auto-thinking gives it.</p>
+
+<h2>2. Does more context help? Real run</h2>
+<p class="note"><code>typesafe/jev-1.13.0</code>, same v3 questions, threshold ≥ 0.75.</p>
+<table><tr><th>Case</th><th>State fields</th><th>Selected</th></tr><tr><td>followup-bare</td><td><code>request</code></td><td><span class="hit">fix-root-causes 0.93</span>, <span class="hit">encode-lessons-in-structure 0.86</span></td></tr><tr><td>followup-ctx</td><td><code>request, recent_conversation, repo</code></td><td><span class="hit">fix-root-causes 0.98</span>, <span class="hit">test-behavior-not-implementation 0.97</span>, <span class="hit">attack-the-premise 0.91</span>, <span class="hit">encode-lessons-in-structure 0.89</span>, <span class="hit">prove-it-works 0.87</span>, <span class="hit">never-block-on-the-human 0.76</span></td></tr><tr><td>ts-bare</td><td><code>request</code></td><td><span class="hit">prove-it-works 0.82</span>, <span class="hit">redesign-from-first-principles 0.81</span></td></tr><tr><td>ts-ctx</td><td><code>request, repo</code></td><td><span class="hit">prove-it-works 0.80</span>, <span class="hit">redesign-from-first-principles 0.79</span></td></tr></table>
+<ul>
+  <li class="pro">Given the conversation, a bare “still failing, try again” <b>gained attack-the-premise (0.91)</b>, because jev could see the two earlier timeout bumps. It also gained test-behavior-not-implementation and prove-it-works. With the request alone, jev can't know earlier fixes failed.</li>
+  <li class="pro">Follow-up prompts are common in real sessions (“still broken”, “now do the same for X”). Without history they are nearly unjudgeable.</li>
+  <li class="con">More context also added never-block-on-the-human (0.76), a marginal pick.</li>
+  <li class="con">A meta-instruction inside the prompt shifts scores. In the spike, “list every skill:// URI …” lowered attack-the-premise from 0.95 to 0.64. Preprocessing helps, but it can't remove that effect.</li>
+</ul>
+
+<h3>Proposed state (JSON)</h3>
+<pre>{
+  "request":             preprocessTinyMessage(prompt),            // same as auto-thinking
+  "recent_conversation": last N user/assistant text turns, each preprocessed,
+                         tool output excluded,                      // from ctx.sessionManager
+  "repo":                { "languages": file-extension counts },  // from git ls-files in ctx.cwd
+  "already_selected":    principles injected earlier this session  // not judged; used to skip re-injecting
+}</pre>
+<p class="note">Kept well under 32k jev tokens. The value of N (for example, 6 turns) and the repo facts are tuning knobs for the build, not decisions.</p>
+
+<h2>3. Spike: an omp extension can do this <span class="okb">(verified)</span></h2>
+<p>This ran on omp 18.3.1 on this machine, from <code>/tmp/vstack-proto/.omp/extensions/principles-spike.ts</code>:</p>
+<ol>
+  <li><code>pi.on("before_agent_start")</code> receives the prompt.</li>
+  <li><code>ctx.modelRegistry.find("typesafe", "jev-latest")</code> plus <code>ctx.modelRegistry.getApiKey(model)</code> resolve the model and key. <code>ctx.models.resolve</code> does not return jev, because it lists chat models only.</li>
+  <li>A direct <code>POST https://api.typesafe.ai/v1/systemone</code> with <code>noul</code> questions returned 200 with answers. Note the wire type is <code>noul</code>; the eval helper's <code>bool</code> is an alias.</li>
+  <li>Returning <code>{ message: { customType: "vstack-principles", display: false, … } }</code> injected the pointer. Asked what <code>skill://</code> URIs followed its message, the model answered <b><code>skill://principle-fix-root-causes</code></b>.</li>
+</ol>
+<ul>
+  <li class="pro">No omp internals are imported. The extension uses only the public extension API and TypeSafe's public HTTP API, which is lower upkeep than importing <code>resolveJudge</code>.</li>
+  <li class="con">vstack ships TypeScript for the first time. Setup must install it into <code>~/.omp/agent/extensions/</code>, because the skills CLI won't. That's an input for “Define what vstack setup does” (#39).</li>
+  <li class="con">It adds latency before each turn; the spike used a 4 s timeout, like auto-thinking.</li>
+</ul>
+
+<h2>4. How often it judges, and how often it references</h2>
+<div class="grid3">
+  <div class="card rec"><span class="tag">recommended</span><h3>Judge every prompt; inject only new principles</h3>
+  <p>Every user prompt is judged, which is cheap (about $0.0001). Only principles <b>not already injected this session</b> are injected. Each principle is referenced <b>at most once per session</b>, and a new direction in the conversation can still pull in a new principle.</p></div>
+  <div class="card mid"><h3>Judge the first prompt only</h3>
+  <p>The judge runs once per session, and the result stands. This has the least noise, but a session that shifts from building to debugging never gets fix-root-causes.</p></div>
+  <div class="card low"><h3>Judge every prompt; re-inject every time</h3>
+  <p>Principles are re-referenced whenever they match. That's the continuous referencing you want to avoid.</p></div>
+</div>
+
+<h2>5. What this replaces</h2>
+<ul>
+  <li>The <b>one-line always-on pointer</b> becomes unnecessary, because the extension injects directly. The system prompt carries no principle text at all.</li>
+  <li><b>ADR 0002</b> (hidden skills plus a curated index) is superseded: no index and no two gates. Principles stay hidden skills, 1:1 with pstack, and the <code>skill://</code> citations at skill steps stay.</li>
+  <li><b>typescript-best-practices</b> changes from adapt (in #32) to <b>reject</b>, at your request.</li>
+</ul>
+
+</main></body></html>
