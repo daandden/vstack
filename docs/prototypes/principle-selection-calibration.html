@@ -1,0 +1,76 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Principle selection: jev probabilities and the auto-thinking technique</title>
+<style>
+:root { --bg:#0f1115; --card:#171a21; --ink:#e6e8ee; --dim:#9aa3b2; --line:#2a2f3a; --ok:#6fcf97; --warn:#f0b35a; --bad:#e0707a; --code:#11141a; --a:#6ea8fe; }
+* { box-sizing:border-box; } body { margin:0; font:15px/1.55 -apple-system, system-ui, sans-serif; background:var(--bg); color:var(--ink); }
+main { max-width:1180px; margin:0 auto; padding:32px 24px 64px; }
+h1 { font-size:26px; margin:0 0 4px; } h2 { font-size:19px; margin:36px 0 12px; border-bottom:1px solid var(--line); padding-bottom:6px; } h3 { font-size:16px; margin:0 0 8px; }
+p.lede { color:var(--dim); } code { background:var(--code); padding:1px 5px; border-radius:4px; font-size:13px; }
+pre { background:var(--code); border:1px solid var(--line); border-radius:8px; padding:12px; font-size:12.5px; white-space:pre-wrap; }
+.grid2 { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; } .grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; }
+.card.rec { border-top:4px solid var(--ok); } .card.mid { border-top:4px solid var(--warn); }
+.tag { display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px; background:#1d3326; color:var(--ok); margin-bottom:8px; }
+ul { padding-left:18px; margin:6px 0; } li { margin:3px 0; } .pro::marker { content:"+  "; color:var(--ok); } .con::marker { content:"−  "; color:var(--bad); }
+table { width:100%; border-collapse:collapse; font-size:13.5px; } th, td { text-align:left; padding:7px 9px; border-bottom:1px solid var(--line); vertical-align:top; } th { color:var(--dim); font-weight:600; }
+.hit { color:var(--ok); } .warn { color:var(--warn); } .dim { color:#6b7383; } .note { color:var(--dim); font-size:13px; }
+.hist { display:flex; gap:6px; align-items:flex-end; height:170px; padding-top:10px; }
+.bar { display:flex; flex-direction:column; align-items:center; justify-content:flex-end; width:34px; font-size:11px; color:var(--dim); }
+.bar div { width:100%; border-radius:3px 3px 0 0; } .bar em { font-style:normal; }
+</style></head><body><main>
+
+<h1>Principle selection: what jev probabilities mean, and what omp's auto-thinking teaches</h1>
+<p class="lede">Follow-up for “Decide how pstack principles are delivered” (#33). Settled: select every principle scoring ≥ 0.75, with no cap, triggered by a one-line always-on pointer. This report answers two questions: what a jev probability actually conveys, and whether the technique behind omp's auto-thinking can improve our selection.</p>
+
+<h2>1. What a jev probability means</h2>
+<div class="grid2">
+  <div class="card"><h3>P(yes), calibrated across many cases</h3>
+  <p>A yes/no (<code>noul</code>) answer is one number: the probability that the answer is yes (<a href="https://docs.typesafe.ai/primitives/noul">TypeSafe: Noul</a>). jev is trained with <b>RLCD</b> (reinforcement learning for calibrated decisions), so across many predictions, “outcomes assigned 0.8 should occur about 80% of the time” (<a href="https://docs.typesafe.ai/introduction/machine-learning-primer">TypeSafe: AI primer</a>).</p>
+  <ul><li>0.75 means that roughly 3 of every 4 cases scored like this truly fit the principle.</li><li>0.80 means roughly 4 of every 5.</li><li>This holds for <b>groups</b> of cases, not as a promise about any single one. A yes/no answer has no separate <code>confidence</code> field.</li></ul></div>
+  <div class="card"><h3>What TypeSafe says about thresholds</h3>
+  <p>“Thresholds scale with risk … Start with conservative thresholds, test with your own data, and adjust” (<a href="https://docs.typesafe.ai/confidence">TypeSafe: Confidence</a>). The cost of a mistake here is small: a wrong pick means the agent reads one extra principle of about 20 lines, and a missed pick means it doesn't read a relevant one. That low, symmetric risk supports a moderate threshold such as <b>0.75</b> rather than a strict 0.9.</p>
+  <p><b>Caveat:</b> without TypeSafe credentials, omp falls back to a chat model, and its answers are <b>one-hot</b>: exactly 0 or 1 (<code>packages/ai/src/judgment/text.ts</code>: <code>noul: verdict ? 1 : 0</code>). With the fallback, 0.75 and 0.8 behave the same, and every “yes” passes.</p></div>
+</div>
+
+<h2>2. How omp's auto-thinking works (<code>src/auto-thinking/classifier.ts</code>, v18.3.1)</h2>
+<table>
+<tr><th>Technique</th><th>What auto-thinking does</th><th>What it means for principle selection</th></tr>
+<tr><td>Runs in the harness, before the turn</td><td>For every user prompt, it classifies the request <b>before</b> the model starts, using the <code>judge</code> role chain. The agent is not involved.</td><td>Selection would happen before the first output, with no reliance on the agent following a pointer. It would need an omp extension (see §4).</td></tr>
+<tr><td>The state is the request only</td><td><code>{ request: preprocessTinyMessage(prompt) }</code>, stripped of noise.</td><td>Judge the user's request, not a summary the agent writes.</td></tr>
+<tr><td>Judge the substance, not the phrasing</td><td>“judging inherent task difficulty rather than phrasing politeness or verbosity”</td><td>Put the same line in every principle question.</td></tr>
+<tr><td>Lean conservative</td><td>“If torn between levels, choose the lower one.”</td><td>Add “if torn, answer no” so generic principles stop scoring yes on everything.</td></tr>
+<tr><td>A rubric per answer</td><td>Every level has concrete criteria, such as “rename, typo, one-line edit”.</td><td>Add <code>criteria.true</code>/<code>false</code> to each question.</td></tr>
+<tr><td>Fail open</td><td>Any failure falls back to a concrete level, and the turn continues.</td><td>If the judge fails, select nothing and carry on.</td></tr>
+</table>
+
+<h2>3. Applying those techniques: real runs on the same 7 tasks</h2>
+<p class="note">All runs used <code>typesafe/jev-1.13.0</code>. <b>v1</b> is the earlier plain questions. <b>v3</b> uses the auto-thinking wording:</p>
+<pre>The state is a user's request to a coding agent. Judge the inherent task, not its phrasing.
+Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: &lt;question&gt;
+criteria.true:  The task clearly is this situation.
+criteria.false: The task is not this situation, or only loosely resembles it.</pre>
+<p class="note">The typescript-best-practices question stays plain, because it's a factual check about files, not a judgment. I also tried a stricter <b>v2</b> (“a principle that applies to all coding work is a no”). It went too far: it dropped fix-root-causes on the restart crash (0.69) and typescript-best-practices on the kanban task (0.64). So v2 is rejected.</p>
+<table>
+<tr><th>Task</th><th>v1 count ≥ 0.75</th><th>v3 selected ≥ 0.75</th><th>v3 count ≥ 0.75</th><th>v3 count ≥ 0.8</th><th>Selected only at 0.75</th></tr>
+<tr><td>Add drag-to-reorder cards to the kanban board (React + TypeScript). We have nothing like it yet.</td><td>7</td><td><span class="hit">typescript-best-practices 0.98</span>, <span class="hit">redesign-from-first-principles 0.88</span>, <span class="hit">prove-it-works 0.88</span>, <span class="hit">exhaust-the-design-space 0.85</span></td><td>4</td><td>4</td><td><span class="dim">none</span></td></tr><tr><td>The app crashes after restart with &quot;Unexpected token in JSON at position 0&quot;. Worked fine before I restarted it.</td><td>2</td><td><span class="hit">fix-root-causes 0.98</span>, <span class="hit">boundary-discipline 0.86</span>, <span class="hit">prove-it-works 0.81</span></td><td>3</td><td>3</td><td><span class="dim">none</span></td></tr><tr><td>We now need multi-currency support in checkout, invoices, and reports. Everything assumes USD today.</td><td>9</td><td><span class="hit">redesign-from-first-principles 0.96</span>, <span class="hit">sequence-verifiable-units 0.94</span>, <span class="hit">encode-the-domain 0.91</span>, <span class="hit">prove-it-works 0.88</span>, <span class="hit">foundational-thinking 0.86</span>, <span class="hit">type-system-discipline 0.82</span></td><td>6</td><td>6</td><td><span class="dim">none</span></td></tr><tr><td>Rename oldLogger to logger across the repo, about 140 files.</td><td>3</td><td><span class="hit">build-the-lever 0.98</span>, <span class="hit">sequence-verifiable-units 0.87</span></td><td>2</td><td>2</td><td><span class="dim">none</span></td></tr><tr><td>Write a migration that backfills users.plan from legacy_plans; it runs during deploy.</td><td>2</td><td><span class="hit">make-operations-idempotent 0.88</span>, <span class="hit">prove-it-works 0.83</span></td><td>2</td><td>2</td><td><span class="dim">none</span></td></tr><tr><td>Fix the typo &quot;recieve&quot; in README.md.</td><td>0</td><td><span class="dim">none</span></td><td>0</td><td>0</td><td><span class="dim">none</span></td></tr><tr><td>The integration test still times out. We already bumped the timeout twice; it did not help.</td><td>4</td><td><span class="hit">fix-root-causes 0.97</span>, <span class="hit">attack-the-premise 0.96</span>, <span class="hit">test-behavior-not-implementation 0.89</span>, <span class="hit">encode-lessons-in-structure 0.80</span>, <span class="hit">prove-it-works 0.77</span></td><td>5</td><td>4</td><td><span class="warn">prove-it-works 0.77</span></td></tr></table>
+<div class="grid2" style="margin-top:16px">
+  <div class="card"><h3>v1: spread of all 168 scores</h3><div class="hist"><div class="bar"><div style="height:120px;background:#6ea8fe"></div><span>47</span><em>0.0</em></div><div class="bar"><div style="height:51px;background:#6ea8fe"></div><span>20</span><em>0.1</em></div><div class="bar"><div style="height:63px;background:#6ea8fe"></div><span>25</span><em>0.2</em></div><div class="bar"><div style="height:43px;background:#6ea8fe"></div><span>17</span><em>0.3</em></div><div class="bar"><div style="height:25px;background:#6ea8fe"></div><span>10</span><em>0.4</em></div><div class="bar"><div style="height:22px;background:#6ea8fe"></div><span>9</span><em>0.5</em></div><div class="bar"><div style="height:25px;background:#6ea8fe"></div><span>10</span><em>0.6</em></div><div class="bar"><div style="height:22px;background:#6ea8fe"></div><span>9</span><em>0.7</em></div><div class="bar"><div style="height:33px;background:#6ea8fe"></div><span>13</span><em>0.8</em></div><div class="bar"><div style="height:20px;background:#6ea8fe"></div><span>8</span><em>0.9</em></div></div></div>
+  <div class="card"><h3>v3: spread of all 168 scores</h3><div class="hist"><div class="bar"><div style="height:120px;background:#6fcf97"></div><span>69</span><em>0.0</em></div><div class="bar"><div style="height:46px;background:#6fcf97"></div><span>27</span><em>0.1</em></div><div class="bar"><div style="height:29px;background:#6fcf97"></div><span>17</span><em>0.2</em></div><div class="bar"><div style="height:15px;background:#6fcf97"></div><span>9</span><em>0.3</em></div><div class="bar"><div style="height:10px;background:#6fcf97"></div><span>6</span><em>0.4</em></div><div class="bar"><div style="height:10px;background:#6fcf97"></div><span>6</span><em>0.5</em></div><div class="bar"><div style="height:13px;background:#6fcf97"></div><span>8</span><em>0.6</em></div><div class="bar"><div style="height:8px;background:#6fcf97"></div><span>5</span><em>0.7</em></div><div class="bar"><div style="height:22px;background:#6fcf97"></div><span>13</span><em>0.8</em></div><div class="bar"><div style="height:13px;background:#6fcf97"></div><span>8</span><em>0.9</em></div></div></div>
+</div>
+<ul>
+  <li class="pro">v3 pushes scores toward the ends: more near 0, and a clear cluster at 0.8 and above. Sharper questions produce more decisive probabilities.</li>
+  <li class="pro">Because of that, <b>0.75 and 0.8 select nearly the same set</b>. In one of 7 tasks they differed, by one principle (prove-it-works at 0.77 on the flaky test). Your choice of 0.75 costs almost nothing extra.</li>
+  <li class="pro">There were no misses on the intended picks, and nothing was selected for the README typo, all without a cap.</li>
+  <li class="con"><b>prove-it-works</b> still scores yes on 5 of 7 tasks, because almost every change should be verified. The omp harness already enforces it (“NEVER yield without a smoke run”). One option is to leave it out of selection and reach it only through citations.</li>
+</ul>
+
+<h2>4. Where the selection runs</h2>
+<div class="grid2">
+  <div class="card rec"><span class="tag">recommended for now</span><h3>Skill plus a one-line pointer (your trigger choice)</h3>
+  <p>The always-apply line tells the agent to run <code>skill://principles</code> once at task start. The skill calls <code>judge()</code> in <code>eval</code> with the v3 questions, keeps everything ≥ 0.75, reads those principles once, and names them in the plan.</p>
+  <ul><li class="pro">Uses only verified pieces: the eval <code>judge()</code> helper was exercised in this session.</li><li class="pro">Runs once per task, so each principle is referenced once.</li><li class="con">It depends on the agent following the pointer, and it runs after the agent has read the request.</li></ul></div>
+  <div class="card mid"><h3>Harness-side, like auto-thinking</h3>
+  <p>An omp TypeScript extension handles <code>before_agent_start</code>, which receives the user prompt and can return a message to inject. It judges the prompt and injects pointers to the selected principles, skipping any already injected this session so each is referenced at most once.</p>
+  <ul><li class="pro">Fully automatic, fires before the first output, and needs no always-on pointer.</li><li class="con"><b>[INFERENCE, unverified]</b>: the extension API has no judge on its context. The package exports <code>@oh-my-pi/pi-coding-agent/judgment</code> (<code>resolveJudge</code>), but I haven't verified that an extension can import it inside the compiled binary. That would need a spike.</li><li class="con">vstack would ship TypeScript that depends on omp internals, which is new upkeep on every omp release.</li></ul></div>
+</div>
+
+</main></body></html>
