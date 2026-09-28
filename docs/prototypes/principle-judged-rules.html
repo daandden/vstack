@@ -90,26 +90,38 @@ Read `skill://principle-fix-root-causes` and apply it to what you just did.</pre
   </div>
 </div>
 
+<h2>Can the judge fire proactively too? Yes, on the agent's plan</h2>
+<p>omp judges <b>every</b> completed output, including the agent's reply text and its thinking, not just tool calls. A planning principle can ask about <i>intent</i> (“Is the agent <b>about to</b> …?”) and be scoped to text and thinking outputs. It then fires when the agent states its plan, and the reminder joins the <b>next step</b>, before the edits.</p>
+<table>
+  <tr><th>Agent plan or thinking (abridged)</th><th>Flagged (≥ 0.7)</th><th>Read</th></tr>
+  <tr><td>Drag-to-reorder, nothing like it in the repo: “install react-dnd, wrap Column, done.”</td><td><span class="hit">exhaust-the-design-space 0.89</span>, <span class="fp">foundational-thinking 0.74, redesign 0.70</span></td><td>hit, two marginal extras</td></tr>
+  <tr><td>“Write the handler now, figure out the types afterwards.”</td><td class="hit">foundational-thinking 0.95</td><td>correct</td></tr>
+  <tr><td>Multi-currency via <code>if (currency !== "USD")</code> in three files</td><td><span class="hit">redesign 0.93, model-the-domain 0.83, foundational-thinking 0.80</span>, <span class="fp">build-the-lever 0.88</span></td><td>hits, one extra</td></tr>
+  <tr><td>Hand-edit 140 imports, build at the end</td><td class="hit">build-the-lever 0.98, sequence-verifiable-units 0.96</td><td>correct</td></tr>
+  <tr><td>“Reproduce with the failing test, trace where id is dropped, fix there.”</td><td>nothing</td><td>correct</td></tr>
+</table>
+<p class="note">Same model and threshold, 5 plans × 8 intent questions, $0.0001. <b>Timing limit [INFERENCE]:</b> the verdict arrives at the end of an assistant message. If the agent states its plan and makes its first edit in the <i>same</i> message, that edit has already run by the time the reminder lands. So proactive firing works when the plan comes a step before the first edit. The omp harness already asks for this on multi-file work (“Plan multi-file work before opening files”; a todo list before work).</p>
+<p class="note">A reminder can't fire before the agent's first output, because the user's own message is never judged. Only an omp TypeScript extension could judge the user's request itself, and nobody has built or checked one.</p>
+
 <h2>Options</h2>
 <div class="grid3">
   <div class="card rec">
     <span class="tag r">recommended</span>
-    <h3>Citations + index for planning principles + judged rules for corrective ones</h3>
+    <h3>Citations + judged rules for all, in two modes</h3>
+    <p class="note">Your idea: jev decides both proactively and reactively. No index sits in the prompt.</p>
     <ul>
-      <li class="pro">Planning principles reach the agent <i>before</i> it acts, through a small index line.</li>
-      <li class="pro">Corrective principles catch mistakes after the fact, with 0 prompt tokens.</li>
-      <li class="pro">Harness-covered principles get enforced instead of duplicated.</li>
-      <li class="con">Two mechanisms to maintain and install.</li>
-      <li class="con">Needs TTSR and the judge turned on.</li>
+      <li class="pro"><b>Planning</b> principles ask about intent and are scoped to text and thinking, so they fire on the plan, before the edits.</li>
+      <li class="pro"><b>Corrective</b> principles ask about what was done and fire on any output.</li>
+      <li class="pro">One mechanism, 0 prompt tokens, and harness-covered principles become enforcement checks.</li>
+      <li class="con">Nothing fires before the agent's first output, and a plan written in the same message as the first edit comes too late.</li>
+      <li class="con">Needs TTSR and the judge turned on; expect some false positives.</li>
     </ul>
   </div>
   <div class="card mid">
-    <h3>Citations + judged rules for every adopted principle</h3>
-    <p class="note">Your idea as stated: jev decides for all of them, and no index sits in the prompt.</p>
+    <h3>Hybrid: small index for planning + judged rules for corrective</h3>
     <ul>
-      <li class="pro">One mechanism, full coverage, 0 prompt tokens.</li>
-      <li class="con">Planning principles fire only after the work is done.</li>
-      <li class="con">More noise: 23 questions on every output.</li>
+      <li class="pro">Planning principles sit in the prompt from turn one.</li>
+      <li class="con">Two mechanisms, and prompt tokens for the index.</li>
     </ul>
   </div>
   <div class="card low">
