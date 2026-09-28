@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Principle selection once per task</title>
+<style>
+:root { --bg:#0f1115; --card:#171a21; --ink:#e6e8ee; --dim:#9aa3b2; --line:#2a2f3a; --ok:#6fcf97; --warn:#f0b35a; --bad:#e0707a; --code:#11141a; --a:#6ea8fe; }
+* { box-sizing:border-box; }
+body { margin:0; font:15px/1.55 -apple-system, system-ui, sans-serif; background:var(--bg); color:var(--ink); }
+main { max-width:1180px; margin:0 auto; padding:32px 24px 64px; }
+h1 { font-size:26px; margin:0 0 4px; } h2 { font-size:19px; margin:36px 0 12px; border-bottom:1px solid var(--line); padding-bottom:6px; } h3 { font-size:16px; margin:0 0 8px; }
+p.lede { color:var(--dim); margin:0 0 20px; }
+code { background:var(--code); padding:1px 5px; border-radius:4px; font-size:13px; }
+pre { background:var(--code); border:1px solid var(--line); border-radius:8px; padding:12px; overflow:auto; font-size:12.5px; line-height:1.45; white-space:pre-wrap; }
+.grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; } .grid2 { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; }
+.card.rec { border-top:4px solid var(--ok); } .card.mid { border-top:4px solid var(--warn); } .card.low { border-top:4px solid var(--a); }
+.tag { display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px; background:#1d3326; color:var(--ok); margin-bottom:8px; }
+ul { padding-left:18px; margin:6px 0; } li { margin:3px 0; }
+.pro::marker { content:"+  "; color:var(--ok); } .con::marker { content:"−  "; color:var(--bad); }
+table { width:100%; border-collapse:collapse; font-size:13.5px; } th, td { text-align:left; padding:7px 9px; border-bottom:1px solid var(--line); vertical-align:top; } th { color:var(--dim); font-weight:600; }
+.hit { color:var(--ok); } .ts { color:var(--a); } .dim { color:#6b7383; }
+.flow { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin:12px 0; font-size:13px; }
+.box { border:1px solid var(--line); border-radius:6px; padding:6px 10px; background:#1c2029; } .box.hot { border-color:var(--ok); color:var(--ok); } .arrow { color:var(--dim); }
+.note { color:var(--dim); font-size:13px; }
+</style></head><body><main>
+
+<h1>Principle selection: judge once per task, reference once</h1>
+<p class="lede">Your goal: get what poteto-mode does with principles, without poteto-mode. jev judges <b>once</b>, at the start of a task, which principles fit it. The agent reads only those, once, and plans with them. Nothing keeps re-injecting principles on every output, so there's no drift.</p>
+
+<h2>Why not the earlier options</h2>
+<div class="grid3">
+  <div class="card"><h3>Judged TTSR rules (per output)</h3><p>These fire on every reply and tool call, all session. That keeps pushing principles into the context, which is exactly the drift you want to avoid.</p></div>
+  <div class="card"><h3>Always-on index</h3><p>The whole list sits in the prompt every turn. The agent re-reads trigger lines constantly and decides for itself, with broad triggers pulling it off course.</p></div>
+  <div class="card"><h3>poteto-mode itself</h3><p>A sticky mode with a principle index, a model split, and Fan-out triggers. #32 rejected it and handed its principle index to this ticket.</p></div>
+</div>
+
+<h2>How it works</h2>
+<div class="flow">
+  <span class="box">Task starts<br><span class="note">(user request)</span></span><span class="arrow">→</span>
+  <span class="box">agent runs <code>judge()</code> <b>once</b>: 1 state, 24 yes/no questions</span><span class="arrow">→</span>
+  <span class="box">keep yes ≥ 0.75, top 3 principles<br><span class="note">+ typescript-best-practices if TS</span></span><span class="arrow">→</span>
+  <span class="box hot">read those skills once<br>and name them in the plan</span><span class="arrow">→</span>
+  <span class="box">work; no more principle injections</span>
+</div>
+<p>This is poteto-mode's contract (“name each principle that shaped a decision; cite only principles whose SKILL.md you read this session”), except that jev picks the principles instead of the agent scanning an index.</p>
+
+<h3>Draft skill (vstack name TBD; needs your approval per the naming rule)</h3>
+<pre>---
+name: principles
+description: Use at the start of implementation, design, or debugging work to pick the principles that fit the task.
+---
+
+1. Write the task as one short paragraph: the user's request plus what you now know about it.
+2. In `eval`, call `judge(state=&lt;that paragraph&gt;, questions=&lt;questions.json&gt;)`: one yes/no question per principle.
+3. Keep answers with yes ≥ 0.75. Take the top 3 principles by score; add `typescript-best-practices` if its question passed.
+4. Read each kept skill once through `skill://&lt;name&gt;`.
+5. In your plan, name each principle and the choice it changed. Cite only principles you read in step 4.
+6. Run this once per task. Re-run only if the task's scope changes.</pre>
+<p class="note">The questions live in one reference file next to the skill, one line per principle, written by vstack. An Update flags a question when its principle changes upstream. <code>judge</code> is an omp eval prelude helper: it uses TypeSafe jev when credentialed, and otherwise the smol or tiny chat model.</p>
+
+<h2>Real run: 7 task requests, one judge call each</h2>
+<p class="note">This used <code>judge_batch</code> with <code>typesafe/jev-1.13.0</code>, 7 tasks × 24 questions, costing $0.0002 in total, about $0.00004 per task. “Dropped” lists principles that scored ≥ 0.7 but were cut by the 0.75 threshold or the top-3 cap.</p>
+<table>
+<tr><th>Task request</th><th>Selected (≥ 0.75, top 3)</th><th>Dropped</th></tr>
+<tr><td>Add drag-to-reorder cards to the kanban board (React + TypeScript). We have nothing like it yet.</td><td><span class="hit">type-system-discipline 0.87</span>, <span class="hit">exhaust-the-design-space 0.86</span>, <span class="hit">prove-it-works 0.83</span> + <span class="ts">typescript-best-practices 0.98</span></td><td><span class="dim">redesign-from-first-principles 0.82</span>, <span class="dim">sequence-verifiable-units 0.81</span>, <span class="dim">encode-the-domain 0.76</span></td></tr>
+<tr><td>The app crashes after restart with &quot;Unexpected token in JSON at position 0&quot;. Worked fine before I restarted it.</td><td><span class="hit">fix-root-causes 0.98</span>, <span class="hit">boundary-discipline 0.82</span></td><td><span class="dim">none</span></td></tr>
+<tr><td>We now need multi-currency support in checkout, invoices, and reports. Everything assumes USD today.</td><td><span class="hit">redesign-from-first-principles 0.93</span>, <span class="hit">sequence-verifiable-units 0.90</span>, <span class="hit">prove-it-works 0.89</span></td><td><span class="dim">encode-the-domain 0.88</span>, <span class="dim">type-system-discipline 0.85</span>, <span class="dim">experience-first 0.84</span>, <span class="dim">foundational-thinking 0.82</span>, <span class="dim">boundary-discipline 0.81</span>, <span class="dim">build-the-lever 0.77</span>, <span class="dim">test-behavior-not-implementation 0.72</span>, <span class="dim">laziness-protocol 0.71</span></td></tr>
+<tr><td>Rename oldLogger to logger across the repo, about 140 files.</td><td><span class="hit">build-the-lever 0.96</span>, <span class="hit">sequence-verifiable-units 0.76</span>, <span class="hit">never-block-on-the-human 0.75</span></td><td><span class="dim">none</span></td></tr>
+<tr><td>Write a migration that backfills users.plan from legacy_plans; it runs during deploy.</td><td><span class="hit">make-operations-idempotent 0.81</span>, <span class="hit">prove-it-works 0.79</span></td><td><span class="dim">none</span></td></tr>
+<tr><td>Fix the typo &quot;recieve&quot; in README.md.</td><td><span class="dim">none</span></td><td><span class="dim">never-block-on-the-human 0.70</span></td></tr>
+<tr><td>The integration test still times out. We already bumped the timeout twice; it did not help.</td><td><span class="hit">fix-root-causes 0.96</span>, <span class="hit">test-behavior-not-implementation 0.94</span>, <span class="hit">attack-the-premise 0.92</span></td><td><span class="dim">encode-lessons-in-structure 0.75</span></td></tr>
+</table>
+<ul>
+  <li class="pro">A trivial task (the README typo) selects nothing, so no principle enters the context.</li>
+  <li class="pro">The restart crash picks fix-root-causes, whose body has a section on exactly this: “Restart bugs: suspect state before code.”</li>
+  <li class="pro">The third timeout attempt picks attack-the-premise; the backfill picks make-operations-idempotent; the 140-file rename picks build-the-lever.</li>
+  <li class="con">Large tasks match many principles (multi-currency hit 11 at ≥ 0.7). The cap is what keeps them focused, and it cut encode-the-domain (0.88) there.</li>
+  <li class="con">prove-it-works and sequence-verifiable-units match almost any real change, so they take cap slots.</li>
+</ul>
+
+<h2>How the selection gets triggered</h2>
+<div class="grid3">
+  <div class="card rec"><span class="tag">recommended</span><h3>One-line always-on pointer</h3>
+  <p>An always-apply rule of about 30 tokens: “At the start of implementation, design, or debugging work, run <code>skill://principles</code> once.” It carries no principle content, so it can't cause drift.</p>
+  <ul><li class="pro">Covers plain sessions too.</li><li class="con">Needs a rules install path.</li></ul></div>
+  <div class="card mid"><h3>vstack workflow skills call it</h3>
+  <p>Adapted workflow skills, such as a debugging or implement flow, run it at their first step.</p>
+  <ul><li class="pro">No always-on text at all.</li><li class="con">Plain sessions and adopted Matt skills never run it.</li></ul></div>
+  <div class="card low"><h3>You invoke it</h3>
+  <p><code>/skill:principles</code> when you want it, like switching poteto-mode on.</p>
+  <ul><li class="pro">Full control.</li><li class="con">Easy to forget.</li></ul></div>
+</div>
+
+<h2>What else changes</h2>
+<ul>
+  <li><b>The always-on index and the two gates go away.</b> jev decides relevance per task, so no curated membership is needed. <b>[Needs your confirmation]</b></li>
+  <li><b>Citations at skill steps stay.</b> A pointer such as <code>skill://principle-fix-root-causes</code> at a debugging step loads once, when the step is reached, which is also not continuous.</li>
+  <li><b>typescript-best-practices</b> activates through its own question in the same judge call instead of an index line.</li>
+  <li><b>No TTSR and no omp settings changes.</b> jev acts only as a classifier, called once per task.</li>
+  <li><b>Update:</b> flags a question when its principle changes. It can re-run these 7 tasks through <code>judge_batch</code> as a regression check on which principles get selected.</li>
+</ul>
+
+<h2>The 24 draft questions</h2>
+<table><tr><th>Skill</th><th>Question</th></tr>
+<tr><td><code>laziness-protocol</code></td><td>Will this task tempt adding abstractions, layers, or wrappers where the smallest change would do?</td></tr><tr><td><code>foundational-thinking</code></td><td>Does this task require choosing new core data types, data structures, or ownership before writing logic?</td></tr><tr><td><code>redesign-from-first-principles</code></td><td>Does this task integrate a new requirement into an existing design that was not built for it?</td></tr><tr><td><code>attack-the-premise</code></td><td>Does this task describe earlier fixes that already failed the same check?</td></tr><tr><td><code>subtract-before-you-add</code></td><td>Does this task add to or refactor code that likely contains dead, redundant, or stub parts to remove first?</td></tr><tr><td><code>minimize-reader-load</code></td><td>Is this task about code that is hard to trace, or reviewing/reshaping code for readability?</td></tr><tr><td><code>outcome-oriented-execution</code></td><td>Is this task a planned rewrite or migration with explicit phases?</td></tr><tr><td><code>experience-first</code></td><td>Does this task involve a product, UX, or feature-scope trade-off?</td></tr><tr><td><code>exhaust-the-design-space</code></td><td>Does this task need a novel UI interaction or architecture with no precedent in the codebase?</td></tr><tr><td><code>build-the-lever</code></td><td>Does this task involve many repetitive edits or checks that a script or codemod could perform or prove?</td></tr><tr><td><code>encode-the-domain</code></td><td>Does this task involve stateful logic or domain states likely to spread as conditionals across files?</td></tr><tr><td><code>boundary-discipline</code></td><td>Does this task involve validation, error handling, or adapters at a system boundary?</td></tr><tr><td><code>type-system-discipline</code></td><td>Does this task involve designing types or function signatures?</td></tr><tr><td><code>make-operations-idempotent</code></td><td>Does this task write a command, migration, or loop that may crash midway and be re-run?</td></tr><tr><td><code>migrate-callers-then-delete-legacy-apis</code></td><td>Does this task replace an internal API that existing callers use?</td></tr><tr><td><code>separate-before-serializing-shared-state</code></td><td>Does this task involve concurrent actors writing the same file, branch, key, or state?</td></tr><tr><td><code>prove-it-works</code></td><td>Does this task change behavior that must be verified against the real running artifact?</td></tr><tr><td><code>fix-root-causes</code></td><td>Is this task debugging a failure, crash, or wrong behavior?</td></tr><tr><td><code>sequence-verifiable-units</code></td><td>Is this task multi-step work, a sweep, or a series of commits that should land as separately verified units?</td></tr><tr><td><code>test-behavior-not-implementation</code></td><td>Does this task involve writing, changing, or keeping tests?</td></tr><tr><td><code>guard-the-context-window</code></td><td>Will this task require reading large outputs or many long files?</td></tr><tr><td><code>never-block-on-the-human</code></td><td>Does this task involve reversible choices the agent could make without asking?</td></tr><tr><td><code>encode-lessons-in-structure</code></td><td>Does this task address a recurring mistake or correction that has happened before?</td></tr><tr><td><code>typescript-best-practices</code></td><td>Does this task involve reading or editing .ts or .tsx files?</td></tr>
+</table>
+
+</main></body></html>
