@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>jev: what it is, how much context it takes, and subagents</title>
+<style>
+:root { --bg:#0f1115; --card:#171a21; --ink:#e6e8ee; --dim:#9aa3b2; --line:#2a2f3a; --ok:#6fcf97; --warn:#f0b35a; --bad:#e0707a; --code:#11141a; --a:#6ea8fe; }
+* { box-sizing:border-box; } body { margin:0; font:15px/1.55 -apple-system, system-ui, sans-serif; background:var(--bg); color:var(--ink); }
+main { max-width:1180px; margin:0 auto; padding:32px 24px 64px; }
+h1 { font-size:26px; margin:0 0 4px; } h2 { font-size:19px; margin:36px 0 12px; border-bottom:1px solid var(--line); padding-bottom:6px; } h3 { font-size:16px; margin:0 0 8px; }
+p.lede { color:var(--dim); } code { background:var(--code); padding:1px 5px; border-radius:4px; font-size:13px; }
+pre { background:var(--code); border:1px solid var(--line); border-radius:8px; padding:12px; font-size:12.5px; white-space:pre-wrap; }
+a { color:var(--a); }
+.grid2 { display:grid; grid-template-columns:repeat(2,1fr); gap:16px; } .grid3 { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; }
+.card.rec { border-top:4px solid var(--ok); } .card.mid { border-top:4px solid var(--warn); }
+.tag { display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px; background:#1d3326; color:var(--ok); margin-bottom:8px; }
+ul { padding-left:18px; margin:6px 0; } li { margin:3px 0; } .pro::marker { content:"+  "; color:var(--ok); } .con::marker { content:"−  "; color:var(--bad); }
+table { width:100%; border-collapse:collapse; font-size:13.5px; } th, td { text-align:left; padding:7px 9px; border-bottom:1px solid var(--line); vertical-align:top; } th { color:var(--dim); font-weight:600; }
+.note { color:var(--dim); font-size:13px; }
+.meter { height:26px; border-radius:6px; background:#232834; position:relative; overflow:hidden; margin:6px 0 2px; }
+.meter div { position:absolute; top:0; bottom:0; display:flex; align-items:center; padding-left:8px; font-size:12px; color:#0f1115; font-weight:600; white-space:nowrap; }
+</style></head><body><main>
+
+<h1>jev: what it is, how much context it takes, and subagents</h1>
+<p class="lede">Follow-up for “Decide how pstack principles are delivered” (#33). Sources are TypeSafe's public docs and omp v18.3.1 source, linked inline.</p>
+
+<h2>1. What jev is</h2>
+<div class="grid2">
+  <div class="card"><h3>A decision model, not a chat model</h3>
+  <p>jev is TypeSafe's flagship <b>System One</b> model. It “does not generate text, write code, or hold a conversation. It takes a state and a set of typed questions and returns structured answers” (<a href="https://docs.typesafe.ai/introduction/coding-agents">Jev with coding agents</a>).</p>
+  <ul>
+    <li><b>noul</b>: P(yes), from 0 to 1, for a yes/no question. This is what principle selection uses.</li>
+    <li><b>choice</b>: one option from a set, with a probability for each option and a confidence value.</li>
+    <li><b>score</b>: a position on levels you define.</li>
+  </ul>
+  <p>It is trained with <b>RLCD</b> (reinforcement learning for calibrated decisions), so its probabilities are meant to match outcome rates across many cases (<a href="https://docs.typesafe.ai/introduction/machine-learning-primer">AI primer</a>).</p></div>
+  <div class="card"><h3>Current model: <code>jev-1.13.0</code> (alias <code>jev-latest</code>)</h3>
+  <table>
+    <tr><td>Price</td><td>$0.042 per million input tokens. Output is free.</td></tr>
+    <tr><td>Rate limits</td><td>250k tokens/s, 1,200 requests/min</td></tr>
+    <tr><td>Input</td><td>Text only: a string, a JSON object, or an array</td></tr>
+    <tr><td>Speed</td><td>0.3 to 0.5 s for our batches of 24 questions (observed)</td></tr>
+    <tr><td>Training</td><td>Not trained on customer requests; the same weights serve every account</td></tr>
+  </table>
+  <p class="note">Source: <a href="https://docs.typesafe.ai/models">Models</a>. The <code>jev-latest</code> alias moves with new releases, and scores can shift when it does. TypeSafe advises pinning a versioned ID if thresholds were tuned against it, which matters for our 0.75 threshold.</p></div>
+</div>
+
+<h3>Known weak spots (<a href="https://docs.typesafe.ai/model-jaggedness/jev-1.13">Jev 1.13 jaggedness</a>) and what they mean for principle selection</h3>
+<table>
+<tr><th>Weak spot</th><th>What it means here</th></tr>
+<tr><td><b>Literal reading</b>: “answers the question you wrote, not the one you meant”</td><td>Each principle question must state its exact condition, with boundary cases in <code>criteria</code>. This is why the v3 wording worked.</td></tr>
+<tr><td><b>Large state full of irrelevant detail</b>: “accuracy falls as the state grows with content unrelated to the decision”</td><td>Send filtered context: the request plus recent text turns, never tool output or file dumps. Just because jev can take 32k tokens doesn't mean we should send that much.</td></tr>
+<tr><td><b>Adversarial content</b>: text in the state can steer the answer</td><td>Matches the spike, where a meta-instruction in the prompt moved attack-the-premise from 0.95 to 0.64.</td></tr>
+<tr><td><b>Indirection</b>: multi-hop questions lose accuracy</td><td>Ask one direct situation per question.</td></tr>
+</table>
+
+<h2>2. Maximum context</h2>
+<p>From TypeSafe's <a href="https://docs.typesafe.ai/models">Models</a> page: <b>“64k tokens per request; 32k tokens for <code>state</code> plus the longest question.”</b> jev reads the state once and evaluates every question against it in parallel.</p>
+<div class="card">
+  <p><b>Budget 1: state + the single longest question ≤ 32k tokens</b></p>
+  <div class="meter"><div style="left:0;width:94%;background:var(--ok)">state (up to about 31.7k)</div><div style="left:94%;width:6%;background:var(--warn)">q</div></div>
+  <p class="note">Our longest v3 question is about 90 tokens, so the state can use nearly all 32k.</p>
+  <p style="margin-top:14px"><b>Budget 2: state + all questions together ≤ 64k tokens</b></p>
+  <div class="meter"><div style="left:0;width:50%;background:var(--ok)">state ≤ 32k</div><div style="left:50%;width:4%;background:var(--warn)">23 q</div></div>
+  <p class="note">All 23 principle questions come to roughly 2k tokens, so budget 1 is always the binding limit.</p>
+</div>
+<ul>
+  <li>omp's judged TTSR rules cap content at <b>32,000 jev tokens</b>. A code comment says “Jev rejects a judgment branch past ~33k tokens (<code>max_tokens_exceeded</code>)” (<code>src/export/ttsr.ts</code>). omp counts tokens locally with its <code>Encoding.Jev</code> tokenizer.</li>
+  <li>omp auto-thinking sends only the cleaned prompt, at most <b>2,000 characters</b>, which is about 500 tokens.</li>
+  <li>Cost is negligible at any size: a full 32k state costs about $0.0013 per judgment.</li>
+</ul>
+<h3>Recommended state budget: about 4k tokens</h3>
+<pre>request             ≤ 2,000 chars   cleaned like auto-thinking (no code fences, XML envelopes, ANSI; SHAs shortened)
+recent_conversation last ~6 text turns, each cleaned and cut to 2,000 chars; no tool calls or tool output
+repo.languages      file-extension counts, a few dozen tokens</pre>
+<p class="note">That's enough to judge follow-ups (“still failing”) while staying far below the point where irrelevant detail drags accuracy down. The extension can count tokens and trim the oldest turns first. The ~4k figure is a starting point to tune on sample prompts, not a hard number.</p>
+
+<h3>A pattern TypeSafe publishes for this exact problem</h3>
+<p>The <a href="https://docs.typesafe.ai/cookbooks/skill_suggestion">Skill suggestion cookbook</a> picks skills for an agent turn from 182 candidates in two steps: rank everything against the turn, then re-check only the top three with their full descriptions. It injects one line: “Relevant to the current request: X. Ignore this if it does not fit.” With <code>claude-haiku-4-5</code>, this cut wrong skill loads from 16.8% to 7.3%, and loads when nothing fit from 9.8% to 4.0%. Our design is the one-step version (23 principles, threshold 0.75). The same “ignore if it doesn't fit” wording is worth copying into our injected message.</p>
+
+<h2>3. Subagents: how pstack does it</h2>
+<div class="grid2">
+  <div class="card"><h3>pstack never gives subagents an ambient principle list</h3>
+  <ul>
+    <li><b>Runner briefs name principles by role.</b> architect's <code>references/runner-prompt.md</code> tells each candidate runner which principles govern its design: “per the <b>separate-before-serializing-shared-state</b> principle skill”, <b>boundary-discipline</b>, <b>make-operations-idempotent</b>, <b>laziness-protocol</b>, and <b>minimize-reader-load</b>.</li>
+    <li><b>Reviewers get lenses, not principles.</b> reflect's judgment, divergent, and tooling reviewers each have a role prompt and <i>produce</i> principles; they aren't fed any.</li>
+    <li><b>The only agent that loads the full index</b> is <code>poteto-agent</code>, which reads poteto-mode's whole <code>SKILL.md</code>. #32 rejected poteto-mode.</li>
+  </ul>
+  <p class="note">Source: <code>pstack/agents/*.md</code>, <code>skills/architect/references/runner-prompt.md</code>, and <code>skills/reflect/references/*.md</code> at Pin <code>12d587df</code>.</p></div>
+  <div class="card"><h3>Why selecting in subagents would hurt</h3>
+  <ul>
+    <li>A subagent's prompt is a <b>brief the parent wrote</b>, dense with instructions. jev judging that text would pick principles from the parent's wording rather than the real task: the adversarial-content weak spot.</li>
+    <li>Selection in subagents would multiply injections across Fan-out, which is the drift you want to avoid.</li>
+    <li>The parent already holds the selected principles and knows each subagent's role, so it can name the relevant ones in the brief, exactly as architect's runner prompt does.</li>
+    <li><b>[INFERENCE]</b> omp docs say restricted task and eval children rebind the parent's already-imported extensions, so <code>before_agent_start</code> likely fires in subagents too. The extension would need to detect a child session and skip it. That's for the build to verify.</li>
+  </ul></div>
+</div>
+<div class="grid2" style="margin-top:16px">
+  <div class="card rec"><span class="tag">recommended</span><h3>Main session only; the parent passes principles in briefs</h3>
+  <p>The extension skips subagent sessions. When a vstack skill writes a subagent brief, it names the selected principles that govern that subagent's role, as <code>skill://principle-…</code> citations. This is pstack's own pattern.</p></div>
+  <div class="card mid"><h3>Subagents select for themselves</h3>
+  <p>Each child's brief is judged. Coverage is more automatic, but it judges the parent's wording, and the injections multiply under Fan-out.</p></div>
+</div>
+
+</main></body></html>
