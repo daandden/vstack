@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contracts of the overlap skills: explainer</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--paper:#f5f5f5;--paper2:#ececec;--ink:#2d3142;--muted:#4f5d75;--soft:#7a8399;--rule:rgba(45,49,66,0.12);--accent:#eb6c36;--tint:rgba(235,108,54,0.08);--link:#2e5aa8;--sans:'Geist',system-ui,sans-serif;--serif:'Instrument Serif','Times New Roman',serif;--mono:'Geist Mono',ui-monospace,Menlo,monospace}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);padding:3rem 2rem;line-height:1.55;font-size:15px}
+.container{max-width:1160px;margin:0 auto}
+.eyebrow{font-family:var(--mono);font-size:.66rem;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem}
+h1{font-family:var(--serif);font-weight:400;font-size:clamp(1.75rem,3vw + 1rem,2.5rem);letter-spacing:-.02em;line-height:1.1;margin-bottom:.5rem}
+h2{font-family:var(--serif);font-weight:400;font-size:1.75rem;margin:3rem 0 .75rem;padding-top:1.5rem;border-top:1px solid var(--rule)}
+h3{font-size:1rem;font-weight:600;margin:1.75rem 0 .6rem}
+.subtitle{color:var(--muted);max-width:80ch}
+p{max-width:80ch;margin-bottom:.75rem}
+ul.l{margin:0 0 .75rem 1.25rem;max-width:80ch} ul.l li{margin-bottom:.3rem}
+a{color:var(--link);text-decoration:none} a:hover{text-decoration:underline}
+code{font-family:var(--mono);font-size:.82em;background:rgba(45,49,66,0.06);padding:.05em .3em;border-radius:3px}
+a code{color:var(--link)}
+.cards{display:grid;grid-template-columns:1.1fr 1fr .9fr;gap:1rem;margin-top:1.5rem}
+.card{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:1.1rem 1.25rem;font-size:.9rem}
+.card h4{font-size:.875rem;margin-bottom:.4rem}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1rem 0}
+.side{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:1rem 1.2rem;font-size:.88rem}
+.side h4{font-size:.9rem;margin-bottom:.35rem}
+.side ol{margin:.4rem 0 .4rem 1.2rem} .side li{margin-bottom:.2rem}
+blockquote{border-left:2px solid var(--soft);padding:.2rem .7rem;margin:.5rem 0;color:var(--muted);font-size:.86rem;font-style:italic;max-width:80ch}
+.fig{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:1rem;margin:1rem 0}
+.fig svg{width:100%;max-width:880px;display:block;margin:0 auto}
+.fig .cap{font-size:.8rem;color:var(--soft);text-align:center;margin:.5rem auto 0;max-width:none}
+.rec{background:var(--tint);border-left:3px solid var(--accent);padding:.8rem 1rem;margin:1rem 0;border-radius:0 6px 6px 0;max-width:none}
+.rec p{margin-bottom:.4rem;max-width:none}
+.q{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;color:#fff;background:var(--accent);border-radius:3px;padding:.05rem .4rem;margin-right:.4rem;vertical-align:2px}
+.tw{overflow-x:auto;background:#fff;border:1px solid var(--rule);border-radius:6px;margin:1rem 0}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th{font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--soft);text-align:left;padding:.6rem .75rem;border-bottom:1px solid var(--rule);background:var(--paper2)}
+td{padding:.6rem .75rem;border-bottom:1px solid rgba(45,49,66,0.07);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr.pick td{background:var(--tint)}
+.b{font-family:var(--mono);font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;padding:.1rem .4rem;border-radius:3px;border:1px solid;white-space:nowrap}
+.b-adopt{color:#2d6a4f;border-color:rgba(45,106,79,.4);background:rgba(45,106,79,.06)}
+.b-adapt{color:var(--link);border-color:rgba(46,90,168,.4);background:rgba(46,90,168,.06)}
+.b-merge{color:var(--muted);border-color:rgba(79,93,117,.4);background:rgba(79,93,117,.08)}
+.k{font-family:var(--mono);font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--soft)}
+.footer{margin-top:3rem;padding-top:1.25rem;border-top:1px solid var(--rule);font-family:var(--mono);font-size:.72rem;color:var(--soft);display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem}
+@media (max-width:860px){.cards,.two{grid-template-columns:1fr}}
+</style></head><body><div class="container">
+
+<div class="header">
+<p class="eyebrow">vstack · wayfinder ticket · Matt v1.2.3 (6acc160e) · pstack 12d587df</p>
+<h1>Contracts of the overlap skills</h1>
+<p class="subtitle">Explainer for <a href="https://github.com/daandden/vstack/issues/44">Specify the vstack contracts of the overlap skills</a>, part of the map <a href="https://github.com/daandden/vstack/issues/26">vstack: Matt Pocock skills plus pstack enhancements for omp</a>. It starts from <a href="https://github.com/daandden/vstack/issues/36#issuecomment-5908581361">Decide how overlapping Matt and pstack skills merge</a>, which settled <em>what</em> merges. This ticket settles <em>what each vstack text says</em>: its steps, triggers, what is imported and dropped, and its Fan-out points. Fifteen questions are open, and each ends with a recommendation. Quotes come from the pinned Upstream text.</p>
+</div>
+
+<div class="cards">
+<div class="card"><p class="eyebrow">Settled · overlap ticket</p><h4>What merges, and what stays two skills</h4><p>tdd and prototype are real merges on Matt's base. codebase-design and architect stay two skills, and so do teach and <code>explain</code>. research is adopt. code-review gains a conditional <code>## Safety</code> axis from blast-radius.</p></div>
+<div class="card"><p class="eyebrow">Rule · ADR 0004 + Fan-out guardrail</p><h4>Every Fan-out step is one Fan-out block</h4><p>A block has three parts: a gate line citing the shared rubric, one <code>tasks[]</code> batch, and the inline fallback. The judge picks fan-out or inline, and the user's words override it. One subagent on its own is not Fan-out and runs as written.</p></div>
+<div class="card"><p class="eyebrow">Out of this ticket</p><h4>House style and roster</h4><p>Exact omp tool names and the Fan-out block's wording belong to the house style. Agent names belong to the roster. Both are still map fog, so this page names subagent <em>roles</em>, not agents.</p></div>
+</div>
+
+<h2>The fifteen questions at a glance</h2>
+<div class="tw"><table><thead><tr><th>Q</th><th>Skill</th><th>Question</th><th>Recommendation</th></tr></thead><tbody>
+<tr><td>Q1</td><td>tdd</td><td>How does tdd's new bug section relate to diagnosing-bugs?</td><td>Known-cause bugs only; unknown cause → diagnosing-bugs</td></tr>
+<tr><td>Q2</td><td>tdd</td><td>No practical failing test and nobody to agree the fallback seam?</td><td>Strict: stop the slice, report missing red evidence</td></tr>
+<tr><td>Q3</td><td>tdd</td><td>Where does the imported content live?</td><td>New <code>BUG-FIX.md</code>; two general guardrails join the loop rules</td></tr>
+<tr><td>Q4</td><td>prototype</td><td>Name and location of the timing/behavior branch</td><td><code>BEHAVIOR.md</code>; script next to the code (Matt rule 1)</td></tr>
+<tr><td>Q5</td><td>prototype</td><td>What does "observe before handover" require?</td><td>All three branches, each with its own evidence</td></tr>
+<tr><td>Q6</td><td>prototype</td><td>Import the moodboard step?</td><td>Drop</td></tr>
+<tr><td>Q7</td><td>codebase-design</td><td>Where do the design red flags go?</td><td>New <code>RED-FLAGS.md</code>, screened in DESIGN-IT-TWICE step 3</td></tr>
+<tr><td>Q8</td><td>architect</td><td>Callers want a sketch; architect implements by default</td><td>Three named stops: sketch, checkpoint, implement</td></tr>
+<tr><td>Q9</td><td>architect</td><td>Who writes the code in the Implement phase?</td><td>Hand the design package to <code>implement</code></td></tr>
+<tr><td>Q10</td><td>architect</td><td>Sketch now uses DESIGN-IT-TWICE: what else stays?</td><td>Keep runner discipline as <code>design-brief.md</code>; architect synthesizes</td></tr>
+<tr><td>Q11</td><td>architect, explain</td><td>Hidden (explicit only) or listed to the model?</td><td>Both hidden, as upstream</td></tr>
+<tr><td>Q12</td><td>explain</td><td>Generated images when omp has no image tool?</td><td>Keep, with a mermaid/ASCII fallback</td></tr>
+<tr><td>Q13</td><td>code-review</td><td>Final Safety trigger list, and who applies it</td><td>Six triggers; the agent applies them and reports which fired</td></tr>
+<tr><td>Q14</td><td>code-review</td><td>What the Safety reviewer runs and returns</td><td>Runs <code>skill://blast-radius</code> minus step 6</td></tr>
+<tr><td>Q15</td><td>code-review</td><td>Only one axis left</td><td>One subagent, as Matt writes it</td></tr>
+</tbody></table></div>
+
+<!-- ============================ tdd ============================ -->
+<h2>tdd <span class="b b-merge">merge</span> · Q1–Q3</h2>
+<p>Settled already: Matt's text is the base. It gains a "Fixing a bug" section built from pstack's six steps, pstack's guardrails, and a failing-before/passing-after evidence report. The fallback for an impractical test is allowed only through an agreed seam. pstack's "skip integration-heavy" rule and its <code>disable-model-invocation</code> are dropped.</p>
+
+<h3><span class="q">Q1</span>tdd's bug section and diagnosing-bugs</h3>
+<p>Matt's <a href="https://github.com/mattpocock/skills/blob/6acc160e4e0cd062dbbbd7a1b26ae92855edf07e/skills/engineering/diagnosing-bugs/SKILL.md">diagnosing-bugs</a> is adopt and cannot change. Its Phase 5 already does what the imported tdd steps do:</p>
+<blockquote>Write the regression test <b>before the fix</b> — but only if there is a <b>correct seam</b> for it. … If no correct seam exists, that itself is the finding.</blockquote>
+<p>pstack's tdd was written for the easy case: "when the bug has an obvious cheap local test target". The two skills cover the same step for different kinds of bug. Without a line saying which one applies, the agent may run the regression step twice or pick at random.</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Contract</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>"Fixing a bug" covers bugs whose cause is known and whose repro is cheap. When the cause is unknown, run diagnosing-bugs instead. Its Phase 5 writes the regression test, so tdd does not run again afterwards.</td><td>One routing line. Each bug goes through exactly one regression step.</td></tr>
+<tr><td>B</td><td>tdd's bug section also runs after diagnosing-bugs.</td><td>The regression step runs twice, and the two skills can pick different seams.</td></tr>
+<tr><td>C</td><td>No routing line.</td><td>Cheapest to write. The agent has to decide on its own.</td></tr>
+</tbody></table></div>
+
+<h3><span class="q">Q2</span>The fallback when nobody can agree the seam</h3>
+<p>pstack allows a non-test check when a failing test is impractical: "a targeted script, manual reproduction command, browser automation, snapshot comparison, log assertion, or focused integration check". The overlap ticket only allowed that fallback "through an agreed seam". Matt's rule is absolute:</p>
+<blockquote>Test only at pre-agreed seams. … No test is written at an unconfirmed seam.</blockquote>
+<p>The open case is AFK work. <code>implement</code> says "Use /tdd where possible, at pre-agreed seams", so seams are agreed before the run starts. A fallback that nobody agreed beforehand therefore has nobody to confirm it mid-run.</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Contract</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td><b>Strict.</b> The fallback check needs the same confirmation as any seam. Without confirmation, the slice stops, and the reply says the red evidence is missing and why.</td><td>Matches Matt's seam rule and diagnosing-bugs' "that itself is the finding". An AFK run can stop on a bug with no practical test.</td></tr>
+<tr><td>B</td><td>The agent uses the fallback anyway. The reply flags both "red evidence missing" and "seam unconfirmed".</td><td>AFK runs keep moving. It weakens Matt's rule in exactly the case that needs it most.</td></tr>
+<tr><td>C</td><td>The fallback never needs confirmation, and the reply flags the missing red evidence.</td><td>Goes back on the overlap ticket's condition.</td></tr>
+</tbody></table></div>
+
+<div class="fig"><svg viewBox="0 0 660 388" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="tdd-title tdd-desc">
+<title id="tdd-title">Fixing a bug in vstack tdd (Q1, Q2 recommended)</title>
+<desc id="tdd-desc">A bug with an unknown cause goes to diagnosing-bugs, which writes its own regression test; a known-cause bug with a practical failing test runs tdd's bug steps; without a practical test, an agreed fallback check is used, otherwise the slice stops and reports the missing red evidence.</desc>
+<defs><marker id="tdd-a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker></defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<!-- arrows -->
+<line x1="120" y1="64" x2="120" y2="84" stroke="#4f5d75" marker-end="url(#tdd-a)"/>
+<line x1="200" y1="124" x2="280" y2="124" stroke="#4f5d75" marker-end="url(#tdd-a)"/>
+<line x1="120" y1="164" x2="120" y2="204" stroke="#4f5d75" marker-end="url(#tdd-a)"/>
+<line x1="440" y1="124" x2="480" y2="124" stroke="#4f5d75" marker-end="url(#tdd-a)"/>
+<line x1="360" y1="164" x2="360" y2="204" stroke="#4f5d75" marker-end="url(#tdd-a)"/>
+<line x1="440" y1="244" x2="480" y2="244" stroke="#4f5d75" marker-end="url(#tdd-a)"/>
+<line x1="360" y1="284" x2="360" y2="324" stroke="#4f5d75" marker-end="url(#tdd-a)"/>
+<!-- arrow labels -->
+<rect x="224" y="100" width="32" height="12" rx="2" fill="#ffffff"/><text x="240" y="109" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">YES</text>
+<rect x="128" y="176" width="24" height="12" rx="2" fill="#ffffff"/><text x="140" y="185" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">NO</text>
+<rect x="444" y="100" width="32" height="12" rx="2" fill="#ffffff"/><text x="460" y="109" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">YES</text>
+<rect x="368" y="176" width="24" height="12" rx="2" fill="#ffffff"/><text x="380" y="185" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">NO</text>
+<rect x="444" y="220" width="32" height="12" rx="2" fill="#ffffff"/><text x="460" y="229" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">YES</text>
+<rect x="368" y="296" width="24" height="12" rx="2" fill="#ffffff"/><text x="380" y="305" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">NO</text>
+<!-- nodes -->
+<rect x="40" y="24" width="160" height="40" rx="20" fill="rgba(79,93,117,0.10)" stroke="#7a8399"/>
+<text x="120" y="48" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Bug to fix</text>
+<polygon points="40,124 120,84 200,124 120,164" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/>
+<text x="120" y="120" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Cause known,</text>
+<text x="120" y="136" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">repro cheap?</text>
+<text x="32" y="128" fill="#eb6c36" font-size="8" font-family="'Geist Mono', monospace" text-anchor="end" letter-spacing="0.08em">Q1</text>
+<rect x="40" y="204" width="160" height="56" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="120" y="228" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">diagnosing-bugs</text>
+<text x="120" y="244" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">phase 5 writes the test</text>
+<polygon points="280,124 360,84 440,124 360,164" fill="#ffffff" stroke="#2d3142"/>
+<text x="360" y="120" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Practical</text>
+<text x="360" y="136" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">failing test?</text>
+<rect x="480" y="100" width="160" height="48" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="560" y="120" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">BUG-FIX.md steps</text>
+<text x="560" y="136" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">right red · fix · green</text>
+<polygon points="280,244 360,204 440,244 360,284" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/>
+<text x="360" y="240" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Fallback seam</text>
+<text x="360" y="256" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">agreed?</text>
+<text x="272" y="248" fill="#eb6c36" font-size="8" font-family="'Geist Mono', monospace" text-anchor="end" letter-spacing="0.08em">Q2</text>
+<rect x="480" y="220" width="160" height="48" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="560" y="240" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Fallback check</text>
+<text x="560" y="256" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">reply: red evidence missing</text>
+<rect x="280" y="324" width="160" height="40" rx="20" fill="rgba(79,93,117,0.10)" stroke="#7a8399"/>
+<text x="360" y="340" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Stop the slice</text>
+<text x="360" y="356" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">report why red is missing</text>
+</svg><p class="cap">Q1 and Q2 as recommended. The coral diamonds are the two decisions this ticket makes.</p></div>
+
+<h3><span class="q">Q3</span>Where the imported content lives</h3>
+<p>Matt's tdd is reference that "applies on every cycle". pstack's steps apply only when fixing a bug, and features never reach them. writing-for-agents' branching test says: inline what every branch needs, and disclose behind a pointer what only some branches reach.</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Layout</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>A new <code>BUG-FIX.md</code> holds pstack steps 1–6 (including "confirm it fails for the intended reason"), the bug-only guardrails (a focused test, deterministic flaky bugs, the focused test lands before sibling coverage), and the evidence report. <code>SKILL.md</code> gets a pointer to it. The two general guardrails, "don't change tests merely to match a wrong implementation" and "don't weaken existing assertions", join <b>Rules of the loop</b>. The description gains one trigger: "regression test".</td><td>Feature runs don't load the bug material. The two general guardrails now protect feature work as well.</td></tr>
+<tr><td>B</td><td>Everything goes inline in <code>SKILL.md</code>.</td><td>One file to read. Every feature run carries the bug-only steps.</td></tr>
+</tbody></table></div>
+
+<!-- ============================ prototype ============================ -->
+<h2>prototype <span class="b b-merge">merge</span> · Q4–Q6</h2>
+<p>Settled already: Matt's text is the base. It gains a third branch for timing and behavior questions, a required observation step before handover, and a reply shape (variants, evidence, tradeoffs, recommendation, throwaway notice). It cites <code>skill://principle-exhaust-the-design-space</code>. Matt's location, capture, and planning rules win. The playbook's scratch isolation for UI, its "no planning" rule, and its Feature/architect handoff are dropped.</p>
+
+<div class="two">
+<div class="side"><p class="k">Matt · <a href="https://github.com/mattpocock/skills/blob/6acc160e4e0cd062dbbbd7a1b26ae92855edf07e/skills/engineering/prototype/SKILL.md">skills/engineering/prototype</a></p>
+<h4>Two branches, six shared rules</h4>
+<ul class="l"><li><b>LOGIC.md</b>: "free-play buttons plus tabbed guided walkthroughs" in one HTML file.</li><li><b>UI.md</b>: "several radically different UI variations on a single route".</li>
+<li>Rule 1: "Locate the prototype code close to where it will actually be used".</li><li>Rule 5: "Surface the state."</li><li>Rule 6: capture on a throwaway branch, with a context pointer on the issue.</li></ul></div>
+<div class="side"><p class="k">pstack · <a href="https://github.com/cursor/plugins/blob/12d587dfb20741cafc376c42c696c5f6e2a64487/pstack/skills/poteto-mode/playbooks/prototype.md">poteto-mode/playbooks/prototype.md</a></p>
+<h4>Pieces not yet placed</h4>
+<blockquote>For a behavioral or timing decision, the smallest script that exercises the question.</blockquote>
+<blockquote>Build throwaway in an isolated scratch dir, separate from production source.</blockquote>
+<blockquote>Gather references when the design space is open. Search for prior art, summarize a moodboard … Skip when the direction is set.</blockquote>
+<blockquote>The observation is the test here, not an assertion.</blockquote></div>
+</div>
+
+<h3><span class="q">Q4</span>The third branch: name and location</h3>
+<p>The new branch answers "what does it actually do, and how fast?" by running the smallest script that exercises the question. The overlap resolution said Matt's location rules win. The earlier explainer, though, kept pstack's scratch dir for this one script. This question settles which.</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Contract</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td><code>BEHAVIOR.md</code>. Matt's rule 1 applies to all three branches: the script sits next to the module it exercises and is named so it reads as a prototype. It is captured on a throwaway branch like the other branches.</td><td>One location rule. The script usually imports the real module, so it belongs next to it.</td></tr>
+<tr><td>B</td><td><code>BEHAVIOR.md</code>, but the script goes in an isolated scratch dir.</td><td>Production source stays clean while the script runs. It also creates a second location rule.</td></tr>
+<tr><td>C</td><td>Same as A, named <code>TIMING.md</code>.</td><td>The name leads with timing, but behavior questions are the more common case.</td></tr>
+</tbody></table></div>
+
+<h3><span class="q">Q5</span>What "observe before handover" requires</h3>
+<p>Matt's rule 5 has the <em>prototype</em> surface its state to the user. The imported step requires the <em>agent</em> to look at it before the user does.</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Contract</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>A new rule 7, "Observe before handover", covers all three branches. <b>UI</b>: screenshot each variant in the omp browser and drive the interaction. <b>LOGIC</b>: open the HTML, run each guided walkthrough, and check the state it renders. <b>BEHAVIOR</b>: run the script and capture its output or timing. The evidence goes into the reply.</td><td>A broken walkthrough or a blank variant never reaches the user.</td></tr>
+<tr><td>B</td><td>UI and BEHAVIOR only.</td><td>The user drives the LOGIC demo, so it is left unchecked. Less work, but a broken demo can reach the user.</td></tr>
+</tbody></table></div>
+
+<h3><span class="q">Q6</span>The moodboard step</h3>
+<p>The overlap resolution named three pieces to import. The moodboard (playbook step 2) was not one of them, and it was not listed as dropped either.</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Contract</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>Drop it.</td><td>UI.md already asks for "several radically different" variants, and the principle is cited. There is no web-research step inside prototype.</td></tr>
+<tr><td>B</td><td>Import it into UI.md as an optional step: when the visual direction is open, search for prior art and let the user pick directions before building.</td><td>Better start points for open visual questions, at the cost of one more step and a web search.</td></tr>
+</tbody></table></div>
+
+<div class="fig"><svg viewBox="0 0 768 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="proto-title proto-desc">
+<title id="proto-title">vstack prototype flow (Q4, Q5 recommended)</title>
+<desc id="proto-desc">prototype picks one of three branches, LOGIC, UI, or the new BEHAVIOR branch; every branch then passes the new observation step before the reply and the capture on a throwaway branch.</desc>
+<defs><marker id="proto-a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker></defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<path d="M140,108 H154 Q162,108 162,100 V68 Q162,60 170,60 H184" fill="none" stroke="#4f5d75" marker-end="url(#proto-a)"/>
+<line x1="140" y1="120" x2="184" y2="120" stroke="#4f5d75" marker-end="url(#proto-a)"/>
+<path d="M140,132 H154 Q162,132 162,140 V172 Q162,180 170,180 H184" fill="none" stroke="#4f5d75" marker-end="url(#proto-a)"/>
+<path d="M324,60 H340 Q348,60 348,68 V100 Q348,108 356,108 H372" fill="none" stroke="#4f5d75" marker-end="url(#proto-a)"/>
+<line x1="324" y1="120" x2="372" y2="120" stroke="#4f5d75" marker-end="url(#proto-a)"/>
+<path d="M324,180 H340 Q348,180 348,172 V140 Q348,132 356,132 H372" fill="none" stroke="#4f5d75" marker-end="url(#proto-a)"/>
+<line x1="492" y1="120" x2="524" y2="120" stroke="#4f5d75" marker-end="url(#proto-a)"/>
+<line x1="620" y1="120" x2="652" y2="120" stroke="#4f5d75" marker-end="url(#proto-a)"/>
+<rect x="20" y="96" width="120" height="48" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="80" y="116" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Pick a branch</text>
+<text x="80" y="132" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">from the question</text>
+<rect x="184" y="40" width="140" height="40" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="254" y="58" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">LOGIC.md</text>
+<text x="254" y="72" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">html state demo</text>
+<rect x="184" y="100" width="140" height="40" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="254" y="118" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">UI.md</text>
+<text x="254" y="132" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">variants on one route</text>
+<rect x="184" y="160" width="140" height="40" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/>
+<text x="254" y="178" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">BEHAVIOR.md</text>
+<text x="254" y="192" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">script: output, timing</text>
+<text x="254" y="216" fill="#eb6c36" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">NEW · Q4</text>
+<rect x="372" y="96" width="120" height="48" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/>
+<text x="432" y="116" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Observe</text>
+<text x="432" y="132" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">screenshot · run</text>
+<text x="432" y="160" fill="#eb6c36" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">NEW · Q5</text>
+<rect x="524" y="96" width="96" height="48" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="572" y="116" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Reply</text>
+<text x="572" y="132" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">evidence · rec</text>
+<rect x="652" y="96" width="96" height="48" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="700" y="116" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Capture</text>
+<text x="700" y="132" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">throwaway branch</text>
+</svg><p class="cap">The coral boxes are new. Reply and Capture keep Matt's order: the user's verdict comes between them.</p></div>
+
+<!-- ============================ codebase-design ============================ -->
+<h2>codebase-design <span class="b b-adapt">adapt</span> · Q7</h2>
+<p>Settled already: DESIGN-IT-TWICE's step 2 becomes a Fan-out block. With fan-out, 3+ design subagents run at once, one per brief. With inline, the agent writes each design itself. codebase-design also gains architect's four design red flags, reworded into codebase-design vocabulary. The name stays, so improve-codebase-architecture needs no rename.</p>
+<div class="two">
+<div class="side"><p class="k">Already in codebase-design</p><blockquote>A module is <b>deep</b> when a large amount of behaviour sits behind a small interface, <b>shallow</b> when the interface is nearly as complex as the implementation.</blockquote><blockquote>Use these terms exactly — don't substitute "component," "service," "API," or "boundary."</blockquote></div>
+<div class="side"><p class="k">pstack · <a href="https://github.com/cursor/plugins/blob/12d587dfb20741cafc376c42c696c5f6e2a64487/pstack/skills/architect/references/design-red-flags.md">design-red-flags.md</a></p><ul class="l"><li><b>Shallow module</b>: overlaps Depth, and adds its signs plus "Do not confuse a deep module with a deep call chain."</li><li><b>Information leakage</b>: new.</li><li><b>Temporal decomposition</b>: new.</li><li><b>Pass-through method</b>: close to the deletion test. It says "Keep a forwarding boundary only when…", which uses the banned word "boundary".</li></ul></div>
+</div>
+<h3><span class="q">Q7</span>Where the red flags go</h3>
+<div class="tw"><table><thead><tr><th>Option</th><th>Layout</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>A new <code>RED-FLAGS.md</code> in codebase-design vocabulary ("seam" and "interface" in place of "boundary"). The shallow-module entry keeps only its signs and the deep-call-chain note, and points at SKILL.md's Depth definition. "Going deeper" links it. DESIGN-IT-TWICE step 3 screens every design against it before comparing.</td><td>Depth keeps a single definition. The screen runs where designs are compared, and anyone doing a lookup can still reach it.</td></tr>
+<tr><td>B</td><td>Inline in <code>SKILL.md</code>.</td><td>It is always loaded and partly repeats Deep vs shallow.</td></tr>
+</tbody></table></div>
+
+<!-- ============================ architect ============================ -->
+<h2>architect <span class="b b-adapt">adapt</span> · Q8–Q10</h2>
+<p>Settled already: architect is its own skill that implements, while codebase-design is a reference. Ground runs how and why behind the judge gate. Sketch uses codebase-design's DESIGN-IT-TWICE and vocabulary instead of arena. compare-attempts runs only when the user explicitly asks. interrogate and model routing are dropped.</p>
+
+<h3><span class="q">Q8</span>Callers want a sketch; architect implements</h3>
+<p>Upstream, architect's default is: "proceed directly to implementation with the synthesized design. No human checkpoint." Three vstack skills call architect and implement the result themselves:</p>
+<ul class="l">
+<li><b>prune-comments</b> (<a href="https://github.com/cursor/plugins/blob/12d587dfb20741cafc376c42c696c5f6e2a64487/pstack/skills/no-comments/SKILL.md">no-comments</a> step 3): "run <code>/architect</code> once for the accepted set and surrounding code. Stop at the sketch. Architect shapes. Step 4 implements."</li>
+<li><b>refactor</b> (refactoring playbook step 3): "run the architect skill for parallel design exploration of the shape before the move."</li>
+<li><b>perf-issue</b> (step 3): "<code>architect</code> first. Delegate implementation to a subagent…"</li></ul>
+<div class="tw"><table><thead><tr><th>Option</th><th>Contract</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>Three named stops, picked by the caller's text or the user's words. <b>sketch</b>: return the design package with no code. <b>checkpoint</b>: show the design, wait for sign-off, then implement. <b>implement</b>: the default when the user invokes architect. prune-comments, refactor, and perf-issue say "architect, sketch only".</td><td>Each caller says what it wants. This replaces upstream's Phase C "Agree (opt-in)".</td></tr>
+<tr><td>B</td><td>A call from another skill stops at the sketch; a call from the user implements.</td><td>Callers say nothing, but architect has to work out who called it. Inside one session, that is not observable.</td></tr>
+<tr><td>C</td><td>prune-comments calls DESIGN-IT-TWICE instead.</td><td>Fixes one caller only. refactor and perf-issue still conflict.</td></tr>
+</tbody></table></div>
+
+<h3><span class="q">Q9</span>Who writes the code</h3>
+<p>Upstream architect writes the code in its own Phase D. vstack already has <code>implement</code>, which drives tdd at pre-agreed seams, closes with code-review, uses the project's verify skill, and settles the End state first.</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Contract</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>The Implement phase hands the design package to <code>implement</code> as its spec. The sketch's interfaces are the tdd seams. architect keeps Scrap: when implement's results show the friction pattern, the work goes back to Sketch.</td><td>No second implementation contract. architect inherits tdd, code-review, verify, and the End state. Cost: implement's End-state question and seam confirmation are a human touchpoint even without a checkpoint.</td></tr>
+<tr><td>B</td><td>architect writes the code itself into the working tree. It makes no commit and settles no End state.</td><td>Closest to upstream. No tdd, review, or verify runs unless the user starts them.</td></tr>
+<tr><td>C</td><td>architect writes the code itself, settles its own End state, and chains open-pr, babysit, and ship.</td><td>Duplicates implement's contract inside architect.</td></tr>
+</tbody></table></div>
+
+<h3><span class="q">Q10</span>The shape of Sketch</h3>
+<p>Upstream Sketch runs arena with <code>runner-prompt.md</code> as every runner's prompt, then synthesizes one package shaped by <code>rationale-template.md</code>. DESIGN-IT-TWICE gives 3+ briefs and ends by presenting the designs to the user. That ending doesn't fit architect's default, which has no checkpoint.</p>
+<blockquote>You are one of several runners, each on a different model. Produce the best design your model can make. — runner-prompt.md, last paragraph</blockquote>
+<div class="tw"><table><thead><tr><th>Option</th><th>Contract</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>Sketch runs DESIGN-IT-TWICE: 3+ briefs, judge-gated. Each brief carries the Ground artifacts and <code>design-brief.md</code>, which is runner-prompt.md without the different-model paragraph: usage first, data structures first, shared state, invariants in types, and short call chains. Every design is screened against RED-FLAGS.md. architect then synthesizes one package per <code>rationale-template.md</code> and writes the Synthesis decision itself. It presents only at the sketch or checkpoint stop. compare-attempts replaces DESIGN-IT-TWICE only when the user explicitly asks.</td><td>The design discipline survives. "At least two candidates" becomes DESIGN-IT-TWICE's 3+.</td></tr>
+<tr><td>B</td><td>The same, without the runner discipline.</td><td>Shorter. It loses usage-first and the other rules DESIGN-IT-TWICE doesn't state.</td></tr>
+</tbody></table></div>
+
+<div class="fig"><svg viewBox="0 0 800 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="arch-title arch-desc">
+<title id="arch-title">vstack architect phases (Q8–Q10 recommended)</title>
+<desc id="arch-desc">architect grounds with how and why, sketches through DESIGN-IT-TWICE, then either returns the design package at the sketch stop or, after an optional checkpoint, hands it to implement; friction during implementation sends the work back to Sketch.</desc>
+<defs><marker id="arch-a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker></defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<line x1="140" y1="64" x2="172" y2="64" stroke="#4f5d75" marker-end="url(#arch-a)"/>
+<line x1="312" y1="64" x2="344" y2="64" stroke="#4f5d75" marker-end="url(#arch-a)"/>
+<line x1="440" y1="64" x2="480" y2="64" stroke="#4f5d75" marker-end="url(#arch-a)"/>
+<line x1="392" y1="96" x2="392" y2="148" stroke="#4f5d75" marker-end="url(#arch-a)"/>
+<line x1="600" y1="64" x2="640" y2="64" stroke="#4f5d75" marker-end="url(#arch-a)"/>
+<line x1="712" y1="88" x2="712" y2="148" stroke="#4f5d75" stroke-dasharray="5,4" marker-end="url(#arch-a)"/>
+<path d="M712,188 V220 Q712,228 704,228 H250 Q242,228 242,220 V92" fill="none" stroke="#4f5d75" stroke-dasharray="5,4" marker-end="url(#arch-a)"/>
+<rect x="444" y="40" width="32" height="12" rx="2" fill="#ffffff"/><text x="460" y="49" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">NO</text>
+<rect x="400" y="116" width="80" height="12" rx="2" fill="#ffffff"/><text x="440" y="125" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">SKETCH ONLY</text>
+<rect x="720" y="112" width="68" height="12" rx="2" fill="#ffffff"/><text x="754" y="121" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">FRICTION</text>
+<rect x="436" y="208" width="80" height="12" rx="2" fill="#ffffff"/><text x="476" y="217" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">RE-SKETCH</text>
+<rect x="20" y="40" width="120" height="48" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="80" y="60" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Ground</text>
+<text x="80" y="76" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">how · why (gated)</text>
+<rect x="172" y="40" width="140" height="48" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="242" y="60" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Sketch</text>
+<text x="242" y="76" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">DESIGN-IT-TWICE · Q10</text>
+<polygon points="344,64 392,32 440,64 392,96" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/>
+<text x="392" y="68" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Stop?</text>
+<text x="392" y="24" fill="#eb6c36" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">Q8</text>
+<rect x="480" y="44" width="120" height="40" rx="6" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.20)" stroke-dasharray="4,3"/>
+<text x="540" y="62" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Checkpoint</text>
+<text x="540" y="76" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">only when asked</text>
+<rect x="640" y="40" width="144" height="48" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/>
+<text x="712" y="60" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">implement skill</text>
+<text x="712" y="76" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">tdd · review · End state</text>
+<text x="712" y="32" fill="#eb6c36" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">Q9</text>
+<rect x="332" y="148" width="120" height="40" rx="20" fill="rgba(79,93,117,0.10)" stroke="#7a8399"/>
+<text x="392" y="166" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Return package</text>
+<text x="392" y="180" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">to caller or user</text>
+<rect x="640" y="148" width="144" height="40" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="712" y="166" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Scrap</text>
+<text x="712" y="180" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">friction is a pattern</text>
+</svg><p class="cap">Recommended shape. Dashed lines are the Scrap loop. At the implement stop with no checkpoint, the flow goes straight from Stop? through to implement.</p></div>
+
+<!-- ============================ invocation ============================ -->
+<h2>Invocation · Q11</h2>
+<p>Upstream, both architect and pstack teach (now explain) set <code>disable-model-invocation: true</code>. The omp extension-points research found that omp treats that flag as <code>hide</code>. The principle-delivery prototype observed what that means: a hidden skill "shows up nowhere in the prompt, but the agent can still read it through <code>skill://name</code>". Callers such as prune-comments and refactor still reach architect, and the user can still invoke both skills. Matt's <code>teach</code> and <code>implement</code> are hidden too.</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Contract</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>Both hidden, as upstream. ask-vstack lists both.</td><td>The model cannot start architect, which implements, without an explicit call. explain doesn't compete with how and teach for every "explain X" prompt.</td></tr>
+<tr><td>B</td><td>architect hidden, explain listed.</td><td>explain is read-only, so listing it is harmless. It overlaps how's "how does X work" triggers.</td></tr>
+<tr><td>C</td><td>Both listed.</td><td>Best discoverability. The model can start architect on its own.</td></tr>
+</tbody></table></div>
+
+<!-- ============================ explain ============================ -->
+<h2>explain <span class="b b-adapt">adapt</span> · Q12</h2>
+<p>Settled already: pstack teach becomes <code>explain</code>. It explains existing code in conversation and keeps no course workspace. Its how/why step becomes a Fan-out block; with inline, the explain agent runs how and then why itself, and running only one of them for a small change stays allowed. It may produce artifacts that help the explanation, such as diagrams.</p>
+<h3><span class="q">Q12</span>Generated images in step 5</h3>
+<blockquote>When the idea is spatial, like layout, overlap, scroll position, or a before and after, reach for the image-generation tool and draw it marker-on-whiteboard style with a few short labels, since image models garble long text. — pstack teach step 5</blockquote>
+<p>omp's <code>generate_image</code> requires a ChatGPT or Codex login, so on some machines it is unavailable.</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Contract</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>Keep mermaid and generated images. When image generation is unavailable, build the picture up in mermaid or ASCII and say that the image was skipped.</td><td>Spatial ideas get a real picture where possible, and the skill never stalls.</td></tr>
+<tr><td>B</td><td>Mermaid only.</td><td>Always available. Layout and overlap ideas land worse.</td></tr>
+</tbody></table></div>
+
+<!-- ============================ code-review ============================ -->
+<h2>code-review <span class="b b-adapt">adapt</span> · Q13–Q15</h2>
+<p>Settled already: code-review names setup-vstack. It gains a conditional <code>## Safety</code> axis from blast-radius. The axis runs when the user asks, or when the diff changes a contract across a boundary (public interface, schema or persisted data, config or flag, dependency version, lifecycle and ordering). The judge picks fan-out or inline for the review step. Axes are never merged or re-ranked.</p>
+
+<h3><span class="q">Q13</span>Final Safety trigger list, and who applies it</h3>
+<p>Draft wording. The axis runs when:</p>
+<ol style="margin:0 0 .75rem 1.5rem;max-width:80ch">
+<li>the user asks for safety or blast radius; or the diff changes something that code <b>outside the diff</b> depends on:</li>
+<li><b>Public interface</b>: an exported symbol, endpoint, CLI command or flag, or event is changed or removed.</li>
+<li><b>Persisted or wire data</b>: a schema, migration, serialized format, stored key, or API payload.</li>
+<li><b>Configuration</b>: a config key, env var, feature flag, or default.</li>
+<li><b>Dependencies</b>: a dependency is added, removed, or bumped; a lockfile changes; a local patch is added or changed.</li>
+<li><b>Lifecycle or ordering</b>: init or teardown order, async timing, concurrency, or cache invalidation.</li></ol>
+<p>"Outside the diff" replaces "across a boundary", so code-review doesn't take on a word codebase-design bans.</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Who applies it</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>The code-review agent checks the list after step 1, when the diff is pinned. The summary names the trigger that fired, or says "Safety: not triggered". The user's words override either way ("skip safety" / "check safety").</td><td>Deterministic and visible. No extra classifier call.</td></tr>
+<tr><td>B</td><td>The eval judge decides, with the list as its rubric.</td><td>One more classifier call per review, and harder to predict.</td></tr>
+</tbody></table></div>
+
+<h3><span class="q">Q14</span>What the Safety reviewer runs and returns</h3>
+<p>Matt pastes each brief into the subagent's prompt because "the sub-agent has no other access to it". A vstack subagent can read <code>skill://blast-radius</code> itself. blast-radius step 6 ("For a big or wide change, run it as an <code>arena</code>") becomes compare-attempts in vstack, and only when the user explicitly asks.</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Contract</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>The Safety prompt gives the pinned diff command and commit list, and says: run <code>skill://blast-radius</code> on this diff, skip step 6. It returns blast-radius's hand-back (what it does, the one fact it's safe because of, risks, cleared, before you merge) in under 400 words, plus the proof script and its output. The aggregate adds <code>## Safety</code> after <code>## Spec</code>. The summary line adds the Safety count, the worst Safety risk, and whether the safety fact is proven or unproven.</td><td>blast-radius stays the single source of truth. The word limit matches the other axes.</td></tr>
+<tr><td>B</td><td>code-review pastes a condensed brief built from the blast-radius steps.</td><td>Matt's style, but blast-radius's method then lives in two places, and an Update has to keep both in step.</td></tr>
+</tbody></table></div>
+
+<h3><span class="q">Q15</span>Only one axis left</h3>
+<p>Matt already allows this case: "If the spec is missing, skip the Spec sub-agent." If Safety is not triggered either, only Standards is left. ADR 0004: "A single subagent … is not Fan-out and always runs as written."</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Contract</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>The remaining reviewer runs as one subagent, as Matt writes it. The Fan-out block applies only when 2 or 3 axes run.</td><td>Keeps the clean context. No judge call.</td></tr>
+<tr><td>B</td><td>The code-review agent reviews that axis itself.</td><td>Cheaper, but it differs from Matt's isolation.</td></tr>
+</tbody></table></div>
+
+<div class="fig"><svg viewBox="0 0 880 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="cr-title cr-desc">
+<title id="cr-title">vstack code-review with the Safety axis (Q13–Q15)</title>
+<desc id="cr-desc">After pinning the diff, spec, and standards, code-review checks the Safety triggers; with two or three axes, the judge picks fan-out with one reviewer per axis or inline review by the code-review agent, and the results are aggregated under separate headings.</desc>
+<defs><marker id="cr-a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker></defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<line x1="160" y1="136" x2="184" y2="136" stroke="#4f5d75" marker-end="url(#cr-a)"/>
+<line x1="296" y1="136" x2="352" y2="136" stroke="#4f5d75" marker-end="url(#cr-a)"/>
+<path d="M240,172 V204 Q240,212 248,212 H404 Q412,212 412,204 V164" fill="none" stroke="#4f5d75" marker-end="url(#cr-a)"/>
+<path d="M472,124 H484 Q492,124 492,116 V88 Q492,80 500,80 H524" fill="none" stroke="#4f5d75" marker-end="url(#cr-a)"/>
+<path d="M472,148 H484 Q492,148 492,156 V184 Q492,192 500,192 H524" fill="none" stroke="#4f5d75" marker-end="url(#cr-a)"/>
+<path d="M664,80 H680 Q688,80 688,88 V116 Q688,124 696,124 H708" fill="none" stroke="#4f5d75" marker-end="url(#cr-a)"/>
+<path d="M664,192 H680 Q688,192 688,184 V156 Q688,148 696,148 H708" fill="none" stroke="#4f5d75" marker-end="url(#cr-a)"/>
+<rect x="300" y="112" width="48" height="12" rx="2" fill="#ffffff"/><text x="324" y="121" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">+SAFETY</text>
+<rect x="288" y="220" width="80" height="12" rx="2" fill="#ffffff"/><text x="328" y="229" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">NOT TRIGGERED</text>
+<rect x="20" y="112" width="140" height="48" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="90" y="132" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Steps 1–3</text>
+<text x="90" y="148" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">diff · spec · standards</text>
+<polygon points="184,136 240,100 296,136 240,172" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/>
+<text x="240" y="132" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Safety</text>
+<text x="240" y="148" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">trigger?</text>
+<text x="240" y="92" fill="#eb6c36" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">Q13</text>
+<rect x="352" y="112" width="120" height="48" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="412" y="132" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Judge gate</text>
+<text x="412" y="148" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">2+ axes · Q15</text>
+<rect x="524" y="56" width="140" height="48" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="594" y="76" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Fan-out</text>
+<text x="594" y="92" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">one reviewer per axis</text>
+<rect x="524" y="168" width="140" height="48" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="594" y="188" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Inline</text>
+<text x="594" y="204" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">code-review agent itself</text>
+<rect x="708" y="112" width="160" height="48" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/>
+<text x="788" y="132" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Aggregate</text>
+<text x="788" y="148" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">standards · spec · safety</text>
+<text x="788" y="104" fill="#eb6c36" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.08em">Q14</text>
+</svg><p class="cap">The Safety reviewer runs blast-radius (Q14). With only one axis left, that reviewer runs as a single subagent and no judge runs (Q15).</p></div>
+
+<!-- ============================ outline ============================ -->
+<h2>What the contracts look like if every recommendation is accepted</h2>
+<div class="tw"><table><thead><tr><th>Skill</th><th>Files</th><th>Imported</th><th>Dropped</th><th>Fan-out points</th></tr></thead><tbody>
+<tr><td><b>tdd</b> <span class="b b-merge">merge</span></td><td><code>SKILL.md</code> (routing line, pointer, two guardrails, "regression test" trigger) · new <code>BUG-FIX.md</code> · <code>tests.md</code>, <code>mocking.md</code> unchanged</td><td>Bug steps 1–6, guardrails, evidence report, fallback through an agreed seam</td><td>Integration skip, <code>disable-model-invocation</code></td><td>None</td></tr>
+<tr><td><b>prototype</b> <span class="b b-merge">merge</span></td><td><code>SKILL.md</code> (third branch, rule 7, reply shape, principle cite, description trigger) · new <code>BEHAVIOR.md</code> · <code>LOGIC.md</code>, <code>UI.md</code> unchanged</td><td>Timing/behavior branch, observation, reply shape</td><td>Scratch dir, "no planning", Feature/architect handoff, moodboard</td><td>None</td></tr>
+<tr><td><b>codebase-design</b> <span class="b b-adapt">adapt</span></td><td><code>SKILL.md</code> ("Going deeper" pointers) · <code>DESIGN-IT-TWICE.md</code> (step 2 block, step 3 screen) · new <code>RED-FLAGS.md</code> · <code>DEEPENING.md</code> unchanged</td><td>Four red flags, reworded</td><td>"Spawn 3+ sub-agents in parallel" as an unconditional step</td><td>DESIGN-IT-TWICE step 2: 3–4 design subagents</td></tr>
+<tr><td><b>architect</b> <span class="b b-adapt">adapt</span></td><td><code>SKILL.md</code> (Ground, Sketch, Stop, Implement via implement, Scrap) · <code>references/rationale-template.md</code> · <code>references/design-brief.md</code> (from runner-prompt)</td><td>Uses codebase-design's DESIGN-IT-TWICE, RED-FLAGS, and vocabulary</td><td>arena, model routing, <code>pstack-models.mdc</code>, interrogate, <code>design-red-flags.md</code> (moved)</td><td>Ground: how and why at once (when both run) · Sketch: through DESIGN-IT-TWICE · compare-attempts only when asked</td></tr>
+<tr><td><b>explain</b> <span class="b b-adapt">adapt</span></td><td><code>SKILL.md</code> (renamed from teach, new description, step 2 block, step 5 image fallback)</td><td>—</td><td>"Run them in parallel" as unconditional</td><td>Step 2: how and why at once (when both run)</td></tr>
+<tr><td><b>code-review</b> <span class="b b-adapt">adapt</span></td><td><code>SKILL.md</code> (description, setup-vstack, trigger list, step 4 block over 2–3 axes, Safety prompt, aggregate, "Why separate axes")</td><td>Safety axis via blast-radius</td><td>"Runs both reviews in parallel sub-agents" as unconditional</td><td>Step 4: Standards, Spec, Safety reviewers</td></tr>
+</tbody></table></div>
+<p>The Fan-out column feeds the roster fog on the map. The subagent roles are: design subagent, how runner, why runner, and Standards, Spec, and Safety reviewer. how and why nest their own Fan-out, and each nested level runs its own judgment (ADR 0004).</p>
+
+<div class="footer"><span>Sources: Matt v1.2.3 = 6acc160e (tdd, diagnosing-bugs, prototype, codebase-design, code-review, implement, teach) · pstack 12d587df (tdd, poteto-mode/playbooks/prototype.md, refactoring.md, perf-issue.md, architect + references, teach, blast-radius, no-comments) · vstack ADR 0001, ADR 0004, issues #34, #36, #42, research/omp-extension-points</span><span>throwaway branch assets/overlap-contracts · 2026-09-30</span></div>
+</div></body></html>
