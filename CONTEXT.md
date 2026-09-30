@@ -1,6 +1,6 @@
 # vstack
 
-vstack is a personal agent-skills pack for omp. It is built on Matt Pocock's skills and adds selected pstack skills, principles, and workflows, and it can be updated from both sources.
+vstack is a personal agent-skills pack for omp. It is built on Matt Pocock's skills and adds selected pstack skills, principles, and playbooks, and it can be updated from both sources.
 
 ## Language
 
@@ -19,8 +19,12 @@ The Upstream that vstack adds selectively from: poteto's pstack at `cursor/plugi
 _Avoid_: pstack fork, plugin
 
 **Upstream item**:
-One skill, principle, or workflow published by an Upstream.
-_Avoid_: upstream skill (when principles or workflows are meant too)
+One skill, principle, or playbook published by an Upstream.
+_Avoid_: upstream skill (when principles or playbooks are meant too)
+
+**Playbook**:
+A pstack recipe for one type of task, such as Shipping or Perf issue: an ordered list of steps that calls skills. Upstream, it lives under poteto-mode and runs only through poteto-mode's router. In vstack, a playbook that joins ships as its own skill.
+_Avoid_: workflow (when a pstack playbook is meant), recipe
 
 **Pin**:
 The exact Upstream version vstack was last reconciled with: a release tag for the Base upstream, a full commit SHA for the Enhancement upstream.
@@ -61,6 +65,10 @@ _Avoid_: swarm, parallelism (unqualified)
 **Update**:
 The confirmed process of moving one or both Pins forward and adapting vstack to the Upstream changes.
 _Avoid_: sync, upgrade
+
+**End state**:
+How far a flow that produces a commit goes before it stops: commit, PR opened, merge-ready, or shipped. The flow settles it once, before it starts.
+_Avoid_: goal, target, finish line
 
 **Migration**:
 Moving a project or a machine that is set up for the Base upstream onto vstack.
