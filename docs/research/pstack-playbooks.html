@@ -134,8 +134,18 @@ td.win{background:var(--tint)}
 <div class="flow"><span>grill-with-docs</span><i>→</i><span>to-spec</span><i>→</i><span>to-tickets</span><i>→</i><span>implement (tdd, code-review, commit)</span><i>→</i><span class="new">open-pr</span><i>→</i><span class="new">babysit</span><i>→</i><span class="new">ship</span></div>
 <div class="flow"><span>diagnosing-bugs</span><i>→</i><span class="new">perf-issue</span><i>·</i><span class="new">forensics</span><i>·</i><span class="new">hillclimb?</span></div>
 <div class="flow"><span>improve-codebase-architecture / code-review findings</span><i>→</i><span class="new">refactor</span></div>
-<p class="note">Open point from your answer to Q3 ("ask flow ends goal everytime"): where the chain stops after <code>implement</code> is asked in the next round, since it decides whether implement stays byte-identical.</p>
+<p class="note">Settled after this explainer: the End state (commit, PR opened, merge-ready, or shipped) is asked once, up front, by implement, perf-issue, refactor, and hillclimb; if nobody answers, the flow stops at commit.</p>
 <p class="note">Risk to watch: Matt <code>main</code> (past the v1.2.3 Pin) already has a <code>pr</code> skill. If a later Matt release ships it, the next Update has to reconcile it with <code>open-pr</code>.</p>
+
+<h3>Skill chains (added after the session)</h3>
+<div class="tw"><table>
+<thead><tr><th>Chain</th><th>Where it plugs in</th></tr></thead>
+<tbody>
+<tr><td class="name">setup-app-verification → maintain-app-verification</td><td>setup-app-verification runs once per project (listed by ask-vstack, mentioned by setup-vstack). When the project has a verify skill, implement, perf-issue, forensics, refactor, hillclimb, and ship's verifiers use it for live proof; when it has none, they say so. maintain-app-verification runs on request or when a verify step fails because of drift.</td></tr>
+<tr><td class="name">session-lessons</td><td>Standalone and on request only.</td></tr>
+<tr><td class="name">decision-trail</td><td>hillclimb always logs to it. It also starts automatically when the End state is merge-ready or shipped, or when the user steps away.</td></tr>
+<tr><td class="name">how → architect, blast-radius</td><td>Placed by the overlap ticket: architect runs Ground with how and why, and blast-radius feeds code-review's Safety axis and open-pr's Blast Radius section.</td></tr>
+</tbody></table></div>
 
 <div class="footer"><span>vstack · ticket #34 · explainer</span><span>pstack 12d587d · Matt v1.2.3 · 2026-09-30</span></div>
 </div></body></html>
