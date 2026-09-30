@@ -214,10 +214,10 @@ tr.pick td{background:var(--tint)}
 <div class="tw"><table><thead><tr><th>Topic</th><th>Matt</th><th>pstack</th></tr></thead><tbody>
 <tr><td>Practice</td><td>"Interactive lessons, using quizzes"</td><td>"No quizzes. No pacing theater."</td></tr>
 <tr><td>Goal discovery</td><td>"your first job should be to question the user on why"</td><td>Goals "read from the conversation, not quizzed out of them"</td></tr>
-<tr><td>Output</td><td>Files: lessons, references, learning records</td><td>No files; "not that you change anything"</td></tr>
+<tr><td>State kept</td><td>A persistent course workspace: mission, lessons, references, learning records</td><td>None required. It may produce artifacts that help the explanation, including generated diagrams for spatial ideas; "not that you change anything" means the code under explanation is left alone</td></tr>
 <tr><td>Subject</td><td>Anything</td><td>A codebase, a change, a subsystem</td></tr>
 </tbody></table></div>
-<p>Each row is a direct contradiction. A single skill could only hold both by switching the rules per mode.</p>
+<p>Practice and goal discovery directly contradict. State and subject differ in scope: Matt's teach runs a stateful course on any topic, while pstack's explains one piece of code with no course workspace. A single skill could only hold both by switching the rules per mode.</p>
 <h3>Options</h3>
 <div class="tw"><table><thead><tr><th>Option</th><th>Shape</th><th>Effect</th></tr></thead><tbody>
 <tr class="pick"><td><b>A</b> (recommended)</td><td>Two skills. Matt's <code>teach</code> is <span class="b b-adopt">adopt</span> byte-for-byte. pstack's teach becomes <code>explain</code> (<span class="b b-adapt">adapt</span>). Its how/why step follows ADR 0004: with fan-out, both run as concurrent subagents; with inline, the explain agent runs how and then why itself. Running only one of them for a small change stays allowed.</td><td>Both are explicit-invocation only, so the name routes the user. No cascade: only ask-matt names teach, and it is already adapt as ask-vstack. Name alternatives: <code>explain-code</code>, <code>walkthrough</code>.</td></tr>
