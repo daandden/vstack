@@ -1,0 +1,20 @@
+# Principles are hidden skills selected per prompt by jev
+
+Each adopted pstack principle stays a hidden skill (`disable-model-invocation: true`) that maps 1:1 to its Upstream item, and no principle text sits in the system prompt. An omp extension that ships in the vstack plugin handles `before_agent_start` in the main session. It sends the user's prompt to TypeSafe jev (`jev-latest`) through `POST /v1/systemone`, with one `noul` question per principle, written in auto-thinking's style: "judge the inherent task, not its phrasing; if torn, answer no", with true/false criteria. Every principle scoring 0.75 or higher that hasn't already been injected this session is added as one hidden message pointing at `skill://principle-<name>`, which tells the agent to ignore it if it doesn't fit. Skill steps still cite principles as `skill://principle-<name>`. We chose this design because a principle list the agent sees on every turn, or re-reads whenever a trigger fires, pulls the agent off course over a session. We also chose it because many pstack triggers are broad or already covered by omp's harness prompt, so no hand-curated list stayed both small and useful.
+
+## Considered Options
+
+- **Visible principle skills**: omp's smol model rewrites each description to 12 words or fewer. That dropped the action from several triggers, and when compression failed, the description was cut off.
+- **Always-on index rule**, either full or limited by two gates (a specific trigger, and not already covered by the harness): the gates needed curating at every Update, and even a small index sits in the prompt on every turn. This was recorded first and then superseded in the same ticket.
+- **Judged TTSR rules** (`question` rules): they judge every output and re-inject reminders all session, which is exactly the drift we're avoiding. They also need `ttsr.enabled` turned on.
+- **A selection skill behind a one-line pointer rule**: it depends on the agent following the pointer. The extension fires before the first output.
+- **Citations only**, as pstack does outside poteto-mode: plain sessions would never see any principle.
+
+## Consequences
+
+- vstack ships TypeScript. The extension uses only the public extension API (`ctx.modelRegistry.find("typesafe", "jev-latest")`, `getApiKey`) and TypeSafe's public HTTP API, not omp internals.
+- When the judge isn't native jev (no TypeSafe credentials, or a failure or timeout), selection is skipped and the turn goes on without it: chat-model judges answer only 0 or 1, so the threshold means nothing there.
+- The judge sees only the current prompt, cleaned the same way as auto-thinking. A bare follow-up such as "still failing" can miss principles that the conversation would have revealed.
+- Subagent sessions are skipped. A vstack skill that writes a subagent brief names the principles that govern that role, the way pstack's architect runner prompt does.
+- The judge runs on its own classifier model, which ADR 0004 allows.
+- `jev-latest` moves with new releases, and scores can shift with it. `vstack update` re-runs a stored set of sample prompts to check which principles get selected.
