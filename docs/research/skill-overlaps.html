@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Overlapping Matt and pstack skills: explainer</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--paper:#f5f5f5;--paper2:#ececec;--ink:#2d3142;--muted:#4f5d75;--soft:#7a8399;--rule:rgba(45,49,66,0.12);--accent:#eb6c36;--tint:rgba(235,108,54,0.08);--link:#2e5aa8;--sans:'Geist',system-ui,sans-serif;--serif:'Instrument Serif','Times New Roman',serif;--mono:'Geist Mono',ui-monospace,Menlo,monospace}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);padding:3rem 2rem;line-height:1.55;font-size:15px}
+.container{max-width:1160px;margin:0 auto}
+.eyebrow{font-family:var(--mono);font-size:.66rem;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem}
+h1{font-family:var(--serif);font-weight:400;font-size:clamp(1.75rem,3vw + 1rem,2.5rem);letter-spacing:-.02em;line-height:1.1;margin-bottom:.5rem}
+h2{font-family:var(--serif);font-weight:400;font-size:1.75rem;margin:3rem 0 .75rem;padding-top:1.5rem;border-top:1px solid var(--rule)}
+h3{font-size:1rem;font-weight:600;margin:1.5rem 0 .6rem}
+.subtitle{color:var(--muted);max-width:78ch}
+p{max-width:80ch;margin-bottom:.75rem}
+ul.l{margin:0 0 .75rem 1.25rem;max-width:80ch} ul.l li{margin-bottom:.3rem}
+a{color:var(--link);text-decoration:none} a:hover{text-decoration:underline}
+code{font-family:var(--mono);font-size:.82em;background:rgba(45,49,66,0.06);padding:.05em .3em;border-radius:3px}
+a code{color:var(--link)}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:1.5rem}
+.card{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:1.1rem 1.25rem;font-size:.9rem}
+.card h4{font-size:.875rem;margin-bottom:.4rem}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1rem 0}
+.side{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:1rem 1.2rem;font-size:.88rem}
+.side h4{font-size:.9rem;margin-bottom:.35rem}
+.side ol{margin:.4rem 0 .4rem 1.2rem} .side li{margin-bottom:.2rem}
+blockquote{border-left:2px solid var(--soft);padding:.2rem .7rem;margin:.5rem 0;color:var(--muted);font-size:.86rem;font-style:italic}
+.fig{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:1rem;margin:1rem 0}
+.fig svg{width:100%;max-width:640px;display:block;margin:0 auto}
+.fig .cap{font-size:.8rem;color:var(--soft);text-align:center;margin-top:.5rem}
+.rec{background:var(--tint);border-left:3px solid var(--accent);padding:.8rem 1rem;margin:1rem 0;border-radius:0 6px 6px 0;max-width:none}
+.rec p{margin-bottom:.4rem}
+.tw{overflow-x:auto;background:#fff;border:1px solid var(--rule);border-radius:6px;margin:1rem 0}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th{font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--soft);text-align:left;padding:.6rem .75rem;border-bottom:1px solid var(--rule);background:var(--paper2)}
+td{padding:.6rem .75rem;border-bottom:1px solid rgba(45,49,66,0.07);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr.pick td{background:var(--tint)}
+.fig .cap{font-size:.8rem;color:var(--soft);text-align:center;margin:.5rem auto 0;max-width:none}
+.b{font-family:var(--mono);font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;padding:.1rem .4rem;border-radius:3px;border:1px solid;white-space:nowrap}
+.b-adopt{color:#2d6a4f;border-color:rgba(45,106,79,.4);background:rgba(45,106,79,.06)}
+.b-adapt{color:var(--link);border-color:rgba(46,90,168,.4);background:rgba(46,90,168,.06)}
+.b-merge{color:var(--muted);border-color:rgba(79,93,117,.4);background:rgba(79,93,117,.08)}
+.b-reject{color:#9b2c2c;border-color:rgba(155,44,44,.35);background:rgba(155,44,44,.05)}
+.k{font-family:var(--mono);font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--soft)}
+.footer{margin-top:3rem;padding-top:1.25rem;border-top:1px solid var(--rule);font-family:var(--mono);font-size:.72rem;color:var(--soft);display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem}
+@media (max-width:860px){.cards,.two{grid-template-columns:1fr}}
+</style></head><body><div class="container">
+
+<div class="header">
+<p class="eyebrow">vstack · wayfinder ticket · Matt v1.2.3 (6acc160e) · pstack 12d587df</p>
+<h1>How the overlapping Matt and pstack skills combine</h1>
+<p class="subtitle">Explainer for <a href="https://github.com/daandden/vstack/issues/36">Decide how overlapping Matt and pstack skills merge</a>, part of the map <a href="https://github.com/daandden/vstack/issues/26">vstack: Matt Pocock skills plus pstack enhancements for omp</a>. Every quote is taken from the pinned upstream text. Q1 is settled. Q2 to Q7 are open and each ends with a recommendation.</p>
+</div>
+
+<div class="cards">
+<div class="card"><p class="eyebrow">Settled · Q1</p><h4>Real merges keep the Matt name and base</h4><p>When two items really merge, Matt's text is the base and pstack content is imported into it. The pstack row gets <span class="b b-merge">merge</span> and points at the Matt-named skill.</p></div>
+<div class="card"><p class="eyebrow">Rule · ADR 0004</p><h4>Fan-out in every option below</h4><p>At a step that would run 2+ subagents, the eval <code>judge</code> chooses. With <b>fan-out</b>, the subagents run <em>at the same time</em>. With <b>inline</b>, the agent at that step does the work <em>itself</em>, with no subagents. Running the subagents one after another is <b>rejected</b> (ADR 0004). The user's words override the judge.</p></div>
+<div class="card"><p class="eyebrow">Rule · ADR 0001</p><h4>The rename cascade</h4><p>Adopt means byte-identical. If vstack renames a skill, every adopt skill that names it becomes adapt. implement names <code>/tdd</code> and <code>/code-review</code>. improve-codebase-architecture names <code>/codebase-design</code> three times.</p></div>
+</div>
+
+<h2>The six questions at a glance</h2>
+<p>The ticket assumed four real pairs. Reading the pinned text shows two of them are <b>different jobs that share a name or a topic</b>. That changes the question for those pairs from "which is the base" to "should they merge at all".</p>
+<div class="tw"><table><thead><tr><th>Q</th><th>Pair</th><th>What they really are</th><th>Recommendation</th><th>Register rows</th></tr></thead><tbody>
+<tr><td>Q2</td><td>tdd · tdd</td><td><b>Real overlap.</b> Matt: general test-first. pstack: bug regression.</td><td>Merge into Matt <code>tdd</code>; import pstack's bug workflow, guardrails, and evidence report</td><td>tdd (Matt) <span class="b b-merge">merge</span> · tdd (pstack) <span class="b b-merge">merge</span></td></tr>
+<tr><td>Q3</td><td>codebase-design · architect</td><td><b>Different jobs.</b> Reference vocabulary vs a workflow that implements.</td><td>Two skills; architect uses codebase-design</td><td>codebase-design <span class="b b-adapt">adapt</span> · architect <span class="b b-adapt">adapt</span></td></tr>
+<tr><td>Q4</td><td>prototype · prototype playbook</td><td><b>Real overlap.</b> Same job; the playbook only runs inside poteto-mode.</td><td>Merge into Matt <code>prototype</code>; import three pieces</td><td>prototype <span class="b b-merge">merge</span> · playbook <span class="b b-merge">merge</span> (row owned by the workflows ticket)</td></tr>
+<tr><td>Q5</td><td>teach · teach</td><td><b>Different jobs.</b> A multi-session course vs explaining code.</td><td>Two skills; pstack's becomes <code>explain</code></td><td>teach (Matt) <span class="b b-adopt">adopt</span> · teach (pstack) <span class="b b-adapt">adapt</span> → explain</td></tr>
+<tr><td>Q6</td><td>research</td><td><b>No pair.</b> Different output from how and why.</td><td>Adopt unchanged</td><td>research <span class="b b-adopt">adopt</span></td></tr>
+<tr><td>Q7</td><td>code-review → blast-radius</td><td><b>Complement.</b> Different axis, beyond the diff.</td><td>Conditional third Safety axis</td><td>code-review <span class="b b-adapt">adapt</span> · blast-radius <span class="b b-adapt">adapt</span> (both unchanged)</td></tr>
+</tbody></table></div>
+
+<!-- ============================ Q2 ============================ -->
+<h2>Q2 · tdd and tdd</h2>
+<div class="two">
+<div class="side"><p class="k">Matt · <a href="https://github.com/mattpocock/skills/blob/6acc160e4e0cd062dbbbd7a1b26ae92855edf07e/skills/engineering/tdd/SKILL.md">skills/engineering/tdd</a></p>
+<h4>A reference for writing tests worth keeping</h4>
+<blockquote>This skill is the reference that makes that loop produce tests worth keeping: what a good test is, where tests go, the anti-patterns, and the rules of the loop.</blockquote>
+<ul class="l"><li><b>Seams agreed first:</b> "No test is written at an unconfirmed seam."</li>
+<li>Anti-patterns: implementation-coupled, tautological, horizontal slicing.</li>
+<li>Loop: red before green, one slice at a time; refactoring goes to <code>code-review</code>.</li>
+<li>Supporting files: <code>tests.md</code>, <code>mocking.md</code>.</li>
+<li>Covers features <em>and</em> bugs; the description includes "wants integration tests".</li></ul></div>
+<div class="side"><p class="k">pstack · <a href="https://github.com/cursor/plugins/blob/12d587dfb20741cafc376c42c696c5f6e2a64487/pstack/skills/tdd/SKILL.md">pstack/skills/tdd</a></p>
+<h4>A workflow for fixing one bug</h4>
+<blockquote>When fixing a bug with a clear, cheap test path, make the broken behavior executable before changing production code.</blockquote>
+<ol><li>Understand the bug; smallest observable reproduction.</li><li>Choose the narrowest executable check.</li><li>Write the failing test first.</li><li><b>Run it and confirm it fails for the intended reason.</b></li><li>Smallest fix that preserves nearby contracts.</li><li>Rerun.</li></ol>
+<p>It also has guardrails and a <b>Final Response</b> that names the failing-before and passing-after evidence.</p></div>
+</div>
+
+<h3>Where they conflict</h3>
+<div class="tw"><table><thead><tr><th>Topic</th><th>Matt</th><th>pstack</th></tr></thead><tbody>
+<tr><td>Integration tests</td><td>Serves them: "wants integration tests".</td><td>"Skip when the test path is … integration-heavy."</td></tr>
+<tr><td>Red before green</td><td>Absolute: "Write the failing test first."</td><td>"Prefer no new test over a bad test", and when a failing test is impractical, use "a targeted script, manual reproduction command, browser automation…"</td></tr>
+<tr><td>Where tests go</td><td>Only at seams confirmed with the user.</td><td>"the closest unit, component, integration, or regression test already used", chosen without confirmation.</td></tr>
+<tr><td>Invocation</td><td>The model can invoke it.</td><td><code>disable-model-invocation: true</code></td></tr>
+</tbody></table></div>
+
+<h3>What pstack adds that Matt lacks</h3>
+<ul class="l"><li><b>Confirm the red is the right red</b>: "If it passes or fails for an unrelated reason, correct the test or reproduction before editing the implementation."</li>
+<li><b>Guardrails</b>: don't change tests to match a wrong implementation, don't weaken assertions, make flaky bugs deterministic, avoid fixture churn.</li>
+<li><b>Evidence in the reply</b>: name the failing-before check and its failure, and the passing-after run.</li></ul>
+
+<h3>Options</h3>
+<div class="tw"><table><thead><tr><th>Option</th><th>What ships as <code>tdd</code></th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>Matt's text plus a <b>Fixing a bug</b> section (pstack steps 1–6), the guardrails, and the evidence report. The impractical-test fallback is allowed only through an agreed seam, and the reply must say the red evidence is missing. The integration skip and the invocation flag are dropped.</td><td>Bug fixes get proof in the reply. Red before green has one explicit, reported exception.</td></tr>
+<tr><td><b>B</b></td><td>Same as A, without the fallback.</td><td>Red before green stays absolute. A bug with no practical test has no path inside tdd; the principle <code>prove-it-works</code> still covers it.</td></tr>
+<tr><td><b>C</b></td><td>Matt byte-for-byte; pstack's tdd is rejected.</td><td>Easiest Update. The bug-proof discipline is lost.</td></tr>
+</tbody></table></div>
+<div class="rec"><p><b>Recommend A.</b> The name stays <code>tdd</code>, so implement ("Use /tdd where possible, at pre-agreed seams") stays <span class="b b-adopt">adopt</span>. What pstack adds is proof, and it does not replace Matt's rules for test quality. B is the stricter choice if a reported exception to red-before-green feels like a loophole.</p></div>
+
+<!-- ============================ Q3 ============================ -->
+<h2>Q3 · codebase-design and architect</h2>
+<div class="two">
+<div class="side"><p class="k">Matt · <a href="https://github.com/mattpocock/skills/tree/6acc160e4e0cd062dbbbd7a1b26ae92855edf07e/skills/engineering/codebase-design">skills/engineering/codebase-design</a></p>
+<h4>Shared vocabulary; a reference, not a session</h4>
+<blockquote>Shared vocabulary for designing deep modules. Use when … another skill needs the deep-module vocabulary.</blockquote>
+<ul class="l"><li>Glossary: module, interface, depth, seam, adapter, leverage, locality. "don't substitute 'component,' 'service,' 'API,' or 'boundary.'"</li>
+<li><code>DEEPENING.md</code>: dependency categories and seam discipline.</li>
+<li><code>DESIGN-IT-TWICE.md</code>: "Spawn 3+ sub-agents in parallel", one brief each (minimize, flexibility, common caller, ports and adapters), then compare and recommend.</li></ul>
+<p>tdd calls it "a reference to consult, not a session to run". improve-codebase-architecture runs it for vocabulary and for design-it-twice.</p></div>
+<div class="side"><p class="k">pstack · <a href="https://github.com/cursor/plugins/blob/12d587dfb20741cafc376c42c696c5f6e2a64487/pstack/skills/architect/SKILL.md">pstack/skills/architect</a></p>
+<h4>A workflow that designs and then builds</h4>
+<blockquote>Sketch types, signatures, and module structure before code, then stay in the loop while implementation fills in.</blockquote>
+<ol><li><b>Ground</b>: run <code>how</code>, and also <code>why</code> if ownership or layering changes.</li><li><b>Sketch</b>: run <code>arena</code> across three model families; at least 2 distinct candidates; screen with <code>design-red-flags.md</code>.</li><li><b>Agree</b>: opt-in only. "Default: proceed directly to implementation."</li><li><b>Implement</b> against the sketch.</li><li><b>Scrap</b> and redesign when friction forms a pattern.</li></ol></div>
+</div>
+
+<div class="fig"><svg viewBox="0 0 580 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="q3t q3d">
+<title id="q3t">Option A: two skills</title><desc id="q3d">tdd and improve-codebase-architecture consult codebase-design. architect runs Ground, Sketch, Agree, Implement, Scrap; its Sketch phase uses codebase-design's vocabulary and DESIGN-IT-TWICE.</desc>
+<defs><marker id="q3a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker><marker id="q3o" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker></defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<text x="130" y="16" fill="#7a8399" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="1">REFERENCE</text>
+<text x="440" y="16" fill="#7a8399" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="1">WORKFLOW</text>
+<rect x="20" y="28" width="90" height="36" rx="6" fill="#ffffff" stroke="#7a8399"/><text x="65" y="50" fill="#2d3142" font-size="11" font-family="'Geist Mono', monospace" text-anchor="middle">tdd</text>
+<rect x="124" y="28" width="150" height="36" rx="6" fill="#ffffff" stroke="#7a8399"/><text x="199" y="44" fill="#2d3142" font-size="10" font-family="'Geist Mono', monospace" text-anchor="middle">improve-codebase-</text><text x="199" y="56" fill="#2d3142" font-size="10" font-family="'Geist Mono', monospace" text-anchor="middle">architecture</text>
+<path d="M65 64 V110" stroke="#4f5d75" fill="none" marker-end="url(#q3a)"/><path d="M199 64 V110" stroke="#4f5d75" fill="none" marker-end="url(#q3a)"/>
+<rect x="20" y="112" width="254" height="84" rx="6" fill="rgba(79,93,117,0.08)" stroke="#2d3142"/>
+<text x="147" y="136" fill="#2d3142" font-size="13" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">codebase-design</text>
+<text x="147" y="154" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">vocabulary · DEEPENING</text>
+<text x="147" y="168" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">DESIGN-IT-TWICE (judge-gated)</text>
+<text x="147" y="182" fill="#eb6c36" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">+ design-red-flags.md (option A)</text>
+<g font-family="'Geist', sans-serif" font-size="11" text-anchor="middle" fill="#2d3142">
+<rect x="370" y="28" width="140" height="36" rx="6" fill="#fff" stroke="#2d3142"/><text x="440" y="44" font-weight="600">Ground</text><text x="440" y="57" font-size="8" fill="#4f5d75" font-family="'Geist Mono', monospace">how, why · judge-gated</text>
+<rect x="370" y="84" width="140" height="36" rx="6" fill="#fff" stroke="#eb6c36"/><text x="440" y="100" font-weight="600">Sketch</text><text x="440" y="113" font-size="8" fill="#4f5d75" font-family="'Geist Mono', monospace">≥2 distinct candidates</text>
+<rect x="370" y="140" width="140" height="36" rx="6" fill="#fff" stroke="#7a8399" stroke-dasharray="4 3"/><text x="440" y="156" font-weight="600">Agree</text><text x="440" y="169" font-size="8" fill="#4f5d75" font-family="'Geist Mono', monospace">only when asked</text>
+<rect x="370" y="196" width="140" height="36" rx="6" fill="#fff" stroke="#2d3142"/><text x="440" y="218" font-weight="600">Implement</text>
+<rect x="370" y="252" width="140" height="36" rx="6" fill="#fff" stroke="#2d3142"/><text x="440" y="268" font-weight="600">Scrap</text><text x="440" y="281" font-size="8" fill="#4f5d75" font-family="'Geist Mono', monospace">pattern of friction</text>
+</g>
+<path d="M440 64 V82" stroke="#4f5d75" fill="none" marker-end="url(#q3a)"/><path d="M440 120 V138" stroke="#4f5d75" fill="none" marker-end="url(#q3a)"/><path d="M440 176 V194" stroke="#4f5d75" fill="none" marker-end="url(#q3a)"/><path d="M440 232 V250" stroke="#4f5d75" fill="none" marker-end="url(#q3a)"/>
+<path d="M510 270 H540 V102 H512" stroke="#4f5d75" fill="none" marker-end="url(#q3a)"/>
+<path d="M370 102 H320 Q300 102 300 122 V150 H276" stroke="#eb6c36" fill="none" marker-end="url(#q3o)"/>
+<text x="318" y="96" fill="#eb6c36" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">uses</text>
+<text x="147" y="232" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">compare-attempts: only on the user's request</text>
+<text x="147" y="246" fill="#4f5d75" font-size="9" font-family="'Geist Mono', monospace" text-anchor="middle">interrogate and model routing: dropped</text>
+</svg><p class="cap">Option A. Callers that want vocabulary never end up in a session that implements. architect's Sketch replaces arena with DESIGN-IT-TWICE.</p></div>
+
+<h3>Fan-out under ADR 0004</h3>
+<ul class="l"><li><b>DESIGN-IT-TWICE</b>: with fan-out, 3+ design subagents run at the same time, one per brief. With inline, the current agent writes each design itself, one brief after another, in its own context.</li>
+<li><b>architect's Ground</b>: with fan-out, <code>how</code> and <code>why</code> run as concurrent subagents. With inline, the architect agent runs <code>how</code> and then <code>why</code> itself.</li>
+<li><b>compare-attempts</b> (vstack's arena) runs only when the user explicitly asks for it, as the pstack-adoption ticket decided.</li></ul>
+
+<h3>Options</h3>
+<div class="tw"><table><thead><tr><th>Option</th><th>Shape</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>Two skills. codebase-design gets judge-gated DESIGN-IT-TWICE plus architect's <code>design-red-flags.md</code> (shallow module, information leakage, temporal decomposition, pass-through), reworded into codebase-design vocabulary. architect stays a separate skill; its references move to codebase-design vocabulary.</td><td>improve-codebase-architecture stays <span class="b b-adopt">adopt</span>. architect's row changes from merge to <span class="b b-adapt">adapt</span>.</td></tr>
+<tr><td><b>A′</b></td><td>Like A, but the red flags stay in architect.</td><td>codebase-design's text changes only for the Fan-out gate. Anyone who uses codebase-design without architect loses the red flags.</td></tr>
+<tr><td><b>B</b></td><td>One <code>codebase-design</code> with an implementing mode taken from architect.</td><td>A tdd or improve-codebase-architecture lookup could end up in a session that implements. Two contracts in one body.</td></tr>
+<tr><td><b>C</b></td><td>One <code>architect</code> that absorbs the vocabulary.</td><td>Rename cascade: improve-codebase-architecture and tdd become adapt. Goes against Q1.</td></tr>
+</tbody></table></div>
+<div class="rec"><p><b>Recommend A.</b> The pair shares design judgment, not the job. The red flags are design vocabulary, so they belong with the vocabulary. They need rewording: the source says "Keep a forwarding boundary only when…", and codebase-design bans "boundary".</p>
+<p>Side note for the per-skill contract fog: pstack's no-comments (vstack <code>prune-comments</code>) calls architect and expects it to stop at the sketch, which contradicts architect's default of implementing.</p></div>
+
+<!-- ============================ Q4 ============================ -->
+<h2>Q4 · prototype and the prototype playbook</h2>
+<div class="two">
+<div class="side"><p class="k">Matt · <a href="https://github.com/mattpocock/skills/tree/6acc160e4e0cd062dbbbd7a1b26ae92855edf07e/skills/engineering/prototype">skills/engineering/prototype</a></p>
+<h4>Throwaway code that answers a question</h4>
+<ul class="l"><li>Two branches: <b>LOGIC</b> (one shareable HTML state-machine demo that a non-developer can drive) and <b>UI</b> (radically different variants on one route, switched with <code>?variant=</code> and a floating bar).</li>
+<li>"Locate the prototype code close to where it will actually be used."</li>
+<li>No persistence, no polish, surface the state.</li>
+<li>Capture it on a throwaway branch, with a context pointer on the issue.</li></ul></div>
+<div class="side"><p class="k">pstack · <a href="https://github.com/cursor/plugins/blob/12d587dfb20741cafc376c42c696c5f6e2a64487/pstack/skills/poteto-mode/playbooks/prototype.md">poteto-mode/playbooks/prototype.md</a></p>
+<h4>A playbook routed by poteto-mode (rejected)</h4>
+<ol><li>Scope the decision; "No decision means no prototype."</li><li>Moodboard when the design space is open.</li><li>"Build throwaway in an isolated scratch dir". For timing questions, "the smallest script that exercises the question."</li><li>Alternatives behind one switcher.</li><li><b>Verify on the matching surface</b>: screenshot, drive, log timing. "The observation is the test here."</li><li>Present alternatives, tradeoffs, and a recommendation.</li></ol></div>
+</div>
+
+<h3>Conflicts and unique content</h3>
+<div class="tw"><table><thead><tr><th>Topic</th><th>Matt</th><th>Playbook</th><th>Option A keeps</th></tr></thead><tbody>
+<tr><td>Where the code lives</td><td>Next to the real module or page</td><td>Isolated scratch dir; "No production framework"</td><td>Matt for UI and logic; scratch only for the new empirical script</td></tr>
+<tr><td>Planning</td><td>Identify the question, "by asking if the user is around"</td><td>"no planning"</td><td>Matt</td></tr>
+<tr><td>Afterwards</td><td>Fold the validated decision into real code; archive on a branch</td><td>All code disposable; hand off to Feature or architect</td><td>Matt</td></tr>
+<tr><td>Timing or behavior question</td><td>No branch for it</td><td>A tiny script that prints output or timing</td><td><b>Imported</b> as a third branch</td></tr>
+<tr><td>Before handing over</td><td>Surface state</td><td>Screenshot, interact, or observe on the matching surface</td><td><b>Imported</b> as a required step</td></tr>
+<tr><td>Reply</td><td>Not specified</td><td>Variants, evidence, tradeoffs, recommendation, and a throwaway notice</td><td><b>Imported</b></td></tr>
+</tbody></table></div>
+<div class="rec"><p><b>Recommend A: merge into Matt's <code>prototype</code>.</b> The playbook can't ship on its own because poteto-mode, which routes it, is rejected. Its three unique pieces fit Matt's branches without breaking them. <code>principle-exhaust-the-design-space</code> stays its own principle and prototype cites it. Option B (adopt Matt unchanged and leave the playbook to the workflows ticket) is the cheapest Update, but it loses timing prototypes and the required observation step. wayfinder names prototype and is already adapt, so there is no cascade.</p></div>
+
+<!-- ============================ Q5 ============================ -->
+<h2>Q5 · teach and teach</h2>
+<div class="two">
+<div class="side"><p class="k">Matt · <a href="https://github.com/mattpocock/skills/tree/6acc160e4e0cd062dbbbd7a1b26ae92855edf07e/skills/productivity/teach">skills/productivity/teach</a></p>
+<h4>A course across sessions, on any topic</h4>
+<blockquote>This is a stateful request - they intend to learn the topic over multiple sessions.</blockquote>
+<ul class="l"><li>Workspace files: <code>MISSION.md</code>, <code>RESOURCES.md</code>, <code>lessons/*.html</code>, <code>reference/*.html</code>, <code>learning-records/</code>, <code>assets/</code>.</li>
+<li>Lessons in the zone of proximal development; retrieval practice, spacing, "quizzes and light in-browser tasks".</li>
+<li>"Never trust your parametric knowledge." Cites sources.</li>
+<li>Topics go beyond code; its own examples include yoga and physics.</li></ul></div>
+<div class="side"><p class="k">pstack · <a href="https://github.com/cursor/plugins/blob/12d587dfb20741cafc376c42c696c5f6e2a64487/pstack/skills/teach/SKILL.md">pstack/skills/teach</a></p>
+<h4>Explaining one body of code in conversation</h4>
+<blockquote>The goal is that they understand it, not that you change anything.</blockquote>
+<ul class="l"><li>Runs <code>how</code> (how it works) and <code>why</code> (why it's that way) and combines what they find.</li>
+<li>Starts with a plain definition, then a conversation at the person's pace. Diagrams build up one at a time.</li>
+<li>Written through <code>unslop</code>; the reply is the explanation, not a report.</li></ul></div>
+</div>
+<div class="tw"><table><thead><tr><th>Topic</th><th>Matt</th><th>pstack</th></tr></thead><tbody>
+<tr><td>Practice</td><td>"Interactive lessons, using quizzes"</td><td>"No quizzes. No pacing theater."</td></tr>
+<tr><td>Goal discovery</td><td>"your first job should be to question the user on why"</td><td>Goals "read from the conversation, not quizzed out of them"</td></tr>
+<tr><td>Output</td><td>Files: lessons, references, learning records</td><td>No files; "not that you change anything"</td></tr>
+<tr><td>Subject</td><td>Anything</td><td>A codebase, a change, a subsystem</td></tr>
+</tbody></table></div>
+<p>Each row is a direct contradiction. A single skill could only hold both by switching the rules per mode.</p>
+<h3>Options</h3>
+<div class="tw"><table><thead><tr><th>Option</th><th>Shape</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>Two skills. Matt's <code>teach</code> is <span class="b b-adopt">adopt</span> byte-for-byte. pstack's teach becomes <code>explain</code> (<span class="b b-adapt">adapt</span>). Its how/why step follows ADR 0004: with fan-out, both run as concurrent subagents; with inline, the explain agent runs how and then why itself. Running only one of them for a small change stays allowed.</td><td>Both are explicit-invocation only, so the name routes the user. No cascade: only ask-matt names teach, and it is already adapt as ask-vstack. Name alternatives: <code>explain-code</code>, <code>walkthrough</code>.</td></tr>
+<tr><td><b>B</b></td><td>One <code>teach</code> with a course mode and a code mode.</td><td>Every row of the table above becomes a per-mode rule. The body grows, and the agent must first work out which mode it's in.</td></tr>
+<tr><td><b>C</b></td><td>Reject pstack's teach.</td><td>how and why stay available, but the pedagogy is lost: plain definition first, diagrams built up, conversational pacing.</td></tr>
+</tbody></table></div>
+<div class="rec"><p><b>Recommend A with the name <code>explain</code>.</b> Two jobs, two names. This also replaces the pstack-adoption ticket's "how and why run in sequence", which was written before ADR 0004 existed.</p></div>
+
+<!-- ============================ Q6 ============================ -->
+<h2>Q6 · research</h2>
+<div class="side"><p class="k">Matt · <a href="https://github.com/mattpocock/skills/blob/6acc160e4e0cd062dbbbd7a1b26ae92855edf07e/skills/engineering/research/SKILL.md">skills/engineering/research</a> (the whole skill, 3 steps)</p>
+<blockquote>Spin up a background agent to do the research, so you keep working while it reads.</blockquote>
+<ol><li>Investigate against primary sources; "Follow every claim back to the source that owns it."</li><li>Write the findings to one Markdown file, citing each claim.</li><li>Save it where the repo keeps such notes.</li></ol></div>
+<ul class="l" style="margin-top:1rem"><li><b>Not Fan-out.</b> ADR 0004: "A single subagent, such as research's background agent, is not Fan-out and always runs as written."</li>
+<li><b>Nothing harness-specific.</b> No tool names, no <code>.scratch</code>, no model routing. omp's async <code>task</code> is a background agent.</li>
+<li><b>No real overlap with how or why.</b> how explains code at runtime and why reconstructs rationale; neither produces a cited file from outside sources. They share the activity (investigation), not the output.</li>
+<li><b>Callers:</b> wayfinder (already adapt), ask-matt (already adapt as ask-vstack), and the <code>research</code> ticket-type label in setup's tracker templates. A rename would touch all of them.</li></ul>
+<div class="rec"><p><b>Recommend <span class="b b-adopt">adopt</span> byte-for-byte as <code>research</code>.</b> The alternative, adapt, would only rewrite "Spin up a background agent" in omp terms. That buys nothing, because the sentence already works in omp.</p></div>
+
+<!-- ============================ Q7 ============================ -->
+<h2>Q7 · Does code-review call blast-radius?</h2>
+<div class="two">
+<div class="side"><p class="k">Matt · <a href="https://github.com/mattpocock/skills/blob/6acc160e4e0cd062dbbbd7a1b26ae92855edf07e/skills/engineering/code-review/SKILL.md">skills/engineering/code-review</a> (already adapt)</p>
+<h4>Two separate axes inside the diff</h4>
+<ol><li>Pin the fixed point; confirm the diff is non-empty.</li><li>Find the spec.</li><li>Find the standards, plus a 12-smell Fowler baseline.</li><li>Standards and Spec reviewers.</li><li>Aggregate under <code>## Standards</code> and <code>## Spec</code>. "Do <b>not</b> merge or rerank findings."</li></ol></div>
+<div class="side"><p class="k">pstack · <a href="https://github.com/cursor/plugins/blob/12d587dfb20741cafc376c42c696c5f6e2a64487/pstack/skills/blast-radius/SKILL.md">pstack/skills/blast-radius</a> (adapt, standalone)</p>
+<h4>What breaks outside the diff, proven by running code</h4>
+<blockquote>Listing the callers is not the job. … The job is the breakage grep won't show you.</blockquote>
+<ul class="l"><li>Find "the one fact it's safe because of"; look past grep (library source, pinned versions, lifecycle timing, wire formats, flags).</li>
+<li>A 5-rung proof ladder, up to "You ran it" and "reproduced it in the running app".</li>
+<li>Step 6: "For a big or wide change, run it as an <code>arena</code>." In vstack this becomes compare-attempts, only when asked.</li></ul></div>
+</div>
+<p>Its own description already names the review case ("reviewing a small diff you don't trust"). Upstream it is explicit-invocation only. It is expensive: walking history and dependencies, plus writing and running a proof script.</p>
+
+<div class="fig"><svg viewBox="0 0 580 350" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="q7t q7d">
+<title id="q7t">Option B: conditional Safety axis</title><desc id="q7d">After pinning the diff, spec and standards, code-review adds a Safety axis when triggered. The eval judge picks fan-out, where the Standards, Spec and Safety reviewers run concurrently, or inline, where the code-review agent works each axis itself. Results aggregate into separate sections.</desc>
+<defs><marker id="q7a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker></defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<g font-family="'Geist', sans-serif" text-anchor="middle">
+<rect x="180" y="12" width="220" height="40" rx="6" fill="rgba(79,93,117,0.08)" stroke="#7a8399"/><text x="290" y="30" font-size="12" font-weight="600" fill="#2d3142">Pin diff · spec · standards</text><text x="290" y="44" font-size="8" fill="#4f5d75" font-family="'Geist Mono', monospace">steps 1–3, unchanged</text>
+<rect x="180" y="76" width="220" height="40" rx="6" fill="#fff" stroke="#eb6c36"/><text x="290" y="94" font-size="12" font-weight="600" fill="#2d3142">Add the Safety axis?</text><text x="290" y="108" font-size="8" fill="#4f5d75" font-family="'Geist Mono', monospace">user asked · boundary contract changed</text>
+<rect x="180" y="140" width="220" height="40" rx="6" fill="#fff" stroke="#2d3142"/><text x="290" y="158" font-size="12" font-weight="600" fill="#2d3142">eval judge (ADR 0004)</text><text x="290" y="172" font-size="8" fill="#4f5d75" font-family="'Geist Mono', monospace">user's words override</text>
+<text x="150" y="200" font-size="9" fill="#4f5d75" font-family="'Geist Mono', monospace">fan-out: concurrent subagents</text>
+<text x="450" y="200" font-size="9" fill="#4f5d75" font-family="'Geist Mono', monospace">inline: no subagents</text>
+<rect x="16" y="222" width="84" height="40" rx="6" fill="#fff" stroke="#2d3142"/><text x="58" y="246" font-size="11" font-weight="600" fill="#2d3142">Standards</text>
+<rect x="108" y="222" width="84" height="40" rx="6" fill="#fff" stroke="#2d3142"/><text x="150" y="246" font-size="11" font-weight="600" fill="#2d3142">Spec</text>
+<rect x="200" y="222" width="84" height="40" rx="6" fill="#fff" stroke="#eb6c36" stroke-dasharray="4 3"/><text x="242" y="246" font-size="11" font-weight="600" fill="#eb6c36">Safety</text>
+<rect x="316" y="222" width="248" height="40" rx="6" fill="#fff" stroke="#2d3142"/><text x="440" y="239" font-size="11" font-weight="600" fill="#2d3142">code-review agent, itself</text><text x="440" y="253" font-size="8" fill="#4f5d75" font-family="'Geist Mono', monospace">Standards · Spec · (Safety), one shared context</text>
+<rect x="150" y="298" width="280" height="40" rx="6" fill="rgba(79,93,117,0.08)" stroke="#7a8399"/><text x="290" y="316" font-size="12" font-weight="600" fill="#2d3142">Aggregate, never merged</text><text x="290" y="330" font-size="8" fill="#4f5d75" font-family="'Geist Mono', monospace">## Standards · ## Spec · ## Safety</text>
+</g>
+<path d="M290 52 V74" stroke="#4f5d75" fill="none" marker-end="url(#q7a)"/><path d="M290 116 V138" stroke="#4f5d75" fill="none" marker-end="url(#q7a)"/>
+<path d="M290 180 V206" stroke="#4f5d75" fill="none"/><path d="M58 206 H440" stroke="#4f5d75" fill="none"/>
+<path d="M58 206 V220" stroke="#4f5d75" fill="none" marker-end="url(#q7a)"/><path d="M150 206 V220" stroke="#4f5d75" fill="none" marker-end="url(#q7a)"/><path d="M242 206 V220" stroke="#4f5d75" fill="none" marker-end="url(#q7a)"/><path d="M440 206 V220" stroke="#4f5d75" fill="none" marker-end="url(#q7a)"/>
+<path d="M58 262 V280 H440 V262" stroke="#4f5d75" fill="none"/><path d="M150 262 V280" stroke="#4f5d75" fill="none"/><path d="M242 262 V280" stroke="#4f5d75" fill="none"/>
+<path d="M290 280 V296" stroke="#4f5d75" fill="none" marker-end="url(#q7a)"/>
+</svg><p class="cap">Option B. Dashed Safety means "only when triggered". There is no mode where the reviewers run one after another: ADR 0004 rejects that because it pays the full subagent cost and saves no time.</p></div>
+
+<h3>Options</h3>
+<div class="tw"><table><thead><tr><th>Option</th><th>When blast-radius runs inside code-review</th><th>Effect</th></tr></thead><tbody>
+<tr><td><b>A</b></td><td>Never; the user invokes it separately.</td><td>Cheapest. Relies on the user remembering it for risky diffs.</td></tr>
+<tr class="pick"><td><b>B</b> (recommended)</td><td>When the user asks, or when the diff changes a contract across a boundary: <b>public interface, schema or persisted data, config or flag, dependency version, lifecycle or ordering</b>. It becomes a third axis, <code>## Safety</code>, reusing the pinned diff. The judge decides fan-out or inline for the whole review step.</td><td>Proof beyond the diff where it pays for itself. Matt's axis separation is kept. code-review is already adapt, so its Disposition doesn't change. Its register reason moves from "sequential unless opt-in" to judge-gated.</td></tr>
+<tr><td><b>C</b></td><td>Every review.</td><td>A proof script and a history walk even for a typo fix.</td></tr>
+</tbody></table></div>
+<div class="rec"><p><b>Recommend B.</b> blast-radius remains a standalone skill either way.</p></div>
+
+<h2>Sources</h2>
+<ul class="l">
+<li>Matt at <code>v1.2.3</code> = <a href="https://github.com/mattpocock/skills/tree/6acc160e4e0cd062dbbbd7a1b26ae92855edf07e/skills">6acc160e</a>: tdd, codebase-design (+ DESIGN-IT-TWICE.md), prototype, teach, research, code-review, implement, improve-codebase-architecture.</li>
+<li>pstack at <a href="https://github.com/cursor/plugins/tree/12d587dfb20741cafc376c42c696c5f6e2a64487/pstack/skills">12d587df</a>: tdd, architect (+ references/design-red-flags.md), poteto-mode/playbooks/prototype.md, teach, blast-radius.</li>
+<li>vstack: <a href="https://github.com/daandden/vstack/blob/main/docs/adr/0001-adopt-means-byte-identical.md">ADR 0001</a>, <a href="https://github.com/daandden/vstack/blob/main/docs/adr/0004-fan-out-is-judge-gated-with-inline-fallback.md">ADR 0004</a>, <a href="https://github.com/daandden/vstack/issues/31#issuecomment-5859933205">Matt selection</a>, <a href="https://github.com/daandden/vstack/issues/32#issuecomment-5830754898">pstack selection</a>.</li>
+</ul>
+
+<div class="footer"><span>vstack · overlap explainer · throwaway branch assets/skill-overlaps</span><span>2026-09-30</span></div>
+</div></body></html>
