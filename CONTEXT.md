@@ -52,6 +52,10 @@ _Avoid_: combine, fold (unqualified)
 Leave an Upstream item out of vstack.
 _Avoid_: drop, skip
 
+**Hold**:
+Keep one Upstream item reconciled with an older Upstream version than its Pin, recorded on its Decision register row. The next Update diffs the item from that older version.
+_Avoid_: skip, freeze, pin (for one item)
+
 **Decision register**:
 The table listing every Upstream item with its Disposition and a one-line reason, linking an ADR when the choice was a real trade-off.
 _Avoid_: manifest (for this table), ADR list
