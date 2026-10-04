@@ -42,6 +42,8 @@ tr.pick td{background:var(--tint)}
 .b-adapt{color:var(--link);border-color:rgba(46,90,168,.4);background:rgba(46,90,168,.06)}
 .b-merge{color:var(--muted);border-color:rgba(79,93,117,.4);background:rgba(79,93,117,.08)}
 .k{font-family:var(--mono);font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--soft)}
+pre.mock{font-family:var(--mono);font-size:.74rem;line-height:1.5;white-space:pre-wrap;margin-top:.5rem;color:var(--ink)}
+pre.mock mark{background:var(--tint);color:var(--ink);border-left:2px solid var(--accent);padding-left:.2rem}
 .footer{margin-top:3rem;padding-top:1.25rem;border-top:1px solid var(--rule);font-family:var(--mono);font-size:.72rem;color:var(--soft);display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem}
 @media (max-width:860px){.cards,.two{grid-template-columns:1fr}}
 </style></head><body><div class="container">
@@ -58,7 +60,131 @@ tr.pick td{background:var(--tint)}
 <div class="card"><p class="eyebrow">Out of this ticket</p><h4>House style and roster</h4><p>Exact omp tool names and the Fan-out block's wording belong to the house style. Agent names belong to the roster. Both are still map fog, so this page names subagent <em>roles</em>, not agents.</p></div>
 </div>
 
-<h2>The fifteen questions at a glance</h2>
+<!-- ============================ round 2 ============================ -->
+<h2>Round 2 · open questions after round 1</h2>
+<p>Round 1 settled 13 of 15 questions, all on the recommendation: Q1, Q2, Q4–Q11, and Q13–Q15. Q3 is explained again below with mockups. Your answer to Q12, "use the diagram skill", opens two follow-ups. Settling Q8–Q10 also exposed three new questions about architect's handoff to <code>implement</code>.</p>
+<div class="tw"><table><thead><tr><th>Q</th><th>Skill</th><th>Question</th><th>Recommendation</th></tr></thead><tbody>
+<tr><td>Q3</td><td>tdd</td><td>Bug material in a side file, or inline?</td><td>Side file <code>BUG-FIX.md</code></td></tr>
+<tr><td>Q12a</td><td>explain</td><td>Which figures go through diagram-design?</td><td>Multi-part figures and spatial ideas; small figures stay inline mermaid; generated images are dropped</td></tr>
+<tr><td>Q12b</td><td>explain</td><td>diagram-design is not part of vstack. How does explain depend on it?</td><td>Soft: use it when it's installed, otherwise mermaid</td></tr>
+<tr><td>Q16</td><td>architect → implement</td><td>Does the design package count as the pre-agreed seams?</td><td>No: implement confirms them in one question, unless a checkpoint already did</td></tr>
+<tr><td>Q17</td><td>architect → implement</td><td>When does Scrap fire during implement, and what happens to the partial work?</td><td>Checked after each slice; stops before code-review and commit</td></tr>
+<tr><td>Q18</td><td>architect</td><td>Where does the design package live?</td><td>Type sketch as code in the working tree; rationale in the reply and on the driving ticket</td></tr>
+</tbody></table></div>
+
+<h3><span class="q">Q3</span>Bug material: side file or inline (explained again)</h3>
+<p><b>The mechanism.</b> When a skill runs, omp loads its <code>SKILL.md</code> into the agent's context every time. Other files in the skill folder are loaded only when <code>SKILL.md</code> points at them and the agent decides it needs them. Matt's tdd already works this way: <code>tests.md</code> (examples) and <code>mocking.md</code> (mocking rules) are side files, reached through one link line in <code>SKILL.md</code>.</p>
+<p><b>The problem.</b> The material imported from pstack splits into two kinds. Some of it is useful on <em>every</em> tdd run. Most of it is useful only when fixing a bug. tdd runs far more often for features (<code>implement</code> drives it on every slice), and a feature run never needs the bug steps.</p>
+<div class="tw"><table><thead><tr><th>Imported piece</th><th>Needed on</th><th>Option A puts it in</th></tr></thead><tbody>
+<tr><td>"Don't change tests merely to match a wrong implementation"</td><td>Every run</td><td><code>SKILL.md</code>, Rules of the loop</td></tr>
+<tr><td>"Don't weaken existing assertions unless the expected behavior has genuinely changed"</td><td>Every run</td><td><code>SKILL.md</code>, Rules of the loop</td></tr>
+<tr><td>Routing: known cause → here; unknown cause → diagnosing-bugs (Q1)</td><td>Every bug run, decided before anything else</td><td><code>SKILL.md</code>, one line</td></tr>
+<tr><td>Steps 1–6: repro, narrowest check, failing test, <b>confirm the right red</b>, smallest fix, rerun</td><td>Bug runs only</td><td><code>BUG-FIX.md</code></td></tr>
+<tr><td>Fallback through an agreed seam, otherwise stop and report (Q2)</td><td>Bug runs only</td><td><code>BUG-FIX.md</code></td></tr>
+<tr><td>Focused test, deterministic flaky bugs, focused test before sibling coverage</td><td>Bug runs only</td><td><code>BUG-FIX.md</code></td></tr>
+<tr><td>Reply: failing-before evidence, passing-after evidence, or why red is missing</td><td>Bug runs only</td><td><code>BUG-FIX.md</code></td></tr>
+</tbody></table></div>
+<p><b>Option A, as files.</b> Highlighted lines are new. The wording is a draft; the final text is written at build time.</p>
+<div class="two">
+<div class="side"><p class="k">tdd/SKILL.md (Matt base, ~45 lines)</p>
+<pre class="mock">---
+name: tdd
+description: Test-driven development. Use when the user
+  wants to build features or fix bugs test-first, mentions
+  "red-green-refactor", <mark>wants a regression test,</mark> or
+  wants integration tests.
+---
+# Test-Driven Development
+… What a good test is …        (unchanged)
+… Seams — where tests go …     (unchanged)
+… Anti-patterns …              (unchanged)
+
+## Rules of the loop
+- Red before green. …
+- One slice at a time. …
+<mark>- Tests follow intended behavior. Never edit a test to
+  match a wrong implementation, and never weaken an
+  assertion unless the intended behavior changed and you
+  say why.</mark>
+- Refactoring is not part of the loop. …
+
+<mark>## Fixing a bug
+Known cause and a cheap repro: follow BUG-FIX.md.
+Unknown cause: run /diagnosing-bugs instead; its
+Phase 5 writes the regression test.</mark></pre></div>
+<div class="side"><p class="k">tdd/BUG-FIX.md (new, ~35 lines)</p>
+<pre class="mock"><mark># Fixing a bug test-first
+
+1. Understand the bug: intended vs current behavior,
+   the smallest observable repro.
+2. Pick the narrowest check at an agreed seam.
+3. Write the failing test first.
+4. Run it. Confirm it fails for the intended reason;
+   if not, fix the test or repro before touching code.
+5. Make the smallest fix that keeps nearby contracts.
+6. Rerun it and see it pass.
+
+## No practical failing test
+Use a script, repro command, or browser check only at
+a seam the user agreed. Nobody to agree it: stop the
+slice and report the missing red evidence and why.
+
+## Guardrails
+- Keep the test focused on this bug.
+- Flaky bug: make the test deterministic.
+- Land the focused test before sibling coverage.
+
+## Reply
+- The failing-before check and the failure it gave.
+- The passing-after run.
+- Or: why red evidence is missing.</mark></pre></div>
+</div>
+<div class="tw"><table><thead><tr><th>Run</th><th>Option A: the agent reads</th><th>Option B (all inline): the agent reads</th></tr></thead><tbody>
+<tr><td>Feature slice from <code>implement</code></td><td><code>SKILL.md</code> (~45 lines)</td><td><code>SKILL.md</code> (~75 lines), including ~30 lines of bug steps it never uses</td></tr>
+<tr><td>Bug with a known cause</td><td><code>SKILL.md</code> + <code>BUG-FIX.md</code></td><td><code>SKILL.md</code> (~75 lines)</td></tr>
+<tr><td>Bug with an unknown cause</td><td><code>SKILL.md</code>, which routes to diagnosing-bugs</td><td><code>SKILL.md</code>, which routes to diagnosing-bugs</td></tr>
+</tbody></table></div>
+<div class="rec"><p><b>Recommend A.</b> It follows writing-for-agents' rule: inline what every branch needs, and move what only some branches need behind a pointer. Matt's own tdd already does this with <code>tests.md</code> and <code>mocking.md</code>. The risk of A is that the agent skips the pointer on a bug run. The "Fixing a bug" heading and its "follow BUG-FIX.md" line are what guard against that.</p></div>
+
+<h3><span class="q">Q12a</span>Which explain figures go through diagram-design</h3>
+<p><b>Facts.</b> <code>diagram-design</code> is <a href="https://github.com/cathrynlavery/diagram-design">cathrynlavery/diagram-design</a>, installed on this machine by the skills CLI in <code>~/.agents/skills</code>. Its output is a standalone <code>.html</code> file with inline SVG, not a figure inside the chat. Before drawing, it states the plan and lets the user redirect. On first use in a project, it asks whether to customize the style guide. It has a <code>step</code> animation mode for ordered change. pstack's explain step 5 currently uses inline mermaid for flows and generated images for spatial ideas, and it builds every 3+-part picture as a series ("draw it three times").</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Contract</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>diagram-design draws every figure with 3+ moving parts and every spatial idea, as one HTML file holding the build-up series (one figure per step, or <code>step</code> mode). A figure with fewer parts stays inline mermaid in the chat. Generated images are dropped.</td><td>The pictures that carry the explanation get the careful treatment. Quick figures stay in the conversation. The <code>generate_image</code> login problem goes away.</td></tr>
+<tr><td>B</td><td>diagram-design draws every figure.</td><td>Consistent look. Even a two-box figure becomes a file the user has to open, and each one pays the plan-and-confirm step.</td></tr>
+<tr><td>C</td><td>diagram-design replaces only the generated images (spatial ideas). Flows stay mermaid.</td><td>The smallest change from pstack. Multi-part flows keep mermaid's automatic layout, which diagram-design's anti-patterns call out.</td></tr>
+</tbody></table></div>
+
+<h3><span class="q">Q12b</span>How explain depends on a skill vstack doesn't ship</h3>
+<p>vstack has exactly two Upstreams (glossary: "There are exactly two"). diagram-design belongs to neither, so the Update process never sees changes to it, and the Decision register has no row for it.</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Contract</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td><b>Soft.</b> explain uses <code>skill://diagram-design</code> when it resolves, and otherwise draws the series in inline mermaid. setup-vstack mentions it as optional. vstack ships nothing from it.</td><td>No new Upstream. explain works on any machine. Its pictures are better where diagram-design is installed.</td></tr>
+<tr><td>B</td><td><b>Required.</b> setup-vstack installs it with the skills CLI.</td><td>Same pictures everywhere. setup-vstack then installs third-party content outside the Pins, and an upgrade of diagram-design can change explain without an Update.</td></tr>
+<tr><td>C</td><td><b>Vendored.</b> vstack ships a copy.</td><td>Makes it a third Upstream. That contradicts the glossary and the map's Destination, so it would need its own map.</td></tr>
+</tbody></table></div>
+
+<h3><span class="q">Q16</span>Do the sketch's interfaces count as pre-agreed seams?</h3>
+<p>Q9 hands architect's design package to <code>implement</code>, which says "Use /tdd where possible, at pre-agreed seams". Q2 made seams strict. At the default <code>implement</code> stop there is no checkpoint, so nobody has agreed the seams.</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Contract</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>The design package lists its interfaces as <b>proposed seams</b>. implement confirms them in one <code>ask</code>, together with its End-state question. At the <code>checkpoint</code> stop, the user's sign-off covers the seams, so implement doesn't ask again.</td><td>Keeps Q2's rule. One human touchpoint, which Q9 already accepted.</td></tr>
+<tr><td>B</td><td>The design package counts as agreement. No question is asked.</td><td>architect runs without stopping. Seams that no human has agreed then reach tdd, which contradicts Q2.</td></tr>
+</tbody></table></div>
+
+<h3><span class="q">Q17</span>Scrap during implement</h3>
+<p>architect's Scrap phase fires when "implementation keeps producing friction the sketch can't absorb", and the signal is a pattern, such as "the same shape of workaround appearing repeatedly". Matt's implement runs code-review and commits only at the end. Because implement runs as a skill inside the same session, architect's Scrap tells stay in context.</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Contract</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>After each tdd slice, the agent checks the Scrap tells. When they form a pattern, it stops implement before code-review and before the commit. The partial diff stays in the working tree as evidence. The agent re-runs how over what was built and goes back to Sketch. The new design goes through the same stop as the first, so a checkpoint run checks in again. The reply reports the scrap.</td><td>A wrong shape is caught before review and before anything is committed or shipped.</td></tr>
+<tr><td>B</td><td>Scrap is checked only after implement finishes, before the End-state chain.</td><td>Simpler. A wrong design is then built, reviewed, and committed before anyone looks at it.</td></tr>
+</tbody></table></div>
+
+<h3><span class="q">Q18</span>Where the design package lives</h3>
+<p>Upstream: "One file with new types and signatures for small changes. Module map plus type definitions for larger work. The rationale ships alongside", and the sketch "can ship as its own commit".</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Contract</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>The type sketch is written as code in the working tree, with <code>not implemented</code> bodies. This is the skeleton that implement (or the calling skill, at the <code>sketch</code> stop) fills in. The rationale (rationale-template.md) goes in the reply and is posted as a comment on the driving ticket when one exists. No design doc is added to the repo.</td><td>The sketch is the code, so it cannot drift from it. The rationale sits where the decision is discussed.</td></tr>
+<tr><td>B</td><td>The same, and the rationale is also committed under <code>docs/</code>.</td><td>The rationale is versioned with the code. It's another doc that goes stale, and each project needs a place for it.</td></tr>
+<tr><td>C</td><td>Sketch and rationale stay in the reply only.</td><td>The working tree stays clean. implement has to retype the skeleton, and prune-comments has nothing to implement against.</td></tr>
+</tbody></table></div>
+
+<h2>Round 1 · the fifteen questions at a glance</h2>
 <div class="tw"><table><thead><tr><th>Q</th><th>Skill</th><th>Question</th><th>Recommendation</th></tr></thead><tbody>
 <tr><td>Q1</td><td>tdd</td><td>How does tdd's new bug section relate to diagnosing-bugs?</td><td>Known-cause bugs only; unknown cause → diagnosing-bugs</td></tr>
 <tr><td>Q2</td><td>tdd</td><td>No practical failing test and nobody to agree the fallback seam?</td><td>Strict: stop the slice, report missing red evidence</td></tr>
