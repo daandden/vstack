@@ -60,6 +60,47 @@ pre.mock mark{background:var(--tint);color:var(--ink);border-left:2px solid var(
 <div class="card"><p class="eyebrow">Out of this ticket</p><h4>House style and roster</h4><p>Exact omp tool names and the Fan-out block's wording belong to the house style. Agent names belong to the roster. Both are still map fog, so this page names subagent <em>roles</em>, not agents.</p></div>
 </div>
 
+<!-- ============================ round 3 ============================ -->
+<h2>Round 3 · explain draws every figure through diagram-design</h2>
+<p>Round 2 settled Q3 (side file <code>BUG-FIX.md</code>), Q16 (implement confirms the proposed seams in one ask), Q17 (Scrap is checked after each slice), and Q18 (sketch in the tree, rationale in the reply). For Q12 you chose: <b>every</b> explain figure goes through <code>diagram-design</code>, and <b>setup-vstack installs it</b>. Four details follow from that.</p>
+<div class="tw"><table><thead><tr><th>Q</th><th>Question</th><th>Recommendation</th></tr></thead><tbody>
+<tr><td>Q12c</td><td>How is the installed diagram-design versioned?</td><td>Pinned to a commit SHA in setup-vstack's install command, and bumped by hand</td></tr>
+<tr><td>Q12d</td><td>What explain does when diagram-design is missing</td><td>Tell the user to run setup-vstack, and draw inline mermaid for now</td></tr>
+<tr><td>Q12e</td><td>diagram-design's two pauses (style-guide gate, confirm before drawing)</td><td>explain passes a fully pinned request, using the default style or the project's marker</td></tr>
+<tr><td>Q12f</td><td>Where the HTML goes and how the series is shown</td><td>One file per explanation in the OS temp dir. Figures are appended in order, and the file is opened in the browser</td></tr>
+</tbody></table></div>
+
+<h3><span class="q">Q12c</span>Versioning the installed diagram-design</h3>
+<p>Facts: the skills CLI keeps <code>#ref</code> pins across <code>update</code> (<a href="https://github.com/daandden/vstack/issues/30#issuecomment-5812133934">skills CLI research</a>). Matt and pstack are Upstreams, so the Update watches their Pins. diagram-design is neither, because vstack ships nothing from it.</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Contract</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>setup-vstack installs <code>cathrynlavery/diagram-design#&lt;sha&gt;</code>. The SHA lives in setup-vstack's text and changes only when someone edits it.</td><td>The same pictures on every machine. The Update, the Pins, and the glossary are unchanged. It never picks up upstream fixes on its own.</td></tr>
+<tr><td>B</td><td>The same pin, and <code>vstack update</code> also reports newer diagram-design commits and offers to bump the SHA, with the same confirmation.</td><td>Drift is visible. It widens the Update and needs a new glossary term (something like "Prerequisite"), plus input to the Update-flow ticket.</td></tr>
+<tr><td>C</td><td>Unpinned. setup installs the latest, and <code>skills update</code> moves it.</td><td>Always current. explain's output can change without anyone noticing.</td></tr>
+</tbody></table></div>
+
+<h3><span class="q">Q12d</span>When diagram-design is missing</h3>
+<p>This happens on a machine where setup-vstack hasn't run, or where the install was removed.</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Contract</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>explain says once that diagram-design is missing and that setup-vstack installs it, then draws the build-up series in inline mermaid for this explanation.</td><td>The explanation keeps going. The user learns how to fix it.</td></tr>
+<tr><td>B</td><td>explain stops and asks the user to run setup-vstack first.</td><td>Strict. A conversation is blocked on an install.</td></tr>
+</tbody></table></div>
+
+<h3><span class="q">Q12e</span>diagram-design's two pauses</h3>
+<blockquote>Before rendering, state the plan in one short message … If the user is reachable, let them redirect before you draw … Skip the pause only when the request already pins type, size, and content exactly. — diagram-design §3</blockquote>
+<blockquote>Before generating your first diagram in a new project, verify the style guide has been customized … pause and ask the user. — diagram-design §0</blockquote>
+<div class="tw"><table><thead><tr><th>Option</th><th>Contract</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>explain hands diagram-design a pinned request: visual type, size <code>doc-inline</code>, and exactly which parts this figure adds. For style, it uses the project's <code>.diagram-design</code> marker when there is one, and otherwise says "proceed with the default". Neither pause fires.</td><td>The explanation flows. explain already decided the content, which is why it is drawing the figure.</td></tr>
+<tr><td>B</td><td>Let diagram-design pause as written.</td><td>Every figure costs one extra exchange, and the first figure in a project costs two.</td></tr>
+</tbody></table></div>
+
+<h3><span class="q">Q12f</span>Where the HTML goes</h3>
+<p>explain keeps no course workspace, but it may produce artifacts that help the explanation. pstack's build-up rule draws a flow A→B, then A→B→C, and so on. Earlier in this session, a file under <code>/tmp</code> disappeared when the OS cleaned it.</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Contract</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>One HTML file per explanation, in the OS temp dir (<code>$TMPDIR/vstack-explain/&lt;slug&gt;.html</code>). Each new figure is appended below the last, so the page shows the whole build-up in order. explain opens the file in the browser the first time and gives its path in the reply.</td><td>Nothing lands in the repo. One page per explanation, and it's throwaway, so OS cleanup is acceptable.</td></tr>
+<tr><td>B</td><td>The same file, kept in the repo under <code>.scratch/explain/</code> (excluded via <code>.git/info/exclude</code>).</td><td>It survives OS cleanup. It's one more folder in every project.</td></tr>
+<tr><td>C</td><td>One file per figure.</td><td>Simple, but the user juggles several tabs, and the build-up is split across them.</td></tr>
+</tbody></table></div>
+
 <!-- ============================ round 2 ============================ -->
 <h2>Round 2 · open questions after round 1</h2>
 <p>Round 1 settled 13 of 15 questions, all on the recommendation: Q1, Q2, Q4–Q11, and Q13–Q15. Q3 is explained again below with mockups. Your answer to Q12, "use the diagram skill", opens two follow-ups. Settling Q8–Q10 also exposed three new questions about architect's handoff to <code>implement</code>.</p>
