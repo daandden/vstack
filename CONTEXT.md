@@ -37,7 +37,7 @@ What vstack did with an Upstream item: adopt, adapt, merge, or reject.
 _Avoid_: verdict, status
 
 **Adopt**:
-Ship an Upstream item byte-for-byte as it is at the Pin, under its Upstream name. The one exception is Codex's `agents/openai.yaml`, which vstack never ships.
+Ship an Upstream item byte-for-byte as it is at the Pin, under its Upstream name. An item on Hold matches the version it is held at instead. The one exception is Codex's `agents/openai.yaml`, which vstack never ships.
 _Avoid_: copy, vendor
 
 **Adapt**:
