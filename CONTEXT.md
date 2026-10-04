@@ -77,3 +77,7 @@ _Avoid_: goal, target, finish line
 **Migration**:
 Moving a project or a machine that is set up for the Base upstream onto vstack.
 _Avoid_: conversion, reinstall
+
+**Private mode**:
+A project setup where vstack's project config and workflow artifacts are kept untracked under the git common directory and shared by all of the project's worktrees. The default, Standard mode, keeps them tracked in the repo.
+_Avoid_: private storage, private setup
