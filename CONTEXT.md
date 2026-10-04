@@ -71,7 +71,7 @@ The confirmed process of moving one or both Pins forward and adapting vstack to 
 _Avoid_: sync, upgrade
 
 **End state**:
-How far a flow that produces a commit goes before it stops: commit, PR opened, merge-ready, or shipped. The flow settles it once, before it starts.
+How far a flow that produces a commit goes before it stops: commit, PR opened, merge-ready, or shipped. Shipped means every PR in the run is merged into the default branch; deploys and releases are not part of it. The flow settles it once, before it starts.
 _Avoid_: goal, target, finish line
 
 **Migration**:
