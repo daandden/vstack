@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The vstack agent roster and the shared Fan-out rubric: explainer</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--paper:#f5f5f5;--paper2:#ececec;--ink:#2d3142;--muted:#4f5d75;--soft:#7a8399;--rule:rgba(45,49,66,0.12);--accent:#eb6c36;--tint:rgba(235,108,54,0.08);--link:#2e5aa8;--sans:'Geist',system-ui,sans-serif;--serif:'Instrument Serif','Times New Roman',serif;--mono:'Geist Mono',ui-monospace,Menlo,monospace}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);padding:3rem 2rem;line-height:1.55;font-size:15px}
+.container{max-width:1160px;margin:0 auto}
+.eyebrow{font-family:var(--mono);font-size:.66rem;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem}
+h1{font-family:var(--serif);font-weight:400;font-size:clamp(1.75rem,3vw + 1rem,2.5rem);letter-spacing:-.02em;line-height:1.1;margin-bottom:.5rem}
+h2{font-family:var(--serif);font-weight:400;font-size:1.75rem;margin:3rem 0 .75rem;padding-top:1.5rem;border-top:1px solid var(--rule)}
+h3{font-size:1rem;font-weight:600;margin:1.75rem 0 .6rem}
+.subtitle{color:var(--muted);max-width:80ch}
+p{max-width:80ch;margin-bottom:.75rem}
+ul.l{margin:0 0 .75rem 1.25rem;max-width:80ch} ul.l li{margin-bottom:.3rem}
+a{color:var(--link);text-decoration:none} a:hover{text-decoration:underline}
+code{font-family:var(--mono);font-size:.82em;background:rgba(45,49,66,0.06);padding:.05em .3em;border-radius:3px}
+a code{color:var(--link)}
+.cards{display:grid;grid-template-columns:1.1fr 1fr .9fr;gap:1rem;margin-top:1.5rem}
+.card{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:1.1rem 1.25rem;font-size:.9rem}
+.card h4{font-size:.875rem;margin-bottom:.4rem}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1rem 0}
+.side{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:1rem 1.2rem;font-size:.88rem}
+.side h4{font-size:.9rem;margin-bottom:.35rem}
+.side ol{margin:.4rem 0 .4rem 1.2rem} .side li{margin-bottom:.2rem}
+blockquote{border-left:2px solid var(--soft);padding:.2rem .7rem;margin:.5rem 0;color:var(--muted);font-size:.86rem;font-style:italic;max-width:80ch}
+.fig{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:1rem;margin:1rem 0}
+.fig svg{width:100%;max-width:880px;display:block;margin:0 auto}
+.fig .cap{font-size:.8rem;color:var(--soft);text-align:center;margin:.5rem auto 0;max-width:none}
+.rec{background:var(--tint);border-left:3px solid var(--accent);padding:.8rem 1rem;margin:1rem 0;border-radius:0 6px 6px 0;max-width:none}
+.rec p{margin-bottom:.4rem;max-width:none}
+.q{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;color:#fff;background:var(--accent);border-radius:3px;padding:.05rem .4rem;margin-right:.4rem;vertical-align:2px}
+.tw{overflow-x:auto;background:#fff;border:1px solid var(--rule);border-radius:6px;margin:1rem 0}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th{font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--soft);text-align:left;padding:.6rem .75rem;border-bottom:1px solid var(--rule);background:var(--paper2)}
+td{padding:.6rem .75rem;border-bottom:1px solid rgba(45,49,66,0.07);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr.pick td{background:var(--tint)}
+.b{font-family:var(--mono);font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;padding:.1rem .4rem;border-radius:3px;border:1px solid;white-space:nowrap}
+.b-adopt{color:#2d6a4f;border-color:rgba(45,106,79,.4);background:rgba(45,106,79,.06)}
+.b-adapt{color:var(--link);border-color:rgba(46,90,168,.4);background:rgba(46,90,168,.06)}
+.b-merge{color:var(--muted);border-color:rgba(79,93,117,.4);background:rgba(79,93,117,.08)}
+.k{font-family:var(--mono);font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--soft)}
+pre.mock{font-family:var(--mono);font-size:.74rem;line-height:1.5;white-space:pre-wrap;margin-top:.5rem;color:var(--ink)}
+pre.mock mark{background:var(--tint);color:var(--ink);border-left:2px solid var(--accent);padding-left:.2rem}
+.footer{margin-top:3rem;padding-top:1.25rem;border-top:1px solid var(--rule);font-family:var(--mono);font-size:.72rem;color:var(--soft);display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem}
+.two pre.mock{font-size:.72rem}
+</style></head><body><div class="container">
+
+<div class="header">
+<p class="eyebrow">vstack · wayfinder ticket · omp 18.6.1 · Matt v1.2.3 (6acc160e) · pstack 12d587df</p>
+<h1>The vstack agent roster and the shared Fan-out rubric</h1>
+<p class="subtitle">Explainer for <a href="https://github.com/daandden/vstack/issues/47">Define the vstack agent roster and the shared Fan-out rubric</a>, part of the map <a href="https://github.com/daandden/vstack/issues/26">vstack: Matt Pocock skills plus pstack enhancements for omp</a>. This ticket settles which agents ship in <code>plugin/agents/</code> and what each declares (name, purpose, tools, <code>spawns:</code>, write rights). It also settles the exact rubric that every Fan-out gate line cites and the eval <code>judge</code> applies. Eight questions are open, and each ends with a recommendation. The omp facts come from the 18.6.1 source and the <code>omp://</code> docs. The Upstream quotes come from the pinned text.</p>
+</div>
+
+<div class="cards">
+<div class="card"><p class="eyebrow">Settled · ADR 0004</p><h4>Every subagent is a vstack agent</h4><p>vstack agents have no <code>model</code> field, so they run on the parent's live model. Skill text never spawns <code>task</code>, <code>scout</code>, <code>sonic</code>, or <code>reviewer</code>. Nesting is allowed, and each nested Fan-out step runs its own judgment. vstack agents therefore need the eval tool and permission to spawn vstack agents.</p></div>
+<div class="card"><p class="eyebrow">Settled · Fan-out guardrail</p><h4><code>spawns:</code> is the runtime backstop</h4><p>Every vstack agent lists only vstack agents in <code>spawns:</code>, with the default subagent first. The lint in <code>check-register.ts</code> fails when a spawn site omits <code>agent</code> or names an agent outside the roster, and when a block lacks its gate line, its batch, or its fallback.</p></div>
+<div class="card"><p class="eyebrow">Not this ticket</p><h4>House style</h4><p>The exact wording of the gate line and the Fan-out block belongs to the house-style fog. This ticket fixes what the gate line <em>cites</em> and what the judge is asked.</p></div>
+</div>
+
+<h2>The eight questions at a glance</h2>
+<div class="tw"><table><thead><tr><th>Q</th><th>Question</th><th>Recommendation</th></tr></thead><tbody>
+<tr><td>Q1</td><td>How do about 25 spawn roles map to agents?</td><td>4 agents: explorer, worker, verifier, comment-critic. Role prompts stay in the skill text.</td></tr>
+<tr><td>Q2</td><td>How are agents named?</td><td><code>vstack-</code> prefix on all four, including <code>vstack-comment-critic</code></td></tr>
+<tr><td>Q3</td><td>How are write rights expressed when omp can't enforce them?</td><td><code>tools</code> list without edit/write, plus a contract in the body</td></tr>
+<tr><td>Q4</td><td>How do parallel writers and verifiers get isolation?</td><td>The parent makes the git worktrees; no omp <code>isolated</code></td></tr>
+<tr><td>Q5</td><td>What happens at the depth cap?</td><td>Keep omp's default of 2; "cannot spawn" means inline</td></tr>
+<tr><td>Q6</td><td>Where does the rubric live?</td><td>Hidden skill <code>vstack-fan-out</code>, cited as <code>skill://vstack-fan-out</code></td></tr>
+<tr><td>Q7</td><td>The rubric text and the decision rule</td><td>Draft below; fan-out only with confidence ≥ 0.7</td></tr>
+<tr><td>Q8</td><td>research is adopt, but its background agent names no agent</td><td>research becomes adapt (one swapped line)</td></tr>
+</tbody></table></div>
+
+<!-- ============================ facts ============================ -->
+<h2>What omp 18.6.1 lets an agent file declare</h2>
+<p>The parser in <code>src/discovery/helpers.ts</code> reads 12 fields, and it drops unknown fields without an error. These are the ones that matter here:</p>
+<div class="tw"><table><thead><tr><th>Field</th><th>Meaning</th><th>Consequence for vstack</th></tr></thead><tbody>
+<tr><td><code>name</code>, <code>description</code></td><td>Required. The name is global and has no namespace. The description is shown in full in the task tool's agent list and in <code>/agents</code>.</td><td>Names must not collide with the bundled <code>task</code>, <code>scout</code>, <code>sonic</code>, <code>reviewer</code>, or <code>security-reviewer</code> (Q2).</td></tr>
+<tr><td><code>tools</code></td><td>When omitted, the agent gets every built-in the settings allow. An explicit list gets <code>yield</code> added, and gets <code>task</code> added when <code>spawns</code> is set.</td><td>The only rights lever (Q3). MCP tools are inherited regardless of the list.</td></tr>
+<tr><td><code>spawns</code></td><td>Takes <code>*</code> or a list. With a list, a nested spawn that omits <code>agent</code> gets the <b>first</b> entry. When omitted, the agent can't spawn at all.</td><td>Every vstack agent needs it. The order sets the default.</td></tr>
+<tr><td><code>output</code></td><td>A JTD-style schema for structured output. A caller's <code>outputSchema</code> wins over it.</td><td>Useful where the parent parses a fixed verdict (the ship verifier).</td></tr>
+<tr><td><code>model</code>, <code>thinking-level</code></td><td>When omitted, the agent inherits the parent's live model and effort.</td><td>vstack omits both (ADR 0004).</td></tr>
+<tr><td><code>autoload-skills</code></td><td>Injects the named skills before the first prompt. It doesn't restrict which skills the agent can see.</td><td>Not needed: children inherit every skill and rule anyway.</td></tr>
+</tbody></table></div>
+<p>There is <b>no</b> frontmatter for <code>isolated</code>, <code>readOnly</code>, permissions, or approval mode. Subagents are always forced into <code>yolo</code> approval. Isolation is only a per-call option (<code>isolated: true</code>), and it requires <code>task.isolation.enabled</code>, which defaults to <b>false</b>. <code>task.maxRecursionDepth</code> defaults to <b>2</b>: main can spawn a child, the child can spawn a grandchild, and the grandchild cannot spawn.</p>
+
+<!-- ============================ inventory ============================ -->
+<h2>Every spawn role in vstack text</h2>
+<p>Collected from the contract decisions (overlap skills, joined Playbook skills, the <code>vstack update</code> flow) and a survey of every spawn site in the kept Upstream items at the Pins. "Needs" is what the role does, not what upstream grants. The last column is the Q1 recommendation.</p>
+<div class="tw"><table><thead><tr><th>Role</th><th>vstack skill</th><th>Shape</th><th>Needs</th><th>Agent (Q1 A)</th></tr></thead><tbody>
+<tr><td>Fact-finder</td><td>grilling</td><td>single, beside the interview</td><td>read, run read-only commands</td><td>explorer</td></tr>
+<tr><td>Codebase walker</td><td>improve-codebase-architecture</td><td>single</td><td>read</td><td>explorer</td></tr>
+<tr><td>Background researcher</td><td>research</td><td>single, background</td><td>read, web, write the findings file</td><td>worker</td></tr>
+<tr><td>Research runner</td><td>wayfinder (charting)</td><td>Fan-out, one per research ticket</td><td>runs research, own <code>research/&lt;name&gt;</code> branch, ticket comment</td><td>worker</td></tr>
+<tr><td>Standards, Spec, Safety reviewers</td><td>code-review</td><td>Fan-out of 2–3, or single</td><td>read, git, a proof script in <code>$TMPDIR</code></td><td>explorer</td></tr>
+<tr><td>Designer</td><td>codebase-design (DESIGN-IT-TWICE), architect Sketch</td><td>Fan-out of 3–4</td><td>read; the design goes in the reply</td><td>explorer</td></tr>
+<tr><td>how runner, why runner</td><td>architect Ground, explain step 2</td><td>Fan-out of 2</td><td>runs how or why, which nest</td><td>explorer</td></tr>
+<tr><td>Explorers + explainer</td><td>how</td><td>Fan-out of 2–4, then single</td><td>read</td><td>explorer</td></tr>
+<tr><td>Investigators + synthesizer</td><td>why</td><td>Fan-out, one per evidence category, then single</td><td>read, git, gh, MCP</td><td>explorer</td></tr>
+<tr><td>Comment critic</td><td>prune-comments</td><td>single</td><td>edits comments only; runs how/why</td><td>comment-critic</td></tr>
+<tr><td>Final reviewer</td><td>decision-trail</td><td>single</td><td>read the trail and transcript</td><td>explorer</td></tr>
+<tr><td>Source wave</td><td>maintain-app-verification</td><td>Fan-out, one per feature file</td><td>read</td><td>explorer</td></tr>
+<tr><td>Runners</td><td>compare-attempts (and blast-radius's big-change pass)</td><td>Fan-out of N, each in its own worktree</td><td>write the artifact, run</td><td>worker</td></tr>
+<tr><td>Cross-judge</td><td>compare-attempts</td><td>single, after the runners</td><td>read</td><td>explorer</td></tr>
+<tr><td>Lenses + synthesizer</td><td>session-lessons</td><td>Fan-out of 3, then single</td><td>read <code>history://</code></td><td>explorer</td></tr>
+<tr><td>Payload reader</td><td>principle-guard-the-context-window</td><td>single</td><td>read large outputs</td><td>explorer</td></tr>
+<tr><td>Forensics parser</td><td>forensics</td><td>single</td><td>read the artifact, sqlite in <code>$TMPDIR</code></td><td>explorer</td></tr>
+<tr><td>Hypothesis worker</td><td>hillclimb</td><td>Fan-out, each in its own worktree</td><td>edit, run the frozen harness, commit on its own branch</td><td>worker</td></tr>
+<tr><td>Ship verifier</td><td>ship</td><td>Fan-out per PR; inline = one verifier for all</td><td>build, test, drive the app; no edits, push, comment, or merge</td><td>verifier</td></tr>
+<tr><td>Background babysitter</td><td>babysit (background mode)</td><td>single, background</td><td>edit, commit, push, gh replies</td><td>worker</td></tr>
+<tr><td>Adapt/merge resolver</td><td>vstack-update stage 1</td><td>Fan-out per artifact group</td><td>edit the Update worktree</td><td>worker</td></tr>
+<tr><td>Reject and new-item proposer</td><td>vstack-update stage 2</td><td>Fan-out</td><td>draft artifacts in the worktree</td><td>worker</td></tr>
+<tr><td>ADR checker</td><td>vstack-update stage 3</td><td>Fan-out</td><td>read; a draft ADR goes in the reply</td><td>explorer</td></tr>
+<tr><td>Fan-out reviewer</td><td>vstack-update stage 4</td><td>Fan-out</td><td>read</td><td>explorer</td></tr>
+</tbody></table></div>
+<p>Not a spawn site: ask-vstack's "send it to a subagent" (from ask-matt's <code>PHASE-BOUNDARIES.md:36</code>) advises the user. It is not a step the agent runs.</p>
+
+<!-- ============================ Q1 ============================ -->
+<h2>Roster · Q1–Q3</h2>
+<h3><span class="q">Q1</span>Roster shape</h3>
+<p>Upstream keeps the role in the skill. pstack spawns <code>generalPurpose</code> with a prompt file from <code>references/*-prompt.md</code>, and Matt writes the brief inline. Only <code>Comment Sicko</code> is a real agent definition with its own persona. Because omp can't enforce rights, an agent buys only three things: a <code>tools</code> list, a body contract, and an <code>output</code> schema. So agents should differ only where those three differ.</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Roster</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>Rights tiers plus two specialists: <b>explorer</b> (read-only), <b>worker</b> (writes where it is told), <b>verifier</b> (run-only, with a verdict schema), and <b>comment-critic</b> (pstack's persona).</td><td>4 files. Role prompts stay where Upstream keeps them, so an Upstream prompt change touches one file. Each spawn line reads <code>agent: vstack-explorer</code> plus the role prompt.</td></tr>
+<tr><td>B</td><td>explorer, worker, and comment-critic. The ship verifier becomes an explorer with a run-only prompt.</td><td>3 files. The verdict shape then lives only in ship's text, with no schema the parent can rely on.</td></tr>
+<tr><td>C</td><td>One agent per role, about 18 of them.</td><td>Each spawn line is precise, but role text moves out of the skill, so every Upstream prompt change touches two files.</td></tr>
+</tbody></table></div>
+<p>If A is chosen, the four definitions look like this (Q2 A names, Q3 A tools). There is no <code>model</code> and no <code>thinking-level</code>. Each <code>spawns:</code> starts with the read-only explorer, so an unnamed nested spawn falls back to the agent with the fewest rights.</p>
+<div class="two">
+<div class="side"><h4>vstack-explorer</h4><pre class="mock">tools: read, grep, glob, find, ast_grep, lsp,
+       bash, eval, web_search
+spawns: vstack-explorer
+body: role comes from the spawning prompt.
+  Never change tracked files, push, comment,
+  or merge. Scratch only under $TMPDIR or
+  local://. Pass the user's override words
+  down to every spawn.</pre></div>
+<div class="side"><h4>vstack-worker</h4><pre class="mock">tools: (omitted → every allowed built-in)
+spawns: vstack-explorer, vstack-worker
+body: write only inside the tree or worktree
+  the prompt names. Push, comment, or reply
+  on a PR only when the prompt says so.
+  Pass the user's override words down.</pre></div>
+<div class="side"><h4>vstack-verifier</h4><pre class="mock">tools: read, grep, glob, find, bash, eval
+spawns: vstack-explorer
+output: verdict (PASS | PASS+NOTES | FAIL),
+  head_sha, base_sha, patch_id, evidence[]
+body: run-only. Check out the given SHAs in
+  detached worktrees; build, test, drive the
+  app through the verify skill. Never edit
+  tracked files, push, comment, or merge.</pre></div>
+<div class="side"><h4>vstack-comment-critic</h4><pre class="mock">tools: read, grep, glob, find, ast_grep,
+       bash, eval, edit
+spawns: vstack-explorer
+body: Comment Sicko's text, adapted: edit
+  comments only, flag MUST KILL symbols,
+  never write application code. "/how, /why"
+  become skill://how and skill://why.</pre></div>
+</div>
+
+<h3><span class="q">Q2</span>Names</h3>
+<p>omp agent names are global and have no namespace. The plugin probe showed that plugin agents keep their frontmatter name. The pstack adoption ticket already chose <code>comment-critic</code>.</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Names</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td><code>vstack-explorer</code>, <code>vstack-worker</code>, <code>vstack-verifier</code>, <code>vstack-comment-critic</code></td><td>Collisions are impossible, and vstack agents are easy to spot in <code>/agents</code>. A correction on the pstack adoption ticket renames the register row.</td></tr>
+<tr><td>B</td><td>Prefix only the generic names; keep <code>comment-critic</code></td><td>No revision, but the convention is mixed.</td></tr>
+<tr><td>C</td><td>No prefix</td><td>Short names. The generic ones (<code>explorer</code>, <code>worker</code>) are likely to clash with other plugins or the user's own agents.</td></tr>
+</tbody></table></div>
+
+<h3><span class="q">Q3</span>Write rights</h3>
+<p>Read-only roles still need <code>bash</code> for <code>git log</code>, <code>gh</code>, sqlite, and proof scripts, and bash can write anything. MCP tools are inherited whatever <code>tools</code> says, and why's investigators depend on them. omp's own "READ-ONLY" label is a heuristic over the declared tools (<code>read-only-policy.ts</code>), not a sandbox.</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Contract</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>Read-only agents leave out <code>edit</code>, <code>write</code>, and <code>ast_edit</code>, and their body states the limits. Writers get the full toolset, and their body confines them to the tree they are given. Each description says the limits are a prompt contract.</td><td>The agent can't edit by accident, since it has no edit tool. A deliberate bash write is still possible, and the description says so.</td></tr>
+<tr><td>B</td><td>Every agent gets the full toolset; the rights live only in the prompt.</td><td>Simpler, but nothing makes the read-only roles think twice before editing.</td></tr>
+</tbody></table></div>
+
+<!-- ============================ Q4 Q5 ============================ -->
+<h2>Isolation and depth · Q4–Q5</h2>
+<h3><span class="q">Q4</span>Isolation for parallel writers and verifiers</h3>
+<p>Four roles cannot share one checkout. Hillclimb workers and compare-attempts runners edit in parallel. Wayfinder research runners each switch to their own <code>research/&lt;name&gt;</code> branch. Ship verifiers need the PR's parent and head SHAs. omp's <code>isolated: true</code> needs <code>task.isolation.enabled</code>, which is off by default. It copies the parent's <em>current</em> tree, and it applies successful changes back to the parent.</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Mechanism</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>The parent runs <code>git worktree add</code>: a branch per worker, or <code>--detach &lt;sha&gt;</code> for a verifier. It passes the path in the prompt, picks winners by cherry-pick or <code>git add &lt;files&gt;</code>, and removes the worktrees afterwards.</td><td>No omp setting is needed, and nothing applies automatically. This matches hillclimb's rule of keeping only the best winner, and pstack's separate-before-serializing principle.</td></tr>
+<tr><td>B</td><td>omp <code>isolated: true</code>, with a seventh machine check in setup-vstack that turns on <code>task.isolation.enabled</code></td><td>Less skill text. But auto-apply conflicts with keep-best, and it can't check out a PR's SHAs.</td></tr>
+</tbody></table></div>
+
+<h3><span class="q">Q5</span>The depth cap</h3>
+<p>With omp's default cap of 2, the deepest known paths look like this:</p>
+<div class="fig"><svg viewBox="0 0 880 344" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="depth-title depth-desc">
+<title id="depth-title">Spawn depth under maxRecursionDepth 2</title>
+<desc id="depth-desc">Three spawn chains from the main session: architect to how runner to how explorers, prune-comments to comment-critic to how explainer, and babysit to background babysitter to Safety reviewer; only the babysit chain would need a fourth level, where the blast-radius arena pass falls back to inline.</desc>
+<defs>
+<marker id="depth-a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+<marker id="depth-aa" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker>
+</defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<!-- arrows -->
+<line x1="220" y1="72" x2="220" y2="104" stroke="#4f5d75" marker-end="url(#depth-a)"/>
+<line x1="220" y1="152" x2="220" y2="184" stroke="#4f5d75" marker-end="url(#depth-a)"/>
+<line x1="480" y1="72" x2="480" y2="104" stroke="#4f5d75" marker-end="url(#depth-a)"/>
+<line x1="480" y1="152" x2="480" y2="184" stroke="#4f5d75" marker-end="url(#depth-a)"/>
+<line x1="740" y1="72" x2="740" y2="104" stroke="#4f5d75" marker-end="url(#depth-a)"/>
+<line x1="740" y1="152" x2="740" y2="184" stroke="#4f5d75" marker-end="url(#depth-a)"/>
+<line x1="740" y1="232" x2="740" y2="276" stroke="#eb6c36" stroke-dasharray="5,4" marker-end="url(#depth-aa)"/>
+<!-- cap -->
+<line x1="104" y1="256" x2="856" y2="256" stroke="rgba(235,108,54,0.5)" stroke-dasharray="4,4"/>
+<text x="104" y="248" fill="#eb6c36" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.08em">TASK.MAXRECURSIONDEPTH = 2 · NO SPAWN BELOW</text>
+<!-- depth labels -->
+<text x="24" y="52" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">DEPTH 0</text>
+<text x="24" y="132" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">DEPTH 1</text>
+<text x="24" y="212" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">DEPTH 2</text>
+<text x="24" y="304" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" letter-spacing="0.14em">DEPTH 3</text>
+<!-- depth 0 -->
+<rect x="120" y="24" width="200" height="48" rx="6" fill="rgba(79,93,117,0.10)" stroke="#7a8399"/>
+<text x="220" y="46" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">architect</text>
+<text x="220" y="62" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">main session</text>
+<rect x="380" y="24" width="200" height="48" rx="6" fill="rgba(79,93,117,0.10)" stroke="#7a8399"/>
+<text x="480" y="46" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">prune-comments</text>
+<text x="480" y="62" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">main session</text>
+<rect x="640" y="24" width="200" height="48" rx="6" fill="rgba(79,93,117,0.10)" stroke="#7a8399"/>
+<text x="740" y="46" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">babysit (background)</text>
+<text x="740" y="62" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">main session</text>
+<!-- depth 1 -->
+<rect x="120" y="104" width="200" height="48" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="220" y="126" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">how runner</text>
+<text x="220" y="142" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">vstack-explorer</text>
+<rect x="380" y="104" width="200" height="48" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="480" y="126" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">comment critic</text>
+<text x="480" y="142" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">vstack-comment-critic</text>
+<rect x="640" y="104" width="200" height="48" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="740" y="126" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">background babysitter</text>
+<text x="740" y="142" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">vstack-worker · runs code-review</text>
+<!-- depth 2 -->
+<rect x="120" y="184" width="200" height="48" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="220" y="206" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">how explorers ×2–4</text>
+<text x="220" y="222" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">vstack-explorer · leaf</text>
+<rect x="380" y="184" width="200" height="48" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="480" y="206" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">how explainer</text>
+<text x="480" y="222" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">vstack-explorer · leaf</text>
+<rect x="640" y="184" width="200" height="48" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="740" y="206" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Safety reviewer</text>
+<text x="740" y="222" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">vstack-explorer · leaf</text>
+<!-- depth 3 -->
+<rect x="640" y="276" width="200" height="48" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36" stroke-dasharray="4,3"/>
+<text x="740" y="298" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">blast-radius arena pass</text>
+<text x="740" y="314" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">cannot spawn → reviewer does it inline</text>
+</svg><p class="cap">With option A, the dashed coral step is the only known place where the cap changes behavior: the gate sees "cannot spawn" and picks inline.</p></div>
+<div class="tw"><table><thead><tr><th>Option</th><th>Rule</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>Keep the default. The Fan-out gate treats "cannot spawn here" (the depth cap, or no eval tool) as <code>inline</code>. A single subagent that can't be spawned also runs inline, in the current agent.</td><td>No setting to own. Deep chains degrade to doing the work themselves, which is the cheap path anyway.</td></tr>
+<tr><td>B</td><td>setup-vstack raises <code>maxRecursionDepth</code> to 3 through a new machine check.</td><td>Deep chains keep their Fan-out, at the cost of one more setting and a wider token blast radius.</td></tr>
+</tbody></table></div>
+
+<!-- ============================ Q6 Q7 ============================ -->
+<h2>The shared Fan-out rubric · Q6–Q7</h2>
+<p>The judge is <code>await judge(state, {fanout: {type: "choice", instructions, criteria: {"fan-out": …, "inline": …}}})</code>, and it returns <code>{choice, probabilities, confidence}</code>. It runs on TypeSafe when credentialed, and otherwise on the tiny or smol chat model. A credentialed native judge that fails does <b>not</b> fall back to a chat model; the call errors. The upstream raw material has no numeric threshold. What it does have:</p>
+<blockquote>When in doubt, take the simple path. (pstack how, <code>SKILL.md:20</code>)</blockquote>
+<blockquote>Independent workstreams. Disjoint files, services, or layers parallelize. Shared writes serialize. (pstack Feature throughput checkpoint, <code>feature.md:9</code>)</blockquote>
+<blockquote>A deterministic lever beats fan-out. If the tool can process every unit in one pass, run it yourself. (principle-build-the-lever, <code>SKILL.md:16</code>)</blockquote>
+<blockquote>Both axes run as parallel sub-agents so they don't pollute each other's context. (Matt code-review, <code>SKILL.md:11</code>)</blockquote>
+
+<div class="fig"><svg viewBox="0 0 960 224" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="gate-title gate-desc">
+<title id="gate-title">The Fan-out gate</title>
+<desc id="gate-desc">At a Fan-out step, the user's stated words decide first; if none, a step that cannot spawn or lacks eval goes inline; otherwise the judge applies the shared rubric, and only a fan-out choice with confidence of at least 0.7 fans out, while anything else, including a judge error, goes inline.</desc>
+<defs><marker id="gate-a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker></defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<!-- arrows -->
+<line x1="128" y1="72" x2="160" y2="72" stroke="#4f5d75" marker-end="url(#gate-a)"/>
+<line x1="288" y1="72" x2="352" y2="72" stroke="#4f5d75" marker-end="url(#gate-a)"/>
+<line x1="480" y1="72" x2="512" y2="72" stroke="#4f5d75" marker-end="url(#gate-a)"/>
+<line x1="656" y1="72" x2="688" y2="72" stroke="#4f5d75" marker-end="url(#gate-a)"/>
+<line x1="816" y1="72" x2="848" y2="72" stroke="#4f5d75" marker-end="url(#gate-a)"/>
+<line x1="224" y1="112" x2="224" y2="160" stroke="#4f5d75" marker-end="url(#gate-a)"/>
+<line x1="416" y1="112" x2="416" y2="160" stroke="#4f5d75" marker-end="url(#gate-a)"/>
+<path d="M752 112 V176 Q752 184 744 184 H480" fill="none" stroke="#4f5d75" marker-end="url(#gate-a)"/>
+<!-- arrow labels -->
+<rect x="300" y="48" width="40" height="12" rx="2" fill="#ffffff"/><text x="320" y="57" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">NONE</text>
+<rect x="484" y="48" width="24" height="12" rx="2" fill="#ffffff"/><text x="496" y="57" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">YES</text>
+<rect x="820" y="48" width="24" height="12" rx="2" fill="#ffffff"/><text x="832" y="57" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">YES</text>
+<rect x="232" y="132" width="44" height="12" rx="2" fill="#ffffff"/><text x="254" y="141" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">STATED</text>
+<rect x="424" y="132" width="24" height="12" rx="2" fill="#ffffff"/><text x="436" y="141" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">NO</text>
+<rect x="580" y="160" width="72" height="12" rx="2" fill="#ffffff"/><text x="616" y="169" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">NO · ERROR</text>
+<!-- nodes -->
+<rect x="16" y="48" width="112" height="48" rx="24" fill="rgba(79,93,117,0.10)" stroke="#7a8399"/>
+<text x="72" y="70" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Fan-out step</text>
+<text x="72" y="84" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">2+ parts</text>
+<polygon points="160,72 224,32 288,72 224,112" fill="#ffffff" stroke="#2d3142"/>
+<text x="224" y="68" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">User's</text>
+<text x="224" y="84" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">words?</text>
+<polygon points="352,72 416,32 480,72 416,112" fill="#ffffff" stroke="#2d3142"/>
+<text x="416" y="68" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Can spawn,</text>
+<text x="416" y="84" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">has eval?</text>
+<rect x="512" y="48" width="144" height="48" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/>
+<text x="584" y="70" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">judge(rubric)</text>
+<text x="584" y="84" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">skill://vstack-fan-out</text>
+<polygon points="688,72 752,32 816,72 752,112" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/>
+<text x="752" y="68" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">fan-out and</text>
+<text x="752" y="84" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">conf ≥ 0.7?</text>
+<rect x="848" y="48" width="96" height="48" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="896" y="70" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Fan-out</text>
+<text x="896" y="84" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">one tasks[] batch</text>
+<rect x="160" y="160" width="128" height="48" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="224" y="182" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">As the user said</text>
+<text x="224" y="196" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">fan-out or inline</text>
+<rect x="352" y="160" width="128" height="48" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="416" y="182" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Inline</text>
+<text x="416" y="196" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">agent does each part</text>
+</svg><p class="cap">The order of checks (Q7). The coral parts are the rubric and the threshold this ticket fixes. The user's words follow ADR 0004: "fan out" or "in parallel" forces Fan-out, and "no fan-out" or "sequential" forces inline.</p></div>
+
+<h3><span class="q">Q6</span>Where the rubric lives</h3>
+<p>Subagents inherit every skill and rule, so any of these is reachable from a nested gate.</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Home</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>A hidden skill, <code>plugin/skills/vstack-fan-out/SKILL.md</code> (<code>disable-model-invocation: true</code>). It holds the override phrases, the order of checks, the exact <code>judge()</code> cell, and the rubric. The gate line cites <code>skill://vstack-fan-out</code>. It is a vstack original, listed under <code>originals:</code>.</td><td>One source of truth, read only at a gate. The lint can check that every Fan-out block cites it.</td></tr>
+<tr><td>B</td><td>An <code>alwaysApply</code> rule</td><td>Always in context, but it costs prompt space on every turn of every session.</td></tr>
+<tr><td>C</td><td>Repeated inline in each Fan-out block</td><td>No extra read, but about 12 copies that will drift. That breaks ADR 0004's "one shared vstack rubric".</td></tr>
+</tbody></table></div>
+
+<h3><span class="q">Q7</span>The rubric text and the decision rule</h3>
+<p>The state the judge sees is the same at every gate. A skill fills in only <code>parts</code>, the concrete inputs of that step, each with a size the agent can count (files, diff lines, sources, PRs, hypotheses).</p>
+<div class="side"><pre class="mock">state = {
+  "request": &lt;the user's words for this invocation&gt;,
+  "skill":   &lt;skill name&gt;,
+  "step":    &lt;step name&gt;,
+  "parts":   [{"label": …, "size": …}, …]
+}
+
+instructions:
+  A vstack skill step can hand its parts to subagents that run at the same
+  time (fan-out), or the current agent can do every part itself, one after
+  another (inline). Fan-out costs startup time, tokens on the same model, and
+  a merge step. Judge only from the user's request and the step's concrete
+  inputs.
+
+criteria["fan-out"]:
+  The parts are independent: no part needs another's result, and no two
+  write the same file, branch, or state. None of them is trivially small.
+  And at least one of these holds: each part needs substantial reading or
+  running (many files, a long command, a live app, a large artifact);
+  separate contexts are the point (independent review axes, radically
+  different designs, competing attempts, per-PR verification); or the
+  parts' raw material together would crowd one context.
+
+criteria["inline"]:
+  A part depends on another's result or shares a write target; or every
+  part is small (a short diff, a few files, a narrow question, one source);
+  or a script could do every part in one pass; or the whole step fits
+  comfortably in one context. When in doubt, inline.
+
+<mark>order of checks</mark>
+  1. The user's words decide: "fan out" / "in parallel" → fan-out;
+     "no fan-out" / "sequential" → inline.
+  2. Cannot spawn here (depth cap) or no eval tool → inline.
+  3. judge: fan-out only if choice = "fan-out" and confidence ≥ 0.7.
+     Any other result, or a judge error → inline.</pre></div>
+<div class="tw"><table><thead><tr><th>Option</th><th>Threshold</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>0.7</td><td>Borderline jobs go inline, in line with "when in doubt, take the simple path".</td></tr>
+<tr><td>B</td><td>0.6</td><td>More Fan-out on borderline jobs, with more subagent cost.</td></tr>
+<tr><td>C</td><td>0.8</td><td>Inline unless the job is clearly complex. Code-review's axes will usually share one context.</td></tr>
+</tbody></table></div>
+
+<!-- ============================ Q8 ============================ -->
+<h2>A conflict the roster exposes · Q8</h2>
+<h3><span class="q">Q8</span>research is adopt, but its spawn names no agent</h3>
+<p><a href="https://github.com/daandden/vstack/issues/36#issuecomment-5908581361">Decide how overlapping Matt and pstack skills merge</a> made research <b>adopt</b>. Its text is:</p>
+<blockquote>Spin up a <b>background agent</b> to do the research, so you keep working while it reads. (Matt research, <code>SKILL.md:6</code>)</blockquote>
+<p>In the main session, a spawn that omits <code>agent</code> resolves to the bundled <code>task</code> agent on the <code>@task</code> model role. <a href="https://github.com/daandden/vstack/issues/42#issuecomment-5908921251">Define the Fan-out guardrail for Updates</a> calls that a break of ADR 0004 "even when it's single". It switched grilling, improve-codebase-architecture, and principle-guard-the-context-window to adapt for exactly this reason, but research was not on that list.</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Change</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (recommended)</td><td>research becomes <b>adapt</b>, with one swapped line: the background agent is <code>vstack-worker</code>. Correction comments go on the overlap and guardrail tickets.</td><td>It follows the guardrail's own rule. The Update then three-way merges research instead of copying it.</td></tr>
+<tr><td>B</td><td>research stays adopt, and its background agent runs on the bundled <code>task</code> agent.</td><td>No text change, but it breaks ADR 0004 whenever <code>modelRoles.task</code> is set, as it is on this machine.</td></tr>
+</tbody></table></div>
+
+<div class="footer"><span>vstack · wayfinder · agent roster and Fan-out rubric</span><span>omp 18.6.1 · Matt v1.2.3 · pstack 12d587df</span></div>
+</div></body></html>
