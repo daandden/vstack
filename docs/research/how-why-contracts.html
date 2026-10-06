@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Contracts of how and why: explainer</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--paper:#f5f5f5;--paper2:#ececec;--ink:#2d3142;--muted:#4f5d75;--soft:#7a8399;--rule:rgba(45,49,66,0.12);--accent:#eb6c36;--tint:rgba(235,108,54,0.08);--link:#2e5aa8;--sans:'Geist',system-ui,sans-serif;--serif:'Instrument Serif','Times New Roman',serif;--mono:'Geist Mono',ui-monospace,Menlo,monospace}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);padding:3rem 2rem;line-height:1.55;font-size:15px}
+.container{max-width:1160px;margin:0 auto}
+.eyebrow{font-family:var(--mono);font-size:.66rem;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem}
+h1{font-family:var(--serif);font-weight:400;font-size:clamp(1.75rem,3vw + 1rem,2.5rem);letter-spacing:-.02em;line-height:1.1;margin-bottom:.5rem}
+h2{font-family:var(--serif);font-weight:400;font-size:1.75rem;margin:3rem 0 .75rem;padding-top:1.5rem;border-top:1px solid var(--rule)}
+h3{font-size:1rem;font-weight:600;margin:1.75rem 0 .6rem}
+.subtitle{color:var(--muted);max-width:80ch}
+p{max-width:80ch;margin-bottom:.75rem}
+ul.l{margin:0 0 .75rem 1.25rem;max-width:80ch} ul.l li{margin-bottom:.3rem}
+a{color:var(--link);text-decoration:none} a:hover{text-decoration:underline}
+code{font-family:var(--mono);font-size:.82em;background:rgba(45,49,66,0.06);padding:.05em .3em;border-radius:3px}
+.cards{display:grid;grid-template-columns:1.1fr 1fr .9fr;gap:1rem;margin-top:1.5rem}
+.card{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:1.1rem 1.25rem;font-size:.9rem}
+.card h4{font-size:.875rem;margin-bottom:.4rem}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1rem 0}
+.side{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:1rem 1.2rem;font-size:.88rem}
+.side h4{font-size:.9rem;margin-bottom:.35rem}
+blockquote{border-left:2px solid var(--soft);padding:.2rem .7rem;margin:.5rem 0;color:var(--muted);font-size:.86rem;font-style:italic;max-width:80ch}
+.fig{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:1rem;margin:1rem 0}
+.fig svg{width:100%;max-width:920px;display:block;margin:0 auto}
+.fig .cap{font-size:.8rem;color:var(--soft);text-align:center;margin:.5rem auto 0;max-width:none}
+.rec{background:var(--tint);border-left:3px solid var(--accent);padding:.8rem 1rem;margin:1rem 0;border-radius:0 6px 6px 0;max-width:none}
+.rec p{margin-bottom:.4rem;max-width:none}
+.q{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;color:#fff;background:var(--accent);border-radius:3px;padding:.05rem .4rem;margin-right:.4rem;vertical-align:2px}
+.tw{overflow-x:auto;background:#fff;border:1px solid var(--rule);border-radius:6px;margin:1rem 0}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th{font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--soft);text-align:left;padding:.6rem .75rem;border-bottom:1px solid var(--rule);background:var(--paper2)}
+td{padding:.6rem .75rem;border-bottom:1px solid rgba(45,49,66,0.07);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr.pick td{background:var(--tint)}
+.b{font-family:var(--mono);font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;padding:.1rem .4rem;border-radius:3px;border:1px solid;white-space:nowrap}
+.b-adapt{color:var(--link);border-color:rgba(46,90,168,.4);background:rgba(46,90,168,.06)}
+.b-sub{color:var(--accent);border-color:rgba(235,108,54,.4);background:var(--tint)}
+.b-self{color:#2d6a4f;border-color:rgba(45,106,79,.4);background:rgba(45,106,79,.06)}
+.b-gap{color:var(--soft);border-color:rgba(122,131,153,.4);background:rgba(122,131,153,.06)}
+.k{font-family:var(--mono);font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--soft)}
+pre.mock{font-family:var(--mono);font-size:.74rem;line-height:1.5;white-space:pre-wrap;margin-top:.5rem;color:var(--ink)}
+pre.mock mark{background:var(--tint);color:var(--ink);border-left:2px solid var(--accent);padding-left:.2rem}
+pre.mock del{color:var(--soft);text-decoration:line-through}
+.footer{margin-top:3rem;padding-top:1.25rem;border-top:1px solid var(--rule);font-family:var(--mono);font-size:.72rem;color:var(--soft);display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem}
+@media (max-width:860px){.cards,.two{grid-template-columns:1fr}}
+</style></head><body><div class="container">
+
+<p class="eyebrow">vstack · wayfinder ticket · Specify the vstack contracts of how and why · round 1</p>
+<h1>Contracts of how and why</h1>
+<p class="subtitle">pstack <code>how</code> and <code>why</code> at Pin <code>12d587df</code>, rewritten for omp. This round settles the shape of each skill, why's evidence sources, the model lines, and how callers reach them. Gate parts and sizes and the <code>references/</code> edits depend on these answers, so they come next round.</p>
+
+<div class="cards">
+<div class="card"><p class="k">Settled · dispositions</p><h4>how <span class="b b-adapt">adapt</span> · why <span class="b b-adapt">adapt</span></h4><p>how: one explainer by default. why: evidence limited to git, <code>gh</code>, and configured MCPs. Both keep their names.</p></div>
+<div class="card"><p class="k">Settled · roster + house style</p><h4>Every role is <code>vstack-explorer</code></h4><p>Explorers, explainer, investigators, synthesizer. Fan-outs use the fixed Fan-out block; a lone subagent uses a <b>Spawn</b> line.</p></div>
+<div class="card"><p class="k">Settled · ADR 0004</p><h4>Inline means no subagents</h4><p>"On <code>inline</code>, the agent at that step does the work itself." A single subagent is not Fan-out and always runs as written.</p></div>
+</div>
+
+<!-- ============================ Q1 ============================ -->
+<h2><span class="q">Q1</span>how: Simple/Complex → Fan-out block</h2>
+<p>pstack how has two paths: <b>Simple</b> means one explainer explores and explains in one pass (Step 2b). <b>Complex</b> means 2–4 explorers run in parallel and then one explainer combines their findings (Steps 2a, 3). "When in doubt, take the simple path." In vstack the judge now decides about parallelism, and its inline branch can't spawn anything. The question is where the judge sits and what inline does.</p>
+
+<div class="fig"><svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="how-title how-desc">
+<title id="how-title">how, recommended shape (Q1 option A)</title>
+<desc id="how-desc">A narrow question with one angle goes to one spawned explainer. A broad question with 2 to 4 angles hits the Fan-out gate: on fan-out, explorers run as one batch and their findings go to the explainer; on inline, the how agent explores each angle and writes the explanation itself.</desc>
+<defs><marker id="how-a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker></defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<line x1="132" y1="136" x2="164" y2="136" stroke="#4f5d75" marker-end="url(#how-a)"/>
+<path d="M300,128 H316 Q324,128 324,120 V72 Q324,64 332,64 H672" fill="none" stroke="#4f5d75" marker-end="url(#how-a)"/>
+<path d="M300,144 H316 Q324,144 324,152 V204 Q324,212 332,212 H352" fill="none" stroke="#4f5d75" marker-end="url(#how-a)"/>
+<path d="M392,180 V168 Q392,160 400,160 H472" fill="none" stroke="#4f5d75" marker-end="url(#how-a)"/>
+<path d="M392,244 V256 Q392,264 400,264 H472" fill="none" stroke="#4f5d75" marker-end="url(#how-a)"/>
+<path d="M640,160 H744 Q752,160 752,152 V88" fill="none" stroke="#4f5d75" marker-end="url(#how-a)"/>
+<line x1="640" y1="264" x2="672" y2="264" stroke="#4f5d75" marker-end="url(#how-a)"/>
+<path d="M832,64 H848 Q856,64 856,72 V256 Q856,264 848,264 H836" fill="none" stroke="#4f5d75" marker-end="url(#how-a)"/>
+<rect x="436" y="44" width="136" height="12" rx="2" fill="#ffffff"/><text x="504" y="53" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">1 ANGLE · NOT FAN-OUT</text>
+<rect x="248" y="180" width="68" height="12" rx="2" fill="#ffffff"/><text x="282" y="189" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">2–4 ANGLES</text>
+<rect x="408" y="140" width="48" height="12" rx="2" fill="#ffffff"/><text x="432" y="149" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">FAN-OUT</text>
+<rect x="412" y="244" width="40" height="12" rx="2" fill="#ffffff"/><text x="432" y="253" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">INLINE</text>
+<rect x="664" y="140" width="56" height="12" rx="2" fill="#ffffff"/><text x="692" y="149" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">FINDINGS</text>
+<rect x="20" y="112" width="112" height="48" rx="24" fill="rgba(79,93,117,0.10)" stroke="#7a8399"/>
+<text x="76" y="132" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Question</text>
+<text x="76" y="148" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">user or caller</text>
+<rect x="164" y="112" width="136" height="48" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="232" y="132" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Split into angles</text>
+<text x="232" y="148" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">Step 1 · 1–4 angles</text>
+<polygon points="352,212 392,180 432,212 392,244" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/>
+<text x="392" y="216" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Gate</text>
+<rect x="472" y="140" width="168" height="40" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="556" y="157" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Explorers ×2–4</text>
+<text x="556" y="171" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">tasks[] · vstack-explorer</text>
+<rect x="472" y="244" width="168" height="40" rx="6" fill="rgba(45,106,79,0.06)" stroke="#2d6a4f"/>
+<text x="556" y="261" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">how agent itself</text>
+<text x="556" y="275" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">each angle, then writes</text>
+<rect x="672" y="40" width="160" height="48" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="752" y="60" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Spawn explainer</text>
+<text x="752" y="76" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">vstack-explorer · single</text>
+<rect x="672" y="244" width="160" height="40" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="752" y="261" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Present or return</text>
+<text x="752" y="275" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">Step 4</text>
+</svg><p class="cap">Option A (recommended). The gate only runs when there are 2+ angles, since one explainer isn't a Fan-out. Green = the how agent works itself.</p></div>
+
+<p>Who does the work in each case, per option:</p>
+<div class="tw"><table><thead><tr><th>Case</th><th>pstack today</th><th>A · gate on angles (rec.)</th><th>B · inline = one explainer</th><th>C · no explainer subagent</th></tr></thead><tbody>
+<tr><td>Narrow question (1 angle)</td><td>1 explainer</td><td><span class="b b-sub">1 explainer</span></td><td><span class="b b-sub">1 explainer</span> (judge says inline)</td><td><span class="b b-self">how agent</span></td></tr>
+<tr><td>Broad, judge → fan-out</td><td>2–4 explorers → explainer</td><td><span class="b b-sub">2–4 explorers</span> → <span class="b b-sub">explainer</span></td><td><span class="b b-sub">2–4 explorers</span> → <span class="b b-sub">explainer</span></td><td><span class="b b-sub">2–4 explorers</span> → <span class="b b-self">how agent</span></td></tr>
+<tr><td>Broad, judge → inline</td><td>n/a</td><td><span class="b b-self">how agent</span> explores + writes</td><td><span class="b b-sub">1 explainer</span> covers every angle</td><td><span class="b b-self">how agent</span></td></tr>
+<tr><td>House style / ADR cost</td><td>—</td><td>None: standard block</td><td>New inline variant; ADR 0004 exception (only ship has one)</td><td>None</td></tr>
+<tr><td>Diff vs Upstream</td><td>—</td><td>Small</td><td>Small</td><td>Large: drops the explainer role</td></tr>
+</tbody></table></div>
+<div class="rec"><p><b>Recommended: A.</b> It's the closest to pstack, which keeps future Update merges small, and it uses the template unchanged. The cost: when the judge says inline for a broad question, the exploration happens in the caller's context. The judge only says inline when the whole job fits one context.</p></div>
+
+<!-- ============================ Q2 ============================ -->
+<h2><span class="q">Q2</span>why: investigators and the synthesizer</h2>
+<p>pstack why: build a code anchor yourself (git blame/log, <code>gh pr view</code>), discover MCPs, then "<b>Default to the full parallel investigation</b>": one investigator per evidence category, launched in a single message, with "Don't ask one agent to cover multiple MCPs." Then one synthesizer applies <code>epistemics.md</code> and spot-checks citations. There's a shortcut: "you may answer inline only after confirming all seven … searches would be redundant."</p>
+
+<div class="fig"><svg viewBox="0 0 880 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="why-title why-desc">
+<title id="why-title">why, recommended shape (Q2 option A)</title>
+<desc id="why-desc">The why agent builds the code anchor and maps the sources it can reach, then the Fan-out gate either runs one investigator per evidence category or has the why agent work through each category itself. Both feed a separately spawned synthesizer. A dashed shortcut answers directly from the anchor when every search would be redundant.</desc>
+<defs><marker id="why-a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker></defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<line x1="132" y1="72" x2="164" y2="72" stroke="#4f5d75" marker-end="url(#why-a)"/>
+<line x1="316" y1="72" x2="348" y2="72" stroke="#4f5d75" marker-end="url(#why-a)"/>
+<line x1="492" y1="72" x2="532" y2="72" stroke="#4f5d75" marker-end="url(#why-a)"/>
+<line x1="612" y1="72" x2="676" y2="72" stroke="#4f5d75" marker-end="url(#why-a)"/>
+<line x1="572" y1="104" x2="572" y2="152" stroke="#4f5d75" marker-end="url(#why-a)"/>
+<path d="M652,172 H704 Q712,172 712,180 V236" fill="none" stroke="#4f5d75" marker-end="url(#why-a)"/>
+<line x1="784" y1="92" x2="784" y2="236" stroke="#4f5d75" marker-end="url(#why-a)"/>
+<line x1="680" y1="260" x2="604" y2="260" stroke="#4f5d75" marker-end="url(#why-a)"/>
+<path d="M240,96 V252 Q240,260 248,260 H436" fill="none" stroke="#4f5d75" stroke-dasharray="5,4" marker-end="url(#why-a)"/>
+<rect x="620" y="52" width="48" height="12" rx="2" fill="#ffffff"/><text x="644" y="61" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">FAN-OUT</text>
+<rect x="580" y="120" width="40" height="12" rx="2" fill="#ffffff"/><text x="600" y="129" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">INLINE</text>
+<rect x="276" y="240" width="128" height="12" rx="2" fill="#ffffff"/><text x="340" y="249" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">ANSWER DIRECTLY · RARE</text>
+<rect x="20" y="48" width="112" height="48" rx="24" fill="rgba(79,93,117,0.10)" stroke="#7a8399"/>
+<text x="76" y="68" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Target</text>
+<text x="76" y="84" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">+ question</text>
+<rect x="164" y="48" width="152" height="48" rx="6" fill="rgba(45,106,79,0.06)" stroke="#2d6a4f"/>
+<text x="240" y="68" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Code anchor</text>
+<text x="240" y="84" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">git blame · log · gh pr</text>
+<rect x="348" y="48" width="144" height="48" rx="6" fill="rgba(45,106,79,0.06)" stroke="#2d6a4f"/>
+<text x="420" y="68" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Map sources</text>
+<text x="420" y="84" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">git · gh · mcp__* (Q4)</text>
+<polygon points="532,72 572,40 612,72 572,104" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/>
+<text x="572" y="76" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Gate</text>
+<rect x="676" y="52" width="180" height="40" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="766" y="69" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Investigators ×N</text>
+<text x="766" y="83" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">1 per category · vstack-explorer</text>
+<rect x="492" y="152" width="160" height="40" rx="6" fill="rgba(45,106,79,0.06)" stroke="#2d6a4f"/>
+<text x="572" y="169" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">why agent itself</text>
+<text x="572" y="183" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">each category, in order</text>
+<rect x="680" y="236" width="160" height="48" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/>
+<text x="760" y="256" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Spawn synthesizer</text>
+<text x="760" y="272" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">fresh context · epistemics</text>
+<rect x="440" y="240" width="160" height="40" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="520" y="257" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Present or return</text>
+<text x="520" y="271" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">+ constraint set (Q7b)</text>
+</svg><p class="cap">Option A (recommended). Green = the why agent works itself. The synthesizer (coral) is spawned on both branches; option B makes it follow the gate.</p></div>
+
+<div class="tw"><table><thead><tr><th>Option</th><th>Investigation</th><th>Synthesis</th><th>"Answer directly" shortcut</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (rec.)</td><td>Gate over categories. On inline, the why agent works each category itself, in order: one investigator brief per category, one findings section per category, and cross-source leads recorded rather than chased. "One agent per source" applies only to fan-out.</td><td>Always one spawned <code>vstack-explorer</code>. If it can't be spawned, the why agent synthesizes.</td><td>Kept, renamed from pstack's "answer inline" so that <i>inline</i> only means the Fan-out branch.</td></tr>
+<tr><td>B</td><td>Same as A</td><td>Follows the gate: on inline, the why agent synthesizes itself</td><td>Kept</td></tr>
+<tr><td>C</td><td>Same as A</td><td>Same as A</td><td>Removed. The judge's inline covers small targets (but inline still searches every category).</td></tr>
+</tbody></table></div>
+<div class="rec"><p><b>Recommended: A.</b> Without model diversity, the synthesizer's value is a <i>fresh context</i>: it never saw the investigator's story form, so its confidence tiers stay honest. That matters most on inline, where one agent gathered everything. This matches decision-trail's "one fresh-context, same-model subagent".</p></div>
+
+<!-- ============================ Q4 ============================ -->
+<h2><span class="q">Q4</span>why's evidence sources in omp</h2>
+<blockquote>Before spawning investigators, list the available MCPs from the Cursor environment. Use the available-tools map when present. Otherwise inspect the <code>mcps/</code> directory Cursor exposes for enabled MCP servers. — pstack why, line 64</blockquote>
+<p>What omp actually exposes (per <code>mcp-runtime-lifecycle.md</code>): MCP tools are registered as <code>mcp__&lt;server&gt;_&lt;tool&gt;</code>. They appear either as top-level tools or under <code>xd://</code>, and the system prompt lists them along with each server's instructions. A subagent uses the parent's MCP manager, so investigators see the same tools. omp has no <code>mcps/</code> directory.</p>
+
+<div class="two">
+<div class="side"><h4>pstack (Cursor)</h4><pre class="mock"><del>list the available MCPs from the Cursor
+environment. Use the available-tools map
+when present. Otherwise inspect the `mcps/`
+directory Cursor exposes</del></pre></div>
+<div class="side"><h4>vstack (proposed)</h4><pre class="mock"><mark>List the MCP servers this session reaches:
+tools named `mcp__&lt;server&gt;_&lt;tool&gt;`, top-level
+or under `xd://`, and the MCP server
+instructions in your system prompt.</mark>
+<mark>Evidence is limited to git, `gh`, and
+configured MCPs. Anything else is a gap
+in Sources Consulted.</mark></pre></div>
+</div>
+
+<p>The open part is the issue tracker. pstack lists GitHub Issues as a tracker category, but reaches it only through an MCP. In omp, <code>gh</code> reaches GitHub Issues directly, and setup-vstack already records which tracker the repo uses.</p>
+<div class="tw"><table><thead><tr><th>Evidence category</th><th>pstack reaches it via</th><th>A · omp list + GitHub Issues via gh (rec.)</th><th>B · omp list only</th></tr></thead><tbody>
+<tr><td>Source control</td><td>git, <code>gh</code></td><td><span class="b b-self">always</span> git, <code>gh</code></td><td><span class="b b-self">always</span> git, <code>gh</code></td></tr>
+<tr class="pick"><td>Issue / ticket tracker</td><td>an MCP only</td><td>an MCP, <b>or</b> <code>gh</code> when the vstack issue-tracker config names GitHub Issues (adapts <code>linear.md</code>)</td><td>an MCP only; PR-linked issues still reach source control</td></tr>
+<tr><td>Long-form docs · chat · observability · errors · analytics</td><td>an MCP</td><td>an MCP, else <span class="b b-gap">gap</span></td><td>an MCP, else <span class="b b-gap">gap</span></td></tr>
+</tbody></table></div>
+<div class="rec"><p><b>Recommended: A.</b> For a repo whose tracker is GitHub Issues, the product reason is often written in an issue the PR never linked. A keeps that within the stated limit (it's still <code>gh</code>), and it costs one line plus one row in <code>source-playbook.md</code>.</p></div>
+
+<!-- ============================ Q5 ============================ -->
+<h2><span class="q">Q5</span>Removing the <code>pstack-models.mdc</code> lines</h2>
+<p>Both skills open with a paragraph that routes each spawn to a model line, and every spawn has <code>subagent_type</code> / <code>model</code> / <code>readonly</code> bullets. All of it goes. The question is whether anything replaces it.</p>
+<div class="two">
+<div class="side"><h4>pstack how, Step 2a</h4><pre class="mock">Spawn all explorers in a single message:
+<del>- `subagent_type`: `generalPurpose`
+- `model`: the `how explorer` line, default
+  `grok-4.7-xhigh-fast`
+- `readonly`: `true`</del></pre></div>
+<div class="side"><h4>vstack how, the Fan-out block</h4><pre class="mock"><mark>**Fan-out gate** (`skill://vstack-fan-out`):
+parts: one per angle; size: &lt;next round&gt;.
+- **fan-out** → one `task` call; `tasks[]` has
+  one item per part, each with
+  `agent: "vstack-explorer"`. Each `task`:
+  explorer-prompt.md with its angle, the
+  user's override words, the vstack root.
+- **inline** → do every part yourself, in
+  order, from the same brief.</mark></pre></div>
+</div>
+<div class="tw"><table><thead><tr><th>Option</th><th>Text</th><th>Guard</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (rec.) Delete, no replacement</td><td>Nothing about models. The agents have no <code>model</code> field, and ADR 0004 holds the rule.</td><td>The existing <code>spawn-vocab</code> lint already fails on the old paragraph ("Each spawn below…" is "spawn" outside a <b>Spawn</b> line) and on every <code>subagent_type</code> bullet.</td></tr>
+<tr><td>B Delete + same-model sentence</td><td>"Every subagent runs on your model; never set <code>model</code>." It's explicit, but it's a negation (it names the thing to avoid) and gets repeated in every adapted skill.</td><td>Same</td></tr>
+<tr><td>C Delete + extra lint</td><td>Same as A</td><td><code>check-register.ts</code> also fails on a <code>model</code> field in any Spawn/Fan-out line. Amends the guardrail lint.</td></tr>
+</tbody></table></div>
+
+<!-- ============================ Q7a ============================ -->
+<h2><span class="q">Q7a</span>Who can invoke how and why</h2>
+<p>Upstream, both set <code>disable-model-invocation: true</code>, which omp treats as hidden. Hidden skills aren't listed in the prompt, but <code>skill://how</code> still loads them, and the user can still type <code>/skill:how</code>. architect and explain were made hidden on the same grounds.</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Contract</th><th>Effect</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (rec.) Hidden</td><td>Same as Upstream. ask-vstack lists both. Descriptions drop "Discovers available MCPs … in parallel".</td><td>A casual "how does X work?" gets a plain answer. The machinery (code anchor, MCP mapping, judge, subagents) only runs when asked for or called.</td></tr>
+<tr><td>B Model-invocable</td><td>The agent auto-loads them on "how does X work" / "why is X like this".</td><td>More reach. Every casual question pays for the full investigation.</td></tr>
+</tbody></table></div>
+
+<!-- ============================ Q7b ============================ -->
+<h2><span class="q">Q7b</span>The caller contract: architect Ground and explain step 2</h2>
+<p>Already decided in the overlap-contracts ticket: architect Ground runs how over the touched subsystems, plus why when ownership or layering changes, as a Fan-out block when both run. explain's step 2 does the same. Each runner is a <code>vstack-explorer</code>, which can spawn <code>vstack-explorer</code>s, so how's and why's own gates run one level down (ADR 0004: each nested level makes its own call).</p>
+
+<div class="fig"><svg viewBox="0 0 780 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="call-title call-desc">
+<title id="call-title">architect Ground calling how and why</title>
+<desc id="call-desc">architect's Ground gate either sends how and why to two vstack-explorer runners, each running its own nested gate, or has architect run how and then why itself. In both cases the results feed Sketch, and the why result carries the Preserve, Change, Avoid, and Risk constraint set.</desc>
+<defs><marker id="call-a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker></defs>
+<rect width="100%" height="100%" fill="#ffffff"/>
+<line x1="120" y1="128" x2="140" y2="128" stroke="#4f5d75" marker-end="url(#call-a)"/>
+<path d="M180,96 V72 Q180,64 188,64 H280" fill="none" stroke="#4f5d75" marker-end="url(#call-a)"/>
+<path d="M180,160 V184 Q180,192 188,192 H280" fill="none" stroke="#4f5d75" marker-end="url(#call-a)"/>
+<line x1="220" y1="128" x2="280" y2="128" stroke="#4f5d75" marker-end="url(#call-a)"/>
+<path d="M520,64 H552 Q560,64 560,72 V108 Q560,116 568,116 H600" fill="none" stroke="#4f5d75" marker-end="url(#call-a)"/>
+<line x1="520" y1="128" x2="600" y2="128" stroke="#4f5d75" marker-end="url(#call-a)"/>
+<path d="M520,192 H552 Q560,192 560,184 V148 Q560,140 568,140 H600" fill="none" stroke="#4f5d75" marker-end="url(#call-a)"/>
+<rect x="196" y="44" width="72" height="12" rx="2" fill="#ffffff"/><text x="232" y="53" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">FAN-OUT · 2</text>
+<rect x="232" y="108" width="40" height="12" rx="2" fill="#ffffff"/><text x="252" y="117" fill="#7a8399" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle" letter-spacing="0.06em">INLINE</text>
+<rect x="20" y="104" width="100" height="48" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="70" y="124" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">architect</text>
+<text x="70" y="140" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">Ground step</text>
+<polygon points="140,128 180,96 220,128 180,160" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/>
+<text x="180" y="132" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Gate</text>
+<rect x="280" y="40" width="240" height="48" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="400" y="60" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">vstack-explorer runs skill://how</text>
+<text x="400" y="76" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">nested gate → explorers · explainer</text>
+<rect x="280" y="108" width="240" height="40" rx="6" fill="rgba(45,106,79,0.06)" stroke="#2d6a4f"/>
+<text x="400" y="125" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">architect runs how, then why</text>
+<text x="400" y="139" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">their gates still run inside</text>
+<rect x="280" y="168" width="240" height="48" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="400" y="188" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">vstack-explorer runs skill://why</text>
+<text x="400" y="204" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">nested gate · + constraint set</text>
+<rect x="600" y="104" width="160" height="48" rx="6" fill="#ffffff" stroke="#2d3142"/>
+<text x="680" y="124" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', sans-serif" text-anchor="middle">Sketch</text>
+<text x="680" y="140" fill="#4f5d75" font-size="8" font-family="'Geist Mono', monospace" text-anchor="middle">DESIGN-IT-TWICE</text>
+</svg><p class="cap">explain's step 2 has the same shape, but it ends in the explanation, with no constraint set.</p></div>
+
+<p>pstack why already has an optional tail (line 146): "if the user's <code>why</code> question is a precursor to actually changing this code, convert the lineage findings into a Preserve / Change / Avoid / Risk constraint set." Under a caller, the "user's question" is the caller's brief, so the caller has to say whether a change follows.</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>how/why Present step</th><th>architect's why brief</th><th>explain's why brief</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> (rec.)</td><td>When run for a calling skill or as a subagent: return the output unedited instead of presenting it.</td><td>"Run <code>skill://why</code> on … and include the Preserve/Change/Avoid/Risk constraint set" (Ground always comes before a change).</td><td>No constraint set (nothing changes).</td></tr>
+<tr><td>B</td><td>Same</td><td colspan="2">why always appends the constraint set when a skill calls it. It's simpler, but explain's readers get planning output they didn't ask for.</td></tr>
+</tbody></table></div>
+
+<!-- ============================ next ============================ -->
+<h2>Next round (depends on these answers)</h2>
+<ul class="l">
+<li><b>Gate parts and sizes</b> for how's angles, why's categories, and the how/why block in architect Ground and explain. Each needs a countable size: files per angle, commits and PRs in the anchor, and so on.</li>
+<li><b><code>references/</code> edits</b>. Candidates so far: the <code>Glob</code>/<code>Grep</code>/<code>Read</code> tool names in both how prompts; <code>source-playbook.md:3</code> ("spawns", a lint hit, plus a GitHub Issues row if Q4 = A); <code>sources/slack.md</code> <code>mcp_auth</code>; the "in parallel" sentences in the explorer and investigator prompts under inline. <code>epistemics.md</code>, <code>synthesizer-prompt.md</code>, and the other playbooks have no harness phrases.</li>
+</ul>
+
+<div class="footer"><span>vstack · how/why contracts · round 1</span><span>pstack @ 12d587df · omp MCP runtime docs</span></div>
+</div></body></html>
