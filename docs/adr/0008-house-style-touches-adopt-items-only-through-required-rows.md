@@ -12,4 +12,4 @@ The House style lives in the root `house-style.yaml`. Each replacement row has a
 
 - A new `required` row switches every adopt item that contains its phrase to adapt. This automates the rename cascade.
 - `check-register.ts` fails when an artifact contains the Upstream phrase of a row in scope. For adapt, merge, and original text, it also fails on a bare `/<vstack-skill>` token and on Upstream spawn wording outside a Fan-out block or a single-spawn line.
-- Migration-only rows (`uses: [migration]`) never run on Upstream text. setup-vstack ships a filtered copy, and `check-register.ts` fails if that copy is out of sync.
+- Migration-only rows (`uses: [migration]`) never run on Upstream text. setup-vstack ships a filtered copy, `references/house-style.yaml`. That copy is the canonical replacement data, and it has to contain every `from`, so the old-phrase scan skips it. `check-register.ts` instead validates the copy's schema and fails unless it matches the `uses: migration` rows of the root file exactly. setup-vstack's other text refers to old phrases only by pointing at that file, so the lint needs no other exemption.
