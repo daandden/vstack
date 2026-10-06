@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The vstack contracts of compare-attempts and blast-radius: explainer</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--paper:#f5f5f5;--paper2:#ececec;--ink:#2d3142;--muted:#4f5d75;--soft:#7a8399;--rule:rgba(45,49,66,0.12);--accent:#eb6c36;--tint:rgba(235,108,54,0.08);--link:#2e5aa8;--sans:'Geist',system-ui,sans-serif;--serif:'Instrument Serif','Times New Roman',serif;--mono:'Geist Mono',ui-monospace,Menlo,monospace}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);padding:3rem 2rem;line-height:1.55;font-size:15px}
+.container{max-width:1160px;margin:0 auto}
+.eyebrow{font-family:var(--mono);font-size:.66rem;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem}
+h1{font-family:var(--serif);font-weight:400;font-size:clamp(1.75rem,3vw + 1rem,2.5rem);letter-spacing:-.02em;line-height:1.1;margin-bottom:.5rem}
+h2{font-family:var(--serif);font-weight:400;font-size:1.75rem;margin:3rem 0 .75rem;padding-top:1.5rem;border-top:1px solid var(--rule)}
+h3{font-size:1rem;font-weight:600;margin:1.75rem 0 .6rem}
+.subtitle{color:var(--muted);max-width:80ch}
+p{max-width:80ch;margin-bottom:.75rem}
+ul.l{margin:0 0 .75rem 1.25rem;max-width:80ch} ul.l li{margin-bottom:.3rem}
+a{color:var(--link);text-decoration:none} a:hover{text-decoration:underline}
+code{font-family:var(--mono);font-size:.82em;background:rgba(45,49,66,0.06);padding:.05em .3em;border-radius:3px}
+.cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-top:1.5rem}
+.card{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:1.1rem 1.25rem;font-size:.9rem}
+.card h4{font-size:.875rem;margin-bottom:.4rem}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1rem 0}
+.side{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:1rem 1.2rem;font-size:.88rem}
+.side h4{font-size:.9rem;margin-bottom:.35rem}
+blockquote{border-left:2px solid var(--soft);padding:.2rem .7rem;margin:.5rem 0;color:var(--muted);font-size:.86rem;font-style:italic;max-width:80ch}
+.fig{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:1rem;margin:1rem 0}
+.fig svg{width:100%;max-width:960px;display:block;margin:0 auto}
+.fig .cap{font-size:.8rem;color:var(--soft);text-align:center;margin:.5rem auto 0;max-width:none}
+.rec{background:var(--tint);border-left:3px solid var(--accent);padding:.8rem 1rem;margin:1rem 0;border-radius:0 6px 6px 0;max-width:none}
+.rec p{margin-bottom:.4rem;max-width:none}
+.q{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;color:#fff;background:var(--accent);border-radius:3px;padding:.05rem .4rem;margin-right:.4rem;vertical-align:2px}
+.tw{overflow-x:auto;background:#fff;border:1px solid var(--rule);border-radius:6px;margin:1rem 0}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th{font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--soft);text-align:left;padding:.6rem .75rem;border-bottom:1px solid var(--rule);background:var(--paper2)}
+td{padding:.6rem .75rem;border-bottom:1px solid rgba(45,49,66,0.07);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr.pick td{background:var(--tint)}
+pre.mock{font-family:var(--mono);font-size:.74rem;line-height:1.5;white-space:pre-wrap;margin-top:.5rem;color:var(--ink)}
+pre.mock mark{background:var(--tint);color:var(--ink);border-left:2px solid var(--accent);padding-left:.2rem}
+pre.mock del{color:var(--soft)}
+.footer{margin-top:3rem;padding-top:1.25rem;border-top:1px solid var(--rule);font-family:var(--mono);font-size:.72rem;color:var(--soft);display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem}
+svg text{font-family:'Geist',sans-serif}
+svg .m{font-family:'Geist Mono',monospace}
+</style></head><body><div class="container">
+
+<div class="header">
+<p class="eyebrow">vstack · wayfinder ticket · omp 18.6.x · pstack 12d587df</p>
+<h1>The vstack contracts of compare-attempts and blast-radius</h1>
+<p class="subtitle">This is the explainer for <a href="https://github.com/daandden/vstack/issues/50">Specify the vstack contracts of compare-attempts and blast-radius</a>, part of the map <a href="https://github.com/daandden/vstack/issues/26">vstack: Matt Pocock skills plus pstack enhancements for omp</a>. pstack <code>arena</code> becomes <code>compare-attempts</code>. Its runners now work in isolated omp clones on the parent's model, not in <code>/tmp</code> directories on three vendors' models. That change reshapes how candidates are written, picked, and judged, and it affects the two callers, blast-radius and architect. There are seven open questions, and each one ends with a recommendation. The pstack quotes come from the pinned text. The omp facts come from the <code>oh-my-pi</code> source (<code>task/isolation-runner.ts</code>, <code>task/worktree.ts</code>, <code>eval/agent-bridge.ts</code>).</p>
+</div>
+
+<div class="cards">
+<div class="card"><p class="eyebrow">Settled · pstack adoption</p><h4>compare-attempts buys independence</h4><p><code>arena</code> is adapt as <code>compare-attempts</code>. Invoking it is the opt-in to Fan-out. Runners and the judge run on the parent model in fresh contexts, and the skill must say that this buys independence, not model diversity.</p></div>
+<div class="card"><p class="eyebrow">Settled · roster + ADR 0007</p><h4>Runners are isolated workers</h4><p>Runners are <code>vstack-worker</code> agents spawned through eval <code>agent(..., isolated=True, apply=False, merge=False)</code>. The parent applies only the candidate it picks, from that candidate's <code>patchPath</code>. The cross-judge is a <code>vstack-explorer</code>. If isolation is off, the skill stops and never falls back to the shared checkout.</p></div>
+<div class="card"><p class="eyebrow">Settled · overlap ticket</p><h4>Only on explicit ask</h4><p>architect's Sketch uses DESIGN-IT-TWICE and switches to compare-attempts only when the user explicitly asks. Step 6 of blast-radius is the same. The Safety reviewer in code-review runs blast-radius with "skip step 6".</p></div>
+</div>
+
+<h2>The skill at a glance</h2>
+<p>pstack's six phases stay. Each one below is marked with what vstack changes and the question that settles it.</p>
+<div class="fig"><svg viewBox="0 0 960 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="compare-attempts phases">
+<defs><marker id="g-a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker></defs>
+<rect width="100%" height="100%" fill="#fff"/>
+<g font-size="12">
+<rect x="10" y="40" width="140" height="64" rx="6" fill="#fff" stroke="#2d3142"/><text x="80" y="64" text-anchor="middle" font-weight="600">A · Frame</text><text x="80" y="82" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">artifact, rubric, runners</text>
+<rect x="170" y="40" width="140" height="64" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/><text x="240" y="64" text-anchor="middle" font-weight="600">B · Fan out</text><text x="240" y="82" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">isolated runners</text>
+<rect x="330" y="40" width="140" height="64" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/><text x="400" y="64" text-anchor="middle" font-weight="600">C · Cross-judge</text><text x="400" y="82" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">same model, fresh context</text>
+<rect x="490" y="40" width="140" height="64" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/><text x="560" y="64" text-anchor="middle" font-weight="600">D · Pick</text><text x="560" y="82" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">git apply base patch</text>
+<rect x="650" y="40" width="140" height="64" rx="6" fill="#fff" stroke="#2d3142"/><text x="720" y="64" text-anchor="middle" font-weight="600">E · Graft</text><text x="720" y="82" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">by hand, from losers</text>
+<rect x="810" y="40" width="140" height="64" rx="6" fill="#fff" stroke="#2d3142"/><text x="880" y="64" text-anchor="middle" font-weight="600">F · Verify</text><text x="880" y="82" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">prove-it-works</text>
+</g>
+<g stroke="#4f5d75" marker-end="url(#g-a)"><line x1="150" y1="72" x2="168" y2="72"/><line x1="310" y1="72" x2="328" y2="72"/><line x1="470" y1="72" x2="488" y2="72"/><line x1="630" y1="72" x2="648" y2="72"/><line x1="790" y1="72" x2="808" y2="72"/></g>
+<g class="m" font-size="9" fill="#eb6c36" text-anchor="middle"><text x="80" y="128">Q1 gate · Q2 runners</text><text x="240" y="128">Q1 · Q2 · Q3 paths</text><text x="400" y="128">Q5</text><text x="560" y="128">Q4</text><text x="720" y="128">Q4</text><text x="880" y="128">Q4</text></g>
+<text x="480" y="20" text-anchor="middle" class="m" font-size="9" fill="#7a8399" letter-spacing="0.12em">CALLERS: /skill:compare-attempts · blast-radius step 6 (Q6) · architect Sketch (Q7)</text>
+</svg><p class="cap">Coral phases change shape in vstack. White phases keep pstack's logic and get only House-style wording.</p></div>
+
+<!-- ============================ Q1 ============================ -->
+<h2><span class="q">Q1</span>Gate and inline line</h2>
+<p>Every path into compare-attempts is an explicit user request. The user types <code>/skill:compare-attempts</code>, or asks architect or blast-radius for it in words. Under the shared rubric (<code>skill://vstack-fan-out</code>), check 1 is "the user's words decide", so the invocation itself counts as "fan out". The judge never decides here. Two cases still reach the <b>inline</b> line: the user also said "sequential" or "no fan-out", or the agent cannot spawn. The question is what inline means for this skill.</p>
+<div class="fig"><svg viewBox="0 0 960 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Gate paths for compare-attempts">
+<defs><marker id="q1-a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker><marker id="q1-o" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker></defs>
+<rect width="100%" height="100%" fill="#fff"/>
+<g font-size="11">
+<rect x="10" y="20" width="200" height="40" rx="6" fill="#fff" stroke="#2d3142"/><text x="110" y="44" text-anchor="middle" class="m" font-size="10">/skill:compare-attempts</text>
+<rect x="10" y="80" width="200" height="40" rx="6" fill="#fff" stroke="#2d3142"/><text x="110" y="104" text-anchor="middle">architect + "compare attempts"</text>
+<rect x="10" y="140" width="200" height="40" rx="6" fill="#fff" stroke="#2d3142"/><text x="110" y="164" text-anchor="middle">blast-radius + "several attempts"</text>
+<rect x="270" y="70" width="200" height="60" rx="6" fill="rgba(45,49,66,0.04)" stroke="#2d3142"/><text x="370" y="94" text-anchor="middle" font-weight="600">Fan-out gate</text><text x="370" y="112" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">check 1: invocation = "fan out"</text>
+<rect x="540" y="20" width="410" height="44" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/><text x="745" y="40" text-anchor="middle" font-weight="600">fan-out: N isolated runners at once</text><text x="745" y="55" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">one eval cell, N × agent(…, isolated=True, apply=False, merge=False)</text>
+<text x="540" y="96" class="m" font-size="9" fill="#7a8399" letter-spacing="0.1em">INLINE, ONLY IF "SEQUENTIAL" / "NO FAN-OUT" OR NO SPAWN:</text>
+<rect x="540" y="108" width="410" height="52" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/><text x="556" y="128" font-weight="600">A · isolated runners one at a time</text><text x="556" y="146" class="m" font-size="8" fill="#4f5d75">same runners, waited on in turn · if they can't spawn → stop</text>
+<rect x="540" y="172" width="410" height="52" rx="6" fill="#fff" stroke="#2d3142"/><text x="556" y="192" font-weight="600">B · stop</text><text x="556" y="210" class="m" font-size="8" fill="#4f5d75">"compare-attempts needs separate contexts" · "sequential" can't be honored</text>
+<rect x="540" y="236" width="410" height="52" rx="6" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.3)" stroke-dasharray="4,3"/><text x="556" y="256" font-weight="600" fill="#7a8399">C · parent writes N attempts itself</text><text x="556" y="274" class="m" font-size="8" fill="#7a8399">one context saw every attempt · not independent</text>
+</g>
+<g stroke="#4f5d75" fill="none" marker-end="url(#q1-a)"><path d="M210 40 H240 V92 H268"/><line x1="210" y1="100" x2="268" y2="100"/><path d="M210 160 H240 V108 H268"/></g>
+<path d="M470 88 H505 V42 H538" fill="none" stroke="#eb6c36" marker-end="url(#q1-o)"/>
+<g stroke="#4f5d75" fill="none" marker-end="url(#q1-a)"><path d="M470 112 H505 V134 H538"/><path d="M505 134 V198 H538"/><path d="M505 198 V262 H538"/></g>
+<text x="480" y="315" text-anchor="middle" class="m" font-size="9" fill="#7a8399">ADR 0007: an isolated role never runs in the shared checkout · isolation off → stop, point at setup-vstack</text>
+</svg><p class="cap">With A, "sequential" stays meaningful: each attempt still gets its own context and clone, and only the parallelism goes away.</p></div>
+<div class="tw"><table><thead><tr><th>Option</th><th>Keeps independence</th><th>Honors "sequential"</th><th>House-style cost</th></tr></thead><tbody>
+<tr class="pick"><td><b>A</b> · isolated runners one at a time</td><td>yes</td><td>yes</td><td>adds a third inline variant to the <code>fan-out-block</code> rule, as an amendment on the House style ticket</td></tr>
+<tr><td><b>B</b> · inline = stop</td><td>yes</td><td>no: it refuses</td><td>none (the ship-style stop already exists)</td></tr>
+<tr><td><b>C</b> · parent writes N attempts</td><td>no</td><td>yes</td><td>none (this is the stock inline line), but the skill would have to admit the attempts aren't independent</td></tr>
+</tbody></table></div>
+<div class="rec"><p><b>Recommendation: A.</b> compare-attempts stays hidden (<code>disable-model-invocation: true</code>) and ask-vstack lists it. The gate line says that invoking the skill counts as the user's fan-out words.</p></div>
+
+<!-- ============================ Q2 ============================ -->
+<h2><span class="q">Q2</span>Runners and their prompt</h2>
+<p>pstack Phase A step 3 picks runners from the <code>arena runners</code> model line: one each on Claude, GPT, and Grok, so the model is the source of variety. vstack has one model, so variety has to come from somewhere else: either from fresh contexts alone, or from a <b>direction</b> line given to each runner.</p>
+<blockquote>Pick the runners. Use the <code>arena runners</code> line in <code>~/.cursor/rules/pstack-models.mdc</code>. If the rule or that line is missing, default to one each on <code>claude-opus-5-5-max</code>, <code>gpt-5.6-sol-max</code>, <code>grok-4.7-xhigh-fast</code>. … Spawn more when the arena covers multiple design directions. <cite>(arena SKILL.md:28)</cite></blockquote>
+<div class="fig"><svg viewBox="0 0 960 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Runner prompt composition">
+<defs><marker id="q2-a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker></defs>
+<rect width="100%" height="100%" fill="#fff"/>
+<rect x="10" y="20" width="250" height="260" rx="6" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.3)"/>
+<text x="26" y="40" class="m" font-size="8" fill="#7a8399" letter-spacing="0.14em">PARENT (FRAME)</text>
+<rect x="26" y="52" width="218" height="96" rx="6" fill="#fff" stroke="#2d3142"/>
+<text x="38" y="72" font-size="11" font-weight="600">Shared prompt</text>
+<text x="38" y="90" class="m" font-size="8" fill="#4f5d75">· task + artifact</text>
+<text x="38" y="104" class="m" font-size="8" fill="#4f5d75">· grounding paths</text>
+<text x="38" y="118" class="m" font-size="8" fill="#4f5d75">· "artifact + rationale: alternatives</text>
+<text x="38" y="130" class="m" font-size="8" fill="#4f5d75">   considered and rejected"</text>
+<text x="38" y="142" class="m" font-size="8" fill="#4f5d75">· override words · vstack root</text>
+<rect x="26" y="160" width="218" height="52" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/>
+<text x="38" y="180" font-size="11" font-weight="600">Directions (optional)</text>
+<text x="38" y="198" class="m" font-size="8" fill="#4f5d75">one per runner · from caller or user</text>
+<rect x="26" y="224" width="218" height="44" rx="6" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.3)" stroke-dasharray="4,3"/>
+<text x="38" y="244" font-size="11" font-weight="600">Rubric</text>
+<text x="38" y="258" class="m" font-size="8" fill="#7a8399">kept by parent · runners never see it</text>
+<g font-size="11">
+<rect x="380" y="30" width="250" height="60" rx="6" fill="#fff" stroke="#2d3142"/><text x="392" y="52" font-weight="600">runner 1 · vstack-worker</text><text x="392" y="70" class="m" font-size="8" fill="#4f5d75">parent model · own clone · direction 1</text>
+<rect x="380" y="120" width="250" height="60" rx="6" fill="#fff" stroke="#2d3142"/><text x="392" y="142" font-weight="600">runner 2 · vstack-worker</text><text x="392" y="160" class="m" font-size="8" fill="#4f5d75">parent model · own clone · direction 2</text>
+<rect x="380" y="210" width="250" height="60" rx="6" fill="#fff" stroke="#2d3142"/><text x="392" y="232" font-weight="600">runner 3 · vstack-worker</text><text x="392" y="250" class="m" font-size="8" fill="#4f5d75">parent model · own clone · direction 3</text>
+</g>
+<g stroke="#4f5d75" fill="none" marker-end="url(#q2-a)"><path d="M244 120 H310 V60 H378"/><path d="M310 120 V150 H378"/><path d="M310 150 V240 H378"/></g>
+<rect x="680" y="30" width="270" height="240" rx="6" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.3)"/>
+<text x="696" y="50" class="m" font-size="8" fill="#7a8399" letter-spacing="0.14em">WHERE DIRECTIONS COME FROM</text>
+<text x="696" y="76" font-size="11" font-weight="600">architect (Q7)</text>
+<text x="696" y="92" class="m" font-size="8" fill="#4f5d75">one DESIGN-IT-TWICE brief per runner, ≥ 3</text>
+<text x="696" y="122" font-size="11" font-weight="600">user</text>
+<text x="696" y="138" class="m" font-size="8" fill="#4f5d75">"try a queue, a log, and a CRDT"</text>
+<text x="696" y="168" font-size="11" font-weight="600">none given</text>
+<text x="696" y="184" class="m" font-size="8" fill="#4f5d75">same prompt N times · fresh contexts only</text>
+<text x="696" y="198" class="m" font-size="8" fill="#4f5d75">· more likely to converge (Q4)</text>
+<text x="696" y="228" font-size="11" font-weight="600">count</text>
+<text x="696" y="244" class="m" font-size="8" fill="#4f5d75">N = 3 default · "5 attempts" overrides</text>
+</svg><p class="cap">Recommended shape: one shared prompt, an optional direction line per runner, and the rubric kept by the parent.</p></div>
+<div class="tw"><table><thead><tr><th>Option</th><th>Plain "try this 3 times"</th><th>Variety on one model</th></tr></thead><tbody>
+<tr class="pick"><td><b>As proposed</b> · default 3, words override, optional directions</td><td>works</td><td>from directions when given, otherwise from fresh contexts only</td></tr>
+<tr><td><b>Directions required</b> (≥ 2 distinct)</td><td>refused</td><td>always forced</td></tr>
+<tr><td><b>Same prompt only</b></td><td>works</td><td>fresh contexts only. architect would need its own way to get variety.</td></tr>
+</tbody></table></div>
+<div class="rec"><p><b>Recommendation: as proposed.</b></p></div>
+
+<!-- ============================ Q3 ============================ -->
+<h2><span class="q">Q3</span>Where candidates are written</h2>
+<p>pstack writes each candidate to "a git worktree where possible, otherwise <code>/tmp/arena-&lt;slug&gt;/candidate-&lt;n&gt;/</code>" (arena SKILL.md:29). In vstack the omp clone <em>is</em> the per-candidate location. The omp source confirms four facts:</p>
+<ul class="l">
+<li>The patch is the delta against the parent's tree <b>at spawn</b>, and it includes the parent's uncommitted state (<code>task/worktree.ts</code>, baseline capture).</li>
+<li>It includes new files that are not gitignored. Gitignored files are <b>not captured</b>.</li>
+<li>With <code>apply=False</code>, the patch stays at <code>&lt;artifacts dir&gt;/&lt;agentId&gt;.patch</code>, and the eval result returns it as <code>patchPath</code> (<code>isolation-runner.ts:272</code>).</li>
+<li>Writes through the vstack root bypass the clone. They are immediate and are not in the patch (ADR 0007).</li>
+</ul>
+<div class="fig"><svg viewBox="0 0 960 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Where candidate files land">
+<defs><marker id="q3-a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker><marker id="q3-o" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker></defs>
+<rect width="100%" height="100%" fill="#fff"/>
+<rect x="10" y="20" width="300" height="260" rx="6" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.3)"/>
+<text x="26" y="40" class="m" font-size="8" fill="#7a8399" letter-spacing="0.14em">MAIN CHECKOUT · PARENT</text>
+<rect x="26" y="56" width="268" height="56" rx="6" fill="#fff" stroke="#2d3142"/><text x="160" y="80" text-anchor="middle" font-size="11" font-weight="600">working tree</text><text x="160" y="96" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">untouched until Pick applies one patch</text>
+<rect x="26" y="200" width="268" height="64" rx="6" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.3)" stroke-dasharray="4,3"/><text x="160" y="222" text-anchor="middle" font-size="11" font-weight="600">vstack root</text><text x="160" y="238" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">Standard mode = this same checkout</text><text x="160" y="252" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">Private mode = .git/vstack/</text>
+<rect x="650" y="20" width="300" height="260" rx="6" fill="rgba(45,49,66,0.03)" stroke="rgba(45,49,66,0.3)" stroke-dasharray="4,3"/>
+<text x="666" y="40" class="m" font-size="8" fill="#7a8399" letter-spacing="0.14em">RUNNER n · APFS CLONE</text>
+<rect x="666" y="56" width="268" height="56" rx="6" fill="#fff" stroke="#2d3142"/><text x="800" y="78" text-anchor="middle" font-size="11" font-weight="600">src/queue.ts (real target path)</text><text x="800" y="96" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">not gitignored · listed in final reply</text>
+<rect x="666" y="200" width="268" height="64" rx="6" fill="#fff" stroke="#2d3142"/><text x="800" y="222" text-anchor="middle" font-size="11" font-weight="600">final reply</text><text x="800" y="238" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">rationale: alternatives considered,</text><text x="800" y="252" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">rejected · paths written</text>
+<rect x="360" y="110" width="240" height="56" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/><text x="480" y="132" text-anchor="middle" font-size="11" font-weight="600">artifacts/&lt;agentId&gt;.patch</text><text x="480" y="150" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">= the candidate · patchPath</text>
+<path d="M666 84 H630 V138 H602" fill="none" stroke="#eb6c36" marker-end="url(#q3-o)"/>
+<path d="M360 138 H330 V96 H296" fill="none" stroke="#eb6c36" stroke-dasharray="3,3" marker-end="url(#q3-o)"/>
+<text x="480" y="182" class="m" font-size="8" fill="#eb6c36" text-anchor="middle">Pick: git apply, base only</text>
+<path d="M650 214 H340 V232 H296" fill="none" stroke="rgba(45,49,66,0.35)" stroke-dasharray="2,4" marker-end="url(#q3-a)"/>
+<text x="480" y="206" class="m" font-size="8" fill="#7a8399" text-anchor="middle">option B: runner writes its candidate through the vstack root</text>
+<text x="480" y="252" class="m" font-size="8" fill="#7a8399" text-anchor="middle">Standard mode → lands in the parent's live tree, outside any patch</text>
+</svg><p class="cap">Option A (coral): the clone holds the candidate, the patch carries it out, and Pick applies exactly one. Option B (grey dotted): candidates written through the vstack root land in the parent's live checkout in Standard mode.</p></div>
+<div class="two">
+<div class="side"><h4>A · Real target path in the clone (recommended)</h4><p>The patch is the candidate, and picking means applying it. The same rule works for code, docs, and type sketches. The vstack root is still passed down, but only for nested writers such as research's background agent, never for the candidate itself.</p></div>
+<div class="side"><h4>B · Per-candidate directory under the vstack root</h4><p><code>&lt;vstack root&gt;/artifacts/compare-attempts/&lt;slug&gt;/candidate-&lt;n&gt;/</code>. It survives the session. But in Standard mode, the vstack root is the main checkout, so runners write straight into the parent's tree and Pick has nothing to apply.</p></div>
+</div>
+<div class="rec"><p><b>Recommendation: A.</b></p></div>
+
+<!-- ============================ Q4 ============================ -->
+<h2><span class="q">Q4</span>Pick, apply, and what happens to the rest</h2>
+<p>The caller declares one of two <b>artifact kinds</b>. With <code>tree</code>, the candidate is a working-tree change, and the parent applies one patch. With <code>reply</code>, the candidate is a written answer, and the patches are evidence only.</p>
+<div class="fig"><svg viewBox="0 0 960 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Pick, apply, graft">
+<defs><marker id="q4-a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker><marker id="q4-o" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker></defs>
+<rect width="100%" height="100%" fill="#fff"/>
+<g font-size="11">
+<rect x="10" y="30" width="150" height="40" rx="6" fill="#fff" stroke="#2d3142"/><text x="85" y="54" text-anchor="middle" class="m" font-size="9">A.patch + rationale</text>
+<rect x="10" y="90" width="150" height="40" rx="6" fill="#fff" stroke="#2d3142"/><text x="85" y="114" text-anchor="middle" class="m" font-size="9">B.patch + rationale</text>
+<rect x="10" y="150" width="150" height="40" rx="6" fill="#fff" stroke="#2d3142"/><text x="85" y="174" text-anchor="middle" class="m" font-size="9">C.patch + rationale</text>
+<rect x="210" y="70" width="170" height="80" rx="6" fill="rgba(45,49,66,0.04)" stroke="#2d3142"/><text x="295" y="94" text-anchor="middle" font-weight="600">Read end to end</text><text x="295" y="112" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">score per rubric criterion</text><text x="295" y="126" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">compare with cross-judge (Q5)</text>
+<rect x="430" y="30" width="230" height="56" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/><text x="545" y="52" text-anchor="middle" font-weight="600">tree: git apply B.patch</text><text x="545" y="70" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">apply fails (tree moved) → stop, report</text>
+<rect x="430" y="134" width="230" height="56" rx="6" fill="#fff" stroke="#2d3142"/><text x="545" y="156" text-anchor="middle" font-weight="600">reply: B's hand-back is base</text><text x="545" y="174" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">no patch applied · patches = evidence</text>
+<rect x="710" y="80" width="240" height="60" rx="6" fill="#fff" stroke="#2d3142"/><text x="830" y="104" text-anchor="middle" font-weight="600">Graft by hand from A, C</text><text x="830" y="122" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">1–2 ideas each · one mental model</text>
+<rect x="710" y="170" width="240" height="60" rx="6" fill="#fff" stroke="#2d3142"/><text x="830" y="194" text-anchor="middle" font-weight="600">Verify</text><text x="830" y="212" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">skill://principle-prove-it-works</text>
+<rect x="710" y="260" width="240" height="64" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/><text x="830" y="282" text-anchor="middle" font-weight="600">Synthesis note → reply</text><text x="830" y="298" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">+ driving ticket if any · no file</text><text x="830" y="312" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">lists A.patch, C.patch by path</text>
+<rect x="10" y="230" width="370" height="94" rx="6" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.3)" stroke-dasharray="4,3"/><text x="26" y="252" font-weight="600">Losing patches</text><text x="26" y="270" class="m" font-size="8" fill="#4f5d75">stay untouched in omp's artifacts dir</text><text x="26" y="284" class="m" font-size="8" fill="#4f5d75">no branch, no copy, no cleanup step</text><text x="26" y="298" class="m" font-size="8" fill="#4f5d75">cited by path in the synthesis note</text>
+</g>
+<g stroke="#4f5d75" fill="none" marker-end="url(#q4-a)"><path d="M160 50 H185 V100 H208"/><line x1="160" y1="110" x2="208" y2="110"/><path d="M160 170 H185 V120 H208"/><path d="M380 120 H405 V162 H428"/><path d="M660 162 H685 V118 H708"/><line x1="830" y1="140" x2="830" y2="168"/><line x1="830" y1="230" x2="830" y2="258"/></g>
+<path d="M380 100 H405 V58 H428" fill="none" stroke="#eb6c36" marker-end="url(#q4-o)"/>
+<path d="M660 58 H685 V102 H708" fill="none" stroke="#eb6c36" marker-end="url(#q4-o)"/>
+</svg><p class="cap">The coral path is kind <code>tree</code> (the default, used by architect). The grey path is kind <code>reply</code> (used by blast-radius, Q6).</p></div>
+<h3>Edge cases</h3>
+<div class="tw"><table><thead><tr><th>Case</th><th>pstack</th><th>Proposal</th></tr></thead><tbody>
+<tr><td>A runner produces nothing</td><td>proceed with N−1 and note the dropout</td><td>same. With fewer than 2 candidates there is nothing to compare, so stop and report.</td></tr>
+<tr><td>Candidates wildly diverge</td><td>"Reframe and re-run rather than averaging"</td><td>reframe, then <b>ask before re-running</b>. A re-run costs N more full attempts, and the user opted into N, not 2N.</td></tr>
+<tr><td>Candidates converge</td><td>"strong agreement signal … ship the consensus shape"</td><td>ship the consensus shape, but report convergence as a <b>weaker</b> signal because every runner shares one model's priors.</td></tr>
+<tr><td>Synthesis note</td><td>"alongside the base artifact" (a file)</td><td>goes in the reply, and on the driving ticket when there is one. This matches architect's no-design-doc rule.</td></tr>
+</tbody></table></div>
+<div class="tw"><table><thead><tr><th>Option</th><th>Divergence</th><th>Note</th></tr></thead><tbody>
+<tr class="pick"><td><b>As proposed</b></td><td>ask before a re-run</td><td>reply + ticket</td></tr>
+<tr><td><b>Re-run autonomously</b></td><td>reframe and re-run once without asking (pstack)</td><td>reply + ticket</td></tr>
+<tr><td><b>Note as a file</b></td><td>ask</td><td>next to the base artifact, which adds a file to the repo</td></tr>
+</tbody></table></div>
+<div class="rec"><p><b>Recommendation: as proposed.</b></p></div>
+
+<!-- ============================ Q5 ============================ -->
+<h2><span class="q">Q5</span>The cross-judge on the parent model</h2>
+<blockquote>Choose one model from the <code>arena cross-judge pool</code> line … Prefer a different model family from the parent's. Spawn one readonly judge subagent on that model. … It runs in parallel with the parent's reading in Phase D, not with the candidates themselves. <cite>(arena SKILL.md:41)</cite></blockquote>
+<p>With a single model, the judge's only value is its <b>context</b>: it wrote no candidate and has not seen the parent's scores. The timing stays the same as in pstack.</p>
+<div class="fig"><svg viewBox="0 0 960 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cross-judge timing">
+<defs><marker id="q5-a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker></defs>
+<rect width="100%" height="100%" fill="#fff"/>
+<line x1="120" y1="200" x2="940" y2="200" stroke="#7a8399" marker-end="url(#q5-a)"/><text x="940" y="218" text-anchor="end" class="m" font-size="8" fill="#7a8399">time</text>
+<g class="m" font-size="9" fill="#4f5d75"><text x="10" y="44">runners</text><text x="10" y="100">cross-judge</text><text x="10" y="156">parent</text></g>
+<rect x="120" y="28" width="300" height="26" rx="4" fill="rgba(45,49,66,0.08)" stroke="#2d3142"/><text x="270" y="45" text-anchor="middle" font-size="10">A · B · C writing in their clones</text>
+<line x1="420" y1="20" x2="420" y2="200" stroke="#eb6c36" stroke-dasharray="3,3"/><text x="424" y="16" class="m" font-size="8" fill="#eb6c36">all runners done</text>
+<rect x="430" y="84" width="300" height="26" rx="4" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/><text x="580" y="101" text-anchor="middle" font-size="10">vstack-explorer · rubric + labels A/B/C</text>
+<rect x="430" y="140" width="300" height="26" rx="4" fill="#fff" stroke="#2d3142"/><text x="580" y="157" text-anchor="middle" font-size="10">parent reads + scores (does not wait)</text>
+<rect x="750" y="108" width="200" height="48" rx="6" fill="rgba(45,49,66,0.04)" stroke="#2d3142"/><text x="850" y="128" text-anchor="middle" font-size="10" font-weight="600">compare → Pick</text><text x="850" y="144" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">agree: confirms · disagree: re-read</text>
+<g stroke="#4f5d75" fill="none" marker-end="url(#q5-a)"><path d="M730 97 H740 V124 H748"/><path d="M730 153 H740 V140 H748"/></g>
+</svg><p class="cap">The judge is a single spawn via <code>task</code>. It is not isolated because it is read-only. Runner ids are hidden behind labels. If it cannot be spawned, it is skipped, and the note says "cross-judge: not run". A judge run inline in the parent would judge nothing independently.</p></div>
+<div class="side"><h4>Draft text for the skill</h4><pre class="mock"><mark>The cross-judge runs on your model. It buys a context that wrote no
+candidate and hasn't seen your scores: independence, not a second
+model's taste. Agreement means the rubric reads one way; it does not
+rule out a blind spot you both share.</mark></pre><p style="margin-top:.5rem;font-size:.85rem">The same honesty applies elsewhere. The skill intro and blast-radius step 6 drop "Different models catch different real bugs".</p></div>
+<div class="tw"><table><thead><tr><th>Option</th><th>Can't spawn</th><th>Cost</th></tr></thead><tbody>
+<tr class="pick"><td><b>As proposed</b></td><td>skip it and say so in the note</td><td>one read-only spawn</td></tr>
+<tr><td><b>Mandatory</b></td><td>the whole run stops</td><td>same</td></tr>
+<tr><td><b>Drop it</b></td><td>n/a</td><td>none, but the parent's scoring is the only check</td></tr>
+</tbody></table></div>
+<div class="rec"><p><b>Recommendation: as proposed.</b></p></div>
+
+<!-- ============================ Q6 ============================ -->
+<h2><span class="q">Q6</span>blast-radius's big-change pass and the Safety axis</h2>
+<blockquote>6. For a big or wide change, run it as an <code>arena</code>. Ask several models the same question and merge the answers. Different models catch different real bugs. <cite>(blast-radius SKILL.md:38)</cite></blockquote>
+<div class="fig"><svg viewBox="0 0 960 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="blast-radius callers and step 6">
+<defs><marker id="q6-a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker><marker id="q6-o" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker></defs>
+<rect width="100%" height="100%" fill="#fff"/>
+<g font-size="11">
+<rect x="10" y="20" width="220" height="44" rx="6" fill="#fff" stroke="#2d3142"/><text x="120" y="40" text-anchor="middle" font-weight="600">user / model</text><text x="120" y="55" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">"what could this break" · model-invocable</text>
+<rect x="10" y="84" width="220" height="44" rx="6" fill="#fff" stroke="#2d3142"/><text x="120" y="104" text-anchor="middle" font-weight="600">code-review Safety reviewer</text><text x="120" y="119" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">"skip step 6" · always</text>
+<rect x="10" y="148" width="220" height="44" rx="6" fill="#fff" stroke="#2d3142"/><text x="120" y="168" text-anchor="middle" font-weight="600">open-pr Blast Radius</text><text x="120" y="183" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">when Safety didn't run · explicit-ask rule</text>
+<rect x="290" y="74" width="200" height="64" rx="6" fill="rgba(45,49,66,0.04)" stroke="#2d3142"/><text x="390" y="98" text-anchor="middle" font-weight="600">steps 1–5</text><text x="390" y="116" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">safety fact · past grep · risks · proof</text>
+<rect x="540" y="74" width="170" height="64" rx="6" fill="#fff" stroke="#2d3142"/><text x="625" y="98" text-anchor="middle" font-weight="600">step 6?</text><text x="625" y="116" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">did the user explicitly ask</text><text x="625" y="128" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">for several attempts?</text>
+<rect x="760" y="20" width="190" height="80" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/><text x="855" y="42" text-anchor="middle" font-weight="600">yes → compare-attempts</text><text x="855" y="60" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">kind reply · runners run steps 1–5</text><text x="855" y="74" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">on the pinned diff, skip step 6</text><text x="855" y="88" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">return hand-back + proof + output</text>
+<rect x="760" y="120" width="190" height="64" rx="6" fill="#fff" stroke="#2d3142"/><text x="855" y="142" text-anchor="middle" font-weight="600">no</text><text x="855" y="160" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">big/wide change → reply adds</text><text x="855" y="172" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">one line offering the pass</text>
+<rect x="290" y="230" width="660" height="110" rx="6" fill="rgba(45,49,66,0.02)" stroke="rgba(45,49,66,0.3)" stroke-dasharray="4,3"/>
+<text x="306" y="252" class="m" font-size="8" fill="#7a8399" letter-spacing="0.14em">KIND REPLY · MERGING HAND-BACKS</text>
+<text x="306" y="274" font-size="10">Rubric: the safety fact and how far down the proof ladder it got · risks with a real file:line · cleared items</text>
+<text x="306" y="294" font-size="10">Base = strongest hand-back · graft confirmed risks from the others · drop unproven duplicates</text>
+<text x="306" y="314" font-size="10">Verify = re-run every proof script kept, in $TMPDIR · no patch is applied to the tree</text>
+</g>
+<g stroke="#4f5d75" fill="none" marker-end="url(#q6-a)"><path d="M230 42 H260 V96 H288"/><line x1="230" y1="106" x2="288" y2="106"/><path d="M230 170 H260 V116 H288"/><line x1="490" y1="106" x2="538" y2="106"/><path d="M710 116 H735 V152 H758"/></g>
+<path d="M710 96 H735 V60 H758" fill="none" stroke="#eb6c36" marker-end="url(#q6-o)"/>
+<line x1="760" y1="100" x2="620" y2="228" stroke="#eb6c36" stroke-dasharray="3,3" marker-end="url(#q6-o)"/>
+<text x="120" y="214" text-anchor="middle" class="m" font-size="8" fill="#7a8399">Safety reviewer never reaches step 6 →</text>
+<text x="120" y="226" text-anchor="middle" class="m" font-size="8" fill="#7a8399">code-review stays a single fan-out level</text>
+</svg><p class="cap">The trigger list for the Safety axis stays in code-review, as decided in the overlap and joined-playbook tickets. Step 6 depends only on the user's explicit words, never on the size of the change.</p></div>
+<div class="tw"><table><thead><tr><th>Option</th><th>Invocation</th><th>Big change without an ask</th></tr></thead><tbody>
+<tr class="pick"><td><b>As proposed</b></td><td>model-invocable. The joined skills already are, and blast-radius is one cheap agent.</td><td>one-line offer in the reply</td></tr>
+<tr><td><b>Keep hidden</b></td><td>only <code>/skill:blast-radius</code>, code-review, and open-pr</td><td>one-line offer</td></tr>
+<tr><td><b>No offer line</b></td><td>model-invocable</td><td>silent</td></tr>
+</tbody></table></div>
+<div class="rec"><p><b>Recommendation: as proposed.</b></p></div>
+
+<!-- ============================ Q7 ============================ -->
+<h2><span class="q">Q7</span>architect's Sketch with compare-attempts</h2>
+<blockquote>Run the <b>arena</b> skill with the design-sketch task and the Phase A grounding artifacts. Pass <code>references/runner-prompt.md</code> as each runner's prompt. <cite>(architect SKILL.md:31)</cite></blockquote>
+<p>In vstack, Sketch defaults to DESIGN-IT-TWICE, as decided on the overlap ticket. compare-attempts replaces it only when the user explicitly asks. The two modes differ in who designs, and in where each design lives.</p>
+<div class="fig"><svg viewBox="0 0 960 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="architect Sketch modes">
+<defs><marker id="q7-a" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker><marker id="q7-o" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker></defs>
+<rect width="100%" height="100%" fill="#fff"/>
+<g font-size="11">
+<rect x="10" y="120" width="120" height="50" rx="6" fill="#fff" stroke="#2d3142"/><text x="70" y="142" text-anchor="middle" font-weight="600">Ground</text><text x="70" y="158" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">how (+ why)</text>
+<rect x="180" y="20" width="360" height="110" rx="6" fill="#fff" stroke="#2d3142"/>
+<text x="196" y="42" font-weight="600">Default · DESIGN-IT-TWICE</text>
+<text x="196" y="62" class="m" font-size="8" fill="#4f5d75">3+ briefs · vstack-explorer designers (Fan-out block)</text>
+<text x="196" y="78" class="m" font-size="8" fill="#4f5d75">each design returned as text in the reply</text>
+<text x="196" y="94" class="m" font-size="8" fill="#4f5d75">RED-FLAGS screen · compare on depth</text>
+<text x="196" y="110" class="m" font-size="8" fill="#4f5d75">architect writes the type sketch itself</text>
+<rect x="180" y="160" width="360" height="150" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/>
+<text x="196" y="182" font-weight="600">On explicit ask · skill://compare-attempts</text>
+<text x="196" y="202" class="m" font-size="8" fill="#4f5d75">task = design sketch · grounding = Ground artifacts</text>
+<text x="196" y="218" class="m" font-size="8" fill="#4f5d75">brief = references/design-brief.md</text>
+<text x="196" y="234" class="m" font-size="8" fill="#4f5d75">directions = one DESIGN-IT-TWICE brief per runner, ≥ 3</text>
+<text x="196" y="250" class="m" font-size="8" fill="#4f5d75">kind = tree · each runner writes its type sketch</text>
+<text x="196" y="264" class="m" font-size="8" fill="#4f5d75">  (not implemented bodies) in its clone</text>
+<text x="196" y="280" class="m" font-size="8" fill="#4f5d75">rubric = RED-FLAGS · interface depth · usage-first</text>
+<text x="196" y="296" class="m" font-size="8" fill="#4f5d75">synthesis note → rationale "Synthesis decision"</text>
+<rect x="600" y="120" width="160" height="50" rx="6" fill="rgba(45,49,66,0.04)" stroke="#2d3142"/><text x="680" y="142" text-anchor="middle" font-weight="600">design package</text><text x="680" y="158" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">sketch in tree + rationale</text>
+<rect x="800" y="120" width="150" height="50" rx="6" fill="#fff" stroke="#2d3142"/><text x="875" y="142" text-anchor="middle" font-weight="600">Stop → Implement</text><text x="875" y="158" text-anchor="middle" class="m" font-size="8" fill="#4f5d75">sketch · checkpoint · impl.</text>
+<rect x="600" y="240" width="350" height="56" rx="6" fill="#fff" stroke="#2d3142"/><text x="616" y="262" font-weight="600">Scrap → re-Sketch</text><text x="616" y="278" class="m" font-size="8" fill="#4f5d75">proposal: same mode as the first Sketch</text><text x="616" y="290" class="m" font-size="8" fill="#4f5d75">(the user's ask holds for the whole run)</text>
+</g>
+<g stroke="#4f5d75" fill="none" marker-end="url(#q7-a)"><path d="M130 136 H155 V75 H178"/><path d="M540 75 H570 V136 H598"/><line x1="760" y1="145" x2="798" y2="145"/><path d="M875 170 V238"/></g>
+<path d="M130 154 H155 V235 H178" fill="none" stroke="#eb6c36" marker-end="url(#q7-o)"/>
+<path d="M540 235 H570 V154 H598" fill="none" stroke="#eb6c36" marker-end="url(#q7-o)"/>
+<path d="M600 268 H560" fill="none" stroke="#eb6c36" stroke-dasharray="3,3" marker-end="url(#q7-o)"/>
+</svg><p class="cap">Both modes produce the same design package, so Stop, Implement, and Scrap don't change. The dashed arrow is the Scrap loop, which returns to the same Sketch mode.</p></div>
+<h3>design-brief.md: the opening paragraph becomes neutral</h3>
+<p>The brief now serves two kinds of reader. DESIGN-IT-TWICE explorers reply in text, and compare-attempts workers write files in their own tree. So the brief stops saying where output goes, and the caller says it instead.</p>
+<div class="two">
+<div class="side"><h4>pstack runner-prompt.md:3</h4><pre class="mock"><del>The orchestrator passes this file through to every parallel candidate
+runner during Phase B and fills in the variable inputs around it: the
+task, the Phase A grounding artifacts, the isolated working directory,
+and the path to write outputs. The working directory is a git worktree
+when available, otherwise a per-runner subdirectory under the sketch
+dir. What matters is independence between candidates.</del></pre></div>
+<div class="side"><h4>vstack design-brief.md (draft)</h4><pre class="mock"><mark>The caller gives you this brief with the task, the Ground artifacts,
+your design direction, and where your design goes: in your reply, or
+as files in your own tree. What matters is independence between
+designs.</mark></pre></div>
+</div>
+<div class="tw"><table><thead><tr><th>Option</th><th>After Scrap</th></tr></thead><tbody>
+<tr class="pick"><td><b>As proposed</b></td><td>re-Sketch uses the same mode as the first</td></tr>
+<tr><td><b>Fall back</b></td><td>re-Sketch uses DESIGN-IT-TWICE unless the user asks again</td></tr>
+</tbody></table></div>
+<div class="rec"><p><b>Recommendation: as proposed.</b></p></div>
+
+<div class="footer"><span>vstack · Specify the vstack contracts of compare-attempts and blast-radius · round 1</span><span>pstack 12d587df · arena, blast-radius, architect</span></div>
+</div></body></html>
