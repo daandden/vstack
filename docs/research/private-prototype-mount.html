@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Private-mode UI prototype mounted in an app route: explainer</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--paper:#f5f5f5;--paper2:#ececec;--ink:#2d3142;--muted:#4f5d75;--soft:#7a8399;--rule:rgba(45,49,66,0.12);--accent:#eb6c36;--tint:rgba(235,108,54,0.08);--link:#2e5aa8;--sans:'Geist',system-ui,sans-serif;--serif:'Instrument Serif','Times New Roman',serif;--mono:'Geist Mono',ui-monospace,Menlo,monospace}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);padding:3rem 2rem;line-height:1.55;font-size:15px}
+.container{max-width:1160px;margin:0 auto}
+.eyebrow{font-family:var(--mono);font-size:.66rem;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem}
+h1{font-family:var(--serif);font-weight:400;font-size:clamp(1.75rem,3vw + 1rem,2.5rem);letter-spacing:-.02em;line-height:1.1;margin-bottom:.5rem}
+h2{font-family:var(--serif);font-weight:400;font-size:1.75rem;margin:3rem 0 .75rem;padding-top:1.5rem;border-top:1px solid var(--rule)}
+h3{font-size:1rem;font-weight:600;margin:1.75rem 0 .6rem}
+.subtitle{color:var(--muted);max-width:80ch}
+p{max-width:80ch;margin-bottom:.75rem}
+ul.l{margin:0 0 .75rem 1.25rem;max-width:80ch} ul.l li{margin-bottom:.3rem}
+a{color:var(--link);text-decoration:none} a:hover{text-decoration:underline}
+code{font-family:var(--mono);font-size:.82em;background:rgba(45,49,66,0.06);padding:.05em .3em;border-radius:3px}
+.fig{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:1rem;margin:1rem 0}
+.fig svg{width:100%;max-width:900px;display:block;margin:0 auto}
+.fig .cap{font-size:.8rem;color:var(--soft);text-align:center;margin:.5rem auto 0;max-width:none}
+.rec{background:var(--tint);border-left:3px solid var(--accent);padding:.8rem 1rem;margin:1rem 0;border-radius:0 6px 6px 0}
+.rec p{margin-bottom:.4rem;max-width:none}
+.q{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;color:#fff;background:var(--accent);border-radius:3px;padding:.05rem .4rem;margin-right:.4rem;vertical-align:4px}
+.tw{overflow-x:auto;background:#fff;border:1px solid var(--rule);border-radius:6px;margin:1rem 0}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th{font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--soft);text-align:left;padding:.6rem .75rem;border-bottom:1px solid var(--rule);background:var(--paper2)}
+td{padding:.55rem .75rem;border-bottom:1px solid var(--rule);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr.pick td{background:var(--tint)}
+.ok{color:#2d6a4f;font-weight:600}.bad{color:#b23a1e;font-weight:600}.mid{color:var(--muted);font-weight:600}
+.facts{display:grid;grid-template-columns:1.1fr 1fr .9fr;gap:1rem;margin-top:1rem}
+.card{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:1rem 1.2rem;font-size:.88rem}
+.card h4{font-size:.88rem;margin-bottom:.35rem}
+pre.mock{font-family:var(--mono);font-size:.74rem;line-height:1.5;white-space:pre-wrap;margin-top:.5rem}
+.footer{margin-top:3rem;padding-top:1.25rem;border-top:1px solid var(--rule);font-family:var(--mono);font-size:.72rem;color:var(--soft)}
+/* svg classes */
+.nn{font-family:var(--sans);font-size:12px;font-weight:600;fill:var(--ink)}
+.sl{font-family:var(--mono);font-size:9px;fill:var(--muted)}
+.sa{font-family:var(--mono);font-size:9px;fill:var(--accent);font-weight:600}
+.tg{font-family:var(--mono);font-size:7px;letter-spacing:.08em}
+.al{font-family:var(--mono);font-size:8px;fill:var(--soft);letter-spacing:.06em}
+.lg{font-family:var(--mono);font-size:8px;fill:var(--muted);letter-spacing:.14em}
+.ax{font-family:var(--mono);font-size:8px;fill:var(--soft);letter-spacing:.1em}
+</style></head><body><div class="container">
+
+<p class="eyebrow">vstack · wayfinder ticket #54 · grilling round 1</p>
+<h1>Where does a Private-mode UI prototype live when it has to mount in an app route?</h1>
+<p class="subtitle">In Private mode, every prototype is supposed to stay untracked under <code>&lt;git-common-dir&gt;/vstack/artifacts/&lt;topic&gt;/</code> and never be committed. Matt's UI branch, though, mounts the variants <em>inside an existing page</em> (sub-shape A), so part of the prototype has to sit in the app's source tree. Each section below covers one question from this round.</p>
+
+<h2>What's already established</h2>
+<div class="facts">
+<div class="card"><h4><code>info/exclude</code> doesn't cover tracked edits</h4>
+<p>Tested in a scratch repo: a new file listed in <code>.git/info/exclude</code> stays hidden, but an edit to the tracked route file still gets staged.</p>
+<pre class="mock">$ git add -A &amp;&amp; git status --short
+M  route.tsx      <span style="color:#b23a1e">← staged</span></pre></div>
+<div class="card"><h4>A detached worktree stays off every branch</h4>
+<p><code>git worktree add --detach</code> worked. Its edits never showed up in the main checkout's status, and they belong to no branch, so there's nothing to push.</p></div>
+<div class="card"><h4>A worktree under <code>.git</code> loses hot reload</h4>
+<p>Vite always adds <code>**/.git/**</code> to its watcher's ignore list (<a href="https://raw.githubusercontent.com/vitejs/vite/main/packages/vite/src/node/watch.ts">watch.ts</a>). A dev server running inside <code>.git/vstack/…</code> therefore never sees edits.</p></div>
+</div>
+
+<!-- ============================ Q1 ============================ -->
+<h2><span class="q">Q1</span>Where the mounted prototype runs</h2>
+<p>This is the main decision. The rest of the mechanism follows from it: what keeps the prototype out of commits, what setup it needs, and what cleanup has to undo.</p>
+
+<h3>Recommended: a detached worktree outside <code>.git</code></h3>
+<div class="fig"><svg viewBox="0 0 900 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="q1a-title q1a-desc">
+<title id="q1a-title">Detached prototype worktree layout</title>
+<desc id="q1a-desc">The main checkout stays clean. A detached worktree outside .git holds the route edit, the variants, and the switcher, and runs its own dev server, which the browser drives with ?variant=.</desc>
+<defs><marker id="a1" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+<marker id="a1c" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker></defs>
+<rect width="100%" height="100%" fill="#fff"/>
+<!-- arrows -->
+<line x1="260" y1="124" x2="336" y2="124" stroke="#4f5d75" stroke-dasharray="5,4" marker-end="url(#a1)"/>
+<rect x="272" y="100" width="52" height="12" rx="2" fill="#fff"/><text x="298" y="109" class="al" text-anchor="middle">SHARES</text>
+<line x1="560" y1="124" x2="636" y2="124" stroke="#eb6c36" marker-end="url(#a1c)"/>
+<rect x="566" y="100" width="68" height="12" rx="2" fill="#fff"/><text x="600" y="109" class="al" text-anchor="middle">ADD --DETACH</text>
+<line x1="750" y1="200" x2="750" y2="244" stroke="#4f5d75" marker-end="url(#a1)"/>
+<rect x="760" y="216" width="32" height="12" rx="2" fill="#fff"/><text x="762" y="225" class="al">RUNS</text>
+<line x1="560" y1="276" x2="636" y2="276" stroke="#2e5aa8" marker-end="url(#a1)"/>
+<rect x="568" y="252" width="60" height="12" rx="2" fill="#fff"/><text x="598" y="261" class="al" text-anchor="middle">?VARIANT=</text>
+<!-- main checkout -->
+<rect x="40" y="48" width="220" height="152" rx="6" fill="#fff" stroke="#2d3142"/>
+<rect x="48" y="56" width="52" height="12" rx="2" fill="none" stroke="rgba(45,49,66,.4)" stroke-width=".8"/><text x="74" y="65" class="tg" text-anchor="middle" fill="#4f5d75">TRACKED</text>
+<text x="150" y="96" class="nn" text-anchor="middle">Main checkout</text>
+<text x="150" y="120" class="sl" text-anchor="middle">src/routes/settings.tsx</text>
+<text x="150" y="136" class="sl" text-anchor="middle">unchanged</text>
+<text x="150" y="160" class="sl" text-anchor="middle">git status: clean</text>
+<text x="150" y="176" class="sl" text-anchor="middle">user's WIP untouched</text>
+<!-- .git -->
+<rect x="340" y="48" width="220" height="152" rx="6" fill="rgba(45,49,66,.05)" stroke="#4f5d75"/>
+<rect x="348" y="56" width="48" height="12" rx="2" fill="none" stroke="rgba(79,93,117,.4)" stroke-width=".8"/><text x="372" y="65" class="tg" text-anchor="middle" fill="#4f5d75">COMMON</text>
+<text x="450" y="96" class="nn" text-anchor="middle">.git (common dir)</text>
+<text x="450" y="120" class="sl" text-anchor="middle">vstack/artifacts/&lt;topic&gt;/</text>
+<text x="450" y="136" class="sl" text-anchor="middle">worktrees/&lt;topic&gt; (registration)</text>
+<text x="450" y="160" class="sl" text-anchor="middle">untracked · never pushed</text>
+<!-- worktree -->
+<rect x="640" y="48" width="220" height="152" rx="6" fill="rgba(235,108,54,.08)" stroke="#eb6c36"/>
+<rect x="648" y="56" width="56" height="12" rx="2" fill="none" stroke="rgba(235,108,54,.5)" stroke-width=".8"/><text x="676" y="65" class="tg" text-anchor="middle" fill="#eb6c36">DETACHED</text>
+<text x="750" y="96" class="nn" text-anchor="middle">Prototype worktree</text>
+<text x="750" y="116" class="sl" text-anchor="middle">outside .git · HEAD @ base</text>
+<text x="750" y="140" class="sa" text-anchor="middle">settings.tsx + ?variant= switch</text>
+<text x="750" y="156" class="sl" text-anchor="middle">VariantA/B/C.tsx</text>
+<text x="750" y="172" class="sl" text-anchor="middle">PrototypeSwitcher.tsx</text>
+<text x="750" y="188" class="sl" text-anchor="middle">deps + env copied in</text>
+<!-- browser + dev server -->
+<rect x="340" y="248" width="220" height="56" rx="6" fill="rgba(79,93,117,.1)" stroke="#7a8399"/>
+<text x="450" y="272" class="nn" text-anchor="middle">omp browser · user</text>
+<text x="450" y="288" class="sl" text-anchor="middle">rule 7 screenshots, then flips</text>
+<rect x="640" y="248" width="220" height="56" rx="6" fill="#fff" stroke="#2d3142"/>
+<text x="750" y="272" class="nn" text-anchor="middle">Dev server</text>
+<text x="750" y="288" class="sl" text-anchor="middle">own port, e.g. :5174</text>
+<!-- legend -->
+<line x1="40" y1="324" x2="860" y2="324" stroke="rgba(45,49,66,.1)" stroke-width=".8"/>
+<text x="40" y="344" class="lg">LEGEND</text>
+<rect x="120" y="336" width="16" height="10" rx="2" fill="rgba(235,108,54,.08)" stroke="#eb6c36"/><text x="144" y="344" class="sl">holds the prototype</text>
+<rect x="280" y="336" width="16" height="10" rx="2" fill="rgba(45,49,66,.05)" stroke="#4f5d75"/><text x="304" y="344" class="sl">untracked storage</text>
+<rect x="440" y="336" width="16" height="10" rx="2" fill="#fff" stroke="#2d3142"/><text x="464" y="344" class="sl">tracked / process</text>
+</svg><p class="cap">Nothing in the main checkout changes. The prototype exists only in the detached worktree, which sits on no branch, so there's nothing to commit and nothing to push.</p></div>
+
+<h3>Contrast: edit the main checkout and clean up afterwards</h3>
+<div class="fig"><svg viewBox="0 0 680 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="q1b-title q1b-desc">
+<title id="q1b-title">Main-checkout mount and what git add sees</title>
+<desc id="q1b-desc">info/exclude hides the new variant files, but git add -A still stages the tracked route edit, mixed in with the user's own work.</desc>
+<defs><marker id="b1" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+<marker id="b1c" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker></defs>
+<rect width="100%" height="100%" fill="#fff"/>
+<line x1="300" y1="72" x2="416" y2="72" stroke="#4f5d75" marker-end="url(#b1)"/>
+<rect x="320" y="48" width="64" height="12" rx="2" fill="#fff"/><text x="352" y="57" class="al" text-anchor="middle">NEW FILES</text>
+<line x1="300" y1="164" x2="416" y2="164" stroke="#eb6c36" marker-end="url(#b1c)"/>
+<rect x="320" y="140" width="64" height="12" rx="2" fill="#fff"/><text x="352" y="149" class="al" text-anchor="middle">GIT ADD -A</text>
+<rect x="40" y="40" width="260" height="152" rx="6" fill="#fff" stroke="#2d3142"/>
+<text x="170" y="72" class="nn" text-anchor="middle">Main checkout</text>
+<text x="170" y="100" class="sa" text-anchor="middle">M  settings.tsx (route edit)</text>
+<text x="170" y="120" class="sl" text-anchor="middle">?? VariantA/B/C.tsx, Switcher</text>
+<text x="170" y="140" class="sl" text-anchor="middle">+ the user's own uncommitted work</text>
+<text x="170" y="172" class="sl" text-anchor="middle">dev server already running</text>
+<rect x="420" y="40" width="220" height="64" rx="6" fill="rgba(45,49,66,.05)" stroke="#4f5d75"/>
+<text x="530" y="68" class="nn" text-anchor="middle">.git/info/exclude</text>
+<text x="530" y="88" class="sl" text-anchor="middle">hides untracked files only</text>
+<rect x="420" y="132" width="220" height="64" rx="6" fill="rgba(235,108,54,.08)" stroke="#eb6c36"/>
+<text x="530" y="160" class="nn" text-anchor="middle">Index (next commit)</text>
+<text x="530" y="180" class="sa" text-anchor="middle">M settings.tsx · staged</text>
+</svg><p class="cap">The scratch-repo test reproduced exactly this. Cleanup also has to restore <code>settings.tsx</code> to its exact earlier state, including any edits the user made in the meantime.</p></div>
+
+<div class="tw"><table>
+<tr><th>Option</th><th>What keeps it out of commits</th><th>Setup cost</th><th>Hot reload</th><th>AFK-safe</th></tr>
+<tr class="pick"><td><b>Detached worktree outside .git</b> (recommended)</td><td class="ok">Structural: it's on no branch, and the main checkout never changes</td><td class="mid">Install deps (or an APFS clone), copy env files, use a second port</td><td class="ok">yes</td><td class="ok">yes</td></tr>
+<tr><td>Main checkout + cleanup</td><td class="bad">Discipline only: <code>git add -A</code> stages the route edit</td><td class="ok">none</td><td class="ok">yes</td><td class="mid">risky</td></tr>
+<tr><td>Stop and ask each time</td><td class="mid">whatever the user chooses</td><td class="mid">varies</td><td class="mid">varies</td><td class="bad">no: blocks an AFK run</td></tr>
+<tr><td>Worktree inside <code>vstack/artifacts/</code></td><td class="ok">structural</td><td class="mid">same as the worktree</td><td class="bad">no (Vite ignores <code>**/.git/**</code>)</td><td class="ok">yes</td></tr>
+</table></div>
+<div class="rec"><p><b>Recommendation: detached worktree outside <code>.git</code>.</b> It's the only option where "never committed" holds by construction rather than by the agent being careful. The setup cost buys that guarantee. Where exactly the worktree lives, how deps get in, and which port it uses are round-2 questions if you pick this.</p>
+<p>Note on <a href="https://github.com/daandden/vstack/blob/main/docs/adr/0007-isolated-subagents-write-artifacts-through-the-vstack-root.md">ADR 0007</a>: it rejected <code>git worktree add</code>, but for <em>isolated subagents</em>, which are short-lived and where APFS clone speed matters. A prototype mount has to outlive the session so the user can flip variants, and omp's isolated workspace doesn't. So this doesn't conflict with ADR 0007.</p></div>
+
+<!-- ============================ Q2 ============================ -->
+<h2><span class="q">Q2</span>Which prototypes the rule covers</h2>
+<p>The ticket names UI sub-shape A, but the same problem shows up anywhere a prototype can't run on its own from the artifacts directory.</p>
+<div class="fig"><svg viewBox="0 0 900 248" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="q2-title q2-desc">
+<title id="q2-title">Trigger for the mount rule</title>
+<desc id="q2-desc">A drafted prototype that runs on its own from vstack/artifacts stays there; one that needs the app's route, build, or path aliases goes through the mount rule chosen in Q1.</desc>
+<defs><marker id="c1" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+<marker id="c1c" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker></defs>
+<rect width="100%" height="100%" fill="#fff"/>
+<line x1="200" y1="124" x2="276" y2="124" stroke="#4f5d75" marker-end="url(#c1)"/>
+<path d="M480 124 H532 Q540 124 540 116 V72 Q540 64 548 64 H596" fill="none" stroke="#4f5d75" marker-end="url(#c1)"/>
+<rect x="556" y="40" width="32" height="12" rx="2" fill="#fff"/><text x="572" y="49" class="al" text-anchor="middle">YES</text>
+<path d="M480 124 H532 Q540 124 540 132 V176 Q540 184 548 184 H596" fill="none" stroke="#eb6c36" marker-end="url(#c1c)"/>
+<rect x="556" y="160" width="32" height="12" rx="2" fill="#fff"/><text x="572" y="169" class="al" text-anchor="middle">NO</text>
+<rect x="40" y="96" width="160" height="56" rx="6" fill="#fff" stroke="#2d3142"/>
+<text x="120" y="120" class="nn" text-anchor="middle">Prototype drafted</text>
+<text x="120" y="136" class="sl" text-anchor="middle">UI · LOGIC · BEHAVIOR</text>
+<polygon points="380,64 480,124 380,184 280,124" fill="#fff" stroke="#2d3142"/>
+<text x="380" y="116" class="nn" text-anchor="middle" style="font-size:11px">Runs on its own from</text>
+<text x="380" y="136" class="sl" text-anchor="middle">artifacts/&lt;topic&gt;/ ?</text>
+<rect x="600" y="36" width="260" height="56" rx="6" fill="rgba(45,49,66,.05)" stroke="#4f5d75"/>
+<text x="730" y="60" class="nn" text-anchor="middle">Stays in vstack/artifacts</text>
+<text x="730" y="76" class="sl" text-anchor="middle">LOGIC HTML · self-contained script</text>
+<rect x="600" y="156" width="260" height="56" rx="6" fill="rgba(235,108,54,.08)" stroke="#eb6c36"/>
+<text x="730" y="180" class="nn" text-anchor="middle">Mount rule (the Q1 answer)</text>
+<text x="730" y="196" class="sl" text-anchor="middle">needs app route · build · aliases</text>
+</svg><p class="cap">In the recommended option, the question that decides it is "can this run on its own from artifacts?", not "is this UI?".</p></div>
+<div class="tw"><table>
+<tr><th>Example prototype</th><th>Runs on its own?</th><th>Any that need app/toolchain (rec.)</th><th>UI A + B only</th><th>UI A only</th></tr>
+<tr><td>UI sub-shape A: variants inside the existing <code>/settings</code> page</td><td class="bad">no</td><td class="ok">mount</td><td class="ok">mount</td><td class="ok">mount</td></tr>
+<tr><td>UI sub-shape B: new <code>/prototype/foo</code> route</td><td class="bad">no (writes into the route tree)</td><td class="ok">mount</td><td class="ok">mount</td><td class="bad">unanswered</td></tr>
+<tr><td>BEHAVIOR script importing <code>@/lib/pricing</code> (tsconfig alias)</td><td class="bad">no (alias can't be resolved from under .git)</td><td class="ok">mount</td><td class="mid">must be rewritten to relative imports</td><td class="bad">unanswered</td></tr>
+<tr><td>BEHAVIOR script with relative imports only</td><td class="ok">yes</td><td>artifacts</td><td>artifacts</td><td>artifacts</td></tr>
+<tr><td>LOGIC single HTML file</td><td class="ok">yes</td><td>artifacts</td><td>artifacts</td><td>artifacts</td></tr>
+</table></div>
+<div class="rec"><p><b>Recommendation: any prototype that needs the app or its toolchain.</b> That gives one rule with one trigger. The narrower scopes leave cases that hit the same wall with no answer.</p></div>
+
+<!-- ============================ Q3 ============================ -->
+<h2><span class="q">Q3</span>How long the mount stays up, and when it's cleaned up</h2>
+<p>Rule 7 has the agent observe each variant before handover. After that, Matt's UI.md says the user flips through variants "whenever they get to it", which can be days and several sessions later.</p>
+<div class="fig"><svg viewBox="0 0 900 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="q3-title q3-desc">
+<title id="q3-title">Mount lifetime options</title>
+<desc id="q3-desc">Option A keeps the mount live from build through the verdict, then captures and cleans up. Option B tears it down at session end and rebuilds it from the capture when asked.</desc>
+<rect width="100%" height="100%" fill="#fff"/>
+<g stroke="rgba(45,49,66,.12)"><line x1="180" y1="48" x2="180" y2="200"/><line x1="280" y1="48" x2="280" y2="200"/><line x1="380" y1="48" x2="380" y2="200"/><line x1="520" y1="48" x2="520" y2="200"/><line x1="660" y1="48" x2="660" y2="200"/><line x1="760" y1="48" x2="760" y2="200"/><line x1="852" y1="48" x2="852" y2="200"/></g>
+<text x="180" y="36" class="ax" text-anchor="middle">BUILD</text><text x="280" y="36" class="ax" text-anchor="middle">OBSERVE</text><text x="380" y="36" class="ax" text-anchor="middle">HANDOVER</text><text x="520" y="36" class="ax" text-anchor="middle">USER FLIPS · DAYS</text><text x="660" y="36" class="ax" text-anchor="middle">VERDICT</text><text x="760" y="36" class="ax" text-anchor="middle">CAPTURE</text><text x="852" y="36" class="ax" text-anchor="middle">CLEANUP</text>
+<text x="24" y="100" class="nn">A · until verdict</text><text x="24" y="116" class="sl">recommended</text>
+<rect x="180" y="84" width="672" height="28" rx="4" fill="rgba(235,108,54,.08)" stroke="#eb6c36"/>
+<text x="516" y="102" class="sa" text-anchor="middle">mount live · reply gives path + removal command</text>
+<text x="24" y="168" class="nn">B · per session</text><text x="24" y="184" class="sl">rebuild on request</text>
+<rect x="180" y="152" width="220" height="28" rx="4" fill="#fff" stroke="#2d3142"/>
+<text x="290" y="170" class="sl" text-anchor="middle">session 1 · torn down at end</text>
+<rect x="480" y="152" width="372" height="28" rx="4" fill="rgba(45,49,66,.02)" stroke="rgba(45,49,66,.3)" stroke-dasharray="4,3"/>
+<text x="666" y="170" class="sl" text-anchor="middle">rebuilt from the capture when the user wants to look</text>
+</svg><p class="cap">With A, the user can open the URL any time before the verdict. With B, nothing stale is left behind, but every look costs a rebuild, and that needs Q4's capture to exist up front.</p></div>
+<div class="rec"><p><b>Recommendation: A.</b> The session that records the verdict cleans up. Until then, the reply's throwaway notice gives the worktree path and the exact <code>git worktree remove</code> command, so an abandoned mount is easy to find (it also shows up in <code>git worktree list</code>).</p></div>
+
+<!-- ============================ Q4 ============================ -->
+<h2><span class="q">Q4</span>What is saved as the primary source</h2>
+<p>In Standard mode, Matt keeps all the variants on a throwaway branch. In Private mode there's no branch, and the <a href="https://github.com/daandden/vstack/issues/44#issuecomment-5983893679">#44 amendment</a> says the issue gets only the verdict. Without a capture step, the variant code disappears with the worktree.</p>
+<div class="fig"><svg viewBox="0 0 900 264" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="q4-title q4-desc">
+<title id="q4-title">Capture before cleanup</title>
+<desc id="q4-desc">Before cleanup, the variant files, the switcher, and a diff of the route edit with its base commit are copied into vstack/artifacts; the issue gets only the verdict.</desc>
+<defs><marker id="d1" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+<marker id="d1c" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker></defs>
+<rect width="100%" height="100%" fill="#fff"/>
+<line x1="260" y1="132" x2="336" y2="132" stroke="#4f5d75" marker-end="url(#d1)"/>
+<rect x="276" y="108" width="44" height="12" rx="2" fill="#fff"/><text x="298" y="117" class="al" text-anchor="middle">COPY</text>
+<path d="M500 120 H532 Q540 120 540 112 V108 Q540 100 548 100 H576" fill="none" stroke="#eb6c36" marker-end="url(#d1c)"/>
+<path d="M500 144 H532 Q540 144 540 152 V208 Q540 216 548 216 H576" fill="none" stroke="#4f5d75" stroke-dasharray="5,4" marker-end="url(#d1)"/>
+<rect x="476" y="176" width="56" height="12" rx="2" fill="#fff"/><text x="530" y="185" class="al" text-anchor="end">VERDICT</text>
+<rect x="40" y="72" width="220" height="120" rx="6" fill="#fff" stroke="#2d3142"/>
+<text x="150" y="100" class="nn" text-anchor="middle">Prototype worktree</text>
+<text x="150" y="124" class="sl" text-anchor="middle">VariantA/B/C.tsx</text>
+<text x="150" y="140" class="sl" text-anchor="middle">PrototypeSwitcher.tsx</text>
+<text x="150" y="156" class="sl" text-anchor="middle">settings.tsx edit</text>
+<text x="150" y="176" class="sl" text-anchor="middle">→ removed after capture</text>
+<rect x="340" y="104" width="160" height="56" rx="6" fill="#fff" stroke="#2d3142"/>
+<text x="420" y="128" class="nn" text-anchor="middle">Capture</text>
+<text x="420" y="144" class="sl" text-anchor="middle">step 6, before cleanup</text>
+<rect x="580" y="40" width="280" height="120" rx="6" fill="rgba(235,108,54,.08)" stroke="#eb6c36"/>
+<text x="720" y="68" class="nn" text-anchor="middle">vstack/artifacts/&lt;topic&gt;/</text>
+<text x="720" y="92" class="sl" text-anchor="middle">VariantA–C.tsx · PrototypeSwitcher.tsx</text>
+<text x="720" y="108" class="sl" text-anchor="middle">mount.diff  (the route edit)</text>
+<text x="720" y="124" class="sl" text-anchor="middle">base commit SHA</text>
+<text x="720" y="140" class="sl" text-anchor="middle">question + verdict note</text>
+<rect x="580" y="188" width="280" height="56" rx="6" fill="#fff" stroke="#2d3142"/>
+<text x="720" y="212" class="nn" text-anchor="middle">Driving issue</text>
+<text x="720" y="228" class="sl" text-anchor="middle">verdict only · no artifact link</text>
+</svg><p class="cap">The capture is enough to rebuild the mount later: check out the base SHA, apply the diff, and copy the variant files back in.</p></div>
+<div class="rec"><p><b>Recommendation: save the variant files and the mount diff in artifacts.</b> This keeps Matt's "the prototype is a primary source" rule in Private mode, and Q3's option B depends on it.</p></div>
+
+<!-- ============================ Q5 ============================ -->
+<h2><span class="q">Q5</span>Where the winner gets folded in</h2>
+<p>Matt's step 6 rewrites the winning variant properly in the real code. Private mode keeps <em>vstack artifacts</em> untracked; it doesn't apply to product code.</p>
+<div class="fig"><svg viewBox="0 0 900 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="q5-title q5-desc">
+<title id="q5-title">Folding the winning variant</title>
+<desc id="q5-desc">After the verdict, either prototype rewrites the winner in the main checkout as tracked product code, or prototype stops and a later implement run does it.</desc>
+<defs><marker id="e1" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+<marker id="e1c" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker></defs>
+<rect width="100%" height="100%" fill="#fff"/>
+<path d="M200 88 H232 Q240 88 240 80 V60 Q240 52 248 52 H296" fill="none" stroke="#eb6c36" marker-end="url(#e1c)"/>
+<rect x="248" y="28" width="32" height="12" rx="2" fill="#fff"/><text x="264" y="37" class="al" text-anchor="middle">A</text>
+<path d="M200 112 H232 Q240 112 240 120 V140 Q240 148 248 148 H296" fill="none" stroke="#4f5d75" marker-end="url(#e1)"/>
+<rect x="248" y="124" width="32" height="12" rx="2" fill="#fff"/><text x="264" y="133" class="al" text-anchor="middle">B</text>
+<line x1="560" y1="52" x2="636" y2="52" stroke="#4f5d75" marker-end="url(#e1)"/>
+<line x1="560" y1="148" x2="636" y2="148" stroke="#4f5d75" stroke-dasharray="5,4" marker-end="url(#e1)"/>
+<rect x="40" y="72" width="160" height="56" rx="6" fill="#fff" stroke="#2d3142"/>
+<text x="120" y="96" class="nn" text-anchor="middle">Verdict</text>
+<text x="120" y="112" class="sl" text-anchor="middle">"header of B, sidebar of C"</text>
+<rect x="300" y="24" width="260" height="56" rx="6" fill="rgba(235,108,54,.08)" stroke="#eb6c36"/>
+<text x="430" y="48" class="nn" text-anchor="middle">prototype rewrites the winner</text>
+<text x="430" y="64" class="sl" text-anchor="middle">main checkout · tracked · same run</text>
+<rect x="640" y="24" width="220" height="56" rx="6" fill="#fff" stroke="#2d3142"/>
+<text x="750" y="48" class="nn" text-anchor="middle">Normal commit flow</text>
+<text x="750" y="64" class="sl" text-anchor="middle">user's usual workflow</text>
+<rect x="300" y="120" width="260" height="56" rx="6" fill="#fff" stroke="#2d3142"/>
+<text x="430" y="144" class="nn" text-anchor="middle">prototype stops at verdict</text>
+<text x="430" y="160" class="sl" text-anchor="middle">capture + cleanup only</text>
+<rect x="640" y="120" width="220" height="56" rx="6" fill="rgba(45,49,66,.02)" stroke="rgba(45,49,66,.3)" stroke-dasharray="4,3"/>
+<text x="750" y="144" class="nn" text-anchor="middle">/skill:implement later</text>
+<text x="750" y="160" class="sl" text-anchor="middle">End state asked there</text>
+</svg><p class="cap">A matches Matt's step 6 in both modes. B separates "decide" from "build", but it changes what prototype does only in Private mode.</p></div>
+<div class="rec"><p><b>Recommendation: A, unchanged from Matt.</b> The winner is rewritten in the main checkout as ordinary tracked product code. Only the prototype stays untracked.</p></div>
+
+<div class="footer">vstack · ticket "Decide how a Private-mode UI prototype stays untracked when it mounts in an app route" · round 1 · inputs: ADR 0006, ADR 0007, #44 resolution + amendment, Matt prototype v1.2.3 UI.md</div>
+</div></body></html>
