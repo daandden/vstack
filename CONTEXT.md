@@ -60,6 +60,10 @@ _Avoid_: skip, freeze, pin (for one item)
 The table listing every Upstream item with its Disposition and a one-line reason, linking an ADR when the choice was a real trade-off.
 _Avoid_: manifest (for this table), ADR list
 
+**House style**:
+The written rules that turn Upstream text into vstack text: exact replacement rows, plus the spawn and skill-reference rules. Applying any of it to an item makes that item adapt. An adopt item is touched only by a row that every vstack artifact must follow, and that touch flips it to adapt.
+_Avoid_: substitution list, style guide
+
 ### Behavior
 
 **Fan-out**:
