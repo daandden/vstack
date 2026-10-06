@@ -81,3 +81,7 @@ _Avoid_: conversion, reinstall
 **Private mode**:
 A project setup where vstack's project config and workflow artifacts are kept untracked under the git common directory and shared by all of the project's worktrees. The default, Standard mode, keeps them tracked in the repo.
 _Avoid_: private storage, private setup
+
+**vstack root**:
+The absolute directory where a run writes the project's vstack config and workflow artifacts: `vstack/` under the git common directory in Private mode, or the main checkout's repo root in Standard mode. The top-level agent resolves it once and passes it to every subagent, which writes there instead of resolving it again.
+_Avoid_: artifact dir, private root
