@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ask-vstack routing and the remaining Matt adapt text: explainer</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--paper:#f5f5f5;--paper2:#ececec;--ink:#2d3142;--muted:#4f5d75;--soft:#7a8399;--rule:rgba(45,49,66,0.12);--accent:#eb6c36;--tint:rgba(235,108,54,0.08);--link:#2e5aa8;--sans:'Geist',system-ui,sans-serif;--serif:'Instrument Serif','Times New Roman',serif;--mono:'Geist Mono',ui-monospace,Menlo,monospace}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);padding:3rem 2rem;line-height:1.55;font-size:15px}
+.container{max-width:1160px;margin:0 auto}
+.eyebrow{font-family:var(--mono);font-size:.66rem;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem}
+h1{font-family:var(--serif);font-weight:400;font-size:clamp(1.75rem,3vw + 1rem,2.5rem);letter-spacing:-.02em;line-height:1.1;margin-bottom:.5rem}
+h2{font-family:var(--serif);font-weight:400;font-size:1.75rem;margin:3rem 0 .75rem;padding-top:1.5rem;border-top:1px solid var(--rule)}
+h3{font-size:1rem;font-weight:600;margin:1.75rem 0 .6rem}
+.subtitle{color:var(--muted);max-width:80ch}
+p{max-width:80ch;margin-bottom:.75rem}
+ul.l{margin:0 0 .75rem 1.25rem;max-width:80ch} ul.l li{margin-bottom:.3rem}
+a{color:var(--link);text-decoration:none} a:hover{text-decoration:underline}
+code{font-family:var(--mono);font-size:.82em;background:rgba(45,49,66,0.06);padding:.05em .3em;border-radius:3px}
+a code{color:var(--link)}
+.cards{display:grid;grid-template-columns:1.1fr 1fr .9fr;gap:1rem;margin-top:1.5rem}
+.card{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:1.1rem 1.25rem;font-size:.9rem}
+.card h4{font-size:.875rem;margin-bottom:.4rem}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1rem 0}
+.side{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:1rem 1.2rem;font-size:.88rem}
+.side h4{font-size:.9rem;margin-bottom:.35rem}
+.side ol{margin:.4rem 0 .4rem 1.2rem} .side li{margin-bottom:.2rem}
+blockquote{border-left:2px solid var(--soft);padding:.2rem .7rem;margin:.5rem 0;color:var(--muted);font-size:.86rem;font-style:italic;max-width:80ch}
+.fig{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:1rem;margin:1rem 0}
+.fig svg{width:100%;max-width:880px;display:block;margin:0 auto}
+.fig .cap{font-size:.8rem;color:var(--soft);text-align:center;margin:.5rem auto 0;max-width:none}
+.rec{background:var(--tint);border-left:3px solid var(--accent);padding:.8rem 1rem;margin:1rem 0;border-radius:0 6px 6px 0;max-width:none}
+.rec p{margin-bottom:.4rem;max-width:none}
+.q{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;color:#fff;background:var(--accent);border-radius:3px;padding:.05rem .4rem;margin-right:.4rem;vertical-align:2px}
+.tw{overflow-x:auto;background:#fff;border:1px solid var(--rule);border-radius:6px;margin:1rem 0}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th{font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--soft);text-align:left;padding:.6rem .75rem;border-bottom:1px solid var(--rule);background:var(--paper2)}
+td{padding:.6rem .75rem;border-bottom:1px solid rgba(45,49,66,0.07);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr.pick td{background:var(--tint)}
+.b{font-family:var(--mono);font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;padding:.1rem .4rem;border-radius:3px;border:1px solid;white-space:nowrap}
+.b-adopt{color:#2d6a4f;border-color:rgba(45,106,79,.4);background:rgba(45,106,79,.06)}
+.b-adapt{color:var(--link);border-color:rgba(46,90,168,.4);background:rgba(46,90,168,.06)}
+.b-merge{color:var(--muted);border-color:rgba(79,93,117,.4);background:rgba(79,93,117,.08)}
+.k{font-family:var(--mono);font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--soft)}
+pre.mock{font-family:var(--mono);font-size:.74rem;line-height:1.5;white-space:pre-wrap;margin-top:.5rem;color:var(--ink)}
+pre.mock mark{background:var(--tint);color:var(--ink);border-left:2px solid var(--accent);padding-left:.2rem}
+.footer{margin-top:3rem;padding-top:1.25rem;border-top:1px solid var(--rule);font-family:var(--mono);font-size:.72rem;color:var(--soft);display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem}
+.two pre.mock{font-size:.72rem}
+</style></head><body><div class="container">
+<div class="header">
+<p class="eyebrow">vstack · wayfinder ticket · omp source (oh-my-pi) · Matt v1.2.3 (6acc160e) · pstack 12d587df</p>
+<h1>ask-vstack's routing and the remaining Matt adapt text</h1>
+<p class="subtitle">Explainer for <a href="https://github.com/daandden/vstack/issues/53">Specify ask-vstack's routing and the remaining Matt adapt text</a>, part of the map <a href="https://github.com/daandden/vstack/issues/26">vstack: Matt Pocock skills plus pstack enhancements for omp, with confirmed Updates</a>. Round 1: ten questions, each with the facts, the options, and a recommendation. Nothing here is decided yet.</p>
+</div>
+
+<div class="cards">
+<div class="card"><p class="eyebrow">Settled · House style (#48)</p><h4>Rows and rules already apply</h4><p>The <code>setup-vstack</code>, <code>ask-vstack</code>, <code>docs/vstack/</code>, and <code>## vstack</code> rows; <code>skill://</code> for the agent and <code>/skill:</code> for the user; the Fan-out block and single-spawn templates; the spawn-vocab lint.</p></div>
+<div class="card"><p class="eyebrow">Settled · roster (#47) and ADR 0007</p><h4>Who runs what</h4><p>The code-review reviewers are <code>vstack-explorer</code>. Wayfinder research runners are <code>vstack-worker</code>, isolated through eval <code>agent(…, isolated=True, apply=False, merge=False)</code>, and they get back only a <code>patchPath</code>.</p></div>
+<div class="card"><p class="eyebrow">This ticket</p><h4>Everything else in the text</h4><p>ask-vstack's routing and its phase-boundary commands; code-review's step 4; wayfinder's research-runner block and how findings land; and whether to-spec, to-tickets, and triage need anything beyond the rows.</p></div>
+</div>
+
+<!-- ============================ ask-vstack ============================ -->
+<h2>ask-vstack</h2>
+
+<h3><span class="q">Q1</span>How the router is shaped over the whole catalog</h3>
+<p>ask-matt is a hand-written map: <b>main flow</b> → <b>on-ramps</b> → <b>codebase health</b> → <b>vocabulary underneath</b> → <b>phase boundaries</b> → <b>standalone</b> → <b>precondition</b>. In vstack it has to cover 25 Matt skills, 13 pstack skills (architect and explain are hidden, but the user can still type <code>/skill:architect</code>), and 7 joined Playbook skills. Two of Matt's statements become <em>false</em> in vstack. implement no longer stops at the commit: it asks for the End state and chains open-pr → babysit → ship. code-review is no longer only two axes.</p>
+
+<div class="fig">
+<svg viewBox="0 0 880 165" xmlns="http://www.w3.org/2000/svg" font-family="Geist, system-ui, sans-serif" font-size="12">
+<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#4f5d75"/></marker></defs>
+<g fill="#fff" stroke="#2d3142" stroke-opacity=".25">
+<rect x="10" y="20" width="200" height="110" rx="6"/><rect x="340" y="20" width="200" height="110" rx="6"/><rect x="670" y="20" width="200" height="110" rx="6"/>
+</g>
+<rect x="340" y="20" width="200" height="110" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/>
+<text x="110" y="45" text-anchor="middle" font-weight="600">A · Keep skeleton, edit + add</text>
+<text x="110" y="68" text-anchor="middle" fill="#4f5d75">fix stale facts in place</text>
+<text x="110" y="86" text-anchor="middle" fill="#4f5d75">new sections for pstack ground</text>
+<text x="110" y="110" text-anchor="middle" fill="#2d6a4f">merges: mostly clean</text>
+<text x="440" y="45" text-anchor="middle" font-weight="600">Recommended: A</text>
+<text x="440" y="68" text-anchor="middle" fill="#4f5d75">routing correct</text>
+<text x="440" y="86" text-anchor="middle" fill="#4f5d75">Upstream hunks still line up</text>
+<text x="440" y="110" text-anchor="middle" fill="#4f5d75">new sections = no merge conflicts</text>
+<text x="770" y="45" text-anchor="middle" font-weight="600">B · Append one section</text>
+<text x="770" y="68" text-anchor="middle" fill="#4f5d75">trivial merges</text>
+<text x="770" y="86" text-anchor="middle" fill="#b23a3a">main flow states stale facts</text>
+<text x="770" y="110" text-anchor="middle" fill="#b23a3a">two-axis review claim stays</text>
+<text x="440" y="155" text-anchor="middle" fill="#7a8399">C · rewrite by user intent (build / fix / understand / ship): best routing, but every Update becomes a hand merge</text>
+<line x1="212" y1="75" x2="336" y2="75" stroke="#4f5d75" marker-end="url(#ar)"/>
+<line x1="668" y1="75" x2="544" y2="75" stroke="#4f5d75" stroke-dasharray="4 3"/>
+</svg>
+<p class="cap">The trade-off is how correct the routing is against how hard the three-way merge is on each Update.</p>
+</div>
+
+<p>What option A looks like. <span class="b b-merge">grey</span> = Matt's line kept (only the <code>/skill:</code> form changes), <span class="b b-adapt">blue</span> = Matt's line edited because it became false, <span class="b" style="color:#eb6c36;border-color:#eb6c36">orange</span> = new vstack routing.</p>
+
+<style>
+.map{display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin:1rem 0}
+.sec{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:.8rem 1rem;font-size:.82rem}
+.sec h4{font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:.4rem}
+.sec.new{border-color:var(--accent);background:var(--tint)}
+.sec ul{list-style:none} .sec li{padding:.15rem 0;border-bottom:1px dashed rgba(45,49,66,.07)}
+.k0{color:var(--soft)} .ke{color:var(--link)} .kn{color:#c4521f;font-weight:500}
+</style>
+<div class="map">
+<div class="sec"><h4>Main flow: idea → ship</h4><ul>
+<li class="k0">1 /skill:grill-with-docs</li>
+<li class="k0">2 prototype detour, bridged by /skill:handoff</li>
+<li class="kn">2b needs a module design first? → /skill:architect (sketch / checkpoint / implement stops)</li>
+<li class="k0">3 /skill:to-spec → /skill:to-tickets → /skill:implement per ticket</li>
+<li class="ke">implement asks the End state; past commit it chains /skill:open-pr → /skill:babysit → /skill:ship</li>
+<li class="ke">code-review: Standards + Spec, + Safety when the diff touches what outside code depends on</li>
+</ul></div>
+<div class="sec"><h4>On-ramps</h4><ul>
+<li class="k0">bugs piling up → /skill:triage</li>
+<li class="k0">something's broken → /skill:diagnosing-bugs</li>
+<li class="kn">something's slow → /skill:perf-issue</li>
+<li class="kn">a crash dump, trace, profile, or live process to read → /skill:forensics</li>
+<li class="k0">huge foggy effort → /skill:wayfinder</li>
+</ul></div>
+<div class="sec new"><h4>New · Understand code</h4><ul>
+<li class="kn">how does X work → /skill:how</li>
+<li class="kn">why is it this way → /skill:why</li>
+<li class="kn">walk me through it, with diagrams → /skill:explain</li>
+</ul><p style="font-size:.75rem;color:var(--soft);margin-top:.4rem">Replaces the rejected investigation Playbook (#34).</p></div>
+<div class="sec"><h4>Codebase health</h4><ul>
+<li class="k0">/skill:improve-codebase-architecture</li>
+<li class="kn">/skill:refactor: carries out its findings (or code-review's)</li>
+<li class="kn">/skill:prune-comments</li>
+<li class="kn">/skill:hillclimb: push a metric</li>
+</ul></div>
+<div class="sec new"><h4>New · Ship</h4><ul>
+<li class="kn">/skill:open-pr · /skill:babysit · /skill:ship</li>
+<li class="kn">/skill:decision-trail (starts by itself at merge-ready or shipped)</li>
+<li class="kn">/skill:blast-radius: what outside the diff could break</li>
+</ul></div>
+<div class="sec new"><h4>New · App verification</h4><ul>
+<li class="kn">/skill:setup-app-verification: once per project</li>
+<li class="kn">/skill:maintain-app-verification: when a verify step drifts</li>
+</ul></div>
+<div class="sec"><h4>Vocabulary underneath</h4><ul>
+<li class="k0">/skill:domain-modeling</li>
+<li class="ke">/skill:codebase-design: the bench; architect is where a chosen design gets built</li>
+</ul></div>
+<div class="sec"><h4>Phase boundaries</h4><ul>
+<li class="ke">five options, mapped to omp (Q3)</li>
+</ul></div>
+<div class="sec"><h4>Standalone</h4><ul>
+<li class="k0">grill-me, grilling, resolving-merge-conflicts, prototype, research, to-questionnaire, wizard, wait-what, teach, writing-for-agents</li>
+<li class="kn">/skill:compare-attempts: competing attempts, keep the best</li>
+<li class="kn">/skill:session-lessons · /skill:unslop · /skill:technical-writing</li>
+</ul></div>
+</div>
+<div class="sec" style="max-width:none"><h4>Precondition</h4><ul><li class="ke">/skill:setup-vstack: before the first flow; it also points to /skill:setup-app-verification</li></ul></div>
+
+<div class="rec"><p><b>Recommendation: A.</b> Edit in place only where Matt's sentence would be false in vstack, and put the pstack ground into new sections. Upstream edits to Matt's existing paragraphs still merge into those paragraphs, and the new sections never conflict.</p></div>
+
+<h3><span class="q">Q2</span>Extras the router could carry (multi-select)</h3>
+<div class="tw"><table><thead><tr><th>Extra</th><th>What it says</th><th>Why / why not</th></tr></thead><tbody>
+<tr class="pick"><td><b>Fan-out override line</b></td><td>"Skills that can run subagents in parallel decide at each step. Say <i>fan out</i> or <i>in parallel</i> to force it; say <i>no fan-out</i> or <i>sequential</i> to prevent it."</td><td>This is the user's only lever over ADR 0004, and nothing else tells them it exists. <b>Recommended.</b></td></tr>
+<tr><td><b>vstack-update entry</b></td><td>Under Precondition: <code>/skill:vstack-update</code> moves the Pins forward inside the vstack clone.</td><td>It is hidden and used only in the vstack repo. It's useful as a reminder, but it is not project work. Your call.</td></tr>
+<tr><td><b>Principles note</b></td><td>"Principles are injected automatically; never invoke them."</td><td>There is nothing to route to. Not recommended.</td></tr>
+</tbody></table></div>
+
+<h3><span class="q">Q3</span>Phase boundaries: mapping Matt's five options onto omp</h3>
+<p>Matt wrote the tree for Claude Code. These are the omp facts, read from the omp source (<code>slash-commands/builtin-lifecycle.ts</code>, <code>session/agent-session.ts</code>):</p>
+<div class="tw"><table><thead><tr><th>Matt option</th><th>What Matt means (Claude Code)</th><th>omp command</th><th>What omp actually does</th><th>Match?</th></tr></thead><tbody>
+<tr><td>Continue</td><td>stay</td><td>—</td><td>—</td><td>✓</td></tr>
+<tr><td><code>/clear</code></td><td>empty the window; "the old session stays resumable"</td><td><code>/clear</code></td><td>drops the context <b>in place</b>. The session id and transcript file survive, but the old context can't be resumed.</td><td style="color:#b23a3a">✗ resumability</td></tr>
+<tr class="pick"><td></td><td></td><td><code>/new</code></td><td>new session; the old one stays resumable via <code>/resume</code></td><td>✓ exact</td></tr>
+<tr><td><code>/handoff</code></td><td>Matt's skill: writes a <b>portable file</b></td><td><code>/skill:handoff</code></td><td>Matt's skill, adopted (#48 rule)</td><td>✓</td></tr>
+<tr><td style="color:#b23a3a">⚠ trap</td><td></td><td><code>/handoff</code> (built-in)</td><td>"Summarize the session into a handoff document and <b>compact in place</b>". It writes no file for the user.</td><td>≈ a <code>/compact</code> variant</td></tr>
+<tr><td>Subagent</td><td>advice to the user</td><td>—</td><td>not a spawn site (#47)</td><td>✓</td></tr>
+<tr><td><code>/compact</code></td><td>"compress and seed a fresh session"</td><td><code>/compact [mode] [focus]</code></td><td>compacts <b>in place</b>; focus text works like Matt's example</td><td>≈ wording</td></tr>
+</tbody></table></div>
+
+<div class="fig">
+<svg viewBox="0 0 880 210" xmlns="http://www.w3.org/2000/svg" font-family="Geist, system-ui, sans-serif" font-size="12">
+<defs><marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#4f5d75"/></marker></defs>
+<g font-weight="600">
+<rect x="10" y="20" width="150" height="44" rx="6" fill="#fff" stroke="#2d3142" stroke-opacity=".25"/><text x="85" y="47" text-anchor="middle">1 Continue?</text>
+<rect x="190" y="20" width="150" height="44" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/><text x="265" y="40" text-anchor="middle">2 Irrelevant?</text><text x="265" y="56" text-anchor="middle" font-weight="400" font-family="Geist Mono, monospace" font-size="11">/new</text>
+<rect x="370" y="20" width="150" height="44" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/><text x="445" y="40" text-anchor="middle">3 Must travel?</text><text x="445" y="56" text-anchor="middle" font-weight="400" font-family="Geist Mono, monospace" font-size="11">/skill:handoff</text>
+<rect x="550" y="20" width="150" height="44" rx="6" fill="#fff" stroke="#2d3142" stroke-opacity=".25"/><text x="625" y="47" text-anchor="middle">4 AFK? subagent</text>
+<rect x="730" y="20" width="140" height="44" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/><text x="800" y="40" text-anchor="middle">5 Otherwise</text><text x="800" y="56" text-anchor="middle" font-weight="400" font-family="Geist Mono, monospace" font-size="11">/compact &lt;focus&gt;</text>
+</g>
+<g stroke="#4f5d75"><line x1="160" y1="42" x2="186" y2="42" marker-end="url(#ar2)"/><line x1="340" y1="42" x2="366" y2="42" marker-end="url(#ar2)"/><line x1="520" y1="42" x2="546" y2="42" marker-end="url(#ar2)"/><line x1="700" y1="42" x2="726" y2="42" marker-end="url(#ar2)"/></g>
+<rect x="590" y="110" width="280" height="80" rx="6" fill="#fff" stroke="#b23a3a" stroke-dasharray="4 3"/>
+<text x="730" y="132" text-anchor="middle" font-weight="600" fill="#b23a3a">omp built-in /handoff</text>
+<text x="730" y="152" text-anchor="middle" fill="#4f5d75">summarizes as a handoff doc, compacts in place</text>
+<text x="730" y="172" text-anchor="middle" fill="#4f5d75">→ a flavour of step 5, NOT step 3</text>
+<line x1="790" y1="108" x2="800" y2="68" stroke="#b23a3a" stroke-dasharray="4 3" marker-end="url(#ar2)"/>
+<rect x="190" y="110" width="330" height="80" rx="6" fill="#fff" stroke="#2d3142" stroke-opacity=".25"/>
+<text x="355" y="132" text-anchor="middle" font-weight="600">Option "keep /clear"</text>
+<text x="355" y="152" text-anchor="middle" fill="#4f5d75">step 2 stays /clear; the "resumable" line becomes</text>
+<text x="355" y="172" text-anchor="middle" fill="#4f5d75">"transcript stays on disk; use /new to keep it resumable"</text>
+</svg>
+<p class="cap">Recommended mapping in orange. Matt's main flow ("/clear between each /implement") follows step 2.</p>
+</div>
+<div class="rec"><p><b>Recommendation:</b> use <code>/new</code> for option 2 and in main-flow step 3, since it is the exact match, resumability included. Keep <code>/compact</code> but say "in place". Option 3 is <code>/skill:handoff</code>, followed by one sentence warning that omp's built-in <code>/handoff</code> belongs to step 5, not step 3. Matt's other wording stays, so merges stay small.</p></div>
+
+<!-- ============================ rows ============================ -->
+<h2>House style</h2>
+<h3><span class="q">Q4</span>A row for <code>/setup-matt-pocock-skills</code></h3>
+<p>The phrase appears 7× across ask-matt, code-review, to-spec, to-tickets, triage, and wayfinder. Every occurrence tells the <b>user</b> what to type: setup is <code>disable-model-invocation</code>, so the agent can't run it. Today's rows produce a token that the lint then rejects:</p>
+<div class="fig">
+<svg viewBox="0 0 880 170" xmlns="http://www.w3.org/2000/svg" font-family="Geist Mono, monospace" font-size="12">
+<defs><marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#4f5d75"/></marker></defs>
+<text x="10" y="20" font-family="Geist, sans-serif" font-weight="600" fill="#4f5d75">today</text>
+<rect x="10" y="30" width="230" height="36" rx="5" fill="#fff" stroke="#2d3142" stroke-opacity=".25"/><text x="125" y="53" text-anchor="middle">/setup-matt-pocock-skills</text>
+<rect x="300" y="30" width="230" height="36" rx="5" fill="#fff" stroke="#2d3142" stroke-opacity=".25"/><text x="415" y="53" text-anchor="middle">/setup-vstack</text>
+<rect x="590" y="30" width="280" height="36" rx="5" fill="#fff" stroke="#b23a3a"/><text x="730" y="53" text-anchor="middle" fill="#b23a3a">lint ✗ → agent fixes by hand</text>
+<line x1="240" y1="48" x2="296" y2="48" stroke="#4f5d75" marker-end="url(#ar3)"/><text x="268" y="24" text-anchor="middle" font-size="10" fill="#7a8399">name row</text>
+<line x1="530" y1="48" x2="586" y2="48" stroke="#4f5d75" marker-end="url(#ar3)"/>
+<text x="10" y="105" font-family="Geist, sans-serif" font-weight="600" fill="#c4521f">with the new row first</text>
+<rect x="10" y="115" width="230" height="36" rx="5" fill="#fff" stroke="#2d3142" stroke-opacity=".25"/><text x="125" y="138" text-anchor="middle">/setup-matt-pocock-skills</text>
+<rect x="300" y="115" width="230" height="36" rx="5" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/><text x="415" y="138" text-anchor="middle">/skill:setup-vstack</text>
+<rect x="590" y="115" width="280" height="36" rx="5" fill="#fff" stroke="#2d6a4f"/><text x="730" y="138" text-anchor="middle" fill="#2d6a4f">lint ✓ · name row can't match</text>
+<line x1="240" y1="133" x2="296" y2="133" stroke="#4f5d75" marker-end="url(#ar3)"/><text x="268" y="109" text-anchor="middle" font-size="10" fill="#7a8399">literal row</text>
+<line x1="530" y1="133" x2="586" y2="133" stroke="#4f5d75" marker-end="url(#ar3)"/>
+</svg>
+</div>
+<pre class="mock" style="background:#fff;border:1px solid var(--rule);border-radius:6px;padding:.8rem 1rem">replacements:
+<mark>  - id: setup-vstack-cmd          # new, placed before setup-vstack
+    from: /setup-matt-pocock-skills
+    to: /skill:setup-vstack
+    match: literal
+    upstream: matt
+    scope: required
+    uses: [update, migration]    # Migration's rule-file diffs get the right form too</mark>
+  - id: setup-vstack
+    from: setup-matt-pocock-skills
+    …</pre>
+<div class="rec"><p><b>Recommendation: add the row.</b> It meets #48's threshold, since the phrase recurs and can be replaced blindly, and it takes 7 hand edits out of every Update.</p></div>
+
+<!-- ============================ code-review ============================ -->
+<h2>code-review</h2>
+<h3><span class="q">Q5</span>Step 4: the reviewers' Fan-out block</h3>
+<p>Settled in #44: the Safety trigger is checked after step 1; there is a Fan-out block when 2 or 3 axes run; a single remaining reviewer runs as one subagent with no judge; and the Safety prompt runs blast-radius without its step 6. Still open is the exact text, and one invariant that inline could break: Matt runs the axes in <em>separate contexts</em> so that one axis can't mask another.</p>
+<div class="fig">
+<svg viewBox="0 0 880 330" xmlns="http://www.w3.org/2000/svg" font-family="Geist, system-ui, sans-serif" font-size="12">
+<defs><marker id="ar4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#4f5d75"/></marker></defs>
+<g fill="#fff" stroke="#2d3142" stroke-opacity=".25">
+<rect x="10" y="20" width="180" height="44" rx="6"/><rect x="10" y="94" width="180" height="56" rx="6"/><rect x="10" y="180" width="180" height="44" rx="6"/>
+<rect x="240" y="94" width="180" height="56" rx="6"/>
+</g>
+<text x="100" y="47" text-anchor="middle" font-weight="600">1 · Pin the fixed point</text>
+<text x="100" y="116" text-anchor="middle" font-weight="600">Safety trigger?</text><text x="100" y="134" text-anchor="middle" fill="#4f5d75" font-size="11">6 triggers · "check/skip safety"</text>
+<text x="100" y="207" text-anchor="middle" font-weight="600">2 · Spec found?</text>
+<text x="330" y="116" text-anchor="middle" font-weight="600">Axes that run</text><text x="330" y="134" text-anchor="middle" fill="#4f5d75" font-size="11">Standards + Spec? + Safety?</text>
+<g stroke="#4f5d75"><line x1="100" y1="64" x2="100" y2="90" marker-end="url(#ar4)"/><line x1="100" y1="150" x2="100" y2="176" marker-end="url(#ar4)"/><line x1="190" y1="122" x2="236" y2="122" marker-end="url(#ar4)"/><path d="M190,202 H215 V140 H236" fill="none" marker-end="url(#ar4)"/></g>
+<rect x="470" y="20" width="200" height="60" rx="6" fill="#fff" stroke="#2d3142" stroke-opacity=".25"/>
+<text x="570" y="42" text-anchor="middle" font-weight="600">1 axis (Standards only)</text><text x="570" y="62" text-anchor="middle" fill="#4f5d75" font-size="11">one Spawn, no judge</text>
+<rect x="470" y="150" width="200" height="60" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/>
+<text x="570" y="172" text-anchor="middle" font-weight="600">2–3 axes · Fan-out gate</text><text x="570" y="192" text-anchor="middle" fill="#4f5d75" font-size="11">skill://vstack-fan-out</text>
+<g stroke="#4f5d75"><path d="M420,110 H445 V50 H466" fill="none" marker-end="url(#ar4)"/><path d="M420,134 H445 V180 H466" fill="none" marker-end="url(#ar4)"/></g>
+<rect x="710" y="110" width="150" height="56" rx="6" fill="#fff" stroke="#2d3142" stroke-opacity=".25"/>
+<text x="785" y="132" text-anchor="middle" font-weight="600">fan-out</text><text x="785" y="150" text-anchor="middle" fill="#4f5d75" font-size="11">tasks[] · explorer ×N</text>
+<rect x="710" y="190" width="150" height="70" rx="6" fill="#fff" stroke="#eb6c36"/>
+<text x="785" y="210" text-anchor="middle" font-weight="600">inline</text><text x="785" y="228" text-anchor="middle" fill="#4f5d75" font-size="11">one axis at a time;</text><text x="785" y="244" text-anchor="middle" fill="#c4521f" font-size="11">seal each report first</text>
+<g stroke="#4f5d75"><path d="M670,170 H690 V138 H706" fill="none" marker-end="url(#ar4)"/><path d="M670,190 H690 V222 H706" fill="none" marker-end="url(#ar4)"/></g>
+<rect x="240" y="280" width="620" height="40" rx="6" fill="#fff" stroke="#2d3142" stroke-opacity=".25"/>
+<text x="550" y="305" text-anchor="middle"><tspan font-weight="600">5 · Aggregate</tspan>  ## Standards · ## Spec · ## Safety  ·  never merged or re-ranked</text>
+<g stroke="#4f5d75" stroke-dasharray="3 3" fill="none"><path d="M670,50 H874 V300 H864" marker-end="url(#ar4)"/><path d="M860,138 H874"/><line x1="785" y1="260" x2="785" y2="276" marker-end="url(#ar4)"/></g>
+</svg>
+</div>
+<div class="two">
+<div class="side"><h4>Proposed text for step 4</h4>
+<pre class="mock">### 4. Run the reviewers
+
+The axes that run: Standards; Spec, unless step 2
+found no spec; Safety, when the step-1 trigger fired.
+
+**Fan-out gate** (`skill://vstack-fan-out`): parts: one
+per axis that runs; size: diff lines and files, plus
+spec lines for Spec.
+- **fan-out** → one `task` call; `tasks[]` has one item
+  per part, each with `agent: "vstack-explorer"`. Each
+  `task`: that axis's reviewer prompt below, the user's
+  override words, the vstack root.
+- **inline** → do every part yourself, in order, from
+  the same brief. <mark>Finish each axis's report before
+  starting the next, and don't revise it after reading
+  a later axis.</mark>
+
+When only Standards runs, there is no gate: **Spawn**
+one `vstack-explorer` via `task` (`agent:
+"vstack-explorer"`): the Standards reviewer prompt, the
+user's override words, the vstack root. Wait for its
+result. If it cannot be spawned, do the review yourself.
+
+**Standards reviewer prompt** (Matt's, unchanged)
+**Spec reviewer prompt** (Matt's, unchanged)
+**Safety reviewer prompt**: include
+- The diff command and commit list.
+- The trigger that fired.
+- The brief: "Run `skill://blast-radius` on this diff
+  and skip its step 6. Return its hand-back in under
+  400 words, plus the proof script and its output."</pre></div>
+<div class="side"><h4>Other lines that change (spawn-vocab lint)</h4>
+<pre class="mock">L3  description: "…Runs both reviews in parallel
+    sub-agents…" → "<mark>…Runs each axis as its own
+    reviewer, in parallel when the Fan-out gate allows,
+    and reports them side by side…</mark>" (+ Safety axis)
+L11 "Both axes run as parallel sub-agents so they don't
+    pollute…" → "<mark>Each axis runs as its own reviewer
+    so they don't pollute each other's context.</mark>"
+L13 run `/skill:setup-vstack` if
+    `docs/vstack/issue-tracker.md` is missing   (rows)
+L23 "…not inside two parallel sub-agents" → "<mark>…not
+    inside the reviewers</mark>"
+L29 docs/vstack/issue-tracker.md   (row)
+L32,72 "Spec sub-agent" → "<mark>Spec reviewer</mark>"
+L58 "### 4. Spawn both sub-agents in parallel"
+    → "<mark>### 4. Run the reviewers</mark>"
+§Why two axes → three axes (#44)</pre>
+<p style="font-size:.82rem;margin-top:.6rem">The <mark style="background:var(--tint)">marked</mark> inline sentence is the open choice. Without it, an inline reviewer that has already read the Safety findings may rewrite its Standards report, which is exactly the masking that Matt's separation is meant to prevent.</p></div>
+</div>
+<div class="rec"><p><b>Recommendation:</b> use the text as shown, with the separation sentence.</p></div>
+
+<!-- ============================ wayfinder ============================ -->
+<h2>wayfinder: research runners</h2>
+<p>Upstream: <i>"For each research ticket … spin up a /research subagent to resolve it in parallel, capturing its findings on a throwaway <code>research/&lt;name&gt;</code> branch with a context pointer from the ticket."</i> In vstack each runner is an <b>isolated</b> <code>vstack-worker</code> (ADR 0007). Its clone contains <code>.git</code>, but only working-tree changes come back, as a <code>patchPath</code>. A branch the runner creates therefore dies with its clone.</p>
+
+<h3><span class="q">Q6</span>How the findings reach <code>research/&lt;name&gt;</code></h3>
+<div class="fig">
+<svg viewBox="0 0 880 430" xmlns="http://www.w3.org/2000/svg" font-family="Geist, system-ui, sans-serif" font-size="12">
+<defs><marker id="ar5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#4f5d75"/></marker></defs>
+<rect x="10" y="110" width="170" height="90" rx="6" fill="#fff" stroke="#2d3142" stroke-opacity=".35"/>
+<text x="95" y="135" text-anchor="middle" font-weight="600">Parent session</text>
+<text x="95" y="155" text-anchor="middle" fill="#4f5d75" font-size="11">main checkout</text>
+<text x="95" y="171" text-anchor="middle" fill="#4f5d75" font-size="11">resolves the vstack root</text>
+<text x="95" y="187" text-anchor="middle" fill="#4f5d75" font-size="11">Fan-out gate</text>
+<g fill="#fff" stroke="#2d3142" stroke-opacity=".25">
+<rect x="230" y="40" width="200" height="56" rx="6"/><rect x="230" y="127" width="200" height="56" rx="6"/><rect x="230" y="214" width="200" height="56" rx="6"/>
+</g>
+<g text-anchor="middle"><text x="330" y="62" font-weight="600">vstack-worker · ticket A</text><text x="330" y="80" fill="#4f5d75" font-size="11">isolated clone · writes findings file</text>
+<text x="330" y="149" font-weight="600">vstack-worker · ticket B</text><text x="330" y="167" fill="#4f5d75" font-size="11">isolated clone · writes findings file</text>
+<text x="330" y="236" font-weight="600">vstack-worker · ticket C</text><text x="330" y="254" fill="#4f5d75" font-size="11">isolated clone · writes findings file</text></g>
+<g stroke="#4f5d75"><path d="M180,140 H205 V68 H226" fill="none" marker-end="url(#ar5)"/><line x1="180" y1="155" x2="226" y2="155" marker-end="url(#ar5)"/><path d="M180,170 H205 V242 H226" fill="none" marker-end="url(#ar5)"/></g>
+<text x="205" y="30" font-size="10" fill="#7a8399" font-family="Geist Mono, monospace">eval agent(…, isolated=True, apply=False, merge=False)</text>
+<g stroke="#4f5d75"><line x1="430" y1="68" x2="476" y2="120" marker-end="url(#ar5)"/><line x1="430" y1="155" x2="476" y2="150" marker-end="url(#ar5)"/><line x1="430" y1="242" x2="476" y2="180" marker-end="url(#ar5)"/></g>
+<rect x="480" y="100" width="150" height="100" rx="6" fill="#fff" stroke="#2d3142" stroke-opacity=".25"/>
+<text x="555" y="122" text-anchor="middle" font-weight="600">returns, per ticket</text>
+<text x="555" y="142" text-anchor="middle" fill="#4f5d75" font-size="11">patchPath (1 new file)</text>
+<text x="555" y="160" text-anchor="middle" fill="#4f5d75" font-size="11">cited answer ≤300 words</text>
+<text x="555" y="178" text-anchor="middle" fill="#4f5d75" font-size="11">one-line gist</text>
+<line x1="630" y1="150" x2="646" y2="150" stroke="#4f5d75" marker-end="url(#ar5)"/>
+<rect x="650" y="40" width="225" height="140" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/>
+<text x="762" y="62" text-anchor="middle" font-weight="600">Landing (parent, 1 at a time)</text>
+<g font-family="Geist Mono, monospace" font-size="10" fill="#2d3142">
+<text x="660" y="84">1 git worktree add $TMP/rN</text><text x="672" y="98">-b research/&lt;name&gt; origin/HEAD</text>
+<text x="660" y="116">2 git apply &lt;patchPath&gt;</text>
+<text x="660" y="134">3 commit · push (if remote)</text>
+<text x="660" y="152">4 git worktree remove</text>
+<text x="660" y="170" fill="#7a8399">inline: write the file here</text></g>
+<line x1="762" y1="180" x2="762" y2="216" stroke="#4f5d75" marker-end="url(#ar5)"/>
+<rect x="650" y="220" width="225" height="80" rx="6" fill="#fff" stroke="#2d3142" stroke-opacity=".35"/>
+<text x="762" y="242" text-anchor="middle" font-weight="600">Tracker writes (Q9)</text>
+<text x="762" y="260" text-anchor="middle" fill="#4f5d75" font-size="11">resolution comment + branch link</text>
+<text x="762" y="276" text-anchor="middle" fill="#4f5d75" font-size="11">close · re-read map body</text>
+<text x="762" y="292" text-anchor="middle" fill="#4f5d75" font-size="11">append Decisions so far</text>
+<rect x="10" y="330" width="860" height="86" rx="6" fill="#fff" stroke="#2e5aa8" stroke-dasharray="5 3"/>
+<text x="24" y="352" font-weight="600" fill="#2e5aa8">Private mode</text>
+<text x="24" y="372" fill="#4f5d75">The runner writes <tspan font-family="Geist Mono, monospace" font-size="11">&lt;vstack root&gt;/artifacts/&lt;map-slug&gt;/research/&lt;name&gt;.md</tspan> directly (an absolute path outside its clone, so it is immediate).</text>
+<text x="24" y="390" fill="#4f5d75">The parent drops the patch. No branch, no push. The resolution comment carries the answer without a link, as prototype does (#44 amendment).</text>
+<text x="24" y="408" fill="#7a8399" font-size="11">Standard mode does NOT write through the vstack root: there it is the user's main checkout, and writing there would dirty the user's tree. The file rides the patch instead.</text>
+<rect x="230" y="285" width="200" height="34" rx="6" fill="#fff" stroke="#b23a3a" stroke-dasharray="4 3"/>
+<text x="330" y="306" text-anchor="middle" fill="#b23a3a" font-size="11">Option B: runner pushes from its clone</text>
+</svg>
+<p class="cap">Option A, recommended, is shown solid. Option B (dashed red) has each runner commit and push <code>research/&lt;name&gt;</code> from inside its own clone. That needs a remote, so a local-only tracker would need a second path.</p>
+</div>
+<div class="rec"><p><b>Recommendation: A, the parent lands from <code>patchPath</code>.</b> There is one path; it works without a remote, uses only boring git, and serializes every branch and tracker write in one place. The landing worktree exists only to hold one new file. ADR 0007 rejected <code>git worktree add</code> for the <em>runners</em>, not for this step.</p></div>
+
+<h3><span class="q">Q7</span>Does a runner start research's own background agent?</h3>
+<div class="two">
+<div class="side"><h4>A · runner does research's job itself (recommended)</h4>
+<svg viewBox="0 0 400 90" xmlns="http://www.w3.org/2000/svg" font-family="Geist, sans-serif" font-size="12"><defs><marker id="a6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#4f5d75"/></marker></defs>
+<rect x="5" y="25" width="110" height="40" rx="5" fill="#fff" stroke="#2d3142" stroke-opacity=".3"/><text x="60" y="50" text-anchor="middle">parent</text>
+<rect x="165" y="25" width="150" height="40" rx="5" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/><text x="240" y="44" text-anchor="middle">runner</text><text x="240" y="58" text-anchor="middle" font-size="10" fill="#4f5d75">reads, writes, returns</text>
+<line x1="115" y1="45" x2="161" y2="45" stroke="#4f5d75" marker-end="url(#a6)"/></svg>
+<p>Brief: "Do <code>skill://research</code>'s steps 1–3 yourself; do not spawn its background agent." The inline path uses the same brief, so a parent working several tickets never piles N background agents into the shared checkout.</p></div>
+<div class="side"><h4>B · runner invokes skill://research as written</h4>
+<svg viewBox="0 0 400 90" xmlns="http://www.w3.org/2000/svg" font-family="Geist, sans-serif" font-size="12"><defs><marker id="a7" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0L10,5L0,10z" fill="#4f5d75"/></marker></defs>
+<rect x="5" y="25" width="100" height="40" rx="5" fill="#fff" stroke="#2d3142" stroke-opacity=".3"/><text x="55" y="50" text-anchor="middle">parent</text>
+<rect x="140" y="25" width="110" height="40" rx="5" fill="#fff" stroke="#2d3142" stroke-opacity=".3"/><text x="195" y="44" text-anchor="middle">runner</text><text x="195" y="58" text-anchor="middle" font-size="10" fill="#7a8399">waits, idle</text>
+<rect x="285" y="25" width="110" height="40" rx="5" fill="#fff" stroke="#2d3142" stroke-opacity=".3"/><text x="340" y="44" text-anchor="middle">research worker</text><text x="340" y="58" text-anchor="middle" font-size="10" fill="#4f5d75">reads, writes</text>
+<line x1="105" y1="45" x2="136" y2="45" stroke="#4f5d75" marker-end="url(#a7)"/><line x1="250" y1="45" x2="281" y2="45" stroke="#4f5d75" marker-end="url(#a7)"/></svg>
+<p>Allowed by ADR 0007 (nested writers), but it costs one extra agent per ticket while the runner has nothing to do.</p></div>
+</div>
+
+<h3><span class="q">Q8</span><code>task.isolation.enabled</code> is off</h3>
+<p>ADR 0007's consequence says: <i>"A skill that needs an isolated role while isolation is off stops and points at setup-vstack. It never falls back to the shared checkout."</i> Inline research doesn't touch the shared checkout at all: the parent writes straight into the landing worktree (Standard) or under the vstack root (Private).</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Behaviour</th><th>Cost</th></tr></thead><tbody>
+<tr class="pick"><td><b>A · fall back to inline, say why once</b></td><td>Isolation off counts as "cannot spawn here" for runners. The skill mentions setup-vstack once and keeps going.</td><td>A one-line amendment to ADR 0007's consequence: the stop applies only where inline is forbidden (ship) or would run the role in the shared checkout.</td></tr>
+<tr><td><b>B · stop, per ADR 0007</b></td><td>The skill stops and points at setup-vstack. The user can still say "no fan-out", which goes inline anyway.</td><td>No ADR change, but a pointless stop.</td></tr>
+</tbody></table></div>
+
+<h3><span class="q">Q9</span>Who writes to the tracker for research tickets</h3>
+<p><code>gh issue edit --body</code> replaces the <b>whole</b> map body. Three runners appending to Decisions so far at once means the last writer wins, and other sessions may also be editing the map.</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Behaviour</th></tr></thead><tbody>
+<tr class="pick"><td><b>A · parent, one at a time (recommended)</b></td><td>A runner returns its path, a cited answer, and a gist. For each ticket in turn, the parent posts the resolution comment, closes the ticket, re-reads the map body, and appends one line.</td></tr>
+<tr><td><b>B · each runner writes its own</b></td><td>Fewer parent steps, but the runners race on the map body.</td></tr>
+</tbody></table></div>
+
+<!-- ============================ small edits ============================ -->
+<h2>Remaining text changes</h2>
+<h3><span class="q">Q10</span>Confirm the list</h3>
+<p>The three skills don't contain <code>docs/agents/</code>, so the only row that touches them is <code>setup-vstack</code> (written as <code>/skill:setup-vstack</code> via Q4). The skill-ref rule adds the rest:</p>
+<div class="two">
+<div class="side"><h4>to-spec · to-tickets · triage</h4>
+<pre class="mock">to-spec L9      run <mark>/skill:setup-vstack</mark> if not
+to-tickets L11  run <mark>/skill:setup-vstack</mark> if not
+to-tickets L60  the tracker <mark>/skill:setup-vstack</mark> configured
+triage L43      run <mark>/skill:setup-vstack</mark> if not
+triage L49      The maintainer invokes <mark>/skill:triage</mark>
+triage L76      run <mark>skill://grilling</mark> and
+                <mark>skill://domain-modeling</mark> together
+AGENT-BRIEF L25 "When a user runs <mark>/skill:triage</mark> with
+                no arguments…"   (an example; the lint
+                would fail on /triage)</pre></div>
+<div class="side"><h4>wayfinder</h4>
+<pre class="mock">L25   run <mark>/skill:setup-vstack</mark> if not
+L77   "Resolved by a /research subagent"
+      → "<mark>Resolved by a research runner (see
+        Research runners)</mark>"
+L78   /prototype → <mark>skill://prototype</mark>
+L79   /grilling, /domain-modeling → <mark>skill://…</mark>
+L111  same
+L112  "fan out across the whole space"
+      → "<mark>range across the whole space</mark>"
+      (the glossary's Fan-out means subagents)
+L115  step 5 → "<mark>Fire the research runners</mark>",
+      through the new Research runners section
+L124  step 3: a research ticket goes through the
+      same section with one part (one isolated
+      **Spawn**, no gate)</pre></div>
+</div>
+
+<div class="footer"><span>vstack · ticket: Specify ask-vstack's routing and the remaining Matt adapt text</span><span>throwaway asset · not part of the spec</span></div>
+</div></body></html>
