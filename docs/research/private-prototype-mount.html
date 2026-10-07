@@ -55,8 +55,8 @@ pre.mock{font-family:var(--mono);font-size:.74rem;line-height:1.5;white-space:pr
 <p>Tested in a scratch repo: a new file listed in <code>.git/info/exclude</code> stays hidden, but an edit to the tracked route file still gets staged.</p>
 <pre class="mock">$ git add -A &amp;&amp; git status --short
 M  route.tsx      <span style="color:#b23a1e">← staged</span></pre></div>
-<div class="card"><h4>A detached worktree stays off every branch</h4>
-<p><code>git worktree add --detach</code> worked. Its edits never showed up in the main checkout's status, and they belong to no branch, so there's nothing to push.</p></div>
+<div class="card"><h4>A detached worktree creates no branch</h4>
+<p><code>git worktree add --detach</code> worked. Its edits never showed up in the main checkout's status, and no branch was created. Detached HEAD is not a commit guard: <code>git commit</code> and an explicit <code>git push origin HEAD:&lt;ref&gt;</code> still work there.</p></div>
 <div class="card"><h4>A worktree under <code>.git</code> loses hot reload</h4>
 <p>Vite always adds <code>**/.git/**</code> to its watcher's ignore list (<a href="https://raw.githubusercontent.com/vitejs/vite/main/packages/vite/src/node/watch.ts">watch.ts</a>). A dev server running inside <code>.git/vstack/…</code> therefore never sees edits.</p></div>
 </div>
@@ -118,7 +118,7 @@ M  route.tsx      <span style="color:#b23a1e">← staged</span></pre></div>
 <rect x="120" y="336" width="16" height="10" rx="2" fill="rgba(235,108,54,.08)" stroke="#eb6c36"/><text x="144" y="344" class="sl">holds the prototype</text>
 <rect x="280" y="336" width="16" height="10" rx="2" fill="rgba(45,49,66,.05)" stroke="#4f5d75"/><text x="304" y="344" class="sl">untracked storage</text>
 <rect x="440" y="336" width="16" height="10" rx="2" fill="#fff" stroke="#2d3142"/><text x="464" y="344" class="sl">tracked / process</text>
-</svg><p class="cap">Nothing in the main checkout changes. The prototype exists only in the detached worktree, which sits on no branch, so there's nothing to commit and nothing to push.</p></div>
+</svg><p class="cap">Nothing in the main checkout changes. The prototype exists only in the detached worktree, and no branch is created. Detached HEAD doesn't block <code>git commit</code> or an explicit push, so prototype must not commit or push there.</p></div>
 
 <h3>Contrast: edit the main checkout and clean up afterwards</h3>
 <div class="fig"><svg viewBox="0 0 680 232" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="q1b-title q1b-desc">
@@ -147,12 +147,12 @@ M  route.tsx      <span style="color:#b23a1e">← staged</span></pre></div>
 
 <div class="tw"><table>
 <tr><th>Option</th><th>What keeps it out of commits</th><th>Setup cost</th><th>Hot reload</th><th>AFK-safe</th></tr>
-<tr class="pick"><td><b>Detached worktree outside .git</b> (recommended)</td><td class="ok">Structural: it's on no branch, and the main checkout never changes</td><td class="mid">Install deps (or an APFS clone), copy env files, use a second port</td><td class="ok">yes</td><td class="ok">yes</td></tr>
+<tr class="pick"><td><b>Detached worktree outside .git</b> (recommended)</td><td class="ok">Separation: the main checkout never changes and no branch is created. prototype must still not commit or push in the worktree.</td><td class="mid">Install deps (or an APFS clone), copy env files, use a second port</td><td class="ok">yes</td><td class="ok">yes</td></tr>
 <tr><td>Main checkout + cleanup</td><td class="bad">Discipline only: <code>git add -A</code> stages the route edit</td><td class="ok">none</td><td class="ok">yes</td><td class="mid">risky</td></tr>
 <tr><td>Stop and ask each time</td><td class="mid">whatever the user chooses</td><td class="mid">varies</td><td class="mid">varies</td><td class="bad">no: blocks an AFK run</td></tr>
-<tr><td>Worktree inside <code>vstack/artifacts/</code></td><td class="ok">structural</td><td class="mid">same as the worktree</td><td class="bad">no (Vite ignores <code>**/.git/**</code>)</td><td class="ok">yes</td></tr>
+<tr><td>Worktree inside <code>vstack/artifacts/</code></td><td class="ok">same separation as the worktree</td><td class="mid">same as the worktree</td><td class="bad">no (Vite ignores <code>**/.git/**</code>)</td><td class="ok">yes</td></tr>
 </table></div>
-<div class="rec"><p><b>Recommendation: detached worktree outside <code>.git</code>.</b> It's the only option where "never committed" holds by construction rather than by the agent being careful. The setup cost buys that guarantee. Where exactly the worktree lives, how deps get in, and which port it uses are round-2 questions if you pick this.</p>
+<div class="rec"><p><b>Recommendation: detached worktree outside <code>.git</code>.</b> It's the only option where your <code>git add</code> / <code>git commit</code> in the main checkout can't pick up prototype code. That makes your own workflow safe without the agent having to be careful. It's not an absolute guard: a detached HEAD can still be committed on, so prototype's own rule is never to commit or push in the worktree. Where exactly the worktree lives, how deps get in, and which port it uses are round-2 questions if you pick this.</p>
 <p>Note on <a href="https://github.com/daandden/vstack/blob/main/docs/adr/0007-isolated-subagents-write-artifacts-through-the-vstack-root.md">ADR 0007</a>: it rejected <code>git worktree add</code>, but for <em>isolated subagents</em>, which are short-lived and where APFS clone speed matters. A prototype mount has to outlive the session so the user can flip variants, and omp's isolated workspace doesn't. So this doesn't conflict with ADR 0007.</p></div>
 
 <!-- ============================ Q2 ============================ -->
@@ -403,7 +403,7 @@ M  route.tsx      <span style="color:#b23a1e">← staged</span></pre></div>
 <tr><td><code>?? untracked.txt</code></td><td class="ok">gone</td><td>clean base; <code>mount.diff</code> holds only prototype edits</td></tr>
 <tr><td><code>!! node_modules/</code></td><td class="ok">present (APFS copy-on-write clone)</td><td>no install needed (old Q7)</td></tr>
 <tr><td><code>!! .env.local</code></td><td class="ok">present (APFS copy-on-write clone)</td><td>real data and auth work (old Q8); it's a copy, so a later edit in the main checkout doesn't follow</td></tr>
-<tr><td>branch</td><td class="ok">detached <code>HEAD</code></td><td>no branch, nothing to push</td></tr>
+<tr><td>branch</td><td class="ok">detached <code>HEAD</code></td><td>no branch is created; prototype must not commit or push there</td></tr>
 </table></div>
 
 <div class="fig"><svg viewBox="0 0 900 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="r2c-title r2c-desc">
