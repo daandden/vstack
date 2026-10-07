@@ -26,6 +26,10 @@ _Avoid_: diagram dependency, diagram plugin
 The Upstream that vstack takes its CSS rules from: `vojtaholik/good-css`.
 _Avoid_: good-css upstream, style upstream
 
+**Prose upstream**:
+The Upstream that vstack takes its plain-English writing rules from: `AminBlg/SimpleEnglish`.
+_Avoid_: style upstream, writing upstream
+
 **Upstream item**:
 One skill, principle, or playbook published by an Upstream.
 _Avoid_: upstream skill (when principles or playbooks are meant too)
@@ -35,7 +39,7 @@ A pstack recipe for one type of task, such as Shipping or Perf issue: an ordered
 _Avoid_: workflow (when a pstack playbook is meant), recipe
 
 **Pin**:
-The exact Upstream version vstack was last reconciled with: a release tag for the Base upstream, a full commit SHA for the Enhancement upstream, the Diagram upstream, and the CSS upstream.
+The exact Upstream version vstack was last reconciled with: a release tag for the Base upstream and the Prose upstream, a full commit SHA for the Enhancement upstream, the Diagram upstream, and the CSS upstream.
 _Avoid_: lock, version (unqualified)
 
 ### Choices
