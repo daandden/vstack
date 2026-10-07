@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>skill-creator contract — grilling round 1</title>
+<style>
+  :root {
+    --bg:#0f1115; --surface:#171a21; --surface2:#1e222b; --fg:#e6e8ee; --muted:#9aa3b2;
+    --border:#2b313d; --accent:#6aa9ff; --ok:#4fc28a; --warn:#e6b450; --err:#ef6b6b; --pur:#b48cff;
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg:#f7f8fa; --surface:#fff; --surface2:#f0f2f6; --fg:#1b1f27; --muted:#5b6474;
+      --border:#d9dee7; --accent:#2f6fdb; --ok:#1f9d61; --warn:#b7791f; --err:#c94040; --pur:#7a4fd6; }
+  }
+  * { box-sizing:border-box }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif }
+  main { max-width:1040px; margin:0 auto; padding:32px 24px 80px }
+  h1 { font-size:24px; margin:0 0 4px }
+  .sub { color:var(--muted); margin:0 0 28px }
+  section { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:22px 24px; margin:22px 0 }
+  h2 { font-size:18px; margin:0 0 6px }
+  h2 .q { color:var(--accent); margin-right:6px }
+  .why { color:var(--muted); margin:0 0 14px }
+  code { font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace; background:var(--surface2); border:1px solid var(--border); border-radius:4px; padding:0 4px }
+  .facts { border-left:3px solid var(--warn); background:var(--surface2); padding:8px 12px; border-radius:0 6px 6px 0; margin:12px 0; font-size:14px }
+  .facts b { color:var(--warn) }
+  .opts { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:10px; margin-top:14px }
+  .opt { border:1px solid var(--border); border-radius:8px; padding:10px 12px; background:var(--surface2); font-size:14px }
+  .opt h3 { font-size:14px; margin:0 0 4px }
+  .opt.rec { border-color:var(--ok); box-shadow:0 0 0 1px var(--ok) inset }
+  .badge { display:inline-block; font-size:11px; font-weight:600; color:var(--ok); border:1px solid var(--ok); border-radius:10px; padding:0 7px; margin-left:6px; vertical-align:1px }
+  svg { width:100%; height:auto; display:block; margin:6px 0 }
+  svg text { font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; fill:var(--fg) }
+  svg .mono { font-family:ui-monospace,Menlo,monospace; font-size:12px }
+  svg .muted { fill:var(--muted) }
+  svg .box { fill:var(--surface2); stroke:var(--border); stroke-width:1.2 }
+  svg .ok { stroke:var(--ok) } svg .err { stroke:var(--err) } svg .acc { stroke:var(--accent) } svg .warn { stroke:var(--warn) }
+  svg .tok { fill:var(--ok) } svg .terr { fill:var(--err) } svg .tacc { fill:var(--accent) } svg .twarn { fill:var(--warn) } svg .tpur { fill:var(--pur) }
+  svg .ln { stroke:var(--muted); stroke-width:1.4; fill:none }
+  table { border-collapse:collapse; width:100%; font-size:14px; margin-top:8px }
+  th,td { border-bottom:1px solid var(--border); padding:6px 8px; text-align:left; vertical-align:top }
+  th { color:var(--muted); font-weight:600 }
+  .y { color:var(--ok); font-weight:600 } .n { color:var(--err); font-weight:600 }
+  .toc { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px }
+  .toc a { color:var(--accent); text-decoration:none; border:1px solid var(--border); border-radius:14px; padding:2px 10px; font-size:13px; background:var(--surface) }
+</style>
+</head>
+<body>
+<main>
+<h1>Specify the vstack contract of skill-creator</h1>
+<p class="sub">Resolved over three rounds · facts probed on this machine (omp 18.8.0, bun 1.3.14)</p>
+<div class="facts" style="border-left-color:var(--ok)"><b style="color:var(--ok)">Decided:</b> every option marked Recommended was chosen, with two exceptions. Q3b: no per-file notices, and also no <code>license.txt</code> and no <code>license:</code> frontmatter field; the user accepted the Apache-2.0 §4 risk, since vstack stays private. R2-2: no concurrency cap. The ADR became <b>ADR 0010</b>, because 0009 was already taken. Full record: the resolution comment on the ticket.</div>
+<div class="toc">
+  <a href="#q1">Q1 Eval runners</a><a href="#q2">Q2 Skill home</a><a href="#q3">Q3 Validator runtime</a>
+  <a href="#q4">Q4 Original + user copy</a><a href="#q5">Q5 ask-vstack entry</a>
+  <a href="#evals">What eval does</a><a href="#q6">Q6 Eval workspace</a><a href="#q3b">Q3b Licence header</a>
+  <a href="#r2">Round 2: headless runs</a>
+</div>
+
+<!-- Q1 -->
+<section id="q1">
+<h2><span class="q">Q1</span>How do skill-creator's eval agents run?</h2>
+<p class="why">Covers the with-skill + baseline runs (<code>references/evaluation.md</code>), the trigger-query runs (<code>references/trigger-evals.md</code>), and the blind comparator (<code>references/blind-comparison.md</code>). The point of each is that the run sees <b>only</b> what the test gives it.</p>
+<svg viewBox="0 0 980 330" role="img" aria-label="What each runner kind sees">
+  <rect x="380" y="10" width="220" height="44" rx="8" class="box acc"/>
+  <text x="490" y="30" text-anchor="middle" font-size="14" font-weight="600">Parent session</text>
+  <text x="490" y="46" text-anchor="middle" class="muted" font-size="12">runs skill-creator, knows the answer</text>
+  <path d="M430 54 C 300 90, 170 90, 160 110" class="ln"/>
+  <path d="M490 54 L 490 110" class="ln"/>
+  <path d="M550 54 C 680 90, 810 90, 820 110" class="ln"/>
+
+  <rect x="20" y="110" width="290" height="200" rx="10" class="box ok"/>
+  <text x="165" y="134" text-anchor="middle" font-size="14" font-weight="600" class="tok">A · headless omp -p</text>
+  <text x="36" y="158" class="mono">--cwd &lt;case dir&gt;</text>
+  <text x="36" y="176" class="mono">--no-skills --no-rules</text>
+  <text x="36" y="194" class="mono">--model &lt;parent's model&gt;</text>
+  <text x="36" y="212" class="mono">--session-dir &lt;case&gt;/session</text>
+  <text x="36" y="240" font-size="13"><tspan class="tok">✓</tspan> sees 0 skills, no AGENTS.md (probed)</text>
+  <text x="36" y="260" font-size="13"><tspan class="tok">✓</tspan> dir holds only its input files</text>
+  <text x="36" y="280" font-size="13"><tspan class="twarn">!</tspan> not a vstack agent → new House</text>
+  <text x="50" y="297" font-size="13">style rule + ADR 0010</text>
+
+  <rect x="345" y="110" width="290" height="200" rx="10" class="box warn"/>
+  <text x="490" y="134" text-anchor="middle" font-size="14" font-weight="600" class="twarn">B · vstack-worker via task</text>
+  <text x="361" y="158" class="mono">agent: "vstack-worker"</text>
+  <text x="361" y="186" font-size="13"><tspan class="tok">✓</tspan> fits roster + lint unchanged</text>
+  <text x="361" y="206" font-size="13"><tspan class="terr">✗</tspan> inherits installed skill list</text>
+  <text x="361" y="224" font-size="13"><tspan class="terr">✗</tspan> inherits AGENTS.md / context</text>
+  <rect x="361" y="240" width="258" height="56" rx="6" fill="none" class="err" stroke-dasharray="4 3"/>
+  <text x="372" y="260" font-size="12.5" class="terr">Baseline for an installed skill can</text>
+  <text x="372" y="278" font-size="12.5" class="terr">load the very skill under test.</text>
+
+  <rect x="670" y="110" width="290" height="200" rx="10" class="box err"/>
+  <text x="815" y="134" text-anchor="middle" font-size="14" font-weight="600" class="terr">C · isolated role (ADR 0007)</text>
+  <text x="686" y="158" class="mono">agent(..., isolated=True)</text>
+  <text x="686" y="186" font-size="13"><tspan class="terr">✗</tspan> APFS clone of the whole repo</text>
+  <text x="686" y="206" font-size="13"><tspan class="terr">✗</tspan> opposite of "only its input files"</text>
+  <text x="686" y="226" font-size="13"><tspan class="terr">✗</tspan> still inherits skills + context</text>
+  <text x="686" y="262" font-size="13" class="muted">→ eval runs are NOT isolated</text>
+  <text x="686" y="280" font-size="13" class="muted">roles under any option</text>
+</svg>
+<div class="facts"><b>Probe:</b> <code>omp -p --cwd /tmp/x --no-skills --no-rules "…"</code> answered “no skills listed, no AGENTS.md or context files”. With skills ON in an empty temp dir, the run sees the real installed listing, which is what trigger selection tests need.</div>
+<div class="opts">
+  <div class="opt rec"><h3>Headless omp -p processes<span class="badge">Recommended</span></h3>All eval runs, trigger runs (skills ON for selection), and the comparator (dir holding only prompt, A, B, assertions).</div>
+  <div class="opt"><h3>vstack-worker via task</h3>No new rule; evaluation.md's isolation line becomes "not possible in omp".</div>
+  <div class="opt"><h3>Mixed</h3>Headless only for with-skill/baseline runs; comparator and trigger selection as <code>vstack-explorer</code> via task.</div>
+</div>
+</section>
+
+<!-- Q2 -->
+<section id="q2">
+<h2><span class="q">Q2</span>Where does a new skill live, and what may an update edit?</h2>
+<p class="why">Step 2 today: “otherwise use <code>~/.agents/skills/&lt;skill-name&gt;/</code>”. That dir is the skills-CLI install target that Migration strips of Matt skills. session-lessons already sorts targets into four homes.</p>
+<svg viewBox="0 0 980 300" role="img" aria-label="Skill home decision tree">
+  <text x="20" y="22" font-size="13" font-weight="600" class="tacc">NEW SKILL</text>
+  <rect x="20" y="34" width="170" height="40" rx="8" class="box acc"/><text x="105" y="59" text-anchor="middle" font-size="13">new skill request</text>
+  <path d="M190 54 H 230" class="ln"/>
+  <rect x="230" y="34" width="190" height="40" rx="8" class="box"/><text x="325" y="59" text-anchor="middle" font-size="13">user names vstack?</text>
+  <path d="M420 54 H 470" class="ln"/><text x="430" y="48" font-size="11" class="muted">yes</text>
+  <rect x="470" y="30" width="490" height="48" rx="8" class="box"/>
+  <text x="482" y="50" font-size="13" class="tpur" font-weight="600">vstack original</text>
+  <text x="482" y="68" class="mono">plugin/skills/&lt;name&gt;/ + originals: row → bump, CHANGELOG, PR</text>
+  <path d="M325 74 V 100" class="ln"/><text x="332" y="92" font-size="11" class="muted">no</text>
+  <rect x="230" y="100" width="190" height="40" rx="8" class="box"/><text x="325" y="125" text-anchor="middle" font-size="13">about this repo?</text>
+  <path d="M420 120 H 470" class="ln"/><text x="430" y="114" font-size="11" class="muted">yes</text>
+  <rect x="470" y="100" width="490" height="40" rx="8" class="box"/>
+  <text x="482" y="125" font-size="13"><tspan font-weight="600">project skill</tspan>  <tspan class="mono">.omp/skills/&lt;name&gt;/</tspan></text>
+  <path d="M325 140 V 166 H 470" class="ln"/><text x="332" y="158" font-size="11" class="muted">no / default</text>
+  <rect x="470" y="150" width="490" height="34" rx="8" class="box ok"/>
+  <text x="482" y="172" font-size="13"><tspan font-weight="600" class="tok">user skill</tspan>  <tspan class="mono">~/.omp/agent/skills/&lt;name&gt;/</tspan>  <tspan class="muted">(ask once only if unclear)</tspan></text>
+
+  <text x="20" y="218" font-size="13" font-weight="600" class="tacc">UPDATE EXISTING (resolved via omp skill list --json → realpath)</text>
+  <rect x="20" y="230" width="225" height="58" rx="8" class="box ok"/><text x="32" y="252" font-size="13" font-weight="600">own project / user skill</text><text x="32" y="272" font-size="12.5" class="tok">edit in place</text>
+  <rect x="257" y="230" width="225" height="58" rx="8" class="box ok"/><text x="269" y="252" font-size="13" font-weight="600">vstack adapt/merge/original</text><text x="269" y="272" font-size="12.5" class="tok">hand-edit flow → PR</text>
+  <rect x="494" y="230" width="225" height="58" rx="8" class="box err"/><text x="506" y="252" font-size="13" font-weight="600">vstack adopt item</text><text x="506" y="272" font-size="12.5" class="terr">never: flips its Disposition</text>
+  <rect x="731" y="230" width="229" height="58" rx="8" class="box err"/><text x="743" y="252" font-size="13" font-weight="600">third-party install</text><text x="743" y="272" font-size="12.5" class="terr">never: next update overwrites</text>
+</svg>
+<div class="opts">
+  <div class="opt rec"><h3>Home rules, default user skill<span class="badge">Recommended</span></h3>The tree above; same homes and refusals as session-lessons.</div>
+  <div class="opt"><h3>Keep ~/.agents/skills default</h3>Unchanged text plus the never-edit rules; user-authored skills share the dir with skills-CLI installs.</div>
+  <div class="opt"><h3>Always ask the home</h3>No default; one <code>ask</code> per new skill.</div>
+</div>
+</section>
+
+<!-- Q3 -->
+<section id="q3">
+<h2><span class="q">Q3</span>What runtime runs the validator and the initializer?</h2>
+<p class="why">Step 5 runs <code>scripts/quick_validate.py</code> (needs PyYAML); step 3 runs <code>scripts/init_skill.py</code> (stdlib only). vstack's own scripts (<code>check-register.ts</code>, <code>update-plan.ts</code>) are Bun.</p>
+<table>
+  <tr><th>Runtime on this machine</th><th>Status</th><th>Consequence</th></tr>
+  <tr><td><code>python3 -c 'import yaml'</code></td><td class="n">✗ ModuleNotFoundError</td><td>step 5 is broken here today</td></tr>
+  <tr><td><code>bun</code> 1.3.14, <code>Bun.YAML.parse</code></td><td class="y">✓ works</td><td>a TS port needs no extra dependency (Bun.YAML since 1.2.21)</td></tr>
+  <tr><td><code>uv run --with pyyaml</code></td><td class="y">✓ PyYAML 6.0.3</td><td>works without a global install, but adds uv as a dependency</td></tr>
+  <tr><td>omp itself</td><td class="muted">compiled binary</td><td>omp does not guarantee a <code>bun</code> on PATH</td></tr>
+</table>
+<div class="opts">
+  <div class="opt rec"><h3>Port both to Bun TS<span class="badge">Recommended</span></h3><code>quick_validate.ts</code> + <code>init_skill.ts</code>, same checks and flags, Apache-2.0 header kept. No new machine check: missing <code>bun</code> fails loudly.</div>
+  <div class="opt"><h3>Port to Bun + machine check</h3>Plus a ninth setup-vstack check: <code>bun</code> ≥ 1.2.21 on PATH.</div>
+  <div class="opt"><h3>Keep Python via uv</h3><code>uv run --with pyyaml scripts/quick_validate.py …</code></div>
+  <div class="opt"><h3>Keep Python + PyYAML check</h3>setup-vstack installs PyYAML with approval.</div>
+</div>
+</section>
+
+<!-- Q4 -->
+<section id="q4">
+<h2><span class="q">Q4</span>The <code>originals:</code> row, and what happens to the user copy</h2>
+<p class="why">Once the linked plugin ships <code>skill-creator</code>, <code>~/.agents/skills/skill-creator</code> is a stale twin. It is in no lock and comes from neither Upstream, so no existing Migration step knows about it.</p>
+<svg viewBox="0 0 980 190" role="img" aria-label="Same-name copies probe and removal timeline">
+  <rect x="20" y="14" width="440" height="160" rx="10" class="box warn"/>
+  <text x="36" y="38" font-size="13" font-weight="600" class="twarn">Probe: same name, two providers</text>
+  <text x="36" y="62" class="mono">/tmp/x/.omp/skills/skill-creator  (candidate)</text>
+  <text x="36" y="82" class="mono">~/.agents/skills/skill-creator    (user)</text>
+  <text x="36" y="110" font-size="13">omp -p listing: 26 skills, <tspan class="twarn" font-weight="600">both</tspan> entries,</text>
+  <text x="36" y="128" font-size="13">the second shown as <tspan class="mono">agents/skill-creator</tspan></text>
+  <text x="36" y="156" font-size="12.5" class="muted">(#41: the plugin does shadow ~/.agents/skills, but the copy still drifts)</text>
+
+  <path d="M480 94 H 500" class="ln"/>
+  <rect x="500" y="44" width="235" height="100" rx="10" class="box ok"/>
+  <text x="617" y="68" text-anchor="middle" font-size="13" font-weight="600" class="tok">build step</text>
+  <text x="512" y="92" class="mono">plugin/skills/skill-creator/</text>
+  <text x="512" y="110" class="mono">+ license.txt</text>
+  <text x="512" y="128" class="mono">+ originals: row</text>
+  <path d="M735 94 H 755" class="ln"/>
+  <rect x="755" y="44" width="205" height="100" rx="10" class="box err"/>
+  <text x="857" y="68" text-anchor="middle" font-size="13" font-weight="600" class="terr">same step</text>
+  <text x="767" y="92" class="mono">rm -r ~/.agents/skills/</text>
+  <text x="767" y="110" class="mono">      skill-creator</text>
+  <text x="767" y="132" font-size="12" class="muted">this machine only</text>
+</svg>
+<div class="facts"><b>Licence:</b> each derived file already carries a “Derived from … Modified 2026-09-28” header. Apache-2.0 §4(b) wants modified files to say they were changed, so each file the contract touches gets a vstack “Modified” line.</div>
+<div class="opts">
+  <div class="opt rec"><h3>Row + one-time removal<span class="badge">Recommended</span></h3>As drawn. No setup-vstack check.</div>
+  <div class="opt"><h3>Row + Migration removal</h3>Migration's removal check also deletes <code>~/.agents/skills/skill-creator</code> on every machine, behind the plan confirmation.</div>
+</div>
+</section>
+
+<!-- Q5 -->
+<section id="q5">
+<h2><span class="q">Q5</span>skill-creator's entry in ask-vstack</h2>
+<p class="why">ask-vstack was settled before skill-creator joined. skill-creator stays model-invocable, as it is now; session-lessons reaches it through <code>skill://skill-creator</code>.</p>
+<svg viewBox="0 0 980 170" role="img" aria-label="ask-vstack Standalone section mock">
+  <rect x="20" y="10" width="940" height="150" rx="10" class="box"/>
+  <text x="40" y="36" font-size="14" font-weight="600">## Standalone</text>
+  <text x="40" y="60" class="mono muted">… Matt's list …</text>
+  <text x="40" y="80" class="mono">/skill:compare-attempts · /skill:session-lessons · /skill:unslop · /skill:technical-writing</text>
+  <rect x="32" y="94" width="916" height="30" rx="5" fill="none" class="ok" stroke-dasharray="4 3"/>
+  <text x="40" y="114" class="mono tok">+ /skill:skill-creator: create or update a skill, test whether it works, tune its description</text>
+  <text x="40" y="146" font-size="12.5" class="muted">Alternative: a new “Skills” section grouping skill-creator, writing-for-agents, session-lessons.</text>
+</svg>
+<div class="opts">
+  <div class="opt rec"><h3>Standalone line<span class="badge">Recommended</span></h3>One line beside session-lessons.</div>
+  <div class="opt"><h3>New “Skills” section</h3>Groups the three skill-authoring skills.</div>
+  <div class="opt"><h3>No entry</h3>Rely on its description alone.</div>
+</div>
+</section>
+
+<!-- EVALS -->
+<section id="evals">
+<h2><span class="q">?</span>What eval does in skill-creator</h2>
+<p class="why">Step 6, “Evaluate when warranted”. Ordinary creation and small edits skip it. It runs for a complex or risky skill, when you ask “does this skill work?”, or for description tuning (session-lessons routes <code>tune description</code> here). There are three tools, one per reference file. Everything they produce lives in the <b>eval workspace</b>, which is what Q6 is about.</p>
+<svg viewBox="0 0 980 420" role="img" aria-label="The three eval tools">
+  <rect x="20" y="10" width="300" height="400" rx="10" class="box ok"/>
+  <text x="170" y="34" text-anchor="middle" font-size="14" font-weight="600" class="tok">evaluation.md</text>
+  <text x="170" y="52" text-anchor="middle" font-size="12.5" class="muted">Does the skill change outcomes?</text>
+  <text x="36" y="82" font-size="13">1. Write 2–3 realistic prompts</text>
+  <text x="52" y="100" font-size="12" class="muted">+ input files → evals.json</text>
+  <text x="36" y="126" font-size="13">2. Per prompt, two runs at once:</text>
+  <rect x="52" y="136" width="120" height="40" rx="6" class="box acc"/><text x="112" y="161" text-anchor="middle" font-size="12">with skill</text>
+  <rect x="182" y="136" width="120" height="40" rx="6" class="box"/><text x="242" y="155" text-anchor="middle" font-size="12">baseline</text><text x="242" y="170" text-anchor="middle" font-size="10.5" class="muted">no skill / old copy</text>
+  <text x="36" y="200" font-size="13">3. Grade with assertions</text>
+  <text x="52" y="218" font-size="12" class="muted">scripted where possible; one that</text>
+  <text x="52" y="234" font-size="12" class="muted">passes both runs is dropped</text>
+  <text x="36" y="260" font-size="13">4. You review both outputs</text>
+  <text x="36" y="286" font-size="13">5. Fix the skill from transcripts</text>
+  <text x="36" y="312" font-size="13">6. Rerun all → iteration-2, 3 …</text>
+  <text x="36" y="346" font-size="12.5" class="muted">Stops when you're satisfied or an</text>
+  <text x="36" y="362" font-size="12.5" class="muted">iteration brings nothing. A skill that</text>
+  <text x="36" y="378" font-size="12.5" class="muted">no longer beats the baseline is</text>
+  <text x="36" y="394" font-size="12.5" class="muted">recommended for retirement.</text>
+
+  <rect x="340" y="10" width="300" height="400" rx="10" class="box acc"/>
+  <text x="490" y="34" text-anchor="middle" font-size="14" font-weight="600" class="tacc">trigger-evals.md</text>
+  <text x="490" y="52" text-anchor="middle" font-size="12.5" class="muted">Does the description pick the right requests?</text>
+  <text x="356" y="82" font-size="13">1. Write 16–20 queries</text>
+  <text x="372" y="100" font-size="12" class="muted">½ should load it, ½ near misses</text>
+  <text x="356" y="126" font-size="13">2. Split 60/40 train / test</text>
+  <text x="356" y="152" font-size="13">3. Each query ×3 in a fresh agent:</text>
+  <text x="372" y="170" font-size="12" class="muted">“which skills would you load?”</text>
+  <text x="372" y="186" font-size="12" class="muted">→ selection rate per query</text>
+  <text x="356" y="212" font-size="13">4. Revise the description on</text>
+  <text x="372" y="230" font-size="13">train failures only</text>
+  <text x="356" y="256" font-size="13">5. Keep the revision only if the</text>
+  <text x="372" y="274" font-size="13">test score improves with no new</text>
+  <text x="372" y="292" font-size="13">near-miss misfires</text>
+  <text x="356" y="346" font-size="12.5" class="muted">≈ 50–60 short runs per round.</text>
+  <text x="356" y="362" font-size="12.5" class="muted">Only the description is tested;</text>
+  <text x="356" y="378" font-size="12.5" class="muted">the skill body is never loaded.</text>
+
+  <rect x="660" y="10" width="300" height="400" rx="10" class="box" style="stroke:var(--pur)"/>
+  <text x="810" y="34" text-anchor="middle" font-size="14" font-weight="600" class="tpur">blind-comparison.md</text>
+  <text x="810" y="52" text-anchor="middle" font-size="12.5" class="muted">Is version B really better?</text>
+  <text x="676" y="82" font-size="13">1. Same prompt, two versions'</text>
+  <text x="692" y="100" font-size="13">outputs, labelled A / B at random</text>
+  <text x="676" y="126" font-size="13">2. <tspan font-weight="600">Comparator</tspan> sees prompt, A, B,</text>
+  <text x="692" y="144" font-size="13">assertions, and nothing else</text>
+  <text x="692" y="162" font-size="12" class="muted">rubric 1–5 per criterion → winner</text>
+  <text x="676" y="188" font-size="13">3. <tspan font-weight="600">Analyzer</tspan> gets the mapping,</text>
+  <text x="692" y="206" font-size="13">both skills, both transcripts</text>
+  <text x="692" y="224" font-size="12" class="muted">explains why the winner won,</text>
+  <text x="692" y="240" font-size="12" class="muted">tagged fixes for the loser</text>
+  <text x="676" y="270" font-size="13">Variant: the <tspan font-weight="600">smallest version</tspan></text>
+  <text x="692" y="288" font-size="12" class="muted">a ~5-line skill vs the full one:</text>
+  <text x="692" y="304" font-size="12" class="muted">does the structure earn its place?</text>
+  <text x="676" y="346" font-size="12.5" class="muted">Rare: costs an extra pass per eval.</text>
+</svg>
+<div class="facts"><b>Workspace contents</b> (all three tools write here): <code>evals.json</code>, <code>skill-snapshot/</code> (the pre-edit copy that is the baseline when updating), <code>iteration-N/&lt;eval&gt;/{with_skill,baseline}/outputs/</code> plus each run's transcript, trigger query sets and scores, and comparator/analyzer reports. All throwaway: once the skill is fixed, only the skill change itself matters.</div>
+</section>
+
+<!-- Q6 -->
+<section id="q6">
+<h2><span class="q">Q6</span>Where does the eval workspace go?</h2>
+<p class="why">evaluation.md: “in <code>&lt;skill-name&gt;-workspace/</code> beside it or in a temporary directory”.</p>
+<svg viewBox="0 0 980 170" role="img" aria-label="Workspace beside skill vs temp dir">
+  <rect x="20" y="10" width="460" height="150" rx="10" class="box err"/>
+  <text x="36" y="34" font-size="13" font-weight="600" class="terr">beside a vstack original</text>
+  <text x="36" y="58" class="mono">plugin/skills/</text>
+  <text x="36" y="76" class="mono">├── my-skill/</text>
+  <text x="36" y="94" class="mono terr">└── my-skill-workspace/   ✗</text>
+  <text x="36" y="122" font-size="12.5">check-register.ts: unregistered artifact → fails</text>
+  <text x="36" y="142" font-size="12.5" class="muted">beside a project skill: dirties the repo</text>
+  <rect x="500" y="10" width="460" height="150" rx="10" class="box ok"/>
+  <text x="516" y="34" font-size="13" font-weight="600" class="tok">$TMPDIR default</text>
+  <text x="516" y="58" class="mono">$TMPDIR/my-skill-workspace/</text>
+  <text x="516" y="76" class="mono">├── evals.json</text>
+  <text x="516" y="94" class="mono">└── iteration-1/&lt;eval&gt;/{with_skill,baseline}/</text>
+  <text x="516" y="122" font-size="12.5">path printed in the reply; a user-named place wins</text>
+  <text x="516" y="142" font-size="12.5" class="muted">never inside a git repo or plugin/</text>
+</svg>
+<div class="opts">
+  <div class="opt rec"><h3>$TMPDIR by default<span class="badge">Recommended</span></h3>As drawn on the right.</div>
+  <div class="opt"><h3>vstack root artifacts</h3><code>&lt;vstack root&gt;/artifacts/skill-evals/&lt;name&gt;/</code>: persists, untracked in Private mode, but a repo dir in Standard mode.</div>
+</div>
+</section>
+<!-- Q3b -->
+<section id="q3b">
+<h2><span class="q">Q3b</span>Your note: “remove apache-2.0 header”</h2>
+<p class="why">Pushback before I record it. The two TS files would be ports of Codex's Python scripts, which makes them Derivative Works under Apache-2.0.</p>
+<table>
+  <tr><th>Apache-2.0 §4 (in <code>license.txt</code>)</th><th>Applies to the TS port?</th></tr>
+  <tr><td>(a) give recipients a copy of the License</td><td class="y">met: <code>license.txt</code> ships</td></tr>
+  <tr><td>(b) modified files carry <b>prominent notices stating that You changed the files</b></td><td class="n">broken if the header goes and the port is shared</td></tr>
+  <tr><td>(c) retain copyright and attribution notices from the Source</td><td class="y">nothing to retain: the Codex originals carry none</td></tr>
+</table>
+<div class="facts"><b>Risk:</b> it is low while the vstack repo stays private and personal, because §4 binds redistribution. It becomes real once anyone else gets the repo. <b>Alternative:</b> drop the multi-line history header and keep one line, <code>// Ported from OpenAI Codex skill-creator (Apache-2.0, see ../license.txt).</code> The same choice applies to the HTML comments at the top of <code>SKILL.md</code> and the three references.</div>
+<div class="opts">
+  <div class="opt rec"><h3>One-line notice<span class="badge">Recommended</span></h3>One line per derived file (scripts, SKILL.md, references) replaces the history header.</div>
+  <div class="opt"><h3>Remove entirely</h3>No per-file notice; <code>license.txt</code> stays. You accept the §4(b) risk if the repo is ever shared.</div>
+  <div class="opt"><h3>Remove from scripts only</h3>Scripts carry none; the markdown files keep their notice.</div>
+</div>
+</section>
+
+<!-- ROUND 2 -->
+<section id="r2">
+<h2><span class="q">R2</span>Round 2: how the headless runs behave</h2>
+<p class="why">These follow from Q1, which chose headless <code>omp -p</code> runs. Fact: the parent's live model and thinking level come from the last <code>model_change.model</code> and <code>thinking_level_change.thinkingLevel</code> in <code>$PI_SESSION_FILE</code> (checked: <code>anthropic/claude-opus-5-5</code>, <code>high</code>).</p>
+<svg viewBox="0 0 980 250" role="img" aria-label="Headless batch shape">
+  <rect x="20" y="20" width="200" height="60" rx="8" class="box acc"/>
+  <text x="120" y="44" text-anchor="middle" font-size="13" font-weight="600">parent</text>
+  <text x="120" y="64" text-anchor="middle" font-size="12" class="muted">one eval cell</text>
+  <path d="M220 50 H 260" class="ln"/>
+  <rect x="260" y="10" width="300" height="230" rx="10" class="box ok"/>
+  <text x="410" y="32" text-anchor="middle" font-size="13" font-weight="600" class="tok">Headless batch (R2-1, R2-2)</text>
+  <text x="276" y="56" font-size="12.5">all runs launched together</text>
+  <text x="276" y="74" font-size="12.5">at most <tspan class="mono">task.maxConcurrency</tspan> (32) live</text>
+  <text x="276" y="100" font-size="12.5">no judge: inline is impossible,</text>
+  <text x="276" y="116" font-size="12.5">because the parent knows the answer</text>
+  <text x="276" y="142" font-size="12.5">user says “sequential” → one at a</text>
+  <text x="276" y="158" font-size="12.5">time, still headless</text>
+  <text x="276" y="184" font-size="12.5"><tspan class="mono">omp</tspan> not runnable → <tspan class="terr">stop</tspan></text>
+  <text x="276" y="210" font-size="12" class="muted">House style rule <tspan class="mono">headless-run</tspan>,</text>
+  <text x="276" y="226" font-size="12" class="muted">allowlisted to skill-creator (R2-6)</text>
+  <path d="M560 70 H 600" class="ln"/><path d="M560 180 H 600" class="ln"/>
+  <rect x="600" y="10" width="360" height="110" rx="10" class="box"/>
+  <text x="616" y="32" font-size="13" font-weight="600">eval / baseline / comparator run (R2-3)</text>
+  <text x="616" y="54" class="mono">--no-skills --no-rules --no-extensions</text>
+  <text x="616" y="72" class="mono">--config &lt;ws&gt;/isolate.yml  # memory off</text>
+  <text x="616" y="90" class="mono">--model &lt;m&gt; --thinking &lt;t&gt; --cwd &lt;case&gt;</text>
+  <text x="616" y="108" class="mono">--session-dir &lt;case&gt;/session</text>
+  <rect x="600" y="130" width="360" height="110" rx="10" class="box"/>
+  <text x="616" y="152" font-size="13" font-weight="600">trigger selection run (R2-3)</text>
+  <text x="616" y="174" class="mono">--cwd &lt;empty tmp&gt; --model &lt;m&gt; --thinking &lt;t&gt;</text>
+  <text x="616" y="194" font-size="12.5">skills, extensions, and memory as in real use,</text>
+  <text x="616" y="212" font-size="12.5">so it sees the real listing; asked which skills</text>
+  <text x="616" y="230" font-size="12.5">it would load, told not to act</text>
+</svg>
+<div class="facts"><b>Facts:</b> <code>task.maxConcurrency</code> defaults to 32 and bounds only subagents, not processes. omp memory is per project (cwd) and is off by default, and <code>--config</code> loads a config overlay. <b>[INFERENCE]</b> <code>--no-extensions</code> should drop the vstack principle-injection extension; this can't be probed until vstack is linked. <b>Probed:</b> a candidate copy under a temp <code>.omp/skills/</code> does not shadow the real skill, because both get listed (Q4 probe). So a candidate description has to be a temporary edit of the skill's own file.</div>
+<table>
+  <tr><th>#</th><th>Question</th><th>Recommendation</th></tr>
+  <tr><td>R2-1</td><td>Gate on headless runs</td><td>Fixed headless batch: no judge, no inline. “Sequential” means one at a time. <code>omp</code> not runnable → stop.</td></tr>
+  <tr><td>R2-2</td><td>Concurrency</td><td>Bounded by the live <code>task.maxConcurrency</code></td></tr>
+  <tr><td>R2-3</td><td>Isolation flags</td><td>As drawn: full isolation for eval and comparator runs, real environment for trigger selection</td></tr>
+  <tr><td>R2-4</td><td>Analyzer</td><td>Single <b>Spawn</b> of <code>vstack-explorer</code> via <code>task</code>. If it can't be spawned, the parent analyses.</td></tr>
+  <tr><td>R2-5</td><td>Testing a candidate description</td><td>Temporary edit of the skill's own file, restored unless accepted. Only for homes skill-creator may edit (Q2).</td></tr>
+  <tr><td>R2-6</td><td>Record it</td><td><code>headless-run</code> House style rule allowlisted to skill-creator, plus ADR 0010 “Skill evals run as headless omp processes, not vstack agents”</td></tr>
+</table>
+</section>
+</main>
+</body>
+</html>
