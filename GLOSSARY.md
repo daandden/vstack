@@ -7,7 +7,7 @@ vstack is a personal agent-skills pack for omp. It is built on Matt Pocock's ski
 ### Sources
 
 **Upstream**:
-An external skills repository that vstack derives content from. There are exactly two.
+An external skills repository that vstack derives content from. Each one has its own kind, named below.
 _Avoid_: source repo, origin, vendor
 
 **Base upstream**:
@@ -18,6 +18,10 @@ _Avoid_: matt-install, core
 The Upstream that vstack adds selectively from: poteto's pstack at `cursor/plugins`, directory `pstack/`.
 _Avoid_: pstack fork, plugin
 
+**Diagram upstream**:
+The Upstream whose single skill draws every figure vstack shows a person: `cathrynlavery/diagram-design`.
+_Avoid_: diagram dependency, diagram plugin
+
 **Upstream item**:
 One skill, principle, or playbook published by an Upstream.
 _Avoid_: upstream skill (when principles or playbooks are meant too)
@@ -27,7 +31,7 @@ A pstack recipe for one type of task, such as Shipping or Perf issue: an ordered
 _Avoid_: workflow (when a pstack playbook is meant), recipe
 
 **Pin**:
-The exact Upstream version vstack was last reconciled with: a release tag for the Base upstream, a full commit SHA for the Enhancement upstream.
+The exact Upstream version vstack was last reconciled with: a release tag for the Base upstream, a full commit SHA for the Enhancement upstream and the Diagram upstream.
 _Avoid_: lock, version (unqualified)
 
 ### Choices
