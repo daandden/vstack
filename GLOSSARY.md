@@ -67,7 +67,7 @@ _Avoid_: substitution list, style guide
 ### Behavior
 
 **Fan-out**:
-One skill step running two or more subagents at the same time. At each such step, a judgment of the job's complexity decides whether to fan out; the user's explicit words override that judgment either way. Every subagent uses the parent's model.
+One skill step running two or more subagents at the same time. At each such step, a judgment of the job's complexity decides whether to fan out; the user's explicit words override that judgment either way, and a skill the user invokes in order to fan out skips the judgment. Every subagent uses the parent's model.
 _Avoid_: swarm, parallelism (unqualified)
 
 **Update**:
