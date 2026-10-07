@@ -55,6 +55,69 @@ svg .m{font-family:'Geist Mono',monospace}
 <div class="card"><p class="eyebrow">Settled · overlap ticket</p><h4>Only on explicit ask</h4><p>architect's Sketch uses DESIGN-IT-TWICE and switches to compare-attempts only when the user explicitly asks. Step 6 of blast-radius is the same. The Safety reviewer in code-review runs blast-radius with "skip step 6".</p></div>
 </div>
 
+<!-- ============================ round 2 ============================ -->
+<h2>Round 2 · open questions after round 1</h2>
+<h3>Round 1 answers</h3>
+<div class="tw"><table><thead><tr><th>Q</th><th>Answer</th><th>Consequence</th></tr></thead><tbody>
+<tr><td>Q1</td><td><b>Other</b>: always fan out, no gate</td><td>The runner step is a bare batch: no gate line, no judge, no inline line. If it can't spawn or isolation is off, it stops. If the user says "sequential", the agent says that compare-attempts runs its attempts at once and asks whether to go ahead. Open → Q8, Q9, Q10.</td></tr>
+<tr><td>Q2</td><td>As proposed</td><td>N = 3 by default, and the user's words override it. Runners are <code>vstack-worker</code> and share one prompt. Direction lines are optional, and the rubric stays with the parent.</td></tr>
+<tr><td>Q3</td><td>Real target path in the clone</td><td>The patch is the candidate. Candidates are never written through the vstack root.</td></tr>
+<tr><td>Q4</td><td>As proposed</td><td>Artifact kind is <code>tree</code> or <code>reply</code>. Losing patches stay where omp put them. The synthesis note goes in the reply and on the driving ticket. The agent asks before re-running on divergence, and convergence counts as a weaker signal.</td></tr>
+<tr><td>Q5</td><td>As proposed</td><td>The cross-judge is one <code>vstack-explorer</code>, and it is skipped (with a note) when it can't spawn. The skill states that it buys independence, not model diversity.</td></tr>
+<tr><td>Q6</td><td>As proposed</td><td>blast-radius is model-invocable. Step 6 runs only on the user's explicit ask, and otherwise the reply adds a one-line offer. The Safety reviewer always skips step 6.</td></tr>
+<tr><td>Q7</td><td>As proposed</td><td>architect runs compare-attempts with kind <code>tree</code> and the DESIGN-IT-TWICE briefs as directions. After Scrap, the re-Sketch uses the same mode as the first. The opening of design-brief.md becomes neutral.</td></tr>
+</tbody></table></div>
+
+<p>The Q1 answer departs from three settled records, which are quoted here.</p>
+<div class="two">
+<div class="side"><h4>ADR 0004, first sentence</h4><blockquote>A skill step that would run two or more subagents at the same time first asks the omp eval <code>judge</code> whether the job is complex enough to fan out.</blockquote></div>
+<div class="side"><h4>Fan-out guardrail lint (check-register.ts)</h4><blockquote>a Fan-out block is missing its gate line, its single batch, or its inline fallback;</blockquote></div>
+</div>
+<div class="side"><h4>CONTEXT.md · Fan-out</h4><blockquote>One skill step running two or more subagents at the same time. At each such step, a judgment of the job's complexity decides whether to fan out; the user's explicit words override that judgment either way.</blockquote></div>
+
+<h3><span class="q">Q8</span>How the House style and the lint express an ungated batch</h3>
+<div class="fig"><svg viewBox="0 0 960 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Gated block versus fixed block">
+<rect width="100%" height="100%" fill="#fff"/>
+<rect x="10" y="20" width="460" height="210" rx="6" fill="#fff" stroke="#2d3142"/>
+<text x="26" y="42" class="m" font-size="8" fill="#7a8399" letter-spacing="0.14em">EVERY OTHER SKILL · fan-out-block</text>
+<rect x="26" y="56" width="428" height="40" rx="4" fill="rgba(45,49,66,0.05)" stroke="rgba(45,49,66,0.3)"/><text x="38" y="80" class="m" font-size="9">**Fan-out gate** (skill://vstack-fan-out): parts …</text>
+<rect x="26" y="106" width="428" height="52" rx="4" fill="#fff" stroke="rgba(45,49,66,0.3)"/><text x="38" y="128" class="m" font-size="9">- **fan-out** → one batch (tasks[] or eval cell)</text><text x="38" y="146" class="m" font-size="8" fill="#4f5d75">judge or the user's words pick this</text>
+<rect x="26" y="168" width="428" height="52" rx="4" fill="#fff" stroke="rgba(45,49,66,0.3)"/><text x="38" y="190" class="m" font-size="9">- **inline** → do every part yourself</text><text x="38" y="208" class="m" font-size="8" fill="#4f5d75">or ship's isolated single-verifier stop</text>
+<rect x="490" y="20" width="460" height="210" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/>
+<text x="506" y="42" class="m" font-size="8" fill="#eb6c36" letter-spacing="0.14em">COMPARE-ATTEMPTS ONLY · fixed-fan-out (draft)</text>
+<rect x="506" y="56" width="428" height="52" rx="4" fill="#fff" stroke="#eb6c36"/><text x="518" y="78" class="m" font-size="9">**Fan-out** (always: invoking this skill is the</text><text x="518" y="94" class="m" font-size="9">user's request to fan out)</text>
+<rect x="506" y="118" width="428" height="52" rx="4" fill="#fff" stroke="#eb6c36"/><text x="518" y="140" class="m" font-size="9">one eval cell: per runner, agent(…, isolated=True,</text><text x="518" y="156" class="m" font-size="9">apply=False, merge=False); wait() on all handles</text>
+<rect x="506" y="180" width="428" height="40" rx="4" fill="#fff" stroke="#eb6c36"/><text x="518" y="204" class="m" font-size="9">If it cannot spawn or isolation is off, **stop**: …</text>
+</svg><p class="cap">The fixed block has no gate line, no judge, and no inline line, so the stop line takes the inline line's place. The lint has to know where this form is allowed.</p></div>
+<div class="tw"><table><thead><tr><th>Option</th><th>Where the fixed form is allowed</th><th>Risk</th></tr></thead><tbody>
+<tr class="pick"><td><b>Allowlist by name</b></td><td>The <code>fixed-fan-out</code> rule in <code>house-style.yaml</code> lists <code>skills: [compare-attempts]</code>, and the lint fails on the fixed form anywhere else.</td><td>Adding a second skill takes an explicit edit, which is the point.</td></tr>
+<tr><td><b>Any hidden skill</b></td><td>Any skill with <code>disable-model-invocation: true</code> may use the fixed form.</td><td>architect and explain are hidden too, so an Update could drop their gates silently.</td></tr>
+</tbody></table></div>
+<div class="rec"><p><b>Recommendation: allowlist by name.</b> The amendments go on the guardrail ticket (the lint rule) and the House style ticket (the <code>fixed-fan-out</code> rule text).</p></div>
+
+<h3><span class="q">Q9</span>Where the exception to ADR 0004 is recorded</h3>
+<p>The domain doc requires an ADR conflict to be stated rather than silently overridden. Under domain-modeling's three-part test, the exception is surprising and is the result of a real trade-off, but it is cheap to reverse: one skill and one lint row.</p>
+<div class="tw"><table><thead><tr><th>Option</th><th>Record</th></tr></thead><tbody>
+<tr class="pick"><td><b>Amend ADR 0004</b></td><td>Add one Consequences bullet: "A skill whose invocation is the user's request to fan out (today only compare-attempts) runs its batch with no gate and stops when it cannot spawn. A user who says 'sequential' is asked whether to go ahead." The ADR stays the single place that explains Fan-out gating.</td></tr>
+<tr><td><b>New ADR 0009</b></td><td>A separate record that refines ADR 0004. It fails the hard-to-reverse test.</td></tr>
+<tr><td><b>Register reason only</b></td><td>The compare-attempts row's one-line reason carries the exception, and ADR 0004 still reads as having none.</td></tr>
+</tbody></table></div>
+<div class="rec"><p><b>Recommendation: amend ADR 0004.</b></p></div>
+
+<h3><span class="q">Q10</span>The glossary entry for Fan-out</h3>
+<div class="two">
+<div class="side"><h4>Now</h4><pre class="mock">One skill step running two or more subagents at the same time. At each
+such step, a judgment of the job's complexity decides whether to fan
+out; the user's explicit words override that judgment either way.
+Every subagent uses the parent's model.</pre></div>
+<div class="side"><h4>Proposed</h4><pre class="mock">One skill step running two or more subagents at the same time. At each
+such step, a judgment of the job's complexity decides whether to fan
+out; the user's explicit words override that judgment either way<mark>, and
+a skill the user invokes in order to fan out skips the judgment</mark>.
+Every subagent uses the parent's model.</pre></div>
+</div>
+<div class="rec"><p><b>Recommendation: the proposed text.</b> It names the concept and no implementation, so the glossary stays free of skill names.</p></div>
+
 <h2>The skill at a glance</h2>
 <p>pstack's six phases stay. Each one below is marked with what vstack changes and the question that settles it.</p>
 <div class="fig"><svg viewBox="0 0 960 170" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="compare-attempts phases">
@@ -332,5 +395,5 @@ designs.</mark></pre></div>
 </tbody></table></div>
 <div class="rec"><p><b>Recommendation: as proposed.</b></p></div>
 
-<div class="footer"><span>vstack · Specify the vstack contracts of compare-attempts and blast-radius · round 1</span><span>pstack 12d587df · arena, blast-radius, architect</span></div>
+<div class="footer"><span>vstack · Specify the vstack contracts of compare-attempts and blast-radius · rounds 1–2</span><span>pstack 12d587df · arena, blast-radius, architect</span></div>
 </div></body></html>
