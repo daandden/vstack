@@ -89,3 +89,11 @@ _Avoid_: private storage, private setup
 **vstack root**:
 The absolute directory where a run writes the project's vstack config and workflow artifacts: `vstack/` under the git common directory in Private mode, or the main checkout's repo root in Standard mode. The top-level agent resolves it once and passes it to every subagent, which writes there instead of resolving it again.
 _Avoid_: artifact dir, private root
+
+**Verify skill**:
+A project-local skill named `verify-<app>` that drives the project's app the way a user does and captures proof that a change works. setup-app-verification creates it, and maintain-app-verification keeps it accurate.
+_Avoid_: control skill, verification skill
+
+**Drift**:
+A failure in a Verify skill's own instructions, such as a missing command, route, selector, or fixture, while the skill's Doctor check passes. Wrong app behavior is a finding, never drift.
+_Avoid_: stale, rot

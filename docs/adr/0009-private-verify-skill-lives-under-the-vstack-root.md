@@ -1,0 +1,17 @@
+# In Private mode, the Verify skill lives under the vstack root and each checkout links to it
+
+In Standard mode, setup-app-verification writes the project's Verify skill to `.omp/skills/verify-<app>/` and commits it. In Private mode, it writes the skill once, to `<vstack root>/skills/verify-<app>/` (that is, `<git common dir>/vstack/skills/`). Each checkout gets an untracked **absolute** symlink at `.omp/skills/verify-<app>` that points there, and `.omp/skills/verify-*` goes in `.git/info/exclude`. omp's native skill scan reads `.omp/skills/` with a plain `readdir`. It has no gitignore filter and admits symlinked directories, so the excluded link is discovered, listed, and routable, and `skill://` works. Every checkout reads and edits the same copy. omp's worktree creation (`omp wt add`, `/wt`, `pr_checkout`) clones the tree before reconciling, and that reconcile deletes only untracked files, so the excluded link carries into new worktrees. Isolated clones carry it the same way. The link has to be absolute: in a linked worktree `.git` is a file, and an isolated clone has its own `.git` copy, so a relative link would point at the wrong place.
+
+## Considered Options
+
+- **Keep the skill in the checkout at `.omp/skills/verify-<app>/`, excluded through `.git/info/exclude`**: rejected. It is the simplest, but every omp worktree clones its own copy. maintain-app-verification's fixes then split across copies, `git clean -fdx` deletes the feature map and helpers, and a clone that falls back to a plain checkout has no skill at all. It also breaks the glossary's Private mode (untracked under the git common directory and shared by every worktree) and ADR 0006's "everything under `.git/vstack/`".
+- **Keep it under the vstack root with no link, and have live proof read SKILL.md by path**: rejected. It works in every checkout with no setup, but omp never lists the skill, so the user's own requests cannot route to it, and `skill://` does not resolve.
+- **Commit it even in Private mode**: rejected. Private mode exists to keep vstack's traces out of the repo.
+
+## Consequences
+
+- ADR 0006's Private-mode layout gains a fourth subdirectory: `.git/vstack/skills/`. The Private-mode plugin rule names it, together with the link and exclude convention.
+- setup-app-verification creates the skill directory, the link, and the exclude line in Private mode, and commits nothing. maintain-app-verification edits the single copy in place, and nothing is committed: drift fixes made in Private mode are not commits.
+- The live-proof step in implement, perf-issue, refactor, and hillclimb, and maintain-app-verification's target lookup, also check `<vstack root>/skills/verify-*`. If the current checkout has no link (after `git clean -fdx`, or after a clone fell back to a plain checkout), they create it and read SKILL.md by path for the rest of the session. omp discovers it in the next session.
+- A Verify skill names its helper scripts relative to its own directory, so the same text works from `.omp/skills/`, from an isolated clone, or from the vstack root.
+- Proof evidence and run notes go to `$TMPDIR/verify-<app>/<run-id>/` in both modes. They are never committed.
