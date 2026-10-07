@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>omp wt fallback and the Update worktree: explainer</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--paper:#f5f5f5;--paper2:#ececec;--ink:#2d3142;--muted:#4f5d75;--soft:#7a8399;--rule:rgba(45,49,66,0.12);--accent:#eb6c36;--tint:rgba(235,108,54,0.08);--link:#2e5aa8;--good:#2d6a4f;--bad:#b23a1e;--sans:'Geist',system-ui,sans-serif;--serif:'Instrument Serif','Times New Roman',serif;--mono:'Geist Mono',ui-monospace,Menlo,monospace}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);padding:3rem 2rem;line-height:1.55;font-size:15px}
+.container{max-width:1160px;margin:0 auto}
+.eyebrow{font-family:var(--mono);font-size:.66rem;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem}
+h1{font-family:var(--serif);font-weight:400;font-size:clamp(1.75rem,3vw + 1rem,2.5rem);letter-spacing:-.02em;line-height:1.1;margin-bottom:.5rem}
+h2{font-family:var(--serif);font-weight:400;font-size:1.75rem;margin:3rem 0 .75rem;padding-top:1.5rem;border-top:1px solid var(--rule)}
+h3{font-size:1rem;font-weight:600;margin:1.75rem 0 .6rem}
+.subtitle{color:var(--muted);max-width:80ch}
+p{max-width:80ch;margin-bottom:.75rem}
+ul.l{margin:0 0 .75rem 1.25rem;max-width:80ch} ul.l li{margin-bottom:.3rem}
+a{color:var(--link);text-decoration:none} a:hover{text-decoration:underline}
+code{font-family:var(--mono);font-size:.82em;background:rgba(45,49,66,0.06);padding:.05em .3em;border-radius:3px}
+.fig{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:1rem;margin:1rem 0}
+.fig svg{width:100%;max-width:960px;display:block;margin:0 auto}
+.fig .cap{font-size:.8rem;color:var(--soft);text-align:center;margin:.5rem auto 0;max-width:none}
+.rec{background:var(--tint);border-left:3px solid var(--accent);padding:.8rem 1rem;margin:1rem 0;border-radius:0 6px 6px 0}
+.rec p{margin-bottom:.4rem;max-width:none}
+.q{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;color:#fff;background:var(--accent);border-radius:3px;padding:.05rem .4rem;margin-right:.4rem;vertical-align:4px}
+.tw{overflow-x:auto;background:#fff;border:1px solid var(--rule);border-radius:6px;margin:1rem 0}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th{font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--soft);text-align:left;padding:.6rem .75rem;border-bottom:1px solid var(--rule);background:var(--paper2)}
+td{padding:.55rem .75rem;border-bottom:1px solid var(--rule);vertical-align:top}
+tr:last-child td{border-bottom:none}
+tr.pick td{background:var(--tint)}
+.ok{color:var(--good);font-weight:600}.bad{color:var(--bad);font-weight:600}.mid{color:var(--muted);font-weight:600}
+pre.mock{font-family:var(--mono);font-size:.76rem;line-height:1.55;white-space:pre-wrap;background:#fff;border:1px solid var(--rule);border-radius:6px;padding:1rem 1.2rem;margin:1rem 0}
+.footer{margin-top:3rem;padding-top:1.25rem;border-top:1px solid var(--rule);font-family:var(--mono);font-size:.72rem;color:var(--soft)}
+svg text{font-family:'Geist',system-ui,sans-serif}
+svg .m{font-family:'Geist Mono',ui-monospace,Menlo,monospace}
+</style></head>
+<body><div class="container">
+
+<div class="eyebrow">vstack · wayfinder ticket · round 1 follow-up</div>
+<h1>When <code>omp wt add</code> can't clone, and why the Update makes a worktree</h1>
+<p class="subtitle">Explainer for <span class="q">Q5</span> and <span class="q">Q6</span> of <a href="https://github.com/daandden/vstack/issues/56">Decide how vstack makes every worktree go through omp wt</a>. Facts come from omp 18.8.0 (source <code>4ef97c8</code>) and a scratch-repo probe run this session. These are suggestions only; nothing is decided yet.</p>
+
+<h2><span class="q">Q5</span> What <code>omp wt add</code> does, step by step</h2>
+<p><code>omp wt add</code>, <code>/wt</code>, and the <code>github</code> tool's <code>pr_checkout</code> all call the same native function. It tries a filesystem clone first. If that isn't possible, it does an ordinary checkout. <strong>Every outcome exits 0.</strong></p>
+
+<div class="fig">
+<svg viewBox="0 0 960 360" xmlns="http://www.w3.org/2000/svg">
+  <defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#4f5d75"/></marker></defs>
+  <!-- start -->
+  <rect x="20" y="150" width="150" height="56" rx="6" fill="#ececec" stroke="#2d3142"/>
+  <text x="95" y="174" text-anchor="middle" font-size="13" class="m">omp wt add</text>
+  <text x="95" y="193" text-anchor="middle" font-size="11" fill="#4f5d75">-b &lt;branch&gt; &lt;path&gt; &lt;base&gt;</text>
+  <!-- d1 -->
+  <polygon points="290,128 380,178 290,228 200,178" fill="#fff" stroke="#2d3142"/>
+  <text x="290" y="174" text-anchor="middle" font-size="12">worktree.clone</text>
+  <text x="290" y="190" text-anchor="middle" font-size="12">on?</text>
+  <line x1="170" y1="178" x2="198" y2="178" stroke="#4f5d75" marker-end="url(#a)"/>
+  <!-- d2 -->
+  <polygon points="510,128 600,178 510,228 420,178" fill="#fff" stroke="#2d3142"/>
+  <text x="510" y="174" text-anchor="middle" font-size="11">clone method</text>
+  <text x="510" y="189" text-anchor="middle" font-size="11">for this OS?</text>
+  <text x="510" y="116" text-anchor="middle" font-size="10" fill="#7a8399">APFS · Linux reflink · Windows block-clone</text>
+  <line x1="380" y1="178" x2="418" y2="178" stroke="#4f5d75" marker-end="url(#a)"/>
+  <text x="399" y="170" text-anchor="middle" font-size="11" fill="#2d6a4f">yes</text>
+  <!-- clone attempt -->
+  <rect x="640" y="150" width="140" height="56" rx="6" fill="#fff" stroke="#2d3142"/>
+  <text x="710" y="173" text-anchor="middle" font-size="12">clone tree (no .git)</text>
+  <text x="710" y="191" text-anchor="middle" font-size="12">then reconcile</text>
+  <line x1="600" y1="178" x2="638" y2="178" stroke="#4f5d75" marker-end="url(#a)"/>
+  <text x="619" y="170" text-anchor="middle" font-size="11" fill="#2d6a4f">yes</text>
+  <!-- outcomes -->
+  <rect x="800" y="40" width="150" height="76" rx="6" fill="rgba(45,106,79,0.08)" stroke="#2d6a4f"/>
+  <text x="875" y="62" text-anchor="middle" font-size="12" font-weight="600" fill="#2d6a4f">CLONED</text>
+  <text x="875" y="80" text-anchor="middle" font-size="10" class="m">stdout: Cloned from</text>
+  <text x="875" y="94" text-anchor="middle" font-size="10" class="m">&lt;root&gt; via apfs</text>
+  <text x="875" y="108" text-anchor="middle" font-size="10" fill="#7a8399">exit 0</text>
+  <path d="M780,165 C800,140 800,120 830,116" fill="none" stroke="#2d6a4f" marker-end="url(#a)"/>
+  <text x="808" y="146" font-size="11" fill="#2d6a4f">ok</text>
+
+  <rect x="800" y="240" width="150" height="86" rx="6" fill="rgba(178,58,30,0.07)" stroke="#b23a1e"/>
+  <text x="875" y="261" text-anchor="middle" font-size="12" font-weight="600" fill="#b23a1e">PLAIN + warning</text>
+  <text x="875" y="279" text-anchor="middle" font-size="10" class="m">stderr: worktree clone</text>
+  <text x="875" y="293" text-anchor="middle" font-size="10" class="m">fell back to plain</text>
+  <text x="875" y="307" text-anchor="middle" font-size="10" class="m">checkout: &lt;err&gt;</text>
+  <text x="875" y="320" text-anchor="middle" font-size="10" fill="#7a8399">exit 0</text>
+  <path d="M780,192 C800,215 800,235 830,240" fill="none" stroke="#b23a1e" marker-end="url(#a)"/>
+  <text x="808" y="222" font-size="11" fill="#b23a1e">fails</text>
+
+  <rect x="330" y="275" width="230" height="60" rx="6" fill="rgba(178,58,30,0.07)" stroke="#b23a1e" stroke-dasharray="5 3"/>
+  <text x="445" y="298" text-anchor="middle" font-size="12" font-weight="600" fill="#b23a1e">PLAIN, silent</text>
+  <text x="445" y="316" text-anchor="middle" font-size="10" fill="#4f5d75">no Cloned line, no warning, exit 0</text>
+  <path d="M290,228 L290,305 L328,305" fill="none" stroke="#b23a1e" marker-end="url(#a)"/>
+  <text x="300" y="262" font-size="11" fill="#b23a1e">no</text>
+  <path d="M510,228 L510,273" fill="none" stroke="#b23a1e" marker-end="url(#a)"/>
+  <text x="520" y="256" font-size="11" fill="#b23a1e">none</text>
+</svg>
+<div class="cap">Figure 1. Three ways to get a plain checkout, and only one of them prints anything. Sources: <code>crates/pi-vcs/src/git/mutate.rs:642-671</code> and <code>cli/worktree-cli.ts:150-168</code>.</div>
+</div>
+
+<h3>Signals for each outcome (probed in a scratch repo, omp 18.8.0)</h3>
+<div class="tw"><table>
+<tr><th>Outcome</th><th>stdout <code>Cloned from … via</code></th><th>stderr warning</th><th>exit</th><th>evidence</th></tr>
+<tr><td>Cloned</td><td class="ok">yes</td><td>no</td><td>0</td><td>probe</td></tr>
+<tr><td>Clone tried and failed</td><td class="bad">no</td><td class="mid">yes</td><td>0</td><td>source</td></tr>
+<tr><td><code>worktree.clone=false</code></td><td class="bad">no</td><td class="bad">no</td><td>0</td><td>probe (throwaway <code>PI_CONFIG_DIR</code>)</td></tr>
+<tr><td>No clone method on this platform</td><td class="bad">no</td><td class="bad">no</td><td>0</td><td>source</td></tr>
+</table></div>
+<p>So the warning line can't be the test, because two of the three plain outcomes are silent. It is also not a clean signal of failure: omp keeps the first backend's error even when a later backend succeeds. <strong>The one reliable test is whether stdout contains <code>Cloned from … via</code>.</strong> <code>-q</code> hides that line, so vstack must never pass <code>-q</code>. Nothing records it afterward either: <code>omp wt list --json</code> has no clone field.</p>
+
+<h3>What actually lands in the worktree</h3>
+<div class="fig">
+<svg viewBox="0 0 960 250" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="960" height="250" fill="#fff"/>
+  <text x="20" y="28" font-size="11" fill="#7a8399" letter-spacing="1.5">MAIN CHECKOUT CONTAINS</text>
+  <text x="620" y="28" font-size="11" fill="#2d6a4f" letter-spacing="1.5" text-anchor="middle">CLONED</text>
+  <text x="820" y="28" font-size="11" fill="#b23a1e" letter-spacing="1.5" text-anchor="middle">PLAIN</text>
+  <line x1="20" y1="38" x2="940" y2="38" stroke="rgba(45,49,66,0.12)"/>
+  <g font-size="13">
+    <text x="20" y="66">Tracked files at the target commit</text>
+    <text x="620" y="66" text-anchor="middle" fill="#2d6a4f">✓</text><text x="820" y="66" text-anchor="middle" fill="#2d6a4f">✓</text>
+    <text x="20" y="102">Gitignored: <tspan class="m" font-size="12">node_modules/ .env.local</tspan> build caches</text>
+    <text x="620" y="102" text-anchor="middle" fill="#2d6a4f">✓ copy-on-write</text><text x="820" y="102" text-anchor="middle" fill="#b23a1e">✗</text>
+    <text x="20" y="138">Excluded via <tspan class="m" font-size="12">.git/info/exclude</tspan> (Private-mode Verify skill link)</text>
+    <text x="620" y="138" text-anchor="middle" fill="#2d6a4f">✓</text><text x="820" y="138" text-anchor="middle" fill="#b23a1e">✗ (ADR 0009 re-links)</text>
+    <text x="20" y="174">Untracked, not ignored (new WIP files)</text>
+    <text x="620" y="174" text-anchor="middle" fill="#7a8399">✗ dropped by reconcile</text><text x="820" y="174" text-anchor="middle" fill="#7a8399">✗</text>
+    <text x="20" y="210">Uncommitted edits to tracked files</text>
+    <text x="620" y="210" text-anchor="middle" fill="#7a8399">✗ reset to target</text><text x="820" y="210" text-anchor="middle" fill="#7a8399">✗</text>
+  </g>
+  <text x="20" y="240" font-size="11" fill="#7a8399">For <tspan class="m">omp wt add</tspan>. The <tspan class="m">/wt</tspan> slash command is different: it carries WIP in both cases, but ignored files only when cloned.</text>
+</svg>
+<div class="cap">Figure 2. A fallback only costs what the clone would have carried: ignored and excluded files. Tracked content is identical either way.</div>
+</div>
+
+<h3>Why a clone fails, and whether a setting can fix it</h3>
+<div class="tw"><table>
+<tr><th>Cause</th><th>Fixable by a machine check?</th></tr>
+<tr><td><code>worktree.clone</code> is off</td><td class="ok">yes: setup-vstack's eighth check (already decided in <a href="https://github.com/daandden/vstack/issues/54#issuecomment-6034885145">#54</a>)</td></tr>
+<tr><td>The repo is on a volume that can't clone (exFAT external disk, network share, Linux ext4)</td><td class="bad">no</td></tr>
+<tr><td>The repo and the worktree base (<code>~/.omp/wt</code>) are on different volumes, so <code>clonefile</code> can't cross</td><td class="bad">no (<code>worktree.base</code> is global, not per repo)</td></tr>
+<tr><td>The repo uses sparse-checkout or split-index, or has no index</td><td class="bad">no</td></tr>
+</table></div>
+
+<h2><span class="q">Q5</span> The actual question: what each vstack site does on a plain checkout</h2>
+<p>prototype is already decided. The question is whether every other site copies prototype (option B) or stops only where clone-carried files are needed (option A).</p>
+<div class="tw"><table>
+<tr><th>Site</th><th>Needs from the worktree</th><th>A · stop only if it needs clone-carried files (recommended)</th><th>B · every site stops</th></tr>
+<tr><td>prototype, Private mode, app-bound</td><td><code>node_modules</code> and <code>.env*</code> to run the dev server</td><td class="bad">stop (decided)</td><td class="bad">stop (decided)</td></tr>
+<tr class="pick"><td><code>update-plan.ts</code> → <code>update/*</code></td><td>Tracked files, plus Bun deps for <code>check-register.ts</code> and the load smoke</td><td class="ok">continue; run <code>bun install --frozen-lockfile</code> when <code>node_modules</code> is missing</td><td class="bad">stop, point at setup-vstack</td></tr>
+<tr class="pick"><td>wayfinder research landing → <code>research/&lt;name&gt;</code></td><td>Tracked files only (<code>git apply</code>, commit, push)</td><td class="ok">continue</td><td class="bad">stop</td></tr>
+<tr class="pick"><td>A worktree an agent makes on its own (always-apply rule, Q3)</td><td>Depends on the task</td><td class="ok">continue; the agent installs deps; the Verify link is re-created per ADR 0009</td><td class="bad">stop</td></tr>
+</table></div>
+
+<p>As skill text, option A is the same three lines at every site:</p>
+<pre class="mock">omp wt add -b &lt;branch&gt; &lt;path&gt; &lt;base&gt;          # never -q
+stdout has "Cloned from … via"   → cloned
+otherwise                         → plain checkout:
+    this site needs ignored/excluded files?  → git worktree remove --force &lt;path&gt;; stop;
+                                               name worktree.clone and setup-vstack
+    else                                     → continue (install deps if the site needs them)</pre>
+
+<div class="rec">
+<p><strong>Recommendation: A.</strong> A fallback only costs ignored and excluded files (Figure 2). Stopping where those don't matter would block every Update and every research landing for a repo on a volume that can't clone, and no setting fixes that (table above). The eighth machine check already covers the one cause a setting can fix. No ninth check.</p>
+</div>
+
+<h2><span class="q">Q6</span> What <code>update-plan.ts</code> is, and why it makes a worktree</h2>
+<p><strong>The Update</strong> is <code>/skill:vstack-update</code>, a hidden plugin skill you run inside your vstack clone (<a href="https://github.com/daandden/vstack/issues/38#issuecomment-5983621153">Define the <code>vstack update</code> flow end to end</a>). It moves the Pins forward and adapts vstack to whatever changed Upstream. Its first, mechanical step is <code>scripts/update-plan.ts</code>, a Bun script that:</p>
+<ul class="l">
+<li>fetches both Upstreams into <code>~/.cache/vstack/upstreams/</code> and finds the new Pins (the latest Matt <code>v&lt;semver&gt;</code> release, the latest pstack commit);</li>
+<li>diffs every Decision register row from its baseline, maps changed paths to rows, and detects moved items;</li>
+<li>runs the House style rows over both Upstream sides and stages fresh adopt copies;</li>
+<li>creates the <strong>Update worktree</strong> and prints a JSON plan that the judgment stages (agents) then work through.</li>
+</ul>
+
+<div class="fig">
+<svg viewBox="0 0 960 300" xmlns="http://www.w3.org/2000/svg">
+  <defs><marker id="b" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#4f5d75"/></marker></defs>
+  <!-- live clone -->
+  <rect x="20" y="30" width="270" height="110" rx="6" fill="#fff" stroke="#2d3142"/>
+  <text x="155" y="54" text-anchor="middle" font-size="13" font-weight="600">Your vstack clone (main)</text>
+  <text x="155" y="76" text-anchor="middle" font-size="11" class="m">omp plugin link &lt;clone&gt;/plugin</text>
+  <text x="155" y="96" text-anchor="middle" font-size="11" fill="#4f5d75">every new omp session loads</text>
+  <text x="155" y="111" text-anchor="middle" font-size="11" fill="#4f5d75">skills from here (ADR 0005)</text>
+  <text x="155" y="130" text-anchor="middle" font-size="11" fill="#b23a1e">editing here = live before you confirm</text>
+  <!-- update worktree -->
+  <rect x="360" y="30" width="290" height="110" rx="6" fill="rgba(235,108,54,0.08)" stroke="#eb6c36"/>
+  <text x="505" y="54" text-anchor="middle" font-size="13" font-weight="600">Update worktree</text>
+  <text x="505" y="74" text-anchor="middle" font-size="11" class="m">branch update/&lt;matt-tag&gt;+&lt;pstack-sha7&gt;</text>
+  <text x="505" y="94" text-anchor="middle" font-size="11" fill="#4f5d75">agents merge adapt rows here;</text>
+  <text x="505" y="109" text-anchor="middle" font-size="11" fill="#4f5d75">check-register.ts + load smoke run here</text>
+  <text x="505" y="128" text-anchor="middle" font-size="11" fill="#4f5d75">nothing committed before you confirm</text>
+  <path d="M290,85 L358,85" stroke="#4f5d75" marker-end="url(#b)"/>
+  <text x="324" y="77" text-anchor="middle" font-size="10" fill="#4f5d75">off main</text>
+  <!-- outcomes -->
+  <rect x="720" y="20" width="220" height="56" rx="6" fill="rgba(178,58,30,0.07)" stroke="#b23a1e"/>
+  <text x="830" y="42" text-anchor="middle" font-size="12" font-weight="600" fill="#b23a1e">You refuse</text>
+  <text x="830" y="60" text-anchor="middle" font-size="11" fill="#4f5d75">worktree + branch deleted</text>
+  <rect x="720" y="96" width="220" height="56" rx="6" fill="rgba(45,106,79,0.08)" stroke="#2d6a4f"/>
+  <text x="830" y="118" text-anchor="middle" font-size="12" font-weight="600" fill="#2d6a4f">You confirm</text>
+  <text x="830" y="136" text-anchor="middle" font-size="11" fill="#4f5d75">commit, push, open PR</text>
+  <path d="M650,65 L718,48" stroke="#4f5d75" marker-end="url(#b)"/>
+  <path d="M650,105 L718,122" stroke="#4f5d75" marker-end="url(#b)"/>
+  <!-- merge back -->
+  <rect x="360" y="200" width="290" height="60" rx="6" fill="#fff" stroke="#2d3142"/>
+  <text x="505" y="224" text-anchor="middle" font-size="12">PR merged into main</text>
+  <text x="505" y="243" text-anchor="middle" font-size="11" class="m">git pull in your clone + new session</text>
+  <path d="M830,152 L830,230 L652,230" fill="none" stroke="#4f5d75" marker-end="url(#b)"/>
+  <path d="M360,230 L155,230 L155,142" fill="none" stroke="#4f5d75" marker-end="url(#b)"/>
+</svg>
+<div class="cap">Figure 3. The Update worktree keeps unconfirmed edits out of the clone omp loads from. That is the reason it exists, and it is unchanged by this ticket.</div>
+</div>
+
+<h3>Why this ticket touches it</h3>
+<p>Today #38 writes the workspace as <code>git worktree add</code>, called from inside a Bun script. omp's bash rewrite only sees commands the agent types into the bash tool, so it never reaches this call, and the Update worktree is always a plain checkout. Bun deps then have to be installed before <code>check-register.ts</code> can run.</p>
+<div class="tw"><table>
+<tr><th>Option</th><th>Command</th><th>Gain</th><th>Cost</th></tr>
+<tr class="pick"><td>omp wt add -b (recommended)</td><td><code>omp wt add -b update/&lt;tag&gt;+&lt;sha7&gt; &lt;base&gt;/vstack-&lt;repo&gt;-update-&lt;tag&gt;+&lt;sha7&gt; main</code>, path expanded in Bun. On refusal: <code>git worktree remove --force</code> plus <code>git branch -D</code>.</td><td>The clone carries <code>node_modules</code>; consistent with the House style rule and the always-apply rule; shows in <code>omp wt list</code>.</td><td>The script depends on <code>omp</code> being on PATH (true inside an omp session); there's no JSON output, so it checks the <code>Cloned from</code> line per Q5.</td></tr>
+<tr><td>Keep git worktree add</td><td><code>git worktree add -b update/… &lt;path&gt; main</code></td><td>No omp dependency in the script.</td><td>Always a plain checkout; it's the one exception to "every worktree through omp".</td></tr>
+</table></div>
+
+<div class="footer">Sources: oh-my-pi 4ef97c8 — packages/coding-agent/src/commands/worktree.ts, cli/worktree-cli.ts, tools/bash-worktree-rewrite.ts, session/session-worktree.ts; crates/pi-vcs/src/git/mutate.rs, crates/pi-iso/src/lib.rs. Probe: scratch repo with omp 18.8.0 (clone, worktree.clone=false, bash rewrite with literal and $TMPDIR paths). Decisions: #38, #53, #54, ADR 0005, ADR 0007, ADR 0009.</div>
+</div></body></html>
