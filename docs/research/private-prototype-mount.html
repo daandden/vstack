@@ -42,6 +42,7 @@ pre.mock{font-family:var(--mono);font-size:.74rem;line-height:1.5;white-space:pr
 .al{font-family:var(--mono);font-size:8px;fill:var(--soft);letter-spacing:.06em}
 .lg{font-family:var(--mono);font-size:8px;fill:var(--muted);letter-spacing:.14em}
 .ax{font-family:var(--mono);font-size:8px;fill:var(--soft);letter-spacing:.1em}
+.k{font-family:var(--mono);font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--soft);font-weight:400}
 </style></head><body><div class="container">
 
 <p class="eyebrow">vstack · wayfinder ticket #54 · grilling rounds 1–2</p>
@@ -323,7 +324,7 @@ M  route.tsx      <span style="color:#b23a1e">← staged</span></pre></div>
 <text x="444" y="332" class="sl">Qn = question that settles this edge</text>
 </svg><p class="cap">The recommended answer for each round-2 question, all in one picture. Each badge marks the question that settles that edge.</p></div>
 
-<h3><span class="q">Q6</span>Where the worktree lives</h3>
+<h3><span class="q">Q6</span>Where the worktree lives <span class="k">(superseded by Round 2b: omp wt)</span></h3>
 <div class="tw"><table>
 <tr><th>Option</th><th>Survives reboot</th><th>Visible in your workspace</th><th>Note</th></tr>
 <tr class="pick"><td><code>~/.cache/vstack/prototypes/&lt;repo&gt;/&lt;topic&gt;/</code> (recommended)</td><td class="ok">yes</td><td class="ok">no clutter</td><td>machine-level cache; the reply prints the path; <code>git worktree list</code> finds it</td></tr>
@@ -331,7 +332,7 @@ M  route.tsx      <span style="color:#b23a1e">← staged</span></pre></div>
 <tr><td><code>$TMPDIR/vstack-prototype/…</code></td><td class="bad">macOS cleans it periodically</td><td class="ok">hidden</td><td>a mount waiting days for a verdict can vanish</td></tr>
 </table></div>
 
-<h3><span class="q">Q7</span>How dependencies get in</h3>
+<h3><span class="q">Q7</span>How dependencies get in <span class="k">(superseded by Round 2b: the clone brings them)</span></h3>
 <div class="tw"><table>
 <tr><th>Option</th><th>Matches the base commit</th><th>Speed</th><th>Risk</th></tr>
 <tr class="pick"><td>Install from the lockfile with the project's package manager (recommended)</td><td class="ok">yes</td><td class="mid">cache-warm installs are fast; cold monorepos are slow</td><td>none beyond time</td></tr>
@@ -339,7 +340,7 @@ M  route.tsx      <span style="color:#b23a1e">← staged</span></pre></div>
 <tr><td>Symlink <code>node_modules</code> to the main checkout</td><td class="mid">same drift</td><td class="ok">instant</td><td class="bad">bundlers that resolve real paths treat it as outside the root [inference]</td></tr>
 </table></div>
 
-<h3><span class="q">Q8</span>Gitignored env and local config</h3>
+<h3><span class="q">Q8</span>Gitignored env and local config <span class="k">(superseded by Round 2b: the clone brings them)</span></h3>
 <p>Sub-shape A's point is <em>real data and auth</em>, which usually come from gitignored files like <code>.env.local</code>. A fresh worktree has none of them.</p>
 <div class="tw"><table>
 <tr><th>Option</th><th>Secrets duplicated</th><th>Stays in sync</th></tr>
@@ -390,5 +391,66 @@ M  route.tsx      <span style="color:#b23a1e">← staged</span></pre></div>
 <p>Every choice here lives in prototype's skill text and is cheap to reverse. That fails domain-modeling's "hard to reverse" test, the same reasoning as #44's no-ADR call. "Prototype worktree" is an implementation detail, not a domain term.</p>
 <div class="rec"><p><b>Recommendation: no ADR and no new <code>CONTEXT.md</code> term.</b> The decision lives in this ticket's resolution and in prototype's contract.</p></div>
 
-<div class="footer">vstack · ticket "Decide how a Private-mode UI prototype stays untracked when it mounts in an app route" · rounds 1–2 · inputs: ADR 0006, ADR 0007, #44 resolution + amendment, Matt prototype v1.2.3 UI.md</div>
+<!-- ============================ ROUND 2b ============================ -->
+<h2>Round 2b: the worktree comes from <code>omp wt</code></h2>
+<p><b>Settled in round 2:</b> use omp's worktree command; HEAD only (the reply says uncommitted work isn't included); a free port passed explicitly, a session-scoped server, and a printed restart command; capture at handover, refreshed at the verdict; no ADR and no new term. Q7 and Q8 were left open. The probe below shows that <code>omp wt</code> answers them.</p>
+
+<h3>What <code>omp wt add --detach &lt;path&gt; HEAD</code> did in a scratch repo</h3>
+<p>The scratch repo's main checkout had a tracked WIP edit, an untracked file, and two gitignored entries. Output: <code>Cloned from …/app via apfs</code>, then <code>HEAD is now at cb02bcd</code>.</p>
+<div class="tw"><table>
+<tr><th>In the main checkout</th><th>In the prototype worktree</th><th>Meaning for the prototype</th></tr>
+<tr><td><code>M route.tsx</code> (your WIP)</td><td class="ok">reset to HEAD (<code>v1</code>)</td><td>Round 2 Q9's "HEAD only" happens automatically</td></tr>
+<tr><td><code>?? untracked.txt</code></td><td class="ok">gone</td><td>clean base; <code>mount.diff</code> holds only prototype edits</td></tr>
+<tr><td><code>!! node_modules/</code></td><td class="ok">present (APFS copy-on-write clone)</td><td>no install needed (old Q7)</td></tr>
+<tr><td><code>!! .env.local</code></td><td class="ok">present (APFS copy-on-write clone)</td><td>real data and auth work (old Q8); it's a copy, so a later edit in the main checkout doesn't follow</td></tr>
+<tr><td>branch</td><td class="ok">detached <code>HEAD</code></td><td>no branch, nothing to push</td></tr>
+</table></div>
+
+<div class="fig"><svg viewBox="0 0 900 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="r2c-title r2c-desc">
+<title id="r2c-title">Prototype worktree via omp wt</title>
+<desc id="r2c-desc">omp wt add --detach clones the main checkout through APFS into ~/.omp/wt, resets tracked files to HEAD, keeps gitignored deps and env files, and the dev server runs from there on a free port.</desc>
+<defs><marker id="g1" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+<marker id="g1c" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#eb6c36"/></marker></defs>
+<rect width="100%" height="100%" fill="#fff"/>
+<line x1="300" y1="120" x2="516" y2="120" stroke="#eb6c36" marker-end="url(#g1c)"/>
+<rect x="328" y="96" width="160" height="12" rx="2" fill="#fff"/><text x="408" y="105" class="al" text-anchor="middle">OMP WT ADD --DETACH · APFS</text>
+<line x1="690" y1="196" x2="690" y2="236" stroke="#4f5d75" marker-end="url(#g1)"/>
+<rect x="700" y="208" width="64" height="12" rx="2" fill="#fff"/><text x="702" y="217" class="al">FREE PORT</text>
+<rect x="40" y="48" width="260" height="148" rx="6" fill="#fff" stroke="#2d3142"/>
+<text x="170" y="76" class="nn" text-anchor="middle">Main checkout</text>
+<text x="170" y="100" class="sl" text-anchor="middle">HEAD = a1b2c3d</text>
+<text x="170" y="116" class="sl" text-anchor="middle">your WIP + untracked files</text>
+<text x="170" y="148" class="sl" text-anchor="middle">.env.local · node_modules/</text>
+<text x="170" y="172" class="sl" text-anchor="middle">never touched</text>
+<rect x="520" y="48" width="340" height="148" rx="6" fill="rgba(235,108,54,.08)" stroke="#eb6c36"/>
+<text x="690" y="76" class="nn" text-anchor="middle">Prototype worktree</text>
+<text x="690" y="96" class="sl" text-anchor="middle">~/.omp/wt/vstack-&lt;repo&gt;-&lt;topic&gt;/</text>
+<text x="690" y="120" class="sa" text-anchor="middle">detached @ a1b2c3d + prototype edits</text>
+<text x="690" y="148" class="sl" text-anchor="middle">.env.local · node_modules/ (CoW clones)</text>
+<text x="690" y="172" class="sl" text-anchor="middle">listed by omp wt list · kept by omp wt clear</text>
+<rect x="520" y="240" width="340" height="48" rx="6" fill="#fff" stroke="#2d3142"/>
+<text x="690" y="260" class="nn" text-anchor="middle">Dev server (omp service, this session)</text>
+<text x="690" y="276" class="sl" text-anchor="middle">restart command printed in the reply</text>
+</svg><p class="cap">One command replaces the earlier install-and-symlink plan.</p></div>
+
+<h3><span class="q">Q13</span>Which <code>omp wt</code>: the CLI or the <code>/wt</code> slash command?</h3>
+<div class="tw"><table>
+<tr><th>Form</th><th>Branch</th><th>Session</th><th>Can a skill run it?</th></tr>
+<tr class="pick"><td><code>omp wt add --detach &lt;path&gt; HEAD</code> (CLI; recommended)</td><td class="ok">none (detached)</td><td class="ok">stays in the main checkout</td><td class="ok">yes, through bash</td></tr>
+<tr><td><code>/wt</code> slash command</td><td class="bad">creates <code>wt/&lt;timestamp&gt;</code> (seen in <code>omp wt list</code>)</td><td class="mid">moves the session into the worktree</td><td class="bad">no, it's user-typed</td></tr>
+</table></div>
+
+<h3><span class="q">Q14</span>Path and cleanup</h3>
+<p>Probe results: <code>add</code> requires a path. A worktree under <code>~/.omp/wt/</code> shows up in <code>omp wt list</code>, and plain <code>omp wt clear</code> leaves it alone (that only removes orphaned task-isolation leftovers). <code>omp wt clear --all</code> <em>would</em> remove it, but the capture taken at handover survives that. <code>omp wt</code> has no remove-one action, so step 6 uses <code>git worktree remove --force &lt;path&gt;</code>.</p>
+<div class="rec"><p><b>Recommendation:</b> path <code>~/.omp/wt/vstack-&lt;repo&gt;-&lt;topic&gt;</code>, which is omp's own worktree home. Cleanup at the verdict runs <code>git worktree remove --force</code>, and the reply prints that command.</p></div>
+
+<h3><span class="q">Q15</span>When the clone isn't available</h3>
+<p>omp falls back to a plain checkout (with a warning) when an APFS or reflink clone fails. That leaves no <code>node_modules</code> and no <code>.env*</code>.</p>
+<div class="tw"><table>
+<tr><th>Option</th><th>Effect</th></tr>
+<tr class="pick"><td>Install from the lockfile, copy gitignored <code>.env*</code> files, and say so in the reply (recommended)</td><td>Still works on Linux or non-APFS disks; slower</td></tr>
+<tr><td>Stop and point at the problem</td><td>No surprise copies, but there's no prototype on those machines</td></tr>
+</table></div>
+
+<div class="footer">vstack · ticket "Decide how a Private-mode UI prototype stays untracked when it mounts in an app route" · rounds 1–2b · inputs: ADR 0006, ADR 0007, #44 resolution + amendment, Matt prototype v1.2.3 UI.md, omp wt probe</div>
 </div></body></html>
