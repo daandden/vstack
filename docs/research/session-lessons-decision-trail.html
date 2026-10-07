@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>session-lessons and decision-trail contracts: explainer</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--paper:#f5f5f5;--paper2:#ececec;--ink:#2d3142;--muted:#4f5d75;--soft:#7a8399;--rule:rgba(45,49,66,0.12);--accent:#eb6c36;--tint:rgba(235,108,54,0.08);--link:#2e5aa8;--ok:#2d6a4f;--bad:#a23b2a;--sans:'Geist',system-ui,sans-serif;--serif:'Instrument Serif','Times New Roman',serif;--mono:'Geist Mono',ui-monospace,Menlo,monospace}
+body{font-family:var(--sans);background:var(--paper);color:var(--ink);padding:3rem 2rem;line-height:1.55;font-size:15px}
+.container{max-width:1160px;margin:0 auto}
+.eyebrow{font-family:var(--mono);font-size:.66rem;font-weight:500;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:.5rem}
+h1{font-family:var(--serif);font-weight:400;font-size:clamp(1.75rem,3vw + 1rem,2.5rem);letter-spacing:-.02em;line-height:1.1;margin-bottom:.5rem}
+h2{font-family:var(--serif);font-weight:400;font-size:1.75rem;margin:3rem 0 .75rem;padding-top:1.5rem;border-top:1px solid var(--rule)}
+h3{font-size:1rem;font-weight:600;margin:2rem 0 .6rem}
+.subtitle{color:var(--muted);max-width:80ch}
+p{max-width:80ch;margin-bottom:.75rem}
+ul.l{margin:0 0 .75rem 1.25rem;max-width:80ch} ul.l li{margin-bottom:.3rem}
+a{color:var(--link);text-decoration:none} a:hover{text-decoration:underline}
+code{font-family:var(--mono);font-size:.82em;background:rgba(45,49,66,0.06);padding:.05em .3em;border-radius:3px}
+.cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-top:1.5rem}
+.card{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:1.1rem 1.25rem;font-size:.9rem}
+.card h4{font-size:.875rem;margin-bottom:.4rem}
+.opts{display:grid;gap:1rem;margin:1rem 0}
+.opts.c2{grid-template-columns:1fr 1fr} .opts.c3{grid-template-columns:1fr 1fr 1fr}
+.opt{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:1rem 1.2rem;font-size:.86rem}
+.opt.pick{border:1.5px solid var(--accent);background:linear-gradient(var(--tint),var(--tint)),#fff}
+.opt h4{font-size:.9rem;margin-bottom:.4rem}
+.opt .tag{font-family:var(--mono);font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);display:block;margin-bottom:.2rem}
+.opt ul{margin:.3rem 0 0 1.1rem} .opt li{margin-bottom:.2rem}
+.pro{color:var(--ok)} .con{color:var(--bad)}
+.fig{background:#fff;border:1px solid var(--rule);border-radius:6px;padding:1rem;margin:1rem 0}
+.fig svg{width:100%;max-width:960px;display:block;margin:0 auto}
+.fig .cap{font-size:.8rem;color:var(--soft);text-align:center;margin:.5rem auto 0;max-width:none}
+.rec{background:var(--tint);border-left:3px solid var(--accent);padding:.8rem 1rem;margin:1rem 0;border-radius:0 6px 6px 0;max-width:none}
+.rec p{margin-bottom:0;max-width:none}
+.q{display:inline-block;font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;color:#fff;background:var(--accent);border-radius:3px;padding:.05rem .4rem;margin-right:.4rem;vertical-align:2px}
+.tw{overflow-x:auto;background:#fff;border:1px solid var(--rule);border-radius:6px;margin:1rem 0}
+table{border-collapse:collapse;width:100%;font-size:.86rem}
+th{font-family:var(--mono);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--soft);text-align:left;padding:.6rem .75rem;border-bottom:1px solid var(--rule);background:var(--paper2)}
+td{padding:.6rem .75rem;border-bottom:1px solid rgba(45,49,66,0.07);vertical-align:top}
+tr:last-child td{border-bottom:none}
+pre.mock{font-family:var(--mono);font-size:.74rem;line-height:1.5;white-space:pre-wrap;color:var(--ink);background:#fff;border:1px solid var(--rule);border-radius:6px;padding:.8rem 1rem}
+pre.mock mark{background:var(--tint);color:var(--ink);border-left:2px solid var(--accent);padding-left:.2rem}
+pre.mock del{color:var(--bad)}
+.toc{display:flex;flex-wrap:wrap;gap:.4rem;margin:1.25rem 0}
+.toc a{font-family:var(--mono);font-size:.72rem;background:#fff;border:1px solid var(--rule);border-radius:3px;padding:.2rem .5rem}
+.footer{margin-top:3rem;padding-top:1.25rem;border-top:1px solid var(--rule);font-family:var(--mono);font-size:.72rem;color:var(--soft)}
+svg text{font-family:'Geist',system-ui,sans-serif}
+svg .m{font-family:'Geist Mono',Menlo,monospace}
+</style></head><body><div class="container">
+
+<p class="eyebrow">vstack · wayfinder ticket · omp 18.6.3 · pstack 12d587df</p>
+<h1>The vstack contracts of session-lessons and decision-trail</h1>
+<p class="subtitle">Explainer for <a href="https://github.com/daandden/vstack/issues/51">Specify the vstack contracts of session-lessons and decision-trail</a>, on the map <a href="https://github.com/daandden/vstack/issues/26">vstack: Matt Pocock skills plus pstack enhancements for omp</a>. session-lessons is pstack <code>reflect</code> and decision-trail is pstack <code>show-me-your-work</code>, both adapted. Eleven questions follow, each with options and a recommendation (orange border).</p>
+
+<div class="cards">
+<div class="card"><p class="eyebrow">Settled · adoption ticket</p><h4>Both are adapt</h4><p>session-lessons reads the omp session and edits skills through writing-for-agents, and its name avoids omp's <code>reflect</code> tool. decision-trail keeps the TSV and the transcript audit, and its final review becomes one same-model subagent.</p></div>
+<div class="card"><p class="eyebrow">Settled · roster + house style</p><h4>Who runs what</h4><p>The lenses, the synthesizer, and the final reviewer are all <code>vstack-explorer</code>. Overlapping spawns use the Fan-out block, and a lone spawn uses the single-spawn template. The <code>reflect</code> and <code>show-me-your-work</code> rows rename every mention.</p></div>
+<div class="card"><p class="eyebrow">Settled · joined Playbooks</p><h4>Who calls them</h4><p>session-lessons runs only on request. decision-trail starts at merge-ready or shipped, when the user steps away, or always for hillclimb. Chained open-pr, babysit, and ship append rows to it.</p></div>
+</div>
+
+<div class="toc">
+<a href="#r2">Round 2</a><a href="#facts">omp facts</a><a href="#q1">Q1 transcript</a><a href="#q2">Q2 privacy</a><a href="#q3">Q3 skill use</a><a href="#q4">Q4 edit homes</a><a href="#q5">Q5 backlog</a><a href="#q6">Q6 lenses</a><a href="#q7">Q7 edit routing</a><a href="#q8">Q8 log location</a><a href="#q9">Q9 run</a><a href="#q10">Q10 review</a><a href="#q11">Q11 carry-overs</a>
+</div>
+
+<!-- ============================ round 2 ============================ -->
+<h2 id="r2">Round 2 · four questions still open</h2>
+<h3>Round 1 answers</h3>
+<div class="tw"><table><thead><tr><th>Q</th><th>Answer</th><th>Consequence</th></tr></thead><tbody>
+<tr><td>Q1</td><td><b>Other</b>: does omp's <code>archive</code> do the job?</td><td>Open → Q1′</td></tr>
+<tr><td>Q2</td><td>A: own file + own subagents on demand</td><td>The skill text is the guard</td></tr>
+<tr><td>Q3</td><td>A: transcript signals, resolved by <code>omp skill list</code></td><td>Reviewers name <code>skill://&lt;name&gt;</code></td></tr>
+<tr><td>Q4</td><td><b>Other</b>: explain more</td><td>Open → Q4′</td></tr>
+<tr><td>Q5</td><td><b>Other</b>: why is there a backlog at all?</td><td>Open → Q5′</td></tr>
+<tr><td>Q6</td><td>A: Fan-out block + an always-on synthesizer spawn</td><td>Corrects the adoption ticket's "in sequence by default"</td></tr>
+<tr><td>Q7</td><td><b>Other</b>: move skill-creator into vstack</td><td>Open → Q7′</td></tr>
+<tr><td>Q8</td><td>A: pstack in Standard mode, the vstack root in Private mode, absolute path</td><td>Isolated children append to the real file</td></tr>
+<tr><td>Q9</td><td>A: one session file = one run</td><td><code>start</code> evidence = <code>omp session &lt;uuid&gt;</code></td></tr>
+<tr><td>Q10</td><td>A: <code>not reviewed: &lt;reason&gt;</code></td><td>No self-review</td></tr>
+<tr><td>Q11</td><td>A: as listed</td><td>Both hidden; no ADR</td></tr>
+</tbody></table></div>
+
+<h3><span class="q">Q1′</span>Is omp's <code>archive</code> enough to find the transcript?</h3>
+<p><code>archive</code> is an eval global, like <code>PI_SESSION_FILE</code>. Tested on this machine:</p>
+<div class="tw"><table><thead><tr><th>Need</th><th><code>archive</code></th><th><code>PI_SESSION_FILE</code></th></tr></thead><tbody>
+<tr><td>Which session am I?</td><td class="con">Only a guess: <code>sessions()</code> lists the project's sessions newest-first. This repo had <b>5 sessions in 12 h</b>, and parallel wayfinder sessions make "newest" a race.</td><td class="pro">Exact: omp sets it for this agent, and for each subagent its own file.</td></tr>
+<tr><td>The transcript itself</td><td class="con"><code>session(id)</code> returns only typed prompts and idle recaps. For the full transcript the docs say "<code>read</code> the session <code>file</code> (raw JSONL)".</td><td class="pro">This is that raw JSONL.</td></tr>
+<tr><td>Q2 scope (own file only)</td><td class="con">The listing exposes other sessions by design (<code>project="*"</code> spans every project).</td><td class="pro">Points at one file.</td></tr>
+<tr><td>Inside subagents</td><td class="con">Subagent tasks are absent from prompt history.</td><td class="pro">Works.</td></tr>
+</tbody></table></div>
+<div class="rec"><p><b>Recommend: <code>PI_SESSION_FILE</code> (Q1 option A).</b> <code>archive</code> ends up reading the same JSONL, just after a guess about which file is ours. The skills don't use it.</p></div>
+
+<h3><span class="q">Q4′</span>Why it matters where a skill file lives</h3>
+<p>session-lessons ends by <b>editing a skill's text</b>. Example lesson: "grilling should look up facts before asking." The edit goes into that skill's <code>SKILL.md</code>. Who owns that file decides what the edit sets off:</p>
+<div class="fig">
+<svg viewBox="0 0 960 330" xmlns="http://www.w3.org/2000/svg">
+  <defs><marker id="a4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#4f5d75"/></marker></defs>
+  <rect x="20" y="130" width="180" height="70" rx="5" fill="rgba(235,108,54,.12)" stroke="#eb6c36"/><text x="32" y="155" font-size="12" font-weight="600" fill="#2d3142">a lesson</text><text x="32" y="175" font-size="11" fill="#4f5d75">"edit skill X like so"</text>
+  <line x1="200" y1="165" x2="260" y2="35" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#a4)"/>
+  <line x1="200" y1="165" x2="260" y2="115" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#a4)"/>
+  <line x1="200" y1="165" x2="260" y2="195" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#a4)"/>
+  <line x1="200" y1="165" x2="260" y2="285" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#a4)"/>
+  <rect x="260" y="10" width="300" height="55" rx="5" fill="#fff" stroke="#2d6a4f"/><text x="272" y="32" font-size="12" font-weight="600" fill="#2d3142">1 · your own skill</text><text x="272" y="51" class="m" font-size="10.5" fill="#4f5d75">&lt;repo&gt;/.omp/skills/x, ~/.omp/agent/skills/x</text>
+  <text x="580" y="42" font-size="11.5" fill="#2d6a4f">Just edit it. Nothing else depends on it.</text>
+  <rect x="260" y="90" width="300" height="55" rx="5" fill="#fff" stroke="#2e5aa8"/><text x="272" y="112" font-size="12" font-weight="600" fill="#2d3142">2 · vstack adapt / merge / original</text><text x="272" y="131" class="m" font-size="10.5" fill="#4f5d75">&lt;vstack clone&gt;/plugin/skills/grilling</text>
+  <text x="580" y="112" font-size="11.5" fill="#2d3142">Shared by every project. vstack's own rules apply:</text><text x="580" y="130" font-size="11.5" fill="#2d3142">version bump + CHANGELOG + check-register → a PR.</text>
+  <rect x="260" y="170" width="300" height="55" rx="5" fill="#fff" stroke="#a23b2a"/><text x="272" y="192" font-size="12" font-weight="600" fill="#2d3142">3 · vstack adopt item</text><text x="272" y="211" class="m" font-size="10.5" fill="#4f5d75">e.g. handoff: byte-identical to Matt</text>
+  <text x="580" y="192" font-size="11.5" fill="#a23b2a">Any edit breaks "byte-identical", so check-register</text><text x="580" y="210" font-size="11.5" fill="#a23b2a">fails until the register row becomes adapt.</text>
+  <rect x="260" y="258" width="300" height="55" rx="5" fill="#fff" stroke="#a23b2a" stroke-dasharray="4 3"/><text x="272" y="280" font-size="12" font-weight="600" fill="#2d3142">4 · someone else's install</text><text x="272" y="299" class="m" font-size="10.5" fill="#4f5d75">omp-tools plugin, skills-CLI package</text>
+  <text x="580" y="280" font-size="11.5" fill="#a23b2a">Their next update overwrites the file,</text><text x="580" y="298" font-size="11.5" fill="#a23b2a">and the lesson is silently lost.</text>
+</svg>
+<p class="cap">The same "apply this lesson" step means four different things. <code>omp skill list --json</code> tells session-lessons which box a skill is in.</p>
+</div>
+<p>The question is just: <b>for boxes 2–4, does session-lessons edit, or only write the lesson down for later?</b></p>
+<div class="opts c3">
+<div class="opt pick"><span class="tag">Recommended</span><h4>A · Edit 1 and 2; note 3 and 4</h4><p>Box 2 runs as a normal vstack hand edit (a branch in the clone, version bump, CHANGELOG, check-register, a PR). Boxes 3 and 4 become a note, because editing them either flips a Disposition (an adopt item becomes adapt) or gets overwritten.</p></div>
+<div class="opt"><h4>B · Edit 1, 2, and 3</h4><p>The adopt item becomes adapt, and the lesson becomes its register reason. Faster, but each lesson moves a vstack skill further from Matt's text.</p></div>
+<div class="opt"><h4>C · Edit only box 1</h4><p>Every vstack lesson becomes a note. Safest, but nothing in vstack ever improves from a session.</p></div>
+</div>
+
+<h3><span class="q">Q5′</span>What "Backlog" is, and why it's there</h3>
+<p>The synthesizer sorts every finding into one of three buckets. Backlog holds <b>lessons that a check enforces better than skill text</b> (pstack step 4, after <code>principle-encode-lessons-in-structure</code>). Example: "never commit <code>.env</code>" belongs in a pre-commit hook, not in a SKILL.md sentence the agent might skip. That's code work, so session-lessons doesn't do it in the moment. It only records it. The boxes 3 and 4 notes from Q4′ land here too.</p>
+<div class="fig">
+<svg viewBox="0 0 960 150" xmlns="http://www.w3.org/2000/svg">
+  <defs><marker id="a5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#4f5d75"/></marker></defs>
+  <rect x="20" y="50" width="150" height="50" rx="5" fill="rgba(235,108,54,.12)" stroke="#eb6c36"/><text x="32" y="80" font-size="12" fill="#2d3142">synthesizer</text>
+  <line x1="170" y1="75" x2="230" y2="25" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#a5)"/>
+  <line x1="170" y1="75" x2="230" y2="75" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#a5)"/>
+  <line x1="170" y1="75" x2="230" y2="125" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#a5)"/>
+  <rect x="230" y="5" width="200" height="38" rx="5" fill="#fff" stroke="#2d6a4f"/><text x="242" y="29" font-size="12" fill="#2d3142">Accepted → edit skill text</text>
+  <rect x="230" y="56" width="200" height="38" rx="5" fill="#fff" stroke="rgba(45,49,66,.3)"/><text x="242" y="80" font-size="12" fill="#2d3142">Rejected → one-line reason</text>
+  <rect x="230" y="106" width="200" height="38" rx="5" fill="#fff" stroke="#2e5aa8"/><text x="242" y="130" font-size="12" fill="#2d3142">Backlog → lint / script / check</text>
+  <text x="460" y="125" font-size="11.5" fill="#4f5d75">pstack: "file to whatever devex tracker your team uses, automatically"</text>
+  <text x="460" y="143" font-size="11.5" fill="#4f5d75">vstack has no devex tracker, so where does it go?</text>
+</svg>
+</div>
+<div class="opts c3">
+<div class="opt pick"><span class="tag">Recommended</span><h4>A · List it in the summary only</h4><p>Backlog items are printed in the final summary, and you decide what to file. Nothing gets posted. This is the simplest choice and needs no tracker routing. <i>(Round 1 recommended filing; your question suggests the filing machinery isn't worth it.)</i></p></div>
+<div class="opt"><h4>B · File after approval</h4><p>The same approval <code>ask</code> covers Backlog. Approved items become issues in the project's tracker, or in the vstack repo for vstack skills.</p></div>
+<div class="opt"><h4>C · Drop the Backlog bucket</h4><p>Structural findings become Rejected with the reason <code>structural</code>. Loses pstack's encode-lessons-in-structure step.</p></div>
+</div>
+
+<h3><span class="q">Q7′</span>skill-creator moves into vstack</h3>
+<p>Your <code>~/.agents/skills/skill-creator</code> is your own adaptation (Codex skill-creator plus Anthropic eval guidance, Apache-2.0). It isn't in the skills lock and isn't from either Upstream. It already hands the writing to writing-for-agents, and it covers everything Cursor's create-skill did for pstack:</p>
+<div class="tw"><table><thead><tr><th>pstack asks create-skill for</th><th>skill-creator part</th></tr></thead><tbody>
+<tr><td>draft / test / iterate</td><td>steps 1–5 + <code>references/evaluation.md</code> (with-skill vs baseline runs, assertions, iterations)</td></tr>
+<tr><td>description-optimization loop</td><td><code>references/trigger-evals.md</code> (16–20 should/shouldn't queries)</td></tr>
+<tr><td>"SKILL.md validator if your environment ships one"</td><td><code>scripts/quick_validate.py</code> (Python + PyYAML)</td></tr>
+</tbody></table></div>
+<p>So session-lessons routes substantive edits, <code>tune description</code>, and <code>new skill</code> to <code>skill://skill-creator</code>, which in turn uses writing-for-agents. Moving it into vstack sets off things that are <b>its own contract</b>, not this ticket's:</p>
+<ul class="l">
+<li>It becomes a vstack <b>original</b> (an <code>originals:</code> row) that keeps <code>license.txt</code>. Updates never touch it.</li>
+<li>The house-style lint applies to originals. Its eval runners ("launch the with-skill run and its baseline together"), the blind comparator ("an independent agent"), and the trigger-eval "fresh agent context" have to become Fan-out blocks or single spawns that name vstack agents. Eval runs in "a fresh working directory" may be isolated roles (ADR 0007).</li>
+<li>Step 2's default home <code>~/.agents/skills/&lt;name&gt;/</code> needs the vstack homes from Q4′.</li>
+<li><code>quick_validate.py</code> needs Python + PyYAML: a setup-vstack machine check, or a port to Bun like vstack's other scripts.</li>
+<li>The user copy must be deleted when the plugin ships it. Otherwise omp keeps both same-name variants with a namespace warning.</li>
+</ul>
+<div class="rec"><p><b>Recommend:</b> decide here that skill-creator joins vstack as an original and that session-lessons routes to it. Move its contract (the four bullets above) into a new ticket, "Specify the vstack contract of skill-creator". Also post input on <a href="https://github.com/daandden/vstack/issues/53">Specify ask-vstack's routing and the remaining Matt adapt text</a> so that ask-vstack lists it.</p></div>
+
+
+<!-- ============================ facts ============================ -->
+<h2 id="facts">What omp gives us</h2>
+<p>In Cursor, the system prompt names the workspace's <code>agent-transcripts/</code> folder. omp has no such line. These are the omp equivalents, all checked on this machine:</p>
+
+<div class="fig">
+<svg viewBox="0 0 960 300" xmlns="http://www.w3.org/2000/svg">
+  <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#4f5d75"/></marker></defs>
+  <rect x="10" y="10" width="940" height="280" rx="6" fill="#fafafa" stroke="rgba(45,49,66,.15)"/>
+  <text x="26" y="34" class="m" font-size="12" fill="#4f5d75">~/.omp/agent/sessions/</text>
+  <!-- other bucket -->
+  <rect x="30" y="50" width="250" height="90" rx="5" fill="#fff" stroke="rgba(162,59,42,.5)" stroke-dasharray="4 3"/>
+  <text x="42" y="70" class="m" font-size="11" fill="#a23b2a">-work-tries-search/</text>
+  <text x="42" y="90" class="m" font-size="10.5" fill="#7a8399">2026-10-05…_01a10dc7.jsonl</text>
+  <text x="42" y="120" font-size="11" fill="#a23b2a">another project: readable, no ACL</text>
+  <!-- own bucket -->
+  <rect x="300" y="50" width="640" height="225" rx="5" fill="#fff" stroke="rgba(45,49,66,.25)"/>
+  <text x="312" y="70" class="m" font-size="11" fill="#2d3142">-work-tries-vstack/   (bucket = encoded cwd)</text>
+  <rect x="316" y="82" width="300" height="52" rx="4" fill="rgba(235,108,54,.10)" stroke="#eb6c36"/>
+  <text x="326" y="102" class="m" font-size="10.5" fill="#2d3142">&lt;ts&gt;_&lt;uuid&gt;.jsonl</text>
+  <text x="326" y="122" font-size="11" fill="#4f5d75">this session, every entry, kept after compaction</text>
+  <rect x="316" y="146" width="300" height="52" rx="4" fill="#fff" stroke="rgba(45,49,66,.25)"/>
+  <text x="326" y="166" class="m" font-size="10.5" fill="#2d3142">&lt;ts&gt;_&lt;uuid&gt;/&lt;Child&gt;.jsonl</text>
+  <text x="326" y="186" font-size="11" fill="#4f5d75">this session's subagent transcripts</text>
+  <rect x="316" y="210" width="300" height="52" rx="4" fill="#fff" stroke="rgba(45,49,66,.25)" stroke-dasharray="4 3"/>
+  <text x="326" y="230" class="m" font-size="10.5" fill="#7a8399">&lt;other ts&gt;_&lt;uuid&gt;.jsonl</text>
+  <text x="326" y="250" font-size="11" fill="#7a8399">earlier sessions in the same folder</text>
+  <!-- access routes -->
+  <rect x="680" y="82" width="245" height="52" rx="4" fill="#fff" stroke="#2e5aa8"/>
+  <text x="692" y="102" class="m" font-size="10.5" fill="#2e5aa8">eval: PI_SESSION_FILE</text>
+  <text x="692" y="122" font-size="11" fill="#4f5d75">the only "who am I" route</text>
+  <line x1="680" y1="108" x2="620" y2="108" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#ar)"/>
+  <rect x="680" y="146" width="245" height="66" rx="4" fill="#fff" stroke="#2e5aa8"/>
+  <text x="692" y="166" class="m" font-size="10.5" fill="#2e5aa8">read history://Main</text>
+  <text x="692" y="184" font-size="11" fill="#4f5d75">concise; tool calls one line, no output</text>
+  <text x="692" y="201" font-size="11" fill="#a23b2a">live = post-compaction context only</text>
+  <path d="M680,170 C650,150 640,125 620,118" fill="none" stroke="#4f5d75" stroke-width="1.3" stroke-dasharray="4 3" marker-end="url(#ar)"/>
+  <rect x="680" y="222" width="245" height="44" rx="4" fill="#fff" stroke="#2e5aa8"/>
+  <text x="692" y="241" class="m" font-size="10.5" fill="#2e5aa8">read history://&lt;Child&gt;</text>
+  <text x="692" y="257" font-size="11" fill="#4f5d75">a named subagent's transcript</text>
+  <line x1="680" y1="240" x2="620" y2="180" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#ar)"/>
+</svg>
+<p class="cap">Where transcripts live and how an agent reaches them. Bash gets no session env, and <code>history://current/full</code> needs <code>compaction.experimentalContextManagement</code>.</p>
+</div>
+<ul class="l">
+<li><b>Skill discovery</b>: omp has 11 skill providers and scans no <code>.cursor/skills</code>. <code>omp skill list --json</code> returns each skill's <code>name</code>, <code>source</code>, and <code>filePath</code>. The linked vstack plugin appears as <code>omp-plugins:user</code> under <code>~/.omp/plugins/node_modules/vstack/skills/</code>, a symlink into the clone.</li>
+<li><b>Skill use in a transcript</b>: <code>read skill://x</code> (the result header shows the backing <code>SKILL.md</code>), or <code>[skill-prompt] … User invoked the "x" skill</code> for a <code>/skill:x</code> invocation.</li>
+</ul>
+
+<!-- ============================ Q1 ============================ -->
+<h2 id="q1"><span class="q">Q1</span>Transcript source (both skills)</h2>
+<p>Both skills need "this run's transcript": session-lessons' lenses mine it, and decision-trail's audit checks the log against it. The catch is compaction. After it, the live <code>history://Main</code> view shows only a summary of the early turns.</p>
+<div class="fig">
+<svg viewBox="0 0 960 170" xmlns="http://www.w3.org/2000/svg">
+  <text x="20" y="28" font-size="12" fill="#4f5d75">one session, over time →</text>
+  <rect x="20" y="40" width="560" height="34" rx="4" fill="rgba(235,108,54,.18)" stroke="#eb6c36"/>
+  <text x="32" y="62" font-size="12" fill="#2d3142">turns 1–80: the forks, pivots, and mistakes the lenses want</text>
+  <rect x="580" y="40" width="8" height="34" fill="#2d3142"/>
+  <text x="560" y="96" font-size="11" fill="#2d3142">compaction</text>
+  <rect x="588" y="40" width="352" height="34" rx="4" fill="rgba(46,90,168,.12)" stroke="#2e5aa8"/>
+  <text x="600" y="62" font-size="12" fill="#2d3142">turns 81–120</text>
+  <text x="20" y="128" class="m" font-size="11.5" fill="#2d3142">JSONL (PI_SESSION_FILE)</text>
+  <rect x="240" y="116" width="700" height="16" rx="3" fill="rgba(45,106,79,.25)"/>
+  <text x="20" y="156" class="m" font-size="11.5" fill="#2d3142">history://Main (live)</text>
+  <rect x="240" y="144" width="340" height="16" rx="3" fill="none" stroke="#a23b2a" stroke-dasharray="4 3"/>
+  <text x="300" y="157" font-size="11" fill="#a23b2a">only the summary text</text>
+  <rect x="588" y="144" width="352" height="16" rx="3" fill="rgba(45,106,79,.25)"/>
+</svg>
+<p class="cap">The JSONL keeps everything. The live concise view renders <code>session.messages</code>, which is the post-compaction context (<code>history-protocol.ts:400</code>).</p>
+</div>
+<div class="opts c3">
+<div class="opt pick"><span class="tag">Recommended</span><h4>A · JSONL via PI_SESSION_FILE</h4><p>The running agent resolves <code>PI_SESSION_FILE</code> in one eval cell and passes the absolute path to every spawn. Readers filter <code>type:"message"</code> entries with a jq recipe kept in the skill.</p><ul><li class="pro">Complete after compaction</li><li class="pro">Works inside subagents (each has its own file)</li><li class="pro">Same shape as pstack: pass a JSONL path</li><li class="con">Noisier input</li></ul><p>No eval tool → pstack's digest fallback.</p></div>
+<div class="opt"><h4>B · history://Main first, JSONL for gaps</h4><p>Concise view by default. Switch to the JSONL at a compaction boundary, or when full args or output are needed.</p><ul><li class="pro">Cheaper reads</li><li class="con">Two sources plus a switch rule</li><li class="con">"Main" is only the top-level agent, so decision-trail in a subagent needs a third path</li></ul></div>
+<div class="opt"><h4>C · Ship a render script</h4><p><code>scripts/transcript.ts</code> turns the JSONL into compact markdown with full tool args and trimmed outputs.</p><ul><li class="pro">Best reading quality</li><li class="con">Tied to omp's internal session format</li><li class="con">Needed by both skills: duplicated or cross-referenced</li></ul></div>
+</div>
+
+<!-- ============================ Q2 ============================ -->
+<h2 id="q2"><span class="q">Q2</span>The "other projects" rule</h2>
+<p>pstack: "Do not glob across <code>~/.cursor/projects/*/</code>." omp has no ACL here. A plain <code>read</code> opened another project's session during fact-finding. The skill text is the only guard.</p>
+<div class="fig">
+<svg viewBox="0 0 960 130" xmlns="http://www.w3.org/2000/svg">
+  <rect x="20" y="20" width="200" height="90" rx="5" fill="rgba(235,108,54,.12)" stroke="#eb6c36"/><text x="34" y="48" font-size="12" font-weight="600" fill="#2d3142">A · own + own children</text><text x="34" y="70" font-size="11" fill="#4f5d75">this session file</text><text x="34" y="88" font-size="11" fill="#4f5d75">+ its subagents, on demand</text>
+  <rect x="250" y="20" width="200" height="90" rx="5" fill="#fff" stroke="rgba(45,49,66,.3)"/><text x="264" y="48" font-size="12" font-weight="600" fill="#2d3142">B · own file only</text><text x="264" y="70" font-size="11" fill="#4f5d75">misses friction inside</text><text x="264" y="88" font-size="11" fill="#4f5d75">subagents</text>
+  <rect x="480" y="20" width="220" height="90" rx="5" fill="#fff" stroke="rgba(45,49,66,.3)"/><text x="494" y="48" font-size="12" font-weight="600" fill="#2d3142">C · same cwd bucket</text><text x="494" y="70" font-size="11" fill="#4f5d75">earlier sessions in this folder</text><text x="494" y="88" font-size="11" fill="#a23b2a">breaks the one-run scope</text>
+  <rect x="730" y="20" width="210" height="90" rx="5" fill="#fff" stroke="#a23b2a" stroke-dasharray="4 3"/><text x="744" y="48" font-size="12" font-weight="600" fill="#a23b2a">never</text><text x="744" y="70" font-size="11" fill="#a23b2a">other buckets, globbing</text><text x="744" y="88" font-size="11" fill="#a23b2a">sessions/, list/resume</text>
+</svg>
+<p class="cap">Wider scopes, left to right. The red box is forbidden in every option.</p>
+</div>
+<div class="rec"><p><b>Recommend A.</b> Read only the file at <code>PI_SESSION_FILE</code>. Read this run's subagent transcripts (<code>history://&lt;id&gt;</code>) only when a finding or a row points at one. The text says plainly that omp doesn't enforce this.</p></div>
+
+<!-- ============================ Q3 ============================ -->
+<h2 id="q3"><span class="q">Q3</span>How a lens decides a skill was used</h2>
+<p>Every reviewer template keeps only findings about skills the session actually used. In pstack, "used" means a <code>Read</code> of a <code>SKILL.md</code> under three Cursor folders. The omp version:</p>
+<pre class="mock">## Scope to skills and tools the session actually used
+...scan the transcript for:
+<del>- `Read` tool calls against any `SKILL.md` file (workspace `.cursor/skills/`, user-level `~/.cursor/skills/`, or plugin-installed paths under `~/.cursor/plugins/`)</del>
+<mark>- `read` calls on `skill://&lt;name&gt;` or on any `SKILL.md` path
+- a `/skill:&lt;name&gt;` invocation (a `[skill-prompt]` user message)
+- spawn prompts that name `skill://&lt;name&gt;`</mark>
+- Tool calls that match a skill's documented commands
+...
+- Routing: <mark>`skill://&lt;name&gt;`</mark>, OR `tune description: <mark>skill://&lt;name&gt;</mark>`, OR "new skill: &lt;kebab-name&gt;"</pre>
+<div class="opts c2">
+<div class="opt pick"><span class="tag">Recommended</span><h4>A · Transcript signals + <code>omp skill list</code> resolves</h4><p>Reviewers name skills only as <code>skill://&lt;name&gt;</code>. At apply time, the parent resolves the file and its home with <code>omp skill list --json</code>.</p><ul><li class="pro">No folder list to go stale</li><li class="pro">Covers all 11 providers and future ones</li></ul></div>
+<div class="opt"><h4>B · Enumerate omp folders</h4><p>List <code>.omp/skills</code>, <code>~/.omp/agent/skills</code>, <code>.agents/skills</code>, <code>~/.agents/skills</code>, <code>.claude/skills</code>, plugin <code>node_modules/*/skills</code>, and so on.</p><ul><li class="pro">Closest to pstack</li><li class="con">Goes stale with every omp provider change</li></ul></div>
+</div>
+
+<!-- ============================ Q4 ============================ -->
+<h2 id="q4"><span class="q">Q4</span>Editing a skill session-lessons doesn't own outright</h2>
+<p>pstack assumes every skill is yours to edit. In vstack, a lesson can land on a vstack item that the Update reconciles, or on a third-party install that its own updater overwrites.</p>
+<div class="tw"><table><thead><tr><th>Home (from <code>omp skill list</code>)</th><th>A · split by home (recommended)</th><th>B · edit vstack in place</th><th>C · never edit vstack</th></tr></thead><tbody>
+<tr><td>Project skill (<code>.omp/skills</code>, <code>.agents/skills</code>, …)</td><td>edit in place</td><td>edit in place</td><td>edit in place</td></tr>
+<tr><td>User-authored (<code>~/.omp/agent/skills</code>, …)</td><td>edit in place</td><td>edit in place</td><td>edit in place</td></tr>
+<tr><td>vstack adapt / merge / original</td><td>hand edit in the clone on a branch: patch bump, CHANGELOG, <code>check-register.ts</code>, PR on the vstack repo</td><td>same as A</td><td>Backlog on the vstack repo</td></tr>
+<tr><td>vstack <b>adopt</b></td><td>Backlog: the edit would flip its Disposition</td><td>edit; flips to adapt with the lesson as the reason</td><td>Backlog</td></tr>
+<tr><td>Third-party install (other plugin, skills CLI, Skillshare)</td><td>Backlog: its next update overwrites the file</td><td>Backlog</td><td>Backlog</td></tr>
+</tbody></table></div>
+<div class="rec"><p><b>Recommend A.</b> B wears down Upstream fidelity one lesson at a time. C holds back every lesson about vstack's own skills.</p></div>
+
+<!-- ============================ Q5 ============================ -->
+<h2 id="q5"><span class="q">Q5</span>Backlog filing</h2>
+<p>pstack: "Backlog items file to whatever devex / backlog tracker your team uses automatically. Only the Accepted list waits for approval."</p>
+<div class="opts c3">
+<div class="opt pick"><span class="tag">Recommended</span><h4>A · File after the same approval</h4><p>One <code>ask</code> approves the Accepted rows and the Backlog rows together. Approved items are filed to the tracker of the target's home: the project's tracker (issue-tracker.md under the vstack root, <code>needs-triage</code>), or the vstack repo's tracker. Items with no tracker are only listed.</p></div>
+<div class="opt"><h4>B · List only</h4><p>The summary lists the Backlog and the user files it. Nothing goes to a remote.</p></div>
+<div class="opt"><h4>C · Auto-file, no approval</h4><p>Matches pstack, but it posts to remote trackers without confirmation.</p></div>
+</div>
+
+<!-- ============================ Q6 ============================ -->
+<h2 id="q6"><span class="q">Q6</span>Lenses and synthesizer</h2>
+<p>The adoption ticket said the "lenses run in sequence by default". ADR 0004 replaced that default with the judge gate, and this ticket records the correction.</p>
+<div class="fig">
+<svg viewBox="0 0 960 250" xmlns="http://www.w3.org/2000/svg">
+  <defs><marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#4f5d75"/></marker></defs>
+  <rect x="10" y="95" width="120" height="50" rx="5" fill="#fff" stroke="rgba(45,49,66,.3)"/><text x="22" y="117" font-size="12" fill="#2d3142">1 · transcript</text><text x="22" y="134" class="m" font-size="10" fill="#7a8399">PI_SESSION_FILE</text>
+  <line x1="130" y1="120" x2="165" y2="120" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#a2)"/>
+  <polygon points="215,80 265,120 215,160 165,120" fill="rgba(235,108,54,.12)" stroke="#eb6c36"/><text x="190" y="117" font-size="11" fill="#2d3142">Fan-out</text><text x="196" y="131" font-size="11" fill="#2d3142">gate</text>
+  <line x1="265" y1="120" x2="300" y2="40" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#a2)"/>
+  <line x1="265" y1="120" x2="300" y2="120" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#a2)"/>
+  <line x1="265" y1="120" x2="300" y2="200" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#a2)"/>
+  <text x="248" y="60" font-size="10" fill="#4f5d75">fan-out</text>
+  <rect x="300" y="20" width="160" height="40" rx="5" fill="#fff" stroke="#2e5aa8"/><text x="312" y="44" font-size="11.5" fill="#2d3142">explorer · judgment</text>
+  <rect x="300" y="100" width="160" height="40" rx="5" fill="#fff" stroke="#2e5aa8"/><text x="312" y="124" font-size="11.5" fill="#2d3142">explorer · tooling</text>
+  <rect x="300" y="180" width="160" height="40" rx="5" fill="#fff" stroke="#2e5aa8"/><text x="312" y="204" font-size="11.5" fill="#2d3142">explorer · divergent</text>
+  <text x="300" y="242" font-size="10.5" fill="#4f5d75">inline: the session-lessons agent applies each lens in order</text>
+  <line x1="460" y1="40" x2="510" y2="110" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#a2)"/>
+  <line x1="460" y1="120" x2="510" y2="120" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#a2)"/>
+  <line x1="460" y1="200" x2="510" y2="130" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#a2)"/>
+  <rect x="510" y="95" width="150" height="50" rx="5" fill="rgba(235,108,54,.12)" stroke="#eb6c36"/><text x="522" y="116" font-size="11.5" fill="#2d3142">synthesizer</text><text x="522" y="134" class="m" font-size="10" fill="#4f5d75">single spawn</text>
+  <line x1="660" y1="120" x2="690" y2="120" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#a2)"/>
+  <rect x="690" y="95" width="120" height="50" rx="5" fill="#fff" stroke="rgba(45,49,66,.3)"/><text x="700" y="116" font-size="11" fill="#2d3142">structural</text><text x="700" y="132" font-size="11" fill="#2d3142">check → Backlog</text>
+  <line x1="810" y1="120" x2="835" y2="120" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#a2)"/>
+  <rect x="835" y="95" width="115" height="50" rx="5" fill="#fff" stroke="rgba(45,49,66,.3)"/><text x="845" y="116" font-size="11" fill="#2d3142">approval ask</text><text x="845" y="132" font-size="11" fill="#2d3142">→ apply (Q4/Q7)</text>
+</svg>
+<p class="cap">session-lessons under option A: parts = one per lens, size = transcript lines.</p>
+</div>
+<pre class="mock"><mark>**Fan-out gate** (`skill://vstack-fan-out`): parts: one per lens (judgment, tooling, divergent); size: transcript lines.
+- **fan-out** → one `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: the lens template from `references/&lt;lens&gt;-reviewer.md` with the transcript path, the user's override words, the vstack root.
+- **inline** → do every part yourself, in order, from the same brief.</mark>
+
+<mark>**Spawn** one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): `references/synthesizer.md` with each lens's output inlined, the user's override words, the vstack root. Wait for its result. If it cannot be spawned, do the work yourself.</mark></pre>
+<div class="opts c2">
+<div class="opt pick"><span class="tag">Recommended</span><h4>A · Fan-out block + an always-on synthesizer spawn</h4><ul><li class="pro">The synthesizer judges from a fresh context, even after inline lenses</li><li>Dropped: the model table, <code>pstack-models.mdc</code>, and the readonly/MCP paragraph (explorers inherit MCP and are read-only by contract)</li><li>Kept: the prompt-injection paragraph and "do not modify files"</li></ul></div>
+<div class="opt"><h4>B · Synthesizer inline when the lenses ran inline</h4><ul><li class="pro">One spawn fewer on small sessions</li><li class="con">The agent that applied the lenses grades its own findings</li></ul></div>
+</div>
+
+<!-- ============================ Q7 ============================ -->
+<h2 id="q7"><span class="q">Q7</span>Edit routing, replacing Cursor create-skill</h2>
+<div class="tw"><table><thead><tr><th>Routing</th><th>pstack</th><th>vstack (A, recommended)</th></tr></thead><tbody>
+<tr><td>Trivial edit (one bullet, a tightened sentence, a stale fact)</td><td>parent does it</td><td>parent does it</td></tr>
+<tr><td>Substantive edit (a new section, more than ~10 lines)</td><td>create-skill draft / test / iterate</td><td><code>skill://writing-for-agents</code>, then one re-read against its pointer and pruning rules</td></tr>
+<tr><td><code>tune description</code></td><td>create-skill description-optimization loop</td><td><code>skill://writing-for-agents</code> + its <code>SKILL-MECHANICS.md</code></td></tr>
+<tr><td><code>new skill</code></td><td>create-skill</td><td>writing-for-agents. The Accepted row names the home (project <code>.omp/skills/</code>, user <code>~/.omp/agent/skills/</code>, or vstack original), and the user confirms it in the approval</td></tr>
+<tr><td>"SKILL.md validator"</td><td>if your environment has one</td><td><code>bun scripts/check-register.ts</code> for vstack edits; otherwise skipped</td></tr>
+</tbody></table></div>
+<p>Option B skips the re-read: less text, and nothing replaces pstack's test loop.</p>
+
+<!-- ============================ Q8 ============================ -->
+<h2 id="q8"><span class="q">Q8</span>Where decision-trail's TSV lives</h2>
+<div class="fig">
+<svg viewBox="0 0 960 200" xmlns="http://www.w3.org/2000/svg">
+  <defs><marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#4f5d75"/></marker></defs>
+  <rect x="20" y="20" width="240" height="60" rx="5" fill="rgba(235,108,54,.12)" stroke="#eb6c36"/><text x="32" y="44" font-size="12" font-weight="600" fill="#2d3142">top-level agent</text><text x="32" y="64" font-size="11" fill="#4f5d75">fixes the absolute log path once</text>
+  <line x1="260" y1="50" x2="330" y2="50" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#a3)"/>
+  <rect x="330" y="20" width="300" height="60" rx="5" fill="#fff" stroke="#2d6a4f"/><text x="342" y="44" class="m" font-size="11" fill="#2d3142">Standard: &lt;work dir&gt;/decisions.tsv</text><text x="342" y="64" class="m" font-size="11" fill="#2d3142">Private: &lt;vstack root&gt;/artifacts/&lt;topic&gt;/decisions.tsv</text>
+  <rect x="20" y="120" width="240" height="60" rx="5" fill="#fff" stroke="rgba(45,49,66,.3)"/><text x="32" y="144" font-size="12" fill="#2d3142">chained open-pr / babysit / ship</text><text x="32" y="164" font-size="11" fill="#4f5d75">append rows (same process)</text>
+  <rect x="680" y="120" width="260" height="60" rx="5" fill="#fff" stroke="#2e5aa8" stroke-dasharray="4 3"/><text x="692" y="144" font-size="12" fill="#2d3142">background babysitter (isolated)</text><text x="692" y="164" font-size="11" fill="#4f5d75">APFS clone; working-tree copy is dropped</text>
+  <line x1="260" y1="150" x2="420" y2="82" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#a3)"/>
+  <line x1="680" y1="150" x2="560" y2="82" stroke="#4f5d75" stroke-width="1.3" marker-end="url(#a3)"/>
+  <text x="560" y="118" font-size="10.5" fill="#2d6a4f">absolute path → the real file, not the clone</text>
+</svg>
+<p class="cap">With a relative path, an isolated child would append to its clone's copy, and the parent never sees those rows (ADR 0007).</p>
+</div>
+<div class="opts c2">
+<div class="opt pick"><span class="tag">Recommended</span><h4>A · pstack in Standard mode, the vstack root in Private mode</h4><ul><li>Standard: pstack verbatim (<code>decisions.tsv</code> in the work dir, or <code>.audit/&lt;task-slug&gt;.tsv</code> when several efforts run, kept out of git unless a reviewer needs it)</li><li>Private: <code>&lt;vstack root&gt;/artifacts/&lt;topic&gt;/decisions.tsv</code>; committing it needs the user's OK, since it would leave private storage</li><li>Both: the top-level agent fixes the absolute path once and passes it in every spawn prompt that logs</li></ul></div>
+<div class="opt"><h4>B · Always under the vstack root</h4><ul><li class="pro">One rule for both modes</li><li class="con">In Standard mode, an <code>artifacts/</code> folder at the main checkout's root sits outside a linked worktree's branch, which makes "commit it for the reviewer" awkward</li></ul></div>
+</div>
+
+<!-- ============================ Q9 ============================ -->
+<h2 id="q9"><span class="q">Q9</span>What a "run" is in omp</h2>
+<p>pstack: "A run is one agent conversation, including its later turns and any summary of it. A pickup, a replacement agent, or a new chat starts a new run." A run's first row in an existing log has phase <code>start</code>, and its evidence "names this run".</p>
+<div class="fig">
+<svg viewBox="0 0 960 140" xmlns="http://www.w3.org/2000/svg">
+  <rect x="20" y="30" width="520" height="40" rx="5" fill="rgba(235,108,54,.12)" stroke="#eb6c36"/>
+  <text x="32" y="55" font-size="11.5" fill="#2d3142">run 1 = session 01a112c6 · turns · compaction · resume same session</text>
+  <rect x="560" y="30" width="180" height="40" rx="5" fill="rgba(46,90,168,.12)" stroke="#2e5aa8"/><text x="572" y="55" font-size="11.5" fill="#2d3142">run 2 = /new session</text>
+  <rect x="760" y="30" width="180" height="40" rx="5" fill="rgba(46,90,168,.12)" stroke="#2e5aa8"/><text x="772" y="55" font-size="11.5" fill="#2d3142">run 3 = a subagent</text>
+  <text x="560" y="96" class="m" font-size="10.5" fill="#2d3142">start · … · evidence: omp session &lt;uuid&gt;</text>
+  <text x="20" y="96" font-size="11" fill="#4f5d75">A (recommended): one session file = one run</text>
+  <text x="20" y="120" font-size="11" fill="#4f5d75">B: per process. A resume in a new process starts a new run, so there are more start rows, and it doesn't match "including its later turns".</text>
+</svg>
+</div>
+
+<!-- ============================ Q10 ============================ -->
+<h2 id="q10"><span class="q">Q10</span>The final review, and what happens when it can't spawn</h2>
+<p>pstack wants a reviewer "on a different model family. Self-review is not a substitute." vstack runs every subagent on the parent's model (ADR 0004). What remains is a fresh-context review on the same model, and the skill states that limit.</p>
+<pre class="mock"><mark>**Spawn** one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the log path, the transcript path, and the four checks below, the user's override words, the vstack root. Wait for its result. If it cannot be spawned, &lt;Q10 option&gt;.</mark></pre>
+<div class="opts c2">
+<div class="opt pick"><span class="tag">Recommended</span><h4>A · Not reviewed, say why</h4><pre class="mock">## Attention
+reviewed by claude-opus-5-5, same model as the run, fresh context
+
+- row 14: evidence `commit 3a9f1c2` doesn't show the claimed pixel-diff
+- No proof in the transcript for "tests green" at 11:15
+
+<i>if the spawn failed:</i>
+not reviewed: no subagent could be spawned (task tool missing)
+- audit gap: the 12:30 revert has no trigger logged</pre></div>
+<div class="opt"><h4>B · Self-review, labelled</h4><pre class="mock">## Attention
+reviewed by claude-opus-5-5, self-review, no subagent
+- …flags from the context that made the calls</pre><p class="con">This always produces flags, but they come from the context that made the decisions.</p></div>
+</div>
+
+<!-- ============================ Q11 ============================ -->
+<h2 id="q11"><span class="q">Q11</span>Carry-overs and visibility</h2>
+<div class="tw"><table><thead><tr><th>Item</th><th>A · as listed (recommended)</th></tr></thead><tbody>
+<tr><td><code>scripts/log.sh</code>, <code>decision-log-template.tsv</code></td><td>Verbatim, except log.sh's comment, which the <code>decision-trail</code> row renames</td></tr>
+<tr><td><code>**unslop** skill</code>, <code>**encode-lessons-in-structure** principle skill</code></td><td><code>skill://unslop</code>, <code>skill://principle-encode-lessons-in-structure</code></td></tr>
+<tr><td>Visibility</td><td>Both stay hidden (<code>disable-model-invocation: true</code>). Callers reach decision-trail through <code>skill://</code></td></tr>
+<tr><td>User triggers</td><td><code>/skill:session-lessons</code>, <code>/skill:decision-trail</code>. These are per-skill edits: the rows leave a bare <code>/decision-trail</code>, which the lint rejects</td></tr>
+<tr><td>session-lessons "When to invoke"</td><td>Drops the word "reflect", which is omp's <code>reflect</code> tool</td></tr>
+<tr><td>ADR</td><td>None: all of this is cheap to reverse inside each skill</td></tr>
+</tbody></table></div>
+<p>Option B makes decision-trail model-invocable, which overlaps the End-state triggers already decided on <a href="https://github.com/daandden/vstack/issues/45">Specify the vstack contracts of the joined Playbook skills</a>.</p>
+
+<div class="footer">Sources: pstack 12d587df skills/reflect/** and skills/show-me-your-work/**; omp 18.6.3 omp:// docs (session.md, tools/read.md, skills.md, plugin-manager-installer-plumbing.md), history-protocol.ts at the same version, PI_SESSION_FILE and omp skill list run on this machine.</div>
+</div></body></html>
