@@ -61,7 +61,7 @@ The table listing every Upstream item with its Disposition and a one-line reason
 _Avoid_: manifest (for this table), ADR list
 
 **House style**:
-The written rules that turn Upstream text into vstack text: exact replacement rows, plus the spawn and skill-reference rules. Applying any of it to an item makes that item adapt. An adopt item is touched only by a row that every vstack artifact must follow, and that touch flips it to adapt.
+The written rules that turn Upstream text into vstack text: exact replacement rows, plus the spawn, skill-reference, and asking rules. Applying any of it to an item makes that item adapt. An adopt item is touched only by a row or rule that every vstack artifact must follow, and that touch flips it to adapt.
 _Avoid_: substitution list, style guide
 
 ### Behavior
@@ -97,6 +97,10 @@ _Avoid_: artifact dir, private root
 **Scratch**:
 A vstack output that nothing reads after its run, such as an explanation page, proof evidence, an eval workspace, or a decision-trail log. It is kept under `~/.vstack/tmp/`, grouped by project, until vstack-clean deletes it after a retention period. Temporary files a script creates and deletes itself are not Scratch.
 _Avoid_: temp files, artifacts, tmp output
+
+**Grilling HTML**:
+The page a grilling session keeps for the user. It shows every round's questions in full, with their context, options, trade-offs, and the answers given, while the `ask` call carries only short forms of the same questions. It is Scratch.
+_Avoid_: question page, round page
 
 **Verify skill**:
 A project-local skill named `verify-<app>` that drives the project's app the way a user does and captures proof that a change works. setup-app-verification creates it, and maintain-app-verification keeps it accurate.
