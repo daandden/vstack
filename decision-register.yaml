@@ -66,7 +66,7 @@ items:
     path: skills/engineering/improve-codebase-architecture
     tree: 6a971d1f5b109ac817e18c0f0419c2a32d60f26a
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/improve-codebase-architecture]
     reason: "Its sub-agent spawn names a vstack agent (ADR 0004); report goes to Scratch (#42, #57)."
   - id: matt/prototype
     upstream: matt
@@ -178,7 +178,7 @@ items:
     path: skills/productivity/teach
     tree: 15f8c86d39ef834e643d092733ca899b59049067
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/teach]
     reason: "Its user questions go through ask (ask-tool, #58)."
   - id: matt/to-questionnaire
     upstream: matt
