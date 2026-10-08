@@ -12,13 +12,19 @@ function bytes(path: string): Buffer {
 }
 function put(path: string, data: Buffer) { mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, data); }
 function merge(local: Buffer, base: Buffer, incoming: Buffer, scratch: string): { data: Buffer; conflict: boolean } {
-  if (incoming.equals(base)) return { data: local, conflict: false };
-  if (local.equals(base) || local.equals(incoming)) return { data: incoming, conflict: false };
   mkdirSync(scratch, { recursive: true });
   for (const [name, data] of [["vstack", local], ["effectiveOld", base], ["Upstream", incoming]] as const) put(join(scratch, name), data);
   const r = Bun.spawnSync(["git", "merge-file", "-p", "--diff3", "-L", "vstack", "-L", "effectiveOld", "-L", "Upstream", ...["vstack", "effectiveOld", "Upstream"].map(n => join(scratch, n))], { stdout: "pipe", stderr: "pipe" });
   // merge-file reports the number of conflicts (up to 127), not just exit 1.
-  if (r.exitCode < 0 || r.exitCode > 127) throw new Error(`git merge-file: ${r.stderr.toString()}`);
+  if (r.exitCode < 0 || r.exitCode > 127) {
+    // Binary files have no text hunks. Preserve trivial three-way cases, flag divergent edits.
+    if (local.includes(0) || base.includes(0) || incoming.includes(0)) {
+      if (incoming.equals(base)) return { data: local, conflict: false };
+      if (local.equals(base) || local.equals(incoming)) return { data: incoming, conflict: false };
+      return { data: local, conflict: true };
+    }
+    throw new Error(`git merge-file: ${r.stderr.toString()}`);
+  }
   return { data: Buffer.from(r.stdout), conflict: r.exitCode !== 0 };
 }
 function files(root: string): string[] {

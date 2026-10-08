@@ -114,7 +114,7 @@ function apply(p: Plan, ds: Decision[], phase: string) {
       outcomes.push({ id: r.id, action: d.action, removal: d.removal });
       continue;
     }
-    if (r.move?.renamed && r.disposition === "adopt" && d.action !== "hold") {
+    if (r.disposition === "adopt" && r.new && r.artifacts[0]?.split("/").at(-1) !== r.new.path.split("/").at(-1) && d.action !== "hold") {
       if (!["follow", "keep"].includes(d.rename ?? "")) throw new Error(`renamed adopt needs follow or keep: ${r.id}`);
       const oldName = r.artifacts[0]!.split("/").at(-1)!, newName = r.new!.path.split("/").at(-1)!;
       if (d.rename === "follow") {

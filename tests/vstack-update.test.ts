@@ -357,3 +357,25 @@ test("draft ADRs appear in the report and enter the checkout only for accepted r
   expect((await run(["apply", "--plan", planFile, "--decisions", file], f.root)).code).toBe(0);
   expect(readFileSync(join(plan.worktree.path, path), "utf8")).toBe(readFileSync(source, "utf8"));
 }, 30000);
+test("a held rename gets its catch-up choice on a later Update with unchanged Upstream bytes", async () => {
+  const f = lifecycleFixture(); dirs.push(f.dir);
+  const reg = Bun.YAML.parse(readFileSync(join(f.root, "decision-register.yaml"), "utf8")) as any;
+  Object.assign(reg.items.find((r: any) => r.id === "matt/old-name"), { path: "skills/eng/new-name", tree: f.sha("matt", "v1.2.0", "skills/eng/new-name"), held_at: "v1.1.0", held_path: "skills/eng/old-name" });
+  const pins = Bun.YAML.parse(readFileSync(join(f.root, "pins.yaml"), "utf8")) as any;
+  pins.upstreams.matt.pin = "v1.2.0";
+  writeFileSync(join(f.root, "decision-register.yaml"), Bun.YAML.stringify(reg, null, 2));
+  writeFileSync(join(f.root, "pins.yaml"), Bun.YAML.stringify(pins, null, 2));
+  git(f.root, "add", "-A"); git(f.root, "commit", "-qm", "previous held rename");
+  const { plan, decisions, file, planFile } = await f.planned();
+  const row = plan.rows.find((r: any) => r.id === "matt/old-name");
+  expect(row.class).toBe("moved");
+  expect(row.staged).not.toBeNull();
+  Object.assign(decisions.find((d: any) => d.id === row.id), { action: "accept", rename: "follow" });
+  writeFileSync(file, JSON.stringify({ decisions }));
+  const result = await run(["apply", "--plan", planFile, "--decisions", file], f.root);
+  expect({ code: result.code, err: result.err }).toEqual({ code: 0, err: "" });
+  const updated = Bun.YAML.parse(readFileSync(join(plan.worktree.path, "decision-register.yaml"), "utf8")) as any;
+  expect(updated.items.find((r: any) => r.id === row.id).held_path).toBeUndefined();
+  expect(updated.items.find((r: any) => r.id === row.id).artifacts).toEqual(["plugin/skills/new-name"]);
+  expect(JSON.parse(result.out).version).toBe("1.0.0");
+}, 30000);
