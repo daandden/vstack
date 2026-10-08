@@ -905,3 +905,4 @@ originals:
   - plugin/skills/vstack-tmp
   - plugin/skills/vstack-fan-out
   - plugin/skills/vstack-worktree
+  - plugin/skills/skill-creator
