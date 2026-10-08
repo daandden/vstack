@@ -31,9 +31,9 @@ export function git(cwd: string, ...args: string[]): string {
   return r.stdout.toString().trim();
 }
 
-type Files = Record<string, string>;
+export type Files = Record<string, string>;
 
-function writeFiles(dir: string, files: Files) {
+export function writeFiles(dir: string, files: Files) {
   for (const [p, content] of Object.entries(files)) {
     mkdirSync(dirname(join(dir, p)), { recursive: true });
     writeFileSync(join(dir, p), content);
@@ -185,9 +185,11 @@ export function passingSpec(up: Upstreams): RepoSpec {
   return {
     pins: {
       upstreams: {
-        alpha: { repo: "fixture/alpha", pin: "v2", items: [{ match: "skills/*/*", type: "tree", kind: "skill" }] },
+        alpha: { repo: "fixture/alpha", pin_kind: "tag", pin: "v2", items: [{ match: "skills/*/*", type: "tree", kind: "skill" }] },
         beta: {
           repo: "fixture/beta",
+          pin_kind: "commit",
+          path: "pack",
           pin: up.betaPin,
           items: [
             { match: "pack/skills/*", type: "tree", kind: "skill" },
