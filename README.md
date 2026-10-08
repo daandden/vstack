@@ -290,6 +290,7 @@ The classes:
 - `unchanged`: none of the row's files differ between `effective_old` and the new Pin.
 - `changed`: some do. A held row is compared from `(held_at, held_path)`, so it is `changed` whenever it differs from the new Pin, even when the item did not change between the two Pins.
 - `moved`: the row's `path` is gone at the new Pin, and the item was paired with an item the new Pin adds: the same tree, or `SKILL.md` (the file itself for a single-file item) at 50% or more similarity in git rename detection. The user confirms each move. `files` holds the content changes.
+  A held row also stays moved while held_path differs from its current path, even when its Upstream bytes match. This keeps the pending move and rename choices in later Updates. Such a catch-up has no fresh move-detection claim in move, but adopt staging still runs.
 - `removed`: the row's `path` is gone and nothing was paired with it.
 - `new`: in `new[]`, not in `rows[]`.
 
