@@ -45,7 +45,7 @@ export interface Plan {
   notices: string[];
 }
 
-function rows(): Replacement[] {
+export function rows(): Replacement[] {
   const doc = Bun.YAML.parse(readFileSync(join(import.meta.dir, "../references/house-style.yaml"), "utf8"));
   const parsed = parseReplacements(doc, new Set(["matt", "pstack", "diagram", "css", "prose"]));
   if (parsed.problems.length) throw new Error(parsed.problems.map(p => `${p.id}: ${p.message}`).join("; "));
@@ -53,7 +53,7 @@ function rows(): Replacement[] {
   return parsed.replacements;
 }
 
-function files(root: string): string[] {
+export function files(root: string): string[] {
   if (!existsSync(root)) return [];
   if (!lstatSync(root).isDirectory()) return lstatSync(root).isFile() ? [root] : [];
   return readdirSync(root, { withFileTypes: true }).flatMap(e => {
@@ -62,18 +62,18 @@ function files(root: string): string[] {
   });
 }
 
-function hits(path: string, text: string, replacements: Replacement[]): Hit[] {
+export function hits(path: string, text: string, replacements: Replacement[]): Hit[] {
   return text.split("\n").flatMap((t, i) => /matt-pocock|docs-agents/.test(t) || replacements.some(r => findRow(t, r).length)
     ? [{ path, line: i + 1, text: t }] : []);
 }
 
-function change(path: string, afterPath: string, before: string, after: string): Change {
+export function change(path: string, afterPath: string, before: string, after: string): Change {
   const a = before.split("\n"), b = after.split("\n");
   return { path, after_path: afterPath, before, after,
     diff: `--- ${path}\n+++ ${afterPath}\n@@ -1,${a.length} +1,${b.length} @@\n${a.map(l => "-" + l).join("\n")}\n${b.map(l => "+" + l).join("\n")}\n` };
 }
 
-function rewrite(text: string, commonDirs: string[], relative: boolean, replacements: Replacement[]) {
+export function rewrite(text: string, commonDirs: string[], relative: boolean, replacements: Replacement[]) {
   // Absolute prefixes are generated per common dir, specific config path first. A sibling such as
   // matt-pocock-backup is not that prefix. Shared rows then preserve whole-name match semantics.
   for (const c of commonDirs) {
@@ -187,7 +187,7 @@ export function machinePlan(home: string, scanRoots: string[]): Plan {
   return plan;
 }
 
-function privateMove(item: Item) {
+export function privateMove(item: Item) {
   const { from, to, common_dir: common } = item as Item & { from: string; to: string; common_dir: string };
   if (existsSync(to)) throw new Error(`${to} already exists; vstack wins. Resolve the old-versus-new difference in a project plan; no automatic merge`);
   if (!isDir(from)) throw new Error(`${from} is not a directory`);
