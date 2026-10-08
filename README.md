@@ -17,7 +17,7 @@ To refresh, run `git pull` in the clone and start a new omp session. The link po
 
 ### Layout
 
-The repo scripts need Bun. Run `bun test` and `bun scripts/check-register.ts` before every commit that touches `plugin/`, the register, or the Pins.
+The repo scripts need Bun. Run `bun run test` and `bun scripts/check-register.ts` before every commit that touches `plugin/`, the register, or the Pins.
 
 | Path | Ships | What it holds |
 |---|---|---|
@@ -26,7 +26,7 @@ The repo scripts need Bun. Run `bun test` and `bun scripts/check-register.ts` be
 | `decision-register.yaml` | no | One row per Upstream item, plus `originals:` for vstack-only artifacts. |
 | `house-style.yaml` | no | The House style: replacement rows and rules that turn Upstream text into vstack text. |
 | `scripts/` | no | Bun scripts. `check-register.ts` and `update-plan.ts` are CLIs; `lib/` holds the modules other scripts reuse. |
-| `tests/` | no | `bun test` suites. Each script is run as a process over temp-dir fixtures (`tests/support/`). |
+| `tests/` | no | Test suites, run with `bun run test`. Each script is run as a process over temp-dir fixtures (`tests/support/`). |
 | `.github/workflows/` | no | CI: the tests and `check-register` on every push and pull request. |
 | `CHANGELOG.md` | no | Unreleased section plus one entry per plugin version. |
 | `docs/adr/`, `GLOSSARY.md` | no | Decisions and vocabulary. |
@@ -256,7 +256,7 @@ A row owns the files under its path except those under a longer path that is ano
 
 ### Tests
 
-`bun test` runs `tests/` only (`bunfig.toml`). The check-register tests build fixture Upstream git repos with tags, a moved item, and a removed item, then a vstack checkout committed as the version base. They run the script as a process and assert its exit code and its failures by class and item. One case serves a local stand-in for the GitHub API, so the `github` source is tested too.
+`bun run test` runs `tests/` only (`bunfig.toml`) with a 30 s test timeout, because the suites start real `git`, `omp`, and `bun` processes. Bun applies a `setDefaultTimeout` from a preload to one test file only, so the timeout is the `--timeout` flag in the `test` script. The check-register tests build fixture Upstream git repos with tags, a moved item, and a removed item, then a vstack checkout committed as the version base. They run the script as a process and assert its exit code and its failures by class and item. One case serves a local stand-in for the GitHub API, so the `github` source is tested too.
 
 `tests/update-plan.test.ts` runs update-plan as a process. `tests/support/update-fixture.ts` serves two fixture Upstreams over `file://` (`matt` with release, pre-release, and stray tags; `pstack` with commits inside and outside `pstack/`), gives the script an empty clone cache, and passes `--omp` a stand-in (`tests/support/fake-omp.ts`). The stand-in answers `omp config get worktree.base` and makes `omp wt add` worktrees with git, printing the `Cloned from … via` line only when `FAKE_OMP_CLONE=1`, so both the clone and the plain-checkout paths run without an omp home. The tests assert the plan JSON and the files it names.
 

@@ -698,7 +698,7 @@ items:
     path: pstack/skills/poteto-mode/playbooks/babysit.md
     tree: 683cf0ba889789cbe2d880fce667c75349f9ed12
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/babysit]
     reason: "Uses gh only; Bugbot triage, Origin, and the Cursor babysit clash dropped."
   - id: pstack/playbook-bug-fix
     upstream: pstack
