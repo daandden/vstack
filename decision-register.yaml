@@ -202,7 +202,7 @@ items:
     path: skills/productivity/writing-for-agents
     tree: bd9c9c4762db0a9a094fd419316ebd4b0444d06e
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/writing-for-agents]
     reason: "Hidden (disable-model-invocation: true); the vstack-prose rule is its only trigger (#59)."
   - id: matt/claude-handoff
     upstream: matt
@@ -890,7 +890,8 @@ items:
     path: skills/simple-english
     tree: dc4493623b0648588e02a0062bed8bcaa535b1de
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/simple-english]
     reason: "Hidden and has no Strict mode (#59)."
 originals:
   - plugin/extensions/vstack.ts
+  - plugin/rules/vstack-prose.md
