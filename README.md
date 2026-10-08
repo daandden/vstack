@@ -21,7 +21,7 @@ The repo scripts need Bun. Run `bun test` and `bun scripts/check-register.ts` be
 
 | Path | Ships | What it holds |
 |---|---|---|
-| `plugin/` | yes | The omp plugin. `package.json` (`name: vstack`, the version, the `omp` field), `skills/<name>/` (flat, one level deep), `agents/`, `rules/`, and `extensions/vstack.ts`, the one extension, listed in the `omp` field. A skill's Bun scripts ship in its `scripts/` dir, and the agent runs them as `bun skill://<name>/scripts/<script>.ts`. |
+| `plugin/` | yes | The omp plugin. `package.json` (`name: vstack`, the version, the `omp` field), `skills/<name>/` (flat, one level deep), `agents/`, `rules/`, and `extensions/vstack.ts`, the one extension, listed in the `omp` field. A skill's Bun scripts ship in its `scripts/` dir. The agent runs them with the bash tool as `bun "$(realpath skill://<name>/scripts/<script>.ts)"`: external programs never see `skill://` paths, and omp's in-process `realpath` turns the URL into the file path. |
 | `pins.yaml` | no | One entry per Upstream: repo, Pin, and which tree entries count as Upstream items. |
 | `decision-register.yaml` | no | One row per Upstream item, plus `originals:` for vstack-only artifacts. |
 | `house-style.yaml` | no | The House style: replacement rows and rules that turn Upstream text into vstack text. |
