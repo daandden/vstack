@@ -479,6 +479,13 @@ describe("spawn lints", () => {
     expect(failuresOf(off)).toEqual(["spawn-vocab alpha/gone"]);
   });
 
+  test("dispatch means a subagent only in a delegation context", async () => {
+    const r = await runSpec(addTo(GONE, "The reducer dispatches its action. Dispatch the request to the handler."));
+    expect(r.json!.failures).toEqual([]);
+    const off = await runSpec(addTo(GONE, "Dispatch a reviewer per file. Send the brief via a subagent dispatch."));
+    expect(failuresOf(off)).toEqual(["spawn-vocab alpha/gone"]);
+  });
+
   test("spawn lints skip frontmatter and code fences, where forms are quoted, not run", async () => {
     const r = await runSpec(addTo(GONE, "```", FORM.taskBatch, FORM.fixed, FORM.headless, 'agent("x", agent="task")', "```"));
     expect(r.json!.failures).toEqual([]);

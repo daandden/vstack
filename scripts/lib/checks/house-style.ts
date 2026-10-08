@@ -78,7 +78,9 @@ function vstackSkillNames(ctx: CheckContext): string[] {
 type RuleLint = (target: LintTarget, rule: Rule, ctx: CheckContext) => Hit[];
 
 const SPAWN_TERMS = /subagent_type|generalPurpose|`Task`/;
-const SPAWN_WORDS = /\b(?:spawn|spawns|spawned|spawning|dispatch|dispatches|dispatched|dispatching|(?:spin|spins|spinning|spun)\s+up)\b/i;
+const SPAWN_WORDS = /\b(?:spawn|spawns|spawned|spawning|(?:spin|spins|spinning|spun)\s+up)\b/i;
+const DISPATCH_WORDS = /\bdispatch(?:es|ed|ing)?\b/i;
+const DELEGATION_CONTEXT = /\b(?:sub[- ]?agents?|agents?|helpers?|workers?|explorers?|reviewers?|designers?|verifiers?|investigators?|runners?)\b/i;
 const SPAWN_LINES = ["Spawn one ", "Fan-out gate (", "Fan-out (always", "Headless batch ("];
 const WORKTREE_ADD = /git(\s+-C\s+\S+)?\s+worktree\s+add\s+[^\s`'"]/;
 const TMP_PATHS = [/\$\{?TMPDIR\}?\//, /(?<![\w.~/-])\/tmp(?![\w-])/, /\b(?:the\s+)?OS(?:'s)?\s+temp(?:orary)?\s+dir(?:ectory)?\b/i];
@@ -217,7 +219,12 @@ const LINTS: Record<string, Lint> = {
     run: (t) =>
       proseLines(t.files, true)
         .filter(({ line }) => !/^\s*spawns:/.test(line))
-        .filter(({ line }) => SPAWN_TERMS.test(line) || (SPAWN_WORDS.test(line.replace(/`[^`]*`/g, "")) && !SPAWN_LINES.some((m) => line.includes(m))))
+        .filter(({ line }) => {
+          if (SPAWN_TERMS.test(line)) return true;
+          const wording = line.replace(/`[^`]*`/g, "");
+          return !SPAWN_LINES.some((m) => line.includes(m)) &&
+            (SPAWN_WORDS.test(wording) || wording.split(/(?<=[.!?])\s+/).some((sentence) => DISPATCH_WORDS.test(sentence) && DELEGATION_CONTEXT.test(sentence)));
+        })
         .map(({ path, n, line }) => ({ path, line: n, excerpt: excerpt(line) })),
   },
   "fan-out-block": {

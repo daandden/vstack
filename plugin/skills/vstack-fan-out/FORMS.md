@@ -11,9 +11,11 @@ Slots:
 
 ## Fan-out block
 
-A step that would run two or more subagents at once. The gate line cites `skill://vstack-fan-out`, which decides between the two lines below it.
+A step that would run two or more subagents at once. The gate line cites `skill://vstack-fan-out`, which decides between the two lines below it. Put the lead-in sentence on the line before the gate: in live runs, agents that saw only the gate line often picked a line without running the gate.
 
 ```
+Before this step, read skill://vstack-fan-out and run its gate on the block below.
+
 Fan-out gate (skill://vstack-fan-out): parts: one per <unit>; size: <countable measure>.
 - fan-out → one `task` call; `tasks[]` has one item per part, each with `agent: "vstack-<role>"`. Each `task`: <role brief>, the user's override words, the vstack root.
 - inline → do every part yourself, in order, from the same brief.
