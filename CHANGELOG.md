@@ -4,9 +4,13 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
-## [0.1.18] - 2026-10-08
+## [0.1.19] - 2026-10-08
 
 - grilling keeps an append-only Grilling HTML in Scratch, puts each frontier through one `ask`, and records answers and the shared-understanding gate. Its shipped template follows good-css; figures come through diagram-design (#73).
+
+## [0.1.18] - 2026-10-08
+
+- ship verifies each PR through an isolated run-only verifier and lands only the contiguous verified run bottom-up. Patch changes require new proof; FAIL and DRIFT cap the run (#91).
 
 ## [0.1.17] - 2026-10-08
 
