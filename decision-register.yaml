@@ -34,16 +34,16 @@ items:
     path: skills/engineering/diagnosing-bugs
     tree: 463c81def888fefa77b894837d301d9ed70e0994
     disposition: adapt
-    artifacts: []
-    reason: "Its user questions go through ask (ask-tool, #58)."
+    artifacts: [plugin/skills/diagnosing-bugs]
+    reason: "Its user questions go through ask (ask-tool, #58); names GLOSSARY.md (glossary row) and skill://improve-codebase-architecture."
   - id: matt/domain-modeling
     upstream: matt
     kind: skill
     path: skills/engineering/domain-modeling
     tree: 959e63161ff78b4b1cd553b2c0e09e0c68418e5f
     disposition: adapt
-    artifacts: []
-    reason: "Its user questions go through ask (ask-tool, #58)."
+    artifacts: [plugin/skills/domain-modeling]
+    reason: "Its user questions go through ask (ask-tool, #58); names GLOSSARY.md and GLOSSARY-MAP.md (glossary rows)."
   - id: matt/grill-with-docs
     upstream: matt
     kind: skill
@@ -146,7 +146,7 @@ items:
     path: skills/engineering/wizard
     tree: 359db2fb13dc168346632556185252cab9dbec77
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/wizard]
     reason: "Its user questions go through ask (ask-tool, #58)."
   - id: matt/grill-me
     upstream: matt
@@ -186,7 +186,7 @@ items:
     path: skills/productivity/to-questionnaire
     tree: 7c4d04fb4d77824d7d98433ee7a8b17dde5efa13
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/to-questionnaire]
     reason: "Its user questions go through ask (ask-tool, #58)."
   - id: matt/wait-what
     upstream: matt
@@ -194,8 +194,8 @@ items:
     path: skills/productivity/wait-what
     tree: 6abe708f1bf253158a037ac49faea2944e2809dc
     disposition: adapt
-    artifacts: []
-    reason: "names `GLOSSARY.md` (`glossary` row)"
+    artifacts: [plugin/skills/wait-what]
+    reason: "Names GLOSSARY.md (glossary row); back to adopt once the Base Pin reaches v1.3.0."
   - id: matt/writing-for-agents
     upstream: matt
     kind: skill

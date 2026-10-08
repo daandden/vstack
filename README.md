@@ -24,6 +24,7 @@ The repo scripts need Bun. Run `bun test` and `bun scripts/check-register.ts` be
 | `plugin/` | yes | The omp plugin. `package.json` (`name: vstack`, the version, the `omp` field), `skills/<name>/` (flat, one level deep), `agents/`, `rules/`, and `extensions/vstack.ts`, the one extension, listed in the `omp` field. |
 | `pins.yaml` | no | One entry per Upstream: repo, Pin, and which tree entries count as Upstream items. |
 | `decision-register.yaml` | no | One row per Upstream item, plus `originals:` for vstack-only artifacts. |
+| `house-style.yaml` | no | The House style: replacement rows and rules that turn Upstream text into vstack text. |
 | `scripts/` | no | Bun scripts. `check-register.ts` is the CLI; `lib/` holds the modules other scripts reuse. |
 | `tests/` | no | `bun test` suites. Each script is run as a process over temp-dir fixtures (`tests/support/`). |
 | `.github/workflows/` | no | CI: the tests and `check-register` on every push and pull request. |
@@ -96,8 +97,17 @@ Text output prints one line per failure, `FAIL <class> <item>: <message>`, after
 | `unregistered-upstream-item` | an item at a Pin (per `pins.yaml` `items:`) that no row's `path` names |
 | `invalid-manifest` | `plugin/package.json` lacks `name: vstack`, an `x.y.z` version, or the `omp` field |
 | `no-version-bump` | `plugin/` changed since the version base and the version is not higher than the base's |
+| `invalid-house-style` | a row or rule in `house-style.yaml` lacks a field or has a bad one, a row comes after a row that rewrites its `from`, or a linted rule is missing; the item is `house-style.yaml:<id>` |
+| `house-style-leftover` | a row's `from` still matches text the row covers (see "House style" below; adopt text only against `required` rows) |
+| `skill-ref` | adapt, merge, or original markdown holds a bare `/<name>` token for a vstack skill |
+| `spawn-vocab` | adapt, merge, or original markdown holds `subagent_type`, `generalPurpose`, or `` `Task` ``, or says spawn, dispatch, or spin up outside a `Spawn one` or `Fan-out gate (` line |
+| `worktree-cmd` | adapt, merge, or original text runs `git worktree add` |
+| `tmp-path` | adapt, merge, or original text names `$TMPDIR/`, `/tmp/`, or the OS temp directory, outside a `mktemp` line |
+| `ask-tool` | any markdown artifact, adopt included, has a sentence with an `ask-tool` phrase that does not name `` `ask` `` |
 
-Rows with an `invalid-row` or `invalid-disposition` failure are skipped by the checks that read their fields, so one bad row reports once.
+Rows with an `invalid-row` or `invalid-disposition` failure are skipped by the checks that read their fields, so one bad row reports once. House style rows and rules with an `invalid-house-style` failure are skipped the same way.
+
+A House style failure names the register row behind the artifact, or the artifact path when several rows or `originals:` name it. Its message lists the first file lines that break the row or rule.
 
 #### Version base
 
@@ -111,7 +121,28 @@ The note line `version base: <sha> <how it was chosen>` shows the choice. When t
 
 #### Adding a failure class
 
-Each check is a module in `scripts/lib/checks/` that exports a `Check`: the list of classes it reports and a `run(ctx)` that returns `{ class, item, message }` failures. `ctx` holds the root, the Pins, the register (`rows`, and `validRows` that passed the row checks), the plugin artifacts, the Upstream source, and the version base. To add a class, emit it from the check it belongs to and add it to that check's `classes`, or write a new module and append it to the list in `scripts/lib/checks/index.ts`. Then add a row to the class table above and a failing fixture to `tests/check-register.test.ts`. A test fails when `--list-classes` prints a class that has no fixture.
+Each check is a module in `scripts/lib/checks/` that exports a `Check`: the list of classes it reports and a `run(ctx)` that returns `{ class, item, message }` failures. `ctx` holds the root, the Pins, the register (`rows`, and `validRows` that passed the row checks), the plugin artifacts, the House style, the Upstream source, and the version base. To add a class, emit it from the check it belongs to and add it to that check's `classes`, or write a new module and append it to the list in `scripts/lib/checks/index.ts`. Then add a row to the class table above and a failing fixture to `tests/check-register.test.ts`. A test fails when `--list-classes` prints a class that has no fixture.
+
+A lint over shipped text starts from `lintTargets(ctx)` in `scripts/lib/checks/scope.ts`: every registered artifact with its Disposition (adopt, adapt, merge, or original), its Upstreams, and its text files. Whether a lint covers a Disposition comes from the `scope` of its row or rule in `house-style.yaml`, through `inScope` in `scripts/lib/house-style.ts`; do not test Dispositions anywhere else.
+
+### House style
+
+`house-style.yaml` (ADR 0008) has two lists. Its header comment documents every field.
+
+- `replacements:` are blind substitutions, applied in list order. `match` is `literal` (an exact substring), `name` (no `[\w-]` character on either side, so the `glossary` row rewrites `CONTEXT.md` and leaves `CONTEXT-FORMAT.md` alone), or `ref` (only `/x`, `` `x` ``, `**x**`, and `skill://x`). `upstream` picks the artifacts a row applies to. `scope: required` binds every artifact, adopt included; `scope: adapted` binds adapt, merge, and original text. `uses` says whether the Update (`update`), setup-vstack's Migration (`migration`), or both apply the row. A row that an earlier row rewrites fails `invalid-house-style`, so put the longer phrase first.
+- `rules:` are what the agent applies by hand: the fixed spawn and Fan-out wording, skill references, worktrees, Scratch paths, eval for Python, and asking through `ask`. Each has `text`, a `scope`, and a `lint` line that says what `check-register` enforces. `allowlist` limits `fixed-fan-out` to compare-attempts and `headless-run` to skill-creator. `ask-tool` holds `phrases`, the list its lint matches as whole words in any case. Add a phrase when an asking sentence slipped past the list, and run `bun scripts/check-register.ts` to see which adopt items it would flip.
+
+`scripts/lib/house-style.ts` is the one module that reads both lists and applies rows. It has no file access: `parseHouseStyle(doc, upstreamKeys)` validates a parsed file, `selectRows(rows, { use, upstreams, disposition, shippedNames })` picks the rows for one text, `applyRows(text, rows)` rewrites it, and `findRow(text, row)` finds leftovers. `loadHouseStyle(root, upstreamKeys)` in `scripts/lib/vstack-repo.ts` reads the file from a checkout.
+
+To write an adapt item, start from the Upstream text at the Pin with the rows applied, then make the hand edits its contract needs:
+
+```sh
+bun -e 'import { applyRows, parseHouseStyle, selectRows } from "./scripts/lib/house-style.ts";
+const { houseStyle } = parseHouseStyle(Bun.YAML.parse(await Bun.file("house-style.yaml").text()), new Set(["matt", "pstack", "diagram", "css", "prose"]));
+const rows = selectRows(houseStyle.replacements, { use: "update", upstreams: ["matt"], disposition: "adapt" });
+process.stdout.write(applyRows(await Bun.stdin.text(), rows));' \
+  < <(git -C ~/.cache/vstack/upstreams/matt show v1.2.3:skills/engineering/wizard/SKILL.md) > plugin/skills/wizard/SKILL.md
+```
 
 ### Tests
 
