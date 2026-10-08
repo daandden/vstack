@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [0.1.15] - 2026-10-08
+
+- babysit drives a PR to merge-ready without merging, with check, threads-only, and isolated background modes (#90).
+
 ## [0.1.14] - 2026-10-08
 
 - prune-comments uses one fresh `vstack-comment-critic`, accepts scoped fixes, and leaves commits to its caller. The critic edits comments only (#85).
