@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Architecture review — {{topic}}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; min-inline-size: 0; }
+    :root {
+      color-scheme: light dark;
+      --background: light-dark(oklch(98% 0 none), oklch(18% 0 none));
+      --surface: light-dark(oklch(100% 0 none), oklch(23% 0 none));
+      --text: light-dark(oklch(24% 0 none), oklch(94% 0 none));
+      --accent: light-dark(oklch(44% 0.12 250), oklch(78% 0.10 250));
+      --line: color-mix(in oklch, var(--text) 22%, var(--background));
+      --space: clamp(1rem, 0.75rem + 1vw, 2rem);
+      --heading: clamp(1.5rem, 1.25rem + 1vw, 2.5rem);
+      scrollbar-gutter: stable;
+      text-wrap: pretty;
+      overflow-wrap: break-word;
+      font-synthesis: none;
+    }
+    body { margin: 0; min-block-size: 100svh; background: var(--background); color: var(--text); font: 1rem/1.6 system-ui, sans-serif; }
+    main { display: grid; grid-template-columns: [full-start] minmax(var(--space), 1fr) [content-start] min(100% - var(--space) * 2, 70rem) [content-end] minmax(var(--space), 1fr) [full-end]; padding-block: var(--space); gap: var(--space); }
+    main > * { grid-column: content; }
+    h1, h2, h3, h4 { text-wrap: balance; font-weight: 400; }
+    h1 { font-size: var(--heading); }
+    h1, h2, h3, h4, p { margin-block: 0; }
+    .stack { display: grid; gap: 1rem; }
+    .round, .summary { display: grid; gap: var(--space); padding-block: var(--space); border-block-start: 1px solid var(--line); }
+    .question { display: grid; gap: 1rem; }
+    .options { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr)); }
+    .option { display: grid; grid-row: span 3; grid-template-rows: subgrid; row-gap: 0.75rem; padding-block: 1rem; padding-inline: 1rem; border: 1px solid var(--line); border-radius: 0.5rem; background: var(--surface); }
+    .recommended { border-color: var(--accent); }
+    .answer { border-inline-start: 3px solid var(--accent); padding-inline-start: 1rem; }
+    a { color: var(--accent); text-underline-offset: 0.2em; touch-action: manipulation; }
+    a:active { color: var(--text); }
+    :focus-visible { outline: max(2px, 0.08em) solid currentColor; outline-offset: 0.25em; }
+    @media (hover: hover) and (pointer: fine) { a:hover { color: var(--text); } }
+    svg { display: block; max-inline-size: 100%; block-size: auto; }
+    figure { margin: 0; display: grid; gap: 0.5rem; }
+    time, .number { font-variant-numeric: tabular-nums; }
+    @media print { :root { color-scheme: light; } body { min-block-size: auto; } .round, figure { break-inside: avoid; } }
+  </style>
+</head>
+<body>
+<main>
+<header class="stack"><h1>{{repo}} — architecture review</h1><p>{{date and scope}}</p><p>{{diagram legend}}</p></header>
+<section class="stack" aria-label="Deepening candidates">
+<!-- Repeat one article per evidence-backed candidate. -->
+<article class="round" id="candidate-1"><h2>{{candidate title}}</h2><p>{{Strong / Worth exploring / Speculative}} · {{dependency category}}</p><p>{{files and modules}}</p><div class="options"><figure>{{before SVG}}<figcaption>Before — {{friction}}</figcaption></figure><figure>{{after SVG}}<figcaption>After — {{deepening}}</figcaption></figure></div><p>Problem: {{observed friction}}</p><p>Solution: {{change, without proposing interfaces yet}}</p><ul><li>{{locality benefit}}</li><li>{{leverage benefit}}</li><li>{{test improvement}}</li></ul><aside>{{ADR conflict, only when justified}}</aside></article>
+</section><section class="summary"><h2>Top recommendation</h2><p><a href="#candidate-1">{{candidate title}}</a> — {{why first}}</p></section>
+</main>
+</body>
+</html>
