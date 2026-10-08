@@ -22,7 +22,7 @@ jobs:
           bun-version: 1.3.14
 
       - name: Test
-        run: bun test
+        run: bun run test
 
       # Version base: the PR base on a pull request; the commit before the push on a push; the merge base
       # with the default branch for a new branch or a force push whose old tip is gone.
