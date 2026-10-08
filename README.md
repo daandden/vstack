@@ -290,6 +290,12 @@ A row owns the files under its path except those under a longer path that is ano
 
 explain combines how and why through a Fan-out block. It keeps one conversation page under Scratch `explain/`, with a series of exported, inlined SVG figures from diagram-design. Templates live in each page-producing skill's `templates/` directory, where `check-register` runs the pinned CSS lint. Matt's teach stays a separate skill. The pstack `teach` reference row applies only to pstack items.
 
+### Session lessons
+
+`/skill:session-lessons` is a hidden adapt of pstack reflect. It reads only the current JSONL resolved from `PI_SESSION_FILE` and referenced children from that run. Three lenses use the Fan-out gate. The synthesizer always gets a fresh context. A missing transcript uses a labeled digest, never a guessed session.
+
+The parent resolves targets with `omp skill list --json` and approves a subset through `ask`. Own skills stay uncommitted. vstack adapt, merge, and original items use the clone's hand-edit flow. Adopt items and others' installs become listed-only Backlog. Substantive edits, descriptions, and new skills route through skill-creator. The four reviewer references belong to the pstack/reflect artifact, not `originals:`.
+
 ### Tests
 
 `tests/skill-creator.test.ts` runs the bundled Bun initializer and validator as processes over temp skill folders. skill-creator evaluation uses separate same-model omp processes, not task runners; its references define per-run overlays and transcript evidence.
