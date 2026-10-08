@@ -3,11 +3,12 @@
 
 import { artifactChecks } from "./artifacts.ts";
 import { houseStyleChecks } from "./house-style.ts";
+import { pageChecks } from "./pages.ts";
 import { rowChecks } from "./rows.ts";
 import type { Check } from "./types.ts";
 import { upstreamChecks } from "./upstream.ts";
 import { versionChecks } from "./version.ts";
 
-export const checks: readonly Check[] = [rowChecks, artifactChecks, upstreamChecks, houseStyleChecks, versionChecks];
+export const checks: readonly Check[] = [rowChecks, artifactChecks, upstreamChecks, houseStyleChecks, pageChecks, versionChecks];
 
 export const failureClasses: readonly string[] = checks.flatMap((c) => c.classes);

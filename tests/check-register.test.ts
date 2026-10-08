@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { fakeGitHub } from "./support/fake-github.ts";
 import {
   ALPHA_V2,
+  PAGE_TEMPLATE,
   ENV,
   SCRIPT,
   artifactFrom,
@@ -236,6 +237,12 @@ const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expecte
     mutate: (s) => adoptStyle(s, "asks"),
     expected: ["ask-tool alpha/asks"],
   },
+  {
+    cls: "page-css",
+    name: "a page template that breaks the CSS upstream's lint at its Pin",
+    mutate: (s) => (s.files["plugin/skills/shared/templates/page.html"] = PAGE_TEMPLATE.violation),
+    expected: ["page-css plugin/skills/shared/templates/page.html"],
+  },
 ];
 
 describe("each failure class names the item", () => {
@@ -246,6 +253,49 @@ describe("each failure class names the item", () => {
       expect(r.code).toBe(1);
     });
   }
+});
+
+// vstack page templates and the CSS upstream's lint (#61, #72).
+describe("page templates", () => {
+  const TEMPLATE = "plugin/skills/shared/templates/page.html";
+
+  test("zero templates pass and fetch no lint", async () => {
+    const r = await runSpec(() => {});
+    expect(r.json!.failures).toEqual([]);
+    expect(r.json!.notes).toContain("page templates: none");
+  });
+
+  test("a clean template passes", async () => {
+    const r = await runSpec((s) => (s.files[TEMPLATE] = PAGE_TEMPLATE.clean));
+    expect(r.json!.failures).toEqual([]);
+    expect(r.json!.notes).toContain(`page templates: 1, linted with beta@${up.betaPin}:scripts/check-css.mjs`);
+  });
+
+  test("a violation names the template and the lint's line", async () => {
+    const r = await runSpec((s) => {
+      s.files[TEMPLATE] = PAGE_TEMPLATE.violation;
+      s.files["plugin/skills/shared/templates/other.html"] = PAGE_TEMPLATE.clean;
+    });
+    expect(failuresOf(r)).toEqual([`page-css ${TEMPLATE}`]);
+    expect(r.json!.failures[0].message).toContain(`${TEMPLATE}:4 left is physical`);
+  });
+
+  test("a .css template is linted too, and html outside templates/ is not", async () => {
+    const r = await runSpec((s) => {
+      s.files["plugin/skills/shared/templates/page.css"] = ".box {\n  left: 0;\n}\n";
+      s.files["plugin/skills/shared/assets/figure.html"] = PAGE_TEMPLATE.violation;
+    });
+    expect(failuresOf(r)).toEqual(["page-css plugin/skills/shared/templates/page.css"]);
+  });
+
+  test("exit 2 when no Upstream names a page lint and templates exist", async () => {
+    const spec = clone(passingSpec(up));
+    delete spec.pins.upstreams.beta.page_lint;
+    spec.files[TEMPLATE] = PAGE_TEMPLATE.clean;
+    const r = await checkout(up, spec).run();
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain("page_lint");
+  });
 });
 
 // House style lints on the right Dispositions (spec #63, Testing Decisions; ADR 0008).
@@ -429,6 +479,13 @@ describe("github source (GitHub tree API)", () => {
     spec.files["plugin/skills/held/SKILL.md"] = ALPHA_V2["skills/eng/held/SKILL.md"];
     const r = await checkout(up, spec).run([], { env: env(), source: "github" });
     expect(failuresOf(r)).toEqual(["adopt-not-identical alpha/held"]);
+  });
+
+  test("a page template violation fails with the lint fetched from the API", async () => {
+    const spec = clone(passingSpec(up));
+    spec.files["plugin/skills/shared/templates/page.html"] = PAGE_TEMPLATE.violation;
+    const r = await checkout(up, spec).run([], { env: env(), source: "github" });
+    expect(failuresOf(r)).toEqual(["page-css plugin/skills/shared/templates/page.html"]);
   });
 
   test("GitHub Actions selects the github source by default", async () => {

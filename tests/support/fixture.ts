@@ -86,11 +86,32 @@ export const ALPHA_V2: Files = (() => {
   return f;
 })();
 
+/** A stand-in for good-css's `scripts/check-css.mjs` with the same CLI: `path:line message` per violation, exit 1. */
+export const FIXTURE_PAGE_LINT = [
+  'import { readFileSync } from "node:fs";',
+  "let count = 0;",
+  "for (const path of process.argv.slice(2)) {",
+  '  readFileSync(path, "utf8").split("\\n").forEach((line, i) => {',
+  '    if (/^\\s*left\\s*:/.test(line)) { console.log(path + ":" + (i + 1) + " left is physical. Write inset-inline-start."); count++; }',
+  "  });",
+  "}",
+  "if (count) process.exit(1);",
+  'console.log("No violations.");',
+  "",
+].join("\n");
+
 export const BETA: Files = {
   "README.md": "beta\n",
   "pack/skills/adapted/SKILL.md": "---\nname: adapted\ndescription: adapted\n---\nadapted\n",
   "pack/playbooks/runbook.md": "# Runbook\n",
   "pack/other/ignored.md": "not an item\n",
+  "scripts/check-css.mjs": FIXTURE_PAGE_LINT,
+};
+
+/** Page template text: clean, and with one physical property on line 4. */
+export const PAGE_TEMPLATE = {
+  clean: "<!doctype html>\n<style>\n  .box {\n    inset-inline-start: 0;\n  }\n</style>\n",
+  violation: "<!doctype html>\n<style>\n  .box {\n    left: 0;\n  }\n</style>\n",
 };
 
 export interface Upstreams {
@@ -189,6 +210,7 @@ export function passingSpec(up: Upstreams): RepoSpec {
         beta: {
           repo: "fixture/beta",
           pin: up.betaPin,
+          page_lint: "scripts/check-css.mjs",
           items: [
             { match: "pack/skills/*", type: "tree", kind: "skill" },
             { match: "pack/playbooks/*.md", type: "blob", kind: "playbook" },

@@ -32,6 +32,14 @@ export function fakeGitHub(dir: string) {
           });
         return Response.json({ sha: m[2], tree, truncated: false });
       }
+      m = url.pathname.match(/^\/repos\/fixture\/([^/]+)\/contents\/(.+)$/);
+      if (m && req.headers.get("accept") === "application/vnd.github.raw+json") {
+        try {
+          return new Response(git(join(dir, m[1]), "show", `${url.searchParams.get("ref")}:${decodeURIComponent(m[2])}`));
+        } catch {
+          return Response.json({ message: "Not Found" }, { status: 404 });
+        }
+      }
       return Response.json({ message: "Not Found" }, { status: 404 });
     },
   });
