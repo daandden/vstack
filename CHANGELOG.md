@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [0.1.23] - 2026-10-08
+
+- Add hidden how, why, and explain skills for cited code explanations. Gate investigation batches, profile repository evidence sources, and inline diagram-design figures on Scratch pages (#81).
+
 ## [0.1.22] - 2026-10-08
 
 - setup-vstack confirms project Migration before fresh setup: move edited Matt config or keep tracked team files with a Private copy, resolve old storage, convert diagram markers, and rename domain files and map links. Changes remain uncommitted (#76).
