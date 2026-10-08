@@ -1,0 +1,104 @@
+---
+name: compare-attempts
+description: Run several isolated attempts at the same task on your model, pick a base, and graft the strongest parts of the others into it.
+disable-model-invocation: true
+---
+
+# Compare attempts
+
+Run independent attempts at the same task. Read every candidate, pick a base, graft the best parts, and verify the result. All runners use your model. Separate contexts give independence, not model diversity.
+
+## Start
+
+Open a `todo` list with one entry per phase before launching anything.
+
+1. Frame
+2. Fan out
+3. Cross-judge
+4. Pick
+5. Graft
+6. Verify
+
+If the user also said "sequential" or "no fan-out", say that the attempts run at once. Use one `ask` with Go ahead / Cancel before starting. A timed-out answer is not approval. Re-ask once, then stop if no answer arrives. Keep the user's override words in every prompt even when they approve this batch.
+
+## Phase A: Frame
+
+The runners receive one shared prompt. The rubric stays with the parent.
+
+1. State the task, the artifact, and its grounding paths. Use the caller's runner brief when it supplies one.
+2. Declare the artifact kind. `tree` is the default, a change at real target paths in the working tree. `reply` is a written answer. Its patch is evidence only, never a change to apply.
+3. Derive 3–6 concrete criteria from what success means for this task. Keep the rubric out of every runner's prompt.
+4. Use three runners by default. The user's count overrides this, such as "5 attempts". When the caller or user supplies directions, give each runner its direction line. Otherwise each gets the same prompt in a fresh context.
+5. Resolve the absolute vstack root and, for nested Scratch writers, the project Scratch dir once. Follow "What every subagent prompt carries" in `skill://vstack-fan-out`; this lookup does not run its gate. A child uses these paths from its prompt and never resolves them again.
+6. For `tree`, name the real target paths relative to the checkout. Each runner writes them inside its own clone. Make sure that the target paths are not gitignored, because ignored files do not enter the patch. The candidate never goes through the vstack root. That path is only for nested writers of vstack artifacts, which must use disjoint paths. Follow `skill://principle-separate-before-serializing-shared-state`.
+
+The shared prompt includes the task, artifact kind, target paths, grounding paths, and the caller's brief. It instructs the runner to produce the artifact plus a rationale naming the alternatives it considered and rejected. It also requires a plain-text final reply with the artifact for kind `reply`, the rationale, and every path written. For kind `tree`, the artifact is the patch, not a separate candidate directory. Pass the user's override words and the absolute vstack root. Pass the Scratch dir when any nested writer needs it.
+
+omp captures the delta against the parent's working tree at the start of each runner, including its uncommitted state. Keep the candidate paths unchanged in the parent until Pick. Writes through the vstack root are immediate and are outside the patch.
+
+## Phase B: Fan out
+
+Fan-out (always: invoking this skill is the user's request to fan out): one eval cell: per part, `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`; `wait()` on all handles. Each prompt: the shared runner brief from Frame and its direction line when given, the user's override words, the vstack root, the Scratch dir when needed. The parent recovers each `patchPath` from the completion text and applies only the chosen base for kind `tree`. If it cannot spawn or isolation is off, stop: compare-attempts needs isolated attempts; run `/skill:setup-vstack`.
+
+There is one part per runner. Make sure that `omp config get task.isolation.enabled` prints `true` before starting. With no eval tool or no permission to start these workers, stop and point at `/skill:setup-vstack`. There is no judge call, sequential batch, or shared-checkout fallback.
+
+In Python eval, set `shared_prompt` to the complete brief from Frame and `runner_count` to the chosen count. Set `directions` to one supplied direction line per runner, or an empty list when none are given. Reuse supplied directions for extra runners. Start every handle before waiting:
+
+```python
+handles = [
+    agent(
+        shared_prompt + ("\nDirection: " + directions[index] if directions else ""),
+        agent="vstack-worker", isolated=True, apply=False, merge=False,
+    )
+    for index in range(runner_count)
+]
+results = wait(handles, raise_errors=False)
+for handle, result in zip(handles, results):
+    print(handle.id, result, sep="\n")
+```
+
+Keep the handles and completion results paired in input order. A handle has no `patchPath` field. In the completion text, omp names the patch in its isolation notice:
+
+```text
+Isolation: changes captured at `<absolute patch path>` (apply=false). Not applied.
+```
+
+Read that path as `patchPath`. Read the patch itself before treating it as a candidate; never invent a path from an agent id. If structured output hides the notice, read the full completion with the handle's `output()` or `agent://<id>`. If the path still cannot be recovered, report that candidate as unavailable rather than applying an unknown patch.
+
+A failed runner or one that produces no artifact drops out. For `tree`, an empty patch is no artifact. For `reply`, a substantive answer still counts when its evidence patch is empty. Note every dropout and continue with N−1. With fewer than two candidates left, stop and report. A failure to start isolated workers stops the batch instead of changing its execution mode.
+
+## Phase C: Cross-judge
+
+Start this step only after every runner finishes. Label the remaining candidates A/B/C, continuing for larger counts. Prepare each candidate's `patchPath`, rationale, and, for kind `reply`, its full answer. Keep runner ids and your scores out of the brief. Labels identify candidates; ids embedded in patch filenames are not evidence of quality.
+
+Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the artifact kind, the rubric, and the labeled candidates with their patch paths and rationales; read every candidate, score each criterion, recommend a base with reasons, and ignore runner identity in paths, the user's override words, the vstack root. Do not wait; keep working. If it cannot be spawned, do the work yourself.
+
+The fallback is the parent's scoring in Pick, not a second judgment in the same context. When the cross-judge cannot run, skip it and write `cross-judge: not run` in the synthesis note. This read-only explorer is not isolated.
+
+The cross-judge runs on your model. It uses a context that wrote no candidate and did not see your scores. It buys independence, not a second model's taste. Agreement means the rubric reads one way. It does not rule out a blind spot you both share.
+
+## Phase D: Pick a base
+
+Read every patch and rationale end to end. For kind `reply`, read every answer too. Score each criterion before reading the cross-judge's scores. Then collect its result and compare before selecting a base. If the scores disagree, re-read both rationales and resolve the difference against the rubric.
+
+Pick the candidate that a future maintainer can extend most easily without breaking invariants. On ties, prefer the cleaner interface or smaller API, per `skill://principle-laziness-protocol`.
+
+For kind `tree`, run `git apply -- "<base patchPath>"` in the parent's checkout. Apply only that patch. If it fails because the parent's tree moved on those paths, stop and report. Leave the parent's state intact instead of forcing the patch. For kind `reply`, take the base answer as the draft and apply no patch.
+
+## Phase E: Graft
+
+Read each losing candidate again and identify the parts worth keeping. Graft them by hand, per `skill://principle-redesign-from-first-principles`. Rework each part to fit the base instead of pasting competing designs together. Record each graft's source and each rejection's reason.
+
+When the candidates converge, use the consensus shape and omit grafts that add nothing. Report convergence as a weaker signal because every runner shares one model's priors. When the candidates diverge without a common frame, return to Frame. Reframe, then use `ask` for Re-run / Stop before paying for another batch. A timed-out answer is not approval; re-ask once, then stop.
+
+Leave losing patches untouched in omp's artifacts directory and cite their absolute paths. Create no branch, copy, or cleanup step for them.
+
+## Phase F: Verify
+
+Verify the synthesized artifact per `skill://principle-prove-it-works`, using the task's agreed checks. For kind `reply`, exercise the claims and evidence that the answer keeps. If a missed problem comes from the frame, return to Frame and use `ask` before re-running. If a losing candidate caught it, return to Graft. Fix the cause instead of hiding the failure.
+
+## Outputs
+
+Return one synthesized artifact and a short synthesis note in the reply. Add the same note to the driving ticket when there is one. Write no separate synthesis file.
+
+The note names the base and why it won, each graft with its source, the rejections, the dropouts, the cross-judge's verdict or `cross-judge: not run`, every losing patch path, and the verification commands and observed results. State the artifact kind and any convergence or re-run. Never claim a check that did not run.
