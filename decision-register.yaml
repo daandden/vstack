@@ -330,8 +330,8 @@ items:
     path: pstack/skills/create-verification-skill
     tree: 38a3e016bb42ba7ba6f66315e04ef64242937660
     disposition: adapt
-    artifacts: []
-    reason: "Renamed; output moves from .cursor/skills/ to .omp/skills/."
+    artifacts: [plugin/skills/setup-app-verification]
+    reason: "Renamed; creates and proves the Verify skill through omp tools, commits Standard output, and links the shared Private copy (ADR 0009)."
   - id: pstack/figure-it-out
     upstream: pstack
     kind: skill
@@ -362,8 +362,8 @@ items:
     path: pstack/skills/maintain-verification-skill
     tree: b6ce4dcdc378492f9acd55a4e56ae111204b4f11
     disposition: adapt
-    artifacts: []
-    reason: "Renamed; per-feature reads are judge-gated."
+    artifacts: [plugin/skills/maintain-app-verification]
+    reason: "Renamed; feature-scoped or judge-gated source pass, serial live proof, and own-path Drift fixes (ADR 0009)."
   - id: pstack/make-bot-ui
     upstream: pstack
     kind: skill
@@ -378,8 +378,8 @@ items:
     path: pstack/skills/no-comments
     tree: 198804132d8306db10cae6c3db62a1498dda7e1c
     disposition: adapt
-    artifacts: []
-    reason: "Renamed; Comment Sicko becomes the vstack-comment-critic agent."
+    artifacts: [plugin/skills/prune-comments]
+    reason: "Renamed; one fresh comment critic, accepted root-cause fixes, and explicit approval for constraint encodings (#52)."
   - id: pstack/poteto-mode
     upstream: pstack
     kind: skill
@@ -850,8 +850,8 @@ items:
     path: pstack/agents/comment-sicko.md
     tree: 9a688b8c5b5734ee80f782d4616a78c4c59b0946
     disposition: adapt
-    artifacts: []
-    reason: "Becomes an omp custom agent with the vstack- prefix (#47)."
+    artifacts: [plugin/agents/vstack-comment-critic.md]
+    reason: "Becomes the comment-only omp critic on the parent model, with prompt-contract rights and explorer-only spawns (#47, #52)."
   - id: pstack/agents/poteto-agent
     upstream: pstack
     kind: agent
