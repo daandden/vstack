@@ -1,0 +1,3 @@
+[test]
+# Only repo tests; plugin/ holds Upstream skill files that bun test must not pick up.
+root = "tests"

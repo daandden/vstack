@@ -1,0 +1,9 @@
+{
+  "name": "vstack-repo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "bun test",
+    "check-register": "bun scripts/check-register.ts"
+  }
+}
