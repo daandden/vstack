@@ -4,7 +4,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
-## [0.1.28] - 2026-10-08
+## [0.1.29] - 2026-10-08
 
 - Add hidden session-lessons with current-session scope, gated lenses, fresh synthesis, approved edits by skill home, and a listed-only Backlog (#88).
 
