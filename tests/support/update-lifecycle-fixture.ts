@@ -35,8 +35,8 @@ export function lifecycleFixture() {
   const gh = executable("gh", `import { appendFileSync } from "node:fs"; const args = process.argv.slice(2); appendFileSync(${JSON.stringify(calls)}, JSON.stringify(["gh", ...args])+"\\n"); console.log(args[0] === "api" ? process.env.RELEASES ?? "[[]]" : args[1] === "list" ? process.env.OPEN_PR ?? "[]" : "https://example.invalid/pull/98");`);
   const push = executable("push", `import { appendFileSync } from "node:fs"; appendFileSync(${JSON.stringify(calls)}, JSON.stringify(["push", ...process.argv.slice(2)])+"\\n"); if(process.env.FAIL_PUSH) process.exit(1);`);
   const smoke = executable("smoke", `import { readdirSync } from "node:fs"; import { join } from "node:path"; if(process.env.FAIL_SMOKE) process.exit(1); console.log(JSON.stringify({ skillCommands: readdirSync(join(process.argv[2], "skills")), agents: [], genericRules: "", warnings: [] }));`);
-  async function planned() {
-    const result = await f.run(root, [], { FAKE_OMP_CLONE: "1" });
+  async function planned(selection: string[] = []) {
+    const result = await f.run(root, selection, { FAKE_OMP_CLONE: "1" });
     if (result.code !== 0) throw new Error(result.stderr);
     const plan = result.plan;
     const decisions = plan.rows.filter((r: any) => r.class !== "unchanged").map((r: any) => ({ id: r.id, action: ["adapt", "merge"].includes(r.disposition) || ["moved", "removed"].includes(r.class) ? "hold" : "accept", reason_check: "Reason still holds." }));

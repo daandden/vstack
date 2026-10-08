@@ -246,7 +246,7 @@ Each `rows[]` entry has the row's `id`, `upstream`, `kind`, `disposition`, and `
 |---|---|
 | `preflight --root <checkout>` | Requires a git checkout root and a plugin named vstack. Refuses any update branch or open Update PR. Remote-query failure also stops it. |
 | `plan --root <checkout> [<upstream>@<ref> ...]` | Runs preflight, chooses only published non-draft stable releases for tag Pins, then calls update-plan. A no-op makes no worktree or jev request. |
-| `prepare --plan <plan.json> --decisions <file>` | Builds proposed artifacts and row choices in the Update worktree. Drafts the minor bump and CHANGELOG before the preview gates. It does not confirm, commit, or publish. |
+| `prepare --plan <plan.json> --decisions <file>` | Builds proposed artifacts and row choices in the Update worktree. Drafts the minor bump and CHANGELOG before the preview gates. Removing a shipped skill, agent, or command name instead needs a major bump. It does not confirm, commit, or publish. |
 | `gates --plan <plan.json> --phase preview` | Runs check-register and the load smoke, then the direct jev sample re-run. Writes a receipt only after all gates pass. |
 | `report --plan <plan.json> --report <absolute Scratch path>` | Renders the skill template outside both checkouts. The skill writes it to local://update-report.html and opens it. |
 | `apply --plan <plan.json> --decisions <file>` | Rebuilds from the initial candidate baseline using confirmed choices. Holds preserve old contributions while current paths, trees, and Pins move. |
@@ -262,7 +262,7 @@ Record `adr_conflicts` and `review_findings` as arrays of findings. Acceptance w
 
 Until #99, every changed adapt or merge row and every moved or removed row of any Disposition must have action hold. The script lists any unheld row and stops before writing pins.yaml. A first Hold records effective_old.ref and effective_old.path. Repeated Holds keep their stored fields. No adapt or merge text is merged. Drafts cannot overwrite a held contribution in a shared artifact. Unchanged rows still advance their current tree hash, including changes only to omitted agents/openai.yaml files.
 
-The load gate calls scripts/load-smoke.sh with the Update worktree plugin and a plan.out evidence directory. It checks every registered skill, agent, and rule in the output. The shell helper is the shared load-smoke procedure, kept here so linked clones can run the gate without build notes. It uses a throwaway HOME and no inherited omp configuration.
+The load gate calls scripts/load-smoke.sh with the Update worktree plugin and a plan.out evidence directory. It checks every registered skill, agent, and rule in the output. Before the register check, it clones any missing unselected Upstream into the same cache. The shell helper is the shared load-smoke procedure, kept here so linked clones can run the gate without build notes. It uses a throwaway HOME and no inherited omp configuration.
 
 The jev gate needs TYPESAFE_API_KEY obtained from the native TypeSafe credential. It POSTs each stored sample with the calibrated questions and the extension prompt cleaner. Missing credentials or invalid responses stop confirmation. Expected scores below 0.70 and non-allowed scores above 0.80 are flags. Scores from 0.70 through 0.80 are borderline without failing. Flags include changed-principle markers and question text. The requests run one at a time and bypass omp judgment caching.
 

@@ -105,6 +105,26 @@ test("default tag discovery ignores draft and prerelease GitHub releases", async
   expect(result.code).toBe(0); expect(JSON.parse(result.out).upstreams[0].new).toBe("v1.2.0");
   expect(f.calls().map(c => c[1])).toEqual(["pr", "api"]);
 });
+test("a confirmed Disposition change removing a shipped name uses a major bump", async () => {
+  const f = lifecycleFixture(); dirs.push(f.dir);
+  const { plan, decisions, file, planFile } = await f.planned();
+  Object.assign(decisions.find((d: any) => d.id === "matt/grow"), { disposition: "reject", reason: "No longer needed." });
+  writeFileSync(file, JSON.stringify({ decisions }));
+  const applied = await run(["apply", "--plan", planFile, "--decisions", file], f.root);
+  expect(applied.code).toBe(0); expect(JSON.parse(applied.out).version).toBe("1.0.0");
+  expect(git(plan.worktree.path, "status", "--short")).toContain("D plugin/skills/grow/SKILL.md");
+});
+test("a narrowed Update can gate with a fresh cache for the unselected Pins", async () => {
+  const f = lifecycleFixture(); dirs.push(f.dir);
+  const { plan, file, planFile } = await f.planned(["matt"]);
+  const args = ["--plan", planFile];
+  expect((await run(["prepare", ...args, "--decisions", file], f.root)).code).toBe(0);
+  const server = Bun.serve({ port: 0, fetch() { return Response.json({ answers: { expected: { type: "noul", noul: .9 }, other: { type: "noul", noul: .1 } } }); } });
+  try {
+    const result = await run(["gates", ...args, "--phase", "preview", "--upstreams", f.cache, "--remote", f.remote, "--smoke", f.smoke, "--endpoint", `http://localhost:${server.port}/v1/systemone`], f.root, { TYPESAFE_API_KEY: "fixture" });
+    expect({ code: result.code, err: result.err }).toEqual({ code: 0, err: "" });
+  } finally { server.stop(true); }
+});
 test("a changed adapt row blocks the Pin move unless held, then keeps effectiveOld", async () => {
   const f = makeUpdateFixture(); dirs.push(f.dir);
   const root = f.checkout();

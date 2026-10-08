@@ -5,8 +5,8 @@ import { cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, re
 import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { removeWorktree } from "./lib/omp-worktree.ts";
-import { compareSemverTags, gitBlobSha } from "./lib/upstreams.ts";
-import { loadRegister } from "./lib/vstack-repo.ts";
+import { compareSemverTags, defaultUpstreamRemote, defaultUpstreamsDir, gitBlobSha, syncClone } from "./lib/upstreams.ts";
+import { listPluginArtifacts, loadPins, loadRegister } from "./lib/vstack-repo.ts";
 import type { PlanBody, PlanRow } from "./lib/update-plan.ts";
 import { preprocessTinyMessage } from "../plugin/extensions/prompt-cleaner.ts";
 
@@ -161,7 +161,8 @@ function apply(p: Plan, ds: Decision[], phase: string) {
   writeFileSync(join(p.worktree.path, "pins.yaml"), Bun.YAML.stringify(pins, null, 2));
   const manifest = readJson(join(base, "plugin/package.json"));
   const [major, minor] = manifest.version.split(".").map(Number);
-  manifest.version = `${major}.${minor + 1}.0`;
+  const removedName = listPluginArtifacts(base).some(a => /^plugin\/(skills|agents|commands)\//.test(a) && !existsSync(join(p.worktree.path, a)));
+  manifest.version = removedName ? `${major + 1}.0.0` : `${major}.${minor + 1}.0`;
   writeFileSync(join(p.worktree.path, "plugin/package.json"), JSON.stringify(manifest, null, 2) + "\n");
   const summary = markdown(p, ds);
   const changelog = existsSync(join(base, "CHANGELOG.md")) ? readFileSync(join(base, "CHANGELOG.md"), "utf8") : "# Changelog\n\n## [Unreleased]\n";
@@ -211,7 +212,11 @@ async function jev(p: Plan, endpoint: string, key: string) {
 }
 async function gates(p: Plan, phase: string, opts: any) {
   const fingerprint = digest(p);
-  const register = run([process.execPath, opts.check ?? join(scriptRoot, "scripts/check-register.ts"), "--root", p.worktree.path, "--source", "clones", "--upstreams", opts.upstreams ?? process.env.VSTACK_UPSTREAMS ?? join(process.env.HOME!, ".cache/vstack/upstreams"), "--base", "main", "--json"], p.worktree.path);
+  const upstreams = opts.upstreams ?? defaultUpstreamsDir();
+  for (const pin of loadPins(p.worktree.path).values()) {
+    if (!existsSync(join(upstreams, pin.key))) syncClone(upstreams, pin, opts.remote ?? defaultUpstreamRemote());
+  }
+  const register = run([process.execPath, opts.check ?? join(scriptRoot, "scripts/check-register.ts"), "--root", p.worktree.path, "--source", "clones", "--upstreams", upstreams, "--base", "main", "--json"], p.worktree.path);
   const checked = JSON.parse(register); if (!checked.ok) throw new Error("register gate failed");
   const smokeDir = join(p.out, `smoke-${phase}`);
   const smoke = JSON.parse(run([opts.smoke ?? join(scriptRoot, "scripts/load-smoke.sh"), join(p.worktree.path, "plugin"), smokeDir], p.worktree.path));
