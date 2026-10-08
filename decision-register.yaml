@@ -892,4 +892,5 @@ items:
     disposition: adapt
     artifacts: []
     reason: "Hidden and has no Strict mode (#59)."
-originals: []
+originals:
+  - plugin/extensions/vstack.ts
