@@ -238,6 +238,36 @@ Each `rows[]` entry has the row's `id`, `upstream`, `kind`, `disposition`, and `
 | `sides` | adapt and merge rows with `files`: `{old, new}`, two directories holding each listed file at `effective_old` and at `new`, with those rows applied. A file is missing from the side where it does not exist. Binary files are copied as they are. They are the base and the Upstream side for `git merge-file <artifact file> <old>/<path> <new>/<path>`. |
 | `staged` | adopt rows that are `changed` or `moved`: `{path, files, dropped}`. `path` is the copy of the item at the new Pin, named as the item is named there. `files` lists each file with the blob SHA it was checked against after writing. `dropped` is `["agents/openai.yaml"]` when the item had one. |
 
+### vstack-update
+
+`/skill:vstack-update [<upstream>|<upstream>@<ref>]` is the hidden maintainer flow. `bun scripts/vstack-update.ts` owns its deterministic steps. Its commands print JSON and exit 0 on success or 2 on refusal or failure. The skill owns judgment, browser presentation, and batched `ask` confirmation.
+
+| Command | Result |
+|---|---|
+| `preflight --root <checkout>` | Requires a git checkout root and a plugin named vstack. Refuses any update branch or open Update PR. Remote-query failure also stops it. |
+| `plan --root <checkout> [<upstream>@<ref> ...]` | Runs preflight, chooses only published non-draft stable releases for tag Pins, then calls update-plan. A no-op makes no worktree or jev request. |
+| `prepare --plan <plan.json> --decisions <file>` | Builds proposed artifacts and row choices in the Update worktree. Drafts the minor bump and CHANGELOG before the preview gates. It does not confirm, commit, or publish. |
+| `gates --plan <plan.json> --phase preview` | Runs check-register and the load smoke, then the direct jev sample re-run. Writes a receipt only after all gates pass. |
+| `report --plan <plan.json> --report <absolute Scratch path>` | Renders the skill template outside both checkouts. The skill writes it to local://update-report.html and opens it. |
+| `apply --plan <plan.json> --decisions <file>` | Rebuilds from the initial candidate baseline using confirmed choices. Holds preserve old contributions while current paths, trees, and Pins move. |
+| `gates --plan <plan.json> --phase confirmed` | Repeats register and smoke gates, but does not repeat Fan-out review or jev. |
+| `finish --plan <plan.json>` | Requires a confirmed receipt matching the current files and decisions. Commits managed paths, pushes, then opens the PR with a Markdown summary. |
+| `cancel --plan <plan.json>` | Removes only the created Update worktree and branch. |
+
+Every command after planning takes the schema-1 plan from update-plan. Application records a baseline under plan.out on the first prepare or apply. Drafts and evidence also stay there, outside plugin and the commit. Reapplication restores that baseline before applying the complete decision set. Re-ask only rows that a gate fix touched.
+
+The decisions file contains `{ "decisions": [...] }`. Each entry has a unique `id`, `action` (`accept`, `hold`, or `defer`), and `reason_check`. An optional `disposition` and `reason` change the row choice. `artifacts` holds register artifact units. `drafts` maps each drafted artifact path to an absolute source path outside plugin. New entries also need `upstream` and the exact `path` from plan.new. A deferred entry needs `gist` and becomes reject with `Deferred at <pin>: <gist>`. New items cannot Hold because they have no older contribution.
+
+Record `adr_conflicts` and `review_findings` as arrays of findings. Acceptance with either array nonempty needs `explicit_accept: true`. `draft_adr` is `{ "path": "docs/adr/NNNN-name.md", "source": "<absolute draft path>" }`. Accepted drafts are copied into the commit. The report shows their full text. The script never makes the judgment or treats its proposals as user answers.
+
+Until #99, every changed adapt or merge row and every moved or removed row of any Disposition must have action hold. The script lists any unheld row and stops before writing pins.yaml. A first Hold records effective_old.ref and effective_old.path. Repeated Holds keep their stored fields. No adapt or merge text is merged. Drafts cannot overwrite a held contribution in a shared artifact. Unchanged rows still advance their current tree hash, including changes only to omitted agents/openai.yaml files.
+
+The load gate calls scripts/load-smoke.sh with the Update worktree plugin and a plan.out evidence directory. It checks every registered skill, agent, and rule in the output. The shell helper is the shared load-smoke procedure, kept here so linked clones can run the gate without build notes. It uses a throwaway HOME and no inherited omp configuration.
+
+The jev gate needs TYPESAFE_API_KEY obtained from the native TypeSafe credential. It POSTs each stored sample with the calibrated questions and the extension prompt cleaner. Missing credentials or invalid responses stop confirmation. Expected scores below 0.70 and non-allowed scores above 0.80 are flags. Scores from 0.70 through 0.80 are borderline without failing. Flags include changed-principle markers and question text. The requests run one at a time and bypass omp judgment caching.
+
+Injection points for process tests are `--gh` or VSTACK_GH, `--push` or VSTACK_PUSH, `--check`, `--smoke`, and `--endpoint`. A push replacement receives `origin <branch>` and must complete the push before the gh replacement opens the PR. Planning also forwards update-plan's `--omp`, `--upstreams`, `--remote`, and `--out`. The tests use fixture repositories and stand-ins at these external boundaries. They never push or open a PR against this repo.
+
 The classes:
 
 - `unchanged`: none of the row's files differ between `effective_old` and the new Pin.
