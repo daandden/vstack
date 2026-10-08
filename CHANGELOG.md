@@ -3,9 +3,14 @@
 Versions of the vstack plugin (`plugin/package.json`). See the README for when to raise each part of the version.
 
 ## [Unreleased]
+
 ## [0.1.24] - 2026-10-08
 
 - improve-codebase-architecture and Matt teach write one-file Scratch pages from linted templates, draw inline SVG figures through diagram-design, and print file URLs. Architecture exploration uses a vstack explorer; session questions go through `ask`, while lesson quizzes remain interactive (#82).
+
+## [0.1.23] - 2026-10-08
+
+- Add hidden how, why, and explain skills for cited code explanations. Gate investigation batches, profile repository evidence sources, and inline diagram-design figures on Scratch pages (#81).
 
 ## [0.1.22] - 2026-10-08
 
