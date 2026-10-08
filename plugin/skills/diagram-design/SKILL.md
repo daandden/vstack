@@ -22,7 +22,7 @@ Forty-four visual types. Semantic patterns describe behavior; type references de
 
 Do not silently ship default-skinned diagrams into a branded project.
 
-First read the project's `diagram-profile:` line per [`references/profiles.md`](references/profiles.md) (it lives in the project's vstack config, `docs/vstack/diagram.md` or, in Private mode, `<git common dir>/vstack/config/diagram.md`). A valid line selects its profile from `~/.vstack/diagram-design/profiles/` and bypasses this gate. That reference owns failures, the protected default, and save behavior.
+First read the project's `diagram-profile:` line per [`references/profiles.md`](references/profiles.md), using the parent's supplied absolute vstack root and mode. That reference owns config-path resolution, failures, the protected default, and save behavior. A valid line selects its profile from `~/.vstack/diagram-design/profiles/` and bypasses this gate.
 
 The installed [`references/style-guide.md`](references/style-guide.md) is the shipped skin. Never write it; every customization is saved as a profile.
 
