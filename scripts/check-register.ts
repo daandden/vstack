@@ -59,7 +59,7 @@ async function main(): Promise<number> {
   }
   const source = sourceName === "github" ? githubSource() : cloneSource(args.upstreams ?? defaultUpstreamsDir());
 
-  let failures: Failure[] = [];
+  const failures: Failure[] = [];
   const notes: string[] = [`upstream source: ${sourceName}`];
   try {
     const pins = loadPins(root);
