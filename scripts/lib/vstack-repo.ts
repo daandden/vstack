@@ -2,11 +2,17 @@
 
 import { join, relative } from "node:path";
 import { lstatSync, readdirSync, readFileSync, readlinkSync, existsSync } from "node:fs";
-import { gitBlobSha, type UpstreamRef } from "./upstreams.ts";
+import { gitBlobSha, type TreeEntry, type UpstreamRef, type UpstreamTree } from "./upstreams.ts";
 import { HouseStyleError, parseHouseStyle, type HouseStyle, type HouseStyleProblem } from "./house-style.ts";
 
 export const DISPOSITIONS = ["adopt", "adapt", "merge", "reject"] as const;
 export const KINDS = ["skill", "principle", "playbook", "agent"] as const;
+/** How an Upstream's newest Pin is found: the highest `v<semver>` release tag, or the newest default-branch commit touching `path`. */
+export const PIN_KINDS = ["tag", "commit"] as const;
+export type PinKind = (typeof PIN_KINDS)[number];
+
+/** The only Upstream file an adopt artifact never ships (ADR 0001). */
+export const NEVER_SHIPPED = "agents/openai.yaml";
 
 /** Files never treated as content (macOS Finder noise). */
 const IGNORED_NAMES = new Set([".DS_Store"]);
@@ -23,9 +29,24 @@ export interface ItemPattern {
 
 export interface Pin extends UpstreamRef {
   pin: string;
+  pin_kind: PinKind;
+  /** The part of the repo vstack takes from, no slashes at either end; "" is the whole repo. */
+  path: string;
   items: ItemPattern[];
   /** `page_lint:` path of a script in this Upstream that lints vstack page templates at the Pin (the CSS upstream's `check-css.mjs`). */
   pageLint?: string;
+}
+
+export type UpstreamItem = TreeEntry & { kind: ItemPattern["kind"] };
+
+/** Upstream items in a tree: entries matching one of the Pin's `items:` patterns, each with the first matching kind. */
+export function upstreamItems(pin: Pin, tree: UpstreamTree): UpstreamItem[] {
+  const out: UpstreamItem[] = [];
+  for (const e of tree.entries) {
+    const pattern = pin.items.find((p) => p.type === e.type && p.regex.test(e.path));
+    if (pattern) out.push({ ...e, kind: pattern.kind });
+  }
+  return out;
 }
 
 export interface Row {
@@ -67,7 +88,11 @@ function globRegex(glob: string): RegExp {
 
 export function loadPins(root: string): Map<string, Pin> {
   const file = join(root, "pins.yaml");
-  const doc = readYaml(file);
+  return parsePins(readYaml(file), file);
+}
+
+/** Validates a parsed pins.yaml; `file` names it in errors. */
+export function parsePins(doc: any, file: string): Map<string, Pin> {
   const ups = doc?.upstreams;
   if (!ups || typeof ups !== "object") throw new ConfigError(`${file}: missing upstreams:`);
   const pins = new Map<string, Pin>();
@@ -75,6 +100,10 @@ export function loadPins(root: string): Map<string, Pin> {
     if (typeof v?.repo !== "string" || typeof v?.pin !== "string" || !Array.isArray(v?.items)) {
       throw new ConfigError(`${file}: upstream ${key} needs repo, pin, and items`);
     }
+    if (!(PIN_KINDS as readonly unknown[]).includes(v.pin_kind)) {
+      throw new ConfigError(`${file}: upstream ${key} needs pin_kind ${PIN_KINDS.join(" or ")}`);
+    }
+    if (v.path !== undefined && typeof v.path !== "string") throw new ConfigError(`${file}: upstream ${key} has a path that is not text`);
     const items = v.items.map((it: any) => {
       if (typeof it?.match !== "string" || !["tree", "blob"].includes(it?.type) || !KINDS.includes(it?.kind)) {
         throw new ConfigError(`${file}: upstream ${key} has an item pattern without match, type (tree|blob), or kind`);
@@ -84,7 +113,8 @@ export function loadPins(root: string): Map<string, Pin> {
     if (v.page_lint !== undefined && typeof v.page_lint !== "string") {
       throw new ConfigError(`${file}: upstream ${key} page_lint must be a path in that Upstream`);
     }
-    pins.set(key, { key, repo: v.repo, pin: String(v.pin), items, ...(v.page_lint ? { pageLint: v.page_lint } : {}) });
+    const path = String(v.path ?? "").replace(/^\/+|\/+$/g, "");
+    pins.set(key, { key, repo: v.repo, pin: String(v.pin), pin_kind: v.pin_kind, path, items, ...(v.page_lint ? { pageLint: v.page_lint } : {}) });
   }
   return pins;
 }
