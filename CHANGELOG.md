@@ -4,10 +4,17 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
-## [0.1.15] - 2026-10-08
+## [0.1.17] - 2026-10-08
 
 - babysit drives a PR to merge-ready without merging, with check, threads-only, and isolated background modes (#90).
 
+## [0.1.16] - 2026-10-08
+
+- compare-attempts ships as a hidden adapt of pstack arena. It runs three isolated workers by default, keeps the rubric with the parent, cross-judges with one explorer, and grafts the best parts into a tree change or reply. The parent reads patch paths from omp completion text, applies only the base tree patch, and cites untouched losing patches. The fixed batch stops without isolation and asks before overriding sequential words or re-running (#83).
+
+## [0.1.15] - 2026-10-08
+
+- decision-trail logs unattended runs in Scratch through its append-only TSV helper, audits only the current session and referenced children, and requires a same-model fresh-context review or an explicit not-reviewed result (#86).
 ## [0.1.14] - 2026-10-08
 
 - prune-comments uses one fresh `vstack-comment-critic`, accepts scoped fixes, and leaves commits to its caller. The critic edits comments only (#85).
