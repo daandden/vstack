@@ -802,7 +802,7 @@ items:
     path: pstack/skills/poteto-mode/playbooks/runtime-forensics.md
     tree: ba659bfe1c4c2f956f3285974bfdc941120f9948
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/forensics]
     reason: "Merged with trace-forensics into one forensics skill (live branch)."
   - id: pstack/playbook-session-pickup
     upstream: pstack
@@ -826,7 +826,7 @@ items:
     path: pstack/skills/poteto-mode/playbooks/trace-forensics.md
     tree: 48ed6b2f690215027eda96a1897ed98212bbd07a
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/forensics]
     reason: "Captured-artifact branch of forensics: load into sqlite, then attribute to source."
   - id: pstack/playbook-visual-parity
     upstream: pstack
