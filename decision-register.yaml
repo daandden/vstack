@@ -106,7 +106,7 @@ items:
     path: skills/engineering/tdd
     tree: 423f3cc2bccf3b0ed426fb35eeb4b38d9188a343
     disposition: merge
-    artifacts: []
+    artifacts: [plugin/skills/tdd]
     reason: "Merges with pstack tdd (#36)."
   - id: matt/to-spec
     upstream: matt
@@ -202,7 +202,7 @@ items:
     path: skills/productivity/writing-for-agents
     tree: bd9c9c4762db0a9a094fd419316ebd4b0444d06e
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/writing-for-agents]
     reason: "Hidden (disable-model-invocation: true); the vstack-prose rule is its only trigger (#59)."
   - id: matt/claude-handoff
     upstream: matt
@@ -618,7 +618,7 @@ items:
     path: pstack/skills/tdd
     tree: 1064da72ceca07bf7f36bddebada585bb59da7bc
     disposition: merge
-    artifacts: []
+    artifacts: [plugin/skills/tdd]
     reason: "Merges into Matt's tdd (#36)."
   - id: pstack/teach
     upstream: pstack
@@ -890,7 +890,8 @@ items:
     path: skills/simple-english
     tree: dc4493623b0648588e02a0062bed8bcaa535b1de
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/simple-english]
     reason: "Hidden and has no Strict mode (#59)."
 originals:
   - plugin/extensions/vstack.ts
+  - plugin/rules/vstack-prose.md

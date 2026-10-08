@@ -289,6 +289,17 @@ describe("House style scope", () => {
     const r = await runSpec((s) => (s.files["plugin/skills/gone/SKILL.md"] += "Move .git/old-root away.\n"));
     expect(r.json!.failures).toEqual([]);
   });
+
+  test("a skill on the spawn-vocab allowlist may name spawning; the same text fails off the list", async () => {
+    const text = "Hiding works across a subagent dispatch.\n";
+    const off = await runSpec((s) => (s.files["plugin/skills/shared/SKILL.md"] += text));
+    expect(failuresOf(off)).toEqual(["spawn-vocab plugin/skills/shared"]);
+    const on = await runSpec((s) => {
+      s.houseStyle.rules.find((r) => r.id === "spawn-vocab").allowlist = ["shared"];
+      s.files["plugin/skills/shared/SKILL.md"] += text;
+    });
+    expect(on.json!.failures).toEqual([]);
+  });
 });
 
 test("exit 2 when house-style.yaml is missing", async () => {

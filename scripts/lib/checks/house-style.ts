@@ -145,6 +145,7 @@ export const houseStyleChecks: Check = {
       for (const [id, lint] of Object.entries(RULE_LINTS)) {
         const rule = rules.get(id);
         if (!rule || !inScope(rule.scope, t.disposition)) continue; // a missing rule is an invalid-house-style failure
+        if (rule.allowlist?.some((name) => t.artifact === `plugin/skills/${name}`)) continue; // the form is allowed in these skills
         const hits = lint(t, rule, ctx);
         if (hits.length > 0) out.push({ class: id, item: t.item, message: `${t.disposition} text breaks ${id}: ${summary(hits)}` });
       }
