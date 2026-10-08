@@ -4,9 +4,12 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
-## [0.1.15] - 2026-10-08
+## [0.1.16] - 2026-10-08
 
 - grilling keeps an append-only Grilling HTML in Scratch, puts each frontier through one `ask`, and records answers and the shared-understanding gate. Its shipped template follows good-css; figures come through diagram-design (#73).
+
+## [0.1.15] - 2026-10-08
+
 - decision-trail logs unattended runs in Scratch through its append-only TSV helper, audits only the current session and referenced children, and requires a same-model fresh-context review or an explicit not-reviewed result (#86).
 
 ## [0.1.14] - 2026-10-08
