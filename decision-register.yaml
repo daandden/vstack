@@ -26,7 +26,7 @@ items:
     path: skills/engineering/codebase-design
     tree: 20b7cd1dd1fe5b0bd37ba72649f3a29375574b5b
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/codebase-design]
     reason: "DESIGN-IT-TWICE runs judge-gated Fan-out of vstack agents; names GLOSSARY.md (#36)."
   - id: matt/diagnosing-bugs
     upstream: matt
@@ -82,7 +82,7 @@ items:
     path: skills/engineering/research
     tree: 972a34cd8128b7952b7eb279b06715862db906a7
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/research]
     reason: "Background agent names a vstack agent (#36)."
   - id: matt/resolving-merge-conflicts
     upstream: matt
@@ -893,10 +893,14 @@ items:
     artifacts: [plugin/skills/simple-english]
     reason: "Hidden and has no Strict mode (#59)."
 originals:
+  - plugin/agents/vstack-explorer.md
+  - plugin/agents/vstack-verifier.md
+  - plugin/agents/vstack-worker.md
   - plugin/extensions/vstack.ts
   - plugin/rules/vstack-private-mode.md
   - plugin/rules/vstack-prose.md
   - plugin/rules/vstack-worktrees.md
   - plugin/skills/vstack-clean
   - plugin/skills/vstack-tmp
+  - plugin/skills/vstack-fan-out
   - plugin/skills/vstack-worktree

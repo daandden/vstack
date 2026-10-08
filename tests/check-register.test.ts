@@ -34,6 +34,28 @@ function adoptStyle(spec: RepoSpec, name: string) {
   Object.assign(spec.files, artifactFrom(ALPHA_V2, `skills/style/${name}`, `plugin/skills/${name}`));
 }
 
+/** The spawn forms of skill://vstack-fan-out, filled in with the fixture's vstack agent. */
+const FORM = {
+  gate: "Fan-out gate (skill://vstack-fan-out): parts: one per file; size: lines in the file.",
+  taskBatch:
+    '- fan-out → one `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: the brief, the user\'s override words, the vstack root.',
+  evalBatch:
+    '- fan-out → one eval cell: per part, `agent(<prompt>, agent="vstack-explorer", isolated=True, apply=False, merge=False)`; `wait()` on all handles. Each prompt: the brief, the user\'s override words, the vstack root. Apply the best `patchPath`.',
+  inline: "- inline → do every part yourself, in order, from the same brief.",
+  inlineSpawn:
+    '- inline → Spawn one `vstack-explorer` via eval `agent(<prompt>, agent="vstack-explorer", isolated=True, apply=False, merge=False)` that checks every part in order: the brief, the user\'s override words, the vstack root. If it cannot be spawned, stop: nothing checks its own work.',
+  single:
+    'Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the question, the user\'s override words, the vstack root. Wait for its result. If it cannot be spawned, do the work yourself.',
+  singleIsolated:
+    'Spawn one `vstack-explorer` via eval `agent(<prompt>, agent="vstack-explorer", isolated=True, apply=False, merge=False)`: the question, the user\'s override words, the vstack root. Do not wait; keep working. If it cannot be spawned, stop: it needs its own clone.',
+  fixed:
+    'Fan-out (always: invoking the skill asks for it): one eval cell: per part, `agent(<prompt>, agent="vstack-explorer", isolated=True, apply=False, merge=False)`; `wait()` on all handles. Each prompt: the brief, the user\'s override words, the vstack root. Apply the best `patchPath`. If it cannot spawn or isolation is off, stop: the runs need clones.',
+  headless:
+    'Headless batch (ADR 0010): one eval cell starts every run at once, with no cap. Per run: `omp -p --model <m> --thinking <t> --approval-mode yolo --cwd <run dir> "<prompt>"`. If `omp` cannot run, stop: no omp.',
+};
+const addTo = (path: string, ...lines: string[]) => (s: RepoSpec) => (s.files[path] += `${lines.join("\n")}\n`);
+const GONE = "plugin/skills/gone/SKILL.md";
+
 async function runSpec(mutate: (spec: RepoSpec) => void): Promise<Run> {
   const spec = clone(passingSpec(up));
   mutate(spec);
@@ -103,7 +125,7 @@ const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expecte
   {
     cls: "unregistered-artifact",
     name: "a rule dropped from originals:",
-    mutate: (s) => (s.register.originals = ["plugin/agents/fx-agent.md"]),
+    mutate: (s) => (s.register.originals = s.register.originals.filter((o) => o !== "plugin/rules/fx-rule.md")),
     expected: ["unregistered-artifact plugin/rules/fx-rule.md"],
   },
   {
@@ -238,6 +260,36 @@ const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expecte
     expected: ["ask-tool alpha/asks"],
   },
   {
+    cls: "fan-out-block",
+    name: "a Fan-out gate with a fan-out line and no inline line in an adapt artifact",
+    mutate: (s) => (s.files["plugin/skills/gone/SKILL.md"] += [FORM.gate, FORM.taskBatch, ""].join("\n")),
+    expected: ["fan-out-block alpha/gone"],
+  },
+  {
+    cls: "single-spawn",
+    name: "a single spawn of a bundled agent in an original",
+    mutate: (s) => (s.files["plugin/rules/fx-rule.md"] += `${FORM.single.replaceAll("vstack-explorer", "scout")}\n`),
+    expected: ["single-spawn plugin/rules/fx-rule.md"],
+  },
+  {
+    cls: "fixed-fan-out",
+    name: "the fixed Fan-out form in a merge artifact off the allowlist",
+    mutate: (s) => (s.files["plugin/skills/shared/SKILL.md"] += `${FORM.fixed}\n`),
+    expected: ["fixed-fan-out plugin/skills/shared"],
+  },
+  {
+    cls: "headless-run",
+    name: "the Headless batch form in an adapt artifact off the allowlist",
+    mutate: (s) => (s.files["plugin/skills/gone/SKILL.md"] += `${FORM.headless}\n`),
+    expected: ["headless-run alpha/gone"],
+  },
+  {
+    cls: "agent-spawns",
+    name: "an original agent whose spawns: names a bundled agent",
+    mutate: (s) => (s.files["plugin/agents/fx-agent.md"] = "---\nname: fx-agent\ndescription: agent\nspawns: [vstack-explorer, scout]\n---\nagent\n"),
+    expected: ["agent-spawns plugin/agents/fx-agent.md"],
+  },
+  {
     cls: "page-css",
     name: "a page template that breaks the CSS upstream's lint at its Pin",
     mutate: (s) => (s.files["plugin/skills/shared/templates/page.html"] = PAGE_TEMPLATE.violation),
@@ -349,6 +401,94 @@ describe("House style scope", () => {
       s.files["plugin/skills/shared/SKILL.md"] += text;
     });
     expect(on.json!.failures).toEqual([]);
+  });
+});
+
+// Spawn lints (spec #63 "Register check"; ADR 0004, 0007; build decision 2: adapt, merge, and original text only).
+describe("spawn lints", () => {
+  const sorted = (r: Run) => failuresOf(r).sort();
+
+  test("both batch forms pass: the tasks[] batch and the isolated eval agent() batch, plus the stop-instead-of-inline line", async () => {
+    const r = await runSpec(
+      addTo(GONE, FORM.gate, FORM.taskBatch, FORM.inline, "", FORM.gate, FORM.evalBatch, FORM.inline, "", "1. " + FORM.gate, "   " + FORM.evalBatch, "   " + FORM.inlineSpawn),
+    );
+    expect(r.json!.failures).toEqual([]);
+  });
+
+  test("single spawns pass in the task form and the isolated eval form", async () => {
+    const r = await runSpec(addTo("plugin/agents/fx-agent.md", FORM.single, FORM.singleIsolated));
+    expect(r.json!.failures).toEqual([]);
+  });
+
+  test("adopt text is exempt: a bundled spawn and a bare gate pass in adopt and fail once the row is adapt", async () => {
+    expect((await runSpec(() => {})).json!.failures).toEqual([]);
+    const r = await runSpec((s) => (row(s, "alpha/spawner").disposition = "adapt"));
+    expect(sorted(r)).toEqual(["fan-out-block alpha/spawner", "single-spawn alpha/spawner"]);
+  });
+
+  test("a Fan-out block is incomplete without its citation, an inline line, or a vstack agent in the batch", async () => {
+    const cases = [
+      [FORM.gate.replace("skill://vstack-fan-out", "the rubric"), FORM.taskBatch, FORM.inline],
+      [FORM.gate.replace("; size: lines in the file", ""), FORM.taskBatch, FORM.inline],
+      [FORM.gate, FORM.taskBatch.replace('"vstack-explorer"', '"task"'), FORM.inline],
+      [FORM.gate, FORM.evalBatch.replace("isolated=True, apply=False, merge=False", "isolated=True"), FORM.inline],
+      [FORM.gate, FORM.taskBatch.replace(", the vstack root", ""), FORM.inline],
+      [FORM.gate, FORM.taskBatch, FORM.inlineSpawn.replace("If it cannot be spawned, stop: nothing checks its own work.", "")],
+      [FORM.taskBatch, FORM.inline],
+    ];
+    for (const lines of cases) {
+      expect(failuresOf(await runSpec(addTo(GONE, ...lines)))).toEqual(["fan-out-block alpha/gone"]);
+    }
+  });
+
+  test("a spawn site outside the forms that names no vstack agent fails single-spawn", async () => {
+    const lines = [
+      'Call `task` with `agent: "reviewer"` for each file.',
+      "Run the reviewers via `task`, one per file.",
+      "Start one eval `agent(prompt, isolated=True)` per file.",
+      FORM.single.replace('`agent: "vstack-explorer"`', '`agent: "sonic"`'),
+      FORM.single.replace(", the user's override words", ""),
+    ];
+    for (const line of lines) {
+      expect(failuresOf(await runSpec(addTo("plugin/rules/fx-rule.md", line)))).toEqual(["single-spawn plugin/rules/fx-rule.md"]);
+    }
+  });
+
+  test("the fixed and headless forms pass in their allowlisted skills and nowhere else", async () => {
+    const off = await runSpec(addTo("plugin/skills/shared/SKILL.md", FORM.fixed, FORM.headless));
+    expect(sorted(off)).toEqual(["fixed-fan-out plugin/skills/shared", "headless-run plugin/skills/shared"]);
+    const on = await runSpec((s) => {
+      for (const id of ["fixed-fan-out", "headless-run"]) s.houseStyle.rules.find((r) => r.id === id).allowlist = ["shared"];
+      addTo("plugin/skills/shared/SKILL.md", FORM.fixed, FORM.headless)(s);
+    });
+    expect(on.json!.failures).toEqual([]);
+  });
+
+  test("spawns: may name only agents the plugin ships, and never *", async () => {
+    const agent = (spawns: string) => `---\nname: fx-agent\ndescription: agent\nspawns: ${spawns}\n---\nagent\n`;
+    const ok = await runSpec((s) => (s.files["plugin/agents/fx-agent.md"] = agent("[vstack-explorer, fx-agent]")));
+    expect(ok.json!.failures).toEqual([]);
+    const star = await runSpec((s) => (s.files["plugin/agents/fx-agent.md"] = agent('"*"')));
+    expect(failuresOf(star)).toEqual(["agent-spawns plugin/agents/fx-agent.md"]);
+  });
+
+  test("spawn-vocab reads wording, not names in inline code or fenced examples", async () => {
+    const r = await runSpec(addTo(GONE, "An agent lists its subagents under `spawns:`, and the `single-spawn` rule reads each `Spawn one` line.", "```", "spawn a helper", "```"));
+    expect(r.json!.failures).toEqual([]);
+    const off = await runSpec(addTo(GONE, "Then spawn a helper per file."));
+    expect(failuresOf(off)).toEqual(["spawn-vocab alpha/gone"]);
+  });
+
+  test("dispatch means a subagent only in a delegation context", async () => {
+    const r = await runSpec(addTo(GONE, "The reducer dispatches its action. Dispatch the request to the handler."));
+    expect(r.json!.failures).toEqual([]);
+    const off = await runSpec(addTo(GONE, "Dispatch a reviewer per file. Send the brief via a subagent dispatch."));
+    expect(failuresOf(off)).toEqual(["spawn-vocab alpha/gone"]);
+  });
+
+  test("spawn lints skip frontmatter and code fences, where forms are quoted, not run", async () => {
+    const r = await runSpec(addTo(GONE, "```", FORM.taskBatch, FORM.fixed, FORM.headless, 'agent("x", agent="task")', "```"));
+    expect(r.json!.failures).toEqual([]);
   });
 });
 
