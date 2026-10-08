@@ -906,3 +906,4 @@ originals:
   - plugin/skills/vstack-fan-out
   - plugin/skills/vstack-worktree
   - plugin/skills/skill-creator
+  - plugin/skills/vstack-update
