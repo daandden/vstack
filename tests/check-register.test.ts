@@ -460,6 +460,17 @@ describe("House style scope", () => {
 describe("spawn lints", () => {
   const sorted = (r: Run) => failuresOf(r).sort();
 
+  test("spawn-vocab permits spawn descriptions in frontmatter but rejects the same wording in the body", async () => {
+    const description = "Spawn vstack-comment-critic, fix accepted findings, and offer encodings for claimed constraints.";
+    const frontmatter = `---\nname: gone\ndescription: ${description}\n---\n`;
+    const ok = await runSpec((s) => (s.files[GONE] = frontmatter + "Run the skill.\n"));
+    expect(ok.code).toBe(0);
+    expect(ok.json!.failures).toEqual([]);
+    const body = await runSpec((s) => (s.files[GONE] = frontmatter + description + "\n"));
+    expect(body.code).toBe(1);
+    expect(failuresOf(body)).toEqual(["spawn-vocab alpha/gone"]);
+  });
+
   test("both batch forms pass: the tasks[] batch and the isolated eval agent() batch, plus the stop-instead-of-inline line", async () => {
     const r = await runSpec(
       addTo(GONE, FORM.gate, FORM.taskBatch, FORM.inline, "", FORM.gate, FORM.evalBatch, FORM.inline, "", "1. " + FORM.gate, "   " + FORM.evalBatch, "   " + FORM.inlineSpawn),
