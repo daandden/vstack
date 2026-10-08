@@ -217,8 +217,7 @@ const LINTS: Record<string, Lint> = {
   "spawn-vocab": {
     rule: "spawn-vocab",
     run: (t) =>
-      proseLines(t.files, true)
-        .filter(({ line }) => !/^\s*spawns:/.test(line))
+      proseLines(t.files)
         .filter(({ line }) => {
           if (SPAWN_TERMS.test(line)) return true;
           const wording = line.replace(/`[^`]*`/g, "");

@@ -4,9 +4,16 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
-## [0.1.14] - 2026-10-08
+## [0.1.15] - 2026-10-08
 
 - Select hidden principles per main-session prompt through native jev, with cleaned request-only state, a four-second budget, one retry, and persisted once-per-session pointers. Ship the four adapted principles and the calibrated 23 questions and 72 sample prompts (#71).
+
+## [0.1.14] - 2026-10-08
+
+- prune-comments uses one fresh `vstack-comment-critic`, accepts scoped fixes, and leaves commits to its caller. The critic edits comments only (#85).
+- setup-app-verification creates and proves a visible `verify-<app>` skill. Standard mode commits it; Private mode links one shared copy and commits nothing (#85).
+- maintain-app-verification supports one-feature Drift repair and a full source and serial live pass. Proof, notes, and disposable app data use the run's Scratch entry (#85).
+- `spawn-vocab` ignores skill descriptions in frontmatter while still rejecting off-form delegation in the body (#85).
 
 ## [0.1.13] - 2026-10-08
 

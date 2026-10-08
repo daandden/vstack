@@ -1,4 +1,4 @@
 [test]
 # Only repo tests; plugin/ holds Upstream skill files that bun test must not pick up.
 root = "tests"
-preload = ["./tests/support/extension-mocks.ts"]
+preload = ["./tests/support/timeout.ts", "./tests/support/extension-mocks.ts"]
