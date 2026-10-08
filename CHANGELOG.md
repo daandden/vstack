@@ -12,6 +12,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 - vstack-update carries hand edits through per-row three-way merges, proposes held catch-ups, and checks ADRs and Fan-out callers. Removed and renamed items get full choices without defaults. Shared Holds omit only their own steps, and removed or renamed names get major bumps (#99).
 
+## [0.1.31] - 2026-10-08
 
 - implement settles the End state and design seams once, keeps unproven tdd slices out of commits and PRs, and shares cleanup, live proof, review, commit, and the one-run PR chain through END-STATE.md (#92).
 
