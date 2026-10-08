@@ -53,7 +53,7 @@ describe("principle selection", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
   test("the whole selection has a four-second deadline even when fetch ignores abort", async () => {
-    fetchSpy = spyOn(globalThis, "fetch").mockImplementation(() => new Promise(() => {}));
+    fetchSpy = spyOn(globalThis, "fetch").mockImplementation((() => new Promise(() => {})) as typeof fetch);
     const start = performance.now();
     expect(await fakeHost(options).emit("before_agent_start", { prompt: "Fix login" })).toEqual([undefined]);
     expect(performance.now() - start).toBeLessThan(4500);
@@ -65,5 +65,11 @@ describe("principle selection", () => {
     const [result]: any = await host.emit("before_agent_start", { prompt: "Fix login" });
     expect(result.message.content).not.toContain("fix-root-causes");
     expect(result.message.content).toContain("prove-it-works");
+  });
+  test("no cap: every settled principle can be injected in one turn", async () => {
+    const questions = (await import("../principle-questions.json")).default;
+    fetchSpy = endpoint(Object.fromEntries(Object.keys(questions).map(name => [name, .75])));
+    const [result]: any = await fakeHost(options).emit("before_agent_start", { prompt: "Do the work" });
+    expect(result.message.content.match(/skill:\/\/principle-/g)).toHaveLength(23);
   });
 });

@@ -33,14 +33,14 @@ The repo scripts need Bun. Run `bun test` and `bun scripts/check-register.ts` be
 
 Only `plugin/` ships. Upstreams are fetched when needed, never stored in this repo.
 
-### Pins and Upstream clones
-
 ### Principle selection
 
 `principle-questions.json` and `sample-prompts.json` at the repo root are the settled #70 question set and 72-prompt calibration corpus. The extension imports the root questions from the linked clone; the Update re-run reads these same files, never a second question copy. POST directly to TypeSafe `/v1/systemone` with `state: { request: preprocessTinyMessage(prompt) }`; the cleaner lives in `plugin/extensions/prompt-cleaner.ts`. The corpus stores expected and allowed picks, baseline probabilities, and the Update drift thresholds.
 
 The extension selects every score at least 0.75 in main sessions with native TypeSafe jev and credentials. Each pointer appears once per session, including resume on the active branch. It returns one hidden message, not system-prompt text. Child sessions receive no selection. A missing native judge or key, request error, or four-second deadline skips silently; one retry shares that deadline. `tests/principle-selection.test.ts` uses the #69 fake host and a stubbed fetch endpoint, including a fetch that ignores abort.
 
+
+### Pins and Upstream clones
 
 `pins.yaml` keys (`matt`, `pstack`, `diagram`, `css`, `prose`) are also the register's `upstream` values and the names of the local clones under `~/.cache/vstack/upstreams/<key>`. Set `VSTACK_UPSTREAMS` (or pass `--upstreams`) to use another directory. Blobless clones are enough. `check-register` reads trees with `git ls-tree` and never fetches, checks out, or moves HEAD. `update-plan` makes a missing clone and fetches the others, and it never moves HEAD either. To make a clone by hand:
 
@@ -110,6 +110,7 @@ Text output prints one line per failure, `FAIL <class> <item>: <message>`, after
 | `no-version-bump` | `plugin/` changed since the version base and the version is not higher than the base's |
 | `invalid-house-style` | a row or rule in `house-style.yaml` lacks a field or has a bad one, a row comes after a row that rewrites its `from`, or a linted rule is missing; the item is `house-style.yaml:<id>` |
 | `house-style-leftover` | a row's `from` still matches text the row covers (see "House style" below; adopt text only against `required` rows) |
+| `migration-house-style` | setup-vstack is present but its `references/house-style.yaml` copy is missing, has invalid row fields, or differs from the root `uses: migration` rows in content or order |
 | `skill-ref` | adapt, merge, or original markdown holds a bare `/<name>` token for a vstack skill |
 | `spawn-vocab` | adapt, merge, or original markdown outside code fences holds `subagent_type`, `generalPurpose`, or `` `Task` ``, or says spawn or spin up outside inline code and outside a fixed subagent line; dispatch fails only in a sentence naming an agent or role, not for reducer or request dispatch |
 | `fan-out-block` | adapt, merge, or original markdown holds an incomplete Fan-out block: a gate line that does not cite `skill://vstack-fan-out` with `parts:` and `size:`, a missing or extra fan-out or inline line, a batch that is neither one `task` call with `tasks[]` nor one isolated eval `agent()` cell, a batch naming an agent the plugin does not ship or leaving out the user's override words or the vstack root, or a fan-out or inline line with no gate |
@@ -165,6 +166,21 @@ const rows = selectRows(houseStyle.replacements, { use: "update", upstreams: ["m
 process.stdout.write(applyRows(await Bun.stdin.text(), rows));' \
   < <(git -C ~/.cache/vstack/upstreams/matt show v1.2.3:skills/engineering/wizard/SKILL.md) > plugin/skills/wizard/SKILL.md
 ```
+
+setup-vstack ships exactly the root `uses: migration` rows under `references/house-style.yaml`, with no `rules` list. Generate the copy with `selectRows(rows, {use: "migration"})` and `Bun.YAML.stringify({replacements: rows})`. `migration-house-style` validates its row schema and compares every field in order. The leftover scan skips this copy because its `from` phrases are data.
+
+### Machine Migration
+
+setup-vstack confirms scan roots through `ask` before check 6 runs. `machine.ts --extension-loaded yes|no --scan-root <dir>...` includes Matt leftovers between checks 5 and 7. The default root is `$HOME`. The scan prunes `node_modules`, `.venv`, and `Library`, resolves each `.git` entry with git, and deduplicates common dirs. Directory symlinks are not followed.
+
+`migrate.ts plan --scan-root <dir>...` prints a read-only JSON plan. It lists roots, scan errors, Standard projects, notices, and item ids. Items contain mandatory and destructive flags, source and destination paths, full-file proposed diffs, and manual hits. Private and profile moves and removal of the old private rule are mandatory. Standard projects are listed but not edited. The plan states the downgrade from Matt `main` to `v1.2.3` and that outside links to old private files break.
+
+After the machine plan's Apply all / Choose items / Cancel `ask`, save its original JSON in Scratch. Run `migrate.ts apply --plan <file>`, with `--skip <id>` for each declined optional item. Application refuses changed machine state and skipped mandatory items. `migrate.ts cancel` changes nothing. Exit 0 means complete, 1 means remaining items or a scan error, and 2 means refusal or inability to run. Apply prints applied and skipped ids, failures, warnings, remaining ids, and the new-session instruction.
+
+Removal uses `npx --yes skills@1.7.0 remove -g <names> -y` so that the skills CLI deletes its agent links and lock entries. Detection reads `$XDG_STATE_HOME/skills/.skill-lock.json` when set, else `$HOME/.agents/.skill-lock.json`. `VSTACK_SKILLS_CLI` replaces this command with one executable for process tests. Removal failures warn. A failed private or profile move keeps the old rule and check 6 failing. Private move rollback restores the old store, text, directory name, links, and exclude content when possible. A destination conflict never merges files. The existing vstack copy wins and the project plan resolves the old copy.
+
+The runtime reads the shipped row copy and reuses `scripts/lib/house-style.ts` for parsing and matching. This import requires the full clone that ADR 0005 already requires. Exact absolute prefixes come from each common dir. Relative private rows run only for an ordinary `.git` common dir. Remaining bare words and non-ordinary relative paths need proposed manual diffs in the same `ask`. Remaining mentions in moved stores still fail check 6. Domain filename changes belong to the project Migration.
+
 
 ### update-plan
 
@@ -243,6 +259,9 @@ A row owns the files under its path except those under a longer path that is ano
 `tests/vstack-tmp.test.ts` and `tests/vstack-clean.test.ts` run the two Scratch scripts, `plugin/skills/vstack-tmp/scripts/path.ts` and `plugin/skills/vstack-clean/scripts/clean.ts`, as processes. Both scripts take `--home <dir>`, and the tests pass a temp dir there, so they never write to the real `~/.vstack/`. Never redirect `HOME` for them; omp's own home stays where it is. The path tests cover the repo key (linked worktrees share it, `_global` outside a repo), and the clean tests cover the TTL by the newest mtime anywhere in an entry, symlinks that are never followed, and pruning of empty kind and key dirs.
 
 `tests/setup-vstack-machine.test.ts` and `tests/setup-vstack-project.test.ts` run setup-vstack's two scripts as processes. `machine.ts` asks the real `omp` for every fact (`omp config list --json`, `omp token typesafe`, `omp setup python --check --json`) and writes settings only through `omp config set`, so its tests give it a throwaway `HOME` whose `.omp/agent/config.yml` they write, an env of only `PATH`, `HOME`, and `TERM`, a cwd outside the real home, and `TYPESAFE_API_KEY` as the stand-in credential. They need omp on `PATH` and skip without it (CI); the case for a missing omp runs everywhere. `project.ts` needs only git: its tests build temp repos and linked worktrees and assert the state JSON and the files in the Standard setup commit.
+
+`tests/setup-vstack-migration.test.ts` runs the Migration and machine scripts as processes over fake homes. Its smoke has all 25 Matt lock entries, diagram-design and good-css copies, CLI-style agent links, a private repo, a linked checkout, a submodule, a separate git dir, rules, and profiles. A stand-in skills CLI implements removal at that external boundary. A stand-in omp supplies the other machine facts. Git and filesystem moves are real. Other cases cover Cancel, mandatory choices, stale plans, pruning, manual hits, destination conflicts, warning-only removal, and filesystem rename rollback.
+
 
 ### Versions and CHANGELOG
 

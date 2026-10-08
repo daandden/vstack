@@ -2,10 +2,7 @@
 // It follows omp-tools' advisor-concern-wake harness: a partial ExtensionAPI that
 // captures handlers and tools, a partial ctx, and emit() to fire events.
 // Types are structural; the repo has no omp SDK dependency.
-import { mock } from "bun:test";
-mock.module("@oh-my-pi/pi-coding-agent", () => ({ settings: {} }));
-mock.module("@oh-my-pi/pi-coding-agent/judgment", () => ({ hasNativeJudge: (_settings: unknown, registry: any) => registry.nativeJudge }));
-const { default: vstack } = await import("../../plugin/extensions/vstack.ts");
+import vstack from "../../plugin/extensions/vstack.ts";
 
 /** ctx.agent as omp sets it: kind "main" for the top session, "sub" for subagents. */
 export interface FakeAgent {
