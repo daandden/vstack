@@ -290,7 +290,7 @@ items:
     path: pstack/skills/architect
     tree: 603668c4b5c46d6e32d6f325c01359a831854941
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/architect]
     reason: "Separate skill; its Sketch step uses codebase-design's DESIGN-IT-TWICE (#36)."
   - id: pstack/arena
     upstream: pstack

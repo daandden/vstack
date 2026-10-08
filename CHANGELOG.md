@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [0.1.35] - 2026-10-08
+
+- Add hidden architect with gated grounding, alternative design sketches, named stops, implement handover with proposed seams, and Scrap before review or commit (#96).
+
 ## [0.1.34] - 2026-10-08
 
 - Add model-invocable hillclimb with frozen-harness hypothesis waves, isolated unapplied workers, best-only measured wins, every-attempt decision trails, and shared live proof and End-state chaining (#95).
