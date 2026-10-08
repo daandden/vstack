@@ -74,7 +74,7 @@ items:
     path: skills/engineering/prototype
     tree: 57569dda16077a016b8fb82494dbf9f6430d7cc4
     disposition: merge
-    artifacts: []
+    artifacts: [plugin/skills/prototype]
     reason: "Gains the pstack prototype Playbook's timing/behavior branch, observation step, and reply shape (#36)."
   - id: matt/research
     upstream: matt
@@ -786,7 +786,7 @@ items:
     path: pstack/skills/poteto-mode/playbooks/prototype.md
     tree: 18bedc7e9249d180f9198d5b4b13e3817d41d281
     disposition: merge
-    artifacts: []
+    artifacts: [plugin/skills/prototype]
     reason: "Merged into Matt's prototype (#36)."
   - id: pstack/playbook-refactoring
     upstream: pstack
