@@ -895,3 +895,7 @@ items:
 originals:
   - plugin/extensions/vstack.ts
   - plugin/rules/vstack-prose.md
+  - plugin/rules/vstack-worktrees.md
+  - plugin/skills/vstack-clean
+  - plugin/skills/vstack-tmp
+  - plugin/skills/vstack-worktree
