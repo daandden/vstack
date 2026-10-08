@@ -16,7 +16,7 @@ The End state authorizes every step up to it: merge-ready authorizes babysit in 
 
 ## 0b. Branch
 
-Read the default branch through `gh repo view --json defaultBranchRef` and the current branch through git. If the End state is PR opened or further and HEAD is on the default branch, create and switch to `<type>/<slug>` from HEAD, with a type and slug that describe the work. Use no worktree. Record that this run created the branch. With End state commit, stay on the current branch. An existing branch is not this run's creation; detached HEAD cannot start a PR chain.
+With End state commit, stay on the current branch. Otherwise read the default branch through `gh repo view --json defaultBranchRef` and the current branch through git. If HEAD is on the default branch, create and switch to `<type>/<slug>` from HEAD, with a type and slug that describe the work. Use no worktree. Record that this run created the branch. An existing branch is not this run's creation; detached HEAD cannot start a PR chain.
 
 ## 0c. Decision trail
 
