@@ -1,7 +1,7 @@
 # Decision register: one row per Upstream item at its Pin (spec #63 "Decision register").
 # Row fields: id, upstream (a pins.yaml key), kind (skill|principle|playbook|agent), path and tree (the item
-# at the current Pin), disposition (adopt|adapt|merge|reject), artifacts (plugin paths; empty for reject and for
-# rows whose artifacts land in a later ticket), reason (one line), optional adr, and on a held row held_at plus
+# at the current Pin), disposition (adopt|adapt|merge|reject), artifacts (plugin paths; empty only for
+# reject), reason (one line), optional adr, and on a held row held_at plus
 # held_path. originals: lists vstack-only artifacts. scripts/check-register.ts checks this file; see README.md.
 items:
   - id: matt/ask-matt
@@ -10,7 +10,7 @@ items:
     path: skills/engineering/ask-matt
     tree: c9c83b11b1a0c91c555ed6ade5ba67f6d6b103d4
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/ask-vstack]
     reason: "Renamed; routes over the whole vstack catalog, not only Matt's."
   - id: matt/code-review
     upstream: matt

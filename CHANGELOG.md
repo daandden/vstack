@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [0.1.36] - 2026-10-08
+
+- Add ask-vstack routing across the shipped catalog, correct omp phase boundaries, and reject non-reject register rows with no artifacts (#100).
+
 ## [0.1.35] - 2026-10-08
 
 - Add hidden architect with gated grounding, alternative design sketches, named stops, implement handover with proposed seams, and Scrap before review or commit (#96).

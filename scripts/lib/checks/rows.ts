@@ -31,12 +31,16 @@ export function rowProblems(row: Row, pins: Map<string, Pin>, seenIds: Set<strin
 }
 
 export const rowChecks: Check = {
-  classes: ["invalid-row", "invalid-disposition", "reject-with-artifacts", "absent-path"],
+  classes: ["invalid-row", "invalid-disposition", "reject-with-artifacts", "non-reject-without-artifacts", "absent-path"],
   async run(ctx) {
     const out: Failure[] = [];
     const seen = new Set<string>();
     for (const row of ctx.register.rows) {
-      out.push(...rowProblems(row, ctx.pins, seen));
+      const problems = rowProblems(row, ctx.pins, seen);
+      out.push(...problems);
+      if (problems.length === 0 && row.disposition !== "reject" && row.artifacts.length === 0) {
+        out.push({ class: "non-reject-without-artifacts", item: row.id, message: "non-reject row names no artifacts" });
+      }
       if (typeof row.raw.id === "string") seen.add(row.raw.id);
       if (row.disposition === "reject" && row.artifacts.length > 0) {
         out.push({ class: "reject-with-artifacts", item: row.id, message: `reject row names ${row.artifacts.join(", ")}` });
