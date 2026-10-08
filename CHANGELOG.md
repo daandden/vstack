@@ -4,9 +4,13 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
-## [0.1.26] - 2026-10-08
+## [0.1.27] - 2026-10-08
 
 - Add model-invocable forensics with live instrumentation and captured-artifact branches. It returns a cited diagnosis, preserves tracked files, and requires paired captures for confirmation (#94).
+
+## [0.1.26] - 2026-10-08
+
+- wayfinder adapts Matt v1.2.3 with isolated research runners, parent-only tracker writes, research-branch landing through omp worktrees, Private findings, and session renames after every claim (#78).
 
 ## [0.1.25] - 2026-10-08
 
