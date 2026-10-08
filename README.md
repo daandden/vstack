@@ -21,7 +21,7 @@ The repo scripts need Bun. Run `bun test` and `bun scripts/check-register.ts` be
 
 | Path | Ships | What it holds |
 |---|---|---|
-| `plugin/` | yes | The omp plugin. `package.json` (`name: vstack`, the version, the `omp` field), `skills/<name>/` (flat, one level deep), `agents/`, `rules/`, and `extensions/vstack.ts`, the one extension, listed in the `omp` field. |
+| `plugin/` | yes | The omp plugin. `package.json` (`name: vstack`, the version, the `omp` field), `skills/<name>/` (flat, one level deep), `agents/`, `rules/`, and `extensions/vstack.ts`, the one extension, listed in the `omp` field. A skill's Bun scripts ship in its `scripts/` dir. The agent runs them with the bash tool as `bun "$(realpath skill://<name>/scripts/<script>.ts)"`: external programs never see `skill://` paths, and omp's in-process `realpath` turns the URL into the file path. |
 | `pins.yaml` | no | One entry per Upstream: repo, Pin, and which tree entries count as Upstream items. |
 | `decision-register.yaml` | no | One row per Upstream item, plus `originals:` for vstack-only artifacts. |
 | `house-style.yaml` | no | The House style: replacement rows and rules that turn Upstream text into vstack text. |
@@ -149,6 +149,8 @@ process.stdout.write(applyRows(await Bun.stdin.text(), rows));' \
 `bun test` runs `tests/` only (`bunfig.toml`). The check-register tests build fixture Upstream git repos with tags, a moved item, and a removed item, then a vstack checkout committed as the version base. They run the script as a process and assert its exit code and its failures by class and item. One case serves a local stand-in for the GitHub API, so the `github` source is tested too.
 
 `tests/extension.test.ts` tests the extension through a fake omp host (`tests/support/extension-host.ts`, after omp-tools' advisor-concern-wake tests). `fakeHost(options)` runs the extension factory against a partial ExtensionAPI and ctx and returns the registered tools, the event handlers, `emit(name, event)` (awaits every handler and returns their results), `callTool(name, params)`, and the session name with its source. Options set `ctx.agent` (main or sub), the models `ctx.modelRegistry.find` returns, and their API keys. The fake `setSessionName` stores a `user` name, as every omp mode does, and `autoTitle(name)` is refused after one. Stub TypeSafe's endpoint with `spyOn(globalThis, "fetch")`. The repo has no omp SDK dependency, so the extension imports omp types only (`import type`), and the fake `pi.arktype` only records the schema.
+
+`tests/vstack-tmp.test.ts` and `tests/vstack-clean.test.ts` run the two Scratch scripts, `plugin/skills/vstack-tmp/scripts/path.ts` and `plugin/skills/vstack-clean/scripts/clean.ts`, as processes. Both scripts take `--home <dir>`, and the tests pass a temp dir there, so they never write to the real `~/.vstack/`. Never redirect `HOME` for them; omp's own home stays where it is. The path tests cover the repo key (linked worktrees share it, `_global` outside a repo), and the clean tests cover the TTL by the newest mtime anywhere in an entry, symlinks that are never followed, and pruning of empty kind and key dirs.
 
 ### Versions and CHANGELOG
 
