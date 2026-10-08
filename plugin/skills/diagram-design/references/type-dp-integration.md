@@ -299,7 +299,7 @@ Any source, consumer, platform component (node or bar), or footer node accepts a
 - A focal `kind: bar` uses `bar_h_focal=56` (taller) and accent styling.
 - A focal `kind: row` node keeps `row_h=72` but uses accent styling.
 - The **Trino → all consumers** edges are always `primary` (accent), regardless of focal flag on each consumer — this is the serve-flow rule.
-- If fewer than 2 or more than 2 components are marked `focal: true`, halt and ask the user.
+- If fewer than 2 or more than 2 components are marked `focal: true`, halt and ask with `ask`.
 
 ---
 

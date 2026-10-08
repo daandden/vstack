@@ -114,12 +114,19 @@ The final-state capture contract is synchronous: `?motion=static`, `<html data-m
 
 PNG and SVG exports are static final-state artifacts unless the user explicitly requests a named step. Before capture, open `?motion=static`, await `document.fonts.ready`, and assert `data-frame="static"`. SVG extraction omits HTML controls and scripts; source-visible semantic markup keeps the result complete.
 
-Run:
+From a repository checkout, run one eval cell each (see SKILL.md "Running the bundled scripts"):
 
-```bash
-python3 scripts/verify-motion.py path/to/animated-diagram.html
-python3 scripts/test-verify-motion.py
-python3 scripts/lint-skin.py path/to/animated-diagram.html
+```python
+import runpy, sys
+for argv in (["scripts/verify-motion.py", "path/to/animated-diagram.html"],
+             ["scripts/test-verify-motion.py"],
+             ["scripts/lint-skin.py", "path/to/animated-diagram.html"]):
+    sys.argv = argv
+    try:
+        runpy.run_path(argv[0], run_name="__main__")
+    except SystemExit as e:
+        if e.code:
+            raise
 ```
 
 The verifier checks mode/state declarations, contiguous steps, motion budgets, complete SVG naming, no-JS source visibility, decorative accessibility, the full control set, live status, reduced-motion/print CSS, keyboard handling, page-hide pause, bounded static/test overrides, immediate final-step stop, and exact canonical-controller identity. Its adversarial tests mutate the canonical template to prove each failure is rejected.

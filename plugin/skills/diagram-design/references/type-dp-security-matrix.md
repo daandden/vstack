@@ -233,7 +233,7 @@ Exactly **one** focal cell per diagram (or zero). The focal cell:
 - May carry a 2-line content: primary `value` at `y = row_y(k) + 18`, `sub` at `y = row_y(k) + 30`
 - Calls out the diagram's central security claim — the *one* access rule that distinguishes this platform's posture from a generic permissions table
 
-If zero or >1 `focal: true` cells are declared, halt and ask the user.
+If zero or >1 `focal: true` cells are declared, halt and ask with `ask`.
 
 ---
 

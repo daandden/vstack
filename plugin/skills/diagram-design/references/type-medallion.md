@@ -291,7 +291,7 @@ The focal tier:
 - Has its **incoming** promotion arrow auto-promoted to `style: focal` (accent).
 - Has its **outgoing** promotion arrow (if any) — typically into the cold archive — kept at the user-declared style (usually `lifecycle` dashed).
 
-If zero or >1 tiers carry `focal: true`, halt and ask the user.
+If zero or >1 tiers carry `focal: true`, halt and ask with `ask`.
 
 ---
 

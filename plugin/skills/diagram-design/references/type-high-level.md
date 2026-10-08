@@ -375,7 +375,7 @@ Reserved names `Orchestration`, `Security`, `Observability`, `Governance`, `Back
   - `kind: bar` — lives inside the cluster (top row). Conventionally paired with `Orchestration`.
   - `kind: cross-cutting` — lives below the cluster, one row per component. Paired with `Security`, `Observability`, `Governance`, etc.
 
-  If the inputs declare a vertical chevron without a paired component (or vice versa), halt and ask the user — the diagram is incomplete.
+  If the inputs declare a vertical chevron without a paired component (or vice versa), halt and ask with `ask` — the diagram is incomplete.
 
 - **Count constraint:** `len(verticals) == len(bars) + len(crosscuts)`. The right strip is split evenly among all verticals (§2.9), so visual alignment between a chevron and its bar/row is approximate — the *label* is what matters, not the y-pixel match.
 

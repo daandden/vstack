@@ -275,7 +275,7 @@ The process diagram has three focal slots, exactly one entry each:
 - **One focal node** (`nodes[i].focal: true`) — the node that *receives* the critical handoff. Accent border + accent role chip + ink title (title text stays ink so it's still readable; only the border + role chip carry the accent).
 - **One focal arrow set** (`style: focal-in` and `focal-out`) — edges into and out of the focal node. Accent solid strokes.
 
-If zero or >1 of any focal slot are declared, halt and ask the user.
+If zero or >1 of any focal slot are declared, halt and ask with `ask`.
 
 ---
 

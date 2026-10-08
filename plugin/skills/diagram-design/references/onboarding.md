@@ -1,6 +1,6 @@
 # Onboarding — generate your skin from a design source
 
-**Goal:** point the skill at a design source — a website, an installed skill, or a local folder — and have it extract the palette + typography, then rewrite `style-guide.md` so every future diagram inherits that skin.
+**Goal:** point the skill at a design source — a website, an installed skill, or a local folder — and have it extract the palette + typography, then save the result as a named profile so every future diagram in the project inherits that skin. The installed `style-guide.md` is the shipped skin and the starting body; onboarding never writes it.
 
 Takes about 60 seconds.
 
@@ -23,19 +23,19 @@ Source you provide (URL / skill name / folder path)
       ↓
 [3] map to semantic roles (paper, ink, muted, accent, …)
       ↓
-[4] propose a style-guide.md diff
+[4] propose a diff against the shipped style-guide.md
       ↓
-[5] write the diff (with your approval)
+[5] save the guide as a named profile (with your approval)
       ↓
-[6] offer to save as a named client profile
+[6] offer to write the project's diagram-profile: line
       ↓
 future diagrams use your tokens
 ```
 
 Gate-only choices use the same finish:
 
-- **(d) Manual:** accept the user's tokens, write them under a new `Custom tokens` section in `style-guide.md`, then offer to save a named profile.
-- **(e) Default:** proceed with the shipped skin. To persist that choice for this project, offer to write a `.diagram-design` marker containing exactly `profile: default`; write it only with explicit consent.
+- **(d) Manual:** accept the user's tokens, add them under a new `Custom tokens` section of a copy of the shipped `style-guide.md`, then save that guide as a named profile.
+- **(e) Default:** proceed with the shipped skin (profile `default`). To persist that choice for this project, ask with `ask` whether to write `diagram-profile: default` into the project config; write it only on a yes.
 
 ---
 
@@ -120,7 +120,7 @@ Before writing, validate:
 
 - **AA contrast**: `ink` on `paper` ≥ 4.5:1. `muted` on `paper` ≥ 4.5:1 for body text.
 - **Accent is the most saturated color**: not muted-ish, not near-grey.
-- **paper ≠ pure white**: if the site uses `#ffffff`, fall back to `#fafaf7` to preserve Diagram Design's warm-neutral feel — or ask the user to confirm pure-white is intentional.
+- **paper ≠ pure white**: if the site uses `#ffffff`, fall back to `#fafaf7` to preserve Diagram Design's warm-neutral feel — or confirm with `ask` that pure-white is intentional.
 
 If any check fails, propose an adjusted value and explain why.
 
@@ -128,7 +128,7 @@ If any check fails, propose an adjusted value and explain why.
 
 ## Step 4 — preview the diff
 
-Show the user what will change in `style-guide.md`. Only the tokens table — everything else stays the same.
+Show the user what the profile changes against the shipped `style-guide.md`. Only the tokens table — everything else stays the same.
 
 ```diff
 -| `paper`  | `#f5f4ed` | `#1c1a17` |
@@ -155,9 +155,9 @@ The receipt is required when the user says “match this site,” “use their b
 
 ## Step 5 — apply
 
-Before overwriting a still-pristine guide, create the recoverable `default` snapshot if it does not exist, following [`profiles.md`](profiles.md). Retain the pre-diff body for that snapshot; never snapshot newly customized tokens as `default`.
+Create the `default` snapshot if it does not exist, following [`profiles.md`](profiles.md); never snapshot newly customized tokens as `default`.
 
-Write the new tokens to `style-guide.md`. Suggest running the `/regenerate-examples` flow (if it exists) or rebuilding one example to verify the new skin reads cleanly.
+Save the shipped guide with the new tokens as a named profile with `save` in [`profiles.md`](profiles.md), then ask with `ask` whether to write the project's `diagram-profile:` line. Never write the new tokens to the installed `style-guide.md`. Rebuild one example with the profile to verify the new skin reads cleanly.
 
 After onboarding, the user should:
 
@@ -236,7 +236,7 @@ Use the installed-skill location exposed by the current agent when available. Ot
 2. `.factory/skills/<skill-name>/` from the current directory through the repo root (folder-specific or project install)
 3. The active path shown in `/skills` under **Plugins**; installed plugins keep the shared `skills/<skill-name>/` directory inside Droid's plugin cache
 
-Finally, check any path the user provides explicitly. If the skill is still not found, ask the user to confirm the name or provide its path.
+Finally, check any path the user provides explicitly. If the skill is still not found, ask with `ask` for the right name or its path.
 
 ### Step 2 — read token sources
 
@@ -274,13 +274,13 @@ Map variable names to semantic roles using name-heuristics:
 
 ### Step 4 — map, validate, propose diff
 
-Same as the URL method: fill the role table, run contrast checks, show the diff, ask for approval before writing.
+Same as the URL method: fill the role table, run contrast checks, show the diff, and get approval through `ask` before saving.
 
 ### When skill extraction is ambiguous
 
-- **Skill has no CSS or token files**: fall back to reading all `.md` files and look for hex values mentioned in prose. Surface what you found and ask the user to confirm mappings before applying.
-- **Multiple accent candidates**: list them and ask the user to pick one. Don't guess.
-- **Skill is dark-mode first**: ask whether to treat the dark values as the `paper`/`ink` defaults or to invert.
+- **Skill has no CSS or token files**: fall back to reading all `.md` files and look for hex values mentioned in prose. Surface what you found and confirm the mappings with `ask` before applying.
+- **Multiple accent candidates**: offer them as `ask` options. Don't guess.
+- **Skill is dark-mode first**: ask with `ask` whether to treat the dark values as the `paper`/`ink` defaults or to invert.
 
 ---
 
@@ -329,16 +329,16 @@ Walk the tree; the leaf `value` fields are the colors, the path segments supply 
 
 ### Step 3 — map, validate, propose diff
 
-Same as the URL method: run contrast checks, show the full diff against current `style-guide.md`, and write only after the user approves.
+Same as the URL method: run contrast checks, show the full diff against the shipped `style-guide.md`, and save only after the user approves through `ask`.
 
 ### When folder extraction is ambiguous
 
 - **No structured token files, only prose docs**: read every `.md` in the root and extract hex values found near role-like words. Show the user a table of what you inferred — don't silently apply uncertain mappings.
-- **Multiple themes / color schemes found**: list them, ask the user which one to use as the diagram skin.
-- **Folder has zero readable files**: tell the user and ask for a more specific path or switch to manual token entry.
+- **Multiple themes / color schemes found**: offer them as `ask` options for the diagram skin.
+- **Folder has zero readable files**: tell the user and ask with `ask` for a more specific path or switch to manual token entry.
 
 ---
 
 ## Multiple clients? Save a profile
 
-After every onboarding method, offer to save the completed guide as a named client profile. Follow [`profiles.md`](profiles.md) for the canonical home-directory library, metadata header, strict slug validation, and project marker. A project with a `.diagram-design` marker reads its profile directly, so parallel client workspaces do not overwrite one shared working copy.
+Every onboarding method ends by saving the completed guide as a named client profile. Follow [`profiles.md`](profiles.md) for the canonical home-directory library, metadata header, strict slug validation, and the project's `diagram-profile:` line. Each project reads its profile directly, so parallel client workspaces never share or overwrite one guide.

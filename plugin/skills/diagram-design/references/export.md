@@ -1,12 +1,12 @@
 # Export to PNG / SVG
 
-Convert a generated diagram HTML file into a portable `.svg` and/or `.png` next to it. **Manual only — never run unprompted.**
+Convert a generated diagram HTML file into a portable `.svg` and/or `.png` next to it. **Manual only — never run unprompted.** A calling vstack skill whose step says to export a figure counts as the request: it exports the SVG with `scripts/export_svg.py` and inlines the `<svg>` in its one-file page.
 
 ## Trigger
 
 Load this file when:
 
-- The user invokes `/diagram-design:export-diagram <html-file>` (the plugin's slash command — defined in `commands/export-diagram.md` at the repo root).
+- A calling vstack skill exports a figure it drew for its page.
 - The user asks in natural language to export, save, rasterize, convert, or download a diagram in `.svg` or `.png` form. Typical phrasings:
   - "export this as PNG"
   - "save as SVG"
@@ -14,7 +14,7 @@ Load this file when:
   - "rasterize it"
   - "convert to png and svg"
 
-The slash command is a thin wrapper that delegates here — both paths run the same procedure below.
+Every path runs the same procedure below.
 
 ## Scope
 
@@ -28,11 +28,19 @@ If the user explicitly asks for "a screenshot of the whole page including the ca
 
 ## SVG export procedure
 
-**Prefer the packaged helper.** From this skill's directory run:
+**Prefer the packaged helper.** Run it as one eval cell (SKILL.md "Running the bundled scripts"):
 
+```python
+import runpy, sys
+sys.argv = ["<skill-dir>/scripts/export_svg.py", "<html-file>", "<out.svg>"]  # drop "<out.svg>" to write <basename>.svg
+try:
+    runpy.run_path(sys.argv[0], run_name="__main__")
+except SystemExit as e:
+    if e.code:
+        raise
 ```
-python3 scripts/export_svg.py <html-file> [<out.svg>]
-```
+
+To put the figure in a one-file page, read the exported `.svg`, drop its `<?xml …?>` line, and paste the `<svg …>…</svg>` element into the page body. Its carried `<style>` is scoped to `#<slug>-root` and its `<defs>` IDs are prefixed, so several figures share a page safely. Keep the SVG and its `<style>` exactly as exported.
 
 That script is the source of truth for the transform below (CSS carry-forward, defs ID namespacing, rgba normalization, and the class-without-style gate). Reimplement only when the helper is unavailable; keep the behaviour identical.
 
@@ -94,30 +102,49 @@ Render **the original HTML** (not the extracted SVG) and screenshot only the `<s
 
 ### Detection
 
-Before running anything, verify Playwright is installed in the Python interpreter
-you will use for the export. Try:
+Before running anything, verify Playwright is installed in eval's interpreter with one eval cell:
 
-```
-python3 -c "import playwright"
+```python
+import importlib.util
+print(importlib.util.find_spec("playwright") is not None)
 ```
 
-If that fails, try `python -c "import playwright"` (the usual command on
-Windows). Use whichever interpreter passes the import for the rasterization
-command below. If both imports fail, surface this exact instruction to the user
-and stop:
+If it prints `False`, ask with `ask` whether to install Playwright and its Chromium into eval's Python (options: install, stop). On install, run one eval cell:
+
+```python
+%pip install playwright
+import subprocess, sys
+subprocess.run([sys.executable, "-m", "playwright", "install", "chromium"], check=True)
+```
+
+On stop, or when the install fails, surface this exact instruction to the user and stop:
 
 > Playwright is not available. PNG export requires an approved Playwright
-> installation and a compatible browser to be provisioned by the host
-> environment; the skill never installs runtime dependencies automatically.
+> installation and a compatible browser in omp's eval Python.
 > Then ask me to export again.
 
-Don't auto-install. The user asked for one feature, not a system change.
+Don't install without that approval. The user asked for one feature, not a system change.
 
 ### Rasterize
 
-Write the snippet below to a temp file and run it with the interpreter that
-passed detection: `python3 <tmp.py> <src.html> <out.png>` or
-`python <tmp.py> <src.html> <out.png>`:
+Write the snippet below to a temp file made with `tempfile.mkstemp(suffix=".py")` and run it with `runpy` in one eval cell. Playwright's sync API refuses to run on a thread with an event loop, and eval cells run on one, so run the script on a worker thread:
+
+```python
+import concurrent.futures, os, runpy, sys
+def rasterize():
+    sys.argv = [png_script, "<src.html>", "<out.png>", "2"]  # png_script: the temp file path
+    try:
+        runpy.run_path(png_script, run_name="__main__")
+    except SystemExit as e:
+        if e.code:
+            raise
+try:
+    concurrent.futures.ThreadPoolExecutor(1).submit(rasterize).result()
+finally:
+    os.remove(png_script)
+```
+
+The snippet:
 
 ```python
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError, sync_playwright
@@ -184,7 +211,7 @@ If the target aspect ratio doesn't match the `viewBox` aspect ratio, say so and 
 
 ## Edge cases
 
-- **Source is `assets/index.html`** (the gallery, multiple SVGs in one file): refuse the export and ask the user which specific diagram file they meant. Don't guess.
+- **Source is `assets/index.html`** (the gallery, multiple SVGs in one file): refuse the export and ask with `ask` which specific diagram file they meant. Don't guess.
 - **No `<svg>` block found**: the source isn't a diagram file. Tell the user; don't write anything.
 - **Surrounding HTML matters to the user**: they want cards/header in the image. Tell them this skill exports diagrams only, and recommend a browser-based full-page screenshot (or a separate PDF print).
 - **Source is missing fonts at runtime**: Playwright will substitute, the screenshot will look off. Check that the source HTML has the `<link href="...fonts.googleapis.com...">` tag in `<head>`. If absent, the file isn't from a current template — fix the source rather than working around it in export.

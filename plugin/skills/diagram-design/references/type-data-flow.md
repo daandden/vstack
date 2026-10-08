@@ -251,7 +251,7 @@ The data-flow diagram is built around **one cross-role handoff** that defines it
 - **One focal node** (`nodes[i].focal: true`) — the node that *receives* the focal handoff. Accent border + accent role chip + ink title.
 - **One focal arrow** (`arrows[i].style: "accent"`) — the cross-role handoff into the focal node. Solid accent stroke + labeled with a short payload descriptor (e.g., `anon data`).
 
-If zero or >1 of any focal slot are declared, halt and ask the user.
+If zero or >1 of any focal slot are declared, halt and ask with `ask`.
 
 ---
 

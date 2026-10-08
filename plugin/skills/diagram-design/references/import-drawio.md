@@ -6,7 +6,7 @@ Turn a `.drawio` file into an editorial-quality diagram at the format, size, and
 
 ## Trigger
 
-Load this file when the user points at a `.drawio`, `.drawio.xml`, `.drawio.png`, or `.drawio.svg` file and wants a diagram out of it — "convert this drawio", "redraw this diagram", "make this presentable", "この drawio をきれいにして", or the `/diagram-design:import-drawio` slash command.
+Load this file when the user points at a `.drawio`, `.drawio.xml`, `.drawio.png`, or `.drawio.svg` file and wants a diagram out of it — "convert this drawio", "redraw this diagram", "make this presentable", "この drawio をきれいにして".
 
 ---
 
@@ -14,8 +14,16 @@ Load this file when the user points at a `.drawio`, `.drawio.xml`, `.drawio.png`
 
 Never read a `.drawio` file with Read. Most are deflate+base64 payloads, and even the readable ones are 10× more XML than signal. Run the extractor:
 
-```bash
-python3 <skill-dir>/scripts/drawio_extract.py <file> [--page N|NAME|all]
+Use one eval cell (SKILL.md "Running the bundled scripts"); the command line is `<skill-dir>/scripts/drawio_extract.py <file> [--page N|NAME|all]`:
+
+```python
+import runpy, sys
+sys.argv = ["<skill-dir>/scripts/drawio_extract.py", "<file>"]  # add the options below as more strings
+try:
+    runpy.run_path(sys.argv[0], run_name="__main__")
+except SystemExit as e:
+    if e.code:
+        raise
 ```
 
 `<skill-dir>` is `skills/diagram-design/` in this repo, or the skill's own directory when it's installed standalone or as a plugin. If the path isn't obvious, glob for `**/diagram-design/scripts/drawio_extract.py`.
@@ -153,7 +161,7 @@ Default is page 0. When the file has several pages:
 | Extractor exits 2 | Report the message verbatim — it names the actual problem (not a draw.io file / malformed XML / no pages). Don't fall back to reading the raw file. |
 | `edges_dangling > 0` | Edges whose endpoints were deleted in the source. Drop them silently — they're source rot, not content. |
 | Unconnected nodes listed | Usually legends, titles, or abandoned boxes. Drop unless the label says otherwise; mention in the ledger if it looked meaningful. |
-| Labels are empty across the board | The source carries meaning in shape and position only. Ask the user what the boxes are — don't invent names. |
+| Labels are empty across the board | The source carries meaning in shape and position only. Ask with `ask` what the boxes are — don't invent names. |
 | Source has 40+ nodes | Don't offer `faithful`. Propose overview + per-zone detail up front, before drawing anything. |
 | Source is someone else's branded diagram | Redraw in the *project's* skin (`style-guide.md`), not the source's. Say so — it's a feature, not a bug. |
 | CJK / non-Latin labels | Font fallback per [`output-spec.md` §4](output-spec.md). Don't romanize labels. |

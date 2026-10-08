@@ -73,7 +73,7 @@ These six rules are **non-negotiable**. Run the pre-output checklist (SKILL.md �
 
    When in doubt, reroute. The exception exists for the narrow case where rerouting is geometrically impossible, not as a shortcut to avoid layout work.
 
-6. **A label mask must not overlap a node drawn after it.** Rule 2 keeps the label off its own connector; this one keeps it off the boxes. Because nodes are painted after labels, a mask that lands partly inside a node is covered by the node fill and the text renders as a fragment sitting on the node border. Place the label on a segment of the connector that runs through open canvas — for a connector leaving a node's right edge, that means clearing the node's `x + width` before the mask starts. A mask fully *inside* a node is a badge chip and is fine; a mask overlapping a zone container is fine too, since zones are painted first. From a repository checkout, verify with `python3 <repo-root>/scripts/verify-geometry.py <file>`.
+6. **A label mask must not overlap a node drawn after it.** Rule 2 keeps the label off its own connector; this one keeps it off the boxes. Because nodes are painted after labels, a mask that lands partly inside a node is covered by the node fill and the text renders as a fragment sitting on the node border. Place the label on a segment of the connector that runs through open canvas — for a connector leaving a node's right edge, that means clearing the node's `x + width` before the mask starts. A mask fully *inside* a node is a badge chip and is fine; a mask overlapping a zone container is fine too, since zones are painted first. From a repository checkout, verify with the eval cell for `<repo-root>/scripts/verify-geometry.py <file>`.
 
 ## Node box — full pattern
 
@@ -112,7 +112,7 @@ Rules:
 - Never `writing-mode` vertical.
 - For vertical segments, place the label to the side (not on the line) with the same 6–10px horizontal gap.
 
-**Font substitution.** Don't estimate per-character widths — use the `style-guide.md` budget (0.60em sans / 0.62em mono per char). A production run sized mono labels at ~0.47em/char and clipped twice; the calibrated budget fits both Geist Mono and the common substituted mono faces (Menlo, Courier New, Monaco, all ≈0.60em). Previews via `rsvg`/`inkscape` can't fetch the injected Google Fonts, so verify with `python3 <repo-root>/scripts/verify-geometry.py` — it checks masks against later-painted nodes, not text fit; holding the budget is yours.
+**Font substitution.** Don't estimate per-character widths — use the `style-guide.md` budget (0.60em sans / 0.62em mono per char). A production run sized mono labels at ~0.47em/char and clipped twice; the calibrated budget fits both Geist Mono and the common substituted mono faces (Menlo, Courier New, Monaco, all ≈0.60em). Previews via `rsvg`/`inkscape` can't fetch the injected Google Fonts, so verify with the eval cell for `<repo-root>/scripts/verify-geometry.py` (see SKILL.md "Running the bundled scripts") — it checks masks against later-painted nodes, not text fit; holding the budget is yours.
 
 ## Legend — horizontal strip at the bottom
 

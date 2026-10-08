@@ -6,7 +6,7 @@ Turn an Excalidraw board into an editorial-quality diagram at the format, size, 
 
 ## Trigger
 
-Load this file for `.excalidraw` or `.excalidraw.json` files (saved from excalidraw.com, the desktop app, or the Obsidian plugin) when the user asks to convert, redraw, clean up, or present the board, or uses `/diagram-design:import-excalidraw`.
+Load this file for `.excalidraw` or `.excalidraw.json` files (saved from excalidraw.com, the desktop app, or the Obsidian plugin) when the user asks to convert, redraw, clean up, or present the board.
 
 ---
 
@@ -14,8 +14,16 @@ Load this file for `.excalidraw` or `.excalidraw.json` files (saved from excalid
 
 Never read a `.excalidraw` file with Read — a scene is mostly geometry, seeds, and version counters, 10× more JSON than signal. Locate the installed skill directory, then run:
 
-```bash
-python3 <skill-dir>/scripts/excalidraw_extract.py <file> [--json] [--max-rows N] [--out PATH]
+Use one eval cell (SKILL.md "Running the bundled scripts"); the command line is `<skill-dir>/scripts/excalidraw_extract.py <file> [--json] [--max-rows N] [--out PATH]`:
+
+```python
+import runpy, sys
+sys.argv = ["<skill-dir>/scripts/excalidraw_extract.py", "<file>"]  # add the options below as more strings
+try:
+    runpy.run_path(sys.argv[0], run_name="__main__")
+except SystemExit as e:
+    if e.code:
+        raise
 ```
 
 `<skill-dir>` is `skills/diagram-design/` in this repo, or the skill's own directory when it's installed standalone or as a plugin. If the path isn't obvious, glob for `**/diagram-design/scripts/excalidraw_extract.py`.
@@ -109,7 +117,7 @@ The extractor reports 10 IR nodes (8 drawable including 2 frames) and 6 edges; t
 | Extractor exits 2 | Report the message verbatim — it names the actual problem (not Excalidraw JSON / no elements / over limits). Don't fall back to reading the raw file. |
 | `edges_dangling > 0` | Arrows whose bindings were deleted or never attached. Omit them from the redraw, but record the count in the fidelity ledger and call out any labeled or otherwise meaningful loss. |
 | Unconnected nodes listed | Usually sticky notes, titles, or abandoned boxes. Drop unless the label says otherwise; mention in the ledger if it looked meaningful. |
-| Labels are empty across the board | The sketch carries meaning in position only. Ask the user what the boxes are — don't invent names. |
+| Labels are empty across the board | The sketch carries meaning in position only. Ask with `ask` what the boxes are — don't invent names. |
 | `unknown elements` in the discarded line | A newer element type this extractor doesn't map. Say so in the ledger; never guess its meaning from coordinates. |
 | Element links or embeds counted | They were discarded. Never open, fetch, or reproduce their targets. |
 | Source has 40+ nodes | Don't offer `faithful`. Propose overview + per-frame detail up front, before drawing anything. |

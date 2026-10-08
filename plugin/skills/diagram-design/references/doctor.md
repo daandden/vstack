@@ -1,6 +1,6 @@
 # Environment doctor
 
-Load this file when the user asks to run diagnostics, health checks, or first-run troubleshooting, or when they invoke `/diagram-design:doctor` or `/doctor`.
+Load this file when the user asks to run diagnostics, health checks, or first-run troubleshooting, or name the diagram-design doctor.
 
 The goal is a one-shot report that checks local readiness for Diagram Design import/export and command routing, without mutating user files or installing dependencies.
 
@@ -30,21 +30,19 @@ If no flags are provided, run in standard mode.
 Run all checks in this order and report each as `pass`, `warn`, or `fail`.
 
 1. Python runtime
-- Resolve `python3` first, then `python`. A name that is on PATH but cannot report
-  its own version does not win the resolution: fall through to the next candidate.
-  (Windows ships a `python3` App Execution Alias that is a Microsoft Store stub, not
-  an interpreter, and it sits on PATH ahead of a python.org install.) A name that
-  cannot be launched at all counts as the same kind of dud, and is reported as a
-  failed check rather than ending the run.
+- Python is omp's eval interpreter (the project venv, then `~/.omp/python-env`,
+  then PATH). Run one eval cell that prints `sys.version` and `sys.executable`.
+  If eval Python cannot start, report it as a failed check (remedy:
+  `omp setup python`) rather than ending the run.
 - Require version >= 3.10.
 - `fail` if no Python interpreter is found.
 - `fail` if version is below 3.10.
 
 2. Playwright availability for PNG export
-- Check whether Playwright import works in the active Python interpreter (`import playwright`).
+- Check in an eval cell whether `importlib.util.find_spec("playwright")` finds Playwright in eval's interpreter.
 - Check whether Chromium is installed for Playwright (`playwright install --help` availability is sufficient for command presence; prefer also checking browser cache when practical).
-- If missing, mark `warn` and report that the host environment must provision
-  an approved Playwright installation and compatible browser.
+- If missing, mark `warn` and report that PNG export offers to install
+  Playwright with `%pip` after the user approves it through `ask`.
 - Never auto-install dependencies.
 
 3. Expected script presence (maintainer-checkout mode only)
@@ -123,5 +121,5 @@ Doctor summary: WARN (6 pass, 2 warn, 0 fail)
 
 Next actions
 - Provision an approved PNG export renderer, then re-run the doctor check
-- Re-run: /diagram-design:doctor --strict
+- Re-run: the diagram-design doctor with --strict
 ```
