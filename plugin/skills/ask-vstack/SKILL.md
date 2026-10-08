@@ -126,4 +126,4 @@ Skills that can run subagents in parallel decide at each step. Say *fan out* or 
 
 Run `/skill:setup-vstack` before your first engineering flow. It configures the issue tracker, triage labels, and document layout. Custom issue trackers also work. It also points to setup-app-verification.
 
-Skills use `/skill:vstack-worktree` for worktrees and `/skill:vstack-tmp` to resolve Scratch paths.
+Skills use `/skill:vstack-fan-out` for the parallel-work decision, `/skill:vstack-worktree` for worktrees, and `/skill:vstack-tmp` to resolve Scratch paths.
