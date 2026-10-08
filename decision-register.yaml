@@ -298,7 +298,7 @@ items:
     path: pstack/skills/arena
     tree: 051012b3fd378ad46410ee3f2dcf779a819fd297
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/compare-attempts]
     reason: "Renamed; the fixed Fan-out form (allowlisted) on the parent model; buys independence, not model diversity."
   - id: pstack/automate-me
     upstream: pstack
@@ -458,7 +458,7 @@ items:
     path: pstack/skills/principle-guard-the-context-window
     tree: 8c132ce80504b04cb2c04070b9ca8c6932807037
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/principle-guard-the-context-window]
     reason: "Its subagent routing names vstack-explorer (ADR 0004, #42)."
   - id: pstack/principle-laziness-protocol
     upstream: pstack
@@ -498,7 +498,7 @@ items:
     path: pstack/skills/principle-model-the-domain
     tree: d584d474eb590208584188e6932d2ccdafe9d52b
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/principle-encode-the-domain]
     reason: "Renamed away from Matt's domain-modeling."
   - id: pstack/principle-never-block-on-the-human
     upstream: pstack
@@ -506,7 +506,7 @@ items:
     path: pstack/skills/principle-never-block-on-the-human
     tree: bbdf25e9f8197253a44342e6e7793324a10965fb
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/principle-never-block-on-the-human]
     reason: "A skill that requires a human decision wins over 'proceed, then present'."
   - id: pstack/principle-outcome-oriented-execution
     upstream: pstack
@@ -522,7 +522,7 @@ items:
     path: pstack/skills/principle-prove-it-works
     tree: 41e2142b6479db1dfdb9c2a3b856a895af61089d
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/principle-prove-it-works]
     reason: "Names decision-trail (renamed show-me-your-work)."
   - id: pstack/principle-redesign-from-first-principles
     upstream: pstack
@@ -897,6 +897,7 @@ originals:
   - plugin/agents/vstack-verifier.md
   - plugin/agents/vstack-worker.md
   - plugin/extensions/vstack.ts
+  - plugin/extensions/prompt-cleaner.ts
   - plugin/rules/vstack-private-mode.md
   - plugin/rules/vstack-prose.md
   - plugin/rules/vstack-worktrees.md
