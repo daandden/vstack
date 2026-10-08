@@ -37,7 +37,7 @@ Below, `machine.ts` and `project.ts` stand for these two commands.
    - 7, `task.isolation.enabled` is on (ADR 0007). Skills that need an isolated subagent stop without it.
    - 8, `worktree.clone` is on. In Private mode, prototype mounts app-bound prototypes in an `omp wt add` clone and stops on a plain checkout.
 
-   When every check passes, it prints one `OK` line. Otherwise it prints one line per check that does not pass: `FAIL <n> <name>: <what is wrong>. Remedy: <what fixes it>.`, or `WARN` in place of `FAIL` for checks 3 and 5. Exit 0 means no `FAIL` line, 1 means at least one, and 2 means the script could not run: show its message and go on to the project section.
+   When every check passes, it prints one `OK` line. Otherwise it prints one line per check that does not pass: `FAIL <n> <name>: <what is wrong>. Remedy: <what fixes it>.`, or `WARN` in place of `FAIL` for checks 3 and 5. Exit 0 means no `FAIL` line, 1 means at least one, and 2 means the script did not run: show its message and go on to the project section.
 3. Show the output to the user as it is.
 4. Checks 2, 7, and 8 are the only ones this skill fixes, and only with the user's approval. When any of them failed, call `ask` once, with one question per failed check that names the setting and the value it gets, and the options Set it (Recommended) and Leave it. Then run `machine.ts --set <name>...` with only the approved names: `judge` for 2, `isolation` for 7, `clone` for 8. It writes them to the user's omp config with `omp config set` (the judge role merged into the roles already there), and the running session reloads that file. Never change omp settings any other way. Then run step 2 again and show the new output.
 5. Leave every other failing line to the user. TypeSafe credentials come from `/login typesafe`, which only the user can run, and the extension needs a new session. Go on to the project section; Done repeats every line still failing.
@@ -120,7 +120,7 @@ Show the user the three drafts and, in Standard mode, the `## vstack` block (see
 
 Standard mode:
 
-1. When `block_file_dirty` is true, tell the user that `<block_file>` has uncommitted changes and that the setup commit would include them. Call `ask` with the options Go on and include them, and Stop so I can commit them first. On Stop, stop.
+1. When `block_file_dirty` is true, tell the user that `<block_file>` has uncommitted changes and that the setup commit is going to include them. Call `ask` with the options Go on and include them, and Stop so I can commit them first. On Stop, stop.
 2. Write `docs/vstack/issue-tracker.md`, `docs/vstack/triage-labels.md`, and `docs/vstack/domain.md`.
 3. Pick the file for the block. When `CLAUDE.md` exists, edit it. Else when `AGENTS.md` exists, edit it. When neither exists, call `ask` with the options `CLAUDE.md` and `AGENTS.md` and no recommended option, and create the one the user picks. Never create `AGENTS.md` when `CLAUDE.md` exists, or the other way round.
 4. When the file already has a `## vstack` block, update that block in place instead of adding a second one, and leave the other sections as they are. The block:
