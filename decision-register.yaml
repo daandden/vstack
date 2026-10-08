@@ -58,7 +58,7 @@ items:
     path: skills/engineering/implement
     tree: f07d230f645fc9ac390cf13a450bbff12ad791a3
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/implement]
     reason: "Settles the End state with one ask, then chains open-pr, babysit, ship; uses the verify skill (#34)."
   - id: matt/improve-codebase-architecture
     upstream: matt
