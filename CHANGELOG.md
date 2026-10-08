@@ -6,7 +6,12 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [0.1.18] - 2026-10-08
 
+<<<<<<< HEAD
 - ship verifies each PR through an isolated run-only verifier and lands only the contiguous verified run bottom-up. Patch changes require new proof; FAIL and DRIFT cap the run (#91).
+||||||| 1ba648b
+=======
+- babysit drives a PR to merge-ready without merging, with check, threads-only, and isolated background modes (#90).
+>>>>>>> ticket/90-babysit
 
 ## [0.1.17] - 2026-10-08
 
