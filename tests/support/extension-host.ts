@@ -21,6 +21,8 @@ export interface FakeModel {
 }
 
 export interface FakeHostOptions {
+  nativeJudge?: boolean;
+  entries?: unknown[];
   agent?: FakeAgent;
   /** Models ctx.modelRegistry.find can return, keyed "provider/id". */
   models?: FakeModel[];
@@ -103,12 +105,14 @@ export function fakeHost(options: FakeHostOptions = {}): FakeHost {
     agent: options.agent ?? { kind: "main", id: "Main", name: "main", depth: 0 },
     modelRegistry: {
       getAll: () => models,
+      nativeJudge: options.nativeJudge ?? true,
       find: (provider: string, id: string) => models.find((m) => m.provider === provider && m.id === id),
       getApiKey: async (model: FakeModel) => options.apiKeys?.[`${model.provider}/${model.id}`],
     },
     sessionManager: {
       getSessionId: () => options.sessionId ?? "session-1",
       getSessionName: () => session.name,
+      getBranch: () => options.entries ?? [],
     },
   };
   vstack(pi as any);
