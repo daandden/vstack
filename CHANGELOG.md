@@ -4,18 +4,17 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
-## [0.1.19] - 2026-10-08
+## [0.1.20] - 2026-10-08
 
 - setup-vstack confirms project Migration before fresh setup: move edited Matt config or keep tracked team files with a Private copy, resolve old storage, convert diagram markers, and rename domain files and map links. Changes remain uncommitted (#76).
 
+## [0.1.19] - 2026-10-08
+
+- babysit drives a PR to merge-ready without merging, with check, threads-only, and isolated background modes (#90).
+
 ## [0.1.18] - 2026-10-08
 
-<<<<<<< HEAD
 - ship verifies each PR through an isolated run-only verifier and lands only the contiguous verified run bottom-up. Patch changes require new proof; FAIL and DRIFT cap the run (#91).
-||||||| 1ba648b
-=======
-- babysit drives a PR to merge-ready without merging, with check, threads-only, and isolated background modes (#90).
->>>>>>> ticket/90-babysit
 
 ## [0.1.17] - 2026-10-08
 
