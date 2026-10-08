@@ -1,8 +1,9 @@
-// Reads the repo-level files of a vstack checkout: pins.yaml, decision-register.yaml, and the plugin tree.
+// Reads the repo-level files of a vstack checkout: pins.yaml, decision-register.yaml, house-style.yaml, and the plugin tree.
 
 import { join, relative } from "node:path";
 import { lstatSync, readdirSync, readFileSync, readlinkSync, existsSync } from "node:fs";
 import { gitBlobSha, type UpstreamRef } from "./upstreams.ts";
+import { HouseStyleError, parseHouseStyle, type HouseStyle, type HouseStyleProblem } from "./house-style.ts";
 
 export const DISPOSITIONS = ["adopt", "adapt", "merge", "reject"] as const;
 export const KINDS = ["skill", "principle", "playbook", "agent"] as const;
@@ -106,6 +107,18 @@ export function loadRegister(root: string): Register {
   });
   const originals = Array.isArray(doc.originals) ? doc.originals.filter((a: unknown) => typeof a === "string") : [];
   return { rows, originals };
+}
+
+/** Reads house-style.yaml. Row and rule problems come back for check-register to report; a missing file is a ConfigError. */
+export function loadHouseStyle(root: string, upstreams: ReadonlySet<string>): { houseStyle: HouseStyle; problems: HouseStyleProblem[] } {
+  const file = join(root, "house-style.yaml");
+  const doc = readYaml(file);
+  try {
+    return parseHouseStyle(doc, upstreams);
+  } catch (e) {
+    if (e instanceof HouseStyleError) throw new ConfigError(`${file}: ${e.message}`);
+    throw e;
+  }
 }
 
 export function isHeld(row: Row): boolean {

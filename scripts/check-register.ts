@@ -9,7 +9,7 @@ import { checks, failureClasses } from "./lib/checks/index.ts";
 import { rowProblems } from "./lib/checks/rows.ts";
 import type { CheckContext, Failure } from "./lib/checks/types.ts";
 import { cloneSource, defaultUpstreamsDir, githubSource, UpstreamError } from "./lib/upstreams.ts";
-import { ConfigError, listPluginArtifacts, loadPins, loadRegister } from "./lib/vstack-repo.ts";
+import { ConfigError, listPluginArtifacts, loadHouseStyle, loadPins, loadRegister } from "./lib/vstack-repo.ts";
 
 const USAGE = `Usage: bun scripts/check-register.ts [options]
 
@@ -70,12 +70,15 @@ async function main(): Promise<number> {
       if (typeof row.raw.id === "string") seen.add(row.raw.id);
       return ok;
     });
+    const { houseStyle, problems: houseStyleProblems } = loadHouseStyle(root, new Set(pins.keys()));
     const ctx: CheckContext = {
       root,
       pins,
       register,
       validRows,
       pluginArtifacts: listPluginArtifacts(root),
+      houseStyle,
+      houseStyleProblems,
       source,
       baseRef: args.base ?? process.env.VSTACK_BASE_REF,
       notes,
