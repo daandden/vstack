@@ -57,7 +57,7 @@ Below, `machine.ts`, `project.ts`, and `migrate.ts` stand for these commands.
 7. Save the script's original plan JSON under the Scratch dir from `skill://vstack-tmp`. Run `migrate.ts apply --plan <absolute plan path>`. For Choose items, add one `--skip <id>` per unselected optional item. The script refuses a stale plan or a skipped mandatory item before it writes anything. If it reports changed state, show the new plan through `ask` before acting.
 8. Apply each approved manual diff only after its parent move succeeds. Use the new `after_path` for a moved file. Leave declined manual edits as remaining hits. Show `applied`, `skipped`, `warnings`, `failures`, and `manual_hits`. Skill removal failures warn because the plugin shadows the old copies. Private or profile move failures leave the old rule in place and the Migration incomplete. Name every failed common dir and its error.
 9. Run step 2 of the machine section again with the confirmed roots. Remaining rule or private-file hits keep check 6 failing. After any applied Migration, tell the user to start a new session with `/new`. Combine this instruction with the extension-load instruction when both apply.
-10. Continue to the project section only when the current repo's old private store is gone. The project guard below writes no Standard config in an unmigrated private repo.
+10. Continue to the project Migration detection below. While this repo's old private store remains, its fallback move or conflict-deletion offer is the only project action allowed; fresh setup stays blocked.
 
 
 ## Project section
@@ -73,7 +73,19 @@ Run `project.ts state`. It prints JSON:
 - `mode`: `private` when `<vstack_root>/config/` exists, `standard` when `docs/vstack/` holds config, else null.
 - `block_file`: `CLAUDE.md` when it exists, else `AGENTS.md` when it exists, else null. `block_exists`: that file already holds a `## vstack` block. `block_file_dirty`: that file has uncommitted changes.
 
-When `matt_pocock` is not null, stop here and change nothing in this repo. Tell the user that this repo still has Matt Pocock private storage at that path, and that setup-vstack sets up the repo only after that storage has moved to `vstack_root`.
+Run `migrate-project.ts plan` before fresh setup, even when `matt_pocock` is null. It detects Matt config, instruction blocks and rule hits, old domain filenames (including nested contexts and Private domain files), and a `.diagram-design` marker. An empty plan means no Migration is needed.
+
+### Project Migration
+
+1. When the plan has items, show all ids, moves, proposed diffs, manual hits, destructive flags, and notices. Move is recommended: tracked config and domain files use `git mv`, untracked files use `mv`; House style rows preserve hand edits. Changes stay uncommitted. A tracked Matt config makes `private_available` true. In that case call `ask` with Move (Recommended) and Private mode instead. For Private, run `migrate-project.ts plan --mode private` and show that plan instead: tracked Matt config and instructions stay for teammates; substituted config goes under `<common_dir>/vstack/config/`, with private artifact and domain paths. This mode choice is not approval to write.
+2. When old and new config or storage both exist, vstack wins. Show every old-versus-new diff and the offer to delete the old copy; keep no merged copy. Old storage stays a setup blocker until its deletion is approved. A winning private store without `config/` needs the destination resolved first; application refuses to delete the old store there.
+3. The private fallback move is mandatory, covers every registered worktree of this common dir, and uses the machine move's rollback, path substitutions, symlink and exclude cleanup. It keeps unknown directories. A failed move stops all later project actions and fresh setup. There is no compatibility link; outside links to old storage break.
+4. For every manual hit, read its surrounding text and propose a context-specific diff in this same plan. Resolve relative private paths against the known common dir. Keep the script's original JSON unchanged for the stale-state check.
+5. Call `ask` once for this project plan with Apply all (Recommended), Choose items, and Cancel. Choose items uses one multi-select `ask` for optional ids and manual diffs; mandatory ids stay selected. Cancel runs `migrate-project.ts cancel`, writes nothing, and stops this skill.
+6. Save the original JSON in Scratch. Run `migrate-project.ts apply --plan <absolute plan path>`, adding `--skip <id>` for declined optional items. Stale state or a skipped mandatory id exits 2 before writes: show a fresh plan through `ask`. Exit 1 means incomplete; show the failure and stop. Apply approved manual diffs only after their parent succeeds, at its `after_path`. Show applied and skipped ids and remaining hits.
+7. Tell the user to start a new session with `/new`. Stop this run after applying Migration: never let fresh setup re-seed or commit the migrated files. If the only operation was resolving an old-store conflict, run detection again and present any remaining domain or marker plan through `ask` before applying it. A clean re-run in Private mode leaves the team's tracked Matt files alone.
+
+When `matt_pocock` still exists after detection, stop before Mode and change no fresh config or instruction block. Otherwise an empty plan continues below. 
 
 ### 2. Mode
 
