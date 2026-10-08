@@ -818,7 +818,7 @@ items:
     path: pstack/skills/poteto-mode/playbooks/shipping.md
     tree: 0f1d41f189222b991734015926a3b22607e1b92f
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/ship]
     reason: "Verifiers are vstack agents behind judge-gated Fan-out; cloud agents dropped."
   - id: pstack/playbook-trace-forensics
     upstream: pstack
