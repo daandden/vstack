@@ -219,7 +219,7 @@ rules:
     allowlist: [writing-for-agents]
     text: |
       Spawn wording appears only in a single-spawn line (`Spawn one …`) or a Fan-out block (`Fan-out gate (…`). Cursor's spawn terms (`subagent_type`, `generalPurpose`, `Task` in backticks) never appear.
-    lint: In markdown outside code fences, `subagent_type`, `generalPurpose`, or `Task` in backticks fails, and spawn, dispatch, or spin up outside inline code fails on a line that holds no `Spawn one `, `Fan-out gate (`, `Fan-out (always`, or `Headless batch (` (adapt, merge, and original text). A `spawns:` frontmatter key and words inside inline code are names, not wording, and a code fence quotes text instead of instructing. Allowlisted skills only describe spawning and are not linted.
+    lint: In markdown outside code fences, `subagent_type`, `generalPurpose`, or `Task` in backticks fails, and spawn or spin up outside inline code fails on a line that holds no `Spawn one `, `Fan-out gate (`, `Fan-out (always`, or `Headless batch (` (adapt, merge, and original text). Dispatch fails only when the same sentence names an agent, subagent, helper, worker, explorer, reviewer, designer, verifier, investigator, or runner; reducer and request dispatch are not delegation. A `spawns:` frontmatter key and words inside inline code are names, not wording, and a code fence quotes text instead of instructing. Allowlisted skills only describe spawning and are not linted.
   - id: worktree-cmd
     scope: adapted
     text: |
