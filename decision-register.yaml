@@ -298,7 +298,7 @@ items:
     path: pstack/skills/arena
     tree: 051012b3fd378ad46410ee3f2dcf779a819fd297
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/compare-attempts]
     reason: "Renamed; the fixed Fan-out form (allowlisted) on the parent model; buys independence, not model diversity."
   - id: pstack/automate-me
     upstream: pstack
