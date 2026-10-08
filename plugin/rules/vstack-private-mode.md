@@ -11,7 +11,7 @@ Private mode is on when `<vstack root>/config/` exists. Otherwise the repo is in
 
 In Private mode:
 
-- `config/` holds `issue-tracker.md`, `triage-labels.md`, `domain.md`, and any other vstack config. Read it wherever a skill names `docs/vstack/`. A missing file there still needs `/skill:setup-vstack`.
+- `config/` holds `issue-tracker.md`, `triage-labels.md`, `domain.md`, and any other vstack config, and replaces `docs/vstack/`: wherever a skill names `docs/vstack/<file>` or the `## vstack` block, read `<vstack root>/config/<file>` instead. A missing file there still needs `/skill:setup-vstack`.
 - `domain/` holds `GLOSSARY.md` (`GLOSSARY-MAP.md` for several contexts) and `adr/`, in place of the repo-root files. Read the repo's own tracked domain docs as well.
 - `artifacts/<topic>/` holds every other vstack artifact: local tickets, specs, maps, prototypes. Keep each skill's file names and subdirectories, use a new topic for independent work, and keep the existing path when continuing.
 - `skills/verify-<app>/` holds each Verify skill. Each checkout links it with an absolute symlink at `.omp/skills/verify-<app>` that points there, and `.omp/skills/verify-*` is a line in `<git common dir>/info/exclude`.
