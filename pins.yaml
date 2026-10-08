@@ -1,7 +1,9 @@
 # Pins: the exact Upstream version vstack was last reconciled with (spec #63 "Upstreams and Pins").
 # Keys are the register's `upstream` values and the clone names under ~/.cache/vstack/upstreams/<key>.
 # repo: GitHub owner/name. path: the part of the repo vstack takes from ("" = whole repo).
-# pin: a release tag (Base, Prose) or a full commit SHA (Enhancement, Diagram, CSS).
+# pin_kind: how the Update finds the newest Pin. `tag`: the highest `v<semver>` tag with no pre-release
+# part (Base, Prose). `commit`: the newest commit on the default branch that touches `path` (Enhancement,
+# Diagram, CSS). pin: the tag name, or the full commit SHA.
 # items: which tree entries at the Pin are Upstream items, each needing a register row. `match` is a path
 # glob from the repo root (`*` stays inside one path segment); the first pattern that matches sets the kind.
 upstreams:
@@ -9,7 +11,7 @@ upstreams:
     role: Base
     repo: mattpocock/skills
     path: ""
-    pin_kind: newest non-draft v<semver> release
+    pin_kind: tag
     pin: v1.2.3
     items:
       - { match: "skills/*/*", type: tree, kind: skill }
@@ -17,7 +19,7 @@ upstreams:
     role: Enhancement
     repo: cursor/plugins
     path: pstack
-    pin_kind: full SHA of the newest main commit touching pstack/
+    pin_kind: commit
     pin: 12d587dfb20741cafc376c42c696c5f6e2a64487
     items:
       - { match: "pstack/skills/principle-*", type: tree, kind: principle }
@@ -29,7 +31,7 @@ upstreams:
     role: Diagram
     repo: cathrynlavery/diagram-design
     path: skills/diagram-design
-    pin_kind: full SHA
+    pin_kind: commit
     pin: d1376371965f513d99cc9ec388835d255c5c88d5
     items:
       - { match: "skills/diagram-design", type: tree, kind: skill }
@@ -37,7 +39,7 @@ upstreams:
     role: CSS
     repo: vojtaholik/good-css
     path: skills/good-css
-    pin_kind: full SHA
+    pin_kind: commit
     pin: 6d16d2fd27f4892e2aea4b5c5c2b016f45be7eef
     # check-register runs this script at the Pin over vstack page templates (plugin/skills/*/templates/).
     page_lint: scripts/check-css.mjs
@@ -47,7 +49,7 @@ upstreams:
     role: Prose
     repo: AminBlg/SimpleEnglish
     path: ""
-    pin_kind: v<semver> release
+    pin_kind: tag
     pin: v2.1.1
     items:
       - { match: "skills/*", type: tree, kind: skill }

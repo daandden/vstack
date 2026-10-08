@@ -6,11 +6,8 @@
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { artifactBlobs, isHeld } from "../vstack-repo.ts";
+import { artifactBlobs, isHeld, NEVER_SHIPPED, upstreamItems } from "../vstack-repo.ts";
 import type { Check, Failure } from "./types.ts";
-
-/** The only Upstream file adopt never ships (ADR 0001). */
-const NEVER_SHIPPED = "agents/openai.yaml";
 
 const basename = (p: string) => p.replace(/\/+$/, "").slice(p.replace(/\/+$/, "").lastIndexOf("/") + 1);
 
@@ -68,10 +65,9 @@ export const upstreamChecks: Check = {
     for (const pin of ctx.pins.values()) {
       const registered = new Set(ctx.register.rows.filter((r) => r.upstream === pin.key && r.path).map((r) => r.path!.replace(/\/+$/, "")));
       const tree = await ctx.source.tree(pin, pin.pin);
-      for (const e of tree.entries) {
-        const pattern = pin.items.find((p) => p.type === e.type && p.regex.test(e.path));
-        if (pattern && !registered.has(e.path)) {
-          out.push({ class: "unregistered-upstream-item", item: `${pin.key}:${e.path}`, message: `${pattern.kind} at ${pin.key}@${pin.pin} has no row` });
+      for (const item of upstreamItems(pin, tree)) {
+        if (!registered.has(item.path)) {
+          out.push({ class: "unregistered-upstream-item", item: `${pin.key}:${item.path}`, message: `${item.kind} at ${pin.key}@${pin.pin} has no row` });
         }
       }
     }
