@@ -106,7 +106,7 @@ items:
     path: skills/engineering/tdd
     tree: 423f3cc2bccf3b0ed426fb35eeb4b38d9188a343
     disposition: merge
-    artifacts: []
+    artifacts: [plugin/skills/tdd]
     reason: "Merges with pstack tdd (#36)."
   - id: matt/to-spec
     upstream: matt
@@ -618,7 +618,7 @@ items:
     path: pstack/skills/tdd
     tree: 1064da72ceca07bf7f36bddebada585bb59da7bc
     disposition: merge
-    artifacts: []
+    artifacts: [plugin/skills/tdd]
     reason: "Merges into Matt's tdd (#36)."
   - id: pstack/teach
     upstream: pstack
