@@ -21,7 +21,7 @@ The repo scripts need Bun. Run `bun test` and `bun scripts/check-register.ts` be
 
 | Path | Ships | What it holds |
 |---|---|---|
-| `plugin/` | yes | The omp plugin. `package.json` (`name: vstack`, the version, the `omp` field), `skills/<name>/` (flat, one level deep), `agents/`, `rules/`. |
+| `plugin/` | yes | The omp plugin. `package.json` (`name: vstack`, the version, the `omp` field), `skills/<name>/` (flat, one level deep), `agents/`, `rules/`, and `extensions/vstack.ts`, the one extension, listed in the `omp` field. |
 | `pins.yaml` | no | One entry per Upstream: repo, Pin, and which tree entries count as Upstream items. |
 | `decision-register.yaml` | no | One row per Upstream item, plus `originals:` for vstack-only artifacts. |
 | `scripts/` | no | Bun scripts. `check-register.ts` is the CLI; `lib/` holds the modules other scripts reuse. |
@@ -116,6 +116,8 @@ Each check is a module in `scripts/lib/checks/` that exports a `Check`: the list
 ### Tests
 
 `bun test` runs `tests/` only (`bunfig.toml`). The check-register tests build fixture Upstream git repos with tags, a moved item, and a removed item, then a vstack checkout committed as the version base. They run the script as a process and assert its exit code and its failures by class and item. One case serves a local stand-in for the GitHub API, so the `github` source is tested too.
+
+`tests/extension.test.ts` tests the extension through a fake omp host (`tests/support/extension-host.ts`, after omp-tools' advisor-concern-wake tests). `fakeHost(options)` runs the extension factory against a partial ExtensionAPI and ctx and returns the registered tools, the event handlers, `emit(name, event)` (awaits every handler and returns their results), `callTool(name, params)`, and the session name with its source. Options set `ctx.agent` (main or sub), the models `ctx.modelRegistry.find` returns, and their API keys. The fake `setSessionName` stores a `user` name, as every omp mode does, and `autoTitle(name)` is refused after one. Stub TypeSafe's endpoint with `spyOn(globalThis, "fetch")`. The repo has no omp SDK dependency, so the extension imports omp types only (`import type`), and the fake `pi.arktype` only records the schema.
 
 ### Versions and CHANGELOG
 
