@@ -251,6 +251,8 @@ async function jev(p: Plan, endpoint: string, key: string) {
   }
   return { changed, flags, borderline, results };
 }
+/** Top-level tools the vstack extension registers; skill text calls them by name. */
+const EXTENSION_TOOLS = ["vstack_rename_session"];
 async function gates(p: Plan, phase: string, opts: any) {
   const fingerprint = digest(p);
   const upstreams = opts.upstreams ?? defaultUpstreamsDir();
@@ -269,6 +271,11 @@ async function gates(p: Plan, phase: string, opts: any) {
     if (a.startsWith("plugin/rules/") && !smoke.genericRules?.includes(readFileSync(join(p.worktree.path, a), "utf8").replace(/^---[\s\S]*?---\s*/, "").trim())) throw new Error(`load smoke missing rule ${a}`);
   }
   if (smoke.warnings?.length) throw new Error(`load smoke warnings: ${smoke.warnings.join("; ")}`);
+  // omp logs an extension load failure and keeps going, so a missing top-level tool is the only sign in the smoke.
+  const extensions: string[] = readJson(join(p.worktree.path, "plugin/package.json")).omp?.extensions ?? [];
+  if (extensions.length) for (const tool of EXTENSION_TOOLS) {
+    if (!smoke.tools?.includes(tool)) throw new Error(`load smoke missing extension tool ${tool}: ${extensions.join(", ")} did not load`);
+  }
   let judgment;
   if (phase === "preview") {
     judgment = await jev(p, opts.endpoint ?? "https://api.typesafe.ai/v1/systemone", process.env.TYPESAFE_API_KEY ?? "");

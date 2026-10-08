@@ -2,7 +2,7 @@ import { afterEach, expect, test } from "bun:test";
 import { readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { makeUpdateFixture } from "./support/update-fixture.ts";
-import { ENV, git } from "./support/fixture.ts";
+import { ENV, git, writeFiles } from "./support/fixture.ts";
 import { lifecycleFixture } from "./support/update-lifecycle-fixture.ts";
 
 test("preview, confirmation, re-gates, report and injected publication reach a PR", async () => {
@@ -96,6 +96,28 @@ test("smoke and judge errors block receipts and borderline scores do not fail", 
     expect(pass.code).toBe(0); expect(JSON.parse(pass.out).jev.flags).toHaveLength(0); expect(JSON.parse(pass.out).jev.borderline).toHaveLength(2);
     writeFileSync(join(plan.worktree.path, "plugin/skills/grow/SKILL.md"), "changed after gate");
     expect((await run(["gates", ...args, "--phase", "confirmed", "--upstreams", f.cache, "--smoke", f.smoke], f.root)).code).toBe(2);
+  } finally { server.stop(true); }
+}, 30000);
+test("the load gate fails when a listed extension's tool did not load", async () => {
+  const f = lifecycleFixture(); dirs.push(f.dir);
+  const manifestPath = join(f.root, "plugin/package.json"), registerPath = join(f.root, "decision-register.yaml");
+  const manifest = JSON.parse(readFileSync(manifestPath, "utf8"));
+  writeFileSync(manifestPath, JSON.stringify({ ...manifest, omp: { extensions: ["./extensions/vstack.ts"] } }, null, 2) + "\n");
+  const register = Bun.YAML.parse(readFileSync(registerPath, "utf8")) as any;
+  register.originals = [...register.originals, "plugin/extensions/vstack.ts"];
+  writeFileSync(registerPath, Bun.YAML.stringify(register, null, 2));
+  writeFiles(f.root, { "plugin/extensions/vstack.ts": "export default function vstack() {}\n" });
+  git(f.root, "add", "-A"); git(f.root, "commit", "-qm", "ship an extension");
+  const { file, planFile } = await f.planned();
+  const args = ["--plan", planFile];
+  expect((await run(["prepare", ...args, "--decisions", file], f.root)).code).toBe(0);
+  const server = Bun.serve({ port: 0, fetch() { return Response.json({ answers: { expected: { type: "noul", noul: .9 }, other: { type: "noul", noul: .1 } } }); } });
+  try {
+    const gates = ["gates", ...args, "--phase", "preview", "--upstreams", f.cache, "--smoke", f.smoke, "--endpoint", `http://localhost:${server.port}/v1/systemone`];
+    const broken = await run(gates, f.root, { TYPESAFE_API_KEY: "fixture" });
+    expect(broken.code).toBe(2); expect(broken.err).toContain("vstack_rename_session");
+    const loaded = await run(gates, f.root, { TYPESAFE_API_KEY: "fixture", SMOKE_TOOLS: "read,vstack_rename_session" });
+    expect({ code: loaded.code, err: loaded.err }).toEqual({ code: 0, err: "" });
   } finally { server.stop(true); }
 }, 30000);
 test("default tag discovery ignores draft and prerelease GitHub releases", async () => {
