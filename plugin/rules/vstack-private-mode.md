@@ -1,0 +1,21 @@
+---
+description: vstack Private mode keeps a repo's vstack config and artifacts under the git common dir, out of git
+alwaysApply: true
+---
+
+# vstack Private mode
+
+The vstack root of a repo in Private mode is `<git common dir>/vstack/`, where the git common dir is `git rev-parse --path-format=absolute --git-common-dir`. Every worktree of the repo shares it, and git never tracks it.
+
+Private mode is on when `<vstack root>/config/` exists. Otherwise the repo is in Standard mode: vstack skills use the tracked paths they name (`docs/vstack/`, `GLOSSARY.md`, `docs/adr/`, `.omp/skills/verify-<app>/`), and the vstack root is the main checkout (the first `worktree` line of `git worktree list --porcelain`).
+
+In Private mode:
+
+- `config/` holds `issue-tracker.md`, `triage-labels.md`, `domain.md`, and any other vstack config, and replaces `docs/vstack/`: wherever a skill names `docs/vstack/<file>` or the `## vstack` block, read `<vstack root>/config/<file>` instead. A missing file there still needs `/skill:setup-vstack`.
+- `domain/` holds `GLOSSARY.md` (`GLOSSARY-MAP.md` for several contexts) and `adr/`, in place of the repo-root files. Read the repo's own tracked domain docs as well.
+- `artifacts/<topic>/` holds every other vstack artifact: local tickets, specs, maps, prototypes. Keep each skill's file names and subdirectories, use a new topic for independent work, and keep the existing path when continuing.
+- `skills/verify-<app>/` holds each Verify skill. Each checkout links it with an absolute symlink at `.omp/skills/verify-<app>` that points there, and `.omp/skills/verify-*` is a line in `<git common dir>/info/exclude`.
+- Never write a `## vstack` block into a tracked file. Never stage, commit, branch, or push vstack config or artifacts, and leave shared ignore files alone. Link artifacts by absolute path. Publishing one anywhere needs the user's approval through `ask`.
+- Product code, tests, and docs follow the normal workflow. Remote issue-tracker operations are not private.
+
+The top-level agent resolves the vstack root once and passes it as an absolute path in the prompt of every subagent. A subagent uses the vstack root from its prompt and never re-resolves the git common dir: in an isolated clone, that resolves to the clone's own copy, and what it writes there is lost.
