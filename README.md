@@ -250,6 +250,8 @@ A row owns the files under its path except those under a longer path that is ano
 
 ### Tests
 
+`tests/skill-creator.test.ts` runs the bundled Bun initializer and validator as processes over temp skill folders. skill-creator evaluation uses separate same-model omp processes, not task runners; its references define per-run overlays and transcript evidence.
+
 `bun run test` runs `tests/` only (`bunfig.toml`) with a 30 s test timeout, because the suites start real `git`, `omp`, and `bun` processes. Bun applies a `setDefaultTimeout` from a preload to one test file only, so the timeout is the `--timeout` flag in the `test` script. The check-register tests build fixture Upstream git repos with tags, a moved item, and a removed item, then a vstack checkout committed as the version base. They run the script as a process and assert its exit code and its failures by class and item. One case serves a local stand-in for the GitHub API, so the `github` source is tested too.
 
 `tests/update-plan.test.ts` runs update-plan as a process. `tests/support/update-fixture.ts` serves two fixture Upstreams over `file://` (`matt` with release, pre-release, and stray tags; `pstack` with commits inside and outside `pstack/`), gives the script an empty clone cache, and passes `--omp` a stand-in (`tests/support/fake-omp.ts`). The stand-in answers `omp config get worktree.base` and makes `omp wt add` worktrees with git, printing the `Cloned from … via` line only when `FAKE_OMP_CLONE=1`, so both the clone and the plain-checkout paths run without an omp home. The tests assert the plan JSON and the files it names.
