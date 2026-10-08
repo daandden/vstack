@@ -4,6 +4,9 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [0.1.32] - 2026-10-08
+
+- Add hidden architect with gated grounding, alternative design sketches, named stops, implement handover with proposed seams, and Scrap before review or commit (#96).
 ## [0.1.31] - 2026-10-08
 
 - implement settles the End state and design seams once, keeps unproven tdd slices out of commits and PRs, and shares cleanup, live proof, review, commit, and the one-run PR chain through END-STATE.md (#92).
