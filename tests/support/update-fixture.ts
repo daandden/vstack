@@ -24,12 +24,14 @@ const MATT_V1_0: Files = {
   "skills/eng/grow/refs/a.md": "a\n",
   "skills/eng/wording/SKILL.md": skill("wording", WORDING_OLD),
   "skills/eng/wording/refs/glossary.md": "See CONTEXT.md.\n",
+  "skills/eng/wording/agents/openai.yaml": "policy: 1\n",
   "skills/eng/old-name/SKILL.md": skill("old-name", "moved without edits\n"),
   "skills/eng/old-name/refs/x.md": "x\n",
   "skills/eng/drift/SKILL.md": skill("drift", DRIFT_STEPS),
   "skills/eng/gone/SKILL.md": skill("gone", "gone\n"),
   "skills/eng/held/SKILL.md": skill("held", "held 1.0\n"),
   "skills/eng/steady/SKILL.md": skill("steady", "steady 1.0\n"),
+  "skills/eng/steady/agents/openai.yaml": "policy: 1\n",
   "skills/eng/tdd/SKILL.md": skill("tdd", "tdd 1\n"),
   "skills/eng/prototype/SKILL.md": skill("prototype", "prototype 1\n"),
   "skills/misc/rej/SKILL.md": skill("rej", "rej 1\n"),
@@ -48,6 +50,9 @@ export const MATT_V1_2: Files = (() => {
   f["skills/eng/grow/SKILL.md"] = skill("grow", "grow 2\n");
   f["skills/eng/wording/SKILL.md"] = skill("wording", WORDING_NEW);
   f["skills/eng/wording/refs/glossary.md"] = "See GLOSSARY.md.\n";
+  // vstack never ships agents/openai.yaml, so its change is no change to plan.
+  f["skills/eng/wording/agents/openai.yaml"] = "policy: 2\n";
+  f["skills/eng/steady/agents/openai.yaml"] = "policy: 2\n";
   for (const p of ["SKILL.md", "refs/x.md"]) {
     f[`skills/eng/new-name/${p}`] = f[`skills/eng/old-name/${p}`];
     delete f[`skills/eng/old-name/${p}`];

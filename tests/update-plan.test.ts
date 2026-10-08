@@ -129,7 +129,7 @@ describe("a run where both Pins move (plain checkout)", () => {
     // Unchanged between v1.1.0 and v1.2.0, but changed since v1.0.0.
     expect(held.class).toBe("changed");
     expect(held.files).toEqual([{ path: "SKILL.md", status: "modified", same_after_house_style: null }]);
-    // The same history on a row that is not held: v1.1.0 to v1.2.0 has no change.
+    // The same history on a row that is not held: from v1.1.0 to v1.2.0 only agents/openai.yaml changed, which vstack never ships.
     const steady = rowOf(r, "matt/steady");
     expect(steady.effective_old).toMatchObject({ ref: "v1.1.0", path: "skills/eng/steady" });
     expect(steady.class).toBe("unchanged");

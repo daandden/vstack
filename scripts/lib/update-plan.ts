@@ -238,7 +238,9 @@ export async function buildPlan(opts: {
       const { row, eo } = prep;
       const newEntry = prep.newPath ? newTree.get(prep.newPath)! : undefined;
       const key = baseName(prep.newPath ?? eo.path ?? row.id);
+      // vstack never ships agents/openai.yaml (ADR 0001), so a change there is no change for any row.
       const excluded = [
+        NEVER_SHIPPED,
         ...(prep.newPath ? NESTED(prep.newPath, [...nestedPaths, ...newItems.map((i) => i.path)]) : []),
         ...(eo.path ? NESTED(eo.path, [...nestedPaths, ...items(eo.tree).map((i) => i.path)]) : []),
       ];
