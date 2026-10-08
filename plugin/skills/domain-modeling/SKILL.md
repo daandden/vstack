@@ -41,21 +41,23 @@ Create files lazily — only when you have something to write. If no `GLOSSARY.m
 
 ## During the session
 
+Every question below goes to the user through `ask`: the question in one line, the likely answers as options (the user types any other answer through Other). An answer `ask` picks after a timeout is not the user's. A term stays open and is not written down, and an ADR offer asks once more, then creates no ADR.
+
 ### Challenge against the glossary
 
-When the user uses a term that conflicts with the existing language in `GLOSSARY.md`, call it out immediately. "Your glossary defines 'cancellation' as X, but you seem to mean Y — which is it?"
+When the user uses a term that conflicts with the existing language in `GLOSSARY.md`, call it out immediately with an `ask`: "Your glossary defines 'cancellation' as X, but you seem to mean Y — which is it?"
 
 ### Sharpen fuzzy language
 
-When the user uses vague or overloaded terms, propose a precise canonical term. "You're saying 'account' — do you mean the Customer or the User? Those are different things."
+When the user uses vague or overloaded terms, propose a precise canonical term with an `ask` that offers the candidates. "You're saying 'account' — do you mean the Customer or the User? Those are different things."
 
 ### Discuss concrete scenarios
 
-When domain relationships are being discussed, stress-test them with specific scenarios. Invent scenarios that probe edge cases and force the user to be precise about the boundaries between concepts.
+When domain relationships are being discussed, stress-test them with specific scenarios. Invent scenarios that probe edge cases and put each one to the user with `ask`, so they have to be precise about the boundaries between concepts.
 
 ### Cross-reference with code
 
-When the user states how something works, check whether the code agrees. If you find a contradiction, surface it: "Your code cancels entire Orders, but you just said partial cancellation is possible — which is right?"
+When the user states how something works, check whether the code agrees. If you find a contradiction, surface it with an `ask`: "Your code cancels entire Orders, but you just said partial cancellation is possible — which is right?"
 
 ### Update GLOSSARY.md inline
 
@@ -65,7 +67,7 @@ When a term is resolved, update `GLOSSARY.md` right there. Don't batch these up 
 
 ### Offer ADRs sparingly
 
-Only offer to create an ADR when all three are true:
+Only offer to create an ADR, with one `ask`, when all three are true:
 
 1. **Hard to reverse** — the cost of changing your mind later is meaningful
 2. **Surprising without context** — a future reader will wonder "why did they do it this way?"
