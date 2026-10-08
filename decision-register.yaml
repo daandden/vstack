@@ -18,8 +18,8 @@ items:
     path: skills/engineering/code-review
     tree: 7a2057dcc514dc024d4e6bf8ad78021b97f229ae
     disposition: adapt
-    artifacts: []
-    reason: "Names setup-vstack; Standards and Spec reviews are judge-gated Fan-out (ADR 0004)."
+    artifacts: [plugin/skills/code-review]
+    reason: "Reads vstack configuration; Standards, Spec, and conditional Safety use judge-gated Fan-out; Safety runs blast-radius without step 6 (#84)."
   - id: matt/codebase-design
     upstream: matt
     kind: skill
@@ -314,8 +314,8 @@ items:
     path: pstack/skills/blast-radius
     tree: ba9658b89ac272580051ab3a4ae58d5346e955f7
     disposition: adapt
-    artifacts: []
-    reason: "Standalone out-of-diff axis beside code-review; big-change pass is judge-gated; model-invocable in vstack."
+    artifacts: [plugin/skills/blast-radius]
+    reason: "Model-invocable safety proof in Scratch; compares reply attempts only on explicit request and skips that pass for code-review Safety (#84)."
   - id: pstack/bro
     upstream: pstack
     kind: skill
