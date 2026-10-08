@@ -1,5 +1,5 @@
-// A local stand-in for the two GitHub REST endpoints the github Upstream source calls, answered from the
-// fixture Upstream repos: `<dir>/<name>` serves `fixture/<name>`.
+// A local stand-in for the three GitHub REST endpoints the github Upstream source calls (commits, trees, raw
+// contents), answered from the fixture Upstream repos: `<dir>/<name>` serves `fixture/<name>`.
 
 import { join } from "node:path";
 import { git } from "./fixture.ts";
