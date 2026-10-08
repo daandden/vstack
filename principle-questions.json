@@ -1,0 +1,186 @@
+{
+  "attack-the-premise": {
+    "type": "noul",
+    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the request say that two or more earlier fixes or attempts at the same problem have already been tried and failed?",
+    "criteria": {
+      "true": "E.g. 'we bumped the timeout twice and it still fails', 'three fixes and it still shows old data'.",
+      "false": "A first report of a problem, or a recurring human mistake such as forgetting a step, with no failed fixes."
+    }
+  },
+  "boundary-discipline": {
+    "type": "noul",
+    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does this task involve validation, error handling, or adapters at a system boundary?",
+    "criteria": {
+      "true": "E.g. parsing or validating external input (HTTP requests, webhooks, config, CLI args, files, third-party APIs), or deciding where validation and error handling belong.",
+      "false": "Internal refactors, UI work, test runs, or verification with no external input handling."
+    }
+  },
+  "build-the-lever": {
+    "type": "noul",
+    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does this task involve many repetitive edits or checks that a script or codemod could perform or prove?",
+    "criteria": {
+      "true": "E.g. dozens of files or call sites changed the same way, a repo-wide rename or API swap, a bulk audit, or many generated files.",
+      "false": "Edits in a handful of places, a design change where each edit differs, a single feature or fix, or a question."
+    }
+  },
+  "encode-lessons-in-structure": {
+    "type": "noul",
+    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the request say the same mistake or correction keeps recurring, or ask to make sure a mistake cannot happen again?",
+    "criteria": {
+      "true": "E.g. 'third time this happened', 'reviewers keep flagging', 'I've told you before', 'make sure this can't happen again'.",
+      "false": "A first report of a bug, a one-off request, or several failed fix attempts on one bug, with no sign the same mistake recurs."
+    }
+  },
+  "encode-the-domain": {
+    "type": "noul",
+    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does this task add or change domain states, statuses, phases, or modes whose handling is, or would end up, scattered as flags or if/else branches across several places?",
+    "criteria": {
+      "true": "E.g. several booleans that must stay in sync, a status checked in if/else chains in several files, or a new state added to existing branching.",
+      "false": "Debugging, data sync jobs, infrastructure, verification, UI tweaks, or design choices that do not add or reshape domain states."
+    }
+  },
+  "exhaust-the-design-space": {
+    "type": "noul",
+    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does this task need a novel UI interaction or architecture with no precedent in the codebase?",
+    "criteria": {
+      "true": "E.g. 'we have nothing like it yet', 'we've never had one', the right design is unclear, or there are competing approaches to choose between.",
+      "false": "The pattern already exists in the codebase, a bug fix, or a refactor with a clear target."
+    }
+  },
+  "experience-first": {
+    "type": "noul",
+    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the outcome of this task depend on how it feels to the people who use it (a UI interaction, a product or UX choice, or a feature-scope trade-off), not only on whether the logic is correct?",
+    "criteria": {
+      "true": "The task clearly is this situation.",
+      "false": "The task is not this situation, or only loosely resembles it."
+    }
+  },
+  "fix-root-causes": {
+    "type": "noul",
+    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Is this task debugging a failure, crash, or wrong behavior?",
+    "criteria": {
+      "true": "The task clearly is this situation.",
+      "false": "The task is not this situation, or only loosely resembles it."
+    }
+  },
+  "foundational-thinking": {
+    "type": "noul",
+    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does this task require choosing core data types, data structures, or state ownership before writing logic, or setting up scaffold (CI, lint, test infrastructure, shared types) that later work builds on?",
+    "criteria": {
+      "true": "The task clearly is this situation.",
+      "false": "The task is not this situation, or only loosely resembles it."
+    }
+  },
+  "guard-the-context-window": {
+    "type": "noul",
+    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Will this task require reading large outputs or many long files?",
+    "criteria": {
+      "true": "The task clearly is this situation.",
+      "false": "The task is not this situation, or only loosely resembles it."
+    }
+  },
+  "laziness-protocol": {
+    "type": "noul",
+    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the request propose or invite adding layers, wrappers, or abstractions, or threading a new value through many layers, or ask to simplify code that is over-layered or hard to follow?",
+    "criteria": {
+      "true": "E.g. 'thread a flag through every function', 'add a wrapper/manager/factory for this', 'wrappers calling wrappers, make it easier to follow'.",
+      "false": "Ordinary feature, migration, bug-fix, or refactor work where nothing in the request suggests extra layers or over-layered code."
+    }
+  },
+  "make-operations-idempotent": {
+    "type": "noul",
+    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does this task write a command, migration, or loop that may crash midway and be re-run?",
+    "criteria": {
+      "true": "The task clearly is this situation.",
+      "false": "The task is not this situation, or only loosely resembles it."
+    }
+  },
+  "migrate-callers-then-delete-legacy-apis": {
+    "type": "noul",
+    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does this task replace an internal API that existing callers use?",
+    "criteria": {
+      "true": "The task clearly is this situation.",
+      "false": "The task is not this situation, or only loosely resembles it."
+    }
+  },
+  "minimize-reader-load": {
+    "type": "noul",
+    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Is this task about code that is hard to trace, or reviewing/reshaping code for readability?",
+    "criteria": {
+      "true": "E.g. tangled call chains, wrappers or adapters with one caller, or a request to make code easier to follow or to review it for readability.",
+      "false": "A cosmetic rename, a docstring, a typo, explaining how code works, or a bug or feature where readability is not the goal."
+    }
+  },
+  "never-block-on-the-human": {
+    "type": "noul",
+    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the user tell the agent to go ahead without them (they are away, they delegate the calls, or they say not to ask), so the agent must settle reversible choices itself?",
+    "criteria": {
+      "true": "E.g. 'I'm away, make sensible calls', 'don't stop to ask me about each one', 'use your judgment and I'll review later'.",
+      "false": "No sign the user wants autonomy beyond doing the task, or the request is a question or a small well-specified change."
+    }
+  },
+  "outcome-oriented-execution": {
+    "type": "noul",
+    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Is this task a planned rewrite or migration with explicit phases?",
+    "criteria": {
+      "true": "The task clearly is this situation.",
+      "false": "The task is not this situation, or only loosely resembles it."
+    }
+  },
+  "prove-it-works": {
+    "type": "noul",
+    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the user ask for proof that the change works, or does the change alter runtime behavior that only running the real thing can confirm (performance, UI, deploys, data migrations, integrations)?",
+    "criteria": {
+      "true": "The task clearly is this situation.",
+      "false": "The task is not this situation, or only loosely resembles it."
+    }
+  },
+  "redesign-from-first-principles": {
+    "type": "noul",
+    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does this task add a requirement that breaks an assumption the existing design is built on, so the change reaches across many parts of the system?",
+    "criteria": {
+      "true": "E.g. everything assumes one currency, one tenant, one region, or synchronous calls, and now must not.",
+      "false": "A self-contained feature, a new button, endpoint, or option, a bug fix, a refactor, or a performance change."
+    }
+  },
+  "separate-before-serializing-shared-state": {
+    "type": "noul",
+    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does this task involve concurrent actors writing the same file, branch, key, or state?",
+    "criteria": {
+      "true": "The task clearly is this situation.",
+      "false": "The task is not this situation, or only loosely resembles it."
+    }
+  },
+  "sequence-verifiable-units": {
+    "type": "noul",
+    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Is this task a sweep of many similar edits, a staged migration, or work the user wants delivered as a series of separately verifiable commits or PRs?",
+    "criteria": {
+      "true": "E.g. a rename or API swap across many files, a phased rewrite, or splitting work into a stack of commits that each pass on their own.",
+      "false": "A single feature or fix, even one touching a few files, a read-only audit or report, or a one-off script."
+    }
+  },
+  "subtract-before-you-add": {
+    "type": "noul",
+    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does this task add to or refactor code that likely contains dead, redundant, or stub parts to remove first?",
+    "criteria": {
+      "true": "The task clearly is this situation.",
+      "false": "The task is not this situation, or only loosely resembles it."
+    }
+  },
+  "test-behavior-not-implementation": {
+    "type": "noul",
+    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does this task involve writing, changing, or keeping tests?",
+    "criteria": {
+      "true": "The task writes, rewrites, reviews, or deletes test cases or their assertions.",
+      "false": "No test cases are written or changed, e.g. only installing a test runner or configuring CI."
+    }
+  },
+  "type-system-discipline": {
+    "type": "noul",
+    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does this task involve designing or reshaping types, data models, or function signatures, for example to rule out invalid states or values that get mixed up?",
+    "criteria": {
+      "true": "E.g. turning flags into a union of states, giving IDs that share a primitive their own types, deriving types from an authoritative schema, typing an API envelope, or designing a function signature.",
+      "false": "Work that uses existing types without designing or changing them."
+    }
+  }
+}
