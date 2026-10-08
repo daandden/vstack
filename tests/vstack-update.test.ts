@@ -125,7 +125,7 @@ test("a narrowed Update can gate with a fresh cache for the unselected Pins", as
     expect({ code: result.code, err: result.err }).toEqual({ code: 0, err: "" });
   } finally { server.stop(true); }
 }, 30000);
-test("a changed adapt row blocks the Pin move unless held, then keeps effectiveOld", async () => {
+test("a held adapt row never blocks its Upstream and keeps effectiveOld", async () => {
   const f = makeUpdateFixture(); dirs.push(f.dir);
   const root = f.checkout();
   const planned = await f.run(root, ["matt"], { FAKE_OMP_CLONE: "1" });
@@ -135,15 +135,8 @@ test("a changed adapt row blocks the Pin move unless held, then keeps effectiveO
   const decisions = plan.rows.filter((r: any) => r.class !== "unchanged").map((r: any) => ({
     id: r.id, action: ["adapt", "merge"].includes(r.disposition) || ["moved", "removed"].includes(r.class) ? "hold" : "accept", reason_check: "Still valid.",
   }));
-  decisions.find((d: any) => d.id === "matt/wording").action = "accept";
   const fresh = plan.new[0];
   decisions.push({ id: "matt/fresh", upstream: fresh.upstream, path: fresh.path, action: "defer", gist: "Needs review.", reason_check: "New item." } as any);
-  writeFileSync(file, JSON.stringify({ decisions }));
-  const pins = readFileSync(join(plan.worktree.path, "pins.yaml"), "utf8");
-  const blocked = await run(["apply", "--plan", join(plan.out, "plan.json"), "--decisions", file], root);
-  expect(blocked.code).toBe(2); expect(blocked.err).toContain("matt/wording");
-  expect(readFileSync(join(plan.worktree.path, "pins.yaml"), "utf8")).toBe(pins);
-  decisions.find((d: any) => d.id === "matt/wording").action = "hold";
   writeFileSync(file, JSON.stringify({ decisions }));
   const held = await run(["apply", "--plan", join(plan.out, "plan.json"), "--decisions", file], root);
   expect(held.code).toBe(0);
@@ -158,4 +151,231 @@ test("a changed adapt row blocks the Pin move unless held, then keeps effectiveO
   // The CLI reports the baseline the next plan must use for the held contribution.
   const row = JSON.parse(held.out).rows.find((r: any) => r.id === "matt/wording");
   expect(row.effectiveOld).toEqual({ ref: "v1.1.0", path: "skills/eng/wording" });
+}, 30000);
+test("adapt merges carry a hand edit through normalized Upstream changes", async () => {
+  const f = lifecycleFixture(); dirs.push(f.dir);
+  const artifact = "plugin/skills/wording";
+  const old = git(f.mattRepo, "show", "v1.1.0:skills/eng/wording/SKILL.md") + "\n";
+  const local = old.replace("description: wording", "description: Local hand edit").replaceAll("CONTEXT.md", "GLOSSARY.md").replace("Open a todolist", "Start the `todo` list");
+  writeFileSync(join(f.root, artifact, "SKILL.md"), local);
+  git(f.root, "add", "-A"); git(f.root, "commit", "-qm", "hand edit");
+  const { plan, decisions, file, planFile } = await f.planned();
+  const merged = await run(["merge", "--plan", planFile], f.root);
+  expect({ code: merged.code, err: merged.err }).toEqual({ code: 0, err: "" });
+  const step = JSON.parse(merged.out).steps.find((s: any) => s.id === "matt/wording");
+  expect(step.conflicts).toEqual([]);
+  const proposed = readFileSync(join(step.drafts[artifact], "SKILL.md"), "utf8");
+  expect(proposed).toContain("description: Local hand edit");
+  expect(proposed).toContain("Then update GLOSSARY.md.");
+  expect(proposed).not.toContain("CONTEXT.md");
+  Object.assign(decisions.find((d: any) => d.id === step.id), { action: "accept" });
+  writeFileSync(file, JSON.stringify({ decisions }));
+  const applied = await run(["apply", "--plan", planFile, "--decisions", file], f.root);
+  expect({ code: applied.code, err: applied.err }).toEqual({ code: 0, err: "" });
+  expect(readFileSync(join(plan.worktree.path, artifact, "SKILL.md"), "utf8")).toBe(proposed);
+}, 30000);
+test("conflicting adapt changes reach the report and cannot be silently applied", async () => {
+  const f = lifecycleFixture(); dirs.push(f.dir);
+  const local = git(f.mattRepo, "show", "v1.1.0:skills/eng/wording/SKILL.md").replace("Read CONTEXT.md first. Open a todolist now. Ask poteto. Keep .git/old-root.", "Read the local handbook instead.") + "\n";
+  writeFileSync(join(f.root, "plugin/skills/wording/SKILL.md"), local);
+  git(f.root, "add", "-A"); git(f.root, "commit", "-qm", "conflicting hand edit");
+  const { plan, decisions, file, planFile } = await f.planned();
+  const result = await run(["merge", "--plan", planFile], f.root);
+  expect(result.code).toBe(0);
+  const step = JSON.parse(result.out).steps.find((s: any) => s.id === "matt/wording");
+  expect(step.conflicts).toContain("plugin/skills/wording/SKILL.md");
+  expect(readFileSync(join(step.drafts["plugin/skills/wording"], "SKILL.md"), "utf8")).toContain("<<<<<<< vstack");
+  const reportFile = join(f.dir, "conflict-report.html");
+  expect((await run(["report", "--plan", planFile, "--decisions", file, "--report", reportFile], f.root)).code).toBe(0);
+  expect(readFileSync(reportFile, "utf8")).toContain("Merge conflicts: plugin/skills/wording/SKILL.md");
+  decisions.find((d: any) => d.id === step.id).action = "accept";
+  writeFileSync(file, JSON.stringify({ decisions }));
+  const pins = readFileSync(join(plan.worktree.path, "pins.yaml"), "utf8");
+  const blocked = await run(["apply", "--plan", planFile, "--decisions", file], f.root);
+  expect(blocked.code).toBe(2); expect(blocked.err).toContain("unresolved merge conflict");
+  expect(readFileSync(join(plan.worktree.path, "pins.yaml"), "utf8")).toBe(pins);
+  Object.assign(decisions.find((d: any) => d.id === step.id), { drafts: step.drafts });
+  writeFileSync(join(step.drafts["plugin/skills/wording"], "SKILL.md"), local + "Then update GLOSSARY.md.\n");
+  writeFileSync(file, JSON.stringify({ decisions }));
+  expect((await run(["apply", "--plan", planFile, "--decisions", file], f.root)).code).toBe(0);
+}, 30000);
+test("removed rows can become originals and renamed adopts can follow the new name", async () => {
+  const f = lifecycleFixture(); dirs.push(f.dir);
+  const { plan, decisions, file, planFile } = await f.planned();
+  Object.assign(decisions.find((d: any) => d.id === "matt/gone"), { action: "accept", removal: "original" });
+  Object.assign(decisions.find((d: any) => d.id === "matt/old-name"), { action: "accept", rename: "follow" });
+  writeFileSync(file, JSON.stringify({ decisions }));
+  const result = await run(["apply", "--plan", planFile, "--decisions", file], f.root);
+  expect({ code: result.code, err: result.err }).toEqual({ code: 0, err: "" });
+  const reg = Bun.YAML.parse(readFileSync(join(plan.worktree.path, "decision-register.yaml"), "utf8")) as any;
+  expect(reg.items.some((r: any) => r.id === "matt/gone")).toBe(false);
+  expect(reg.originals).toContain("plugin/skills/gone");
+  expect(reg.items.find((r: any) => r.id === "matt/old-name")).toMatchObject({ disposition: "adopt", path: "skills/eng/new-name", artifacts: ["plugin/skills/new-name"] });
+  expect(readFileSync(join(plan.worktree.path, "plugin/skills/new-name/SKILL.md"), "utf8")).toContain("moved without edits");
+  expect(JSON.parse(result.out).version).toBe("1.0.0");
+}, 30000);
+
+test("a shared merge accepts a held catch-up while leaving the other row on Hold", async () => {
+  const f = lifecycleFixture(); dirs.push(f.dir);
+  const pb = "pstack/skills/poteto-mode/playbooks/tdd.md";
+  writeFileSync(join(f.pstackRepo, pb), "# TDD\nCatch up the Playbook.\n");
+  git(f.pstackRepo, "add", "-A"); git(f.pstackRepo, "commit", "-qm", "changed tdd");
+  const artifact = "plugin/skills/tdd";
+  const baseline = git(f.mattRepo, "show", "v1.1.0:skills/eng/tdd/SKILL.md") + "\n" + Array.from({length: 12}, (_, i) => `Local section ${i}\n`).join("") + "# TDD\n";
+  writeFileSync(join(f.root, artifact, "SKILL.md"), baseline);
+  const reg = Bun.YAML.parse(readFileSync(join(f.root, "decision-register.yaml"), "utf8")) as any;
+  Object.assign(reg.items.find((r: any) => r.id === "pstack/playbook-tdd"), { held_at: f.pstack.c1, held_path: pb });
+  writeFileSync(join(f.root, "decision-register.yaml"), Bun.YAML.stringify(reg, null, 2));
+  git(f.root, "add", "-A"); git(f.root, "commit", "-qm", "shared baseline");
+  const { plan, decisions, file, planFile } = await f.planned();
+  const merged = await run(["merge", "--plan", planFile], f.root);
+  expect(merged.code).toBe(0);
+  const mattStep = JSON.parse(merged.out).steps.find((s: any) => s.id === "matt/tdd");
+  decisions.find((d: any) => d.id === "pstack/playbook-tdd").action = "accept";
+  writeFileSync(file, JSON.stringify({ decisions }));
+  const applied = await run(["apply", "--plan", planFile, "--decisions", file], f.root);
+  expect({ code: applied.code, err: applied.err }).toEqual({ code: 0, err: "" });
+  const text = readFileSync(join(plan.worktree.path, artifact, "SKILL.md"), "utf8");
+  expect(text).toContain("tdd 1"); expect(text).not.toContain("tdd 2"); expect(text).toContain("Catch up the Playbook.");
+  const updated = Bun.YAML.parse(readFileSync(join(plan.worktree.path, "decision-register.yaml"), "utf8")) as any;
+  expect(updated.items.find((r: any) => r.id === "pstack/playbook-tdd").held_at).toBeUndefined();
+  expect(updated.items.find((r: any) => r.id === "pstack/playbook-tdd").held_path).toBeUndefined();
+  expect(updated.items.find((r: any) => r.id === "matt/tdd")).toMatchObject({ held_at: "v1.1.0", held_path: "skills/eng/tdd" });
+  // Reapplication cannot accidentally replay the previously accepted catch-up.
+  decisions.find((d: any) => d.id === "pstack/playbook-tdd").action = "hold";
+  decisions.find((d: any) => d.id === "matt/tdd").action = "accept";
+  writeFileSync(join(mattStep.drafts[artifact], "SKILL.md"), baseline.replace("tdd 1", "tdd 2"));
+  Object.assign(decisions.find((d: any) => d.id === "matt/tdd"), { drafts: mattStep.drafts });
+  writeFileSync(file, JSON.stringify({ decisions }));
+  expect((await run(["apply", "--plan", planFile, "--decisions", file], f.root)).code).toBe(0);
+  const rebuilt = readFileSync(join(plan.worktree.path, artifact, "SKILL.md"), "utf8");
+  expect(rebuilt).toContain("tdd 2"); expect(rebuilt).not.toContain("Catch up the Playbook.");
+}, 30000);
+test("removed shared rows remove only their contribution or keep it as vstack text", async () => {
+  for (const removal of ["remove-contribution", "keep-contribution"] as const) {
+    const f = lifecycleFixture(); dirs.push(f.dir);
+    const pb = "pstack/skills/poteto-mode/playbooks/forensics-b.md";
+    rmSync(join(f.pstackRepo, pb)); git(f.pstackRepo, "add", "-A"); git(f.pstackRepo, "commit", "-qm", "removed shared item");
+    const artifact = "plugin/skills/forensics";
+    const baseline = "---\nname: forensics\ndescription: Fixture\n---\nLocal hand edit.\n# Forensics A\n# Forensics B\n";
+    writeFileSync(join(f.root, artifact, "SKILL.md"), baseline);
+    git(f.root, "add", "-A"); git(f.root, "commit", "-qm", "shared artifact");
+    const { plan, decisions, file, planFile } = await f.planned();
+    const d = decisions.find((d: any) => d.id === "pstack/playbook-forensics-b");
+    Object.assign(d, { action: "accept", removal: "original" });
+    writeFileSync(file, JSON.stringify({ decisions }));
+    expect((await run(["apply", "--plan", planFile, "--decisions", file], f.root)).err).toContain("shared artifact cannot become original");
+    Object.assign(d, { removal });
+    if (removal === "remove-contribution") {
+      const merged = await run(["merge", "--plan", planFile], f.root);
+      const step = JSON.parse(merged.out).steps.find((s: any) => s.id === d.id);
+      writeFileSync(join(step.drafts[artifact], "SKILL.md"), baseline.replace("# Forensics B\n", ""));
+      Object.assign(d, { drafts: step.drafts });
+    }
+    writeFileSync(file, JSON.stringify({ decisions }));
+    const result = await run(["apply", "--plan", planFile, "--decisions", file], f.root);
+    expect({ code: result.code, err: result.err }).toEqual({ code: 0, err: "" });
+    const text = readFileSync(join(plan.worktree.path, artifact, "SKILL.md"), "utf8");
+    expect(text).toContain("Local hand edit."); expect(text).toContain("# Forensics A");
+    expect(text.includes("# Forensics B")).toBe(removal === "keep-contribution");
+    const reg = Bun.YAML.parse(readFileSync(join(plan.worktree.path, "decision-register.yaml"), "utf8")) as any;
+    expect(reg.items.some((r: any) => r.id === d.id)).toBe(false);
+    expect(reg.items.find((r: any) => r.id === "pstack/playbook-forensics-a").artifacts).toContain(artifact);
+    expect(JSON.parse(result.out).version).toBe("0.2.0");
+  }
+}, 30000);
+
+test("removed unshared names bump major and keeping a renamed adopt turns it adapt", async () => {
+  const f = lifecycleFixture(); dirs.push(f.dir);
+  const { plan, decisions, file, planFile } = await f.planned();
+  Object.assign(decisions.find((d: any) => d.id === "matt/gone"), { action: "accept", removal: "drop" });
+  Object.assign(decisions.find((d: any) => d.id === "matt/old-name"), { action: "accept", rename: "keep", reason: "Keep the vstack name." });
+  writeFileSync(file, JSON.stringify({ decisions }));
+  const result = await run(["apply", "--plan", planFile, "--decisions", file], f.root);
+  expect({ code: result.code, err: result.err }).toEqual({ code: 0, err: "" });
+  const reg = Bun.YAML.parse(readFileSync(join(plan.worktree.path, "decision-register.yaml"), "utf8")) as any;
+  expect(reg.items.some((r: any) => r.id === "matt/gone")).toBe(false);
+  expect(reg.items.find((r: any) => r.id === "matt/old-name")).toMatchObject({ disposition: "adapt", artifacts: ["plugin/skills/old-name"] });
+  expect(JSON.parse(result.out).version).toBe("1.0.0");
+  const style = Bun.YAML.parse(readFileSync(join(plan.worktree.path, "house-style.yaml"), "utf8")) as any;
+  expect(style.replacements).toContainEqual({ id: "rename-matt-old-name", from: "new-name", to: "old-name", match: "name", upstream: "matt", scope: "required", uses: ["update"] });
+}, 30000);
+
+test("ADR and Fan-out findings Hold by default and require explicit acceptance", async () => {
+  const f = lifecycleFixture(); dirs.push(f.dir);
+  const { plan, decisions, file, planFile } = await f.planned();
+  const d = decisions.find((d: any) => d.id === "matt/grow");
+  Object.assign(d, { adr_conflicts: ["ADR 0004: multi-model routing"], review_findings: ["Caller overlaps a background subagent."] });
+  writeFileSync(file, JSON.stringify({ decisions }));
+  expect((await run(["apply", "--plan", planFile, "--decisions", file], f.root)).err).toContain("findings require explicit acceptance");
+  d.action = "hold"; writeFileSync(file, JSON.stringify({ decisions }));
+  expect((await run(["apply", "--plan", planFile, "--decisions", file], f.root)).code).toBe(0);
+  const reportFile = join(f.dir, "held-findings.html");
+  expect((await run(["report", "--plan", planFile, "--decisions", file, "--report", reportFile], f.root)).code).toBe(0);
+  expect(readFileSync(reportFile, "utf8")).toContain("Held-back findings: ADR 0004: multi-model routing; Caller overlaps a background subagent.");
+  Object.assign(d, { action: "accept", explicit_accept: true }); writeFileSync(file, JSON.stringify({ decisions }));
+  expect((await run(["apply", "--plan", planFile, "--decisions", file], f.root)).code).toBe(0);
+}, 30000);
+test("a held adapt catches up from held_at even when its Upstream did not change at the latest Pin", async () => {
+  const f = lifecycleFixture(); dirs.push(f.dir);
+  const reg = Bun.YAML.parse(readFileSync(join(f.root, "decision-register.yaml"), "utf8")) as any;
+  reg.items.find((r: any) => r.id === "matt/held").disposition = "adapt";
+  writeFileSync(join(f.root, "decision-register.yaml"), Bun.YAML.stringify(reg, null, 2));
+  const artifact = "plugin/skills/held";
+  writeFileSync(join(f.root, artifact, "SKILL.md"), readFileSync(join(f.root, artifact, "SKILL.md"), "utf8").replace("description: held", "description: Local hand edit"));
+  git(f.root, "add", "-A"); git(f.root, "commit", "-qm", "held adaptation");
+  const { plan, decisions, file, planFile } = await f.planned();
+  const result = await run(["merge", "--plan", planFile], f.root);
+  const step = JSON.parse(result.out).steps.find((s: any) => s.id === "matt/held");
+  expect(step.effectiveOld).toMatchObject({ ref: "v1.0.0", path: "skills/eng/held" });
+  expect(step.conflicts).toEqual([]);
+  decisions.find((d: any) => d.id === "matt/held").action = "accept";
+  writeFileSync(file, JSON.stringify({ decisions }));
+  const applied = await run(["apply", "--plan", planFile, "--decisions", file], f.root);
+  expect({ code: applied.code, err: applied.err }).toEqual({ code: 0, err: "" });
+  const text = readFileSync(join(plan.worktree.path, artifact, "SKILL.md"), "utf8");
+  expect(text).toContain("Local hand edit"); expect(text).toContain("held 1.1");
+  const updated = Bun.YAML.parse(readFileSync(join(plan.worktree.path, "decision-register.yaml"), "utf8")) as any;
+  expect(updated.items.find((r: any) => r.id === "matt/held").held_at).toBeUndefined();
+  expect(updated.items.find((r: any) => r.id === "matt/held").held_path).toBeUndefined();
+}, 30000);
+
+test("draft ADRs appear in the report and enter the checkout only for accepted rows", async () => {
+  const f = lifecycleFixture(); dirs.push(f.dir);
+  const { plan, decisions, file, planFile } = await f.planned();
+  const source = join(plan.out, "draft-adr.md"), path = "docs/adr/0013-fixture-trade-off.md";
+  writeFileSync(source, "# Fixture trade-off\n\nKeep the parent model instead of upstream multi-model routing.\n");
+  const d = decisions.find((d: any) => d.id === "matt/grow");
+  Object.assign(d, { action: "hold", draft_adr: { path, source }, adr_conflicts: ["ADR 0004 conflicts with proposed routing."] });
+  writeFileSync(file, JSON.stringify({ decisions }));
+  expect((await run(["prepare", "--plan", planFile, "--decisions", file], f.root)).code).toBe(0);
+  expect(await Bun.file(join(plan.worktree.path, path)).exists()).toBe(false);
+  const reportFile = join(f.dir, "adr-report.html");
+  expect((await run(["report", "--plan", planFile, "--decisions", file, "--report", reportFile], f.root)).code).toBe(0);
+  expect(readFileSync(reportFile, "utf8")).toContain("Keep the parent model instead of upstream multi-model routing.");
+  Object.assign(d, { action: "accept", explicit_accept: true }); writeFileSync(file, JSON.stringify({ decisions }));
+  expect((await run(["apply", "--plan", planFile, "--decisions", file], f.root)).code).toBe(0);
+  expect(readFileSync(join(plan.worktree.path, path), "utf8")).toBe(readFileSync(source, "utf8"));
+}, 30000);
+test("a held rename gets its catch-up choice on a later Update with unchanged Upstream bytes", async () => {
+  const f = lifecycleFixture(); dirs.push(f.dir);
+  const reg = Bun.YAML.parse(readFileSync(join(f.root, "decision-register.yaml"), "utf8")) as any;
+  Object.assign(reg.items.find((r: any) => r.id === "matt/old-name"), { path: "skills/eng/new-name", tree: f.sha("matt", "v1.2.0", "skills/eng/new-name"), held_at: "v1.1.0", held_path: "skills/eng/old-name" });
+  const pins = Bun.YAML.parse(readFileSync(join(f.root, "pins.yaml"), "utf8")) as any;
+  pins.upstreams.matt.pin = "v1.2.0";
+  writeFileSync(join(f.root, "decision-register.yaml"), Bun.YAML.stringify(reg, null, 2));
+  writeFileSync(join(f.root, "pins.yaml"), Bun.YAML.stringify(pins, null, 2));
+  git(f.root, "add", "-A"); git(f.root, "commit", "-qm", "previous held rename");
+  const { plan, decisions, file, planFile } = await f.planned();
+  const row = plan.rows.find((r: any) => r.id === "matt/old-name");
+  expect(row.class).toBe("moved");
+  expect(row.staged).not.toBeNull();
+  Object.assign(decisions.find((d: any) => d.id === row.id), { action: "accept", rename: "follow" });
+  writeFileSync(file, JSON.stringify({ decisions }));
+  const result = await run(["apply", "--plan", planFile, "--decisions", file], f.root);
+  expect({ code: result.code, err: result.err }).toEqual({ code: 0, err: "" });
+  const updated = Bun.YAML.parse(readFileSync(join(plan.worktree.path, "decision-register.yaml"), "utf8")) as any;
+  expect(updated.items.find((r: any) => r.id === row.id).held_path).toBeUndefined();
+  expect(updated.items.find((r: any) => r.id === row.id).artifacts).toEqual(["plugin/skills/new-name"]);
+  expect(JSON.parse(result.out).version).toBe("1.0.0");
 }, 30000);
