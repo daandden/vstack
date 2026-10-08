@@ -10,7 +10,12 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [0.1.28] - 2026-10-08
 
+<<<<<<< HEAD
 - vstack-update plans in its own worktree, presents gated row decisions, applies adopt, reject, and new items, and opens an Update PR. Changed adapt and merge rows and all moved or removed rows stay Hold-only until #99. Scripts own the writes, direct jev re-run, report, version bump, and publication (#98).
+||||||| 9b54827
+=======
+- Add model-invocable forensics with live instrumentation and captured-artifact branches. It returns a cited diagnosis, preserves tracked files, and requires paired captures for confirmation (#94).
+>>>>>>> ticket/94-forensics
 
 ## [0.1.27] - 2026-10-08
 
