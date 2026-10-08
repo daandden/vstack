@@ -66,6 +66,10 @@ export const STYLE_TEXT = {
   phrasing: "Open a todolist with one entry per step.\n",
   /** The `from` of the fixture's required name row. */
   renamed: "Run old-setup first.\n",
+  /** A spawn naming a bundled agent and a Fan-out gate with no branch lines. */
+  spawner:
+    'Spawn one `scout` via `task` (`agent: "scout"`): the question, the user\'s override words, the vstack root. Wait for its result.\n' +
+    "Fan-out gate (skill://vstack-fan-out): parts: one per file; size: lines in the file.\n",
 };
 const styleSkill = (name: string, body: string) => `---\nname: ${name}\ndescription: ${name}\n---\n${body}`;
 const STYLE_ITEMS: Files = {
@@ -74,6 +78,7 @@ const STYLE_ITEMS: Files = {
   "skills/style/scratch/SKILL.md": styleSkill("scratch", STYLE_TEXT.scratch),
   "skills/style/phrasing/SKILL.md": styleSkill("phrasing", STYLE_TEXT.phrasing),
   "skills/style/renamed/SKILL.md": styleSkill("renamed", STYLE_TEXT.renamed),
+  "skills/style/spawner/SKILL.md": styleSkill("spawner", STYLE_TEXT.spawner),
 };
 
 export const ALPHA_V2: Files = (() => {
@@ -233,11 +238,12 @@ export function passingSpec(up: Upstreams): RepoSpec {
         style("asks-tool", ["plugin/skills/asks-tool"]),
         style("scratch", ["plugin/skills/scratch"]),
         style("phrasing", ["plugin/skills/phrasing"]),
+        style("spawner", ["plugin/skills/spawner"]),
         // Adopt rows whose artifacts the scope fixtures add.
         style("asks", []),
         style("renamed", []),
       ],
-      originals: ["plugin/rules/fx-rule.md", "plugin/agents/fx-agent.md"],
+      originals: ["plugin/rules/fx-rule.md", "plugin/agents/fx-agent.md", "plugin/agents/vstack-explorer.md"],
     },
     manifest: { name: "vstack", version: "0.1.0", private: true, omp: {} },
     houseStyle: { replacements: clone(FIXTURE_ROWS), rules: clone(REPO_RULES) },
@@ -249,9 +255,11 @@ export function passingSpec(up: Upstreams): RepoSpec {
       "plugin/skills/shared/SKILL.md": "---\nname: shared\ndescription: merged\n---\nmerged\n",
       "plugin/rules/fx-rule.md": "---\nalwaysApply: true\n---\nrule\n",
       "plugin/agents/fx-agent.md": "---\nname: fx-agent\ndescription: agent\n---\nagent\n",
+      "plugin/agents/vstack-explorer.md": "---\nname: vstack-explorer\ndescription: explorer\nspawns: vstack-explorer, fx-agent\n---\nexplorer\n",
       ...artifactFrom(ALPHA_V2, "skills/style/asks-tool", "plugin/skills/asks-tool"),
       ...artifactFrom(ALPHA_V2, "skills/style/scratch", "plugin/skills/scratch"),
       ...artifactFrom(ALPHA_V2, "skills/style/phrasing", "plugin/skills/phrasing"),
+      ...artifactFrom(ALPHA_V2, "skills/style/spawner", "plugin/skills/spawner"),
     },
   };
 }

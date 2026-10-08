@@ -53,7 +53,7 @@ export interface HouseStyleProblem {
 export class HouseStyleError extends Error {}
 
 /** Rule ids check-register lints; each has to be present so its scope is known. */
-export const LINTED_RULES = ["skill-ref", "spawn-vocab", "worktree-cmd", "tmp-path", "ask-tool"] as const;
+export const LINTED_RULES = ["skill-ref", "spawn-vocab", "fan-out-block", "single-spawn", "fixed-fan-out", "headless-run", "worktree-cmd", "tmp-path", "ask-tool"] as const;
 
 /**
  * Whether text with Disposition `d` follows a row or rule of `scope`. required: every shipped text, adopt
