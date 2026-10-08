@@ -1,0 +1,76 @@
+---
+name: hillclimb
+description: Sustain improvement of one metric against a target with frozen-harness measurements, isolated hypotheses, and one commit per accepted win. Use perf-issue for a one-off measured fix.
+---
+
+# Hillclimb
+
+Own the metric and the experiment's integrity. One hypothesis, one measurement, keep or reject. Code inspection is not a measured win; follow skill://principle-prove-it-works.
+
+## Start
+
+Read skill://implement/END-STATE.md before work. Copy its steps verbatim, including their paragraphs, into the run todo in execution order, inserting the work steps below between 0c and 3b. Copy these work steps verbatim before adding task-specific items. Keep unfinished steps as `skip: <reason>`. Reuse the shared block by reference, not a second maintained copy. hillclimb always starts skill://decision-trail, including at End state commit.
+
+Run shared steps 0a–0c once. Retain their run record, absolute vstack root, project Scratch dir, and canonical trail path throughout the invocation. Use the run's model for every worker.
+
+Before any hypothesis, require `omp config get task.isolation.enabled` to print `true`. If isolation is off, stop and point at `/skill:setup-vstack`. A gate choosing inline does not bypass this prerequisite. If isolated workers cannot start, stop and report; do not replace a failed isolated batch with shared-checkout workers.
+
+## 1. Ground the workload and architecture
+
+Run skill://how over the target. Name realistic workload dimensions that move the result: data size, history, state, and concurrency. Select a case that reproduces the complaint; otherwise fix the repro before hillclimbing. Fix one metric, its unit, the direction that counts as better, and a checkable stop predicate pairing a target with a minimum attempt count. Use supplied numbers; settle missing numbers together through `ask`. Do not invent approval after a timeout.
+
+## 2. Build, prove, and freeze the harness
+
+Follow skill://principle-build-the-lever. Run contrasting realistic workloads: the target reproduces the symptom and easier cases separate as expected. If not, revise the workload or metric before freezing. Freeze one repeatable command, its inputs, environment, sample count, statistic (median of N), and noise threshold. Save the harness and raw baseline samples as evidence under the project Scratch dir. Keep a hash or revision of the harness and named fixtures so each result can be tied to the frozen version.
+
+Record the baseline and a green regression gate before changing product code. The gate is the agreed set of checks that must keep passing. For a user-facing metric, use the project's Verify skill as the measurement surface, discovering and maintaining it through shared step 4. If none exists, report that gap and use tests or scripts that exercise the real surface, not an invented Verify result. Changes to the harness invalidate comparisons; restart measurement with a new declared baseline rather than calling it a product win.
+
+## 3. Fix the attempt trail
+
+Read skill://decision-trail and reuse the log opened in 0c. It owns the format, helper, current-session scope, interleaving protocol, final audit, and Attention section. Keep no separate decision.tsv or alternate column schema. Read the trail before each wave.
+
+Log every attempt through its log helper, including rejects, failures, missing patches, deferred winners, and parent-validation failures. Put the hypothesis in `decision`; put before → after, unit, delta, noise threshold, frozen-harness identity, gate command and outcome, and evidence paths in `evidence`/`result`. Cite raw measurements, patch paths, and accepted commit SHAs. Use one attempt row for each tested hypothesis and append a superseding outcome when selection or parent validation changes its verdict. Deferred wins are not kept wins.
+
+## 4. Ground the hypotheses
+
+Derive each hypothesis from step 1's architecture model. Name a specific mechanism, tight edit scope, expected metric effect, and behavior that must remain unchanged. Queue independent hypotheses against the current accepted baseline. Give a wave a stable baseline SHA and tree state; keep its candidate paths unchanged in the parent until selection. Follow skill://principle-separate-before-serializing-shared-state.
+
+## 5. Run and select a wave
+
+Each attempt makes one scoped change, measures before and after with the frozen harness, and runs the regression gate. A win exceeds the noise threshold in the declared direction and keeps the gate green. Inconclusive measurements and failed gates reject the attempt. Follow skill://principle-guard-the-context-window: keep reduced findings in the parent, with paths to full evidence.
+
+For two or more independent live hypotheses, use the following block. Before this step, read skill://vstack-fan-out and run its gate on the block below.
+
+Fan-out gate (skill://vstack-fan-out): parts: one per independent hypothesis; size: target files and expected diff lines per hypothesis.
+- fan-out → one eval cell: per part, `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`; `wait()` on all handles. Each prompt: one hypothesis, its baseline and real target paths, the frozen harness and fixtures, noise threshold, regression gate, evidence return contract below, the user's override words, the vstack root, the Scratch dir, the canonical decision-trail path. Recover each `patchPath` from its completion notice and apply only the best measured win after all results are read.
+- inline → do every part yourself, in order, from the same brief.
+
+For one live hypothesis, use one isolated worker without a Fan-out gate:
+
+Spawn one `vstack-worker` via eval `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`: one hypothesis with the same baseline, target paths, frozen harness, noise threshold, regression gate, evidence return contract, the user's override words, the vstack root, the Scratch dir, the canonical decision-trail path. Wait for its result. If it cannot be spawned, stop: hillclimb needs isolated attempts; run `/skill:setup-vstack`.
+
+Worker return contract: hypothesis and changed paths; baseline identity; exact measurement and gate commands; before and after samples, median, unit, delta, noise decision, and gate outcome; absolute evidence paths; rationale and open questions. Write product changes inside the supplied clone at real target paths so they enter its patch. Use a distinct `<Scratch dir>/hillclimb/<run-id>/<wave>/<attempt>/` for evidence. Reuse supplied root and Scratch paths without resolving them again. Append only to the named trail through decision-trail's helper, following its run-start protocol. Workers never commit, push, or change the harness. Every rejection leaves its patch unapplied.
+
+Pair handles and results in input order. A handle has no `patchPath` field. Recover that path from omp's completion notice: `Isolation: changes captured at <absolute patch path> (apply=false). Not applied.` Read the patch before selecting it. If structured output hides the notice, read the full completion through the handle's `output()` or `agent://<id>`. An unavailable notice, empty patch, failed worker, or missing measurement is a logged rejection, not a guessed patch path.
+
+Read every diff and measurement. Compare only results on the same frozen harness and wave baseline. Rank passing wins by improvement in the declared direction; for indistinguishable gains, prefer the simpler change under skill://principle-laziness-protocol. Apply only the best measured win with `git apply -- "<chosen patchPath>"`. Leave losing patches untouched and cite their absolute paths. Queue other measured winners for fresh measurement against the new accepted baseline; never graft or apply their stale patches.
+
+If applying the selected patch fails because the parent moved, stop and report instead of forcing it. Re-run the frozen measurement and regression gate in the parent before acceptance. If the win fails to reproduce or behavior breaks, undo only this attempt's changes, preserve unrelated work, and log the rejection. For a reproduced win, stage only its paths or hunks (`git add <files>`, never `-A`) and make one commit with before → after evidence. Record the commit and advance the accepted baseline. Follow skill://principle-sequence-verifiable-units: finish validation and logging before the next wave.
+
+When the gate chooses inline, try each hypothesis yourself one at a time from the same wave baseline, measure and run the gate, and save each diff to its own Scratch patch before undoing only that attempt. Log every result. After all parts, use the same best-only selection, patch application, parent validation, commit, and requeue procedure. Never keep several inline wins in one wave.
+
+## 6. Push past the first plateau
+
+On several rejects in a row, pivot category, re-read the source, combine near-misses as a new measured hypothesis, or try a different mechanism before concluding. Correctness and simplicity outrank the number. Revert a behavior-breaking win in a new commit and log why. A simplification that holds the number may be kept as a separately proved cleanup, not counted as a metric win. Re-establish the accepted baseline after any revert or cleanup.
+
+## 7. Stop honestly
+
+Stop when the target and attempt floor are both met, or when remaining ideas are marginal and not worth their cost. Keep cheap untried hypotheses in play. Surface a stuck run rather than spinning. Never relax the predicate to declare success; distinguish target reached from ideas exhausted or blocked. Count every measured hypothesis as an iteration, including deferred winners; remeasurement is a new attempt.
+
+## 8. Prove, review, and chain once
+
+After the loop, execute shared steps 3b, 4, 5, 6, and 7 from skill://implement/END-STATE.md. Accepted commits stay in landing order. hillclimb reviews once after its last work commit and fixes accepted findings in new commits. Live proof covers the final diff, including cleanup and Verify maintenance. The chain runs once for the whole invocation, to the effective End state, not once per wave. Finish decision-trail's audit and fresh-context review.
+
+## Reply
+
+Report metric, unit and target; initial baseline → final with percent delta; attempts run, kept, rejected, and deferred; each accepted fix on one line with its commit; raw measurement and live-proof paths; losing patch paths; the absolute trail path; the best next idea; and requested versus reached End state. Include open cleanup, verification, target, or isolation gaps. End with decision-trail's Attention section. Claim only checks and outcomes that were observed.

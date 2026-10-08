@@ -1,0 +1,909 @@
+# Decision register: one row per Upstream item at its Pin (spec #63 "Decision register").
+# Row fields: id, upstream (a pins.yaml key), kind (skill|principle|playbook|agent), path and tree (the item
+# at the current Pin), disposition (adopt|adapt|merge|reject), artifacts (plugin paths; empty only for
+# reject), reason (one line), optional adr, and on a held row held_at plus
+# held_path. originals: lists vstack-only artifacts. scripts/check-register.ts checks this file; see README.md.
+items:
+  - id: matt/ask-matt
+    upstream: matt
+    kind: skill
+    path: skills/engineering/ask-matt
+    tree: c9c83b11b1a0c91c555ed6ade5ba67f6d6b103d4
+    disposition: adapt
+    artifacts: [plugin/skills/ask-vstack]
+    reason: "Renamed; routes over the whole vstack catalog, not only Matt's."
+  - id: matt/code-review
+    upstream: matt
+    kind: skill
+    path: skills/engineering/code-review
+    tree: 7a2057dcc514dc024d4e6bf8ad78021b97f229ae
+    disposition: adapt
+    artifacts: [plugin/skills/code-review]
+    reason: "Reads vstack configuration; Standards, Spec, and conditional Safety use judge-gated Fan-out; Safety runs blast-radius without step 6 (#84)."
+  - id: matt/codebase-design
+    upstream: matt
+    kind: skill
+    path: skills/engineering/codebase-design
+    tree: 20b7cd1dd1fe5b0bd37ba72649f3a29375574b5b
+    disposition: adapt
+    artifacts: [plugin/skills/codebase-design]
+    reason: "DESIGN-IT-TWICE runs judge-gated Fan-out of vstack agents; names GLOSSARY.md (#36)."
+  - id: matt/diagnosing-bugs
+    upstream: matt
+    kind: skill
+    path: skills/engineering/diagnosing-bugs
+    tree: 463c81def888fefa77b894837d301d9ed70e0994
+    disposition: adapt
+    artifacts: [plugin/skills/diagnosing-bugs]
+    reason: "Its user questions go through ask (ask-tool, #58); names GLOSSARY.md (glossary row) and skill://improve-codebase-architecture."
+  - id: matt/domain-modeling
+    upstream: matt
+    kind: skill
+    path: skills/engineering/domain-modeling
+    tree: 959e63161ff78b4b1cd553b2c0e09e0c68418e5f
+    disposition: adapt
+    artifacts: [plugin/skills/domain-modeling]
+    reason: "Its user questions go through ask (ask-tool, #58); names GLOSSARY.md and GLOSSARY-MAP.md (glossary rows)."
+  - id: matt/grill-with-docs
+    upstream: matt
+    kind: skill
+    path: skills/engineering/grill-with-docs
+    tree: 5fdcdeedf2d0c73b3ecb1da0a464dd885590f8d6
+    disposition: adopt
+    artifacts: [plugin/skills/grill-with-docs]
+    reason: "Kept unchanged; only calls grilling with domain-modeling."
+  - id: matt/implement
+    upstream: matt
+    kind: skill
+    path: skills/engineering/implement
+    tree: f07d230f645fc9ac390cf13a450bbff12ad791a3
+    disposition: adapt
+    artifacts: [plugin/skills/implement]
+    reason: "Settles the End state with one ask, then chains open-pr, babysit, ship; uses the verify skill (#34)."
+  - id: matt/improve-codebase-architecture
+    upstream: matt
+    kind: skill
+    path: skills/engineering/improve-codebase-architecture
+    tree: 6a971d1f5b109ac817e18c0f0419c2a32d60f26a
+    disposition: adapt
+    artifacts: [plugin/skills/improve-codebase-architecture]
+    reason: "Its sub-agent spawn names a vstack agent (ADR 0004); report goes to Scratch (#42, #57)."
+  - id: matt/prototype
+    upstream: matt
+    kind: skill
+    path: skills/engineering/prototype
+    tree: 57569dda16077a016b8fb82494dbf9f6430d7cc4
+    disposition: merge
+    artifacts: [plugin/skills/prototype]
+    reason: "Gains the pstack prototype Playbook's timing/behavior branch, observation step, and reply shape (#36)."
+  - id: matt/research
+    upstream: matt
+    kind: skill
+    path: skills/engineering/research
+    tree: 972a34cd8128b7952b7eb279b06715862db906a7
+    disposition: adapt
+    artifacts: [plugin/skills/research]
+    reason: "Background agent names a vstack agent (#36)."
+  - id: matt/resolving-merge-conflicts
+    upstream: matt
+    kind: skill
+    path: skills/engineering/resolving-merge-conflicts
+    tree: 6aa1ed0b40fac0ebea5c0cf6f2addf82c99b6323
+    disposition: adopt
+    artifacts: [plugin/skills/resolving-merge-conflicts]
+    reason: "Kept unchanged."
+  - id: matt/setup-matt-pocock-skills
+    upstream: matt
+    kind: skill
+    path: skills/engineering/setup-matt-pocock-skills
+    tree: abf20c04a4aa8a37ff20aa7286f28857150f8b8d
+    disposition: adapt
+    artifacts: [plugin/skills/setup-vstack]
+    reason: "Renamed; confirms machine and project Migration, preserves hand edits through Move or Private copy, resolves old storage, and converts diagram and domain config before fresh setup (ADR 0006)."
+  - id: matt/tdd
+    upstream: matt
+    kind: skill
+    path: skills/engineering/tdd
+    tree: 423f3cc2bccf3b0ed426fb35eeb4b38d9188a343
+    disposition: merge
+    artifacts: [plugin/skills/tdd]
+    reason: "Merges with pstack tdd (#36)."
+  - id: matt/to-spec
+    upstream: matt
+    kind: skill
+    path: skills/engineering/to-spec
+    tree: dc32a36159f99c854cb470f371106cd38513a15f
+    disposition: adapt
+    artifacts: [plugin/skills/to-spec]
+    reason: "Names setup-vstack."
+  - id: matt/to-tickets
+    upstream: matt
+    kind: skill
+    path: skills/engineering/to-tickets
+    tree: 80c1bedbdaa72a4abd524055013accb4fe0ea8c4
+    disposition: adapt
+    artifacts: [plugin/skills/to-tickets]
+    reason: "Names setup-vstack."
+  - id: matt/triage
+    upstream: matt
+    kind: skill
+    path: skills/engineering/triage
+    tree: b20940845332f540e3f17b0cb32d45fd8c2298bf
+    disposition: adapt
+    artifacts: [plugin/skills/triage]
+    reason: "Names setup-vstack."
+  - id: matt/wayfinder
+    upstream: matt
+    kind: skill
+    path: skills/engineering/wayfinder
+    tree: 48c3a8b0a9705d6310d37f7f9b53bcb2c55955c7
+    disposition: adapt
+    artifacts: [plugin/skills/wayfinder]
+    reason: "Names setup-vstack; charting research is judge-gated Fan-out; its user questions go through ask."
+  - id: matt/wizard
+    upstream: matt
+    kind: skill
+    path: skills/engineering/wizard
+    tree: 359db2fb13dc168346632556185252cab9dbec77
+    disposition: adapt
+    artifacts: [plugin/skills/wizard]
+    reason: "Its user questions go through ask (ask-tool, #58)."
+  - id: matt/grill-me
+    upstream: matt
+    kind: skill
+    path: skills/productivity/grill-me
+    tree: c817f6f36acd483294144694a935a76d3e3eb101
+    disposition: adopt
+    artifacts: [plugin/skills/grill-me]
+    reason: "Kept unchanged; only calls grilling."
+  - id: matt/grilling
+    upstream: matt
+    kind: skill
+    path: skills/productivity/grilling
+    tree: fd99bcbb818f7ef766b83656fb5fac0b58e223ad
+    disposition: adapt
+    artifacts: [plugin/skills/grilling]
+    reason: "Sub-agent spawn names a vstack agent; one round is one ask with a Grilling HTML (#42, #58)."
+  - id: matt/handoff
+    upstream: matt
+    kind: skill
+    path: skills/productivity/handoff
+    tree: 184d485ae68a2132893a94239b2b85d253e6152b
+    disposition: adapt
+    artifacts: [plugin/skills/handoff]
+    reason: "Saves to Scratch under ~/.vstack/tmp instead of the OS temp dir (tmp-path, #57)."
+  - id: matt/teach
+    upstream: matt
+    kind: skill
+    path: skills/productivity/teach
+    tree: 15f8c86d39ef834e643d092733ca899b59049067
+    disposition: adapt
+    artifacts: [plugin/skills/teach]
+    reason: "Its user questions go through ask (ask-tool, #58)."
+  - id: matt/to-questionnaire
+    upstream: matt
+    kind: skill
+    path: skills/productivity/to-questionnaire
+    tree: 7c4d04fb4d77824d7d98433ee7a8b17dde5efa13
+    disposition: adapt
+    artifacts: [plugin/skills/to-questionnaire]
+    reason: "Its user questions go through ask (ask-tool, #58)."
+  - id: matt/wait-what
+    upstream: matt
+    kind: skill
+    path: skills/productivity/wait-what
+    tree: 6abe708f1bf253158a037ac49faea2944e2809dc
+    disposition: adapt
+    artifacts: [plugin/skills/wait-what]
+    reason: "Names GLOSSARY.md (glossary row); back to adopt once the Base Pin reaches v1.3.0."
+  - id: matt/writing-for-agents
+    upstream: matt
+    kind: skill
+    path: skills/productivity/writing-for-agents
+    tree: bd9c9c4762db0a9a094fd419316ebd4b0444d06e
+    disposition: adapt
+    artifacts: [plugin/skills/writing-for-agents]
+    reason: "Hidden (disable-model-invocation: true); the vstack-prose rule is its only trigger (#59)."
+  - id: matt/claude-handoff
+    upstream: matt
+    kind: skill
+    path: skills/in-progress/claude-handoff
+    tree: b312afac556f7229717dbd9b786d77bc160c8649
+    disposition: reject
+    artifacts: []
+    reason: "in-progress bucket, not in Matt's plugin manifest; revisit if moved into engineering or productivity."
+  - id: matt/loop-me
+    upstream: matt
+    kind: skill
+    path: skills/in-progress/loop-me
+    tree: 6364da007c562d9f6ad3f54524dbc42465d9893a
+    disposition: reject
+    artifacts: []
+    reason: "in-progress bucket, not in Matt's plugin manifest; revisit if moved into engineering or productivity."
+  - id: matt/setup-ts-deep-modules
+    upstream: matt
+    kind: skill
+    path: skills/in-progress/setup-ts-deep-modules
+    tree: 706cd1617d53587b0c4e6df5a8c56974f54cacd2
+    disposition: reject
+    artifacts: []
+    reason: "in-progress bucket, not in Matt's plugin manifest; revisit if moved into engineering or productivity."
+  - id: matt/writing-beats
+    upstream: matt
+    kind: skill
+    path: skills/in-progress/writing-beats
+    tree: 545d05c3fdbfdd094dd88900b0ef8c9a823eac90
+    disposition: reject
+    artifacts: []
+    reason: "in-progress bucket, not in Matt's plugin manifest; revisit if moved into engineering or productivity."
+  - id: matt/writing-fragments
+    upstream: matt
+    kind: skill
+    path: skills/in-progress/writing-fragments
+    tree: ce7d2741a30df8a488f6248c84cf954cff98393f
+    disposition: reject
+    artifacts: []
+    reason: "in-progress bucket, not in Matt's plugin manifest; revisit if moved into engineering or productivity."
+  - id: matt/writing-shape
+    upstream: matt
+    kind: skill
+    path: skills/in-progress/writing-shape
+    tree: 31af0156520819c15d19358a8e0bd36f82e67ad3
+    disposition: reject
+    artifacts: []
+    reason: "in-progress bucket, not in Matt's plugin manifest; revisit if moved into engineering or productivity."
+  - id: matt/git-guardrails-claude-code
+    upstream: matt
+    kind: skill
+    path: skills/misc/git-guardrails-claude-code
+    tree: e90e289cce7a31bdf1afdf591f0790d7ac6c3cbc
+    disposition: reject
+    artifacts: []
+    reason: "misc bucket, not in Matt's plugin manifest; revisit if moved into engineering or productivity."
+  - id: matt/migrate-to-shoehorn
+    upstream: matt
+    kind: skill
+    path: skills/misc/migrate-to-shoehorn
+    tree: 0aea91a3599a4bf7aeec17e3262d4cbcfcbeec23
+    disposition: reject
+    artifacts: []
+    reason: "misc bucket, not in Matt's plugin manifest; revisit if moved into engineering or productivity."
+  - id: matt/scaffold-exercises
+    upstream: matt
+    kind: skill
+    path: skills/misc/scaffold-exercises
+    tree: 44a0ee332b9d67ebbd59389c7eb4e5aff1ce845c
+    disposition: reject
+    artifacts: []
+    reason: "misc bucket, not in Matt's plugin manifest; revisit if moved into engineering or productivity."
+  - id: matt/setup-pre-commit
+    upstream: matt
+    kind: skill
+    path: skills/misc/setup-pre-commit
+    tree: dcc584ff84c4f040ea12742fcb46b7c3ad7070bd
+    disposition: reject
+    artifacts: []
+    reason: "misc bucket, not in Matt's plugin manifest; revisit if moved into engineering or productivity."
+  - id: pstack/architect
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/architect
+    tree: 603668c4b5c46d6e32d6f325c01359a831854941
+    disposition: adapt
+    artifacts: [plugin/skills/architect]
+    reason: "Separate skill; its Sketch step uses codebase-design's DESIGN-IT-TWICE (#36)."
+  - id: pstack/arena
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/arena
+    tree: 051012b3fd378ad46410ee3f2dcf779a819fd297
+    disposition: adapt
+    artifacts: [plugin/skills/compare-attempts]
+    reason: "Renamed; the fixed Fan-out form (allowlisted) on the parent model; buys independence, not model diversity."
+  - id: pstack/automate-me
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/automate-me
+    tree: b301b39506b378d699e1becedf1af73ff5d9f3d5
+    disposition: reject
+    artifacts: []
+    reason: "Would generate a competing personal mode skill."
+  - id: pstack/blast-radius
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/blast-radius
+    tree: ba9658b89ac272580051ab3a4ae58d5346e955f7
+    disposition: adapt
+    artifacts: [plugin/skills/blast-radius]
+    reason: "Model-invocable safety proof in Scratch; compares reply attempts only on explicit request and skips that pass for code-review Safety (#84)."
+  - id: pstack/bro
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/bro
+    tree: 53c3b2c5dc11fe0ee4156468da27505df9239dc6
+    disposition: reject
+    artifacts: []
+    reason: "Matt's wait-what covers it."
+  - id: pstack/create-verification-skill
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/create-verification-skill
+    tree: 38a3e016bb42ba7ba6f66315e04ef64242937660
+    disposition: adapt
+    artifacts: [plugin/skills/setup-app-verification]
+    reason: "Renamed; creates and proves the Verify skill through omp tools, commits Standard output, and links the shared Private copy (ADR 0009)."
+  - id: pstack/figure-it-out
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/figure-it-out
+    tree: dde86e306188bfb713f46dc211b48d7ed7b64106
+    disposition: reject
+    artifacts: []
+    reason: "Large work already goes wayfinder -> to-tickets -> implement."
+  - id: pstack/how
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/how
+    tree: 12b9ed018673a72573574ca5304fc1503a7d16d7
+    disposition: adapt
+    artifacts: [plugin/skills/how]
+    reason: "One angle uses an explainer; 2–4 angles use judge-gated explorers, with figures on a Scratch page (#49, #60)."
+  - id: pstack/interrogate
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/interrogate
+    tree: 708db3e62cd0225367d6fd8841dc38fdb5f1112d
+    disposition: reject
+    artifacts: []
+    reason: "Its signal is model diversity; its merged verdict contradicts code-review's separate axes."
+  - id: pstack/maintain-verification-skill
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/maintain-verification-skill
+    tree: b6ce4dcdc378492f9acd55a4e56ae111204b4f11
+    disposition: adapt
+    artifacts: [plugin/skills/maintain-app-verification]
+    reason: "Renamed; feature-scoped or judge-gated source pass, serial live proof, and own-path Drift fixes (ADR 0009)."
+  - id: pstack/make-bot-ui
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/make-bot-ui
+    tree: 4fb9b8cdd991f08b1c3d7516a886af210bd312cd
+    disposition: reject
+    artifacts: []
+    reason: "Depends on Cursor's update_state routines."
+  - id: pstack/no-comments
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/no-comments
+    tree: 198804132d8306db10cae6c3db62a1498dda7e1c
+    disposition: adapt
+    artifacts: [plugin/skills/prune-comments]
+    reason: "Renamed; one fresh comment critic, accepted root-cause fixes, and explicit approval for constraint encodings (#52)."
+  - id: pstack/poteto-mode
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/poteto-mode
+    tree: 5e3616f2b0b753aa7ef0471fe039647488032add
+    disposition: reject
+    artifacts: []
+    reason: "Sticky Cursor mode; its Playbooks are registered separately and its principle index goes to jev delivery."
+  - id: pstack/principle-attack-the-premise
+    upstream: pstack
+    kind: principle
+    path: pstack/skills/principle-attack-the-premise
+    tree: ea77149f38bdfa5002591fa35af87ed45dd5574c
+    disposition: adopt
+    artifacts: [plugin/skills/principle-attack-the-premise]
+    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+  - id: pstack/principle-boundary-discipline
+    upstream: pstack
+    kind: principle
+    path: pstack/skills/principle-boundary-discipline
+    tree: 743b098e6874a93b11e9f4d5843c79a243580ae2
+    disposition: adopt
+    artifacts: [plugin/skills/principle-boundary-discipline]
+    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+  - id: pstack/principle-build-the-lever
+    upstream: pstack
+    kind: principle
+    path: pstack/skills/principle-build-the-lever
+    tree: 3fb3e945049f52b6a721e329901995fa6289221e
+    disposition: adopt
+    artifacts: [plugin/skills/principle-build-the-lever]
+    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+  - id: pstack/principle-encode-lessons-in-structure
+    upstream: pstack
+    kind: principle
+    path: pstack/skills/principle-encode-lessons-in-structure
+    tree: 8875632be32ca6cff494def2810e5e71fceba65d
+    disposition: adopt
+    artifacts: [plugin/skills/principle-encode-lessons-in-structure]
+    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+  - id: pstack/principle-exhaust-the-design-space
+    upstream: pstack
+    kind: principle
+    path: pstack/skills/principle-exhaust-the-design-space
+    tree: 3c9528f7814d889dc91c2434cc942439a9dd6257
+    disposition: adopt
+    artifacts: [plugin/skills/principle-exhaust-the-design-space]
+    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+  - id: pstack/principle-experience-first
+    upstream: pstack
+    kind: principle
+    path: pstack/skills/principle-experience-first
+    tree: 2dbcf0d0d4473ca3a93d17e2167b587cfec7f6da
+    disposition: adopt
+    artifacts: [plugin/skills/principle-experience-first]
+    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+  - id: pstack/principle-fix-root-causes
+    upstream: pstack
+    kind: principle
+    path: pstack/skills/principle-fix-root-causes
+    tree: 0ec22d21fffd180573f49ea239ee76083d6a6f40
+    disposition: adopt
+    artifacts: [plugin/skills/principle-fix-root-causes]
+    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+  - id: pstack/principle-foundational-thinking
+    upstream: pstack
+    kind: principle
+    path: pstack/skills/principle-foundational-thinking
+    tree: 5880f6577956b14ee4ee89cb72c03fd8bd82a5ac
+    disposition: adopt
+    artifacts: [plugin/skills/principle-foundational-thinking]
+    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+  - id: pstack/principle-guard-the-context-window
+    upstream: pstack
+    kind: principle
+    path: pstack/skills/principle-guard-the-context-window
+    tree: 8c132ce80504b04cb2c04070b9ca8c6932807037
+    disposition: adapt
+    artifacts: [plugin/skills/principle-guard-the-context-window]
+    reason: "Its subagent routing names vstack-explorer (ADR 0004, #42)."
+  - id: pstack/principle-laziness-protocol
+    upstream: pstack
+    kind: principle
+    path: pstack/skills/principle-laziness-protocol
+    tree: 69c23647b389130012f04971c6912598e3f3b913
+    disposition: adopt
+    artifacts: [plugin/skills/principle-laziness-protocol]
+    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+  - id: pstack/principle-make-operations-idempotent
+    upstream: pstack
+    kind: principle
+    path: pstack/skills/principle-make-operations-idempotent
+    tree: c69d590d8da3af63e34954aa21254e1ec9a2996c
+    disposition: adopt
+    artifacts: [plugin/skills/principle-make-operations-idempotent]
+    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+  - id: pstack/principle-migrate-callers-then-delete-legacy-apis
+    upstream: pstack
+    kind: principle
+    path: pstack/skills/principle-migrate-callers-then-delete-legacy-apis
+    tree: 7b49b9000c86ea1ae142af47d0ff5f9f95199c34
+    disposition: adopt
+    artifacts: [plugin/skills/principle-migrate-callers-then-delete-legacy-apis]
+    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+  - id: pstack/principle-minimize-reader-load
+    upstream: pstack
+    kind: principle
+    path: pstack/skills/principle-minimize-reader-load
+    tree: aec92309f89c6e7a4a3cad94e8b7929c1a371643
+    disposition: adopt
+    artifacts: [plugin/skills/principle-minimize-reader-load]
+    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+  - id: pstack/principle-model-the-domain
+    upstream: pstack
+    kind: principle
+    path: pstack/skills/principle-model-the-domain
+    tree: d584d474eb590208584188e6932d2ccdafe9d52b
+    disposition: adapt
+    artifacts: [plugin/skills/principle-encode-the-domain]
+    reason: "Renamed away from Matt's domain-modeling."
+  - id: pstack/principle-never-block-on-the-human
+    upstream: pstack
+    kind: principle
+    path: pstack/skills/principle-never-block-on-the-human
+    tree: bbdf25e9f8197253a44342e6e7793324a10965fb
+    disposition: adapt
+    artifacts: [plugin/skills/principle-never-block-on-the-human]
+    reason: "A skill that requires a human decision wins over 'proceed, then present'."
+  - id: pstack/principle-outcome-oriented-execution
+    upstream: pstack
+    kind: principle
+    path: pstack/skills/principle-outcome-oriented-execution
+    tree: 8d87411f36c74111e5e54a804dda727e2c034914
+    disposition: adopt
+    artifacts: [plugin/skills/principle-outcome-oriented-execution]
+    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+  - id: pstack/principle-prove-it-works
+    upstream: pstack
+    kind: principle
+    path: pstack/skills/principle-prove-it-works
+    tree: 41e2142b6479db1dfdb9c2a3b856a895af61089d
+    disposition: adapt
+    artifacts: [plugin/skills/principle-prove-it-works]
+    reason: "Names decision-trail (renamed show-me-your-work)."
+  - id: pstack/principle-redesign-from-first-principles
+    upstream: pstack
+    kind: principle
+    path: pstack/skills/principle-redesign-from-first-principles
+    tree: 7d6b29659ee81f3e4ce5475b868bf891a8041e7c
+    disposition: adopt
+    artifacts: [plugin/skills/principle-redesign-from-first-principles]
+    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+  - id: pstack/principle-separate-before-serializing-shared-state
+    upstream: pstack
+    kind: principle
+    path: pstack/skills/principle-separate-before-serializing-shared-state
+    tree: 89505c32f2d472da415e7696a6893ad28e108c5f
+    disposition: adopt
+    artifacts: [plugin/skills/principle-separate-before-serializing-shared-state]
+    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+  - id: pstack/principle-sequence-verifiable-units
+    upstream: pstack
+    kind: principle
+    path: pstack/skills/principle-sequence-verifiable-units
+    tree: c1b345dcea21e3d58e7012f8e6547974d295fb3a
+    disposition: adopt
+    artifacts: [plugin/skills/principle-sequence-verifiable-units]
+    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+  - id: pstack/principle-subtract-before-you-add
+    upstream: pstack
+    kind: principle
+    path: pstack/skills/principle-subtract-before-you-add
+    tree: ea107acd74b874b27ec52983384d2ec7d4b8088a
+    disposition: adopt
+    artifacts: [plugin/skills/principle-subtract-before-you-add]
+    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+  - id: pstack/principle-test-behavior-not-implementation
+    upstream: pstack
+    kind: principle
+    path: pstack/skills/principle-test-behavior-not-implementation
+    tree: 4c5cb15166bd6bcc5023e3180ed0105ea4a6e06a
+    disposition: adopt
+    artifacts: [plugin/skills/principle-test-behavior-not-implementation]
+    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+  - id: pstack/principle-type-system-discipline
+    upstream: pstack
+    kind: principle
+    path: pstack/skills/principle-type-system-discipline
+    tree: 88836c25807833f4f8bc79b8c8542fc1c8c558b3
+    disposition: adopt
+    artifacts: [plugin/skills/principle-type-system-discipline]
+    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+  - id: pstack/recall
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/recall
+    tree: 9082e3a1eab382254f607c8962b9e7f61909dc25
+    disposition: reject
+    artifacts: []
+    reason: "omp history/memory tools plus Matt's handoff cover it."
+  - id: pstack/reflect
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/reflect
+    tree: 772aafc391b56bb1c4ad5079e18084c6e4d47a06
+    disposition: adapt
+    artifacts: [plugin/skills/session-lessons]
+    reason: "Renamed; reads only PI_SESSION_FILE and referenced children, gates three lenses, and routes approved own-skill edits by home (#88)."
+  - id: pstack/setup-pstack
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/setup-pstack
+    tree: 1c4268fdfc82415c72a45fc65fe2683f6e4c2cd8
+    disposition: reject
+    artifacts: []
+    reason: "Per-role model configuration is out of scope."
+  - id: pstack/show-me-your-work
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/show-me-your-work
+    tree: 5ecdc5d5f4b2126b2d28f0bbb091bd5454d7086e
+    disposition: adapt
+    artifacts: [plugin/skills/decision-trail]
+    reason: "Renamed; final review is one fresh-context same-model vstack subagent (#51)."
+  - id: pstack/swarm
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/swarm
+    tree: 2e7a8ff82cd4a88abc31112cf87de0cd6065628a
+    disposition: reject
+    artifacts: []
+    reason: "omp task already runs subagent batches; swarm only adds Cursor cloud agents."
+  - id: pstack/tdd
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/tdd
+    tree: 1064da72ceca07bf7f36bddebada585bb59da7bc
+    disposition: merge
+    artifacts: [plugin/skills/tdd]
+    reason: "Merges into Matt's tdd (#36)."
+  - id: pstack/teach
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/teach
+    tree: 3ee517292dae0476dc516f9f3805c08fb943c6ff
+    disposition: adapt
+    artifacts: [plugin/skills/explain]
+    reason: "Renamed from pstack teach; combines how and why behind a gate and draws a conversation-only Scratch page (#44, #49, #60)."
+  - id: pstack/technical-writing
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/technical-writing
+    tree: 062212933adc6148a035a440dc5208757864fb42
+    disposition: adopt
+    artifacts: [plugin/skills/technical-writing]
+    reason: "Covers human-facing docs; writing-for-agents covers agent-facing text."
+  - id: pstack/typescript-best-practices
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/typescript-best-practices
+    tree: 924cb1d5fee20dc4028a10bf98b26dec8cbdfd83
+    disposition: reject
+    artifacts: []
+    reason: "The user doesn't want it (#33)."
+  - id: pstack/unslop
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/unslop
+    tree: d5baa969e71c4ddb563412b0ec170fa3b05b6d6e
+    disposition: adopt
+    artifacts: [plugin/skills/unslop]
+    reason: "Harness-free; hidden at the Pin."
+  - id: pstack/why
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/why
+    tree: 95da26ff7fe7b8fe70022d19064bd1a9f9e27127
+    disposition: adapt
+    artifacts: [plugin/skills/why]
+    reason: "Profiles git, the code host, tracker, and MCPs; gates investigators and always uses fresh-context synthesis (#49)."
+  - id: pstack/playbook-authoring-a-skill
+    upstream: pstack
+    kind: playbook
+    path: pstack/skills/poteto-mode/playbooks/authoring-a-skill.md
+    tree: 8c5a55a44f5e95bba92f652da0ac87e941c49538
+    disposition: reject
+    artifacts: []
+    reason: "Needs Cursor's create-skill; writing-for-agents covers the job."
+  - id: pstack/playbook-autonomous-run
+    upstream: pstack
+    kind: playbook
+    path: pstack/skills/poteto-mode/playbooks/autonomous-run.md
+    tree: 12c3a7d84effcacf3550cb893be67498d7b28a4a
+    disposition: reject
+    artifacts: []
+    reason: "Needs Cursor /loop; revisit if omp documents goal mode."
+  - id: pstack/playbook-autopilot-full
+    upstream: pstack
+    kind: playbook
+    path: pstack/skills/poteto-mode/playbooks/autopilot-full.md
+    tree: e92be88a8dfcb0a1f2745e0da7af42d31f1d6606
+    disposition: reject
+    artifacts: []
+    reason: "Without fleets it reduces to open-pr -> babysit -> ship."
+  - id: pstack/playbook-autopilot-stack
+    upstream: pstack
+    kind: playbook
+    path: pstack/skills/poteto-mode/playbooks/autopilot-stack.md
+    tree: 810a70fff72ae49a9387b5ea41dcb13f890c83c0
+    disposition: reject
+    artifacts: []
+    reason: "Same reason as autopilot-full."
+  - id: pstack/playbook-babysit
+    upstream: pstack
+    kind: playbook
+    path: pstack/skills/poteto-mode/playbooks/babysit.md
+    tree: 683cf0ba889789cbe2d880fce667c75349f9ed12
+    disposition: adapt
+    artifacts: [plugin/skills/babysit]
+    reason: "Uses gh only; Bugbot triage, Origin, and the Cursor babysit clash dropped."
+  - id: pstack/playbook-bug-fix
+    upstream: pstack
+    kind: playbook
+    path: pstack/skills/poteto-mode/playbooks/bug-fix.md
+    tree: eeebc42b7477d435d8ac61d631d84822f908f59c
+    disposition: reject
+    artifacts: []
+    reason: "diagnosing-bugs covers the loop; open-pr covers the PR."
+  - id: pstack/playbook-eval
+    upstream: pstack
+    kind: playbook
+    path: pstack/skills/poteto-mode/playbooks/eval.md
+    tree: 3dae34e2ef0cbdd9bafa5ab372da5ea143d48452
+    disposition: reject
+    artifacts: []
+    reason: "Its premise is cross-model judging."
+  - id: pstack/playbook-feature
+    upstream: pstack
+    kind: playbook
+    path: pstack/skills/poteto-mode/playbooks/feature.md
+    tree: 79a6bbbe0ce61c3b5ef9af1ee8e3ccdb0557edc6
+    disposition: reject
+    artifacts: []
+    reason: "Would compete with to-spec -> to-tickets -> implement."
+  - id: pstack/playbook-hillclimb
+    upstream: pstack
+    kind: playbook
+    path: pstack/skills/poteto-mode/playbooks/hillclimb.md
+    tree: 582555e826675068ceaea08e6134a44ba0ea4511
+    disposition: adapt
+    artifacts: [plugin/skills/hillclimb]
+    reason: "Metric loop; parallel hypotheses are judge-gated; trail goes to decision-trail."
+  - id: pstack/playbook-investigation
+    upstream: pstack
+    kind: playbook
+    path: pstack/skills/poteto-mode/playbooks/investigation.md
+    tree: cd119f04f23e0b7acb3f8cc5ba13ce4ab7aa6c7d
+    disposition: reject
+    artifacts: []
+    reason: "Thin wrapper; ask-vstack routes to how and why."
+  - id: pstack/playbook-multi-phase-plan
+    upstream: pstack
+    kind: playbook
+    path: pstack/skills/poteto-mode/playbooks/multi-phase-plan.md
+    tree: fe006110f6005dcdb746d891e7901a1734a75538
+    disposition: reject
+    artifacts: []
+    reason: "Competing planning path with the opposite position on file paths."
+  - id: pstack/playbook-opening-a-pr
+    upstream: pstack
+    kind: playbook
+    path: pstack/skills/poteto-mode/playbooks/opening-a-pr.md
+    tree: 626f376bd64e2e7b04c2575cb8b8f4ba70a6078d
+    disposition: adapt
+    artifacts: [plugin/skills/open-pr]
+    reason: "PR body contract incl. Blast Radius; /deslop and interrogate dropped."
+  - id: pstack/playbook-orchestrate
+    upstream: pstack
+    kind: playbook
+    path: pstack/skills/poteto-mode/playbooks/orchestrate.md
+    tree: d5b6d008026ff0177f52e22a6fb4b2edae5c87e2
+    disposition: reject
+    artifacts: []
+    reason: "Fleet scale, cloud workers, gt, different-family verifiers."
+  - id: pstack/playbook-pause-safely
+    upstream: pstack
+    kind: playbook
+    path: pstack/skills/poteto-mode/playbooks/pause-safely.md
+    tree: 9d1c5f8303976fff40de099f7f28185909430c11
+    disposition: reject
+    artifacts: []
+    reason: "Matt's handoff plus omp /handoff cover it."
+  - id: pstack/playbook-perf-issue
+    upstream: pstack
+    kind: playbook
+    path: pstack/skills/poteto-mode/playbooks/perf-issue.md
+    tree: 688d483d4d4a6c58efa515558c822e11f621540f
+    disposition: adapt
+    artifacts: [plugin/skills/perf-issue]
+    reason: "Calls diagnosing-bugs for the loop; adds strategy families and before/after trace proof."
+  - id: pstack/playbook-prototype
+    upstream: pstack
+    kind: playbook
+    path: pstack/skills/poteto-mode/playbooks/prototype.md
+    tree: 18bedc7e9249d180f9198d5b4b13e3817d41d281
+    disposition: merge
+    artifacts: [plugin/skills/prototype]
+    reason: "Merged into Matt's prototype (#36)."
+  - id: pstack/playbook-refactoring
+    upstream: pstack
+    kind: playbook
+    path: pstack/skills/poteto-mode/playbooks/refactoring.md
+    tree: df2a863b531906c64f92b9f9d8feb62f8c7a8665
+    disposition: adapt
+    artifacts: [plugin/skills/refactor]
+    reason: "Executes improve-codebase-architecture and code-review findings."
+  - id: pstack/playbook-runtime-forensics
+    upstream: pstack
+    kind: playbook
+    path: pstack/skills/poteto-mode/playbooks/runtime-forensics.md
+    tree: ba659bfe1c4c2f956f3285974bfdc941120f9948
+    disposition: adapt
+    artifacts: [plugin/skills/forensics]
+    reason: "Merged with trace-forensics into one forensics skill (live branch)."
+  - id: pstack/playbook-session-pickup
+    upstream: pstack
+    kind: playbook
+    path: pstack/skills/poteto-mode/playbooks/session-pickup.md
+    tree: 9b2ed06e0ff8b01bf03b7a0d6a4cbb8ba3a46720
+    disposition: reject
+    artifacts: []
+    reason: "omp /resume and /fork plus Matt's handoff cover it."
+  - id: pstack/playbook-shipping
+    upstream: pstack
+    kind: playbook
+    path: pstack/skills/poteto-mode/playbooks/shipping.md
+    tree: 0f1d41f189222b991734015926a3b22607e1b92f
+    disposition: adapt
+    artifacts: [plugin/skills/ship]
+    reason: "Verifiers are vstack agents behind judge-gated Fan-out; cloud agents dropped."
+  - id: pstack/playbook-trace-forensics
+    upstream: pstack
+    kind: playbook
+    path: pstack/skills/poteto-mode/playbooks/trace-forensics.md
+    tree: 48ed6b2f690215027eda96a1897ed98212bbd07a
+    disposition: adapt
+    artifacts: [plugin/skills/forensics]
+    reason: "Captured-artifact branch of forensics: load into sqlite, then attribute to source."
+  - id: pstack/playbook-visual-parity
+    upstream: pstack
+    kind: playbook
+    path: pstack/skills/poteto-mode/playbooks/visual-parity.md
+    tree: 248830ec74a593fc22143a842026388f92f1b9f4
+    disposition: reject
+    artifacts: []
+    reason: "Niche."
+  - id: pstack/playbook-worktree-cleanup
+    upstream: pstack
+    kind: playbook
+    path: pstack/skills/poteto-mode/playbooks/worktree-cleanup.md
+    tree: 39c9ef9f368ac63b0e4245503302a4c174e846d6
+    disposition: reject
+    artifacts: []
+    reason: "Built on Cursor sidebar pins and macOS caches."
+  - id: pstack/agents/comment-sicko
+    upstream: pstack
+    kind: agent
+    path: pstack/agents/comment-sicko.md
+    tree: 9a688b8c5b5734ee80f782d4616a78c4c59b0946
+    disposition: adapt
+    artifacts: [plugin/agents/vstack-comment-critic.md]
+    reason: "Becomes the comment-only omp critic on the parent model, with prompt-contract rights and explorer-only spawns (#47, #52)."
+  - id: pstack/agents/poteto-agent
+    upstream: pstack
+    kind: agent
+    path: pstack/agents/poteto-agent.md
+    tree: 91d53b85918f842c703758e66352b956ee80feb7
+    disposition: reject
+    artifacts: []
+    reason: "Follows poteto-mode."
+  - id: pstack/automations/benny
+    upstream: pstack
+    kind: agent
+    path: pstack/automations/benny
+    tree: b8fd05511c0927122c295438a011e2a7200e9a10
+    disposition: reject
+    artifacts: []
+    reason: "A Cursor automation."
+  - id: diagram/diagram-design
+    upstream: diagram
+    kind: skill
+    path: skills/diagram-design
+    tree: dc9745b0be384e9a9ff9b9dac08d8d609f7c2154
+    disposition: adapt
+    artifacts: [plugin/skills/diagram-design]
+    reason: "ask-tool covers its questions; onboarding must not write the shipped copy (#60)."
+  - id: css/good-css
+    upstream: css
+    kind: skill
+    path: skills/good-css
+    tree: e195f64b18fb88c83722eb6bf4ae2171b5d87434
+    disposition: adapt
+    artifacts: [plugin/skills/good-css]
+    reason: "removes Emil Kowalski's hand-offs and credit; vstack ships none of his skills"
+  - id: prose/simple-english
+    upstream: prose
+    kind: skill
+    path: skills/simple-english
+    tree: dc4493623b0648588e02a0062bed8bcaa535b1de
+    disposition: adapt
+    artifacts: [plugin/skills/simple-english]
+    reason: "Hidden and has no Strict mode (#59)."
+originals:
+  - plugin/agents/vstack-explorer.md
+  - plugin/agents/vstack-verifier.md
+  - plugin/agents/vstack-worker.md
+  - plugin/extensions/vstack.ts
+  - plugin/extensions/prompt-cleaner.ts
+  - plugin/rules/vstack-private-mode.md
+  - plugin/rules/vstack-prose.md
+  - plugin/rules/vstack-worktrees.md
+  - plugin/skills/vstack-clean
+  - plugin/skills/vstack-tmp
+  - plugin/skills/vstack-fan-out
+  - plugin/skills/vstack-worktree
+  - plugin/skills/skill-creator
+  - plugin/skills/vstack-update

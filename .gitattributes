@@ -1,0 +1,2 @@
+# Shipped files keep their Upstream bytes, CRLF included, whatever core.autocrlf says.
+plugin/** -text
