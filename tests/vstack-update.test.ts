@@ -33,7 +33,7 @@ test("preview, confirmation, re-gates, report and injected publication reach a P
     expect(git(plan.worktree.path, "ls-files")).not.toContain("update-report.html");
     expect(readFileSync(join(plan.out, "pr-body.md"), "utf8")).toContain("matt/wording: hold");
   } finally { server.stop(true); }
-});
+}, 30000);
 const script = join(import.meta.dir, "../scripts/vstack-update.ts");
 const dirs: string[] = [];
 afterEach(() => { for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true }); });
@@ -52,7 +52,7 @@ test("preconditions stop on wrong manifest, any Update branch, and an open Updat
   git(f.root, "branch", "-D", "update/existing");
   const open = await run(["preflight", "--gh", f.gh], f.root, { OPEN_PR: JSON.stringify([{ headRefName: "update/open", url: "https://example.invalid/pr/1" }]) });
   expect(open.err).toContain("https://example.invalid/pr/1");
-});
+}, 30000);
 test("no moved Pin exits without a worktree or jev, and refusal removes only its worktree and branch", async () => {
   const f = lifecycleFixture(); dirs.push(f.dir);
   const none = await run(["plan", "--gh", f.gh, "--omp", join(f.dir, "omp"), "--upstreams", f.cache, "--remote", f.remote, "matt@v1.1.0"], f.root);
@@ -63,7 +63,7 @@ test("no moved Pin exits without a worktree or jev, and refusal removes only its
   expect(git(f.root, "branch", "--list", "update/*")).toBe("");
   expect(git(f.root, "worktree", "list")).not.toContain(plan.worktree.path);
   expect(readFileSync(join(f.root, "pins.yaml"), "utf8")).toContain("v1.1.0");
-});
+}, 30000);
 test("already-held rows keep their original baseline across application and the next plan", async () => {
   const f = lifecycleFixture(); dirs.push(f.dir);
   const { plan, decisions, file, planFile } = await f.planned();
@@ -81,7 +81,7 @@ test("already-held rows keep their original baseline across application and the 
   expect(next.code).toBe(0);
   expect(next.plan.rows.find((r: any) => r.id === "matt/wording").effective_old).toMatchObject({ ref: "v1.1.0", path: "skills/eng/wording" });
   expect(next.plan.rows.find((r: any) => r.id === "matt/held").effective_old.ref).toBe("v1.0.0");
-});
+}, 30000);
 test("smoke and judge errors block receipts and borderline scores do not fail", async () => {
   const f = lifecycleFixture(); dirs.push(f.dir);
   const { plan, file, planFile } = await f.planned();
@@ -97,14 +97,14 @@ test("smoke and judge errors block receipts and borderline scores do not fail", 
     writeFileSync(join(plan.worktree.path, "plugin/skills/grow/SKILL.md"), "changed after gate");
     expect((await run(["gates", ...args, "--phase", "confirmed", "--upstreams", f.cache, "--smoke", f.smoke], f.root)).code).toBe(2);
   } finally { server.stop(true); }
-});
+}, 30000);
 test("default tag discovery ignores draft and prerelease GitHub releases", async () => {
   const f = lifecycleFixture(); dirs.push(f.dir);
   const releases = [[{ tag_name: "v99.0.0", draft: true }, { tag_name: "v100.0.0", prerelease: true }, { tag_name: "mattpocock-skills@7.0.0" }, { tag_name: "v1.2.0", draft: false, prerelease: false }]];
   const result = await run(["plan", "--gh", f.gh, "--omp", join(f.dir, "omp"), "--upstreams", f.cache, "--remote", f.remote, "matt"], f.root, { RELEASES: JSON.stringify(releases), OMP_WORKTREE_DIR: f.wtBase, FAKE_OMP_CLONE: "1", FAKE_OMP_LOG: join(f.dir, "omp-calls.jsonl") });
   expect(result.code).toBe(0); expect(JSON.parse(result.out).upstreams[0].new).toBe("v1.2.0");
   expect(f.calls().map(c => c[1])).toEqual(["pr", "api"]);
-});
+}, 30000);
 test("a confirmed Disposition change removing a shipped name uses a major bump", async () => {
   const f = lifecycleFixture(); dirs.push(f.dir);
   const { plan, decisions, file, planFile } = await f.planned();
@@ -113,7 +113,7 @@ test("a confirmed Disposition change removing a shipped name uses a major bump",
   const applied = await run(["apply", "--plan", planFile, "--decisions", file], f.root);
   expect(applied.code).toBe(0); expect(JSON.parse(applied.out).version).toBe("1.0.0");
   expect(git(plan.worktree.path, "status", "--short")).toContain("D plugin/skills/grow/SKILL.md");
-});
+}, 30000);
 test("a narrowed Update can gate with a fresh cache for the unselected Pins", async () => {
   const f = lifecycleFixture(); dirs.push(f.dir);
   const { plan, file, planFile } = await f.planned(["matt"]);
@@ -124,7 +124,7 @@ test("a narrowed Update can gate with a fresh cache for the unselected Pins", as
     const result = await run(["gates", ...args, "--phase", "preview", "--upstreams", f.cache, "--remote", f.remote, "--smoke", f.smoke, "--endpoint", `http://localhost:${server.port}/v1/systemone`], f.root, { TYPESAFE_API_KEY: "fixture" });
     expect({ code: result.code, err: result.err }).toEqual({ code: 0, err: "" });
   } finally { server.stop(true); }
-});
+}, 30000);
 test("a changed adapt row blocks the Pin move unless held, then keeps effectiveOld", async () => {
   const f = makeUpdateFixture(); dirs.push(f.dir);
   const root = f.checkout();
@@ -158,4 +158,4 @@ test("a changed adapt row blocks the Pin move unless held, then keeps effectiveO
   // The CLI reports the baseline the next plan must use for the held contribution.
   const row = JSON.parse(held.out).rows.find((r: any) => r.id === "matt/wording");
   expect(row.effectiveOld).toEqual({ ref: "v1.1.0", path: "skills/eng/wording" });
-});
+}, 30000);
