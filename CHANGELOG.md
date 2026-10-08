@@ -4,9 +4,22 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
-## [0.1.19] - 2026-10-08
+## [0.1.22] - 2026-10-08
 
 - Add hidden how, why, and explain skills for cited code explanations. Gate investigation batches, profile repository evidence sources, and inline diagram-design figures on Scratch pages (#81).
+
+## [0.1.21] - 2026-10-08
+
+- grilling keeps an append-only Grilling HTML in Scratch, puts each frontier through one `ask`, and records answers and the shared-understanding gate. Its shipped template follows good-css; figures come through diagram-design (#73).
+
+## [0.1.20] - 2026-10-08
+
+- code-review reviews Standards, Spec, and conditional Safety through the Fan-out gate. Safety runs blast-radius without step 6, and reports stay separate. Spec reads Standard or Private vstack configuration (#84).
+- blast-radius is model-invocable, writes proof evidence in Scratch under `blast-radius/`, and compares reply attempts only on an explicit request (#84).
+
+## [0.1.19] - 2026-10-08
+
+- babysit drives a PR to merge-ready without merging, with check, threads-only, and isolated background modes (#90).
 
 ## [0.1.18] - 2026-10-08
 
