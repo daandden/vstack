@@ -181,7 +181,13 @@ Removal uses `npx --yes skills@1.7.0 remove -g <names> -y` so that the skills CL
 
 The runtime reads the shipped row copy and reuses `scripts/lib/house-style.ts` for parsing and matching. This import requires the full clone that ADR 0005 already requires. Exact absolute prefixes come from each common dir. Relative private rows run only for an ordinary `.git` common dir. Remaining bare words and non-ordinary relative paths need proposed manual diffs in the same `ask`. Remaining mentions in moved stores still fail check 6. Domain filename changes belong to the project Migration.
 
+### Project Migration
 
+`migrate-project.ts plan [--mode move|private]` runs inside a git checkout and prints a read-only plan before fresh project setup. Move is the default. `private_available` signals tracked Matt config; the skill then offers Move or Private mode through `ask`, followed by one Apply all / Choose items / Cancel approval for the selected plan. Private mode leaves tracked Matt config and instructions alone.
+
+`migrate-project.ts apply --plan <file> [--skip <id>...]` rejects stale state and skipped mandatory fallback moves. It moves tracked files with git, untracked files with filesystem rename, copies Private config with private artifact and domain paths, rewrites rule hits, converts diagram markers, and renames old domain files and their map links. Destination conflicts carry old-versus-vstack diffs and optional deletion offers; vstack wins without merging. Old private storage blocks fresh setup until moved or explicitly deleted against an existing winning config. Failures stop later actions. Changes stay uncommitted. Exit codes are 0 applied, 1 incomplete, and 2 refusal or inability to run. Cancel writes nothing.
+
+Project tests run these commands over throwaway repos. The runtime shares the machine plan's private move and House style helpers; the shipped row copy already includes both glossary rows. Setup stops after a Migration so its fresh-setup commit cannot sweep migrated files into a commit.
 ### update-plan
 
 ```sh
