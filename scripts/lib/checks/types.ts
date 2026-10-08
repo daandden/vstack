@@ -1,3 +1,4 @@
+import type { HouseStyle, HouseStyleProblem } from "../house-style.ts";
 import type { UpstreamSource } from "../upstreams.ts";
 import type { Pin, Register, Row } from "../vstack-repo.ts";
 
@@ -16,6 +17,9 @@ export interface CheckContext {
   validRows: Row[];
   /** Artifact units found under `plugin/`. */
   pluginArtifacts: string[];
+  /** house-style.yaml without its bad rows and rules; `houseStyleProblems` lists those. */
+  houseStyle: HouseStyle;
+  houseStyleProblems: HouseStyleProblem[];
   source: UpstreamSource;
   /** `--base` / `VSTACK_BASE_REF`, unset when the caller gave none. */
   baseRef?: string;

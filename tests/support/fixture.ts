@@ -1,7 +1,7 @@
 // Temp-dir fixtures for check-register: fixture Upstream git repos (tags, a move, a removal) and a vstack
-// checkout (pins.yaml, decision-register.yaml, plugin/) committed as the version base.
+// checkout (pins.yaml, decision-register.yaml, house-style.yaml, plugin/) committed as the version base.
 
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -54,12 +54,35 @@ export const ALPHA_V1: Files = {
   "skills/misc/rej/SKILL.md": "---\nname: rej\ndescription: rej\n---\nrej\n",
 };
 
+// House style scope items (alpha v2): each holds text one lint or row reacts to.
+export const STYLE_TEXT = {
+  /** An asking phrase in a sentence that does not name `ask`. */
+  asks: "Then ask the user which name to keep.\n",
+  /** The same sentence naming `ask`. */
+  asksTool: "Then ask the user with `ask` which name to keep.\n",
+  /** A `tmp-path` and a `worktree-cmd` hit. */
+  scratch: "Write the notes to /tmp/notes.md, then run `git worktree add ../wt main`.\n",
+  /** The `from` of the fixture's adapted row. */
+  phrasing: "Open a todolist with one entry per step.\n",
+  /** The `from` of the fixture's required name row. */
+  renamed: "Run old-setup first.\n",
+};
+const styleSkill = (name: string, body: string) => `---\nname: ${name}\ndescription: ${name}\n---\n${body}`;
+const STYLE_ITEMS: Files = {
+  "skills/style/asks/SKILL.md": styleSkill("asks", STYLE_TEXT.asks),
+  "skills/style/asks-tool/SKILL.md": styleSkill("asks-tool", STYLE_TEXT.asksTool),
+  "skills/style/scratch/SKILL.md": styleSkill("scratch", STYLE_TEXT.scratch),
+  "skills/style/phrasing/SKILL.md": styleSkill("phrasing", STYLE_TEXT.phrasing),
+  "skills/style/renamed/SKILL.md": styleSkill("renamed", STYLE_TEXT.renamed),
+};
+
 export const ALPHA_V2: Files = (() => {
   const f = { ...ALPHA_V1 };
   f["skills/eng/held/SKILL.md"] = "---\nname: held\ndescription: held\n---\nheld v2\n";
   delete f["skills/eng/old-name/SKILL.md"];
   f["skills/eng/new-name/SKILL.md"] = "---\nname: new-name\ndescription: moved\n---\nmoved v2\n";
   delete f["skills/eng/gone/SKILL.md"];
+  Object.assign(f, STYLE_ITEMS);
   return f;
 })();
 
@@ -117,13 +140,48 @@ export interface RepoSpec {
   pins: any;
   register: { items: any[]; originals: string[] };
   manifest: any;
-  /** Files under the checkout root, besides the three above. */
+  /** house-style.yaml: `replacements` and `rules`. */
+  houseStyle: { replacements: any[]; rules: any[] };
+  /** Files under the checkout root, besides the four above. */
   files: Files;
 }
+
+/** The repo's own House style rules, so the scope fixtures run the real phrase list and scopes. */
+export const REPO_RULES: any[] = Bun.YAML.parse(readFileSync(join(import.meta.dir, "..", "..", "house-style.yaml"), "utf8")).rules;
+
+/** Fixture rows: a literal row ordered before the name row it contains, a glossary-style name row, an adapted row, a migration-only row. */
+export const FIXTURE_ROWS = [
+  { id: "fx-cmd", from: "/old-setup", to: "/skill:new-setup", match: "literal", upstream: "alpha", scope: "required", uses: ["update", "migration"] },
+  { id: "fx-rename", from: "old-setup", to: "new-setup", match: "name", upstream: "alpha", scope: "required", uses: ["update", "migration"] },
+  { id: "fx-glossary", from: "CONTEXT.md", to: "GLOSSARY.md", match: "name", upstream: "alpha", scope: "required", uses: ["update", "migration"] },
+  { id: "fx-todo", from: "Open a todolist", to: "Start the `todo` list", match: "literal", upstream: "any", scope: "adapted", uses: ["update"] },
+  { id: "fx-mig", from: ".git/old-root", to: ".git/new-root", match: "literal", upstream: "any", uses: ["migration"] },
+];
+
+/** Adapt text that every House style lint accepts: skill refs, a spawn line, a negated and a fenced asking phrase. */
+const GONE_TEXT = [
+  "---",
+  "name: gone",
+  "description: gone, vstack text. Use when the user asks the user's question.",
+  "argument-hint: \"Which one?\"",
+  "---",
+  "Run `/skill:keep` yourself, or load skill://keep. Read `GLOSSARY.md` in the format of CONTEXT-FORMAT.md.",
+  "Spawn one `vstack-explorer` via `task` (`agent: \"vstack-explorer\"`): the question, the user's override words, the vstack root. Do not wait; keep working. If it cannot be spawned, do the work yourself.",
+  "Never ask the user for a fact you can find. Ask the user with `ask` which name to keep.",
+  "Keep Scratch under ~/.vstack/tmp/fixture/notes/. Remove a tree with `git worktree remove ../wt`.",
+  "```sh",
+  "read -r -p \"Do you want to continue? \" answer",
+  "```",
+  "",
+].join("\n");
 
 /** The passing fixture: a held row, a moved-and-held row, a held row whose item Upstream removed, a shared artifact. */
 export function passingSpec(up: Upstreams): RepoSpec {
   const a = (ref: string, p: string) => up.sha("alpha", ref, p);
+  const style = (name: string, artifacts: string[]) => {
+    const path = `skills/style/${name}`;
+    return { id: `alpha/${name}`, upstream: "alpha", kind: "skill", path, tree: a("v2", path), disposition: "adopt", artifacts, reason: "House style scope." };
+  };
   return {
     pins: {
       upstreams: {
@@ -148,18 +206,28 @@ export function passingSpec(up: Upstreams): RepoSpec {
         { id: "alpha/rej", upstream: "alpha", kind: "skill", path: "skills/misc/rej", tree: a("v2", "skills/misc/rej"), disposition: "reject", artifacts: [], reason: "Not wanted." },
         { id: "beta/adapted", upstream: "beta", kind: "skill", path: "pack/skills/adapted", tree: up.sha("beta", "HEAD", "pack/skills/adapted"), disposition: "adapt", artifacts: [], reason: "Lands in a later ticket." },
         { id: "beta/playbook-runbook", upstream: "beta", kind: "playbook", path: "pack/playbooks/runbook.md", tree: up.sha("beta", "HEAD", "pack/playbooks/runbook.md"), disposition: "merge", artifacts: ["plugin/skills/shared"], reason: "Merged into shared." },
+        style("asks-tool", ["plugin/skills/asks-tool"]),
+        style("scratch", ["plugin/skills/scratch"]),
+        style("phrasing", ["plugin/skills/phrasing"]),
+        // Adopt rows whose artifacts the scope fixtures add.
+        style("asks", []),
+        style("renamed", []),
       ],
       originals: ["plugin/rules/fx-rule.md", "plugin/agents/fx-agent.md"],
     },
     manifest: { name: "vstack", version: "0.1.0", private: true, omp: {} },
+    houseStyle: { replacements: clone(FIXTURE_ROWS), rules: clone(REPO_RULES) },
     files: {
       ...artifactFrom(ALPHA_V2, "skills/eng/keep", "plugin/skills/keep"),
       ...artifactFrom(ALPHA_V1, "skills/eng/held", "plugin/skills/held"),
       ...artifactFrom(ALPHA_V1, "skills/eng/old-name", "plugin/skills/old-name"),
-      "plugin/skills/gone/SKILL.md": "---\nname: gone\ndescription: gone, vstack text\n---\nadapted\n",
+      "plugin/skills/gone/SKILL.md": GONE_TEXT,
       "plugin/skills/shared/SKILL.md": "---\nname: shared\ndescription: merged\n---\nmerged\n",
       "plugin/rules/fx-rule.md": "---\nalwaysApply: true\n---\nrule\n",
       "plugin/agents/fx-agent.md": "---\nname: fx-agent\ndescription: agent\n---\nagent\n",
+      ...artifactFrom(ALPHA_V2, "skills/style/asks-tool", "plugin/skills/asks-tool"),
+      ...artifactFrom(ALPHA_V2, "skills/style/scratch", "plugin/skills/scratch"),
+      ...artifactFrom(ALPHA_V2, "skills/style/phrasing", "plugin/skills/phrasing"),
     },
   };
 }
@@ -188,6 +256,7 @@ export function checkout(up: Upstreams, spec: RepoSpec): Checkout {
   writeFiles(root, {
     "pins.yaml": Bun.YAML.stringify(spec.pins, null, 2),
     "decision-register.yaml": Bun.YAML.stringify(spec.register, null, 2),
+    "house-style.yaml": Bun.YAML.stringify(spec.houseStyle, null, 2),
     "plugin/package.json": `${JSON.stringify(spec.manifest, null, 2)}\n`,
     ...spec.files,
   });

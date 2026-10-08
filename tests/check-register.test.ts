@@ -27,6 +27,11 @@ afterAll(() => rmSync(up.dir, { recursive: true, force: true }));
 
 const failuresOf = (r: Run) => r.json!.failures.map((f) => `${f.class} ${f.item}`);
 const row = (spec: RepoSpec, id: string) => spec.register.items.find((r) => r.id === id)!;
+/** Ships the alpha style item `name` as its adopt artifact, byte-identical to the Pin. */
+function adoptStyle(spec: RepoSpec, name: string) {
+  row(spec, `alpha/${name}`).artifacts = [`plugin/skills/${name}`];
+  Object.assign(spec.files, artifactFrom(ALPHA_V2, `skills/style/${name}`, `plugin/skills/${name}`));
+}
 
 async function runSpec(mutate: (spec: RepoSpec) => void): Promise<Run> {
   const spec = clone(passingSpec(up));
@@ -177,6 +182,60 @@ const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expecte
     mutate: (s) => (s.manifest = { name: "other", version: "0.1.0" }),
     expected: ["invalid-manifest plugin/package.json", "invalid-manifest plugin/package.json"],
   },
+  {
+    cls: "invalid-house-style",
+    name: "a row with an unknown match kind",
+    mutate: (s) => (s.houseStyle.replacements[0].match = "fuzzy"),
+    expected: ["invalid-house-style house-style.yaml:fx-cmd"],
+  },
+  {
+    cls: "invalid-house-style",
+    name: "a row placed after a row that rewrites its from",
+    mutate: (s) => s.houseStyle.replacements.push(s.houseStyle.replacements.shift()),
+    expected: ["invalid-house-style house-style.yaml:fx-cmd"],
+  },
+  {
+    cls: "invalid-house-style",
+    name: "a linted rule missing from rules:",
+    mutate: (s) => (s.houseStyle.rules = s.houseStyle.rules.filter((r) => r.id !== "tmp-path")),
+    expected: ["invalid-house-style house-style.yaml:tmp-path"],
+  },
+  {
+    cls: "house-style-leftover",
+    name: "an adapt artifact naming CONTEXT.md (a name row's from)",
+    mutate: (s) => (s.files["plugin/skills/gone/SKILL.md"] += "Read CONTEXT.md first.\n"),
+    expected: ["house-style-leftover alpha/gone"],
+  },
+  {
+    cls: "skill-ref",
+    name: "a bare /<vstack skill> token in an original",
+    mutate: (s) => (s.files["plugin/rules/fx-rule.md"] += "Run /keep first.\n"),
+    expected: ["skill-ref plugin/rules/fx-rule.md"],
+  },
+  {
+    cls: "spawn-vocab",
+    name: "Cursor spawn wording in a merge artifact, named by its path",
+    mutate: (s) => (s.files["plugin/skills/shared/SKILL.md"] += "Spawn a helper with subagent_type: generalPurpose.\n"),
+    expected: ["spawn-vocab plugin/skills/shared"],
+  },
+  {
+    cls: "worktree-cmd",
+    name: "a git worktree add command in an original agent",
+    mutate: (s) => (s.files["plugin/agents/fx-agent.md"] += "Run `git -C repo worktree add ../x` first.\n"),
+    expected: ["worktree-cmd plugin/agents/fx-agent.md"],
+  },
+  {
+    cls: "tmp-path",
+    name: "$TMPDIR as an output location in an adapt artifact",
+    mutate: (s) => (s.files["plugin/skills/gone/SKILL.md"] += "Save the report to $TMPDIR/report.md.\n"),
+    expected: ["tmp-path alpha/gone"],
+  },
+  {
+    cls: "ask-tool",
+    name: "an asking phrase without `ask` in a byte-identical adopt artifact",
+    mutate: (s) => adoptStyle(s, "asks"),
+    expected: ["ask-tool alpha/asks"],
+  },
 ];
 
 describe("each failure class names the item", () => {
@@ -187,6 +246,57 @@ describe("each failure class names the item", () => {
       expect(r.code).toBe(1);
     });
   }
+});
+
+// House style lints on the right Dispositions (spec #63, Testing Decisions; ADR 0008).
+describe("House style scope", () => {
+  const sorted = (r: Run) => failuresOf(r).sort();
+
+  test("ask-tool binds adopt: a byte-identical adopt artifact with an asking phrase and no `ask` fails and names the item", async () => {
+    const r = await runSpec((s) => adoptStyle(s, "asks"));
+    expect(failuresOf(r)).toEqual(["ask-tool alpha/asks"]);
+    expect(r.json!.failures[0].message).toContain("plugin/skills/asks/SKILL.md:5");
+  });
+
+  test("the same sentence naming `ask` passes in an adopt artifact", async () => {
+    const r = await runSpec((s) => expect(row(s, "alpha/asks-tool").artifacts).toEqual(["plugin/skills/asks-tool"]));
+    expect(r.json!.failures).toEqual([]);
+  });
+
+  test("tmp-path and worktree-cmd hits pass in an adopt artifact and fail in an adapt one", async () => {
+    expect((await runSpec(() => {})).json!.failures).toEqual([]);
+    const r = await runSpec((s) => (row(s, "alpha/scratch").disposition = "adapt"));
+    expect(sorted(r)).toEqual(["tmp-path alpha/scratch", "worktree-cmd alpha/scratch"]);
+  });
+
+  test("a required row's from fails in an adopt artifact; an adapted row's from passes there and fails in adapt", async () => {
+    expect(failuresOf(await runSpec((s) => adoptStyle(s, "renamed")))).toEqual(["house-style-leftover alpha/renamed"]);
+    expect(failuresOf(await runSpec((s) => (row(s, "alpha/phrasing").disposition = "adapt")))).toEqual(["house-style-leftover alpha/phrasing"]);
+  });
+
+  test("a row applies only to its Upstream's artifacts, and originals get every row", async () => {
+    const text = "Run old-setup first.\n"; // fx-rename's from; fx-rename is an alpha row
+    const beta = await runSpec((s) => {
+      row(s, "beta/adapted").artifacts = ["plugin/skills/adapted"];
+      s.files["plugin/skills/adapted/SKILL.md"] = `---\nname: adapted\ndescription: adapted\n---\n${text}`;
+    });
+    expect(beta.json!.failures).toEqual([]);
+    const original = await runSpec((s) => (s.files["plugin/rules/fx-rule.md"] += text));
+    expect(failuresOf(original)).toEqual(["house-style-leftover plugin/rules/fx-rule.md"]);
+  });
+
+  test("migration-only rows are never linted", async () => {
+    const r = await runSpec((s) => (s.files["plugin/skills/gone/SKILL.md"] += "Move .git/old-root away.\n"));
+    expect(r.json!.failures).toEqual([]);
+  });
+});
+
+test("exit 2 when house-style.yaml is missing", async () => {
+  const co = checkout(up, passingSpec(up));
+  rmSync(join(co.root, "house-style.yaml"));
+  const r = await co.run([], { json: false });
+  expect(r.code).toBe(2);
+  expect(r.stderr).toContain("house-style.yaml");
 });
 
 describe("no-version-bump", () => {
