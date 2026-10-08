@@ -228,7 +228,8 @@ rules:
     lint: A bare `/<vstack skill name>` token in markdown fails (adapt, merge, and original text). vstack skill names are the shipped skill directories plus the Upstream names of every skill and principle row that is not reject.
   - id: spawn-vocab
     scope: adapted
-    allowlist: [writing-for-agents]
+    # diagram-design never spawns: its "dispatch" is request routing inside figure examples.
+    allowlist: [writing-for-agents, diagram-design]
     text: |
       Spawn wording appears only in a single-spawn line (`Spawn one …`) or a Fan-out block (`Fan-out gate (…`). Cursor's spawn terms (`subagent_type`, `generalPurpose`, `Task` in backticks) never appear.
     lint: In markdown, `subagent_type`, `generalPurpose`, or `Task` in backticks fails anywhere, and spawn, dispatch, or spin up fails on a line that holds no `Spawn one `, `Fan-out gate (`, `Fan-out (always`, or `Headless batch (` (adapt, merge, and original text). A `spawns:` frontmatter key is not wording. Allowlisted skills only describe spawning and are not linted.

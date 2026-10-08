@@ -114,7 +114,7 @@ items:
     path: skills/engineering/to-spec
     tree: dc32a36159f99c854cb470f371106cd38513a15f
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/to-spec]
     reason: "Names setup-vstack."
   - id: matt/to-tickets
     upstream: matt
@@ -122,7 +122,7 @@ items:
     path: skills/engineering/to-tickets
     tree: 80c1bedbdaa72a4abd524055013accb4fe0ea8c4
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/to-tickets]
     reason: "Names setup-vstack."
   - id: matt/triage
     upstream: matt
@@ -130,7 +130,7 @@ items:
     path: skills/engineering/triage
     tree: b20940845332f540e3f17b0cb32d45fd8c2298bf
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/triage]
     reason: "Names setup-vstack."
   - id: matt/wayfinder
     upstream: matt
@@ -170,7 +170,7 @@ items:
     path: skills/productivity/handoff
     tree: 184d485ae68a2132893a94239b2b85d253e6152b
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/handoff]
     reason: "Saves to Scratch under ~/.vstack/tmp instead of the OS temp dir (tmp-path, #57)."
   - id: matt/teach
     upstream: matt
@@ -874,7 +874,7 @@ items:
     path: skills/diagram-design
     tree: dc9745b0be384e9a9ff9b9dac08d8d609f7c2154
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/diagram-design]
     reason: "ask-tool covers its questions; onboarding must not write the shipped copy (#60)."
   - id: css/good-css
     upstream: css
@@ -882,7 +882,7 @@ items:
     path: skills/good-css
     tree: e195f64b18fb88c83722eb6bf4ae2171b5d87434
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/good-css]
     reason: "removes Emil Kowalski's hand-offs and credit; vstack ships none of his skills"
   - id: prose/simple-english
     upstream: prose

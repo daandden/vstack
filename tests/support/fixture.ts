@@ -31,9 +31,9 @@ export function git(cwd: string, ...args: string[]): string {
   return r.stdout.toString().trim();
 }
 
-type Files = Record<string, string>;
+export type Files = Record<string, string>;
 
-function writeFiles(dir: string, files: Files) {
+export function writeFiles(dir: string, files: Files) {
   for (const [p, content] of Object.entries(files)) {
     mkdirSync(dirname(join(dir, p)), { recursive: true });
     writeFileSync(join(dir, p), content);
@@ -86,11 +86,32 @@ export const ALPHA_V2: Files = (() => {
   return f;
 })();
 
+/** A stand-in for good-css's `scripts/check-css.mjs` with the same CLI: `path:line message` per violation, exit 1. */
+export const FIXTURE_PAGE_LINT = [
+  'import { readFileSync } from "node:fs";',
+  "let count = 0;",
+  "for (const path of process.argv.slice(2)) {",
+  '  readFileSync(path, "utf8").split("\\n").forEach((line, i) => {',
+  '    if (/^\\s*left\\s*:/.test(line)) { console.log(path + ":" + (i + 1) + " left is physical. Write inset-inline-start."); count++; }',
+  "  });",
+  "}",
+  "if (count) process.exit(1);",
+  'console.log("No violations.");',
+  "",
+].join("\n");
+
 export const BETA: Files = {
   "README.md": "beta\n",
   "pack/skills/adapted/SKILL.md": "---\nname: adapted\ndescription: adapted\n---\nadapted\n",
   "pack/playbooks/runbook.md": "# Runbook\n",
   "pack/other/ignored.md": "not an item\n",
+  "scripts/check-css.mjs": FIXTURE_PAGE_LINT,
+};
+
+/** Page template text: clean, and with one physical property on line 4. */
+export const PAGE_TEMPLATE = {
+  clean: "<!doctype html>\n<style>\n  .box {\n    inset-inline-start: 0;\n  }\n</style>\n",
+  violation: "<!doctype html>\n<style>\n  .box {\n    left: 0;\n  }\n</style>\n",
 };
 
 export interface Upstreams {
@@ -185,10 +206,13 @@ export function passingSpec(up: Upstreams): RepoSpec {
   return {
     pins: {
       upstreams: {
-        alpha: { repo: "fixture/alpha", pin: "v2", items: [{ match: "skills/*/*", type: "tree", kind: "skill" }] },
+        alpha: { repo: "fixture/alpha", pin_kind: "tag", pin: "v2", items: [{ match: "skills/*/*", type: "tree", kind: "skill" }] },
         beta: {
           repo: "fixture/beta",
+          pin_kind: "commit",
+          path: "pack",
           pin: up.betaPin,
+          page_lint: "scripts/check-css.mjs",
           items: [
             { match: "pack/skills/*", type: "tree", kind: "skill" },
             { match: "pack/playbooks/*.md", type: "blob", kind: "playbook" },

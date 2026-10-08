@@ -21,11 +21,11 @@ The repo scripts need Bun. Run `bun test` and `bun scripts/check-register.ts` be
 
 | Path | Ships | What it holds |
 |---|---|---|
-| `plugin/` | yes | The omp plugin. `package.json` (`name: vstack`, the version, the `omp` field), `skills/<name>/` (flat, one level deep), `agents/`, `rules/`, and `extensions/vstack.ts`, the one extension, listed in the `omp` field. A skill's Bun scripts ship in its `scripts/` dir. The agent runs them with the bash tool as `bun "$(realpath skill://<name>/scripts/<script>.ts)"`: external programs never see `skill://` paths, and omp's in-process `realpath` turns the URL into the file path. |
-| `pins.yaml` | no | One entry per Upstream: repo, Pin, and which tree entries count as Upstream items. |
+| `plugin/` | yes | The omp plugin. `package.json` (`name: vstack`, the version, the `omp` field), `skills/<name>/` (flat, one level deep; a skill's page templates sit in its `templates/`), `agents/`, `rules/`, and `extensions/vstack.ts`, the one extension, listed in the `omp` field. A skill's Bun scripts ship in its `scripts/` dir. The agent runs them with the bash tool as `bun "$(realpath skill://<name>/scripts/<script>.ts)"`: external programs never see `skill://` paths, and omp's in-process `realpath` turns the URL into the file path. |
+| `pins.yaml` | no | One entry per Upstream: repo, Pin, how the next Pin is found, and which tree entries count as Upstream items. |
 | `decision-register.yaml` | no | One row per Upstream item, plus `originals:` for vstack-only artifacts. |
 | `house-style.yaml` | no | The House style: replacement rows and rules that turn Upstream text into vstack text. |
-| `scripts/` | no | Bun scripts. `check-register.ts` is the CLI; `lib/` holds the modules other scripts reuse. |
+| `scripts/` | no | Bun scripts. `check-register.ts` and `update-plan.ts` are CLIs; `lib/` holds the modules other scripts reuse. |
 | `tests/` | no | `bun test` suites. Each script is run as a process over temp-dir fixtures (`tests/support/`). |
 | `.github/workflows/` | no | CI: the tests and `check-register` on every push and pull request. |
 | `CHANGELOG.md` | no | Unreleased section plus one entry per plugin version. |
@@ -35,14 +35,18 @@ Only `plugin/` ships. Upstreams are fetched when needed, never stored in this re
 
 ### Pins and Upstream clones
 
-`pins.yaml` keys (`matt`, `pstack`, `diagram`, `css`, `prose`) are also the register's `upstream` values and the names of the local clones under `~/.cache/vstack/upstreams/<key>`. Set `VSTACK_UPSTREAMS` (or pass `--upstreams`) to use another directory. Blobless clones are enough; the scripts read trees with `git ls-tree` and never fetch, check out, or move HEAD:
+`pins.yaml` keys (`matt`, `pstack`, `diagram`, `css`, `prose`) are also the register's `upstream` values and the names of the local clones under `~/.cache/vstack/upstreams/<key>`. Set `VSTACK_UPSTREAMS` (or pass `--upstreams`) to use another directory. Blobless clones are enough. `check-register` reads trees with `git ls-tree` and never fetches, checks out, or moves HEAD. `update-plan` makes a missing clone and fetches the others, and it never moves HEAD either. To make a clone by hand:
 
 ```sh
 git clone --filter=blob:none https://github.com/mattpocock/skills.git ~/.cache/vstack/upstreams/matt
 git -C ~/.cache/vstack/upstreams/matt fetch --tags origin   # when a Pin is missing from the clone
 ```
 
+`pin_kind` says how the Update finds the next Pin. `tag` (Base, Prose): the highest `v<major>.<minor>.<patch>` tag; pre-release tags such as `v1.3.0-beta.1` and other tags such as `mattpocock-skills@1.0.0` never count. `commit` (Enhancement, Diagram, CSS): the newest commit on the default branch that touches the entry's `path`. `pin` is the tag name or the full commit SHA.
+
 Each entry's `items:` list says which tree entries at the Pin are Upstream items. `match` is a path glob from the repo root where `*` stays inside one path segment, `type` is `tree` or `blob`, and the first matching pattern sets the `kind`. For example, pstack's automations are one item each, so their nested skills get no rows.
+
+One entry, the CSS upstream, also has `page_lint: scripts/check-css.mjs`: the script `check-register` runs at that Pin over vstack's page templates (see "Page templates" below).
 
 ### Decision register
 
@@ -76,7 +80,7 @@ It proves that the register, `pins.yaml`, `plugin/`, and the Upstreams agree. Op
 | `--json` | | text output |
 | `--list-classes` | | prints every failure class and exits |
 
-The `github` source reads the same trees through the GitHub REST API (`commits/<ref>`, then `git/trees/<sha>?recursive=1`). It uses `GITHUB_TOKEN` (or `GH_TOKEN`) when set and `GITHUB_API_URL` as the API base. Both sources live in `scripts/lib/upstreams.ts`, which `update-plan` reuses. Byte identity is checked by comparing git blob SHAs, so neither source downloads file contents.
+The `github` source reads the same trees through the GitHub REST API (`commits/<ref>`, then `git/trees/<sha>?recursive=1`). It uses `GITHUB_TOKEN` (or `GH_TOKEN`) when set and `GITHUB_API_URL` as the API base. Both sources live in `scripts/lib/upstreams.ts`, which `update-plan` reuses. Byte identity is checked by comparing git blob SHAs, so neither source downloads file contents for it. The one file a source reads is the CSS upstream's `page_lint` script, and only when a page template exists: the `clones` source with `git cat-file` (a blobless clone fetches that one blob on first read), the `github` source through `contents/<path>?ref=<pin>`.
 
 Exit codes: 0 pass, 1 register failures, 2 the check could not run (bad arguments, unreadable `pins.yaml` or register, a missing clone or ref, an API error). Exit 2 prints the remedy, such as the clone or fetch command.
 
@@ -104,6 +108,7 @@ Text output prints one line per failure, `FAIL <class> <item>: <message>`, after
 | `worktree-cmd` | adapt, merge, or original text runs `git worktree add` |
 | `tmp-path` | adapt, merge, or original text names `$TMPDIR/`, `/tmp/`, or the OS temp directory, outside a `mktemp` line |
 | `ask-tool` | any markdown artifact, adopt included, has a sentence with an `ask-tool` phrase that does not name `` `ask` `` |
+| `page-css` | a page template breaks the CSS upstream's `check-css.mjs` at its Pin; the item is the template and the message holds the script's `path:line` lines |
 
 Rows with an `invalid-row` or `invalid-disposition` failure are skipped by the checks that read their fields, so one bad row reports once. House style rows and rules with an `invalid-house-style` failure are skipped the same way.
 
@@ -125,12 +130,16 @@ Each check is a module in `scripts/lib/checks/` that exports a `Check`: the list
 
 A lint over shipped text starts from `lintTargets(ctx)` in `scripts/lib/checks/scope.ts`: every registered artifact with its Disposition (adopt, adapt, merge, or original), its Upstreams, and its text files. Whether a lint covers a Disposition comes from the `scope` of its row or rule in `house-style.yaml`, through `inScope` in `scripts/lib/house-style.ts`; do not test Dispositions anywhere else.
 
+#### Page templates
+
+Every page vstack writes for the user (the Grilling HTML, explain's pages, the how and teach pages, the Update report, the architecture-review report) starts from a page template, and every template follows good-css (#61). A page template is any `*.html` or `*.css` file under `plugin/skills/<name>/templates/`, in the skill that writes the page. `scripts/lib/checks/pages.ts` finds them, reads the Upstream script named by `page_lint:` in `pins.yaml` at that Upstream's Pin, writes it to a temp dir, and runs it with Bun over every template. Each template it flags is one `page-css` failure. With no template the check prints `page templates: none` and reads nothing. Templates never hold a figure: a skill draws its figure through diagram-design, exports it, and inlines the `<svg>` in the page it builds from the template, so the figure's own `<style>` never reaches the lint. diagram-design's own pages under its `assets/` are not templates.
+
 ### House style
 
 `house-style.yaml` (ADR 0008) has two lists. Its header comment documents every field.
 
 - `replacements:` are blind substitutions, applied in list order. `match` is `literal` (an exact substring), `name` (no `[\w-]` character on either side, so the `glossary` row rewrites `CONTEXT.md` and leaves `CONTEXT-FORMAT.md` alone), or `ref` (only `/x`, `` `x` ``, `**x**`, and `skill://x`). `upstream` picks the artifacts a row applies to. `scope: required` binds every artifact, adopt included; `scope: adapted` binds adapt, merge, and original text. `uses` says whether the Update (`update`), setup-vstack's Migration (`migration`), or both apply the row. A row that an earlier row rewrites fails `invalid-house-style`, so put the longer phrase first.
-- `rules:` are what the agent applies by hand: the fixed spawn and Fan-out wording, skill references, worktrees, Scratch paths, eval for Python, and asking through `ask`. Each has `text`, a `scope`, and a `lint` line that says what `check-register` enforces. `allowlist` names the skills where a rule's form is allowed, and `check-register` skips that rule's lint in them: it limits `fixed-fan-out` to compare-attempts and `headless-run` to skill-creator, and lets writing-for-agents describe a subagent dispatch under `spawn-vocab`. `ask-tool` holds `phrases`, the list its lint matches as whole words in any case. Add a phrase when an asking sentence slipped past the list, and run `bun scripts/check-register.ts` to see which adopt items it would flip.
+- `rules:` are what the agent applies by hand: the fixed spawn and Fan-out wording, skill references, worktrees, Scratch paths, eval for Python, and asking through `ask`. Each has `text`, a `scope`, and a `lint` line that says what `check-register` enforces. `allowlist` names the skills where a rule's form is allowed, and `check-register` skips that rule's lint in them: it limits `fixed-fan-out` to compare-attempts and `headless-run` to skill-creator, and lets writing-for-agents describe a subagent dispatch and diagram-design's figure examples say "dispatch" under `spawn-vocab`. `ask-tool` holds `phrases`, the list its lint matches as whole words in any case. Add a phrase when an asking sentence slipped past the list, and run `bun scripts/check-register.ts` to see which adopt items it would flip.
 
 `scripts/lib/house-style.ts` is the one module that reads both lists and applies rows. It has no file access: `parseHouseStyle(doc, upstreamKeys)` validates a parsed file, `selectRows(rows, { use, upstreams, disposition, shippedNames })` picks the rows for one text, `applyRows(text, rows)` rewrites it, and `findRow(text, row)` finds leftovers. `loadHouseStyle(root, upstreamKeys)` in `scripts/lib/vstack-repo.ts` reads the file from a checkout.
 
@@ -144,9 +153,77 @@ process.stdout.write(applyRows(await Bun.stdin.text(), rows));' \
   < <(git -C ~/.cache/vstack/upstreams/matt show v1.2.3:skills/engineering/wizard/SKILL.md) > plugin/skills/wizard/SKILL.md
 ```
 
+### update-plan
+
+```sh
+bun scripts/update-plan.ts [<upstream>|<upstream>@<ref> ...]
+```
+
+`update-plan` is the mechanical part of the Update, which `/skill:vstack-update` runs. It works from `main`: the Pins in `pins.yaml` on `main` are the old Pins, and the Update branch starts there. A run does these steps:
+
+1. For each named Upstream (default: every key in `pins.yaml`), it makes a blobless clone in the clone cache or fetches the one there.
+2. It finds the new Pin per `pin_kind` (see "Pins and Upstream clones"). `<upstream>@<ref>` takes that tag or commit instead, and naming Upstreams leaves the others out of the run. On its own, a Pin never moves backwards.
+3. When no Pin moved, it prints `{"schema": 1, "moved": false, "upstreams": [...]}` and exits 0. It makes no worktree.
+4. Otherwise it makes the Update worktree with `omp wt add -b update/<matt-tag>+<pstack-sha7> <base>/vstack-<repo>-update-<matt-tag>+<pstack-sha7> main`, never with `-q`. The tag and SHA are the new Pins; an Upstream left out of the run gives its current Pin. `<base>` is `$OMP_WORKTREE_DIR`, else `omp config get worktree.base`, else `~/.omp/wt`, and `<repo>` is the basename of the main checkout. When stdout has no `Cloned from … via` line, omp made a plain checkout of tracked files. The run continues there and runs `bun install --frozen-lockfile` when `node_modules` is missing.
+5. It reads the register and the House style from the worktree, builds the plan, writes `plan.json`, the staged adopt copies, and the sides under `--out`, and prints the plan.
+
+| Option | Env | Default |
+|---|---|---|
+| `--root <dir>` | | the repo that holds the script |
+| `--upstreams <dir>` | `VSTACK_UPSTREAMS` | `~/.cache/vstack/upstreams` |
+| `--remote <url>` | `VSTACK_UPSTREAM_REMOTE` | `https://github.com`; a clone comes from `<url>/<owner>/<name>.git` |
+| `--omp <cmd>` | `VSTACK_OMP` | `omp` |
+| `--out <dir>` | | `vstack-update/` in the worktree's own git dir (`.git/worktrees/<name>/`), outside the tree |
+
+Exit codes: 0 when it prints a plan, either kind; 2 when it cannot run (bad arguments, an unknown ref, a fetch or `omp wt add` failure, an invalid register or House style on `main`). A run that exits 2 after making the worktree removes the worktree and its branch again. To drop an Update later, run `git worktree remove --force <worktree.path>` and `git branch -D <branch>`; that also deletes the default `--out`.
+
+#### Plan JSON
+
+`/skill:vstack-update` works from this plan. `schema` changes only when a field changes meaning. All paths in it are absolute.
+
+| Field | Holds |
+|---|---|
+| `schema` | `1` |
+| `moved` | `true` (a no-op run prints `false`, `upstreams`, and nothing else) |
+| `root` | the checkout the run started from |
+| `branch` | `update/<matt-tag>+<pstack-sha7>` |
+| `worktree` | `path`, `base`, `cloned` (stdout had `Cloned from … via`), and `deps`: `cloned` (the clone carried what the checkout had), `present`, `installed` (it ran `bun install --frozen-lockfile`), or `none` (no `package.json`) |
+| `out` | the directory with `plan.json`, `adopt/`, and `sides/` |
+| `upstreams[]` | per Upstream in the run: `key`, `repo`, `pin_kind`, `clone` (its path), `old` and `new` (Pins), `old_commit` and `new_commit` (full SHAs), `moved` |
+| `rows[]` | one entry per register row of those Upstreams, in register order (below) |
+| `artifacts[]` | one group per artifact the rows name: `artifact`, `rows` (every contributing row id), `shared` (two or more rows), `needs_work` (a row's class is not `unchanged`). Reject rows and rows with `artifacts: []` are in no group. |
+| `new[]` | Upstream items at the new Pin that no row names and no move took: `upstream`, `path`, `kind`, `type`, `tree` |
+| `counts` | how many rows have each class, plus `new` |
+
+Each `rows[]` entry has the row's `id`, `upstream`, `kind`, `disposition`, and `artifacts`, and these fields:
+
+| Field | Holds |
+|---|---|
+| `class` | `unchanged`, `changed`, `moved`, or `removed` (see below) |
+| `held` | `{at, path}` from `held_at` and `held_path`, or `null` |
+| `effective_old` | `{ref, commit, path}`: the baseline, `(held_at, held_path)` on a held row and `(old Pin, path)` otherwise. `path` is `null` only on a row with neither. |
+| `new` | `{ref, commit, path, tree}`: the item at the new Pin, the values `path` and `tree` take when the row is accepted. `null` when `removed`. |
+| `move` | `{from, to, by, similarity, renamed}` on a `moved` row, else `null`. `by` is `tree` (same tree SHA, similarity 100) or `similarity` (git rename detection). `renamed` is true when the item's name changed. |
+| `files` | the item's files that differ between `effective_old` and `new`: `{path, status, same_after_house_style}`. `path` is inside the item (the file name for a single-file item); `status` is `added`, `modified`, or `deleted`. `same_after_house_style` is set on a modified text file of an adapt or merge row: true when the two sides are equal once the House style rows ran. Otherwise it is `null`. |
+| `house_style_rows` | ids of the House style rows run over the sides, in order: the `uses: update` rows for the row's Upstream and Disposition |
+| `sides` | adapt and merge rows with `files`: `{old, new}`, two directories holding each listed file at `effective_old` and at `new`, with those rows applied. A file is missing from the side where it does not exist. Binary files are copied as they are. They are the base and the Upstream side for `git merge-file <artifact file> <old>/<path> <new>/<path>`. |
+| `staged` | adopt rows that are `changed` or `moved`: `{path, files, dropped}`. `path` is the copy of the item at the new Pin, named as the item is named there. `files` lists each file with the blob SHA it was checked against after writing. `dropped` is `["agents/openai.yaml"]` when the item had one. |
+
+The classes:
+
+- `unchanged`: none of the row's files differ between `effective_old` and the new Pin.
+- `changed`: some do. A held row is compared from `(held_at, held_path)`, so it is `changed` whenever it differs from the new Pin, even when the item did not change between the two Pins.
+- `moved`: the row's `path` is gone at the new Pin, and the item was paired with an item the new Pin adds: the same tree, or `SKILL.md` (the file itself for a single-file item) at 50% or more similarity in git rename detection. The user confirms each move. `files` holds the content changes.
+- `removed`: the row's `path` is gone and nothing was paired with it.
+- `new`: in `new[]`, not in `rows[]`.
+
+A row owns the files under its path except those under a longer path that is another row or another Upstream item, so a changed Playbook file counts for its Playbook row and not for `poteto-mode`. `agents/openai.yaml` never counts, because vstack never ships it.
+
 ### Tests
 
 `bun test` runs `tests/` only (`bunfig.toml`). The check-register tests build fixture Upstream git repos with tags, a moved item, and a removed item, then a vstack checkout committed as the version base. They run the script as a process and assert its exit code and its failures by class and item. One case serves a local stand-in for the GitHub API, so the `github` source is tested too.
+
+`tests/update-plan.test.ts` runs update-plan as a process. `tests/support/update-fixture.ts` serves two fixture Upstreams over `file://` (`matt` with release, pre-release, and stray tags; `pstack` with commits inside and outside `pstack/`), gives the script an empty clone cache, and passes `--omp` a stand-in (`tests/support/fake-omp.ts`). The stand-in answers `omp config get worktree.base` and makes `omp wt add` worktrees with git, printing the `Cloned from … via` line only when `FAKE_OMP_CLONE=1`, so both the clone and the plain-checkout paths run without an omp home. The tests assert the plan JSON and the files it names.
 
 `tests/extension.test.ts` tests the extension through a fake omp host (`tests/support/extension-host.ts`, after omp-tools' advisor-concern-wake tests). `fakeHost(options)` runs the extension factory against a partial ExtensionAPI and ctx and returns the registered tools, the event handlers, `emit(name, event)` (awaits every handler and returns their results), `callTool(name, params)`, and the session name with its source. Options set `ctx.agent` (main or sub), the models `ctx.modelRegistry.find` returns, and their API keys. The fake `setSessionName` stores a `user` name, as every omp mode does, and `autoTitle(name)` is refused after one. Stub TypeSafe's endpoint with `spyOn(globalThis, "fetch")`. The repo has no omp SDK dependency, so the extension imports omp types only (`import type`), and the fake `pi.arktype` only records the schema.
 
