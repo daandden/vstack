@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [0.1.28] - 2026-10-08
+
+- vstack-update plans in its own worktree, presents gated row decisions, applies adopt, reject, and new items, and opens an Update PR. Changed adapt and merge rows and all moved or removed rows stay Hold-only until #99. Scripts own the writes, direct jev re-run, report, version bump, and publication (#98).
+
 ## [0.1.27] - 2026-10-08
 
 - improve-codebase-architecture and Matt teach write one-file Scratch pages from linted templates, draw inline SVG figures through diagram-design, and print file URLs. Architecture exploration uses a vstack explorer; session questions go through `ask`, while lesson quizzes remain interactive (#82).
@@ -18,7 +22,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [0.1.24] - 2026-10-08
 
-- open-pr cleans and orders unpushed commits before the final push, opens a ready PR through gh, and cites Safety findings and the proof that ran in its briefing body (#89).
+- open-pr cleans and orders unpushed commits before the final push, opens a ready PR through gh, and cites Safety findings and the proof that ran in its Markdown body (#89).
 
 ## [0.1.23] - 2026-10-08
 
@@ -40,6 +44,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 ## [0.1.19] - 2026-10-08
 
 - babysit drives a PR to merge-ready without merging, with check, threads-only, and isolated background modes (#90).
+
 
 ## [0.1.18] - 2026-10-08
 
