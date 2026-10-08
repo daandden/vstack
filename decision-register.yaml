@@ -754,7 +754,7 @@ items:
     path: pstack/skills/poteto-mode/playbooks/opening-a-pr.md
     tree: 626f376bd64e2e7b04c2575cb8b8f4ba70a6078d
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/open-pr]
     reason: "PR body contract incl. Blast Radius; /deslop and interrogate dropped."
   - id: pstack/playbook-orchestrate
     upstream: pstack
