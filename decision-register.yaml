@@ -99,7 +99,7 @@ items:
     tree: abf20c04a4aa8a37ff20aa7286f28857150f8b8d
     disposition: adapt
     artifacts: [plugin/skills/setup-vstack]
-    reason: "Renamed; checks the machine first and writes docs/vstack/ config in Standard or Private mode (ADR 0006)."
+    reason: "Renamed; checks machine settings and Matt leftovers, runs mandatory fail-closed private Migration, and writes Standard or Private config (ADR 0006)."
   - id: matt/tdd
     upstream: matt
     kind: skill

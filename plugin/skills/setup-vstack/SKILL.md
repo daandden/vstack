@@ -12,7 +12,7 @@ Two parts, in this order. The machine section checks the omp settings vstack nee
 - Triage labels: the strings used for the five canonical triage roles.
 - Domain docs: where `GLOSSARY.md` and ADRs live, and the rules for reading them.
 
-This is a prompt-driven skill with two helper scripts. Explore, present what you found, settle each choice through `ask`, then write.
+This is a prompt-driven skill with helper scripts. Explore, present what you found, settle each choice through `ask`, then write.
 
 Every question to the user goes through `ask`. An answer marked `timedOut: true` is not the user's: put a gate to the user once more with `ask`, and if that times out too, stop without acting and say why.
 
@@ -21,26 +21,44 @@ Run the scripts with the bash tool, from inside the repo when there is one:
 ```sh
 bun "$(realpath skill://setup-vstack/scripts/machine.ts)" <args>
 bun "$(realpath skill://setup-vstack/scripts/project.ts)" <args>
+bun "$(realpath skill://setup-vstack/scripts/migrate.ts)" <args>
 ```
 
-Below, `machine.ts` and `project.ts` stand for these two commands.
+Below, `machine.ts`, `project.ts`, and `migrate.ts` stand for these commands.
 
 ## Machine section
 
+0. Confirm the machine scan roots through `ask`. Offer Scan my home (Recommended), with the absolute `$HOME` path, and Use other roots. Collect the other absolute paths through the Other answer. The scan prunes `node_modules`, `.venv`, and `Library` and never follows directory symlinks. A checkout outside these roots cannot be found, even when its separate git dir is inside them. Keep these confirmed roots for this run. Pass one `--scan-root <absolute path>` per root to every check and Migration command below.
 1. Look at your own tool list. The vstack extension registers `vstack_rename_session` when a session starts, so that tool is there only when the extension loaded in this session.
-2. Run `machine.ts --extension-loaded yes` when `vstack_rename_session` is there, else `machine.ts --extension-loaded no`. The script gets every fact from omp and checks:
+2. Run `machine.ts --extension-loaded yes --scan-root <root>...` when `vstack_rename_session` is there, else use `--extension-loaded no`. It checks:
    - 1, TypeSafe credentials exist.
    - 2, `modelRoles.judge` is `typesafe/jev-latest`.
    - 3, `task.agentModelOverrides` has no key for a vstack agent. This one only warns.
    - 4, the vstack extension is enabled and loaded in this session. When `disabledExtensions` lists it, a new session alone does not load it, so the remedy removes it from the list first. When it is enabled but not loaded (for example, just after linking or pulling), the remedy is a new session.
    - 5, eval Python is ready: `eval.py` is on and `omp setup python --check` passes. This one only warns.
+   - 6, no Matt leftovers. It resolves every `.git` entry to its common dir and deduplicates them, including linked worktrees, submodules, and separate git dirs. It also finds the Matt-sourced skills in the skills CLI lock, diagram-design and good-css copies, global rule hits, and the old profile library.
    - 7, `task.isolation.enabled` is on (ADR 0007). Skills that need an isolated subagent stop without it.
    - 8, `worktree.clone` is on. In Private mode, prototype mounts app-bound prototypes in an `omp wt add` clone and stops on a plain checkout.
 
    When every check passes, it prints one `OK` line. Otherwise it prints one line per check that does not pass: `FAIL <n> <name>: <what is wrong>. Remedy: <what fixes it>.`, or `WARN` in place of `FAIL` for checks 3 and 5. Exit 0 means no `FAIL` line, 1 means at least one, and 2 means the script did not run: show its message and go on to the project section.
 3. Show the output to the user as it is.
-4. Checks 2, 7, and 8 are the only ones this skill fixes, and only with the user's approval. When any of them failed, call `ask` once, with one question per failed check that names the setting and the value it gets, and the options Set it (Recommended) and Leave it. Then run `machine.ts --set <name>...` with only the approved names: `judge` for 2, `isolation` for 7, `clone` for 8. It writes them to the user's omp config with `omp config set` (the judge role merged into the roles already there), and the running session reloads that file. Never change omp settings any other way. Then run step 2 again and show the new output.
-5. Leave every other failing line to the user. TypeSafe credentials come from `/login typesafe`, which only the user can run, and the extension needs a new session. Go on to the project section; Done repeats every line still failing.
+4. The settings writer fixes only checks 2, 7, and 8, with the user's approval. For each failed setting, call one `ask` with Set it (Recommended) and Leave it. Then run `machine.ts --set <name>...` with only the approved names: `judge` for 2, `isolation` for 7, `clone` for 8. It uses `omp config set` and preserves the other judge roles. Never change omp settings any other way. Run step 2 again and show its output.
+5. Leave checks 1, 3, 4, and 5 to the user. TypeSafe credentials come from `/login typesafe`, which only the user can run. The extension needs a new session. Done repeats every line still failing.
+6. If check 6 fails, run the machine Migration below. If it passes, go on to the project section.
+
+### Machine Migration
+
+1. Run `migrate.ts plan --scan-root <root>...`. It reads machine state and prints JSON without changing it. If `scan_errors` is not empty, show every path and error. Stop the Migration until the scan covers every confirmed root.
+2. Show one plan with all `items`, their ids, moves, diffs, removals, and destructive flags. Name the roots and the pruned directories. List `standard_projects` as "migrates when you run setup-vstack there". Change none of those projects in the machine part.
+3. Include every notice in the plan. State the downgrade from Matt `main` to the Base Pin `v1.2.3`. The skills removal runs `npx --yes skills@1.7.0 remove -g <names> -y`. It removes CLI copies, lock entries, and agent links. Other harnesses also lose those copies. Non-Matt skills stay, except the diagram-design and good-css copies that vstack replaces. The command fetches that CLI if it is not cached.
+4. Explain that private moves are mandatory. Each common dir gets one move, with its hand edits and unknown directories kept. The script renames `docs-agents` to `config` and removes old-storage `docs/agents` symlinks and their exclude line. It creates no compatibility symlink. Outside links to old artifacts break. Relative path rows run only when the common dir is this repo's `.git`. Profiles move without a compatibility link too. The old private rule is a mandatory removal, only after every private and profile move succeeds.
+5. For every `manual_hits` entry, read the file and propose a diff before confirmation. Use the known common dir for non-ordinary relative paths. Bare storage words need a context-specific edit, not a global substitution. Add those proposed diffs to this same plan. Keep filename changes for the project Migration.
+6. Call `ask` once for the machine plan with Apply all (Recommended), Choose items, and Cancel. On Choose items, use one multi-select `ask` for optional item ids only. Keep every mandatory item selected. A user cannot deselect a private move. On Cancel, cancel the whole machine Migration, including skill removals, rule edits, profiles, and old-rule deletion. Change nothing from the plan and stop this skill.
+7. Save the script's original plan JSON under the Scratch dir from `skill://vstack-tmp`. Run `migrate.ts apply --plan <absolute plan path>`. For Choose items, add one `--skip <id>` per unselected optional item. The script refuses a stale plan or a skipped mandatory item before it writes anything. If it reports changed state, show the new plan through `ask` before acting.
+8. Apply each approved manual diff only after its parent move succeeds. Use the new `after_path` for a moved file. Leave declined manual edits as remaining hits. Show `applied`, `skipped`, `warnings`, `failures`, and `manual_hits`. Skill removal failures warn because the plugin shadows the old copies. Private or profile move failures leave the old rule in place and the Migration incomplete. Name every failed common dir and its error.
+9. Run step 2 of the machine section again with the confirmed roots. Remaining rule or private-file hits keep check 6 failing. After any applied Migration, tell the user to start a new session with `/new`. Combine this instruction with the extension-load instruction when both apply.
+10. Continue to the project section only when the current repo's old private store is gone. The project guard below writes no Standard config in an unmigrated private repo.
+
 
 ## Project section
 

@@ -42,7 +42,7 @@ Fan-out (always: invoking this skill is the user's request to fan out): one eval
 
 There is one part per runner. Make sure that `omp config get task.isolation.enabled` prints `true` before starting. With no eval tool or no permission to start these workers, stop and point at `/skill:setup-vstack`. There is no judge call, sequential batch, or shared-checkout fallback.
 
-In Python eval, set `shared_prompt` to the complete brief from Frame, `runner_count` to the chosen count, and `directions` to the supplied lines or an empty list. Start every handle before waiting:
+In Python eval, set `shared_prompt` to the complete brief from Frame and `runner_count` to the chosen count. Set `directions` to one supplied direction line per runner, or an empty list when none are given. Reuse supplied directions for extra runners. Start every handle before waiting:
 
 ```python
 handles = [
