@@ -255,7 +255,9 @@ export async function buildPlan(opts: {
       }
       files.sort((a, b) => (a.path < b.path ? -1 : a.path > b.path ? 1 : 0));
 
-      const cls: ChangeClass = !prep.newPath ? "removed" : prep.move ? "moved" : files.length > 0 ? "changed" : "unchanged";
+      // A held move still needs a catch-up decision, even when its bytes match.
+      const heldMove = isHeld(row) && eo.path !== prep.newPath;
+      const cls: ChangeClass = !prep.newPath ? "removed" : prep.move || heldMove ? "moved" : files.length > 0 ? "changed" : "unchanged";
       const planRow: PlanRow = {
         id: row.id,
         upstream: pin.key,
