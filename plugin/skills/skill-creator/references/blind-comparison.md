@@ -7,7 +7,7 @@ Read this when the user wants a rigorous answer to whether one version of a skil
 
 Use outputs from the same eval prompt produced by the two versions. Assign them the labels A and B at random and record the mapping where the comparator cannot read it.
 
-To test whether structure earns its place, make one version the **smallest version**: about five lines stating the role, the outcome, who consumes it, and any rule whose absence has caused real damage. Compare it with the full skill and read the result:
+To test whether structure earns its place, make one version the smallest version: about five lines stating the role, the outcome, who consumes it, and any rule whose absence has caused real damage. Compare it with the full skill and read the result:
 
 | Result | Meaning |
 |---|---|

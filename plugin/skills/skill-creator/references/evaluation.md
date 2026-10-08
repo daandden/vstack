@@ -7,9 +7,9 @@ Read this when forward-testing a new or changed skill, or when the user asks whe
 
 Before a full evaluation, cheaper signals often expose the problem:
 
-- **Same input, several runs.** Near-identical results mean the skill over-determines the work; wildly different results mean something important is unspecified.
-- **Very different inputs.** Outputs that all look alike mean the template overpowers the input.
-- **Watch one run.** A run marching through numbered steps where a step does not fit means the structure is constraining the agent.
+- Same input, several runs. Near-identical results mean the skill over-determines the work; wildly different results mean something important is unspecified.
+- Very different inputs. Outputs that all look alike mean the template overpowers the input.
+- Watch one run. A run marching through numbered steps where a step does not fit means the structure is constraining the agent.
 
 Run the full loop below when these checks pass but confidence still matters, or when the user asks whether the skill works.
 
@@ -33,8 +33,8 @@ Create directories as runs need them.
 
 Write 2–3 realistic requests, phrased the way a user would type them, with the input files they need. When the user's judgment of realism matters, show them the prompts through `ask` before running. Record each in `evals.json` with the prompt, input files, and a sentence describing the expected result.
 
-- **Mid-workflow turns:** to test a later step of a multi-turn skill in one run, prefix the request with a bracketed note stating where the workflow stands and what the user already said, for example `[Discovery is done; asked about stakeholders, the user replied: "just me and a PM"]`.
-- **Non-interactive runs:** supply the answers the skill would ask for up front, so the run reaches its deliverable without stopping. When a skill cannot proceed without a live answer, that case needs the user in the loop.
+- Mid-workflow turns: to test a later step of a multi-turn skill in one run, prefix the request with a bracketed note stating where the workflow stands and what the user already said, for example `[Discovery is done; asked about stakeholders, the user replied: "just me and a PM"]`.
+- Non-interactive runs: supply the answers the skill would ask for up front, so the run reaches its deliverable without stopping. When a skill cannot proceed without a live answer, that case needs the user in the loop.
 
 ## Runs
 
@@ -54,7 +54,7 @@ A skill that no longer beats the no-skill baseline has been overtaken by the mod
 
 ## Assertions
 
-Draft assertions while the runs execute. A good assertion is objectively checkable, named so a reader knows what it tests, and **discriminating**: it passes when the skill genuinely succeeds and fails when it does not.
+Draft assertions while the runs execute. A good assertion is objectively checkable, named so a reader knows what it tests, and discriminating: it passes when the skill genuinely succeeds and fails when it does not.
 
 - Check assertions with a script whenever the output allows it; scripts are reliable and reusable across iterations.
 - Pass an assertion only on evidence of genuine completion. A correctly named file with wrong content fails. When evidence is ambiguous, the assertion fails.
@@ -69,13 +69,13 @@ Present each eval to the user: the prompt, the with-skill output, the baseline o
 
 ## Improve
 
-- **Generalize.** The skill will run on many prompts beyond these few. Fix the underlying cause of a complaint rather than special-casing the test prompt.
-- **Read transcripts, not only outputs.** Effort spent on unproductive steps points at the instruction that caused it; remove or reword that instruction and rerun. Three shapes are common:
+- Generalize. The skill will run on many prompts beyond these few. Fix the underlying cause of a complaint rather than special-casing the test prompt.
+- Read transcripts, not only outputs. Effort spent on unproductive steps points at the instruction that caused it; remove or reword that instruction and rerun. Three shapes are common:
   - Several attempts before one works: the instruction is too vague.
   - An instruction followed where it does not apply: the instruction is too broad.
   - Stalling between alternatives: the skill names no default.
-- **Bundle repeated work.** When several runs independently write the same helper or take the same multi-step approach, add it to `scripts/` and point the skill at it.
-- **Explain the reason.** When a behavior keeps failing, state why it matters instead of escalating to absolute language.
+- Bundle repeated work. When several runs independently write the same helper or take the same multi-step approach, add it to `scripts/` and point the skill at it.
+- Explain the reason. When a behavior keeps failing, state why it matters instead of escalating to absolute language.
 
 ## Iterate
 

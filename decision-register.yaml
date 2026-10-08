@@ -346,8 +346,8 @@ items:
     path: pstack/skills/how
     tree: 12b9ed018673a72573574ca5304fc1503a7d16d7
     disposition: adapt
-    artifacts: []
-    reason: "A narrow question goes to one explainer; for 2-4 angles, explorers are judge-gated (ADR 0004)."
+    artifacts: [plugin/skills/how]
+    reason: "One angle uses an explainer; 2–4 angles use judge-gated explorers, with figures on a Scratch page (#49, #60)."
   - id: pstack/interrogate
     upstream: pstack
     kind: skill
@@ -626,8 +626,8 @@ items:
     path: pstack/skills/teach
     tree: 3ee517292dae0476dc516f9f3805c08fb943c6ff
     disposition: adapt
-    artifacts: []
-    reason: "Renamed explain; a different job from Matt's teach (#36)."
+    artifacts: [plugin/skills/explain]
+    reason: "Renamed from pstack teach; combines how and why behind a gate and draws a conversation-only Scratch page (#44, #49, #60)."
   - id: pstack/technical-writing
     upstream: pstack
     kind: skill
@@ -658,8 +658,8 @@ items:
     path: pstack/skills/why
     tree: 95da26ff7fe7b8fe70022d19064bd1a9f9e27127
     disposition: adapt
-    artifacts: []
-    reason: "Investigators and synthesizer are judge-gated; evidence limited to git, gh/glab, the tracker, and MCPs (#49)."
+    artifacts: [plugin/skills/why]
+    reason: "Profiles git, the code host, tracker, and MCPs; gates investigators and always uses fresh-context synthesis (#49)."
   - id: pstack/playbook-authoring-a-skill
     upstream: pstack
     kind: playbook

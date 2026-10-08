@@ -4,9 +4,13 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
-## [0.1.23] - 2026-10-08
+## [0.1.24] - 2026-10-08
 
 - Add model-invocable skill-creator with Bun initialization and validation, same-model Headless evals, load-event trigger scores, and blind comparisons (#87).
+
+## [0.1.23] - 2026-10-08
+
+- Add hidden how, why, and explain skills for cited code explanations. Gate investigation batches, profile repository evidence sources, and inline diagram-design figures on Scratch pages (#81).
 
 ## [0.1.22] - 2026-10-08
 

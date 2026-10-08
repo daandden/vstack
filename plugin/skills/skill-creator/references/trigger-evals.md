@@ -7,9 +7,9 @@ Read this when writing or changing a model-invoked skill's description, when the
 
 Write 16–20 queries, roughly half that should select the skill and half that should not. Make each one realistic: concrete details such as file paths, column names, company or project context, a little backstory, varied length, casual phrasing, and the occasional typo.
 
-**Should select** (8–10): cover every distinct branch the skill handles, with different phrasings of each. Include requests that never name the skill or its file type but clearly need it, uncommon uses, and requests where a neighboring skill also applies but this one should win.
+Should select (8–10): cover every distinct branch the skill handles, with different phrasings of each. Include requests that never name the skill or its file type but clearly need it, uncommon uses, and requests where a neighboring skill also applies but this one should win.
 
-**Should not select** (8–10): use **near misses**, requests that share keywords or concepts with the skill but need something else: adjacent domains, ambiguous wording where a keyword match would mislead, and cases where another skill or plain tools fit better. A query from an unrelated domain tests nothing.
+Should not select (8–10): use near misses, requests that share keywords or concepts with the skill but need something else: adjacent domains, ambiguous wording where a keyword match would mislead, and cases where another skill or plain tools fit better. A query from an unrelated domain tests nothing.
 
 Make queries substantive enough that consulting a skill would help. An agent may handle a trivial one-step request directly regardless of any description, so such queries measure nothing.
 

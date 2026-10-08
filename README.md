@@ -254,6 +254,12 @@ The classes:
 
 A row owns the files under its path except those under a longer path that is another row or another Upstream item, so a changed Playbook file counts for its Playbook row and not for `poteto-mode`. `agents/openai.yaml` never counts, because vstack never ships it.
 
+### Existing-code explanations
+
+`/skill:how`, `/skill:why`, and `/skill:explain` are hidden adapt skills. Callers read them through `skill://`. how traces mechanisms and writes its cited page under Scratch `how/`. why profiles git, the remote code host, the configured tracker, and reachable MCP tools before investigation. Its synthesizer always gets a fresh context. Both return their output unedited to callers.
+
+explain combines how and why through a Fan-out block. It keeps one conversation page under Scratch `explain/`, with a series of exported, inlined SVG figures from diagram-design. Templates live in each page-producing skill's `templates/` directory, where `check-register` runs the pinned CSS lint. Matt's teach stays a separate skill. The pstack `teach` reference row applies only to pstack items.
+
 ### Tests
 
 `tests/skill-creator.test.ts` runs the bundled Bun initializer and validator as processes over temp skill folders. skill-creator evaluation uses separate same-model omp processes, not task runners; its references define per-run overlays and transcript evidence.
