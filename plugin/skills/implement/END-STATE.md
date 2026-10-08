@@ -8,9 +8,11 @@ Keep one run record across every ticket: requested and effective End state, curr
 
 ## 0a. Settle the End state
 
-Settle the End state once, before any work: commit, PR opened, merge-ready, or shipped. If the user's words or the ticket name it, use that; otherwise use one `ask` with these four options and commit recommended. With no answer, use commit. Reuse an already settled caller End state rather than asking again.
+Settle the End state once, before any work: commit, PR opened, merge-ready, or shipped. If the user's words or the ticket name it, use that; otherwise use `ask` with these four options and commit recommended. Reuse an already settled caller End state rather than asking again.
 
-When implement gets architect's design package at the implement stop, put two questions in that same `ask`: the End state if unsettled, and confirmation of the sketch's interfaces as proposed seams. A checkpoint sign-off already covers the seams, so ask only for an unsettled End state, or neither if both are named. With no answer, use commit and count the proposed seams as agreed. A later tdd bug slice still needs red evidence under tdd's own fallback-seam rules.
+When implement gets architect's design package at the implement stop, put two questions in that same `ask`: the End state if unsettled, and confirmation of the sketch's interfaces as proposed seams. A checkpoint sign-off already covers the seams, so ask only for an unsettled End state, or neither if both are named. A later tdd bug slice still needs red evidence under tdd's own fallback-seam rules.
+
+An interactive timeout settles neither the End state nor the seams. Re-ask the unanswered gate once; if it times out again, stop before work, branching, or committing. Only in a Headless run with no `ask` tool, take the recommended answer for each unsettled question (commit and the proposed seams) and say so. Tool absence is not a timed-out answer.
 
 The End state authorizes every step up to it: merge-ready authorizes babysit in drive mode; shipped authorizes ship to merge the verified run into the default branch. Deploys and releases are outside this flow. Never force-push a branch this run did not create. A stopped tdd slice caps the effective End state at commit even if a further state was requested.
 

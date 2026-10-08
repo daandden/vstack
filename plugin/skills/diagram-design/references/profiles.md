@@ -9,7 +9,7 @@ This file is the source of truth for profile resolution and for the `save`, `loa
 - **Profile library:** `~/.vstack/diagram-design/profiles/`
 - **Profile:** `~/.vstack/diagram-design/profiles/<slug>.md`
 - **Shipped guide:** the installed `references/style-guide.md`. Read it; never write it.
-- **Project config:** the project's vstack config file `diagram.md`. In Private mode (the directory `<git common dir>/vstack/config/` exists; get the common dir with `git rev-parse --path-format=absolute --git-common-dir`) it is `<git common dir>/vstack/config/diagram.md`. Otherwise (Standard mode) it is `<project-root>/docs/vstack/diagram.md`. Every worktree of a repo resolves the same file.
+- **Project config:** the project's vstack config file `diagram.md`. Use the absolute vstack root and mode supplied by the parent: `<vstack root>/config/diagram.md` in Private mode, or `<vstack root>/docs/vstack/diagram.md` in Standard mode. A child never re-resolves the root or mode. Only a top-level agent with no supplied root resolves them once through the Private-mode rule; retain them for every profile operation.
 - **Profile line:** the line `diagram-profile: <slug>` in the project config
 - **Effective style guide:** the profile selected for the current generation, or the shipped guide while the style gate runs
 

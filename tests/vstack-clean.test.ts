@@ -140,6 +140,22 @@ test("a linked key or kind dir is not walked", () => {
   expect(listedPaths()).toEqual([]);
 });
 
+test.each(["Scratch root", "Scratch ancestor"])("a linked %s cannot lead deletion outside home", (component) => {
+  const outside = join(dir, "outside");
+  const linked = component === "Scratch root" ? root : dirname(root);
+  const outsideRoot = component === "Scratch root" ? outside : join(outside, "tmp");
+  const precious = join(outsideRoot, "shop-aaaaaa", "explain", "old.html");
+  mkdirSync(dirname(precious), { recursive: true });
+  writeFileSync(precious, "keep me");
+  utimesSync(precious, daysAgo(30), daysAgo(30));
+  rmSync(linked, { recursive: true });
+  symlinkSync(outside, linked);
+
+  const result = clean("--home", home, "--delete", join(root, "shop-aaaaaa", "explain", "old.html"));
+  expect(result.code).toBe(2);
+  expect(existsSync(precious)).toBe(true);
+});
+
 test("deleting prunes the kind and key dirs it empties, and keeps the Scratch root", () => {
   file("shop-aaaaaa/explain/a.html", "a", 30);
   file("shop-aaaaaa/explain/b.html", "b", 30);

@@ -3,7 +3,7 @@ name: code-review
 description: Review changes since a fixed point on three axes, Standards, Spec, and conditional Safety. Runs each axis as its own reviewer, in parallel when the Fan-out gate allows, and reports them side by side. Use to review a branch, PR, work-in-progress changes, or changes since a commit, branch, tag, or merge-base.
 ---
 
-Review the diff between `HEAD` and the fixed point on separate axes:
+Review the supplied change scope against the fixed point on separate axes:
 
 - Standards checks the documented coding standards and smell baseline.
 - Spec checks the originating issue or spec.
@@ -19,9 +19,11 @@ Resolve the absolute vstack root through the Private-mode rule once. Read `docs/
 
 Use the commit SHA, branch, tag, or merge-base that the user supplied. If none is supplied, use `ask` for the fixed point.
 
-Make sure that the ref resolves with `git rev-parse <fixed-point>` and the diff is non-empty. Stop here for a bad ref or empty diff, not inside the reviewers.
+Make sure that the ref resolves with `git rev-parse <fixed-point>`.
 
-Capture the diff command once, `git diff <fixed-point>...HEAD`, and the commit list from `git log <fixed-point>..HEAD --oneline`. Three-dot compares against the merge-base. Give every reviewer the same command and list.
+Capture the review scope once. For committed work, use `git diff <fixed-point>...HEAD`; three-dot compares against the merge-base. When the caller passes uncommitted work, use `git diff <fixed-point>` against the working tree, including staged and unstaged changes, plus the contents of every untracked file the caller names. Capture those untracked paths explicitly; git diff does not include them. Stop for a bad ref or only when this complete scope is empty, not when `...HEAD` alone is empty.
+
+Capture the commit list with `git log <fixed-point>..HEAD --oneline`; it may be empty for uncommitted work. Give every reviewer the same diff command, untracked paths and contents, and commit list. Use this complete scope for Safety triggers and every axis.
 
 Check Safety after pinning the diff. The user's words override the trigger list, including "check safety" and "skip safety". Run Safety when requested or when the diff changes something that code outside it depends on:
 
@@ -88,13 +90,13 @@ Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the Standar
 
 Standards reviewer prompt. include:
 
-- The full diff command and commit list.
+- The full diff command, named untracked paths and contents, and commit list.
 - The list of standards-source files you found in step 3, plus the smell baseline from step 3 pasted in full. the reviewer has no other access to it.
 - The brief: "Report. per file/hunk where relevant. (a) every place the diff violates a documented standard: cite the standard (file + the rule); and (b) any baseline smell you spot: name it and quote the hunk. Distinguish hard violations from judgement calls. documented-standard breaches can be hard, but baseline smells are always judgement calls, and a documented repo standard overrides the baseline. Skip anything tooling enforces. Under 400 words."
 
 Spec reviewer prompt. include:
 
-- The diff command and commit list.
+- The full diff command, named untracked paths and contents, and commit list.
 - The path or fetched contents of the spec.
 - The brief: "Report: (a) requirements the spec asked for that are missing or partial; (b) behaviour in the diff that wasn't asked for (scope creep); (c) requirements that look implemented but where the implementation looks wrong. Quote the spec line for each finding. Under 400 words."
 
@@ -102,7 +104,7 @@ If the spec is missing, skip the Spec reviewer and note this in the final report
 
 Safety reviewer prompt. Include:
 
-- The pinned diff command and commit list.
+- The pinned diff command, named untracked paths and contents, and commit list.
 - Every trigger that fired.
 - The brief: "Run `skill://blast-radius` on this diff and skip its step 6. Return its hand-back in under 400 words, plus the proof script and its output."
 - The supplied Scratch dir, with a distinct run entry under `blast-radius/`.

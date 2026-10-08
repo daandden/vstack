@@ -4,6 +4,12 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [0.1.37] - 2026-10-08
+
+- Re-ask timed-out End state and seam gates once, then stop without authorization; keep Headless defaults separate (#63).
+- Review caller-supplied uncommitted work and named untracked files on every code-review axis (#63).
+- Resolve diagram profiles from the parent's supplied vstack root and mode (#63).
+- Reject linked Scratch roots and ancestor components before cleanup can delete outside entries (#63).
 ## [0.1.36] - 2026-10-08
 
 - Add ask-vstack routing across the shipped catalog, correct omp phase boundaries, and reject non-reject register rows with no artifacts (#100).

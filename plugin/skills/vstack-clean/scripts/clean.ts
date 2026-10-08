@@ -39,7 +39,8 @@ const olderThan = values["older-than"] ?? "14d";
 const m = /^(\d+)([hdw]?)$/.exec(olderThan);
 if (!m) usage(`--older-than must look like 14d, 14, 36h, or 2w, got ${JSON.stringify(olderThan)}`);
 const ttl = Number(m[1]) * UNITS[m[2] || "d"];
-const root = scratchRoot(resolve(values.home));
+const home = resolve(values.home);
+const root = scratchRoot(home);
 const now = Date.now();
 
 const lstat = (p: string): Stats | undefined => {
@@ -51,6 +52,13 @@ const lstat = (p: string): Stats | undefined => {
 };
 const realDirs = (p: string) => readdirSync(p).filter((n) => lstat(join(p, n))?.isDirectory());
 
+// Validate every component walked below --home before listing or deleting through it.
+let ancestor = home;
+for (const part of relative(home, root).split(sep)) {
+  ancestor = join(ancestor, part);
+  const st = lstat(ancestor);
+  if (st && !st.isDirectory()) usage(`${ancestor} is not a directory`);
+}
 /** Newest mtime and total size of an entry and everything inside it, without following links. */
 function measure(p: string, st: Stats): { newest: number; size: number } {
   let newest = st.mtimeMs;
