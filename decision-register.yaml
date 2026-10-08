@@ -138,7 +138,7 @@ items:
     path: skills/engineering/wayfinder
     tree: 48c3a8b0a9705d6310d37f7f9b53bcb2c55955c7
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/wayfinder]
     reason: "Names setup-vstack; charting research is judge-gated Fan-out; its user questions go through ask."
   - id: matt/wizard
     upstream: matt
@@ -905,3 +905,4 @@ originals:
   - plugin/skills/vstack-tmp
   - plugin/skills/vstack-fan-out
   - plugin/skills/vstack-worktree
+  - plugin/skills/skill-creator

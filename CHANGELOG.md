@@ -4,9 +4,17 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
-## [0.1.25] - 2026-10-08
+## [0.1.27] - 2026-10-08
 
 - implement settles the End state and design seams once, keeps unproven tdd slices out of commits and PRs, and shares cleanup, live proof, review, commit, and the one-run PR chain through END-STATE.md (#92).
+
+## [0.1.26] - 2026-10-08
+
+- wayfinder adapts Matt v1.2.3 with isolated research runners, parent-only tracker writes, research-branch landing through omp worktrees, Private findings, and session renames after every claim (#78).
+
+## [0.1.25] - 2026-10-08
+
+- Add model-invocable skill-creator with Bun initialization and validation, same-model Headless evals, load-event trigger scores, and blind comparisons (#87).
 
 ## [0.1.24] - 2026-10-08
 
