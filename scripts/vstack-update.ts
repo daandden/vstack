@@ -9,11 +9,12 @@ import { compareSemverTags, defaultUpstreamRemote, defaultUpstreamsDir, gitBlobS
 import { listPluginArtifacts, loadPins, loadRegister } from "./lib/vstack-repo.ts";
 import type { PlanBody, PlanRow } from "./lib/update-plan.ts";
 import { preprocessTinyMessage } from "../plugin/extensions/prompt-cleaner.ts";
+import { proposeMerges, replayStep } from "./lib/update-merge.ts";
 
 type Plan = PlanBody & { schema: number; moved: boolean; root: string; out: string; branch: string; worktree: { path: string } };
-type Decision = { id: string; action: "accept" | "hold" | "defer"; upstream?: string; path?: string; disposition?: string; reason?: string; gist?: string; artifacts?: string[]; drafts?: Record<string, string>; reason_check: string; adr_conflicts?: string[]; review_findings?: string[]; draft_adr?: { path: string; source: string }; explicit_accept?: boolean };
+type Decision = { id: string; action: "accept" | "hold" | "defer"; removal?: "drop" | "original" | "remove-contribution" | "keep-contribution"; rename?: "follow" | "keep"; upstream?: string; path?: string; disposition?: string; reason?: string; gist?: string; artifacts?: string[]; drafts?: Record<string, string>; reason_check: string; adr_conflicts?: string[]; review_findings?: string[]; draft_adr?: { path: string; source: string }; explicit_accept?: boolean };
 const scriptRoot = resolve(import.meta.dir, "..");
-const managed = ["plugin", "decision-register.yaml", "pins.yaml", "CHANGELOG.md", "principle-questions.json", "docs/adr"];
+const managed = ["plugin", "decision-register.yaml", "pins.yaml", "house-style.yaml", "CHANGELOG.md", "principle-questions.json", "docs/adr"];
 const readJson = (p: string) => JSON.parse(readFileSync(p, "utf8"));
 const yaml = (p: string): any => Bun.YAML.parse(readFileSync(p, "utf8"));
 function save(p: string, v: unknown) { mkdirSync(dirname(p), { recursive: true }); writeFileSync(p, JSON.stringify(v, null, 2) + "\n"); }
@@ -55,7 +56,6 @@ function copy(source: string, target: string) {
   rmSync(target, { recursive: true, force: true }); mkdirSync(dirname(target), { recursive: true });
   cpSync(source, target, { recursive: true, dereference: false });
 }
-const mustHold = (r: PlanRow) => r.class === "moved" || r.class === "removed" || (r.class !== "unchanged" && ["adapt", "merge"].includes(r.disposition));
 function decisionsAt(file: string): Decision[] {
   const ds = readJson(file).decisions;
   if (!Array.isArray(ds) || new Set(ds.map(d => d.id)).size !== ds.length) throw new Error("decisions must be an array with unique ids");
@@ -65,10 +65,10 @@ function decisionsAt(file: string): Decision[] {
 function apply(p: Plan, ds: Decision[], phase: string) {
   // Validate the whole decision set before the first write, especially pins.yaml.
   const byId = new Map(ds.map(d => [d.id, d]));
-  const blocked = p.rows.filter(r => mustHold(r) && byId.get(r.id)?.action !== "hold");
-  if (blocked.length) throw new Error(`Hold-only until #99; no Pin may move: ${blocked.map(r => r.id).join(", ")}`);
   const base = snapshot(p);
   const doc = yaml(join(base, "decision-register.yaml"));
+  const style = yaml(join(base, "house-style.yaml"));
+  const proposals = existsSync(join(p.out, "merge-steps.json")) ? readJson(join(p.out, "merge-steps.json")) : proposeMerges(p, base);
   const needed = p.rows.filter(r => r.class !== "unchanged" || doc.items.find((x: any) => x.id === r.id)?.reason?.startsWith("Deferred at "));
   for (const r of needed) if (!byId.has(r.id)) throw new Error(`missing decision ${r.id}`);
   const newDecisions = p.new.map(n => {
@@ -88,7 +88,7 @@ function apply(p: Plan, ds: Decision[], phase: string) {
     for (const [a, source] of Object.entries(d.drafts ?? {})) { owned(a); if (!isAbsolute(source) || !existsSync(source)) throw new Error(`missing draft: ${d.id}: ${source}`); }
     if (d.draft_adr && (!/^docs\/adr\/\d{4}-[^/]+\.md$/.test(d.draft_adr.path) || !isAbsolute(d.draft_adr.source) || !existsSync(d.draft_adr.source))) throw new Error(`invalid draft ADR: ${d.id}`);
   }
-  const copies: { source: string; artifact: string; hashes?: NonNullable<PlanRow["staged"]>["files"] }[] = [];
+  const copies: { source: string; artifact: string; step?: boolean; hashes?: NonNullable<PlanRow["staged"]>["files"] }[] = [];
   const outcomes: any[] = [];
   for (const r of p.rows) {
     const row = doc.items.find((x: any) => x.id === r.id);
@@ -97,6 +97,35 @@ function apply(p: Plan, ds: Decision[], phase: string) {
     if (!d) {
       if (r.new) { row.path = r.new.path; row.tree = r.new.tree; }
       continue;
+    }
+    if (r.class === "removed" && d.action !== "hold") {
+      const shared = r.artifacts.filter(a => p.rows.some(other => other.id !== r.id && other.artifacts.includes(a)));
+      if (!d.removal || !["drop", "original", "remove-contribution", "keep-contribution"].includes(d.removal)) throw new Error(`removed row needs an explicit removal choice: ${r.id}`);
+      if (d.removal === "original" && shared.length) throw new Error(`shared artifact cannot become original: ${r.id}`);
+      if (d.removal === "drop" && shared.length) throw new Error(`choose remove-contribution or keep-contribution: ${r.id}`);
+      if (["remove-contribution", "keep-contribution"].includes(d.removal) && !shared.length) throw new Error(`row has no shared contribution: ${r.id}`);
+      if (d.removal === "original") doc.originals.push(...r.artifacts);
+      if (d.removal === "remove-contribution") for (const a of shared) {
+        const source = d.drafts?.[a];
+        if (!source) throw new Error(`removed shared contribution needs a reviewed draft: ${r.id}: ${a}`);
+        copies.push({ source, artifact: a, step: true });
+      }
+      doc.items = doc.items.filter((x: any) => x.id !== r.id);
+      outcomes.push({ id: r.id, action: d.action, removal: d.removal });
+      continue;
+    }
+    if (r.move?.renamed && r.disposition === "adopt" && d.action !== "hold") {
+      if (!["follow", "keep"].includes(d.rename ?? "")) throw new Error(`renamed adopt needs follow or keep: ${r.id}`);
+      const oldName = r.artifacts[0]!.split("/").at(-1)!, newName = r.new!.path.split("/").at(-1)!;
+      if (d.rename === "follow") {
+        d.artifacts ??= [r.artifacts[0]!.replace(/[^/]+$/, newName)];
+        style.replacements.push({ id: `rename-${r.id.replaceAll("/", "-")}`, from: oldName, to: newName, match: "name", upstream: "any", scope: "required", uses: ["update"] });
+      } else {
+        d.disposition = "adapt";
+        if (!d.reason?.trim()) throw new Error(`keeping a renamed adopt needs an adapt reason: ${r.id}`);
+        d.drafts ??= Object.fromEntries(r.artifacts.map(a => [a, join(base, a)]));
+        style.replacements.push({ id: `rename-${r.id.replaceAll("/", "-")}`, from: newName, to: oldName, match: "name", upstream: r.upstream, scope: "required", uses: ["update"] });
+      }
     }
     if (d.action === "hold") {
       row.held_at = r.held?.at ?? r.effective_old.ref;
@@ -112,10 +141,13 @@ function apply(p: Plan, ds: Decision[], phase: string) {
       if (disposition === "adopt" && r.class !== "unchanged") {
         if (!r.staged || artifacts.length !== 1) throw new Error(`adopt has no staged copy: ${r.id}`);
         copies.push({ source: r.staged.path, artifact: artifacts[0], hashes: r.staged.files });
-      } else if (disposition !== "reject" && (d.disposition && d.disposition !== r.disposition || d.drafts)) {
+      } else if (disposition !== "reject" && (r.sides || d.disposition && d.disposition !== r.disposition || d.drafts)) {
         for (const a of artifacts) {
-          const source = d.drafts?.[a]; if (!source) throw new Error(`missing drafted artifact ${r.id}: ${a}`);
-          copies.push({ source, artifact: a });
+          const generated = proposals.steps.find((s: any) => s.id === r.id);
+          if (!d.drafts?.[a] && generated?.conflicts.length) throw new Error(`unresolved merge conflict: ${r.id}; review ${generated.conflicts.join(", ")}`);
+          const source = d.drafts?.[a] ?? generated?.drafts[a];
+          if (!source) throw new Error(`missing drafted artifact ${r.id}: ${a}`);
+          copies.push({ source, artifact: a, step: ["adapt", "merge"].includes(r.disposition) && r.artifacts.includes(a) });
         }
       }
     }
@@ -138,19 +170,28 @@ function apply(p: Plan, ds: Decision[], phase: string) {
   }
   for (const c of copies) {
     const held = p.rows.find(r => byId.get(r.id)?.action === "hold" && r.artifacts.includes(c.artifact));
-    if (held) throw new Error(`draft would overwrite held contribution ${held.id}: ${c.artifact}`);
+    if (held && !c.step) throw new Error(`draft would overwrite held contribution ${held.id}: ${c.artifact}`);
     if (c.hashes) for (const f of c.hashes) {
       const path = lstatSync(c.source).isDirectory() ? join(c.source, f.path) : c.source;
       const bytes = lstatSync(path).isSymbolicLink() ? Buffer.from(readlinkSync(path)) : readFileSync(path);
       if (gitBlobSha(bytes) !== f.sha) throw new Error(`staged adopt hash changed: ${c.artifact}/${f.path}`);
     }
   }
+  // Compose accepted deltas outside the worktree before any managed file is touched.
+  const candidate = join(p.out, "candidate");
+  rmSync(candidate, { recursive: true, force: true });
+  cpSync(join(base, "plugin"), join(candidate, "plugin"), { recursive: true, dereference: false });
+  for (const c of copies) {
+    if (c.step) replayStep(join(candidate, c.artifact), join(base, c.artifact), c.source, join(p.out, "replay"));
+    else copy(c.source, join(candidate, c.artifact));
+  }
   // Rebuild from the initial worktree, not the last proposal. Hold restores old artifacts.
   for (const name of managed) {
     rmSync(join(p.worktree.path, name), { recursive: true, force: true });
     if (existsSync(join(base, name))) cpSync(join(base, name), join(p.worktree.path, name), { recursive: true, dereference: false });
   }
-  for (const c of copies) copy(c.source, join(p.worktree.path, c.artifact));
+  copy(join(candidate, "plugin"), join(p.worktree.path, "plugin"));
+  writeFileSync(join(p.worktree.path, "house-style.yaml"), Bun.YAML.stringify(style, null, 2));
   const used = new Set([...doc.items.flatMap((r: any) => r.artifacts), ...doc.originals]);
   const old = yaml(join(base, "decision-register.yaml"));
   for (const a of old.items.flatMap((r: any) => r.artifacts)) if (!used.has(a)) rmSync(join(p.worktree.path, owned(a)), { recursive: true, force: true });
@@ -173,7 +214,7 @@ function apply(p: Plan, ds: Decision[], phase: string) {
   return result;
 }
 function markdown(p: Plan, ds: Decision[]) {
-  return `## Update\n\n${p.upstreams.filter(u => u.moved).map(u => `- ${u.key}: ${u.old} → ${u.new}`).join("\n")}\n\n## Row outcomes\n\n${ds.map(d => `- ${d.id}: ${d.action}; ${d.disposition ?? p.rows.find(r => r.id === d.id)?.disposition ?? "reject"}. ${d.reason_check}${d.reason ? ` Reason: ${d.reason}` : ""}${d.draft_adr ? ` ADR: ${d.draft_adr.path}` : ""}`).join("\n")}\n\n## Verification\n\nRegister check and worktree plugin load smoke passed before confirmation and after application. The direct jev sample-prompt re-run and flagged questions are in the report.\n`;
+  return `## Update\n\n${p.upstreams.filter(u => u.moved).map(u => `- ${u.key}: ${u.old} → ${u.new}`).join("\n")}\n\n## Row outcomes\n\n${ds.map(d => `- ${d.id}: ${d.action}; ${d.disposition ?? p.rows.find(r => r.id === d.id)?.disposition ?? "reject"}. ${d.reason_check}${d.removal ? ` Removal: ${d.removal}.` : ""}${d.rename ? ` Rename: ${d.rename}.` : ""}${d.reason ? ` Reason: ${d.reason}` : ""}${d.draft_adr ? ` ADR: ${d.draft_adr.path}` : ""}`).join("\n")}\n\n## Verification\n\nRegister check and worktree plugin load smoke passed before confirmation and after application. The direct jev sample-prompt re-run and flagged questions are in the report.\n`;
 }
 function digest(p: Plan) {
   const h = createHash("sha256");
@@ -249,6 +290,7 @@ function diff(a: string, b: string) {
 function report(p: Plan, ds: Decision[], output: string) {
   if (!isAbsolute(output) || !relative(p.worktree.path, output).startsWith("..") || !relative(p.root, output).startsWith("..")) throw new Error("report must be an absolute path outside both checkouts");
   const base = snapshot(p), rows: string[] = [];
+  const mergeSteps = existsSync(join(p.out, "merge-steps.json")) ? readJson(join(p.out, "merge-steps.json")).steps : [];
   const items = [...p.rows.filter(r => r.class !== "unchanged" || ds.some(d => d.id === r.id)), ...p.new.map(n => ({ ...n, id: ds.find(d => d.upstream === n.upstream && d.path === n.path)?.id ?? `${n.upstream}:${n.path}`, class: "new", artifacts: ds.find(d => d.upstream === n.upstream && d.path === n.path)?.artifacts ?? [], effective_old: null, new: { path: n.path } }))];
   for (const row of items) {
     const u = p.upstreams.find(u => u.key === row.upstream)!;
@@ -256,7 +298,10 @@ function report(p: Plan, ds: Decision[], output: string) {
     const upstream = git(u.clone, "diff", row.effective_old?.commit ?? u.old_commit, u.new_commit, "--", ...paths) || "No Upstream text change.";
     const vstack = row.artifacts.map(a => diff(join(base, a), join(p.worktree.path, a))).join("\n") || "No shipped artifact.";
     const d = ds.find(d => d.id === row.id);
-    rows.push(`<section><h2>${esc(row.id)} · ${esc(row.class)}</h2><p>Baseline: ${esc(row.effective_old?.ref ?? "new item")} / ${esc(row.effective_old?.path)}</p><p>Reason check: ${esc(d?.reason_check)}</p><p>Decision: ${esc(d?.action)}; ${esc(d?.disposition ?? ("disposition" in row ? row.disposition : ""))}</p><div class="diffs"><article><h3>Upstream</h3><pre>${esc(upstream)}</pre></article><article><h3>vstack</h3><pre>${esc(vstack)}</pre></article></div><p>ADR conflicts: ${esc(d?.adr_conflicts?.join("; ") || "none")}</p><p>Draft ADR: ${esc(d?.draft_adr ? readFileSync(d.draft_adr.source, "utf8") : "none")}</p><p>Fan-out review: ${esc(d?.review_findings?.join("; ") || "no findings")}</p></section>`);
+    const step = mergeSteps.find((s: any) => s.id === row.id);
+    const proposal = Object.entries(d?.drafts ?? step?.drafts ?? {}).map(([a, source]) => diff(join(base, a), source as string)).join("\n");
+    rows.push(`<section><h2>${esc(row.id)} · ${esc(row.class)}</h2><p>Baseline: ${esc(row.effective_old?.ref ?? "new item")} / ${esc(row.effective_old?.path)}</p><p>Reason check: ${esc(d?.reason_check)}</p><p>Decision: ${esc(d?.action)}; ${esc(d?.disposition ?? ("disposition" in row ? row.disposition : ""))}</p><div class="diffs"><article><h3>Upstream</h3><pre>${esc(upstream)}</pre></article><article><h3>vstack</h3><pre>${esc(vstack)}</pre></article></div><p>Merge conflicts: ${esc(step?.conflicts.join("; ") || "none")}</p><p>ADR conflicts: ${esc(d?.adr_conflicts?.join("; ") || "none")}</p><p>Draft ADR: ${esc(d?.draft_adr ? readFileSync(d.draft_adr.source, "utf8") : "none")}</p><p>Fan-out review: ${esc(d?.review_findings?.join("; ") || "no findings")}</p><p>Held-back findings: ${esc(d?.action === "hold" ? [...d.adr_conflicts ?? [], ...d.review_findings ?? []].join("; ") || "none" : "none")}</p></section>`);
+    if (proposal) rows[rows.length - 1] = rows[rows.length - 1]!.replace("</section>", `<article><h3>Individual row proposal</h3><pre>${esc(proposal)}</pre></article></section>`);
   }
   const judge = existsSync(join(p.out, "jev.json")) ? readJson(join(p.out, "jev.json")) : { flags: [], borderline: [] };
   const html = readFileSync(join(scriptRoot, "plugin/skills/vstack-update/templates/report.html"), "utf8").replace("<!-- ROWS -->", rows.join("\n")).replace("<!-- JEV -->", `<pre>${esc(JSON.stringify({ changed: judge.changed, flags: judge.flags, borderline: judge.borderline }, null, 2))}</pre>`);
@@ -288,9 +333,14 @@ async function main() {
   if (!opts.plan) throw new Error("--plan is required");
   const p = planAt(opts.plan);
   if (command === "cancel") {
+    // cancellation has no proposal side effects
     const failed = removeWorktree(p.root, { path: p.worktree.path, branch: p.branch });
     if (failed.length) throw new Error(failed.join("; "));
     return { removed: p.worktree.path, branch: p.branch };
+  }
+  if (command === "merge") {
+    const result = proposeMerges(p, snapshot(p), opts.decisions ? readJson(opts.decisions).file_maps ?? {} : {});
+    save(join(p.out, "merge-steps.json"), result); return result;
   }
   if (command === "apply" || command === "prepare") {
     if (!opts.decisions) throw new Error("--decisions is required");
@@ -319,6 +369,6 @@ async function main() {
     const url = run([gh, "pr", "create", "--base", "main", "--head", p.branch, "--title", `Update ${p.branch.slice(7)}`, "--body-file", body], p.worktree.path);
     return { sha, url, branch: p.branch };
   }
-  throw new Error("Usage: bun scripts/vstack-update.ts preflight|plan|prepare|apply|gates|report|finish|cancel [options]");
+  throw new Error("Usage: bun scripts/vstack-update.ts preflight|plan|merge|prepare|apply|gates|report|finish|cancel [options]");
 }
 try { console.log(JSON.stringify(await main(), null, 2)); } catch (e) { console.error(`vstack-update: ${(e as Error).message}`); process.exitCode = 2; }
