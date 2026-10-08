@@ -730,7 +730,7 @@ items:
     path: pstack/skills/poteto-mode/playbooks/hillclimb.md
     tree: 582555e826675068ceaea08e6134a44ba0ea4511
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/hillclimb]
     reason: "Metric loop; parallel hypotheses are judge-gated; trail goes to decision-trail."
   - id: pstack/playbook-investigation
     upstream: pstack
