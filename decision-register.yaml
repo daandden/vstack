@@ -778,7 +778,7 @@ items:
     path: pstack/skills/poteto-mode/playbooks/perf-issue.md
     tree: 688d483d4d4a6c58efa515558c822e11f621540f
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/perf-issue]
     reason: "Calls diagnosing-bugs for the loop; adds strategy families and before/after trace proof."
   - id: pstack/playbook-prototype
     upstream: pstack
@@ -794,7 +794,7 @@ items:
     path: pstack/skills/poteto-mode/playbooks/refactoring.md
     tree: df2a863b531906c64f92b9f9d8feb62f8c7a8665
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/refactor]
     reason: "Executes improve-codebase-architecture and code-review findings."
   - id: pstack/playbook-runtime-forensics
     upstream: pstack

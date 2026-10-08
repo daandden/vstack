@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [0.1.33] - 2026-10-08
+
+- Add model-invocable perf-issue with measured strategy attempts and before → after proof, and refactor with behavior pins, subtraction, caller migration, and equivalence proof. Both run the shared End state block and Verify skills (#93).
+
 ## [0.1.32] - 2026-10-08
 
 - vstack-update carries hand edits through per-row three-way merges, proposes held catch-ups, and checks ADRs and Fan-out callers. Removed and renamed items get full choices without defaults. Shared Holds omit only their own steps, and removed or renamed names get major bumps (#99).
