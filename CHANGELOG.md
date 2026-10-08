@@ -4,9 +4,21 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
-## [0.1.29] - 2026-10-08
+## [0.1.32] - 2026-10-08
 
 - vstack-update carries hand edits through per-row three-way merges, proposes held catch-ups, and checks ADRs and Fan-out callers. Removed and renamed items get full choices without defaults. Shared Holds omit only their own steps, and removed or renamed names get major bumps (#99).
+
+## [0.1.31] - 2026-10-08
+
+- implement settles the End state and design seams once, keeps unproven tdd slices out of commits and PRs, and shares cleanup, live proof, review, commit, and the one-run PR chain through END-STATE.md (#92).
+
+## [0.1.30] - 2026-10-08
+
+- Add hidden session-lessons with current-session scope, gated lenses, fresh synthesis, approved edits by skill home, and a listed-only Backlog (#88).
+
+## [0.1.29] - 2026-10-08
+
+- Add model-invocable forensics with live instrumentation and captured-artifact branches. It returns a cited diagnosis, preserves tracked files, and requires paired captures for confirmation (#94).
 
 ## [0.1.28] - 2026-10-08
 
