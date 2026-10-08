@@ -586,8 +586,8 @@ items:
     path: pstack/skills/reflect
     tree: 772aafc391b56bb1c4ad5079e18084c6e4d47a06
     disposition: adapt
-    artifacts: []
-    reason: "Renamed away from omp's reflect tool; reads history://, lenses are one judge-gated Fan-out block (#51)."
+    artifacts: [plugin/skills/session-lessons]
+    reason: "Renamed; reads only PI_SESSION_FILE and referenced children, gates three lenses, and routes approved own-skill edits by home (#88)."
   - id: pstack/setup-pstack
     upstream: pstack
     kind: skill
