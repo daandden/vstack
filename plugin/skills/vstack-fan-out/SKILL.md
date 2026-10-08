@@ -22,7 +22,7 @@ Before you act, say the result in one line: `Gate <step>: fan-out` or `Gate <ste
 
 ## The judge cell
 
-Fill `request`, `skill`, `step`, and `parts`. Take one part per unit the gate line names, each with the size the gate line says to count (files, lines, diff lines, sources, PRs, hypotheses). Count sizes; never guess them. Run it as one eval cell and change nothing else.
+Fill `request`, `skill`, `step`, and `parts`. `parts` has one entry per unit the gate line names after `parts: one per`, and nothing else: a gate over designs has one entry per design, never one per file. Each `label` names its part. Each `size` is the measure the gate line names after `size:`, counted and written as numbers with units (`6 files, 7745 lines`); never guess it. Run the cell as it is and change nothing else.
 
 ```python
 state = {

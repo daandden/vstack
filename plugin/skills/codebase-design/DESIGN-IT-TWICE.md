@@ -37,7 +37,7 @@ Each design gives:
 4. Dependency strategy and adapters (see [DEEPENING.md](DEEPENING.md))
 5. Trade-offs — where leverage is high, where it's thin
 
-Fan-out gate (skill://vstack-fan-out): parts: one per design constraint (3–4); size: files and lines the technical brief names.
+Fan-out gate (skill://vstack-fan-out): parts: one per design (3–4, each with its design constraint); size: files and lines the technical brief names.
 - fan-out → one `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: the technical brief, its design constraint, the five outputs above, the user's override words, the vstack root.
 - inline → do every part yourself, in order, from the same brief.
 
