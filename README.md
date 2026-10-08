@@ -248,6 +248,12 @@ The classes:
 
 A row owns the files under its path except those under a longer path that is another row or another Upstream item, so a changed Playbook file counts for its Playbook row and not for `poteto-mode`. `agents/openai.yaml` never counts, because vstack never ships it.
 
+### Existing-code explanations
+
+`/skill:how`, `/skill:why`, and `/skill:explain` are hidden adapt skills. Callers read them through `skill://`. how traces mechanisms and writes its cited page under Scratch `how/`. why profiles git, the remote code host, the configured tracker, and reachable MCP tools before investigation. Its synthesizer always gets a fresh context. Both return their output unedited to callers.
+
+explain combines how and why through a Fan-out block. It keeps one conversation page under Scratch `explain/`, with a series of exported, inlined SVG figures from diagram-design. Templates live in each page-producing skill's `templates/` directory, where `check-register` runs the pinned CSS lint. Matt's teach stays a separate skill. The pstack `teach` reference row applies only to pstack items.
+
 ### Tests
 
 `bun run test` runs `tests/` only (`bunfig.toml`) with a 30 s test timeout, because the suites start real `git`, `omp`, and `bun` processes. Bun applies a `setDefaultTimeout` from a preload to one test file only, so the timeout is the `--timeout` flag in the `test` script. The check-register tests build fixture Upstream git repos with tags, a moved item, and a removed item, then a vstack checkout committed as the version base. They run the script as a process and assert its exit code and its failures by class and item. One case serves a local stand-in for the GitHub API, so the `github` source is tested too.
