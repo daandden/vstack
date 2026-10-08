@@ -77,4 +77,4 @@ After publishing fixes, watch required checks, then read merge state, review dec
 
 Return mode, frontier URL and branch, head SHA, merge state, required checks, unresolved threads, review decision, fixed versus dismissed findings with reasons and proof, retries used, pending upstack work, and what needs the human. In check mode, this is the single status snapshot; in threads-only, report thread outcomes without claiming the PR is merge-ready unless all four facts were read.
 
-When called in a chain, append meaningful decisions to the already-open decision-trail log through the path passed by the caller. Never start a log here. Do not create a bot rubric or a dismissal-pattern PR.
+When called in a chain, read skill://decision-trail and append meaningful decisions to the already-open log with its `scripts/log.sh` helper and the absolute path passed by the caller. Background workers use that same real path, not a clone copy; this grants no writes to adjacent files. Never start a log here. Do not create a bot rubric or a dismissal-pattern PR.
