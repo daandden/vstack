@@ -117,13 +117,9 @@ export function selectRows(rows: readonly Replacement[], f: RowFilter): Replacem
 const str = (v: unknown) => typeof v === "string" && v !== "";
 const strList = (v: unknown) => Array.isArray(v) && v.every(str);
 
-/**
- * Validates a parsed house-style.yaml. `upstreams` are the pins.yaml keys a row's `upstream` may name
- * besides `any`. Throws HouseStyleError when `replacements:` or `rules:` is not a list.
- */
-export function parseHouseStyle(doc: any, upstreams: ReadonlySet<string>): { houseStyle: HouseStyle; problems: HouseStyleProblem[] } {
+/** Validates replacement rows, including the shipped Migration copy. */
+export function parseReplacements(doc: any, upstreams: ReadonlySet<string>): { replacements: Replacement[]; problems: HouseStyleProblem[] } {
   if (!Array.isArray(doc?.replacements)) throw new HouseStyleError("missing replacements: list");
-  if (!Array.isArray(doc?.rules)) throw new HouseStyleError("missing rules: list");
   const problems: HouseStyleProblem[] = [];
   const replacements: Replacement[] = [];
   const ids = new Set<string>();
@@ -157,6 +153,13 @@ export function parseHouseStyle(doc: any, upstreams: ReadonlySet<string>): { hou
     replacements.push(row);
   });
 
+  return { replacements, problems };
+}
+
+/** Validates both lists of the root House style. */
+export function parseHouseStyle(doc: any, upstreams: ReadonlySet<string>): { houseStyle: HouseStyle; problems: HouseStyleProblem[] } {
+  const { replacements, problems } = parseReplacements(doc, upstreams);
+  if (!Array.isArray(doc?.rules)) throw new HouseStyleError("missing rules: list");
   const rules: Rule[] = [];
   const ruleIds = new Set<string>();
   doc.rules.forEach((r: any, i: number) => {

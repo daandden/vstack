@@ -1,6 +1,6 @@
 {
   "name": "vstack",
-  "version": "0.1.9",
+  "version": "0.1.12",
   "description": "Matt Pocock's skills plus pstack enhancements as one linked omp plugin.",
   "private": true,
   "type": "module",
