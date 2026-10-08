@@ -33,6 +33,8 @@ export interface Pin extends UpstreamRef {
   /** The part of the repo vstack takes from, no slashes at either end; "" is the whole repo. */
   path: string;
   items: ItemPattern[];
+  /** `page_lint:` path of a script in this Upstream that lints vstack page templates at the Pin (the CSS upstream's `check-css.mjs`). */
+  pageLint?: string;
 }
 
 export type UpstreamItem = TreeEntry & { kind: ItemPattern["kind"] };
@@ -108,8 +110,11 @@ export function parsePins(doc: any, file: string): Map<string, Pin> {
       }
       return { match: it.match, type: it.type, kind: it.kind, regex: globRegex(it.match) };
     });
+    if (v.page_lint !== undefined && typeof v.page_lint !== "string") {
+      throw new ConfigError(`${file}: upstream ${key} page_lint must be a path in that Upstream`);
+    }
     const path = String(v.path ?? "").replace(/^\/+|\/+$/g, "");
-    pins.set(key, { key, repo: v.repo, pin: String(v.pin), pin_kind: v.pin_kind, path, items });
+    pins.set(key, { key, repo: v.repo, pin: String(v.pin), pin_kind: v.pin_kind, path, items, ...(v.page_lint ? { pageLint: v.page_lint } : {}) });
   }
   return pins;
 }

@@ -21,7 +21,7 @@ The repo scripts need Bun. Run `bun test` and `bun scripts/check-register.ts` be
 
 | Path | Ships | What it holds |
 |---|---|---|
-| `plugin/` | yes | The omp plugin. `package.json` (`name: vstack`, the version, the `omp` field), `skills/<name>/` (flat, one level deep), `agents/`, `rules/`, and `extensions/vstack.ts`, the one extension, listed in the `omp` field. A skill's Bun scripts ship in its `scripts/` dir. The agent runs them with the bash tool as `bun "$(realpath skill://<name>/scripts/<script>.ts)"`: external programs never see `skill://` paths, and omp's in-process `realpath` turns the URL into the file path. |
+| `plugin/` | yes | The omp plugin. `package.json` (`name: vstack`, the version, the `omp` field), `skills/<name>/` (flat, one level deep; a skill's page templates sit in its `templates/`), `agents/`, `rules/`, and `extensions/vstack.ts`, the one extension, listed in the `omp` field. A skill's Bun scripts ship in its `scripts/` dir. The agent runs them with the bash tool as `bun "$(realpath skill://<name>/scripts/<script>.ts)"`: external programs never see `skill://` paths, and omp's in-process `realpath` turns the URL into the file path. |
 | `pins.yaml` | no | One entry per Upstream: repo, Pin, how the next Pin is found, and which tree entries count as Upstream items. |
 | `decision-register.yaml` | no | One row per Upstream item, plus `originals:` for vstack-only artifacts. |
 | `house-style.yaml` | no | The House style: replacement rows and rules that turn Upstream text into vstack text. |
@@ -45,6 +45,8 @@ git -C ~/.cache/vstack/upstreams/matt fetch --tags origin   # when a Pin is miss
 `pin_kind` says how the Update finds the next Pin. `tag` (Base, Prose): the highest `v<major>.<minor>.<patch>` tag; pre-release tags such as `v1.3.0-beta.1` and other tags such as `mattpocock-skills@1.0.0` never count. `commit` (Enhancement, Diagram, CSS): the newest commit on the default branch that touches the entry's `path`. `pin` is the tag name or the full commit SHA.
 
 Each entry's `items:` list says which tree entries at the Pin are Upstream items. `match` is a path glob from the repo root where `*` stays inside one path segment, `type` is `tree` or `blob`, and the first matching pattern sets the `kind`. For example, pstack's automations are one item each, so their nested skills get no rows.
+
+One entry, the CSS upstream, also has `page_lint: scripts/check-css.mjs`: the script `check-register` runs at that Pin over vstack's page templates (see "Page templates" below).
 
 ### Decision register
 
@@ -78,7 +80,7 @@ It proves that the register, `pins.yaml`, `plugin/`, and the Upstreams agree. Op
 | `--json` | | text output |
 | `--list-classes` | | prints every failure class and exits |
 
-The `github` source reads the same trees through the GitHub REST API (`commits/<ref>`, then `git/trees/<sha>?recursive=1`). It uses `GITHUB_TOKEN` (or `GH_TOKEN`) when set and `GITHUB_API_URL` as the API base. Both sources live in `scripts/lib/upstreams.ts`, which `update-plan` reuses. Byte identity is checked by comparing git blob SHAs, so neither source downloads file contents.
+The `github` source reads the same trees through the GitHub REST API (`commits/<ref>`, then `git/trees/<sha>?recursive=1`). It uses `GITHUB_TOKEN` (or `GH_TOKEN`) when set and `GITHUB_API_URL` as the API base. Both sources live in `scripts/lib/upstreams.ts`, which `update-plan` reuses. Byte identity is checked by comparing git blob SHAs, so neither source downloads file contents for it. The one file a source reads is the CSS upstream's `page_lint` script, and only when a page template exists: the `clones` source with `git cat-file` (a blobless clone fetches that one blob on first read), the `github` source through `contents/<path>?ref=<pin>`.
 
 Exit codes: 0 pass, 1 register failures, 2 the check could not run (bad arguments, unreadable `pins.yaml` or register, a missing clone or ref, an API error). Exit 2 prints the remedy, such as the clone or fetch command.
 
@@ -106,6 +108,7 @@ Text output prints one line per failure, `FAIL <class> <item>: <message>`, after
 | `worktree-cmd` | adapt, merge, or original text runs `git worktree add` |
 | `tmp-path` | adapt, merge, or original text names `$TMPDIR/`, `/tmp/`, or the OS temp directory, outside a `mktemp` line |
 | `ask-tool` | any markdown artifact, adopt included, has a sentence with an `ask-tool` phrase that does not name `` `ask` `` |
+| `page-css` | a page template breaks the CSS upstream's `check-css.mjs` at its Pin; the item is the template and the message holds the script's `path:line` lines |
 
 Rows with an `invalid-row` or `invalid-disposition` failure are skipped by the checks that read their fields, so one bad row reports once. House style rows and rules with an `invalid-house-style` failure are skipped the same way.
 
@@ -127,12 +130,16 @@ Each check is a module in `scripts/lib/checks/` that exports a `Check`: the list
 
 A lint over shipped text starts from `lintTargets(ctx)` in `scripts/lib/checks/scope.ts`: every registered artifact with its Disposition (adopt, adapt, merge, or original), its Upstreams, and its text files. Whether a lint covers a Disposition comes from the `scope` of its row or rule in `house-style.yaml`, through `inScope` in `scripts/lib/house-style.ts`; do not test Dispositions anywhere else.
 
+#### Page templates
+
+Every page vstack writes for the user (the Grilling HTML, explain's pages, the how and teach pages, the Update report, the architecture-review report) starts from a page template, and every template follows good-css (#61). A page template is any `*.html` or `*.css` file under `plugin/skills/<name>/templates/`, in the skill that writes the page. `scripts/lib/checks/pages.ts` finds them, reads the Upstream script named by `page_lint:` in `pins.yaml` at that Upstream's Pin, writes it to a temp dir, and runs it with Bun over every template. Each template it flags is one `page-css` failure. With no template the check prints `page templates: none` and reads nothing. Templates never hold a figure: a skill draws its figure through diagram-design, exports it, and inlines the `<svg>` in the page it builds from the template, so the figure's own `<style>` never reaches the lint. diagram-design's own pages under its `assets/` are not templates.
+
 ### House style
 
 `house-style.yaml` (ADR 0008) has two lists. Its header comment documents every field.
 
 - `replacements:` are blind substitutions, applied in list order. `match` is `literal` (an exact substring), `name` (no `[\w-]` character on either side, so the `glossary` row rewrites `CONTEXT.md` and leaves `CONTEXT-FORMAT.md` alone), or `ref` (only `/x`, `` `x` ``, `**x**`, and `skill://x`). `upstream` picks the artifacts a row applies to. `scope: required` binds every artifact, adopt included; `scope: adapted` binds adapt, merge, and original text. `uses` says whether the Update (`update`), setup-vstack's Migration (`migration`), or both apply the row. A row that an earlier row rewrites fails `invalid-house-style`, so put the longer phrase first.
-- `rules:` are what the agent applies by hand: the fixed spawn and Fan-out wording, skill references, worktrees, Scratch paths, eval for Python, and asking through `ask`. Each has `text`, a `scope`, and a `lint` line that says what `check-register` enforces. `allowlist` names the skills where a rule's form is allowed, and `check-register` skips that rule's lint in them: it limits `fixed-fan-out` to compare-attempts and `headless-run` to skill-creator, and lets writing-for-agents describe a subagent dispatch under `spawn-vocab`. `ask-tool` holds `phrases`, the list its lint matches as whole words in any case. Add a phrase when an asking sentence slipped past the list, and run `bun scripts/check-register.ts` to see which adopt items it would flip.
+- `rules:` are what the agent applies by hand: the fixed spawn and Fan-out wording, skill references, worktrees, Scratch paths, eval for Python, and asking through `ask`. Each has `text`, a `scope`, and a `lint` line that says what `check-register` enforces. `allowlist` names the skills where a rule's form is allowed, and `check-register` skips that rule's lint in them: it limits `fixed-fan-out` to compare-attempts and `headless-run` to skill-creator, and lets writing-for-agents describe a subagent dispatch and diagram-design's figure examples say "dispatch" under `spawn-vocab`. `ask-tool` holds `phrases`, the list its lint matches as whole words in any case. Add a phrase when an asking sentence slipped past the list, and run `bun scripts/check-register.ts` to see which adopt items it would flip.
 
 `scripts/lib/house-style.ts` is the one module that reads both lists and applies rows. It has no file access: `parseHouseStyle(doc, upstreamKeys)` validates a parsed file, `selectRows(rows, { use, upstreams, disposition, shippedNames })` picks the rows for one text, `applyRows(text, rows)` rewrites it, and `findRow(text, row)` finds leftovers. `loadHouseStyle(root, upstreamKeys)` in `scripts/lib/vstack-repo.ts` reads the file from a checkout.
 

@@ -4,10 +4,12 @@
 // - clones: the cached clones under `~/.cache/vstack/upstreams/<key>` (or `VSTACK_UPSTREAMS`), read with
 //   `git ls-tree`. Blobless clones are enough: only trees and blob SHAs are read, never blob contents.
 // - github: the GitHub REST API (`commits/<ref>`, then `git/trees/<sha>?recursive=1`), used in CI.
-// Both return git object SHAs, so byte identity is checked by comparing blob SHAs.
+// Both return git object SHAs, so byte identity is checked by comparing blob SHAs. `file()` reads one blob's
+// contents, for the one check that runs an Upstream script (the CSS upstream's page lint); a blobless clone
+// fetches that blob from its remote on first read.
 //
 // The clone helpers below (syncClone, newestTag, newestCommit, resolveRef, readBlobs, renamePairs) are for
-// update-plan, the one script that fetches. Neither source fetches, and nothing here moves a clone's HEAD.
+// update-plan, the one script that clones and fetches branches and tags. Nothing here moves a clone's HEAD.
 
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -62,6 +64,8 @@ export interface UpstreamSource {
   readonly name: "clones" | "github";
   /** Full recursive listing (trees and blobs) of the Upstream repo at `ref` (tag, branch, or SHA). */
   tree(upstream: UpstreamRef, ref: string): Promise<UpstreamTree>;
+  /** Contents of the file at `path` in the Upstream repo at `ref`. */
+  file(upstream: UpstreamRef, ref: string, path: string): Promise<Uint8Array>;
 }
 
 export function defaultUpstreamsDir(): string {
@@ -90,7 +94,7 @@ function memoize(fetch: (u: UpstreamRef, ref: string) => Promise<UpstreamTree>) 
   };
 }
 
-/** Lists trees from cached clones under `dir/<key>`. Never fetches, checks out, or moves HEAD. */
+/** Lists trees from cached clones under `dir/<key>`. Never checks out or moves HEAD; only `file()` may fetch a missing blob. */
 export function cloneSource(dir: string): UpstreamSource {
   const git = (cwd: string, args: string[]) => {
     const r = Bun.spawnSync(["git", "-C", cwd, ...args], { stdout: "pipe", stderr: "pipe" });
@@ -121,6 +125,17 @@ export function cloneSource(dir: string): UpstreamSource {
       }
       return new UpstreamTree(commit, entries);
     }),
+    async file(u, ref, path) {
+      const clone = join(dir, u.key);
+      if (!existsSync(clone)) {
+        throw new UpstreamError(`no clone of ${u.key} at ${clone}; run: git clone --filter=blob:none https://github.com/${u.repo}.git ${clone}`);
+      }
+      const r = Bun.spawnSync(["git", "-C", clone, "cat-file", "blob", `${ref}:${trimSlashes(path)}`], { stdout: "pipe", stderr: "pipe" });
+      if (r.exitCode !== 0) {
+        throw new UpstreamError(`cannot read ${u.key}@${ref}:${path} from ${clone}: ${r.stderr.toString().trim()}`);
+      }
+      return new Uint8Array(r.stdout);
+    },
   };
 }
 
@@ -128,9 +143,9 @@ export function cloneSource(dir: string): UpstreamSource {
 export function githubSource(opts: { apiUrl?: string; token?: string } = {}): UpstreamSource {
   const api = (opts.apiUrl ?? process.env.GITHUB_API_URL ?? "https://api.github.com").replace(/\/+$/, "");
   const token = opts.token ?? process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN;
-  const get = async (path: string): Promise<any> => {
+  const request = async (path: string, accept: string): Promise<Response> => {
     const headers: Record<string, string> = {
-      Accept: "application/vnd.github+json",
+      Accept: accept,
       "X-GitHub-Api-Version": "2022-11-28",
       "User-Agent": "vstack-check-register",
     };
@@ -142,8 +157,9 @@ export function githubSource(opts: { apiUrl?: string; token?: string } = {}): Up
       throw new UpstreamError(`GitHub API request ${path} failed: ${(e as Error).message}`);
     }
     if (!res.ok) throw new UpstreamError(`GitHub API ${path} answered ${res.status}: ${(await res.text()).slice(0, 200)}`);
-    return res.json();
+    return res;
   };
+  const get = async (path: string): Promise<any> => (await request(path, "application/vnd.github+json")).json();
   return {
     name: "github",
     tree: memoize(async (u, ref) => {
@@ -153,6 +169,11 @@ export function githubSource(opts: { apiUrl?: string; token?: string } = {}): Up
       const entries: TreeEntry[] = t.tree.map((e: any) => ({ path: e.path, type: e.type, mode: e.mode, sha: e.sha }));
       return new UpstreamTree(c.sha, entries);
     }),
+    async file(u, ref, path) {
+      const encoded = trimSlashes(path).split("/").map(encodeURIComponent).join("/");
+      const res = await request(`/repos/${u.repo}/contents/${encoded}?ref=${encodeURIComponent(ref)}`, "application/vnd.github.raw+json");
+      return new Uint8Array(await res.arrayBuffer());
+    },
   };
 }
 

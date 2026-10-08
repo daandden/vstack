@@ -1,5 +1,5 @@
-// A local stand-in for the two GitHub REST endpoints the github Upstream source calls, answered from the
-// fixture Upstream repos: `<dir>/<name>` serves `fixture/<name>`.
+// A local stand-in for the three GitHub REST endpoints the github Upstream source calls (commits, trees, raw
+// contents), answered from the fixture Upstream repos: `<dir>/<name>` serves `fixture/<name>`.
 
 import { join } from "node:path";
 import { git } from "./fixture.ts";
@@ -31,6 +31,14 @@ export function fakeGitHub(dir: string) {
             return { path, mode, type, sha };
           });
         return Response.json({ sha: m[2], tree, truncated: false });
+      }
+      m = url.pathname.match(/^\/repos\/fixture\/([^/]+)\/contents\/(.+)$/);
+      if (m && req.headers.get("accept") === "application/vnd.github.raw+json") {
+        try {
+          return new Response(git(join(dir, m[1]), "show", `${url.searchParams.get("ref")}:${decodeURIComponent(m[2])}`));
+        } catch {
+          return Response.json({ message: "Not Found" }, { status: 404 });
+        }
       }
       return Response.json({ message: "Not Found" }, { status: 404 });
     },
