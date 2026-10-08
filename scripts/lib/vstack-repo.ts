@@ -24,6 +24,8 @@ export interface ItemPattern {
 export interface Pin extends UpstreamRef {
   pin: string;
   items: ItemPattern[];
+  /** `page_lint:` path of a script in this Upstream that lints vstack page templates at the Pin (the CSS upstream's `check-css.mjs`). */
+  pageLint?: string;
 }
 
 export interface Row {
@@ -79,7 +81,10 @@ export function loadPins(root: string): Map<string, Pin> {
       }
       return { match: it.match, type: it.type, kind: it.kind, regex: globRegex(it.match) };
     });
-    pins.set(key, { key, repo: v.repo, pin: String(v.pin), items });
+    if (v.page_lint !== undefined && typeof v.page_lint !== "string") {
+      throw new ConfigError(`${file}: upstream ${key} page_lint must be a path in that Upstream`);
+    }
+    pins.set(key, { key, repo: v.repo, pin: String(v.pin), items, ...(v.page_lint ? { pageLint: v.page_lint } : {}) });
   }
   return pins;
 }
