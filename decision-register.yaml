@@ -874,7 +874,7 @@ items:
     path: skills/diagram-design
     tree: dc9745b0be384e9a9ff9b9dac08d8d609f7c2154
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/diagram-design]
     reason: "ask-tool covers its questions; onboarding must not write the shipped copy (#60)."
   - id: css/good-css
     upstream: css
@@ -882,7 +882,7 @@ items:
     path: skills/good-css
     tree: e195f64b18fb88c83722eb6bf4ae2171b5d87434
     disposition: adapt
-    artifacts: []
+    artifacts: [plugin/skills/good-css]
     reason: "removes Emil Kowalski's hand-offs and credit; vstack ships none of his skills"
   - id: prose/simple-english
     upstream: prose
