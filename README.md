@@ -59,7 +59,7 @@ One entry, the CSS upstream, also has `page_lint: scripts/check-css.mjs`: the sc
 
 Every row has `id`, `upstream`, `kind` (skill, principle, playbook, agent), `path` and `tree` (the item at the current Pin; `tree` is the git object SHA, a blob SHA for a single file), `disposition` (adopt, adapt, merge, reject), `artifacts` (paths under `plugin/`), and a one-line `reason`. `adr` is optional. A held row also has `held_at` (the Upstream ref its artifact is reconciled with) and `held_path` (the item's path at that ref); the two are set and cleared together, and `path` may be absent only on a held row whose item Upstream removed.
 
-An artifact is one unit under `plugin/`: a skill directory (`plugin/skills/<name>`), an agent or rule file, or any other child of a top-level plugin directory. Several rows may name one artifact (merge rows, and the two forensics Playbooks). Artifacts that come from no Upstream item go under `originals:`. A row whose artifact lands in a later change lists `artifacts: []` until then.
+An artifact is one unit under `plugin/`: a skill directory (`plugin/skills/<name>`), an agent or rule file, or any other child of a top-level plugin directory. Several rows can name one artifact (merge rows, and the two forensics Playbooks). Artifacts that come from no Upstream item go under `originals:`. Every non-reject row must name at least one artifact. Only reject rows have `artifacts: []`.
 
 An adopt artifact is the Upstream item copied byte for byte, minus `agents/openai.yaml`, under the Upstream name. To copy one from its Pin:
 
@@ -98,6 +98,7 @@ Text output prints one line per failure, `FAIL <class> <item>: <message>`, after
 | `invalid-row` | a row lacks a field or has a bad one: duplicate or missing `id`, `upstream` not in `pins.yaml`, unknown `kind`, no `reason`, an artifact outside `plugin/`, `tree` not a full SHA, `held_at` without `held_path` or the reverse |
 | `invalid-disposition` | `disposition` is not adopt, adapt, merge, or reject |
 | `reject-with-artifacts` | a reject row lists artifacts |
+| `non-reject-without-artifacts` | an adopt, adapt, or merge row names no artifacts |
 | `absent-path` | a row that is not held has no `path` |
 | `missing-artifact` | a row or `originals:` names a path that does not exist |
 | `unregistered-artifact` | a plugin artifact that no row names and `originals:` does not list |
@@ -111,7 +112,7 @@ Text output prints one line per failure, `FAIL <class> <item>: <message>`, after
 | `invalid-house-style` | a row or rule in `house-style.yaml` lacks a field or has a bad one, a row comes after a row that rewrites its `from`, or a linted rule is missing; the item is `house-style.yaml:<id>` |
 | `house-style-leftover` | a row's `from` still matches text the row covers (see "House style" below; adopt text only against `required` rows) |
 | `migration-house-style` | setup-vstack is present but its `references/house-style.yaml` copy is missing, has invalid row fields, or differs from the root `uses: migration` rows in content or order |
-| `skill-ref` | adapt, merge, or original markdown holds a bare `/<name>` token for a vstack skill |
+| `skill-ref` | adapt, merge, or original markdown holds a bare `/<name>` token for a vstack skill, except a command explicitly labeled omp built-in |
 | `spawn-vocab` | adapt, merge, or original markdown outside frontmatter and code fences holds `subagent_type`, `generalPurpose`, or `` `Task` ``, or says spawn or spin up outside inline code and outside a fixed subagent line; dispatch fails only in a sentence naming an agent or role, not for reducer or request dispatch |
 | `fan-out-block` | adapt, merge, or original markdown holds an incomplete Fan-out block: a gate line that does not cite `skill://vstack-fan-out` with `parts:` and `size:`, a missing or extra fan-out or inline line, a batch that is neither one `task` call with `tasks[]` nor one isolated eval `agent()` cell, a batch naming an agent the plugin does not ship or leaving out the user's override words or the vstack root, or a fan-out or inline line with no gate |
 | `single-spawn` | adapt, merge, or original markdown holds a spawn site that names no vstack agent: a `Spawn one` line off the form in `plugin/skills/vstack-fan-out/FORMS.md`, a line naming another agent through `agent: "…"` or `agent="…"`, or a `task` call or eval `agent()` call that names no agent |

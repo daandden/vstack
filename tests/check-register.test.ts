@@ -30,6 +30,7 @@ const failuresOf = (r: Run) => r.json!.failures.map((f) => `${f.class} ${f.item}
 const row = (spec: RepoSpec, id: string) => spec.register.items.find((r) => r.id === id)!;
 /** Ships the alpha style item `name` as its adopt artifact, byte-identical to the Pin. */
 function adoptStyle(spec: RepoSpec, name: string) {
+  row(spec, `alpha/${name}`).disposition = "adopt";
   row(spec, `alpha/${name}`).artifacts = [`plugin/skills/${name}`];
   Object.assign(spec.files, artifactFrom(ALPHA_V2, `skills/style/${name}`, `plugin/skills/${name}`));
 }
@@ -82,9 +83,20 @@ test("setup-vstack's exact Migration copy passes, including the deliberate old p
   });
   expect(r.code).toBe(0); expect(r.json!.failures).toEqual([]);
 });
+test("skill-ref permits an explicitly named omp built-in without hiding a bare skill reference", async () => {
+  const builtin = "omp built-in `/keep`";
+  expect((await runSpec(addTo(GONE, builtin))).json!.failures).toEqual([]);
+  expect(failuresOf(await runSpec(addTo(GONE, `${builtin}, then /keep`)))).toEqual(["skill-ref alpha/gone"]);
+});
 
 // One fixture per failure class. Each case lists the exact failures expected as "<class> <item>".
 const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expected: string[] }[] = [
+  {
+    cls: "non-reject-without-artifacts",
+    name: "a non-reject row with no artifacts",
+    mutate: (s) => (row(s, "beta/adapted").artifacts = []),
+    expected: ["non-reject-without-artifacts beta/adapted"],
+  },
   {
     cls: "migration-house-style",
     name: "setup-vstack's copy differs from the root migration rows",
@@ -157,7 +169,7 @@ const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expecte
     cls: "missing-artifact",
     name: "a missing shared artifact names every row that lists it",
     mutate: (s) => delete s.files["plugin/skills/shared/SKILL.md"],
-    expected: ["missing-artifact alpha/shared-a", "missing-artifact beta/playbook-runbook"],
+    expected: ["missing-artifact alpha/shared-a", "missing-artifact beta/adapted", "missing-artifact beta/playbook-runbook"],
   },
   {
     cls: "reject-with-artifacts",

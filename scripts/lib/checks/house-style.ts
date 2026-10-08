@@ -211,7 +211,7 @@ const LINTS: Record<string, Lint> = {
       const names = vstackSkillNames(ctx);
       if (names.length === 0) return [];
       const bare = new RegExp(`(?<![\\w.:/~-])/(?:${names.map(escape).join("|")})(?![\\w/-])`);
-      return eachLine(t.files, true, (line) => bare.test(line));
+      return eachLine(t.files, true, (line) => bare.test(line.replace(/\bomp(?:['’]s)?\s+(?:built-in|builtin)\s+`\/[a-z][\w-]*`/gi, "")));
     },
   },
   "spawn-vocab": {

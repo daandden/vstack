@@ -206,7 +206,7 @@ export function passingSpec(up: Upstreams): RepoSpec {
   const a = (ref: string, p: string) => up.sha("alpha", ref, p);
   const style = (name: string, artifacts: string[]) => {
     const path = `skills/style/${name}`;
-    return { id: `alpha/${name}`, upstream: "alpha", kind: "skill", path, tree: a("v2", path), disposition: "adopt", artifacts, reason: "House style scope." };
+    return { id: `alpha/${name}`, upstream: "alpha", kind: "skill", path, tree: a("v2", path), disposition: artifacts.length ? "adopt" : "reject", artifacts, reason: "House style scope." };
   };
   return {
     pins: {
@@ -233,13 +233,13 @@ export function passingSpec(up: Upstreams): RepoSpec {
         { id: "alpha/gone", upstream: "alpha", kind: "skill", disposition: "adapt", artifacts: ["plugin/skills/gone"], reason: "Removed upstream, held at v1.", held_at: "v1", held_path: "skills/eng/gone" },
         { id: "alpha/shared-a", upstream: "alpha", kind: "skill", path: "skills/eng/shared-a", tree: a("v2", "skills/eng/shared-a"), disposition: "merge", artifacts: ["plugin/skills/shared"], reason: "Merged with the runbook." },
         { id: "alpha/rej", upstream: "alpha", kind: "skill", path: "skills/misc/rej", tree: a("v2", "skills/misc/rej"), disposition: "reject", artifacts: [], reason: "Not wanted." },
-        { id: "beta/adapted", upstream: "beta", kind: "skill", path: "pack/skills/adapted", tree: up.sha("beta", "HEAD", "pack/skills/adapted"), disposition: "adapt", artifacts: [], reason: "Lands in a later ticket." },
+        { id: "beta/adapted", upstream: "beta", kind: "skill", path: "pack/skills/adapted", tree: up.sha("beta", "HEAD", "pack/skills/adapted"), disposition: "adapt", artifacts: ["plugin/skills/shared"], reason: "Contributes to shared." },
         { id: "beta/playbook-runbook", upstream: "beta", kind: "playbook", path: "pack/playbooks/runbook.md", tree: up.sha("beta", "HEAD", "pack/playbooks/runbook.md"), disposition: "merge", artifacts: ["plugin/skills/shared"], reason: "Merged into shared." },
         style("asks-tool", ["plugin/skills/asks-tool"]),
         style("scratch", ["plugin/skills/scratch"]),
         style("phrasing", ["plugin/skills/phrasing"]),
         style("spawner", ["plugin/skills/spawner"]),
-        // Adopt rows whose artifacts the scope fixtures add.
+        // Rejected until the scope fixtures adopt their artifacts.
         style("asks", []),
         style("renamed", []),
       ],
