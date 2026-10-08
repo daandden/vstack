@@ -35,6 +35,13 @@ Only `plugin/` ships. Upstreams are fetched when needed, never stored in this re
 
 ### Pins and Upstream clones
 
+### Principle selection
+
+`principle-questions.json` and `sample-prompts.json` at the repo root are the settled #70 question set and 72-prompt calibration corpus. The extension imports the root questions from the linked clone; the Update re-run reads these same files, never a second question copy. POST directly to TypeSafe `/v1/systemone` with `state: { request: preprocessTinyMessage(prompt) }`; the cleaner lives in `plugin/extensions/prompt-cleaner.ts`. The corpus stores expected and allowed picks, baseline probabilities, and the Update drift thresholds.
+
+The extension selects every score at least 0.75 in main sessions with native TypeSafe jev and credentials. Each pointer appears once per session, including resume on the active branch. It returns one hidden message, not system-prompt text. Child sessions receive no selection. A missing native judge or key, request error, or four-second deadline skips silently; one retry shares that deadline. `tests/principle-selection.test.ts` uses the #69 fake host and a stubbed fetch endpoint, including a fetch that ignores abort.
+
+
 `pins.yaml` keys (`matt`, `pstack`, `diagram`, `css`, `prose`) are also the register's `upstream` values and the names of the local clones under `~/.cache/vstack/upstreams/<key>`. Set `VSTACK_UPSTREAMS` (or pass `--upstreams`) to use another directory. Blobless clones are enough. `check-register` reads trees with `git ls-tree` and never fetches, checks out, or moves HEAD. `update-plan` makes a missing clone and fetches the others, and it never moves HEAD either. To make a clone by hand:
 
 ```sh

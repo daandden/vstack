@@ -2,7 +2,10 @@
 // It follows omp-tools' advisor-concern-wake harness: a partial ExtensionAPI that
 // captures handlers and tools, a partial ctx, and emit() to fire events.
 // Types are structural; the repo has no omp SDK dependency.
-import vstack from "../../plugin/extensions/vstack.ts";
+import { mock } from "bun:test";
+mock.module("@oh-my-pi/pi-coding-agent", () => ({ settings: {} }));
+mock.module("@oh-my-pi/pi-coding-agent/judgment", () => ({ hasNativeJudge: (_settings: unknown, registry: any) => registry.nativeJudge }));
+const { default: vstack } = await import("../../plugin/extensions/vstack.ts");
 
 /** ctx.agent as omp sets it: kind "main" for the top session, "sub" for subagents. */
 export interface FakeAgent {
@@ -21,6 +24,8 @@ export interface FakeModel {
 }
 
 export interface FakeHostOptions {
+  nativeJudge?: boolean;
+  entries?: unknown[];
   agent?: FakeAgent;
   /** Models ctx.modelRegistry.find can return, keyed "provider/id". */
   models?: FakeModel[];
@@ -103,12 +108,14 @@ export function fakeHost(options: FakeHostOptions = {}): FakeHost {
     agent: options.agent ?? { kind: "main", id: "Main", name: "main", depth: 0 },
     modelRegistry: {
       getAll: () => models,
+      nativeJudge: options.nativeJudge ?? true,
       find: (provider: string, id: string) => models.find((m) => m.provider === provider && m.id === id),
       getApiKey: async (model: FakeModel) => options.apiKeys?.[`${model.provider}/${model.id}`],
     },
     sessionManager: {
       getSessionId: () => options.sessionId ?? "session-1",
       getSessionName: () => session.name,
+      getBranch: () => options.entries ?? [],
     },
   };
   vstack(pi as any);
