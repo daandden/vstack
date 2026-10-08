@@ -217,7 +217,7 @@ const LINTS: Record<string, Lint> = {
     run: (t) =>
       proseLines(t.files, true)
         .filter(({ line }) => !/^\s*spawns:/.test(line))
-        .filter(({ line }) => SPAWN_TERMS.test(line) || (SPAWN_WORDS.test(line) && !SPAWN_LINES.some((m) => line.includes(m))))
+        .filter(({ line }) => SPAWN_TERMS.test(line) || (SPAWN_WORDS.test(line.replace(/`[^`]*`/g, "")) && !SPAWN_LINES.some((m) => line.includes(m))))
         .map(({ path, n, line }) => ({ path, line: n, excerpt: excerpt(line) })),
   },
   "fan-out-block": {

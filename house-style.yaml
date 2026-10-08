@@ -182,35 +182,23 @@ rules:
   - id: fan-out-block
     scope: adapted
     text: |
-      A step that would run two or more subagents at once uses this block (skill://vstack-fan-out holds the rubric and the judge cell; the skill fills only `parts`):
+      A step that would run two or more subagents at once uses a Fan-out block: a gate line that cites skill://vstack-fan-out (it holds the rubric and the judge cell; the step fills only `parts`, each with a countable size), one fan-out line, and one inline line. The exact forms are in plugin/skills/vstack-fan-out/FORMS.md, the single source every skill copies: the `task` batch; the isolated eval batch for roles that fan out in their own clones (hillclimb workers, wayfinder research runners, ship verifiers); and the inline line that stops when the skill forbids doing the work itself (today only ship).
 
-      Fan-out gate (skill://vstack-fan-out): parts: one per <unit>; size: <countable measure>.
-      - fan-out → one `task` call; `tasks[]` has one item per part, each with `agent: "vstack-<role>"`. Each `task`: <role brief>, the user's override words, the vstack root.
-      - inline → do every part yourself, in order, from the same brief.
-
-      Isolated roles that fan out (hillclimb workers, wayfinder research runners, ship verifiers) use this fan-out line instead:
-      - fan-out → one eval cell: per part, `agent(<prompt>, agent="vstack-<role>", isolated=True, apply=False, merge=False)`; `wait()` on all handles. Each prompt: <role brief>, the user's override words, the vstack root. <What the parent does with each `patchPath`.>
-
-      When the skill forbids doing the work itself (today only ship), the inline line is an isolated single spawn:
-      - inline → Spawn one `vstack-verifier` via eval `agent(<prompt>, agent="vstack-verifier", isolated=True, apply=False, merge=False)` that checks every part in order: <role brief>, the user's override words, the vstack root. If it cannot be spawned, stop: <reason>.
-
-      Every spawn prompt also carries the Scratch dir when the child writes Scratch.
-    lint: An incomplete Fan-out block fails, and so does a spawn site that names no vstack agent (adapt, merge, and original text).
+      Every subagent prompt also carries the Scratch dir when the child writes Scratch.
+    lint: >-
+      In markdown outside frontmatter and code fences, a `Fan-out gate (` line reads `Fan-out gate (skill://vstack-fan-out): parts: …; size: …` and the next two non-blank lines are one fan-out line and one inline line. The fan-out line is one `task` call with `tasks[]`, or one eval cell of `agent(…, isolated=True, apply=False, merge=False)` calls with `wait()`; it names only vstack agents (agents the plugin ships) and passes the user's override words and the vstack root. The inline line does every part itself, or is a `Spawn one` line that stops when it cannot spawn. A fan-out or inline line with no gate line above it fails too (adapt, merge, and original text).
   - id: fixed-fan-out
     scope: adapted
     allowlist: [compare-attempts]
     text: |
-      Only where invoking the skill is the user's request to fan out. No gate line, no judge, no inline line:
-
-      Fan-out (always: <reason>): one eval cell: per part, `agent(<prompt>, agent="vstack-<role>", isolated=True, apply=False, merge=False)`; `wait()` on all handles. Each prompt: <role brief>, the user's override words, the vstack root. <What the parent does with each `patchPath`.> If it cannot spawn or isolation is off, stop: <reason>.
-    lint: The form fails outside the allowlisted skills.
+      Only where invoking the skill is the user's request to fan out: the fixed Fan-out line in plugin/skills/vstack-fan-out/FORMS.md, with no gate line, no judge, and no inline line.
+    lint: A `Fan-out (always` line in markdown outside frontmatter and code fences fails outside the allowlisted skills (adapt, merge, and original text).
   - id: single-spawn
     scope: adapted
     text: |
-      Spawn one `vstack-<role>` via `task` (`agent: "vstack-<role>"`): <role brief>, the user's override words, the vstack root. <Wait for its result. | Do not wait; keep working.> If it cannot be spawned, <do the work yourself | stop: <reason>>.
-
-      An isolated role never uses the `task` form, in a batch, an inline line, or a single spawn. Its single spawn replaces `via task (...)` with via eval `agent(<prompt>, agent="vstack-<role>", isolated=True, apply=False, merge=False)`. If isolation is off, the skill stops and points at setup-vstack (ADR 0007).
-    lint: A spawn site that names no vstack agent fails (adapt, merge, and original text).
+      One subagent uses a single-spawn line from plugin/skills/vstack-fan-out/FORMS.md: the `task` form, or the isolated eval form for a role that runs in its own clone. An isolated role never uses the `task` form, in a batch, an inline line, or a single spawn. If isolation is off, the skill stops and points at setup-vstack (ADR 0007).
+    lint: >-
+      In markdown outside frontmatter and code fences, a `Spawn one` line names one vstack agent (an agent the plugin ships) in both places, uses the `task` form or the eval form with isolated=True, apply=False, merge=False, and passes the user's override words and the vstack root. Any other line that names an agent through `agent: "…"` or `agent="…"` names a vstack agent, and an eval `agent()` call or a `task` call that names no agent fails. The class `agent-spawns` follows this rule too, for agent files whose `spawns:` lists `*` or an agent the plugin does not ship (adapt, merge, and original text).
   - id: headless-run
     scope: adapted
     allowlist: [skill-creator]
@@ -220,7 +208,7 @@ rules:
       <isolation>: with-skill and baseline runs use `--no-rules --config <run dir>/isolate.yml` (memory off; the overlay includes only the skills the run cites plus any staged competitors, and the run uses `--no-skills` when that list is empty; never `--no-extensions`, which also removes plugin agents). The comparator uses `--no-skills --no-rules --no-extensions` with memory off. Trigger runs add the origin project's skill directories to the overlay, the candidate description's directory first, with `*/<name>` ignored.
 
       A Headless run is a separate omp process, not a subagent, so it is not a spawn site.
-    lint: The form fails outside the allowlisted skills.
+    lint: A `Headless batch (` line or an `omp -p` command in markdown outside frontmatter and code fences fails outside the allowlisted skills (adapt, merge, and original text).
   - id: skill-ref
     scope: adapted
     text: |
@@ -228,11 +216,10 @@ rules:
     lint: A bare `/<vstack skill name>` token in markdown fails (adapt, merge, and original text). vstack skill names are the shipped skill directories plus the Upstream names of every skill and principle row that is not reject.
   - id: spawn-vocab
     scope: adapted
-    # diagram-design never spawns: its "dispatch" is request routing inside figure examples.
-    allowlist: [writing-for-agents, diagram-design]
+    allowlist: [writing-for-agents]
     text: |
       Spawn wording appears only in a single-spawn line (`Spawn one …`) or a Fan-out block (`Fan-out gate (…`). Cursor's spawn terms (`subagent_type`, `generalPurpose`, `Task` in backticks) never appear.
-    lint: In markdown, `subagent_type`, `generalPurpose`, or `Task` in backticks fails anywhere, and spawn, dispatch, or spin up fails on a line that holds no `Spawn one `, `Fan-out gate (`, `Fan-out (always`, or `Headless batch (` (adapt, merge, and original text). A `spawns:` frontmatter key is not wording. Allowlisted skills only describe spawning and are not linted.
+    lint: In markdown outside code fences, `subagent_type`, `generalPurpose`, or `Task` in backticks fails, and spawn, dispatch, or spin up outside inline code fails on a line that holds no `Spawn one `, `Fan-out gate (`, `Fan-out (always`, or `Headless batch (` (adapt, merge, and original text). A `spawns:` frontmatter key and words inside inline code are names, not wording, and a code fence quotes text instead of instructing. Allowlisted skills only describe spawning and are not linted.
   - id: worktree-cmd
     scope: adapted
     text: |

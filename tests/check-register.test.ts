@@ -472,6 +472,13 @@ describe("spawn lints", () => {
     expect(failuresOf(star)).toEqual(["agent-spawns plugin/agents/fx-agent.md"]);
   });
 
+  test("spawn-vocab reads wording, not names in inline code or fenced examples", async () => {
+    const r = await runSpec(addTo(GONE, "An agent lists its subagents under `spawns:`, and the `single-spawn` rule reads each `Spawn one` line.", "```", "spawn a helper", "```"));
+    expect(r.json!.failures).toEqual([]);
+    const off = await runSpec(addTo(GONE, "Then spawn a helper per file."));
+    expect(failuresOf(off)).toEqual(["spawn-vocab alpha/gone"]);
+  });
+
   test("spawn lints skip frontmatter and code fences, where forms are quoted, not run", async () => {
     const r = await runSpec(addTo(GONE, "```", FORM.taskBatch, FORM.fixed, FORM.headless, 'agent("x", agent="task")', "```"));
     expect(r.json!.failures).toEqual([]);
