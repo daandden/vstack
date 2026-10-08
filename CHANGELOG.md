@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [0.1.32] - 2026-10-08
+
+- Add model-invocable perf-issue with measured strategy attempts and before → after proof, and refactor with behavior pins, subtraction, caller migration, and equivalence proof. Both run the shared End state block and Verify skills (#93).
+
 ## [0.1.31] - 2026-10-08
 
 - implement settles the End state and design seams once, keeps unproven tdd slices out of commits and PRs, and shares cleanup, live proof, review, commit, and the one-run PR chain through END-STATE.md (#92).
