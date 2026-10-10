@@ -6,10 +6,11 @@ import { dirname, isAbsolute, join, relative, resolve } from "node:path";
 import { createHash } from "node:crypto";
 import { removeWorktree } from "./lib/omp-worktree.ts";
 import { compareSemverTags, defaultUpstreamRemote, defaultUpstreamsDir, gitBlobSha, syncClone } from "./lib/upstreams.ts";
-import { listPluginArtifacts, loadPins, loadRegister } from "./lib/vstack-repo.ts";
+import { listPluginArtifacts, loadPins } from "./lib/vstack-repo.ts";
 import type { PlanBody, PlanRow } from "./lib/update-plan.ts";
 import { preprocessTinyMessage } from "../plugin/extensions/prompt-cleaner.ts";
 import { proposeMerges, replayStep } from "./lib/update-merge.ts";
+import { loadGate, preflight, run } from "./lib/update-gates.ts";
 
 type Plan = PlanBody & { schema: number; moved: boolean; root: string; out: string; branch: string; worktree: { path: string } };
 type Decision = { id: string; action: "accept" | "hold" | "defer"; removal?: "drop" | "original" | "remove-contribution" | "keep-contribution"; rename?: "follow" | "keep"; upstream?: string; path?: string; disposition?: string; reason?: string; gist?: string; artifacts?: string[]; drafts?: Record<string, string>; reason_check: string; adr_conflicts?: string[]; review_findings?: string[]; draft_adr?: { path: string; source: string }; explicit_accept?: boolean };
@@ -18,21 +19,7 @@ const managed = ["plugin", "decision-register.yaml", "pins.yaml", "house-style.y
 const readJson = (p: string) => JSON.parse(readFileSync(p, "utf8"));
 const yaml = (p: string): any => Bun.YAML.parse(readFileSync(p, "utf8"));
 function save(p: string, v: unknown) { mkdirSync(dirname(p), { recursive: true }); writeFileSync(p, JSON.stringify(v, null, 2) + "\n"); }
-function run(cmd: string[], cwd: string): string {
-  const r = Bun.spawnSync(cmd, { cwd, stdout: "pipe", stderr: "pipe" });
-  if (r.exitCode !== 0) throw new Error(`${cmd[0]} ${cmd.slice(1).join(" ")} (exit ${r.exitCode}): ${r.stderr.toString().trim() || r.stdout.toString().trim()}`);
-  return r.stdout.toString().trim();
-}
 const git = (cwd: string, ...args: string[]) => run(["git", ...args], cwd);
-function preflight(root: string, gh: string) {
-  if (git(root, "rev-parse", "--show-toplevel") !== resolve(root)) throw new Error("cwd must be the vstack checkout root");
-  if (readJson(join(root, "plugin/package.json")).name !== "vstack") throw new Error("plugin manifest must name vstack");
-  const branches = git(root, "for-each-ref", "--format=%(refname:short)", "refs/heads/update/", "refs/remotes/origin/update/");
-  if (branches) throw new Error(`Update branches already exist (no resume): ${branches}`);
-  const prs = JSON.parse(run([gh, "pr", "list", "--state", "open", "--limit", "1000", "--json", "number,headRefName,title,url"], root));
-  const open = prs.filter((p: any) => p.headRefName?.startsWith("update/") || /^Update(?:\s|:)/i.test(p.title));
-  if (open.length) throw new Error(`Open Update PR (no resume): ${open.map((p: any) => p.url || `#${p.number}`).join(", ")}`);
-}
 function planAt(path: string): Plan {
   const p = readJson(path);
   if (p.schema !== 1 || !p.moved || !isAbsolute(p.worktree?.path) || !p.branch?.startsWith("update/")) throw new Error("expected a moved schema-1 update-plan");
@@ -251,8 +238,6 @@ async function jev(p: Plan, endpoint: string, key: string) {
   }
   return { changed, flags, borderline, results };
 }
-/** Top-level tools the vstack extension registers; skill text calls them by name. */
-const EXTENSION_TOOLS = ["vstack_rename_session"];
 async function gates(p: Plan, phase: string, opts: any) {
   const fingerprint = digest(p);
   const upstreams = opts.upstreams ?? defaultUpstreamsDir();
@@ -261,21 +246,7 @@ async function gates(p: Plan, phase: string, opts: any) {
   }
   const register = run([process.execPath, opts.check ?? join(scriptRoot, "scripts/check-register.ts"), "--root", p.worktree.path, "--source", "clones", "--upstreams", upstreams, "--base", "main", "--json"], p.worktree.path);
   const checked = JSON.parse(register); if (!checked.ok) throw new Error("register gate failed");
-  const smokeDir = join(p.out, `smoke-${phase}`);
-  const smoke = JSON.parse(run([opts.smoke ?? join(scriptRoot, "scripts/load-smoke.sh"), join(p.worktree.path, "plugin"), smokeDir], p.worktree.path));
-  const artifacts = loadRegister(p.worktree.path);
-  const paths = new Set([...artifacts.originals, ...artifacts.rows.flatMap(r => r.artifacts)]);
-  for (const a of paths) {
-    if (a.startsWith("plugin/skills/") && !smoke.skillCommands?.includes(a.split("/")[2])) throw new Error(`load smoke missing skill ${a}`);
-    if (a.startsWith("plugin/agents/") && !smoke.agents?.includes(a.split("/")[2]!.replace(/\.md$/, ""))) throw new Error(`load smoke missing agent ${a}`);
-    if (a.startsWith("plugin/rules/") && !smoke.genericRules?.includes(readFileSync(join(p.worktree.path, a), "utf8").replace(/^---[\s\S]*?---\s*/, "").trim())) throw new Error(`load smoke missing rule ${a}`);
-  }
-  if (smoke.warnings?.length) throw new Error(`load smoke warnings: ${smoke.warnings.join("; ")}`);
-  // omp logs an extension load failure and keeps going, so a missing top-level tool is the only sign in the smoke.
-  const extensions: string[] = readJson(join(p.worktree.path, "plugin/package.json")).omp?.extensions ?? [];
-  if (extensions.length) for (const tool of EXTENSION_TOOLS) {
-    if (!smoke.tools?.includes(tool)) throw new Error(`load smoke missing extension tool ${tool}: ${extensions.join(", ")} did not load`);
-  }
+  const smoke = loadGate(p.worktree.path, join(p.out, `smoke-${phase}`), opts.smoke);
   let judgment;
   if (phase === "preview") {
     judgment = await jev(p, opts.endpoint ?? "https://api.typesafe.ai/v1/systemone", process.env.TYPESAFE_API_KEY ?? "");
