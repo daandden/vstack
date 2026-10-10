@@ -49,6 +49,8 @@ Fan-out gate (skill://vstack-fan-out): parts: one per changed reject or new item
 
 Keep each proposal in the decisions JSON. Artifacts are repo-relative register units. Draft sources are absolute paths outside plugin. Record unchanged rows when a required rule, caller fix, or rename cascade changes them too.
 
+Every shipped skill except a principle-* skill needs a `/skill:<name>` route in plugin/skills/ask-vstack, or check-register fails `unrouted-skill`. When a decision adds a skill or follows a rename, also record an accept decision for the matt row whose artifacts list plugin/skills/ask-vstack, with a draft of that artifact that has the route. The script rejects a decision for a row that is not in the plan. If the plan does not select matt, run `cancel`, then run `plan` again with `matt@<matt's pin in pins.yaml>` added. Matt stays at its Pin, and its rows join the plan. Do not edit the router in the worktree by hand: prepare and apply rebuild plugin/ from the baseline and drop the edit.
+
 ## 4. ADR check
 
 Check every proposal, removal choice, rename choice, and caller fix against the row's ADR and every docs/adr file. Record which ADRs were read. Flag conflicts in adr_conflicts. An Upstream adding multi-model routing conflicts with ADR 0004.

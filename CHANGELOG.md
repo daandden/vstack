@@ -8,6 +8,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 - `check-register` fails `unrouted-skill` when ask-vstack names no `/skill:<name>` route for a shipped skill. The principle-* skills need no route (#105).
 - ask-vstack has a Maintain vstack section that routes to vstack-update, and its grilling entry names grilling-page (#105).
+- vstack-update says how an Update that adds or renames a skill routes it in ask-vstack, including a plan that does not select matt (#105).
 
 ## [0.1.39] - 2026-10-11
 
