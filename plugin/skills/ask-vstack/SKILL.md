@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Ask vstack
 
-You do not need to remember every skill. Ask which route fits your situation.
+You do not need to remember every skill. Run `/skill:ask-vstack` and ask which route fits your situation.
 
 A flow is a path through the skills. Most paths follow the main flow or enter it through an on-ramp. Other skills are standalone or supply vocabulary underneath.
 
@@ -74,6 +74,12 @@ These skills maintain the codebase rather than add a feature.
 - `/skill:setup-app-verification` creates a project Verify skill once per project.
 - `/skill:maintain-app-verification` repairs that skill when a verification step drifts.
 
+## Maintain vstack
+
+These skills change vstack itself. Run them from the root of the vstack checkout.
+
+- `/skill:vstack-update` moves vstack to newer Upstream versions. It opens an Update PR, and you review and merge it.
+
 ## Vocabulary underneath
 
 These two model-invoked references supply vocabulary beneath the other skills. Reach for them directly when words, not the process, are the problem.
@@ -98,7 +104,7 @@ Read [PHASE-BOUNDARIES.md](PHASE-BOUNDARIES.md) for the five questions in order 
 These skills sit outside the main flow.
 
 - `/skill:grill-me` runs the same interview as grill-with-docs, but saves nothing locally and creates no `GLOSSARY.md`. Use it for a plan, design, or piece of writing with no working directory. With a working directory, use grill-with-docs for the same interview and its paper trail.
-- `/skill:grilling` is the interview primitive. It runs rounds and tracks the frontier. Facts are the agent's job, and decisions are yours. Grill-me and grill-with-docs are the named ways in. Triage, wayfinder, and improve-codebase-architecture use it internally. Use it directly only for an interview with no wrapper.
+- `/skill:grilling` is the interview primitive. It runs rounds and tracks the frontier. Facts are the agent's job, and decisions are yours. Grill-me and grill-with-docs are the named ways in. Triage, wayfinder, and improve-codebase-architecture use it internally. Use it directly only for an interview with no wrapper. It loads `/skill:grilling-page` to keep the Grilling page, so you do not run that skill yourself.
 - `/skill:resolving-merge-conflicts` works an in-progress merge or rebase hunk by hunk. It traces intent to each side's primary source rather than picking lines, then finishes the operation. It never runs `--abort`.
 - `/skill:prototype` builds a small throwaway program to answer a design question about a state model, behavior, or UI. Throwaway constrains how the code is written. It does not promise to destroy it. The answer enters the real code, and the prototype stays as a primary source on a `prototype/<name>` branch from main. The implementation issue points to it. This is the detour in main-flow step 2, but use it whenever a design question needs runnable evidence.
 - `/skill:research` delegates reading to a background agent. It reads primary sources and leaves a cited Markdown file. Keep working while it reads. Bring that file into grill-with-docs. Research feeds the thinking rather than replaces it.

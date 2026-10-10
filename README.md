@@ -127,6 +127,7 @@ Text output prints one line per failure, `FAIL <class> <item>: <message>`, after
 | `tmp-path` | adapt, merge, or original text names `$TMPDIR/`, `/tmp/`, or the OS temp directory, outside a `mktemp` line |
 | `ask-tool` | any markdown artifact, adopt included, has a sentence with an `ask-tool` phrase that does not name `` `ask` `` |
 | `page-css` | a page template breaks the CSS upstream's `check-css.mjs` at its Pin; the item is the template and the message holds the script's `path:line` lines |
+| `unrouted-skill` | `plugin/skills/ask-vstack/SKILL.md` has no `/skill:<name>` route for a shipped skill, ask-vstack included; principle-* skills need none, and the item is the skill directory |
 
 Rows with an `invalid-row` or `invalid-disposition` failure are skipped by the checks that read their fields, so one bad row reports once. House style rows and rules with an `invalid-house-style` failure are skipped the same way.
 

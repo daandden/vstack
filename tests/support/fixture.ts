@@ -201,6 +201,16 @@ const GONE_TEXT = [
   "",
 ].join("\n");
 
+/** The fixture's router: it names every skill a fixture ships, so no skill fails unrouted-skill. */
+const ASK_VSTACK_TEXT = [
+  "---",
+  "name: ask-vstack",
+  "description: Ask which skill fits.",
+  "---",
+  ...["ask-vstack", "keep", "held", "old-name", "gone", "shared", "asks-tool", "scratch", "phrasing", "spawner", "asks", "renamed", "setup-vstack", "rej", "stray", "kept", "adapted"].map((n) => `- \`/skill:${n}\``),
+  "",
+].join("\n");
+
 /** The passing fixture: a held row, a moved-and-held row, a held row whose item Upstream removed, a shared artifact. */
 export function passingSpec(up: Upstreams): RepoSpec {
   const a = (ref: string, p: string) => up.sha("alpha", ref, p);
@@ -243,7 +253,7 @@ export function passingSpec(up: Upstreams): RepoSpec {
         style("asks", []),
         style("renamed", []),
       ],
-      originals: ["plugin/rules/fx-rule.md", "plugin/agents/fx-agent.md", "plugin/agents/vstack-explorer.md"],
+      originals: ["plugin/rules/fx-rule.md", "plugin/agents/fx-agent.md", "plugin/agents/vstack-explorer.md", "plugin/skills/ask-vstack"],
     },
     manifest: { name: "vstack", version: "0.1.0", private: true, omp: {} },
     houseStyle: { replacements: clone(FIXTURE_ROWS), rules: clone(REPO_RULES) },
@@ -252,6 +262,7 @@ export function passingSpec(up: Upstreams): RepoSpec {
       ...artifactFrom(ALPHA_V1, "skills/eng/held", "plugin/skills/held"),
       ...artifactFrom(ALPHA_V1, "skills/eng/old-name", "plugin/skills/old-name"),
       "plugin/skills/gone/SKILL.md": GONE_TEXT,
+      "plugin/skills/ask-vstack/SKILL.md": ASK_VSTACK_TEXT,
       "plugin/skills/shared/SKILL.md": "---\nname: shared\ndescription: merged\n---\nmerged\n",
       "plugin/rules/fx-rule.md": "---\nalwaysApply: true\n---\nrule\n",
       "plugin/agents/fx-agent.md": "---\nname: fx-agent\ndescription: agent\n---\nagent\n",

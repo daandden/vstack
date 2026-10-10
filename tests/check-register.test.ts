@@ -88,6 +88,14 @@ test("skill-ref permits an explicitly named omp built-in without hiding a bare s
   expect((await runSpec(addTo(GONE, builtin))).json!.failures).toEqual([]);
   expect(failuresOf(await runSpec(addTo(GONE, `${builtin}, then /keep`)))).toEqual(["skill-ref alpha/gone"]);
 });
+test("unrouted-skill exempts a principle-* skill that ask-vstack does not name", async () => {
+  const r = await runSpec((s) => {
+    s.register.originals.push("plugin/skills/principle-fixture");
+    s.files["plugin/skills/principle-fixture/SKILL.md"] = "---\nname: principle-fixture\ndescription: principle\n---\nprinciple\n";
+  });
+  expect(r.json!.failures).toEqual([]);
+  expect(r.code).toBe(0);
+});
 
 // One fixture per failure class. Each case lists the exact failures expected as "<class> <item>".
 const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expected: string[] }[] = [
@@ -358,6 +366,21 @@ const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expecte
     name: "a page template that breaks the CSS upstream's lint at its Pin",
     mutate: (s) => (s.files["plugin/skills/shared/templates/page.html"] = PAGE_TEMPLATE.violation),
     expected: ["page-css plugin/skills/shared/templates/page.html"],
+  },
+  {
+    cls: "unrouted-skill",
+    name: "a shipped skill that ask-vstack does not name",
+    mutate: (s) => {
+      s.register.originals.push("plugin/skills/lonely");
+      s.files["plugin/skills/lonely/SKILL.md"] = "---\nname: lonely\ndescription: lonely\n---\nlonely\n";
+    },
+    expected: ["unrouted-skill plugin/skills/lonely"],
+  },
+  {
+    cls: "unrouted-skill",
+    name: "an ask-vstack that does not name itself",
+    mutate: (s) => (s.files["plugin/skills/ask-vstack/SKILL.md"] = s.files["plugin/skills/ask-vstack/SKILL.md"].replace("- `/skill:ask-vstack`\n", "")),
+    expected: ["unrouted-skill plugin/skills/ask-vstack"],
   },
 ];
 

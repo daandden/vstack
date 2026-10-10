@@ -4,6 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [0.1.40] - 2026-10-11
+
+- `check-register` fails `unrouted-skill` when ask-vstack names no `/skill:<name>` route for a shipped skill. The principle-* skills need no route (#105).
+- ask-vstack has a Maintain vstack section that routes to vstack-update, and its grilling entry names grilling-page (#105).
+
 ## [0.1.39] - 2026-10-11
 
 - The Grilling page is Catppuccin Mocha only (ADR 0013). Question titles, their Q numbers, and option labels are Mauve. The recommended option ends with a Yellow `*`, and your pick is a bold Yellow label. In the Q row, answered dots are Yellow, unanswered dots are Red, and open dots are grey. j or Down moves to the next question or summary, k or Up to the previous one, and the Q row highlights where you are.

@@ -21,7 +21,12 @@ export function lifecycleFixture() {
       writeFiles(root, { [`${artifact}/${suffix}`]: git(repo, "show", `${ref}:${file}`) + "\n" });
     }
   }
+  // The router names every skill the fixture ships or an Update adds, so check-register's unrouted-skill passes.
+  const routes = [...new Set([...reg.items.flatMap((row: any) => row.artifacts), "plugin/skills/fresh", "plugin/skills/ask-vstack"])].map((a) => `- \`/skill:${a.split("/").at(-1)}\``);
+  reg.originals.push("plugin/skills/ask-vstack");
   writeFiles(root, {
+    "decision-register.yaml": Bun.YAML.stringify(reg, null, 2),
+    "plugin/skills/ask-vstack/SKILL.md": `---\nname: ask-vstack\ndescription: Ask which skill fits.\n---\n${routes.join("\n")}\n`,
     "CHANGELOG.md": "# Changelog\n\n## [Unreleased]\n",
     "principle-questions.json": JSON.stringify({ expected: { type: "noul", instructions: "Expected" }, other: { type: "noul", instructions: "Other" } }),
     "sample-prompts.json": JSON.stringify({ prompts: [{ id: "sample", prompt: "Fix this", expected: ["expected"], allowed: [] }] }),
