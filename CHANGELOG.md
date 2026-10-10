@@ -4,6 +4,12 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [0.1.39] - 2026-10-11
+
+- The Grilling page is Catppuccin Mocha only (ADR 0013). Question titles, their Q numbers, and option labels are Mauve. The recommended option ends with a Yellow `*`, and your pick is a bold Yellow label. In the Q row, answered dots are Yellow, unanswered dots are Red, and open dots are grey. j or Down moves to the next question or summary, k or Up to the previous one, and the Q row highlights where you are.
+- A question record has a title written as a question and a `description` under it, in paragraphs and `- ` bullet lists. The In plain words, Why it is open, and Already settled blocks are gone, and the script refuses a question that still has `plain`, `why`, or `settled`. An option `label` is the `ask` label with its letter; the script checks the letter and the page hides it, so the page no longer shows "A. A.".
+- Each round, `scripts/visual_judge.py` asks the jev judge which visual each question needs, from the rubric in `references/visual-judge.json`. Under 0.7 confidence the question gets no visual. Every diagram comes from diagram-design, drawn dark. `scripts/visual-judge-check.ts` checks the rubric against `visual-judge-cases.json` with live jev.
+
 ## [0.1.38] - 2026-10-09
 
 - grilling renders the Grilling page with `scripts/grilling-page.ts` from a JSONL state file (ADR 0013). The agent appends records, and the script checks them, refuses unsafe previews, and renders the whole page. The page is minimal and light only: Catppuccin Latte with a blue primary color, JetBrainsMono Nerd Font Mono at 13px with Tern's line height, options as headings with no cards (recommended is underlined, your answer is blue), a slim Q-number row, a visual only when the words are not enough, and a bullet summary that says what each decision made true. Every command prints the page's plain absolute path.

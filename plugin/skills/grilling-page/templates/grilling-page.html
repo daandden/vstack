@@ -3,29 +3,33 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
+  <meta name="color-scheme" content="dark">
   <title>Grilling: {{title}}</title>
   <!-- scripts/grilling-page.ts fills this page. Do not edit a rendered page by hand. -->
   <style>
     *, *::before, *::after { box-sizing: border-box; min-inline-size: 0; }
     :root {
-      color-scheme: light;
-      /* Catppuccin Latte, each hex as oklch. */
-      --base: oklch(95.8% 0.006 264.5);
-      --mantle: oklch(93.3% 0.009 264.5);
-      --surface0: oklch(85.7% 0.014 268.5);
-      --overlay0: oklch(70.8% 0.024 274.6);
-      --subtext0: oklch(54.7% 0.034 279.1);
-      --text: oklch(43.5% 0.043 279.3);
-      --strong: oklch(33% 0.045 279.3);
-      --blue: oklch(55.9% 0.226 262.1);
-      --green: oklch(62.5% 0.177 140.4);
-      --peach: oklch(69.2% 0.204 42.4);
-      --red: oklch(55.0% 0.216 19.8);
-      --line: color-mix(in oklch, var(--surface0) 70%, transparent);
-      --gutter: clamp(1rem, 0.5rem + 2.5vw, 2.5rem);
+      color-scheme: dark;
+      /* Catppuccin Mocha, each hex as oklch. */
+      --base: oklch(24.3% 0.030 283.9);
+      --mantle: oklch(21.6% 0.025 284.1);
+      --surface0: oklch(32.4% 0.032 282.0);
+      --surface1: oklch(40.4% 0.032 280.2);
+      --overlay0: oklch(55.0% 0.034 277.1);
+      --subtext0: oklch(75.1% 0.040 273.9);
+      --subtext1: oklch(81.7% 0.040 272.9);
+      --text: oklch(87.9% 0.043 272.3);
+      --mauve: oklch(78.7% 0.119 304.8);
+      --blue: oklch(76.6% 0.111 259.9);
+      --lavender: oklch(81.7% 0.091 277.3);
+      --yellow: oklch(91.9% 0.070 86.5);
+      --green: oklch(85.8% 0.109 142.7);
+      --red: oklch(75.6% 0.130 2.8);
+      --line: color-mix(in oklch, var(--surface1) 60%, transparent);
       scrollbar-gutter: stable;
-      scroll-padding-block-start: 3.5rem;
+      /* The Q row's height plus a gap; the script sets the measured value, since the row wraps on a narrow pane. */
+      --nav-clearance: 3.5rem;
+      scroll-padding-block-start: var(--nav-clearance);
       /* Three font sizes only: title, body, small. */
       --fs-title: 0.9375rem;
       --fs-body: 0.8125rem;
@@ -34,45 +38,51 @@
       overflow-wrap: break-word;
       font-synthesis: none;
     }
-    [data-state="answered"] { --state: var(--blue); }
+    /* Yellow is your answer everywhere: the picked label, the answered dot, and the answer line. */
+    [data-state="answered"] { --state: var(--yellow); }
     [data-state="unanswered"] { --state: var(--red); }
-    [data-state="open"] { --state: var(--peach); }
+    [data-state="open"] { --state: var(--overlay0); }
     /* Same font and metrics as the Tern terminal: the font's own line height and letter width, no extra spacing. */
     body { margin: 0; min-block-size: 100svh; background: var(--base); color: var(--text); font: var(--fs-body)/normal "JetBrainsMono Nerd Font Mono", "JetBrainsMono Nerd Font", "JetBrains Mono", ui-monospace, monospace; letter-spacing: 0; }
-    h1, h2, h3, h4 { margin-block: 0; color: var(--strong); text-wrap: balance; font-size: var(--fs-body); line-height: normal; }
+    h1, h2, h3, h4 { margin-block: 0; color: var(--text); text-wrap: balance; font-size: var(--fs-body); line-height: normal; }
     p, ul, ol, dl, dd, figure { margin: 0; }
     a { color: var(--blue); text-underline-offset: 0.2em; touch-action: manipulation; }
-    a:active { color: var(--strong); }
+    a:active { color: var(--lavender); }
     :focus-visible { outline: 2px solid var(--blue); outline-offset: 0.2em; }
-    @media (hover: hover) and (pointer: fine) { a:hover { color: var(--strong); } }
+    @media (hover: hover) and (pointer: fine) { a:hover { color: var(--lavender); } }
     code, pre { font: inherit; }
-    code { padding-inline: 0.25em; border-radius: 0.2rem; background: var(--mantle); color: var(--strong); }
+    code { padding-inline: 0.25em; border-radius: 0.2rem; background: var(--surface0); color: var(--text); }
     pre { white-space: pre-wrap; font-size: var(--fs-small); }
     svg, img { display: block; max-inline-size: 100%; block-size: auto; }
 
-    .qnav { position: sticky; inset-block-start: 0; z-index: 1; display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; align-items: center; padding-block: 0.375rem; padding-inline: 1.25rem; background: var(--base); border-block-end: 1px solid var(--line); font-size: var(--fs-small); }
-    .qnav a { display: inline-flex; gap: 0.375rem; align-items: center; color: var(--text); text-decoration: none; font-weight: 600; font-variant-numeric: tabular-nums; }
-    .qnav .sep { inline-size: 1px; block-size: 1rem; background: var(--surface0); }
+    .qnav { position: sticky; inset-block-start: 0; z-index: 1; display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; align-items: center; padding-block: 0.375rem; padding-inline: 1.25rem; background: var(--mantle); border-block-end: 1px solid var(--line); font-size: var(--fs-small); }
+    .qnav a { display: inline-flex; gap: 0.375rem; align-items: center; padding-inline: 0.25rem; border-radius: 0.25rem; color: var(--subtext1); text-decoration: none; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .qnav a[aria-current="true"] { background: var(--surface1); color: var(--mauve); }
+    .qnav .sep { inline-size: 1px; block-size: 1rem; background: var(--surface1); }
+    .qnav .keys { margin-inline-start: auto; color: var(--overlay0); }
     .dot { flex: none; inline-size: 0.4375rem; block-size: 0.4375rem; border-radius: 50%; background: var(--state, var(--overlay0)); }
 
-    main { display: grid; gap: 1.5rem; max-inline-size: 60rem; margin-inline: auto; padding-block: 1rem 2.5rem; padding-inline: 1.25rem; }
+    /* The bottom padding lets the last question or summary scroll up to just under the Q row. */
+    main { display: grid; gap: 1.5rem; max-inline-size: 60rem; margin-inline: auto; padding-block: 1rem calc(100svh - var(--nav-clearance)); padding-inline: 1.25rem; }
     .sr-only { position: absolute; inline-size: 1px; block-size: 1px; overflow: clip; clip-path: inset(50%); white-space: nowrap; }
     .page-head { display: grid; gap: 0.25rem; }
-    .crumb, .note, time, dt, .label { color: var(--subtext0); }
-    .crumb, .note, time, dt, .label, .why { font-size: var(--fs-small); }
+    .crumb, .note, time, .label { color: var(--subtext0); }
+    .crumb, .note, time, .label, .why { font-size: var(--fs-small); }
     h1 { font-size: var(--fs-title); font-weight: 700; }
 
-    .round { display: grid; gap: 1.25rem; }
-    .round > header { display: grid; gap: 0.125rem; padding-block-start: 0.5rem; border-block-start: 1px solid var(--surface0); }
+    .round { display: grid; gap: 1.5rem; }
+    .round > header { display: grid; gap: 0.125rem; padding-block-start: 0.5rem; border-block-start: 1px solid var(--surface1); }
     h2 { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; align-items: baseline; font-size: var(--fs-small); font-weight: 650; text-transform: uppercase; color: var(--subtext0); }
     h2 time { font-weight: 400; text-transform: none; font-variant-numeric: tabular-nums; }
 
     .question { display: grid; gap: 0.625rem; }
-    h3 { font-size: var(--fs-title); font-weight: 650; }
-    .qnum { margin-inline-end: 0.5rem; color: var(--subtext0); font-weight: 600; font-variant-numeric: tabular-nums; }
-    .facts { display: grid; gap: 0.375rem; }
-    dt { font-weight: 600; }
-    .plain { color: var(--strong); }
+    h3 { font-size: var(--fs-title); font-weight: 650; color: var(--mauve); }
+    .qnum { margin-inline-end: 0.5rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .description { display: grid; gap: 0.5rem; }
+    .bullets { display: grid; gap: 0.125rem; padding-inline-start: 1.25rem; }
+    .bullets > li::marker { color: var(--overlay0); }
+    .example { display: grid; gap: 0.125rem; }
+    .example .label { font-weight: 600; }
 
     .visual, .preview { padding-block: 0.625rem; padding-inline: 0.75rem; border-radius: 0.375rem; background: var(--mantle); overflow-x: auto; }
     .visual { display: grid; gap: 0.5rem; }
@@ -81,9 +91,9 @@
     .options { display: grid; padding-inline-start: 0; list-style: none; }
     .option { display: grid; gap: 0.25rem; padding-block: 0.5rem; border-block-start: 1px solid var(--line); }
     .option:last-child { border-block-end: 1px solid var(--line); }
-    h4 { font-weight: 400; }
-    .option[data-recommended] h4 { text-decoration: underline; text-decoration-color: var(--blue); text-decoration-thickness: 2px; text-underline-offset: 0.3em; }
-    .option[data-picked] h4 { color: var(--blue); }
+    h4 { font-weight: 400; color: var(--mauve); }
+    .option[data-picked] h4 { color: var(--yellow); font-weight: 700; }
+    .star { margin-inline-start: 0.5rem; color: var(--yellow); font-weight: 700; }
     .trade { display: grid; padding-inline-start: 0; list-style: none; }
     .trade > li { position: relative; padding-inline-start: 1.25rem; }
     .gain::before, .cost::before { position: absolute; inset-inline-start: 0; font-weight: 700; }
@@ -91,7 +101,7 @@
     .cost::before { content: "\2212"; color: var(--red); }
     .why { color: var(--subtext0); }
 
-    .answer { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; align-items: baseline; color: var(--strong); }
+    .answer { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; align-items: baseline; color: var(--text); }
     .answer > .label { font-weight: 600; color: var(--state, var(--subtext0)); }
 
     .summary { display: grid; gap: 0.5rem; }
@@ -105,5 +115,39 @@
   <main>
 <!-- BODY -->
   </main>
+  <script>
+    // j or Down goes to the next question or summary, k or Up to the previous one.
+    // The Q row highlights the current stop, also after a mouse scroll or a link click.
+    const nav = document.querySelector(".qnav");
+    const stops = [...document.querySelectorAll("[data-stop]")];
+    const pad = () => (nav ? nav.offsetHeight : 0) + 8;
+    const setClearance = () => document.documentElement.style.setProperty("--nav-clearance", `${pad()}px`);
+    addEventListener("resize", setClearance);
+    setClearance();
+    let current = -1;
+    function mark(i) {
+      current = i;
+      const id = stops[i]?.id;
+      document.querySelectorAll(".qnav a[data-for]").forEach((a) => a.setAttribute("aria-current", String(a.dataset.for === id)));
+    }
+    function markFromScroll() {
+      let i = -1;
+      stops.forEach((s, n) => { if (s.getBoundingClientRect().top <= pad() + 2) i = n; });
+      mark(i);
+    }
+    function jump(i) {
+      if (i < 0 || i >= stops.length) return;
+      stops[i].scrollIntoView({ block: "start", behavior: "instant" });
+      mark(i);
+    }
+    addEventListener("scroll", markFromScroll, { passive: true });
+    addEventListener("keydown", (e) => {
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+      if (e.key === "j" || e.key === "ArrowDown") { e.preventDefault(); jump(current + 1); }
+      else if (e.key === "k" || e.key === "ArrowUp") { e.preventDefault(); jump(Math.max(current - 1, 0)); }
+    });
+    if (nav && stops.length) nav.insertAdjacentHTML("beforeend", '<span class="keys">j/k or ↓/↑</span>');
+    markFromScroll();
+  </script>
 </body>
 </html>

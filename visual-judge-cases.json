@@ -1,0 +1,812 @@
+{
+  "rubric": "plugin/skills/grilling-page/references/visual-judge.json",
+  "semantics": {
+    "expected": "the label the judge must pick at confidence 0.7 or more",
+    "allowed": "other labels that are also fair; picking one is not a miss",
+    "none": "a none case also passes when the top label is under 0.7, because the agent then adds no visual"
+  },
+  "cases": [
+    {
+      "id": "float-show-or-hide-q1",
+      "source": "Grilling page float-show-or-hide, question q1",
+      "expected": "none",
+      "allowed": [],
+      "state": {
+        "title": "Name of the thing",
+        "description": "You said popup pane. The code comments, AGENTS.md and Zellij say floating pane, and Tern's CSS says pip. One word keeps the docs from drifting.\n\nPicks the one word that the glossary, code comments and keybinds guide use for a pane that floats over the tab.",
+        "options": [
+          {
+            "label": "Floating pane",
+            "does": "Glossary entry Floating pane. Avoid: popup, pip, picture in picture."
+          },
+          {
+            "label": "Popup pane",
+            "does": "Glossary entry Popup pane. Comments and AGENTS.md change to that word."
+          }
+        ]
+      }
+    },
+    {
+      "id": "goto-type-to-search-q8",
+      "source": "Grilling page goto-type-to-search, question q8",
+      "expected": "none",
+      "allowed": [],
+      "state": {
+        "title": "Glossary name for ctrl+;",
+        "description": "The glossary names Jump number. Tern calls its own `ctrl+g` the keymap prefix.\n\nDecides whether GLOSSARY.md gets a term for the prefix.",
+        "options": [
+          {
+            "label": "Action prefix",
+            "does": "A glossary entry for the key before an action letter."
+          },
+          {
+            "label": "No glossary term",
+            "does": "Docs call it `ctrl+;`."
+          }
+        ]
+      }
+    },
+    {
+      "id": "grilling-page-skill-split-s1-r1-q1",
+      "source": "Grilling page grilling-page-skill-split, question s1-r1-q1",
+      "expected": "none",
+      "allowed": [],
+      "state": {
+        "title": "What is the new skill called?",
+        "description": "You said \"grilling page skill\". The glossary calls the page the Grilling HTML and lists \"question page\" and \"round page\" as words to avoid. A skill named after a different word adds a second name for the same thing.\n\nDecide the skill name, which is also the folder name and the `skill://` link.",
+        "options": [
+          {
+            "label": "grilling-html",
+            "does": "The skill is `grilling-html`, the same name as the glossary term."
+          },
+          {
+            "label": "grilling-page",
+            "does": "The skill is `grilling-page`, and the glossary term becomes Grilling page."
+          },
+          {
+            "label": "vstack-grilling-page",
+            "does": "The skill is `vstack-grilling-page`, with the vstack prefix of other helper skills."
+          }
+        ]
+      }
+    },
+    {
+      "id": "grilling-page-mocha-redesign-s1q7",
+      "source": "Grilling page grilling-page-mocha-redesign, question s1q7",
+      "expected": "none",
+      "allowed": [],
+      "state": {
+        "title": "Does the script refuse a question title that is not a question?",
+        "description": "You asked that the title always be in question form. Today titles are often short noun phrases.\n\nThis decides whether 'always a question' is a rule the script checks or a rule the agent follows.",
+        "options": [
+          {
+            "label": "The script refuses it",
+            "does": "The script refuses a question record whose title does not end with '?'. The agent fixes the record and runs the command again."
+          },
+          {
+            "label": "The skill says it, the script does not check",
+            "does": "grilling-page/SKILL.md says the title is one question. The script accepts any title."
+          }
+        ]
+      }
+    },
+    {
+      "id": "grilling-page-mocha-redesign-s1q13",
+      "source": "Grilling page grilling-page-mocha-redesign, question s1q13",
+      "expected": "none",
+      "allowed": [],
+      "state": {
+        "title": "What does the agent do when the judge is unsure or fails?",
+        "description": "The fan-out gate acts only at confidence 0.7 or more and goes inline otherwise. The visual judge needs a rule like that.\n\nThis decides the fallback when the judge's confidence is low or the cell errors.",
+        "options": [
+          {
+            "label": "Below 0.7 or an error means no visual",
+            "does": "The agent adds the judged visual only at confidence 0.7 or more. Otherwise the question has words only."
+          },
+          {
+            "label": "Below 0.7 the agent picks from the guide",
+            "does": "At low confidence or on error, the agent reads the guide and picks a kind itself."
+          }
+        ]
+      }
+    },
+    {
+      "id": "grilling-page-mocha-redesign-s1q16",
+      "source": "Grilling page grilling-page-mocha-redesign, question s1q16",
+      "expected": "none",
+      "allowed": [],
+      "state": {
+        "title": "What pass bar do the visual judge test cases set?",
+        "description": "Some questions fit two kinds, for example a before and after that is both a preview and a delta. The principle corpus handles this with expected and allowed picks.\n\nThis decides when a rubric change counts as good enough.",
+        "options": [
+          {
+            "label": "Expected or allowed label on every case",
+            "does": "Each case has one expected label and an optional allowed list. A case passes when the top label is expected or allowed. A `none` case also passes when confidence is under 0.7, because the agent then adds no visual."
+          },
+          {
+            "label": "90% of cases exact",
+            "does": "The top label must equal the one expected label on at least 90% of cases."
+          }
+        ]
+      }
+    },
+    {
+      "id": "grilling-summary-list-s1-r1-q2",
+      "source": "Grilling page grilling-summary-list, question s1-r1-q2",
+      "expected": "none",
+      "allowed": [
+        "preview"
+      ],
+      "state": {
+        "title": "What does each bullet say?",
+        "description": "In your screenshot a bullet says what now happens (\"Tern stays the macOS default app for HTML\"), not the label of the option picked. Only the agent can write that sentence, so the script needs it as input.\n\nDecide whether a bullet states the outcome in words or just repeats the option label.",
+        "example": "Label only: \"Q3: A. Start a new page\". Outcome: \"Q3: A continued session starts a new page. It does not link the old one.\"",
+        "options": [
+          {
+            "label": "The outcome in plain sentences",
+            "does": "Each bullet is \"Qn:\" and one or two sentences that say what is now true. The agent writes them in the close record."
+          },
+          {
+            "label": "The option label",
+            "does": "The script makes each bullet from the answer: \"Qn: A. Label\", plus any note."
+          }
+        ]
+      }
+    },
+    {
+      "id": "grilling-page-mocha-redesign-s1q3",
+      "source": "Grilling page grilling-page-mocha-redesign, question s1q3",
+      "expected": "preview",
+      "allowed": [],
+      "state": {
+        "title": "Where does the recommended mark go, and does the reason line stay?",
+        "description": "You asked to replace the underline with a colored * at the end. I read that as the end of the option's label line, because the mark belongs to one option. The reason line is the grey 'Recommended: ...' text under the trade-offs today.\n\nThis decides how the page shows which option the agent recommends, and whether you still see why.",
+        "options": [
+          {
+            "label": "Star after the label, keep the reason line",
+            "does": "The label ends with a colored *, and the 'Recommended: ...' line stays under the trade-offs."
+          },
+          {
+            "label": "Star after the label, no reason line",
+            "does": "The label ends with a colored *. The record drops the recommendation reason."
+          },
+          {
+            "label": "Star after the label, reason on hover",
+            "does": "The label ends with a colored *, and the reason shows as a tooltip when you hover the star."
+          }
+        ]
+      }
+    },
+    {
+      "id": "grilling-page-mocha-redesign-s1q4",
+      "source": "Grilling page grilling-page-mocha-redesign, question s1q4",
+      "expected": "preview",
+      "allowed": [],
+      "state": {
+        "title": "How does the page show the option you picked?",
+        "description": "You asked to change the option text for the selected option. Today only the label line turns blue.\n\nThis decides what changes on an option after you answer.",
+        "options": [
+          {
+            "label": "The whole option changes color",
+            "does": "The label, what it does, and the trade-off lines all take the picked color. The + and − marks keep green and red."
+          },
+          {
+            "label": "Label only, colored and bold",
+            "does": "The label line takes the picked color and turns bold. The rest stays the body color."
+          },
+          {
+            "label": "A text mark after the label",
+            "does": "The label gets a green '✓ your answer' after it. Colors stay the same."
+          }
+        ]
+      }
+    },
+    {
+      "id": "grilling-page-mocha-redesign-s1q24",
+      "source": "Grilling page grilling-page-mocha-redesign, question s1q24",
+      "expected": "preview",
+      "allowed": [
+        "table"
+      ],
+      "state": {
+        "title": "Which colors do the answered and open dots in the top row take now?",
+        "description": "The answered dot used the pick color, and the pick is now Yellow. The open dot was Peach, which is close to Yellow.\n\nThis decides the dot colors that show each question's state in the top row.",
+        "options": [
+          {
+            "label": "Answered Yellow, open grey",
+            "does": "An answered dot is Yellow, like your pick. An open dot is grey (Overlay)."
+          },
+          {
+            "label": "Answered Yellow, open Peach",
+            "does": "An answered dot is Yellow, and an open dot stays Peach."
+          },
+          {
+            "label": "Answered Green, open Peach",
+            "does": "The dots keep the round 1 colors, apart from the pick color."
+          }
+        ]
+      }
+    },
+    {
+      "id": "grilling-test-all-kinds-s1-r1-q1",
+      "source": "Grilling page grilling-test-all-kinds, question s1-r1-q1",
+      "expected": "preview",
+      "allowed": [],
+      "state": {
+        "title": "Where does the theme toggle live?",
+        "description": "The toggle is the only new control. Its place decides how often people find it and how much of the header it takes.\n\nDecide where you click to switch between light and dark.",
+        "options": [
+          {
+            "label": "Icon in the header",
+            "does": "A sun or moon icon sits at the end of the top bar on every screen."
+          },
+          {
+            "label": "Row on the settings page",
+            "does": "A Light, Dark, System control sits under Settings, Appearance."
+          },
+          {
+            "label": "No toggle, follow the system",
+            "does": "The app always uses the light or dark setting of the device."
+          }
+        ]
+      }
+    },
+    {
+      "id": "grilling-test-all-kinds-s1-r1-q6",
+      "source": "Grilling page grilling-test-all-kinds, question s1-r1-q6",
+      "expected": "preview",
+      "allowed": [],
+      "state": {
+        "title": "What does the app say when the theme fails to sync?",
+        "description": "A sync can fail. A theme is not data, so a loud error can feel too much.\n\nDecide the message you see when your theme choice cannot reach the server.",
+        "options": [
+          {
+            "label": "Short toast",
+            "does": "A small message shows for four seconds."
+          },
+          {
+            "label": "Banner with Retry",
+            "does": "A banner stays until the sync works or you close it."
+          },
+          {
+            "label": "No message",
+            "does": "The app retries quietly."
+          }
+        ]
+      }
+    },
+    {
+      "id": "goto-type-to-search-q4",
+      "source": "Grilling page goto-type-to-search, question q4",
+      "expected": "preview",
+      "allowed": [],
+      "state": {
+        "title": "Search hint",
+        "description": "Today the left side of the footer is empty with no search.\n\nDecides what the footer shows before you type.",
+        "options": [
+          {
+            "label": "Muted hint",
+            "does": "A text cursor and a muted \"Search\" on the left of the footer."
+          },
+          {
+            "label": "Nothing",
+            "does": "The left side stays empty until you type."
+          },
+          {
+            "label": "Field at the top",
+            "does": "A field above the rows, like Tern's palette."
+          }
+        ]
+      }
+    },
+    {
+      "id": "grilling-summary-list-s1-r4-q5",
+      "source": "Grilling page grilling-summary-list, question s1-r4-q5",
+      "expected": "preview",
+      "allowed": [],
+      "state": {
+        "title": "Which text space do you want narrower?",
+        "description": "\"Text space\" can mean the space between letters, which looks wide in a mono font, or the space between lines.\n\nDecide whether to pull letters closer together or lines closer together.",
+        "options": [
+          {
+            "label": "Letters closer",
+            "does": "Letter spacing goes from 0 to -0.03em on all text."
+          },
+          {
+            "label": "Lines closer",
+            "does": "Line height goes from 1.45 to 1.3."
+          },
+          {
+            "label": "Both",
+            "does": "Letters at -0.03em and line height 1.3."
+          }
+        ]
+      }
+    },
+    {
+      "id": "float-show-or-hide-q4",
+      "source": "Grilling page float-show-or-hide, question q4",
+      "expected": "preview",
+      "allowed": [
+        "structure"
+      ],
+      "state": {
+        "title": "Two or more floats in one tab",
+        "description": "Zellij shows every float at once, each at its own offset. Tern sets each float's place inline, and the float-size sheet centers only the focused one. With no corner preview, the unfocused ones need a place.\n\nDecides what you see when a tab has several floats and they are shown.",
+        "example": "A tab has a shell float and a lazygit float. Alt+h and Alt+l already step between them.",
+        "options": [
+          {
+            "label": "Stack in the center",
+            "does": "Every shown float takes the same middle 75% box. You see the focused one on top. Alt+h and Alt+l bring the next one to the top."
+          },
+          {
+            "label": "Cascade like Zellij",
+            "does": "Each shown float sits a few cells lower and to the right of the one before it, all near the center."
+          }
+        ]
+      }
+    },
+    {
+      "id": "grilling-test-all-kinds-s1-r1-q5",
+      "source": "Grilling page grilling-test-all-kinds, question s1-r1-q5",
+      "expected": "flow",
+      "allowed": [
+        "state",
+        "delta"
+      ],
+      "state": {
+        "title": "How does the theme change flow through the app?",
+        "description": "The options differ in flow, so a diagram shows them.\n\nDecide whether the theme change goes through the server or stays in the client first.",
+        "options": [
+          {
+            "label": "Client first, sync later",
+            "does": "The app switches at once and syncs in the background."
+          },
+          {
+            "label": "Server first",
+            "does": "The app waits for the server, then switches."
+          }
+        ]
+      }
+    },
+    {
+      "id": "grilling-page-mocha-redesign-s1q17",
+      "source": "Grilling page grilling-page-mocha-redesign, question s1q17",
+      "expected": "flow",
+      "allowed": [
+        "none"
+      ],
+      "state": {
+        "title": "How does the agent run the visual judge for a round?",
+        "description": "The fan-out gate is an inline cell the agent copies and fills. A visual judge runs every round, so a copied cell is retyped many times per session. skill-creator puts logic that would be rewritten again and again in `scripts/`.\n\nThis decides what the agent types to judge a round, and where the judge reads the questions from.",
+        "example": "exec(open(\"<skill>/scripts/visual_judge.py\").read()); await judge_round(\"<state.jsonl>\", \"s1r2\")",
+        "options": [
+          {
+            "label": "A helper reads the round from the state file",
+            "does": "The agent appends the round's questions with no visuals, then runs one eval cell that loads `scripts/visual_judge.py` and calls `judge_round(state, round_id)`. It prints each question's label, confidence, and what to make. The agent then appends each question again with its visual."
+          },
+          {
+            "label": "An inline cell in SKILL.md",
+            "does": "The skill holds a cell like the fan-out gate's. The agent pastes each question's title, description, and options into it and runs it before it appends the questions."
+          }
+        ]
+      }
+    },
+    {
+      "id": "float-show-or-hide-q7",
+      "source": "Grilling page float-show-or-hide, question q7",
+      "expected": "state",
+      "allowed": [
+        "none"
+      ],
+      "state": {
+        "title": "A new float while the others are hidden",
+        "description": "Zellij opens a new floating pane in the floating layer, so the hidden floats come back with it. Your glossary entry says the floats of a tab are shown or hidden together.\n\nDecides what you see when you open a new floating pane in a tab whose floats are hidden.",
+        "example": "Lazygit floats in the tab, hidden. You press the key for Float yazi.",
+        "options": [
+          {
+            "label": "All come back",
+            "does": "The new Yazi float opens on top, and the hidden lazygit float shows again behind it in the cascade."
+          },
+          {
+            "label": "Only the new one",
+            "does": "Yazi opens alone. Lazygit stays hidden until Alt+F."
+          }
+        ]
+      }
+    },
+    {
+      "id": "float-show-or-hide-q8",
+      "source": "Grilling page float-show-or-hide, question q8",
+      "expected": "state",
+      "allowed": [
+        "none"
+      ],
+      "state": {
+        "title": "Closing one of several shown floats",
+        "description": "Tern moves focus to the tiled pane when a float closes. With the rule from Q3, that focus move hides every other float of the tab. Zellij instead moves focus to the next floating pane and keeps the layer shown. When the last float closes, both hide nothing and focus the tiled pane.\n\nDecides where focus goes when a shown float's program exits and other floats are still shown.",
+        "example": "Shell, lazygit and btop float, shown. You quit lazygit with q.",
+        "options": [
+          {
+            "label": "Next float gets focus",
+            "does": "Focus moves to the float that was on top before lazygit, here btop, and the shell and btop stay shown."
+          },
+          {
+            "label": "All hide",
+            "does": "Focus goes to the tiled pane, and the shell and btop hide. Alt+F brings them back."
+          }
+        ]
+      }
+    },
+    {
+      "id": "goto-type-to-search-q2",
+      "source": "Grilling page goto-type-to-search, question q2",
+      "expected": "state",
+      "allowed": [
+        "none"
+      ],
+      "state": {
+        "title": "What Esc does in one mode",
+        "description": "Today Esc in search goes back to move mode, and Esc in move mode closes. A typed first digit is cleared by Esc first.\n\nDecides whether Esc clears the search before it closes the picker.",
+        "options": [
+          {
+            "label": "Undo a step, then close",
+            "does": "Esc clears a typed first digit, then the search; with nothing to clear, it closes. F1 still closes at once."
+          },
+          {
+            "label": "Always close",
+            "does": "Backspace is the only way to clear the search."
+          }
+        ]
+      }
+    },
+    {
+      "id": "goto-type-to-search-q7",
+      "source": "Grilling page goto-type-to-search, question q7",
+      "expected": "state",
+      "allowed": [
+        "none"
+      ],
+      "state": {
+        "title": "Other key after ctrl+;",
+        "description": "Example: you press `ctrl+;`, change your mind and type `g`.\n\nDecides what a key other than a or i does right after the prefix.",
+        "options": [
+          {
+            "label": "Prefix ends, key ignored",
+            "does": "Esc, a second `ctrl+;` and any other key end the prefix and are used up."
+          },
+          {
+            "label": "Prefix ends, key works",
+            "does": "A letter types, a digit jumps, Up moves; Esc only ends the prefix."
+          }
+        ]
+      }
+    },
+    {
+      "id": "grilling-test-all-kinds-s1-r1-q3",
+      "source": "Grilling page grilling-test-all-kinds, question s1-r1-q3",
+      "expected": "structure",
+      "allowed": [
+        "none"
+      ],
+      "state": {
+        "title": "Where is the theme choice saved?",
+        "description": "Notes already sync through your account. The theme is a new kind of setting.\n\nDecide whether your choice follows you to other devices.",
+        "example": "You switch to dark on your laptop at night. The next morning you open the app on your phone.",
+        "options": [
+          {
+            "label": "This device only",
+            "does": "The choice lives in the browser or app storage."
+          },
+          {
+            "label": "In your account",
+            "does": "The choice syncs with your notes."
+          },
+          {
+            "label": "Account, with a device override",
+            "does": "The account holds the default, and a device can override it."
+          }
+        ]
+      }
+    },
+    {
+      "id": "grilling-page-skill-split-s1-r1-q4",
+      "source": "Grilling page grilling-page-skill-split, question s1-r1-q4",
+      "expected": "structure",
+      "allowed": [
+        "none"
+      ],
+      "state": {
+        "title": "Where do the script, template, and tests live?",
+        "description": "The script finds its template next to itself, and the page lint checks templates in any skill folder. ADR 0013 and `tests/grilling.test.ts` name the current paths.\n\nDecide whether `scripts/grilling.ts` and `templates/grilling-html.html` move into the new skill folder.",
+        "options": [
+          {
+            "label": "Move them",
+            "does": "The script and template move to the new skill. The test, ADR 0013, and the skill text use the new paths."
+          },
+          {
+            "label": "Keep them in grilling",
+            "does": "The new skill links to `skill://grilling/scripts/grilling.ts` and the template stays in grilling."
+          }
+        ]
+      }
+    },
+    {
+      "id": "grilling-page-mocha-redesign-s1q14b",
+      "source": "Grilling page grilling-page-mocha-redesign, question s1q14b",
+      "expected": "structure",
+      "allowed": [
+        "preview"
+      ],
+      "state": {
+        "title": "Which skill-creator layout holds the visual judge's rubric, helper, and cases?",
+        "description": "skill-creator says a skill holds only what its work uses. The rubric and the helper are used in every session. The cases and the calibration script are used only when someone changes the rubric, which happens in this repo, not on a user's machine.\n\nThis decides the files the change adds and which of them ship to users.",
+        "options": [
+          {
+            "label": "Rubric and helper in the skill, cases in the repo",
+            "does": "The skill gets `references/visual-judge.json` and `scripts/visual_judge.py`. The cases and the calibration script live at the repo level, beside `sample-prompts.json` and `scripts/vstack-update.ts`."
+          },
+          {
+            "label": "Everything in the skill",
+            "does": "The rubric, the helper, the cases, and the calibration script all live under `plugin/skills/grilling-page/`."
+          }
+        ]
+      }
+    },
+    {
+      "id": "grilling-page-mocha-redesign-s1q5",
+      "source": "Grilling page grilling-page-mocha-redesign, question s1q5",
+      "expected": "preview",
+      "allowed": [
+        "table"
+      ],
+      "state": {
+        "title": "Which Mocha colors do the question title, the recommended star, and the picked option use?",
+        "description": "You asked for Catppuccin Mocha and a colored question title. The three accents must differ, or the star and the pick look the same.\n\nThis decides the three accent colors on the dark page. The answered, unanswered, and open dots in the top row follow them.",
+        "options": [
+          {
+            "label": "Mauve title, Peach star, Blue pick",
+            "does": "Question titles are Mauve, the star is Peach, and picked options are Blue. The open dot is Yellow."
+          },
+          {
+            "label": "Blue title, Yellow star, Green pick",
+            "does": "Question titles are Blue, the star is Yellow, and picked options are Green. The open dot is Peach."
+          },
+          {
+            "label": "Lavender title, Peach star, Mauve pick",
+            "does": "Question titles are Lavender, the star is Peach, and picked options are Mauve. The open dot is Yellow."
+          }
+        ]
+      }
+    },
+    {
+      "id": "build-step-order",
+      "source": "written for this label",
+      "expected": "flow",
+      "allowed": [
+        "time"
+      ],
+      "state": {
+        "title": "In which order does the release job build, test, and sign the app?",
+        "description": "The release job takes 20 minutes. Signing needs the built app, and the tests can run on the built or the signed app. A failed test must stop the release before anything is uploaded.",
+        "options": [
+          {
+            "label": "Build, test, sign, upload",
+            "does": "The job tests the unsigned build, then signs and uploads it."
+          },
+          {
+            "label": "Build, sign, test, upload",
+            "does": "The job signs first and tests the exact file it will upload."
+          },
+          {
+            "label": "Build, then test and sign side by side",
+            "does": "Tests and signing run at the same time, and the upload waits for both."
+          }
+        ]
+      }
+    },
+    {
+      "id": "cache-refresh-timing",
+      "source": "written for this label",
+      "expected": "time",
+      "allowed": [
+        "flow"
+      ],
+      "state": {
+        "title": "When does the price cache refresh?",
+        "description": "Prices change a few times a day. Today the cache never refreshes until the server restarts, so customers see old prices for hours.",
+        "options": [
+          {
+            "label": "Every hour on the hour",
+            "does": "A timer refreshes the whole cache at minute 0."
+          },
+          {
+            "label": "Five minutes after a price change",
+            "does": "A change starts a 5-minute delay, so a burst of changes refreshes once."
+          },
+          {
+            "label": "At midnight and on each deploy",
+            "does": "The cache refreshes once a day and when a new version ships."
+          }
+        ]
+      }
+    },
+    {
+      "id": "session-lifetime",
+      "source": "written for this label",
+      "expected": "time",
+      "allowed": [
+        "none"
+      ],
+      "state": {
+        "title": "How long does a login stay valid?",
+        "description": "A login today lasts until the browser closes. Support asks that users stay signed in on their own laptops, while admins want short sessions on shared machines.",
+        "options": [
+          {
+            "label": "30 days, renewed on each visit",
+            "does": "Each visit starts the 30 days again."
+          },
+          {
+            "label": "12 hours, fixed",
+            "does": "The login ends 12 hours after sign-in, even if you are active."
+          },
+          {
+            "label": "2 hours idle, 7 days at most",
+            "does": "The login ends after 2 idle hours, and after 7 days in any case."
+          }
+        ]
+      }
+    },
+    {
+      "id": "database-choice",
+      "source": "written for this label",
+      "expected": "table",
+      "allowed": [],
+      "state": {
+        "title": "Which database stores the event log?",
+        "description": "The log grows by about 2 GB a month. Reads are mostly the last week. The team has run Postgres before, but not the other two.",
+        "options": [
+          {
+            "label": "Postgres",
+            "does": "A table per month on the existing Postgres server. About $0 more a month, the team knows it, and it slows past 500 GB."
+          },
+          {
+            "label": "ClickHouse",
+            "does": "A new ClickHouse server. About $80 a month, fast for scans, and new to the team."
+          },
+          {
+            "label": "S3 with Parquet files",
+            "does": "Monthly Parquet files queried with DuckDB. About $5 a month, slow for single rows, and no server to run."
+          }
+        ]
+      }
+    },
+    {
+      "id": "hosting-plan",
+      "source": "written for this label",
+      "expected": "table",
+      "allowed": [],
+      "state": {
+        "title": "Which hosting plan runs the staging site?",
+        "description": "Staging needs to be up during work hours only. It runs one web server and one database.",
+        "options": [
+          {
+            "label": "Fly.io shared",
+            "does": "About $5 a month, sleeps when idle, 2 s cold start, deploys from the CLI."
+          },
+          {
+            "label": "Render starter",
+            "does": "About $14 a month, always on, deploys on push, no SSH."
+          },
+          {
+            "label": "A small VPS",
+            "does": "About $6 a month, always on, full SSH, and you patch it yourself."
+          }
+        ]
+      }
+    },
+    {
+      "id": "split-billing",
+      "source": "written for this label",
+      "expected": "delta",
+      "allowed": [
+        "structure"
+      ],
+      "state": {
+        "title": "Do we move billing out of the monolith?",
+        "description": "Billing lives in the monolith today and shares its database. Two teams change it, and every billing release ships the whole app.",
+        "options": [
+          {
+            "label": "Keep it in the monolith",
+            "does": "Billing stays as it is, and the teams agree on a release schedule."
+          },
+          {
+            "label": "Split it into its own service",
+            "does": "Billing gets its own service and database, and the monolith calls it over HTTP."
+          },
+          {
+            "label": "Split the code, keep the database",
+            "does": "Billing becomes its own module with its own deploy, but it still reads the shared tables."
+          }
+        ]
+      }
+    },
+    {
+      "id": "queue-replace",
+      "source": "written for this label",
+      "expected": "delta",
+      "allowed": [
+        "structure",
+        "flow"
+      ],
+      "state": {
+        "title": "What replaces the Redis queue for email jobs?",
+        "description": "Email jobs run through a Redis list today. Redis restarts lose jobs about once a month. The app and the workers stay as they are.",
+        "options": [
+          {
+            "label": "SQS",
+            "does": "The app writes jobs to SQS, and the workers read from SQS instead of Redis."
+          },
+          {
+            "label": "Postgres table with SKIP LOCKED",
+            "does": "Jobs go into a table in the existing database, and Redis is removed."
+          },
+          {
+            "label": "Keep Redis, add persistence",
+            "does": "Redis stays and gets an append-only file, so a restart keeps the jobs."
+          }
+        ]
+      }
+    },
+    {
+      "id": "retry-count",
+      "source": "written for this label",
+      "expected": "none",
+      "allowed": [],
+      "state": {
+        "title": "How many times does the uploader retry a failed upload?",
+        "description": "Uploads fail about once in 200 tries, mostly from short network drops.",
+        "options": [
+          {
+            "label": "Three times",
+            "does": "The uploader tries three more times, then shows an error."
+          },
+          {
+            "label": "Until it works",
+            "does": "The uploader keeps trying with no limit."
+          },
+          {
+            "label": "No retry",
+            "does": "The first failure shows an error."
+          }
+        ]
+      }
+    },
+    {
+      "id": "player-state",
+      "source": "written for this label",
+      "expected": "state",
+      "allowed": [
+        "time"
+      ],
+      "state": {
+        "title": "What does the player do when the network drops during playback?",
+        "description": "The video player has playing, paused, and buffering states today. A network drop stops playback with an error, and the user has to press play again.",
+        "options": [
+          {
+            "label": "Buffer, then resume",
+            "does": "The player moves to buffering and goes back to playing when data comes back."
+          },
+          {
+            "label": "Pause and wait",
+            "does": "The player pauses and waits for the user, who presses play when the network is back."
+          },
+          {
+            "label": "Buffer, then pause after 10 seconds",
+            "does": "The player buffers for 10 seconds, then pauses if data has not come back."
+          }
+        ]
+      }
+    }
+  ]
+}

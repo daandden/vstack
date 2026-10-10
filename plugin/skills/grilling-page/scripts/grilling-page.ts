@@ -143,7 +143,8 @@ function check(lines: Line[]): State {
       case "question": {
         str(r, "round", where);
         int(r, "q", where);
-        for (const k of ["title", "plain", "why", "settled"]) str(r, k, where);
+        if (["plain", "why", "settled"].some((k) => r[k] !== undefined)) fail(where, "has plain, why, and settled from an older page; write one description instead and start a new page");
+        for (const k of ["title", "description"]) str(r, k, where);
         str(r, "example", where, true);
         if (r.visual !== undefined) checkVisual(r.visual, `${where}: visual`);
         if (!Array.isArray(r.options) || r.options.length < 2) fail(where, "options must list two or more options");
@@ -151,7 +152,8 @@ function check(lines: Line[]): State {
         (r.options as Option[]).forEach((o, i) => {
           const ow = `${where}: option ${letter(i)}`;
           if (typeof o !== "object" || o === null) fail(ow, "must be an object");
-          str(o as unknown as Rec, "label", ow);
+          const label = str(o as unknown as Rec, "label", ow)!;
+          if (!label.startsWith(`${letter(i)}. `) || label.slice(3).trim() === "") fail(ow, `label must start with "${letter(i)}. ", the same text as the ask label`);
           str(o as unknown as Rec, "does", ow);
           strList(o.gains, "gains", ow);
           strList(o.costs, "costs", ow);
@@ -268,7 +270,7 @@ function formatTime(iso: string): string {
 
 const stateOf = (a: Rec | undefined) => (!a ? "open" : a.unanswered !== undefined ? "unanswered" : "answered");
 
-/** The line under the options, only when it says more than the blue title: [label, html]. */
+/** The line under the options, only when it says more than the picked label: [label, html]. */
 function answerLine(a: Rec | undefined): [string, string] | undefined {
   if (!a) return undefined;
   if (a.unanswered !== undefined) return ["Unanswered", text(a.unanswered || "The ask timed out or was cancelled. This is not your answer, and the question stays open.")];
@@ -277,34 +279,40 @@ function answerLine(a: Rec | undefined): [string, string] | undefined {
   return undefined;
 }
 
+/** Paragraphs split on blank lines; a block whose lines all start with "- " is a bullet list. */
+function description(s: string): string {
+  const blocks = s.split(/\n\s*\n/).map((b) => b.trim()).filter(Boolean);
+  return blocks
+    .map((block) => {
+      const lines = block.split("\n").map((l) => l.trim());
+      if (lines.every((l) => l.startsWith("- "))) return `<ul class="bullets">${lines.map((l) => `<li>${text(l.slice(2))}</li>`).join("")}</ul>`;
+      return `<p>${text(lines.join(" "))}</p>`;
+    })
+    .join("");
+}
+
 function questionHtml(q: Rec, a: Rec | undefined, baseDir: string): string {
   const qid = `q-${q.id}`;
-  const facts = [
-    ["In plain words", q.plain, "plain"],
-    ["Why it is open", q.why, ""],
-    ["Already settled", q.settled, ""],
-    ...(q.example ? [["Example", q.example, ""]] : []),
-  ]
-    .map(([dt, dd, cls]) => `<div><dt>${dt}</dt><dd${cls ? ` class="${cls}"` : ""}>${text(dd)}</dd></div>`)
-    .join("");
+  const example = q.example ? `\n<div class="example"><p class="label">Example</p><p>${text(q.example)}</p></div>` : "";
   const picks = new Set<string>(a?.picks ?? []);
   const options = (q.options as Option[])
     .map((o, i) => {
       const L = letter(i);
       const attrs = `${o.recommended ? " data-recommended" : ""}${picks.has(L) ? " data-picked" : ""}`;
+      const star = o.recommended ? `<span class="star" aria-hidden="true">*</span><span class="sr-only"> (recommended)</span>` : "";
       const mark = picks.has(L) ? `<span class="sr-only"> (your answer)</span>` : "";
       const preview = o.preview ? visualHtml(o.preview, `${qid}-${L.toLowerCase()}`, "preview", baseDir) : "";
       const trade = [...o.gains.map((g) => `<li class="gain">${text(g)}</li>`), ...o.costs.map((c) => `<li class="cost">${text(c)}</li>`)].join("");
       const why = o.recommended ? `<p class="why">Recommended: ${text(o.recommended)}</p>` : "";
-      return `<li class="option"${attrs}><h4>${L}. ${text(o.label)}${mark}</h4>${preview}<p>${text(o.does)}</p><ul class="trade">${trade}</ul>${why}</li>`;
+      return `<li class="option"${attrs}><h4>${text(o.label.slice(3))}${star}${mark}</h4>${preview}<p>${text(o.does)}</p><ul class="trade">${trade}</ul>${why}</li>`;
     })
     .join("\n");
   const state = stateOf(a);
   const line = answerLine(a);
   const visual = q.visual ? visualHtml(q.visual, `${qid}-visual`, "visual", baseDir) : "";
-  return `<article class="question" id="${qid}" data-state="${state}">
+  return `<article class="question" id="${qid}" data-state="${state}" data-stop>
 <h3><span class="qnum">Q${q.q}</span>${text(q.title)}</h3>
-<dl class="facts">${facts}</dl>
+<div class="description">${description(q.description)}</div>${example}
 ${visual}<ol class="options">
 ${options}
 </ol>${line ? `\n<p class="answer" data-state="${state}"><span class="label">${line[0]}</span><span>${line[1]}</span></p>` : ""}
@@ -324,7 +332,7 @@ function render(s: State, baseDir: string): string {
       body.push(`<section class="round" aria-labelledby="round-${item.id}">\n${head}\n${qs.map((q) => questionHtml(q, s.answers.get(q.id), baseDir)).join("\n")}\n</section>`);
       if (qs.length) {
         if (nav.length) nav.push(`<span class="sep" aria-hidden="true"></span>`);
-        for (const q of qs) nav.push(`<a href="#q-${q.id}"><span class="dot" data-state="${stateOf(s.answers.get(q.id))}"></span>Q${q.q}</a>`);
+        for (const q of qs) nav.push(`<a href="#q-${q.id}" data-for="q-${q.id}"><span class="dot" data-state="${stateOf(s.answers.get(q.id))}"></span>Q${q.q}</a>`);
       }
     } else {
       const qnum = (id: string) => s.questions.get(id)!.q;
@@ -334,14 +342,15 @@ function render(s: State, baseDir: string): string {
         ...((item.extra as string[] | undefined) ?? []).map((e) => `<li>${text(e)}</li>`),
       ].join("\n");
       const gate = item.answer ? (item.note ? `${item.answer}. Note: "${item.note}"` : `${item.answer}.`) : "Waiting for your answer.";
-      body.push(`<section class="summary" aria-labelledby="close-${item.id}">
-<h2 id="close-${item.id}">Summary of session ${item.session}</h2>
+      const latest = lastClose.get(item.session) === item.id;
+      body.push(`<section class="summary" id="close-${item.id}" aria-labelledby="close-${item.id}-title"${latest ? " data-stop" : ""}>
+<h2 id="close-${item.id}-title">Summary of session ${item.session}</h2>
 <ul class="decisions">
 ${bullets}
 </ul>
 <p class="answer"><span class="label">Closing gate</span><span>${text(gate)}</span></p>
 </section>`);
-      if (lastClose.get(item.session) === item.id) nav.push(`<span class="sep" aria-hidden="true"></span><a href="#close-${item.id}">Summary</a>`);
+      if (latest) nav.push(`<span class="sep" aria-hidden="true"></span><a href="#close-${item.id}" data-for="close-${item.id}">Summary</a>`);
     }
   }
   const navHtml = nav.length ? `<nav class="qnav" aria-label="Questions">${nav.join("")}</nav>` : "";

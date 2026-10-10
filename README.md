@@ -39,6 +39,10 @@ Only `plugin/` ships. Upstreams are fetched when needed, never stored in this re
 
 The extension selects every score at least 0.75 in main sessions with native TypeSafe jev and credentials. Each pointer appears once per session, including resume on the active branch. It returns one hidden message, not system-prompt text. Child sessions receive no selection. A missing native judge or key, request error, or four-second deadline skips silently; one retry shares that deadline. `tests/principle-selection.test.ts` uses the #69 fake host and a stubbed fetch endpoint, including a fetch that ignores abort.
 
+### Visual judge calibration
+
+`visual-judge-cases.json` at the repo root is the calibration set for grilling-page's visual judge. Each case is one Grilling page question with an expected label and allowed labels from `plugin/skills/grilling-page/references/visual-judge.json`, the rubric the skill's helper sends. After a rubric change, run `TYPESAFE_API_KEY=$(omp token typesafe) bun scripts/visual-judge-check.ts`. It sends each case to live jev and exits 1 when a case misses. A case passes when the top label is expected or allowed, and under 0.7 confidence it also passes when `none` is expected or allowed, because the agent then adds no visual. `tests/visual-judge-cases.test.ts` checks offline that every case uses the rubric's labels and that every label has a case.
+
 
 ### Pins and Upstream clones
 
