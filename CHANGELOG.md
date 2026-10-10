@@ -4,6 +4,8 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+- The Grilling page separates whole question sections and summaries. Each question, its options, and its answer stay together without internal separator lines.
+
 ## [0.1.40] - 2026-10-11
 
 - `check-register` fails `unrouted-skill` when ask-vstack names no `/skill:<name>` route for a shipped skill. The principle-* skills need no route (#105).
