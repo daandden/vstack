@@ -90,6 +90,10 @@ _Avoid_: eval subagent, runner (unqualified)
 The confirmed process of moving one or both Pins forward and adapting vstack to the Upstream changes.
 _Avoid_: sync, upgrade
 
+**Hand edit**:
+A change to a vstack skill, agent, or rule made outside an Update: adding one, editing one, taking an Upstream item at its current Pin, or renaming or removing one.
+_Avoid_: update (for this), manual edit, patch
+
 **End state**:
 How far a flow that produces a commit goes before it stops: commit, PR opened, merge-ready, or shipped. Shipped means every PR in the run is merged into the default branch; deploys and releases are not part of it. The flow settles it once, before it starts.
 _Avoid_: goal, target, finish line
