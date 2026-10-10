@@ -163,7 +163,7 @@ items:
     tree: fd99bcbb818f7ef766b83656fb5fac0b58e223ad
     disposition: adapt
     artifacts: [plugin/skills/grilling]
-    reason: "Sub-agent spawn names a vstack agent; one round is one ask with a Grilling HTML (#42, #58)."
+    reason: "Sub-agent spawn names a vstack agent; one round is one ask; the Grilling page lives in grilling-page (#42, #58)."
   - id: matt/handoff
     upstream: matt
     kind: skill
@@ -904,6 +904,7 @@ originals:
   - plugin/skills/vstack-clean
   - plugin/skills/vstack-tmp
   - plugin/skills/vstack-fan-out
+  - plugin/skills/grilling-page
   - plugin/skills/vstack-worktree
   - plugin/skills/skill-creator
   - plugin/skills/vstack-update

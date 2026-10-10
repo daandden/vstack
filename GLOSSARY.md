@@ -110,9 +110,9 @@ _Avoid_: artifact dir, private root
 A vstack output that nothing reads after its run, such as an explanation page, proof evidence, an eval workspace, or a decision-trail log. It is kept under `~/.vstack/tmp/`, grouped by project, until vstack-clean deletes it after a retention period. Temporary files a script creates and deletes itself are not Scratch.
 _Avoid_: temp files, artifacts, tmp output
 
-**Grilling HTML**:
+**Grilling page**:
 The page a grilling session keeps for the user. It shows every round's questions in full, with their context, options, trade-offs, and the answers given, while the `ask` call carries only short forms of the same questions. It is Scratch.
-_Avoid_: question page, round page
+_Avoid_: Grilling HTML, question page, round page
 
 **Verify skill**:
 A project-local skill named `verify-<app>` that drives the project's app the way a user does and captures proof that a change works. setup-app-verification creates it, and maintain-app-verification keeps it accurate.

@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Grilling: {{title}}</title>
+  <!-- scripts/grilling-page.ts fills this page. Do not edit a rendered page by hand. -->
+  <style>
+    *, *::before, *::after { box-sizing: border-box; min-inline-size: 0; }
+    :root {
+      color-scheme: light;
+      /* Catppuccin Latte, each hex as oklch. */
+      --base: oklch(95.8% 0.006 264.5);
+      --mantle: oklch(93.3% 0.009 264.5);
+      --surface0: oklch(85.7% 0.014 268.5);
+      --overlay0: oklch(70.8% 0.024 274.6);
+      --subtext0: oklch(54.7% 0.034 279.1);
+      --text: oklch(43.5% 0.043 279.3);
+      --strong: oklch(33% 0.045 279.3);
+      --blue: oklch(55.9% 0.226 262.1);
+      --green: oklch(62.5% 0.177 140.4);
+      --peach: oklch(69.2% 0.204 42.4);
+      --red: oklch(55.0% 0.216 19.8);
+      --line: color-mix(in oklch, var(--surface0) 70%, transparent);
+      --gutter: clamp(1rem, 0.5rem + 2.5vw, 2.5rem);
+      scrollbar-gutter: stable;
+      scroll-padding-block-start: 3.5rem;
+      /* Three font sizes only: title, body, small. */
+      --fs-title: 0.9375rem;
+      --fs-body: 0.8125rem;
+      --fs-small: 0.75rem;
+      text-wrap: pretty;
+      overflow-wrap: break-word;
+      font-synthesis: none;
+    }
+    [data-state="answered"] { --state: var(--blue); }
+    [data-state="unanswered"] { --state: var(--red); }
+    [data-state="open"] { --state: var(--peach); }
+    /* Same font and metrics as the Tern terminal: the font's own line height and letter width, no extra spacing. */
+    body { margin: 0; min-block-size: 100svh; background: var(--base); color: var(--text); font: var(--fs-body)/normal "JetBrainsMono Nerd Font Mono", "JetBrainsMono Nerd Font", "JetBrains Mono", ui-monospace, monospace; letter-spacing: 0; }
+    h1, h2, h3, h4 { margin-block: 0; color: var(--strong); text-wrap: balance; font-size: var(--fs-body); line-height: normal; }
+    p, ul, ol, dl, dd, figure { margin: 0; }
+    a { color: var(--blue); text-underline-offset: 0.2em; touch-action: manipulation; }
+    a:active { color: var(--strong); }
+    :focus-visible { outline: 2px solid var(--blue); outline-offset: 0.2em; }
+    @media (hover: hover) and (pointer: fine) { a:hover { color: var(--strong); } }
+    code, pre { font: inherit; }
+    code { padding-inline: 0.25em; border-radius: 0.2rem; background: var(--mantle); color: var(--strong); }
+    pre { white-space: pre-wrap; font-size: var(--fs-small); }
+    svg, img { display: block; max-inline-size: 100%; block-size: auto; }
+
+    .qnav { position: sticky; inset-block-start: 0; z-index: 1; display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; align-items: center; padding-block: 0.375rem; padding-inline: 1.25rem; background: var(--base); border-block-end: 1px solid var(--line); font-size: var(--fs-small); }
+    .qnav a { display: inline-flex; gap: 0.375rem; align-items: center; color: var(--text); text-decoration: none; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .qnav .sep { inline-size: 1px; block-size: 1rem; background: var(--surface0); }
+    .dot { flex: none; inline-size: 0.4375rem; block-size: 0.4375rem; border-radius: 50%; background: var(--state, var(--overlay0)); }
+
+    main { display: grid; gap: 1.5rem; max-inline-size: 60rem; margin-inline: auto; padding-block: 1rem 2.5rem; padding-inline: 1.25rem; }
+    .sr-only { position: absolute; inline-size: 1px; block-size: 1px; overflow: clip; clip-path: inset(50%); white-space: nowrap; }
+    .page-head { display: grid; gap: 0.25rem; }
+    .crumb, .note, time, dt, .label { color: var(--subtext0); }
+    .crumb, .note, time, dt, .label, .why { font-size: var(--fs-small); }
+    h1 { font-size: var(--fs-title); font-weight: 700; }
+
+    .round { display: grid; gap: 1.25rem; }
+    .round > header { display: grid; gap: 0.125rem; padding-block-start: 0.5rem; border-block-start: 1px solid var(--surface0); }
+    h2 { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; align-items: baseline; font-size: var(--fs-small); font-weight: 650; text-transform: uppercase; color: var(--subtext0); }
+    h2 time { font-weight: 400; text-transform: none; font-variant-numeric: tabular-nums; }
+
+    .question { display: grid; gap: 0.625rem; }
+    h3 { font-size: var(--fs-title); font-weight: 650; }
+    .qnum { margin-inline-end: 0.5rem; color: var(--subtext0); font-weight: 600; font-variant-numeric: tabular-nums; }
+    .facts { display: grid; gap: 0.375rem; }
+    dt { font-weight: 600; }
+    .plain { color: var(--strong); }
+
+    .visual, .preview { padding-block: 0.625rem; padding-inline: 0.75rem; border-radius: 0.375rem; background: var(--mantle); overflow-x: auto; }
+    .visual { display: grid; gap: 0.5rem; }
+    .preview { display: grid; gap: 0.375rem; justify-items: start; }
+
+    .options { display: grid; padding-inline-start: 0; list-style: none; }
+    .option { display: grid; gap: 0.25rem; padding-block: 0.5rem; border-block-start: 1px solid var(--line); }
+    .option:last-child { border-block-end: 1px solid var(--line); }
+    h4 { font-weight: 400; }
+    .option[data-recommended] h4 { text-decoration: underline; text-decoration-color: var(--blue); text-decoration-thickness: 2px; text-underline-offset: 0.3em; }
+    .option[data-picked] h4 { color: var(--blue); }
+    .trade { display: grid; padding-inline-start: 0; list-style: none; }
+    .trade > li { position: relative; padding-inline-start: 1.25rem; }
+    .gain::before, .cost::before { position: absolute; inset-inline-start: 0; font-weight: 700; }
+    .gain::before { content: "+"; color: var(--green); }
+    .cost::before { content: "\2212"; color: var(--red); }
+    .why { color: var(--subtext0); }
+
+    .answer { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; align-items: baseline; color: var(--strong); }
+    .answer > .label { font-weight: 600; color: var(--state, var(--subtext0)); }
+
+    .summary { display: grid; gap: 0.5rem; }
+    .decisions { display: grid; gap: 0.25rem; padding-inline-start: 1.25rem; }
+    .decisions > li::marker { color: var(--overlay0); }
+    .decisions a { font-weight: 600; text-decoration: none; }
+  </style>
+</head>
+<body>
+<!-- NAV -->
+  <main>
+<!-- BODY -->
+  </main>
+</body>
+</html>

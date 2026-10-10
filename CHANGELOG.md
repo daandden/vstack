@@ -4,6 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [0.1.38] - 2026-10-09
+
+- grilling renders the Grilling page with `scripts/grilling-page.ts` from a JSONL state file (ADR 0013). The agent appends records, and the script checks them, refuses unsafe previews, and renders the whole page. The page is minimal and light only: Catppuccin Latte with a blue primary color, JetBrainsMono Nerd Font Mono at 13px with Tern's line height, options as headings with no cards (recommended is underlined, your answer is blue), a slim Q-number row, a visual only when the words are not enough, and a bullet summary that says what each decision made true. Every command prints the page's plain absolute path.
+- The page steps move from grilling into a new hidden skill, grilling-page, so grilling stays close to its upstream. grilling still says when each page step happens. The glossary term Grilling HTML is now Grilling page.
+
 ## [0.1.37] - 2026-10-08
 
 - Re-ask timed-out End state and seam gates once, then stop without authorization; keep Headless defaults separate (#63).
