@@ -11,7 +11,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [0.1.39] - 2026-10-11
 
-- The Grilling page is Catppuccin Mocha only (ADR 0013). Question titles, their Q numbers, and option labels are Mauve. The recommended option ends with a Yellow `*`, and your pick is a bold Yellow label. In the Q row, answered dots are Yellow, unanswered dots are Red, and open dots are grey. j or Down moves to the next question or summary, k or Up to the previous one, and the Q row highlights where you are.
+- The Grilling page is Catppuccin Mocha only (ADR 0013). Question titles and their Q numbers are Mauve, and option labels are Blue. The recommended option ends with a Yellow `*`, and your pick is a bold Yellow label. In the Q row, answered dots are Yellow, unanswered dots are Red, and open dots are grey. j or Down moves to the next question or summary, k or Up to the previous one, and the Q row highlights where you are.
 - A question record has a title written as a question and a `description` under it, in paragraphs and `- ` bullet lists. The In plain words, Why it is open, and Already settled blocks are gone, and the script refuses a question that still has `plain`, `why`, or `settled`. An option `label` is the `ask` label with its letter; the script checks the letter and the page hides it, so the page no longer shows "A. A.".
 - Each round, `scripts/visual_judge.py` asks the jev judge which visual each question needs, from the rubric in `references/visual-judge.json`. Under 0.7 confidence the question gets no visual. Every diagram comes from diagram-design, drawn dark. `scripts/visual-judge-check.ts` checks the rubric against `visual-judge-cases.json` with live jev.
 

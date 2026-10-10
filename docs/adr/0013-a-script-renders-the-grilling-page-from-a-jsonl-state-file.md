@@ -14,4 +14,4 @@ grilling-page ships `scripts/grilling-page.ts`. The agent no longer writes the G
 - The script refuses input that has a missing part, such as an option with no cost line, an answer for an unknown question, or a script in a preview. The agent fixes the record and runs the command again.
 - A preview or visual in HTML keeps its own CSS. The script scopes that CSS to the element's id, so it cannot change the rest of the page.
 - A page that the agent wrote by hand before this change has no state file. The script does not continue it. A continued session starts a new page and does not link the old one.
-- The page is dark only, with the Catppuccin Mocha palette: Mauve for question titles and option labels, Yellow for the recommended mark and your pick. Diagrams are drawn in their dark variant to match. The template is built for a side pane about 880px wide.
+- The page is dark only, with the Catppuccin Mocha palette: Mauve for question titles, Blue for option labels, Yellow for the recommended mark and your pick. Diagrams are drawn in their dark variant to match. The template is built for a side pane about 880px wide.
