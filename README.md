@@ -304,6 +304,23 @@ The classes:
 
 A row owns the files under its path except those under a longer path that is another row or another Upstream item, so a changed Playbook file counts for its Playbook row and not for `poteto-mode`. `agents/openai.yaml` never counts, because vstack never ships it.
 
+### vstack-edit
+
+`/skill:vstack-edit` is the hidden maintainer flow for a Hand edit to an existing original, adapt, or merge item. `bun scripts/vstack-edit.ts` owns its deterministic steps. It sits beside the vstack-update script and does not ship (ADR 0005). Each command prints JSON and exits 0 on success. A refusal or failure exits 2 and prints `{"ok": false, "reason": "..."}`. The skill owns judgment, the Grilling page, and `ask`. The script reads Upstream data only at the current Pin and never fetches a newer ref (ADR 0014). It refuses to add, take, rename, or remove an item, and it refuses an adopt item.
+
+| Command | Result |
+|---|---|
+| `preflight --root <checkout> --name <name>` | Runs the shared Update preflight from `scripts/lib/update-gates.ts`. It refuses any `update/` branch, local or on origin, and any open Update PR. Then it makes the worktree with `omp wt add -b edit/<name> <base>/vstack-<repo>-edit-<name> main` and writes `run.json` under `vstack-edit/` in the worktree's own git dir. It prints that path in `run`. |
+| `check --run <run.json> <artifact> ...` | Prints each target's register rows with the current Pin, its Dispositions (`original` for an artifact in `originals:`), and its callers. A caller is a plugin file outside the target that names it as `skill://<name>` or `/skill:<name>`. It refuses an artifact that no row and no `originals:` entry names, and an adopt artifact. It reads no Upstream. |
+| `prepare --run <run.json> --decisions <file>` | Checks the decisions file, and that the plugin units that differ from main are exactly the targets. It rebuilds the bookkeeping from main: the patch bump in `plugin/package.json`, and the CHANGELOG lines under Unreleased, moved with every other Unreleased line under the new version heading. A second run gives the same result. |
+| `gates --run <run.json>` | Runs quick_validate on each target skill, check-register (`--source clones --base main`), the test suite (`bun run test` in the worktree, output in `tests.log`), and the load gate. Before check-register, it clones a missing Upstream into the clone cache, and check-register reads that clone only at the Pin. It runs every gate and refuses with all failures. A pass writes a receipt that holds a hash of the managed paths and the decisions. |
+| `finish --run <run.json> --grilling <state.jsonl>` | Refuses unless the receipt matches the current files and the latest `close` record on the Grilling page has the answer Shared understanding. Then it commits `plugin/`, `CHANGELOG.md`, and `decision-register.yaml` in the worktree with the decisions' commit message. It never pushes and never opens a PR. |
+| `cancel --run <run.json>` | Removes only the run's worktree and branch. |
+
+The decisions file is `{ "targets": [...], "changelog": [...], "commit": "..." }`. Each target has `action` (only `edit` for now), `kind` (`skill`, `agent`, or `rule`), and `artifact` (`plugin/skills/<name>`, `plugin/agents/<name>.md`, or `plugin/rules/<name>.md`). `changelog` lists one-line entries without the leading `- `. `commit` is the commit message. The skill writes the file from the user's answers. prepare copies it to the run's `out` directory, and gates and finish read that copy.
+
+Injection points for process tests are `--gh` or VSTACK_GH, `--omp` or VSTACK_OMP, `--smoke`, `--test`, `--upstreams`, and `--remote`. `tests/vstack-edit.test.ts` runs the script over the vstack-update lifecycle fixture with stand-ins for gh, omp, the load smoke, and the test suite.
+
 ### Existing-code explanations
 
 `/skill:how`, `/skill:why`, and `/skill:explain` are hidden adapt skills. Callers read them through `skill://`. how traces mechanisms and writes its cited page under Scratch `how/`. why profiles git, the remote code host, the configured tracker, and reachable MCP tools before investigation. Its synthesizer always gets a fresh context. Both return their output unedited to callers.

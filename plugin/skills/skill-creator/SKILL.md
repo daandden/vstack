@@ -76,6 +76,8 @@ For a new skill, a location the user names wins. Otherwise choose `.omp/skills/<
 
 For an update, resolve `omp skill list --json`: inspect `source` and resolve `filePath` to its real path. Edit an own project or user skill in place and leave it uncommitted. For a vstack adapt, merge, or original, use the clone's hand-edit flow: branch, patch version bump, CHANGELOG, register check, and a PR with `gh`. For a new vstack original, add its directory to `originals:`. Refuse a vstack adopt item: editing it changes its Disposition. Refuse someone else's install: its next update overwrites the edit. State the reason and stop in either case.
 
+Inside an active vstack-edit run, the run's worktree holds the target, and the hand-edit and adopt rules above do not apply. Write only the draft there. Make no branch, version bump, CHANGELOG entry, or PR, and do not refuse an adopt target. vstack-edit owns those steps and the adopt confirmation.
+
 Names use lowercase letters, digits, and single hyphens, at most 64 characters; prefer short action-oriented names, namespaced by tool or domain when that aids discovery. The folder name matches the skill name.
 
 ### 3. Scaffold a new skill

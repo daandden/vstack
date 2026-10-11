@@ -908,3 +908,4 @@ originals:
   - plugin/skills/vstack-worktree
   - plugin/skills/skill-creator
   - plugin/skills/vstack-update
+  - plugin/skills/vstack-edit

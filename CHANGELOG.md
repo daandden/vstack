@@ -4,7 +4,12 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [0.1.41] - 2026-10-11
+
 - The Grilling page separates whole question sections and summaries. Each question, its options, and its answer stay together without internal separator lines.
+- New hidden skill vstack-edit makes a Hand edit to an existing original, adapt, or merge skill, agent, or rule. It asks once for the End state and works in an omp worktree on `edit/<name>`. `scripts/vstack-edit.ts` raises the patch version, writes the CHANGELOG entry, and runs quick_validate, check-register, the test suite, and the load smoke. After the user confirms on a Grilling page, the script makes one local commit. For a later End state, open-pr pushes and opens the PR. The script refuses other actions and adopt items for now (#106).
+- ask-vstack routes to vstack-edit in its Maintain vstack section (#106).
+- Inside an active vstack-edit run, skill-creator writes only the draft. It makes no branch, version bump, CHANGELOG entry, or PR of its own (#106).
 
 ## [0.1.40] - 2026-10-11
 
