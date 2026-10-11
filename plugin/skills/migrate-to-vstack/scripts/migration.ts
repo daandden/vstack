@@ -259,6 +259,6 @@ export async function applyMachine(plan: Plan, skip: string[] = []) {
   const remaining = machinePlan(plan.home, plan.roots);
   const complete = failures.length === 0 && remaining.items.length === 0 && remaining.scan_errors.length === 0;
   return { complete, applied, skipped: skip, failures, warnings, manual_hits: manualHits, remaining_items: remaining.items.map(i => i.id),
-    message: complete ? "Machine Migration applied. Start a new session with /new." : "Migration incomplete; check 6 still fails. Review the remaining items and errors. Start a new session after completing Migration.",
+    message: complete ? "Machine Migration applied. Start a new session with /new." : "Machine Migration incomplete. Review the remaining items and errors. Start a new session after completing Migration.",
   };
 }

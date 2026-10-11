@@ -4,6 +4,12 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [0.1.55] - 2026-10-11
+
+- Separate Matt Pocock Migration into migrate-to-vstack; setup-vstack now runs configuration and fresh setup without Migration scans.
+- Route old diagram markers to migrate-to-vstack and move the Migration scripts and House style data into that skill.
+- Link diagram-design's existing Environment doctor for diagnostics.
+
 ## [0.1.54] - 2026-10-11
 
 - Chat replies and `ask` text follow simple-english's Reply rules again, not its Document rules. A reply can use a list, a table, a heading, or a code block when it carries structure. The Document rules no longer have the heading, list, and paragraph thresholds or the forced words `make sure that` and `configuration`, and the 20-word and 25-word limits become targets. should and would stay banned, and may, might, and could are allowed for a fact that the writer is not sure of. simple-english also loses CHECK mode and its rule catalog, and no skill or rule names a mode, so explain and the rule point at the skill alone. The vstack-prose rule allows parentheses for a short definition, an example, or an aside, and ADR 0012 records the change.

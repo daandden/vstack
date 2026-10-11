@@ -909,3 +909,4 @@ originals:
   - plugin/skills/skill-creator
   - plugin/skills/vstack-update
   - plugin/skills/vstack-edit
+  - plugin/skills/migrate-to-vstack

@@ -36,7 +36,6 @@ function repoState(cwd: string) {
   const root = realpathSync(top.stdout);
   const commonDir = realpathSync(gitOrDie(cwd, "rev-parse", "--path-format=absolute", "--git-common-dir"));
   const vstackRoot = join(commonDir, "vstack");
-  const mattPocock = join(commonDir, "matt-pocock");
 
   const mode = isDir(join(vstackRoot, "config"))
     ? "private"
@@ -53,7 +52,6 @@ function repoState(cwd: string) {
     root,
     common_dir: commonDir,
     vstack_root: vstackRoot,
-    matt_pocock: isDir(mattPocock) ? mattPocock : null,
     mode,
     block_file: blockFile,
     block_exists: blockExists,
@@ -68,7 +66,6 @@ function hasBlock(text: string): boolean {
 function commit(cwd: string, title: string | undefined) {
   if (!title?.trim()) fail("commit needs --title <commit title>");
   const s = repoState(cwd);
-  if (s.matt_pocock) fail(`refusing to commit: Matt's private storage still exists at ${s.matt_pocock}/; move it first`);
   if (s.mode === "private") fail(`refusing to commit: Private mode is on (${s.vstack_root}/config/ exists), and Private mode commits nothing`);
 
   for (const p of CONFIG) if (!existsSync(join(s.root, p))) fail(`refusing to commit: ${p} is missing; Standard mode writes all three config files`);

@@ -1,4 +1,4 @@
-// Public CLI for setup-vstack's machine Migration. Checking and planning never change machine state.
+// Public CLI for migrate-to-vstack's machine Migration. Planning never changes machine state.
 import { readFileSync } from "node:fs";
 import { applyMachine, machinePlan, migrationHome, type Plan } from "./migration.ts";
 

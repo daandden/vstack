@@ -131,6 +131,8 @@ Skills that can run subagents in parallel decide at each step. Say *fan out* or 
 
 ## Precondition
 
+Run `/skill:migrate-to-vstack` to move a Matt Pocock machine or project setup onto vstack. It confirms each Migration plan before changing files. Run it before setup-vstack when moving from Matt's skills.
+
 Run `/skill:setup-vstack` before your first engineering flow. It configures the issue tracker, triage labels, and document layout. Custom issue trackers also work. It also points to setup-app-verification.
 
 Skills use `/skill:vstack-fan-out` for the parallel-work decision, `/skill:vstack-worktree` for worktrees, and `/skill:vstack-tmp` to resolve Scratch paths.

@@ -68,7 +68,7 @@ export function projectPlan(cwd: string, mode: Mode = "move"): ProjectPlan {
         if ([".md",".json",".html"].some(ext=>p.endsWith(ext))) i.changes.push(change(p,to,text(p),existsSync(to)?text(to):""));
       }
       plan.items.push(i);
-      plan.notices.push("Old private storage blocks setup until this deletion is approved. Outside links to old storage break; no compatibility link.");
+      plan.notices.push("The Migration stays incomplete until this deletion is approved. Outside links to old storage break; no compatibility link.");
       // A destination without config cannot safely enable Private mode by deleting the old store.
       if (!dir(join(store,"config"))) plan.notices.push("The winning vstack store has no config directory; application refuses deletion until you resolve that destination.");
       return plan;
@@ -142,7 +142,7 @@ export function applyProject(plan: ProjectPlan, skip: string[] = []) {
     try {
       if (item.kind === "private-move") privateMove(item.fallback!);
       else if (item.kind === "old-store-delete") {
-        if (!dir(join(item.to!,"config"))) throw new Error("vstack destination has no config; old private storage kept, setup remains blocked");
+        if (!dir(join(item.to!,"config"))) throw new Error("vstack destination has no config; old private storage kept, Migration stays incomplete");
         rmSync(item.from!,{recursive:true});
       } else if (item.kind === "old-delete") rmSync(item.from!);
       else {
@@ -157,5 +157,5 @@ export function applyProject(plan: ProjectPlan, skip: string[] = []) {
   const blocked = existsSync(join(plan.common_dir,"matt-pocock"));
   return {complete:!blocked && !failures.length,applied,skipped:skip,failures,blocked,
     manual_hits:plan.items.filter(i=>applied.includes(i.id)).flatMap(i=>i.manual_hits),
-    message:blocked || failures.length ? "Project Migration incomplete. Setup stays blocked while old private storage exists. Start a new session after completing Migration." : "Project Migration applied, uncommitted for review. Start a new session with /new."};
+    message:blocked || failures.length ? "Project Migration incomplete. Start a new session after completing Migration." : "Project Migration applied, uncommitted for review. Start a new session with /new, then run /skill:setup-vstack."};
 }

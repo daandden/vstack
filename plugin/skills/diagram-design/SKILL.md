@@ -34,6 +34,8 @@ Every answer ends in a profile: onboarding saves its guide as a named profile, a
 
 When another skill called diagram-design, put the gate question through `ask` the same way: the caller's run waits for the answer. A subagent uses `default` for this figure and returns the gate question in its result.
 
+For diagnostics, health checks, first-run troubleshooting, or the diagram-design doctor, read [Environment doctor](references/doctor.md).
+
 ### Running the bundled scripts
 
 Python runs in omp's eval tool, under eval's interpreter (the project venv, then `~/.omp/python-env`, then PATH); never call `python3` through bash. "The eval cell for `<path> <args>`" means one Python eval cell that runs that script with `runpy`:
