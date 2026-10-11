@@ -323,7 +323,39 @@ test("prepare refuses an add with no draft, the wrong action or kind, a name mai
   expect(git(run.wt, "status", "--porcelain", "--", "decision-register.yaml", "CHANGELOG.md", "plugin/package.json")).toBe("");
 }, 60000);
 
-test("finish refuses text that changed after the last review, and a bookkeeping change alone keeps the review", async () => {
+/** The take of the rejected matt/rej item at the v1.1.0 Pin. */
+const takeRej = { action: "take", kind: "skill", artifact: "plugin/skills/rej", upstream: "matt", path: "skills/misc/rej", reason: "Ships rej without an Update." };
+/** `artifact` as `repo` has it at `ref`, keyed by path inside the item: what a byte-for-byte take holds. */
+function upstreamFiles(repo: string, ref: string, path: string) {
+  const files = git(repo, "ls-tree", "-r", "--name-only", ref, "--", path).split("\n").filter(Boolean);
+  return Object.fromEntries(files.map((file) => [file.slice(path.length + 1), Bun.spawnSync(["git", "-C", repo, "show", `${ref}:${file}`]).stdout.toString()]));
+}
+function worktreeFiles(wt: string, artifact: string) {
+  const files = git(wt, "ls-files", "--others", "--cached", "--exclude-standard", "--", artifact).split("\n").filter(Boolean);
+  return Object.fromEntries(files.map((file) => [file.slice(artifact.length + 1), readFileSync(join(wt, file), "utf8")]));
+}
+const addRoute = (wt: string, name: string) => { const router = join(wt, "plugin/skills/ask-vstack/SKILL.md"); writeFileSync(router, readFileSync(router, "utf8") + `- \`/skill:${name}\`\n`); };
+
+test("prepare takes a rejected item at the current Pin as adopt, byte for byte, and check-register passes", async () => {
+  const f = fixture();
+  const run = await started(f);
+  const c = await edit(f, ["check", "--run", run.file, "--upstreams", f.cache, "--remote", f.remote, "--take", "matt:skills/misc/rej"]);
+  expect({ code: c.code, reason: c.json?.reason }).toEqual({ code: 0, reason: undefined });
+  expect(c.json.targets).toEqual([expect.objectContaining({ artifact: "plugin/skills/rej", kind: "skill", action: "take", upstream: "matt", path: "skills/misc/rej", pin: "v1.1.0", row: "matt/rej", disposition: "adopt", house_style_rows: [] })]);
+
+  addRoute(run.wt, "rej");
+  const prepare = () => edit(f, ["prepare", "--run", run.file, "--decisions", decide(f, [takeRej]), "--upstreams", f.cache, "--remote", f.remote]);
+  for (let i = 0; i < 2; i++) { const r = await prepare(); expect({ code: r.code, reason: r.json?.reason }).toEqual({ code: 0, reason: undefined }); }
+  expect(worktreeFiles(run.wt, "plugin/skills/rej")).toEqual(upstreamFiles(f.mattRepo, "v1.1.0", "skills/misc/rej"));
+  const before = register(f.root), after = register(run.wt);
+  expect(after.items.find((row: any) => row.id === "matt/rej")).toEqual({ ...before.items.find((row: any) => row.id === "matt/rej"), disposition: "adopt", artifacts: ["plugin/skills/rej"], reason: "Ships rej without an Update." });
+  expect(after.items.filter((row: any) => row.id !== "matt/rej")).toEqual(before.items.filter((row: any) => row.id !== "matt/rej"));
+  expect(after.originals).toEqual(before.originals);
+  const gates = await edit(f, gateArgs(f, run.file));
+  expect({ code: gates.code, reason: gates.json?.reason }).toEqual({ code: 0, reason: undefined });
+}, 90000);
+
+test("a text change reruns gates and the review before finish, and a bookkeeping change reruns neither", async () => {
   const f = fixture();
   const run = await prepared(f);
   const ok = async (args: string[]) => { const r = await edit(f, args); expect({ code: r.code, out: r.json?.ok }).toEqual({ code: 0, out: true }); };
@@ -338,12 +370,15 @@ test("finish refuses text that changed after the last review, and a bookkeeping 
 
   writeFiles(run.wt, { "plugin/skills/wording/SKILL.md": WORDING + "One more line.\n" });
   await prepare(decide(f, [editWording]));
+  refused(await finish(), "gates");
   await gates();
   refused(await finish(), "review");
   await reviewed();
 
   await prepare(decide(f, [editWording], ["wording reads GLOSSARY.md and the ADRs before it writes."]));
-  await gates();
+  writeFileSync(join(run.wt, "CHANGELOG.md"), readFileSync(join(run.wt, "CHANGELOG.md"), "utf8") + "- A line that prepare did not write.\n");
+  refused(await finish(), "prepare");
+  await prepare(decide(f, [editWording], ["wording reads GLOSSARY.md and the ADRs before it writes."]));
   await ok(["finish", "--run", run.file, "--grilling", grilling(f, "Shared understanding")]);
   expect(git(run.wt, "show", "HEAD:CHANGELOG.md")).toContain("- wording reads GLOSSARY.md and the ADRs before it writes.");
 }, 60000);

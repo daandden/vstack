@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [0.1.46] - 2026-10-11
+
+- A bookkeeping-only change in a vstack-edit run needs a new prepare and nothing more. prepare writes a receipt of the files it left. The gates receipt and the review receipt now hold a hash of the skill, agent, and rule text only. finish refuses files that changed after the last prepare, and text that changed after the last gates pass or review. A new CHANGELOG line, commit message, or flip reason no longer reruns the gates (#111).
+
 ## [0.1.45] - 2026-10-11
 
 - `scripts/vstack-edit.ts` no longer clones a missing Upstream in full. check, prepare, and gates fetch only the current Pins and the `held_at` refs of held rows that the clone cache lacks, with no branch and no other tag. A cold cache no longer gains refs newer than the Pin (ADR 0014, #107).

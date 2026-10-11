@@ -288,6 +288,7 @@ async function prepare(r: Run, file: string | undefined, opts: UpstreamOptions) 
   writeFileSync(join(wt, "plugin/package.json"), manifest.replace(/"version":\s*"[^"]*"/, `"version": "${version}"`) + "\n");
   writeFileSync(join(wt, "CHANGELOG.md"), changelog(git(wt, "show", `${MAIN}:CHANGELOG.md`), version, d.changelog));
   save(join(r.out, "decisions.json"), d);
+  save(join(r.out, "prepared.json"), { digest: digest(r) });
   return { version, changelog: d.changelog, targets: d.targets.map((t) => t.artifact), flipped: [...reasons.keys()].map((i) => register.rows[i]!.id), originals: added };
 }
 
@@ -307,7 +308,7 @@ function hashTree(wt: string, roots: string[], skip: string[] = []) {
   return h;
 }
 
-/** A hash of the managed paths in the worktree and the prepared decisions: what the gates and the closing gate saw. */
+/** A hash of the managed paths in the worktree and the prepared decisions: what the last prepare left. */
 function digest(r: Run): string {
   return hashTree(r.worktree.path, MANAGED).update(readFileSync(join(r.out, "decisions.json"))).digest("hex");
 }
@@ -315,7 +316,17 @@ function digest(r: Run): string {
 /** A hash of the skill, agent, and rule text: plugin/ without the version, which is bookkeeping like CHANGELOG.md and the register. */
 const textDigest = (r: Run) => hashTree(r.worktree.path, ["plugin"], ["plugin/package.json"]).digest("hex");
 
-const gatesPassed = (r: Run) => { const receipt = join(r.out, "gates.json"); return existsSync(receipt) && readJson(receipt).digest === digest(r); };
+const receiptHolds = (r: Run, name: string, key: string, value: () => string) => { const p = join(r.out, name); return existsSync(p) && readJson(p)[key] === value(); };
+
+/**
+ * Refuses unless the files are as the last prepare left them and the last gates pass covers the current text.
+ * Bookkeeping alone (CHANGELOG lines, commit message, flip reason, and what prepare derives from them) needs a
+ * new prepare, not new gates.
+ */
+function gatesHold(r: Run) {
+  if (!receiptHolds(r, "prepared.json", "digest", () => digest(r))) throw new Error("the files changed after the last prepare; run prepare, and gates too if the skill, agent, or rule text changed");
+  if (!receiptHolds(r, "gates.json", "text", () => textDigest(r))) throw new Error("no gates passed on the current skill, agent, or rule text; run gates");
+}
 
 interface GateOptions extends UpstreamOptions { smoke?: string; test?: string }
 
@@ -352,26 +363,25 @@ async function gates(r: Run, opts: GateOptions) {
   gate("load smoke", () => { loadGate(wt, join(r.out, "smoke"), opts.smoke); });
   if (digest(r) !== before) throw new Error("the worktree changed while the gates ran; run gates again");
   if (failures.length) throw new Error(`gates failed; fix the draft, run prepare, then run gates again. ${failures.join(" | ")}`);
-  save(receipt, { digest: before });
+  save(receipt, { text: textDigest(r) });
   return { digest: before, passed: ["quick_validate", "check-register", "test suite", "load smoke"] };
 }
 
-/** Records the text the three reviewers read. They read the final files, so the gates must have passed on them. */
+/** Records the text the three reviewers read. They read the final files, so the gates must cover them. */
 function reviewed(r: Run) {
-  if (!gatesPassed(r)) throw new Error("no gates passed on the current files; run prepare and gates before the review");
+  gatesHold(r);
   const text = textDigest(r);
   save(join(r.out, "review.json"), { text });
   return { text };
 }
 
 /**
- * One local commit of the managed paths, after passed gates on the current files, a review of the current text,
+ * One local commit of the managed paths, after the last prepare, gates and a review that cover the current text,
  * and a confirmed closing gate. Never pushes.
  */
 function finish(r: Run, grilling: string | undefined) {
-  if (!gatesPassed(r)) throw new Error("no gates passed on the current files; run prepare and gates again");
-  const review = join(r.out, "review.json");
-  if (!existsSync(review) || readJson(review).text !== textDigest(r)) throw new Error("the reviewers did not read the current skill, agent, or rule text; run all three reviewers again, then reviewed");
+  gatesHold(r);
+  if (!receiptHolds(r, "review.json", "text", () => textDigest(r))) throw new Error("the reviewers did not read the current skill, agent, or rule text; run all three reviewers again, then reviewed");
   if (!grilling) throw new Error("--grilling <state.jsonl> is required; finish needs the confirmed closing gate");
   // As on the Grilling page: a later line with the same id replaces the record, which keeps its first-seen position.
   const records = new Map<string, any>();

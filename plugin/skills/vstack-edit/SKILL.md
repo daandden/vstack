@@ -69,9 +69,9 @@ Fan-out gate (skill://vstack-fan-out): parts: one per reviewer (trigger, domain,
 - fan-out → one `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: that reviewer's brief above with the target and caller paths and the accepted findings, return reviewed paths, findings, and open questions without asking, the user's override words, the vstack root, the Scratch dir.
 - inline → do every part yourself, in order, from the same brief.
 
-Finish each inline review before you start the next. When all three reviews are done, run `reviewed --run <run file>`. It refuses unless the gates passed on the current files. It records the skill, agent, and rule text that the reviewers read.
+Finish each inline review before you start the next. When all three reviews are done, run `reviewed --run <run file>`. It refuses unless the files are as the last prepare left them and the last gates pass covers the current text. It records the skill, agent, and rule text that the reviewers read.
 
-After any later change to skill, agent, or rule text, run steps 5, 6, and 7 again, with all three reviewers. A change to only the CHANGELOG lines or the commit message in the decisions file needs steps 5 and 6 only, because the last review still covers the text. finish refuses text that changed after the last `reviewed`.
+After any later change to skill, agent, or rule text, run steps 5, 6, and 7 again, with all three reviewers. A change to only the CHANGELOG lines, the commit message, or a flip reason in the decisions file needs step 5 only: run prepare again. The last gates pass and the last review still cover the text. finish refuses text that changed after the last gates pass or the last `reviewed`, and files that changed after the last prepare.
 
 ## 8. Grilling page
 
@@ -87,7 +87,7 @@ When every target is Ship as described and every finding is Accept, add the clos
 
 ## 9. Finish and chain
 
-Run `finish --run <run file> --grilling <state.jsonl>`. It refuses unless the gates passed on the current files, the last `reviewed` covers the current text, and the latest close answer is Shared understanding. It makes one local commit in the worktree and never pushes.
+Run `finish --run <run file> --grilling <state.jsonl>`. It refuses unless the files are as the last prepare left them, the last gates pass and the last `reviewed` cover the current text, and the latest close answer is Shared understanding. It makes one local commit in the worktree and never pushes.
 
 With End state commit, stop and report the commit SHA, the branch, and the worktree path. For a later End state, run skill://open-pr from the worktree with the End state, the branch that this run created, and the vstack root. open-pr is the only step that pushes and opens the PR. For Merge-ready, then run skill://babysit in drive mode. For Shipped, run skill://ship after Merge-ready is observed. Report the End state that the chain reached.
 
