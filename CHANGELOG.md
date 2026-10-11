@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [0.1.51] - 2026-10-11
+
+- skill-creator's trigger-evals reference no longer refuses an adopt item for an accepted description. It applies the description by the home rules in step 2 of SKILL.md, so a vstack description goes to vstack-edit, as #112 intended.
+
 ## [0.1.50] - 2026-10-11
 
 - The Grilling page drops the extra bottom padding of one screen height. At the end of the page, a question that `j`, `k`, or a Q row link picked stays current in the Q row while it is on screen, and a click on a Q row link marks its question. A `round` record no longer takes a `note`.
