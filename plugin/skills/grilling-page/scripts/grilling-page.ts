@@ -136,7 +136,6 @@ function check(lines: Line[]): State {
         int(r, "session", where);
         int(r, "round", where);
         if (typeof r.time !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(r.time)) fail(where, "time must be an ISO timestamp such as 2026-10-09T15:00:00+07:00");
-        str(r, "note", where, true);
         rounds.set(r.id, r);
         order.push(r);
         break;
@@ -328,7 +327,7 @@ function render(s: State, baseDir: string): string {
   for (const item of s.order) {
     if (item.type === "round") {
       const qs = questionsOf(item.id);
-      const head = `<header><h2 id="round-${item.id}">Session ${item.session}, round ${item.round}<time datetime="${esc(item.time)}">${formatTime(item.time)}</time></h2>${item.note ? `<p class="note">${text(item.note)}</p>` : ""}</header>`;
+      const head = `<header><h2 id="round-${item.id}">Session ${item.session}, round ${item.round}<time datetime="${esc(item.time)}">${formatTime(item.time)}</time></h2></header>`;
       body.push(`<section class="round" aria-labelledby="round-${item.id}">\n${head}\n${qs.map((q) => questionHtml(q, s.answers.get(q.id), baseDir)).join("\n")}\n</section>`);
       if (qs.length) {
         if (nav.length) nav.push(`<span class="sep" aria-hidden="true"></span>`);

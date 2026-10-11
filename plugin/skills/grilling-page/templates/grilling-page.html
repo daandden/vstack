@@ -62,12 +62,11 @@
     .qnav .keys { margin-inline-start: auto; color: var(--overlay0); }
     .dot { flex: none; inline-size: 0.4375rem; block-size: 0.4375rem; border-radius: 50%; background: var(--state, var(--overlay0)); }
 
-    /* The bottom padding lets the last question or summary scroll up to just under the Q row. */
-    main { display: grid; gap: 1.5rem; max-inline-size: 60rem; margin-inline: auto; padding-block: 1rem calc(100svh - var(--nav-clearance)); padding-inline: 1.25rem; }
+    main { display: grid; gap: 1.5rem; max-inline-size: 60rem; margin-inline: auto; padding-block: 1rem; padding-inline: 1.25rem; }
     .sr-only { position: absolute; inline-size: 1px; block-size: 1px; overflow: clip; clip-path: inset(50%); white-space: nowrap; }
     .page-head { display: grid; gap: 0.25rem; }
-    .crumb, .note, time, .label { color: var(--subtext0); }
-    .crumb, .note, time, .label, .why { font-size: var(--fs-small); }
+    .crumb, time, .label { color: var(--subtext0); }
+    .crumb, time, .label, .why { font-size: var(--fs-small); }
     h1 { font-size: var(--fs-title); font-weight: 700; }
 
     .round { display: grid; gap: 1.5rem; }
@@ -131,9 +130,13 @@
       const id = stops[i]?.id;
       document.querySelectorAll(".qnav a[data-for]").forEach((a) => a.setAttribute("aria-current", String(a.dataset.for === id)));
     }
+    // At the page end the last stops cannot scroll up to the Q row.
+    // There a stop that j, k or a Q row link picked stays current while it is on screen.
     function markFromScroll() {
       let i = -1;
       stops.forEach((s, n) => { if (s.getBoundingClientRect().top <= pad() + 2) i = n; });
+      const atEnd = scrollY + innerHeight >= document.documentElement.scrollHeight - 2;
+      if (atEnd && current > i && stops[current].getBoundingClientRect().top < innerHeight) i = current;
       mark(i);
     }
     function jump(i) {
@@ -141,6 +144,11 @@
       stops[i].scrollIntoView({ block: "start", behavior: "instant" });
       mark(i);
     }
+    addEventListener("click", (e) => {
+      const id = e.target.closest?.('a[href^="#"]')?.getAttribute("href").slice(1);
+      const i = id ? stops.findIndex((s) => s.id === id) : -1;
+      if (i >= 0) mark(i);
+    });
     addEventListener("scroll", markFromScroll, { passive: true });
     addEventListener("keydown", (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;

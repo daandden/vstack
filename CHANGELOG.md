@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [0.1.50] - 2026-10-11
+
+- The Grilling page drops the extra bottom padding of one screen height. At the end of the page, a question that `j`, `k`, or a Q row link picked stays current in the Q row while it is on screen, and a click on a Q row link marks its question. A `round` record no longer takes a `note`.
+
 ## [0.1.49] - 2026-10-11
 
 - skill-creator and session-lessons hand a vstack change to vstack-edit, for an adopt item too. They no longer refuse an adopt edit, list it in Backlog, or restate the branch, version bump, CHANGELOG, register check, and PR steps. Inside an active vstack-edit run, skill-creator writes only the draft and does not hand the work back (#112).
