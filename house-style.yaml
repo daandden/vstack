@@ -16,8 +16,8 @@
 #             adapted: adapt, merge, and original text only; adopt items keep their Upstream wording.
 #             Omitted on migration-only rows, which never run on Upstream text.
 #   uses      update: update-plan runs it over both Upstream sides before `git merge-file`.
-#             migration: setup-vstack's Migration runs it over project config and rule files;
-#             plugin/skills/setup-vstack/references/house-style.yaml holds exactly these rows.
+#             migration: migrate-to-vstack runs it over project config and rule files;
+#             plugin/skills/migrate-to-vstack/references/house-style.yaml holds exactly these rows.
 # A phrase gets a row only when it is blind-replaceable in its scope and recurs across items or Updates.
 # One-off edits live in the artifact and survive the three-way merge.
 #

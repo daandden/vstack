@@ -1,5 +1,4 @@
 // The House style module's public API (scripts/lib/house-style.ts) over the repo's own house-style.yaml.
-// update-plan (the Update) and setup-vstack's Migration apply rows through it.
 
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";

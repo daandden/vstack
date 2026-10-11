@@ -75,11 +75,11 @@ test("text output ends with OK on a pass", async () => {
   expect(r.stdout.trim().split("\n").at(-1)).toBe("check-register: OK");
 });
 
-test("setup-vstack's exact Migration copy passes, including the deliberate old phrases", async () => {
+test("migrate-to-vstack's exact Migration copy passes, including the deliberate old phrases", async () => {
   const r = await runSpec(s => {
-    s.register.originals.push("plugin/skills/setup-vstack");
-    s.files["plugin/skills/setup-vstack/SKILL.md"] = "setup\n";
-    s.files["plugin/skills/setup-vstack/references/house-style.yaml"] = Bun.YAML.stringify({ replacements: s.houseStyle.replacements.filter(row => row.uses.includes("migration")) });
+    s.register.originals.push("plugin/skills/migrate-to-vstack");
+    s.files["plugin/skills/migrate-to-vstack/SKILL.md"] = "Migration\n";
+    s.files["plugin/skills/migrate-to-vstack/references/house-style.yaml"] = Bun.YAML.stringify({ replacements: s.houseStyle.replacements.filter(row => row.uses.includes("migration")) });
   });
   expect(r.code).toBe(0); expect(r.json!.failures).toEqual([]);
 });
@@ -107,46 +107,46 @@ const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expecte
   },
   {
     cls: "migration-house-style",
-    name: "setup-vstack's copy differs from the root migration rows",
+    name: "migrate-to-vstack's copy differs from the root migration rows",
     mutate: (s) => {
-      s.register.originals.push("plugin/skills/setup-vstack");
-      s.files["plugin/skills/setup-vstack/SKILL.md"] = "setup\n";
-      s.files["plugin/skills/setup-vstack/references/house-style.yaml"] = Bun.YAML.stringify({ replacements: [] });
+      s.register.originals.push("plugin/skills/migrate-to-vstack");
+      s.files["plugin/skills/migrate-to-vstack/SKILL.md"] = "Migration\n";
+      s.files["plugin/skills/migrate-to-vstack/references/house-style.yaml"] = Bun.YAML.stringify({ replacements: [] });
     },
-    expected: ["migration-house-style plugin/skills/setup-vstack/references/house-style.yaml"],
+    expected: ["migration-house-style plugin/skills/migrate-to-vstack/references/house-style.yaml"],
   },
   {
     cls: "migration-house-style",
-    name: "a shipped setup-vstack missing its copy",
+    name: "a shipped migrate-to-vstack missing its copy",
     mutate: (s) => {
-      s.register.originals.push("plugin/skills/setup-vstack");
-      s.files["plugin/skills/setup-vstack/SKILL.md"] = "setup\n";
+      s.register.originals.push("plugin/skills/migrate-to-vstack");
+      s.files["plugin/skills/migrate-to-vstack/SKILL.md"] = "Migration\n";
     },
-    expected: ["migration-house-style plugin/skills/setup-vstack/references/house-style.yaml"],
+    expected: ["migration-house-style plugin/skills/migrate-to-vstack/references/house-style.yaml"],
   },
   {
     cls: "migration-house-style",
     name: "an invalid match kind in the copy",
     mutate: (s) => {
-      s.register.originals.push("plugin/skills/setup-vstack");
-      s.files["plugin/skills/setup-vstack/SKILL.md"] = "setup\n";
+      s.register.originals.push("plugin/skills/migrate-to-vstack");
+      s.files["plugin/skills/migrate-to-vstack/SKILL.md"] = "Migration\n";
       const replacements = clone(s.houseStyle.replacements.filter(r => r.uses.includes("migration")));
       replacements[0].match = "glob";
-      s.files["plugin/skills/setup-vstack/references/house-style.yaml"] = Bun.YAML.stringify({ replacements });
+      s.files["plugin/skills/migrate-to-vstack/references/house-style.yaml"] = Bun.YAML.stringify({ replacements });
     },
-    expected: ["migration-house-style plugin/skills/setup-vstack/references/house-style.yaml"],
+    expected: ["migration-house-style plugin/skills/migrate-to-vstack/references/house-style.yaml"],
   },
   {
     cls: "migration-house-style",
     name: "a schema-valid copy with changed row order",
     mutate: (s) => {
-      s.register.originals.push("plugin/skills/setup-vstack");
-      s.files["plugin/skills/setup-vstack/SKILL.md"] = "setup\n";
+      s.register.originals.push("plugin/skills/migrate-to-vstack");
+      s.files["plugin/skills/migrate-to-vstack/SKILL.md"] = "Migration\n";
       const replacements = clone(s.houseStyle.replacements.filter(r => r.uses.includes("migration")));
       [replacements[2], replacements[3]] = [replacements[3], replacements[2]];
-      s.files["plugin/skills/setup-vstack/references/house-style.yaml"] = Bun.YAML.stringify({ replacements });
+      s.files["plugin/skills/migrate-to-vstack/references/house-style.yaml"] = Bun.YAML.stringify({ replacements });
     },
-    expected: ["migration-house-style plugin/skills/setup-vstack/references/house-style.yaml"],
+    expected: ["migration-house-style plugin/skills/migrate-to-vstack/references/house-style.yaml"],
   },
   {
     cls: "invalid-disposition",
@@ -714,9 +714,9 @@ describe("github source (GitHub tree API)", () => {
 
   test("the exact Migration copy passes in CI mode, and a mismatched copy fails", async () => {
     const spec = clone(passingSpec(up));
-    spec.register.originals.push("plugin/skills/setup-vstack");
-    spec.files["plugin/skills/setup-vstack/SKILL.md"] = "setup\n";
-    const copy = "plugin/skills/setup-vstack/references/house-style.yaml";
+    spec.register.originals.push("plugin/skills/migrate-to-vstack");
+    spec.files["plugin/skills/migrate-to-vstack/SKILL.md"] = "Migration\n";
+    const copy = "plugin/skills/migrate-to-vstack/references/house-style.yaml";
     spec.files[copy] = Bun.YAML.stringify({ replacements: spec.houseStyle.replacements.filter(r => r.uses.includes("migration")) });
     const pass = await checkout(up, spec).run([], { env: { ...env(), GITHUB_ACTIONS: "true" }, source: null });
     expect(pass.code).toBe(0); expect(pass.json!.notes).toContain("upstream source: github");

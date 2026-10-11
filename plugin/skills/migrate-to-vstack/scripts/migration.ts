@@ -205,7 +205,6 @@ export function privateMove(item: Item) {
       writeFileSync(exclude, beforeExclude.split("\n").filter(l => !/^\/?docs\/agents\/?$/.test(l.trim())).join("\n"));
     }
   } catch (e) {
-    // Restore the old store on a failed move so check 6 and the project guard stay closed.
     const rollbackErrors: string[] = [];
     const restore = (fn: () => void) => { try { fn(); } catch (r) { rollbackErrors.push(errorText(r)); } };
     if (renamed) restore(() => renameSync(to, from));
@@ -259,6 +258,6 @@ export async function applyMachine(plan: Plan, skip: string[] = []) {
   const remaining = machinePlan(plan.home, plan.roots);
   const complete = failures.length === 0 && remaining.items.length === 0 && remaining.scan_errors.length === 0;
   return { complete, applied, skipped: skip, failures, warnings, manual_hits: manualHits, remaining_items: remaining.items.map(i => i.id),
-    message: complete ? "Machine Migration applied. Start a new session with /new." : "Migration incomplete; check 6 still fails. Review the remaining items and errors. Start a new session after completing Migration.",
+    message: complete ? "Machine Migration applied. Start a new session with /new." : "Machine Migration incomplete. Review the remaining items and errors. Start a new session after completing Migration.",
   };
 }

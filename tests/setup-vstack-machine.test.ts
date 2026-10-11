@@ -77,8 +77,8 @@ worktree:
     "WARN 3",
     "FAIL 4",
     "WARN 5",
+    "FAIL 6",
     "FAIL 7",
-    "FAIL 8",
   ]);
   for (const l of out) expect(l).toContain("Remedy: ");
   const byId = (id: string) => out.find((l) => l.split(" ")[1] === id)!;
@@ -117,7 +117,7 @@ worktree:
   clone: false
 `);
   const before = run(h, ["--extension-loaded", "yes"], KEY);
-  expect(lines(before.stdout).map((l) => l.slice(0, 6))).toEqual(["FAIL 2", "FAIL 7", "FAIL 8"]);
+  expect(lines(before.stdout).map((l) => l.slice(0, 6))).toEqual(["FAIL 2", "FAIL 6", "FAIL 7"]);
 
   const set = run(h, ["--set", "judge", "isolation", "clone"], KEY);
   expect(set.code).toBe(0);

@@ -55,7 +55,6 @@ test("a fresh repo has no mode, no block file, and its vstack root under the git
   expect(s.root).toBe(repo);
   expect(s.common_dir).toBe(join(repo, ".git"));
   expect(s.vstack_root).toBe(join(repo, ".git", "vstack"));
-  expect(s.matt_pocock).toBeNull();
   expect(s.mode).toBeNull();
   expect(s.block_file).toBeNull();
   expect(s.block_exists).toBe(false);
@@ -91,12 +90,6 @@ test("Private mode is on when <common>/vstack/config/ exists, seen from every wo
 test("Standard mode is on when docs/vstack/ holds config", () => {
   const repo = makeRepo({ "docs/vstack/issue-tracker.md": "# GitHub\n" });
   expect(state(repo).mode).toBe("standard");
-});
-
-test("Matt's private storage in the git common dir is reported as a stop", () => {
-  const repo = makeRepo();
-  mkdirSync(join(repo, ".git", "matt-pocock", "docs-agents"), { recursive: true });
-  expect(state(repo).matt_pocock).toBe(join(repo, ".git", "matt-pocock"));
 });
 
 test("outside a git repo, state exits 2", () => {
@@ -142,7 +135,7 @@ test("a re-run with nothing changed makes no commit", () => {
   expect(git(repo, "rev-parse", "HEAD")).toBe(head);
 });
 
-test("commit refuses in Private mode, while Matt's storage remains, without a title, or with setup output missing", () => {
+test("commit refuses in Private mode, without a title, or with setup output missing", () => {
   const head = (repo: string) => git(repo, "rev-parse", "HEAD");
 
   const priv = makeRepo({ "CLAUDE.md": "# c\n" });
@@ -154,14 +147,6 @@ test("commit refuses in Private mode, while Matt's storage remains, without a ti
   expect(p.code).toBe(2);
   expect(p.stderr).toContain("Private");
   expect(head(priv)).toBe(before);
-
-  const matt = makeRepo({ "CLAUDE.md": "# c\n" });
-  write(matt, configFiles());
-  write(matt, { "CLAUDE.md": `# c\n\n${BLOCK}` });
-  mkdirSync(join(matt, ".git", "matt-pocock"), { recursive: true });
-  const m = run(matt, "commit", "--title", "chore: set up vstack");
-  expect(m.code).toBe(2);
-  expect(m.stderr).toContain("matt-pocock");
 
   const noTitle = makeRepo({ "CLAUDE.md": `# c\n\n${BLOCK}`, ...configFiles() });
   expect(run(noTitle, "commit").code).toBe(2);

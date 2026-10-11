@@ -207,7 +207,7 @@ const ASK_VSTACK_TEXT = [
   "name: ask-vstack",
   "description: Ask which skill fits.",
   "---",
-  ...["ask-vstack", "keep", "held", "old-name", "gone", "shared", "asks-tool", "scratch", "phrasing", "spawner", "asks", "renamed", "setup-vstack", "rej", "stray", "kept", "adapted"].map((n) => `- \`/skill:${n}\``),
+  ...["ask-vstack", "keep", "held", "old-name", "gone", "shared", "asks-tool", "scratch", "phrasing", "spawner", "asks", "renamed", "setup-vstack", "migrate-to-vstack", "rej", "stray", "kept", "adapted"].map((n) => `- \`/skill:${n}\``),
   "",
 ].join("\n");
 

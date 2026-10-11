@@ -1,5 +1,3 @@
-// setup-vstack's eight machine checks (spec #63 "setup-vstack"; #39 and #40 with corrections).
-//
 //   bun machine.ts --extension-loaded yes|no     check; prints one OK line, or one line per failing check
 //   bun machine.ts --set judge|isolation|clone…  write those settings to the user's omp config
 //
@@ -9,7 +7,6 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { machinePlan, migrationHome } from "./migration.ts";
 
 const JUDGE = "typesafe/jev-latest";
 /** The id omp gives the vstack extension module (`plugin/extensions/vstack.ts`) in `disabledExtensions`. */
@@ -27,7 +24,7 @@ interface Result {
 }
 
 function usage(message: string): never {
-  console.error(`${message}\nUsage: machine.ts --extension-loaded yes|no [--scan-root <dir>...]\n       machine.ts --set judge|isolation|clone...`);
+  console.error(`${message}\nUsage: machine.ts --extension-loaded yes|no\n       machine.ts --set judge|isolation|clone...`);
   process.exit(2);
 }
 
@@ -56,7 +53,7 @@ async function settings(): Promise<Map<string, unknown>> {
   return map;
 }
 
-async function check(extensionLoaded: boolean, scanRoots: string[]): Promise<Result[]> {
+async function check(extensionLoaded: boolean): Promise<Result[]> {
   const [token, cfg, python] = await Promise.all([
     omp("token", "typesafe"),
     settings(),
@@ -157,26 +154,11 @@ async function check(extensionLoaded: boolean, scanRoots: string[]): Promise<Res
     results.push({ id: 5, name: "eval Python", status: "ok" });
   }
 
-  // 6. Machine Migration: roots are confirmed through ask before this script scans them.
-  try {
-    const plan = machinePlan(migrationHome(), scanRoots.length ? scanRoots : [migrationHome()]);
-    const count = plan.items.length;
-    results.push(count === 0 && plan.scan_errors.length === 0
-      ? { id: 6, name: "Matt leftovers", status: "ok" }
-      : { id: 6, name: "Matt leftovers", status: "fail",
-          detail: `${count} migration item(s), ${plan.scan_errors.length} scan error(s); scan roots: ${plan.roots.join(", ")}`,
-          remedy: "complete the machine Migration plan in /skill:setup-vstack; private moves are mandatory" });
-  } catch (e) {
-    results.push({ id: 6, name: "Matt leftovers", status: "fail", detail: `Migration scan could not finish: ${e instanceof Error ? e.message : e}`,
-      remedy: "fix the scan error and rerun /skill:setup-vstack; do not remove the old private rule" });
-  }
-
-  // 7. Task isolation (ADR 0007).
   results.push(
     cfg.get("task.isolation.enabled") === true
-      ? { id: 7, name: "task isolation", status: "ok" }
+      ? { id: 6, name: "task isolation", status: "ok" }
       : {
-          id: 7,
+          id: 6,
           name: "task isolation",
           status: "fail",
           detail: "task.isolation.enabled is off, so vstack skills that need an isolated subagent stop",
@@ -184,12 +166,11 @@ async function check(extensionLoaded: boolean, scanRoots: string[]): Promise<Res
         },
   );
 
-  // 8. Worktree clones (Private-mode prototype mounts need an APFS clone).
   results.push(
     cfg.get("worktree.clone") === true
-      ? { id: 8, name: "worktree clone", status: "ok" }
+      ? { id: 7, name: "worktree clone", status: "ok" }
       : {
-          id: 8,
+          id: 7,
           name: "worktree clone",
           status: "fail",
           detail: "worktree.clone is off, so omp wt add makes plain checkouts and prototype cannot mount in Private mode",
@@ -230,17 +211,12 @@ async function main(argv: string[]) {
     return 0;
   }
 
-  if (argv[0] !== "--extension-loaded" || (argv[1] !== "yes" && argv[1] !== "no")) {
+  if (argv.length !== 2 || argv[0] !== "--extension-loaded" || (argv[1] !== "yes" && argv[1] !== "no")) {
     usage("pass --extension-loaded yes|no (yes when vstack_rename_session is among this session's tools)");
-  }
-  const scanRoots: string[] = [];
-  for (let i = 2; i < argv.length; i += 2) {
-    if (argv[i] !== "--scan-root" || !argv[i + 1]) usage("expected --scan-root <dir>");
-    scanRoots.push(argv[i + 1]!);
   }
   if (!OMP) usage("omp is not on PATH; setup-vstack needs the omp CLI");
 
-  const results = await check(argv[1] === "yes", scanRoots);
+  const results = await check(argv[1] === "yes");
   const problems = results.filter((r) => r.status !== "ok");
   if (problems.length === 0) {
     console.log(`OK vstack machine checks pass: ${results.map((r) => `${r.id} ${r.name}`).join(", ")}.`);

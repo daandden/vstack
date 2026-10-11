@@ -5,8 +5,7 @@ import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 import { git } from "./support/fixture.ts";
 
-const SCRIPT = join(import.meta.dir, "../plugin/skills/setup-vstack/scripts/migrate.ts");
-const MACHINE = join(import.meta.dir, "../plugin/skills/setup-vstack/scripts/machine.ts");
+const SCRIPT = join(import.meta.dir, "../plugin/skills/migrate-to-vstack/scripts/migrate.ts");
 const dirs: string[] = [];
 afterAll(() => { for (const dir of dirs) rmSync(dir, { recursive: true, force: true }); });
 function put(path: string, text: string) { mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, text); }
@@ -17,8 +16,8 @@ function repo(h: string, name = "repo", extra: string[] = []) {
   const r = join(h, name); mkdirSync(r, { recursive: true }); git(r, "init", "-q", ...extra);
   put(join(r, "README"), "repo"); git(r, "add", "README"); git(r, "commit", "-qm", "initial"); return r;
 }
-function run(h: string, args: string[], env = {}, script = SCRIPT) {
-  const r = Bun.spawnSync([process.execPath, script, ...args], {
+function run(h: string, args: string[], env = {}) {
+  const r = Bun.spawnSync([process.execPath, SCRIPT, ...args], {
     cwd: h, env: { PATH: process.env.PATH!, HOME: h, GIT_CONFIG_GLOBAL: "/dev/null", GIT_CONFIG_NOSYSTEM: "1", ...env },
     stdout: "pipe", stderr: "pipe",
   });
@@ -48,13 +47,7 @@ test("a private repo and its linked worktree have one move, exact rewrites and n
   expect(run(h, ["plan", "--scan-root", h]).json().items).toEqual([]);
 });
 
-function fakeOmp(h: string) {
-  const bin = join(h, "bin"), path = join(bin, "omp");
-  put(path, `#!${process.execPath}\nconst a = process.argv.slice(2);\nif (a[0] === "config") console.log(JSON.stringify({modelRoles:{value:{judge:"typesafe/jev-latest"}},"task.isolation.enabled":{value:true},"worktree.clone":{value:true}}));\nelse console.log("{}");\n`);
-  Bun.spawnSync(["chmod", "+x", path]); return { PATH: bin + ":" + process.env.PATH };
-}
-
-test("a failed private move keeps the old rule and check 6 failing; a mandatory move cannot be deselected", () => {
+test("a failed private move keeps the old rule; a mandatory move cannot be deselected", () => {
   const h = home(), r = repo(h), c = join(r, ".git"); store(c);
   // An existing vstack destination forces the real rename contract to fail, without a test-only hook.
   put(join(c, "vstack/config/issue-tracker.md"), "vstack wins");
@@ -67,8 +60,6 @@ test("a failed private move keeps the old rule and check 6 failing; a mandatory 
   expect(existsSync(join(h, ".agents/rules/matt-pocock-private-config.md"))).toBe(true);
   expect(existsSync(join(c, "matt-pocock/docs-agents"))).toBe(true);
   expect(readFileSync(join(c, "vstack/config/issue-tracker.md"), "utf8")).toBe("vstack wins");
-  const check = run(h, ["--extension-loaded", "yes", "--scan-root", h], fakeOmp(h), MACHINE);
-  expect(check.code).toBe(1); expect(check.stdout).toContain("FAIL 6 Matt leftovers");
 });
 
 const MATT_NAMES = ["ask-matt", "diagnosing-bugs", "grill-with-docs", "triage", "improve-codebase-architecture", "setup-matt-pocock-skills", "tdd", "to-spec", "to-tickets", "wayfinder", "implement", "prototype", "research", "domain-modeling", "codebase-design", "code-review", "resolving-merge-conflicts", "wizard", "grill-me", "grilling", "handoff", "teach", "to-questionnaire", "wait-what", "writing-for-agents"];
@@ -115,11 +106,9 @@ test("machine smoke: 25 Matt skills, diagram/css copies, private repo, linked ch
   expect(existsSync(join(h, ".agents/skills/obsidian-markdown"))).toBe(true);
   expect(readFileSync(join(h, ".vstack/diagram-design/profiles/plain.md"), "utf8")).toBe("hand profile");
   expect(run(h, ["plan", "--scan-root", h]).json().items).toEqual([]);
-  const check = run(h, ["--extension-loaded", "yes", "--scan-root", h], fakeOmp(h), MACHINE);
-  expect(check.code).toBe(0); expect(check.stdout.trim().split("\n")).toHaveLength(1); expect(check.stdout).toContain("6 Matt leftovers");
 });
 
-test("non-ordinary common dirs keep relative forms and bare prose as manual hits, including on the next check", () => {
+test("non-ordinary common dirs keep relative forms and bare prose as manual hits, including on the next plan", () => {
   const h = home(), c = join(h, "git-storage"); repo(h, "separate", ["--separate-git-dir", c]); store(c);
   const file = join(c, "matt-pocock/docs-agents/notes.md");
   put(file, `${c}/matt-pocock/docs-agents/x\n${c}/matt-pocock-backup/x\n.git/matt-pocock/docs-agents/x\nAppend /matt-pocock. Keep configuration in docs-agents/.\n`);
@@ -128,8 +117,8 @@ test("non-ordinary common dirs keep relative forms and bare prose as manual hits
   expect(p.items[0].manual_hits.some((hit: any) => hit.text === ".git/matt-pocock/docs-agents/x")).toBe(true);
   const a = run(h, ["apply", "--scan-root", h]); expect(a.code).toBe(1);
   expect(readFileSync(join(c, "vstack/config/notes.md"), "utf8")).toBe(`${c}/vstack/config/x\n${c}/matt-pocock-backup/x\n.git/matt-pocock/docs-agents/x\nAppend /matt-pocock. Keep configuration in docs-agents/.\n`);
-  const remaining = run(h, ["plan", "--scan-root", h]).json(); expect(remaining.items.length).toBeGreaterThan(0);
-  expect(run(h, ["--extension-loaded", "yes", "--scan-root", h], fakeOmp(h), MACHINE).stdout).toContain("FAIL 6 Matt leftovers");
+  const remaining = run(h, ["plan", "--scan-root", h]).json();
+  expect(remaining.items.find((item: any) => item.from === join(c, "vstack/config/notes.md")).manual_hits.some((hit: any) => hit.text === ".git/matt-pocock/docs-agents/x")).toBe(true);
 });
 
 test("Cancel changes nothing, Choose items skips only optional work, and stale approval is refused", () => {

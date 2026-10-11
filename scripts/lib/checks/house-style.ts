@@ -13,8 +13,7 @@ import { isHeld } from "../vstack-repo.ts";
 import { isMarkdown, lintTargets, shippedSkillNames, type LintTarget, type TextFile } from "./scope.ts";
 import type { Check, CheckContext, Failure } from "./types.ts";
 
-/** setup-vstack's copy of the migration rows holds every `from` on purpose; the old-phrase scan skips it. */
-export const HOUSE_STYLE_COPY = "plugin/skills/setup-vstack/references/house-style.yaml";
+export const HOUSE_STYLE_COPY = "plugin/skills/migrate-to-vstack/references/house-style.yaml";
 
 interface Hit {
   path: string;
