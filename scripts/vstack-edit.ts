@@ -313,8 +313,11 @@ function changelog(text: string, version: string, entries: string[]): string {
   return [...lines.slice(0, start), ...section, ...lines.slice(end)].join("\n").replace(/\n*$/, "\n");
 }
 
-/** A register row's new values: the Disposition, the reason, and, for a taken rejected row, the artifacts. */
-interface RowChange { disposition: string; reason: string; artifacts?: string[] }
+/**
+ * A register row's new values: the Disposition, the reason, and, for a taken rejected row, the artifacts. A take ships
+ * the current Pin, so `unhold` drops a Hold (`held_at`, `held_path`) that check-register would compare it against.
+ */
+interface RowChange { disposition: string; reason: string; artifacts?: string[]; unhold?: boolean }
 
 /** The line range of the `items:` block and the first line of each row in it. */
 function itemLines(lines: string[]) {
@@ -342,15 +345,24 @@ function rewriteRows(text: string, changes: Map<number, RowChange>): string {
     for (let i = starts[index]!; i < last; i++) {
       const line = lines[i];
       if (line === undefined) continue;
+      const drop = (from: number) => { for (let j = from; j < last && lines[j]!.startsWith("      "); j++) lines[j] = undefined; }; // a value's own lines
       if (line.startsWith("    disposition:")) lines[i] = `    disposition: ${c.disposition}`;
       else if (line.startsWith("    reason:")) lines[i] = `    reason: ${JSON.stringify(c.reason)}`;
       else if (c.artifacts && line.startsWith("    artifacts:")) {
         lines[i] = `    artifacts: [${c.artifacts.join(", ")}]`;
-        for (let j = i + 1; j < last && lines[j]!.startsWith("      "); j++) lines[j] = undefined; // the old value's own lines
+        drop(i + 1);
+      } else if (c.unhold && /^    held_(?:at|path):/.test(line)) {
+        lines[i] = undefined;
+        drop(i + 1);
       }
     }
   }
-  return sameAs(text, lines.filter((l) => l !== undefined).join("\n"), (doc) => { for (const [index, c] of changes) Object.assign(doc.items[index], c); });
+  return sameAs(text, lines.filter((l) => l !== undefined).join("\n"), (doc) => {
+    for (const [index, { unhold, ...c }] of changes) {
+      Object.assign(doc.items[index], c);
+      if (unhold) { delete doc.items[index].held_at; delete doc.items[index].held_path; }
+    }
+  });
 }
 
 /** `text` with `rows` appended after the last row of `items:`, in the layout of the rows above them. */
@@ -444,7 +456,7 @@ async function prepare(r: Run, file: string | undefined, opts: UpstreamOptions) 
   for (const t of d.targets) {
     if (t.flip) for (const row of register.rows) if (row.disposition === "adopt" && row.artifacts.includes(t.artifact)) changes.set(row.index, { disposition: "adapt", reason: t.flip.reason.trim() });
   }
-  for (const t of taken) if (t.rowIndex !== undefined) changes.set(t.rowIndex, { disposition: t.disposition, reason: t.reason, artifacts: [t.artifact] });
+  for (const t of taken) if (t.rowIndex !== undefined) changes.set(t.rowIndex, { disposition: t.disposition, reason: t.reason, artifacts: [t.artifact], unhold: true });
   const rows = taken.filter((t) => t.rowIndex === undefined).map((t) => ({ id: t.id, upstream: t.upstream, kind: t.itemKind, path: t.path, tree: t.tree, disposition: t.disposition, artifacts: [t.artifact], reason: t.reason }));
   const rewritten = changes.size || rows.length || added.length ? withOriginals(appendRows(rewriteRows(text, changes), rows), added) + "\n" : undefined;
   const manifest = git(wt, "show", `${MAIN}:plugin/package.json`);

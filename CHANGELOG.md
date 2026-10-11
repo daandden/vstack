@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [0.1.48] - 2026-10-11
+
+- A vstack-edit take of a reject row that is on Hold now removes the row's `held_at` and `held_path`. The take ships the bytes at the current Pin, but check-register compared the adopt row against the older held ref and failed when the bytes differed (#109).
+
 ## [0.1.47] - 2026-10-11
 
 - vstack-edit takes an Upstream item at the current Pin without a full Update: an item that the register rejects, or one that has no row yet. `check --take <upstream>:<path>` prints the artifact that the item ships as and its Disposition. The take is adopt when no House style row with scope required matches the item, and adapt otherwise. prepare writes the item from the Pin, sets the reject row or adds a new row, and check-register passes in the gates. A name clash for a new item now offers to take the Upstream item in its place or to pick another name (ADR 0014, #109).

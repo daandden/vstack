@@ -392,6 +392,27 @@ test("prepare takes an unregistered item at the current Pin as adapt when a Hous
   expect({ code: gates.code, reason: gates.json?.reason }).toEqual({ code: 0, reason: undefined });
 }, 90000);
 
+test("a take of a held reject row ships the current Pin, drops the Hold, and check-register passes", async () => {
+  const f = fixture();
+  // main rejects steady and holds it at v1.0.0, where its bytes differ from the v1.1.0 Pin.
+  const reg = register(f.root);
+  const steady = reg.items.find((row: any) => row.id === "matt/steady");
+  Object.assign(steady, { disposition: "reject", artifacts: [], held_at: "v1.0.0", held_path: "skills/eng/steady" });
+  writeFileSync(join(f.root, "decision-register.yaml"), Bun.YAML.stringify(reg, null, 2));
+  rmSync(join(f.root, "plugin/skills/steady"), { recursive: true });
+  git(f.root, "add", "-A"); git(f.root, "commit", "-qm", "reject and hold steady");
+  const run = await started(f);
+  const takeSteady = { action: "take", kind: "skill", artifact: "plugin/skills/steady", upstream: "matt", path: "skills/eng/steady", reason: "Ships steady at the Pin." };
+  const r = await edit(f, ["prepare", "--run", run.file, "--decisions", decide(f, [takeSteady]), "--upstreams", f.cache, "--remote", f.remote]);
+  expect({ code: r.code, reason: r.json?.reason }).toEqual({ code: 0, reason: undefined });
+  const { "agents/openai.yaml": _, ...atPin } = upstreamFiles(f.mattRepo, "v1.1.0", "skills/eng/steady");
+  expect(worktreeFiles(run.wt, "plugin/skills/steady")).toEqual(atPin);
+  const { held_at, held_path, ...unheld } = steady;
+  expect(register(run.wt).items.find((row: any) => row.id === "matt/steady")).toEqual({ ...unheld, disposition: "adopt", artifacts: ["plugin/skills/steady"], reason: "Ships steady at the Pin." });
+  const gates = await edit(f, gateArgs(f, run.file));
+  expect({ code: gates.code, reason: gates.json?.reason }).toEqual({ code: 0, reason: undefined });
+}, 90000);
+
 test("a take refuses a shipped item, an item that is not at the current Pin, a playbook, and a missing reason, and writes nothing", async () => {
   const f = fixture();
   const run = await started(f);
