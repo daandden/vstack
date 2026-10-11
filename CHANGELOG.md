@@ -4,7 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [0.1.45] - 2026-10-11
+
 - `scripts/vstack-edit.ts` no longer clones a missing Upstream in full. check, prepare, and gates fetch only the current Pins and the `held_at` refs of held rows that the clone cache lacks, with no branch and no other tag. A cold cache no longer gains refs newer than the Pin (ADR 0014, #107).
+- vstack-edit reviews the final files with three reviewers behind one Fan-out gate. They check description overlap with neighbor skills (trigger evals only on an overlap), conflicts with the ADRs and GLOSSARY.md, and subagents that overlap outside a Fan-out block or asking wording that the lint misses. Each finding is a Grilling page question with Fix and Accept options. A target question gets a before-and-after flow figure when a step or a branch moves (#111).
+- `scripts/vstack-edit.ts reviewed` records a hash of the skill, agent, and rule text that the reviewers read, after passed gates. finish refuses when that text changed after the last review. A change to only the version, the CHANGELOG, or the register keeps the review (#111).
 
 ## [0.1.44] - 2026-10-11
 

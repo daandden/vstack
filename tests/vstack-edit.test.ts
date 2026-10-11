@@ -124,9 +124,9 @@ test("check on a cold cache fetches only the Pins and held refs: no newer tag, b
 }, 30000);
 
 const WORDING = "---\nname: wording\ndescription: Fixture skill\n---\nRead GLOSSARY.md before you write.\n";
-function decide(f: Fixture, targets: object[]) {
+function decide(f: Fixture, targets: object[], changelog = ["wording reads GLOSSARY.md before it writes."]) {
   const file = join(f.dir, `decisions-${Math.random().toString(36).slice(2)}.json`);
-  writeFileSync(file, JSON.stringify({ targets, changelog: ["wording reads GLOSSARY.md before it writes."], commit: "fix(wording): read GLOSSARY.md first" }));
+  writeFileSync(file, JSON.stringify({ targets, changelog, commit: "fix(wording): read GLOSSARY.md first" }));
   return file;
 }
 const editWording = { action: "edit", kind: "skill", artifact: "plugin/skills/wording" };
@@ -228,6 +228,7 @@ test("finish refuses without passed gates and a confirmed closing gate, then mak
   const confirmed = grilling(f, "Shared understanding");
   refused(await finish(confirmed), "gates");
   expect((await edit(f, run.gates)).code).toBe(0);
+  expect((await edit(f, ["reviewed", "--run", run.file])).code).toBe(0);
   const calls = f.calls().length;
   refused(await finish(), "closing gate");
   refused(await finish(grilling(f)), "closing gate");
@@ -273,6 +274,7 @@ test("a new skill joins originals:, gets its ask-vstack route in the same run, a
   expect((await prepare()).code).toBe(0);
   const pass = await edit(f, gateArgs(f, run.file));
   expect({ code: pass.code, reason: pass.json?.reason }).toEqual({ code: 0, reason: undefined });
+  expect((await edit(f, ["reviewed", "--run", run.file])).code).toBe(0);
   expect((await edit(f, ["finish", "--run", run.file, "--grilling", grilling(f, "Shared understanding")])).code).toBe(0);
   expect(git(run.wt, "show", "--name-only", "--format=", "HEAD").split("\n").sort()).toEqual(["CHANGELOG.md", "decision-register.yaml", "plugin/package.json", "plugin/skills/ask-vstack/SKILL.md", "plugin/skills/tidy/SKILL.md"]);
 }, 90000);
@@ -319,6 +321,31 @@ test("prepare refuses an add with no draft, the wrong action or kind, a name mai
   writeFiles(run.wt, { "plugin/skills/rej/SKILL.md": "---\nname: rej\ndescription: Fixture skill\n---\nrej\n" });
   refused(await prepare([addTidier, { ...addTidy, artifact: "plugin/skills/rej" }]), "plugin/skills/rej clashes with matt skills/misc/rej at v1.1.0");
   expect(git(run.wt, "status", "--porcelain", "--", "decision-register.yaml", "CHANGELOG.md", "plugin/package.json")).toBe("");
+}, 60000);
+
+test("finish refuses text that changed after the last review, and a bookkeeping change alone keeps the review", async () => {
+  const f = fixture();
+  const run = await prepared(f);
+  const ok = async (args: string[]) => { const r = await edit(f, args); expect({ code: r.code, out: r.json?.ok }).toEqual({ code: 0, out: true }); };
+  const gates = () => ok(run.gates);
+  const reviewed = () => ok(["reviewed", "--run", run.file]);
+  const prepare = (decisions: string) => ok(["prepare", "--run", run.file, "--decisions", decisions]);
+  const finish = () => edit(f, ["finish", "--run", run.file, "--grilling", grilling(f, "Shared understanding")]);
+  refused(await edit(f, ["reviewed", "--run", run.file]), "no gates passed");
+  await gates();
+  refused(await finish(), "review");
+  await reviewed();
+
+  writeFiles(run.wt, { "plugin/skills/wording/SKILL.md": WORDING + "One more line.\n" });
+  await prepare(decide(f, [editWording]));
+  await gates();
+  refused(await finish(), "review");
+  await reviewed();
+
+  await prepare(decide(f, [editWording], ["wording reads GLOSSARY.md and the ADRs before it writes."]));
+  await gates();
+  await ok(["finish", "--run", run.file, "--grilling", grilling(f, "Shared understanding")]);
+  expect(git(run.wt, "show", "HEAD:CHANGELOG.md")).toContain("- wording reads GLOSSARY.md and the ADRs before it writes.");
 }, 60000);
 
 test("cancel removes only the run's worktree and branch", async () => {

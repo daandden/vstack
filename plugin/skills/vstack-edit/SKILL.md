@@ -55,15 +55,39 @@ Write the decisions file in the run's `out` directory:
 
 Run `gates --run <run file>`. It runs quick_validate on each skill directory the run added or changed, check-register, the test suite, and the load smoke. Agents and rules get no quick_validate. If gates refuses, read every failure in `reason`, fix the draft in step 4, run prepare, and run gates again. Repeat until gates pass. Never suppress a failure.
 
-## 7. Grilling page
+## 7. Review
 
-Read skill://grilling-page and keep a Grilling page for this run, with the topic slug `edit-<name>`. Add one round with one question per target. The question asks whether to ship the change as described. Its description says what the target does before the change, what it does after, and who sees the difference: the user, the agent that loads the target, or a caller. For a new item, before means that the item does not exist. For a new skill, also say where its route sits in ask-vstack. Describe behavior and show no diffs. Give two options: `A. Ship as described` (recommended) and `B. Change the draft`. Print the page path, then put every question in one `ask`. After Change the draft, go back to step 4 with the user's note, then run steps 5 to 7 again.
+Three reviewers read the final files: every target and every caller that check listed. Each one returns its reviewed paths, its findings, and its open questions without asking. A finding names the file and line, the evidence, and a proposed fix. Give each reviewer the findings that the user accepted in earlier rounds. A reviewer reports an accepted finding again only when the text it names changed.
 
-When every target is Ship as described, add the close record, print the page path, and use one `ask` with `Shared understanding` and `Not yet` as the closing gate. Record the answer on the page. Only Shared understanding permits finish. Not yet goes back to step 4 with the user's note. A timed-out answer is no answer: print the path and use `ask` once more. If that times out too, stop without finish and record why in the close note.
+- Trigger reviewer: compare each changed skill description with the descriptions of its neighbor skills, the skills that ask-vstack routes to for nearby requests. Report an overlap when one request can select either skill. Only for an overlap, run the selection-only trigger evals from skill://skill-creator/references/trigger-evals.md on the target and that neighbor, without the `ask` review of the query set. Return the query set, the scores, and the evidence paths. A skill with `disable-model-invocation: true` gets no trigger evals, because its description never selects it.
+- Domain reviewer: check each change against every ADR in docs/adr and every term in GLOSSARY.md. Report a change that contradicts an ADR, a term used with another meaning, and a word that the glossary lists under avoid. Name the ADR or the term.
+- Subagent reviewer: look for subagents that run at the same time outside a Fan-out block, including subagents in the skills that a target calls. Also look for asking wording that the ask-tool lint misses: a question for the user that does not go through `ask`.
 
-## 8. Finish and chain
+Resolve the vstack root and the Scratch dir once, as skill://vstack-fan-out describes. Before this step, read skill://vstack-fan-out and run its gate on the block below.
 
-Run `finish --run <run file> --grilling <state.jsonl>`. It refuses unless the gates passed on the current files and the latest close answer is Shared understanding. It makes one local commit in the worktree and never pushes.
+Fan-out gate (skill://vstack-fan-out): parts: one per reviewer (trigger, domain, subagent); size: target and caller files and their lines.
+- fan-out → one `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: that reviewer's brief above with the target and caller paths and the accepted findings, return reviewed paths, findings, and open questions without asking, the user's override words, the vstack root, the Scratch dir.
+- inline → do every part yourself, in order, from the same brief.
+
+Finish each inline review before you start the next. When all three reviews are done, run `reviewed --run <run file>`. It refuses unless the gates passed on the current files. It records the skill, agent, and rule text that the reviewers read.
+
+After any later change to skill, agent, or rule text, run steps 5, 6, and 7 again, with all three reviewers. A change to only the CHANGELOG lines or the commit message in the decisions file needs steps 5 and 6 only, because the last review still covers the text. finish refuses text that changed after the last `reviewed`.
+
+## 8. Grilling page
+
+Read skill://grilling-page and keep a Grilling page for this run, with the topic slug `edit-<name>`. Add one round with one question per target and one question per finding.
+
+A target question asks whether to ship the change as described. Its description says what the target does before the change, what it does after, and who sees the difference: the user, the agent that loads the target, or a caller. For a new item, before means that the item does not exist. For a new skill, also say where its route sits in ask-vstack. Describe behavior and show no diffs. Give two options: `A. Ship as described` (recommended) and `B. Change the draft`. When the change adds, removes, reorders, or reroutes a step or a branch of an existing item, the question's `visual` is a before-and-after flow figure. Draw it with skill://diagram-design as grilling-page describes. Skip grilling-page's visual judge in this flow: only these figures go on the page.
+
+A finding question asks whether to fix the finding. Its description names the reviewer, the file and line, the evidence, and the proposed fix. Give two options: `A. Fix`, which applies the proposed fix or the user's note, and `B. Accept`, which ships the text as it is. Recommend the option that the evidence supports.
+
+Print the page path, then put every question in one `ask`. After any Change the draft or Fix, go back to step 4 with the user's notes and the fixes, then run steps 5 to 8 again. Keep each accepted finding for the next review.
+
+When every target is Ship as described and every finding is Accept, add the close record, print the page path, and use one `ask` with `Shared understanding` and `Not yet` as the closing gate. Record the answer on the page. Only Shared understanding permits finish. Not yet goes back to step 4 with the user's note. A timed-out answer is no answer: print the path and use `ask` once more. If that times out too, stop without finish and record why in the close note.
+
+## 9. Finish and chain
+
+Run `finish --run <run file> --grilling <state.jsonl>`. It refuses unless the gates passed on the current files, the last `reviewed` covers the current text, and the latest close answer is Shared understanding. It makes one local commit in the worktree and never pushes.
 
 With End state commit, stop and report the commit SHA, the branch, and the worktree path. For a later End state, run skill://open-pr from the worktree with the End state, the branch that this run created, and the vstack root. open-pr is the only step that pushes and opens the PR. For Merge-ready, then run skill://babysit in drive mode. For Shipped, run skill://ship after Merge-ready is observed. Report the End state that the chain reached.
 

@@ -291,21 +291,31 @@ async function prepare(r: Run, file: string | undefined, opts: UpstreamOptions) 
   return { version, changelog: d.changelog, targets: d.targets.map((t) => t.artifact), flipped: [...reasons.keys()].map((i) => register.rows[i]!.id), originals: added };
 }
 
-/** A hash of the managed paths in the worktree and the prepared decisions: what the gates and the closing gate saw. */
-function digest(r: Run): string {
+/** A hash of `roots` in the worktree, by path and content, without the paths in `skip`. */
+function hashTree(wt: string, roots: string[], skip: string[] = []) {
   const h = createHash("sha256");
   const visit = (path: string) => {
-    if (!existsSync(path)) return;
-    h.update(relative(r.worktree.path, path));
+    const rel = relative(wt, path);
+    if (!existsSync(path) || skip.includes(rel)) return;
+    h.update(rel);
     const st = lstatSync(path);
     if (st.isSymbolicLink()) h.update(readlinkSync(path));
     else if (st.isDirectory()) for (const name of readdirSync(path).sort()) visit(join(path, name));
     else h.update(readFileSync(path));
   };
-  for (const name of MANAGED) visit(join(r.worktree.path, name));
-  h.update(readFileSync(join(r.out, "decisions.json")));
-  return h.digest("hex");
+  for (const name of roots) visit(join(wt, name));
+  return h;
 }
+
+/** A hash of the managed paths in the worktree and the prepared decisions: what the gates and the closing gate saw. */
+function digest(r: Run): string {
+  return hashTree(r.worktree.path, MANAGED).update(readFileSync(join(r.out, "decisions.json"))).digest("hex");
+}
+
+/** A hash of the skill, agent, and rule text: plugin/ without the version, which is bookkeeping like CHANGELOG.md and the register. */
+const textDigest = (r: Run) => hashTree(r.worktree.path, ["plugin"], ["plugin/package.json"]).digest("hex");
+
+const gatesPassed = (r: Run) => { const receipt = join(r.out, "gates.json"); return existsSync(receipt) && readJson(receipt).digest === digest(r); };
 
 interface GateOptions extends UpstreamOptions { smoke?: string; test?: string }
 
@@ -346,10 +356,22 @@ async function gates(r: Run, opts: GateOptions) {
   return { digest: before, passed: ["quick_validate", "check-register", "test suite", "load smoke"] };
 }
 
-/** One local commit of the managed paths, after passed gates on the current files and a confirmed closing gate. Never pushes. */
+/** Records the text the three reviewers read. They read the final files, so the gates must have passed on them. */
+function reviewed(r: Run) {
+  if (!gatesPassed(r)) throw new Error("no gates passed on the current files; run prepare and gates before the review");
+  const text = textDigest(r);
+  save(join(r.out, "review.json"), { text });
+  return { text };
+}
+
+/**
+ * One local commit of the managed paths, after passed gates on the current files, a review of the current text,
+ * and a confirmed closing gate. Never pushes.
+ */
 function finish(r: Run, grilling: string | undefined) {
-  const receipt = join(r.out, "gates.json");
-  if (!existsSync(receipt) || readJson(receipt).digest !== digest(r)) throw new Error("no gates passed on the current files; run prepare and gates again");
+  if (!gatesPassed(r)) throw new Error("no gates passed on the current files; run prepare and gates again");
+  const review = join(r.out, "review.json");
+  if (!existsSync(review) || readJson(review).text !== textDigest(r)) throw new Error("the reviewers did not read the current skill, agent, or rule text; run all three reviewers again, then reviewed");
   if (!grilling) throw new Error("--grilling <state.jsonl> is required; finish needs the confirmed closing gate");
   // As on the Grilling page: a later line with the same id replaces the record, which keeps its first-seen position.
   const records = new Map<string, any>();
@@ -376,13 +398,14 @@ async function main() {
   if (command === "check") return check(r, rest, opts);
   if (command === "prepare") return prepare(r, opts.decisions, opts);
   if (command === "gates") return gates(r, opts);
+  if (command === "reviewed") return reviewed(r);
   if (command === "finish") return finish(r, opts.grilling);
   if (command === "cancel") {
     const failed = removeWorktree(r.root, { path: r.worktree.path, branch: r.branch });
     if (failed.length) throw new Error(failed.join("; "));
     return { removed: r.worktree.path, branch: r.branch };
   }
-  throw new Error("Usage: bun scripts/vstack-edit.ts preflight|check|prepare|gates|finish|cancel [options]");
+  throw new Error("Usage: bun scripts/vstack-edit.ts preflight|check|prepare|gates|reviewed|finish|cancel [options]");
 }
 
 try {
