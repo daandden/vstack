@@ -4,6 +4,8 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+- `scripts/vstack-edit.ts finish` takes the closing gate from the latest close on the Grilling page, with records replaced by id in their first-seen place. Re-appending an older confirmed close no longer passes over a newer Not yet.
+
 ## [0.1.41] - 2026-10-11
 
 - The Grilling page separates whole question sections and summaries. Each question, its options, and its answer stay together without internal separator lines.

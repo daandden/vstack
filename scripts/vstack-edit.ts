@@ -232,8 +232,10 @@ function finish(r: Run, grilling: string | undefined) {
   const receipt = join(r.out, "gates.json");
   if (!existsSync(receipt) || readJson(receipt).digest !== digest(r)) throw new Error("no gates passed on the current files; run prepare and gates again");
   if (!grilling) throw new Error("--grilling <state.jsonl> is required; finish needs the confirmed closing gate");
-  const closes = readFileSync(grilling, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l)).filter((x) => x.type === "close");
-  const answer = closes.at(-1)?.answer;
+  // As on the Grilling page: a later line with the same id replaces the record, which keeps its first-seen position.
+  const records = new Map<string, any>();
+  for (const line of readFileSync(grilling, "utf8").split("\n").filter(Boolean)) { const rec = JSON.parse(line); records.set(rec.id, rec); }
+  const answer = [...records.values()].filter((x) => x.type === "close").at(-1)?.answer;
   if (typeof answer !== "string" || !CONFIRMED.test(answer)) throw new Error(`the closing gate is not confirmed: the latest close answer is ${JSON.stringify(answer ?? null)}, not Shared understanding`);
   const wt = r.worktree.path;
   git(wt, "add", "--", ...MANAGED.filter((n) => existsSync(join(wt, n))));

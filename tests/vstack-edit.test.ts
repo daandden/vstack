@@ -153,6 +153,10 @@ test("finish refuses without passed gates and a confirmed closing gate, then mak
   refused(await finish(), "closing gate");
   refused(await finish(grilling(f)), "closing gate");
   refused(await finish(grilling(f, "Not yet")), "closing gate");
+  // Re-appending an older close replaces it in place on the page; the newer close-2 stays the latest gate.
+  const reopened = grilling(f, "Not yet");
+  writeFileSync(reopened, readFileSync(reopened, "utf8") + JSON.stringify({ type: "close", id: "close-1", session: 1, decisions: [], answer: "Shared understanding" }) + "\n");
+  refused(await finish(reopened), "closing gate");
   writeFiles(run.wt, { "plugin/skills/wording/SKILL.md": WORDING + "One more line.\n" });
   refused(await finish(confirmed), "gates");
   writeFiles(run.wt, { "plugin/skills/wording/SKILL.md": WORDING });
