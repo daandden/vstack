@@ -79,7 +79,7 @@ These skills maintain the codebase rather than add a feature.
 These skills change vstack itself. Run them from the root of the vstack checkout.
 
 - `/skill:vstack-update` moves vstack to newer Upstream versions. It opens an Update PR, and you review and merge it.
-- `/skill:vstack-edit` makes a Hand edit to an existing vstack skill, agent, or rule. You pick where it stops: a local commit, an open PR, merge-ready, or merged.
+- `/skill:vstack-edit` makes a Hand edit to vstack. It adds a new skill, agent, or rule, or edits an existing one. You pick where it stops: a local commit, an open PR, merge-ready, or merged.
 
 ## Vocabulary underneath
 

@@ -71,13 +71,36 @@ test("check prints the register row, Disposition, and callers from both referenc
   expect(f.calls().slice(calls)).toEqual([]);
 }, 30000);
 
-test("check reports an adopt target as adopt and refuses an artifact the register does not name", async () => {
+test("check reports an adopt target as adopt and refuses an unregistered artifact that main already has", async () => {
   const f = fixture();
-  const run = await started(f);
+  const run = await started(f, { "plugin/skills/stray/SKILL.md": "---\nname: stray\ndescription: Fixture skill\n---\nStray.\n" });
   const r = await edit(f, ["check", "--run", run.file, "plugin/skills/keep"]);
   expect({ code: r.code, err: r.err }).toEqual({ code: 0, err: "" });
-  expect(r.json.targets[0]).toMatchObject({ artifact: "plugin/skills/keep", dispositions: ["adopt"] });
-  refused(await edit(f, ["check", "--run", run.file, "plugin/skills/brand-new"]), "plugin/skills/brand-new");
+  expect(r.json.targets[0]).toMatchObject({ artifact: "plugin/skills/keep", action: "edit", dispositions: ["adopt"] });
+  refused(await edit(f, ["check", "--run", run.file, "plugin/skills/stray"]), "plugin/skills/stray");
+}, 30000);
+
+test("check reports a new name, and refuses one that clashes with an Upstream item at the current Pin, with no fetch of a newer ref", async () => {
+  const f = fixture();
+  const run = await started(f);
+  const check = (...artifacts: string[]) => edit(f, ["check", "--run", run.file, "--upstreams", f.cache, "--remote", f.remote, ...artifacts]);
+  // fresh is a matt item only at v1.2.0, after the v1.1.0 Pin.
+  const fresh = await check("plugin/skills/fresh", "plugin/agents/tidier.md");
+  expect({ code: fresh.code, err: fresh.err }).toEqual({ code: 0, err: "" });
+  expect(fresh.json.targets).toEqual([
+    expect.objectContaining({ artifact: "plugin/skills/fresh", kind: "skill", action: "add", dispositions: [], rows: [], clashes: [] }),
+    expect.objectContaining({ artifact: "plugin/agents/tidier.md", kind: "agent", action: "add", clashes: [] }),
+  ]);
+
+  writeFiles(f.mattRepo, { "skills/eng/late/SKILL.md": "---\nname: late\ndescription: late\n---\nlate\n" });
+  git(f.mattRepo, "add", "-A"); git(f.mattRepo, "commit", "-qm", "v1.4.0"); git(f.mattRepo, "tag", "-a", "v1.4.0", "-m", "v1.4.0");
+  expect((await check("plugin/skills/late")).code).toBe(0);
+  expect(git(join(f.cache, "matt"), "tag", "--list", "v1.4.0")).toBe("");
+
+  const clash = await check("plugin/skills/rej", "plugin/agents/unslop.md", "plugin/skills/fresh");
+  refused(clash, "plugin/skills/rej clashes with matt skills/misc/rej at v1.1.0");
+  expect(clash.json.reason).toContain(`plugin/agents/unslop.md clashes with pstack pstack/skills/unslop at ${f.pstack.c1}`);
+  expect(clash.json.reason).not.toContain("plugin/skills/fresh");
 }, 30000);
 
 const WORDING = "---\nname: wording\ndescription: Fixture skill\n---\nRead GLOSSARY.md before you write.\n";
@@ -142,6 +165,12 @@ test("prepare refuses an adopt edit without the confirmation or a new reason, ex
   expect(git(run.wt, "ls-files", "--others", "--exclude-standard")).toBe("");
   expect(existsSync(join(dirname(run.file), "decisions.json"))).toBe(false);
 }, 30000);
+/** The gates command line with its stand-ins for a run file. */
+function gateArgs(f: Fixture, file: string) {
+  const suite = join(f.dir, "suite");
+  writeFileSync(suite, '#!/bin/sh\n[ -z "$FAIL_TESTS" ]\n'); chmodSync(suite, 0o755);
+  return ["gates", "--run", file, "--smoke", f.smoke, "--test", suite, "--upstreams", f.cache, "--remote", f.remote];
+}
 
 /** A prepared run of the wording edit, and the gates command line with its stand-ins. */
 async function prepared(f: Fixture) {
@@ -149,9 +178,7 @@ async function prepared(f: Fixture) {
   writeFiles(run.wt, { "plugin/skills/wording/SKILL.md": WORDING });
   const r = await edit(f, ["prepare", "--run", run.file, "--decisions", decide(f, [editWording])]);
   if (r.code !== 0) throw new Error(r.out);
-  const suite = join(f.dir, "suite");
-  writeFileSync(suite, '#!/bin/sh\n[ -z "$FAIL_TESTS" ]\n'); chmodSync(suite, 0o755);
-  return { ...run, gates: ["gates", "--run", run.file, "--smoke", f.smoke, "--test", suite, "--upstreams", f.cache, "--remote", f.remote] };
+  return { ...run, gates: gateArgs(f, run.file) };
 }
 
 test("gates pass on a clean draft and fail when the load smoke fails or reports a missing skill", async () => {
@@ -201,6 +228,77 @@ test("finish refuses without passed gates and a confirmed closing gate, then mak
   expect(git(run.wt, "status", "--porcelain")).toBe("");
   expect(git(f.root, "ls-remote", "--heads", "origin")).not.toContain("edit/");
   expect(f.calls().slice(calls)).toEqual([]);
+}, 60000);
+
+const TIDY = "---\nname: tidy\ndescription: Fixture skill that tidies notes\n---\nTidy the notes.\n";
+const TIDIER = "---\nname: tidier\ndescription: Fixture agent that tidies notes\n---\nYou tidy the notes your prompt names.\n";
+const RULE = "---\nalwaysApply: true\n---\nKeep note paths short.\n";
+const addTidy = { action: "add", kind: "skill", artifact: "plugin/skills/tidy" };
+const addTidier = { action: "add", kind: "agent", artifact: "plugin/agents/tidier.md" };
+const addRule = { action: "add", kind: "rule", artifact: "plugin/rules/tidy-paths.md" };
+
+test("a new skill joins originals:, gets its ask-vstack route in the same run, and lands in one commit", async () => {
+  const f = fixture();
+  const run = await started(f);
+  writeFiles(run.wt, { "plugin/skills/tidy/SKILL.md": TIDY });
+  const decisions = decide(f, [addTidy]);
+  const prepare = () => edit(f, ["prepare", "--run", run.file, "--decisions", decisions, "--upstreams", f.cache, "--remote", f.remote]);
+  for (let i = 0; i < 2; i++) expect((await prepare()).code).toBe(0);
+  expect(register(run.wt).originals).toEqual([...register(f.root).originals, "plugin/skills/tidy"]);
+  expect(register(run.wt).items).toEqual(register(f.root).items);
+  refused(await edit(f, gateArgs(f, run.file)), "unrouted-skill plugin/skills/tidy");
+
+  const router = join(run.wt, "plugin/skills/ask-vstack/SKILL.md");
+  writeFileSync(router, readFileSync(router, "utf8") + "- `/skill:tidy` tidies notes.\n");
+  expect((await prepare()).code).toBe(0);
+  const pass = await edit(f, gateArgs(f, run.file));
+  expect({ code: pass.code, reason: pass.json?.reason }).toEqual({ code: 0, reason: undefined });
+  expect((await edit(f, ["finish", "--run", run.file, "--grilling", grilling(f, "Shared understanding")])).code).toBe(0);
+  expect(git(run.wt, "show", "--name-only", "--format=", "HEAD").split("\n").sort()).toEqual(["CHANGELOG.md", "decision-register.yaml", "plugin/package.json", "plugin/skills/ask-vstack/SKILL.md", "plugin/skills/tidy/SKILL.md"]);
+}, 90000);
+
+test("a new agent and a new rule go through prepare and gates, and the load gate covers them", async () => {
+  const f = fixture();
+  const run = await started(f);
+  writeFiles(run.wt, { "plugin/agents/tidier.md": TIDIER, "plugin/rules/tidy-paths.md": RULE });
+  const r = await edit(f, ["prepare", "--run", run.file, "--decisions", decide(f, [addTidier, addRule]), "--upstreams", f.cache, "--remote", f.remote]);
+  expect({ code: r.code, reason: r.json?.reason }).toEqual({ code: 0, reason: undefined });
+  expect(register(run.wt).originals).toEqual([...register(f.root).originals, "plugin/agents/tidier.md", "plugin/rules/tidy-paths.md"]);
+  const pass = await edit(f, gateArgs(f, run.file));
+  expect({ code: pass.code, reason: pass.json?.reason }).toEqual({ code: 0, reason: undefined });
+  refused(await edit(f, gateArgs(f, run.file), { SMOKE_DROP: "tidier" }), "load smoke missing agent plugin/agents/tidier.md");
+  refused(await edit(f, gateArgs(f, run.file), { SMOKE_DROP: "tidy-paths" }), "load smoke missing rule plugin/rules/tidy-paths.md");
+}, 90000);
+
+test("one prepare both flips a confirmed adopt row and lists a new item under originals:", async () => {
+  const f = fixture();
+  const run = await started(f);
+  writeFiles(run.wt, { "plugin/skills/keep/SKILL.md": KEEP, "plugin/agents/tidier.md": TIDIER });
+  const decisions = decide(f, [{ ...editKeep, flip: { confirmed: true, reason: "Fixes a step." } }, addTidier]);
+  for (let i = 0; i < 2; i++) expect((await edit(f, ["prepare", "--run", run.file, "--decisions", decisions, "--upstreams", f.cache, "--remote", f.remote])).code).toBe(0);
+  const before = register(f.root), after = register(run.wt);
+  expect(after.items.find((row: any) => row.id === "matt/keep")).toMatchObject({ disposition: "adapt", reason: "Fixes a step." });
+  expect(after.originals).toEqual([...before.originals, "plugin/agents/tidier.md"]);
+}, 60000);
+
+test("prepare refuses an add with no draft, the wrong action or kind, a name main has, a clash, or a stray router change, and writes nothing", async () => {
+  const f = fixture();
+  const run = await started(f);
+  const prepare = (targets: object[]) => edit(f, ["prepare", "--run", run.file, "--decisions", decide(f, targets), "--upstreams", f.cache, "--remote", f.remote]);
+  refused(await prepare([addTidy]), "plugin/skills/tidy has no change");
+  writeFiles(run.wt, { "plugin/agents/tidier.md": TIDIER });
+  refused(await prepare([{ ...addTidier, action: "edit" }]), "its action is add");
+  refused(await prepare([{ ...addTidier, kind: "rule" }]), "kind is agent");
+  const router = join(run.wt, "plugin/skills/ask-vstack/SKILL.md");
+  writeFileSync(router, readFileSync(router, "utf8") + "- `/skill:tidier`\n");
+  refused(await prepare([addTidier]), "plugin/skills/ask-vstack changed but is not a target");
+  git(run.wt, "checkout", "--", "plugin/skills/ask-vstack");
+  writeFiles(run.wt, { "plugin/skills/wording/SKILL.md": WORDING });
+  refused(await prepare([addTidier, { ...editWording, action: "add" }]), "plugin/skills/wording is already on main");
+  git(run.wt, "checkout", "--", "plugin/skills/wording");
+  writeFiles(run.wt, { "plugin/skills/rej/SKILL.md": "---\nname: rej\ndescription: Fixture skill\n---\nrej\n" });
+  refused(await prepare([addTidier, { ...addTidy, artifact: "plugin/skills/rej" }]), "plugin/skills/rej clashes with matt skills/misc/rej at v1.1.0");
+  expect(git(run.wt, "status", "--porcelain", "--", "decision-register.yaml", "CHANGELOG.md", "plugin/package.json")).toBe("");
 }, 60000);
 
 test("cancel removes only the run's worktree and branch", async () => {

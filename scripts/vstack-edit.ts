@@ -6,11 +6,11 @@
 import { parseArgs } from "node:util";
 import { createHash } from "node:crypto";
 import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSync, realpathSync, rmSync, writeFileSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import { addWorktree, ensureDeps, mainCheckoutName, removeWorktree, worktreeBase, type AddedWorktree } from "./lib/omp-worktree.ts";
 import { loadGate, preflight, run } from "./lib/update-gates.ts";
-import { defaultUpstreamRemote, defaultUpstreamsDir, syncClone } from "./lib/upstreams.ts";
-import { loadPins, parseRegister, type Register } from "./lib/vstack-repo.ts";
+import { cloneSource, defaultUpstreamRemote, defaultUpstreamsDir, syncClone } from "./lib/upstreams.ts";
+import { loadPins, parseRegister, upstreamItems, type Register } from "./lib/vstack-repo.ts";
 
 const scriptRoot = resolve(import.meta.dir, "..");
 const MAIN = "main";
@@ -20,6 +20,8 @@ const TARGET = /^plugin\/(?:(skills)\/([a-z0-9-]+)|(agents|rules)\/([a-z0-9-]+)\
 const KIND = { skills: "skill", agents: "agent", rules: "rule" } as const;
 /** The paths a Hand edit changes and finish commits. */
 const MANAGED = ["plugin", "CHANGELOG.md", "decision-register.yaml"];
+/** The router. A run that adds a skill also writes its route here (check-register's unrouted-skill). */
+const ROUTER = "plugin/skills/ask-vstack";
 /** The grilling closing-gate answer that confirms the result: "Shared understanding", with or without its option letter. */
 const CONFIRMED = /^(?:[A-Z]\.\s*)?Shared understanding\b/;
 
@@ -79,33 +81,72 @@ function callers(wt: string, artifact: string, name: string): string[] {
   return files.filter((f) => !(f === artifact || f.startsWith(`${artifact}/`)) && ref.test(text(f))).sort();
 }
 
-/** A target this flow can edit now: registered in `register` and present in the worktree. */
-function editable(wt: string, pins: ReturnType<typeof loadPins>, register: Register, artifact: string) {
+/**
+ * What the flow does with a target, judged against main: `add` for a name that main and its register do not have,
+ * `edit` for a registered item present in the worktree.
+ */
+function classify(wt: string, pins: ReturnType<typeof loadPins>, register: Register, artifact: string) {
   const t = target(artifact);
   const rows = register.rows.filter((row) => row.artifacts.includes(artifact));
   const original = register.originals.includes(artifact);
-  if (!rows.length && !original) throw new Error(`${artifact} is in no register row and not in originals:; adding an artifact is not supported yet`);
+  if (!rows.length && !original) {
+    if (Bun.spawnSync(["git", "cat-file", "-e", `${MAIN}:${artifact}`], { cwd: wt }).exitCode === 0) throw new Error(`${artifact} is on ${MAIN} but in no register row and not in originals:`);
+    return { ...t, action: "add" as const, dispositions: [] as string[], rows: [] };
+  }
   if (!existsSync(join(wt, artifact))) throw new Error(`${artifact} does not exist in the run's worktree`);
   return {
     ...t,
-    dispositions: original ? ["original"] : [...new Set(rows.map((row) => row.disposition))],
+    action: "edit" as const,
+    dispositions: original ? ["original"] : [...new Set(rows.map((row) => row.disposition!))],
     rows: rows.map((row) => ({ id: row.id, upstream: row.upstream, pin: row.upstream ? pins.get(row.upstream)?.pin : undefined, path: row.path, tree: row.tree, disposition: row.disposition, reason: row.raw.reason })),
   };
 }
 
-/** main's register, which the bookkeeping starts from: a row that prepare flipped is still adopt here. */
+/** main's register, which the bookkeeping starts from: a row that prepare flipped is still adopt here, and a new item is still absent. */
 function mainRegister(wt: string) {
   const text = git(wt, "show", `${MAIN}:decision-register.yaml`);
   return { text, register: parseRegister(Bun.YAML.parse(text), `${MAIN}:decision-register.yaml`) };
 }
 
-/** Each target's register rows and Disposition at the current Pins, and its callers. Reads no Upstream. */
-function check(r: Run, artifacts: string[]) {
+interface UpstreamOptions { upstreams?: string; remote?: string }
+
+/** The clone cache, after a clone of each missing Upstream. An existing clone is never fetched, so it gains no newer ref. */
+function clones(wt: string, opts: UpstreamOptions): string {
+  const dir = opts.upstreams ?? defaultUpstreamsDir();
+  for (const pin of loadPins(wt).values()) if (!existsSync(join(dir, pin.key))) syncClone(dir, pin, opts.remote ?? defaultUpstreamRemote());
+  return dir;
+}
+
+/** Each Upstream item name at the current Pins, with where it is: `<upstream> <path> at <pin>`. Reads each clone only at its Pin. */
+async function upstreamNames(wt: string, opts: UpstreamOptions): Promise<Map<string, string[]>> {
+  const source = cloneSource(clones(wt, opts));
+  const names = new Map<string, string[]>();
+  for (const pin of loadPins(wt).values()) {
+    for (const item of upstreamItems(pin, await source.tree(pin, pin.pin))) {
+      const name = item.type === "blob" ? basename(item.path).replace(/\.md$/, "") : basename(item.path);
+      names.set(name, [...(names.get(name) ?? []), `${pin.key} ${item.path} at ${pin.pin}`]);
+    }
+  }
+  return names;
+}
+
+/** Refuses a new name that an Upstream item has at a current Pin, before anything is written. */
+function refuseClashes(targets: { artifact: string; clashes?: string[] }[]) {
+  const found = targets.flatMap((t) => (t.clashes ?? []).map((c) => `${t.artifact} clashes with ${c}`));
+  if (found.length) throw new Error(`${found.join("; ")}. Pick another name.`);
+}
+
+/** Each target's action, register rows and Disposition at the current Pins, and callers. A new name also gets its Upstream clashes. */
+async function check(r: Run, artifacts: string[], opts: UpstreamOptions) {
   if (!artifacts.length) throw new Error("name at least one target artifact");
   const wt = r.worktree.path;
   const pins = loadPins(wt);
   const { register } = mainRegister(wt);
-  return { targets: artifacts.map((a) => { const t = editable(wt, pins, register, a); return { ...t, callers: callers(wt, a, t.name) }; }) };
+  const classified = artifacts.map((a) => classify(wt, pins, register, a));
+  const names = classified.some((t) => t.action === "add") ? await upstreamNames(wt, opts) : undefined;
+  const targets = classified.map((t) => ({ ...t, ...(names && t.action === "add" ? { clashes: names.get(t.name) ?? [] } : {}), callers: callers(wt, t.artifact, t.name) }));
+  refuseClashes(targets);
+  return { targets };
 }
 
 /** The decisions file the skill writes from the user's answers. */
@@ -127,7 +168,7 @@ function decisionsAt(file: string | undefined): Decisions {
   if (!file) throw new Error("--decisions <file> is required");
   const d = readJson(file);
   if (!Array.isArray(d.targets) || !d.targets.length) throw new Error("decisions need a nonempty targets array");
-  for (const t of d.targets) if (t?.action !== "edit") throw new Error(`${t?.artifact}: action ${JSON.stringify(t?.action)} is not supported yet; only edit is`);
+  for (const t of d.targets) if (t?.action !== "add" && t?.action !== "edit") throw new Error(`${t?.artifact}: action ${JSON.stringify(t?.action)} is not supported yet; only add and edit are`);
   if (new Set(d.targets.map((t: any) => t.artifact)).size !== d.targets.length) throw new Error("each target artifact may appear once");
   if (!Array.isArray(d.changelog) || !d.changelog.length || d.changelog.some((l: unknown) => typeof l !== "string" || !l.trim() || l.includes("\n"))) throw new Error("changelog must list one or more one-line entries");
   if (typeof d.commit !== "string" || !d.commit.trim()) throw new Error("commit must hold the commit message");
@@ -172,47 +213,75 @@ function flipRows(text: string, reasons: Map<number, string>): string {
   return out;
 }
 
-/** Refuses decisions whose targets the flow cannot edit, or that differ from the plugin units the draft changed. */
-function validate(r: Run, d: Decisions) {
+/**
+ * Refuses decisions whose action or kind differ from what main has, an adopt edit without a confirmed flip, a new
+ * name that clashes with an Upstream item, and plugin changes other than the targets and, for a new skill, its
+ * route in ask-vstack.
+ */
+async function validate(r: Run, d: Decisions, opts: UpstreamOptions) {
   const wt = r.worktree.path;
   const pins = loadPins(wt);
   const { register } = mainRegister(wt);
-  for (const t of d.targets) {
-    const e = editable(wt, pins, register, t.artifact);
-    if (t.kind !== e.kind) throw new Error(`${t.artifact} is a ${e.kind}, not a ${t.kind}`);
-    const adopt = e.dispositions.includes("adopt");
+  const targets = d.targets.map((t) => {
+    const c = classify(wt, pins, register, t.artifact);
+    if (t.action !== c.action) throw new Error(c.action === "add" ? `${t.artifact} is not on ${MAIN}; its action is add, not ${t.action}` : `${t.artifact} is already on ${MAIN}; its action is edit, not ${t.action}`);
+    if (t.kind !== c.kind) throw new Error(`${t.artifact}: its kind is ${c.kind}, not ${t.kind}`);
+    const adopt = c.dispositions.includes("adopt");
     const { confirmed, reason } = t.flip ?? {};
     if (adopt && (confirmed !== true || typeof reason !== "string" || !reason.trim() || reason.includes("\n"))) {
       throw new Error(`${t.artifact} is adopt; an edit flips it to adapt, so the target needs flip {"confirmed": true, "reason": "<one-line new reason>"} from the user's answers`);
     }
     if (!adopt && t.flip !== undefined) throw new Error(`${t.artifact} is not adopt; only an adopt target takes a flip`);
+    return c;
+  });
+  const added = targets.filter((t) => t.action === "add");
+  if (added.length) {
+    const names = await upstreamNames(wt, opts);
+    refuseClashes(added.map((t) => ({ artifact: t.artifact, clashes: names.get(t.name) })));
   }
   const changed = changedUnits(wt);
   const named = new Set(d.targets.map((t) => t.artifact));
+  const routes = added.some((t) => t.kind === "skill");
   for (const a of named) if (!changed.includes(a)) throw new Error(`${a} has no change from ${MAIN}; write the draft first`);
-  for (const a of changed) if (!named.has(a)) throw new Error(`${a} changed but is not a target; add it to the decisions file or undo the change`);
+  for (const a of changed) if (!named.has(a) && !(routes && a === ROUTER)) throw new Error(`${a} changed but is not a target; add it to the decisions file or undo the change`);
+  return { added: added.map((t) => t.artifact) };
 }
 
-/** The bookkeeping, rebuilt from main on every run: the confirmed adopt flips, the patch bump, and the CHANGELOG entry. */
-function prepare(r: Run, file: string | undefined) {
+/** main's register text with `added` appended to the `originals:` block list. Refuses a layout it cannot extend exactly. */
+function withOriginals(text: string, added: string[]): string {
+  if (!added.length) return text;
+  const lines = text.split("\n");
+  const at = lines.findIndex((l) => /^originals:\s*(?:\[\])?\s*$/.test(l));
+  if (at < 0) throw new Error(`${MAIN}:decision-register.yaml has no top-level originals: list`);
+  let end = at + 1;
+  while (end < lines.length && /^\s+- /.test(lines[end]!)) end++;
+  const indent = /^(\s+)- /.exec(lines[at + 1] ?? "")?.[1] ?? "  ";
+  const out = [...lines.slice(0, at), "originals:", ...lines.slice(at + 1, end), ...added.map((a) => `${indent}- ${a}`), ...lines.slice(end)].join("\n");
+  const before = parseRegister(Bun.YAML.parse(text), "main").originals;
+  if (JSON.stringify(parseRegister(Bun.YAML.parse(out), "prepared").originals) !== JSON.stringify([...before, ...added])) throw new Error(`cannot append to originals: in ${MAIN}:decision-register.yaml; keep it one block list`);
+  return out;
+}
+
+/** The bookkeeping, rebuilt from main on every run: the confirmed adopt flips, new originals, the patch bump, and the CHANGELOG entry. */
+async function prepare(r: Run, file: string | undefined, opts: UpstreamOptions) {
   const d = decisionsAt(file);
-  validate(r, d);
+  const { added } = await validate(r, d, opts);
   const wt = r.worktree.path;
   const { text, register } = mainRegister(wt);
   const reasons = new Map<number, string>();
   for (const t of d.targets) {
     if (t.flip) for (const row of register.rows) if (row.disposition === "adopt" && row.artifacts.includes(t.artifact)) reasons.set(row.index, t.flip.reason.trim());
   }
-  const flipped = reasons.size ? flipRows(text, reasons) + "\n" : undefined;
+  const rewritten = reasons.size || added.length ? withOriginals(reasons.size ? flipRows(text, reasons) : text, added) + "\n" : undefined;
   const manifest = git(wt, "show", `${MAIN}:plugin/package.json`);
   const [major, minor, patch] = String(JSON.parse(manifest).version).split(".").map(Number);
   const version = `${major}.${minor}.${patch! + 1}`;
-  if (flipped) writeFileSync(join(wt, "decision-register.yaml"), flipped);
+  if (rewritten) writeFileSync(join(wt, "decision-register.yaml"), rewritten);
   else git(wt, "restore", "--source", MAIN, "--", "decision-register.yaml");
   writeFileSync(join(wt, "plugin/package.json"), manifest.replace(/"version":\s*"[^"]*"/, `"version": "${version}"`) + "\n");
   writeFileSync(join(wt, "CHANGELOG.md"), changelog(git(wt, "show", `${MAIN}:CHANGELOG.md`), version, d.changelog));
   save(join(r.out, "decisions.json"), d);
-  return { version, changelog: d.changelog, targets: d.targets.map((t) => t.artifact), flipped: [...reasons.keys()].map((i) => register.rows[i]!.id) };
+  return { version, changelog: d.changelog, targets: d.targets.map((t) => t.artifact), flipped: [...reasons.keys()].map((i) => register.rows[i]!.id), originals: added };
 }
 
 /** A hash of the managed paths in the worktree and the prepared decisions: what the gates and the closing gate saw. */
@@ -231,29 +300,27 @@ function digest(r: Run): string {
   return h.digest("hex");
 }
 
-interface GateOptions { smoke?: string; test?: string; upstreams?: string; remote?: string }
+interface GateOptions extends UpstreamOptions { smoke?: string; test?: string }
 
 /**
- * quick_validate on each target skill, check-register, the test suite, and the load gate. Runs every gate and
- * refuses with all failures. A pass writes the receipt finish checks.
+ * quick_validate on each skill directory the run added or changed, check-register, the test suite, and the load
+ * gate. Runs every gate and refuses with all failures. A pass writes the receipt finish checks.
  */
-function gates(r: Run, opts: GateOptions) {
+async function gates(r: Run, opts: GateOptions) {
   const prepared = join(r.out, "decisions.json");
   if (!existsSync(prepared)) throw new Error("run prepare before gates");
-  const d = decisionsAt(prepared);
-  validate(r, d);
+  await validate(r, decisionsAt(prepared), opts);
   const wt = r.worktree.path;
   const receipt = join(r.out, "gates.json");
   rmSync(receipt, { force: true });
   const before = digest(r);
   const failures: string[] = [];
   const gate = (name: string, fn: () => void) => { try { fn(); } catch (e) { failures.push(`${name}: ${(e as Error).message}`); } };
-  for (const t of d.targets) {
-    if (t.kind === "skill") gate(`quick_validate ${t.artifact}`, () => run([process.execPath, join(scriptRoot, "plugin/skills/skill-creator/scripts/quick_validate.ts"), join(wt, t.artifact)], wt));
+  for (const a of changedUnits(wt)) {
+    if (a.startsWith("plugin/skills/") && existsSync(join(wt, a))) gate(`quick_validate ${a}`, () => run([process.execPath, join(scriptRoot, "plugin/skills/skill-creator/scripts/quick_validate.ts"), join(wt, a)], wt));
   }
   gate("check-register", () => {
-    const upstreams = opts.upstreams ?? defaultUpstreamsDir();
-    for (const pin of loadPins(wt).values()) if (!existsSync(join(upstreams, pin.key))) syncClone(upstreams, pin, opts.remote ?? defaultUpstreamRemote());
+    const upstreams = clones(wt, opts);
     const c = Bun.spawnSync([process.execPath, join(scriptRoot, "scripts/check-register.ts"), "--root", wt, "--source", "clones", "--upstreams", upstreams, "--base", MAIN, "--json"], { cwd: wt, stdout: "pipe", stderr: "pipe" });
     if (c.exitCode === 2) throw new Error(c.stderr.toString().trim());
     const result = JSON.parse(c.stdout.toString());
@@ -299,8 +366,8 @@ async function main() {
   const omp = opts.omp ?? process.env.VSTACK_OMP ?? "omp";
   if (command === "preflight") return start(root, opts.name, gh, omp);
   const r = runAt(opts.run);
-  if (command === "check") return check(r, rest);
-  if (command === "prepare") return prepare(r, opts.decisions);
+  if (command === "check") return check(r, rest, opts);
+  if (command === "prepare") return prepare(r, opts.decisions, opts);
   if (command === "gates") return gates(r, opts);
   if (command === "finish") return finish(r, opts.grilling);
   if (command === "cancel") {
