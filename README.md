@@ -332,7 +332,7 @@ explain combines how and why through a Fan-out block. It keeps one conversation 
 
 `/skill:session-lessons` is a hidden adapt of pstack reflect. It reads only the current JSONL resolved from `PI_SESSION_FILE` and referenced children from that run. Three lenses use the Fan-out gate. The synthesizer always gets a fresh context. A missing transcript uses a labeled digest, never a guessed session.
 
-The parent resolves targets with `omp skill list --json` and approves a subset through `ask`. Own skills stay uncommitted. vstack adapt, merge, and original items use the clone's hand-edit flow. Adopt items and others' installs become listed-only Backlog. Substantive edits, descriptions, and new skills route through skill-creator. The four reviewer references belong to the pstack/reflect artifact, not `originals:`.
+The parent resolves targets with `omp skill list --json` and approves a subset through `ask`. Own skills stay uncommitted. Every approved vstack row, adopt items included, goes to one `/skill:vstack-edit` run. Others' installs become listed-only Backlog. Substantive edits, descriptions, and new skills route through skill-creator. The four reviewer references belong to the pstack/reflect artifact, not `originals:`.
 
 ### Tests
 
