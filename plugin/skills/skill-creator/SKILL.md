@@ -72,11 +72,13 @@ Use `ask` only when missing information changes the work and cannot be reasonabl
 
 ### 2. Choose the location and name
 
-For a new skill, a location the user names wins. Otherwise choose `.omp/skills/<name>/` for guidance about this repo, `<clone>/plugin/skills/<name>/` only when the user names vstack, or `~/.omp/agent/skills/<name>/` in every other case (the default). Use `ask` once only if the home is unclear.
+For a new skill, a location the user names wins. Otherwise choose `.omp/skills/<name>/` for guidance about this repo, vstack only when the user names vstack, or `~/.omp/agent/skills/<name>/` in every other case (the default). Use `ask` once only if the home is unclear.
 
-For an update, resolve `omp skill list --json`: inspect `source` and resolve `filePath` to its real path. Edit an own project or user skill in place and leave it uncommitted. For a vstack adapt, merge, or original, use the clone's hand-edit flow: branch, patch version bump, CHANGELOG, register check, and a PR with `gh`. For a new vstack original, add its directory to `originals:`. Refuse a vstack adopt item: editing it changes its Disposition. Refuse someone else's install: its next update overwrites the edit. State the reason and stop in either case.
+For an update, resolve `omp skill list --json`: inspect `source` and resolve `filePath` to its real path. Edit an own project or user skill in place and leave it uncommitted. Refuse someone else's install, because its next update overwrites the edit. State the reason and stop.
 
-Inside an active vstack-edit run, the run's worktree holds the target, and the hand-edit and adopt rules above do not apply. Write only the draft there. Make no branch, version bump, CHANGELOG entry, or PR, and do not refuse an adopt target. vstack-edit owns those steps and the adopt confirmation.
+A vstack target is a new skill in vstack, or an existing skill whose real path is inside a vstack clone's `plugin/`, whatever its Disposition. Inside an active vstack-edit run, the run's worktree holds the target. Write only the draft there, and do not hand the work to vstack-edit again. vstack-edit owns every other step, including the confirmation for an adopt target.
+
+Outside a vstack-edit run, hand a vstack target to skill://vstack-edit before you write anything. Read that skill and follow it from the root of the vstack clone. The clone root is the directory above `plugin/` in the real path of any vstack skill, such as this one. Give it the user's request as the change. Its draft step calls this skill again.
 
 Names use lowercase letters, digits, and single hyphens, at most 64 characters; prefer short action-oriented names, namespaced by tool or domain when that aids discovery. The folder name matches the skill name.
 
@@ -108,7 +110,7 @@ Run the Bun validator:
 bun scripts/quick_validate.ts <path/to/skill-folder>
 ```
 
-It reports every problem it finds: frontmatter syntax and types, naming, a folder name that differs from `name`, an empty body, unfinished `[TODO: ...]` placeholders, Markdown links that do not resolve, and `references/` files that nothing mentions. For a vstack original also run `bun scripts/check-register.ts` from the clone. A clean result covers structure only. Also confirm that the description selects the intended requests, the instructions preserve scope, and added scripts work.
+It reports every problem it finds: frontmatter syntax and types, naming, a folder name that differs from `name`, an empty body, unfinished `[TODO: ...]` placeholders, Markdown links that do not resolve, and `references/` files that nothing mentions. A clean result covers structure only. Also confirm that the description selects the intended requests, the instructions preserve scope, and added scripts work.
 
 ### 6. Evaluate when warranted
 

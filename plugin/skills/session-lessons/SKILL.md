@@ -54,22 +54,23 @@ Read `skill://principle-encode-lessons-in-structure`. Move any Accepted item bet
 
 ## 5. Approve and apply by home
 
-Resolve existing targets with `omp skill list --json`. Match each `skill://<name>` to its catalog record, inspect `source`, and resolve `filePath` to its real path. Names and provider folders alone do not prove ownership. Do not list skill directories. Read the target and, for a realpath inside a vstack clone's `plugin/`, its `decision-register.yaml` to establish Disposition or original status. If ownership cannot be established, list the finding in Backlog and make no edit.
+Resolve existing targets with `omp skill list --json`. Match each `skill://<name>` to its catalog record, inspect `source`, and resolve `filePath` to its real path. Names and provider folders alone do not prove ownership. Do not list skill directories. Read the target. If ownership cannot be established, list the finding in Backlog and make no edit.
 
 Classify each target before approval:
 
 1. Own project or user skill: edit in place, leaving changes uncommitted. Examples include user-authored skills in `.omp/skills`, `.agents/skills`, `.claude/skills`, or `~/.omp/agent/skills`. A package symlink at one of these homes is not proof that the user authored it.
-2. vstack adapt, merge, or original: edit in the clone through its hand-edit flow. Use a branch, patch version bump, CHANGELOG entry, `bun scripts/check-register.ts`, and a PR on the vstack repo with `gh`. Preserve unrelated changes and follow the clone's maintainer instructions. A new vstack skill must be listed under `originals:`.
-3. vstack adopt: no edit; list in Backlog because an edit changes its Disposition.
-4. Someone else's install, including another plugin, skills-CLI, or Skillshare package: no edit; list in Backlog because its next update overwrites the change.
+2. vstack skill: its real path is inside a vstack clone's `plugin/`, whatever its Disposition. A new skill with the vstack-original home belongs here too. skill://vstack-edit makes every vstack change, as described below.
+3. Someone else's install, including another plugin, skills-CLI, or Skillshare package: no edit; list in Backlog because its next update overwrites the change.
 
 Present the full Accepted / Rejected / Backlog result, with each Accepted row's resolved home, through one `ask` approval gate. Allow a subset and routing redirects; do not apply unapproved rows. A new skill's row must name its project, user, or vstack-original home and approval must confirm it. Re-resolve and classify redirected existing targets before any write; changed proposals or homes need approval through `ask`.
 
-For each approved row:
+For each approved row on an own skill:
 
 - A trivial edit (one bullet, a tightened sentence, a stale fact) the parent makes directly.
-- A substantive edit (a new section or more than about ten lines), `tune description: skill://<name>`, and `new skill: <kebab-name>` go through `skill://skill-creator` for its draft, validation, and warranted eval flow. Its refusal rules still apply.
-- Validate every touched skill with `bun "$(realpath skill://skill-creator/scripts/quick_validate.ts)" "<skill-directory>"`. For vstack changes also run the register check from the clone and complete its hand-edit flow.
+- A substantive edit (a new section or more than about ten lines), `tune description: skill://<name>`, and `new skill: <kebab-name>` go through `skill://skill-creator` for its draft, validation, and warranted eval flow.
+- Validate every touched skill with `bun "$(realpath skill://skill-creator/scripts/quick_validate.ts)" "<skill-directory>"`.
+
+For the approved rows on vstack skills, read skill://vstack-edit and follow it once, from the root of the vstack clone (the directory above `plugin/` in the real path). Give it every approved vstack row as the change. Its draft step writes all of these rows through skill-creator, trivial or substantive.
 
 Backlog is only listed, never filed or posted. Approval to edit skills does not authorize tracker mutations. The user files what they want.
 
@@ -77,7 +78,7 @@ Backlog is only listed, never filed or posted. Approval to edit skills does not 
 
 Return a short list:
 
-- Edits applied: absolute skill paths and one line per change; vstack PR link when applicable.
+- Edits applied: absolute skill paths and one line per change. For vstack rows, add the End state that vstack-edit reached and its commit SHA or PR link.
 - New skills: absolute paths and confirmed homes.
 - Backlog: pattern, suggested mechanism or ownership restriction; listed, not filed.
 - Dropped: each Rejected finding and its reason, plus unapproved rows.

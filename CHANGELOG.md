@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [0.1.49] - 2026-10-11
+
+- skill-creator and session-lessons hand a vstack change to vstack-edit, for an adopt item too. They no longer refuse an adopt edit, list it in Backlog, or restate the branch, version bump, CHANGELOG, register check, and PR steps. Inside an active vstack-edit run, skill-creator writes only the draft and does not hand the work back (#112).
+
 ## [0.1.48] - 2026-10-11
 
 - A vstack-edit take of a reject row that is on Hold now removes the row's `held_at` and `held_path`. The take ships the bytes at the current Pin, but check-register compared the adopt row against the older held ref and failed when the bytes differed (#109).
