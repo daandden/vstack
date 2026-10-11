@@ -10,11 +10,12 @@
 //
 // The clone helpers below (syncClone, newestTag, newestCommit, resolveRef, readBlobs, renamePairs) are for
 // update-plan, the one script that clones and fetches branches and tags. fetchRefs is for the Hand edit, which
-// fetches only the refs it names. Nothing here moves a clone's HEAD.
+// fetches only the refs it names. readBlobs and writeEntry also serve the Hand edit's take. Nothing here moves
+// a clone's HEAD.
 
 import { homedir } from "node:os";
-import { join } from "node:path";
-import { existsSync, mkdirSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { chmodSync, existsSync, mkdirSync, symlinkSync, writeFileSync } from "node:fs";
 
 export type EntryType = "blob" | "tree" | "commit";
 
@@ -316,6 +317,26 @@ export function readBlobs(clone: string, shas: Iterable<string>): Map<string, Ui
     pos = start + Number(size) + 1;
   }
   return out;
+}
+
+const utf8 = new TextDecoder("utf-8", { fatal: true });
+/** The bytes as UTF-8 text, or undefined for binary content. */
+export function asText(bytes: Uint8Array): string | undefined {
+  try {
+    return utf8.decode(bytes);
+  } catch {
+    return undefined;
+  }
+}
+
+/** Writes a blob's bytes at `file` as the tree entry has it: a symlink for mode 120000, executable for 100755. */
+export function writeEntry(file: string, entry: TreeEntry, bytes: Uint8Array) {
+  mkdirSync(dirname(file), { recursive: true });
+  if (entry.mode === "120000") symlinkSync(new TextDecoder().decode(bytes), file);
+  else {
+    writeFileSync(file, bytes);
+    if (entry.mode === "100755") chmodSync(file, 0o755);
+  }
 }
 
 export interface RenamePair {

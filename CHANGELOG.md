@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [0.1.47] - 2026-10-11
+
+- vstack-edit takes an Upstream item at the current Pin without a full Update: an item that the register rejects, or one that has no row yet. `check --take <upstream>:<path>` prints the artifact that the item ships as and its Disposition. The take is adopt when no House style row with scope required matches the item, and adapt otherwise. prepare writes the item from the Pin, sets the reject row or adds a new row, and check-register passes in the gates. A name clash for a new item now offers to take the Upstream item in its place or to pick another name (ADR 0014, #109).
+
 ## [0.1.46] - 2026-10-11
 
 - A bookkeeping-only change in a vstack-edit run needs a new prepare and nothing more. prepare writes a receipt of the files it left. The gates receipt and the review receipt now hold a hash of the skill, agent, and rule text only. finish refuses files that changed after the last prepare, and text that changed after the last gates pass or review. A new CHANGELOG line, commit message, or flip reason no longer reruns the gates (#111).

@@ -3,10 +3,10 @@
 // both Upstream sides of adapt and merge rows with the `uses: update` House style rows applied.
 // The README ("update-plan") documents the plan JSON this builds.
 
-import { chmodSync, lstatSync, mkdirSync, readFileSync, readlinkSync, symlinkSync, writeFileSync } from "node:fs";
+import { lstatSync, mkdirSync, readFileSync, readlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { applyRows, selectRows, type Replacement, type TextDisposition } from "./house-style.ts";
-import { gitBlobSha, readBlobs, renamePairs, type TreeEntry, type UpstreamSource, type UpstreamTree } from "./upstreams.ts";
+import { asText, gitBlobSha, readBlobs, renamePairs, writeEntry, type TreeEntry, type UpstreamSource, type UpstreamTree } from "./upstreams.ts";
 import { NEVER_SHIPPED, isHeld, upstreamItems, type Pin, type Register, type Row, type UpstreamItem } from "./vstack-repo.ts";
 
 /** Bumped when a consumer-visible field changes meaning. */
@@ -89,14 +89,6 @@ const NESTED = (base: string, paths: Iterable<string>) => {
   return out;
 };
 const baseName = (p: string) => p.slice(p.lastIndexOf("/") + 1);
-const utf8 = new TextDecoder("utf-8", { fatal: true });
-const asText = (b: Uint8Array) => {
-  try {
-    return utf8.decode(b);
-  } catch {
-    return undefined;
-  }
-};
 
 /** Files an item owns, keyed by path inside the item. Paths under a nested item or row (`excluded`) belong to that one: longest prefix wins. */
 function itemFiles(tree: UpstreamTree, path: string, key: string, excluded: string[]): Map<string, TreeEntry> {
@@ -117,15 +109,6 @@ interface Prep {
   move?: PlanRow["move"];
   /** Where a removed item is compared from when pairing moves. */
   base?: { tree: UpstreamTree; path: string; entry: TreeEntry };
-}
-
-function writeEntry(file: string, entry: TreeEntry, bytes: Uint8Array) {
-  mkdirSync(dirname(file), { recursive: true });
-  if (entry.mode === "120000") symlinkSync(new TextDecoder().decode(bytes), file);
-  else {
-    writeFileSync(file, bytes);
-    if (entry.mode === "100755") chmodSync(file, 0o755);
-  }
 }
 
 function hashOnDisk(file: string): string {

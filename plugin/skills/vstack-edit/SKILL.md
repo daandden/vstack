@@ -1,13 +1,13 @@
 ---
 name: vstack-edit
-description: Make a Hand edit to vstack, adding a new skill, agent, or rule or editing an existing one, from one End-state question to a commit, PR, or merge.
+description: Make a Hand edit to vstack, adding a new skill, agent, or rule, editing an existing one, or taking an Upstream item at the current Pin, from one End-state question to a commit, PR, or merge.
 argument-hint: "[<what to change>]"
 disable-model-invocation: true
 ---
 
 # vstack-edit
 
-A Hand edit changes a vstack skill, agent, or rule outside an Update. This flow adds a new original skill, agent, or rule, or edits an existing original, adapt, or merge item. It also edits an adopt item after the user confirms the flip to adapt (ADR 0014). It does not take, rename, or remove an item. The script refuses those cases.
+A Hand edit changes a vstack skill, agent, or rule outside an Update. This flow adds a new original skill, agent, or rule, or edits an existing original, adapt, or merge item. It also edits an adopt item after the user confirms the flip to adapt (ADR 0014). It also takes an Upstream item at the current Pin that the register rejects or does not list yet. It does not rename or remove an item. The script refuses those cases.
 
 Run from the root of the vstack checkout. `scripts/vstack-edit.ts` in that checkout owns every deterministic step. Each command prints JSON and exits 0 on success. A refusal or failure exits 2 and prints `{"ok": false, "reason"}`. The README's vstack-edit section documents the commands and the decisions file. The script never makes a judgment. It acts only on the decisions file, and you write that file from the user's answers.
 
@@ -25,13 +25,17 @@ Pick a short kebab-case `<name>` for the change. Run `bun scripts/vstack-edit.ts
 
 Run `check --run <run file> <artifact> ...` with one artifact per target, such as `plugin/skills/<name>`, `plugin/agents/<name>.md`, or `plugin/rules/<name>.md`. Name a new item by the path it will have. check prints each target's `action`: `edit` for an item that main registers, `add` for a name that main does not have. For an edit, it prints the register rows at the current Pins, the Disposition, and the callers from `skill://` and `/skill:` references. Read every caller before you draft.
 
-For an add, check compares the new name with the Upstream items at the current Pins and never fetches a newer ref. A clash refuses with exit code 2 before anything is written. Report the clash, ask the user for another name with `ask`, and run check again with that name. For any other refusal, report the reason, run `cancel`, and stop.
+For an add, check compares the new name with the Upstream items at the current Pins and never fetches a newer ref. A clash refuses with exit code 2 before anything is written. The refusal lists each clash in `clashes`. A clash has `take` set when that Upstream item can ship in place of the new item, because the register rejects it or has no row for it. Report the clash and use one `ask`. For a clash with `take`, give two options: `A. Take the Upstream item` and `B. Pick another name`. For any other clash, ask only for another name. Give no recommended option. For Take, run check again with `--take <take>` in place of that artifact, and continue as for a take. For another name, run check again with that name. A timed-out answer is no answer: use `ask` once more. If that times out too, run `cancel` and stop. For any other refusal, report the reason, run `cancel`, and stop.
+
+To take an Upstream item, run `check --run <run file> --take <upstream>:<path>`, such as `--take matt:skills/in-progress/loop-me`. check reads the item only at the current Pin. It prints `action` `take`, the `artifact` path that the item ships as, the rejected register `row` or null, and the `disposition` that the take ships as. The take is adopt when no House style row with scope required matches the item. Otherwise it is adapt, and `house_style_rows` names the rows that match. check refuses an item that already ships, an item that is not at the current Pin, and an item that is not a skill or principle directory or an agent `.md` file. Before the draft, use one `ask` with one question per take for the register row's one-line reason, which the user writes. A timed-out answer is no answer: use `ask` once more. If that times out too, remove the take from the run. If no target remains, run `cancel` and stop.
 
 An edit makes an adopt target stop matching its Upstream item byte for byte, so its register rows flip to adapt. Before the draft, use one `ask` with one question per target whose Dispositions include adopt. Each question names the target and its current reason, and has two options: `A. Flip to adapt`, with the new one-line reason that the user writes, and `B. Drop this target`. Give no recommended option. A timed-out answer is no answer: use `ask` once more. If that times out too, treat the target as dropped. Keep each confirmed flip and its reason for the decisions file. Remove a dropped target from the run. If no target remains, run `cancel` and stop.
 
 ## 4. Draft
 
-Read skill://skill-creator and write the draft with it in the run's worktree. This is an active vstack-edit run, so skill-creator writes only the draft. Change only the targets. For a new skill, also write its route in `plugin/skills/ask-vstack/SKILL.md`: one `/skill:<name>` line in the section that fits, in the style of its neighbors. check-register fails a shipped skill with no route. A change to any other plugin artifact makes prepare refuse. A flipped adopt target is adapt text after prepare, so its draft must follow every House style rule for adapt text, such as `skill://<name>` for a skill reference. check-register in the gates fails a draft that keeps an Upstream form, such as a bare `/<skill name>`.
+Read skill://skill-creator and write the draft with it in the run's worktree. This is an active vstack-edit run, so skill-creator writes only the draft. Change only the targets. For a new skill or a taken skill, also write its route in `plugin/skills/ask-vstack/SKILL.md`: one `/skill:<name>` line in the section that fits, in the style of its neighbors. check-register fails a shipped skill with no route. A change to any other plugin artifact makes prepare refuse. A flipped adopt target is adapt text after prepare, so its draft must follow every House style rule for adapt text, such as `skill://<name>` for a skill reference. check-register in the gates fails a draft that keeps an Upstream form, such as a bare `/<skill name>`.
+
+Do not draft a take. prepare writes it from the Pin. An adopt take must stay byte for byte as it is at the Pin. An adapt take gets every House style row that the Update runs on adapt text. If the gates report a House style failure in an adapt take, fix that text in the worktree. prepare keeps a taken item that the worktree already has.
 
 ## 5. Prepare
 
@@ -42,14 +46,15 @@ Write the decisions file in the run's `out` directory:
   "targets": [
     { "action": "edit", "kind": "skill", "artifact": "plugin/skills/<name>" },
     { "action": "edit", "kind": "skill", "artifact": "plugin/skills/<adopt name>", "flip": { "confirmed": true, "reason": "<the user's new reason>" } },
-    { "action": "add", "kind": "agent", "artifact": "plugin/agents/<new name>.md" }
+    { "action": "add", "kind": "agent", "artifact": "plugin/agents/<new name>.md" },
+    { "action": "take", "kind": "skill", "artifact": "plugin/skills/<item name>", "upstream": "<upstream>", "path": "<path>", "reason": "<the user's reason>" }
   ],
   "changelog": ["One line per change, without the leading dash."],
   "commit": "fix(<name>): <what changed>"
 }
 ```
 
-`action` is `add` or `edit`, as check printed it. `kind` is `skill`, `agent`, or `rule`. Write `flip` only on an adopt target that the user confirmed in step 3, with the reason that the user gave. Write the CHANGELOG lines and the commit message in the repo's style. Run `prepare --run <run file> --decisions <file>`. It flips the register rows of each confirmed adopt target to adapt with the new reason, and it lists each new item under `originals:` in decision-register.yaml. It refuses an adopt target with no confirmed flip and a flip on any other target. It raises the patch version from main and adds the lines under Unreleased in CHANGELOG.md. Then it moves every Unreleased line under the new version heading. Run prepare again after every draft change.
+`action` is `add`, `edit`, or `take`, as check printed it. `kind` is `skill`, `agent`, or `rule`. Write `flip` only on an adopt target that the user confirmed in step 3, with the reason that the user gave. For a take, copy `artifact`, `upstream`, and `path` from check, and write the reason that the user gave. Write the CHANGELOG lines and the commit message in the repo's style. Run `prepare --run <run file> --decisions <file>`. It flips the register rows of each confirmed adopt target to adapt with the new reason, and it lists each new item under `originals:` in decision-register.yaml. For a take, it writes the item from the Pin when the worktree does not have it. Then it sets the rejected row to the take's Disposition, artifact, and reason, or adds a row for an item that has none. It refuses an adopt target with no confirmed flip, a flip on any other target, and a take with no reason. It raises the patch version from main and adds the lines under Unreleased in CHANGELOG.md. Then it moves every Unreleased line under the new version heading. Run prepare again after every draft change.
 
 ## 6. Gates
 
@@ -77,7 +82,7 @@ After any later change to skill, agent, or rule text, run steps 5, 6, and 7 agai
 
 Read skill://grilling-page and keep a Grilling page for this run, with the topic slug `edit-<name>`. Add one round with one question per target and one question per finding.
 
-A target question asks whether to ship the change as described. Its description says what the target does before the change, what it does after, and who sees the difference: the user, the agent that loads the target, or a caller. For a new item, before means that the item does not exist. For a new skill, also say where its route sits in ask-vstack. Describe behavior and show no diffs. Give two options: `A. Ship as described` (recommended) and `B. Change the draft`. When the change adds, removes, reorders, or reroutes a step or a branch of an existing item, the question's `visual` is a before-and-after flow figure. Draw it with skill://diagram-design as grilling-page describes. Skip grilling-page's visual judge in this flow: only these figures go on the page.
+A target question asks whether to ship the change as described. Its description says what the target does before the change, what it does after, and who sees the difference: the user, the agent that loads the target, or a caller. For a new item, before means that the item does not exist. For a take, before means that vstack does not ship the Upstream item, and after names the Disposition that it ships as and the House style rows that changed it. For a new or taken skill, also say where its route sits in ask-vstack. Describe behavior and show no diffs. Give two options: `A. Ship as described` (recommended) and `B. Change the draft`. When the change adds, removes, reorders, or reroutes a step or a branch of an existing item, the question's `visual` is a before-and-after flow figure. Draw it with skill://diagram-design as grilling-page describes. Skip grilling-page's visual judge in this flow: only these figures go on the page.
 
 A finding question asks whether to fix the finding. Its description names the reviewer, the file and line, the evidence, and the proposed fix. Give two options: `A. Fix`, which applies the proposed fix or the user's note, and `B. Accept`, which ships the text as it is. Recommend the option that the evidence supports.
 

@@ -80,7 +80,7 @@ test("check reports an adopt target as adopt and refuses an unregistered artifac
   refused(await edit(f, ["check", "--run", run.file, "plugin/skills/stray"]), "plugin/skills/stray");
 }, 30000);
 
-test("check reports a new name, and refuses one that clashes with an Upstream item at the current Pin, with no fetch of a newer ref", async () => {
+test("check reports a new name, and refuses one that clashes with an Upstream item at the current Pin, with no fetch of a newer ref, offering to take a rejected item in its place", async () => {
   const f = fixture();
   const run = await started(f);
   const check = (...artifacts: string[]) => edit(f, ["check", "--run", run.file, "--upstreams", f.cache, "--remote", f.remote, ...artifacts]);
@@ -101,6 +101,14 @@ test("check reports a new name, and refuses one that clashes with an Upstream it
   refused(clash, "plugin/skills/rej clashes with matt skills/misc/rej at v1.1.0");
   expect(clash.json.reason).toContain(`plugin/agents/unslop.md clashes with pstack pstack/skills/unslop at ${f.pstack.c1}`);
   expect(clash.json.reason).not.toContain("plugin/skills/fresh");
+  // The stop offers to take the rejected rej in place of the new skill. unslop is adopt and ships, so it has no take.
+  expect(clash.json.reason).toContain("take the Upstream item in its place with check --take matt:skills/misc/rej");
+  expect(clash.json.clashes).toEqual([
+    { artifact: "plugin/skills/rej", upstream: "matt", path: "skills/misc/rej", pin: "v1.1.0", take: "matt:skills/misc/rej" },
+    { artifact: "plugin/agents/unslop.md", upstream: "pstack", path: "pstack/skills/unslop", pin: f.pstack.c1, take: null },
+  ]);
+  const taken = await edit(f, ["check", "--run", run.file, "--upstreams", f.cache, "--remote", f.remote, "--take", clash.json.clashes[0].take]);
+  expect({ code: taken.code, target: taken.json?.targets?.[0]?.artifact }).toEqual({ code: 0, target: "plugin/skills/rej" });
 }, 30000);
 
 test("check on a cold cache fetches only the Pins and held refs: no newer tag, branch, or commit, and blobs still load at the Pin", async () => {
@@ -354,6 +362,51 @@ test("prepare takes a rejected item at the current Pin as adopt, byte for byte, 
   const gates = await edit(f, gateArgs(f, run.file));
   expect({ code: gates.code, reason: gates.json?.reason }).toEqual({ code: 0, reason: undefined });
 }, 90000);
+
+test("prepare takes an unregistered item at the current Pin as adapt when a House style row changes it, and adds its register row", async () => {
+  const f = fixture();
+  // main without the wording row and its artifact: an Upstream item at the Pin with no register row.
+  const reg = register(f.root);
+  reg.items = reg.items.filter((row: any) => row.id !== "matt/wording");
+  writeFileSync(join(f.root, "decision-register.yaml"), Bun.YAML.stringify(reg, null, 2));
+  rmSync(join(f.root, "plugin/skills/wording"), { recursive: true });
+  git(f.root, "add", "-A"); git(f.root, "commit", "-qm", "unregister wording");
+  const run = await started(f);
+  const c = await edit(f, ["check", "--run", run.file, "--upstreams", f.cache, "--remote", f.remote, "--take", "matt:skills/eng/wording"]);
+  expect({ code: c.code, reason: c.json?.reason }).toEqual({ code: 0, reason: undefined });
+  expect(c.json.targets).toEqual([expect.objectContaining({ artifact: "plugin/skills/wording", action: "take", row: null, disposition: "adapt", house_style_rows: ["fx-glossary"] })]);
+
+  const takeWording = { action: "take", kind: "skill", artifact: "plugin/skills/wording", upstream: "matt", path: "skills/eng/wording", reason: "Reads GLOSSARY.md." };
+  for (let i = 0; i < 2; i++) {
+    const r = await edit(f, ["prepare", "--run", run.file, "--decisions", decide(f, [takeWording]), "--upstreams", f.cache, "--remote", f.remote]);
+    expect({ code: r.code, reason: r.json?.reason }).toEqual({ code: 0, reason: undefined });
+  }
+  // Every row the Update runs on adapt matt text: fx-glossary (required) and fx-todo (adapted), not the pstack or migration-only rows. No agents/openai.yaml.
+  expect(worktreeFiles(run.wt, "plugin/skills/wording")).toEqual({
+    "SKILL.md": "---\nname: wording\ndescription: wording\n---\nRead GLOSSARY.md first. Start the `todo` list now. Ask poteto. Keep .git/old-root.\n",
+    "refs/glossary.md": "See GLOSSARY.md.\n",
+  });
+  const after = register(run.wt);
+  expect(after.items).toEqual([...reg.items, { id: "matt/wording", upstream: "matt", kind: "skill", path: "skills/eng/wording", tree: f.sha("matt", "v1.1.0", "skills/eng/wording"), disposition: "adapt", artifacts: ["plugin/skills/wording"], reason: "Reads GLOSSARY.md." }]);
+  const gates = await edit(f, gateArgs(f, run.file));
+  expect({ code: gates.code, reason: gates.json?.reason }).toEqual({ code: 0, reason: undefined });
+}, 90000);
+
+test("a take refuses a shipped item, an item that is not at the current Pin, a playbook, and a missing reason, and writes nothing", async () => {
+  const f = fixture();
+  const run = await started(f);
+  const check = (spec: string) => edit(f, ["check", "--run", run.file, "--upstreams", f.cache, "--remote", f.remote, "--take", spec]);
+  refused(await check("matt:skills/eng/keep"), "is adopt in matt/keep and ships as plugin/skills/keep");
+  // fresh is a matt item only at v1.2.0, after the v1.1.0 Pin.
+  refused(await check("matt:skills/eng/fresh"), "matt:skills/eng/fresh is not an Upstream item at the current Pin v1.1.0");
+  refused(await check("pstack:pstack/skills/poteto-mode/playbooks/shipping.md"), "a take ships only a skill or principle directory or an agent .md file");
+  refused(await check("matt"), "--take needs <upstream>:<path>");
+  const prepare = (targets: object[]) => edit(f, ["prepare", "--run", run.file, "--decisions", decide(f, targets), "--upstreams", f.cache, "--remote", f.remote]);
+  refused(await prepare([{ ...takeRej, reason: " " }]), "a take needs the register row's one-line reason");
+  refused(await prepare([{ ...takeRej, artifact: "plugin/skills/rej-two" }]), "matt:skills/misc/rej ships as plugin/skills/rej, not plugin/skills/rej-two");
+  refused(await prepare([{ ...takeRej, path: "skills/eng/keep", artifact: "plugin/skills/keep" }]), "is adopt in matt/keep");
+  expect(git(run.wt, "status", "--porcelain")).toBe("");
+}, 60000);
 
 test("a text change reruns gates and the review before finish, and a bookkeeping change reruns neither", async () => {
   const f = fixture();
