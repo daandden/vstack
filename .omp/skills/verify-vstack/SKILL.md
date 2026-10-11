@@ -39,7 +39,7 @@ bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN
   [--replies <replies.json>] '<rpc command json>' ...
 ```
 
-- `<drive>` names the evidence dir `$VERIFY_RUN_DIR/<drive>/`. Use the feature ID.
+- `<drive>` names the evidence dir `$VERIFY_RUN_DIR/<drive>/`. Use the feature ID. The dir must be new. If it exists, the script exits 2 and writes nothing, so the earlier proof stays as it was. To retry a drive, give a new name such as `<feature>-retry1`, or start a new run dir. Never delete the old dir to reuse its name.
 - Each RPC command is one JSON object from the omp RPC protocol, for example `'{"type":"get_state"}'` or `'{"type":"prompt","message":"/skill:vstack-tmp"}'`. The protocol reference is `omp://rpc.md`.
 - `--replies` is a JSON array of what the stub model answers, in order: `{"text": "..."}` or `{"tool": "<tool name>", "args": {...}}`. With no replies left, it answers the text `stub: no reply left`.
 

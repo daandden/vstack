@@ -15,7 +15,8 @@
 // script sends one command at a time and waits for its response. A prompt that starts agent work also waits for its
 // prompt_result. Every stdout frame goes to <run>/<drive>/rpc.jsonl and omp's stderr to <run>/<drive>/rpc.err.
 // It prints a summary JSON (also <run>/<drive>/summary.json) and exits 0 when every command succeeded, 1 when one
-// failed or timed out, and 2 on a usage error. The omp PID goes to <run>/data/pids before the first command, and the
+// failed or timed out, and 2 on a usage error. <run>/<drive>/ must not exist yet: a drive name that an earlier drive of
+// the run used is a usage error, and the script writes nothing. The omp PID goes to <run>/data/pids before the first command, and the
 // script stops that process and the stub server before it exits.
 
 import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, rmdirSync, symlinkSync, writeFileSync } from "node:fs";
@@ -61,8 +62,17 @@ if (!Array.isArray(replies)) usage("--replies must hold a JSON array");
 
 const run = resolve(values.run);
 const home = join(run, "data", "home");
+if (values.name === "data") usage("--name data is the run's throwaway data dir, so pick another name");
 const out = join(run, values.name);
-for (const dir of [join(home, ".omp", "agent"), out]) mkdirSync(dir, { recursive: true });
+// Each drive owns a new evidence dir. A reused dir mixes an earlier drive's model requests with this drive's frames.
+mkdirSync(run, { recursive: true });
+try {
+  mkdirSync(out);
+} catch (e) {
+  if ((e as NodeJS.ErrnoException).code === "EEXIST") usage(`${out} exists from an earlier drive; give a new --name or use a new run dir`);
+  throw e;
+}
+mkdirSync(join(home, ".omp", "agent"), { recursive: true });
 
 /** The run's own temp dir: the target of <run>/data/outside, made with mkdtemp by the first drive or load.sh of the run. */
 function outsideDir(): string {
