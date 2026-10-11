@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [0.1.52] - 2026-10-11
+
+- The Grilling page keeps the line breaks and leading spaces of a question's `example`. Before, the page joined an example that shows rows on screen into one line.
+
 ## [0.1.51] - 2026-10-11
 
 - skill-creator's trigger-evals reference no longer refuses an adopt item for an accepted description. It applies the description by the home rules in step 2 of SKILL.md, so a vstack description goes to vstack-edit, as #112 intended.

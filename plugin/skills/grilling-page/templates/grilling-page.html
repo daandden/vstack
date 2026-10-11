@@ -82,6 +82,8 @@
     .bullets > li::marker { color: var(--overlay0); }
     .example { display: grid; gap: 0.125rem; }
     .example .label { font-weight: 600; }
+    /* An example can be a list or a screen, so it keeps its line breaks and leading spaces. */
+    .example p:not(.label) { white-space: pre-wrap; }
 
     .visual, .preview { padding-block: 0.625rem; padding-inline: 0.75rem; border-radius: 0.375rem; background: var(--mantle); overflow-x: auto; }
     .visual { display: grid; gap: 0.5rem; }
