@@ -121,7 +121,11 @@ export function parsePins(doc: any, file: string): Map<string, Pin> {
 
 export function loadRegister(root: string): Register {
   const file = join(root, "decision-register.yaml");
-  const doc = readYaml(file);
+  return parseRegister(readYaml(file), file);
+}
+
+/** Reads a parsed decision-register.yaml; `file` names it in errors. */
+export function parseRegister(doc: any, file: string): Register {
   if (!Array.isArray(doc?.items)) throw new ConfigError(`${file}: missing items:`);
   const str = (v: unknown) => (typeof v === "string" && v !== "" ? v : undefined);
   const rows = doc.items.map((raw: any, index: number): Row => {

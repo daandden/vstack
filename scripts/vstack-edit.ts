@@ -10,7 +10,7 @@ import { dirname, join, relative, resolve } from "node:path";
 import { addWorktree, ensureDeps, mainCheckoutName, removeWorktree, worktreeBase, type AddedWorktree } from "./lib/omp-worktree.ts";
 import { loadGate, preflight, run } from "./lib/update-gates.ts";
 import { defaultUpstreamRemote, defaultUpstreamsDir, syncClone } from "./lib/upstreams.ts";
-import { loadPins, loadRegister } from "./lib/vstack-repo.ts";
+import { loadPins, parseRegister, type Register } from "./lib/vstack-repo.ts";
 
 const scriptRoot = resolve(import.meta.dir, "..");
 const MAIN = "main";
@@ -79,14 +79,13 @@ function callers(wt: string, artifact: string, name: string): string[] {
   return files.filter((f) => !(f === artifact || f.startsWith(`${artifact}/`)) && ref.test(text(f))).sort();
 }
 
-/** A target this flow can edit now: registered, present in the worktree, and not adopt. */
-function editable(wt: string, pins: ReturnType<typeof loadPins>, register: ReturnType<typeof loadRegister>, artifact: string) {
+/** A target this flow can edit now: registered in `register` and present in the worktree. */
+function editable(wt: string, pins: ReturnType<typeof loadPins>, register: Register, artifact: string) {
   const t = target(artifact);
   const rows = register.rows.filter((row) => row.artifacts.includes(artifact));
   const original = register.originals.includes(artifact);
   if (!rows.length && !original) throw new Error(`${artifact} is in no register row and not in originals:; adding an artifact is not supported yet`);
   if (!existsSync(join(wt, artifact))) throw new Error(`${artifact} does not exist in the run's worktree`);
-  if (rows.some((row) => row.disposition === "adopt")) throw new Error(`${artifact} is adopt; editing an adopt item is not supported yet`);
   return {
     ...t,
     dispositions: original ? ["original"] : [...new Set(rows.map((row) => row.disposition))],
@@ -94,18 +93,30 @@ function editable(wt: string, pins: ReturnType<typeof loadPins>, register: Retur
   };
 }
 
+/** main's register, which the bookkeeping starts from: a row that prepare flipped is still adopt here. */
+function mainRegister(wt: string) {
+  const text = git(wt, "show", `${MAIN}:decision-register.yaml`);
+  return { text, register: parseRegister(Bun.YAML.parse(text), `${MAIN}:decision-register.yaml`) };
+}
+
 /** Each target's register rows and Disposition at the current Pins, and its callers. Reads no Upstream. */
 function check(r: Run, artifacts: string[]) {
   if (!artifacts.length) throw new Error("name at least one target artifact");
   const wt = r.worktree.path;
   const pins = loadPins(wt);
-  const register = loadRegister(wt);
+  const { register } = mainRegister(wt);
   return { targets: artifacts.map((a) => { const t = editable(wt, pins, register, a); return { ...t, callers: callers(wt, a, t.name) }; }) };
 }
 
 /** The decisions file the skill writes from the user's answers. */
 interface Decisions {
-  targets: { action: string; kind: string; artifact: string }[];
+  targets: {
+    action: string;
+    kind: string;
+    artifact: string;
+    /** Only on an adopt target: the user confirmed the flip to adapt and gave the row's new one-line reason. */
+    flip?: { confirmed: boolean; reason: string };
+  }[];
   /** CHANGELOG lines, without the leading `- `. */
   changelog: string[];
   /** The commit message finish uses. */
@@ -141,14 +152,40 @@ function changelog(text: string, version: string, entries: string[]): string {
   return [...lines.slice(0, start), ...section, ...lines.slice(end)].join("\n").replace(/\n*$/, "\n");
 }
 
+/** `text` with each row in `reasons`, by index, set to adapt with its new reason. Every other line stays as it is. */
+function flipRows(text: string, reasons: Map<number, string>): string {
+  const lines = text.split("\n");
+  const items = lines.findIndex((l) => l.startsWith("items:"));
+  let end = lines.findIndex((l, i) => i > items && /^[^\s#]/.test(l));
+  if (end < 0) end = lines.length;
+  const starts = lines.flatMap((l, i) => (i > items && i < end && l.startsWith("  - ") ? [i] : []));
+  for (const [index, reason] of reasons) {
+    for (let i = starts[index]!; i < (starts[index + 1] ?? end); i++) {
+      if (lines[i]!.startsWith("    disposition:")) lines[i] = "    disposition: adapt";
+      else if (lines[i]!.startsWith("    reason:")) lines[i] = `    reason: ${JSON.stringify(reason)}`;
+    }
+  }
+  const out = lines.join("\n");
+  const expected = Bun.YAML.parse(text) as any;
+  for (const [index, reason] of reasons) Object.assign(expected.items[index], { disposition: "adapt", reason });
+  if (!Bun.deepEquals(Bun.YAML.parse(out), expected)) throw new Error(`${MAIN}:decision-register.yaml has a row layout the flip cannot rewrite line by line`);
+  return out;
+}
+
 /** Refuses decisions whose targets the flow cannot edit, or that differ from the plugin units the draft changed. */
 function validate(r: Run, d: Decisions) {
   const wt = r.worktree.path;
   const pins = loadPins(wt);
-  const register = loadRegister(wt);
+  const { register } = mainRegister(wt);
   for (const t of d.targets) {
-    const kind = editable(wt, pins, register, t.artifact).kind;
-    if (t.kind !== kind) throw new Error(`${t.artifact} is a ${kind}, not a ${t.kind}`);
+    const e = editable(wt, pins, register, t.artifact);
+    if (t.kind !== e.kind) throw new Error(`${t.artifact} is a ${e.kind}, not a ${t.kind}`);
+    const adopt = e.dispositions.includes("adopt");
+    const { confirmed, reason } = t.flip ?? {};
+    if (adopt && (confirmed !== true || typeof reason !== "string" || !reason.trim() || reason.includes("\n"))) {
+      throw new Error(`${t.artifact} is adopt; an edit flips it to adapt, so the target needs flip {"confirmed": true, "reason": "<one-line new reason>"} from the user's answers`);
+    }
+    if (!adopt && t.flip !== undefined) throw new Error(`${t.artifact} is not adopt; only an adopt target takes a flip`);
   }
   const changed = changedUnits(wt);
   const named = new Set(d.targets.map((t) => t.artifact));
@@ -156,18 +193,26 @@ function validate(r: Run, d: Decisions) {
   for (const a of changed) if (!named.has(a)) throw new Error(`${a} changed but is not a target; add it to the decisions file or undo the change`);
 }
 
-/** The bookkeeping, rebuilt from main on every run: the patch bump and the CHANGELOG entry. */
+/** The bookkeeping, rebuilt from main on every run: the confirmed adopt flips, the patch bump, and the CHANGELOG entry. */
 function prepare(r: Run, file: string | undefined) {
   const d = decisionsAt(file);
   validate(r, d);
   const wt = r.worktree.path;
+  const { text, register } = mainRegister(wt);
+  const reasons = new Map<number, string>();
+  for (const t of d.targets) {
+    if (t.flip) for (const row of register.rows) if (row.disposition === "adopt" && row.artifacts.includes(t.artifact)) reasons.set(row.index, t.flip.reason.trim());
+  }
+  const flipped = reasons.size ? flipRows(text, reasons) + "\n" : undefined;
   const manifest = git(wt, "show", `${MAIN}:plugin/package.json`);
   const [major, minor, patch] = String(JSON.parse(manifest).version).split(".").map(Number);
   const version = `${major}.${minor}.${patch! + 1}`;
+  if (flipped) writeFileSync(join(wt, "decision-register.yaml"), flipped);
+  else git(wt, "restore", "--source", MAIN, "--", "decision-register.yaml");
   writeFileSync(join(wt, "plugin/package.json"), manifest.replace(/"version":\s*"[^"]*"/, `"version": "${version}"`) + "\n");
   writeFileSync(join(wt, "CHANGELOG.md"), changelog(git(wt, "show", `${MAIN}:CHANGELOG.md`), version, d.changelog));
   save(join(r.out, "decisions.json"), d);
-  return { version, changelog: d.changelog, targets: d.targets.map((t) => t.artifact) };
+  return { version, changelog: d.changelog, targets: d.targets.map((t) => t.artifact), flipped: [...reasons.keys()].map((i) => register.rows[i]!.id) };
 }
 
 /** A hash of the managed paths in the worktree and the prepared decisions: what the gates and the closing gate saw. */

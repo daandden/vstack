@@ -7,7 +7,7 @@ disable-model-invocation: true
 
 # vstack-edit
 
-A Hand edit changes a vstack skill, agent, or rule outside an Update. This flow edits an existing original, adapt, or merge item. It does not add, take, rename, or remove an item, and it does not edit an adopt item. The script refuses those cases.
+A Hand edit changes a vstack skill, agent, or rule outside an Update. This flow edits an existing original, adapt, or merge item. It also edits an adopt item after the user confirms the flip to adapt (ADR 0014). It does not add, take, rename, or remove an item. The script refuses those cases.
 
 Run from the root of the vstack checkout. `scripts/vstack-edit.ts` in that checkout owns every deterministic step. Each command prints JSON and exits 0 on success. A refusal or failure exits 2 and prints `{"ok": false, "reason"}`. The README's vstack-edit section documents the commands and the decisions file. The script never makes a judgment. It acts only on the decisions file, and you write that file from the user's answers.
 
@@ -25,9 +25,11 @@ Pick a short kebab-case `<name>` for the change. Run `bun scripts/vstack-edit.ts
 
 Run `check --run <run file> <artifact> ...` with one artifact per target, such as `plugin/skills/<name>`, `plugin/agents/<name>.md`, or `plugin/rules/<name>.md`. It prints each target's register rows at the current Pins, its Disposition, and its callers from `skill://` and `/skill:` references. If it refuses, report the reason, run `cancel`, and stop. Read every caller before you draft.
 
+An edit makes an adopt target stop matching its Upstream item byte for byte, so its register rows flip to adapt. Before the draft, use one `ask` with one question per target whose Dispositions include adopt. Each question names the target and its current reason, and has two options: `A. Flip to adapt`, with the new one-line reason that the user writes, and `B. Drop this target`. Give no recommended option. A timed-out answer is no answer: use `ask` once more. If that times out too, treat the target as dropped. Keep each confirmed flip and its reason for the decisions file. Remove a dropped target from the run. If no target remains, run `cancel` and stop.
+
 ## 4. Draft
 
-Read skill://skill-creator and write the draft with it in the run's worktree. This is an active vstack-edit run, so skill-creator writes only the draft. Change only the targets. A change to any other plugin artifact makes prepare refuse.
+Read skill://skill-creator and write the draft with it in the run's worktree. This is an active vstack-edit run, so skill-creator writes only the draft. Change only the targets. A change to any other plugin artifact makes prepare refuse. A flipped adopt target is adapt text after prepare, so its draft must follow every House style rule for adapt text, such as `skill://<name>` for a skill reference. check-register in the gates fails a draft that keeps an Upstream form, such as a bare `/<skill name>`.
 
 ## 5. Prepare
 
@@ -35,13 +37,16 @@ Write the decisions file in the run's `out` directory:
 
 ```json
 {
-  "targets": [{ "action": "edit", "kind": "skill", "artifact": "plugin/skills/<name>" }],
+  "targets": [
+    { "action": "edit", "kind": "skill", "artifact": "plugin/skills/<name>" },
+    { "action": "edit", "kind": "skill", "artifact": "plugin/skills/<adopt name>", "flip": { "confirmed": true, "reason": "<the user's new reason>" } }
+  ],
   "changelog": ["One line per change, without the leading dash."],
   "commit": "fix(<name>): <what changed>"
 }
 ```
 
-`kind` is `skill`, `agent`, or `rule`. Write the CHANGELOG lines and the commit message in the repo's style. Run `prepare --run <run file> --decisions <file>`. It raises the patch version from main and adds the lines under Unreleased in CHANGELOG.md. Then it moves every Unreleased line under the new version heading. Run prepare again after every draft change.
+`kind` is `skill`, `agent`, or `rule`. Write `flip` only on an adopt target that the user confirmed in step 3, with the reason that the user gave. Write the CHANGELOG lines and the commit message in the repo's style. Run `prepare --run <run file> --decisions <file>`. It flips the register rows of each confirmed adopt target to adapt with the new reason. It refuses an adopt target with no confirmed flip and a flip on any other target. It raises the patch version from main and adds the lines under Unreleased in CHANGELOG.md. Then it moves every Unreleased line under the new version heading. Run prepare again after every draft change.
 
 ## 6. Gates
 

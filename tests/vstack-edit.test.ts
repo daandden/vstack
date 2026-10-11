@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
 import { chmodSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { ENV, git, writeFiles } from "./support/fixture.ts";
 import { lifecycleFixture } from "./support/update-lifecycle-fixture.ts";
 
@@ -71,10 +71,12 @@ test("check prints the register row, Disposition, and callers from both referenc
   expect(f.calls().slice(calls)).toEqual([]);
 }, 30000);
 
-test("check refuses an adopt target and an artifact the register does not name", async () => {
+test("check reports an adopt target as adopt and refuses an artifact the register does not name", async () => {
   const f = fixture();
   const run = await started(f);
-  refused(await edit(f, ["check", "--run", run.file, "plugin/skills/keep"]), "adopt");
+  const r = await edit(f, ["check", "--run", run.file, "plugin/skills/keep"]);
+  expect({ code: r.code, err: r.err }).toEqual({ code: 0, err: "" });
+  expect(r.json.targets[0]).toMatchObject({ artifact: "plugin/skills/keep", dispositions: ["adopt"] });
   refused(await edit(f, ["check", "--run", run.file, "plugin/skills/brand-new"]), "plugin/skills/brand-new");
 }, 30000);
 
@@ -100,15 +102,45 @@ test("prepare raises the patch version and moves the Unreleased lines with the n
   expect(changelog).toMatch(/^# Changelog\n\n## \[Unreleased\]\n\n## \[0\.1\.1\] - \d{4}-\d{2}-\d{2}\n\n- An earlier line\.\n- wording reads GLOSSARY\.md before it writes\.\n\n## \[0\.1\.0\] - 2026-01-01\n\n- First\.\n$/);
 }, 30000);
 
-test("prepare refuses other actions, adopt targets, unchanged targets, and changes outside the targets", async () => {
+test("prepare refuses other actions, unchanged targets, and changes outside the targets", async () => {
   const f = fixture();
   const run = await started(f);
   refused(await edit(f, ["prepare", "--run", run.file, "--decisions", decide(f, [editWording])]), "plugin/skills/wording has no change");
   writeFiles(run.wt, { "plugin/skills/wording/SKILL.md": WORDING });
   refused(await edit(f, ["prepare", "--run", run.file, "--decisions", decide(f, [{ ...editWording, action: "rename" }])]), "rename");
-  refused(await edit(f, ["prepare", "--run", run.file, "--decisions", decide(f, [editWording, { action: "edit", kind: "skill", artifact: "plugin/skills/keep" }])]), "adopt");
   writeFiles(run.wt, { "plugin/skills/drift/SKILL.md": "---\nname: drift\ndescription: Fixture skill\n---\nChanged too.\n" });
   refused(await edit(f, ["prepare", "--run", run.file, "--decisions", decide(f, [editWording])]), "plugin/skills/drift");
+}, 30000);
+
+const KEEP = "---\nname: keep\ndescription: Fixture skill\n---\nkeep, with a local fix.\n";
+const editKeep = { action: "edit", kind: "skill", artifact: "plugin/skills/keep" };
+const register = (root: string) => Bun.YAML.parse(readFileSync(join(root, "decision-register.yaml"), "utf8")) as any;
+
+test("prepare flips a confirmed adopt edit to adapt with its new reason, and check-register passes after the flip", async () => {
+  const f = fixture();
+  const run = await started(f);
+  writeFiles(run.wt, { "plugin/skills/keep/SKILL.md": KEEP });
+  const decisions = decide(f, [{ ...editKeep, flip: { confirmed: true, reason: "Fixes a wrong step before Upstream does." } }]);
+  for (let i = 0; i < 2; i++) expect((await edit(f, ["prepare", "--run", run.file, "--decisions", decisions])).code).toBe(0);
+  const before = register(f.root), after = register(run.wt);
+  expect(after.items.find((row: any) => row.id === "matt/keep")).toEqual({ ...before.items.find((row: any) => row.id === "matt/keep"), disposition: "adapt", reason: "Fixes a wrong step before Upstream does." });
+  expect(after.items.filter((row: any) => row.id !== "matt/keep")).toEqual(before.items.filter((row: any) => row.id !== "matt/keep"));
+  expect(after.originals).toEqual(before.originals);
+  const gates = await edit(f, ["gates", "--run", run.file, "--smoke", f.smoke, "--test", "true", "--upstreams", f.cache, "--remote", f.remote]);
+  expect({ code: gates.code, reason: gates.json?.reason }).toEqual({ code: 0, reason: undefined });
+}, 60000);
+
+test("prepare refuses an adopt edit without the confirmation or a new reason, exits with code 2, and writes nothing", async () => {
+  const f = fixture();
+  const run = await started(f);
+  writeFiles(run.wt, { "plugin/skills/keep/SKILL.md": KEEP, "plugin/skills/wording/SKILL.md": WORDING });
+  for (const flip of [undefined, { reason: "Fixes a step." }, { confirmed: false, reason: "Fixes a step." }, { confirmed: true }, { confirmed: true, reason: " " }]) {
+    refused(await edit(f, ["prepare", "--run", run.file, "--decisions", decide(f, [editWording, { ...editKeep, flip }])]), "plugin/skills/keep");
+  }
+  refused(await edit(f, ["prepare", "--run", run.file, "--decisions", decide(f, [{ ...editWording, flip: { confirmed: true, reason: "Not adopt." } }, { ...editKeep, flip: { confirmed: true, reason: "Fixes a step." } }])]), "plugin/skills/wording");
+  expect(git(run.wt, "diff", "--name-only", "HEAD").split("\n").sort()).toEqual(["plugin/skills/keep/SKILL.md", "plugin/skills/wording/SKILL.md"]);
+  expect(git(run.wt, "ls-files", "--others", "--exclude-standard")).toBe("");
+  expect(existsSync(join(dirname(run.file), "decisions.json"))).toBe(false);
 }, 30000);
 
 /** A prepared run of the wording edit, and the gates command line with its stand-ins. */

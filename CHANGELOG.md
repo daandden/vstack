@@ -4,7 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [0.1.42] - 2026-10-11
+
 - `scripts/vstack-edit.ts finish` takes the closing gate from the latest close on the Grilling page, with records replaced by id in their first-seen place. Re-appending an older confirmed close no longer passes over a newer Not yet.
+- vstack-edit edits an adopt item after the user confirms the flip to adapt and gives the new reason. `scripts/vstack-edit.ts prepare` sets the item's register rows to adapt with that reason and changes only those two lines. It refuses an adopt target without the confirmation, exits with code 2, and writes nothing (#108).
 
 ## [0.1.41] - 2026-10-11
 
