@@ -37,7 +37,7 @@ No quizzes, pacing labels, or requests to repeat the explanation. Stop at a natu
 
 ## Step 5. Build the picture on one page
 
-Use `templates/explain.html` for one HTML page in `explain/<run-id>/`. Keep that same page across the conversation. Add each new explanation section and figure below the last. Print the absolute `file://` URL with the explanation.
+Use `templates/explain.html` for one HTML page in `explain/<run-id>/`. Keep that same page across the conversation. Add each new explanation section and figure below the last. Print the plain absolute path of the page with the explanation, with no `file://` prefix.
 
 Draw every figure through `skill://diagram-design`. Follow its type reference, project profile gate, and plan confirmation. Only a caller that fixes type, size, and content can skip the plan pause. For three or more moving parts, draw a short build-up series. Redraw the last figure and add one part each time. Keep each source HTML and SVG under this run's Scratch entry with a unique figure slug.
 
@@ -47,4 +47,4 @@ Open the page in the browser on its first figure. Keep appending without reopeni
 
 ## Reply
 
-Return the explanation itself, never a report about the steps. Lead with the main point, then explain what it is, how it works, and why. Include the page URL and keep evidence and uncertainty visible.
+Return the explanation itself, never a report about the steps. Lead with the main point, then explain what it is, how it works, and why. Include the page path and keep evidence and uncertainty visible.

@@ -1,6 +1,6 @@
 # Architecture report
 
-Start from [templates/architecture-review.html](templates/architecture-review.html). Resolve Scratch through `skill://vstack-tmp`; keep one run in one `architecture-review/` entry. The delivered `index.html` is self-contained and offline, with inline CSS and figures exported through `skill://diagram-design/scripts/export_svg.py` in eval Python. Print its absolute `file://` URL.
+Start from [templates/architecture-review.html](templates/architecture-review.html). Resolve Scratch through `skill://vstack-tmp`; keep one run in one `architecture-review/` entry. The delivered `index.html` is self-contained and offline, with inline CSS and figures exported through `skill://diagram-design/scripts/export_svg.py` in eval Python. Print its plain absolute path, with no `file://` prefix.
 
 ## Cards
 

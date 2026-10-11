@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [0.1.43] - 2026-10-11
+
+- explain, how, teach, and improve-codebase-architecture print the plain absolute path of the page they write, not a `file://` URL. The Tern Reader makes a plain path a link that opens on Cmd-click, but it shows a `file://` URL as plain text (#102).
+
 ## [0.1.42] - 2026-10-11
 
 - `scripts/vstack-edit.ts finish` takes the closing gate from the latest close on the Grilling page, with records replaced by id in their first-seen place. Re-appending an older confirmed close no longer passes over a newer Not yet.

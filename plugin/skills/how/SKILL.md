@@ -43,7 +43,7 @@ Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): write the e
 
 ## Step 4. Present
 
-Write the explanation into `templates/how.html` under the run's Scratch entry. Draw the figures through `skill://diagram-design` as described below. Print the page's absolute `file://` URL with the explanation. For a direct invocation, open the completed page once in the browser. Under a caller, return the output unedited, including citations, figure briefs, and the page URL. The caller can blend it into its own page. Light edits for clarity are allowed only for a direct invocation.
+Write the explanation into `templates/how.html` under the run's Scratch entry. Draw the figures through `skill://diagram-design` as described below. Print the plain absolute path of the page with the explanation, with no `file://` prefix. For a direct invocation, open the completed page once in the browser. Under a caller, return the output unedited, including citations, figure briefs, and the page path. The caller can blend it into its own page. Light edits for clarity are allowed only for a direct invocation.
 
 ## Figures and page
 

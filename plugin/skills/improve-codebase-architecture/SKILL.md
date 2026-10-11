@@ -44,7 +44,7 @@ Read `skill://vstack-tmp` and resolve the `architecture-review/` kind. Create a 
 
 Draw every candidate's before/after figure through `skill://diagram-design`, with type, size, labels, and content fixed from the evidence. Save each figure's source under this entry. Export each through `skill://diagram-design/scripts/export_svg.py` using eval Python (`runpy.run_path` with `sys.argv` set to the resolved script path, input HTML path, and output SVG path). Inline the exported `<svg>` in the report; use unique figure filenames so their IDs do not collide. Do not hand-draw replacement figures or fall back to Mermaid. If drawing cannot run, stop and report the missing prerequisite.
 
-Open the completed page with the platform opener when available (`open`, `xdg-open`, or `start`). Always print its absolute `file://` URL, even if opening is unavailable.
+Open the completed page with the platform opener when available (`open`, `xdg-open`, or `start`). Always print its plain absolute path, with no `file://` prefix, even if opening is unavailable.
 
 For each candidate, render a card with:
 

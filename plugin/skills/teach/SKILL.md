@@ -142,7 +142,7 @@ The user will sometimes express preferences of how they want to be taught, or th
 
 ## Page output
 
-Read `skill://vstack-tmp` and resolve the `teach/` kind for every lesson or reference page. Create a fresh `<topic-slug>-<timestamp>/` entry, with `index.html` as the lesson and any reference pages beside it. Start each page from [templates/teach.html](templates/teach.html). Print the absolute `file://` URL of every page; open the lesson with the platform opener when available. Opening failure never hides the URL.
+Read `skill://vstack-tmp` and resolve the `teach/` kind for every lesson or reference page. Create a fresh `<topic-slug>-<timestamp>/` entry, with `index.html` as the lesson and any reference pages beside it. Start each page from [templates/teach.html](templates/teach.html). Print the plain absolute path of every page, with no `file://` prefix; open the lesson with the platform opener when available. Opening failure never hides the path.
 
 The delivered page is one file, usable offline: inline reusable workspace CSS and quiz scripts, with no CDN, external fonts, or linked assets. Keep the existing workspace mission, resources, learning records, notes, reference materials, and reusable asset sources as durable teaching state. Do not treat Scratch as learning history: use `learning-records/` to track progress across sessions. Use `ask` before keeping a generated page in `./lessons/` or `./reference/`; copy it only after approval, and keep workspace links pointed at durable copies. Links to earlier durable lessons and references use absolute file URLs from a Scratch page.
 
