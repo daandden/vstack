@@ -29,7 +29,7 @@ The inline order is how, then why. Each skill still runs its own gate. Wait for 
 
 Start with a plain definition and tie it to this code. Then explain the mechanism, deeper reasons, and edge cases. Use cited findings instead of repeating the investigation.
 Give the smallest complete answer first. Describe what happens as the person uses the thing when that makes the flow clear. Function lists are reference, not an explanation.
-Reword freely, except for why's confidence language. Keep its hedges and separate evidence from inference. Write through `skill://unslop` and `skill://simple-english` in Plain mode.
+Reword freely, except for why's confidence language. Keep its hedges and separate evidence from inference. Write through `skill://unslop` and `skill://simple-english`.
 
 ## Step 4. Keep it conversational
 

@@ -4,14 +4,15 @@ description: |
   Write or rewrite text in plain, layman-readable English in the spirit of
   ASD-STE100 Simplified Technical English: short sentences, active voice,
   simple tenses, one word one meaning, condition before command, every
-  technical term defined at first use, no AI slop. Default mode is Plain.
+  technical term defined at first use, no AI slop.
   Use for documentation, READMEs, runbooks,
   procedures, error messages, release notes, incident reports, API guides,
   and explanations for readers outside the field. Also use when the user
   says "STE", "Simplified Technical English", "ASD-STE100", "plain English",
   "layman's terms", "explain it simply", "no jargon", "de-slop", "make this
   readable", "write for non-native readers", or asks for docs that translate
-  well. The same rules govern the reply: answer first, prose only.
+  well. The reply has its own shorter rules: answer first, structure only
+  where it helps.
 license: MIT
 compatibility: claude-code cursor codex gemini-cli opencode
 metadata:
@@ -28,20 +29,20 @@ Write plain English that a smart reader outside your field understands on one re
 
 When asked to write or rewrite documentation, apply these rules to the prose:
 
-1. Classify each passage. Procedural text tells the reader what to do: imperative mood, 20 words per sentence, one instruction per sentence. Descriptive text explains: simple tenses, 25 words per sentence, one topic per paragraph, six sentences per paragraph at most.
+1. Classify each passage. Procedural text tells the reader what to do: imperative mood, one instruction per sentence, a target of 20 words per sentence. Descriptive text explains: simple tenses, one topic per paragraph, a target of 25 words per sentence. Split a sentence over its target when the reader has to read it twice.
 2. Never touch code, identifiers, commands, flags, file paths, quoted errors, product names, or facts. When the source gives no number or cause, keep the general statement.
 3. Condition before command, with a comma: "If the build fails, read the log."
 4. Use simple tenses and active voice. No present perfect ("has completed" → "completed"). No "-ing" verb after a comma (", making it easy" → new sentence). Name the actor: "You run the migration."
-5. Modals: can, will, must. Never should, would, may, might, could. A required "should" becomes "must". An optional one is deleted.
+5. Modals: can, will, must for facts and orders. Never should or would. A required "should" becomes "must". An optional one is deleted. Use may, might, or could only when you are not sure of a fact ("the cache might be stale"), never to soften an order.
 6. Use complete grammar. No contractions, keep articles, keep "that". Write short sentences, not telegraph style.
 7. No semicolons and no em-dashes. Write two sentences, or name the relation.
-8. One word, one meaning, for the whole document. Use `make sure that` for check, verify, confirm, validate, ensure. Use `configuration` for config, settings, options. Break noun chains over three words with a preposition ("the timeout value for the connection pool").
+8. One word, one meaning, for the whole document. After you pick a word for a concept, such as "check" or "configuration", use only that word for it. Break noun chains over three words with a preposition ("the timeout value for the connection pool").
 9. Give the reader each term and each fact before the step that needs it. Define a concept term at its first use, under ten words, one per sentence. Do not define product names, standard names (Postgres, S3, HTTP), or the tool the document is about. Also name the host, the flag, or the prior step that a command depends on. "Restart the service" becomes "Restart the `sync` service on the host that runs the job."
 10. State the fact, not its importance. Delete words that carry no fact: simply, seamlessly, robust, powerful, comprehensive, leverage, crucial, "in order to", "it is worth noting". No "not just X, it is Y". No decorative triplets. No "in conclusion".
-11. Use formatting only where it carries structure. No bold lead-ins, no bold as emphasis, no emoji, no heading over two sentences. A vertical list is for three or more parallel items or steps: colon on the lead-in, uppercase start, one instruction per item.
+11. Use formatting only where it carries structure: a heading for a section that the reader looks for, a list for parallel items or steps, a table for values that the reader compares. No bold lead-ins, no bold as emphasis, no emoji. A vertical list has a colon on the lead-in, parallel items, and one instruction per step.
 12. Warnings: command or condition first, then the risk. "Do not run this against production. The command deletes rows."
 
-Use American spelling. `references/word-swaps.md` maps the overused words to plain ones. For an error message, a runbook, an incident report, release notes, a commit message, or UI copy, read `references/use-cases.md` first. It names the mode and the pattern for each.
+Use American spelling. `references/word-swaps.md` maps the overused words to plain ones. For an error message, a runbook, an incident report, release notes, a commit message, or UI copy, read `references/use-cases.md` first. It names the text type and the pattern for each.
 
 Before (AI output):
 
@@ -58,28 +59,23 @@ After (procedural, headed, numbered):
 
 ## The Reply
 
-Every chat reply, in every mode, follows these rules:
+Every chat reply follows these rules. The Document rules do not apply to a chat reply.
 
-1. Answer in prose. No headers, no bullet lists, no bold, no tables. A code block is legal when the reader must copy it.
-2. The first sentence gives the answer or the result. Do not restate the question.
+1. The first sentence gives the answer or the result. Do not restate the question.
+2. Write prose by default. Use a list, a table, a heading, or a code block when it carries structure: steps, parallel options, values that the reader compares, or text that the reader copies. No bold.
 3. No em-dashes. Name the relation ("because", "but", "for example") or write two sentences.
-4. Define a concept term in a few words the first time you use it: "idempotent (safe to run twice)". Do not define product names.
+4. Define a concept term in a few words the first time you use it, when the reader is not likely to know it: "idempotent (safe to run twice)". Do not define product names.
 5. No contractions. No openers ("Certainly", "Great question") and no closers ("I hope this helps", "Let me know").
 6. Do not shorten quoted error text, security warnings, or confirmations before a destructive action.
+7. Never should or would. Use may, might, or could only when you are not sure of a fact, and name what settles it.
 
 Before: The failure stems from control-plane leader election during pod churn — nothing to worry about!
 After: The pods restarted and the queue lost its leader for a short time. It recovered without help. You do not have to do anything.
 
 ## Self-Check Before You Deliver
 
-1. Reply: search for `—`, `**`, `#`, and a line that starts with `-`. Remove each one.
-2. Document: count the words in your three longest sentences. Over 20 or 25, split. Search for `'`, `has been`, `should`, `may`, `;`, `—`, `, making`, `**`, `check`, `verify`, `config`, and any heading that covers fewer than three sentences. Fix each hit. Read each step: does it name a host, a flag, or a prior step the reader must already have? If not, add it or point to it.
-
-## Modes
-
-Plain is the default and is all of the above. The reply stays Plain in every mode.
-
-When asked to CHECK text instead of writing it, first open `references/rule-catalog.md`. Then report each violation as: rule number quoted from that file, the offending text, a compliant rewrite. Never cite a rule number from memory.
+1. Reply: search for `—` and `**`. Remove each one. Read each list, table, and heading. If it carries no structure that prose cannot carry, write it as prose.
+2. Document: read your three longest sentences. If one needs a second read, split it. Search for `'`, `has been`, `should`, `would`, `;`, `—`, `, making`, and `**`. Fix each hit. Read each may, might, and could: if you are sure of the fact, write can or will. Read each heading and list: does it carry structure? Read each step: does it name a host, a flag, or a prior step the reader must already have? If not, add it or point to it.
 
 ## Limits
 
@@ -87,6 +83,5 @@ These rules are for facts and instructions, not marketing copy or brand writing,
 
 ## References
 
-- `references/rule-catalog.md`: the 53 rules of Issue 9 with software examples, for CHECK mode
 - `references/word-swaps.md`: a map from overused words to plain ones
-- `references/use-cases.md`: the mode and the pattern for error messages, runbooks, incident reports, release notes, commits, agent prompts, UI copy, and translation prep
+- `references/use-cases.md`: the text type and the pattern for error messages, runbooks, incident reports, release notes, commits, agent prompts, UI copy, and translation prep
