@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync,
 import { join, dirname } from "node:path";
 import { tmpdir } from "node:os";
 import { git } from "./support/fixture.ts";
-const SCRIPT = join(import.meta.dir, "../plugin/skills/setup-vstack/scripts/migrate-project.ts");
+const SCRIPT = join(import.meta.dir, "../plugin/skills/migrate-to-vstack/scripts/migrate-project.ts");
 const dirs: string[] = [];
 afterAll(() => dirs.forEach(d => rmSync(d, { recursive: true, force: true })));
 function put(p: string, t: string) { mkdirSync(dirname(p), {recursive:true}); writeFileSync(p,t); }

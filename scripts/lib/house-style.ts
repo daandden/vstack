@@ -1,5 +1,4 @@
 // House style (ADR 0008): the replacement rows and rules of house-style.yaml, and how rows apply.
-// Pure (no file system), so update-plan (the Update), setup-vstack's Migration, and check-register share it:
 //   parseHouseStyle(doc, upstreams)  validate a parsed house-style.yaml
 //   selectRows(rows, filter)         the rows that apply to one text (use, Upstreams, Disposition)
 //   applyRows(text, rows)            run rows over a text in list order

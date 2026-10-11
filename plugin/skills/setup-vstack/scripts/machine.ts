@@ -1,5 +1,3 @@
-// setup-vstack's seven machine checks (spec #63 "setup-vstack"; #39 and #40 with corrections).
-//
 //   bun machine.ts --extension-loaded yes|no     check; prints one OK line, or one line per failing check
 //   bun machine.ts --set judge|isolation|clone…  write those settings to the user's omp config
 //
@@ -156,7 +154,6 @@ async function check(extensionLoaded: boolean): Promise<Result[]> {
     results.push({ id: 5, name: "eval Python", status: "ok" });
   }
 
-  // 6. Task isolation (ADR 0007).
   results.push(
     cfg.get("task.isolation.enabled") === true
       ? { id: 6, name: "task isolation", status: "ok" }
@@ -169,7 +166,6 @@ async function check(extensionLoaded: boolean): Promise<Result[]> {
         },
   );
 
-  // 7. Worktree clones (Private-mode prototype mounts need an APFS clone).
   results.push(
     cfg.get("worktree.clone") === true
       ? { id: 7, name: "worktree clone", status: "ok" }

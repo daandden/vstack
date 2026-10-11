@@ -205,7 +205,6 @@ export function privateMove(item: Item) {
       writeFileSync(exclude, beforeExclude.split("\n").filter(l => !/^\/?docs\/agents\/?$/.test(l.trim())).join("\n"));
     }
   } catch (e) {
-    // Restore the old store on a failed move so check 6 and the project guard stay closed.
     const rollbackErrors: string[] = [];
     const restore = (fn: () => void) => { try { fn(); } catch (r) { rollbackErrors.push(errorText(r)); } };
     if (renamed) restore(() => renameSync(to, from));
