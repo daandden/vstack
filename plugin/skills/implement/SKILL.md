@@ -6,11 +6,11 @@ disable-model-invocation: true
 
 # Implement
 
-Read [END-STATE.md](END-STATE.md) before work. It owns the shared steps 0a–0c, 3b, and 4–7, also used by perf-issue, refactor, and hillclimb. Run them at the points below, not as a separate invocation per ticket.
+Read [END-STATE.md](END-STATE.md) before work. It owns the shared steps 0a–0c, 3b, and 4–7, also used by hillclimb. Run them at the points below, not as a separate invocation per ticket.
 
 Before task-specific items, open the todo list with the shared steps and steps 1–3 below copied verbatim, including their paragraphs, in execution order. Keep each unfinished step as `skip: <reason>`.
 
-Run shared steps 0a–0c once. If architect handed over a design package, pass its proposed seams and checkpoint sign-off to step 0a.
+Run shared steps 0a–0c once.
 
 ## 1. Implement
 
@@ -21,8 +21,6 @@ Implement the work described by the user in the spec or tickets.
 Use skill://tdd where possible, at pre-agreed seams.
 
 When tdd stops a slice for missing red evidence, leave that slice's changes uncommitted in the working tree and continue independent slices. Track the stopped paths and hunks so accepted work can be staged separately. Cap the End state at commit: an unproven fix never reaches a PR. Report each stopped slice, the missing red evidence, and why it is missing. If stopped and accepted hunks cannot be separated safely, leave that dependent work uncommitted too.
-
-When architect owns the design, return to its Scrap check after each tdd slice. If it stops implement, keep the partial diff as evidence and return to architect before step 5 or step 6; do not run the chain. architect owns re-grounding and the next sketch.
 
 ## 3. Run checks
 

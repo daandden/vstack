@@ -1,6 +1,7 @@
 ---
 name: blast-radius
-description: "Find what a change could break somewhere else before it ships, beyond the diff, and prove the one fact it is safe because of by running real code instead of writing it up. Use for 'blast radius of X', 'what could this break', or reviewing a small diff you do not trust."
+description: "Safety knowledge for code-review: find breakage outside the diff and prove the facts that make a change safe."
+disable-model-invocation: true
 ---
 
 # Blast radius
@@ -56,4 +57,4 @@ The Safety reviewer in `skill://code-review` always skips step 6. That skill own
 - Cleared. State what you checked and why it is safe.
 - Before you merge. Name the cheapest test or repro that catches the real bug. Include the proof script, command, and observed output.
 
-Write through `skill://unslop`, cite real code, and strip private information before publishing. The reply must state whether the safety fact is proven or unproven.
+Cite real code, and strip private information before publishing. The reply must state whether the safety fact is proven or unproven.

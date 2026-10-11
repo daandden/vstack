@@ -1,6 +1,6 @@
 ---
 name: maintain-app-verification
-description: "Keep a project's Verify skill and feature map accurate. Use /skill:maintain-app-verification for a full source and live pass, or for one feature with Drift. Standard mode commits proven corrections; Private mode edits the shared copy in place."
+description: "Keep a project's Verify skill and feature map accurate for live proof in implement's END-STATE step 4. Private mode edits the shared copy in place."
 disable-model-invocation: true
 ---
 
@@ -10,13 +10,13 @@ Cover features from source and exercise them live. The feature is the unit of co
 
 ## Entries and outcomes
 
-A feature-scoped caller names one feature whose live proof encountered Drift. Run step 0, step 2 inline for that feature file only, then steps 3–6 for that feature. Skip index hygiene and the source-wave gate. Standalone invocation runs the full pass over every feature.
+A feature-scoped caller names one feature whose live proof encountered Drift. Run step 0, step 2 inline for that feature file only, then steps 3–6 for that feature. Skip index hygiene and the source-wave gate. If the caller names no feature, run the full pass over every feature.
 
 Report one outcome:
 
-- `clean` means every feature in the entry's scope got source and live coverage, with nothing to change. Create no branch or PR.
-- `changed` means proven corrections landed as one commit in Standard mode or in place in Private mode.
-- `blocked` means coverage could not finish or a proven correction could not land safely. State the exact blocker and incomplete coverage.
+- `clean` means every feature in the caller's scope got source and live coverage, with nothing to change.
+- `changed` means proven corrections are ready for implement to commit in Standard mode, or are in place in Private mode.
+- `blocked` means coverage could not finish or a correction could not be made safely. State the exact blocker and incomplete coverage.
 
 ## Edit scope
 
@@ -28,7 +28,7 @@ Drift is a failure in the Verify skill's instructions while its Doctor check pas
 
 Find project skills named `verify-*` whose bodies have Launch and Drive sections and a feature map. In Private mode, also look under `<vstack root>/skills/verify-*/`. Use the root and mode from the Private-mode rule, or the parent's prompt. Treat a link and its target as one candidate.
 
-If several targets remain, choose through `ask`. If none exists, stop and point to `/skill:setup-app-verification`.
+If several targets remain, choose through `ask`. If none exists, return to implement with the missing target and name `skill://setup-app-verification` for setup.
 
 For a Private-mode target with no link, create an absolute `.omp/skills/verify-<app>` symlink in this checkout to the shared skill directory. Add `.omp/skills/verify-*` once to `git rev-parse --git-path info/exclude`, leaving shared ignores unchanged. Report any conflicting directory or link instead of overwriting it. Read SKILL.md by absolute path for the rest of the session. Discovery sees a new link next session.
 
@@ -42,7 +42,7 @@ Read the feature map README and list its sibling files. Fix missing, extra, dupl
 
 For a feature-scoped entry, read source for that one feature yourself and return the same summary and recipe described below. This is one source read, not Fan-out.
 
-For a standalone entry, find the source entry points for each feature file and count them for the gate.
+For a full pass, find the source entry points for each feature file and count them for the gate.
 
 Before this step, read skill://vstack-fan-out and run its gate on the block below.
 
@@ -52,7 +52,7 @@ Fan-out gate (skill://vstack-fan-out): parts: one per feature file; size: source
 
 ## 3. Reconcile
 
-Require a summary for every feature in scope. Merge overlapping recipes into as few app states as practical. Spot-check cited Drift, without re-proving clean claims. For standalone entries, sweep recent churn for missing user-facing features. Require a concrete source path before adding one to the map and live pass.
+Require a summary for every feature in scope. Merge overlapping recipes into as few app states as practical. Spot-check cited Drift, without re-proving clean claims. For a full pass, sweep recent churn for missing user-facing features. Require a concrete source path before adding one to the map and live pass.
 
 ## 4. Live pass
 
@@ -70,10 +70,8 @@ Re-drive every harness correction live before it lands. Tear down after the last
 
 ## 5. Triage
 
-Fix wrong or missing user-POV instructions and harness gaps that prevent driving working behavior. Keep helpers executable and show their invocation in SKILL.md, relative to its own directory. Record broken app behavior as product findings. Keep those findings out of the correction commit and do not weaken expected results to pass.
+Fix wrong or missing user-POV instructions and harness gaps that prevent driving working behavior. Keep helpers executable and show their invocation in SKILL.md, relative to its own directory. Record broken app behavior as product findings. Keep those findings out of the corrections and do not weaken expected results to pass.
 
-## 6. Commit or stop
+## 6. Report
 
-For `changed`, re-read every changed file. In Standard mode, make one commit of the Verify skill directory on the current branch. Stage only own paths, never `-A`. Commit with `--only -- <skill directory>` to leave unrelated staged work untouched. Follow the repo's title convention from recent `git log` on the default branch, or Conventional Commits if no convention is visible. In Private mode, edit the single shared copy in place and commit nothing.
-
-For `clean` or `blocked`, make no commit or PR. Report the outcome and coverage honestly. Every entry returns the outcome, changed files, commit SHA or no commit, evidence and run-note paths, and product findings. Do not suggest open-pr.
+For `changed`, re-read every changed file. Return the outcome, coverage, changed files, evidence and run-note paths, and product findings. implement commits the Standard-mode output. Private-mode output stays untracked. For `clean` or `blocked`, report the outcome and coverage honestly.

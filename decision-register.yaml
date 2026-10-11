@@ -2,16 +2,17 @@
 # Row fields: id, upstream (a pins.yaml key), kind (skill|principle|playbook|agent), path and tree (the item
 # at the current Pin), disposition (adopt|adapt|merge|reject), artifacts (plugin paths; empty only for
 # reject), reason (one line), optional adr, and on a held row held_at plus
-# held_path. originals: lists vstack-only artifacts. scripts/check-register.ts checks this file; see README.md.
+# held_path. originals: lists vstack-only artifacts. utility: lists Utility skills.
+# scripts/check-register.ts checks this file; see README.md.
 items:
   - id: matt/ask-matt
     upstream: matt
     kind: skill
     path: skills/engineering/ask-matt
     tree: c9c83b11b1a0c91c555ed6ade5ba67f6d6b103d4
-    disposition: adapt
-    artifacts: [plugin/skills/ask-vstack]
-    reason: "Renamed; routes over the whole vstack catalog, not only Matt's."
+    disposition: reject
+    artifacts: []
+    reason: "vstack has one way in, through the Matt flow (ADR 0015)."
   - id: matt/code-review
     upstream: matt
     kind: skill
@@ -19,7 +20,7 @@ items:
     tree: 7a2057dcc514dc024d4e6bf8ad78021b97f229ae
     disposition: adapt
     artifacts: [plugin/skills/code-review]
-    reason: "Reads vstack configuration; Standards, Spec, and conditional Safety use judge-gated Fan-out; Safety runs blast-radius without step 6 (#84)."
+    reason: "Reads vstack configuration. Standards, Spec, and conditional Safety use judge-gated Fan-out. Safety runs blast-radius only in a run, without step 6 (#84, #126)."
   - id: matt/codebase-design
     upstream: matt
     kind: skill
@@ -99,7 +100,7 @@ items:
     tree: abf20c04a4aa8a37ff20aa7286f28857150f8b8d
     disposition: adapt
     artifacts: [plugin/skills/setup-vstack]
-    reason: "Renamed; confirms machine and project Migration, preserves hand edits through Move or Private copy, resolves old storage, and converts diagram and domain config before fresh setup (ADR 0006)."
+    reason: "Renamed to setup-vstack for machine configuration and fresh project setup, with Migration in migrate-to-vstack (ADR 0006)."
   - id: matt/tdd
     upstream: matt
     kind: skill
@@ -203,7 +204,7 @@ items:
     tree: bd9c9c4762db0a9a094fd419316ebd4b0444d06e
     disposition: adapt
     artifacts: [plugin/skills/writing-for-agents]
-    reason: "Hidden (disable-model-invocation: true); the vstack-prose rule is its only trigger (#59)."
+    reason: "The vstack-writing rule loads this hidden skill for agent-facing text (ADR 0016)."
   - id: matt/claude-handoff
     upstream: matt
     kind: skill
@@ -289,9 +290,9 @@ items:
     kind: skill
     path: pstack/skills/architect
     tree: 603668c4b5c46d6e32d6f325c01359a831854941
-    disposition: adapt
-    artifacts: [plugin/skills/architect]
-    reason: "Separate skill; its Sketch step uses codebase-design's DESIGN-IT-TWICE (#36)."
+    disposition: reject
+    artifacts: []
+    reason: "grill-with-docs and DESIGN-IT-TWICE cover design in the Matt flow (ADR 0015)."
   - id: pstack/arena
     upstream: pstack
     kind: skill
@@ -299,7 +300,7 @@ items:
     tree: 051012b3fd378ad46410ee3f2dcf779a819fd297
     disposition: adapt
     artifacts: [plugin/skills/compare-attempts]
-    reason: "Renamed; the fixed Fan-out form (allowlisted) on the parent model; buys independence, not model diversity."
+    reason: "Renamed for independent attempts on the parent model, only when the user asks for several attempts (ADR 0015)."
   - id: pstack/automate-me
     upstream: pstack
     kind: skill
@@ -315,7 +316,7 @@ items:
     tree: ba9658b89ac272580051ab3a4ae58d5346e955f7
     disposition: adapt
     artifacts: [plugin/skills/blast-radius]
-    reason: "Model-invocable safety proof in Scratch; compares reply attempts only on explicit request and skips that pass for code-review Safety (#84)."
+    reason: "Hidden Safety knowledge for code-review, with proof in Scratch and reply attempts only on explicit request (ADR 0015, #84)."
   - id: pstack/bro
     upstream: pstack
     kind: skill
@@ -331,7 +332,7 @@ items:
     tree: 38a3e016bb42ba7ba6f66315e04ef64242937660
     disposition: adapt
     artifacts: [plugin/skills/setup-app-verification]
-    reason: "Renamed; creates and proves the Verify skill through omp tools, commits Standard output, and links the shared Private copy (ADR 0009)."
+    reason: "Renamed for live proof in implement, which commits Standard output, while Private mode links the shared copy (ADR 0009, ADR 0015)."
   - id: pstack/figure-it-out
     upstream: pstack
     kind: skill
@@ -339,7 +340,7 @@ items:
     tree: dde86e306188bfb713f46dc211b48d7ed7b64106
     disposition: reject
     artifacts: []
-    reason: "Large work already goes wayfinder -> to-tickets -> implement."
+    reason: "The Matt flow covers large changes through the grill, to-spec, to-tickets, and implement (ADR 0015)."
   - id: pstack/how
     upstream: pstack
     kind: skill
@@ -363,7 +364,7 @@ items:
     tree: b6ce4dcdc378492f9acd55a4e56ae111204b4f11
     disposition: adapt
     artifacts: [plugin/skills/maintain-app-verification]
-    reason: "Renamed; feature-scoped or judge-gated source pass, serial live proof, and own-path Drift fixes (ADR 0009)."
+    reason: "Renamed for feature-scoped or judge-gated source passes and live proof, with Standard fixes committed by implement (ADR 0009, ADR 0015)."
   - id: pstack/make-bot-ui
     upstream: pstack
     kind: skill
@@ -379,7 +380,7 @@ items:
     tree: 198804132d8306db10cae6c3db62a1498dda7e1c
     disposition: adapt
     artifacts: [plugin/skills/prune-comments]
-    reason: "Renamed; one fresh comment critic, accepted root-cause fixes, and explicit approval for constraint encodings (#52)."
+    reason: "Renamed for implement, with one fresh comment critic, direct fixes only, and explicit approval for constraint encodings (ADR 0015, #52)."
   - id: pstack/poteto-mode
     upstream: pstack
     kind: skill
@@ -393,9 +394,9 @@ items:
     kind: principle
     path: pstack/skills/principle-attack-the-premise
     tree: ea77149f38bdfa5002591fa35af87ed45dd5574c
-    disposition: adopt
+    disposition: adapt
     artifacts: [plugin/skills/principle-attack-the-premise]
-    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+    reason: "Drops the relative link to the removed fix-root-causes principle (ADR 0018)."
   - id: pstack/principle-boundary-discipline
     upstream: pstack
     kind: principle
@@ -403,7 +404,7 @@ items:
     tree: 743b098e6874a93b11e9f4d5843c79a243580ae2
     disposition: adopt
     artifacts: [plugin/skills/principle-boundary-discipline]
-    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+    reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
   - id: pstack/principle-build-the-lever
     upstream: pstack
     kind: principle
@@ -411,7 +412,7 @@ items:
     tree: 3fb3e945049f52b6a721e329901995fa6289221e
     disposition: adopt
     artifacts: [plugin/skills/principle-build-the-lever]
-    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+    reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
   - id: pstack/principle-encode-lessons-in-structure
     upstream: pstack
     kind: principle
@@ -419,15 +420,15 @@ items:
     tree: 8875632be32ca6cff494def2810e5e71fceba65d
     disposition: adopt
     artifacts: [plugin/skills/principle-encode-lessons-in-structure]
-    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+    reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
   - id: pstack/principle-exhaust-the-design-space
     upstream: pstack
     kind: principle
     path: pstack/skills/principle-exhaust-the-design-space
     tree: 3c9528f7814d889dc91c2434cc942439a9dd6257
-    disposition: adopt
-    artifacts: [plugin/skills/principle-exhaust-the-design-space]
-    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+    disposition: reject
+    artifacts: []
+    reason: "tdd, diagnosing-bugs, prototype, and DESIGN-IT-TWICE cover this ground (ADR 0018)."
   - id: pstack/principle-experience-first
     upstream: pstack
     kind: principle
@@ -435,15 +436,15 @@ items:
     tree: 2dbcf0d0d4473ca3a93d17e2167b587cfec7f6da
     disposition: adopt
     artifacts: [plugin/skills/principle-experience-first]
-    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+    reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
   - id: pstack/principle-fix-root-causes
     upstream: pstack
     kind: principle
     path: pstack/skills/principle-fix-root-causes
     tree: 0ec22d21fffd180573f49ea239ee76083d6a6f40
-    disposition: adopt
-    artifacts: [plugin/skills/principle-fix-root-causes]
-    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+    disposition: reject
+    artifacts: []
+    reason: "tdd, diagnosing-bugs, prototype, and DESIGN-IT-TWICE cover this ground (ADR 0018)."
   - id: pstack/principle-foundational-thinking
     upstream: pstack
     kind: principle
@@ -451,7 +452,7 @@ items:
     tree: 5880f6577956b14ee4ee89cb72c03fd8bd82a5ac
     disposition: adopt
     artifacts: [plugin/skills/principle-foundational-thinking]
-    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+    reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
   - id: pstack/principle-guard-the-context-window
     upstream: pstack
     kind: principle
@@ -467,7 +468,7 @@ items:
     tree: 69c23647b389130012f04971c6912598e3f3b913
     disposition: adopt
     artifacts: [plugin/skills/principle-laziness-protocol]
-    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+    reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
   - id: pstack/principle-make-operations-idempotent
     upstream: pstack
     kind: principle
@@ -475,7 +476,7 @@ items:
     tree: c69d590d8da3af63e34954aa21254e1ec9a2996c
     disposition: adopt
     artifacts: [plugin/skills/principle-make-operations-idempotent]
-    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+    reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
   - id: pstack/principle-migrate-callers-then-delete-legacy-apis
     upstream: pstack
     kind: principle
@@ -483,7 +484,7 @@ items:
     tree: 7b49b9000c86ea1ae142af47d0ff5f9f95199c34
     disposition: adopt
     artifacts: [plugin/skills/principle-migrate-callers-then-delete-legacy-apis]
-    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+    reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
   - id: pstack/principle-minimize-reader-load
     upstream: pstack
     kind: principle
@@ -491,7 +492,7 @@ items:
     tree: aec92309f89c6e7a4a3cad94e8b7929c1a371643
     disposition: adopt
     artifacts: [plugin/skills/principle-minimize-reader-load]
-    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+    reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
   - id: pstack/principle-model-the-domain
     upstream: pstack
     kind: principle
@@ -515,7 +516,7 @@ items:
     tree: 8d87411f36c74111e5e54a804dda727e2c034914
     disposition: adopt
     artifacts: [plugin/skills/principle-outcome-oriented-execution]
-    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+    reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
   - id: pstack/principle-prove-it-works
     upstream: pstack
     kind: principle
@@ -531,7 +532,7 @@ items:
     tree: 7d6b29659ee81f3e4ce5475b868bf891a8041e7c
     disposition: adopt
     artifacts: [plugin/skills/principle-redesign-from-first-principles]
-    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+    reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
   - id: pstack/principle-separate-before-serializing-shared-state
     upstream: pstack
     kind: principle
@@ -539,7 +540,7 @@ items:
     tree: 89505c32f2d472da415e7696a6893ad28e108c5f
     disposition: adopt
     artifacts: [plugin/skills/principle-separate-before-serializing-shared-state]
-    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+    reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
   - id: pstack/principle-sequence-verifiable-units
     upstream: pstack
     kind: principle
@@ -547,7 +548,7 @@ items:
     tree: c1b345dcea21e3d58e7012f8e6547974d295fb3a
     disposition: adopt
     artifacts: [plugin/skills/principle-sequence-verifiable-units]
-    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+    reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
   - id: pstack/principle-subtract-before-you-add
     upstream: pstack
     kind: principle
@@ -555,15 +556,15 @@ items:
     tree: ea107acd74b874b27ec52983384d2ec7d4b8088a
     disposition: adopt
     artifacts: [plugin/skills/principle-subtract-before-you-add]
-    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+    reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
   - id: pstack/principle-test-behavior-not-implementation
     upstream: pstack
     kind: principle
     path: pstack/skills/principle-test-behavior-not-implementation
     tree: 4c5cb15166bd6bcc5023e3180ed0105ea4a6e06a
-    disposition: adopt
-    artifacts: [plugin/skills/principle-test-behavior-not-implementation]
-    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+    disposition: reject
+    artifacts: []
+    reason: "tdd, diagnosing-bugs, prototype, and DESIGN-IT-TWICE cover this ground (ADR 0018)."
   - id: pstack/principle-type-system-discipline
     upstream: pstack
     kind: principle
@@ -571,7 +572,7 @@ items:
     tree: 88836c25807833f4f8bc79b8c8542fc1c8c558b3
     disposition: adopt
     artifacts: [plugin/skills/principle-type-system-discipline]
-    reason: "Kept unchanged; delivered by jev (ADR 0002)."
+    reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
   - id: pstack/recall
     upstream: pstack
     kind: skill
@@ -587,7 +588,7 @@ items:
     tree: 772aafc391b56bb1c4ad5079e18084c6e4d47a06
     disposition: adapt
     artifacts: [plugin/skills/session-lessons]
-    reason: "Renamed; reads only PI_SESSION_FILE and referenced children, gates three lenses, and routes approved own-skill edits by home (#88)."
+    reason: "Renamed for the grill's three lenses and synthesis, with approved edits made by implement according to the skill's home (ADR 0015, #88)."
   - id: pstack/setup-pstack
     upstream: pstack
     kind: skill
@@ -627,15 +628,15 @@ items:
     tree: 3ee517292dae0476dc516f9f3805c08fb943c6ff
     disposition: adapt
     artifacts: [plugin/skills/explain]
-    reason: "Renamed from pstack teach; combines how and why behind a gate and draws a conversation-only Scratch page (#44, #49, #60)."
+    reason: "Renamed from pstack teach, starts from its description, and combines how and why behind a gate on a Scratch page (ADR 0015)."
   - id: pstack/technical-writing
     upstream: pstack
     kind: skill
     path: pstack/skills/technical-writing
     tree: 062212933adc6148a035a440dc5208757864fb42
-    disposition: adopt
-    artifacts: [plugin/skills/technical-writing]
-    reason: "Covers human-facing docs; writing-for-agents covers agent-facing text."
+    disposition: merge
+    artifacts: [plugin/skills/vstack-prose]
+    reason: "Merges technical-writing, unslop, and simple-english into vstack-prose (ADR 0016)."
   - id: pstack/typescript-best-practices
     upstream: pstack
     kind: skill
@@ -649,9 +650,9 @@ items:
     kind: skill
     path: pstack/skills/unslop
     tree: d5baa969e71c4ddb563412b0ec170fa3b05b6d6e
-    disposition: adopt
-    artifacts: [plugin/skills/unslop]
-    reason: "Harness-free; hidden at the Pin."
+    disposition: merge
+    artifacts: [plugin/skills/vstack-prose]
+    reason: "Merges unslop, simple-english, and technical-writing into vstack-prose (ADR 0016)."
   - id: pstack/why
     upstream: pstack
     kind: skill
@@ -683,7 +684,7 @@ items:
     tree: e92be88a8dfcb0a1f2745e0da7af42d31f1d6606
     disposition: reject
     artifacts: []
-    reason: "Without fleets it reduces to open-pr -> babysit -> ship."
+    reason: "Without fleets, implement already drives open-pr, babysit, and ship to its settled End state (ADR 0015)."
   - id: pstack/playbook-autopilot-stack
     upstream: pstack
     kind: playbook
@@ -699,7 +700,7 @@ items:
     tree: 683cf0ba889789cbe2d880fce667c75349f9ed12
     disposition: adapt
     artifacts: [plugin/skills/babysit]
-    reason: "Uses gh only; Bugbot triage, Origin, and the Cursor babysit clash dropped."
+    reason: "Hidden drive-mode knowledge for implement's PR chain through gh, without user-start background or check modes (ADR 0015)."
   - id: pstack/playbook-bug-fix
     upstream: pstack
     kind: playbook
@@ -731,7 +732,7 @@ items:
     tree: 582555e826675068ceaea08e6134a44ba0ea4511
     disposition: adapt
     artifacts: [plugin/skills/hillclimb]
-    reason: "Metric loop; parallel hypotheses are judge-gated; trail goes to decision-trail."
+    reason: "The grill settles the metric and stop predicate, and implement commits each accepted win before one final review (ADR 0015)."
   - id: pstack/playbook-investigation
     upstream: pstack
     kind: playbook
@@ -739,7 +740,7 @@ items:
     tree: cd119f04f23e0b7acb3f8cc5ba13ce4ab7aa6c7d
     disposition: reject
     artifacts: []
-    reason: "Thin wrapper; ask-vstack routes to how and why."
+    reason: "explain combines how and why for questions about existing work (ADR 0015)."
   - id: pstack/playbook-multi-phase-plan
     upstream: pstack
     kind: playbook
@@ -779,7 +780,7 @@ items:
     tree: 688d483d4d4a6c58efa515558c822e11f621540f
     disposition: adapt
     artifacts: [plugin/skills/perf-issue]
-    reason: "Calls diagnosing-bugs for the loop; adds strategy families and before/after trace proof."
+    reason: "Supplies diagnosing-bugs or implement with eight strategy families and exact-operation baseline and before-and-after trace evidence (ADR 0015)."
   - id: pstack/playbook-prototype
     upstream: pstack
     kind: playbook
@@ -793,9 +794,9 @@ items:
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/refactoring.md
     tree: df2a863b531906c64f92b9f9d8feb62f8c7a8665
-    disposition: adapt
-    artifacts: [plugin/skills/refactor]
-    reason: "Executes improve-codebase-architecture and code-review findings."
+    disposition: reject
+    artifacts: []
+    reason: "implement, tdd, and code-review cover structural work in the Matt flow (ADR 0015)."
   - id: pstack/playbook-runtime-forensics
     upstream: pstack
     kind: playbook
@@ -889,9 +890,9 @@ items:
     kind: skill
     path: skills/simple-english
     tree: dc4493623b0648588e02a0062bed8bcaa535b1de
-    disposition: adapt
-    artifacts: [plugin/skills/simple-english]
-    reason: "Hidden and has no Strict mode (#59)."
+    disposition: merge
+    artifacts: [plugin/skills/vstack-prose]
+    reason: "Merges simple-english, unslop, and technical-writing into vstack-prose (ADR 0016)."
 originals:
   - plugin/agents/vstack-explorer.md
   - plugin/agents/vstack-verifier.md
@@ -899,14 +900,25 @@ originals:
   - plugin/extensions/vstack.ts
   - plugin/extensions/prompt-cleaner.ts
   - plugin/rules/vstack-private-mode.md
-  - plugin/rules/vstack-prose.md
-  - plugin/rules/vstack-worktrees.md
-  - plugin/skills/vstack-clean
+  - plugin/rules/vstack-writing.md
   - plugin/skills/vstack-tmp
   - plugin/skills/vstack-fan-out
   - plugin/skills/grilling-page
   - plugin/skills/vstack-worktree
   - plugin/skills/skill-creator
-  - plugin/skills/vstack-update
-  - plugin/skills/vstack-edit
+  - plugin/skills/vstack-maintain
+  - plugin/skills/migrate-to-vstack
+utility:
+  - plugin/skills/vstack-prose
+  - plugin/skills/diagram-design
+  - plugin/skills/good-css
+  - plugin/skills/skill-creator
+  - plugin/skills/explain
+  - plugin/skills/how
+  - plugin/skills/why
+  - plugin/skills/forensics
+  - plugin/skills/vstack-tmp
+  - plugin/skills/vstack-fan-out
+  - plugin/skills/grilling-page
+  - plugin/skills/vstack-worktree
   - plugin/skills/migrate-to-vstack

@@ -31,7 +31,8 @@ export const isMarkdown = (path: string) => /\.(md|mdc|markdown)$/i.test(path);
 const IGNORED = new Set([".DS_Store"]);
 const decoder = new TextDecoder("utf-8", { fatal: true });
 
-function textFiles(root: string, artifact: string): TextFile[] {
+/** UTF-8 text files under one path; binary files and symlinks are left out. */
+export function textFiles(root: string, artifact: string): TextFile[] {
   const out: TextFile[] = [];
   const add = (abs: string) => {
     const bytes = readFileSync(abs);

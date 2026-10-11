@@ -4,6 +4,28 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-12
+
+- Matt skills are the core, Addons supplement them, and Utility skills work outside a Matt run.
+- Addons load only through the jev judge during a Matt run or a `skill://` pointer.
+- code-review runs the blast-radius Safety proof only in a user-started Matt run and otherwise reports each trigger with `/skill:code-review` for the proof.
+- Principles follow the Addon rule, and the steps of the running Matt skill and its Addons win over conflicting principles.
+- Remove architect in favor of grill-with-docs and DESIGN-IT-TWICE.
+- Remove refactor in favor of implement, tdd, and code-review.
+- Remove ask-vstack in favor of grill-with-docs and grill-me.
+- Replace vstack-update and vstack-edit with the vstack-maintain Addon, with implement owning changes and bookkeeping.
+- Replace the vstack-clean skill and `/skill:vstack-clean` with the model-free `/vstack-clean` Command.
+- Merge unslop, simple-english, and technical-writing into the vstack-prose Utility skill.
+- Rename the vstack-prose rule to vstack-writing, which also loads writing-for-agents for agent-facing text.
+- Remove principle-test-behavior-not-implementation in favor of tdd.
+- Remove principle-fix-root-causes in favor of diagnosing-bugs.
+- Remove principle-exhaust-the-design-space in favor of prototype and DESIGN-IT-TWICE.
+- Remove the vstack-worktrees rule in favor of Matt flow worktree steps and the vstack-worktree Utility skill.
+- Rename `principle-questions.json` to `addon-questions.json`, with full skill names and one question per Addon.
+- Add the by-hand `scripts/addon-judge-check.ts` corpus check in place of the Update sample rerun.
+- Add check-register classes `invalid-utility`, `addon-slash-route`, and `addon-question-mismatch`, and remove `unrouted-skill`.
+- Fix the extension's saved-message scan so that an Addon gets no second pick after a restart.
+
 ## [0.1.55] - 2026-10-11
 
 - Separate Matt Pocock Migration into migrate-to-vstack; setup-vstack now runs configuration and fresh setup without Migration scans.

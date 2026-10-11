@@ -1,17 +1,18 @@
 ---
 name: ship
-description: "Land a PR or stack. Use for ship, land, or merge this. Isolated verifiers check each PR before the contiguous verified run merges bottom-up into the default branch."
+description: Isolated PR verification and bottom-up merges.
+disable-model-invocation: true
 ---
 
 # Ship
 
 You own what lands. Verify each PR independently and land only the verified run from the bottom. Shipped ends at merge. Deploys and releases are outside this skill.
 
-Use `gh` for every forge operation. Open the todo list with steps 0–9 copied verbatim before task-specific items. Keep an undone step as `skip: <reason>`.
+Use `gh` for every forge operation. Accept the caller's settled End state, branch ownership, last pushed SHAs, and any open decision-trail log path.
 
 ## 0. Establish the frontier
 
-Take the PR or bottom-to-top stack from the caller or request. Resolve the default branch with `gh repo view --json defaultBranchRef`. Read each PR's base, head, state, checks, review state, and merge state through `gh pr view`. Freeze the bottom-to-top PR numbers for this pass. Confirm that each descendant depends on the previous PR. Keep independent work outside this chain.
+Take the PR or bottom-to-top stack from the caller. Resolve the default branch with `gh repo view --json defaultBranchRef`. Read each PR's base, head, state, checks, review state, and merge state through `gh pr view`. Freeze the bottom-to-top PR numbers for this pass. Confirm that each descendant depends on the previous PR. Keep independent work outside this chain.
 
 If the frontier is not merge-ready, run skill://babysit in drive mode first. Pass the End state and whether this run created the branch. Continue only after its blockers clear. A conflict belongs to the run that created the branch. Rebase only when this run created it and its remote tip remains the last SHA this run pushed. Otherwise report the conflict and stop.
 
@@ -23,7 +24,7 @@ Read skill://vstack-fan-out and its FORMS.md. If eval is unavailable, isolation 
 
 List the project's Verify skills named `verify-*`. In Private mode, also list `<vstack root>/skills/verify-*/` and deduplicate links and targets. If a link is missing, repair the absolute `.omp/skills/verify-<app>` link at the top level as described in skill://setup-app-verification. Leave shared ignores unchanged. Read a newly linked skill by absolute path for this session. Resolve helpers relative to the directory from which SKILL.md was read.
 
-Use the only Verify skill, or the one whose description names the changed surface. If several match without a clear choice, use one `ask`. If none exists, report that live proof is absent. Give the verifier the project's tests and scripts instead and recommend /skill:setup-app-verification in the reply. CI green and approving bot reviews are not verifier verdicts.
+Use the only Verify skill, or the one whose description names the changed surface. If several match without a clear choice, use one `ask`. If none exists, report that live proof is absent. Give the verifier the project's tests and scripts instead and recommend skill://setup-app-verification to the caller. CI green and approving bot reviews are not verifier verdicts.
 
 Fetch each exact base and head commit. Read `baseRefOid` and `headRefOid` from `gh pr view`; do not substitute the default branch for a stacked PR's parent. Count changed files and diff lines for each PR. Give each verifier these full SHAs, the PR number, the relevant builds and tests, and the chosen Verify skill's name or absolute path. Its brief requires parent-versus-head proof of the real changed surface, not only a successful launch. The verifier runs on its own clone and checks out only the supplied head SHA. It reads the base for comparison without moving its checkout to another commit.
 
@@ -47,7 +48,7 @@ Require a schema record for each PR with the requested head and base SHAs, its c
 
 ## 2. Find the contiguous verified run
 
-Walk upward from the lowest unmerged PR. PASS and PASS+NOTES pass. Stop at the first FAIL, DRIFT, or unavailable verdict. That PR is the ceiling. A passing descendant above it is not landable. Freeze this run for the current pass and report its PR numbers and ceiling. DRIFT never passes. Name its stale step and recommend /skill:maintain-app-verification; ship never maintains it.
+Walk upward from the lowest unmerged PR. PASS and PASS+NOTES pass. Stop at the first FAIL, DRIFT, or unavailable verdict. That PR is the ceiling. A passing descendant above it is not landable. Freeze this run for the current pass and report its PR numbers and ceiling. DRIFT never passes. Name its stale step and recommend skill://maintain-app-verification to the caller. ship never maintains it.
 
 ## 3. Recheck the patch before landing
 
@@ -93,4 +94,4 @@ When the verified run merges, stop. Report what landed, the next unverified PR, 
 
 ## Reply
 
-Report the verified run and its ceiling, each PR's verdict and verifier identity, what was armed and how it was confirmed, and what landed. Include evidence paths, stopped or skipped steps, and what the next gap needs. For DRIFT, name the stale step and recommend /skill:maintain-app-verification. Do not report shipped until every PR in the requested run merged into the default branch.
+Report the verified run and its ceiling, each PR's verdict and verifier identity, what was armed and how it was confirmed, and what landed. Include evidence paths, stopped or skipped steps, and what the next gap needs. For DRIFT, name the stale step and recommend skill://maintain-app-verification to the caller. Do not report shipped until every PR in the requested run merged into the default branch.

@@ -1,6 +1,6 @@
 # Shared End state block
 
-implement, perf-issue, refactor, and hillclimb read this file before work. Reuse these steps by reference; do not maintain a second copy in a caller. The caller inserts its work steps between 0c and 3b. Before task-specific todo items, copy the steps below verbatim, including their paragraphs, into its todo list in execution order. Keep an unfinished step as `skip: <reason>`.
+implement and hillclimb read this file before work. Reuse these steps by reference. Do not maintain a second copy in a caller. The caller inserts its work steps between 0c and 3b. Before task-specific todo items, copy the steps below verbatim, including their paragraphs, into its todo list in execution order. Keep an unfinished step as `skip: <reason>`.
 
 Use `gh` for all GitHub reads and writes; use git for local history and pushes. Resolve the vstack root once through the Private-mode rule and reuse a supplied root. Resolve the absolute project Scratch dir once through skill://vstack-tmp with its path script and no kind argument; reuse a supplied Scratch dir.
 
@@ -10,9 +10,7 @@ Keep one run record across every ticket: requested and effective End state, curr
 
 Settle the End state once, before any work: commit, PR opened, merge-ready, or shipped. If the user's words or the ticket name it, use that; otherwise use `ask` with these four options and commit recommended. Reuse an already settled caller End state rather than asking again.
 
-When implement gets architect's design package at the implement stop, put two questions in that same `ask`: the End state if unsettled, and confirmation of the sketch's interfaces as proposed seams. A checkpoint sign-off already covers the seams, so ask only for an unsettled End state, or neither if both are named. A later tdd bug slice still needs red evidence under tdd's own fallback-seam rules.
-
-An interactive timeout settles neither the End state nor the seams. Re-ask the unanswered gate once; if it times out again, stop before work, branching, or committing. Only in a Headless run with no `ask` tool, take the recommended answer for each unsettled question (commit and the proposed seams) and say so. Tool absence is not a timed-out answer.
+An interactive timeout does not settle the End state. Re-ask the unanswered gate once. If it times out again, stop before work, branching, or committing. Only in a Headless run with no `ask` tool, take the recommended End state (commit) and say so. Tool absence is not a timed-out answer.
 
 The End state authorizes every step up to it: merge-ready authorizes babysit in drive mode; shipped authorizes ship to merge the verified run into the default branch. Deploys and releases are outside this flow. Never force-push a branch this run did not create. A stopped tdd slice caps the effective End state at commit even if a further state was requested.
 
@@ -28,7 +26,7 @@ Fix its absolute `<Scratch dir>/decision-trail/<task-slug>-<session-uuid8>.tsv` 
 
 ## 3b. Prune comments
 
-If the effective End state is PR opened or further, run skill://prune-comments over the whole diff before live proof and review. Commit accepted fixes, without staging unrelated or stopped-slice changes. If the critic is unavailable or its second report is rejected, keep and commit accepted fixes, list prune-comments as open, and continue. Its failure never blocks the chain.
+If the effective End state is PR opened or further, run skill://prune-comments over the whole diff before live proof and review. Make direct fixes only. Report any fix that needs a new shape as open. Keep accepted fixes for step 6, without staging unrelated or stopped-slice changes. If the critic is unavailable or its second report is rejected, keep accepted fixes, list prune-comments as open, and continue. Its failure never blocks the chain.
 
 Record "prune-comments already run" for open-pr even when the pass stopped, together with its open work; open-pr must not repeat this pass. At End state commit, keep this step as `skip: End state commit`.
 
@@ -36,25 +34,25 @@ Record "prune-comments already run" for open-pr even when the pass stopped, toge
 
 List the project's Verify skills: skills named `verify-*`, plus, in Private mode, directories `<vstack root>/skills/verify-*/`. Deduplicate links and targets. For a Private copy missing its checkout link, create an absolute symlink at `.omp/skills/verify-<app>` and ensure `.omp/skills/verify-*` is in the resolved git common dir's `info/exclude`, following skill://setup-app-verification. Leave shared ignores unchanged; preserve unrelated exclude lines and existing destinations. Read its SKILL.md by absolute path for the rest of this session; helpers stay relative to that directory.
 
-If there is one Verify skill, use it. If several exist, use the one whose description names the changed surface; otherwise choose through `ask`. If none exists, say so in the reply, prove the change with tests and scripts, and recommend /skill:setup-app-verification. Drive the real surface through the chosen Verify skill. Save proof, notes, and disposable `data/` under `<Scratch dir>/verify/<app>-<run-id>/`. Preserve unavailable or failed proof as such, never as a passing result.
+If there is one Verify skill, use it. If several exist, use the one whose description names the changed surface. Otherwise choose through `ask`. If none exists, run skill://setup-app-verification in the same run to create one, then use it. Drive the real surface through the chosen Verify skill. Save proof, notes, and disposable `data/` under `<Scratch dir>/verify/<app>-<run-id>/`. Preserve unavailable or failed proof as such, never as a passing result.
 
-Drift is a failure in the Verify skill's own instructions (missing command, route, selector, or fixture) while its Doctor check passes. Wrong app behavior is a finding, never Drift. On Drift, run skill://maintain-app-verification for that one named feature, with no source-wave Fan-out. In Standard mode, maintenance edits only the Verify skill's directory and makes its own commit on the current branch, not a separate PR. In Private mode, edit the single copy under the vstack root in place and commit nothing. Retain its clean, changed, or blocked outcome, changed files, commit SHA, and product gaps; treat the gaps as findings. Then retry live proof once. Step 5 covers maintenance commits too.
+Drift is a failure in the Verify skill's own instructions (missing command, route, selector, or fixture) while its Doctor check passes. Wrong app behavior is a finding, never Drift. On Drift, run skill://maintain-app-verification for that one named feature, with no source-wave Fan-out. In Standard mode, maintenance edits only the Verify skill's directory. implement commits those edits in step 6. In Private mode, edit the single copy under the vstack root in place and commit nothing. Retain its clean, changed, or blocked outcome, changed files, and product gaps. Treat the gaps as findings. Then retry live proof once. Step 5 covers maintenance edits too.
 
 Run-only consumers (ship's verifier and forensics) may reuse this live-proof procedure but never maintain. They report the drifted step and evidence to their caller. ship treats DRIFT as a ceiling; forensics captures with the surface's own profiler, debugger, or CDP instead.
 
 ## 5. Review the whole diff
 
-Run skill://code-review once over the whole completed diff at every End state, including commit. Pin the base SHA, diff command, and commit list; include accepted cleanup and Standard-mode maintenance commits, plus the proven uncommitted work that implement will commit. Exclude stopped slices from what can be committed or published and identify them in the review brief.
+Run skill://code-review once over the whole completed diff at every End state, including commit. Pin the base SHA, diff command, and commit list. Include accepted cleanup and Standard-mode Verify edits, plus the proven uncommitted work that implement will commit. Exclude stopped slices from what can be committed or published and identify them in the review brief.
 
-implement reviews before its step 6 commit (Matt's order). perf-issue, refactor, and hillclimb review after their last work commit and fix accepted findings in new commits. Resolve accepted findings and update affected proof before advancing. Keep Standards, Spec, and Safety findings separate. Carry the Safety result and final-diff proof to open-pr; code-review owns the Safety trigger list.
+implement reviews before its step 6 commit (Matt's order). hillclimb commits each accepted win, reviews once after its last accepted win, and fixes accepted findings in new commits. Resolve accepted findings and update affected proof before advancing. Keep Standards, Spec, and Safety findings separate. Carry the Safety result and final-diff proof to open-pr. code-review owns the Safety trigger list.
 
 ## 6. Commit
 
-Commit the accepted, proven work to the current branch. For implement, this follows review; the other callers use their own work commits and new commits for accepted review fixes. Stage only this run's accepted paths or hunks. Leave stopped slices and unrelated changes uncommitted. Keep Private config, artifacts, Verify maintenance, and Scratch out of git. Use the repo's commit convention; write commit bodies through skill://technical-writing, then skill://unslop.
+Commit the accepted, proven work to the current branch. For implement, this follows review. hillclimb uses its accepted-win commits and new commits for accepted review fixes. Include Standard-mode setup-app-verification and maintain-app-verification output in this commit. Stage only this run's accepted paths or hunks. Leave stopped slices and unrelated changes uncommitted. Keep Private config, artifacts, Verify maintenance, and Scratch out of git. Use the repo's commit convention. Write commit bodies.
 
 ## 7. Chain to the End state
 
-Run the chain once, after all the work of the invocation, not once per ticket. At commit, stop. If a tdd slice stopped, keep its changes uncommitted, commit the independent proven work, report the cap at commit, and skip the whole chain. On architect Scrap, return before review and commit and skip the chain.
+Run the chain once, after all the work of the invocation, not once per ticket. At commit, stop. If a tdd slice stopped, keep its changes uncommitted, commit the independent proven work, report the cap at commit, and skip the whole chain.
 
 For PR opened or further, run skill://open-pr with the effective End state, branch-ownership flag, last pushed SHA, "prune-comments already run", any open cleanup work, final-diff Safety findings, Verify evidence, absolute Scratch dir, vstack root, and any open decision-trail log. Retain the PR URL, observed status and head SHA, and last pushed SHA. Stop on an unavailable or mismatched published head rather than advancing on an assumed PR.
 

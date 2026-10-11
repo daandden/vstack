@@ -1,16 +1,17 @@
 {
-  "model": "typesafe/jev-latest (resolved to jev-1.13.0 on 2026-10-08)",
+  "model": "typesafe/jev-latest (resolved to jev-1.13.0 on 2026-10-12)",
   "threshold": 0.75,
   "state_shape": {
     "request": "preprocessTinyMessage(prompt)"
   },
-  "questions": "principle-questions.json",
+  "questions": "addon-questions.json",
   "semantics": {
-    "expected": "must be selected (P(yes) >= threshold); a miss counts against recall",
-    "allowed": "selection is acceptable either way; not counted as a false positive",
-    "other": "any other selection is a false positive",
-    "baseline_selected": "mean P(yes) over 3 direct POST runs with the final questions (2026-10-08), >= 0.75",
-    "baseline_borderline": "mean P(yes) in [0.65, 0.75)"
+    "prompt": "User words in a Matt run: the text after User: on a skill start, or a later prompt. No skill body is included.",
+    "expected": "A required Addon pick. The check flags mean P(yes) < 0.70; the runtime selects at 0.75.",
+    "allowed": "A pick is acceptable either way; it is not an unexpected pick.",
+    "other": "An Addon outside expected and allowed is flagged when mean P(yes) > 0.80.",
+    "baseline_selected": "Mean P(yes) over 3 fresh direct POST runs with the final catalog (2026-10-12), >= 0.75. Stored values round to 3 decimals.",
+    "baseline_borderline": "Mean P(yes) in [0.70, 0.80], including scores that are also selected. Stored values round to 3 decimals."
   },
   "prompts": [
     {
@@ -37,7 +38,7 @@
       "prompt": "Bump eslint from 9.1.0 to 9.2.0 in package.json.",
       "expected": [],
       "allowed": [
-        "prove-it-works"
+        "principle-prove-it-works"
       ],
       "baseline_selected": {},
       "baseline_borderline": {}
@@ -57,12 +58,10 @@
       "prompt": "Explain how the auth middleware in src/server/auth.ts decides which routes are public.",
       "expected": [],
       "allowed": [
-        "minimize-reader-load"
+        "principle-minimize-reader-load"
       ],
       "baseline_selected": {},
-      "baseline_borderline": {
-        "boundary-discipline": 0.653
-      }
+      "baseline_borderline": {}
     },
     {
       "id": "button-color",
@@ -88,31 +87,29 @@
       "prompt": "Add a CSV export button to the reports page.",
       "expected": [],
       "allowed": [
-        "experience-first",
-        "prove-it-works"
+        "principle-experience-first",
+        "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "prove-it-works": 0.843
+        "principle-experience-first": 0.757,
+        "principle-prove-it-works": 0.85
       },
       "baseline_borderline": {
-        "experience-first": 0.74
+        "principle-experience-first": 0.757
       }
     },
     {
       "id": "restart-crash",
       "split": "tune",
       "prompt": "The app crashes after restart with \"Unexpected token in JSON at position 0\". Worked fine before I restarted it.",
-      "expected": [
-        "fix-root-causes"
-      ],
+      "expected": [],
       "allowed": [
-        "boundary-discipline",
-        "make-operations-idempotent",
-        "prove-it-works"
+        "principle-boundary-discipline",
+        "principle-make-operations-idempotent",
+        "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "fix-root-causes": 0.98,
-        "boundary-discipline": 0.837
+        "principle-boundary-discipline": 0.843
       },
       "baseline_borderline": {}
     },
@@ -121,19 +118,15 @@
       "split": "tune",
       "prompt": "The integration test still times out. We already bumped the timeout twice and then added a retry; none of it helped.",
       "expected": [
-        "attack-the-premise",
-        "fix-root-causes"
+        "principle-attack-the-premise"
       ],
       "allowed": [
-        "encode-lessons-in-structure",
-        "prove-it-works",
-        "test-behavior-not-implementation"
+        "principle-encode-lessons-in-structure",
+        "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "attack-the-premise": 0.98,
-        "fix-root-causes": 0.97,
-        "prove-it-works": 0.887,
-        "test-behavior-not-implementation": 0.783
+        "principle-attack-the-premise": 0.98,
+        "principle-prove-it-works": 0.887
       },
       "baseline_borderline": {}
     },
@@ -142,40 +135,33 @@
       "split": "tune",
       "prompt": "We've shipped three different cache-invalidation fixes for the stale profile page, and every one of them still shows old data after an update.",
       "expected": [
-        "attack-the-premise",
-        "fix-root-causes"
+        "principle-attack-the-premise"
       ],
       "allowed": [
-        "encode-lessons-in-structure",
-        "prove-it-works",
-        "separate-before-serializing-shared-state"
+        "principle-encode-lessons-in-structure",
+        "principle-prove-it-works",
+        "principle-separate-before-serializing-shared-state"
       ],
       "baseline_selected": {
-        "attack-the-premise": 0.99,
-        "fix-root-causes": 0.977,
-        "prove-it-works": 0.827
+        "principle-attack-the-premise": 0.987,
+        "principle-prove-it-works": 0.823
       },
       "baseline_borderline": {
-        "encode-lessons-in-structure": 0.703
+        "principle-encode-lessons-in-structure": 0.703
       }
     },
     {
       "id": "cart-off-by-cent",
       "split": "tune",
       "prompt": "Users report the cart total is off by one cent on some orders. Find out why and fix it.",
-      "expected": [
-        "fix-root-causes"
-      ],
+      "expected": [],
       "allowed": [
-        "boundary-discipline",
-        "encode-the-domain",
-        "prove-it-works",
-        "test-behavior-not-implementation",
-        "type-system-discipline"
+        "principle-boundary-discipline",
+        "principle-encode-the-domain",
+        "principle-prove-it-works",
+        "principle-type-system-discipline"
       ],
-      "baseline_selected": {
-        "fix-root-causes": 0.98
-      },
+      "baseline_selected": {},
       "baseline_borderline": {}
     },
     {
@@ -183,16 +169,16 @@
       "split": "tune",
       "prompt": "Rename oldLogger to logger across the repo, about 140 files.",
       "expected": [
-        "build-the-lever"
+        "principle-build-the-lever"
       ],
       "allowed": [
-        "migrate-callers-then-delete-legacy-apis",
-        "prove-it-works",
-        "sequence-verifiable-units"
+        "principle-migrate-callers-then-delete-legacy-apis",
+        "principle-prove-it-works",
+        "principle-sequence-verifiable-units"
       ],
       "baseline_selected": {
-        "build-the-lever": 0.99,
-        "sequence-verifiable-units": 0.97
+        "principle-build-the-lever": 0.99,
+        "principle-sequence-verifiable-units": 0.97
       },
       "baseline_borderline": {}
     },
@@ -201,20 +187,20 @@
       "split": "tune",
       "prompt": "Replace every moment.js call with date-fns. There are around 300 call sites in 90 files.",
       "expected": [
-        "build-the-lever",
-        "sequence-verifiable-units"
+        "principle-build-the-lever",
+        "principle-sequence-verifiable-units"
       ],
       "allowed": [
-        "guard-the-context-window",
-        "migrate-callers-then-delete-legacy-apis",
-        "outcome-oriented-execution",
-        "prove-it-works",
-        "subtract-before-you-add"
+        "principle-guard-the-context-window",
+        "principle-migrate-callers-then-delete-legacy-apis",
+        "principle-outcome-oriented-execution",
+        "principle-prove-it-works",
+        "principle-subtract-before-you-add"
       ],
       "baseline_selected": {
-        "build-the-lever": 0.98,
-        "sequence-verifiable-units": 0.97,
-        "guard-the-context-window": 0.86
+        "principle-build-the-lever": 0.98,
+        "principle-guard-the-context-window": 0.867,
+        "principle-sequence-verifiable-units": 0.97
       },
       "baseline_borderline": {}
     },
@@ -223,18 +209,18 @@
       "split": "tune",
       "prompt": "We're introducing fetchJson() to replace the old httpGet() helper. Switch the 40 callers over.",
       "expected": [
-        "migrate-callers-then-delete-legacy-apis"
+        "principle-migrate-callers-then-delete-legacy-apis"
       ],
       "allowed": [
-        "boundary-discipline",
-        "build-the-lever",
-        "prove-it-works",
-        "sequence-verifiable-units"
+        "principle-boundary-discipline",
+        "principle-build-the-lever",
+        "principle-prove-it-works",
+        "principle-sequence-verifiable-units"
       ],
       "baseline_selected": {
-        "migrate-callers-then-delete-legacy-apis": 0.95,
-        "sequence-verifiable-units": 0.943,
-        "build-the-lever": 0.937
+        "principle-build-the-lever": 0.933,
+        "principle-migrate-callers-then-delete-legacy-apis": 0.947,
+        "principle-sequence-verifiable-units": 0.943
       },
       "baseline_borderline": {}
     },
@@ -243,16 +229,16 @@
       "split": "tune",
       "prompt": "Write a migration that backfills users.plan from legacy_plans; it runs during deploy.",
       "expected": [
-        "make-operations-idempotent"
+        "principle-make-operations-idempotent"
       ],
       "allowed": [
-        "boundary-discipline",
-        "prove-it-works",
-        "sequence-verifiable-units"
+        "principle-boundary-discipline",
+        "principle-prove-it-works",
+        "principle-sequence-verifiable-units"
       ],
       "baseline_selected": {
-        "prove-it-works": 0.963,
-        "make-operations-idempotent": 0.897
+        "principle-make-operations-idempotent": 0.893,
+        "principle-prove-it-works": 0.967
       },
       "baseline_borderline": {}
     },
@@ -261,17 +247,16 @@
       "split": "tune",
       "prompt": "Write a nightly job that syncs Stripe invoices into our invoices table. The scheduler sometimes kills it halfway through.",
       "expected": [
-        "make-operations-idempotent"
+        "principle-make-operations-idempotent"
       ],
       "allowed": [
-        "boundary-discipline",
-        "fix-root-causes",
-        "prove-it-works"
+        "principle-boundary-discipline",
+        "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "boundary-discipline": 0.97,
-        "make-operations-idempotent": 0.957,
-        "prove-it-works": 0.927
+        "principle-boundary-discipline": 0.97,
+        "principle-make-operations-idempotent": 0.96,
+        "principle-prove-it-works": 0.92
       },
       "baseline_borderline": {}
     },
@@ -280,44 +265,38 @@
       "split": "tune",
       "prompt": "Add drag-to-reorder cards to the kanban board (React + TypeScript). We have nothing like it yet.",
       "expected": [
-        "exhaust-the-design-space",
-        "experience-first"
+        "principle-experience-first"
       ],
       "allowed": [
-        "prove-it-works",
-        "redesign-from-first-principles",
-        "type-system-discipline"
+        "principle-prove-it-works",
+        "principle-redesign-from-first-principles",
+        "principle-type-system-discipline"
       ],
       "baseline_selected": {
-        "exhaust-the-design-space": 0.937,
-        "prove-it-works": 0.887,
-        "experience-first": 0.85
+        "principle-experience-first": 0.867,
+        "principle-prove-it-works": 0.88
       },
       "baseline_borderline": {
-        "foundational-thinking": 0.717
+        "principle-foundational-thinking": 0.733
       }
     },
     {
       "id": "collab-sync-design",
       "split": "tune",
       "prompt": "We need to decide how the editor syncs documents between collaborators: CRDTs, OT, or server-locked sections. Nothing like this exists in the codebase yet.",
-      "expected": [
-        "exhaust-the-design-space"
-      ],
+      "expected": [],
       "allowed": [
-        "experience-first",
-        "foundational-thinking",
-        "redesign-from-first-principles",
-        "separate-before-serializing-shared-state"
+        "principle-experience-first",
+        "principle-foundational-thinking",
+        "principle-redesign-from-first-principles",
+        "principle-separate-before-serializing-shared-state"
       ],
       "baseline_selected": {
-        "exhaust-the-design-space": 0.97,
-        "separate-before-serializing-shared-state": 0.957,
-        "foundational-thinking": 0.947
+        "principle-foundational-thinking": 0.947,
+        "principle-separate-before-serializing-shared-state": 0.96
       },
       "baseline_borderline": {
-        "experience-first": 0.747,
-        "redesign-from-first-principles": 0.65
+        "principle-experience-first": 0.743
       }
     },
     {
@@ -325,27 +304,27 @@
       "split": "tune",
       "prompt": "We now need multi-currency support in checkout, invoices, and reports. Everything assumes USD today.",
       "expected": [
-        "redesign-from-first-principles"
+        "principle-redesign-from-first-principles"
       ],
       "allowed": [
-        "encode-the-domain",
-        "foundational-thinking",
-        "outcome-oriented-execution",
-        "prove-it-works",
-        "sequence-verifiable-units",
-        "type-system-discipline"
+        "principle-encode-the-domain",
+        "principle-foundational-thinking",
+        "principle-outcome-oriented-execution",
+        "principle-prove-it-works",
+        "principle-sequence-verifiable-units",
+        "principle-type-system-discipline"
       ],
       "baseline_selected": {
-        "redesign-from-first-principles": 0.97,
-        "type-system-discipline": 0.917,
-        "foundational-thinking": 0.913,
-        "prove-it-works": 0.847,
-        "sequence-verifiable-units": 0.767
+        "principle-foundational-thinking": 0.913,
+        "principle-prove-it-works": 0.85,
+        "principle-redesign-from-first-principles": 0.97,
+        "principle-sequence-verifiable-units": 0.773,
+        "principle-type-system-discipline": 0.913
       },
       "baseline_borderline": {
-        "encode-the-domain": 0.737,
-        "exhaust-the-design-space": 0.733,
-        "build-the-lever": 0.7
+        "principle-build-the-lever": 0.713,
+        "principle-encode-the-domain": 0.723,
+        "principle-sequence-verifiable-units": 0.773
       }
     },
     {
@@ -353,14 +332,13 @@
       "split": "tune",
       "prompt": "Should the settings page expose all 14 notification toggles, or just three presets? Users say the page is overwhelming.",
       "expected": [
-        "experience-first"
+        "principle-experience-first"
       ],
       "allowed": [
-        "exhaust-the-design-space",
-        "subtract-before-you-add"
+        "principle-subtract-before-you-add"
       ],
       "baseline_selected": {
-        "experience-first": 0.97
+        "principle-experience-first": 0.973
       },
       "baseline_borderline": {}
     },
@@ -369,28 +347,29 @@
       "split": "tune",
       "prompt": "Order status is tracked with isPaid, isShipped, isCancelled, and isRefunded booleans spread across five files, and they keep getting out of sync. Clean it up.",
       "expected": [
-        "encode-the-domain",
-        "type-system-discipline"
+        "principle-encode-the-domain",
+        "principle-type-system-discipline"
       ],
       "allowed": [
-        "encode-lessons-in-structure",
-        "fix-root-causes",
-        "foundational-thinking",
-        "migrate-callers-then-delete-legacy-apis",
-        "minimize-reader-load",
-        "prove-it-works",
-        "redesign-from-first-principles",
-        "sequence-verifiable-units"
+        "principle-encode-lessons-in-structure",
+        "principle-foundational-thinking",
+        "principle-migrate-callers-then-delete-legacy-apis",
+        "principle-minimize-reader-load",
+        "principle-prove-it-works",
+        "principle-redesign-from-first-principles",
+        "principle-sequence-verifiable-units"
       ],
       "baseline_selected": {
-        "type-system-discipline": 0.913,
-        "encode-the-domain": 0.87,
-        "foundational-thinking": 0.827,
-        "encode-lessons-in-structure": 0.79
+        "principle-encode-lessons-in-structure": 0.773,
+        "principle-encode-the-domain": 0.867,
+        "principle-foundational-thinking": 0.81,
+        "principle-minimize-reader-load": 0.76,
+        "principle-type-system-discipline": 0.91
       },
       "baseline_borderline": {
-        "minimize-reader-load": 0.743,
-        "subtract-before-you-add": 0.733
+        "principle-encode-lessons-in-structure": 0.773,
+        "principle-minimize-reader-load": 0.76,
+        "principle-subtract-before-you-add": 0.737
       }
     },
     {
@@ -398,16 +377,16 @@
       "split": "tune",
       "prompt": "Add an 'archived' status to projects. Right now the status checks are if/else chains in the API handlers, the UI, and the export job.",
       "expected": [
-        "encode-the-domain"
+        "principle-encode-the-domain"
       ],
       "allowed": [
-        "prove-it-works",
-        "redesign-from-first-principles",
-        "type-system-discipline"
+        "principle-prove-it-works",
+        "principle-redesign-from-first-principles",
+        "principle-type-system-discipline"
       ],
       "baseline_selected": {
-        "encode-the-domain": 0.977,
-        "type-system-discipline": 0.883
+        "principle-encode-the-domain": 0.98,
+        "principle-type-system-discipline": 0.887
       },
       "baseline_borderline": {}
     },
@@ -416,21 +395,20 @@
       "split": "tune",
       "prompt": "Our webhook handler parses the JSON body in five different helper functions, each with its own null checks. Tidy up the validation.",
       "expected": [
-        "boundary-discipline"
+        "principle-boundary-discipline"
       ],
       "allowed": [
-        "laziness-protocol",
-        "minimize-reader-load",
-        "subtract-before-you-add",
-        "type-system-discipline"
+        "principle-laziness-protocol",
+        "principle-minimize-reader-load",
+        "principle-subtract-before-you-add",
+        "principle-type-system-discipline"
       ],
       "baseline_selected": {
-        "boundary-discipline": 0.97,
-        "minimize-reader-load": 0.95
+        "principle-boundary-discipline": 0.97,
+        "principle-minimize-reader-load": 0.95
       },
       "baseline_borderline": {
-        "subtract-before-you-add": 0.73,
-        "laziness-protocol": 0.667
+        "principle-subtract-before-you-add": 0.727
       }
     },
     {
@@ -438,35 +416,35 @@
       "split": "tune",
       "prompt": "Design the TypeScript types for our API response envelope: success with data, or an error with a code and a message.",
       "expected": [
-        "type-system-discipline"
+        "principle-type-system-discipline"
       ],
       "allowed": [
-        "boundary-discipline",
-        "encode-the-domain",
-        "foundational-thinking"
+        "principle-boundary-discipline",
+        "principle-encode-the-domain",
+        "principle-foundational-thinking"
       ],
       "baseline_selected": {
-        "type-system-discipline": 0.99,
-        "foundational-thinking": 0.94,
-        "boundary-discipline": 0.77
+        "principle-boundary-discipline": 0.767,
+        "principle-foundational-thinking": 0.94,
+        "principle-type-system-discipline": 0.99
       },
-      "baseline_borderline": {}
+      "baseline_borderline": {
+        "principle-boundary-discipline": 0.767
+      }
     },
     {
       "id": "workers-state-json",
       "split": "tune",
       "prompt": "Two background workers both write their progress into state.json and we occasionally lose updates.",
       "expected": [
-        "separate-before-serializing-shared-state"
+        "principle-separate-before-serializing-shared-state"
       ],
       "allowed": [
-        "fix-root-causes",
-        "make-operations-idempotent",
-        "prove-it-works"
+        "principle-make-operations-idempotent",
+        "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "separate-before-serializing-shared-state": 0.99,
-        "fix-root-causes": 0.93
+        "principle-separate-before-serializing-shared-state": 0.99
       },
       "baseline_borderline": {}
     },
@@ -475,15 +453,15 @@
       "split": "tune",
       "prompt": "Parallelize the build script so the four packages compile at the same time. Each of them writes its entry into dist/manifest.json.",
       "expected": [
-        "separate-before-serializing-shared-state"
+        "principle-separate-before-serializing-shared-state"
       ],
       "allowed": [
-        "build-the-lever",
-        "foundational-thinking",
-        "prove-it-works"
+        "principle-build-the-lever",
+        "principle-foundational-thinking",
+        "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "separate-before-serializing-shared-state": 0.96
+        "principle-separate-before-serializing-shared-state": 0.96
       },
       "baseline_borderline": {}
     },
@@ -492,60 +470,59 @@
       "split": "tune",
       "prompt": "We're rewriting the payments service from Express to Fastify in three phases: routes, then middleware, then plugins. Start phase one.",
       "expected": [
-        "outcome-oriented-execution",
-        "sequence-verifiable-units"
+        "principle-outcome-oriented-execution",
+        "principle-sequence-verifiable-units"
       ],
       "allowed": [
-        "boundary-discipline",
-        "migrate-callers-then-delete-legacy-apis",
-        "prove-it-works",
-        "redesign-from-first-principles"
+        "principle-boundary-discipline",
+        "principle-migrate-callers-then-delete-legacy-apis",
+        "principle-prove-it-works",
+        "principle-redesign-from-first-principles"
       ],
       "baseline_selected": {
-        "outcome-oriented-execution": 0.987,
-        "sequence-verifiable-units": 0.973,
-        "boundary-discipline": 0.753
+        "principle-outcome-oriented-execution": 0.983,
+        "principle-sequence-verifiable-units": 0.977
       },
-      "baseline_borderline": {}
+      "baseline_borderline": {
+        "principle-boundary-discipline": 0.747
+      }
     },
     {
       "id": "order-service-tangle",
       "split": "tune",
       "prompt": "This 900-line OrderService has wrappers calling wrappers, and I can't tell where the discount gets applied. Make it easier to follow.",
       "expected": [
-        "laziness-protocol",
-        "minimize-reader-load"
+        "principle-laziness-protocol",
+        "principle-minimize-reader-load"
       ],
       "allowed": [
-        "encode-the-domain",
-        "guard-the-context-window",
-        "subtract-before-you-add"
+        "principle-encode-the-domain",
+        "principle-guard-the-context-window",
+        "principle-subtract-before-you-add"
       ],
       "baseline_selected": {
-        "minimize-reader-load": 0.99,
-        "laziness-protocol": 0.98,
-        "guard-the-context-window": 0.917
+        "principle-guard-the-context-window": 0.917,
+        "principle-laziness-protocol": 0.98,
+        "principle-minimize-reader-load": 0.99
       },
-      "baseline_borderline": {
-        "subtract-before-you-add": 0.677
-      }
+      "baseline_borderline": {}
     },
     {
       "id": "rate-limit-leftovers",
       "split": "tune",
       "prompt": "Add rate limiting to the API. Heads up: there's a half-finished throttle module and two unused middleware files from an earlier attempt.",
       "expected": [
-        "subtract-before-you-add"
+        "principle-subtract-before-you-add"
       ],
       "allowed": [
-        "boundary-discipline",
-        "laziness-protocol",
-        "prove-it-works"
+        "principle-boundary-discipline",
+        "principle-laziness-protocol",
+        "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "subtract-before-you-add": 0.917,
-        "boundary-discipline": 0.887,
-        "prove-it-works": 0.81
+        "principle-boundary-discipline": 0.893,
+        "principle-prove-it-works": 0.827,
+        "principle-subtract-before-you-add": 0.917
       },
       "baseline_borderline": {}
     },
@@ -554,53 +531,44 @@
       "split": "tune",
       "prompt": "Add a config option for verbose logging. My plan is to thread a verbose flag through every function down to the logger.",
       "expected": [
-        "laziness-protocol"
+        "principle-laziness-protocol"
       ],
       "allowed": [
-        "boundary-discipline",
-        "minimize-reader-load"
+        "principle-boundary-discipline",
+        "principle-minimize-reader-load"
       ],
       "baseline_selected": {
-        "laziness-protocol": 0.98
+        "principle-laziness-protocol": 0.98
       },
       "baseline_borderline": {
-        "type-system-discipline": 0.717,
-        "build-the-lever": 0.703
+        "principle-build-the-lever": 0.71,
+        "principle-type-system-discipline": 0.723
       }
     },
     {
       "id": "write-tests",
       "split": "tune",
       "prompt": "Write tests for the slugify utility and the checkout reducer.",
-      "expected": [
-        "test-behavior-not-implementation"
-      ],
+      "expected": [],
       "allowed": [
-        "prove-it-works"
+        "principle-prove-it-works"
       ],
-      "baseline_selected": {
-        "test-behavior-not-implementation": 0.99
-      },
+      "baseline_selected": {},
       "baseline_borderline": {}
     },
     {
       "id": "mock-heavy-tests",
       "split": "tune",
       "prompt": "Half our test suite only asserts toHaveBeenCalled on mocks. Make the tests actually catch bugs.",
-      "expected": [
-        "test-behavior-not-implementation"
-      ],
+      "expected": [],
       "allowed": [
-        "build-the-lever",
-        "prove-it-works",
-        "sequence-verifiable-units"
+        "principle-build-the-lever",
+        "principle-prove-it-works",
+        "principle-sequence-verifiable-units"
       ],
-      "baseline_selected": {
-        "test-behavior-not-implementation": 0.99
-      },
+      "baseline_selected": {},
       "baseline_borderline": {
-        "subtract-before-you-add": 0.703,
-        "sequence-verifiable-units": 0.67
+        "principle-subtract-before-you-add": 0.723
       }
     },
     {
@@ -608,15 +576,15 @@
       "split": "tune",
       "prompt": "This is the third time you forgot to regenerate the API client after changing the OpenAPI spec. Make sure it can't happen again.",
       "expected": [
-        "encode-lessons-in-structure"
+        "principle-encode-lessons-in-structure"
       ],
       "allowed": [
-        "build-the-lever",
-        "prove-it-works",
-        "type-system-discipline"
+        "principle-build-the-lever",
+        "principle-prove-it-works",
+        "principle-type-system-discipline"
       ],
       "baseline_selected": {
-        "encode-lessons-in-structure": 0.99
+        "principle-encode-lessons-in-structure": 0.99
       },
       "baseline_borderline": {}
     },
@@ -625,17 +593,17 @@
       "split": "tune",
       "prompt": "Reviewers keep flagging imports from 'lodash' instead of 'lodash-es'. I've told the team five times now.",
       "expected": [
-        "encode-lessons-in-structure"
+        "principle-encode-lessons-in-structure"
       ],
       "allowed": [
-        "build-the-lever"
+        "principle-build-the-lever"
       ],
       "baseline_selected": {
-        "encode-lessons-in-structure": 0.977,
-        "build-the-lever": 0.84
+        "principle-build-the-lever": 0.833,
+        "principle-encode-lessons-in-structure": 0.977
       },
       "baseline_borderline": {
-        "sequence-verifiable-units": 0.717
+        "principle-sequence-verifiable-units": 0.707
       }
     },
     {
@@ -643,17 +611,16 @@
       "split": "tune",
       "prompt": "Go through the 3 GB production log dump in logs/ and summarize which errors spike after deploys.",
       "expected": [
-        "guard-the-context-window"
+        "principle-guard-the-context-window"
       ],
       "allowed": [
-        "build-the-lever",
-        "fix-root-causes"
+        "principle-build-the-lever"
       ],
       "baseline_selected": {
-        "guard-the-context-window": 0.97
+        "principle-guard-the-context-window": 0.97
       },
       "baseline_borderline": {
-        "boundary-discipline": 0.74
+        "principle-boundary-discipline": 0.743
       }
     },
     {
@@ -661,29 +628,31 @@
       "split": "tune",
       "prompt": "Audit the READMEs and Dockerfiles of all 60 services in this monorepo and report which ones still use Node 16.",
       "expected": [
-        "build-the-lever",
-        "guard-the-context-window"
+        "principle-build-the-lever",
+        "principle-guard-the-context-window"
       ],
       "allowed": [],
       "baseline_selected": {
-        "build-the-lever": 0.97,
-        "guard-the-context-window": 0.797
+        "principle-build-the-lever": 0.97,
+        "principle-guard-the-context-window": 0.797
       },
-      "baseline_borderline": {}
+      "baseline_borderline": {
+        "principle-guard-the-context-window": 0.797
+      }
     },
     {
       "id": "new-repo-scaffold",
       "split": "tune",
       "prompt": "Set up the new repo first: CI, lint, a test runner, and shared types. We'll start on features after that.",
       "expected": [
-        "foundational-thinking"
+        "principle-foundational-thinking"
       ],
       "allowed": [
-        "build-the-lever",
-        "sequence-verifiable-units"
+        "principle-build-the-lever",
+        "principle-sequence-verifiable-units"
       ],
       "baseline_selected": {
-        "foundational-thinking": 0.987
+        "principle-foundational-thinking": 0.98
       },
       "baseline_borderline": {}
     },
@@ -692,15 +661,17 @@
       "split": "tune",
       "prompt": "Implement the plan in PLAN.md end to end. I'm away this afternoon, so make sensible calls yourself and I'll review tonight.",
       "expected": [
-        "never-block-on-the-human"
+        "principle-never-block-on-the-human"
       ],
       "allowed": [
-        "outcome-oriented-execution",
-        "prove-it-works",
-        "sequence-verifiable-units"
+        "principle-outcome-oriented-execution",
+        "principle-prove-it-works",
+        "principle-sequence-verifiable-units",
+        "decision-trail"
       ],
       "baseline_selected": {
-        "never-block-on-the-human": 0.987
+        "principle-never-block-on-the-human": 0.983,
+        "decision-trail": 0.86
       },
       "baseline_borderline": {}
     },
@@ -709,16 +680,17 @@
       "split": "tune",
       "prompt": "Clean up the lint warnings across the repo. Don't stop to ask me about each one.",
       "expected": [
-        "never-block-on-the-human"
+        "principle-never-block-on-the-human"
       ],
       "allowed": [
-        "build-the-lever",
-        "sequence-verifiable-units"
+        "principle-build-the-lever",
+        "principle-sequence-verifiable-units",
+        "decision-trail"
       ],
       "baseline_selected": {
-        "never-block-on-the-human": 0.97,
-        "build-the-lever": 0.913,
-        "sequence-verifiable-units": 0.853
+        "principle-build-the-lever": 0.92,
+        "principle-never-block-on-the-human": 0.967,
+        "principle-sequence-verifiable-units": 0.85
       },
       "baseline_borderline": {}
     },
@@ -727,14 +699,15 @@
       "split": "tune",
       "prompt": "Speed up the dashboard query; it takes 8 seconds. Show me with real numbers that it got faster.",
       "expected": [
-        "prove-it-works"
+        "principle-prove-it-works",
+        "perf-issue"
       ],
       "allowed": [
-        "build-the-lever",
-        "fix-root-causes"
+        "principle-build-the-lever"
       ],
       "baseline_selected": {
-        "prove-it-works": 0.98
+        "principle-prove-it-works": 0.98,
+        "perf-issue": 0.97
       },
       "baseline_borderline": {}
     },
@@ -743,14 +716,13 @@
       "split": "tune",
       "prompt": "Finish the session-handling refactor, then run the real app and confirm the login flow still works before you tell me it's done.",
       "expected": [
-        "prove-it-works"
+        "principle-prove-it-works"
       ],
       "allowed": [
-        "sequence-verifiable-units",
-        "test-behavior-not-implementation"
+        "principle-sequence-verifiable-units"
       ],
       "baseline_selected": {
-        "prove-it-works": 0.97
+        "principle-prove-it-works": 0.97
       },
       "baseline_borderline": {}
     },
@@ -759,19 +731,17 @@
       "split": "tune",
       "prompt": "Split this 2,000-line PR into a stack of small commits that each pass CI on their own.",
       "expected": [
-        "sequence-verifiable-units"
+        "principle-sequence-verifiable-units"
       ],
       "allowed": [
-        "guard-the-context-window",
-        "minimize-reader-load"
+        "principle-guard-the-context-window",
+        "principle-minimize-reader-load"
       ],
       "baseline_selected": {
-        "sequence-verifiable-units": 0.98,
-        "guard-the-context-window": 0.947
+        "principle-guard-the-context-window": 0.95,
+        "principle-sequence-verifiable-units": 0.98
       },
-      "baseline_borderline": {
-        "build-the-lever": 0.657
-      }
+      "baseline_borderline": {}
     },
     {
       "id": "delete-old-flag",
@@ -779,12 +749,12 @@
       "prompt": "Delete the unused feature-flag code for the old onboarding flow.",
       "expected": [],
       "allowed": [
-        "laziness-protocol",
-        "migrate-callers-then-delete-legacy-apis",
-        "subtract-before-you-add"
+        "principle-laziness-protocol",
+        "principle-migrate-callers-then-delete-legacy-apis",
+        "principle-subtract-before-you-add"
       ],
       "baseline_selected": {
-        "subtract-before-you-add": 0.937
+        "principle-subtract-before-you-add": 0.923
       },
       "baseline_borderline": {}
     },
@@ -794,49 +764,37 @@
       "prompt": "Translate the error messages in locales/en.json into German in a new de.json.",
       "expected": [],
       "allowed": [
-        "build-the-lever"
+        "principle-build-the-lever"
       ],
       "baseline_selected": {},
-      "baseline_borderline": {
-        "build-the-lever": 0.66
-      }
+      "baseline_borderline": {}
     },
     {
       "id": "h-login-500",
       "split": "holdout1",
       "prompt": "POST /login returns a 500 for users whose email has a plus sign in it. Fix it.",
-      "expected": [
-        "fix-root-causes"
-      ],
+      "expected": [],
       "allowed": [
-        "boundary-discipline",
-        "prove-it-works",
-        "test-behavior-not-implementation"
+        "principle-boundary-discipline",
+        "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "fix-root-causes": 0.983,
-        "boundary-discipline": 0.96
+        "principle-boundary-discipline": 0.96
       },
-      "baseline_borderline": {
-        "prove-it-works": 0.66
-      }
+      "baseline_borderline": {}
     },
     {
       "id": "h-flaky-third-try",
       "split": "holdout1",
       "prompt": "Retried the flaky checkout e2e test with longer waits and then with a mocked clock. It still fails about one run in five.",
       "expected": [
-        "attack-the-premise",
-        "fix-root-causes"
+        "principle-attack-the-premise"
       ],
       "allowed": [
-        "prove-it-works",
-        "test-behavior-not-implementation"
+        "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "fix-root-causes": 0.95,
-        "test-behavior-not-implementation": 0.927,
-        "attack-the-premise": 0.89
+        "principle-attack-the-premise": 0.897
       },
       "baseline_borderline": {}
     },
@@ -845,25 +803,23 @@
       "split": "holdout1",
       "prompt": "Our services read process.env all over the place and crash at random points when a variable is missing. Centralize it.",
       "expected": [
-        "boundary-discipline"
+        "principle-boundary-discipline"
       ],
       "allowed": [
-        "fix-root-causes",
-        "foundational-thinking",
-        "laziness-protocol",
-        "minimize-reader-load",
-        "type-system-discipline"
+        "principle-foundational-thinking",
+        "principle-laziness-protocol",
+        "principle-minimize-reader-load",
+        "principle-type-system-discipline"
       ],
       "baseline_selected": {
-        "boundary-discipline": 0.887,
-        "laziness-protocol": 0.827,
-        "fix-root-causes": 0.81,
-        "sequence-verifiable-units": 0.76,
-        "build-the-lever": 0.753
+        "principle-boundary-discipline": 0.887,
+        "principle-build-the-lever": 0.75,
+        "principle-laziness-protocol": 0.827
       },
       "baseline_borderline": {
-        "encode-lessons-in-structure": 0.717,
-        "minimize-reader-load": 0.663
+        "principle-build-the-lever": 0.75,
+        "principle-encode-lessons-in-structure": 0.707,
+        "principle-sequence-verifiable-units": 0.747
       }
     },
     {
@@ -871,16 +827,16 @@
       "split": "holdout1",
       "prompt": "Write a deploy script that creates the S3 bucket, uploads the assets, and updates DNS. It has to be safe to run again if it dies partway.",
       "expected": [
-        "make-operations-idempotent"
+        "principle-make-operations-idempotent"
       ],
       "allowed": [
-        "boundary-discipline",
-        "prove-it-works"
+        "principle-boundary-discipline",
+        "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "make-operations-idempotent": 0.97,
-        "prove-it-works": 0.97,
-        "boundary-discipline": 0.933
+        "principle-boundary-discipline": 0.937,
+        "principle-make-operations-idempotent": 0.97,
+        "principle-prove-it-works": 0.97
       },
       "baseline_borderline": {}
     },
@@ -889,15 +845,13 @@
       "split": "holdout1",
       "prompt": "Design a first-run onboarding flow for the desktop app. We've never had one and I'm not sure what it should look like.",
       "expected": [
-        "exhaust-the-design-space",
-        "experience-first"
+        "principle-experience-first"
       ],
       "allowed": [
-        "prove-it-works"
+        "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "experience-first": 0.97,
-        "exhaust-the-design-space": 0.947
+        "principle-experience-first": 0.97
       },
       "baseline_borderline": {}
     },
@@ -906,41 +860,34 @@
       "split": "holdout1",
       "prompt": "Customers now want separate workspaces. Today every table and query assumes a single organization.",
       "expected": [
-        "redesign-from-first-principles"
+        "principle-redesign-from-first-principles"
       ],
       "allowed": [
-        "boundary-discipline",
-        "encode-the-domain",
-        "exhaust-the-design-space",
-        "foundational-thinking",
-        "outcome-oriented-execution",
-        "prove-it-works",
-        "sequence-verifiable-units",
-        "type-system-discipline"
+        "principle-boundary-discipline",
+        "principle-encode-the-domain",
+        "principle-foundational-thinking",
+        "principle-outcome-oriented-execution",
+        "principle-prove-it-works",
+        "principle-sequence-verifiable-units",
+        "principle-type-system-discipline"
       ],
       "baseline_selected": {
-        "redesign-from-first-principles": 0.96,
-        "type-system-discipline": 0.887,
-        "foundational-thinking": 0.883,
-        "encode-the-domain": 0.83,
-        "exhaust-the-design-space": 0.81
+        "principle-encode-the-domain": 0.833,
+        "principle-foundational-thinking": 0.887,
+        "principle-redesign-from-first-principles": 0.96,
+        "principle-type-system-discipline": 0.89
       },
       "baseline_borderline": {
-        "experience-first": 0.727,
-        "sequence-verifiable-units": 0.69
+        "principle-experience-first": 0.737
       }
     },
     {
       "id": "h-snapshot-tests",
       "split": "holdout1",
       "prompt": "Review the new tests in this PR; a lot of them look like they just snapshot whatever the function returns.",
-      "expected": [
-        "test-behavior-not-implementation"
-      ],
+      "expected": [],
       "allowed": [],
-      "baseline_selected": {
-        "test-behavior-not-implementation": 0.98
-      },
+      "baseline_selected": {},
       "baseline_borderline": {}
     },
     {
@@ -948,14 +895,14 @@
       "split": "holdout1",
       "prompt": "Run three agents in parallel on this feature; they'll all commit to the same branch.",
       "expected": [
-        "separate-before-serializing-shared-state"
+        "principle-separate-before-serializing-shared-state"
       ],
       "allowed": [
-        "never-block-on-the-human",
-        "sequence-verifiable-units"
+        "principle-never-block-on-the-human",
+        "principle-sequence-verifiable-units"
       ],
       "baseline_selected": {
-        "separate-before-serializing-shared-state": 0.96
+        "principle-separate-before-serializing-shared-state": 0.96
       },
       "baseline_borderline": {}
     },
@@ -964,37 +911,36 @@
       "split": "holdout1",
       "prompt": "We keep passing orderId where userId is expected; both are plain strings. Stop this from happening again.",
       "expected": [
-        "encode-lessons-in-structure",
-        "type-system-discipline"
+        "principle-encode-lessons-in-structure",
+        "principle-type-system-discipline"
       ],
-      "allowed": [
-        "fix-root-causes"
-      ],
+      "allowed": [],
       "baseline_selected": {
-        "encode-lessons-in-structure": 0.98,
-        "fix-root-causes": 0.96,
-        "type-system-discipline": 0.767
+        "principle-encode-lessons-in-structure": 0.98,
+        "principle-type-system-discipline": 0.777
       },
-      "baseline_borderline": {}
+      "baseline_borderline": {
+        "principle-type-system-discipline": 0.777
+      }
     },
     {
       "id": "h-legacy-config-api",
       "split": "holdout1",
       "prompt": "Now that loadSettings() exists, get rid of the old getConfig() and move its 25 callers over.",
       "expected": [
-        "migrate-callers-then-delete-legacy-apis"
+        "principle-migrate-callers-then-delete-legacy-apis"
       ],
       "allowed": [
-        "build-the-lever",
-        "prove-it-works",
-        "sequence-verifiable-units",
-        "subtract-before-you-add"
+        "principle-build-the-lever",
+        "principle-prove-it-works",
+        "principle-sequence-verifiable-units",
+        "principle-subtract-before-you-add"
       ],
       "baseline_selected": {
-        "migrate-callers-then-delete-legacy-apis": 0.963,
-        "sequence-verifiable-units": 0.92,
-        "build-the-lever": 0.903,
-        "subtract-before-you-add": 0.87
+        "principle-build-the-lever": 0.897,
+        "principle-migrate-callers-then-delete-legacy-apis": 0.963,
+        "principle-sequence-verifiable-units": 0.92,
+        "principle-subtract-before-you-add": 0.877
       },
       "baseline_borderline": {}
     },
@@ -1003,15 +949,14 @@
       "split": "holdout1",
       "prompt": "Run the full test suite (about 4,000 tests) and tell me which failures are new since main.",
       "expected": [
-        "guard-the-context-window"
+        "principle-guard-the-context-window"
       ],
       "allowed": [
-        "build-the-lever",
-        "fix-root-causes",
-        "prove-it-works"
+        "principle-build-the-lever",
+        "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "guard-the-context-window": 0.893
+        "principle-guard-the-context-window": 0.89
       },
       "baseline_borderline": {}
     },
@@ -1039,7 +984,7 @@
       "prompt": "Add a tooltip to the export button that says \"Download as CSV\".",
       "expected": [],
       "allowed": [
-        "experience-first"
+        "principle-experience-first"
       ],
       "baseline_selected": {},
       "baseline_borderline": {}
@@ -1049,36 +994,36 @@
       "split": "holdout1",
       "prompt": "Go ahead and upgrade all the dependencies to their latest major versions; use your judgment on breaking changes and I'll look at it tomorrow.",
       "expected": [
-        "never-block-on-the-human"
+        "principle-never-block-on-the-human"
       ],
       "allowed": [
-        "build-the-lever",
-        "fix-root-causes",
-        "prove-it-works",
-        "sequence-verifiable-units"
+        "principle-build-the-lever",
+        "principle-prove-it-works",
+        "principle-sequence-verifiable-units",
+        "decision-trail"
       ],
       "baseline_selected": {
-        "never-block-on-the-human": 0.97,
-        "build-the-lever": 0.85,
-        "sequence-verifiable-units": 0.81,
-        "prove-it-works": 0.777
+        "principle-build-the-lever": 0.867,
+        "principle-never-block-on-the-human": 0.97,
+        "principle-prove-it-works": 0.767,
+        "principle-sequence-verifiable-units": 0.82,
+        "decision-trail": 0.82
       },
-      "baseline_borderline": {}
+      "baseline_borderline": {
+        "principle-prove-it-works": 0.767
+      }
     },
     {
       "id": "g-memory-leak",
       "split": "holdout2",
       "prompt": "The Node server's memory climbs steadily until it gets OOM-killed every few hours. Track it down.",
-      "expected": [
-        "fix-root-causes"
-      ],
+      "expected": [],
       "allowed": [
-        "guard-the-context-window",
-        "prove-it-works"
+        "principle-guard-the-context-window",
+        "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "fix-root-causes": 0.98,
-        "prove-it-works": 0.817
+        "principle-prove-it-works": 0.83
       },
       "baseline_borderline": {}
     },
@@ -1088,12 +1033,12 @@
       "prompt": "Add date and author filters to the search page. Filters on the other list pages already use the FilterBar component.",
       "expected": [],
       "allowed": [
-        "experience-first",
-        "prove-it-works"
+        "principle-experience-first",
+        "principle-prove-it-works"
       ],
       "baseline_selected": {},
       "baseline_borderline": {
-        "prove-it-works": 0.703
+        "principle-prove-it-works": 0.727
       }
     },
     {
@@ -1101,20 +1046,19 @@
       "split": "holdout2",
       "prompt": "Write a consumer that reads jobs from SQS and charges the customer's card. Messages can be delivered more than once.",
       "expected": [
-        "make-operations-idempotent"
+        "principle-make-operations-idempotent"
       ],
       "allowed": [
-        "boundary-discipline",
-        "fix-root-causes",
-        "prove-it-works"
+        "principle-boundary-discipline",
+        "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "boundary-discipline": 0.97,
-        "make-operations-idempotent": 0.84,
-        "prove-it-works": 0.783
+        "principle-boundary-discipline": 0.97,
+        "principle-make-operations-idempotent": 0.83,
+        "principle-prove-it-works": 0.78
       },
       "baseline_borderline": {
-        "foundational-thinking": 0.653
+        "principle-prove-it-works": 0.78
       }
     },
     {
@@ -1122,23 +1066,23 @@
       "split": "holdout2",
       "prompt": "Our hand-written TypeScript types for the GraphQL API keep drifting from the schema. Generate them from the schema instead.",
       "expected": [
-        "encode-lessons-in-structure",
-        "type-system-discipline"
+        "principle-encode-lessons-in-structure",
+        "principle-type-system-discipline"
       ],
       "allowed": [
-        "boundary-discipline",
-        "build-the-lever",
-        "migrate-callers-then-delete-legacy-apis",
-        "prove-it-works",
-        "subtract-before-you-add"
+        "principle-boundary-discipline",
+        "principle-build-the-lever",
+        "principle-migrate-callers-then-delete-legacy-apis",
+        "principle-prove-it-works",
+        "principle-subtract-before-you-add"
       ],
       "baseline_selected": {
-        "type-system-discipline": 0.943,
-        "build-the-lever": 0.837,
-        "encode-lessons-in-structure": 0.75
+        "principle-build-the-lever": 0.837,
+        "principle-encode-lessons-in-structure": 0.76,
+        "principle-type-system-discipline": 0.94
       },
       "baseline_borderline": {
-        "foundational-thinking": 0.663
+        "principle-encode-lessons-in-structure": 0.76
       }
     },
     {
@@ -1146,45 +1090,45 @@
       "split": "holdout2",
       "prompt": "Before adding SSO, remove the three dead auth strategies and the commented-out OAuth code in auth/.",
       "expected": [
-        "subtract-before-you-add"
+        "principle-subtract-before-you-add"
       ],
       "allowed": [
-        "laziness-protocol",
-        "prove-it-works",
-        "sequence-verifiable-units"
+        "principle-laziness-protocol",
+        "principle-prove-it-works",
+        "principle-sequence-verifiable-units"
       ],
       "baseline_selected": {
-        "subtract-before-you-add": 0.95
+        "principle-subtract-before-you-add": 0.94
       },
-      "baseline_borderline": {
-        "minimize-reader-load": 0.687
-      }
+      "baseline_borderline": {}
     },
     {
       "id": "g-postgres-to-dynamo",
       "split": "holdout2",
       "prompt": "Plan and start moving the sessions store from Postgres to DynamoDB in stages: dual-write, backfill, switch reads, then drop the table.",
       "expected": [
-        "outcome-oriented-execution",
-        "sequence-verifiable-units"
+        "principle-outcome-oriented-execution",
+        "principle-sequence-verifiable-units"
       ],
       "allowed": [
-        "foundational-thinking",
-        "make-operations-idempotent",
-        "migrate-callers-then-delete-legacy-apis",
-        "prove-it-works",
-        "redesign-from-first-principles",
-        "separate-before-serializing-shared-state"
+        "principle-foundational-thinking",
+        "principle-make-operations-idempotent",
+        "principle-migrate-callers-then-delete-legacy-apis",
+        "principle-prove-it-works",
+        "principle-redesign-from-first-principles",
+        "principle-separate-before-serializing-shared-state"
       ],
       "baseline_selected": {
-        "outcome-oriented-execution": 0.987,
-        "sequence-verifiable-units": 0.973,
-        "prove-it-works": 0.97,
-        "foundational-thinking": 0.89,
-        "make-operations-idempotent": 0.857,
-        "separate-before-serializing-shared-state": 0.767
+        "principle-foundational-thinking": 0.897,
+        "principle-make-operations-idempotent": 0.87,
+        "principle-outcome-oriented-execution": 0.987,
+        "principle-prove-it-works": 0.963,
+        "principle-separate-before-serializing-shared-state": 0.763,
+        "principle-sequence-verifiable-units": 0.98
       },
-      "baseline_borderline": {}
+      "baseline_borderline": {
+        "principle-separate-before-serializing-shared-state": 0.763
+      }
     },
     {
       "id": "g-ask-each-step",
@@ -1192,31 +1136,28 @@
       "prompt": "Refactor the billing module; check with me before each change.",
       "expected": [],
       "allowed": [
-        "laziness-protocol",
-        "minimize-reader-load",
-        "prove-it-works",
-        "sequence-verifiable-units"
+        "principle-laziness-protocol",
+        "principle-minimize-reader-load",
+        "principle-prove-it-works",
+        "principle-sequence-verifiable-units"
       ],
       "baseline_selected": {
-        "minimize-reader-load": 0.79
+        "principle-minimize-reader-load": 0.783
       },
       "baseline_borderline": {
-        "sequence-verifiable-units": 0.667
+        "principle-minimize-reader-load": 0.783
       }
     },
     {
       "id": "g-add-unit-test",
       "split": "holdout2",
       "prompt": "Add a regression test for the date-parsing bug we fixed yesterday.",
-      "expected": [
-        "test-behavior-not-implementation"
-      ],
+      "expected": [],
       "allowed": [
-        "prove-it-works"
+        "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "test-behavior-not-implementation": 0.99,
-        "prove-it-works": 0.817
+        "principle-prove-it-works": 0.813
       },
       "baseline_borderline": {}
     },
@@ -1225,15 +1166,14 @@
       "split": "holdout2",
       "prompt": "Make sure user-supplied sort and filter params can't inject SQL in the reports endpoint.",
       "expected": [
-        "boundary-discipline"
+        "principle-boundary-discipline"
       ],
       "allowed": [
-        "prove-it-works",
-        "test-behavior-not-implementation",
-        "type-system-discipline"
+        "principle-prove-it-works",
+        "principle-type-system-discipline"
       ],
       "baseline_selected": {
-        "boundary-discipline": 0.98
+        "principle-boundary-discipline": 0.98
       },
       "baseline_borderline": {}
     },
@@ -1242,20 +1182,20 @@
       "split": "holdout2",
       "prompt": "The checkout wizard tracks its current step with three booleans plus a stepIndex, and you can land on the payment step without an address. Fix the flow.",
       "expected": [
-        "encode-the-domain"
+        "principle-encode-the-domain"
       ],
       "allowed": [
-        "fix-root-causes",
-        "prove-it-works",
-        "redesign-from-first-principles",
-        "type-system-discipline"
+        "principle-prove-it-works",
+        "principle-redesign-from-first-principles",
+        "principle-type-system-discipline"
       ],
       "baseline_selected": {
-        "fix-root-causes": 0.947,
-        "encode-the-domain": 0.883,
-        "type-system-discipline": 0.777
+        "principle-encode-the-domain": 0.883,
+        "principle-type-system-discipline": 0.78
       },
-      "baseline_borderline": {}
+      "baseline_borderline": {
+        "principle-type-system-discipline": 0.78
+      }
     },
     {
       "id": "g-format-file",
@@ -1272,18 +1212,735 @@
       "prompt": "Summarize what changed in the last five commits.",
       "expected": [],
       "allowed": [
-        "guard-the-context-window"
+        "principle-guard-the-context-window"
       ],
       "baseline_selected": {},
       "baseline_borderline": {}
+    },
+    {
+      "id": "open-pr-1",
+      "split": "tune",
+      "prompt": "Open a ready pull request for this branch.",
+      "expected": [
+        "open-pr"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "open-pr": 0.99
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "open-pr-2",
+      "split": "tune",
+      "prompt": "Publish these commits as a PR against main. do not merge it.",
+      "expected": [
+        "open-pr"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "open-pr": 0.98
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "h-open-pr-3",
+      "split": "holdout1",
+      "prompt": "Create a pull request for the current feature branch with the proof in its body.",
+      "expected": [
+        "open-pr"
+      ],
+      "allowed": [
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "open-pr": 0.99
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "babysit-1",
+      "split": "tune",
+      "prompt": "Get PR 42 green and address its unresolved review threads.",
+      "expected": [
+        "babysit"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "babysit": 0.99
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "babysit-2",
+      "split": "tune",
+      "prompt": "Check PR 19 for anything outstanding. Do not merge it.",
+      "expected": [
+        "babysit"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "babysit": 0.98
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "h-babysit-3",
+      "split": "holdout1",
+      "prompt": "Babysit this existing stack until its CI and review comments are clear.",
+      "expected": [
+        "babysit"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "babysit": 0.98
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "ship-1",
+      "split": "tune",
+      "prompt": "Merge PR 42 into main.",
+      "expected": [
+        "ship"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "ship": 0.99
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "ship-2",
+      "split": "tune",
+      "prompt": "Land this ready pull request, but do not deploy the app.",
+      "expected": [
+        "ship"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "ship": 0.98
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "h-ship-3",
+      "split": "holdout1",
+      "prompt": "Ship the approved stack bottom-up into the default branch.",
+      "expected": [
+        "ship"
+      ],
+      "allowed": [
+        "principle-sequence-verifiable-units"
+      ],
+      "baseline_selected": {
+        "principle-sequence-verifiable-units": 0.857,
+        "ship": 0.97
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "decision-trail-1",
+      "split": "tune",
+      "prompt": "Keep a decision log with reasons and evidence while you work unattended tonight.",
+      "expected": [
+        "decision-trail"
+      ],
+      "allowed": [
+        "principle-never-block-on-the-human"
+      ],
+      "baseline_selected": {
+        "principle-never-block-on-the-human": 0.773,
+        "decision-trail": 0.983
+      },
+      "baseline_borderline": {
+        "principle-never-block-on-the-human": 0.773
+      }
+    },
+    {
+      "id": "decision-trail-2",
+      "split": "tune",
+      "prompt": "Audit the decision trail from this unattended run against its transcript.",
+      "expected": [
+        "decision-trail"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "decision-trail": 0.98
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "h-decision-trail-3",
+      "split": "holdout1",
+      "prompt": "I am stepping away. make the reversible calls yourself and record each decision and its reason.",
+      "expected": [
+        "decision-trail"
+      ],
+      "allowed": [
+        "principle-never-block-on-the-human"
+      ],
+      "baseline_selected": {
+        "principle-never-block-on-the-human": 0.98,
+        "decision-trail": 0.98
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "blast-radius-1",
+      "split": "tune",
+      "prompt": "What could this cache eviction diff break downstream? Prove the fact that makes it safe.",
+      "expected": [
+        "blast-radius"
+      ],
+      "allowed": [
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-prove-it-works": 0.85,
+        "blast-radius": 0.98
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "blast-radius-2",
+      "split": "tune",
+      "prompt": "Check the blast radius of this schema change beyond the files in the diff.",
+      "expected": [
+        "blast-radius"
+      ],
+      "allowed": [
+        "principle-boundary-discipline",
+        "principle-type-system-discipline",
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "blast-radius": 0.98
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "h-blast-radius-3",
+      "split": "holdout1",
+      "prompt": "I do not trust this small teardown patch. Check effects on other callers and prove it is safe.",
+      "expected": [
+        "blast-radius"
+      ],
+      "allowed": [
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-prove-it-works": 0.79,
+        "blast-radius": 0.99
+      },
+      "baseline_borderline": {
+        "principle-prove-it-works": 0.79
+      }
+    },
+    {
+      "id": "prune-comments-1",
+      "split": "tune",
+      "prompt": "Prune the stale and redundant comments in this diff.",
+      "expected": [
+        "prune-comments"
+      ],
+      "allowed": [
+        "principle-minimize-reader-load",
+        "principle-subtract-before-you-add"
+      ],
+      "baseline_selected": {
+        "prune-comments": 0.98
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "prune-comments-2",
+      "split": "tune",
+      "prompt": "Audit the do-not-remove comments in this file. remove false constraints and offer checks for real ones.",
+      "expected": [
+        "prune-comments"
+      ],
+      "allowed": [
+        "principle-minimize-reader-load",
+        "principle-subtract-before-you-add"
+      ],
+      "baseline_selected": {
+        "prune-comments": 0.98
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "h-prune-comments-3",
+      "split": "holdout1",
+      "prompt": "Remove comments that merely restate the code and critique the workaround comments in retry.ts.",
+      "expected": [
+        "prune-comments"
+      ],
+      "allowed": [
+        "principle-minimize-reader-load",
+        "principle-subtract-before-you-add"
+      ],
+      "baseline_selected": {
+        "prune-comments": 0.98
+      },
+      "baseline_borderline": {
+        "principle-minimize-reader-load": 0.733
+      }
+    },
+    {
+      "id": "setup-app-verification-1",
+      "split": "tune",
+      "prompt": "Create a Verify skill for this CLI that launches it, drives real commands, and captures evidence.",
+      "expected": [
+        "setup-app-verification"
+      ],
+      "allowed": [
+        "principle-foundational-thinking",
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-boundary-discipline": 0.783,
+        "principle-prove-it-works": 0.9,
+        "setup-app-verification": 0.97
+      },
+      "baseline_borderline": {
+        "principle-boundary-discipline": 0.783,
+        "principle-foundational-thinking": 0.713
+      }
+    },
+    {
+      "id": "setup-app-verification-2",
+      "split": "tune",
+      "prompt": "Our app has no live verification skill. Set one up with Doctor, Launch, Drive, and cleanup.",
+      "expected": [
+        "setup-app-verification"
+      ],
+      "allowed": [
+        "principle-foundational-thinking",
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "setup-app-verification": 0.93
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "h-setup-app-verification-3",
+      "split": "holdout1",
+      "prompt": "Restore the missing .omp/skills/verify-shop link to our existing shared Verify skill.",
+      "expected": [
+        "setup-app-verification"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "setup-app-verification": 0.963
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "maintain-app-verification-1",
+      "split": "tune",
+      "prompt": "Update our existing verify-shop skill to match the current routes and feature map.",
+      "expected": [
+        "maintain-app-verification"
+      ],
+      "allowed": [
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "maintain-app-verification": 0.937
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "maintain-app-verification-2",
+      "split": "tune",
+      "prompt": "The app Doctor passes, but verify-dashboard drives a selector that no longer exists. Correct the Verify instructions.",
+      "expected": [
+        "maintain-app-verification"
+      ],
+      "allowed": [
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "maintain-app-verification": 0.937
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "h-maintain-app-verification-3",
+      "split": "holdout1",
+      "prompt": "Audit the existing CLI Verify skill against source and a live pass. fix stale feature recipes.",
+      "expected": [
+        "maintain-app-verification"
+      ],
+      "allowed": [
+        "principle-prove-it-works",
+        "principle-subtract-before-you-add",
+        "principle-boundary-discipline"
+      ],
+      "baseline_selected": {
+        "principle-boundary-discipline": 0.807,
+        "principle-prove-it-works": 0.787,
+        "principle-subtract-before-you-add": 0.833,
+        "maintain-app-verification": 0.967
+      },
+      "baseline_borderline": {
+        "principle-prove-it-works": 0.787
+      }
+    },
+    {
+      "id": "compare-attempts-1",
+      "split": "tune",
+      "prompt": "Try three independent implementations of this helper and compare them before choosing the best.",
+      "expected": [
+        "compare-attempts"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "compare-attempts": 0.98
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "compare-attempts-2",
+      "split": "tune",
+      "prompt": "Run several independent attempts at this code review and synthesize the strongest findings.",
+      "expected": [
+        "compare-attempts"
+      ],
+      "allowed": [
+        "principle-minimize-reader-load"
+      ],
+      "baseline_selected": {
+        "principle-minimize-reader-load": 0.777,
+        "compare-attempts": 0.97
+      },
+      "baseline_borderline": {
+        "principle-minimize-reader-load": 0.777
+      }
+    },
+    {
+      "id": "h-compare-attempts-3",
+      "split": "holdout1",
+      "prompt": "Use five separate attempts to answer this design question, then pick a base and combine the useful parts.",
+      "expected": [
+        "compare-attempts"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "compare-attempts": 0.97
+      },
+      "baseline_borderline": {
+        "principle-experience-first": 0.707
+      }
+    },
+    {
+      "id": "hillclimb-1",
+      "split": "tune",
+      "prompt": "Keep improving this benchmark until throughput exceeds 1000 requests per second. measure each attempt with the same harness.",
+      "expected": [
+        "hillclimb"
+      ],
+      "allowed": [
+        "principle-prove-it-works",
+        "principle-build-the-lever",
+        "principle-sequence-verifiable-units"
+      ],
+      "baseline_selected": {
+        "principle-prove-it-works": 0.97,
+        "hillclimb": 0.98
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "hillclimb-2",
+      "split": "tune",
+      "prompt": "Hillclimb render latency with repeated experiments against frozen inputs. keep only measured wins.",
+      "expected": [
+        "hillclimb"
+      ],
+      "allowed": [
+        "principle-prove-it-works",
+        "principle-build-the-lever"
+      ],
+      "baseline_selected": {
+        "principle-prove-it-works": 0.953,
+        "hillclimb": 0.97
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "h-hillclimb-3",
+      "split": "holdout1",
+      "prompt": "Run repeated optimization experiments on the parser until median latency is below 5 ms, using the frozen benchmark.",
+      "expected": [
+        "hillclimb"
+      ],
+      "allowed": [
+        "principle-prove-it-works",
+        "principle-build-the-lever"
+      ],
+      "baseline_selected": {
+        "principle-prove-it-works": 0.943,
+        "hillclimb": 0.97
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "perf-issue-1",
+      "split": "tune",
+      "prompt": "The report query takes eight seconds. Fix the slowness and show before and after numbers.",
+      "expected": [
+        "perf-issue"
+      ],
+      "allowed": [
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-prove-it-works": 0.97,
+        "perf-issue": 0.98
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "perf-issue-2",
+      "split": "tune",
+      "prompt": "Startup regressed from 1 second to 4 seconds after the last change. Diagnose and fix that regression.",
+      "expected": [
+        "perf-issue"
+      ],
+      "allowed": [
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-prove-it-works": 0.947,
+        "perf-issue": 0.98
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "h-perf-issue-3",
+      "split": "holdout1",
+      "prompt": "Make this CSV import faster. it spends 30 seconds on 100 rows. This is one measured fix, not an ongoing optimization campaign.",
+      "expected": [
+        "perf-issue"
+      ],
+      "allowed": [
+        "principle-prove-it-works",
+        "principle-boundary-discipline"
+      ],
+      "baseline_selected": {
+        "principle-boundary-discipline": 0.767,
+        "principle-prove-it-works": 0.957,
+        "perf-issue": 0.97
+      },
+      "baseline_borderline": {
+        "principle-boundary-discipline": 0.767
+      }
+    },
+    {
+      "id": "session-lessons-1",
+      "split": "tune",
+      "prompt": "Mine this coding session for durable lessons and proposed changes to our skills.",
+      "expected": [
+        "session-lessons"
+      ],
+      "allowed": [
+        "principle-encode-lessons-in-structure",
+        "principle-guard-the-context-window"
+      ],
+      "baseline_selected": {
+        "session-lessons": 0.987
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "session-lessons-2",
+      "split": "tune",
+      "prompt": "Review this run for reusable lessons about our agent guidance, not a summary of the commits.",
+      "expected": [
+        "session-lessons"
+      ],
+      "allowed": [
+        "principle-encode-lessons-in-structure",
+        "principle-guard-the-context-window"
+      ],
+      "baseline_selected": {
+        "session-lessons": 0.973
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "h-session-lessons-3",
+      "split": "holdout1",
+      "prompt": "Which skills I own need changes based on mistakes and useful discoveries from this session?",
+      "expected": [
+        "session-lessons"
+      ],
+      "allowed": [
+        "principle-encode-lessons-in-structure",
+        "principle-guard-the-context-window"
+      ],
+      "baseline_selected": {
+        "session-lessons": 0.97
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "vstack-maintain-1",
+      "split": "tune",
+      "prompt": "Update vstack from the latest Matt Upstream skills and merge its local adaptations.",
+      "expected": [
+        "vstack-maintain"
+      ],
+      "allowed": [
+        "principle-prove-it-works",
+        "principle-guard-the-context-window"
+      ],
+      "baseline_selected": {
+        "vstack-maintain": 0.973
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "vstack-maintain-2",
+      "split": "tune",
+      "prompt": "Make a Hand edit to vstack's babysit skill and its Decision register row.",
+      "expected": [
+        "vstack-maintain"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "vstack-maintain": 0.98
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "h-vstack-maintain-3",
+      "split": "holdout1",
+      "prompt": "Revise vstack's agent and writing rule text. keep its maintenance records consistent.",
+      "expected": [
+        "vstack-maintain"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "vstack-maintain": 0.97
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "n-release",
+      "split": "holdout2",
+      "prompt": "Deploy version 2.0 to production. there is no pull request to merge.",
+      "expected": [],
+      "allowed": [
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-prove-it-works": 0.963
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "n-local-test",
+      "split": "holdout2",
+      "prompt": "Fix the failing local slugify test. There is no pull request yet.",
+      "expected": [],
+      "allowed": [
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "n-docstring",
+      "split": "holdout2",
+      "prompt": "Add a docstring explaining the helper return value.",
+      "expected": [],
+      "allowed": [],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "n-existing-verify",
+      "split": "holdout2",
+      "prompt": "Run our existing Verify skill as written and capture proof of the login flow.",
+      "expected": [],
+      "allowed": [
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-prove-it-works": 0.93
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "n-product-regression",
+      "split": "holdout2",
+      "prompt": "The app itself returns the wrong total. Fix the product bug. the Verify instructions are correct.",
+      "expected": [],
+      "allowed": [
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "n-parallel-parts",
+      "split": "holdout2",
+      "prompt": "Use one agent for the API and another for the UI. each owns a different part of the feature.",
+      "expected": [],
+      "allowed": [
+        "principle-experience-first",
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "n-alternative-question",
+      "split": "holdout2",
+      "prompt": "Compare CRDTs and operational transform. explain their tradeoffs without running multiple attempts.",
+      "expected": [],
+      "allowed": [],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "n-profile-only",
+      "split": "holdout2",
+      "prompt": "Inspect this CPU profile and explain where the time went. Do not change code.",
+      "expected": [],
+      "allowed": [
+        "principle-guard-the-context-window"
+      ],
+      "baseline_selected": {},
+      "baseline_borderline": {
+        "principle-guard-the-context-window": 0.703
+      }
+    },
+    {
+      "id": "n-own-skill",
+      "split": "holdout2",
+      "prompt": "Edit my project-owned deploy skill in .omp/skills. it is not part of vstack.",
+      "expected": [],
+      "allowed": [],
+      "baseline_selected": {
+        "principle-prove-it-works": 0.78
+      },
+      "baseline_borderline": {
+        "principle-prove-it-works": 0.78
+      }
+    },
+    {
+      "id": "n-vstack-explain",
+      "split": "holdout2",
+      "prompt": "What does vstack's babysit skill do? Explain it. do not change it.",
+      "expected": [],
+      "allowed": [],
+      "baseline_selected": {},
+      "baseline_borderline": {}
     }
-  ],
-  "update_rerun_rule": {
-    "transport": "POST /v1/systemone directly (not omp judge_batch, which may serve cached judgments)",
-    "fail": [
-      "an expected principle with P(yes) < 0.70",
-      "a principle outside expected and allowed with P(yes) > 0.80"
-    ],
-    "borderline_report_only": "any other crossing of 0.75 with P(yes) in [0.70, 0.80]"
-  }
+  ]
 }

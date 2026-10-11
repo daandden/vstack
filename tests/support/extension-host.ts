@@ -1,4 +1,3 @@
-// Fake omp extension host for tests of plugin/extensions/vstack.ts (Seam 2).
 // It follows omp-tools' advisor-concern-wake harness: a partial ExtensionAPI that
 // captures handlers and tools, a partial ctx, and emit() to fire events.
 // Types are structural; the repo has no omp SDK dependency.
@@ -29,6 +28,9 @@ export interface FakeHostOptions {
   /** API key per "provider/id"; undefined means no credentials. */
   apiKeys?: Record<string, string | undefined>;
   sessionId?: string;
+  hasUI?: boolean;
+  selections?: (string | undefined)[];
+  exec?: (command: string, args: string[]) => Promise<{ stdout: string; stderr: string; code: number; killed: boolean }>;
 }
 
 export type SessionNameSource = "user" | "auto";
@@ -63,6 +65,10 @@ export interface FakeHost {
   ctx: any;
   tools: Map<string, FakeTool>;
   handlers: Map<string, Handler[]>;
+  commands: Map<string, { description?: string; handler: (args: string, ctx: any) => Promise<void> }>;
+  uiCalls: { method: string; args: any[] }[];
+  execCalls: { command: string; args: string[] }[];
+  callCommand(name: string, args?: string): Promise<void>;
   /** Messages the extension sent with pi.sendMessage. */
   sent: unknown[];
   /** Session name and its source, as omp's session manager stores them. */
@@ -77,6 +83,10 @@ export interface FakeHost {
 export function fakeHost(options: FakeHostOptions = {}): FakeHost {
   const tools = new Map<string, FakeTool>();
   const handlers = new Map<string, Handler[]>();
+  const commands: FakeHost["commands"] = new Map();
+  const uiCalls: FakeHost["uiCalls"] = [];
+  const execCalls: FakeHost["execCalls"] = [];
+  const selections = [...(options.selections ?? [])];
   const sent: unknown[] = [];
   const session: FakeHost["session"] = { titles: [] };
   const setName = (name: string, source: SessionNameSource): boolean => {
@@ -90,6 +100,12 @@ export function fakeHost(options: FakeHostOptions = {}): FakeHost {
     arktype: fakeArktype,
     on: (name: string, handler: Handler) => handlers.set(name, [...(handlers.get(name) ?? []), handler]),
     registerTool: (tool: FakeTool) => tools.set(tool.name, tool),
+    registerCommand: (name: string, command: any) => commands.set(name, command),
+    exec: async (command: string, args: string[]) => {
+      execCalls.push({ command, args });
+      if (!options.exec) throw new Error("No fake exec response");
+      return options.exec(command, args);
+    },
     sendMessage: (message: unknown) => sent.push(message),
     // Every omp mode wires this to sessionManager.setSessionName(name, "user").
     setSessionName: async (name: string) => {
@@ -100,7 +116,16 @@ export function fakeHost(options: FakeHostOptions = {}): FakeHost {
   const models = options.models ?? [];
   const ctx = {
     mode: "rpc",
-    hasUI: false,
+    hasUI: options.hasUI ?? false,
+    ui: {
+      notify: (...args: any[]) => {
+        if (ctx.hasUI) uiCalls.push({ method: "notify", args });
+      },
+      select: async (...args: any[]) => {
+        uiCalls.push({ method: "select", args });
+        return selections.shift();
+      },
+    },
     cwd: "/tmp",
     agent: options.agent ?? { kind: "main", id: "Main", name: "main", depth: 0 },
     modelRegistry: {
@@ -121,9 +146,17 @@ export function fakeHost(options: FakeHostOptions = {}): FakeHost {
     ctx,
     tools,
     handlers,
+    commands,
+    uiCalls,
+    execCalls,
     sent,
     session,
     autoTitle: (name) => setName(name, "auto"),
+    async callCommand(name, args = "") {
+      const command = commands.get(name);
+      if (!command) throw new Error(`${name} is not registered`);
+      await command.handler(args, ctx);
+    },
     async emit(name, event = {}) {
       const results: unknown[] = [];
       for (const handler of handlers.get(name) ?? []) results.push(await handler({ type: name, ...event }, ctx));

@@ -17,7 +17,7 @@ Not covered here:
 ## Steps
 
 1. Base. Use `$OMP_WORKTREE_DIR` when it is set. Else run `omp config get worktree.base` and use what it prints, unless it prints `(not set)`. Else use `~/.omp/wt`. Expand the base to an absolute path.
-2. Path. Use `<base>/vstack-<repo>-<purpose>`. `<repo>` is the dir name of the main checkout, the path on the first `worktree` line of `git worktree list --porcelain`. `<purpose>` is the slug the calling skill names, such as `research-<name>`. With no calling skill, pick a short slug for the task.
+2. Path. Use `<base>/vstack-<repo>-<purpose>`. `<repo>` is the dir name of the main checkout, the path on the first `worktree` line of `git worktree list --porcelain`. `<purpose>` is the slug the calling skill names, such as `research-<name>`.
 3. Create. Run one of these from the repo, and never add `-q`: it hides the line that step 4 reads.
    - A new branch: `omp wt add -b <branch> <path> <ref>`
    - An existing branch: `omp wt add <path> <branch>`

@@ -1,5 +1,9 @@
 # Principles are hidden skills selected per prompt by jev
 
+> The scope is superseded by [ADR 0018](0018-principles-are-addons-and-the-running-skill-wins.md): the judge picks principles only while a Matt skill runs, it reads only the user's words on a skill-start prompt, and the running skill wins over a principle. The rest of this ADR, the judge design, still stands.
+
+> [ADR 0017](0017-an-agent-merges-update-text-and-vstack-maintain-keeps-the-books.md) removed the Update sample rerun. The corpus check now runs by hand through `scripts/addon-judge-check.ts`.
+
 Each adopted pstack principle stays a hidden skill (`disable-model-invocation: true`) that maps 1:1 to its Upstream item, and no principle text sits in the system prompt. An omp extension that ships in the vstack plugin handles `before_agent_start` in the main session. It sends the user's prompt to TypeSafe jev (`jev-latest`) through `POST /v1/systemone`, with one `noul` question per principle, written in auto-thinking's style: "judge the inherent task, not its phrasing; if torn, answer no", with true/false criteria. Every principle scoring 0.75 or higher that hasn't already been injected this session is added as one hidden message pointing at `skill://principle-<name>`, which tells the agent to ignore it if it doesn't fit. Skill steps still cite principles as `skill://principle-<name>`. We chose this design because a principle list the agent sees on every turn, or re-reads whenever a trigger fires, pulls the agent off course over a session. We also chose it because many pstack triggers are broad or already covered by omp's harness prompt, so no hand-curated list stayed both small and useful.
 
 ## Considered Options

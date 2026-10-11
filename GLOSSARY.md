@@ -42,6 +42,28 @@ _Avoid_: workflow (when a pstack playbook is meant), recipe
 The exact Upstream version vstack was last reconciled with: a release tag for the Base upstream and the Prose upstream, a full commit SHA for the Enhancement upstream, the Diagram upstream, and the CSS upstream.
 _Avoid_: lock, version (unqualified)
 
+### Skills
+
+**Matt skill**:
+A vstack skill that has at least one Base upstream row in the Decision register, whether its Disposition is adopt, adapt, or merge. Matt skills are the core of vstack: the user starts all changes through them.
+_Avoid_: core skill, base skill
+
+**Matt flow**:
+Every Matt skill that only the user can start, such as grill-with-docs, grill-me, teach, and implement. A change takes one path through it: the grill first and implement last. When the grill closes, it decides the path: a change that fits one session goes to implement directly, and a bigger change goes through to-spec and to-tickets first.
+_Avoid_: main flow, pipeline, workflow (unqualified)
+
+**Addon**:
+A vstack skill that is neither a Matt skill nor a Utility skill. It holds the knowledge that one or more Matt skills need for one kind of work, such as a vstack Update. Matt skills do the work, and an Addon has no flow of its own. vstack loads an Addon only while a Matt skill runs, and the user never starts one by name. A Matt skill runs while the active conversation branch holds the prompt where the user typed it.
+_Avoid_: extension, plugin
+
+**Utility skill**:
+A vstack skill that is not a Matt skill and that the user can use whatever the work is. vstack-prose, diagram-design, good-css, and skill-creator set how text, figures, styles, and skills are made. explain, how, why, and forensics answer questions about existing work. migrate-to-vstack moves a machine or project from the Base upstream to vstack. The hidden helpers are vstack-tmp, vstack-fan-out, grilling-page, and vstack-worktree. Other skills name these helpers by `skill://`. Utility skills can start from their descriptions, from a rule, or by name, subject to each skill's invocation settings.
+_Avoid_: standalone skill, helper skill
+
+**Command**:
+A slash command that the vstack extension adds, such as `/vstack-clean`. It runs a fixed job with no model and no judgment, and the user starts it by name. It is not a skill, so it is not a Matt skill, a Utility skill, or an Addon.
+_Avoid_: extension command, Addon command
+
 ### Choices
 
 **Disposition**:

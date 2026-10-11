@@ -8,10 +8,6 @@
 // contents, for the one check that runs an Upstream script (the CSS upstream's page lint); a blobless clone
 // fetches that blob from its remote on first read.
 //
-// The clone helpers below (syncClone, newestTag, newestCommit, resolveRef, readBlobs, renamePairs) are for
-// update-plan, the one script that clones and fetches branches and tags. fetchRefs is for the Hand edit, which
-// fetches only the refs it names. readBlobs and writeEntry also serve the Hand edit's take. Nothing here moves
-// a clone's HEAD.
 
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";

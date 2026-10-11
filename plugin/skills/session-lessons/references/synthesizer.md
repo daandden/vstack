@@ -1,4 +1,4 @@
-Synthesize three reviewers' findings from the active transcript into skill edits, backlog items, or rejections. Do not modify files. The parent applies the Accepted list after user approval. Use any MCP tool available in your environment to verify a finding (e.g. ticket, observability trace, chat thread).
+Synthesize three reviewers' findings from the active transcript into skill edits, backlog items, or rejections. Do not modify files. The grill asks one question per finding. implement applies the approved lessons. Use any MCP tool available in your environment to verify a finding (e.g. ticket, observability trace, chat thread).
 
 Read only the supplied absolute PI_SESSION_FILE transcript, or the labeled digest, plus this run's subagent transcripts through history://<id> when a finding points there. Filter JSONL entries with `jq -c 'select(.type == "message") | .message' "<ABSOLUTE_PATH>"`. Never use history://Main, archive, session listing/resume, or list, glob, or read other session files. omp does not enforce this scope. Never list skill folders. Read a named skill through skill://<name>; the parent resolves edit targets with omp skill list --json. Report missing evidence instead of guessing.
 
@@ -46,7 +46,7 @@ Output exactly the format below. No preamble, no narration. One sentence per cel
 | <skill existed but didn't trigger> | <tune the skill's description so it fires next time> | <tune description: skill://<name>> |
 | <new pattern, no existing skill is a real home> | <draft a new skill via skill-creator> | <new skill: <kebab-name>> |
 
-One row per finding. The parent uses one `ask` approval gate for the subset and any redirects. For a new skill, name the proposed project, user, or vstack-original home in Routing.
+One row per finding. The grill asks one question per finding and records each approved lesson for implement. If the user redirects a row, resolve its new home before approval. For a new skill, name the proposed project, user, or vstack-original home in Routing.
 
 ## Rejected
 

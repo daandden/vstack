@@ -78,6 +78,7 @@ test("text output ends with OK on a pass", async () => {
 test("migrate-to-vstack's exact Migration copy passes, including the deliberate old phrases", async () => {
   const r = await runSpec(s => {
     s.register.originals.push("plugin/skills/migrate-to-vstack");
+    s.register.utility.push("plugin/skills/migrate-to-vstack");
     s.files["plugin/skills/migrate-to-vstack/SKILL.md"] = "Migration\n";
     s.files["plugin/skills/migrate-to-vstack/references/house-style.yaml"] = Bun.YAML.stringify({ replacements: s.houseStyle.replacements.filter(row => row.uses.includes("migration")) });
   });
@@ -88,17 +89,97 @@ test("skill-ref permits an explicitly named omp built-in without hiding a bare s
   expect((await runSpec(addTo(GONE, builtin))).json!.failures).toEqual([]);
   expect(failuresOf(await runSpec(addTo(GONE, `${builtin}, then /keep`)))).toEqual(["skill-ref alpha/gone"]);
 });
-test("unrouted-skill exempts a principle-* skill that ask-vstack does not name", async () => {
-  const r = await runSpec((s) => {
-    s.register.originals.push("plugin/skills/principle-fixture");
-    s.files["plugin/skills/principle-fixture/SKILL.md"] = "---\nname: principle-fixture\ndescription: principle\n---\nprinciple\n";
-  });
-  expect(r.json!.failures).toEqual([]);
-  expect(r.code).toBe(0);
-});
 
+describe("Addon routes", () => {
+  test("skill pointers pass in plugin text and the README", async () => {
+    const r = await runSpec((s) => {
+      s.files["plugin/rules/fx-rule.md"] += "Read skill://fixture-addon.\n";
+      s.files["README.md"] = "Read skill://fixture-addon.\n";
+    });
+    expect(r.json!.failures).toEqual([]);
+    expect(r.code).toBe(0);
+  });
+
+  test("Matt and Utility slash routes pass", async () => {
+    const r = await runSpec(addTo("plugin/rules/fx-rule.md", "Read /skill:keep and /skill:fixture-helper."));
+    expect(r.json!.failures).toEqual([]);
+    expect(r.code).toBe(0);
+  });
+
+  test("the CHANGELOG is not shipped text", async () => {
+    const r = await runSpec((s) => (s.files["CHANGELOG.md"] = "Removed /skill:fixture-addon.\n"));
+    expect(r.json!.failures).toEqual([]);
+    expect(r.code).toBe(0);
+  });
+
+  test("a longer slash name does not route its Addon prefix", async () => {
+    const r = await runSpec(addTo("plugin/rules/fx-rule.md", "Read /skill:fixture-addon-extra."));
+    expect(r.json!.failures).toEqual([]);
+    expect(r.code).toBe(0);
+  });
+});
 // One fixture per failure class. Each case lists the exact failures expected as "<class> <item>".
 const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expected: string[] }[] = [
+  {
+    cls: "addon-slash-route",
+    name: "a slash route in shipped plugin text",
+    mutate: addTo("plugin/rules/fx-rule.md", "Read /skill:fixture-addon."),
+    expected: ["addon-slash-route plugin/rules/fx-rule.md"],
+  },
+  {
+    cls: "addon-slash-route",
+    name: "a slash route in the README",
+    mutate: (s) => (s.files["README.md"] = "Read /skill:fixture-addon.\n"),
+    expected: ["addon-slash-route README.md"],
+  },
+  {
+    cls: "addon-question-mismatch",
+    name: "a catalog key with no shipped Addon",
+    mutate: (s) => {
+      const catalog = JSON.parse(s.files["addon-questions.json"]);
+      catalog.missing = catalog["fixture-addon"];
+      s.files["addon-questions.json"] = JSON.stringify(catalog);
+    },
+    expected: ["addon-question-mismatch missing"],
+  },
+  {
+    cls: "addon-question-mismatch",
+    name: "a shipped Addon with no catalog key",
+    mutate: (s) => (s.files["addon-questions.json"] = "{}"),
+    expected: ["addon-question-mismatch fixture-addon"],
+  },
+  {
+    cls: "addon-question-mismatch",
+    name: "a catalog key naming a Utility skill",
+    mutate: (s) => {
+      const catalog = JSON.parse(s.files["addon-questions.json"]);
+      catalog["fixture-helper"] = catalog["fixture-addon"];
+      s.files["addon-questions.json"] = JSON.stringify(catalog);
+    },
+    expected: ["addon-question-mismatch fixture-helper"],
+  },
+  {
+    cls: "addon-question-mismatch",
+    name: "a catalog key naming a Matt skill",
+    mutate: (s) => {
+      const catalog = JSON.parse(s.files["addon-questions.json"]);
+      catalog.keep = catalog["fixture-addon"];
+      s.files["addon-questions.json"] = JSON.stringify(catalog);
+    },
+    expected: ["addon-question-mismatch keep"],
+  },
+  {
+    cls: "invalid-utility",
+    name: "a Utility entry with no shipped skill",
+    mutate: (s) => s.register.utility.push("plugin/skills/missing"),
+    expected: ["invalid-utility plugin/skills/missing"],
+  },
+  {
+    cls: "invalid-utility",
+    name: "a Utility entry naming a Matt skill",
+    mutate: (s) => s.register.utility.push("plugin/skills/keep"),
+    expected: ["invalid-utility plugin/skills/keep"],
+  },
   {
     cls: "non-reject-without-artifacts",
     name: "a non-reject row with no artifacts",
@@ -110,6 +191,7 @@ const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expecte
     name: "migrate-to-vstack's copy differs from the root migration rows",
     mutate: (s) => {
       s.register.originals.push("plugin/skills/migrate-to-vstack");
+      s.register.utility.push("plugin/skills/migrate-to-vstack");
       s.files["plugin/skills/migrate-to-vstack/SKILL.md"] = "Migration\n";
       s.files["plugin/skills/migrate-to-vstack/references/house-style.yaml"] = Bun.YAML.stringify({ replacements: [] });
     },
@@ -120,6 +202,7 @@ const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expecte
     name: "a shipped migrate-to-vstack missing its copy",
     mutate: (s) => {
       s.register.originals.push("plugin/skills/migrate-to-vstack");
+      s.register.utility.push("plugin/skills/migrate-to-vstack");
       s.files["plugin/skills/migrate-to-vstack/SKILL.md"] = "Migration\n";
     },
     expected: ["migration-house-style plugin/skills/migrate-to-vstack/references/house-style.yaml"],
@@ -129,6 +212,7 @@ const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expecte
     name: "an invalid match kind in the copy",
     mutate: (s) => {
       s.register.originals.push("plugin/skills/migrate-to-vstack");
+      s.register.utility.push("plugin/skills/migrate-to-vstack");
       s.files["plugin/skills/migrate-to-vstack/SKILL.md"] = "Migration\n";
       const replacements = clone(s.houseStyle.replacements.filter(r => r.uses.includes("migration")));
       replacements[0].match = "glob";
@@ -141,6 +225,7 @@ const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expecte
     name: "a schema-valid copy with changed row order",
     mutate: (s) => {
       s.register.originals.push("plugin/skills/migrate-to-vstack");
+      s.register.utility.push("plugin/skills/migrate-to-vstack");
       s.files["plugin/skills/migrate-to-vstack/SKILL.md"] = "Migration\n";
       const replacements = clone(s.houseStyle.replacements.filter(r => r.uses.includes("migration")));
       [replacements[2], replacements[3]] = [replacements[3], replacements[2]];
@@ -185,13 +270,17 @@ const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expecte
     mutate: (s) => {
       row(s, "alpha/rej").artifacts = ["plugin/skills/rej"];
       s.files["plugin/skills/rej/SKILL.md"] = "rej\n";
+      s.register.utility.push("plugin/skills/rej");
     },
     expected: ["reject-with-artifacts alpha/rej"],
   },
   {
     cls: "unregistered-artifact",
     name: "a plugin skill no row names",
-    mutate: (s) => (s.files["plugin/skills/stray/SKILL.md"] = "stray\n"),
+    mutate: (s) => {
+      s.files["plugin/skills/stray/SKILL.md"] = "stray\n";
+      s.register.utility.push("plugin/skills/stray");
+    },
     expected: ["unregistered-artifact plugin/skills/stray"],
   },
   {
@@ -367,21 +456,6 @@ const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expecte
     mutate: (s) => (s.files["plugin/skills/shared/templates/page.html"] = PAGE_TEMPLATE.violation),
     expected: ["page-css plugin/skills/shared/templates/page.html"],
   },
-  {
-    cls: "unrouted-skill",
-    name: "a shipped skill that ask-vstack does not name",
-    mutate: (s) => {
-      s.register.originals.push("plugin/skills/lonely");
-      s.files["plugin/skills/lonely/SKILL.md"] = "---\nname: lonely\ndescription: lonely\n---\nlonely\n";
-    },
-    expected: ["unrouted-skill plugin/skills/lonely"],
-  },
-  {
-    cls: "unrouted-skill",
-    name: "an ask-vstack that does not name itself",
-    mutate: (s) => (s.files["plugin/skills/ask-vstack/SKILL.md"] = s.files["plugin/skills/ask-vstack/SKILL.md"].replace("- `/skill:ask-vstack`\n", "")),
-    expected: ["unrouted-skill plugin/skills/ask-vstack"],
-  },
 ];
 
 describe("each failure class names the item", () => {
@@ -390,6 +464,13 @@ describe("each failure class names the item", () => {
       const r = await runSpec(c.mutate);
       expect(failuresOf(r)).toEqual(c.expected);
       expect(r.code).toBe(1);
+      if (["addon-slash-route", "addon-question-mismatch", "invalid-utility"].includes(c.cls)) {
+        const spec = clone(passingSpec(up));
+        c.mutate(spec);
+        const printed = await checkout(up, spec).run([], { json: false });
+        expect(printed.code).toBe(1);
+        expect(printed.stdout.split("\n").filter((line) => line.startsWith("FAIL ")).map((line) => line.split(": ")[0])).toEqual(c.expected.map((failure) => `FAIL ${failure}`));
+      }
     });
   }
 });
@@ -468,6 +549,7 @@ describe("House style scope", () => {
     const beta = await runSpec((s) => {
       row(s, "beta/adapted").artifacts = ["plugin/skills/adapted"];
       s.files["plugin/skills/adapted/SKILL.md"] = `---\nname: adapted\ndescription: adapted\n---\n${text}`;
+      s.register.utility.push("plugin/skills/adapted");
     });
     expect(beta.json!.failures).toEqual([]);
     const original = await runSpec((s) => (s.files["plugin/rules/fx-rule.md"] += text));
@@ -715,6 +797,7 @@ describe("github source (GitHub tree API)", () => {
   test("the exact Migration copy passes in CI mode, and a mismatched copy fails", async () => {
     const spec = clone(passingSpec(up));
     spec.register.originals.push("plugin/skills/migrate-to-vstack");
+    spec.register.utility.push("plugin/skills/migrate-to-vstack");
     spec.files["plugin/skills/migrate-to-vstack/SKILL.md"] = "Migration\n";
     const copy = "plugin/skills/migrate-to-vstack/references/house-style.yaml";
     spec.files[copy] = Bun.YAML.stringify({ replacements: spec.houseStyle.replacements.filter(r => r.uses.includes("migration")) });

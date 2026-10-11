@@ -1,12 +1,12 @@
 ---
 name: session-lessons
-description: Mine the current session for durable lessons and route approved changes to skills the user owns.
+description: Session lessons, three review lenses, and ownership routes for approved skill changes.
 disable-model-invocation: true
 ---
 
 # Session lessons
 
-The user invokes `/skill:session-lessons`, or asks to mine this session for lessons. Skip trivial, off-topic sessions and one-offs. An agent failing to follow clear existing guidance is not a gap in that skill.
+The grill runs the three lenses and synthesis as fact-finding, then asks one question per finding. implement makes approved edits. Skip trivial, off-topic sessions and one-offs. An agent failing to follow clear existing guidance is not a gap in that skill.
 
 ## 1. Locate the transcript
 
@@ -52,25 +52,34 @@ Always attempt this single review, even when the lenses ran inline. Report any f
 
 Read `skill://principle-encode-lessons-in-structure`. Move any Accepted item better enforced by a lint, script, metadata flag, or runtime check to Backlog. Retain the synthesizer's reasons for Rejected items.
 
-## 5. Approve and apply by home
+## 5. Approve each finding and route by home
 
-Resolve existing targets with `omp skill list --json`. Match each `skill://<name>` to its catalog record, inspect `source`, and resolve `filePath` to its real path. Names and provider folders alone do not prove ownership. Do not list skill directories. Read the target. If ownership cannot be established, list the finding in Backlog and make no edit.
+The grill resolves existing targets with `omp skill list --json`. Match each `skill://<name>` to its catalog record. Inspect `source` and resolve `filePath` to its real path. Names and provider folders alone do not prove ownership. Do not list skill directories. Read the target. Check whether the session's checkout tracks the real target, not just a package symlink. If ownership cannot be established, put the finding in Backlog and make no edit.
 
 Classify each target before approval:
 
-1. Own project or user skill: edit in place, leaving changes uncommitted. Examples include user-authored skills in `.omp/skills`, `.agents/skills`, `.claude/skills`, or `~/.omp/agent/skills`. A package symlink at one of these homes is not proof that the user authored it.
-2. vstack skill: its real path is inside a vstack clone's `plugin/`, whatever its Disposition. A new skill with the vstack-original home belongs here too. skill://vstack-edit makes every vstack change, as described below.
-3. Someone else's install, including another plugin, skills-CLI, or Skillshare package: no edit; list in Backlog because its next update overwrites the change.
+1. An own project or user skill that the session's checkout tracks goes through implement's normal path. It gets the normal branch, commit, and End state.
+2. An own skill that the session's checkout does not track gets an in-place, uncommitted edit. User-authored skills can live in `.omp/skills`, `.agents/skills`, `.claude/skills`, or `~/.omp/agent/skills`. A package symlink at one of these homes does not prove ownership.
+3. A vstack skill has its real path inside a vstack clone's `plugin/`. Resolve the clone that omp links, not another checkout with the same skill name. Inside a vstack clone, a vstack row is a normal Hand edit through implement and `skill://vstack-maintain`.
+4. From another project, an existing vstack row that is not adopt gets an in-place, uncommitted edit in the linked clone. implement reads `skill://vstack-maintain` for its review checks and gates. It runs `bun scripts/vstack-maintain.ts gates --in-place` from that clone's root. It does not run `prepare`. List all pending bookkeeping that the gates report, including `no-version-bump`, for a later Hand edit.
+5. From another project, an adopt item or a new vstack skill goes to Backlog with its proposed text. For an adopt item, include the needed flip to adapt. Leave the live tree unchanged.
+6. Someone else's install, including another plugin, skills-CLI, or Skillshare package, stays Backlog only. Its next update can overwrite a local change. A vstack skill whose real path is not in a vstack clone counts as someone else's install.
 
-Present the full Accepted / Rejected / Backlog result, with each Accepted row's resolved home, through one `ask` approval gate. Allow a subset and routing redirects; do not apply unapproved rows. A new skill's row must name its project, user, or vstack-original home and approval must confirm it. Re-resolve and classify redirected existing targets before any write; changed proposals or homes need approval through `ask`.
+The grill presents the Accepted, Rejected, and Backlog findings. Ask one question per finding, not one approval gate for the whole list. Include the proposed change, resolved home, and route in each question. Record each approved lesson with its proposed text and resolved target for implement. A new skill's finding must name its project, user, or vstack-original home. Approval must confirm that home. Allow routing redirects, then resolve and classify each redirected target again. Changed proposals or homes need their own question before approval.
 
-For each approved row on an own skill:
+The grill runs the lenses and synthesis as fact-finding. It makes no skill edits. implement makes only the approved edits on the routes above.
 
-- A trivial edit (one bullet, a tightened sentence, a stale fact) the parent makes directly.
-- A substantive edit (a new section or more than about ten lines), `tune description: skill://<name>`, and `new skill: <kebab-name>` go through `skill://skill-creator` for its draft, validation, and warranted eval flow.
-- Validate every touched skill with `bun "$(realpath skill://skill-creator/scripts/quick_validate.ts)" "<skill-directory>"`.
+For approved rows on own skills, implement makes trivial edits directly. A trivial edit is one bullet, a tightened sentence, or a stale fact. Substantive edits, description changes, and new skills use `skill://skill-creator` for its draft, validation, and warranted eval flow. Validate every touched skill with `bun "$(realpath skill://skill-creator/scripts/quick_validate.ts)" "<skill-directory>"`. For a normal vstack Hand edit, follow `skill://vstack-maintain` once with every approved vstack row.
 
-For the approved rows on vstack skills, read skill://vstack-edit and follow it once, from the root of the vstack clone (the directory above `plugin/` in the real path). Give it every approved vstack row as the change. Its draft step writes all of these rows through skill-creator, trivial or substantive.
+### In-place edits and review
+
+Before each in-place edit, implement records any earlier uncommitted change on the target. Edit the target even when it already has uncommitted changes. Preserve that earlier work and name it in the reply.
+
+Before changing any target file, copy the entire skill folder to Scratch through `skill://vstack-tmp`. Use a separate copy for each target under `<Scratch dir>/session-lessons/<run-id>/`. The copy includes the target's earlier uncommitted changes. Retain the copy's absolute path and the target's real path.
+
+In implement's one code-review pass, review `git diff --no-index <copy> <skill>` for each in-place target. Review these diffs in the same pass as any repo diff. A no-index diff's exit code 1 means that the folders differ. Do not treat it as a failed review. The snapshot makes the approved lesson's edit distinct from the earlier changes.
+
+When no approved row is tracked by the session's checkout, implement skips END-STATE steps 0a–0c, 3b, 6, and 7. Keep validation and the one review pass. Make no branch, commit, or publication for the in-place edits. Say that nothing was committed.
 
 Backlog is only listed, never filed or posted. Approval to edit skills does not authorize tracker mutations. The user files what they want.
 
@@ -78,8 +87,12 @@ Backlog is only listed, never filed or posted. Approval to edit skills does not 
 
 Return a short list:
 
-- Edits applied: absolute skill paths and one line per change. For vstack rows, add the End state that vstack-edit reached and its commit SHA or PR link.
+- Edits applied: absolute skill paths and one line per change. Distinguish tracked edits from in-place, uncommitted edits. Name earlier uncommitted changes on each in-place target.
+- Review: each Scratch copy, its target, and the no-index diff reviewed in the shared pass.
+- vstack in-place rows: the linked clone, the observed in-place gates result, and pending bookkeeping for a later Hand edit.
 - New skills: absolute paths and confirmed homes.
-- Backlog: pattern, suggested mechanism or ownership restriction; listed, not filed.
+- Backlog: proposed text, any needed adopt flip, and the suggested mechanism or ownership restriction. List items without filing them.
 - Dropped: each Rejected finding and its reason, plus unapproved rows.
 - Review limits: digest gaps, missing evidence, or failed subagents, when present.
+
+For tracked edits, report implement's reached End state and observed commit SHA or PR link. When no approved row is tracked, state that nothing was committed.

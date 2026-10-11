@@ -1,4 +1,3 @@
-// Scratch locations shared by vstack-tmp's path.ts and vstack-clean's clean.ts.
 // Layout: <home>/.vstack/tmp/<repo-key>/<kind>/<entry>.
 
 import { createHash } from "node:crypto";
@@ -11,7 +10,7 @@ export const GLOBAL_KEY = "_global";
 /** A kind is one lowercase path segment, such as `explain` or `decision-trail`. */
 export const KIND = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
-/** `<home>/.vstack/tmp`, the only directory vstack-clean deletes in. */
+/** `<home>/.vstack/tmp`, the only directory clean.ts deletes in. */
 export const scratchRoot = (home: string): string => join(home, ".vstack", "tmp");
 
 function git(cwd: string, args: string[]): string | undefined {

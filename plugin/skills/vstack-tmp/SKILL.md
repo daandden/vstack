@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # vstack-tmp
 
-Scratch is a vstack output that nothing reads after its run: an explanation page, proof evidence, an eval workspace, a decision-trail log. It lives at `~/.vstack/tmp/<repo-key>/<kind>/<entry>` until `/skill:vstack-clean` deletes it.
+Scratch is a vstack output that nothing reads after its run: an explanation page, proof evidence, an eval workspace, a decision-trail log. It lives at `~/.vstack/tmp/<repo-key>/<kind>/<entry>` until the `/vstack-clean` Command deletes it. The Command runs `scripts/clean.ts` beside this skill.
 
 ## Get the dir
 
@@ -21,7 +21,7 @@ bun "$(realpath skill://vstack-tmp/scripts/path.ts)" <kind>   # one kind dir in 
 
 - `<repo-key>` is the dir name of the main checkout plus the first 6 hex chars of a SHA-256 hash of the absolute git common dir. All worktrees of a repo get the same key. Outside a git repo the key is `_global`.
 - `<kind>` is one lowercase path segment. Use the kind your skill names: explain, verify, skill-creator, blast-radius, explorer, decision-trail, architecture-review, handoff, grilling, how, or teach.
-- Put each run's output in its own entry in the kind dir: one file, or one dir when the run writes several files. vstack-clean deletes whole entries, and it judges an entry's age by the newest file in it.
+- Put each run's output in its own entry in the kind dir: one file, or one dir when the run writes several files. The `/vstack-clean` Command deletes whole entries, and it judges an entry's age by the newest file in it.
 
 ## Subagents
 

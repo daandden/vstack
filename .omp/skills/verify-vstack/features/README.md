@@ -44,11 +44,11 @@ Keep implementation details out of the map. Name only user paths, stable handles
 - [Plugin load](./plugin-load.md): a new omp session loads every skill, agent, rule, and the extension tool from the checkout.
 - [Skill commands](./skill-command.md): `/skill:<name>` puts that skill's text from the checkout into the prompt the model gets.
 - [Rename session](./rename-session.md): the `vstack_rename_session` tool sets the session name.
-- [Scratch dir](./scratch-dir.md): the vstack-tmp path script and the vstack-clean script make, list, and delete Scratch entries.
+- [Scratch dir](./scratch-dir.md): the vstack-tmp scripts make and list Scratch entries. The `/vstack-clean` Command previews expired entries and deletes only confirmed choices.
 - [Grilling page](./grilling-page.md): the grilling-page script renders a Grilling page from a state file, and the page shows the questions and answers.
 
 ## Not mapped yet
 
-- The principle selection hook in the extension needs a TypeSafe `jev-latest` model and key. A drive cannot reach it.
-- The maintainer CLIs `scripts/check-register.ts`, `scripts/update-plan.ts`, and `scripts/vstack-update.ts`. `README.md` documents their commands and exit codes.
+- The run-gated Addon judge needs a typed Matt skill and a native TypeSafe `jev-latest` model with a key. The stub home has no key, so a drive cannot reach a pick.
+- The maintainer CLIs `scripts/check-register.ts`, `scripts/vstack-maintain.ts`, and the by-hand `scripts/addon-judge-check.ts`. `README.md` documents their commands and exit codes.
 - The setup-vstack scripts (`machine.ts`, `migrate.ts`, `migrate-project.ts`, `project.ts`). They change omp configuration and git state, so a recipe needs a throwaway `HOME` and a throwaway repo.

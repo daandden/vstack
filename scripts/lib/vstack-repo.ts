@@ -28,6 +28,8 @@ export interface ItemPattern {
 }
 
 export interface Pin extends UpstreamRef {
+  /** Base marks an Upstream whose non-reject skill rows define Matt skills. */
+  role?: string;
   pin: string;
   pin_kind: PinKind;
   /** The part of the repo vstack takes from, no slashes at either end; "" is the whole repo. */
@@ -67,6 +69,7 @@ export interface Row {
 export interface Register {
   rows: Row[];
   originals: string[];
+  utility: string[];
 }
 
 function readYaml(file: string): any {
@@ -114,7 +117,7 @@ export function parsePins(doc: any, file: string): Map<string, Pin> {
       throw new ConfigError(`${file}: upstream ${key} page_lint must be a path in that Upstream`);
     }
     const path = String(v.path ?? "").replace(/^\/+|\/+$/g, "");
-    pins.set(key, { key, repo: v.repo, pin: String(v.pin), pin_kind: v.pin_kind, path, items, ...(v.page_lint ? { pageLint: v.page_lint } : {}) });
+    pins.set(key, { key, repo: v.repo, pin: String(v.pin), pin_kind: v.pin_kind, path, items, ...(typeof v.role === "string" ? { role: v.role } : {}), ...(v.page_lint ? { pageLint: v.page_lint } : {}) });
   }
   return pins;
 }
@@ -145,7 +148,11 @@ export function parseRegister(doc: any, file: string): Register {
     };
   });
   const originals = Array.isArray(doc.originals) ? doc.originals.filter((a: unknown) => typeof a === "string") : [];
-  return { rows, originals };
+  const utility = doc.utility ?? [];
+  if (!Array.isArray(utility) || !utility.every((a: unknown) => typeof a === "string")) {
+    throw new ConfigError(`${file}: utility: must be a list of skill paths`);
+  }
+  return { rows, originals, utility };
 }
 
 /** Reads house-style.yaml. Row and rule problems come back for check-register to report; a missing file is a ConfigError. */

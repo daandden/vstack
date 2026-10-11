@@ -21,13 +21,13 @@ Record the artifact path, format, capture time, app revision when known, and the
 
 In the artifact branch, mark this step `skip: capture supplied` and continue to step 3.
 
-List the project's Verify skills named `verify-*`. In Private mode, also list `<vstack root>/skills/verify-*/` and deduplicate links and targets. If a link is missing, create the excluded absolute `.omp/skills/verify-<app>` symlink per skill://setup-app-verification. Never replace a tracked path or change a tracked ignore file. Read the skill by absolute path for this session. Resolve its helpers relative to that directory.
+List the project's Verify skills named `verify-*`. In Private mode, also list `<vstack root>/skills/verify-*/` and deduplicate links and targets. In Private mode, if a link is missing, create `.omp/skills/verify-<app>` as an absolute symlink to `<vstack root>/skills/verify-<app>`. Never replace a tracked path. Add `.omp/skills/verify-*` to the git common dir's `info/exclude` when missing. Never change a tracked ignore file. Read the skill by absolute path for this session. Resolve its helpers relative to that directory.
 
-Use the only Verify skill, or the one whose description names the symptom's app feature. If several match without a clear choice, use `ask`. If none exists, record that live proof lacks a Verify skill. Capture with the app's profiler, debugger, or CDP (Chrome DevTools Protocol) instead. Recommend /skill:setup-app-verification in the reply.
+Use the only Verify skill, or the one whose description names the symptom's app feature. If several match without a clear choice, use `ask`. If none exists, record that live proof lacks a Verify skill. Capture with the app's profiler, debugger, or CDP (Chrome DevTools Protocol) instead. Recommend a Matt run through `/skill:grill-with-docs` to set up a Verify skill in the reply.
 
 Run the selected Verify skill's Doctor, Launch, and Drive steps to reach the symptom. Attach the matching profiler or debugger. Capture a CPU profile for a spinning process, a heap snapshot for a leak, or a CDP trace for a glitch. Route capture output and app data to this run's Scratch entry. Read launch and helper commands before running them. If they write tracked files, use runtime tools or a disposable source copy as described in step 4 instead.
 
-Drift is a failure in the Verify skill's instructions while Doctor passes. A missing command, route, selector, or fixture is Drift. Wrong app behavior is a finding, never Drift. On Drift, record the failed step and its evidence. Capture through the app's profiler, debugger, or CDP instead. Never run maintain-app-verification or edit the Verify skill. Recommend /skill:maintain-app-verification in the reply.
+Drift is a failure in the Verify skill's instructions while Doctor passes. A missing command, route, selector, or fixture is Drift. Wrong app behavior is a finding, never Drift. On Drift, record the failed step and its evidence. Capture through the app's profiler, debugger, or CDP instead. Never edit the Verify skill. Recommend a Matt run through `/skill:grill-with-docs` to repair the cited Drift in the reply.
 
 This step ends with a real capture, or a cited capture blocker. Without a capture, report the blocker without claiming a diagnosis.
 
@@ -83,4 +83,4 @@ Report the following:
 - Whether a paired capture confirmed the mechanism, or the result remains the strongest hypothesis.
 - Any Drift, capture blocker, skipped step, or remaining alternative, and instrumentation cleanup.
 
-Recommend skill://diagnosing-bugs for a defect or skill://perf-issue for slowness. Pass the cited diagnosis and evidence paths as Phase 1 input. Stop at the diagnosis. Do not apply a fix or start an End-state chain.
+For a defect or slowness, recommend `/skill:diagnosing-bugs` through the Matt flow. Pass the cited diagnosis and evidence paths as Phase 1 input. Stop at the diagnosis. Do not apply a fix or start an End-state chain.

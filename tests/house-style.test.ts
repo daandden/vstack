@@ -48,7 +48,6 @@ describe("selectRows", () => {
     expect(mig.map((r) => r.id)).toEqual([
       "setup-vstack-cmd",
       "setup-vstack",
-      "ask-vstack",
       "config-dir",
       "config-block",
       "glossary-map",

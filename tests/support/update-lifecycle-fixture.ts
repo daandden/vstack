@@ -1,4 +1,4 @@
-import { chmodSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { makeUpdateFixture } from "./update-fixture.ts";
 import { git, writeFiles } from "./fixture.ts";
@@ -21,39 +21,7 @@ export function lifecycleFixture() {
       writeFiles(root, { [`${artifact}/${suffix}`]: git(repo, "show", `${ref}:${file}`) + "\n" });
     }
   }
-  // The router names every skill the fixture ships or an Update adds, so check-register's unrouted-skill passes.
-  const routes = [...new Set([...reg.items.flatMap((row: any) => row.artifacts), "plugin/skills/fresh", "plugin/skills/ask-vstack"])].map((a) => `- \`/skill:${a.split("/").at(-1)}\``);
-  reg.originals.push("plugin/skills/ask-vstack");
-  writeFiles(root, {
-    "decision-register.yaml": Bun.YAML.stringify(reg, null, 2),
-    "plugin/skills/ask-vstack/SKILL.md": `---\nname: ask-vstack\ndescription: Ask which skill fits.\n---\n${routes.join("\n")}\n`,
-    "CHANGELOG.md": "# Changelog\n\n## [Unreleased]\n",
-    "principle-questions.json": JSON.stringify({ expected: { type: "noul", instructions: "Expected" }, other: { type: "noul", instructions: "Other" } }),
-    "sample-prompts.json": JSON.stringify({ prompts: [{ id: "sample", prompt: "Fix this", expected: ["expected"], allowed: [] }] }),
-  });
+  writeFiles(root, { "CHANGELOG.md": "# Changelog\n\n## [Unreleased]\n" });
   git(root, "add", "-A"); git(root, "commit", "-qm", "installed baseline");
-  const calls = join(f.dir, "calls.jsonl"); writeFileSync(calls, "");
-  function executable(name: string, source: string) {
-    const file = join(f.dir, name + ".ts"); writeFileSync(file, source);
-    const exe = join(f.dir, name); writeFileSync(exe, `#!/bin/sh\nexec "${process.execPath}" "${file}" "$@"\n`); chmodSync(exe, 0o755); return exe;
-  }
-  const gh = executable("gh", `import { appendFileSync } from "node:fs"; const args = process.argv.slice(2); appendFileSync(${JSON.stringify(calls)}, JSON.stringify(["gh", ...args])+"\\n"); console.log(args[0] === "api" ? process.env.RELEASES ?? "[[]]" : args[1] === "list" ? process.env.OPEN_PR ?? "[]" : "https://example.invalid/pull/98");`);
-  const push = executable("push", `import { appendFileSync } from "node:fs"; appendFileSync(${JSON.stringify(calls)}, JSON.stringify(["push", ...process.argv.slice(2)])+"\\n"); if(process.env.FAIL_PUSH) process.exit(1);`);
-  // The stand-in lists the plugin's skills, agents, and rule bodies as a full load would. SMOKE_DROP names skills,
-  // agents, or rules (comma-separated) that it leaves out, as a load that skipped them would.
-  const smoke = executable("smoke", `import { existsSync, readdirSync, readFileSync } from "node:fs"; import { join } from "node:path"; if(process.env.FAIL_SMOKE) process.exit(1); const drop = (process.env.SMOKE_DROP ?? "").split(","); const plugin = process.argv[2]; const names = (dir, ext = "") => existsSync(join(plugin, dir)) ? readdirSync(join(plugin, dir)).filter(n => n.endsWith(ext)).map(n => n.slice(0, n.length - ext.length)).filter(n => !drop.includes(n)) : []; const rules = names("rules", ".md").map(n => readFileSync(join(plugin, "rules", n + ".md"), "utf8").replace(/^---[\\s\\S]*?---\\s*/, "").trim()); console.log(JSON.stringify({ skillCommands: names("skills"), agents: names("agents", ".md"), genericRules: rules.join("\\n\\n"), tools: (process.env.SMOKE_TOOLS ?? "").split(",").filter(Boolean), warnings: [] }));`);
-  async function planned(selection: string[] = []) {
-    const result = await f.run(root, selection, { FAKE_OMP_CLONE: "1" });
-    if (result.code !== 0) throw new Error(result.stderr);
-    const plan = result.plan;
-    const decisions = plan.rows.filter((r: any) => r.class !== "unchanged").map((r: any) => ({ id: r.id, action: ["adapt", "merge"].includes(r.disposition) || ["moved", "removed"].includes(r.class) ? "hold" : "accept", reason_check: "Reason still holds." }));
-    const fresh = plan.new[0];
-    const draft = join(plan.out, "drafts/fresh"); mkdirSync(draft, { recursive: true });
-    writeFileSync(join(draft, "SKILL.md"), "---\nname: fresh\ndescription: Fresh fixture\n---\nRead the local files.\n");
-    decisions.push({ id: "matt/fresh", upstream: "matt", path: fresh.path, action: "accept", disposition: "adapt", reason: "Use local files.", reason_check: "New item fits.", artifacts: ["plugin/skills/fresh"], drafts: { "plugin/skills/fresh": draft } } as any);
-    for (const n of plan.new.slice(1)) decisions.push({ id: `${n.upstream}/new-${n.path.split("/").at(-1)}`, upstream: n.upstream, path: n.path, action: "defer", gist: "Review later.", reason_check: "Deferred new item." } as any);
-    const file = join(plan.out, "choices.json"); writeFileSync(file, JSON.stringify({ decisions }));
-    return { plan, decisions, file, planFile: join(plan.out, "plan.json") };
-  }
-  return { ...f, root, gh, push, smoke, calls: () => readFileSync(calls, "utf8").split("\n").filter(Boolean).map(s => JSON.parse(s)), planned };
+  return { ...f, root };
 }
