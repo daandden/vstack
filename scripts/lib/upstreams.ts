@@ -9,7 +9,8 @@
 // fetches that blob from its remote on first read.
 //
 // The clone helpers below (syncClone, newestTag, newestCommit, resolveRef, readBlobs, renamePairs) are for
-// update-plan, the one script that clones and fetches branches and tags. Nothing here moves a clone's HEAD.
+// update-plan, the one script that clones and fetches branches and tags. fetchRefs is for the Hand edit, which
+// fetches only the refs it names. Nothing here moves a clone's HEAD.
 
 import { homedir } from "node:os";
 import { join } from "node:path";
@@ -217,6 +218,29 @@ export function syncClone(dir: string, u: UpstreamRef, remote: string): { clone:
   mustGit(clone, ["fetch", "--quiet", "--tags", "--force", "origin"], `fetching ${u.key}`);
   mustGit(clone, ["remote", "set-head", "origin", "--auto"], `refreshing origin/HEAD of ${u.key}`);
   return { clone, created: false };
+}
+
+const FULL_SHA = /^[0-9a-f]{40}$/;
+
+/**
+ * Makes `dir/<key>` hold each of `refs` (tag names or full commit SHAs) and fetches nothing else: a missing clone
+ * starts as an empty blobless repo with `origin` set, and only the refs it lacks are fetched, without branches or
+ * other tags. A clone that already has every ref is not touched. Returns the refs it fetched.
+ */
+export function fetchRefs(dir: string, u: UpstreamRef, remote: string, refs: string[]): { clone: string; fetched: string[] } {
+  const clone = join(dir, u.key);
+  if (!existsSync(clone)) {
+    mkdirSync(clone, { recursive: true });
+    mustGit(clone, ["init", "--quiet"], `creating the ${u.key} clone`);
+    mustGit(clone, ["remote", "add", "origin", `${remote.replace(/\/+$/, "")}/${u.repo}.git`], `adding origin to ${u.key}`);
+  }
+  const fetched = [...new Set(refs)].filter((ref) => !resolveRef(clone, ref));
+  if (fetched.length) {
+    // A SHA keeps a ref of its own, so gc never drops it; a tag lands under its own name, as a full clone has it.
+    const specs = fetched.map((ref) => (FULL_SHA.test(ref) ? `${ref}:refs/vstack/pins/${ref}` : `+refs/tags/${ref}:refs/tags/${ref}`));
+    mustGit(clone, ["fetch", "--quiet", "--no-tags", "--filter=blob:none", "origin", ...specs], `fetching ${fetched.join(", ")} of ${u.key}`);
+  }
+  return { clone, fetched };
 }
 
 const SEMVER_TAG = /^v(\d+)\.(\d+)\.(\d+)$/;

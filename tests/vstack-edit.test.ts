@@ -103,6 +103,26 @@ test("check reports a new name, and refuses one that clashes with an Upstream it
   expect(clash.json.reason).not.toContain("plugin/skills/fresh");
 }, 30000);
 
+test("check on a cold cache fetches only the Pins and held refs: no newer tag, branch, or commit, and blobs still load at the Pin", async () => {
+  const f = fixture();
+  const run = await started(f);
+  expect(existsSync(f.cache)).toBe(false);
+  const r = await edit(f, ["check", "--run", run.file, "--upstreams", f.cache, "--remote", f.remote, "plugin/skills/tidy"]);
+  expect({ code: r.code, reason: r.json?.reason }).toEqual({ code: 0, reason: undefined });
+  // A partial clone fetches a missing object on demand; GIT_NO_LAZY_FETCH makes this probe report it missing instead.
+  const has = (clone: string, object: string) => Bun.spawnSync(["git", "-C", clone, "cat-file", "-e", `${object}^{commit}`], { env: { ...process.env, GIT_NO_LAZY_FETCH: "1" } }).exitCode === 0;
+  const refs = (clone: string) => git(clone, "for-each-ref", "--format=%(refname)").split("\n").filter(Boolean).sort();
+  const matt = join(f.cache, "matt"), pstack = join(f.cache, "pstack");
+  // matt/held is held at v1.0.0, so check-register reads it there; v1.1.0 is the Pin.
+  expect(refs(matt)).toEqual(["refs/tags/v1.0.0", "refs/tags/v1.1.0"]);
+  expect(has(matt, git(f.mattRepo, "rev-parse", "v1.2.0^{commit}"))).toBe(false);
+  expect(has(matt, git(f.mattRepo, "rev-parse", "main"))).toBe(false);
+  expect(refs(pstack).length).toBe(1);
+  expect(has(pstack, f.pstack.c1)).toBe(true);
+  expect(has(pstack, f.pstack.c2)).toBe(false);
+  expect(git(matt, "cat-file", "blob", "v1.1.0:skills/eng/keep/SKILL.md")).toContain("name: keep");
+}, 30000);
+
 const WORDING = "---\nname: wording\ndescription: Fixture skill\n---\nRead GLOSSARY.md before you write.\n";
 function decide(f: Fixture, targets: object[]) {
   const file = join(f.dir, `decisions-${Math.random().toString(36).slice(2)}.json`);

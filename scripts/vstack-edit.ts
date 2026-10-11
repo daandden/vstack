@@ -9,7 +9,7 @@ import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSy
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { addWorktree, ensureDeps, mainCheckoutName, removeWorktree, worktreeBase, type AddedWorktree } from "./lib/omp-worktree.ts";
 import { loadGate, preflight, run } from "./lib/update-gates.ts";
-import { cloneSource, defaultUpstreamRemote, defaultUpstreamsDir, syncClone } from "./lib/upstreams.ts";
+import { cloneSource, defaultUpstreamRemote, defaultUpstreamsDir, fetchRefs } from "./lib/upstreams.ts";
 import { loadPins, parseRegister, upstreamItems, type Register } from "./lib/vstack-repo.ts";
 
 const scriptRoot = resolve(import.meta.dir, "..");
@@ -110,10 +110,17 @@ function mainRegister(wt: string) {
 
 interface UpstreamOptions { upstreams?: string; remote?: string }
 
-/** The clone cache, after a clone of each missing Upstream. An existing clone is never fetched, so it gains no newer ref. */
+/**
+ * The clone cache, holding every ref the run reads: each current Pin, and the `held_at` ref of each held row, which
+ * check-register reads. A missing clone or ref is fetched alone, so the cache gains no branch and no newer ref.
+ */
 function clones(wt: string, opts: UpstreamOptions): string {
   const dir = opts.upstreams ?? defaultUpstreamsDir();
-  for (const pin of loadPins(wt).values()) if (!existsSync(join(dir, pin.key))) syncClone(dir, pin, opts.remote ?? defaultUpstreamRemote());
+  const { register } = mainRegister(wt);
+  for (const pin of loadPins(wt).values()) {
+    const held = register.rows.filter((row) => row.upstream === pin.key && row.held_at).map((row) => row.held_at!);
+    fetchRefs(dir, pin, opts.remote ?? defaultUpstreamRemote(), [pin.pin, ...held]);
+  }
   return dir;
 }
 

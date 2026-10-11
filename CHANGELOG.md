@@ -4,6 +4,8 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+- `scripts/vstack-edit.ts` no longer clones a missing Upstream in full. check, prepare, and gates fetch only the current Pins and the `held_at` refs of held rows that the clone cache lacks, with no branch and no other tag. A cold cache no longer gains refs newer than the Pin (ADR 0014, #107).
+
 ## [0.1.44] - 2026-10-11
 
 - vstack-edit adds a new original skill, agent, or rule. check compares each new name with the Upstream items at the current Pins and never fetches a newer ref. A clash exits with code 2 before anything is written, and the skill asks for another name. prepare lists the new item under `originals:`, the skill writes a new skill's route in ask-vstack in the same run, and gates runs quick_validate on each skill directory the run added or changed (#107).
