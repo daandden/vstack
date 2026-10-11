@@ -21,8 +21,8 @@ fi
 if [ -n "$OUTSIDE" ]; then
   case "$OUTSIDE" in
     "$HOME"/*) echo "cleanup.sh: kept $OUTSIDE, it is under the real home" >&2 ;;
-    */vstack-verify-"$(basename "$RUN")") rm -rf "$OUTSIDE" && echo "removed $OUTSIDE" ;;
-    *) echo "cleanup.sh: kept $OUTSIDE, it is not this run's temp dir" >&2 ;;
+    */vstack-verify-??????) rm -rf "$OUTSIDE" && echo "removed $OUTSIDE" ;;
+    *) echo "cleanup.sh: kept $OUTSIDE, it is not a vstack-verify-XXXXXX temp dir" >&2 ;;
   esac
 fi
 rm -rf "$RUN/data"

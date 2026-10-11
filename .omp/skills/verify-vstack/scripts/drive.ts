@@ -2,8 +2,9 @@
 //
 //   bun drive.ts --plugin <plugin dir> --run <run dir> --name <drive> [--replies <replies.json>] <command-json>...
 //
-// The home is <run>/data/home. The project cwd is <os temp dir>/vstack-verify-<run name>/proj, linked from
-// <run>/data/outside: omp looks for project skills in every parent of the cwd, so a cwd under the real home loads
+// The home is <run>/data/home. The project cwd is <outside>/proj, where <outside> is a dir that mkdtemp makes once per
+// run as <os temp dir>/vstack-verify-XXXXXX and <run>/data/outside links to. load.sh reuses the same link. omp looks for
+// project skills in every parent of the cwd, so a cwd under the real home loads
 // the user's ~/.claude/skills and ~/.agents/skills. omp runs with an env of only PATH, HOME, and TERM, so it never reads
 // the real ~/.omp. The stub model is an OpenAI chat-completions server on a free 127.0.0.1 port.
 // Each model request it gets is one line of <run>/<drive>/model-requests.jsonl. It answers with the next item of
@@ -17,9 +18,9 @@
 // failed or timed out, and 2 on a usage error. The omp PID goes to <run>/data/pids before the first command, and the
 // script stops that process and the stub server before it exits.
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, realpathSync, rmdirSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, join, resolve } from "node:path";
+import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 
 const STEP_TIMEOUT_MS = 90_000;
@@ -60,11 +61,25 @@ if (!Array.isArray(replies)) usage("--replies must hold a JSON array");
 
 const run = resolve(values.run);
 const home = join(run, "data", "home");
-const outside = join(realpathSync(tmpdir()), `vstack-verify-${basename(run)}`);
-const proj = join(outside, "proj");
 const out = join(run, values.name);
-for (const dir of [join(home, ".omp", "agent"), proj, out]) mkdirSync(dir, { recursive: true });
-if (!existsSync(join(run, "data", "outside"))) symlinkSync(outside, join(run, "data", "outside"));
+for (const dir of [join(home, ".omp", "agent"), out]) mkdirSync(dir, { recursive: true });
+
+/** The run's own temp dir: the target of <run>/data/outside, made with mkdtemp by the first drive or load.sh of the run. */
+function outsideDir(): string {
+  const link = join(run, "data", "outside");
+  try { return readlinkSync(link); } catch { /* no link yet */ }
+  const made = mkdtempSync(join(realpathSync(tmpdir()), "vstack-verify-"));
+  try {
+    symlinkSync(made, link);
+    return made;
+  } catch {
+    // Another drive of this run linked its dir first. Use that one.
+    rmdirSync(made);
+    return readlinkSync(link);
+  }
+}
+const proj = join(outsideDir(), "proj");
+mkdirSync(proj, { recursive: true });
 const env = { PATH: process.env.PATH ?? "", HOME: home, TERM: "dumb" };
 
 // Link the plugin into the throwaway home. omp plugin link replaces an earlier link of the same plugin.

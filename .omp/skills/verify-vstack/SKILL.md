@@ -26,7 +26,7 @@ The user-facing parts:
 
 Each run gets its own omp home at `$VERIFY_RUN_DIR/data/home` and its own stub model port on `127.0.0.1`, chosen free by the OS. Runs in parallel do not share ports, data, or omp profiles. omp in a drive gets an env of only `PATH`, `HOME`, and `TERM`, so it never reads the real `~/.omp`.
 
-omp also loads project skills from `.claude/skills` and `.agents/skills` in every parent dir of its working directory. The run dir is under the real home, so the session's working directory is a temp dir outside it: `<os temp dir>/vstack-verify-<run dir name>/`. `$VERIFY_RUN_DIR/data/outside` links to that dir, and Cleanup deletes it.
+omp also loads project skills from `.claude/skills` and `.agents/skills` in every parent dir of its working directory. The run dir is under the real home, so the session's working directory is a temp dir outside it. The first drive or load gate of a run makes that dir with `mktemp` as `<os temp dir>/vstack-verify-XXXXXX/`. Its random name is unique, so two run dirs with the same name never share it. `$VERIFY_RUN_DIR/data/outside` links to that dir, every later drive of the run reuses it, and Cleanup deletes it.
 
 The shared instance is your own omp session and the real `~/.omp`. Never use it as the proof. It loaded the plugin when it started, so it does not show edits made since then. It also uses real models and the user's credentials.
 

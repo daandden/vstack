@@ -1,16 +1,22 @@
 #!/usr/bin/env bash
 # Runs the checkout's own load gate (scripts/lib/update-gates.ts loadGate, which runs scripts/load-smoke.sh) for one run.
 # Usage: load.sh <checkout> <run dir>
-# The smoke's home and project dir go to <os temp dir>/vstack-verify-<run name>/load, linked from <run>/data/outside,
-# because omp loads project skills from every parent of the cwd and the run dir is under the real home.
+# The smoke's home and project dir go to <outside>/load. <outside> is the run's own temp dir that <run>/data/outside
+# links to. The first drive.ts or load.sh of the run makes it with mktemp as <os temp dir>/vstack-verify-XXXXXX.
+# It is outside the run dir because omp loads project skills from every parent of the cwd, and the run dir is under
+# the real home.
 # Writes <run>/plugin-load-gate.json and <run>/plugin-load-summary.json. Exit 0 when the gate passed, else 1.
 set -euo pipefail
 if [ $# -ne 2 ]; then echo "usage: load.sh <checkout> <run dir>" >&2; exit 2; fi
 CHECKOUT=$(builtin cd "$1" && pwd -P)
 RUN=$(builtin cd "$2" && pwd)
-OUTSIDE="$(builtin cd "${TMPDIR:-/tmp}" && pwd -P)/vstack-verify-$(basename "$RUN")"
-mkdir -p "$RUN/data" "$OUTSIDE"
-[ -e "$RUN/data/outside" ] || ln -s "$OUTSIDE" "$RUN/data/outside"
+mkdir -p "$RUN/data"
+if [ ! -L "$RUN/data/outside" ]; then
+  made=$(mktemp -d "$(builtin cd "${TMPDIR:-/tmp}" && pwd -P)/vstack-verify-XXXXXX")
+  # Another drive of this run linked its dir first: use that one.
+  ln -s "$made" "$RUN/data/outside" 2>/dev/null || rmdir "$made"
+fi
+OUTSIDE=$(readlink "$RUN/data/outside")
 rm -rf "$OUTSIDE/load"
 status=0
 # shellcheck disable=SC2016 # the script is TypeScript for bun, not shell
