@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [0.1.53] - 2026-10-11
+
+- vstack-edit renames or removes a skill, agent, or rule. `check --rename <artifact>=<new artifact>` and `check --remove <artifact>` list every caller of the old name, including an Upstream form such as `/<name>` in an adopt item, and the adopt callers that need a confirmed flip. prepare moves or drops the artifact in the register and turns a row with no artifact left reject. For a rename, it adds a required House style row and checks the new name for an Upstream clash. It raises the major version for a skill or agent and refuses while a plugin file still names the old name. gates runs quick_validate only at the final paths (#110).
+
 ## [0.1.52] - 2026-10-11
 
 - The Grilling page keeps the line breaks and leading spaces of a question's `example`. Before, the page joined an example that shows rows on screen into one line.

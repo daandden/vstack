@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
-import { chmodSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { ENV, git, writeFiles } from "./support/fixture.ts";
 import { lifecycleFixture } from "./support/update-lifecycle-fixture.ts";
@@ -158,7 +158,7 @@ test("prepare refuses other actions, unchanged targets, and changes outside the 
   const run = await started(f);
   refused(await edit(f, ["prepare", "--run", run.file, "--decisions", decide(f, [editWording])]), "plugin/skills/wording has no change");
   writeFiles(run.wt, { "plugin/skills/wording/SKILL.md": WORDING });
-  refused(await edit(f, ["prepare", "--run", run.file, "--decisions", decide(f, [{ ...editWording, action: "rename" }])]), "rename");
+  refused(await edit(f, ["prepare", "--run", run.file, "--decisions", decide(f, [{ ...editWording, action: "copy" }])]), "copy");
   writeFiles(run.wt, { "plugin/skills/drift/SKILL.md": "---\nname: drift\ndescription: Fixture skill\n---\nChanged too.\n" });
   refused(await edit(f, ["prepare", "--run", run.file, "--decisions", decide(f, [editWording])]), "plugin/skills/drift");
 }, 30000);
@@ -428,6 +428,166 @@ test("a take refuses a shipped item, an item that is not at the current Pin, a p
   refused(await prepare([{ ...takeRej, path: "skills/eng/keep", artifact: "plugin/skills/keep" }]), "is adopt in matt/keep");
   expect(git(run.wt, "status", "--porcelain")).toBe("");
 }, 60000);
+
+/** The rename of the adapt skill wording to phrasing. */
+const renameWording = { action: "rename", kind: "skill", artifact: "plugin/skills/wording", to: "plugin/skills/phrasing" };
+/** The draft of a rename: the artifact moves, and its skill name follows unless `name` says otherwise. */
+function moveSkill(wt: string, from: string, to: string, name = to) {
+  renameSync(join(wt, "plugin/skills", from), join(wt, "plugin/skills", to));
+  const file = join(wt, "plugin/skills", to, "SKILL.md");
+  writeFileSync(file, readFileSync(file, "utf8").replace(`name: ${from}\n`, `name: ${name}\n`));
+}
+/** Moves the ask-vstack route of `from` to `to`, or drops it. */
+function reroute(wt: string, from: string, to?: string) {
+  const router = join(wt, "plugin/skills/ask-vstack/SKILL.md");
+  const lines = readFileSync(router, "utf8").split("\n");
+  writeFileSync(router, lines.flatMap((l) => (l === `- \`/skill:${from}\`` ? (to ? [`- \`/skill:${to}\``] : []) : [l])).join("\n"));
+}
+/** Plugin files in the worktree that still name `name` as a skill: skill://, /skill:, or a bare `/name`. */
+const naming = (wt: string, name: string) => Bun.spawnSync(["git", "grep", "--untracked", "-lE", `(skill://|/skill:|\`/)${name}\\b`, "--", "plugin"], { cwd: wt }).stdout.toString().split("\n").filter(Boolean);
+const KEEP_PHRASING = "---\nname: keep\ndescription: keep\n---\nkeep\nRun skill://phrasing after.\n";
+const TDD_CALLER = (name: string) => `---\nname: tdd\ndescription: Fixture skill\n---\nRead skill://${name}/refs/glossary.md first.\n`;
+
+test("check --rename lists every caller of the old name, the adopt callers, and the House style row, and refuses a new name that clashes or that main has", async () => {
+  const f = fixture();
+  const run = await started(f, { "plugin/skills/tdd/SKILL.md": TDD_CALLER("wording") });
+  const check = (...args: string[]) => edit(f, ["check", "--run", run.file, "--upstreams", f.cache, "--remote", f.remote, ...args]);
+  const r = await check("--rename", "plugin/skills/wording=plugin/skills/phrasing");
+  expect({ code: r.code, reason: r.json?.reason }).toEqual({ code: 0, reason: undefined });
+  expect(r.json.targets).toEqual([expect.objectContaining({
+    artifact: "plugin/skills/wording", to: "plugin/skills/phrasing", kind: "skill", action: "rename", dispositions: ["adapt"], clashes: [],
+    // keep says `/wording` in its Upstream form, ask-vstack routes /skill:wording, tdd reads skill://wording.
+    callers: ["plugin/skills/ask-vstack/SKILL.md", "plugin/skills/keep/SKILL.md", "plugin/skills/tdd/SKILL.md"],
+    adopt_callers: ["plugin/skills/keep"],
+    house_style_row: { id: "rename-wording", from: "wording", to: "phrasing", match: "ref", upstream: "any", scope: "required", uses: ["update"] },
+  })]);
+  refused(await check("--rename", "plugin/skills/wording=plugin/skills/rej"), "plugin/skills/rej clashes with matt skills/misc/rej at v1.1.0");
+  refused(await check("--rename", "plugin/skills/wording=plugin/skills/keep"), "plugin/skills/keep is already on main");
+  refused(await check("--rename", "plugin/skills/wording=plugin/agents/phrasing.md"), "a rename keeps the kind");
+  refused(await check("--rename", "plugin/skills/fresh=plugin/skills/fresher"), "plugin/skills/fresh is not on main");
+}, 30000);
+
+test("a rename moves the register row and the route, adds the House style row, raises the major version, flips a touched adopt caller only when confirmed, and passes the gates", async () => {
+  const f = fixture();
+  const run = await started(f, { "plugin/skills/tdd/SKILL.md": TDD_CALLER("wording") });
+  moveSkill(run.wt, "wording", "phrasing");
+  reroute(run.wt, "wording", "phrasing");
+  writeFiles(run.wt, { "plugin/skills/tdd/SKILL.md": TDD_CALLER("phrasing") });
+  const editTdd = { action: "edit", kind: "skill", artifact: "plugin/skills/tdd" };
+  const prepare = (targets: object[]) => edit(f, ["prepare", "--run", run.file, "--decisions", decide(f, targets), "--upstreams", f.cache, "--remote", f.remote]);
+  // keep, an adopt caller, still says `/wording`.
+  refused(await prepare([renameWording, editTdd]), "plugin/skills/keep/SKILL.md still names wording");
+  writeFiles(run.wt, { "plugin/skills/keep/SKILL.md": KEEP_PHRASING });
+  refused(await prepare([renameWording, editTdd]), "plugin/skills/keep changed but is not a target");
+  refused(await prepare([renameWording, editTdd, editKeep]), "plugin/skills/keep is adopt");
+  expect(git(run.wt, "status", "--porcelain", "--", "decision-register.yaml", "house-style.yaml", "CHANGELOG.md", "plugin/package.json")).toBe("");
+
+  const flipKeep = { ...editKeep, flip: { confirmed: true, reason: "Names phrasing after the rename." } };
+  for (let i = 0; i < 2; i++) {
+    const r = await prepare([renameWording, editTdd, flipKeep]);
+    expect({ code: r.code, reason: r.json?.reason, version: r.json?.version }).toEqual({ code: 0, reason: undefined, version: "1.0.0" });
+  }
+  const before = register(f.root), after = register(run.wt);
+  const row = (reg: any, id: string) => reg.items.find((x: any) => x.id === id);
+  expect(row(after, "matt/wording")).toEqual({ ...row(before, "matt/wording"), artifacts: ["plugin/skills/phrasing"] });
+  expect(row(after, "matt/keep")).toEqual({ ...row(before, "matt/keep"), disposition: "adapt", reason: "Names phrasing after the rename." });
+  expect(after.items.filter((x: any) => !["matt/wording", "matt/keep"].includes(x.id))).toEqual(before.items.filter((x: any) => !["matt/wording", "matt/keep"].includes(x.id)));
+  const style = (root: string) => Bun.YAML.parse(readFileSync(join(root, "house-style.yaml"), "utf8")) as any;
+  expect(style(run.wt)).toEqual({ ...style(f.root), replacements: [...style(f.root).replacements, { id: "rename-wording", from: "wording", to: "phrasing", match: "ref", upstream: "any", scope: "required", uses: ["update"] }] });
+  expect(naming(run.wt, "wording")).toEqual([]);
+
+  // quick_validate on the old path would fail: it no longer exists.
+  const gates = await edit(f, gateArgs(f, run.file));
+  expect({ code: gates.code, reason: gates.json?.reason }).toEqual({ code: 0, reason: undefined });
+  expect((await edit(f, ["reviewed", "--run", run.file])).code).toBe(0);
+  expect((await edit(f, ["finish", "--run", run.file, "--grilling", grilling(f, "Shared understanding")])).code).toBe(0);
+  expect(git(run.wt, "show", "--name-only", "--no-renames", "--format=", "HEAD").split("\n").sort()).toEqual([
+    "CHANGELOG.md", "decision-register.yaml", "house-style.yaml", "plugin/package.json", "plugin/skills/ask-vstack/SKILL.md",
+    "plugin/skills/keep/SKILL.md", "plugin/skills/phrasing/SKILL.md", "plugin/skills/tdd/SKILL.md", "plugin/skills/wording/SKILL.md",
+  ]);
+}, 120000);
+
+test("a rename whose new folder name differs from its frontmatter name fails the gates at the new path", async () => {
+  const f = fixture();
+  const run = await started(f);
+  moveSkill(run.wt, "drift", "drifting", "drift");
+  reroute(run.wt, "drift", "drifting");
+  const r = await edit(f, ["prepare", "--run", run.file, "--decisions", decide(f, [{ action: "rename", kind: "skill", artifact: "plugin/skills/drift", to: "plugin/skills/drifting" }]), "--upstreams", f.cache, "--remote", f.remote]);
+  expect({ code: r.code, reason: r.json?.reason }).toEqual({ code: 0, reason: undefined });
+  const gates = await edit(f, gateArgs(f, run.file));
+  refused(gates, "quick_validate plugin/skills/drifting");
+  expect(gates.json.reason).not.toContain("quick_validate plugin/skills/drift:");
+}, 90000);
+
+test("prepare refuses a rename that clashes, that main has, that left the old artifact, or that changes the kind, and writes nothing", async () => {
+  const f = fixture();
+  const run = await started(f);
+  const prepare = (targets: object[]) => edit(f, ["prepare", "--run", run.file, "--decisions", decide(f, targets), "--upstreams", f.cache, "--remote", f.remote]);
+  const renameDrift = (to: string) => ({ action: "rename", kind: "skill", artifact: "plugin/skills/drift", to });
+  writeFiles(run.wt, { "plugin/skills/drifting/SKILL.md": "---\nname: drifting\ndescription: Fixture skill\n---\nDrift.\n" });
+  reroute(run.wt, "drift", "drifting");
+  refused(await prepare([renameDrift("plugin/skills/drifting")]), "plugin/skills/drift still exists");
+  rmSync(join(run.wt, "plugin/skills/drift"), { recursive: true });
+  refused(await prepare([{ ...renameDrift("plugin/skills/drifting"), to: undefined }]), "plugin/skills/drift: a rename needs the new artifact path in to");
+  refused(await prepare([renameDrift("plugin/agents/drifting.md")]), "a rename keeps the kind");
+  refused(await prepare([renameDrift("plugin/skills/keep")]), "plugin/skills/keep is already on main");
+  refused(await prepare([{ ...renameDrift("plugin/skills/drifting"), flip: { confirmed: true, reason: "Not adopt." } }]), "only an adopt target takes a flip");
+  renameSync(join(run.wt, "plugin/skills/drifting"), join(run.wt, "plugin/skills/rej"));
+  reroute(run.wt, "drifting", "rej");
+  refused(await prepare([renameDrift("plugin/skills/rej")]), "plugin/skills/rej clashes with matt skills/misc/rej at v1.1.0");
+  expect(git(run.wt, "status", "--porcelain", "--", "decision-register.yaml", "house-style.yaml", "CHANGELOG.md", "plugin/package.json")).toBe("");
+}, 60000);
+
+test("a removal turns the register row reject, drops the route, raises the major version, and the gates validate the changed callers but never the removed directory", async () => {
+  const f = fixture();
+  const run = await started(f, { "plugin/skills/tdd/SKILL.md": TDD_CALLER("drift").replace("glossary.md", "steps.md") });
+  const c = await edit(f, ["check", "--run", run.file, "--remove", "plugin/skills/drift"]);
+  expect({ code: c.code, reason: c.json?.reason }).toEqual({ code: 0, reason: undefined });
+  expect(c.json.targets).toEqual([expect.objectContaining({ artifact: "plugin/skills/drift", action: "remove", dispositions: ["adapt"], callers: ["plugin/skills/ask-vstack/SKILL.md", "plugin/skills/tdd/SKILL.md"], adopt_callers: [], rejects: ["matt/drift"] })]);
+
+  rmSync(join(run.wt, "plugin/skills/drift"), { recursive: true });
+  reroute(run.wt, "drift");
+  const removeDrift = { action: "remove", kind: "skill", artifact: "plugin/skills/drift", reason: "Folded into tdd." };
+  const editTdd = { action: "edit", kind: "skill", artifact: "plugin/skills/tdd" };
+  const prepare = (targets: object[]) => edit(f, ["prepare", "--run", run.file, "--decisions", decide(f, targets)]);
+  refused(await prepare([removeDrift]), "plugin/skills/tdd/SKILL.md still names drift");
+  writeFiles(run.wt, { "plugin/skills/tdd/SKILL.md": "---\nname: tdd-broken\ndescription: Fixture skill\n---\nRun the drift steps yourself.\n" });
+  refused(await prepare([{ ...removeDrift, reason: undefined }, editTdd]), "plugin/skills/drift: a removal needs the one-line reason");
+  const r = await prepare([removeDrift, editTdd]);
+  expect({ code: r.code, reason: r.json?.reason, version: r.json?.version }).toEqual({ code: 0, reason: undefined, version: "1.0.0" });
+  const before = register(f.root), after = register(run.wt);
+  expect(after.items.find((x: any) => x.id === "matt/drift")).toEqual({ ...before.items.find((x: any) => x.id === "matt/drift"), disposition: "reject", artifacts: [], reason: "Folded into tdd." });
+  expect(git(run.wt, "status", "--porcelain", "--", "house-style.yaml")).toBe("");
+
+  // The changed caller tdd gets quick_validate; its frontmatter name is wrong.
+  refused(await edit(f, gateArgs(f, run.file)), "quick_validate plugin/skills/tdd");
+  writeFiles(run.wt, { "plugin/skills/tdd/SKILL.md": "---\nname: tdd\ndescription: Fixture skill\n---\nRun the drift steps yourself.\n" });
+  expect((await prepare([removeDrift, editTdd])).code).toBe(0);
+  const gates = await edit(f, gateArgs(f, run.file));
+  expect({ code: gates.code, reason: gates.json?.reason }).toEqual({ code: 0, reason: undefined });
+  expect(naming(run.wt, "drift")).toEqual([]);
+}, 120000);
+
+test("renaming a rule raises the patch version, and removing an original agent raises the major version", async () => {
+  const f = fixture();
+  const reg = register(f.root);
+  reg.originals.push("plugin/agents/tidier.md", "plugin/rules/tidy-paths.md");
+  const run = await started(f, { "decision-register.yaml": Bun.YAML.stringify(reg, null, 2), "plugin/agents/tidier.md": TIDIER, "plugin/rules/tidy-paths.md": RULE });
+  const prepare = (targets: object[]) => edit(f, ["prepare", "--run", run.file, "--decisions", decide(f, targets), "--upstreams", f.cache, "--remote", f.remote]);
+  renameSync(join(run.wt, "plugin/rules/tidy-paths.md"), join(run.wt, "plugin/rules/short-paths.md"));
+  const renameRule = { action: "rename", kind: "rule", artifact: "plugin/rules/tidy-paths.md", to: "plugin/rules/short-paths.md" };
+  const rule = await prepare([renameRule]);
+  expect({ code: rule.code, reason: rule.json?.reason, version: rule.json?.version }).toEqual({ code: 0, reason: undefined, version: "0.1.1" });
+  expect(register(run.wt).originals).toEqual([...register(f.root).originals.filter((a: string) => a !== "plugin/rules/tidy-paths.md"), "plugin/rules/short-paths.md"]);
+
+  rmSync(join(run.wt, "plugin/agents/tidier.md"));
+  refused(await prepare([renameRule, { action: "remove", kind: "agent", artifact: "plugin/agents/tidier.md", reason: "Unused." }]), "plugin/agents/tidier.md has no register row that a removal turns reject");
+  const agent = await prepare([renameRule, { action: "remove", kind: "agent", artifact: "plugin/agents/tidier.md" }]);
+  expect({ code: agent.code, reason: agent.json?.reason, version: agent.json?.version }).toEqual({ code: 0, reason: undefined, version: "1.0.0" });
+  expect(register(run.wt).originals).toEqual([...register(f.root).originals.filter((a: string) => !["plugin/rules/tidy-paths.md", "plugin/agents/tidier.md"].includes(a)), "plugin/rules/short-paths.md"]);
+  const gates = await edit(f, gateArgs(f, run.file));
+  expect({ code: gates.code, reason: gates.json?.reason }).toEqual({ code: 0, reason: undefined });
+}, 120000);
 
 test("a text change reruns gates and the review before finish, and a bookkeeping change reruns neither", async () => {
   const f = fixture();

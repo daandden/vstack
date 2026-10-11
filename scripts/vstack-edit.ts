@@ -9,7 +9,7 @@ import { existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, readlinkSy
 import { basename, dirname, join, relative, resolve } from "node:path";
 import { addWorktree, ensureDeps, mainCheckoutName, removeWorktree, worktreeBase, type AddedWorktree } from "./lib/omp-worktree.ts";
 import { loadGate, preflight, run } from "./lib/update-gates.ts";
-import { applyRows, findRow, parseHouseStyle, selectRows, type Replacement, type TextDisposition } from "./lib/house-style.ts";
+import { applyRows, findRow, parseHouseStyle, selectRows, type MatchKind, type Replacement, type TextDisposition } from "./lib/house-style.ts";
 import { asText, cloneSource, defaultUpstreamRemote, defaultUpstreamsDir, fetchRefs, readBlobs, writeEntry, type UpstreamSource, type UpstreamTree } from "./lib/upstreams.ts";
 import { loadPins, NEVER_SHIPPED, parseRegister, upstreamItems, type Pin, type Register } from "./lib/vstack-repo.ts";
 
@@ -19,9 +19,9 @@ const NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 /** A register unit that a Hand edit can target, with its kind: `plugin/skills/<name>`, `plugin/agents/<name>.md`, `plugin/rules/<name>.md`. */
 const TARGET = /^plugin\/(?:(skills)\/([a-z0-9-]+)|(agents|rules)\/([a-z0-9-]+)\.md)$/;
 const KIND = { skills: "skill", agents: "agent", rules: "rule" } as const;
-/** The paths a Hand edit changes and finish commits. */
-const MANAGED = ["plugin", "CHANGELOG.md", "decision-register.yaml"];
-/** The router. A run that adds a skill also writes its route here (check-register's unrouted-skill). */
+/** The paths a Hand edit changes and finish commits. house-style.yaml gains the row of a rename. */
+const MANAGED = ["plugin", "CHANGELOG.md", "decision-register.yaml", "house-style.yaml"];
+/** The router. A run that adds, takes, renames, or removes a skill also changes its route here (check-register's unrouted-skill). */
 const ROUTER = "plugin/skills/ask-vstack";
 /** The grilling closing-gate answer that confirms the result: "Shared understanding", with or without its option letter. */
 const CONFIRMED = /^(?:[A-Z]\.\s*)?Shared understanding\b/;
@@ -74,19 +74,41 @@ function target(artifact: string) {
   return { artifact, kind: KIND[(m[1] ?? m[3]) as keyof typeof KIND], name: m[2] ?? m[4]! };
 }
 
-/** Plugin files outside `artifact` that name it as `skill://<name>` or `/skill:<name>`. */
-function callers(wt: string, artifact: string, name: string): string[] {
+/** The register unit a plugin file belongs to: `plugin/skills/<name>`, or the agent or rule file itself. */
+const unitOf = (file: string) => file.split("/").slice(0, 3).join("/");
+
+/**
+ * How a rename's House style row finds a name in text: a hyphenated name anywhere as a name, a one-word name only
+ * as `/x`, `` `x` ``, `**x**`, or `skill://x`, as the rename rows in house-style.yaml do for names that are also
+ * English words.
+ */
+const nameMatch = (name: string) => ({ from: name, match: (name.includes("-") ? "name" : "ref") as MatchKind });
+
+/** The row a rename adds: required for every Upstream, so check-register fails shipped text that keeps the old name and the Update rewrites it. */
+const renameRow = (from: string, to: string): Replacement => ({ id: `rename-${from}`, ...nameMatch(from), to, upstream: "any", scope: "required", uses: ["update"] });
+
+/**
+ * Plugin files outside `artifact` that name it as `skill://<name>` or `/skill:<name>`. With `bare`, also the files
+ * where its rename row matches, such as an adopt caller's Upstream form `/<name>`.
+ */
+function callers(wt: string, artifact: string, name: string, bare = false): string[] {
   const ref = new RegExp(`(?:skill://|/skill:)${name}(?![a-z0-9-])`);
   const files = git(wt, "ls-files", "--cached", "--others", "--exclude-standard", "--", "plugin").split("\n").filter(Boolean);
   const text = (f: string) => { const p = join(wt, f); return existsSync(p) && lstatSync(p).isFile() ? readFileSync(p, "utf8") : ""; };
-  return files.filter((f) => !(f === artifact || f.startsWith(`${artifact}/`)) && ref.test(text(f))).sort();
+  const names = (t: string) => ref.test(t) || (bare && findRow(t, nameMatch(name)).length > 0);
+  return files.filter((f) => !(f === artifact || f.startsWith(`${artifact}/`)) && names(text(f))).sort();
 }
+
+/** The units among `files` that main registers as adopt: a change to one of them needs a confirmed flip. */
+const adoptUnits = (register: Register, files: string[]) =>
+  [...new Set(files.map(unitOf))].filter((u) => register.rows.some((row) => row.disposition === "adopt" && row.artifacts.includes(u))).sort();
 
 /**
  * What the flow does with a target, judged against main: `add` for a name that main and its register do not have,
- * `edit` for a registered item present in the worktree.
+ * `edit` for a registered item, which must be in the worktree unless `present` is false (a rename or removal moved
+ * or deleted it).
  */
-function classify(wt: string, pins: ReturnType<typeof loadPins>, register: Register, artifact: string) {
+function classify(wt: string, pins: ReturnType<typeof loadPins>, register: Register, artifact: string, present = true) {
   const t = target(artifact);
   const rows = register.rows.filter((row) => row.artifacts.includes(artifact));
   const original = register.originals.includes(artifact);
@@ -94,13 +116,31 @@ function classify(wt: string, pins: ReturnType<typeof loadPins>, register: Regis
     if (onMain(wt, artifact)) throw new Error(`${artifact} is on ${MAIN} but in no register row and not in originals:`);
     return { ...t, action: "add" as const, dispositions: [] as string[], rows: [] };
   }
-  if (!existsSync(join(wt, artifact))) throw new Error(`${artifact} does not exist in the run's worktree`);
+  if (present && !existsSync(join(wt, artifact))) throw new Error(`${artifact} does not exist in the run's worktree`);
   return {
     ...t,
     action: "edit" as const,
     dispositions: original ? ["original"] : [...new Set(rows.map((row) => row.disposition!))],
     rows: rows.map((row) => ({ id: row.id, upstream: row.upstream, pin: row.upstream ? pins.get(row.upstream)?.pin : undefined, path: row.path, tree: row.tree, disposition: row.disposition, reason: row.raw.reason })),
   };
+}
+
+/** A rename of `artifact` to `to`, judged against main: main registers `artifact`, and `to` is a new name of the same kind. */
+function renameTarget(wt: string, pins: ReturnType<typeof loadPins>, register: Register, artifact: string, to: string, present: boolean) {
+  const c = classify(wt, pins, register, artifact, present);
+  if (c.action === "add") throw new Error(`${artifact} is not on ${MAIN}; a rename needs an item that main registers`);
+  const t = target(to);
+  if (t.kind !== c.kind) throw new Error(`${artifact} is a ${c.kind} and ${to} is a ${t.kind}; a rename keeps the kind`);
+  if (onMain(wt, to) || register.originals.includes(to) || register.rows.some((row) => row.artifacts.includes(to))) throw new Error(`${to} is already on ${MAIN}; pick another name`);
+  return { ...c, action: "rename" as const, to, newName: t.name, house_style_row: renameRow(c.name, t.name) };
+}
+
+/** A removal of `artifact`, judged against main, with the register rows that name only it: they turn reject. */
+function removeTarget(wt: string, pins: ReturnType<typeof loadPins>, register: Register, artifact: string, present: boolean) {
+  const c = classify(wt, pins, register, artifact, present);
+  if (c.action === "add") throw new Error(`${artifact} is not on ${MAIN}; a removal needs an item that main registers`);
+  const rejects = register.rows.filter((row) => row.artifacts.length && row.artifacts.every((a) => a === artifact)).map((row) => row.id);
+  return { ...c, action: "remove" as const, rejects };
 }
 
 /** main's register, which the bookkeeping starts from: a row that prepare flipped is still adopt here, and a new item is still absent. */
@@ -160,12 +200,13 @@ class Refusal extends Error {
 /**
  * Refuses a new name that an Upstream item has at a current Pin, before anything is written. Each clash in the
  * refusal has `take`: the `--take` value that takes that item in place of the new item, or null when it cannot.
+ * A rename's new name gets no take: the renamed item stays.
  */
-async function refuseClashes(wt: string, u: Upstreams, targets: { artifact: string; clashes?: Clash[] }[]) {
+async function refuseClashes(wt: string, u: Upstreams, targets: { artifact: string; clashes?: Clash[]; rename?: boolean }[]) {
   const clashes = [];
   for (const t of targets) {
     for (const c of t.clashes ?? []) {
-      const take = await takeTarget(wt, u, c.upstream, c.path).then((x) => (x.artifact === t.artifact ? `${c.upstream}:${c.path}` : null), () => null);
+      const take = t.rename ? null : await takeTarget(wt, u, c.upstream, c.path).then((x) => (x.artifact === t.artifact ? `${c.upstream}:${c.path}` : null), () => null);
       clashes.push({ artifact: t.artifact, ...c, take });
     }
   }
@@ -236,28 +277,41 @@ function takeSpec(value: string) {
   return [value.slice(0, at), value.slice(at + 1).replace(/^\/+|\/+$/g, "")] as const;
 }
 
+function renameSpec(value: string) {
+  const at = value.indexOf("=");
+  if (at < 1 || at === value.length - 1) throw new Error(`--rename needs <artifact>=<new artifact>, such as plugin/skills/tidy=plugin/skills/tidy-notes, not ${JSON.stringify(value)}`);
+  return [value.slice(0, at), value.slice(at + 1)] as const;
+}
+
 /**
  * Each target's action, register rows and Disposition at the current Pins, and callers. A new name also gets its
- * Upstream clashes. A take gets the Upstream item, its rejected row if any, and the Disposition it ships as.
+ * Upstream clashes. A take gets the Upstream item, its rejected row if any, and the Disposition it ships as. A
+ * rename or removal also counts a caller that names the old name in an Upstream form, lists the adopt callers, and
+ * gets the House style row (rename) or the register rows that turn reject (removal).
  */
-async function check(r: Run, artifacts: string[], takes: string[], opts: UpstreamOptions) {
-  if (!artifacts.length && !takes.length) throw new Error("name at least one target artifact or --take <upstream>:<path>");
+async function check(r: Run, artifacts: string[], takes: string[], renames: string[], removes: string[], opts: UpstreamOptions) {
+  if (!artifacts.length && !takes.length && !renames.length && !removes.length) throw new Error("name at least one target artifact, --take <upstream>:<path>, --rename <artifact>=<new artifact>, or --remove <artifact>");
   const wt = r.worktree.path;
   const pins = loadPins(wt);
   const { register } = mainRegister(wt);
   const classified = artifacts.map((a) => classify(wt, pins, register, a));
+  const renamed = renames.map((spec) => renameTarget(wt, pins, register, ...renameSpec(spec), true));
+  const removed = removes.map((a) => removeTarget(wt, pins, register, a, true));
   const adds = classified.some((t) => t.action === "add");
-  const u = adds || takes.length ? upstreamsAt(wt, opts) : undefined;
-  const names = adds ? await upstreamNames(u!) : undefined;
+  const u = adds || takes.length || renamed.length ? upstreamsAt(wt, opts) : undefined;
+  const names = adds || renamed.length ? await upstreamNames(u!) : undefined;
   const edits = classified.map((t) => ({ ...t, ...(names && t.action === "add" ? { clashes: names.get(t.name) ?? [] } : {}) }));
-  await refuseClashes(wt, u!, edits);
+  const moves = renamed.map(({ newName, ...t }) => ({ ...t, clashes: names!.get(newName) ?? [] }));
+  await refuseClashes(wt, u!, [...edits, ...moves.map((t) => ({ artifact: t.to, clashes: t.clashes, rename: true }))]);
   const taken = [];
   for (const spec of takes) {
     const t = await take(wt, u!, ...takeSpec(spec));
     taken.push({ artifact: t.artifact, kind: t.kind, name: t.name, action: t.action, upstream: t.upstream, path: t.path, pin: t.pin, tree: t.tree, row: t.rowIndex === undefined ? null : t.id, disposition: t.disposition, house_style_rows: t.house_style_rows });
   }
-  const targets = [...edits, ...taken].map((t) => ({ ...t, callers: callers(wt, t.artifact, t.name) }));
-  if (new Set(targets.map((t) => t.artifact)).size !== targets.length) throw new Error("each target artifact may appear once");
+  const gone = [...moves, ...removed].map((t) => { const c = callers(wt, t.artifact, t.name, true); return { ...t, callers: c, adopt_callers: adoptUnits(register, c) }; });
+  const targets = [...[...edits, ...taken].map((t) => ({ ...t, callers: callers(wt, t.artifact, t.name) })), ...gone];
+  const named = targets.flatMap((t) => ("to" in t ? [t.artifact, t.to] : [t.artifact]));
+  if (new Set(named).size !== named.length) throw new Error("each target artifact may appear once");
   return { targets };
 }
 
@@ -267,13 +321,15 @@ interface Decisions {
     action: string;
     kind: string;
     artifact: string;
-    /** Only on an adopt target: the user confirmed the flip to adapt and gave the row's new one-line reason. */
+    /** Only on an adopt edit or rename: the user confirmed the flip to adapt and gave the row's new one-line reason. */
     flip?: { confirmed: boolean; reason: string };
     /** Only on a take: the Upstream item, as check printed it. */
     upstream?: string;
     path?: string;
-    /** Only on a take: the register row's one-line reason from the user's answers. */
+    /** Only on a take, and on a removal that turns a register row reject: the row's one-line reason from the user's answers. */
     reason?: string;
+    /** Only on a rename: the artifact path of the new name. */
+    to?: string;
   }[];
   /** CHANGELOG lines, without the leading `- `. */
   changelog: string[];
@@ -281,7 +337,7 @@ interface Decisions {
   commit: string;
 }
 
-const ACTIONS = ["add", "edit", "take"];
+const ACTIONS = ["add", "edit", "take", "rename", "remove"];
 const oneLine = (s: unknown): s is string => typeof s === "string" && s.trim() !== "" && !s.includes("\n");
 
 function decisionsAt(file: string | undefined): Decisions {
@@ -289,7 +345,8 @@ function decisionsAt(file: string | undefined): Decisions {
   const d = readJson(file);
   if (!Array.isArray(d.targets) || !d.targets.length) throw new Error("decisions need a nonempty targets array");
   for (const t of d.targets) if (!ACTIONS.includes(t?.action)) throw new Error(`${t?.artifact}: action ${JSON.stringify(t?.action)} is not supported yet; only ${ACTIONS.join(", ")} are`);
-  if (new Set(d.targets.map((t: any) => t.artifact)).size !== d.targets.length) throw new Error("each target artifact may appear once");
+  const named = d.targets.flatMap((t: any) => (t.action === "rename" && typeof t.to === "string" ? [t.artifact, t.to] : [t.artifact]));
+  if (new Set(named).size !== named.length) throw new Error("each target artifact may appear once");
   if (!Array.isArray(d.changelog) || !d.changelog.length || d.changelog.some((l: unknown) => !oneLine(l))) throw new Error("changelog must list one or more one-line entries");
   if (typeof d.commit !== "string" || !d.commit.trim()) throw new Error("commit must hold the commit message");
   return d;
@@ -298,7 +355,7 @@ function decisionsAt(file: string | undefined): Decisions {
 /** Artifact units under plugin/ that differ from main, tracked or untracked. The manifest is bookkeeping, not a unit. */
 function changedUnits(wt: string): string[] {
   const files = [...git(wt, "diff", "--name-only", MAIN, "--", "plugin").split("\n"), ...git(wt, "ls-files", "--others", "--exclude-standard", "--", "plugin").split("\n")];
-  return [...new Set(files.filter((f) => f && f !== "plugin/package.json").map((f) => f.split("/").slice(0, 3).join("/")))].sort();
+  return [...new Set(files.filter((f) => f && f !== "plugin/package.json").map(unitOf))].sort();
 }
 
 /** main's CHANGELOG with `entries` added under Unreleased, then every Unreleased line moved under the `version` heading. */
@@ -314,10 +371,11 @@ function changelog(text: string, version: string, entries: string[]): string {
 }
 
 /**
- * A register row's new values: the Disposition, the reason, and, for a taken rejected row, the artifacts. A take ships
- * the current Pin, so `unhold` drops a Hold (`held_at`, `held_path`) that check-register would compare it against.
+ * A register row's new values: a flip's or a removal's Disposition and reason, and the artifacts of a taken rejected
+ * row, a renamed artifact, or a removed one. A take ships the current Pin, so `unhold` drops a Hold (`held_at`,
+ * `held_path`) that check-register would compare it against.
  */
-interface RowChange { disposition: string; reason: string; artifacts?: string[]; unhold?: boolean }
+interface RowChange { disposition?: string; reason?: string; artifacts?: string[]; unhold?: boolean }
 
 /** The line range of the `items:` block and the first line of each row in it. */
 function itemLines(lines: string[]) {
@@ -327,11 +385,11 @@ function itemLines(lines: string[]) {
   return { items, end, starts: lines.flatMap((l, i) => (i > items && i < end && l.startsWith("  - ") ? [i] : [])) };
 }
 
-/** Refuses `out` unless it parses as `text` with `edit` applied: the line edits kept every other value. */
-function sameAs(text: string, out: string, edit: (doc: any) => void) {
+/** Refuses `out` unless it parses as `text` with `edit` applied: the line edits of `file` kept every other value. */
+function sameAs(text: string, out: string, edit: (doc: any) => void, file = "decision-register.yaml") {
   const expected = Bun.YAML.parse(text) as any;
   edit(expected);
-  if (!Bun.deepEquals(Bun.YAML.parse(out), expected)) throw new Error(`${MAIN}:decision-register.yaml has a row layout prepare cannot rewrite line by line`);
+  if (!Bun.deepEquals(Bun.YAML.parse(out), expected)) throw new Error(`${MAIN}:${file} has a layout prepare cannot rewrite line by line`);
   return out;
 }
 
@@ -346,8 +404,8 @@ function rewriteRows(text: string, changes: Map<number, RowChange>): string {
       const line = lines[i];
       if (line === undefined) continue;
       const drop = (from: number) => { for (let j = from; j < last && lines[j]!.startsWith("      "); j++) lines[j] = undefined; }; // a value's own lines
-      if (line.startsWith("    disposition:")) lines[i] = `    disposition: ${c.disposition}`;
-      else if (line.startsWith("    reason:")) lines[i] = `    reason: ${JSON.stringify(c.reason)}`;
+      if (c.disposition !== undefined && line.startsWith("    disposition:")) lines[i] = `    disposition: ${c.disposition}`;
+      else if (c.reason !== undefined && line.startsWith("    reason:")) lines[i] = `    reason: ${JSON.stringify(c.reason)}`;
       else if (c.artifacts && line.startsWith("    artifacts:")) {
         lines[i] = `    artifacts: [${c.artifacts.join(", ")}]`;
         drop(i + 1);
@@ -380,97 +438,175 @@ function appendRows(text: string, rows: { id: string; upstream: string; kind: st
   return sameAs(text, [...lines.slice(0, end), ...block, ...lines.slice(end)].join("\n"), (doc) => doc.items.push(...rows));
 }
 
+/** `text`, main's house-style.yaml, with `rows` appended at the end of `replacements:`, after every row that can write their `from`. */
+function withStyleRows(text: string, rows: Replacement[]): string {
+  if (!rows.length) return text;
+  const lines = text.split("\n");
+  const at = lines.findIndex((l) => /^replacements:\s*$/.test(l));
+  if (at < 0) throw new Error(`${MAIN}:house-style.yaml has no top-level replacements: list`);
+  let end = lines.findIndex((l, i) => i > at && /^[^\s#]/.test(l));
+  if (end < 0) end = lines.length;
+  while (end > at + 1 && !/^\s/.test(lines[end - 1]!)) end--; // blank lines and comments before the next key stay with it
+  const block = rows.flatMap((row) => [`  - id: ${row.id}`, ...(["from", "to", "match", "upstream", "scope"] as const).map((k) => `    ${k}: ${row[k]}`), `    uses: [${row.uses.join(", ")}]`]);
+  return sameAs(text, [...lines.slice(0, end), ...block, ...lines.slice(end)].join("\n"), (doc) => doc.replacements.push(...rows), "house-style.yaml");
+}
+
+/** Refuses a change to an adopt target unless the user confirmed its flip to adapt with a new reason, and a flip on any other target. */
+function refuseUnconfirmedFlip(t: Decisions["targets"][number], dispositions: string[]) {
+  const adopt = dispositions.includes("adopt");
+  const { confirmed, reason } = t.flip ?? {};
+  if (adopt && (confirmed !== true || !oneLine(reason))) {
+    throw new Error(`${t.artifact} is adopt; ${t.action === "rename" ? "a rename" : "an edit"} flips it to adapt, so the target needs flip {"confirmed": true, "reason": "<one-line new reason>"} from the user's answers`);
+  }
+  if (!adopt && t.flip !== undefined) throw new Error(`${t.artifact} is not adopt; only an adopt target takes a flip`);
+}
+
 /**
- * Refuses decisions whose action or kind differ from what main has, an adopt edit without a confirmed flip, a take
- * of anything but a rejected or unregistered item at the current Pin or without its reason, a new name that clashes
- * with an Upstream item, and plugin changes other than the targets and, for a new or taken skill, its route in
+ * Refuses decisions whose action or kind differ from what main has, an adopt edit or rename without a confirmed
+ * flip, a take of anything but a rejected or unregistered item at the current Pin or without its reason, a new name
+ * that clashes with an Upstream item, a rename or removal that left the old artifact or a file that still names it,
+ * and plugin changes other than the targets and, when the run adds, takes, renames, or removes a skill, its route in
  * ask-vstack.
  */
 async function validate(r: Run, d: Decisions, opts: UpstreamOptions) {
   const wt = r.worktree.path;
   const pins = loadPins(wt);
   const { register } = mainRegister(wt);
-  const targets = d.targets.filter((t) => t.action !== "take").map((t) => {
+  const kindOf = (t: Decisions["targets"][number], kind: string) => { if (t.kind !== kind) throw new Error(`${t.artifact}: its kind is ${kind}, not ${t.kind}`); };
+  const targets = d.targets.filter((t) => t.action === "add" || t.action === "edit").map((t) => {
     const c = classify(wt, pins, register, t.artifact);
     if (t.action !== c.action) throw new Error(c.action === "add" ? `${t.artifact} is not on ${MAIN}; its action is add, not ${t.action}` : `${t.artifact} is already on ${MAIN}; its action is edit, not ${t.action}`);
-    if (t.kind !== c.kind) throw new Error(`${t.artifact}: its kind is ${c.kind}, not ${t.kind}`);
-    const adopt = c.dispositions.includes("adopt");
-    const { confirmed, reason } = t.flip ?? {};
-    if (adopt && (confirmed !== true || !oneLine(reason))) {
-      throw new Error(`${t.artifact} is adopt; an edit flips it to adapt, so the target needs flip {"confirmed": true, "reason": "<one-line new reason>"} from the user's answers`);
-    }
-    if (!adopt && t.flip !== undefined) throw new Error(`${t.artifact} is not adopt; only an adopt target takes a flip`);
+    kindOf(t, c.kind);
+    refuseUnconfirmedFlip(t, c.dispositions);
     return c;
+  });
+  const renames = d.targets.filter((t) => t.action === "rename").map((t) => {
+    if (typeof t.to !== "string") throw new Error(`${t.artifact}: a rename needs the new artifact path in to`);
+    const x = renameTarget(wt, pins, register, t.artifact, t.to, false);
+    kindOf(t, x.kind);
+    if (existsSync(join(wt, t.artifact))) throw new Error(`${t.artifact} still exists; a rename moves it to ${t.to}`);
+    if (!existsSync(join(wt, t.to))) throw new Error(`${t.to} does not exist; move ${t.artifact} there first`);
+    refuseUnconfirmedFlip(t, x.dispositions);
+    return x;
+  });
+  const removals = d.targets.filter((t) => t.action === "remove").map((t) => {
+    const x = removeTarget(wt, pins, register, t.artifact, false);
+    kindOf(t, x.kind);
+    if (existsSync(join(wt, t.artifact))) throw new Error(`${t.artifact} still exists; a removal deletes it`);
+    if (t.flip !== undefined) throw new Error(`${t.artifact} is a removal; only an adopt edit or rename takes a flip`);
+    if (x.rejects.length && !oneLine(t.reason)) throw new Error(`${t.artifact}: a removal needs the one-line reason from the user's answers for the register rows that it turns reject (${x.rejects.join(", ")})`);
+    if (!x.rejects.length && t.reason !== undefined) throw new Error(`${t.artifact} has no register row that a removal turns reject; drop reason`);
+    return { ...x, reason: t.reason?.trim() };
   });
   const added = targets.filter((t) => t.action === "add");
   const takes = d.targets.filter((t) => t.action === "take");
-  const u = added.length || takes.length ? upstreamsAt(wt, opts) : undefined;
+  const u = added.length || takes.length || renames.length ? upstreamsAt(wt, opts) : undefined;
   const taken = [];
   for (const t of takes) {
     if (typeof t.upstream !== "string" || typeof t.path !== "string") throw new Error(`${t.artifact}: a take needs the upstream and path that check printed`);
     const x = await take(wt, u!, t.upstream, t.path);
     if (x.artifact !== t.artifact) throw new Error(`${t.upstream}:${t.path} ships as ${x.artifact}, not ${t.artifact}`);
-    if (t.kind !== x.kind) throw new Error(`${t.artifact}: its kind is ${x.kind}, not ${t.kind}`);
+    kindOf(t, x.kind);
     if (!oneLine(t.reason)) throw new Error(`${t.artifact}: a take needs the register row's one-line reason from the user's answers`);
     if (t.flip !== undefined) throw new Error(`${t.artifact} is a take; only an adopt edit takes a flip`);
     taken.push({ ...x, reason: t.reason.trim() });
   }
-  if (added.length) {
+  for (const t of renames) if (u!.replacements.some((row) => row.id === t.house_style_row.id)) throw new Error(`${MAIN}:house-style.yaml already has a row ${t.house_style_row.id}`);
+  if (added.length || renames.length) {
     const names = await upstreamNames(u!);
-    await refuseClashes(wt, u!, added.map((t) => ({ artifact: t.artifact, clashes: names.get(t.name) })));
+    await refuseClashes(wt, u!, [...added.map((t) => ({ artifact: t.artifact, clashes: names.get(t.name) })), ...renames.map((t) => ({ artifact: t.to, clashes: names.get(t.newName), rename: true }))]);
   }
   const changed = changedUnits(wt);
-  const named = new Set(d.targets.map((t) => t.artifact));
-  const routes = [...added, ...taken].some((t) => t.kind === "skill");
+  const named = new Set([...d.targets.map((t) => t.artifact), ...renames.map((t) => t.to)]);
+  const routes = [...added, ...taken, ...renames, ...removals].some((t) => t.kind === "skill");
   for (const t of targets) if (!changed.includes(t.artifact)) throw new Error(`${t.artifact} has no change from ${MAIN}; write the draft first`);
   for (const a of changed) if (!named.has(a) && !(routes && a === ROUTER)) throw new Error(`${a} changed but is not a target; add it to the decisions file or undo the change`);
-  return { added: added.map((t) => t.artifact), taken };
+  const left = [...renames, ...removals].flatMap((t) => callers(wt, t.artifact, t.name, true).map((f) => `${f} still names ${t.name}`));
+  if (left.length) throw new Error(`${left.join("; ")}. Change every caller in this run and list it as a target`);
+  return { added: added.map((t) => t.artifact), taken, renames, removals };
 }
 
-/** main's register text with `added` appended to the `originals:` block list. Refuses a layout it cannot extend exactly. */
-function withOriginals(text: string, added: string[]): string {
-  if (!added.length) return text;
+/**
+ * main's register text with `removed` dropped from the `originals:` block list, each `renamed` key changed to its
+ * value, and `added` appended. Refuses a layout it cannot change exactly.
+ */
+function withOriginals(text: string, added: string[], renamed: Map<string, string>, removed: Set<string>): string {
+  if (!added.length && !renamed.size && !removed.size) return text;
   const lines = text.split("\n");
   const at = lines.findIndex((l) => /^originals:\s*(?:\[\])?\s*$/.test(l));
   if (at < 0) throw new Error(`${MAIN}:decision-register.yaml has no top-level originals: list`);
   let end = at + 1;
   while (end < lines.length && /^\s+- /.test(lines[end]!)) end++;
   const indent = /^(\s+)- /.exec(lines[at + 1] ?? "")?.[1] ?? "  ";
-  const out = [...lines.slice(0, at), "originals:", ...lines.slice(at + 1, end), ...added.map((a) => `${indent}- ${a}`), ...lines.slice(end)].join("\n");
+  const kept = lines.slice(at + 1, end).flatMap((l) => {
+    const a = l.replace(/^\s+- /, "").trim();
+    return removed.has(a) ? [] : [renamed.has(a) ? `${indent}- ${renamed.get(a)}` : l];
+  });
+  const list = [...kept, ...added.map((a) => `${indent}- ${a}`)];
+  const out = [...lines.slice(0, at), list.length ? "originals:" : "originals: []", ...list, ...lines.slice(end)].join("\n");
   const before = parseRegister(Bun.YAML.parse(text), "main").originals;
-  if (JSON.stringify(parseRegister(Bun.YAML.parse(out), "prepared").originals) !== JSON.stringify([...before, ...added])) throw new Error(`cannot append to originals: in ${MAIN}:decision-register.yaml; keep it one block list`);
+  const expected = [...before.filter((a) => !removed.has(a)).map((a) => renamed.get(a) ?? a), ...added];
+  if (JSON.stringify(parseRegister(Bun.YAML.parse(out), "prepared").originals) !== JSON.stringify(expected)) throw new Error(`cannot change originals: in ${MAIN}:decision-register.yaml; keep it one block list`);
   return out;
 }
 
 /**
- * The bookkeeping, rebuilt from main on every run: the confirmed adopt flips, the taken rows, new originals, the
- * patch bump, and the CHANGELOG entry. A taken item that the worktree lacks is written from its Pin first; one that
- * the worktree has stays as it is, so a fix to an adapt take survives the next prepare.
+ * The bookkeeping, rebuilt from main on every run: the confirmed adopt flips, the taken rows, the moved and removed
+ * artifacts, new originals, the House style row of each rename, the version bump, and the CHANGELOG entry. A removal
+ * turns a row that names only the removed artifact reject. A rename or removal of a skill or agent, a shipped name,
+ * raises the major version; any other run the patch version. A taken item that the worktree lacks is written from its
+ * Pin first; one that the worktree has stays as it is, so a fix to an adapt take survives the next prepare.
  */
 async function prepare(r: Run, file: string | undefined, opts: UpstreamOptions) {
   const d = decisionsAt(file);
-  const { added, taken } = await validate(r, d, opts);
+  const { added, taken, renames, removals } = await validate(r, d, opts);
   const wt = r.worktree.path;
   const { text, register } = mainRegister(wt);
   const changes = new Map<number, RowChange>();
+  const change = (index: number, c: RowChange) => changes.set(index, { ...changes.get(index), ...c });
   for (const t of d.targets) {
-    if (t.flip) for (const row of register.rows) if (row.disposition === "adopt" && row.artifacts.includes(t.artifact)) changes.set(row.index, { disposition: "adapt", reason: t.flip.reason.trim() });
+    if (t.flip) for (const row of register.rows) if (row.disposition === "adopt" && row.artifacts.includes(t.artifact)) change(row.index, { disposition: "adapt", reason: t.flip.reason.trim() });
   }
-  for (const t of taken) if (t.rowIndex !== undefined) changes.set(t.rowIndex, { disposition: t.disposition, reason: t.reason, artifacts: [t.artifact], unhold: true });
+  for (const t of taken) if (t.rowIndex !== undefined) change(t.rowIndex, { disposition: t.disposition, reason: t.reason, artifacts: [t.artifact], unhold: true });
+  for (const t of renames) for (const row of register.rows) if (row.artifacts.includes(t.artifact)) change(row.index, { artifacts: row.artifacts.map((a) => (a === t.artifact ? t.to : a)) });
+  for (const t of removals) {
+    for (const row of register.rows) {
+      if (!row.artifacts.includes(t.artifact)) continue;
+      change(row.index, t.rejects.includes(row.id) ? { disposition: "reject", artifacts: [], reason: t.reason! } : { artifacts: row.artifacts.filter((a) => a !== t.artifact) });
+    }
+  }
   const rows = taken.filter((t) => t.rowIndex === undefined).map((t) => ({ id: t.id, upstream: t.upstream, kind: t.itemKind, path: t.path, tree: t.tree, disposition: t.disposition, artifacts: [t.artifact], reason: t.reason }));
-  const rewritten = changes.size || rows.length || added.length ? withOriginals(appendRows(rewriteRows(text, changes), rows), added) + "\n" : undefined;
+  const renamedOriginals = new Map(renames.filter((t) => register.originals.includes(t.artifact)).map((t) => [t.artifact, t.to]));
+  const removedOriginals = new Set(removals.filter((t) => register.originals.includes(t.artifact)).map((t) => t.artifact));
+  const registerChanged = changes.size || rows.length || added.length || renamedOriginals.size || removedOriginals.size;
+  const rewritten = registerChanged ? withOriginals(appendRows(rewriteRows(text, changes), rows), added, renamedOriginals, removedOriginals) + "\n" : undefined;
+  const styleRows = renames.map((t) => t.house_style_row);
+  const style = styleRows.length ? withStyleRows(git(wt, "show", `${MAIN}:house-style.yaml`), styleRows) + "\n" : undefined;
   const manifest = git(wt, "show", `${MAIN}:plugin/package.json`);
   const [major, minor, patch] = String(JSON.parse(manifest).version).split(".").map(Number);
-  const version = `${major}.${minor}.${patch! + 1}`;
+  const shippedName = [...renames, ...removals].some((t) => t.kind === "skill" || t.kind === "agent");
+  const version = shippedName ? `${major! + 1}.0.0` : `${major}.${minor}.${patch! + 1}`;
   for (const t of taken) if (!existsSync(join(wt, t.artifact))) for (const f of t.files) writeEntry(join(wt, f.file), f.entry, f.bytes);
   if (rewritten) writeFileSync(join(wt, "decision-register.yaml"), rewritten);
   else git(wt, "restore", "--source", MAIN, "--", "decision-register.yaml");
+  if (style) writeFileSync(join(wt, "house-style.yaml"), style);
+  else git(wt, "restore", "--source", MAIN, "--", "house-style.yaml");
   writeFileSync(join(wt, "plugin/package.json"), manifest.replace(/"version":\s*"[^"]*"/, `"version": "${version}"`) + "\n");
   writeFileSync(join(wt, "CHANGELOG.md"), changelog(git(wt, "show", `${MAIN}:CHANGELOG.md`), version, d.changelog));
   save(join(r.out, "decisions.json"), d);
   save(join(r.out, "prepared.json"), { digest: digest(r) });
-  const flipped = [...changes.keys()].filter((i) => register.rows[i]!.disposition === "adopt").map((i) => register.rows[i]!.id);
-  return { version, changelog: d.changelog, targets: d.targets.map((t) => t.artifact), flipped, taken: taken.map((t) => ({ id: t.id, artifact: t.artifact, disposition: t.disposition })), originals: added };
+  const flipped = [...changes].filter(([i, c]) => register.rows[i]!.disposition === "adopt" && c.disposition === "adapt").map(([i]) => register.rows[i]!.id);
+  return {
+    version,
+    changelog: d.changelog,
+    targets: d.targets.map((t) => t.artifact),
+    flipped,
+    taken: taken.map((t) => ({ id: t.id, artifact: t.artifact, disposition: t.disposition })),
+    renamed: renames.map((t) => ({ artifact: t.artifact, to: t.to })),
+    removed: removals.map((t) => ({ artifact: t.artifact, rejected: t.rejects })),
+    house_style_rows: styleRows.map((row) => row.id),
+    originals: added,
+  };
 }
 
 /** A hash of `roots` in the worktree, by path and content, without the paths in `skip`. */
@@ -512,8 +648,9 @@ function gatesHold(r: Run) {
 interface GateOptions extends UpstreamOptions { smoke?: string; test?: string }
 
 /**
- * quick_validate on each skill directory the run added or changed, check-register, the test suite, and the load
- * gate. Runs every gate and refuses with all failures. A pass writes the receipt finish checks.
+ * quick_validate on each skill directory that exists after prepare and that the run added, changed, or renamed, at
+ * its final path: a removed skill and the old path of a renamed one get none. Then check-register, the test suite,
+ * and the load gate. Runs every gate and refuses with all failures. A pass writes the receipt finish checks.
  */
 async function gates(r: Run, opts: GateOptions) {
   const prepared = join(r.out, "decisions.json");
@@ -580,7 +717,7 @@ async function main() {
     allowPositionals: true,
     options: {
       ...Object.fromEntries(["root", "name", "gh", "omp", "run", "decisions", "smoke", "test", "upstreams", "remote", "grilling"].map((name) => [name, { type: "string" as const }])),
-      take: { type: "string", multiple: true },
+      ...Object.fromEntries(["take", "rename", "remove"].map((name) => [name, { type: "string" as const, multiple: true as const }])),
     },
   });
   const [command, ...rest] = positionals;
@@ -589,7 +726,7 @@ async function main() {
   const omp = opts.omp ?? process.env.VSTACK_OMP ?? "omp";
   if (command === "preflight") return start(root, opts.name, gh, omp);
   const r = runAt(opts.run);
-  if (command === "check") return check(r, rest, opts.take ?? [], opts);
+  if (command === "check") return check(r, rest, opts.take ?? [], opts.rename ?? [], opts.remove ?? [], opts);
   if (command === "prepare") return prepare(r, opts.decisions, opts);
   if (command === "gates") return gates(r, opts);
   if (command === "reviewed") return reviewed(r);

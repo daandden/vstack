@@ -18,7 +18,8 @@ export const WORDING_NEW = `${WORDING_OLD}Then update CONTEXT.md.\n`;
 /** Matt v1.0.0. Paths are Upstream repo paths. */
 const MATT_V1_0: Files = {
   "README.md": "matt\n",
-  "skills/eng/keep/SKILL.md": skill("keep", "keep\n"),
+  // An adopt caller of wording in the Upstream form, as adopted Matt skills keep saying `/grilling`.
+  "skills/eng/keep/SKILL.md": skill("keep", "keep\nRun `/wording` after.\n"),
   "skills/eng/grow/SKILL.md": skill("grow", "grow 1\n"),
   "skills/eng/grow/agents/openai.yaml": "policy: {}\n",
   "skills/eng/grow/refs/a.md": "a\n",
