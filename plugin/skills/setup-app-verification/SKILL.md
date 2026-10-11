@@ -1,6 +1,6 @@
 ---
 name: setup-app-verification
-description: "Generate a project-local Verify skill that drives the real app through omp tools. Use /skill:setup-app-verification when a project has no way to prove UI, CLI, or service behavior. Standard mode writes .omp/skills/verify-<app>/; Private mode uses the vstack root."
+description: "Generate a project-local Verify skill for live proof in implement's END-STATE step 4. Standard mode writes a .omp/skills/verify-* dir. Private mode uses the vstack root."
 disable-model-invocation: true
 ---
 
@@ -66,8 +66,6 @@ Keep implementation details out of the map. A proof through one entry point does
 
 Run its instructions end to end once: launch, Doctor, drive one mapped feature, capture evidence, and clean up. Make sure that evidence still exists at its named location after cleanup. Fix failed instructions and run cleanup after every failed iteration. Do not strand processes or ports. Stop on broken app behavior instead of editing product code. An unexecuted Verify skill is not a deliverable.
 
-In Standard mode, commit the proven skill directory as one commit on the current branch. Stage only its own paths, never `-A`. Use `git commit --only -- <skill directory>` so unrelated staged work stays untouched. Choose the title from recent `git log` on the default branch, or Conventional Commits if there is no visible convention. In Private mode, commit nothing, including the link and exclude file.
-
 ## 5. Report
 
-Report the skill path, surfaces, feature map, proof paths, and commit SHA, or that Private mode committed nothing. Point to `/skill:maintain-app-verification` for upkeep. State a cadence only when the user requests one.
+Report the skill path, changed files, surfaces, feature map, and proof paths. implement commits the Standard-mode output. Private-mode output stays untracked, including the link and exclude file. Upkeep uses `skill://maintain-app-verification`. State a cadence only when the user requests one.

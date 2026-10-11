@@ -1,6 +1,7 @@
 ---
 name: open-pr
-description: Open a ready, non-draft PR for the current branch with a briefing body and the proof that ran. Use for "open a PR" or as the first link of the End-state chain.
+description: Ready PR creation, briefing, and proof.
+disable-model-invocation: true
 ---
 
 # Open a PR
@@ -11,7 +12,6 @@ Accept the caller's End state, whether this run created the branch, "prune-comme
 
 
 Resolve the absolute project Scratch dir once through skill://vstack-tmp with its path script and no kind argument. Reuse the caller's supplied Scratch dir. Keep PR body files under `<Scratch dir>/verify/<app>-<run-id>/`, beside the proof they describe.
-Before task-specific items, open the todo list with steps 1–8 below copied verbatim, including their paragraphs. Keep each unfinished step as `skip: <reason>`.
 
 ## 1. Check the branch
 
@@ -21,23 +21,23 @@ Use the default branch as the base unless the user requested a stack. Pin the ba
 
 ## 2. Clean up the diff
 
-If the caller says "prune-comments already run", skip cleanup and use its final-diff proof and review. Otherwise run skill://prune-comments over the diff against the default branch. Commit accepted fixes and rerun the tests that cover every file touched. Write commit bodies through skill://technical-writing, then skill://unslop.
+If the caller says "prune-comments already run", skip cleanup and use its final-diff proof and review. Otherwise run skill://prune-comments over the diff against the default branch. Return accepted fixes to implement for the proof, review, and commit steps in END-STATE.md.
 
-If prune-comments stops because its critic is unavailable or rejects the second report, commit accepted fixes and keep going. Record prune-comments as open in the todo list and reply. Its failure never blocks the chain.
+If prune-comments stops because its critic is unavailable or rejects the second report, return accepted fixes to implement and keep going. Record prune-comments as open in the todo list and reply. Its failure never blocks the chain.
 
-For standalone cleanup, continue to live proof and skill://code-review over the final diff before step 3. Resolve Scratch once through skill://vstack-tmp with its path script and no kind argument. Use the caller's absolute project Scratch dir when supplied.
+Use the caller's final-diff proof and review. If cleanup changes the diff, return accepted edits to implement for live proof, its one review, and its step 6 commit before continuing to step 3.
 
 List the project's Verify skills named `verify-*`. In Private mode, also list `<vstack root>/skills/verify-*/` using the root from the Private-mode rule. Deduplicate links and targets. Repair missing absolute `.omp/skills/verify-<app>` links through skill://setup-app-verification. Leave shared ignores unchanged. Read a newly linked SKILL.md by absolute path for this session.
 
-Use the only Verify skill, or the one whose description names the changed surface. If several match without a clear choice, use one `ask`. If none exists, prove the change with tests and scripts. State that live proof is absent and recommend /skill:setup-app-verification.
+Use the only Verify skill, or the one whose description names the changed surface. If several match without a clear choice, use one `ask`. If none exists, prove the change with tests and scripts. State that live proof is absent and recommend skill://setup-app-verification to the caller.
 
-Save proof under `<Scratch dir>/verify/<app>-<run-id>/`. A stale Verify instruction while Doctor passes is drift. Run skill://maintain-app-verification for that named feature, then retry once. Standard-mode maintenance is its own commit on this branch. Private-mode maintenance edits the single copy in place with no commit. Treat product gaps as findings. Wrong app behavior is a finding, never drift. Review the final diff, including maintenance commits. Preserve failed or unavailable proof as such.
+Save proof under `<Scratch dir>/verify/<app>-<run-id>/`. A stale Verify instruction while Doctor passes is drift. Run skill://maintain-app-verification for that named feature, then retry once. Return Standard-mode setup and maintenance output to implement for its step 5 review and step 6 commit. Do not commit that output or run a separate review here. Resume with implement's updated final-diff proof and review. Private-mode maintenance edits the single copy in place with no commit. Treat product gaps as findings. Wrong app behavior is a finding, never drift. Preserve failed or unavailable proof as such.
 
 ## 3. Order the unpushed commits
 
 Compare local history with the fetched remote branch. Rebase only unpushed commits into small, ordered commits. Each commit has one separable change and tells the story in order. Amend when a fix belongs to a just-made unpushed commit. Use a new commit for a separable fix.
 
-Never rewrite commits already pushed to a branch this run did not create. This step orders only the unpushed suffix, even on a branch this run created. Do not force-push here. If ordering changes the diff rather than only history, repeat live proof and review before step 4.
+Never rewrite commits already pushed to a branch this run did not create. This step orders only the unpushed suffix, even on a branch this run created. Do not force-push here. If ordering changes the diff rather than only history, return the changed diff to implement for updated live proof, review, and commit before step 4.
 
 ## 4. Push the final tip
 
@@ -51,7 +51,7 @@ Otherwise read the Safety trigger list in skill://code-review. It owns the only 
 
 ## 6. Write the title and body
 
-Use skill://technical-writing, then skill://unslop for the title, PR body, and commit bodies. Apply every technical-writing layer except Diátaxis. Keep articles and use a plain verb when it works.
+Write the title, PR body, and commit bodies. Apply every technical-writing layer except Diátaxis. Keep articles and use a plain verb when it works.
 
 Follow the title convention visible in recent `git log` on the default branch. If none is visible, use Conventional Commits `type(scope): subject`. Use a short imperative subject, a real symbol when useful, and no trailing period.
 

@@ -1,6 +1,6 @@
 ---
 name: skill-creator
-description: Create or update an agent skill with appropriately scoped instructions and any needed supporting resources.
+description: Create or update an agent skill with appropriately scoped instructions and any needed supporting resources. For wording-only rewrites that preserve skill behavior and structure, use vstack-prose instead.
 ---
 
 
@@ -76,9 +76,9 @@ For a new skill, a location the user names wins. Otherwise choose `.omp/skills/<
 
 For an update, resolve `omp skill list --json`: inspect `source` and resolve `filePath` to its real path. Edit an own project or user skill in place and leave it uncommitted. Refuse someone else's install, because its next update overwrites the edit. State the reason and stop.
 
-A vstack target is a new skill in vstack, or an existing skill whose real path is inside a vstack clone's `plugin/`, whatever its Disposition. Inside an active vstack-edit run, the run's worktree holds the target. Write only the draft there, and do not hand the work to vstack-edit again. vstack-edit owns every other step, including the confirmation for an adopt target.
+A vstack target is a new skill in vstack, or an existing skill whose real path is inside a vstack clone's `plugin/`, whatever its Disposition. A change to a vstack skill is a Hand edit. When implement calls this skill in the Matt flow, use the worktree and target that it supplies. Write only the requested draft. The Matt flow owns every other step, including the confirmation for an adopt target.
 
-Outside a vstack-edit run, hand a vstack target to skill://vstack-edit before you write anything. Read that skill and follow it from the root of the vstack clone. The clone root is the directory above `plugin/` in the real path of any vstack skill, such as this one. Give it the user's request as the change. Its draft step calls this skill again.
+Outside that implement step, tell the user to start the Hand edit through `/skill:grill-with-docs` before you write anything. That run loads vstack-maintain. Give the user the request and the target's real path as input for the grill. The clone root is the directory above `plugin/` in the real path of any vstack skill, such as this one. Stop without editing the target.
 
 Names use lowercase letters, digits, and single hyphens, at most 64 characters; prefer short action-oriented names, namespaced by tool or domain when that aids discovery. The folder name matches the skill name.
 

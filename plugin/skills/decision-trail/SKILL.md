@@ -1,12 +1,12 @@
 ---
 name: decision-trail
-description: Keep a TSV decision log for unattended work and audit it with a fresh-context reviewer.
+description: Unattended decision logs and fresh-context audits.
 disable-model-invocation: true
 ---
 
 # Decision trail
 
-Keep one canonical log for work that nobody watches. The user invokes `/skill:decision-trail`. Other skills read `skill://decision-trail` at merge-ready, shipped, or when the user steps away.
+Keep one canonical log for work that nobody watches. Accept the End state passed by implement's END-STATE step 0c. Other skills read `skill://decision-trail` at merge-ready, shipped, or when the user steps away.
 
 ## Locate this run
 
@@ -34,7 +34,7 @@ If eval is unavailable, write a digest of this run's decisions, actions, evidenc
 
 The top-level agent reads `skill://vstack-tmp` and resolves the project Scratch dir once, with no kind argument. In both Standard and Private mode, use `<Scratch dir>/decision-trail/<task-slug>-<session-uuid8>.tsv`. Use a lowercase kebab-case task slug and the first eight characters of the session UUID.
 
-Fix the absolute log path once. Pass it, the project Scratch dir, and the vstack root in every prompt that logs. Chained open-pr, babysit, ship, and an isolated background babysitter append to that real file, never a clone's copy. Children never resolve Scratch again.
+Fix the absolute log path once. Pass it, the project Scratch dir, and the vstack root in every prompt that logs. Chained open-pr, babysit, and ship append to that real file, never a clone's copy. Children never resolve Scratch again.
 
 The log is Scratch, outside the vstack root under ADR 0007's Scratch exception. Children append only to the named log through `scripts/log.sh`. This permission grants no writes to adjacent files. Committing or publishing the log needs the user's approval through `ask`.
 
@@ -51,7 +51,7 @@ The log is a TSV file with one row per decision. Cells stay single-line. `refere
 
 ## Log decisions
 
-Write each entry as a teammate explains what they did. Use concrete actions and plain words. `skill://unslop` applies to log text.
+Write each entry as a teammate explains what they did. Use concrete actions and plain words. Writing rules apply to log text.
 
 Use the helper for every row, including child rows:
 

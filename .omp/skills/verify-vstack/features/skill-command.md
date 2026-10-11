@@ -24,7 +24,7 @@ Preconditions:
 - Body and directory. Read what the model got. Run `jq -r '.body.messages[-1].content | if type=="array" then map(.text // "") | join("") else . end' "$VERIFY_RUN_DIR/skill-command/model-requests.jsonl" > "$VERIFY_RUN_DIR/skill-command-prompt.txt"`. The file holds `User invoked the "vstack-tmp" skill`, the line `# vstack-tmp` from the body, and `[Skill directory: $VERIFY_RUN_DIR/data/home/.omp/plugins/node_modules/vstack/skills/vstack-tmp]`. That path is the plugin link in the run's home. Doctor shows that the link points to `$CHECKOUT/plugin`.
 - No frontmatter. `grep -c '^name: vstack-tmp' "$VERIFY_RUN_DIR/skill-command-prompt.txt"` prints `0`.
 - Arguments. The same file ends with the line `User: where does Scratch go`.
-- Hidden skill. Repeat with a skill whose frontmatter has `disable-model-invocation: true`, for example `/skill:vstack-clean`, and `--name skill-command-hidden`. The model gets that body as well.
+- Hidden skill. Repeat with a skill whose frontmatter has `disable-model-invocation: true`, for example `/skill:grill-me`, and `--name skill-command-hidden`. The model gets that body as well.
 - Your change. For an edited skill, run its command the same way and `grep -F` a line you added in the prompt file. That proves the session used the edited file.
 
 ## Gotchas

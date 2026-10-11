@@ -7,7 +7,7 @@ Review the supplied change scope against the fixed point on separate axes:
 
 - Standards checks the documented coding standards and smell baseline.
 - Spec checks the originating issue or spec.
-- Safety runs blast-radius when the diff touches what outside code depends on, or the user requests it.
+- Safety runs blast-radius only in a run when the diff touches what outside code depends on, or the user requests it.
 
 Each axis runs as its own reviewer so that findings from one do not mask another. Inline keeps reports separate in one context.
 
@@ -25,7 +25,9 @@ Capture the review scope once. For committed work, use `git diff <fixed-point>..
 
 Capture the commit list with `git log <fixed-point>..HEAD --oneline`; it may be empty for uncommitted work. Give every reviewer the same diff command, untracked paths and contents, and commit list. Use this complete scope for Safety triggers and every axis.
 
-Check Safety after pinning the diff. The user's words override the trigger list, including "check safety" and "skip safety". Run Safety when requested or when the diff changes something that code outside it depends on:
+For Safety, a run exists when the user typed `/skill:code-review` or a user-typed Matt skill runs code-review (for example, implement's review step). The prompt header `[IMPORTANT: User invoked the "code-review" skill` marks a direct user invocation. A child reviewer uses the run fact in its parent's brief. A model-started code-review is not a run.
+
+Check Safety after pinning the diff. The user's words override the trigger list, including "check safety" and "skip safety". A Safety trigger fires when requested or when the diff changes something that code outside it depends on:
 
 - Public interface: an exported symbol, endpoint, CLI command or flag, or event changes or disappears.
 - Persisted or wire data: a schema, migration, serialized format, stored key, or API payload.
@@ -34,6 +36,8 @@ Check Safety after pinning the diff. The user's words override the trigger list,
 - Lifecycle or ordering: initialization, teardown, async timing, concurrency, or cache invalidation.
 
 Record every trigger that fired, or `Safety: not triggered`. Record an explicit skip as `Safety: skipped by request`.
+
+If a trigger fires outside a run, do not read `skill://blast-radius` or run the Safety reviewer. In the Safety report, name each trigger that fired. State that no safety proof ran, and recommend `/skill:code-review` for the proof. Standards and Spec run as before.
 
 ### 2. Identify the spec source
 
@@ -70,7 +74,7 @@ Each smell reads *what it is* → *how to fix*; match it against the diff:
 
 ### 4. Run the reviewers
 
-The axes that run are Standards, Spec unless step 2 found no spec, and Safety when the step-1 trigger fired.
+The axes that run are Standards, Spec unless step 2 found no spec, and Safety only when a step-1 trigger fired within a run. An explicit "skip safety" skips Safety even within a run.
 
 When Safety runs, read `skill://vstack-tmp` and resolve the project Scratch dir once with its path script and no argument. Pass that absolute project dir, never the `blast-radius/` kind dir. A child uses the supplied dir without running the script. If this reviewer is itself a child, reuse the Scratch dir from its prompt.
 
@@ -106,6 +110,7 @@ Safety reviewer prompt. Include:
 
 - The pinned diff command, named untracked paths and contents, and commit list.
 - Every trigger that fired.
+- The run fact from step 1: "A user-started Matt run exists." A child runs Safety only when its parent's brief states this fact.
 - The brief: "Run `skill://blast-radius` on this diff and skip its step 6. Return its hand-back in under 400 words, plus the proof script and its output."
 - The supplied Scratch dir, with a distinct run entry under `blast-radius/`.
 
@@ -113,7 +118,7 @@ Safety reviewer prompt. Include:
 
 Present the reports under `## Standards`, `## Spec`, and `## Safety`, verbatim or lightly cleaned. For an axis that did not run, state why. Never merge or re-rank findings.
 
-End with one line giving each axis's finding count and worst issue within that axis. For Safety include its trigger or skip reason and whether the safety fact is proven or unproven. Keep the proof script and observed output alongside its report. Never select a worst issue across axes.
+End with one line giving each axis's finding count and worst issue within that axis. For Safety include its trigger or skip reason. When the proof ran, state whether the safety fact is proven or unproven. When a trigger fired outside a run, use `Safety: triggered, no proof (not in a run)`. Keep any proof script and observed output alongside its report. Never select a worst issue across axes.
 
 ## Why three axes
 

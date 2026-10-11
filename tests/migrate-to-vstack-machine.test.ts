@@ -94,13 +94,13 @@ test("machine smoke: 25 Matt skills, diagram/css copies, private repo, linked ch
   const p = run(h, ["plan", "--scan-root", h]); expect(p.code).toBe(0);
   const plan = p.json(); expect(plan.items.filter((i: any) => i.kind === "private-move")).toHaveLength(3);
   expect(plan.items.find((i: any) => i.kind === "skills-remove").names).toHaveLength(27);
-  expect(plan.items.find((i: any) => i.kind === "rule-rewrite").changes[0].diff).toContain("+Run /skill:setup-vstack. Use ask-vstack.");
+  expect(plan.items.find((i: any) => i.kind === "rule-rewrite").changes[0].diff).toContain("+Run /skill:setup-vstack. Use ask-matt.");
   expect(plan.notices.join(" ")).toContain("downgrade");
   const saved = join(h, "approved-plan.json"); put(saved, p.stdout);
   const a = run(h, ["apply", "--plan", saved], env); expect(a.code).toBe(0); expect(a.json().complete).toBe(true);
   for (const c of [common, sub, separate]) { expect(existsSync(join(c, "matt-pocock"))).toBe(false); expect(existsSync(join(c, "vstack/config/issue-tracker.md"))).toBe(true); }
   expect(readFileSync(join(sub, "vstack/config/issue-tracker.md"), "utf8")).toBe(`Custom fork. ${sub}/vstack/config/domain.md\n${sub}/vstack/artifacts/ticket\n`);
-  expect(readFileSync(rule, "utf8")).toBe(`Run /skill:setup-vstack. Use ask-vstack. Keep docs/vstack/issue-tracker.md.\n${sub}/vstack/config/domain.md\n`);
+  expect(readFileSync(rule, "utf8")).toBe(`Run /skill:setup-vstack. Use ask-matt. Keep docs/vstack/issue-tracker.md.\n${sub}/vstack/config/domain.md\n`);
   const lock = JSON.parse(readFileSync(join(h, ".agents/.skill-lock.json"), "utf8")); expect(Object.keys(lock.skills)).toEqual(["obsidian-markdown"]); expect(lock.dismissed.untouched).toBe(true);
   for (const name of [...MATT_NAMES, "diagram-design", "good-css"]) { expect(existsSync(join(h, ".agents/skills", name))).toBe(false); expect(existsSync(join(h, ".claude/skills", name))).toBe(false); }
   expect(existsSync(join(h, ".agents/skills/obsidian-markdown"))).toBe(true);
@@ -123,15 +123,15 @@ test("non-ordinary common dirs keep relative forms and bare prose as manual hits
 
 test("Cancel changes nothing, Choose items skips only optional work, and stale approval is refused", () => {
   const h = home(), r = repo(h), c = join(r, ".git"); store(c); installedSkills(h);
-  const rule = join(h, ".agents/rules/custom.md"); put(rule, "ask-matt\n");
+  const rule = join(h, ".agents/rules/custom.md"); put(rule, "/setup-matt-pocock-skills\n");
   const p = run(h, ["plan", "--scan-root", h]); const saved = join(h, "plan.json"); put(saved, p.stdout);
   expect(run(h, ["cancel"]).json().applied).toEqual([]); expect(existsSync(join(c, "matt-pocock"))).toBe(true);
-  put(rule, "changed ask-matt\n");
+  put(rule, "changed /setup-matt-pocock-skills\n");
   const stale = run(h, ["apply", "--plan", saved]); expect(stale.code).toBe(2); expect(stale.stderr).toContain("state changed");
   expect(existsSync(join(c, "matt-pocock"))).toBe(true);
   const a = run(h, ["apply", "--scan-root", h, "--skip", "global-skills", "--skip", `rule:${rule}`]);
   expect(a.code).toBe(1); expect(existsSync(join(c, "vstack/config"))).toBe(true);
-  expect(existsSync(join(h, ".agents/skills/tdd"))).toBe(true); expect(readFileSync(rule, "utf8")).toBe("changed ask-matt\n");
+  expect(existsSync(join(h, ".agents/skills/tdd"))).toBe(true); expect(readFileSync(rule, "utf8")).toBe("changed /setup-matt-pocock-skills\n");
 });
 
 test("the scan prunes Library, .venv and node_modules, deduplicates overlapping roots, and reports missing roots", () => {
@@ -150,9 +150,9 @@ test("all four global rule locations get proposed diffs; whole-name matching and
   const h = home(), paths = [".agents/rules/test.md", ".omp/agent/rules/test.md", ".omp/agent/AGENTS.md", ".claude/CLAUDE.md"];
   for (const p of paths) put(join(h, p), "## Agent skills\nRun /setup-matt-pocock-skills and ask-matt. ask-matt-extra stays. docs/agents/config.md\n");
   const p = run(h, ["plan"]).json(); expect(p.items).toHaveLength(4);
-  for (const item of p.items) expect(item.changes[0].diff).toContain("+Run /skill:setup-vstack and ask-vstack. ask-matt-extra stays. docs/vstack/config.md");
+  for (const item of p.items) expect(item.changes[0].diff).toContain("+Run /skill:setup-vstack and ask-matt. ask-matt-extra stays. docs/vstack/config.md");
   expect(run(h, ["apply"]).code).toBe(0);
-  for (const p of paths) expect(readFileSync(join(h, p), "utf8")).toBe("## vstack\nRun /skill:setup-vstack and ask-vstack. ask-matt-extra stays. docs/vstack/config.md\n");
+  for (const p of paths) expect(readFileSync(join(h, p), "utf8")).toBe("## vstack\nRun /skill:setup-vstack and ask-matt. ask-matt-extra stays. docs/vstack/config.md\n");
 });
 
 test("a profile move failure also retains the old rule; a skill removal failure warns without blocking private moves", () => {

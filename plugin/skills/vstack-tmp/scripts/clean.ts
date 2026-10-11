@@ -13,7 +13,7 @@
 import { lstatSync, readdirSync, rmdirSync, unlinkSync, type Stats } from "node:fs";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
-import { scratchRoot } from "../../vstack-tmp/scripts/scratch.ts";
+import { scratchRoot } from "./scratch.ts";
 
 const UNITS: Record<string, number> = { h: 3_600_000, d: 86_400_000, w: 604_800_000 };
 

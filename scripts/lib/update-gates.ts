@@ -1,4 +1,3 @@
-// The Update preflight and the load gate, shared by the maintainer scripts. Each check throws an Error when it fails.
 
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -27,19 +26,6 @@ export function run(cmd: string[], cwd: string): string {
   return r.stdout.toString().trim();
 }
 
-/**
- * Refuses to start unless `root` is the root of a vstack checkout with no Update in flight:
- * no `update/` branch, local or on origin, and no open Update PR on the `gh` CLI's repo.
- */
-export function preflight(root: string, gh: string) {
-  if (run(["git", "rev-parse", "--show-toplevel"], root) !== resolve(root)) throw new Error("cwd must be the vstack checkout root");
-  if (readJson(join(root, "plugin/package.json")).name !== "vstack") throw new Error("plugin manifest must name vstack");
-  const branches = run(["git", "for-each-ref", "--format=%(refname:short)", "refs/heads/update/", "refs/remotes/origin/update/"], root);
-  if (branches) throw new Error(`Update branches already exist (no resume): ${branches}`);
-  const prs = JSON.parse(run([gh, "pr", "list", "--state", "open", "--limit", "1000", "--json", "number,headRefName,title,url"], root));
-  const open = prs.filter((p: any) => p.headRefName?.startsWith("update/") || /^Update(?:\s|:)/i.test(p.title));
-  if (open.length) throw new Error(`Open Update PR (no resume): ${open.map((p: any) => p.url || `#${p.number}`).join(", ")}`);
-}
 
 /**
  * Runs the load smoke on `<root>/plugin` with its output in `out`, and returns the summary.

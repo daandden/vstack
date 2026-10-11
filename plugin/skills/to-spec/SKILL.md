@@ -18,6 +18,8 @@ Confirm with one `ask` that these seams match the user's expectations.
 
 3. Write the spec using the template below, then publish it to the project issue tracker. Apply the `ready-for-agent` triage label - no need for additional triage.
 
+Write a `skill://<addon>` pointer in the spec for each Addon that the session loaded, from the hidden Addon message or a `skill://` read by a running skill.
+
 <spec-template>
 
 ## Problem Statement

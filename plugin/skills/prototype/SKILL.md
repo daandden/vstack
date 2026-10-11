@@ -17,7 +17,7 @@ Identify which question is being answered — from the user's prompt, the surrou
 
 The three branches produce very different artifacts — getting this wrong wastes the whole prototype. If the question is genuinely ambiguous and the user isn't reachable, default to whichever branch better matches the surrounding code (a backend module → logic; a page or component → UI; a runtime or performance claim → behavior) and state the assumption at the top of the prototype.
 
-When the question has more than one plausible answer, build the variants the user did not ask for as well. See `skill://principle-exhaust-the-design-space`.
+When the question has more than one plausible answer, build the variants the user did not ask for as well.
 
 ## Rules that apply to all three
 

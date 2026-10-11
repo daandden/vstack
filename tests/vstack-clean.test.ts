@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { ENV } from "./support/fixture.ts";
 
-const CLEAN = join(import.meta.dir, "..", "plugin", "skills", "vstack-clean", "scripts", "clean.ts");
+const CLEAN = join(import.meta.dir, "..", "plugin", "skills", "vstack-tmp", "scripts", "clean.ts");
 const DAY = 86_400_000;
 const daysAgo = (n: number) => new Date(Date.now() - n * DAY);
 

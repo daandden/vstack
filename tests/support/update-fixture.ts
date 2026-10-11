@@ -1,12 +1,10 @@
-// Temp-dir fixtures for update-plan: two fixture Upstream repos served over file:// (matt pinned by tag,
-// pstack by commit), a clone cache, a stand-in omp (fake-omp.ts), and vstack checkouts committed on main.
 
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ENV, REPO_RULES, git, writeFiles, type Files } from "./fixture.ts";
 
-export const UPDATE_SCRIPT = join(import.meta.dir, "..", "..", "scripts", "update-plan.ts");
+export const UPDATE_SCRIPT = join(import.meta.dir, "..", "..", "scripts", "vstack-maintain.ts");
 
 const skill = (name: string, body: string) => `---\nname: ${name}\ndescription: ${name}\n---\n${body}`;
 const DRIFT_STEPS = Array.from({ length: 20 }, (_, i) => `Step ${i + 1}: check part ${i + 1} of the drift and write it down.\n`).join("");
@@ -145,7 +143,7 @@ export interface UpdateFixture {
 }
 
 export function makeUpdateFixture(): UpdateFixture {
-  const dir = mkdtempSync(join(tmpdir(), "vstack-update-"));
+  const dir = mkdtempSync(join(tmpdir(), "vstack-maintain-"));
   const mattRepo = join(dir, "remote", "fixture", "matt.git");
   const pstackRepo = join(dir, "remote", "fixture", "plugins.git");
   remoteRepo(mattRepo);
@@ -252,16 +250,17 @@ export function makeUpdateFixture(): UpdateFixture {
     ompCalls: () => readFileSync(log, "utf8").split("\n").filter(Boolean).map((l) => JSON.parse(l)),
     checkout,
     async run(root, args = [], env = {}) {
-      const cmd = ["bun", UPDATE_SCRIPT, "--root", root, "--upstreams", cache, "--remote", `file://${join(dir, "remote")}`, "--omp", omp, ...args];
+      const cmd = ["bun", UPDATE_SCRIPT, "--root", root, "--upstreams", cache, "--remote", `file://${join(dir, "remote")}`, ...args];
       const p = Bun.spawn(cmd, {
         cwd: root,
-        env: { ...ENV, HOME: home, OMP_WORKTREE_DIR: wtBase, FAKE_OMP_LOG: log, ...env },
+        env: { ...ENV, HOME: home, VSTACK_OMP: omp, FAKE_OMP_LOG: log, ...env },
         stdout: "pipe",
         stderr: "pipe",
       });
       const [stdout, stderr, code] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited]);
       let plan;
-      if (code === 0) plan = JSON.parse(stdout);
+      if (code === 0 && stdout.trim().startsWith("{")) plan = JSON.parse(stdout);
+      else if (code === 0 && args.includes("plan")) plan = JSON.parse(readFileSync(stdout.trim(), "utf8"));
       return { code, stdout, stderr, plan };
     },
   };

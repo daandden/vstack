@@ -1,6 +1,6 @@
 ---
 name: prune-comments
-description: "Spawn vstack-comment-critic, fix accepted findings, and offer encodings for claimed constraints."
+description: "Comment critique and direct fixes for implement's END-STATE step 3b, with encoding offers for claimed constraints."
 disable-model-invocation: true
 ---
 
@@ -28,22 +28,18 @@ Audit missed scoped lint and TypeScript suppressions. Correctness or safety supp
 
 Revert a rejected report's edits and request one corrected run from the same critic with the failure named. Use its existing context, not a second critic. If the second report is rejected, report it open and fail prune-comments.
 
-### 3. Shape accepted fixes
+### 3. Fix the cause directly
 
-Fix trivial accepted flags directly by deleting a dead path, dropping a parameter, or using the real API. If any fix needs a shape, run `skill://architect` once for the accepted set and surrounding code. Request "architect, sketch only" and stop at `sketch`. Step 4 implements the sketch.
+If a fix needs a new shape, report it open. Make direct fixes only, such as deleting a dead path, dropping a parameter, or using the real API. Implement the smallest root-cause fix in scope. Remove every named workaround that a direct fix resolves. If the root cause is out of scope, make the smallest direct in-scope fix and report the rest open. Read `skill://principle-redesign-from-first-principles` for intent only. It does not authorize a new shape, wider scope, or fixes outside the scope. Never add symptom guards.
 
-### 4. Fix the cause
+### 4. Offer constraint encodings
 
-Implement the smallest root-cause fix in scope. Remove every named workaround. If the root cause is out of scope, land the smallest in-scope fix and report the rest open. Read `skill://principle-fix-root-causes` and `skill://principle-redesign-from-first-principles` for intent only. Neither authorizes widening the scope or fixing instances outside it. Never add symptom guards.
-
-### 5. Offer constraint encodings
-
-Constraint comments say `do not remove`, `do not change wording`, or `talk to X before changing`. Leave keeps about things we cannot change. Offer the cheapest in-scope type, runtime, test, or CI lint. Batch every offer into one question through `ask` and wait for approval. Add each approved encoding before deleting its comment. Otherwise delete the comment, report the constraint open, and sketch out-of-scope work.
+Constraint comments say `do not remove`, `do not change wording`, or `talk to X before changing`. Leave keeps about things we cannot change. Offer the cheapest in-scope type, runtime, test, or CI lint that needs no new shape. Batch every offer into one question through `ask` and wait for approval. Add each approved encoding before deleting its comment. Otherwise delete the comment and report the constraint and any out-of-scope work open.
 
 When decision-trail is running, the run is unattended. Delete the comment, report the constraint open, and append a row to the named trail log through `skill://decision-trail`. No End state pre-approves an encoding.
 
-### 6. Report
+### 5. Report
 
-Report the deletion count, restored comments, reruns, architect sketch, fixes, encoding offers, encodings, unenforced constraints, and other open work.
+Report the deletion count, restored comments, reruns, direct fixes, fixes that need a new shape and remain open, encoding offers, encodings, unenforced constraints, and other open work.
 
 Never commit in this skill. The caller commits. On stop or failure, the caller keeps and commits accepted fixes, continues, and lists prune-comments as open.

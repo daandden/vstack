@@ -159,4 +159,4 @@ List the skills that read the config:
 
 Say that the user can edit these files directly later. Re-running this skill is needed only to switch issue trackers or to start over.
 
-Then name the next step. setup-app-verification creates this project's Verify skill, which gives live proof to implement, perf-issue, forensics, refactor, hillclimb, and ship's verifiers. Tell the user to run `/skill:setup-app-verification` in a new session (`/new`). Never run it, and never offer to run it.
+Then name the next step. setup-app-verification creates this project's Verify skill, which gives live proof to implement, forensics, hillclimb, and ship's verifiers. Tell the user to start a new session (`/new`) and run `/skill:grill-with-docs` to plan live proof. implement uses `skill://setup-app-verification` to create the Verify skill in that run.

@@ -9,10 +9,10 @@ vstack is an omp plugin. It has no build step and no server: omp loads `plugin/`
 
 The user-facing parts:
 
-- Primary: the plugin inside an omp session. That covers the skill list, `/skill:<name>` commands, the agents in the `task` tool, the always-on rules, and the extension tool `vstack_rename_session`.
-- Bun CLIs that skills run through `bun "$(realpath skill://<skill>/scripts/<script>.ts)"`, such as the Scratch scripts of vstack-tmp and vstack-clean and the grilling-page renderer.
+- Primary: the plugin inside an omp session. That covers the skill list, `/skill:<name>` commands, the model-free `/vstack-clean` Command, the agents in `task`, the always-on rules, and the extension tool `vstack_rename_session`.
+- Bun CLIs that skills run through `bun "$(realpath skill://<skill>/scripts/<script>.ts)"`, such as the Scratch scripts under vstack-tmp and the grilling-page renderer.
 - The HTML pages those scripts write, such as the Grilling page. You view them in a browser.
-- The maintainer CLIs in `scripts/` (`check-register.ts`, `update-plan.ts`, `vstack-update.ts`, `load-smoke.sh`), documented in the repo `README.md`.
+- The maintainer CLIs in `scripts/` (`check-register.ts`, `vstack-maintain.ts`, `addon-judge-check.ts`, `load-smoke.sh`), documented in the repo `README.md`.
 
 `features/README.md` indexes the feature map. Read it, then the feature file for the change, before you drive anything.
 
@@ -36,7 +36,7 @@ There is nothing to build. A launch is one drive: `scripts/drive.ts` links the p
 
 ```sh
 bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN_DIR" --name <drive> \
-  [--replies <replies.json>] '<rpc command json>' ...
+  [--no-ui] [--replies <replies.json>] '<rpc command json>' ...
 ```
 
 - `<drive>` names the evidence dir `$VERIFY_RUN_DIR/<drive>/`. Use the feature ID. The dir must be new. If it exists, the script exits 2 and writes nothing, so the earlier proof stays as it was. To retry a drive, give a new name such as `<feature>-retry1`, or start a new run dir. Never delete the old dir to reuse its name.
@@ -46,6 +46,7 @@ bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN
 Readiness: the script waits for the response to each command, and for the `prompt_result` of a prompt that starts agent work. It prints a summary JSON. `"ok": true` with exit 0 means omp started and every command completed. Exit 1 means a command failed or waited 90 seconds without a result. The summary then names that command. Exit 2 is a usage error.
 
 Teardown: the script stops its own omp process and stub server. If it was killed before that, `scripts/cleanup.sh` stops what it left (see Cleanup).
+`--no-ui` passes the same flag to `omp --mode rpc`. Extensions get `ctx.hasUI: false`. omp drops extension UI notifications, so a missing warning is a product finding when the feature requires an observable refusal.
 
 For a load check with no session turn, use the repo's own load gate. `scripts/load.sh` runs `loadGate` from the checkout's `scripts/lib/update-gates.ts`, which runs `scripts/load-smoke.sh` on a throwaway home. The gate fails when a registered skill, agent, rule, or the extension tool is missing, or when omp warns about a skill:
 
@@ -105,7 +106,7 @@ The stub model is the only mock. It stands at the model-provider boundary. Never
    It stops only the processes in `$VERIFY_RUN_DIR/data/pids` whose working directory is still this run's temp project dir. Then it deletes the temp dir that `data/outside` links to, and `$VERIFY_RUN_DIR/data/`. It refuses a dir that is not under `~/.vstack/tmp/<repo-key>/verify/`. It prints what it kept.
 3. Make sure that the proof files and `notes.md` from Evidence are still at their paths.
 
-Never stop a process because of its name. Never delete the run dir itself. `/skill:vstack-clean` removes old run dirs later.
+Never stop a process because of its name. Never delete the run dir itself. The `/vstack-clean` Command removes old run dirs later.
 
 ## Helpers
 
@@ -122,4 +123,4 @@ All paths are relative to `SKILL_DIR`.
 - `omp plugin link` in the run's home replaces the link each drive. To compare two checkouts, use two run dirs.
 - The stub model does not think. It answers with `--replies` in order, one per model request. A tool call needs a second reply for the turn after the tool result.
 - `get_state` holds the whole system prompt (about 40 KB). The summary shows only its size. Read fields from `rpc.jsonl` with `jq`.
-- The extension's principle selection runs only when a `typesafe/jev-latest` model has a key. The stub home has none, so a drive never shows it. Report it as skipped.
+- The run-gated Addon judge needs a typed Matt skill in the main session and a native `typesafe/jev-latest` model with a key. The stub home has no key, so a drive never shows a pick. Report it as skipped.

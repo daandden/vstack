@@ -164,7 +164,7 @@ export function artifactFrom(files: Files, itemPath: string, dest: string): File
 
 export interface RepoSpec {
   pins: any;
-  register: { items: any[]; originals: string[] };
+  register: { items: any[]; originals: string[]; utility: string[] };
   manifest: any;
   /** house-style.yaml: `replacements` and `rules`. */
   houseStyle: { replacements: any[]; rules: any[] };
@@ -201,15 +201,6 @@ const GONE_TEXT = [
   "",
 ].join("\n");
 
-/** The fixture's router: it names every skill a fixture ships, so no skill fails unrouted-skill. */
-const ASK_VSTACK_TEXT = [
-  "---",
-  "name: ask-vstack",
-  "description: Ask which skill fits.",
-  "---",
-  ...["ask-vstack", "keep", "held", "old-name", "gone", "shared", "asks-tool", "scratch", "phrasing", "spawner", "asks", "renamed", "setup-vstack", "migrate-to-vstack", "rej", "stray", "kept", "adapted"].map((n) => `- \`/skill:${n}\``),
-  "",
-].join("\n");
 
 /** The passing fixture: a held row, a moved-and-held row, a held row whose item Upstream removed, a shared artifact. */
 export function passingSpec(up: Upstreams): RepoSpec {
@@ -221,8 +212,9 @@ export function passingSpec(up: Upstreams): RepoSpec {
   return {
     pins: {
       upstreams: {
-        alpha: { repo: "fixture/alpha", pin_kind: "tag", pin: "v2", items: [{ match: "skills/*/*", type: "tree", kind: "skill" }] },
+        alpha: { role: "Base", repo: "fixture/alpha", pin_kind: "tag", pin: "v2", items: [{ match: "skills/*/*", type: "tree", kind: "skill" }] },
         beta: {
+          role: "Enhancement",
           repo: "fixture/beta",
           pin_kind: "commit",
           path: "pack",
@@ -253,7 +245,8 @@ export function passingSpec(up: Upstreams): RepoSpec {
         style("asks", []),
         style("renamed", []),
       ],
-      originals: ["plugin/rules/fx-rule.md", "plugin/agents/fx-agent.md", "plugin/agents/vstack-explorer.md", "plugin/skills/ask-vstack"],
+      originals: ["plugin/rules/fx-rule.md", "plugin/agents/fx-agent.md", "plugin/agents/vstack-explorer.md", "plugin/skills/fixture-helper", "plugin/skills/fixture-addon"],
+      utility: ["plugin/skills/fixture-helper"],
     },
     manifest: { name: "vstack", version: "0.1.0", private: true, omp: {} },
     houseStyle: { replacements: clone(FIXTURE_ROWS), rules: clone(REPO_RULES) },
@@ -262,7 +255,9 @@ export function passingSpec(up: Upstreams): RepoSpec {
       ...artifactFrom(ALPHA_V1, "skills/eng/held", "plugin/skills/held"),
       ...artifactFrom(ALPHA_V1, "skills/eng/old-name", "plugin/skills/old-name"),
       "plugin/skills/gone/SKILL.md": GONE_TEXT,
-      "plugin/skills/ask-vstack/SKILL.md": ASK_VSTACK_TEXT,
+      "plugin/skills/fixture-helper/SKILL.md": "---\nname: fixture-helper\ndescription: helper\n---\nhelper\n",
+      "plugin/skills/fixture-addon/SKILL.md": "---\nname: fixture-addon\ndescription: addon\ndisable-model-invocation: true\n---\naddon\n",
+      "addon-questions.json": JSON.stringify({ "fixture-addon": { type: "noul", instructions: "Pick this Addon for the fixture task.", criteria: { true: "The task needs it.", false: "The task does not need it." } } }),
       "plugin/skills/shared/SKILL.md": "---\nname: shared\ndescription: merged\n---\nmerged\n",
       "plugin/rules/fx-rule.md": "---\nalwaysApply: true\n---\nrule\n",
       "plugin/agents/fx-agent.md": "---\nname: fx-agent\ndescription: agent\n---\nagent\n",

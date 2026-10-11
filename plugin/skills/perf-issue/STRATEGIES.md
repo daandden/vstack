@@ -1,6 +1,6 @@
 # Strategy families
 
-These eight families come from the pstack perf-issue Playbook at the Pin. Their text is verbatim, with emphasis markup removed. The main skill governs invocation and evidence.
+These eight families come from the pstack perf-issue Playbook at the Pin. Their text is verbatim, with emphasis markup removed. The main skill holds the measurement evidence rules.
 
 - Elimination. Before optimizing the hot path, ask whether it needs to exist: a computation nobody consumes, a feature gate that's always off for this user, a sync that redundantly mirrors state, a legacy path kept "just in case". The trace shows what's slow, never that it's deletable, so this family needs the `how` pass, not the profiler.
 - Divide and conquer. The dominant cost scales with input size. Split the work so each piece touches less (chunk, shard, prune the search space) or so independent pieces run in parallel.

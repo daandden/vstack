@@ -40,13 +40,6 @@ replacements:
     upstream: matt
     scope: required
     uses: [update, migration]
-  - id: ask-vstack
-    from: ask-matt
-    to: ask-vstack
-    match: name
-    upstream: matt
-    scope: required
-    uses: [update, migration]
   - id: config-dir
     from: docs/agents/
     to: docs/vstack/

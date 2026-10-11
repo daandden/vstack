@@ -1,6 +1,6 @@
 ---
 name: compare-attempts
-description: Run several isolated attempts at the same task on your model, pick a base, and graft the strongest parts of the others into it.
+description: Independent attempts, cross-judgment, and synthesis for the grill and implement.
 disable-model-invocation: true
 ---
 
@@ -10,14 +10,7 @@ Run independent attempts at the same task. Read every candidate, pick a base, gr
 
 ## Start
 
-Open a `todo` list with one entry per phase before launching anything.
-
-1. Frame
-2. Fan out
-3. Cross-judge
-4. Pick
-5. Graft
-6. Verify
+The grill uses kind `reply` for fact-finding. implement uses kind `tree` for changes at real target paths. Run only when the user's words ask for several attempts. A judge pick or a caller's preference alone does not authorize attempts. implement owns the End state.
 
 If the user also said "sequential" or "no fan-out", say that the attempts run at once. Use one `ask` with Go ahead / Cancel before starting. A timed-out answer is not approval. Re-ask once, then stop if no answer arrives. Keep the user's override words in every prompt even when they approve this batch.
 
@@ -26,7 +19,7 @@ If the user also said "sequential" or "no fan-out", say that the attempts run at
 The runners receive one shared prompt. The rubric stays with the parent.
 
 1. State the task, the artifact, and its grounding paths. Use the caller's runner brief when it supplies one.
-2. Declare the artifact kind. `tree` is the default, a change at real target paths in the working tree. `reply` is a written answer. Its patch is evidence only, never a change to apply.
+2. Declare the caller's artifact kind. implement uses `tree`, a change at real target paths in the working tree. The grill uses `reply`, a written answer. Its patch is evidence only, never a change to apply.
 3. Derive 3–6 concrete criteria from what success means for this task. Keep the rubric out of every runner's prompt.
 4. Use three runners by default. The user's count overrides this, such as "5 attempts". When the caller or user supplies directions, give each runner its direction line. Otherwise each gets the same prompt in a fresh context.
 5. Resolve the absolute vstack root and, for nested Scratch writers, the project Scratch dir once. Follow "What every subagent prompt carries" in `skill://vstack-fan-out`; this lookup does not run its gate. A child uses these paths from its prompt and never resolves them again.
@@ -38,7 +31,7 @@ omp captures the delta against the parent's working tree at the start of each ru
 
 ## Phase B: Fan out
 
-Fan-out (always: invoking this skill is the user's request to fan out): one eval cell: per part, `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`; `wait()` on all handles. Each prompt: the shared runner brief from Frame and its direction line when given, the user's override words, the vstack root, the Scratch dir when needed. The parent recovers each `patchPath` from the completion text and applies only the chosen base for kind `tree`. If it cannot spawn or isolation is off, stop: compare-attempts needs isolated attempts; run `/skill:setup-vstack`.
+Fan-out (always: the user asked for several attempts): one eval cell: per part, `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`; `wait()` on all handles. Each prompt: the shared runner brief from Frame and its direction line when given, the user's override words, the vstack root, the Scratch dir when needed. The parent recovers each `patchPath` from the completion text and applies only the chosen base for kind `tree`. If it cannot spawn or isolation is off, stop: compare-attempts needs isolated attempts; run `/skill:setup-vstack`.
 
 There is one part per runner. Make sure that `omp config get task.isolation.enabled` prints `true` before starting. With no eval tool or no permission to start these workers, stop and point at `/skill:setup-vstack`. There is no judge call, sequential batch, or shared-checkout fallback.
 

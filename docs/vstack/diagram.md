@@ -1,0 +1,1 @@
+diagram-profile: catppuccin-latte

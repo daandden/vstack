@@ -1,6 +1,7 @@
 ---
 name: hillclimb
-description: Sustain improvement of one metric against a target with frozen-harness measurements, isolated hypotheses, and one commit per accepted win. Use perf-issue for a one-off measured fix.
+description: Frozen measurements and isolated hypotheses for sustained metric improvement, with one commit per accepted win.
+disable-model-invocation: true
 ---
 
 # Hillclimb
@@ -9,15 +10,15 @@ Own the metric and the experiment's integrity. One hypothesis, one measurement, 
 
 ## Start
 
-Read skill://implement/END-STATE.md before work. Copy its steps verbatim, including their paragraphs, into the run todo in execution order, inserting the work steps below between 0c and 3b. Copy these work steps verbatim before adding task-specific items. Keep unfinished steps as `skip: <reason>`. Reuse the shared block by reference, not a second maintained copy. hillclimb always starts skill://decision-trail, including at End state commit.
+The grill settles one metric, its unit, the direction that counts as better, the target, and a checkable stop predicate. The predicate pairs the target with a minimum attempt count. Use supplied numbers and ask about each missing decision before the grill closes. Pass this contract to implement. implement runs the loop without more questions about these decisions.
 
-Run shared steps 0a–0c once. Retain their run record, absolute vstack root, project Scratch dir, and canonical trail path throughout the invocation. Use the run's model for every worker.
+implement owns the branch, commits, and End state. Reuse its run record, absolute vstack root, and project Scratch dir. hillclimb always starts skill://decision-trail through END-STATE step 0c, including at End state commit. Retain the canonical trail path throughout the loop. Use the run's model for every worker.
 
 Before any hypothesis, require `omp config get task.isolation.enabled` to print `true`. If isolation is off, stop and point at `/skill:setup-vstack`. A gate choosing inline does not bypass this prerequisite. If isolated workers cannot start, stop and report; do not replace a failed isolated batch with shared-checkout workers.
 
 ## 1. Ground the workload and architecture
 
-Run skill://how over the target. Name realistic workload dimensions that move the result: data size, history, state, and concurrency. Select a case that reproduces the complaint; otherwise fix the repro before hillclimbing. Fix one metric, its unit, the direction that counts as better, and a checkable stop predicate pairing a target with a minimum attempt count. Use supplied numbers; settle missing numbers together through `ask`. Do not invent approval after a timeout.
+Run skill://how over the target. Name realistic workload dimensions that move the result: data size, history, state, and concurrency. Select a case that reproduces the complaint. If none does, fix the reproduction before measuring hypotheses. Use the metric, unit, direction, target, and stop predicate that the grill settled. If that contract is missing, report the gap instead of starting the loop or inventing numbers.
 
 ## 2. Build, prove, and freeze the harness
 
@@ -67,9 +68,9 @@ On several rejects in a row, pivot category, re-read the source, combine near-mi
 
 Stop when the target and attempt floor are both met, or when remaining ideas are marginal and not worth their cost. Keep cheap untried hypotheses in play. Surface a stuck run rather than spinning. Never relax the predicate to declare success; distinguish target reached from ideas exhausted or blocked. Count every measured hypothesis as an iteration, including deferred winners; remeasurement is a new attempt.
 
-## 8. Prove, review, and chain once
+## 8. Return to implement
 
-After the loop, execute shared steps 3b, 4, 5, 6, and 7 from skill://implement/END-STATE.md. Accepted commits stay in landing order. hillclimb reviews once after its last work commit and fixes accepted findings in new commits. Live proof covers the final diff, including cleanup and Verify maintenance. The chain runs once for the whole invocation, to the effective End state, not once per wave. Finish decision-trail's audit and fresh-context review.
+After the loop, implement resumes its End state chain. Keep accepted wins in separate commits and in landing order. Run code-review once after the last work commit. Put accepted review fixes in new commits. Live proof covers the final diff, including cleanup and Verify maintenance. Finish decision-trail's audit and fresh-context review in that same pass.
 
 ## Reply
 

@@ -1,7 +1,6 @@
 // The Update's mechanical plan (spec #63 "vstack update"; #38 §3 and corrections; ADR 0008). Given each
 // Upstream's old and new Pin, it classifies every register row, pairs moves, stages adopt copies, and writes
 // both Upstream sides of adapt and merge rows with the `uses: update` House style rows applied.
-// The README ("update-plan") documents the plan JSON this builds.
 
 import { lstatSync, mkdirSync, readFileSync, readlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -14,7 +13,7 @@ export const PLAN_SCHEMA = 1;
 
 export type ChangeClass = "unchanged" | "changed" | "moved" | "removed";
 
-/** One Upstream in this run: its Pin entry at `main`, its clone, and the Pin it moves to (`new === old` when it did not move). */
+/** One Upstream at the checkout's Pin, and the Pin it moves to. */
 export interface UpstreamRun {
   pin: Pin;
   clone: string;
