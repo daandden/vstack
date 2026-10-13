@@ -300,7 +300,7 @@ items:
     tree: 051012b3fd378ad46410ee3f2dcf779a819fd297
     disposition: adapt
     artifacts: [plugin/skills/compare-attempts]
-    reason: "Renamed for independent attempts on the parent model, only when the user asks for several attempts (ADR 0015)."
+    reason: "Renamed for independent attempts on the Session model, only when the user asks for several attempts (ADR 0015)."
   - id: pstack/automate-me
     upstream: pstack
     kind: skill
@@ -852,7 +852,7 @@ items:
     tree: 9a688b8c5b5734ee80f782d4616a78c4c59b0946
     disposition: adapt
     artifacts: [plugin/agents/vstack-comment-critic.md]
-    reason: "Becomes the comment-only omp critic on the parent model, with prompt-contract rights and explorer-only spawns (#47, #52)."
+    reason: "Becomes the comment-only omp critic on the Session model, with prompt-contract rights and explorer-only spawns (#47, #52)."
   - id: pstack/agents/poteto-agent
     upstream: pstack
     kind: agent

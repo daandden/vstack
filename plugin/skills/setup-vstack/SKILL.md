@@ -33,13 +33,13 @@ Below, `machine.ts` and `project.ts` stand for these commands.
 2. Run `machine.ts --extension-loaded yes` when `vstack_rename_session` is there, else use `--extension-loaded no`. It checks:
    - 1, TypeSafe credentials exist.
    - 2, `modelRoles.judge` is `typesafe/jev-latest`.
-   - 3, `task.agentModelOverrides` has no key for a vstack agent. This one only warns.
+   - 3, `task.agentModelOverrides` keys for vstack agents. vstack agents use the Session model by default, and a key the user sets overrides it. This check never fails. It prints a note that names each overridden agent and its model.
    - 4, the vstack extension is enabled and loaded in this session. When `disabledExtensions` lists it, a new session alone does not load it, so the remedy removes it from the list first. When it is enabled but not loaded (for example, just after linking or pulling), the remedy is a new session.
    - 5, eval Python is ready: `eval.py` is on and `omp setup python --check` passes. This one only warns.
    - 6, `task.isolation.enabled` is on (ADR 0007). Skills that need an isolated subagent stop without it.
    - 7, `worktree.clone` is on. In Private mode, prototype mounts app-bound prototypes in an `omp wt add` clone and stops on a plain checkout.
 
-   When every check passes, it prints one `OK` line. Otherwise it prints one line per check that does not pass: `FAIL <n> <name>: <what is wrong>. Remedy: <what fixes it>.`, or `WARN` in place of `FAIL` for checks 3 and 5. Exit 0 means no `FAIL` line, 1 means at least one, and 2 means the script did not run: show its message and go on to the project section.
+   When every check passes, it prints one `OK` line. Otherwise it prints one line per check that does not pass: `FAIL <n> <name>: <what is wrong>. Remedy: <what fixes it>.`, or `WARN` in place of `FAIL` for check 5. Check 3 prints `NOTE 3 <name>: <the overrides>.` when a key exists, with no remedy. Exit 0 means no `FAIL` line, 1 means at least one, and 2 means the script did not run: show its message and go on to the project section.
 3. Show the output to the user as it is.
 4. The settings writer fixes only checks 2, 6, and 7, with the user's approval. For each failed setting, call one `ask` with Set it (Recommended) and Leave it. Then run `machine.ts --set <name>...` with only the approved names: `judge` for 2, `isolation` for 6, `clone` for 7. It uses `omp config set` and preserves the other judge roles. Never change omp settings any other way. Run step 2 again and show its output.
 5. Leave checks 1, 3, 4, and 5 to the user. TypeSafe credentials come from `/login typesafe`, which only the user can run. The extension needs a new session. Done repeats every line still failing.

@@ -79,7 +79,7 @@ Correct the log, not the story. Supersede invented rows, false claims, or wrong 
 
 ## Fresh-context review
 
-Every vstack subagent uses the run's model under ADR 0004. This review catches what the run's context hid, not what the model gets wrong.
+The reviewer uses the Session model, or the model the user set for vstack-explorer in `task.agentModelOverrides` (ADR 0004). This review catches what the run's context hid, not what the model gets wrong.
 
 Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): read the absolute log and transcript paths, or the labeled digest, audit gaps, this run's referenced subagent ids, and the four checks below, then return the model name and flags with row or transcript pointers, the user's override words, the vstack root. Wait for its result. If it cannot be spawned, stop: the trail is not reviewed.
 
@@ -92,7 +92,7 @@ The reviewer is read-only and uses a fresh context. Include the read-scope guard
 
 The reviewer scans the trail, not a redo of the work. It returns flags and does not change files. Do not substitute self-review when the reviewer is unavailable or fails.
 
-Every reply for a run with a trail ends with an `Attention` section. Its first line is `reviewed by <model>, same model as the run, fresh context`. Each flag points to a row or transcript moment. `No flags` is valid. A model name alone is not a review.
+Every reply for a run with a trail ends with an `Attention` section. Its first line is `reviewed by <model>, fresh context`, and when that model differs from the Session model, `reviewed by <model> (user override; Session model <model>), fresh context`. Each flag points to a row or transcript moment. `No flags` is valid. A model name alone is not a review.
 
 If the reviewer cannot return a review, use `not reviewed: <reason>` as the first line. List only the audit's open gaps. State digest or missing-transcript limits even if the reviewer returns no flags. Include the absolute log path in the handoff.
 

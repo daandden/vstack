@@ -38,7 +38,7 @@ Write 2–3 realistic requests, phrased the way a user would type them, with the
 
 ## Runs
 
-Read the parent model and thinking level from the last `model_change.model` and `thinking_level_change.thinkingLevel` records in `$PI_SESSION_FILE`. Stop with the missing prerequisite if either record or the file is unavailable; do not choose a different model. Clear inherited `PI_*` and `OMP_*` session variables from each child environment, while keeping `HOME`, credentials, and PATH.
+Read the Session model and thinking level from the last `model_change.model` and `thinking_level_change.thinkingLevel` records in `$PI_SESSION_FILE`. Stop with the missing prerequisite if either record or the file is unavailable; do not choose a different model. Clear inherited `PI_*` and `OMP_*` session variables from each child environment, while keeping `HOME`, credentials, and PATH.
 
 Headless batch (ADR 0010): one eval cell starts every run at once, with no cap. Per run: `omp -p --model <m> --thinking <t> --approval-mode yolo --cwd <run dir> --session-dir <run dir>/session <isolation> "<prompt>"`, where <m> and <t> are the last `model_change.model` and `thinking_level_change.thinkingLevel` in `$PI_SESSION_FILE`. If the user said "sequential" or "no fan-out", start them one at a time. If `omp` cannot run, stop: report the process error. There is no judge or inline fallback.
 
