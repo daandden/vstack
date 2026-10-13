@@ -54,6 +54,22 @@ test.skipIf(!HAS_OMP)("a configured machine prints exactly one OK line and exits
   expect(r.stdout).not.toContain("fake-typesafe-key");
 });
 
+test.skipIf(!HAS_OMP)("a vstack agent override is a NOTE that names the agent and its model, and the machine still passes", () => {
+  const h = makeHome(`${CONFIGURED}  agentModelOverrides:
+    vstack-explorer: smoke/smoke-model
+    reviewer: smoke/other-model
+`);
+  const r = run(h, ["--extension-loaded", "yes"], KEY);
+  expect(r.code).toBe(0);
+  const out = lines(r.stdout);
+  expect(out).toHaveLength(2);
+  expect(out[0]).toStartWith("OK ");
+  expect(out[1]).toStartWith("NOTE 3 ");
+  expect(out[1]).toContain("vstack-explorer (smoke/smoke-model)");
+  expect(out[1]).not.toContain("reviewer");
+  expect(out[1]).not.toContain("Remedy");
+});
+
 test.skipIf(!HAS_OMP)("an unconfigured machine prints one line per failing check, each with a remedy, and exits 1", () => {
   const h = makeHome(`modelRoles:
   default: smoke/smoke-model
@@ -74,13 +90,13 @@ worktree:
   expect(out.map((l) => l.split(" ").slice(0, 2).join(" "))).toEqual([
     "FAIL 1",
     "FAIL 2",
-    "WARN 3",
+    "NOTE 3",
     "FAIL 4",
     "WARN 5",
     "FAIL 6",
     "FAIL 7",
   ]);
-  for (const l of out) expect(l).toContain("Remedy: ");
+  for (const l of out) if (!l.startsWith("NOTE ")) expect(l).toContain("Remedy: ");
   const byId = (id: string) => out.find((l) => l.split(" ")[1] === id)!;
   expect(byId("1")).toContain("/login typesafe");
   expect(byId("3")).toContain("vstack-explorer");

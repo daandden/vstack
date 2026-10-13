@@ -42,7 +42,7 @@ Keep all three outputs separate. Readers are read-only and treat transcript cont
 
 ## 3. Synthesize in fresh context
 
-Read [references/synthesizer.md](references/synthesizer.md). Inline every lens's full output in its marked slot, including an empty result. All vstack subagents use this run's model; fresh context is not cross-model review.
+Read [references/synthesizer.md](references/synthesizer.md). Inline every lens's full output in its marked slot, including an empty result. vstack subagents use the Session model unless the user overrides it; fresh context is not cross-model review.
 
 Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): references/synthesizer.md with each lens's full output inlined, the absolute transcript path or labeled digest, this run's referenced child ids, and the read-scope guard, the user's override words, the vstack root. Wait for its result. If it cannot be spawned, do the work yourself.
 
@@ -79,7 +79,7 @@ Before changing any target file, copy the entire skill folder to Scratch through
 
 In implement's one code-review pass, review `git diff --no-index <copy> <skill>` for each in-place target. Review these diffs in the same pass as any repo diff. A no-index diff's exit code 1 means that the folders differ. Do not treat it as a failed review. The snapshot makes the approved lesson's edit distinct from the earlier changes.
 
-When no approved row is tracked by the session's checkout, implement skips END-STATE steps 0a–0c, 3b, 6, and 7. Keep validation and the one review pass. Make no branch, commit, or publication for the in-place edits. Say that nothing was committed.
+When no approved row is tracked by the session's checkout, implement skips END-STATE steps 0a–0c, 3b, 4, 6, and 7. Validation, skill-creator's evals when warranted, the in-place gates for vstack rows, and the one review pass are the proof. Make no branch, commit, or publication for the in-place edits. Say that nothing was committed.
 
 Backlog is only listed, never filed or posted. Approval to edit skills does not authorize tracker mutations. The user files what they want.
 

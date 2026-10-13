@@ -1,9 +1,9 @@
-//   bun machine.ts --extension-loaded yes|no     check; prints one OK line, or one line per failing check
+//   bun machine.ts --extension-loaded yes|no     check; prints one OK line or one line per failing check, plus NOTE lines
 //   bun machine.ts --set judge|isolation|clone…  write those settings to the user's omp config
 //
 // Every fact comes from the `omp` on PATH, so the checks see what omp itself resolves for this HOME and cwd.
 // Checking never writes. `--set` runs only after the user approved the change through `ask`.
-// Exit codes: 0 no FAIL line (OK or WARN only) or `--set` done; 1 a FAIL line; 2 usage error or omp missing.
+// Exit codes: 0 no FAIL line (OK, WARN, or NOTE only) or `--set` done; 1 a FAIL line; 2 usage error or omp missing.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -14,14 +14,13 @@ const EXTENSION_ID = "extension-module:vstack";
 /** Every vstack agent's name starts with this prefix. */
 const AGENT_PREFIX = "vstack-";
 
-type Status = "ok" | "fail" | "warn";
-interface Result {
-  id: number;
-  name: string;
-  status: Status;
-  detail?: string;
-  remedy?: string;
-}
+type Result =
+  | { id: number; name: string; status: "ok" }
+  | { id: number; name: string; status: "fail" | "warn"; detail: string; remedy: string }
+  /** Passes, but tells the user a fact about their setup. */
+  | { id: number; name: string; status: "note"; detail: string };
+type Problem = Extract<Result, { status: "fail" | "warn" }>;
+const isProblem = (r: Result): r is Problem => r.status === "fail" || r.status === "warn";
 
 function usage(message: string): never {
   console.error(`${message}\nUsage: machine.ts --extension-loaded yes|no\n       machine.ts --set judge|isolation|clone...`);
@@ -90,18 +89,19 @@ async function check(extensionLoaded: boolean): Promise<Result[]> {
         },
   );
 
-  // 3. Model overrides on vstack agents (ADR 0004: vstack agents carry no model and run on the session's).
-  const overrides = Object.keys((cfg.get("task.agentModelOverrides") ?? {}) as Record<string, unknown>);
-  const vstackOverrides = overrides.filter((name) => name.startsWith(AGENT_PREFIX)).sort();
+  // 3. Model overrides on vstack agents. vstack agents use the Session model unless the user sets a key (ADR 0004).
+  const overrides = (cfg.get("task.agentModelOverrides") ?? {}) as Record<string, unknown>;
+  const vstackOverrides = Object.keys(overrides)
+    .filter((name) => name.startsWith(AGENT_PREFIX))
+    .sort();
   results.push(
     vstackOverrides.length === 0
       ? { id: 3, name: "agent model overrides", status: "ok" }
       : {
           id: 3,
           name: "agent model overrides",
-          status: "warn",
-          detail: `task.agentModelOverrides sets a model for ${vstackOverrides.join(", ")}; vstack agents are meant to run on the session model`,
-          remedy: `remove ${vstackOverrides.length === 1 ? "that key" : "those keys"} from task.agentModelOverrides (omp config set task.agentModelOverrides '<the record without ${vstackOverrides.length === 1 ? "it" : "them"}>') unless you want the override`,
+          status: "note",
+          detail: `vstack agents use the Session model by default; task.agentModelOverrides overrides it for ${vstackOverrides.map((name) => `${name} (${String(overrides[name])})`).join(", ")}`,
         },
   );
 
@@ -217,12 +217,14 @@ async function main(argv: string[]) {
   if (!OMP) usage("omp is not on PATH; setup-vstack needs the omp CLI");
 
   const results = await check(argv[1] === "yes");
-  const problems = results.filter((r) => r.status !== "ok");
+  const problems = results.filter(isProblem);
   if (problems.length === 0) {
     console.log(`OK vstack machine checks pass: ${results.map((r) => `${r.id} ${r.name}`).join(", ")}.`);
-    return 0;
   }
-  for (const r of problems) console.log(`${r.status.toUpperCase()} ${r.id} ${r.name}: ${r.detail}. Remedy: ${r.remedy}.`);
+  for (const r of results) {
+    if (isProblem(r)) console.log(`${r.status.toUpperCase()} ${r.id} ${r.name}: ${r.detail}. Remedy: ${r.remedy}.`);
+    else if (r.status === "note") console.log(`NOTE ${r.id} ${r.name}: ${r.detail}.`);
+  }
   return problems.some((r) => r.status === "fail") ? 1 : 0;
 }
 

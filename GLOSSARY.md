@@ -100,12 +100,16 @@ _Avoid_: substitution list, style guide
 
 ### Behavior
 
+**Session model**:
+The model the user's omp session runs on. Every vstack subagent and Headless run uses it. A vstack subagent uses a different model only when the user has set one for that agent in omp's settings.
+_Avoid_: parent's model, run's model
+
 **Fan-out**:
-One skill step running two or more subagents at the same time. At each such step, a judgment of the job's complexity decides whether to fan out; the user's explicit words override that judgment either way, and a skill the user invokes in order to fan out skips the judgment. Every subagent uses the parent's model.
+One skill step running two or more subagents at the same time. At each such step, a judgment of the job's complexity decides whether to fan out; the user's explicit words override that judgment either way, and a skill the user invokes in order to fan out skips the judgment. Every subagent uses the Session model.
 _Avoid_: swarm, parallelism (unqualified)
 
 **Headless run**:
-A run of a skill under test, or of its blind judge, in its own omp process that sees only what the test gives it. It is not a subagent, so it is never Fan-out, but it uses the parent's model.
+A run of a skill under test, or of its blind judge, in its own omp process that sees only what the test gives it. It is not a subagent, so it is never Fan-out, but it uses the Session model.
 _Avoid_: eval subagent, runner (unqualified)
 
 **Update**:

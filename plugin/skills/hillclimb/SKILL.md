@@ -12,7 +12,7 @@ Own the metric and the experiment's integrity. One hypothesis, one measurement, 
 
 The grill settles one metric, its unit, the direction that counts as better, the target, and a checkable stop predicate. The predicate pairs the target with a minimum attempt count. Use supplied numbers and ask about each missing decision before the grill closes. Pass this contract to implement. implement runs the loop without more questions about these decisions.
 
-implement owns the branch, commits, and End state. Reuse its run record, absolute vstack root, and project Scratch dir. hillclimb always starts skill://decision-trail through END-STATE step 0c, including at End state commit. Retain the canonical trail path throughout the loop. Use the run's model for every worker.
+implement owns the branch, commits, and End state. Reuse its run record, absolute vstack root, and project Scratch dir. hillclimb always starts skill://decision-trail through END-STATE step 0c, including at End state commit. Retain the canonical trail path throughout the loop. Every worker uses the Session model unless the user overrides it.
 
 Before any hypothesis, require `omp config get task.isolation.enabled` to print `true`. If isolation is off, stop and point at `/skill:setup-vstack`. A gate choosing inline does not bypass this prerequisite. If isolated workers cannot start, stop and report; do not replace a failed isolated batch with shared-checkout workers.
 
