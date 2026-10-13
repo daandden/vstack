@@ -2,7 +2,7 @@
 
 > The install channel (the `daandden` marketplace) is superseded by [ADR 0005](0005-install-by-plugin-link-from-a-clone.md): vstack is installed by `omp plugin link` from a local clone. The rest of this ADR, shipping vstack as one omp plugin instead of using the `skills` CLI, still stands.
 
-The Base upstream is installed with the `skills` CLI, but vstack ships as an omp marketplace plugin instead. The repo is the `daandden` marketplace (`.omp-plugin/marketplace.json`), and `./plugin` holds one plugin, `vstack`. We chose this because vstack needs to ship custom agents (Fan-out has to run on the Session model), rules, and an `/vstack:update` command alongside its skills. `skills` CLI 1.7.0 installs only `SKILL.md` directories, and omp discovers custom agents only from `.omp` directories or plugins.
+The Base upstream is installed with the `skills` CLI, but vstack ships as an omp marketplace plugin instead. The repo is the `daandden` marketplace (`.omp-plugin/marketplace.json`), and `./plugin` holds one plugin, `vstack`. We chose this because vstack needs to ship custom agents (Fan-out runs them on the Session model by default), rules, and an `/vstack:update` command alongside its skills. `skills` CLI 1.7.0 installs only `SKILL.md` directories, and omp discovers custom agents only from `.omp` directories or plugins.
 
 ## Considered Options
 

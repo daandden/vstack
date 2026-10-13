@@ -604,7 +604,7 @@ items:
     tree: 5ecdc5d5f4b2126b2d28f0bbb091bd5454d7086e
     disposition: adapt
     artifacts: [plugin/skills/decision-trail]
-    reason: "Renamed; final review is one fresh-context same-model vstack subagent (#51)."
+    reason: "Renamed; final review is one fresh-context vstack subagent on the Session model or the user's override (#51)."
   - id: pstack/swarm
     upstream: pstack
     kind: skill
