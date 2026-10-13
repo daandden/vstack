@@ -4,6 +4,12 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-13
+
+- A `task.agentModelOverrides` key for a vstack agent now wins over the Session model. setup-vstack check 3 prints it as a `NOTE` line, not a warning, and decision-trail counts a review on that model, naming both models in the Attention line.
+- session-lessons also skips END-STATE step 4 for in-place edits. Validation and the in-place gates are the proof.
+- Use "Session model" for the model the user's session runs on, in place of "parent's model" and "run's model".
+
 ## [1.0.0] - 2026-10-12
 
 - Matt skills are the core, Addons supplement them, and Utility skills work outside a Matt run.
@@ -25,9 +31,6 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 - Add the by-hand `scripts/addon-judge-check.ts` corpus check in place of the Update sample rerun.
 - Add check-register classes `invalid-utility`, `addon-slash-route`, and `addon-question-mismatch`, and remove `unrouted-skill`.
 - Fix the extension's saved-message scan so that an Addon gets no second pick after a restart.
-- A `task.agentModelOverrides` key for a vstack agent now wins over the Session model. setup-vstack check 3 prints it as a `NOTE` line, not a warning, and decision-trail counts a review on that model, naming both models in the Attention line.
-- session-lessons also skips END-STATE step 4 for in-place edits. Validation and the in-place gates are the proof.
-- Use "Session model" for the model the user's session runs on, in place of "parent's model" and "run's model".
 
 ## [0.1.55] - 2026-10-11
 
