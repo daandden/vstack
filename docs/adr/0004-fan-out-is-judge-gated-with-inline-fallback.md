@@ -11,8 +11,8 @@ A skill step that would run two or more subagents at the same time first asks th
 ## Consequences
 
 - The judge runs on its own classifier model (TypeSafe or the smol chat model), not the Session model. This is allowed because it only makes a routing call and does no work as a subagent. Every subagent still runs on the Session model by default.
-- Skill text spawns only vstack's own agents, which have no `model` field, so they inherit the Session model. Skill text never spawns the bundled `task`, `scout`, `sonic`, or `reviewer` agents, which resolve through model roles.
-- A key the user sets in `task.agentModelOverrides` for a vstack agent wins over the Session model. Setup prints it as a note, not a warning, and a skill that reports a model names the one that ran. decision-trail's review counts on that model too.
+- Skill text spawns only vstack's own agents, which have no `model` field, so they inherit the active model of the session that spawns them. Skill text never spawns the bundled `task`, `scout`, `sonic`, or `reviewer` agents, which resolve through model roles.
+- A key the user sets in `task.agentModelOverrides` for a vstack agent wins over the Session model. The override carries down: an overridden agent's own subagents inherit its model unless they have their own key, and its Headless runs read its session file. Setup prints the key as a note, not a warning, and a skill that reports a model names the one that ran. decision-trail's review counts on that model too.
 - vstack sets no cap on concurrent subagents. The skill's own width sets the count, and `task.maxConcurrency` is the only hard limit.
 - Nesting is allowed, and every nested Fan-out step runs its own judgment. The parent passes the user's override words down in each subagent's prompt. `maxRecursionDepth` bounds the depth. vstack agents therefore need the eval tool and permission to spawn vstack agents.
 - A single subagent, such as research's background agent, is not Fan-out and always runs as written.
