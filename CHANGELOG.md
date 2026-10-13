@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [1.0.2] - 2026-10-13
+
+- compare-attempts and vstack-maintain follow the Session model rule too: a user override wins, and the cross-judge's model is named in the synthesis note.
+
 ## [1.0.1] - 2026-10-13
 
 - A `task.agentModelOverrides` key for a vstack agent now wins over the Session model. setup-vstack check 3 prints it as a `NOTE` line, not a warning, and decision-trail counts a review on that model, naming both models in the Attention line.

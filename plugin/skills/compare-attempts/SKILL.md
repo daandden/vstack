@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Compare attempts
 
-Run independent attempts at the same task. Read every candidate, pick a base, graft the best parts, and verify the result. All runners use your model. Separate contexts give independence, not model diversity.
+Run independent attempts at the same task. Read every candidate, pick a base, graft the best parts, and verify the result. All runners use the Session model unless the user overrides vstack-worker. Separate contexts give independence, not model diversity.
 
 ## Start
 
@@ -68,7 +68,7 @@ Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the artifac
 
 The fallback is the parent's scoring in Pick, not a second judgment in the same context. When the cross-judge cannot run, skip it and write `cross-judge: not run` in the synthesis note. This read-only explorer is not isolated.
 
-The cross-judge runs on your model. It uses a context that wrote no candidate and did not see your scores. It buys independence, not a second model's taste. Agreement means the rubric reads one way. It does not rule out a blind spot you both share.
+The cross-judge runs on the Session model unless the user overrides vstack-explorer. Name the model it ran on in the synthesis note. It uses a context that wrote no candidate and did not see your scores. On the Session model it buys independence, not a second model's taste. Agreement means the rubric reads one way. It does not rule out a blind spot you both share.
 
 ## Phase D: Pick a base
 

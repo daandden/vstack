@@ -335,7 +335,7 @@ Inside a vstack clone, approved vstack lessons use `skill://vstack-maintain` for
 
 ### Tests
 
-`tests/skill-creator.test.ts` runs the bundled Bun initializer and validator as processes over temp skill folders. skill-creator evaluation uses separate same-model omp processes, not task runners; its references define per-run overlays and transcript evidence.
+`tests/skill-creator.test.ts` runs the bundled Bun initializer and validator as processes over temp skill folders. skill-creator evaluation uses separate omp processes on the Session model, not task runners; its references define per-run overlays and transcript evidence.
 
 `bun run test` runs `tests/` only (`bunfig.toml`) with a 30 s test timeout, because the suites start real `git`, `omp`, and `bun` processes. Bun applies a `setDefaultTimeout` from a preload to one test file only, so the timeout is the `--timeout` flag in the `test` script. The check-register tests build fixture Upstream git repos with tags, a moved item, and a removed item, then a vstack checkout committed as the version base. They run the script as a process and assert its exit code and its failures by class and item. One case serves a local stand-in for the GitHub API, so the `github` source is tested too.
 
