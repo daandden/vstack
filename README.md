@@ -18,7 +18,7 @@ You need omp and git with working HTTPS credentials for github.com (the repo is 
 1. Clone the repo: `git clone https://github.com/daandden/vstack.git`
 2. Link its plugin directory: `omp plugin link <clone>/plugin`
 3. Start a new omp session.
-4. If you are moving from Matt Pocock's skills, run `/skill:migrate-to-vstack` first. It confirms machine and project Migration plans.
+4. If you are moving from Matt Pocock's skills, run `/skill:migrate-to-vstack` first. It confirms machine and project Migration plans, or only the project plan when you pick Only this project.
 5. Run `/skill:setup-vstack` to configure the machine and project. It does not scan for Matt leftovers or apply Migration.
 
 To refresh, run `git pull` in the clone and start a new omp session. The link points at the working tree, so there is nothing else to update.
@@ -224,7 +224,7 @@ migrate-to-vstack ships the root `uses: migration` rows under `plugin/skills/mig
 
 ### Machine Migration
 
-`/skill:migrate-to-vstack` confirms scan roots through `ask` before running `migrate.ts plan --scan-root <dir>...`. Its scripts live under `plugin/skills/migrate-to-vstack/scripts/`. The default root is `$HOME`. The scan prunes `node_modules`, `.venv`, and `Library`. It resolves each `.git` entry with git and deduplicates common dirs. It never follows directory symlinks. setup-vstack's `machine.ts --extension-loaded yes|no` runs only its seven configuration checks, with no scan-root argument.
+`/skill:migrate-to-vstack` first confirms the Migration scope through `ask`. Inside a git repo, Only this project is the first and recommended answer. It skips Machine Migration and runs Project Migration for the current checkout. Scan my home and Use other roots run `migrate.ts plan --scan-root <dir>...` with those roots. Its scripts live under `plugin/skills/migrate-to-vstack/scripts/`. Scan my home uses `$HOME`. The scan prunes `node_modules`, `.venv`, and `Library`. It resolves each `.git` entry with git and deduplicates common dirs. It never follows directory symlinks. setup-vstack's `machine.ts --extension-loaded yes|no` runs only its seven configuration checks, with no scan-root argument.
 
 `migrate.ts plan --scan-root <dir>...` prints a read-only JSON plan. It lists roots, scan errors, Standard projects, notices, and item ids. Items contain mandatory and destructive flags, source and destination paths, full-file proposed diffs, and manual hits. Private and profile moves and removal of the old private rule are mandatory. Standard projects are listed but not edited. The plan states the downgrade from Matt `main` to `v1.2.3` and that outside links to old private files break.
 
