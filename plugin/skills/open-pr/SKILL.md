@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 Use `gh` for every GitHub read and write. Git commands handle local history and pushes. Open the PR, then return to the caller. Never start babysit or ship.
 
-Accept the caller's End state, whether this run created the branch, "prune-comments already run", Safety findings, and verification evidence. Keep an unknown branch-ownership flag false. If a decision-trail log is open, append decisions through skill://decision-trail to that exact path. Never start a log here.
+Accept the caller's End state, whether this run created the branch, "prune-comments already run", Safety findings, verification evidence, and any closing references: the issues or tickets the PR resolves. Keep an unknown branch-ownership flag false. If a decision-trail log is open, append decisions through skill://decision-trail to that exact path. Never start a log here.
 
 
 Resolve the absolute project Scratch dir once through skill://vstack-tmp with its path script and no kind argument. Reuse the caller's supplied Scratch dir. Keep PR body files under `<Scratch dir>/verify/<app>-<run-id>/`, beside the proof they describe.
@@ -47,23 +47,21 @@ Run `git push -u <remote> <branch>` after every cleanup commit and rebase. Stop 
 
 Reuse code-review's Safety findings only when they cover the final diff and base. Preserve its proven or unproven safety fact, confirmed risks, cleared items, and proof paths.
 
-Otherwise read the Safety trigger list in skill://code-review. It owns the only trigger list. Apply the user's Safety override. If Safety is requested or triggered, run skill://blast-radius on the pinned final diff. Keep tracked files unchanged. If Safety does not run, record the reason and omit the Blast Radius section. Never turn a source citation or an unavailable proof into an executed safety claim.
+Otherwise read the Safety trigger list in skill://code-review. It owns the only trigger list. Apply the user's Safety override. If Safety is requested or triggered, run skill://blast-radius on the pinned final diff. Keep tracked files unchanged. If Safety does not run, record the reason for step 6. Never turn a source citation or an unavailable proof into an executed safety claim.
 
 ## 6. Write the title and body
 
-Write the title, PR body, and commit bodies. Apply every technical-writing layer except Diátaxis. Keep articles and use a plain verb when it works.
+Write the title, PR body, and commit bodies. Apply every technical-writing layer except Diátaxis, and the STE vocabulary rules: one word for each action, keep articles, and use a plain verb over an `-ing` form when one works.
 
 Follow the title convention visible in recent `git log` on the default branch. If none is visible, use Conventional Commits `type(scope): subject`. Use a short imperative subject, a real symbol when useful, and no trailing period.
 
-The body is a briefing, not a lab notebook. Keep it to about 40 lines. Use these headings in order, dropping a section only when it has nothing to say:
+Write the body with skill://pr: its Summary, Evidence, and Merge Danger sections, in its order. The body is a one-minute briefing for a reviewer who has the diff, not a lab notebook. Write short, simple sentences with few identifiers. The body becomes the squash commit body, so keep it to about 40 lines. Put this run's facts in pr's sections:
 
-- `## Why`. State intent and approach in one or two short paragraphs. Omit SHAs, rebase history, and a "based on main" preamble.
-- `## Scope`. Name real symbols and paths, both sides of renames, and meaningful boundaries. Avoid a file-by-file essay.
-- `## Tradeoffs`. Name only rejected alternatives that a reviewer needs to understand.
-- `## Blast Radius`. In one to three sentences, state affected callers or data, the safety fact and its proof status, and confirmed risks. Name the continuing cost if the default branch stays red without the fix. Cite the reused Safety report or new blast-radius proof.
-- `## Verification`. Name every real run path and observed outcome, with its command and evidence path. Cite the chosen Verify skill and absolute Scratch `verify/` paths. For performance, report the primary number with its unit in `before → after` form. State failures, skipped checks, missing live proof, and limits. Report only proof that ran on the final diff.
+- Merge Danger: the door call (one-way or two-way) and the Blast Radius from step 5. Back the Blast Radius with the reused code-review Safety findings or the new blast-radius proof, and cite that report. State affected callers or data, the safety fact and its proof status, and confirmed risks. Name the continuing cost if the default branch stays red without the fix. If Safety did not run, the Blast Radius says so and gives the reason, with no safety claim.
+- Evidence: the before and after of every real run path, with its command, observed outcome, and evidence path. Cite the chosen Verify skill and absolute Scratch `verify/` paths. For performance, report one primary number with its unit in `before -> after` form, and link the rest of the evidence. State failures, skipped checks, missing live proof, and limits. Report only proof that ran on the final diff.
+- Closing references: end the Summary with one `Closes <reference>` line per caller-supplied reference, in the form the issue tracker closes work through PRs. Add none the caller did not supply.
 
-Attach videos or screenshots only when they prove a claim. Strip private information before publication. Local evidence paths identify local proof, not remotely accessible links. Use an existing approved artifact URL when available. Put long logs and commit details in linked evidence. Omit metric tables, full SHAs, lane recitals, and "CLEAN" verdicts. Use neither `## Summary` nor `## Test plan` boilerplate. A commit body does not restate its subject.
+Attach videos or screenshots only when they prove a claim. Strip private information before publication. Local evidence paths identify local proof, not remotely accessible links. Use an existing approved artifact URL when available. Put long logs, commit details, metric tables, full SHAs, lane recitals, and "CLEAN" verdicts in linked evidence, not the body. A commit body does not restate its subject.
 
 Save the body in this run's Scratch `verify/` entry and pass it through `--body-file`. Do not interpolate prose into shell commands.
 
@@ -71,7 +69,7 @@ Save the body in this run's Scratch `verify/` entry and pass it through `--body-
 
 Use `gh pr create --base <base-branch> --head <branch> --title <title> --body-file <absolute-body-path>` without `--draft`. Use `gh pr list` to find an existing PR for this head and base before creating a duplicate. Update an existing PR through `gh pr edit` with the same body-file contract.
 
-Create a stack only on request. The root targets the default branch. Each child rebases onto its parent's exact tip and targets that parent's branch. Keep independent work outside the chain. Rebase on the default branch before substantial stack work. Complete those history changes before each branch's final push in step 4. Retarget an existing child through `gh pr edit <pr> --base <parent-branch>`.
+Create a stack only on request. The root targets the default branch. Each child rebases onto its parent's exact tip and targets that parent's branch. As a parent merges, skill://ship moves its child onto the default branch. Keep independent work outside the chain. Rebase on the default branch before substantial stack work. Complete those history changes before each branch's final push in step 4. Retarget an existing child through `gh pr edit <pr> --base <parent-branch>`.
 
 ## 8. Read the PR before reporting status
 
@@ -79,4 +77,4 @@ Run `gh pr view <pr> --json url,title,isDraft,state,baseRefName,headRefName,head
 
 ## Reply
 
-Return each PR URL, its title, observed status, and whether Blast Radius reused Safety findings, ran blast-radius, or was omitted. Include proof paths, limits, every stopped or skipped step, and any open prune-comments work. Pass the End state, branch-ownership flag, and last pushed SHA back to the caller. Stop here. The caller owns the next End-state link.
+Return each PR URL, its title, observed status, and whether Blast Radius reused Safety findings, ran blast-radius, or reports that Safety did not run. Include proof paths, limits, every stopped or skipped step, and any open prune-comments work. Pass the End state, branch-ownership flag, and last pushed SHA back to the caller. Stop here. The caller owns the next End-state link.

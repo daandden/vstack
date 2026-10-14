@@ -10,7 +10,7 @@
     "expected": "A required Addon pick. The check flags mean P(yes) < 0.70; the runtime selects at 0.75.",
     "allowed": "A pick is acceptable either way; it is not an unexpected pick.",
     "other": "An Addon outside expected and allowed is flagged when mean P(yes) > 0.80.",
-    "baseline_selected": "Mean P(yes) over 3 fresh direct POST runs with the final catalog (2026-10-12), >= 0.75. Stored values round to 3 decimals.",
+    "baseline_selected": "Mean P(yes) over 3 fresh direct POST runs with the final catalog (2026-10-12; session, benchmark-checklist, and principle-explain-the-number re-measured 2026-10-14), >= 0.75. Stored values round to 3 decimals.",
     "baseline_borderline": "Mean P(yes) in [0.70, 0.80], including scores that are also selected. Stored values round to 3 decimals."
   },
   "prompts": [
@@ -581,10 +581,12 @@
       "allowed": [
         "principle-build-the-lever",
         "principle-prove-it-works",
-        "principle-type-system-discipline"
+        "principle-type-system-discipline",
+        "session"
       ],
       "baseline_selected": {
-        "principle-encode-lessons-in-structure": 0.99
+        "principle-encode-lessons-in-structure": 0.99,
+        "session": 0.883
       },
       "baseline_borderline": {}
     },
@@ -703,11 +705,15 @@
         "perf-issue"
       ],
       "allowed": [
-        "principle-build-the-lever"
+        "principle-build-the-lever",
+        "benchmark-checklist",
+        "principle-explain-the-number"
       ],
       "baseline_selected": {
         "principle-prove-it-works": 0.98,
-        "perf-issue": 0.97
+        "perf-issue": 0.97,
+        "benchmark-checklist": 0.97,
+        "principle-explain-the-number": 0.89
       },
       "baseline_borderline": {}
     },
@@ -1645,11 +1651,15 @@
       "allowed": [
         "principle-prove-it-works",
         "principle-build-the-lever",
-        "principle-sequence-verifiable-units"
+        "principle-sequence-verifiable-units",
+        "benchmark-checklist",
+        "principle-explain-the-number"
       ],
       "baseline_selected": {
         "principle-prove-it-works": 0.97,
-        "hillclimb": 0.98
+        "hillclimb": 0.98,
+        "benchmark-checklist": 0.98,
+        "principle-explain-the-number": 0.813
       },
       "baseline_borderline": {}
     },
@@ -1662,11 +1672,15 @@
       ],
       "allowed": [
         "principle-prove-it-works",
-        "principle-build-the-lever"
+        "principle-build-the-lever",
+        "benchmark-checklist",
+        "principle-explain-the-number"
       ],
       "baseline_selected": {
         "principle-prove-it-works": 0.953,
-        "hillclimb": 0.97
+        "hillclimb": 0.97,
+        "benchmark-checklist": 0.97,
+        "principle-explain-the-number": 0.88
       },
       "baseline_borderline": {}
     },
@@ -1679,11 +1693,15 @@
       ],
       "allowed": [
         "principle-prove-it-works",
-        "principle-build-the-lever"
+        "principle-build-the-lever",
+        "benchmark-checklist",
+        "principle-explain-the-number"
       ],
       "baseline_selected": {
         "principle-prove-it-works": 0.943,
-        "hillclimb": 0.97
+        "hillclimb": 0.97,
+        "benchmark-checklist": 0.973,
+        "principle-explain-the-number": 0.853
       },
       "baseline_borderline": {}
     },
@@ -1695,11 +1713,15 @@
         "perf-issue"
       ],
       "allowed": [
-        "principle-prove-it-works"
+        "principle-prove-it-works",
+        "benchmark-checklist",
+        "principle-explain-the-number"
       ],
       "baseline_selected": {
         "principle-prove-it-works": 0.97,
-        "perf-issue": 0.98
+        "perf-issue": 0.98,
+        "benchmark-checklist": 0.973,
+        "principle-explain-the-number": 0.847
       },
       "baseline_borderline": {}
     },
@@ -1711,11 +1733,14 @@
         "perf-issue"
       ],
       "allowed": [
-        "principle-prove-it-works"
+        "principle-prove-it-works",
+        "benchmark-checklist",
+        "principle-explain-the-number"
       ],
       "baseline_selected": {
         "principle-prove-it-works": 0.947,
-        "perf-issue": 0.98
+        "perf-issue": 0.98,
+        "benchmark-checklist": 0.93
       },
       "baseline_borderline": {}
     },
@@ -1728,7 +1753,9 @@
       ],
       "allowed": [
         "principle-prove-it-works",
-        "principle-boundary-discipline"
+        "principle-boundary-discipline",
+        "benchmark-checklist",
+        "principle-explain-the-number"
       ],
       "baseline_selected": {
         "principle-boundary-discipline": 0.767,
@@ -1740,50 +1767,50 @@
       }
     },
     {
-      "id": "session-lessons-1",
+      "id": "session-1",
       "split": "tune",
       "prompt": "Mine this coding session for durable lessons and proposed changes to our skills.",
       "expected": [
-        "session-lessons"
+        "session"
       ],
       "allowed": [
         "principle-encode-lessons-in-structure",
         "principle-guard-the-context-window"
       ],
       "baseline_selected": {
-        "session-lessons": 0.987
+        "session": 0.96
       },
       "baseline_borderline": {}
     },
     {
-      "id": "session-lessons-2",
+      "id": "session-2",
       "split": "tune",
       "prompt": "Review this run for reusable lessons about our agent guidance, not a summary of the commits.",
       "expected": [
-        "session-lessons"
+        "session"
       ],
       "allowed": [
         "principle-encode-lessons-in-structure",
         "principle-guard-the-context-window"
       ],
       "baseline_selected": {
-        "session-lessons": 0.973
+        "session": 0.96
       },
       "baseline_borderline": {}
     },
     {
-      "id": "h-session-lessons-3",
+      "id": "h-session-3",
       "split": "holdout1",
       "prompt": "Which skills I own need changes based on mistakes and useful discoveries from this session?",
       "expected": [
-        "session-lessons"
+        "session"
       ],
       "allowed": [
         "principle-encode-lessons-in-structure",
         "principle-guard-the-context-window"
       ],
       "baseline_selected": {
-        "session-lessons": 0.97
+        "session": 0.9
       },
       "baseline_borderline": {}
     },
@@ -1941,6 +1968,82 @@
       "allowed": [],
       "baseline_selected": {},
       "baseline_borderline": {}
+    },
+    {
+      "id": "benchmark-checklist-1",
+      "split": "tune",
+      "prompt": "Vet this 40% export speedup before it goes in the PR description.",
+      "expected": [
+        "benchmark-checklist"
+      ],
+      "allowed": [
+        "principle-explain-the-number",
+        "principle-prove-it-works",
+        "perf-issue",
+        "open-pr"
+      ],
+      "baseline_selected": {
+        "principle-prove-it-works": 0.957,
+        "benchmark-checklist": 0.96,
+        "principle-explain-the-number": 0.887
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "benchmark-checklist-2",
+      "split": "tune",
+      "prompt": "Benchmark the two JSON parsers on our 60k-row file and tell me which one is faster.",
+      "expected": [
+        "benchmark-checklist"
+      ],
+      "allowed": [
+        "principle-explain-the-number",
+        "principle-prove-it-works",
+        "principle-build-the-lever"
+      ],
+      "baseline_selected": {
+        "principle-prove-it-works": 0.96,
+        "benchmark-checklist": 0.98,
+        "principle-explain-the-number": 0.91
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "session-retro-1",
+      "split": "tune",
+      "prompt": "Run a retro on this session: what in our repo's environment, like checks or AGENTS.md, would have caught the agent's mistakes?",
+      "expected": [
+        "session"
+      ],
+      "allowed": [
+        "principle-encode-lessons-in-structure",
+        "principle-guard-the-context-window"
+      ],
+      "baseline_selected": {
+        "session": 0.98
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "session-correct-1",
+      "split": "tune",
+      "prompt": "Agents keep calling the database client directly instead of going through the repository layer. Make that mistake impossible in this repo.",
+      "expected": [
+        "session"
+      ],
+      "allowed": [
+        "principle-encode-lessons-in-structure",
+        "principle-boundary-discipline",
+        "principle-type-system-discipline"
+      ],
+      "baseline_selected": {
+        "principle-encode-lessons-in-structure": 0.97,
+        "session": 0.94
+      },
+      "baseline_borderline": {
+        "principle-type-system-discipline": 0.74,
+        "principle-sequence-verifiable-units": 0.707
+      }
     }
   ]
 }

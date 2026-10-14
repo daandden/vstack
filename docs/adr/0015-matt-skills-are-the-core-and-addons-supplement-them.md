@@ -25,3 +25,4 @@ vstack-update and vstack-edit follow this model. They give the grill the cases t
 - vstack adds nothing that blocks a typed `/skill:<addon>`. omp has no setting to remove a skill's slash command.
 - The Addon pointer must be written into specs and tickets. A pointer that is missing means that implement works without the Addon.
 - Open decisions on the redesign map (label `wayfinder:map`) decide how this ADR applies to principles, the always-on rules, the scripts, and each remaining Addon.
+- Amended by ADR 0019: a skill with a key in `addon-questions.json` is an Addon even when it has a Base upstream row, so session carries Matt's retro and stays an Addon. The Matt flow gains implement-spec, and the grill recommends implement, or to-spec, to-tickets, and implement-spec, through `ask`.

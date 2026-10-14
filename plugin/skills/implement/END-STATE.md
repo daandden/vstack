@@ -1,6 +1,6 @@
 # Shared End state block
 
-implement and hillclimb read this file before work. Reuse these steps by reference. Do not maintain a second copy in a caller. The caller inserts its work steps between 0c and 3b. Before task-specific todo items, copy the steps below verbatim, including their paragraphs, into its todo list in execution order. Keep an unfinished step as `skip: <reason>`.
+implement, implement-spec, and hillclimb read this file before work. Reuse these steps by reference. Do not maintain a second copy in a caller. The caller inserts its work steps between 0c and 3b. Before task-specific todo items, copy the steps below verbatim, including their paragraphs, into its todo list in execution order. Keep an unfinished step as `skip: <reason>`.
 
 Use `gh` for all GitHub reads and writes; use git for local history and pushes. Resolve the vstack root once through the Private-mode rule and reuse a supplied root. Resolve the absolute project Scratch dir once through skill://vstack-tmp with its path script and no kind argument; reuse a supplied Scratch dir.
 
@@ -49,6 +49,8 @@ implement reviews before its step 6 commit (Matt's order). hillclimb commits eac
 ## 6. Commit
 
 Commit the accepted, proven work to the current branch. For implement, this follows review. hillclimb uses its accepted-win commits and new commits for accepted review fixes. Include Standard-mode setup-app-verification and maintain-app-verification output in this commit. Stage only this run's accepted paths or hunks. Leave stopped slices and unrelated changes uncommitted. Keep Private config, artifacts, Verify maintenance, and Scratch out of git. Use the repo's commit convention. Write commit bodies.
+
+The approved environment fixes from skill://session get one commit per approved mistake class. Each of these commits carries proof that its new check fails on a real past mistake.
 
 ## 7. Chain to the End state
 

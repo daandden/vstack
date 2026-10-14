@@ -122,6 +122,16 @@ describe("Addon routes", () => {
     expect(r.json!.failures).toEqual([]);
     expect(r.code).toBe(0);
   });
+
+  test("a catalog key makes a skill with a non-reject Base row an Addon", async () => {
+    const r = await runSpec((s) => {
+      const catalog = JSON.parse(s.files["addon-questions.json"]);
+      catalog.held = catalog["fixture-addon"];
+      s.files["addon-questions.json"] = JSON.stringify(catalog);
+    });
+    expect(r.json!.failures).toEqual([]);
+    expect(r.code).toBe(0);
+  });
 });
 // One fixture per failure class. Each case lists the exact failures expected as "<class> <item>".
 const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expected: string[] }[] = [
@@ -164,14 +174,15 @@ const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expecte
     expected: ["addon-question-mismatch fixture-helper"],
   },
   {
-    cls: "addon-question-mismatch",
-    name: "a catalog key naming a Matt skill",
+    cls: "addon-slash-route",
+    name: "a slash route to a catalog skill with a non-reject Base row",
     mutate: (s) => {
       const catalog = JSON.parse(s.files["addon-questions.json"]);
-      catalog.keep = catalog["fixture-addon"];
+      catalog.held = catalog["fixture-addon"];
       s.files["addon-questions.json"] = JSON.stringify(catalog);
+      s.files["plugin/rules/fx-rule.md"] += "Read /skill:held.\n";
     },
-    expected: ["addon-question-mismatch keep"],
+    expected: ["addon-slash-route plugin/rules/fx-rule.md"],
   },
   {
     cls: "invalid-utility",

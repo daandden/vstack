@@ -54,7 +54,7 @@ Except for the schema backfill described below, copy the body byte-for-byte. Sav
 Before onboarding saves its first profile, and again on the first `save` or `load`, check for `~/.vstack/diagram-design/profiles/default.md`. If it is absent:
 
 1. **Read** the shipped `references/style-guide.md`.
-2. Verify it has no profile header and still has all shipped default semantic values and font families. Never snapshot a customized guide as `default`.
+2. Verify it has no profile header and still has all shipped default semantic values, font families, and the shipped `Font source` value (`web`). Never snapshot a customized guide as `default`.
 3. **Bash:** create the library with `mkdir -p ~/.vstack/diagram-design/profiles`.
 4. **Write** `default.md` as a normal profile named `Default`, slug `default`, with `source-url: none`, today's created/updated dates, and note `Pristine shipped style guide`; its body is the verified shipped guide.
 5. Re-read the written file and verify one header plus the complete body.
