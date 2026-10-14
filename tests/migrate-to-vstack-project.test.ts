@@ -69,3 +69,20 @@ test("any other remote, or no remote, gets a setup-vstack notice and no code-hos
   const none = repo();
   expect(run(none,"plan").json().notices.some((n:string)=>n.includes("code-host.md"))).toBe(false);
 });
+test("a code-host.md that Migration moves or copies keeps its hand edits instead of the template seed", () => {
+  const hand = "# Code host: Bitbucket\nTool: hand-mapped MCP\n";
+  for (const mode of ["move","private"]) {
+    const r = repo(); matt(r); git(r,"remote","add","origin","git@github.com:acme/app.git");
+    put(join(r,"docs/agents/code-host.md"),hand); git(r,"add","."); git(r,"commit","-qm","hand host");
+    expect(run(r,"plan","--mode",mode).json().items.some((i:any)=>i.kind==="code-host")).toBe(false);
+    expect(apply(r,mode).code).toBe(0);
+    expect(readFileSync(join(r,mode==="move"?"docs/vstack/code-host.md":".git/vstack/config/code-host.md"),"utf8")).toBe(hand);
+  }
+  for (const dir of ["docs-agents","config"]) {
+    const r = repo(); git(r,"remote","add","origin","git@github.com:acme/app.git");
+    put(join(r,".git/matt-pocock",dir,"domain.md"),"domain"); put(join(r,".git/matt-pocock",dir,"code-host.md"),hand);
+    expect(run(r,"plan").json().items.some((i:any)=>i.kind==="code-host")).toBe(false);
+    expect(apply(r).code).toBe(0);
+    expect(readFileSync(join(r,".git/vstack/config/code-host.md"),"utf8")).toBe(hand);
+  }
+});

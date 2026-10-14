@@ -110,7 +110,10 @@ export function projectPlan(cwd: string, mode: Mode = "move"): ProjectPlan {
     }
   }
   const hostFile = join(destination,"code-host.md");
-  if (plan.items.some(i=>["config-move","config-copy","private-move"].includes(i.kind)) && !existsSync(hostFile)) {
+  // A code-host.md that this plan moves or copies is the user's; the seed must never replace it.
+  const hostPlanned = plan.items.some(i=>i.to===hostFile || i.changes.some(c=>c.after_path===hostFile))
+    || (movedStore !== undefined && ["docs-agents","config"].some(d=>existsSync(join(oldStore,d,"code-host.md"))));
+  if (plan.items.some(i=>["config-move","config-copy","private-move"].includes(i.kind)) && !existsSync(hostFile) && !hostPlanned) {
     const seed = codeHostSeed(root);
     if (seed) add("code-host",seed.template,hostFile,"",seed.text);
     else plan.notices.push("No code-host.md: the remote is not on github.com or gitlab.com. Run /skill:setup-vstack after Migration to map this repo's Code host.");
