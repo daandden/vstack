@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.2] - 2026-10-14
+
+- implement-spec closes the spec only when every one of its tickets is closed. Before this, a PR with a failed ticket still listed the spec as a closing reference and closed unfinished work.
+
 ## [2.0.1] - 2026-10-14
 
 - session's reviewer and synthesizer references split a semicolon sentence in two, as vstack-prose requires. The code review of 2.0.0 found this, and that release missed the fix.

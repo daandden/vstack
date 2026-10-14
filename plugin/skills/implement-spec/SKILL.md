@@ -84,10 +84,10 @@ Spawn one `vstack-worker` via `task` (`agent: "vstack-worker"`): fix every accep
 
 Update the affected checks and live proof. Then run shared step 6. Its commit body names each merged ticket.
 
-After shared step 6, resolve each merged ticket with no stopped slice the way the issue tracker closes work. If the tracker closes work through PRs, pass the spec and those tickets to open-pr in shared step 7 as the PR's closing references instead. At End state commit, those tickets stay open. Then run shared step 7 once, up to the settled or capped End state. It opens the one PR, ready for review.
+After shared step 6, resolve each merged ticket with no stopped slice the way the issue tracker closes work. The spec is done only when every one of its tickets is done: merged in this run with no stopped slice, or closed before this run. Resolve a done spec the same way. A ticket that stays open keeps the spec open. If the tracker closes work through PRs, pass those tickets to open-pr in shared step 7 as the PR's closing references instead, and add the spec only when it is done. At End state commit, those tickets and the spec stay open. Then run shared step 7 once, up to the settled or capped End state. It opens the one PR, ready for review.
 
 Leave the worker patches in omp's artifacts directory, add no cleanup step, and cite their paths.
 
 ## Reply
 
-Report the requested and reached End state, the integration branch, commits, PR URLs and observed status, each ticket's outcome (resolved, open with its reason, or closing through the PR), checks and live proof with evidence paths, Safety findings, open prune-comments work, stopped slices with missing red evidence, worker patch paths, and every skipped step or blocker. If a decision-trail is open, include its log and Attention result. Do not claim a PR, readiness, merge, or closed ticket that the chain did not observe.
+Report the requested and reached End state, the integration branch, commits, PR URLs and observed status, each ticket's outcome (resolved, open with its reason, or closing through the PR), the spec's outcome (resolved, closing through the PR, or open with the tickets that keep it open), checks and live proof with evidence paths, Safety findings, open prune-comments work, stopped slices with missing red evidence, worker patch paths, and every skipped step or blocker. If a decision-trail is open, include its log and Attention result. Do not claim a PR, readiness, merge, or closed ticket that the chain did not observe.
