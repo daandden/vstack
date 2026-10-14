@@ -109,7 +109,7 @@ The model of the session that starts a subagent or a Headless run. For the user'
 _Avoid_: parent's model, run's model
 
 **Fan-out**:
-One skill step running two or more subagents at the same time. At each such step, a judgment of the job's complexity decides whether to fan out; the user's explicit words override that judgment either way, and a skill the user invokes in order to fan out skips the judgment. Every subagent uses the Session model of the step's session unless the user has set a model for its agent.
+One skill step running two or more subagents at the same time. At each such step, a judgment of the job's complexity decides whether to fan out, and the user's explicit words override that judgment either way. Two kinds of skill always fan out and skip the judgment: a skill the user invokes in order to fan out, and a skill whose main agent only orchestrates. Every subagent uses the Session model of the step's session unless the user has set a model for its agent.
 _Avoid_: swarm, parallelism (unqualified)
 
 **Headless run**:

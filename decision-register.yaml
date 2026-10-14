@@ -892,7 +892,7 @@ items:
     tree: 0cfefc751d0cb64f0c948ffcb17e13b94e778f08
     disposition: adapt
     artifacts: [plugin/skills/implement-spec]
-    reason: "Runs a whole spec on one branch with isolated vstack-worker implementers behind the Fan-out gate and implement's END-STATE steps (ADR 0019)."
+    reason: "Runs Matt's steps with an orchestrator-only main agent: isolated vstack-worker implementers start as tickets become ready, a merger vstack-worker commits each ticket, and implement's END-STATE steps finish the run (ADR 0019, ADR 0022)."
   - id: matt/pr
     upstream: matt
     kind: skill
