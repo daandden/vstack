@@ -3,7 +3,7 @@
 ## What this source contains
 
 - Commit history (messages, dates, authors, diffs)
-- PR descriptions, review comments, and discussion threads (via the profile's code-host CLI)
+- PR descriptions, review comments, and discussion threads (through the profile's Code host tool)
 - Inline code comments, TODOs, FIXMEs, deprecation notes
 - ADRs (architectural decision records) if the repo keeps them
 - Tests, whose names and assertions often encode the edge cases that motivated a change
@@ -37,15 +37,9 @@ git show <hash>
 git log <old>..<new> -p -- <file>
 ```
 
-For each substantive commit, follow the repo profile:
+For each substantive commit, find its review reference in the commit title, in the form that the profile's `code-host.md` names (for example `(#1234)` on GitHub or `!1234` on GitLab). Read its review context through the profile's `read-pr` and `review-threads` operations. Without a `code-host.md`, use git only and record review history as a gap.
 
-| Code host | Review reference | Read review context |
-|---|---|---|
-| GitHub | `(#1234)` | `gh pr view <number> --json title,body,author,createdAt,mergedAt,labels,closingIssuesReferences,comments,reviews,files` |
-| GitLab, including self-hosted | `!1234` | `glab mr view <iid> --comments` |
-| Other or no remote | Commit hash | Git only. Record unavailable review history as a gap. |
-
-An unavailable or unauthenticated CLI is a gap, not an empty search. Use the profile's host for the CLI commands.
+An unavailable or unauthenticated tool is a gap, not an empty search.
 
 Look for out-of-band docs:
 

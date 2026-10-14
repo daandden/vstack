@@ -4,7 +4,7 @@ The why skill gives each reachable evidence category one investigator, each read
 
 | Category | Playbook | Example MCP it documents |
 |---|---|---|
-| Source control history | [`code-archaeology.md`](./sources/code-archaeology.md) | git + the code host's CLI (`gh`, `glab`) |
+| Source control history | [`code-archaeology.md`](./sources/code-archaeology.md) | git + the Code host's tool from `code-host.md` (for example `gh`, `glab`, or a Bitbucket MCP server) |
 | Issue / ticket tracker | [`linear.md`](./sources/linear.md) | Linear (adapt for Jira, Plane, Shortcut), GitHub Issues via `gh`, GitLab Issues via `glab`, or local markdown files from the tracker configuration |
 | Long-form documents | [`notion.md`](./sources/notion.md) | Notion (adapt for Confluence, Google Docs, Coda) |
 | Real-time team chat | [`slack.md`](./sources/slack.md) | Slack (adapt for Discord, Microsoft Teams, Mattermost) |

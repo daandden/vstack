@@ -7,7 +7,7 @@ import { change, files, hits, machinePlan, privateMove, rewrite, rows, type Chan
 type Mode = "move" | "private";
 interface ProjectItem {
   id: string;
-  kind: "config-move" | "config-copy" | "rewrite" | "domain-move" | "marker" | "old-delete" | "old-store-delete" | "private-move";
+  kind: "config-move" | "config-copy" | "code-host" | "rewrite" | "domain-move" | "marker" | "old-delete" | "old-store-delete" | "private-move";
   mandatory: boolean;
   destructive: boolean;
   from?: string;
@@ -40,6 +40,21 @@ function domainFiles(root: string): string[] {
     const p = join(root,e.name);
     return e.isDirectory() ? domainFiles(p) : e.isFile() && /^(CONTEXT|GLOSSARY)(-MAP)?\.md$/.test(e.name) ? [p] : [];
   });
+}
+// Matt's setup has no Code host, so a Migration seeds code-host.md from setup-vstack's template when the
+// remote is github.com or gitlab.com (ADR 0020). Any other host needs setup-vstack to map its tool.
+const TEMPLATES = join(import.meta.dir, "../../setup-vstack");
+function codeHostSeed(root: string): { template: string; text: string } | null {
+  const remotes = git(root,"remote").split("\n").filter(Boolean);
+  const name = remotes.includes("origin") ? "origin" : remotes[0];
+  if (!name) return null;
+  const m = /^(?:[\w.+-]+@|(?:https?|ssh|git):\/\/(?:[^@/]+@)?)(github\.com|gitlab\.com)[:/](.+?)(?:\.git)?\/?$/.exec(git(root,"remote","get-url",name));
+  if (!m) return null;
+  const template = join(TEMPLATES, m[1] === "github.com" ? "code-host-github.md" : "code-host-gitlab.md");
+  const text = m[1] === "github.com"
+    ? readFileSync(template,"utf8").replaceAll("<owner>/<repo>",m[2]!)
+    : readFileSync(template,"utf8").replaceAll("<group>/<project>",m[2]!).replaceAll("<gitlab.com or the self-hosted host>","gitlab.com");
+  return { template, text };
 }
 export function projectPlan(cwd: string, mode: Mode = "move"): ProjectPlan {
   const root = realpathSync(git(cwd,"rev-parse","--show-toplevel"));
@@ -93,6 +108,12 @@ export function projectPlan(cwd: string, mode: Mode = "move"): ProjectPlan {
       }
       add(privateMode?"config-copy":"config-move",from,to,before,after);
     }
+  }
+  const hostFile = join(destination,"code-host.md");
+  if (plan.items.some(i=>["config-move","config-copy","private-move"].includes(i.kind)) && !existsSync(hostFile)) {
+    const seed = codeHostSeed(root);
+    if (seed) add("code-host",seed.template,hostFile,"",seed.text);
+    else plan.notices.push("No code-host.md: the remote is not on github.com or gitlab.com. Run /skill:setup-vstack after Migration to map this repo's Code host.");
   }
   for (const path of [...["AGENTS.md","CLAUDE.md"].map(f=>join(root,f)),...files(join(root,".omp/rules"))]) {
     if (!existsSync(path) || !lstatSync(path).isFile()) continue;

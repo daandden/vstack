@@ -43,7 +43,7 @@ Pass the scope guard, the session file path or labeled digest, and only the sess
 
 ## 2. Review through four lenses
 
-Read [references/judgment-reviewer.md](references/judgment-reviewer.md), [references/tooling-reviewer.md](references/tooling-reviewer.md), [references/divergent-reviewer.md](references/divergent-reviewer.md), and [references/environment-reviewer.md](references/environment-reviewer.md). Substitute the session file path or digest in each template, and the session's checkout in the environment template. Count the transcript's lines for the gate, or the digest's lines when using that fallback.
+Read [references/judgment-reviewer.md](references/judgment-reviewer.md), [references/tooling-reviewer.md](references/tooling-reviewer.md), [references/divergent-reviewer.md](references/divergent-reviewer.md), and [references/environment-reviewer.md](references/environment-reviewer.md). Substitute the session file path or digest in each template. In the environment template, also substitute the session's checkout and the absolute path of that checkout's `code-host.md` (under its vstack root, per the Private-mode rule), or `none` when the file is missing. Count the transcript's lines for the gate, or the digest's lines when using that fallback.
 
 Before this step, read skill://vstack-fan-out and run its gate on the block below.
 

@@ -19,7 +19,7 @@ You need omp and git with working HTTPS credentials for github.com (the repo is 
 2. Link its plugin directory: `omp plugin link <clone>/plugin`
 3. Start a new omp session.
 4. If you are moving from Matt Pocock's skills, run `/skill:migrate-to-vstack` first. It confirms machine and project Migration plans, or only the project plan when you pick Only this project.
-5. Run `/skill:setup-vstack` to configure the machine and project. It does not scan for Matt leftovers or apply Migration.
+5. Run `/skill:setup-vstack` to configure the machine and project. It does not scan for Matt leftovers or apply Migration. Its Code host section writes `code-host.md`, which implement needs for End states past commit. For GitHub and GitLab it uses a `gh` or `glab` template. For any other host, such as Bitbucket, it maps the MCP server or CLI that you already set up for the project. A repo set up earlier gets only that section when you run setup-vstack again.
 
 To refresh, run `git pull` in the clone and start a new omp session. The link points at the working tree, so there is nothing else to update.
 
@@ -347,7 +347,7 @@ Inside a vstack clone, approved vstack lessons use `skill://vstack-maintain` for
 
 `tests/setup-vstack-machine.test.ts` and `tests/setup-vstack-project.test.ts` run setup-vstack's two scripts as processes. `machine.ts` asks the real `omp` for every fact (`omp config list --json`, `omp token typesafe`, `omp setup python --check --json`) and writes settings only through `omp config set`, so its tests give it a throwaway `HOME` whose `.omp/agent/config.yml` they write, an env of only `PATH`, `HOME`, and `TERM`, a cwd outside the real home, and `TYPESAFE_API_KEY` as the stand-in credential. They need omp on `PATH` and skip without it (CI); the case for a missing omp runs everywhere. `project.ts` needs only git: its tests build temp repos and linked worktrees and assert the state JSON and the files in the Standard setup commit.
 
-`tests/migrate-to-vstack-machine.test.ts` runs the machine Migration CLI over throwaway homes. It includes all 25 Matt lock entries, diagram-design and good-css copies, CLI-style agent links, and private stores. It covers linked checkouts, submodules, separate git dirs, rules, and profiles. A stand-in skills CLI handles removal at that external boundary. Git and filesystem moves are real. Other cases cover Cancel, mandatory choices, stale plans, pruning, manual hits, conflicts, warning-only removal, and rollback. `tests/migrate-to-vstack-project.test.ts` covers Move, Private copies, domain files, markers, conflicts, and approval snapshots.
+`tests/migrate-to-vstack-machine.test.ts` runs the machine Migration CLI over throwaway homes. It includes all 25 Matt lock entries, diagram-design and good-css copies, CLI-style agent links, and private stores. It covers linked checkouts, submodules, separate git dirs, rules, and profiles. A stand-in skills CLI handles removal at that external boundary. Git and filesystem moves are real. Other cases cover Cancel, mandatory choices, stale plans, pruning, manual hits, conflicts, warning-only removal, and rollback. `tests/migrate-to-vstack-project.test.ts` covers Move, Private copies, domain files, markers, conflicts, approval snapshots, and the `code-host.md` seed from a GitHub or GitLab remote.
 
 
 ### Versions and CHANGELOG

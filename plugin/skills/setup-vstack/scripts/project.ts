@@ -1,6 +1,6 @@
 // setup-vstack's project section helpers (spec #63 "setup-vstack"; ADR 0006).
 //
-//   bun project.ts state                 JSON facts the project section starts from
+//   bun project.ts state                 JSON facts the project section starts from, with the config files still missing
 //   bun project.ts commit --title <t>    Standard mode: commit the setup output, and only it, on the current branch
 //
 // Run from inside the repo. Exit codes: 0 done; 2 usage error, not in a git repo, or a refused commit.
@@ -8,7 +8,9 @@
 import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-const CONFIG = ["docs/vstack/issue-tracker.md", "docs/vstack/triage-labels.md", "docs/vstack/domain.md"];
+// One file per setup section, in section order (ADR 0006, ADR 0020).
+const CONFIG_FILES = ["issue-tracker.md", "code-host.md", "triage-labels.md", "domain.md"];
+const CONFIG = CONFIG_FILES.map((f) => `docs/vstack/${f}`);
 const BLOCK_FILES = ["CLAUDE.md", "AGENTS.md"];
 const BLOCK_HEADING = "## vstack";
 
@@ -48,11 +50,15 @@ function repoState(cwd: string) {
   // Uncommitted edits in the block file would go into the setup commit with the block.
   const blockFileDirty = blockFile !== null && git(root, "diff", "--quiet", "HEAD", "--", blockFile).code !== 0;
 
+  const configDir = mode === "private" ? join(vstackRoot, "config") : join(root, "docs", "vstack");
+  const missingConfig = CONFIG_FILES.filter((f) => !existsSync(join(configDir, f)));
+
   return {
     root,
     common_dir: commonDir,
     vstack_root: vstackRoot,
     mode,
+    missing_config: missingConfig,
     block_file: blockFile,
     block_exists: blockExists,
     block_file_dirty: blockFileDirty,
@@ -68,7 +74,7 @@ function commit(cwd: string, title: string | undefined) {
   const s = repoState(cwd);
   if (s.mode === "private") fail(`refusing to commit: Private mode is on (${s.vstack_root}/config/ exists), and Private mode commits nothing`);
 
-  for (const p of CONFIG) if (!existsSync(join(s.root, p))) fail(`refusing to commit: ${p} is missing; Standard mode writes all three config files`);
+  for (const p of CONFIG) if (!existsSync(join(s.root, p))) fail(`refusing to commit: ${p} is missing; Standard mode writes all ${CONFIG.length} config files`);
   if (!s.block_file || !s.block_exists) fail(`refusing to commit: no ${BLOCK_HEADING} block in CLAUDE.md or AGENTS.md`);
 
   const paths = [...CONFIG, s.block_file];

@@ -1,6 +1,6 @@
 ---
 name: setup-vstack
-description: Check this machine's omp settings for vstack, then configure this repo for the vstack skills (its issue tracker, triage label vocabulary, and domain doc layout) in Standard or Private mode. Run once before first use of the other vstack skills.
+description: Check this machine's omp settings for vstack, then configure this repo for the vstack skills (its issue tracker, Code host, triage label vocabulary, and domain doc layout) in Standard or Private mode. Run once before first use of the other vstack skills, and again to add a config file that is missing.
 disable-model-invocation: true
 ---
 
@@ -9,6 +9,7 @@ disable-model-invocation: true
 Two parts, in this order. The machine section checks the omp settings vstack needs. The project section writes this repo's vstack config:
 
 - Issue tracker: where issues live (GitHub by default; local markdown also works out of the box).
+- Code host: the service that holds the remote and its PRs, and the tool that runs each PR operation.
 - Triage labels: the strings used for the five canonical triage roles.
 - Domain docs: where `GLOSSARY.md` and ADRs live, and the rules for reading them.
 
@@ -54,11 +55,12 @@ Run `project.ts state`. It prints JSON:
 
 - `root`: this checkout. `common_dir`: the git common dir that every worktree of the repo shares. `vstack_root`: `<common_dir>/vstack`.
 - `mode`: `private` when `<vstack_root>/config/` exists, `standard` when `docs/vstack/` holds config, else null.
+- `missing_config`: the config files that the mode's config directory does not have yet, from `issue-tracker.md`, `code-host.md`, `triage-labels.md`, and `domain.md`.
 - `block_file`: `CLAUDE.md` when it exists, else `AGENTS.md` when it exists, else null. `block_exists`: that file already holds a `## vstack` block. `block_file_dirty`: that file has uncommitted changes.
 
 ### 2. Mode
 
-When `mode` is set, tell the user that this repo is already set up in that mode, and keep it. Otherwise call `ask` with two options:
+When `mode` is set, tell the user that this repo is already set up in that mode, and keep it. If `missing_config` is empty, tell the user that every config file exists and that they can edit any of them directly, then skip to step 7. Otherwise run only the sections for the missing files in step 4, and draft and write only those files in steps 5 and 6. A repo set up before the Code host existed misses only `code-host.md`, so it gets one section. When `mode` is null, call `ask` with two options:
 
 - Standard (Recommended): the config is tracked in `docs/vstack/`, with a `## vstack` block in `CLAUDE.md` or `AGENTS.md`, and setup-vstack commits it.
 - Private: the config lives in `<vstack_root>/config/`, inside the git common dir, so every worktree of this repo shares it and git never tracks it. Nothing is committed. The `vstack-private-mode` rule then sends every vstack skill there.
@@ -67,7 +69,8 @@ When `mode` is set, tell the user that this repo is already set up in that mode,
 
 Look at the repo to understand its starting state. Read whatever exists; do not assume:
 
-- `git remote -v` and `.git/config`: does a remote point at GitHub or GitLab, and at which repo?
+- `git remote -v` and `.git/config`: does a remote point at GitHub, GitLab, Bitbucket, or another host, and at which repo?
+- The MCP servers this session reaches (tools named `mcp__<server>_<tool>`, top-level or under `xd://`), when the remote is not GitHub or GitLab. A server for the Code host is a likely tool for it.
 - `CLAUDE.md` and `AGENTS.md` at the repo root, and the `## vstack` block in one of them.
 - `GLOSSARY.md` and `GLOSSARY-MAP.md` at the repo root, and in Private mode also under `<vstack_root>/domain/`.
 - `docs/adr/` and any `src/*/docs/adr/` directories.
@@ -92,9 +95,21 @@ Recommend GitHub when a remote points at GitHub, GitLab when a remote points at 
 
 The GitHub and GitLab templates carry a "PRs as a request surface" flag, off by default. Leave it off and do not raise it. A user who wants external PRs in the triage queue can change the flag in the file later.
 
-Section B, triage labels. This section always runs, because triage always ships. Call `ask` with one question, whether to keep the default triage labels, and the options Keep the defaults (Recommended) and Use other names. The defaults are the five canonical roles, each label string equal to its name: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. Only on Use other names (usually because the tracker already uses other names, such as `bug:triage` for `needs-triage`), call `ask` once more with one question per role to collect the names, so triage applies the existing labels instead of creating duplicates.
+Section B, Code host.
 
-Section C, domain docs. Default to single-context: one `GLOSSARY.md` plus `docs/adr/` at the repo root. This fits almost every repo; write it without a question. Only when exploration found monorepo signals, call `ask` with single-context and multi-context (a root `GLOSSARY-MAP.md` that points to one `GLOSSARY.md` per context).
+> Explainer: The Code host is the service that holds this repo's remote and its PRs. implement's PR chain (open-pr, babysit, ship), why, session, and wizard run every PR operation through `code-host.md`. A repo without it can only commit. The Code host is a separate choice from the issue tracker. For example, a Bitbucket repo can track its issues in Jira.
+
+Recommend GitHub when a remote points at `github.com`, GitLab when a remote points at GitLab (`gitlab.com` or a self-hosted host), and no option otherwise. The `ask` options:
+
+- GitHub: PRs live on GitHub (uses the `gh` CLI).
+- GitLab: merge requests live on GitLab (uses the `glab` CLI).
+- Other (Bitbucket Cloud, Bitbucket Data Center, and so on): the user names, through the Other answer of `ask`, the MCP server or CLI that is already set up for this project.
+
+For Other, draft the operation rows yourself. Read the named MCP server's tool list or the CLI's `--help` output for each command group. Write one row per operation id in [code-host-github.md](./code-host-github.md), in the same order, with the tool or command and the arguments it needs. Write `unsupported` for each id with no matching tool or command. Never write a tool or command that the list or the help does not show. The user checks the rows in step 5.
+
+Section C, triage labels. This section runs whenever `triage-labels.md` is missing, whatever the tracker, because triage always ships. Call `ask` with one question, whether to keep the default triage labels, and the options Keep the defaults (Recommended) and Use other names. The defaults are the five canonical roles, each label string equal to its name: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. Only on Use other names (usually because the tracker already uses other names, such as `bug:triage` for `needs-triage`), call `ask` once more with one question per role to collect the names, so triage applies the existing labels instead of creating duplicates.
+
+Section D, domain docs. Default to single-context: one `GLOSSARY.md` plus `docs/adr/` at the repo root. This fits almost every repo; write it without a question. Only when exploration found monorepo signals, call `ask` with single-context and multi-context (a root `GLOSSARY-MAP.md` that points to one `GLOSSARY.md` per context).
 
 ### 5. Draft and confirm
 
@@ -103,24 +118,26 @@ Write the drafts from the seed templates in this skill's directory:
 - [issue-tracker-github.md](./issue-tracker-github.md): GitHub issue tracker
 - [issue-tracker-gitlab.md](./issue-tracker-gitlab.md): GitLab issue tracker
 - [issue-tracker-local.md](./issue-tracker-local.md): local-markdown issue tracker
+- [code-host-github.md](./code-host-github.md): GitHub Code host
+- [code-host-gitlab.md](./code-host-gitlab.md): GitLab Code host
 - [triage-labels.md](./triage-labels.md): label mapping
 - [domain.md](./domain.md): domain doc consumer rules and layout
 
-For an Other issue tracker, write `issue-tracker.md` from scratch from the user's description.
+For an Other issue tracker, write `issue-tracker.md` from scratch from the user's description. For an Other Code host, write `code-host.md` in the shape of `code-host-github.md`, with the host, the repo, the tool, a read-only check, the review reference, and the drafted rows. In every `code-host.md`, fill in the repo from the remote and, for a self-hosted GitLab, the host.
 
 In Private mode, change two drafts so that they point under the vstack root by absolute path:
 
 - `issue-tracker.md` for local markdown: replace every `.scratch/` path, the Wayfinding map, ticket, and frontier paths included, with `<vstack_root>/artifacts/`.
 - `domain.md`: the domain docs live in `<vstack_root>/domain/`, as `GLOSSARY.md` (or `GLOSSARY-MAP.md`) and `adr/`, in place of the repo-root files. Add one line saying that the repo's own tracked `GLOSSARY.md` and `docs/adr/` are read as well when they exist.
 
-Show the user the three drafts and, in Standard mode, the `## vstack` block (see Write). Then call `ask` with the options Write it (Recommended) and Change something. On Change something, make the user's edits, show the new drafts, and call `ask` again.
+Show the user each draft and, in Standard mode, the `## vstack` block (see Write). Then call `ask` with the options Write it (Recommended) and Change something. On Change something, make the user's edits, show the new drafts, and call `ask` again.
 
 ### 6. Write
 
 Standard mode:
 
 1. When `block_file_dirty` is true, tell the user that `<block_file>` has uncommitted changes and that the setup commit is going to include them. Call `ask` with the options Go on and include them, and Stop so I can commit them first. On Stop, stop.
-2. Write `docs/vstack/issue-tracker.md`, `docs/vstack/triage-labels.md`, and `docs/vstack/domain.md`.
+2. Write each config file that this run drafted: `docs/vstack/issue-tracker.md`, `docs/vstack/code-host.md`, `docs/vstack/triage-labels.md`, and `docs/vstack/domain.md`, or only the missing ones on a re-run.
 3. Pick the file for the block. When `CLAUDE.md` exists, edit it. Else when `AGENTS.md` exists, edit it. When neither exists, call `ask` with the options `CLAUDE.md` and `AGENTS.md` and no recommended option, and create the one the user picks. Never create `AGENTS.md` when `CLAUDE.md` exists, or the other way round.
 4. When the file already has a `## vstack` block, update that block in place instead of adding a second one, and leave the other sections as they are. The block:
 
@@ -131,6 +148,10 @@ Standard mode:
 
    [one-line summary of where issues are tracked]. See `docs/vstack/issue-tracker.md`.
 
+   ### Code host
+
+   [one-line summary of the Code host and its tool]. See `docs/vstack/code-host.md`.
+
    ### Triage labels
 
    [one-line summary of the label vocabulary]. See `docs/vstack/triage-labels.md`.
@@ -140,12 +161,14 @@ Standard mode:
    [one-line summary of the layout: "single-context" or "multi-context"]. See `docs/vstack/domain.md`.
    ```
 
-5. Commit. Take the title from the repo's convention: read `git log --format=%s -n 20` on the default branch (`git symbolic-ref --short refs/remotes/origin/HEAD`, else the current branch) and follow the pattern you see there. When no convention is visible, use Conventional Commits: `chore: set up vstack config`. Run `project.ts commit --title "<title>"`. It stages only the three config files and the block file, never `-A`, and commits them alone on the current branch; anything else the user had staged stays staged. It prints `commit`, `title`, and `paths` as JSON, with `commit` null when nothing changed since the last setup commit. Exit 2 means it refused: show its message.
+5. Commit. Take the title from the repo's convention: read `git log --format=%s -n 20` on the default branch (`git symbolic-ref --short refs/remotes/origin/HEAD`, else the current branch) and follow the pattern you see there. When no convention is visible, use Conventional Commits: `chore: set up vstack config`. Run `project.ts commit --title "<title>"`. It stages only the four config files and the block file, never `-A`, and commits them alone on the current branch; anything else the user had staged stays staged. It prints `commit`, `title`, and `paths` as JSON, with `commit` null when nothing changed since the last setup commit. Exit 2 means it refused: show its message.
 
 Private mode:
 
-1. Write `issue-tracker.md`, `triage-labels.md`, and `domain.md` to `<vstack_root>/config/`. Creating that directory turns Private mode on for every worktree of this repo.
+1. Write each drafted config file to `<vstack_root>/config/`: `issue-tracker.md`, `code-host.md`, `triage-labels.md`, and `domain.md`, or only the missing ones on a re-run. Creating that directory turns Private mode on for every worktree of this repo.
 2. Write no `## vstack` block, change no tracked file and no ignore file, and commit nothing.
+
+In both modes, when this run wrote `code-host.md`, check its tool once with a read-only call. Run the file's Check command for a CLI. For an MCP server, call one read-only tool from the drafted rows, such as `list-prs`. If the call fails, print `WARN code-host: <what failed>. Remedy: <log in to the CLI, or connect the MCP server>.` Keep the written file either way.
 
 ### 7. Done
 
@@ -154,9 +177,10 @@ Tell the user the setup is complete, in which mode, and where the config is. Rep
 List the skills that read the config:
 
 - `issue-tracker.md`: to-spec, to-tickets, triage, wayfinder, code-review, and why.
+- `code-host.md`: implement and its PR chain (open-pr, babysit, and ship), implement-spec, hillclimb, why, session, and wizard. Without it, implement offers only End state commit.
 - `triage-labels.md`: triage, to-spec, and to-tickets.
 - `domain.md` and the domain docs: domain-modeling, grill-with-docs, improve-codebase-architecture, codebase-design, diagnosing-bugs, tdd, and wait-what.
 
-Say that the user can edit these files directly later. Re-running this skill is needed only to switch issue trackers or to start over.
+Say that the user can edit these files directly later. Re-running this skill adds only the config files that are missing. To switch a choice, edit its file, or delete the file and run this skill again.
 
 Then name the next step. setup-app-verification creates this project's Verify skill, which gives live proof to implement, forensics, hillclimb, and ship's verifiers. Tell the user to start a new session (`/new`) and run `/skill:grill-with-docs` to plan live proof. implement uses `skill://setup-app-verification` to create the Verify skill in that run.

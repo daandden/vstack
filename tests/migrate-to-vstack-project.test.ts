@@ -44,3 +44,28 @@ test("fallback resolves a linked worktree common dir and refuses unsafe old-stor
   expect(existsSync(join(unsafe,".git/matt-pocock"))).toBe(true);
   expect(existsSync(join(unsafe,"docs/vstack"))).toBe(false);
 });
+const TEMPLATES = join(import.meta.dir, "../plugin/skills/setup-vstack");
+test("a migrated GitHub or GitLab repo gets code-host.md from the template, with its repo filled in", () => {
+  const gh = repo(); matt(gh); git(gh,"remote","add","origin","git@github.com:acme/app.git");
+  const item = run(gh,"plan").json().items.find((i:any)=>i.kind==="code-host");
+  expect(item.to).toBe(join(gh,"docs/vstack/code-host.md"));
+  expect(apply(gh).code).toBe(0);
+  const written = readFileSync(join(gh,"docs/vstack/code-host.md"),"utf8");
+  expect(written).toBe(readFileSync(join(TEMPLATES,"code-host-github.md"),"utf8").replaceAll("<owner>/<repo>","acme/app"));
+  expect(run(gh,"plan").json().items).toEqual([]);
+
+  const gl = repo(); matt(gl); git(gl,"remote","add","origin","https://gitlab.com/group/sub/project.git");
+  expect(apply(gl,"private").code).toBe(0);
+  const glWritten = readFileSync(join(gl,".git/vstack/config/code-host.md"),"utf8");
+  expect(glWritten).toContain("Repo: `group/sub/project`");
+  expect(glWritten).toContain("Host: GitLab (`gitlab.com`)");
+  expect(glWritten).not.toContain("<group>/<project>");
+});
+test("any other remote, or no remote, gets a setup-vstack notice and no code-host item", () => {
+  const bb = repo(); matt(bb); git(bb,"remote","add","origin","git@bitbucket.org:acme/app.git");
+  const p = run(bb,"plan").json();
+  expect(p.items.some((i:any)=>i.kind==="code-host")).toBe(false);
+  expect(p.notices.some((n:string)=>n.includes("code-host.md") && n.includes("/skill:setup-vstack"))).toBe(true);
+  const none = repo();
+  expect(run(none,"plan").json().notices.some((n:string)=>n.includes("code-host.md"))).toBe(false);
+});

@@ -6,16 +6,16 @@ disable-model-invocation: true
 
 # Open a PR
 
-Use `gh` for every GitHub read and write. Git commands handle local history and pushes. Open the PR, then return to the caller. Never start babysit or ship.
+Run every Code host read and write through the operation ids in `code-host.md`. Git commands handle local history and pushes. Open the PR, then return to the caller. Never start babysit or ship.
 
-Accept the caller's End state, whether this run created the branch, "prune-comments already run", Safety findings, verification evidence, and any closing references: the issues or tickets the PR resolves. Keep an unknown branch-ownership flag false. If a decision-trail log is open, append decisions through skill://decision-trail to that exact path. Never start a log here.
+Accept the caller's End state, `code-host.md` path, whether this run created the branch, "prune-comments already run", Safety findings, verification evidence, and any closing references: the issues or tickets the PR resolves. Without a supplied path, read `<vstack root>/docs/vstack/code-host.md` in Standard mode or `<vstack root>/config/code-host.md` in Private mode. If that file is missing, stop and tell the user to run `/skill:setup-vstack` to add the Code host. Keep an unknown branch-ownership flag false. If a decision-trail log is open, append decisions through skill://decision-trail to that exact path. Never start a log here.
 
 
 Resolve the absolute project Scratch dir once through skill://vstack-tmp with its path script and no kind argument. Reuse the caller's supplied Scratch dir. Keep PR body files under `<Scratch dir>/verify/<app>-<run-id>/`, beside the proof they describe.
 
 ## 1. Check the branch
 
-Read the default branch with `gh repo view --json defaultBranchRef`. Fetch its tip and read the current branch. Stop on the default branch, detached HEAD, or no commits beyond the base. Leave unrelated working-tree changes untouched. Stop if they prevent cleanup or history edits.
+Read the default branch through `default-branch`. Fetch its tip and read the current branch. Stop on the default branch, detached HEAD, or no commits beyond the base. Leave unrelated working-tree changes untouched. Stop if they prevent cleanup or history edits.
 
 Use the default branch as the base unless the user requested a stack. Pin the base SHA, diff command, and commit list. For a stack, use the parent's exact tip as the child's base. Record the branch-ownership flag and any last pushed SHA from the caller.
 
@@ -63,17 +63,17 @@ Write the body with skill://pr: its Summary, Evidence, and Merge Danger sections
 
 Attach videos or screenshots only when they prove a claim. Strip private information before publication. Local evidence paths identify local proof, not remotely accessible links. Use an existing approved artifact URL when available. Put long logs, commit details, metric tables, full SHAs, lane recitals, and "CLEAN" verdicts in linked evidence, not the body. A commit body does not restate its subject.
 
-Save the body in this run's Scratch `verify/` entry and pass it through `--body-file`. Do not interpolate prose into shell commands.
+Save the body in this run's Scratch `verify/` entry and pass it to `create-pr` or `edit-pr` as a file. Do not interpolate prose into shell commands.
 
 ## 7. Create the ready PR
 
-Use `gh pr create --base <base-branch> --head <branch> --title <title> --body-file <absolute-body-path>` without `--draft`. Use `gh pr list` to find an existing PR for this head and base before creating a duplicate. Update an existing PR through `gh pr edit` with the same body-file contract.
+Create the PR through `create-pr`, as a ready PR, never a draft. Use `list-prs` to find an existing PR for this head and base before creating a duplicate. Update an existing PR through `edit-pr` with the same body-file contract. If `edit-pr` is unsupported, report that the existing PR keeps its old title and body.
 
-Create a stack only on request. The root targets the default branch. Each child rebases onto its parent's exact tip and targets that parent's branch. As a parent merges, skill://ship moves its child onto the default branch. Keep independent work outside the chain. Rebase on the default branch before substantial stack work. Complete those history changes before each branch's final push in step 4. Retarget an existing child through `gh pr edit <pr> --base <parent-branch>`.
+Create a stack only on request, and only when `code-host.md` supports `retarget-pr`. The root targets the default branch. Each child rebases onto its parent's exact tip and targets that parent's branch. As a parent merges, skill://ship moves its child onto the default branch. Keep independent work outside the chain. Rebase on the default branch before substantial stack work. Complete those history changes before each branch's final push in step 4. Retarget an existing child through `retarget-pr` to its parent's branch.
 
 ## 8. Read the PR before reporting status
 
-Run `gh pr view <pr> --json url,title,isDraft,state,baseRefName,headRefName,headRefOid`. If it is a draft, run `gh pr ready <pr>` and read it again. Make sure that its head SHA is the final tip pushed in step 4. Report a mismatch or unavailable status instead of claiming that the final diff is published.
+Read the PR through `read-pr`: its URL, title, draft state, state, base branch, head branch, and head SHA. If it is a draft, run `mark-ready` and read it again. If `mark-ready` is unsupported, report the draft. Make sure that its head SHA is the final tip pushed in step 4. Report a mismatch or unavailable status instead of claiming that the final diff is published.
 
 ## Reply
 

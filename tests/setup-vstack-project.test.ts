@@ -8,7 +8,7 @@ import { dirname, join } from "node:path";
 import { ENV, git } from "./support/fixture.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "setup-vstack", "scripts", "project.ts");
-const CONFIG = ["docs/vstack/issue-tracker.md", "docs/vstack/triage-labels.md", "docs/vstack/domain.md"];
+const CONFIG = ["docs/vstack/issue-tracker.md", "docs/vstack/triage-labels.md", "docs/vstack/domain.md", "docs/vstack/code-host.md"];
 const BLOCK = "## vstack\n\n### Issue tracker\n\nGitHub. See `docs/vstack/issue-tracker.md`.\n";
 
 let dir: string;
@@ -92,6 +92,23 @@ test("Standard mode is on when docs/vstack/ holds config", () => {
   expect(state(repo).mode).toBe("standard");
 });
 
+test("missing_config names each config file the mode's config directory lacks, so a re-run asks only those sections", () => {
+  expect(state(makeRepo()).missing_config).toEqual(["issue-tracker.md", "code-host.md", "triage-labels.md", "domain.md"]);
+
+  // A repo set up before the Code host existed lacks only code-host.md.
+  const older = makeRepo({
+    "docs/vstack/issue-tracker.md": "# GitHub\n",
+    "docs/vstack/triage-labels.md": "# Labels\n",
+    "docs/vstack/domain.md": "# Domain\n",
+  });
+  expect(state(older).missing_config).toEqual(["code-host.md"]);
+
+  // Private mode reads <vstack root>/config/, not docs/vstack/.
+  const priv = makeRepo({ "docs/vstack/issue-tracker.md": "# tracked team config\n" });
+  write(join(priv, ".git", "vstack"), { "config/code-host.md": "# GitHub\n", "config/domain.md": "# Domain\n" });
+  expect(state(priv).missing_config).toEqual(["issue-tracker.md", "triage-labels.md"]);
+});
+
 test("outside a git repo, state exits 2", () => {
   const plain = join(dir, "plain");
   mkdirSync(plain, { recursive: true });
@@ -100,7 +117,7 @@ test("outside a git repo, state exits 2", () => {
   expect(r.stderr).toContain("git");
 });
 
-test("Standard commit holds only the three config files and the block file, with the given title", () => {
+test("Standard commit holds only the four config files and the block file, with the given title", () => {
   const repo = makeRepo({ "README.md": "# app\n", "CLAUDE.md": "# notes\n", "src/a.ts": "a\n" });
   // Unrelated work in progress: a staged change, an unstaged change, and an untracked file.
   write(repo, { "src/a.ts": "a staged\n" });
@@ -163,6 +180,13 @@ test("commit refuses in Private mode, without a title, or with setup output miss
   const l = run(noLabels, "commit", "--title", "chore: set up vstack");
   expect(l.code).toBe(2);
   expect(l.stderr).toContain("docs/vstack/triage-labels.md");
+
+  const noHost = makeRepo({ "CLAUDE.md": "# c\n" });
+  write(noHost, { ...configFiles(), "CLAUDE.md": `# c\n\n${BLOCK}` });
+  rmSync(join(noHost, "docs/vstack/code-host.md"));
+  const h = run(noHost, "commit", "--title", "chore: set up vstack");
+  expect(h.code).toBe(2);
+  expect(h.stderr).toContain("docs/vstack/code-host.md");
 });
 
 test("in a repo with no commits yet, the setup commit is the first commit and holds only the setup paths", () => {

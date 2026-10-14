@@ -12,7 +12,7 @@ Read the transcript at <ABSOLUTE_PATH> (or use the digest below if no path is gi
 
 ## Find the mistake classes
 
-Read the checkout's recent commits, reverts, and review comments (`git -C <CHECKOUT> log`, and `gh` for the PR review comments). Also read its agent instruction files and the comments that explain workarounds. Group the mistakes from the history and from the session into classes. A mistake class counts once it happened twice, in the session, in the history, or across both. A class that happened once is a one-off: drop it.
+Read the checkout's recent commits, reverts, and review comments. Use `git -C <CHECKOUT> log` for commits. Read PR review comments through the `read-pr` and `review-threads` operations in <CODE_HOST_FILE>. If <CODE_HOST_FILE> is `none`, read git history only and report the review comments as missing evidence. Also read its agent instruction files and the comments that explain workarounds. Group the mistakes from the history and from the session into classes. A mistake class counts once it happened twice, in the session, in the history, or across both. A class that happened once is a one-off: drop it.
 
 ## Scan the session
 

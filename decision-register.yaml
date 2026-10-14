@@ -692,7 +692,7 @@ items:
     tree: 51549ab2da11e5905342bbb3aadb93685c8ac348
     disposition: adapt
     artifacts: [plugin/skills/babysit]
-    reason: "Hidden drive-mode knowledge for implement's PR chain through gh, without user-start background or check modes (ADR 0015)."
+    reason: "Hidden drive-mode knowledge for implement's PR chain through the repo's code-host.md, without user-start background or check modes (ADR 0015, ADR 0020)."
   - id: pstack/playbook-bug-fix
     upstream: pstack
     kind: playbook
@@ -748,7 +748,7 @@ items:
     tree: d729a7a06c5b67e406b081e1777114bc03b66f4a
     disposition: adapt
     artifacts: [plugin/skills/open-pr]
-    reason: "Opens a ready PR through gh; the body follows skill://pr with Safety-backed Blast Radius and Verify proof; /deslop and interrogate dropped."
+    reason: "Opens a ready PR through the repo's code-host.md (ADR 0020); the body follows skill://pr with Safety-backed Blast Radius and Verify proof; /deslop and interrogate dropped."
   - id: pstack/playbook-orchestrate
     upstream: pstack
     kind: playbook

@@ -125,8 +125,12 @@ A change to a vstack skill, agent, or rule made outside an Update: adding one, e
 _Avoid_: update (for this), manual edit, patch
 
 **End state**:
-How far a flow that produces a commit goes before it stops: commit, PR opened, merge-ready, or shipped. Shipped means every PR in the run is merged into the default branch; deploys and releases are not part of it. The flow settles it once, before it starts.
+How far a flow that produces a commit goes before it stops: commit, merge-ready, or shipped. Commit stays on the current branch. Merge-ready opens a PR and drives it until it can merge. Shipped means every PR in the run is merged into the default branch; deploys and releases are not part of it. The flow settles it once, before it starts.
 _Avoid_: goal, target, finish line
+
+**Code host**:
+The service that holds a repo's remote and its PRs, such as GitHub, GitLab, or Bitbucket. It is a separate choice from the issue tracker: a repo on Bitbucket can track its issues in Jira.
+_Avoid_: git host, VCS host, forge
 
 **Migration**:
 Moving a project or a machine that is set up for the Base upstream onto vstack.

@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 Migration moves a machine or project set up for Matt Pocock's skills onto vstack. It is separate from fresh setup. Run this skill before `skill://setup-vstack` when moving from Matt's skills.
 
-The machine section handles installed skills, global rules, Private-mode stores, and diagram profiles. The project section handles this checkout's config, instruction block, domain files, and diagram marker. Standard projects found during the machine scan change only when you run this skill in each checkout.
+The machine section handles installed skills, global rules, Private-mode stores, and diagram profiles. The project section handles this checkout's config, Code host file, instruction block, domain files, and diagram marker. Standard projects found during the machine scan change only when you run this skill in each checkout.
 
 Every question goes through `ask`. A `timedOut: true` answer is not the user's answer. Repeat the question once. If that also times out, stop without applying the plan.
 
@@ -47,6 +47,8 @@ Outside a git repo, skip this section. Report that project Migration runs inside
 
 1. Run `migrate-project.ts plan`. It detects Matt config, instruction blocks, rule hits, old domain filenames, and a `.diagram-design` marker. It includes nested contexts and Private-mode domain files. An empty plan needs no project Migration. Continue to Done.
 2. If the plan has items, show all ids, moves, proposed diffs, manual hits, destructive flags, and notices. Move is recommended. Tracked config and domain files use `git mv`, and untracked files use `mv`. House style rows preserve hand edits. Changes stay uncommitted. When `private_available` is true, use `ask` with Move (Recommended) and Private mode instead. For Private, run `migrate-project.ts plan --mode private` and show that plan instead. It leaves tracked Matt config and instructions for teammates. It writes substituted config under `<common_dir>/vstack/config/`, with private artifact and domain paths. This mode choice is not approval to write.
+
+   Matt's config has no Code host. When the plan moves or copies config and the remote is on `github.com` or `gitlab.com`, the plan adds a `code-host` item. It writes `code-host.md` beside the moved config from setup-vstack's GitHub or GitLab template, with the repo filled in. For any other remote, the plan has a notice instead, and setup-vstack maps that Code host after Migration.
 3. When old and new config or storage both exist, vstack wins. Show each old-versus-new diff and offer to delete the old copy. Keep no merged copy. Old storage keeps Migration incomplete until the user approves deletion. If the winning store has no `config/`, resolve that destination first. The helper refuses to delete old storage without it.
 4. The fallback private move is mandatory and covers every registered worktree of this common dir. It uses the machine move's rollback, path changes, symlink removal, and exclude cleanup. It keeps unknown directories. A failed move stops later project actions. No compatibility link remains, so outside links to old storage break.
 5. For every manual hit, read its surrounding text and propose a context-specific diff in the same presented plan. Resolve relative private paths against the known common dir. Keep the helper's original JSON unchanged for its stale-state check.

@@ -4,6 +4,14 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.4] - 2026-10-14
+
+- The End states are now commit, merge-ready, and shipped. PR opened is gone. Merge-ready opens the PR and babysits it, and words that only ask to open a PR settle merge-ready.
+- The Code host gets its own config file, code-host.md, beside issue-tracker.md (ADR 0020). It names the host, the repo, the tool, and one row per PR operation. implement's End state step, open-pr, babysit, ship, why, session's environment reviewer, and wizard run every Code host operation through it instead of calling gh. implement offers only the End states whose needed operations the file supports, and only commit when the file is missing.
+- setup-vstack adds a Code host section. It seeds code-host.md from a gh or glab template, or maps the MCP server or CLI that the user already set up for any other host, such as Bitbucket Cloud or Data Center. It checks the tool with one read-only call. On a set-up repo, a re-run asks only the sections whose config files are missing, which `project.ts state` reports as `missing_config`.
+- migrate-to-vstack adds code-host.md to the project plan from the GitHub or GitLab template when the remote is on github.com or gitlab.com, and a setup-vstack notice for any other remote.
+- wizard's template sets CI secrets and variables through the CLI rows of code-host.md, and lists a value as a hand step in the code host's web page when its row is an MCP tool or unsupported.
+
 ## [2.0.3] - 2026-10-14
 
 - implement-spec holds a worker's patch while the worker's question is unanswered, and only a complete ticket unblocks other tickets, counts toward the spec, or closes. A ticket is complete when its work is on the integration branch, with no stopped slice and no unanswered question. Before this, a partial patch with an open seam question merged and counted as done.
