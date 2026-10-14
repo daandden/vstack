@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-10-14
+
+- migrate-to-vstack first asks what the Migration covers. Inside a git repo, Only this project is the first and recommended answer. It skips Machine Migration and changes only the current checkout and the repo's shared Private-mode store.
+
 ## [1.0.3] - 2026-10-14
 
 - A Matt run starts only when the skill header opens the prompt. A skill prompt pasted lower in a message no longer starts Addon selection.
