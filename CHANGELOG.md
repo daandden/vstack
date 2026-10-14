@@ -4,6 +4,13 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.9] - 2026-10-15
+
+- A new agent, `vstack-diagram-drawer`, draws diagram-design figures. It has no `model` field, so it runs on the Session model until you set its `vstack-diagram-drawer` key in `/agents` (`task.agentModelOverrides`). Then every figure runs on the model you picked.
+- A new hidden helper, vstack-figures, holds the figure steps for explain, how, grilling-page, improve-codebase-architecture, teach, and ketchup. The caller settles the skin and fixes each figure's type, size, and content. It then starts one drawer per figure at once, with no Fan-out judge (ADR 0023). It keeps writing while the drawers run and collects the SVGs where it places them. If you say "sequential" or "no fan-out", one drawer draws every figure in order. If no drawer can start, the caller draws the figures itself and says why.
+- explain and how no longer pause to confirm a figure's plan. how's explainer returns figure briefs, and how draws them.
+- vstack-explorer and vstack-worker can start drawers, so how under explain draws its own figures. In a project with no diagram profile, those figures use the default skin and the skin question goes back to the top-level agent.
+
 ## [2.0.8] - 2026-10-15
 
 - implement-spec follows Matt's nine steps. Its main agent only orchestrates and never builds or merges a ticket itself. Implementers always run as isolated vstack-workers, with no Fan-out gate and no inline fallback, and the run stops if isolation is off (ADR 0022, amends ADR 0004). The orchestrator acts on each implementer's result as it arrives and starts newly ready tickets at once, with no barrier per wave.

@@ -973,6 +973,8 @@ originals:
   - plugin/skills/skill-creator
   - plugin/skills/vstack-maintain
   - plugin/skills/migrate-to-vstack
+  - plugin/agents/vstack-diagram-drawer.md
+  - plugin/skills/vstack-figures
 utility:
   - plugin/skills/vstack-prose
   - plugin/skills/diagram-design
@@ -984,6 +986,7 @@ utility:
   - plugin/skills/forensics
   - plugin/skills/vstack-tmp
   - plugin/skills/vstack-fan-out
+  - plugin/skills/vstack-figures
   - plugin/skills/grilling-page
   - plugin/skills/vstack-worktree
   - plugin/skills/migrate-to-vstack

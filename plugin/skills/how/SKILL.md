@@ -41,10 +41,10 @@ Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): write the e
 
 ## 4. Present
 
-Write the explanation into `templates/how.html` under the run's Scratch entry. Draw the figures through `skill://diagram-design` as described below. Print the plain absolute path of the page with the explanation, with no `file://` prefix. For a direct invocation, open the completed page once in the browser. Under a caller, return the output unedited, including citations, figure briefs, and the page path. The caller can blend it into its own page. Light edits for clarity are allowed only for a direct invocation.
+Write the explanation into `templates/how.html` under the run's Scratch entry. Draw the figures as described below. Print the plain absolute path of the page with the explanation, with no `file://` prefix. For a direct invocation, open the completed page once in the browser. Under a caller, return the output unedited, including citations, figure briefs, and the page path. The caller can blend it into its own page. Light edits for clarity are allowed only for a direct invocation.
 
 ## Figures and page
 
 Use Overview, Key concepts, How it works, Where things live, and Gotchas. Drop sections that do not apply. Cite files and symbols beside claims. Include figures that explain component relationships or data flow.
 
-Read `skill://diagram-design` for every figure and follow its selected type reference, profile gate, and plan confirmation. Keep each figure's source HTML and exported SVG in the same `how/<run-id>/` entry. Read `skill://diagram-design/references/export.md` and run `scripts/export_svg.py` through Python eval with `runpy` and `sys.argv`. Read the exported SVG, remove only its XML declaration, and inline its complete `<svg>` and carried style in the page. Use unique figure slugs. Keep the page self-contained, without external image files or diagram renderers. If drawing is unavailable, report the missing prerequisite rather than substitute mermaid or generated images.
+Draw every figure through `skill://vstack-figures`, from the figure briefs in the explanation. Fix each figure's type, size, and content from those briefs. The out dir is this run's `how/<run-id>/` entry, with a unique figure slug. Write the page text while the drawers run, then collect the figures and inline them in the page. Keep the page self-contained, without external image files or diagram renderers. Do not substitute mermaid or generated images.

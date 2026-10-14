@@ -34,10 +34,10 @@ After the reply, put every action item to the user in one `ask` call, one questi
 
 ## Visuals
 
-A visual is a picture: a screenshot or a figure drawn through skill://diagram-design. A Markdown table is not a visual, even with before and after columns.
+A visual is a picture: a screenshot or a figure drawn through skill://vstack-figures. A Markdown table is not a visual, even with before and after columns.
 
 Keep each visual small enough to read at a glance: at most six boxes, with at most eight words in each, not counting "No screenshot yet." Write labels as plain words a person would say, not tags like "Tests: pass". Group small items into one box. A fact that needs a sentence belongs in the text, or nowhere.
 
 Use screenshots when the change is visible. If a visible change has none, mark the box it belongs to "No screenshot yet," and say in a line under the visual what changed on screen. For anything else, draw the figure from facts you have. Use diagram-design's Flowchart or State machine for states and flows, Architecture for structures, Architecture delta for a before and after in structure, and Bar chart for numbers. Never invent a number, and never draw a picture of a screen you did not capture. Link only artifacts that exist.
 
-Ketchup fixes each figure's type by these rules, its size as `doc-inline`, and its content as the boxes above, so diagram-design draws it without its plan pause. Get the `ketchup` kind dir from skill://vstack-tmp's path script. Save each figure as its own HTML page in this catch-up's entry, `ketchup/<run-id>/`, and link each page's plain absolute path in the reply.
+Ketchup fixes each figure's type by these rules, its size as `doc-inline`, and its content as the boxes above, in one brief per figure for skill://vstack-figures. Get the `ketchup` kind dir from skill://vstack-tmp's path script. The out dir is this catch-up's entry, `ketchup/<run-id>/`. Write the reply text while the drawers run. Each figure's source HTML is its own page in that entry. Collect the figures, then link each page's plain absolute path in the reply.
