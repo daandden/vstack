@@ -1,13 +1,16 @@
-# Picks the visual kind for each question of one Grilling page round, with the jev judge.
+# Decides which diagrams each question of one Grilling page round gets, with the jev judge.
 # Run in omp's Python eval, where judge_batch is a global:
 #   skill = "<grilling-page skill dir>"
 #   exec(open(f"{skill}/scripts/visual_judge.py").read())
 #   await judge_round(skill, "<state.jsonl>", "<round id>")
-# It reads the round's question records from the state file and prints one line per question:
-# its id, the label, the confidence, and what to make. Under the rubric's threshold, or on any judge error,
-# the question gets no visual.
+# It reads the round's question records from the state file. For each diagram kind in
+# references/visual-judge.json, a yes-or-no question decides whether to draw it, and a choice question
+# over diagram-design's visual-type guide ranks the types. It prints one line per question and kind:
+# the probability, and for a yes the top types. Under the kind's threshold, or on any judge error,
+# the question gets no diagram of that kind.
 
 import json
+import os
 import re
 
 
@@ -20,8 +23,17 @@ def question_state(rec):
     return state
 
 
+def guide_types(path):
+    """diagram-design's visual-type guide rows: {type name: what it shows}."""
+    rows = re.findall(r"^\| (.+?) \| \*\*(.+?)\*\* \| \[type-[\w-]+\.md\]", open(path).read(), re.M)
+    if not rows:
+        raise ValueError(f"no visual-type rows found in {path}")
+    return {name: shows for shows, name in rows}
+
+
 async def judge_round(skill_dir, state_path, round_id):
     rubric = json.load(open(f"{skill_dir}/references/visual-judge.json"))
+    types = guide_types(os.path.normpath(os.path.join(skill_dir, rubric["types"]["guide"])))
     latest, order = {}, []
     for line in open(state_path):
         if not line.strip():
@@ -35,15 +47,13 @@ async def judge_round(skill_dir, state_path, round_id):
     questions = [latest[i] for i in order if latest[i]["round"] == round_id]
     if not questions:
         raise ValueError(f"round {round_id} has no question records in {state_path}")
-    threshold = rubric["threshold"]
-    criteria = {label: entry["criterion"] for label, entry in rubric["labels"].items()}
+    asks = {}
+    for kind, d in rubric["diagrams"].items():
+        asks[kind] = {"type": "bool", "instructions": f"{rubric['instructions']} {d['question']}", "criteria": {"true": d["true"], "false": d["false"]}}
+        asks[f"{kind}_type"] = {"type": "choice", "instructions": f"{rubric['types']['instructions']} The diagram shows {d['shows']}.", "criteria": types}
     settled, batch_error = {}, None
     try:
-        batch = judge_batch(
-            {q["id"]: question_state(q) for q in questions},
-            {"visual": {"type": "choice", "instructions": rubric["instructions"], "criteria": criteria}},
-            intent=f"Judging visuals for {round_id}",
-        )
+        batch = judge_batch({q["id"]: question_state(q) for q in questions}, asks, intent=f"Judging diagrams for {round_id}")
         try:
             async for key, item in batch.drain_iter(300):
                 settled[key] = item
@@ -55,15 +65,18 @@ async def judge_round(skill_dir, state_path, round_id):
     for q in questions:
         item = settled.get(q["id"])
         answers = getattr(item, "answers", None) if item else None
-        if not answers:
-            label, why = "none", f"judge error: {getattr(item, 'error', None) or batch_error or 'no result'}"
-        else:
-            answer = answers["visual"]
-            label, confidence = answer.get("choice"), answer.get("confidence", 0)
-            why = f"confidence {confidence:.2f}"
-            if label not in rubric["labels"] or confidence < threshold:
-                why = f"{label} at {confidence:.2f}, under {threshold} or not a rubric label, so none"
-                label = "none"
-        picks[q["id"]] = label
-        print(f"{q['id']} Q{q['q']}: {label} ({why}). {rubric['labels'][label]['make']}")
+        picks[q["id"]] = {}
+        for kind, d in rubric["diagrams"].items():
+            head = f"{q['id']} Q{q['q']} {kind} diagram:"
+            if not answers or kind not in answers or f"{kind}_type" not in answers:
+                print(f"{head} none (judge error: {getattr(item, 'error', None) or batch_error or 'no answer'}).")
+                continue
+            p = answers[kind]["bool"]
+            if p < d["threshold"]:
+                print(f"{head} none ({p:.2f}, under {d['threshold']}).")
+                continue
+            probs = answers[f"{kind}_type"]["probabilities"]
+            top = sorted(probs, key=probs.get, reverse=True)[: rubric["types"]["top"]]
+            picks[q["id"]][kind] = top
+            print(f"{head} draw it ({p:.2f}). It shows {d['shows']}. Types: {', '.join(f'{t} {probs[t]:.2f}' for t in top)}.")
     return picks

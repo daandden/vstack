@@ -4,6 +4,13 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.5] - 2026-10-15
+
+- grilling-page's visual judge now decides diagrams only, and it draws more of them. For each question, one yes-or-no question asks for a context diagram (the logic the description explains, threshold 0.7), and another asks for an option diagram (how the options differ, threshold 0.6). For each yes, the judge ranks all 45 visual types in diagram-design's guide, read at run time, and the agent draws one of the top three. Over 500 past questions, the old rubric gave 59 a visual, and the new one gives 404 at least one diagram. Agreement with gpt-6.1-sol labels is F1 0.87 for context diagrams and 0.82 for option diagrams.
+- The agent adds option previews, tables, and samples by its own call. After it draws a diagram, it cuts from the description the logic that the diagram shows.
+- A question's `visual` can be a list. The render script shows each visual in order.
+- `visual-judge-cases.json` holds 30 real questions for the diagram questions and one hand-written case per visual type. `scripts/visual-judge-check.ts` checks both against live jev.
+
 ## [2.0.4] - 2026-10-14
 
 - The End states are now commit, merge-ready, and shipped. PR opened is gone. Merge-ready opens the PR and babysits it, and words that only ask to open a PR settle merge-ready.

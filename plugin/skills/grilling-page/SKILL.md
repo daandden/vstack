@@ -24,15 +24,15 @@ Each command checks every record, renders the whole page, and prints the page's 
 - `answer`: written by the `answer` command.
 - `close`: `session`, `decisions` (one `{ question, text }` for the latest ask of each Q number so far), an optional `extra` list, and `answer` and `note` once the gate is answered.
 
-Text fields are plain text; `` `code` `` and `[text](url)` are kept. A `visual` or `preview` is one of `{ "text" }`, `{ "html", "css" }`, or `{ "svg": "<path>" }`. The script parses HTML and SVG the way a browser does and refuses scripts, `on…` attributes, `javascript:`, `vbscript:`, and `data:` URLs (entities included), frames, forms, and SVG animation. It scopes `css` to the element and refuses at-rules in it. An SVG file can keep its `<style>` and a Google Fonts `@import`, as diagram-design exports have.
+Text fields are plain text; `` `code` `` and `[text](url)` are kept. A `preview` is one visual, and a question's `visual` is one visual or a list that renders in order. A visual is one of `{ "text" }`, `{ "html", "css" }`, or `{ "svg": "<path>" }`. The script parses HTML and SVG the way a browser does and refuses scripts, `on…` attributes, `javascript:`, `vbscript:`, and `data:` URLs (entities included), frames, forms, and SVG animation. It scopes `css` to the element and refuses at-rules in it. An SVG file can keep its `<style>` and a Google Fonts `@import`, as diagram-design exports have.
 
 A page that exists with no state file was written by hand before the script, and a question with `plain`, `why`, and `settled` comes from a page before the description. The script refuses both. Start a new page with a new slug and do not link the old one. To continue a page, append a new `round` with the next session number. Continue page round numbers; question numbers start at Q1 for each session and increase across it. A repeated unanswered decision keeps its Q number in a new question record.
 
 ## Add a round
 
-Append one `round` record and one `question` record per frontier decision, with no `visual` or `preview` yet. Add an `example` only when the options are abstract.
+Append one `round` record and one `question` record per frontier decision, with no `visual` or `preview` yet.
 
-Then let the jev judge pick each question's visual. Run this in one Python eval cell, with `skill` set to this skill's directory:
+Then let the jev judge decide each question's diagrams. Run this in one Python eval cell, with `skill` set to this skill's directory:
 
 ```python
 skill = "<grilling-page skill dir>"
@@ -40,7 +40,20 @@ exec(open(f"{skill}/scripts/visual_judge.py").read())
 await judge_round(skill, "<state.jsonl>", "<round id>")
 ```
 
-It prints one line per question: its label from `references/visual-judge.json`, the confidence, and what to make. A label under 0.7 confidence, or a judge error, prints `none`. For each question whose label is not `none`, append its question record again with the `visual` or the option `preview`s the line names. A `preview` label means one preview per option. Every other label is one `visual` on the question.
+For each question, it prints one line per diagram kind in `references/visual-judge.json`:
+
+- A context diagram shows the logic the description explains: steps, branches, states, parts, or time.
+- An option diagram shows how the options differ in shape, in one figure.
+
+A kind under its threshold, or a judge error, prints `none`. A kind at or over it prints `draw it` and the three diagram-design types that fit best. Draw each such diagram as a type from those three. Choose it with diagram-design's visual-type guide and its semantic-pattern table.
+
+Add other visuals when they help:
+
+- If the options produce something the user sees (a page, a UI element, a layout, a color, a message, a file, or command output), give each option a `preview` of its result.
+- If three or more options differ on the same attributes, add an HTML table with one row per option.
+- If code, config, a diff, or output makes the question concrete, add it as a `text` visual or an `example`.
+
+Append the question record again with its visuals. Put a context diagram first and an option diagram second. Then cut from the description the logic that a diagram now shows. Keep why the choice is open, what it builds on, and the evidence.
 
 Use diagram-design for every diagram: any figure with boxes, arrows, trees, timelines, or states, including one that is small. HTML is for mockups and tables, and `text` is for code, command output, and messages. Read `skill://diagram-design`, draw under the same `grilling/` Scratch kind, and draw its dark variant with the `catppuccin-latte` profile, whose dark column is Catppuccin Mocha, the page's palette. When that profile does not exist, use the project's profile, still dark. Fix the figure's type, size, and content as the caller; this skips its confirm-before-drawing, not its first-use style gate. Read its `references/export.md`, run `scripts/export_svg.py` through Python eval, and pass the exported file as `{ "svg": "<path>" }`. Give each source figure a unique basename so SVG IDs stay unique. Never draw a substitute figure yourself or use Mermaid as a fallback.
 

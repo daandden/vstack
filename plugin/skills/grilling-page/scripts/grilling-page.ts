@@ -145,7 +145,10 @@ function check(lines: Line[]): State {
         if (["plain", "why", "settled"].some((k) => r[k] !== undefined)) fail(where, "has plain, why, and settled from an older page; write one description instead and start a new page");
         for (const k of ["title", "description"]) str(r, k, where);
         str(r, "example", where, true);
-        if (r.visual !== undefined) checkVisual(r.visual, `${where}: visual`);
+        if (Array.isArray(r.visual)) {
+          if (!r.visual.length) fail(where, "visual must be one visual or a list of one or more");
+          r.visual.forEach((v: unknown, i: number) => checkVisual(v, `${where}: visual ${i + 1}`));
+        } else if (r.visual !== undefined) checkVisual(r.visual, `${where}: visual`);
         if (!Array.isArray(r.options) || r.options.length < 2) fail(where, "options must list two or more options");
         let recommended = 0;
         (r.options as Option[]).forEach((o, i) => {
@@ -308,7 +311,8 @@ function questionHtml(q: Rec, a: Rec | undefined, baseDir: string): string {
     .join("\n");
   const state = stateOf(a);
   const line = answerLine(a);
-  const visual = q.visual ? visualHtml(q.visual, `${qid}-visual`, "visual", baseDir) : "";
+  const visuals: Visual[] = q.visual === undefined ? [] : Array.isArray(q.visual) ? q.visual : [q.visual];
+  const visual = visuals.map((v, i) => visualHtml(v, `${qid}-visual${i ? `-${i + 1}` : ""}`, "visual", baseDir)).join("\n");
   return `<article class="question" id="${qid}" data-state="${state}" data-stop>
 <h3><span class="qnum">Q${q.q}</span>${text(q.title)}</h3>
 <div class="description">${description(q.description)}</div>${example}

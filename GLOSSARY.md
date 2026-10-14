@@ -152,6 +152,14 @@ _Avoid_: temp files, artifacts, tmp output
 The page a grilling session keeps for the user. It shows every round's questions in full, with their context, options, trade-offs, and the answers given, while the `ask` call carries only short forms of the same questions. It is Scratch.
 _Avoid_: Grilling HTML, question page, round page
 
+**Context diagram**:
+A figure on a Grilling page question that shows the logic its description explains: steps, branches, states, parts, or time.
+_Avoid_: background figure
+
+**Option diagram**:
+A figure on a Grilling page question that shows how its options differ in shape.
+_Avoid_: comparison figure
+
 **Verify skill**:
 A project-local skill named `verify-<app>` that drives the project's app the way a user does and captures proof that a change works. setup-app-verification creates it, and maintain-app-verification keeps it accurate.
 _Avoid_: control skill, verification skill

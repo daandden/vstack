@@ -2,26 +2,32 @@
 //
 //   TYPESAFE_API_KEY=<key> bun scripts/visual-judge-check.ts
 //
-// Get the key with `omp token typesafe`. Each case sends its question state with the rubric in
-// plugin/skills/grilling-page/references/visual-judge.json, the same rubric the skill's helper uses.
-// A case passes when the top label is expected or allowed. Under 0.7 confidence the agent adds no
-// visual, so a case whose expected or allowed labels include none also passes then.
+// Get the key with `omp token typesafe`. It sends the questions that grilling-page's helper sends,
+// built from plugin/skills/grilling-page/references/visual-judge.json and diagram-design's visual-type guide.
+// A diagram case passes when each kind's yes probability is at or over its threshold exactly when the
+// case labels that kind true. A type case passes when expected or an allowed type is in the judge's top types.
 // Exit 0 when every case passes, 1 when a case misses, 2 on a missing key or a bad response.
 
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 const ENDPOINT = "https://api.typesafe.ai/v1/systemone";
 const root = join(import.meta.dir, "..");
 const readJson = (path: string) => JSON.parse(readFileSync(join(root, path), "utf8"));
 
-type Case = { id: string; expected: string; allowed?: string[]; state: unknown };
-const { rubric: rubricPath, cases } = readJson("visual-judge-cases.json") as { rubric: string; cases: Case[] };
-const rubric = readJson(rubricPath) as { instructions: string; threshold: number; labels: Record<string, { criterion: string }> };
-const THRESHOLD = rubric.threshold;
-const questions = {
-  visual: { type: "choice", instructions: rubric.instructions, criteria: Object.fromEntries(Object.entries(rubric.labels).map(([label, l]) => [label, l.criterion])) },
-};
+type Kind = { question: string; true: string; false: string; threshold: number; shows: string };
+type Rubric = { instructions: string; diagrams: Record<string, Kind>; types: { instructions: string; guide: string; top: number } };
+type DiagramCase = { id: string; state: unknown } & Record<string, unknown>;
+type TypeCase = { id: string; expected: string; allowed: string[]; state: unknown };
+
+const file = readJson("visual-judge-cases.json") as { rubric: string; diagram_cases: DiagramCase[]; type_cases: TypeCase[] };
+const rubric = readJson(file.rubric) as Rubric;
+const guide = readFileSync(join(root, dirname(dirname(file.rubric)), rubric.types.guide), "utf8");
+const types = Object.fromEntries([...guide.matchAll(/^\| (.+?) \| \*\*(.+?)\*\* \| \[type-[\w-]+\.md\]/gm)].map((m) => [m[2], m[1]]));
+if (!Object.keys(types).length) {
+  process.stderr.write(`no visual-type rows found in ${rubric.types.guide}\n`);
+  process.exit(2);
+}
 
 const key = process.env.TYPESAFE_API_KEY ?? "";
 if (!key) {
@@ -29,33 +35,51 @@ if (!key) {
   process.exit(2);
 }
 
-const misses: string[] = [];
-const low: string[] = [];
-for (const c of cases) {
+async function judge(id: string, state: unknown, questions: object): Promise<Record<string, any>> {
   const response = await fetch(ENDPOINT, {
     method: "POST",
     headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "jev-latest", state: c.state, questions }),
+    body: JSON.stringify({ model: "jev-latest", state, questions }),
     signal: AbortSignal.timeout(30000),
   });
   if (!response.ok) {
-    process.stderr.write(`case ${c.id}: HTTP ${response.status} ${await response.text()}\n`);
+    process.stderr.write(`case ${id}: HTTP ${response.status} ${await response.text()}\n`);
     process.exit(2);
   }
-  const answer = (await response.json()).answers?.visual;
-  const choice: unknown = answer?.choice;
-  const confidence: unknown = answer?.confidence;
-  if (typeof choice !== "string" || !(choice in rubric.labels) || typeof confidence !== "number") {
-    process.stderr.write(`case ${c.id}: invalid answer ${JSON.stringify(answer)}\n`);
-    process.exit(2);
-  }
-  const ok = [c.expected, ...(c.allowed ?? [])];
-  const line = `${c.id}: ${choice} at ${confidence.toFixed(2)}, expected ${ok.join(" or ")}`;
-  if (!ok.includes(choice) && !(confidence < THRESHOLD && ok.includes("none"))) misses.push(line);
-  if (confidence < THRESHOLD) low.push(line);
+  return (await response.json()).answers ?? {};
 }
 
+const misses: string[] = [];
+// omp's judge() calls a yes-or-no question "bool"; the REST API names it "noul" and answers with { noul: P(yes) }.
+const diagramQuestions = Object.fromEntries(
+  Object.entries(rubric.diagrams).map(([kind, d]) => [kind, { type: "noul", instructions: `${rubric.instructions} ${d.question}`, criteria: { true: d.true, false: d.false } }]),
+);
+for (const c of file.diagram_cases) {
+  const answers = await judge(c.id, c.state, diagramQuestions);
+  for (const [kind, d] of Object.entries(rubric.diagrams)) {
+    const p: unknown = answers[kind]?.noul;
+    if (typeof p !== "number") {
+      process.stderr.write(`case ${c.id}: invalid ${kind} answer ${JSON.stringify(answers[kind])}\n`);
+      process.exit(2);
+    }
+    if (p >= d.threshold !== c[kind]) misses.push(`${c.id}: ${kind} diagram ${p.toFixed(2)} against threshold ${d.threshold}, expected ${c[kind] ? "yes" : "no"}`);
+  }
+}
+
+const typeQuestion = { type: { type: "choice", instructions: rubric.types.instructions, criteria: types } };
+for (const c of file.type_cases) {
+  const probabilities: unknown = (await judge(c.id, c.state, typeQuestion)).type?.probabilities;
+  if (!probabilities || typeof probabilities !== "object") {
+    process.stderr.write(`case ${c.id}: invalid type answer\n`);
+    process.exit(2);
+  }
+  const p = probabilities as Record<string, number>;
+  const top = Object.keys(p).sort((a, b) => p[b] - p[a]).slice(0, rubric.types.top);
+  const ok = [c.expected, ...c.allowed];
+  if (!top.some((t) => ok.includes(t))) misses.push(`${c.id}: top ${top.join(", ")}, expected ${ok.join(" or ")}`);
+}
+
+const total = file.diagram_cases.length + file.type_cases.length;
 for (const line of misses) process.stdout.write(`MISS ${line}\n`);
-for (const line of low) process.stdout.write(`UNDER ${THRESHOLD} ${line}\n`);
-process.stdout.write(`${cases.length - misses.length}/${cases.length} cases pass, ${low.length} under ${THRESHOLD}\n`);
+process.stdout.write(`${total - new Set(misses.map((m) => m.split(":")[0])).size}/${total} cases pass (${file.diagram_cases.length} diagram, ${file.type_cases.length} type)\n`);
 process.exit(misses.length ? 1 : 0);

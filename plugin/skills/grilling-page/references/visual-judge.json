@@ -1,38 +1,24 @@
 {
-  "instructions": "The state is one question from a grilling session: a decision the user must make, its description, and its options. Pick the one visual that shows the user something the words do not. Judge how the options differ, not the topic. Pick none when the words already say it all, as for most names, rules, policies, and yes-or-no choices.",
-  "threshold": 0.7,
-  "labels": {
-    "none": {
-      "criterion": "The options differ in a name, a rule, a policy, a threshold, or a yes or no, and a picture only repeats the words.",
-      "make": "No visual. The words are enough."
+  "instructions": "The state is one question from a grilling session: a decision the user must make, its description, and its options. The reader prefers a figure to prose whenever a figure carries logic: order of steps, branches, states, messages between parts, containment, dependencies, time, or overlap.",
+  "diagrams": {
+    "context": {
+      "question": "Would a diagram of the context help: the logic the description explains, such as today's flow, rules with branches, states, parts and how they connect, a before and after, or events in time, whatever the options are?",
+      "true": "The description explains logic in prose that a diagram would show more clearly.",
+      "false": "The description is only names, a rule, a policy, a threshold, or a reason, and a diagram would only repeat the words.",
+      "threshold": 0.7,
+      "shows": "the logic the description explains"
     },
-    "preview": {
-      "criterion": "Each option produces a different look: a page, a UI element and where it sits on screen, a layout, a color, the text of a message, a file, or command output. One still picture per option shows the difference.",
-      "make": "Give each option a preview of its result: an HTML mockup for a page, UI, layout, or color, and text for a message, file, or command output."
-    },
-    "flow": {
-      "criterion": "The options differ in the order of steps, or in the path that work, data, or a request takes between parts.",
-      "make": "Draw a flowchart, a sequence diagram, or a swimlane with diagram-design, one figure that shows each option's path."
-    },
-    "state": {
-      "criterion": "The options differ in how something reacts to events: after a key press, a focus change, a new item, an error, or a lost connection, which state it moves to and what stays visible. The difference is a sequence of states, not one picture.",
-      "make": "Draw a state machine with diagram-design that shows the states and the event on each transition, with each option's difference marked."
-    },
-    "structure": {
-      "criterion": "The options differ in where code, files, data, or settings are stored, what contains or owns what, or how parts depend on each other. Not where something appears on screen.",
-      "make": "Draw a nested, tree, or architecture diagram with diagram-design that shows each option's layout of parts."
-    },
-    "time": {
-      "criterion": "The options differ in when things happen: a schedule, a lifetime, a delay, or events placed along time.",
-      "make": "Draw a timeline with diagram-design that places each option's events in time."
-    },
-    "table": {
-      "criterion": "Three or more options differ on several of the same attributes, such as cost, speed, and effort, and the user has to compare them side by side.",
-      "make": "Give the question an HTML table: one row per option and one column per attribute."
-    },
-    "delta": {
-      "criterion": "The options change the shape of an existing system: they move, split, merge, or replace parts that exist today.",
-      "make": "Draw an architecture delta with diagram-design that shows today's parts and what each option changes."
+    "option": {
+      "question": "Would a diagram help show how the options differ: a different flow, order, structure, state change, or timing for each option?",
+      "true": "The options differ in shape: steps, paths, parts, ownership, states, or timing.",
+      "false": "The options differ only in a name, a value, a policy, or a yes or no.",
+      "threshold": 0.6,
+      "shows": "how the options differ, in one figure"
     }
+  },
+  "types": {
+    "instructions": "The state is one question from a grilling session, a decision the user must make. A diagram will be drawn for it. Pick the diagram-design visual type that best fits what the diagram must show.",
+    "guide": "../diagram-design/SKILL.md",
+    "top": 3
   }
 }

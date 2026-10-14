@@ -139,6 +139,22 @@ test("an SVG file with an event handler is refused, and one with only styles is 
   expect(readFileSync(page, "utf8")).toContain('<rect class="n"');
 });
 
+test("a question with a list of visuals renders each one in order, and a bad entry is refused", () => {
+  append(PAGE, ROUND);
+  const context = join(dir, "context.svg");
+  writeFileSync(context, '<svg xmlns="http://www.w3.org/2000/svg"><rect id="context-figure" width="1" height="1"/></svg>');
+  const bad = append(question("s1-r1-q1", 1, { visual: [{ svg: context }, { html: "<script>x()</script>" }] }));
+  expect(bad.code).toBe(1);
+  expect(bad.stderr).toContain("visual 2: html is not safe");
+  expect(append(question("s1-r1-q1", 1, { visual: [{ svg: context }, { text: "options figure" }] })).code).toBe(0);
+  const html = readFileSync(page, "utf8");
+  const first = html.indexOf('id="context-figure"');
+  const second = html.indexOf("options figure");
+  expect(first).toBeGreaterThan(-1);
+  expect(second).toBeGreaterThan(first);
+  expect(second).toBeLessThan(html.indexOf('<ol class="options">'));
+});
+
 test("user text is escaped", () => {
   append(PAGE, ROUND, question("s1-r1-q1", 1, { title: "<img src=x onerror=alert(1)>" }));
   expect(readFileSync(page, "utf8")).toContain("&lt;img src=x onerror=alert(1)&gt;");
