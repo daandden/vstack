@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.3] - 2026-10-14
+
+- implement-spec holds a worker's patch while the worker's question is unanswered, and only a complete ticket unblocks other tickets, counts toward the spec, or closes. A ticket is complete when its work is on the integration branch, with no stopped slice and no unanswered question. Before this, a partial patch with an open seam question merged and counted as done.
+
 ## [2.0.2] - 2026-10-14
 
 - implement-spec closes the spec only when every one of its tickets is closed. Before this, a PR with a failed ticket still listed the spec as a closing reference and closed unfinished work.
