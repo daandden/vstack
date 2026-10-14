@@ -52,11 +52,11 @@ Run-only consumers (ship's verifier and forensics) may reuse this live-proof pro
 
 Run skill://code-review once over the whole completed diff at every End state, including commit. Pin the base SHA, diff command, and commit list. Include accepted cleanup and Standard-mode Verify edits, plus the proven uncommitted work that implement will commit. Exclude stopped slices from what can be committed or published and identify them in the review brief.
 
-implement reviews before its step 6 commit (Matt's order). hillclimb commits each accepted win, reviews once after its last accepted win, and fixes accepted findings in new commits. Resolve accepted findings and update affected proof before advancing. Keep Standards, Spec, and Safety findings separate. Carry the Safety result and final-diff proof to open-pr. code-review owns the Safety trigger list.
+implement reviews before its step 6 commit (Matt's order). implement-spec's merger commits each ticket as it lands, implement-spec reviews once after its last merge, and step 6 commits the accepted review fixes. hillclimb commits each accepted win, reviews once after its last accepted win, and fixes accepted findings in new commits. Resolve accepted findings and update affected proof before advancing. Keep Standards, Spec, and Safety findings separate. Carry the Safety result and final-diff proof to open-pr. code-review owns the Safety trigger list.
 
 ## 6. Commit
 
-Commit the accepted, proven work to the current branch. For implement, this follows review. hillclimb uses its accepted-win commits and new commits for accepted review fixes. Include Standard-mode setup-app-verification and maintain-app-verification output in this commit. Stage only this run's accepted paths or hunks. Leave stopped slices and unrelated changes uncommitted. Keep Private config, artifacts, Verify maintenance, and Scratch out of git. Use the repo's commit convention. Write commit bodies.
+Commit the accepted, proven work to the current branch. For implement, this follows review. implement-spec keeps its per-ticket merger commits and commits the accepted review fixes here, after review. hillclimb uses its accepted-win commits and new commits for accepted review fixes. Include Standard-mode setup-app-verification and maintain-app-verification output in this commit. Stage only this run's accepted paths or hunks. Leave stopped slices and unrelated changes uncommitted. Keep Private config, artifacts, Verify maintenance, and Scratch out of git. Use the repo's commit convention. Write commit bodies.
 
 The approved environment fixes from skill://session get one commit per approved mistake class. Each of these commits carries proof that its new check fails on a real past mistake.
 

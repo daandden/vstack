@@ -4,6 +4,12 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.8] - 2026-10-15
+
+- implement-spec follows Matt's nine steps. Its main agent only orchestrates and never builds or merges a ticket itself. Implementers always run as isolated vstack-workers, with no Fan-out gate and no inline fallback, and the run stops if isolation is off (ADR 0022, amends ADR 0004). The orchestrator acts on each implementer's result as it arrives and starts newly ready tickets at once, with no barrier per wave.
+- A merger vstack-worker lands each patch on the integration branch with `git apply --3way` and commits each ticket. On a conflict, it resolves the conflict against the ticket and the spec and reruns the ticket's tests. A ticket whose merge fails goes back once for a fresh implementer from the current tip. Accepted review fixes get a later commit in shared step 6.
+- The fixed Fan-out form in vstack-fan-out takes a slot for how the parent collects results, so a parent can act on each result as it arrives. The `fixed-fan-out` allowlist adds implement-spec.
+
 ## [2.0.7] - 2026-10-15
 
 - The Addon judge takes the pointers it already sent only from the saved `vstack-addons` messages in the session, across all branches, so each pointer still appears once per session. Before this, it also kept a per-session list that recorded picks before omp accepted them. A prompt cancelled during the up to 30-second restatement then lost its picks for the rest of the session.

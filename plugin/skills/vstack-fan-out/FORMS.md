@@ -49,11 +49,13 @@ Spawn one `vstack-<role>` via eval `agent(<prompt>, agent="vstack-<role>", isola
 
 ## Fixed Fan-out
 
-Only for a skill whose invocation is the user's request to fan out (today only compare-attempts, the `fixed-fan-out` allowlist). It has no gate line, no judge, and no inline line, and the lint fails it anywhere else.
+Only for a skill that always fans out, the `fixed-fan-out` allowlist: a skill whose invocation is the user's request to fan out (compare-attempts), or a skill whose main agent only orchestrates (implement-spec, ADR 0022). It has no gate line, no judge, and no inline line, and the lint fails it anywhere else.
 
 ```
-Fan-out (always: <reason>): one eval cell: per part, `agent(<prompt>, agent="vstack-<role>", isolated=True, apply=False, merge=False)`; `wait()` on all handles. Each prompt: <role brief>, the user's override words, the vstack root. <What the parent does with each `patchPath`.> If it cannot spawn or isolation is off, stop: <reason>.
+Fan-out (always: <reason>): one eval cell: per part, `agent(<prompt>, agent="vstack-<role>", isolated=True, apply=False, merge=False)`; <collect>. Each prompt: <role brief>, the user's override words, the vstack root. <What the parent does with each `patchPath`.> If it cannot spawn or isolation is off, stop: <reason>.
 ```
+
+`<collect>` says how the parent takes the results. A parent that compares the results together uses `` `wait()` on all handles``. A parent that acts on each result as it arrives uses ``no `wait()`, because each handle delivers its own result when it settles``, and runs the line again for each new set of parts.
 
 ## What the lint checks
 
@@ -64,4 +66,4 @@ In adapt, merge, and original markdown, outside frontmatter and code fences:
 - A `Spawn one` line names the same vstack agent twice and carries the user's override words and the vstack root.
 - Any other line that names an agent names a vstack agent, and a `task` or eval agent call with no agent named fails.
 - An agent's `spawns:` lists only vstack agents, never `*`.
-- The fixed form fails outside compare-attempts, and a Headless run (a separate omp process) fails outside skill-creator.
+- The fixed form fails outside compare-attempts and implement-spec, and a Headless run (a separate omp process) fails outside skill-creator.
