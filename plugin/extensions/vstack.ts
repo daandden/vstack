@@ -1,7 +1,9 @@
-// vstack's omp extension. Public extension API only; omp loads this file with its
-// TS loader, so there is no build step. Type imports are erased at runtime.
-import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
+// vstack's omp extension. It uses the extension API and omp's exported packages, not omp internals.
+// omp loads this file with its TS loader, so there is no build step.
+import { completeSimple } from "@oh-my-pi/pi-ai";
+import type { ExtensionAPI, ExtensionContext } from "@oh-my-pi/pi-coding-agent";
 import { settings } from "@oh-my-pi/pi-coding-agent";
+import { getModelMatchPreferences, resolveModelRoleValue } from "@oh-my-pi/pi-coding-agent/config/model-resolver";
 import { hasNativeJudge } from "@oh-my-pi/pi-coding-agent/judgment";
 import questions from "../../addon-questions.json";
 import { mattSkillNames, type MattSkillRow } from "./matt-skills.ts";
@@ -45,33 +47,133 @@ function readMattSkills(): Set<string> {
   } catch { return new Set(); }
 }
 
+// omp stops a before_agent_start handler at 30 s and reports the timeout itself (ADR 0021).
+const OMP_HANDLER_CAP_MS = 30_000;
+const RESTATEMENT_LIMIT = 10_000;
+const RESTATE_FRAME = "The input is the conversation so far, then the user's new words that start a task, if any. Reply with plain text only.";
+const EFFORTS = new Set(["minimal", "low", "medium", "high", "xhigh", "max"]);
+
+function readRestateInstruction(): string | undefined {
+  try {
+    const skill = fs.readFileSync(new URL("../skills/in-your-own-words/SKILL.md", import.meta.url), "utf8");
+    return skill.replace(/^---\n[\s\S]*?\n---\n/, "").trim() || undefined;
+  } catch { return undefined; }
+}
+
+/** The user's words after `User:` on a skill-start prompt, never the skill text. */
+function skillUserWords(prompt: string): string {
+  const skillDirectory = prompt.lastIndexOf("\n[Skill directory: ");
+  return skillDirectory < 0 ? "" : /^User:[ \t]*([\s\S]*)$/m.exec(prompt.slice(skillDirectory))?.[1] ?? "";
+}
+
+function textOf(content: unknown): string {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  return content.filter(part => part?.type === "text" && typeof part.text === "string").map(part => part.text).join("\n");
+}
+
+function isVisibleSkillStart(entry: any): boolean {
+  return entry.type === "custom_message" && entry.customType === "skill-prompt" && entry.display !== false;
+}
+
+/** A start is mid-session when the branch already holds user or assistant messages, a visible skill start, or a compaction. */
+function startsMidSession(branch: readonly any[]): boolean {
+  return branch.some(entry => entry.type === "compaction" || isVisibleSkillStart(entry) ||
+    (entry.type === "message" && (entry.message?.role === "user" || entry.message?.role === "assistant")));
+}
+
+function talkLine(entry: any): string | undefined {
+  if (entry.type === "message" && (entry.message?.role === "user" || entry.message?.role === "assistant")) {
+    const text = textOf(entry.message.content).trim();
+    return text ? `${entry.message.role === "user" ? "User" : "Assistant"}: ${text}` : undefined;
+  }
+  if (isVisibleSkillStart(entry)) {
+    const words = skillUserWords(textOf(entry.content)).trim();
+    return words ? `User: ${words}` : undefined;
+  }
+}
+
+/** User and assistant text since the last compaction, plus its summary. Tool, thinking, and hidden entries stay out. */
+function earlierTalk(branch: readonly any[]): string {
+  const compaction = branch.findLastIndex(entry => entry.type === "compaction");
+  const parts: string[] = [];
+  let from = 0;
+  if (compaction >= 0) {
+    parts.push(`Summary of the earlier conversation: ${branch[compaction].summary}`);
+    const kept = branch.findIndex(entry => entry.id === branch[compaction].firstKeptEntryId);
+    from = kept >= 0 && kept < compaction ? kept : compaction + 1;
+  }
+  for (let index = from; index < branch.length; index++) {
+    const line = index === compaction ? undefined : talkLine(branch[index]);
+    if (line) parts.push(line);
+  }
+  return parts.join("\n\n");
+}
+
+/** Asks the smol role to restate the user's goal. Returns the text, a warning reason, or undefined when the deadline aborted it. */
+async function restate(ctx: ExtensionContext, instruction: string | undefined, talk: string, words: string, signal: AbortSignal): Promise<{ text: string } | { warning: string } | undefined> {
+  if (!instruction) return { warning: "in-your-own-words is unreadable" };
+  try {
+    const role = resolveModelRoleValue("@smol", ctx.modelRegistry.getAvailable(), { settings, matchPreferences: getModelMatchPreferences(settings) });
+    if (!role.model) return { warning: "no smol model" };
+    const apiKey = await ctx.modelRegistry.getApiKey(role.model, undefined, { signal });
+    if (signal.aborted) return undefined;
+    if (!apiKey) return { warning: "no key for the smol model" };
+    // As omp's own role calls do, pass a configured effort and leave auto, inherit, and off to the provider default.
+    const reasoning = role.thinkingLevel && EFFORTS.has(role.thinkingLevel) ? role.thinkingLevel : undefined;
+    const content = [talk, words.trim() && `New words: ${words.trim()}`].filter(Boolean).join("\n\n");
+    const reply = await completeSimple(role.model, {
+      systemPrompt: [instruction, RESTATE_FRAME],
+      messages: [{ role: "user", content, timestamp: Date.now() }],
+    }, { apiKey, signal, reasoning: reasoning as any });
+    if (signal.aborted) return undefined;
+    if (reply.stopReason === "error" || reply.stopReason === "aborted") return { warning: `smol failed${reply.errorMessage ? `: ${reply.errorMessage}` : ""}` };
+    const text = textOf(reply.content).trim();
+    return text ? { text } : { warning: "smol returned no text" };
+  } catch (error) {
+    return signal.aborted ? undefined : { warning: `smol failed: ${error instanceof Error ? error.message : String(error)}` };
+  }
+}
+
 function registerAddonSelection(pi: ExtensionAPI): void {
   const mattSkills = readMattSkills();
+  const instruction = readRestateInstruction();
   const injected = new Map<string, Set<string>>();
   pi.on("before_agent_start", async (event, ctx) => {
     if (ctx.agent.kind !== "main" || !mattSkills.size) return;
+    const header = /^\[IMPORTANT: User invoked the "([^"]+)" skill/.exec(event.prompt);
+    const startsRun = header && mattSkills.has(header[1]!);
+    const branch = ctx.sessionManager.getBranch();
+    if (!startsRun && !branch.some(entry => entry.type === "custom_message" && entry.customType === "skill-prompt" &&
+      typeof entry.details === "object" && entry.details !== null && "name" in entry.details &&
+      typeof entry.details.name === "string" && mattSkills.has(entry.details.name))) return;
+    const userWords = startsRun ? skillUserWords(event.prompt) : event.prompt;
+    // A Matt run that starts mid-session gets a restatement of the earlier talk (ADR 0021).
+    const midSession = startsRun && startsMidSession(branch);
+    const talk = midSession ? earlierTalk(branch) : "";
+    let request = preprocessTinyMessage(userWords);
+    if (startsRun && !request && !talk) return;
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     const deadline = new Promise<undefined>(resolve => {
-      timer = setTimeout(() => { controller.abort(); resolve(undefined); }, 4000);
+      timer = setTimeout(() => { controller.abort(); resolve(undefined); }, midSession ? OMP_HANDLER_CAP_MS : 4000);
     });
     try {
       const selection = (async () => {
-        const header = /^\[IMPORTANT: User invoked the "([^"]+)" skill/.exec(event.prompt);
-        const startsRun = header && mattSkills.has(header[1]!);
-        const branch = ctx.sessionManager.getBranch();
-        if (!startsRun && !branch.some(entry => entry.type === "custom_message" && entry.customType === "skill-prompt" &&
-          typeof entry.details === "object" && entry.details !== null && "name" in entry.details &&
-          typeof entry.details.name === "string" && mattSkills.has(entry.details.name))) return;
-        const skillDirectory = startsRun ? event.prompt.lastIndexOf("\n[Skill directory: ") : -1;
-        const userWords = startsRun ? (skillDirectory < 0 ? "" : /^User:[ \t]*([\s\S]*)$/m.exec(event.prompt.slice(skillDirectory))?.[1] ?? "") : event.prompt;
-        const request = preprocessTinyMessage(userWords);
-        if (startsRun && !request) return;
         if (!hasNativeJudge(settings, ctx.modelRegistry)) return;
         const model = ctx.modelRegistry.find("typesafe", "jev-latest");
         if (!model || model.api !== "typesafe") return;
         const key = await ctx.modelRegistry.getApiKey(model);
         if (!key || controller.signal.aborted) return;
+        if (midSession) {
+          const restated = await restate(ctx, instruction, talk, userWords, controller.signal);
+          if (!restated || controller.signal.aborted) return;
+          if ("warning" in restated) {
+            if (ctx.hasUI) ctx.ui.notify(`vstack: no Addon picks for this run start (${restated.warning})`, "warning");
+            return;
+          }
+          request = restated.text.slice(0, RESTATEMENT_LIMIT);
+        }
         const sessionId = ctx.sessionManager.getSessionId();
         let seen = injected.get(sessionId);
         if (!seen) { seen = new Set<string>(); injected.set(sessionId, seen); }

@@ -4,6 +4,12 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.6] - 2026-10-15
+
+- When a Matt run starts after earlier talk in the session, the Addon judge reads a restatement of the user's goal, not only the words after `User:` (ADR 0021). The extension asks the `smol` role model, at its configured effort, with the in-your-own-words instruction. The model reads the user and agent text since the last compaction, the compaction summary, and the new words, and jev reads its reply, cut to 10,000 characters. A bare skill start after earlier talk also gets picks now. A fresh run start and later prompts keep the cleaned words.
+- A failed restatement gives that prompt no picks and, with a UI, an omp warning that is not stored in the session. A restated prompt waits up to omp's 30-second hook limit. Measured smol calls took 7 to 17 seconds.
+- `sample-prompts.json` adds six `restated` samples with stored smol restatements. `scripts/addon-judge-check.ts` sends them as they are.
+
 ## [2.0.5] - 2026-10-15
 
 - grilling-page's visual judge now decides diagrams only, and it draws more of them. For each question, one yes-or-no question asks for a context diagram (the logic the description explains, threshold 0.7), and another asks for an option diagram (how the options differ, threshold 0.6). For each yes, the judge ranks all 45 visual types in diagram-design's guide, read at run time, and the agent draws one of the top three. Over 500 past questions, the old rubric gave 59 a visual, and the new one gives 404 at least one diagram. Agreement with gpt-6.1-sol labels is F1 0.87 for context diagrams and 0.82 for option diagrams.

@@ -25,8 +25,8 @@ export interface FakeHostOptions {
   agent?: FakeAgent;
   /** Models ctx.modelRegistry.find can return, keyed "provider/id". */
   models?: FakeModel[];
-  /** API key per "provider/id"; undefined means no credentials. */
-  apiKeys?: Record<string, string | undefined>;
+  /** API key per "provider/id"; undefined means no credentials, and an Error makes the lookup throw. */
+  apiKeys?: Record<string, string | Error | undefined>;
   sessionId?: string;
   hasUI?: boolean;
   selections?: (string | undefined)[];
@@ -130,9 +130,14 @@ export function fakeHost(options: FakeHostOptions = {}): FakeHost {
     agent: options.agent ?? { kind: "main", id: "Main", name: "main", depth: 0 },
     modelRegistry: {
       getAll: () => models,
+      getAvailable: () => models,
       nativeJudge: options.nativeJudge ?? true,
       find: (provider: string, id: string) => models.find((m) => m.provider === provider && m.id === id),
-      getApiKey: async (model: FakeModel) => options.apiKeys?.[`${model.provider}/${model.id}`],
+      getApiKey: async (model: FakeModel) => {
+        const key = options.apiKeys?.[`${model.provider}/${model.id}`];
+        if (key instanceof Error) throw key;
+        return key;
+      },
     },
     sessionManager: {
       getSessionId: () => options.sessionId ?? "session-1",

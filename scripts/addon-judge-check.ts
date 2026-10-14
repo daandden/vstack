@@ -6,7 +6,7 @@ import { preprocessTinyMessage } from "../plugin/extensions/prompt-cleaner";
 const ENDPOINT = "https://api.typesafe.ai/v1/systemone";
 const root = join(import.meta.dir, "..");
 const readJson = (path: string) => JSON.parse(readFileSync(join(root, path), "utf8"));
-type Prompt = { id: string; prompt: string; expected: string[]; allowed?: string[] };
+type Prompt = { id: string; prompt: string; restated?: boolean; expected: string[]; allowed?: string[] };
 type Question = { type: "noul"; instructions: string; criteria: { true: string; false: string } };
 type Result = { id: string; means: Record<string, number> };
 
@@ -43,7 +43,8 @@ try {
         const response = await fetch(ENDPOINT, {
           method: "POST",
           headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-          body: JSON.stringify({ model: "jev-latest", state: { request: preprocessTinyMessage(prompt.prompt) }, questions }),
+          // A restated sample holds a stored smol restatement, which the extension sends as it is, up to 10,000 characters (ADR 0021).
+          body: JSON.stringify({ model: "jev-latest", state: { request: prompt.restated ? prompt.prompt.slice(0, 10_000) : preprocessTinyMessage(prompt.prompt) }, questions }),
           signal: AbortSignal.timeout(30000),
         });
         if (!response.ok) throw new Error(`prompt ${prompt.id}: HTTP ${response.status} ${await response.text()}`);
