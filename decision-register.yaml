@@ -899,6 +899,7 @@ originals:
   - plugin/agents/vstack-worker.md
   - plugin/extensions/vstack.ts
   - plugin/extensions/prompt-cleaner.ts
+  - plugin/extensions/matt-skills.ts
   - plugin/rules/vstack-private-mode.md
   - plugin/rules/vstack-writing.md
   - plugin/skills/vstack-tmp

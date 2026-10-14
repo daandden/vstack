@@ -432,11 +432,20 @@ async function stageAdopt(root: string, p: Plan, upstream: string, path: string,
   for (const entry of entries) writeEntry(item.type === "blob" ? staged : join(staged, entry.path), entry, blobs.get(entry.sha)!);
   return staged;
 }
+/** Shipped skill and agent names: `plugin/skills/<name>` or `plugin/agents/<name>` from non-reject rows and originals. */
+function shippedNames(doc: any): Set<string> {
+  const names = new Set<string>();
+  for (const artifact of [...doc.items.filter((row: any) => row.disposition !== "reject").flatMap((row: any) => row.artifacts), ...doc.originals]) {
+    const match = /^plugin\/(?:skills|agents)\/[^/]+/.exec(artifact);
+    if (match) names.add(match[0]);
+  }
+  return names;
+}
 async function prepare(root: string, file: string, p: Plan | undefined, opts: UpstreamOptions) {
   const d = decisionsAt(file), doc = yamlHead(root, "decision-register.yaml"), pins = yamlHead(root, "pins.yaml"), style = yamlHead(root, "house-style.yaml");
   const { taken, renames } = await validateTargets(root, d.targets, opts);
   const copies: { source: string; artifact: string }[] = [];
-  let breaking = d.targets.some(t => ["rename", "remove"].includes(t.action) && ["skill", "agent"].includes(t.kind));
+  const shippedAtHead = shippedNames(doc);
   if (d.rows.length && !p) throw new Error("Update rows need --plan");
   if (p) {
     for (const u of p.upstreams) if (pins.upstreams[u.key]?.pin !== u.old) throw new Error(`plan Pin differs from HEAD: ${u.key}; rerun plan`);
@@ -457,7 +466,7 @@ async function prepare(root: string, file: string, p: Plan | undefined, opts: Up
         const shared = r.artifacts.some(a => doc.items.some((x: any) => x.id !== r.id && x.artifacts.includes(a)));
         if (shared && ["drop", "original"].includes(decision.removal) || !shared && ["remove-contribution", "keep-contribution"].includes(decision.removal)) throw new Error(`removal choice does not match artifact ownership: ${r.id}`);
         if (decision.removal === "original") doc.originals.push(...r.artifacts);
-        if (decision.removal === "drop") { for (const a of r.artifacts) if (existsSync(join(root, a))) throw new Error(`delete ${a} before prepare`); breaking ||= r.artifacts.some(a => /^plugin\/(skills|agents)\//.test(a)); }
+        if (decision.removal === "drop") { for (const a of r.artifacts) if (existsSync(join(root, a))) throw new Error(`delete ${a} before prepare`); }
         doc.items = doc.items.filter((x: any) => x.id !== r.id); continue;
       } else if (decision) {
         const handFlip = d.targets.find(t => t.artifact === r.artifacts[0] && t.flip)?.flip;
@@ -466,7 +475,7 @@ async function prepare(root: string, file: string, p: Plan | undefined, opts: Up
         if (r.move?.renamed && r.disposition === "adopt") {
           if (!decision.rename) throw new Error(`renamed adopt needs follow or keep: ${r.id}`);
           const oldName = basename(r.artifacts[0]!), newName = basename(r.new!.path);
-          if (decision.rename === "follow") { decision.artifacts ??= [join(dirname(r.artifacts[0]!), newName)]; style.replacements.push(renameRow(oldName, newName)); breaking = true; }
+          if (decision.rename === "follow") { decision.artifacts ??= [join(dirname(r.artifacts[0]!), newName)]; style.replacements.push(renameRow(oldName, newName)); }
           else { if (disposition !== "adapt" || !oneLine(decision.reason)) throw new Error(`keeping an adopt name needs adapt and a reason: ${r.id}`); style.replacements.push({ ...renameRow(newName, oldName), upstream: r.upstream }); }
         }
         if (disposition !== row.disposition && !oneLine(decision.reason)) throw new Error(`Disposition change needs a reason: ${r.id}`);
@@ -521,6 +530,7 @@ async function prepare(root: string, file: string, p: Plan | undefined, opts: Up
     if (row) { Object.assign(row, values); delete row.held_at; delete row.held_path; } else doc.items.push({ id: t.id, ...values });
   }
   for (const t of renames) { if (style.replacements.some((r: any) => r.id === t.house_style_row.id)) throw new Error(`House style row already exists: ${t.house_style_row.id}`); style.replacements.push(t.house_style_row); }
+  const shipped = shippedNames(doc), breaking = [...shippedAtHead].some(name => !shipped.has(name));
   const version = nextVersion(root, breaking, !!p?.moved), manifest = JSON.parse(atHead(root, "plugin/package.json")); manifest.version = version;
   const log = changelog(atHead(root, "CHANGELOG.md"), version, d.changelog);
   for (const c of copies) { rmSync(join(root, c.artifact), { recursive: true, force: true }); mkdirSync(dirname(join(root, c.artifact)), { recursive: true }); cpSync(c.source, join(root, c.artifact), { recursive: true, dereference: false }); }

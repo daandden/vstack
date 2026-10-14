@@ -1,6 +1,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { mattSkillNames } from "../../../plugin/extensions/matt-skills.ts";
 import { ConfigError } from "../vstack-repo.ts";
 import { shippedSkillNames, textFiles } from "./scope.ts";
 import type { Check, Failure } from "./types.ts";
@@ -10,21 +11,22 @@ export const addonChecks: Check = {
   async run(ctx) {
     const out: Failure[] = [];
     const shipped = shippedSkillNames(ctx);
-    const mattPaths = new Set(ctx.register.rows
-      .filter((row) => row.disposition !== "reject" && row.upstream && ctx.pins.get(row.upstream)?.role === "Base")
-      .flatMap((row) => row.artifacts));
+    const matt = mattSkillNames(ctx.validRows, (upstream) => ctx.pins.get(upstream)?.role);
     const utility = new Set<string>();
     for (const path of ctx.register.utility) {
       const name = path.startsWith("plugin/skills/") ? path.slice("plugin/skills/".length) : "";
       if (!shipped.has(name)) {
         out.push({ class: "invalid-utility", item: path, message: "utility: entry does not name a shipped skill" });
-      } else if (mattPaths.has(path)) {
+      } else if (matt.has(name)) {
         out.push({ class: "invalid-utility", item: path, message: "utility: entry names a skill with a non-reject Base upstream row" });
       } else {
         utility.add(name);
       }
     }
-    const addons = new Set([...shipped].filter((name) => !mattPaths.has(`plugin/skills/${name}`) && !utility.has(name)));
+    // A skill named by an invalid row is not classified, so that the bad row reports once.
+    const valid = new Set(ctx.validRows);
+    const unclassified = new Set(ctx.register.rows.filter((row) => !valid.has(row)).flatMap((row) => row.artifacts));
+    const addons = new Set([...shipped].filter((name) => !matt.has(name) && !utility.has(name) && !unclassified.has(`plugin/skills/${name}`)));
 
     const files = existsSync(join(ctx.root, "plugin")) ? textFiles(ctx.root, "plugin") : [];
     if (existsSync(join(ctx.root, "README.md"))) files.push(...textFiles(ctx.root, "README.md"));

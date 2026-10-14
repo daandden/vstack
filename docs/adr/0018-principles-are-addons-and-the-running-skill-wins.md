@@ -8,7 +8,7 @@ Principles follow the Addon rule of ADR 0015. The jev judge asks the principle q
 - Judge most principles in Matt runs and a short list on every prompt. This option needs two scopes and a list to keep at each Update.
 - Make guard-the-context-window and encode-lessons-in-structure Utility skills. A Utility skill needs a visible description or a rule to start, and ADR 0002 rejected both for principles.
 - Narrow the jev questions of the conflicting principles. A jev question cannot see which skill runs, so it cannot exclude a principle by skill.
-- Edit the conflicting principle texts. Up to 7 adopt rows would flip to adapt, and each Update would merge them.
+- Edit the conflicting principle texts. Up to 7 adopt rows then flip to adapt, and each Update has to merge them.
 - Keep the skill text in the judge input on a skill-start prompt. The cleaned prompt keeps about 1,300 characters of skill text and 600 at the end, so each run of a skill got the same picks, and short user words could fall outside the kept part.
 
 ## Consequences

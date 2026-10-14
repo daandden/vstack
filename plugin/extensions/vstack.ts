@@ -4,6 +4,7 @@ import type { ExtensionAPI } from "@oh-my-pi/pi-coding-agent";
 import { settings } from "@oh-my-pi/pi-coding-agent";
 import { hasNativeJudge } from "@oh-my-pi/pi-coding-agent/judgment";
 import questions from "../../addon-questions.json";
+import { mattSkillNames, type MattSkillRow } from "./matt-skills.ts";
 import { preprocessTinyMessage } from "./prompt-cleaner.ts";
 import * as fs from "node:fs";
 import { homedir } from "node:os";
@@ -38,17 +39,9 @@ function registerRenameSession(pi: ExtensionAPI): void {
 
 function readMattSkills(): Set<string> {
   try {
-    const register = Bun.YAML.parse(fs.readFileSync(new URL("../../decision-register.yaml", import.meta.url), "utf8")) as { items: { upstream: string; disposition: string; artifacts: string[] }[] };
+    const register = Bun.YAML.parse(fs.readFileSync(new URL("../../decision-register.yaml", import.meta.url), "utf8")) as { items: MattSkillRow[] };
     const pins = Bun.YAML.parse(fs.readFileSync(new URL("../../pins.yaml", import.meta.url), "utf8")) as { upstreams: Record<string, { role: string }> };
-    const names = new Set<string>();
-    for (const row of register.items) {
-      if (row.disposition === "reject" || pins.upstreams[row.upstream]?.role !== "Base") continue;
-      for (const artifact of row.artifacts) {
-        const match = /^plugin\/skills\/([^/]+)$/.exec(artifact);
-        if (match) names.add(match[1]!);
-      }
-    }
-    return names;
+    return mattSkillNames(register.items, upstream => pins.upstreams[upstream]?.role);
   } catch { return new Set(); }
 }
 
@@ -64,7 +57,7 @@ function registerAddonSelection(pi: ExtensionAPI): void {
     });
     try {
       const selection = (async () => {
-        const header = /^\[IMPORTANT: User invoked the "([^"]+)" skill/m.exec(event.prompt);
+        const header = /^\[IMPORTANT: User invoked the "([^"]+)" skill/.exec(event.prompt);
         const startsRun = header && mattSkills.has(header[1]!);
         const branch = ctx.sessionManager.getBranch();
         if (!startsRun && !branch.some(entry => entry.type === "custom_message" && entry.customType === "skill-prompt" &&

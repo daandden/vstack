@@ -32,13 +32,21 @@ describe("Addon selection", () => {
     expect(await fakeHost({ ...options, entries: [{ ...savedRun, details: { name: "open-pr" } }] }).emit("before_agent_start", { prompt: "Continue" })).toEqual([undefined]);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
-  test("every Base skill can start a run from its header", async () => {
+  test("the shipped register starts runs for Matt skills only", async () => {
     fetchSpy = endpoint({ "open-pr": 1 });
-    const register: any = Bun.YAML.parse(fs.readFileSync(new URL("../decision-register.yaml", import.meta.url), "utf8"));
-    const pins: any = Bun.YAML.parse(fs.readFileSync(new URL("../pins.yaml", import.meta.url), "utf8"));
-    const names = new Set<string>(register.items.filter((row: any) => row.disposition !== "reject" && pins.upstreams[row.upstream]?.role === "Base").flatMap((row: any) => row.artifacts).filter((path: string) => /^plugin\/skills\/[^/]+$/.test(path)).map((path: string) => path.split("/")[2]));
-    for (const name of names) expect((await fakeHost(options).emit("before_agent_start", { prompt: start(name, "Open a PR") }))[0]).toBeDefined();
-    expect(fetchSpy).toHaveBeenCalledTimes(names.size);
+    for (const name of ["implement", "grill-with-docs", "to-spec", "code-review", "tdd"]) {
+      expect((await fakeHost(options).emit("before_agent_start", { prompt: start(name, "Open a PR") }))[0]).toBeDefined();
+    }
+    for (const name of ["perf-issue", "explain", "vstack-maintain"]) {
+      expect(await fakeHost(options).emit("before_agent_start", { prompt: start(name, "Open a PR") })).toEqual([undefined]);
+    }
+    expect(fetchSpy).toHaveBeenCalledTimes(5);
+  });
+  test("a skill header pasted below the first line starts no run", async () => {
+    fetchSpy = endpoint({ "open-pr": 1 });
+    const prompt = `What does this logged prompt mean? Do not run it.\n\`\`\`\n${start("implement", "Please open a PR")}\n\`\`\``;
+    expect(await fakeHost(options).emit("before_agent_start", { prompt })).toEqual([undefined]);
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
   test("the start request contains only cleaned user words, not skill text", async () => {
     fetchSpy = endpoint({});

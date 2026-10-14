@@ -5,9 +5,9 @@ unslop, simple-english, and technical-writing merge into one visible Utility ski
 ## Considered Options
 
 - Keep four skills and add technical-writing to the rule. The user rejected this option, because the repeats and conflicts stay and the rule needs more overrides.
-- Merge all four into two, with a copy of the plain-English rules in the agent skill. The user rejected this option, because the rules would live in two places and writing-for-agents would move far from Upstream.
+- Merge all four into two, with a copy of the plain-English rules in the agent skill. The user rejected this option, because then the rules live in two places and writing-for-agents moves far from Upstream.
 - Reject technical-writing. The user rejected this option, because the user wants its Diátaxis, Google style, and Global English rules.
-- Delete the rule, so that the skill's description is the only trigger. The user rejected this option, because a description gives no promise for chat replies, `ask` text, and subagent briefs, and writing-for-agents would lose its trigger.
+- Delete the rule, so that the skill's description is the only trigger. The user rejected this option, because a description gives no promise for chat replies, `ask` text, and subagent briefs, and writing-for-agents then loses its trigger.
 
 ## Consequences
 
