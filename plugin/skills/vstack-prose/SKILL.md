@@ -145,15 +145,14 @@ The retained unslop rule numbers are ids cited by existing ADRs.
 
 ### Jargon and mannered prose
 
-- Unslop rule 26, abstract metaphor nouns: substrate, wedge, vector, locus,
-  vantage, nexus, primitive (as noun), harness (as metaphor), surface (as in
-  "API surface"), bedrock, scaffolding (as metaphor), modality, paradigm,
-  gold-plating, ratchet (as metaphor), evacuate (for moving code), endgame,
-  north star, flywheel. Pick the concrete word. "Substrate" becomes "base".
-  "Wedge in" becomes "add". "Vector" becomes "way" or "method".
-  "Gold-plating" becomes "more than the job needs". "Ratchet" becomes the
-  mechanism's real name or "a limit that only tightens". "Evacuate" becomes
-  "move out". "Endgame" becomes "the last phase".
+- Unslop rule 26, abstract metaphor nouns. Pick the concrete word. A plain
+  replacement follows in parentheses: substrate (base), wedge, wedge in
+  (add), vector (way, method), locus, vantage, nexus, primitive as a noun,
+  harness as a metaphor, surface as in "API surface", bedrock, scaffolding
+  as a metaphor, modality, paradigm, gold-plating (more than the job needs),
+  ratchet as a metaphor (the mechanism's real name, or a limit that only
+  tightens), evacuate for moving code (move out), endgame (the last phase),
+  north star, flywheel.
 - Unslop rule 32, mannered prose. Replace metaphor or flourish with the
   literal phrase. Watch for aphorisms, rhetorical fragments, personified
   code, figurative verbs, and stock framing phrases. "A dial worth turning"

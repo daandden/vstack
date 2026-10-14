@@ -80,9 +80,16 @@ replacements:
     uses: [update]
   - id: session-lessons
     from: reflect
-    to: session-lessons
+    to: session
     match: ref
     upstream: pstack
+    scope: required
+    uses: [update]
+  - id: rename-session-lessons
+    from: session-lessons
+    to: session
+    match: name
+    upstream: any
     scope: required
     uses: [update]
   - id: explain

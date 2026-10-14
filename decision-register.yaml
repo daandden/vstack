@@ -9,7 +9,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/engineering/ask-matt
-    tree: c9c83b11b1a0c91c555ed6ade5ba67f6d6b103d4
+    tree: da068f2392e1144469cbc602ffff96ef47881a88
     disposition: reject
     artifacts: []
     reason: "vstack has one way in, through the Matt flow (ADR 0015)."
@@ -17,7 +17,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/engineering/code-review
-    tree: 7a2057dcc514dc024d4e6bf8ad78021b97f229ae
+    tree: d8e341cee7980127dddda05159bedf25dc853615
     disposition: adapt
     artifacts: [plugin/skills/code-review]
     reason: "Reads vstack configuration. Standards, Spec, and conditional Safety use judge-gated Fan-out. Safety runs blast-radius only in a run, without step 6 (#84, #126)."
@@ -25,34 +25,34 @@ items:
     upstream: matt
     kind: skill
     path: skills/engineering/codebase-design
-    tree: 20b7cd1dd1fe5b0bd37ba72649f3a29375574b5b
+    tree: 07ba1cd60efc12d0d3a083005c1d9651cf15e39a
     disposition: adapt
     artifacts: [plugin/skills/codebase-design]
-    reason: "DESIGN-IT-TWICE runs judge-gated Fan-out of vstack agents; names GLOSSARY.md (#36)."
+    reason: "DESIGN-IT-TWICE runs judge-gated Fan-out of vstack agents (#36)."
   - id: matt/diagnosing-bugs
     upstream: matt
     kind: skill
     path: skills/engineering/diagnosing-bugs
-    tree: 463c81def888fefa77b894837d301d9ed70e0994
+    tree: de4236cf34757c4e9ea7afe78d46c023213ff254
     disposition: adapt
     artifacts: [plugin/skills/diagnosing-bugs]
-    reason: "Its user questions go through ask (ask-tool, #58); names GLOSSARY.md (glossary row) and skill://improve-codebase-architecture."
+    reason: "Its user questions go through ask (ask-tool, #58)."
   - id: matt/domain-modeling
     upstream: matt
     kind: skill
     path: skills/engineering/domain-modeling
-    tree: 959e63161ff78b4b1cd553b2c0e09e0c68418e5f
+    tree: ea30ee454ba264543dbe40737973b1a5afb9f0e6
     disposition: adapt
     artifacts: [plugin/skills/domain-modeling]
-    reason: "Its user questions go through ask (ask-tool, #58); names GLOSSARY.md and GLOSSARY-MAP.md (glossary rows)."
+    reason: "Its user questions go through ask (ask-tool, #58)."
   - id: matt/grill-with-docs
     upstream: matt
     kind: skill
     path: skills/engineering/grill-with-docs
-    tree: 5fdcdeedf2d0c73b3ecb1da0a464dd885590f8d6
-    disposition: adopt
+    tree: eedaf2562c83155115e9c649fa3ecaac2e10e81d
+    disposition: adapt
     artifacts: [plugin/skills/grill-with-docs]
-    reason: "Kept unchanged; only calls grilling with domain-modeling."
+    reason: "Names skill://grilling and skill://domain-modeling where Matt calls the Skill tool."
   - id: matt/implement
     upstream: matt
     kind: skill
@@ -65,7 +65,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/engineering/improve-codebase-architecture
-    tree: 6a971d1f5b109ac817e18c0f0419c2a32d60f26a
+    tree: 39bd9cc130f7dfcc4e3ea0b3613f6ebed0d0ad2b
     disposition: adapt
     artifacts: [plugin/skills/improve-codebase-architecture]
     reason: "Its sub-agent spawn names a vstack agent (ADR 0004); report goes to Scratch (#42, #57)."
@@ -73,7 +73,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/engineering/prototype
-    tree: 57569dda16077a016b8fb82494dbf9f6430d7cc4
+    tree: e41d92e171f074a2b6887d8f6faca4a15c83d1ca
     disposition: merge
     artifacts: [plugin/skills/prototype]
     reason: "Gains the pstack prototype Playbook's timing/behavior branch, observation step, and reply shape (#36)."
@@ -81,23 +81,15 @@ items:
     upstream: matt
     kind: skill
     path: skills/engineering/research
-    tree: 972a34cd8128b7952b7eb279b06715862db906a7
+    tree: 0a6796c5667e95ed2301ba7381c123b4acb2ae1a
     disposition: adapt
     artifacts: [plugin/skills/research]
     reason: "Background agent names a vstack agent (#36)."
-  - id: matt/resolving-merge-conflicts
-    upstream: matt
-    kind: skill
-    path: skills/engineering/resolving-merge-conflicts
-    tree: 6aa1ed0b40fac0ebea5c0cf6f2addf82c99b6323
-    disposition: adopt
-    artifacts: [plugin/skills/resolving-merge-conflicts]
-    reason: "Kept unchanged."
   - id: matt/setup-matt-pocock-skills
     upstream: matt
     kind: skill
     path: skills/engineering/setup-matt-pocock-skills
-    tree: abf20c04a4aa8a37ff20aa7286f28857150f8b8d
+    tree: b1568cde855a189b16e5d7dd8a0fa4c3f156bc2e
     disposition: adapt
     artifacts: [plugin/skills/setup-vstack]
     reason: "Renamed to setup-vstack for machine configuration and fresh project setup, with Migration in migrate-to-vstack (ADR 0006)."
@@ -105,7 +97,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/engineering/tdd
-    tree: 423f3cc2bccf3b0ed426fb35eeb4b38d9188a343
+    tree: bf1bf5ffcd63aa8abce830f2955a853c121fb463
     disposition: merge
     artifacts: [plugin/skills/tdd]
     reason: "Merges with pstack tdd (#36)."
@@ -113,7 +105,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/engineering/to-spec
-    tree: dc32a36159f99c854cb470f371106cd38513a15f
+    tree: 136b9651747cfccbfbb7c50a6b0dfb757e7547d2
     disposition: adapt
     artifacts: [plugin/skills/to-spec]
     reason: "Names setup-vstack."
@@ -121,7 +113,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/engineering/to-tickets
-    tree: 80c1bedbdaa72a4abd524055013accb4fe0ea8c4
+    tree: b32c94e5a51c24ee9c41fcb7fe9ea9fff9af6369
     disposition: adapt
     artifacts: [plugin/skills/to-tickets]
     reason: "Names setup-vstack."
@@ -129,15 +121,15 @@ items:
     upstream: matt
     kind: skill
     path: skills/engineering/triage
-    tree: b20940845332f540e3f17b0cb32d45fd8c2298bf
+    tree: 4cb951d62ecccaed601cdc5f9a1b7b3d8a799635
     disposition: adapt
     artifacts: [plugin/skills/triage]
-    reason: "Names setup-vstack."
+    reason: "Names setup-vstack. Its questions to the maintainer go through ask (ask-tool, #58)."
   - id: matt/wayfinder
     upstream: matt
     kind: skill
     path: skills/engineering/wayfinder
-    tree: 48c3a8b0a9705d6310d37f7f9b53bcb2c55955c7
+    tree: 8ec0462658381bd1606d3f9db14ffc67df6a2a43
     disposition: adapt
     artifacts: [plugin/skills/wayfinder]
     reason: "Names setup-vstack; charting research is judge-gated Fan-out; its user questions go through ask."
@@ -145,7 +137,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/engineering/wizard
-    tree: 359db2fb13dc168346632556185252cab9dbec77
+    tree: 0a163daf092c6f361158ca9627e81f2cb5230574
     disposition: adapt
     artifacts: [plugin/skills/wizard]
     reason: "Its user questions go through ask (ask-tool, #58)."
@@ -153,23 +145,23 @@ items:
     upstream: matt
     kind: skill
     path: skills/productivity/grill-me
-    tree: c817f6f36acd483294144694a935a76d3e3eb101
-    disposition: adopt
+    tree: 3df14e2d3a89459bf300614be9247e3ce74798f8
+    disposition: adapt
     artifacts: [plugin/skills/grill-me]
-    reason: "Kept unchanged; only calls grilling."
+    reason: "Names skill://grilling where Matt calls the Skill tool."
   - id: matt/grilling
     upstream: matt
     kind: skill
     path: skills/productivity/grilling
-    tree: fd99bcbb818f7ef766b83656fb5fac0b58e223ad
+    tree: f0732035b8b1b60ae39454e4191caef32fa91903
     disposition: adapt
     artifacts: [plugin/skills/grilling]
-    reason: "Sub-agent spawn names a vstack agent; one round is one ask; the Grilling page lives in grilling-page (#42, #58)."
+    reason: "Sub-agent spawn names a vstack agent; one round is one ask; the Grilling page lives in grilling-page; the user's own grill ends by recommending the next step (#42, #58, ADR 0019)."
   - id: matt/handoff
     upstream: matt
     kind: skill
     path: skills/productivity/handoff
-    tree: 184d485ae68a2132893a94239b2b85d253e6152b
+    tree: 2242e8f05424b8c2ae94194a90d97b88d16108ec
     disposition: adapt
     artifacts: [plugin/skills/handoff]
     reason: "Saves to Scratch under ~/.vstack/tmp instead of the OS temp dir (tmp-path, #57)."
@@ -177,7 +169,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/productivity/teach
-    tree: 15f8c86d39ef834e643d092733ca899b59049067
+    tree: 2ab11f2f51f3c29771edb5d4258d807a49462491
     disposition: adapt
     artifacts: [plugin/skills/teach]
     reason: "Its user questions go through ask (ask-tool, #58)."
@@ -185,7 +177,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/productivity/to-questionnaire
-    tree: 7c4d04fb4d77824d7d98433ee7a8b17dde5efa13
+    tree: 46dfbeeba12a9e52eef446676f42e7551023d9a9
     disposition: adapt
     artifacts: [plugin/skills/to-questionnaire]
     reason: "Its user questions go through ask (ask-tool, #58)."
@@ -193,15 +185,15 @@ items:
     upstream: matt
     kind: skill
     path: skills/productivity/wait-what
-    tree: 6abe708f1bf253158a037ac49faea2944e2809dc
-    disposition: adapt
+    tree: c8b050e6b8c711be1a9008ceacb2126914f0763e
+    disposition: adopt
     artifacts: [plugin/skills/wait-what]
-    reason: "Names GLOSSARY.md (glossary row); back to adopt once the Base Pin reaches v1.3.0."
+    reason: "Kept unchanged; Matt names GLOSSARY.md from v1.3.0."
   - id: matt/writing-for-agents
     upstream: matt
     kind: skill
     path: skills/productivity/writing-for-agents
-    tree: bd9c9c4762db0a9a094fd419316ebd4b0444d06e
+    tree: ad2925850efb8973a72d2e666f7a975f9a2d4a9b
     disposition: adapt
     artifacts: [plugin/skills/writing-for-agents]
     reason: "The vstack-writing rule loads this hidden skill for agent-facing text (ADR 0016)."
@@ -209,7 +201,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/in-progress/claude-handoff
-    tree: b312afac556f7229717dbd9b786d77bc160c8649
+    tree: 6845c30e62e1c0c2c0fbdea8307379197f0b4dc4
     disposition: reject
     artifacts: []
     reason: "in-progress bucket, not in Matt's plugin manifest; revisit if moved into engineering or productivity."
@@ -217,7 +209,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/in-progress/loop-me
-    tree: 6364da007c562d9f6ad3f54524dbc42465d9893a
+    tree: a0dfdc3562686d920900973b50289b36e2f7eafe
     disposition: reject
     artifacts: []
     reason: "in-progress bucket, not in Matt's plugin manifest; revisit if moved into engineering or productivity."
@@ -225,7 +217,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/in-progress/setup-ts-deep-modules
-    tree: 706cd1617d53587b0c4e6df5a8c56974f54cacd2
+    tree: b32508a8a7d62c07d32d7c5cff84d357719def7f
     disposition: reject
     artifacts: []
     reason: "in-progress bucket, not in Matt's plugin manifest; revisit if moved into engineering or productivity."
@@ -233,7 +225,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/in-progress/writing-beats
-    tree: 545d05c3fdbfdd094dd88900b0ef8c9a823eac90
+    tree: 3a28fb076fdaaec0927080718abb98fc0f340011
     disposition: reject
     artifacts: []
     reason: "in-progress bucket, not in Matt's plugin manifest; revisit if moved into engineering or productivity."
@@ -241,7 +233,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/in-progress/writing-fragments
-    tree: ce7d2741a30df8a488f6248c84cf954cff98393f
+    tree: 98e500e0097ec80f52f6a024c5a2ff6d15235bdb
     disposition: reject
     artifacts: []
     reason: "in-progress bucket, not in Matt's plugin manifest; revisit if moved into engineering or productivity."
@@ -249,7 +241,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/in-progress/writing-shape
-    tree: 31af0156520819c15d19358a8e0bd36f82e67ad3
+    tree: ac92229646fccf7315ae139c37b479b3790617f2
     disposition: reject
     artifacts: []
     reason: "in-progress bucket, not in Matt's plugin manifest; revisit if moved into engineering or productivity."
@@ -257,7 +249,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/misc/git-guardrails-claude-code
-    tree: e90e289cce7a31bdf1afdf591f0790d7ac6c3cbc
+    tree: ceed97af09633b300826d0ca0b1464c527ec9a35
     disposition: reject
     artifacts: []
     reason: "misc bucket, not in Matt's plugin manifest; revisit if moved into engineering or productivity."
@@ -281,7 +273,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/misc/setup-pre-commit
-    tree: dcc584ff84c4f040ea12742fcb46b7c3ad7070bd
+    tree: 5b63f9f665bacc9be04cae51982e9ef1469d6699
     disposition: reject
     artifacts: []
     reason: "misc bucket, not in Matt's plugin manifest; revisit if moved into engineering or productivity."
@@ -289,7 +281,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/architect
-    tree: 603668c4b5c46d6e32d6f325c01359a831854941
+    tree: 29891f4b7ff7e4824d0742b15cf920bd428e12e8
     disposition: reject
     artifacts: []
     reason: "grill-with-docs and DESIGN-IT-TWICE cover design in the Matt flow (ADR 0015)."
@@ -297,7 +289,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/arena
-    tree: 051012b3fd378ad46410ee3f2dcf779a819fd297
+    tree: 849b0b1191f81144ea3a7c7f117011f54d5c872f
     disposition: adapt
     artifacts: [plugin/skills/compare-attempts]
     reason: "Renamed for independent attempts on the Session model, only when the user asks for several attempts (ADR 0015)."
@@ -305,7 +297,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/automate-me
-    tree: b301b39506b378d699e1becedf1af73ff5d9f3d5
+    tree: 7d67c5679fbfc6b18cb582f1915be5a98f8e0d5f
     disposition: reject
     artifacts: []
     reason: "Would generate a competing personal mode skill."
@@ -313,7 +305,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/blast-radius
-    tree: ba9658b89ac272580051ab3a4ae58d5346e955f7
+    tree: 9437b18aef01b61d24b57d0fd3de24386398b643
     disposition: adapt
     artifacts: [plugin/skills/blast-radius]
     reason: "Hidden Safety knowledge for code-review, with proof in Scratch and reply attempts only on explicit request (ADR 0015, #84)."
@@ -329,7 +321,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/create-verification-skill
-    tree: 38a3e016bb42ba7ba6f66315e04ef64242937660
+    tree: 5aa2dae2726d09d219397fbbedc1e9500a239d28
     disposition: adapt
     artifacts: [plugin/skills/setup-app-verification]
     reason: "Renamed for live proof in implement, which commits Standard output, while Private mode links the shared copy (ADR 0009, ADR 0015)."
@@ -337,7 +329,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/figure-it-out
-    tree: dde86e306188bfb713f46dc211b48d7ed7b64106
+    tree: 7ba3256093e27828e829cf8f0ac63f476b32bf1e
     disposition: reject
     artifacts: []
     reason: "The Matt flow covers large changes through the grill, to-spec, to-tickets, and implement (ADR 0015)."
@@ -345,7 +337,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/how
-    tree: 12b9ed018673a72573574ca5304fc1503a7d16d7
+    tree: 3fd1c05ec675e7225d51e19e8ec80b92217adfbf
     disposition: adapt
     artifacts: [plugin/skills/how]
     reason: "One angle uses an explainer; 2–4 angles use judge-gated explorers, with figures on a Scratch page (#49, #60)."
@@ -353,7 +345,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/interrogate
-    tree: 708db3e62cd0225367d6fd8841dc38fdb5f1112d
+    tree: 38a603e90550030aa50b0c3f91a5e578dc4071a3
     disposition: reject
     artifacts: []
     reason: "Its signal is model diversity; its merged verdict contradicts code-review's separate axes."
@@ -377,7 +369,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/no-comments
-    tree: 198804132d8306db10cae6c3db62a1498dda7e1c
+    tree: 3a09487f06a3fcf9e313d397a29f5d2efde9283f
     disposition: adapt
     artifacts: [plugin/skills/prune-comments]
     reason: "Renamed for implement, with one fresh comment critic, direct fixes only, and explicit approval for constraint encodings (ADR 0015, #52)."
@@ -385,7 +377,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/poteto-mode
-    tree: 5e3616f2b0b753aa7ef0471fe039647488032add
+    tree: 2402525eddae7229ad3cd4989a956af9c8172133
     disposition: reject
     artifacts: []
     reason: "Sticky Cursor mode; its Playbooks are registered separately and its principle index goes to jev delivery."
@@ -409,7 +401,7 @@ items:
     upstream: pstack
     kind: principle
     path: pstack/skills/principle-build-the-lever
-    tree: 3fb3e945049f52b6a721e329901995fa6289221e
+    tree: dd1ee184f4f4d585e42a006f0a1837afdbb3d627
     disposition: adopt
     artifacts: [plugin/skills/principle-build-the-lever]
     reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
@@ -417,7 +409,7 @@ items:
     upstream: pstack
     kind: principle
     path: pstack/skills/principle-encode-lessons-in-structure
-    tree: 8875632be32ca6cff494def2810e5e71fceba65d
+    tree: 1e42cd4db78cc95d0297dc0264c1a74439c90be9
     disposition: adopt
     artifacts: [plugin/skills/principle-encode-lessons-in-structure]
     reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
@@ -425,7 +417,7 @@ items:
     upstream: pstack
     kind: principle
     path: pstack/skills/principle-exhaust-the-design-space
-    tree: 3c9528f7814d889dc91c2434cc942439a9dd6257
+    tree: 3d93455dc2b3c0d9954e20384ed8569138bd1eb0
     disposition: reject
     artifacts: []
     reason: "tdd, diagnosing-bugs, prototype, and DESIGN-IT-TWICE cover this ground (ADR 0018)."
@@ -441,7 +433,7 @@ items:
     upstream: pstack
     kind: principle
     path: pstack/skills/principle-fix-root-causes
-    tree: 0ec22d21fffd180573f49ea239ee76083d6a6f40
+    tree: 5e98e3bef166d84f4a19e69feb7d1587f420557f
     disposition: reject
     artifacts: []
     reason: "tdd, diagnosing-bugs, prototype, and DESIGN-IT-TWICE cover this ground (ADR 0018)."
@@ -457,15 +449,15 @@ items:
     upstream: pstack
     kind: principle
     path: pstack/skills/principle-guard-the-context-window
-    tree: 8c132ce80504b04cb2c04070b9ca8c6932807037
-    disposition: adapt
+    tree: bf09c18e975ded9dc137631c6529db941dda24a2
+    disposition: adopt
     artifacts: [plugin/skills/principle-guard-the-context-window]
-    reason: "Its subagent routing names vstack-explorer (ADR 0004, #42)."
+    reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
   - id: pstack/principle-laziness-protocol
     upstream: pstack
     kind: principle
     path: pstack/skills/principle-laziness-protocol
-    tree: 69c23647b389130012f04971c6912598e3f3b913
+    tree: cb8aa817489838fe615d0dfe321d263e8a3f1faa
     disposition: adopt
     artifacts: [plugin/skills/principle-laziness-protocol]
     reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
@@ -489,7 +481,7 @@ items:
     upstream: pstack
     kind: principle
     path: pstack/skills/principle-minimize-reader-load
-    tree: aec92309f89c6e7a4a3cad94e8b7929c1a371643
+    tree: f64929f93ffd334f36699b83f53ee7155c4a2063
     disposition: adopt
     artifacts: [plugin/skills/principle-minimize-reader-load]
     reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
@@ -497,7 +489,7 @@ items:
     upstream: pstack
     kind: principle
     path: pstack/skills/principle-model-the-domain
-    tree: d584d474eb590208584188e6932d2ccdafe9d52b
+    tree: 6ea2f64ebf635cb2eb8391197e40f32e5f841557
     disposition: adapt
     artifacts: [plugin/skills/principle-encode-the-domain]
     reason: "Renamed away from Matt's domain-modeling."
@@ -505,7 +497,7 @@ items:
     upstream: pstack
     kind: principle
     path: pstack/skills/principle-never-block-on-the-human
-    tree: bbdf25e9f8197253a44342e6e7793324a10965fb
+    tree: d2578043c77706411c48c5b7cfe03dc3d45e3b15
     disposition: adapt
     artifacts: [plugin/skills/principle-never-block-on-the-human]
     reason: "A skill that requires a human decision wins over 'proceed, then present'."
@@ -529,7 +521,7 @@ items:
     upstream: pstack
     kind: principle
     path: pstack/skills/principle-redesign-from-first-principles
-    tree: 7d6b29659ee81f3e4ce5475b868bf891a8041e7c
+    tree: 20822072ed14c75eed7f527f734c5d347c43845e
     disposition: adopt
     artifacts: [plugin/skills/principle-redesign-from-first-principles]
     reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
@@ -553,7 +545,7 @@ items:
     upstream: pstack
     kind: principle
     path: pstack/skills/principle-subtract-before-you-add
-    tree: ea107acd74b874b27ec52983384d2ec7d4b8088a
+    tree: 760f5b131e920c0e9914a0ef8cb4b875918af31a
     disposition: adopt
     artifacts: [plugin/skills/principle-subtract-before-you-add]
     reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
@@ -561,7 +553,7 @@ items:
     upstream: pstack
     kind: principle
     path: pstack/skills/principle-test-behavior-not-implementation
-    tree: 4c5cb15166bd6bcc5023e3180ed0105ea4a6e06a
+    tree: be91871238f0938e79ec666131010d8829e29251
     disposition: reject
     artifacts: []
     reason: "tdd, diagnosing-bugs, prototype, and DESIGN-IT-TWICE cover this ground (ADR 0018)."
@@ -569,7 +561,7 @@ items:
     upstream: pstack
     kind: principle
     path: pstack/skills/principle-type-system-discipline
-    tree: 88836c25807833f4f8bc79b8c8542fc1c8c558b3
+    tree: d7369475f3516094c0a3509cb9e37c6ad5200d07
     disposition: adopt
     artifacts: [plugin/skills/principle-type-system-discipline]
     reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
@@ -577,7 +569,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/recall
-    tree: 9082e3a1eab382254f607c8962b9e7f61909dc25
+    tree: 4dd0f8b495008fc106b2314401f91bc9cf96ed7f
     disposition: reject
     artifacts: []
     reason: "omp history/memory tools plus Matt's handoff cover it."
@@ -585,15 +577,15 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/reflect
-    tree: 772aafc391b56bb1c4ad5079e18084c6e4d47a06
-    disposition: adapt
-    artifacts: [plugin/skills/session-lessons]
-    reason: "Renamed for the grill's three lenses and synthesis, with approved edits made by implement according to the skill's home (ADR 0015, #88)."
+    tree: e44a51da42eb95e3ab2d13231fe942e218424f66
+    disposition: merge
+    artifacts: [plugin/skills/session]
+    reason: "Merges with Matt's retro and pstack's correct into the session Addon: four lenses, one ask per finding, implement-owned edits (ADR 0019)."
   - id: pstack/setup-pstack
     upstream: pstack
     kind: skill
     path: pstack/skills/setup-pstack
-    tree: 1c4268fdfc82415c72a45fc65fe2683f6e4c2cd8
+    tree: 79a953b4d60fdd19392a39d7e11e612d372c6910
     disposition: reject
     artifacts: []
     reason: "Per-role model configuration is out of scope."
@@ -601,7 +593,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/show-me-your-work
-    tree: 5ecdc5d5f4b2126b2d28f0bbb091bd5454d7086e
+    tree: 118c0642360ab53de52b3f8dd044102567dbcaa9
     disposition: adapt
     artifacts: [plugin/skills/decision-trail]
     reason: "Renamed; final review is one fresh-context vstack subagent on the Session model or the user's override (#51)."
@@ -609,7 +601,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/swarm
-    tree: 2e7a8ff82cd4a88abc31112cf87de0cd6065628a
+    tree: aca63561c4be67b7b1ec7282c343a5f655e7b85d
     disposition: reject
     artifacts: []
     reason: "omp task already runs subagent batches; swarm only adds Cursor cloud agents."
@@ -633,7 +625,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/technical-writing
-    tree: 062212933adc6148a035a440dc5208757864fb42
+    tree: f35560fd015d95ae92eb3c7414d3a48065299dfa
     disposition: merge
     artifacts: [plugin/skills/vstack-prose]
     reason: "Merges technical-writing, unslop, and simple-english into vstack-prose (ADR 0016)."
@@ -641,7 +633,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/typescript-best-practices
-    tree: 924cb1d5fee20dc4028a10bf98b26dec8cbdfd83
+    tree: 319e39dfd8c0da0602db8d50ce6e48b0945bbf3a
     disposition: reject
     artifacts: []
     reason: "The user doesn't want it (#33)."
@@ -649,7 +641,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/unslop
-    tree: d5baa969e71c4ddb563412b0ec170fa3b05b6d6e
+    tree: 4e572dd70e5557f490e3991c52ea58f0dcee8936
     disposition: merge
     artifacts: [plugin/skills/vstack-prose]
     reason: "Merges unslop, simple-english, and technical-writing into vstack-prose (ADR 0016)."
@@ -657,7 +649,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/why
-    tree: 95da26ff7fe7b8fe70022d19064bd1a9f9e27127
+    tree: ba549f92c3a8dc1506b21674e8794eb980019bf3
     disposition: adapt
     artifacts: [plugin/skills/why]
     reason: "Profiles git, the code host, tracker, and MCPs; gates investigators and always uses fresh-context synthesis (#49)."
@@ -673,7 +665,7 @@ items:
     upstream: pstack
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/autonomous-run.md
-    tree: 12c3a7d84effcacf3550cb893be67498d7b28a4a
+    tree: e6b88703cf327a76bcdd424429345ac0efeca67e
     disposition: reject
     artifacts: []
     reason: "Needs Cursor /loop; revisit if omp documents goal mode."
@@ -681,7 +673,7 @@ items:
     upstream: pstack
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/autopilot-full.md
-    tree: e92be88a8dfcb0a1f2745e0da7af42d31f1d6606
+    tree: b9797cd8a8d983a2f50898a398a5bd2c40671084
     disposition: reject
     artifacts: []
     reason: "Without fleets, implement already drives open-pr, babysit, and ship to its settled End state (ADR 0015)."
@@ -689,7 +681,7 @@ items:
     upstream: pstack
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/autopilot-stack.md
-    tree: 810a70fff72ae49a9387b5ea41dcb13f890c83c0
+    tree: 8f9c28a1da1a0cdefc99504882bb4351b83d0181
     disposition: reject
     artifacts: []
     reason: "Same reason as autopilot-full."
@@ -697,7 +689,7 @@ items:
     upstream: pstack
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/babysit.md
-    tree: 683cf0ba889789cbe2d880fce667c75349f9ed12
+    tree: 51549ab2da11e5905342bbb3aadb93685c8ac348
     disposition: adapt
     artifacts: [plugin/skills/babysit]
     reason: "Hidden drive-mode knowledge for implement's PR chain through gh, without user-start background or check modes (ADR 0015)."
@@ -705,7 +697,7 @@ items:
     upstream: pstack
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/bug-fix.md
-    tree: eeebc42b7477d435d8ac61d631d84822f908f59c
+    tree: b5de0bfa63add6ed38a38a8bd668cf36ac009c61
     disposition: reject
     artifacts: []
     reason: "diagnosing-bugs covers the loop; open-pr covers the PR."
@@ -713,7 +705,7 @@ items:
     upstream: pstack
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/eval.md
-    tree: 3dae34e2ef0cbdd9bafa5ab372da5ea143d48452
+    tree: 768a894e275b1e9b198e83ceb6b46964e3f9d6db
     disposition: reject
     artifacts: []
     reason: "Its premise is cross-model judging."
@@ -721,7 +713,7 @@ items:
     upstream: pstack
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/feature.md
-    tree: 79a6bbbe0ce61c3b5ef9af1ee8e3ccdb0557edc6
+    tree: eb1040cb2631f3eeacd8f9f6469d7e97277f24ef
     disposition: reject
     artifacts: []
     reason: "Would compete with to-spec -> to-tickets -> implement."
@@ -729,7 +721,7 @@ items:
     upstream: pstack
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/hillclimb.md
-    tree: 582555e826675068ceaea08e6134a44ba0ea4511
+    tree: e9cf267908a9737236b3a8a8a5a99fe9066f7554
     disposition: adapt
     artifacts: [plugin/skills/hillclimb]
     reason: "The grill settles the metric and stop predicate, and implement commits each accepted win before one final review (ADR 0015)."
@@ -745,7 +737,7 @@ items:
     upstream: pstack
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/multi-phase-plan.md
-    tree: fe006110f6005dcdb746d891e7901a1734a75538
+    tree: 27e99947bd20575e2ff503dbfba985a4f0fa298e
     disposition: reject
     artifacts: []
     reason: "Competing planning path with the opposite position on file paths."
@@ -753,18 +745,18 @@ items:
     upstream: pstack
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/opening-a-pr.md
-    tree: 626f376bd64e2e7b04c2575cb8b8f4ba70a6078d
+    tree: d729a7a06c5b67e406b081e1777114bc03b66f4a
     disposition: adapt
     artifacts: [plugin/skills/open-pr]
-    reason: "PR body contract incl. Blast Radius; /deslop and interrogate dropped."
+    reason: "Opens a ready PR through gh; the body follows skill://pr with Safety-backed Blast Radius and Verify proof; /deslop and interrogate dropped."
   - id: pstack/playbook-orchestrate
     upstream: pstack
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/orchestrate.md
-    tree: d5b6d008026ff0177f52e22a6fb4b2edae5c87e2
+    tree: 4ccb24d76c5e190125cecc99d4a9b5c9eb2932d9
     disposition: reject
     artifacts: []
-    reason: "Fleet scale, cloud workers, gt, different-family verifiers."
+    reason: "Fleet scale, cloud workers, different-family verifiers."
   - id: pstack/playbook-pause-safely
     upstream: pstack
     kind: playbook
@@ -777,10 +769,10 @@ items:
     upstream: pstack
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/perf-issue.md
-    tree: 688d483d4d4a6c58efa515558c822e11f621540f
+    tree: 46dcc9963366992016dfb1d59ccaae977930f982
     disposition: adapt
     artifacts: [plugin/skills/perf-issue]
-    reason: "Supplies diagnosing-bugs or implement with eight strategy families and exact-operation baseline and before-and-after trace evidence (ADR 0015)."
+    reason: "Supplies diagnosing-bugs or implement with seven ordered strategies, benchmark vetting, and before-and-after trace evidence (ADR 0015)."
   - id: pstack/playbook-prototype
     upstream: pstack
     kind: playbook
@@ -793,7 +785,7 @@ items:
     upstream: pstack
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/refactoring.md
-    tree: df2a863b531906c64f92b9f9d8feb62f8c7a8665
+    tree: c04b07eeb8b8fa651d080729363466ab73d2fe40
     disposition: reject
     artifacts: []
     reason: "implement, tdd, and code-review cover structural work in the Matt flow (ADR 0015)."
@@ -801,7 +793,7 @@ items:
     upstream: pstack
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/runtime-forensics.md
-    tree: ba659bfe1c4c2f956f3285974bfdc941120f9948
+    tree: 6bf64240d1a890df290b98c632ad374d20ca9fd4
     disposition: adapt
     artifacts: [plugin/skills/forensics]
     reason: "Merged with trace-forensics into one forensics skill (live branch)."
@@ -809,7 +801,7 @@ items:
     upstream: pstack
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/session-pickup.md
-    tree: 9b2ed06e0ff8b01bf03b7a0d6a4cbb8ba3a46720
+    tree: 876b1433828ccc7c874123cdf300240abb285dd9
     disposition: reject
     artifacts: []
     reason: "omp /resume and /fork plus Matt's handoff cover it."
@@ -817,7 +809,7 @@ items:
     upstream: pstack
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/shipping.md
-    tree: 0f1d41f189222b991734015926a3b22607e1b92f
+    tree: 0a0c3cfde8948e3aa8ee80c6f3f9ce7e3e64fcba
     disposition: adapt
     artifacts: [plugin/skills/ship]
     reason: "Verifiers are vstack agents behind judge-gated Fan-out; cloud agents dropped."
@@ -825,7 +817,7 @@ items:
     upstream: pstack
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/trace-forensics.md
-    tree: 48ed6b2f690215027eda96a1897ed98212bbd07a
+    tree: bf1b003786503623d91ca173fc97a6e54eee3acf
     disposition: adapt
     artifacts: [plugin/skills/forensics]
     reason: "Captured-artifact branch of forensics: load into sqlite, then attribute to source."
@@ -841,7 +833,7 @@ items:
     upstream: pstack
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/worktree-cleanup.md
-    tree: 39c9ef9f368ac63b0e4245503302a4c174e846d6
+    tree: 45e1af693cc40d0271249a0e98f15bfc815af615
     disposition: reject
     artifacts: []
     reason: "Built on Cursor sidebar pins and macOS caches."
@@ -849,7 +841,7 @@ items:
     upstream: pstack
     kind: agent
     path: pstack/agents/comment-sicko.md
-    tree: 9a688b8c5b5734ee80f782d4616a78c4c59b0946
+    tree: 209e3704dfa75022060c936bd3f3362fa3bbe254
     disposition: adapt
     artifacts: [plugin/agents/vstack-comment-critic.md]
     reason: "Becomes the comment-only omp critic on the Session model, with prompt-contract rights and explorer-only spawns (#47, #52)."
@@ -857,7 +849,7 @@ items:
     upstream: pstack
     kind: agent
     path: pstack/agents/poteto-agent.md
-    tree: 91d53b85918f842c703758e66352b956ee80feb7
+    tree: e1d2df2e8c3c4954b87ee1b29655c898bc7ee699
     disposition: reject
     artifacts: []
     reason: "Follows poteto-mode."
@@ -873,7 +865,7 @@ items:
     upstream: diagram
     kind: skill
     path: skills/diagram-design
-    tree: dc9745b0be384e9a9ff9b9dac08d8d609f7c2154
+    tree: d7d66b45810294ae98e8a2c1de72d4ce9af80616
     disposition: adapt
     artifacts: [plugin/skills/diagram-design]
     reason: "ask-tool covers its questions; onboarding must not write the shipped copy (#60)."
@@ -881,7 +873,7 @@ items:
     upstream: css
     kind: skill
     path: skills/good-css
-    tree: e195f64b18fb88c83722eb6bf4ae2171b5d87434
+    tree: 716c242ae3ef01743ab8e1851222260a05050763
     disposition: adapt
     artifacts: [plugin/skills/good-css]
     reason: "removes Emil Kowalski's hand-offs and credit; vstack ships none of his skills"
@@ -893,6 +885,78 @@ items:
     disposition: merge
     artifacts: [plugin/skills/vstack-prose]
     reason: "Merges simple-english, unslop, and technical-writing into vstack-prose (ADR 0016)."
+  - id: matt/implement-spec
+    upstream: matt
+    kind: skill
+    path: skills/engineering/implement-spec
+    tree: 0cfefc751d0cb64f0c948ffcb17e13b94e778f08
+    disposition: adapt
+    artifacts: [plugin/skills/implement-spec]
+    reason: "Runs a whole spec on one branch with isolated vstack-worker implementers behind the Fan-out gate and implement's END-STATE steps (ADR 0019)."
+  - id: matt/pr
+    upstream: matt
+    kind: skill
+    path: skills/engineering/pr
+    tree: 00b896d811adffad747c7ca30078d909d60c7f93
+    disposition: adopt
+    artifacts: [plugin/skills/pr]
+    reason: "Kept unchanged; open-pr writes its PR body with it."
+  - id: matt/retro
+    upstream: matt
+    kind: skill
+    path: skills/engineering/retro
+    tree: 335c1862a43da9d629abafdb79ca0c0de118be08
+    disposition: merge
+    artifacts: [plugin/skills/session]
+    reason: "Its seven environment areas are the session Addon's fourth lens (ADR 0019)."
+  - id: pstack/benchmark-checklist
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/benchmark-checklist
+    tree: 7c402481a0934533cb49cdce811b362cf99ef641
+    disposition: adapt
+    artifacts: [plugin/skills/benchmark-checklist]
+    reason: "Hidden Addon that vets measured numbers for perf-issue and hillclimb; playbook names become skill references."
+  - id: pstack/correct
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/correct
+    tree: 2396c1bb5426e7344846a524342d120b2f29f8da
+    disposition: merge
+    artifacts: [plugin/skills/session]
+    reason: "Its history mining and enforcement ladder rank the session Addon's environment findings (ADR 0019)."
+  - id: pstack/in-your-own-words
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/in-your-own-words
+    tree: e5ff93020dd4ed33b80d9df9a235d1945c676a0d
+    disposition: adopt
+    artifacts: [plugin/skills/in-your-own-words]
+    reason: "Kept unchanged as a Utility skill the user types."
+  - id: pstack/ketchup
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/ketchup
+    tree: 8fe35aa03276614edc51829bdf0fc4361fee4cf4
+    disposition: adapt
+    artifacts: [plugin/skills/ketchup]
+    reason: "Utility skill without bro; its figures go to a Scratch page through diagram-design and its calls go through ask."
+  - id: pstack/poteto-help
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/poteto-help
+    tree: 3f1b6a229ae1f68fdf8347d9d858444d9bf7349c
+    disposition: reject
+    artifacts: []
+    reason: "Deferred at ce649c03ac3b75b6ae80cbd15b7e2c536caedb5a: pstack setup and routing help for Cursor."
+  - id: pstack/principle-explain-the-number
+    upstream: pstack
+    kind: principle
+    path: pstack/skills/principle-explain-the-number
+    tree: 2f468162c9ce85478f1fb1198149646a2ef0f735
+    disposition: adopt
+    artifacts: [plugin/skills/principle-explain-the-number]
+    reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
 originals:
   - plugin/agents/vstack-explorer.md
   - plugin/agents/vstack-verifier.md
@@ -923,3 +987,5 @@ utility:
   - plugin/skills/grilling-page
   - plugin/skills/vstack-worktree
   - plugin/skills/migrate-to-vstack
+  - plugin/skills/in-your-own-words
+  - plugin/skills/ketchup

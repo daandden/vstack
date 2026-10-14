@@ -35,3 +35,14 @@ The page is a record, not an input form: answers come only through `ask`.
 An empty frontier means every branch was visited and no decision remains silently assumed. Add the closing summary to the page. Print the page path, then make one `ask` with Shared understanding / Not yet. Only Shared understanding confirms the result and permits the caller to act. Not yet reopens the tree from the user's note. Record the closing answer on the page. A timeout at this gate is no answer: print the path and retry once; a second timeout stops without acting and records why on the page.
 
 When `ask` is unavailable in a headless run, take the recommended answer, record it on the page as headless, then continue. Mark the closing summary as headless, not user-confirmed. A subagent never asks or claims user confirmation: return open decisions for the top-level agent to put through `ask`.
+
+## Next step
+
+Run this step only when the session is the user's own grill: the user started it with `/skill:grill-me` or `/skill:grill-with-docs`. Skip it when another skill, such as wayfinder or improve-codebase-architecture, runs grilling as one of its steps. That skill decides what comes next.
+
+After the user confirms Shared understanding, print the page path, then make one `ask` that recommends the next step. It has two options:
+
+- Implement: build the change now. Recommend it for a change that fits one session.
+- Spec first: write a spec with to-spec, split it with to-tickets, then build it with implement-spec. Recommend it for a bigger change.
+
+Set `recommended` to the option that fits the size of the settled change. After the user picks, tell the user what to type: `/skill:implement` for Implement, or `/skill:to-spec` for Spec first, as the first of its three skills. Start none of these skills yourself, because a user-invoked skill never invokes another user-invoked skill. A timed-out answer picks nothing: start nothing and name both commands.

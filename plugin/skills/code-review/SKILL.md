@@ -11,7 +11,7 @@ Review the supplied change scope against the fixed point on separate axes:
 
 Each axis runs as its own reviewer so that findings from one do not mask another. Inline keeps reports separate in one context.
 
-Resolve the absolute vstack root through the Private-mode rule once. Read `docs/vstack/issue-tracker.md` under that root in Standard mode, or `<vstack root>/config/issue-tracker.md` in Private mode. If missing, stop and point at `/skill:setup-vstack`. Subagents use the supplied root, never resolve it again.
+Resolve the absolute vstack root through the Private-mode rule once. Read `docs/vstack/issue-tracker.md` under that root in Standard mode, or `<vstack root>/config/issue-tracker.md` in Private mode. If it is missing, stop and tell the user to run `/skill:setup-vstack`. Subagents use the supplied root, never resolve it again.
 
 ## Process
 
@@ -52,25 +52,25 @@ Read the tracker workflow from the vstack configuration above. Look for the orig
 
 Anything in the repo that documents how code is written, such as `CODING_STANDARDS.md` or `CONTRIBUTING.md`.
 
-On top of whatever the repo documents, the Standards axis always carries the smell baseline below. a fixed set of Fowler code smells (_Refactoring_, ch.3) that applies even when a repo documents nothing. Two rules bind it:
+On top of whatever the repo documents, the Standards axis always carries the smell baseline below: a fixed set of Fowler code smells (_Refactoring_, ch.3) that applies even when a repo documents nothing. Two rules bind it:
 
 - The repo overrides. A documented repo standard always wins; where it endorses something the baseline would flag, suppress the smell.
-- Always a judgement call. Each smell is a labelled heuristic ("possible Feature Envy"), never a hard violation. and, like any standard here, skip anything tooling already enforces.
+- Always a judgement call. Each smell is a labelled heuristic ("possible Feature Envy"), never a hard violation. Like any standard here, skip anything tooling already enforces.
 
 Each smell reads *what it is* → *how to fix*; match it against the diff:
 
-- Mysterious Name. a function, variable, or type whose name doesn't reveal what it does or holds. → rename it; if no honest name comes, the design's murky.
-- Duplicated Code. the same logic shape appears in more than one hunk or file in the change. → extract the shared shape, call it from both.
-- Feature Envy. a method that reaches into another object's data more than its own. → move the method onto the data it envies.
-- Data Clumps. the same few fields or params keep travelling together (a type wanting to be born). → bundle them into one type, pass that.
-- Primitive Obsession. a primitive or string standing in for a domain concept that deserves its own type. → give the concept its own small type.
-- Repeated Switches. the same `switch`/`if`-cascade on the same type recurs across the change. → replace with polymorphism, or one map both sites share.
-- Shotgun Surgery. one logical change forces scattered edits across many files in the diff. → gather what changes together into one module.
-- Divergent Change. one file or module is edited for several unrelated reasons. → split so each module changes for one reason.
-- Speculative Generality. abstraction, parameters, or hooks added for needs the spec doesn't have. → delete it; inline back until a real need shows.
-- Message Chains. long `a.b().c().d()` navigation the caller shouldn't depend on. → hide the walk behind one method on the first object.
-- Middle Man. a class or function that mostly just delegates onward. → cut it, call the real target direct.
-- Refused Bequest. a subclass or implementer that ignores or overrides most of what it inherits. → drop the inheritance, use composition.
+- Mysterious Name: a function, variable, or type whose name doesn't reveal what it does or holds. → rename it; if no honest name comes, the design's murky.
+- Duplicated Code: the same logic shape appears in more than one hunk or file in the change. → extract the shared shape, call it from both.
+- Feature Envy: a method that reaches into another object's data more than its own. → move the method onto the data it envies.
+- Data Clumps: the same few fields or params keep travelling together (a type wanting to be born). → bundle them into one type, pass that.
+- Primitive Obsession: a primitive or string standing in for a domain concept that deserves its own type. → give the concept its own small type.
+- Repeated Switches: the same `switch`/`if`-cascade on the same type recurs across the change. → replace with polymorphism, or one map both sites share.
+- Shotgun Surgery: one logical change forces scattered edits across many files in the diff. → gather what changes together into one module.
+- Divergent Change: one file or module is edited for several unrelated reasons. → split so each module changes for one reason.
+- Speculative Generality: abstraction, parameters, or hooks added for needs the spec doesn't have. → delete it; inline back until a real need shows.
+- Message Chains: long `a.b().c().d()` navigation the caller shouldn't depend on. → hide the walk behind one method on the first object.
+- Middle Man: a class or function that mostly just delegates onward. → cut it, call the real target direct.
+- Refused Bequest: a subclass or implementer that ignores or overrides most of what it inherits. → drop the inheritance, use composition.
 
 ### 4. Run the reviewers
 
@@ -92,13 +92,13 @@ When only Standards runs, use the single form below instead of the gate. No judg
 
 Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the Standards reviewer prompt below, the user's override words, the vstack root. Wait for its result. If it cannot be spawned, do the work yourself.
 
-Standards reviewer prompt. include:
+The Standards reviewer prompt must include:
 
 - The full diff command, named untracked paths and contents, and commit list.
-- The list of standards-source files you found in step 3, plus the smell baseline from step 3 pasted in full. the reviewer has no other access to it.
-- The brief: "Report. per file/hunk where relevant. (a) every place the diff violates a documented standard: cite the standard (file + the rule); and (b) any baseline smell you spot: name it and quote the hunk. Distinguish hard violations from judgement calls. documented-standard breaches can be hard, but baseline smells are always judgement calls, and a documented repo standard overrides the baseline. Skip anything tooling enforces. Under 400 words."
+- The list of standards-source files you found in step 3, plus the smell baseline from step 3 pasted in full (the reviewer has no other access to it).
+- The brief: "Report, per file/hunk where relevant, (a) every place the diff violates a documented standard: cite the standard (file + the rule); and (b) any baseline smell you spot: name it and quote the hunk. Distinguish hard violations from judgement calls: documented-standard breaches can be hard, but baseline smells are always judgement calls, and a documented repo standard overrides the baseline. Skip anything tooling enforces. Under 400 words."
 
-Spec reviewer prompt. include:
+The Spec reviewer prompt must include:
 
 - The full diff command, named untracked paths and contents, and commit list.
 - The path or fetched contents of the spec.
@@ -106,7 +106,7 @@ Spec reviewer prompt. include:
 
 If the spec is missing, skip the Spec reviewer and note this in the final report.
 
-Safety reviewer prompt. Include:
+The Safety reviewer prompt must include:
 
 - The pinned diff command, named untracked paths and contents, and commit list.
 - Every trigger that fired.

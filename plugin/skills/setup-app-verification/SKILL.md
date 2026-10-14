@@ -32,7 +32,7 @@ Generated frontmatter has `name: verify-<app>` and a description that names the 
 
 Ground every section in the repo. Leave no placeholders:
 
-- Launch gives the exact command, readiness signal, and teardown. A short-lived CLI or TUI builds once and uses an isolated PTY session per drive.
+- Launch gives the exact command, readiness signal, and teardown. Launch reaches a usable state from an empty data dir, including any migrations and seed data. Ready means usable, not only that a process answers. For example, a database health check can pass while its init scripts still run. A short-lived CLI or TUI builds once and uses an isolated PTY session per drive.
 - Doctor gives one read-only instance check for process, version or build, port ownership, and auth. Run it first whenever anything looks off.
 - Drive gives real commands and stable handles, not coordinates or tab order. Use the interview's harness choice.
 - Evidence requires the real user path, not internal setters or test-only endpoints. Capture the action and resulting state, not just the final screen. Prove files, rows, or messages alongside the visible result. Use mocks only at a production boundary that isolates the external system. Observe what a dry-run skips through files, network, or git refs. Do not trust its name.
@@ -60,12 +60,14 @@ The README indexes the features and states baseline preconditions, driving conve
 3. `Driving it with <harness>` names preconditions, actions, exact commands, and observable proof.
 4. `Gotchas` names traps that invalidate the run.
 
-Keep implementation details out of the map. A proof through one entry point does not prove another listed entry point.
+If the seed data lacks a precondition that a journey needs, the journey reports a failure, and that feature's `Gotchas` names the reason. Never weaken the journey to make it pass. Keep implementation details out of the map. A proof through one entry point does not prove another listed entry point.
 
 ## 4. Prove the generated skill
 
 Run its instructions end to end once: launch, Doctor, drive one mapped feature, capture evidence, and clean up. Make sure that evidence still exists at its named location after cleanup. Fix failed instructions and run cleanup after every failed iteration. Do not strand processes or ports. Stop on broken app behavior instead of editing product code. An unexecuted Verify skill is not a deliverable.
 
+If you proved it in a stand-in for the real target, such as a container in place of a fresh VM or a local stack in place of a remote one, list every setup step that the stand-in did and the target will not. Those steps stay unverified until a run on the real target covers them.
+
 ## 5. Report
 
-Report the skill path, changed files, surfaces, feature map, and proof paths. implement commits the Standard-mode output. Private-mode output stays untracked, including the link and exclude file. Upkeep uses `skill://maintain-app-verification`. State a cadence only when the user requests one.
+Report the skill path, changed files, surfaces, feature map, proof paths, and any stand-in setup steps that stay unverified. implement commits the Standard-mode output. Private-mode output stays untracked, including the link and exclude file. Upkeep uses `skill://maintain-app-verification`. State a cadence only when the user requests one.

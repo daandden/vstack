@@ -1,6 +1,6 @@
 ---
 name: perf-issue
-description: Eight performance strategy families and exact-operation measurement evidence.
+description: Seven ordered performance strategies, benchmark vetting, and exact-operation measurement evidence.
 disable-model-invocation: true
 ---
 
@@ -12,8 +12,20 @@ Performance knowledge for diagnosing-bugs or implement. Tie each proposed fix to
 
 Use an agent-runnable measurement that prints one number with its unit for the exact slow operation. Record the command, workload, environment, baseline number, and before trace. Keep the artifacts under the resolved Scratch dir. Freeze inputs and measurement conditions for the comparison. A synthetic result on another operation is not a baseline.
 
+Vet the baseline with skill://benchmark-checklist before you plan a fix from it. Vet each later number the same way.
+
 Capture an after trace on the same original operation, inputs, environment, and unit. Parse and compare both traces. Report the baseline, post-fix number, absolute delta, and percentage delta when the baseline is nonzero. Name the command, workload, and artifact paths. Inconclusive numbers or evidence from another operation do not prove a fix.
 
-## Strategy families
+## Performance mantras
 
-Read [STRATEGIES.md](STRATEGIES.md) for the eight strategy families. Use them to form hypotheses, not a checklist of changes. A family earns an attempt only when the trace shows its signal. For elimination, use skill://how to establish that nobody needs the work. A trace alone cannot prove that work is unnecessary.
+Try the performance mantras in order, cheapest first:
+
+1. Don't do it. Stop work whose result nothing uses rather than cheapening it.
+2. Do it, but don't do it again.
+3. Do it less.
+4. Do it later.
+5. Do it when they're not looking.
+6. Do it concurrently.
+7. Do it cheaper.
+
+When an earlier mantra meets the target, stop. For the first mantra, use skill://how to establish that nothing uses the result. A trace alone cannot prove that work is unnecessary.

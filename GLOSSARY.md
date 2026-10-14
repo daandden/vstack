@@ -45,11 +45,11 @@ _Avoid_: lock, version (unqualified)
 ### Skills
 
 **Matt skill**:
-A vstack skill that has at least one Base upstream row in the Decision register, whether its Disposition is adopt, adapt, or merge. Matt skills are the core of vstack: the user starts all changes through them.
+A vstack skill that has at least one Base upstream row in the Decision register, whether its Disposition is adopt, adapt, or merge, and that is not an Addon. Matt skills are the core of vstack, and the user starts all changes through them.
 _Avoid_: core skill, base skill
 
 **Matt flow**:
-Every Matt skill that only the user can start, such as grill-with-docs, grill-me, teach, and implement. A change takes one path through it: the grill first and implement last. When the grill closes, it decides the path: a change that fits one session goes to implement directly, and a bigger change goes through to-spec and to-tickets first.
+Every Matt skill that only the user can start, such as grill-with-docs, grill-me, teach, implement, and implement-spec. A change takes one path through it, with the grill first and a build skill last. When the grill closes, it recommends the path, and the user types the next skill. A change that fits one session goes to implement. A bigger change goes through to-spec and to-tickets to implement-spec.
 _Avoid_: main flow, pipeline, workflow (unqualified)
 
 **Matt run**:
@@ -57,11 +57,11 @@ The part of the active conversation branch that follows the prompt where the use
 _Avoid_: skill run, Matt session
 
 **Addon**:
-A vstack skill that is neither a Matt skill nor a Utility skill. It holds the knowledge that one or more Matt skills need for one kind of work, such as a vstack Update. Matt skills do the work, and an Addon has no flow of its own. vstack loads an Addon only during a Matt run, and the user never starts one by name.
+A hidden vstack skill that the jev judge selects during a Matt run, or that a skill reads through a `skill://` pointer. It holds the knowledge that one or more Matt skills need for one kind of work, such as a vstack Update. It can carry text from any Upstream, the Base upstream included, and stays an Addon. Matt skills do the work, and an Addon has no flow of its own. The user never starts one by name.
 _Avoid_: extension, plugin
 
 **Utility skill**:
-A vstack skill that is not a Matt skill and that the user can use whatever the work is. vstack-prose, diagram-design, good-css, and skill-creator set how text, figures, styles, and skills are made. explain, how, why, and forensics answer questions about existing work. migrate-to-vstack moves a machine or project from the Base upstream to vstack. The hidden helpers are vstack-tmp, vstack-fan-out, grilling-page, and vstack-worktree. Other skills name these helpers by `skill://`. Utility skills can start from their descriptions, from a rule, or by name, subject to each skill's invocation settings.
+A vstack skill that is not a Matt skill and that the user can use whatever the work is. vstack-prose, diagram-design, good-css, and skill-creator set how text, figures, styles, and skills are made. explain, how, why, and forensics answer questions about existing work. in-your-own-words and ketchup check that the user and the agent agree. The first restates the user's goal, and the second catches the user up. migrate-to-vstack moves a machine or project from the Base upstream to vstack. The hidden helpers are vstack-tmp, vstack-fan-out, grilling-page, and vstack-worktree. Other skills name these helpers by `skill://`. Utility skills can start from their descriptions, from a rule, or by name, subject to each skill's invocation settings.
 _Avoid_: standalone skill, helper skill
 
 **Command**:
@@ -117,7 +117,7 @@ A run of a skill under test, or of its blind judge, in its own omp process that 
 _Avoid_: eval subagent, runner (unqualified)
 
 **Update**:
-The confirmed process of moving one or both Pins forward and adapting vstack to the Upstream changes.
+The confirmed process of moving one or more Pins forward and adapting vstack to the Upstream changes.
 _Avoid_: sync, upgrade
 
 **Hand edit**:

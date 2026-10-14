@@ -4,6 +4,20 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-14
+
+- Update: matt v1.2.3 to v1.3.1, pstack 12d587d to ce649c0, diagram-design d137637 to 0482b93, good-css 6d16d2f to 92d436b. 76 rows take their Upstream changes with their Disposition. pstack's per-subagent effort lines stay out, so the Session model stays the only model rule.
+- implement-spec (Matt) joins. It builds a whole spec on one branch with isolated vstack-worker implementers behind the Fan-out gate, runs implement's END-STATE steps, and opens one PR at the end.
+- session replaces session-lessons. It merges pstack's reflect with Matt's retro and pstack's correct. It adds a fourth environment lens that also reads repo history, asks one question per finding on the Grilling page, and makes one commit per approved environment class. It stays an Addon that jev selects (ADR 0019).
+- A skill with a key in addon-questions.json is an Addon even when it has a Base upstream row. check-register and the extension use this rule (ADR 0019, amends ADR 0015).
+- grilling ends the user's own grill by recommending the next step through ask (implement, or to-spec, to-tickets, and implement-spec) and tells the user what to type.
+- pr (Matt) ships as adopt, and open-pr writes its PR body with it. The door call and Blast Radius go under Merge Danger, and proof paths and numbers go under Evidence. open-pr also takes closing references, which implement-spec uses for the spec and its tickets.
+- New: benchmark-checklist (Addon for perf-issue and hillclimb), principle-explain-the-number (principle Addon), in-your-own-words and ketchup (Utility skills). poteto-help is Deferred.
+- grill-me and grill-with-docs become adapt and name skill:// references. wait-what and principle-guard-the-context-window go back to adopt.
+- perf-issue takes seven ordered strategies and benchmark vetting. diagnosing-bugs drops the post-mortem hand-off. diagram-design's onboarding source-trust and output-verification gates go through ask.
+- resolving-merge-conflicts is removed, as Matt removed it.
+- check-register's skill-ref lint no longer flags a skill name right after a placeholder, such as `<run dir>/session`.
+
 ## [1.0.4] - 2026-10-14
 
 - migrate-to-vstack first asks what the Migration covers. Inside a git repo, Only this project is the first and recommended answer. It skips Machine Migration and changes only the current checkout and the repo's shared Private-mode store.

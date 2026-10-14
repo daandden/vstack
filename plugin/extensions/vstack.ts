@@ -41,7 +41,7 @@ function readMattSkills(): Set<string> {
   try {
     const register = Bun.YAML.parse(fs.readFileSync(new URL("../../decision-register.yaml", import.meta.url), "utf8")) as { items: MattSkillRow[] };
     const pins = Bun.YAML.parse(fs.readFileSync(new URL("../../pins.yaml", import.meta.url), "utf8")) as { upstreams: Record<string, { role: string }> };
-    return mattSkillNames(register.items, upstream => pins.upstreams[upstream]?.role);
+    return mattSkillNames(register.items, upstream => pins.upstreams[upstream]?.role, Object.keys(questions));
   } catch { return new Set(); }
 }
 

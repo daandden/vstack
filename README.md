@@ -4,12 +4,12 @@ vstack is a personal omp plugin. Matt Pocock's skills are its core. Addons suppl
 
 ## Skill kinds and the Matt flow
 
-- A Matt skill has a non-reject Base upstream row in the Decision register. A Matt skill that you type hosts Addons.
-- An Addon supplies knowledge to a running Matt skill. Addons load only through the jev judge during that run, or through a `skill://<addon>` pointer. They are hidden from model discovery and do not own a separate workflow.
+- A Matt skill has a non-reject Base upstream row in the Decision register and no key in `addon-questions.json`. A Matt skill that you type hosts Addons.
+- An Addon is a hidden skill that supplies knowledge to a running Matt skill. Addons load only through the jev judge during that run, or through a `skill://<addon>` pointer. A key in `addon-questions.json` makes a skill an Addon, even when it carries Base upstream text, as `session` does (ADR 0019). Addons do not own a separate workflow.
 - A Utility skill works outside a Matt run. The register's `utility:` list names these skills, including vstack-prose, explain, and hidden helpers such as vstack-tmp.
 - A Command runs in the extension without a model. `/vstack-clean` is the Scratch cleanup Command, not a skill.
 
-Every change starts with the grill (`/skill:grill-with-docs` or `/skill:grill-me`). For a change that needs more than one session, continue through `/skill:to-spec` and `/skill:to-tickets`. For a small change, go straight from the grill to `/skill:implement`. implement owns the changes and the settled End state. Specs and tickets carry the `skill://` pointers that later sessions need.
+Every change starts with the grill (`/skill:grill-with-docs` or `/skill:grill-me`). When the grill closes, it recommends the next step through `ask` and tells you what to type. For a change that fits one session, type `/skill:implement`. For a bigger change, continue through `/skill:to-spec` and `/skill:to-tickets`, then type `/skill:implement-spec`. implement and implement-spec own the changes and the settled End state. Specs and tickets carry the `skill://` pointers that later sessions need.
 
 ## Install
 
@@ -61,7 +61,7 @@ Only `plugin/` ships. Upstreams are fetched when needed, never stored in this re
 
 `addon-questions.json` holds one `noul` question per Addon, keyed by its full skill name, such as `principle-prove-it-works` or `open-pr`. `sample-prompts.json` holds the sample corpus, expected and allowed picks, baseline probabilities, and the selection threshold.
 
-The extension reads the Matt skill set from the register and Pins when it loads. A typed Matt skill starts a run. Later prompts count as part of that run when the active branch holds its saved `skill-prompt` entry. Reading a Matt skill through `skill://` does not start a run. Plain chat outside a run and child sessions receive no judge selection.
+The extension reads the Matt skill set from the register and Pins when it loads, and leaves out every skill with a catalog key. A typed Matt skill starts a run. Later prompts count as part of that run when the active branch holds its saved `skill-prompt` entry. Reading a Matt skill through `skill://` does not start a run. Plain chat outside a run and child sessions receive no judge selection.
 
 On the skill-start prompt, the judge sees only the user's words after `User:`. With no user words, it makes no request. Later prompts in the run use the current prompt. `plugin/extensions/prompt-cleaner.ts` cleans these words before the TypeSafe `/v1/systemone` request.
 
@@ -108,7 +108,7 @@ Every row has `id`, `upstream`, `kind` (skill, principle, playbook, agent), `pat
 
 An artifact is one unit under `plugin/`: a skill directory (`plugin/skills/<name>`), an agent or rule file, or another child of a top-level plugin directory. Several rows can name one artifact. Artifacts with no Upstream item go under `originals:`. Every non-reject row names at least one artifact. Only reject rows have `artifacts: []`.
 
-The top-level `utility:` list names Utility skills as paths such as `plugin/skills/vstack-prose`. Each entry must name a shipped skill with no non-reject Base upstream row. Shipped skills with a non-reject Base row are Matt skills. Other shipped skills outside `utility:` are Addons and need a catalog question.
+The top-level `utility:` list names Utility skills as paths such as `plugin/skills/vstack-prose`. Each entry must name a shipped skill with no non-reject Base upstream row. A shipped skill with a key in `addon-questions.json` is an Addon, whatever its rows (ADR 0019). Other shipped skills with a non-reject Base row are Matt skills. Every other shipped skill outside `utility:` is an Addon and needs a catalog key.
 
 An adopt artifact is the Upstream item copied byte for byte, minus `agents/openai.yaml`, under the Upstream name. To copy one from its Pin:
 
@@ -174,7 +174,7 @@ Text output prints one line per failure, `FAIL <class> <item>: <message>`, after
 | `page-css` | a page template breaks the CSS upstream's `check-css.mjs` at its Pin; the item is the template and the message holds the script's `path:line` lines |
 | `invalid-utility` | a `utility:` entry names no shipped skill, or names a skill with a non-reject Base upstream row |
 | `addon-slash-route` | text under `plugin/` or in `README.md` contains `/skill:<addon>`. Use `skill://<addon>` instead |
-| `addon-question-mismatch` | an `addon-questions.json` key names no shipped Addon, or a shipped Addon has no catalog key |
+| `addon-question-mismatch` | an `addon-questions.json` key names no shipped skill or names a Utility skill, or a shipped Addon has no catalog key |
 
 Rows with an `invalid-row` or `invalid-disposition` failure are skipped by the checks that read their fields, so one bad row reports once. House style rows and rules with an `invalid-house-style` failure are skipped the same way.
 
@@ -325,13 +325,13 @@ how, why, and explain are Utility skills adapted from pstack. how and why stay h
 
 explain combines how and why through a Fan-out block. It keeps one conversation page under Scratch `explain/`, with a series of exported, inlined SVG figures from diagram-design. Templates live in each page-producing skill's `templates/` directory, where `check-register` runs the pinned CSS lint. Matt's teach stays a separate skill. The pstack `teach` reference row applies only to pstack items.
 
-### Session lessons
+### Session
 
-`skill://session-lessons` is the Addon adapted from pstack reflect. It reads only the current JSONL from `PI_SESSION_FILE` and referenced children from that run. Three lenses use the Fan-out gate. The synthesizer gets a fresh context. A missing transcript uses a labeled digest, never a guessed session.
+`skill://session` is the Addon that merges Matt's retro with pstack's reflect and correct. It reads one session: the current JSONL from `PI_SESSION_FILE`, or a session that the user names, found through `archive`, plus the children that the session references. Four lenses (judgment, tooling, divergent, and environment) use the Fan-out gate. The synthesizer gets a fresh context. A missing current transcript uses a labeled digest. A named session has no digest, and the skill never guesses a session.
 
-The grill resolves targets with `omp skill list --json` and asks one question per finding. implement edits only approved lessons. Own skills tracked by the session's checkout use its normal branch, commit, and End state. Other own skills get in-place, uncommitted edits with a Scratch snapshot and a no-index diff in the shared code-review pass.
+The grill resolves skill targets with `omp skill list --json` and asks one question per finding on the Grilling page. implement edits only approved lessons. Own skills tracked by the session's checkout use its normal branch, commit, and End state. Other own skills get in-place, uncommitted edits with a Scratch snapshot and a no-index diff in the shared code-review pass. An approved environment finding is fixed at the highest level that works (architecture, types, a lint or CI check, a test, then docs), with one commit per mistake class.
 
-Inside a vstack clone, approved vstack lessons use `skill://vstack-maintain` for a normal Hand edit. From another project, an existing non-adopt vstack row gets an in-place edit in the linked clone and `gates --in-place`, without `prepare`. Pending bookkeeping is reported for a later Hand edit. Adopt items and new vstack skills from another project stay Backlog with proposed text. Others' installs also stay Backlog. Substantive edits, descriptions, and new skills use skill-creator. When no row is tracked, the reply states that nothing was committed. The four reviewer references belong to the pstack/reflect artifact, not `originals:`.
+Inside a vstack clone, approved vstack lessons use `skill://vstack-maintain` for a normal Hand edit. From another project, an existing non-adopt vstack row gets an in-place edit in the linked clone and `gates --in-place`, without `prepare`. Pending bookkeeping is reported for a later Hand edit. Adopt items and new vstack skills from another project stay Backlog with proposed text. Others' installs also stay Backlog. Substantive edits, descriptions, and new skills use skill-creator. When no row is tracked, the reply states that nothing was committed. The reviewer references belong to the session artifact and its Upstream rows, not `originals:`.
 
 ### Tests
 

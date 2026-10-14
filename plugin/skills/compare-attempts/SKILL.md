@@ -94,4 +94,4 @@ Verify the synthesized artifact per `skill://principle-prove-it-works`, using th
 
 Return one synthesized artifact and a short synthesis note in the reply. Add the same note to the driving ticket when there is one. Write no separate synthesis file.
 
-The note names the base and why it won, each graft with its source, the rejections, the dropouts, the cross-judge's verdict or `cross-judge: not run`, every losing patch path, and the verification commands and observed results. State the artifact kind and any convergence or re-run. Never claim a check that did not run.
+The note names the base and why it won, each graft with its source, each rejection and why, the dropouts, the cross-judge's verdict or `cross-judge: not run`, every losing patch path, and the verification commands and observed results. State the artifact kind and any convergence or re-run. Never claim a check that did not run.

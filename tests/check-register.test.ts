@@ -89,6 +89,11 @@ test("skill-ref permits an explicitly named omp built-in without hiding a bare s
   expect((await runSpec(addTo(GONE, builtin))).json!.failures).toEqual([]);
   expect(failuresOf(await runSpec(addTo(GONE, `${builtin}, then /keep`)))).toEqual(["skill-ref alpha/gone"]);
 });
+test("skill-ref ignores a path segment after a placeholder, but still flags a bare skill reference", async () => {
+  const path = "`--session-dir <run dir>/keep`";
+  expect((await runSpec(addTo(GONE, path))).json!.failures).toEqual([]);
+  expect(failuresOf(await runSpec(addTo(GONE, `${path}, then /keep`)))).toEqual(["skill-ref alpha/gone"]);
+});
 
 describe("Addon routes", () => {
   test("skill pointers pass in plugin text and the README", async () => {
@@ -114,6 +119,16 @@ describe("Addon routes", () => {
 
   test("a longer slash name does not route its Addon prefix", async () => {
     const r = await runSpec(addTo("plugin/rules/fx-rule.md", "Read /skill:fixture-addon-extra."));
+    expect(r.json!.failures).toEqual([]);
+    expect(r.code).toBe(0);
+  });
+
+  test("a catalog key makes a skill with a non-reject Base row an Addon", async () => {
+    const r = await runSpec((s) => {
+      const catalog = JSON.parse(s.files["addon-questions.json"]);
+      catalog.held = catalog["fixture-addon"];
+      s.files["addon-questions.json"] = JSON.stringify(catalog);
+    });
     expect(r.json!.failures).toEqual([]);
     expect(r.code).toBe(0);
   });
@@ -159,14 +174,15 @@ const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expecte
     expected: ["addon-question-mismatch fixture-helper"],
   },
   {
-    cls: "addon-question-mismatch",
-    name: "a catalog key naming a Matt skill",
+    cls: "addon-slash-route",
+    name: "a slash route to a catalog skill with a non-reject Base row",
     mutate: (s) => {
       const catalog = JSON.parse(s.files["addon-questions.json"]);
-      catalog.keep = catalog["fixture-addon"];
+      catalog.held = catalog["fixture-addon"];
       s.files["addon-questions.json"] = JSON.stringify(catalog);
+      s.files["plugin/rules/fx-rule.md"] += "Read /skill:held.\n";
     },
-    expected: ["addon-question-mismatch keep"],
+    expected: ["addon-slash-route plugin/rules/fx-rule.md"],
   },
   {
     cls: "invalid-utility",

@@ -36,13 +36,13 @@ _Avoid_: Client, buyer, account
 **Multiple contexts:** A `GLOSSARY-MAP.md` at the repo root lists the contexts, where they live, and how they relate to each other:
 
 ```md
-# Context Map
+# Glossary Map
 
 ## Contexts
 
-- [Ordering](./src/ordering/GLOSSARY.md) — receives and tracks customer orders
-- [Billing](./src/billing/GLOSSARY.md) — generates invoices and processes payments
-- [Fulfillment](./src/fulfillment/GLOSSARY.md) — manages warehouse picking and shipping
+- [Ordering](./src/ordering/GLOSSARY.md): receives and tracks customer orders
+- [Billing](./src/billing/GLOSSARY.md): generates invoices and processes payments
+- [Fulfillment](./src/fulfillment/GLOSSARY.md): manages warehouse picking and shipping
 
 ## Relationships
 

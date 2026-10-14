@@ -11,13 +11,26 @@ export const addonChecks: Check = {
   async run(ctx) {
     const out: Failure[] = [];
     const shipped = shippedSkillNames(ctx);
-    const matt = mattSkillNames(ctx.validRows, (upstream) => ctx.pins.get(upstream)?.role);
+    const catalogPath = join(ctx.root, "addon-questions.json");
+    let catalog: unknown;
+    try {
+      catalog = JSON.parse(readFileSync(catalogPath, "utf8"));
+    } catch (error) {
+      throw new ConfigError(`${catalogPath}: ${(error as Error).message}`);
+    }
+    if (!catalog || typeof catalog !== "object" || Array.isArray(catalog)) {
+      throw new ConfigError(`${catalogPath}: expected an object keyed by Addon name`);
+    }
+    const questions = new Set(Object.keys(catalog));
+    const roleOf = (upstream: string) => ctx.pins.get(upstream)?.role;
+    const skillsWithBaseRows = mattSkillNames(ctx.validRows, roleOf, []);
+    const matt = mattSkillNames(ctx.validRows, roleOf, questions);
     const utility = new Set<string>();
     for (const path of ctx.register.utility) {
       const name = path.startsWith("plugin/skills/") ? path.slice("plugin/skills/".length) : "";
       if (!shipped.has(name)) {
         out.push({ class: "invalid-utility", item: path, message: "utility: entry does not name a shipped skill" });
-      } else if (matt.has(name)) {
+      } else if (skillsWithBaseRows.has(name)) {
         out.push({ class: "invalid-utility", item: path, message: "utility: entry names a skill with a non-reject Base upstream row" });
       } else {
         utility.add(name);
@@ -37,17 +50,6 @@ export const addonChecks: Check = {
       }
     }
 
-    const catalogPath = join(ctx.root, "addon-questions.json");
-    let catalog: unknown;
-    try {
-      catalog = JSON.parse(readFileSync(catalogPath, "utf8"));
-    } catch (error) {
-      throw new ConfigError(`${catalogPath}: ${(error as Error).message}`);
-    }
-    if (!catalog || typeof catalog !== "object" || Array.isArray(catalog)) {
-      throw new ConfigError(`${catalogPath}: expected an object keyed by Addon name`);
-    }
-    const questions = new Set(Object.keys(catalog));
     for (const name of [...questions].sort()) {
       if (!addons.has(name)) out.push({ class: "addon-question-mismatch", item: name, message: "addon-questions.json key does not name a shipped Addon" });
     }

@@ -4,13 +4,9 @@ description: "Apply when context is filling up: large outputs, long files, repea
 disable-model-invocation: true
 ---
 
-
 # Guard the Context Window
 
-The context window is finite within a session. Keep summaries in the main thread, not raw payloads. Large outputs cause compression and weaken reasoning.
+**Why:** Context overflow degrades reasoning quality, creates compression artifacts, and halts progress.
 
-## Route large payloads
-
-Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): read the verbose output or long documents and return a cited summary, the user's override words, the vstack root. Wait for its result. If it cannot be spawned, do the work yourself.
-
-Keep templates and references used on every invocation inline in the skill. Split large work into phases with a clear file scope and account for the cost of each read.
+**Pattern:**
+- **Size phases and cap scope.** Limit files per phase, set turn budgets, account for mechanism costs.

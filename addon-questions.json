@@ -47,6 +47,14 @@
       "false": "The task is not this situation, or only loosely resembles it."
     }
   },
+  "principle-explain-the-number": {
+    "type": "noul",
+    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Is the agent about to trust, report, or act on a number it measured, such as a speedup, a regression, a throughput, a latency, or an eval result?",
+    "criteria": {
+      "true": "The task clearly is this situation.",
+      "false": "The task is not this situation, or only loosely resembles it."
+    }
+  },
   "principle-foundational-thinking": {
     "type": "noul",
     "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does this task require choosing core data types, data structures, or state ownership before writing logic, or setting up scaffold (CI, lint, test infrastructure, shared types) that later work builds on?",
@@ -199,6 +207,14 @@
       "false": "Implementing a feature or fix without a safety-impact request, listing callers, explaining code, or reviewing only readability or tests."
     }
   },
+  "benchmark-checklist": {
+    "type": "noul",
+    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the task produce, report, or act on a performance number the agent measures, such as a benchmark result, a speedup, a regression, or a before-and-after timing?",
+    "criteria": {
+      "true": "E.g. 'benchmark the export and report the speedup', 'is this 40% faster claim real?', or 'measure p50 latency before and after the change'.",
+      "false": "A correctness bug with no measurement, reading a profile without reporting a number, or a performance question answered from the code alone."
+    }
+  },
   "prune-comments": {
     "type": "noul",
     "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the user ask to critique or remove needless, stale, misleading, or workaround comments in code, or replace claimed comment constraints with enforceable checks?",
@@ -247,12 +263,12 @@
       "false": "A sustained metric hillclimb, a correctness bug with no slowness, inspecting a profile without asking for a fix, or changing the test harness alone."
     }
   },
-  "session-lessons": {
+  "session": {
     "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the user ask to mine the current coding session for durable lessons and possible changes to skills or agent guidance?",
+    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the user ask to review a coding session or the repo's recent history for durable lessons, environment fixes such as missing checks or steering-file changes, or repeat agent mistakes to make impossible?",
     "criteria": {
-      "true": "E.g. 'extract lessons from this session', 'what should we change in our skills based on this run?', or 'review this session for reusable lessons'.",
-      "false": "Fixing a recurring product mistake without a session review, summarizing commits, writing a decision log, or explaining an existing skill."
+      "true": "E.g. 'extract lessons from this session', 'run a retro on this session', or 'agents keep making the same mistake in this repo; make it impossible'.",
+      "false": "Fixing one product bug without a session or history review, auditing a decision trail against its transcript, summarizing commits, writing a decision log, or explaining an existing skill."
     }
   },
   "vstack-maintain": {
