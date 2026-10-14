@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-10-14
+
+- session's reviewer and synthesizer references split a semicolon sentence in two, as vstack-prose requires. The code review of 2.0.0 found this, and that release missed the fix.
+
 ## [2.0.0] - 2026-10-14
 
 - Update: matt v1.2.3 to v1.3.1, pstack 12d587d to ce649c0, diagram-design d137637 to 0482b93, good-css 6d16d2f to 92d436b. 76 rows take their Upstream changes with their Disposition. pstack's per-subagent effort lines stay out, so the Session model stays the only model rule.
