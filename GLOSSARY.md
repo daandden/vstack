@@ -52,8 +52,12 @@ _Avoid_: core skill, base skill
 Every Matt skill that only the user can start, such as grill-with-docs, grill-me, teach, and implement. A change takes one path through it: the grill first and implement last. When the grill closes, it decides the path: a change that fits one session goes to implement directly, and a bigger change goes through to-spec and to-tickets first.
 _Avoid_: main flow, pipeline, workflow (unqualified)
 
+**Matt run**:
+The part of the active conversation branch that follows the prompt where the user typed `/skill:<name>` for a Matt skill. A copy of a skill prompt pasted into a message does not start one.
+_Avoid_: skill run, Matt session
+
 **Addon**:
-A vstack skill that is neither a Matt skill nor a Utility skill. It holds the knowledge that one or more Matt skills need for one kind of work, such as a vstack Update. Matt skills do the work, and an Addon has no flow of its own. vstack loads an Addon only while a Matt skill runs, and the user never starts one by name. A Matt skill runs while the active conversation branch holds the prompt where the user typed it.
+A vstack skill that is neither a Matt skill nor a Utility skill. It holds the knowledge that one or more Matt skills need for one kind of work, such as a vstack Update. Matt skills do the work, and an Addon has no flow of its own. vstack loads an Addon only during a Matt run, and the user never starts one by name.
 _Avoid_: extension, plugin
 
 **Utility skill**:

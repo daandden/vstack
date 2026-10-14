@@ -4,6 +4,12 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [1.0.3] - 2026-10-14
+
+- A Matt run starts only when the skill header opens the prompt. A skill prompt pasted lower in a message no longer starts Addon selection.
+- The extension and check-register share one Matt skill rule, and the check reads only valid register rows.
+- vstack-maintain `prepare` raises the major version whenever a shipped skill or agent name disappears, including when an Update rejects or renames a shipped row.
+
 ## [1.0.2] - 2026-10-13
 
 - compare-attempts and vstack-maintain follow the Session model rule too: a user override wins, and the cross-judge's model is named in the synthesis note.

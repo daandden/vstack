@@ -116,6 +116,17 @@ test("prepare makes at most one major bump per branch across shipped-name remova
   }
 }, 30000);
 
+test("prepare makes a major bump when an Update rejects or renames a shipped skill", async () => {
+  for (const change of [{ disposition: "reject", reason: "Not needed." }, { artifacts: ["plugin/skills/phrasing"] }] as any[]) {
+    const f = fixture(); git(f.root, "checkout", "-qb", "feature");
+    const { plan, path } = await planned(f);
+    if (change.artifacts) writeFiles(f.root, { "plugin/skills/phrasing/SKILL.md": "Renamed local text.\n" });
+    const file = choices(f, plan); const d = JSON.parse(readFileSync(file, "utf8"));
+    Object.assign(d.decisions.find((x: any) => x.id === "matt/wording"), { action: "accept", ...change }); writeFileSync(file, JSON.stringify(d));
+    const r = await f.run(f.root, ["prepare", "--plan", path, "--decisions", file]); expect(r.code).toBe(0); expect(r.plan.version).toBe("1.0.0");
+  }
+}, 60000);
+
 test("prepare takes from the Pin and requires confirmed adopt flips before any write", async () => {
   const f = fixture(); const before = state(f.root);
   const bad = choices(f, undefined, [{ action: "edit", kind: "skill", artifact: "plugin/skills/keep" }]);
