@@ -189,9 +189,9 @@ rules:
       In markdown outside frontmatter and code fences, a `Fan-out gate (` line reads `Fan-out gate (skill://vstack-fan-out): parts: …; size: …` and the next two non-blank lines are one fan-out line and one inline line. The fan-out line is one `task` call with `tasks[]`, or one eval cell of `agent(…, isolated=True, apply=False, merge=False)` calls with `wait()`; it names only vstack agents (agents the plugin ships) and passes the user's override words and the vstack root. The inline line does every part itself, or is a `Spawn one` line that stops when it cannot spawn. A fan-out or inline line with no gate line above it fails too (adapt, merge, and original text).
   - id: fixed-fan-out
     scope: adapted
-    allowlist: [compare-attempts, implement-spec]
+    allowlist: [compare-attempts, implement-spec, vstack-figures]
     text: |
-      Only where the skill always fans out: its invocation is the user's request to fan out (compare-attempts), or its main agent only orchestrates (implement-spec, ADR 0022). It uses the fixed Fan-out line in plugin/skills/vstack-fan-out/FORMS.md, with no gate line, no judge, and no inline line.
+      Only where the skill fans out with no judge: its invocation is the user's request to fan out (compare-attempts), its main agent only orchestrates (implement-spec, ADR 0022), or it starts one drawer per figure (vstack-figures, ADR 0023). It uses a fixed Fan-out line in plugin/skills/vstack-fan-out/FORMS.md, with no gate line, no judge, and no inline line.
     lint: A `Fan-out (always` line in markdown outside frontmatter and code fences fails outside the allowlisted skills (adapt, merge, and original text).
   - id: single-spawn
     scope: adapted

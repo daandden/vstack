@@ -5,7 +5,7 @@ This file is the single source of the lines vstack skill text uses to start suba
 Slots:
 
 - `<unit>` and `<countable measure>`: what one part is and how its size is counted (files, lines, diff lines, sources, PRs, hypotheses, review axes).
-- `vstack-<role>`: an agent the plugin ships. `vstack-explorer` reads, `vstack-worker` writes, `vstack-verifier` runs checks.
+- `vstack-<role>`: an agent the plugin ships. `vstack-explorer` reads, `vstack-worker` writes, `vstack-verifier` runs checks, `vstack-diagram-drawer` draws figures.
 - `<role brief>`: what the subagent does and returns, from the skill's text.
 - When the subagent writes Scratch, add `, the Scratch dir` after `the vstack root`.
 
@@ -49,13 +49,19 @@ Spawn one `vstack-<role>` via eval `agent(<prompt>, agent="vstack-<role>", isola
 
 ## Fixed Fan-out
 
-Only for a skill that always fans out, the `fixed-fan-out` allowlist: a skill whose invocation is the user's request to fan out (compare-attempts), or a skill whose main agent only orchestrates (implement-spec, ADR 0022). It has no gate line, no judge, and no inline line, and the lint fails it anywhere else.
+Only for a skill on the `fixed-fan-out` allowlist: a skill whose invocation is the user's request to fan out (compare-attempts), a skill whose main agent only orchestrates (implement-spec, ADR 0022), or vstack-figures, which starts one drawer per figure (ADR 0023). It has no gate line, no judge, and no inline line, and the lint fails it anywhere else.
 
 ```
 Fan-out (always: <reason>): one eval cell: per part, `agent(<prompt>, agent="vstack-<role>", isolated=True, apply=False, merge=False)`; <collect>. Each prompt: <role brief>, the user's override words, the vstack root. <What the parent does with each `patchPath`.> If it cannot spawn or isolation is off, stop: <reason>.
 ```
 
 `<collect>` says how the parent takes the results. A parent that compares the results together uses `` `wait()` on all handles``. A parent that acts on each result as it arrives uses ``no `wait()`, because each handle delivers its own result when it settles``, and runs the line again for each new set of parts.
+
+vstack-figures uses this `task` form instead, because its drawers write only Scratch and need no clone:
+
+```
+Fan-out (always: <reason>): one `task` call; `tasks[]` has one item per part, each with `agent: "vstack-<role>"`. Each `task`: <role brief>, the user's override words, the vstack root, the Scratch dir. Do not wait; keep working.
+```
 
 ## What the lint checks
 
@@ -66,4 +72,4 @@ In adapt, merge, and original markdown, outside frontmatter and code fences:
 - A `Spawn one` line names the same vstack agent twice and carries the user's override words and the vstack root.
 - Any other line that names an agent names a vstack agent, and a `task` or eval agent call with no agent named fails.
 - An agent's `spawns:` lists only vstack agents, never `*`.
-- The fixed form fails outside compare-attempts and implement-spec, and a Headless run (a separate omp process) fails outside skill-creator.
+- The fixed form fails outside compare-attempts, implement-spec, and vstack-figures, and a Headless run (a separate omp process) fails outside skill-creator.

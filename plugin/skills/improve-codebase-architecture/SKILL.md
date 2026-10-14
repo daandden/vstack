@@ -42,7 +42,7 @@ Apply the deletion test to anything you suspect is shallow: would deleting it co
 
 Read `skill://vstack-tmp` and resolve the `architecture-review/` kind. Create a fresh `architecture-review-<timestamp>/` entry there. Start from [templates/architecture-review.html](templates/architecture-review.html) and write `index.html` in that entry. Keep the report one-file and usable offline: inline styles and SVG, no CDN scripts, remote fonts, or linked assets.
 
-Draw every candidate's before/after figure through `skill://diagram-design`, with type, size, labels, and content fixed from the evidence. Save each figure's source under this entry. Export each through `skill://diagram-design/scripts/export_svg.py` using eval Python (`runpy.run_path` with `sys.argv` set to the resolved script path, input HTML path, and output SVG path). Inline the exported `<svg>` in the report; use unique figure filenames so their IDs do not collide. Do not hand-draw replacement figures or fall back to Mermaid. If drawing cannot run, stop and report the missing prerequisite.
+Draw every candidate's before/after figure through `skill://vstack-figures`, with type, size, labels, and content fixed from the evidence. The out dir is this entry, with unique figure filenames so their IDs do not collide. Write the cards while the drawers run, then collect the figures and inline each exported `<svg>` in the report. Do not hand-draw replacement figures or fall back to Mermaid. If drawing cannot run, stop and report the missing prerequisite.
 
 Open the completed page with the platform opener when available (`open`, `xdg-open`, or `start`). Always print its plain absolute path, with no `file://` prefix, even if opening is unavailable.
 
