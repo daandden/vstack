@@ -89,6 +89,11 @@ test("skill-ref permits an explicitly named omp built-in without hiding a bare s
   expect((await runSpec(addTo(GONE, builtin))).json!.failures).toEqual([]);
   expect(failuresOf(await runSpec(addTo(GONE, `${builtin}, then /keep`)))).toEqual(["skill-ref alpha/gone"]);
 });
+test("skill-ref ignores a path segment after a placeholder, but still flags a bare skill reference", async () => {
+  const path = "`--session-dir <run dir>/keep`";
+  expect((await runSpec(addTo(GONE, path))).json!.failures).toEqual([]);
+  expect(failuresOf(await runSpec(addTo(GONE, `${path}, then /keep`)))).toEqual(["skill-ref alpha/gone"]);
+});
 
 describe("Addon routes", () => {
   test("skill pointers pass in plugin text and the README", async () => {
