@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.7] - 2026-10-15
+
+- The Addon judge takes the pointers it already sent only from the saved `vstack-addons` messages on the active branch. Before this, it also kept a per-session list that recorded picks before omp accepted them. A prompt cancelled during the up to 30-second restatement then lost its picks for the rest of the session.
+
 ## [2.0.6] - 2026-10-15
 
 - When a Matt run starts after earlier talk in the session, the Addon judge reads a restatement of the user's goal, not only the words after `User:` (ADR 0021). The extension asks the `smol` role model, at its configured effort, with the in-your-own-words instruction. The model reads the user and agent text since the last compaction, the compaction summary, and the new words, and jev reads its reply, cut to 10,000 characters. A bare skill start after earlier talk also gets picks now. A fresh run start and later prompts keep the cleaned words.

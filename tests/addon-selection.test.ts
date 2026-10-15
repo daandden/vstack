@@ -89,13 +89,23 @@ describe("Addon selection", () => {
   });
   test("full-name pointers use the threshold and the precedence text, once per session", async () => {
     fetchSpy = endpoint({ "principle-prove-it-works": .75, "open-pr": .9, "principle-experience-first": .749 });
-    const host = fakeHost(running);
+    const entries: unknown[] = [savedRun];
+    const host = fakeHost({ ...options, entries });
     const [result]: any = await host.emit("before_agent_start", { prompt: "Open a PR" });
     expect(result.message.customType).toBe("vstack-addons");
     expect(result.message.display).toBe(false);
     expect(result.message.content).toBe("Addons selected for this task: skill://principle-prove-it-works, skill://open-pr. Ignore any that do not fit. When a principle conflicts with the steps of the running Matt skill or its Addons, those steps win.");
+    // omp saves an accepted hook message on the branch as a custom_message entry.
+    entries.push({ type: "custom_message", ...result.message });
     expect(await host.emit("before_agent_start", { prompt: "Again" })).toEqual([undefined]);
     expect((await fakeHost(running).emit("before_agent_start", { prompt: "Again" }))[0]).toBeDefined();
+  });
+  test("picks that omp discarded, such as from a cancelled prompt, return on the retry", async () => {
+    fetchSpy = endpoint({ "open-pr": .9 });
+    const host = fakeHost(running);
+    expect((await host.emit("before_agent_start", { prompt: "Open a PR" }))[0]).toBeDefined();
+    const [retry]: any = await host.emit("before_agent_start", { prompt: "Open a PR" });
+    expect(retry?.message.content).toContain("skill://open-pr");
   });
   test("a resumed branch retains saved Addon pointers", async () => {
     fetchSpy = endpoint({ "open-pr": .9, "principle-prove-it-works": .9 });

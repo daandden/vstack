@@ -138,7 +138,6 @@ async function restate(ctx: ExtensionContext, instruction: string | undefined, t
 function registerAddonSelection(pi: ExtensionAPI): void {
   const mattSkills = readMattSkills();
   const instruction = readRestateInstruction();
-  const injected = new Map<string, Set<string>>();
   pi.on("before_agent_start", async (event, ctx) => {
     if (ctx.agent.kind !== "main" || !mattSkills.size) return;
     const header = /^\[IMPORTANT: User invoked the "([^"]+)" skill/.exec(event.prompt);
@@ -174,9 +173,8 @@ function registerAddonSelection(pi: ExtensionAPI): void {
           }
           request = restated.text.slice(0, RESTATEMENT_LIMIT);
         }
-        const sessionId = ctx.sessionManager.getSessionId();
-        let seen = injected.get(sessionId);
-        if (!seen) { seen = new Set<string>(); injected.set(sessionId, seen); }
+        // omp saves a hook message only when it accepts the prompt, so the branch is the record of delivered pointers.
+        const seen = new Set<string>();
         for (const entry of branch) {
           if (entry.type !== "custom_message" || entry.customType !== "vstack-addons") continue;
           const content = typeof entry.content === "string" ? entry.content : JSON.stringify(entry.content);
@@ -196,7 +194,6 @@ function registerAddonSelection(pi: ExtensionAPI): void {
               return answer?.type === "noul" && typeof answer.noul === "number" && answer.noul >= .75 && !seen.has(name);
             });
             if (!picked.length) return;
-            for (const name of picked) seen.add(name);
             return { message: { customType: "vstack-addons", display: false, attribution: "agent" as const,
               content: `Addons selected for this task: ${picked.map(name => `skill://${name}`).join(", ")}. Ignore any that do not fit. When a principle conflicts with the steps of the running Matt skill or its Addons, those steps win.` } };
           } catch { /* Retry once inside the same deadline. */ }
