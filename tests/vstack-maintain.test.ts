@@ -66,6 +66,28 @@ test("plan at the current refs still writes Scratch and invalid selections refus
   expect((await f.run(f.root, ["-h"])).stdout).toContain("prepare");
 }, 30000);
 
+test("plan --scratch writes its entry under the supplied Scratch dir and refuses a relative one", async () => {
+  const f = fixture(); const scratch = join(f.dir, "scratch"), maintain = join(scratch, "maintain");
+  const r = await f.run(f.root, ["plan", "--scratch", scratch, "matt@v1.2.0"]);
+  expect(r.stdout.trim().startsWith(`${maintain}/`)).toBe(true);
+  expect(r.code).toBe(0);
+  const entries = readdirSync(maintain); expect(entries).toHaveLength(1);
+  expect(r.stdout.trim()).toBe(join(maintain, entries[0], "plan.json"));
+  expect(r.plan.out).toBe(join(maintain, entries[0])); expect(r.plan.root).toBe(f.root);
+  expect(existsSync(join(f.dir, "home", ".vstack", "tmp"))).toBe(false);
+  const relative = await f.run(f.root, ["plan", "--scratch", "scratch", "matt@v1.2.0"]);
+  expect(relative.code).toBe(2); expect(JSON.parse(relative.stdout).ok).toBe(false);
+  expect(readdirSync(maintain)).toHaveLength(1); expect(existsSync(join(f.root, "scratch"))).toBe(false);
+}, 30000);
+
+test("plan --scratch refuses a Scratch dir inside a checkout and writes nothing there", async () => {
+  const f = fixture(); const inside = join(f.root, "scratch");
+  const r = await f.run(f.root, ["plan", "--scratch", inside, "matt@v1.2.0"]);
+  expect(r.code).toBe(2);
+  expect(JSON.parse(r.stdout)).toMatchObject({ ok: false, reason: `Scratch must be outside every checkout: ${inside}` });
+  expect(existsSync(inside)).toBe(false);
+}, 30000);
+
 test("check reports callers, adopt flips, rename callers, and new-name clashes at the Pin", async () => {
   const f = fixture();
   const r = await f.run(f.root, ["check", "plugin/skills/keep", "--rename", "plugin/skills/wording=plugin/skills/phrasing"]);
@@ -136,6 +158,17 @@ test("prepare takes from the Pin and requires confirmed adopt flips before any w
   expect(read(f.root, "plugin/skills/rej/SKILL.md")).toContain("rej 1"); expect(read(f.root, "plugin/skills/rej/SKILL.md")).not.toContain("rej 2");
 }, 30000);
 
+function smokeCommands(f: ReturnType<typeof fixture>) {
+  const smoke = join(f.dir, "smoke.ts");
+  writeFileSync(smoke, `import { existsSync, writeFileSync } from "node:fs";
+const [plugin, out] = process.argv.slice(2);
+console.log(JSON.stringify({ plugin, out, exists: out ? existsSync(out) : false }));
+if (out) for (const name of ["summary.json", "rpc.jsonl", "rpc.err", "skills.json", "link.txt"]) writeFileSync(out + "/" + name, "Smoke evidence: " + name);
+if (process.env.FAIL_STAGE === "smoke") process.exit(1);`);
+  const injected = JSON.parse(commands(f).VSTACK_MAINTAIN_COMMANDS);
+  injected.smoke = [process.execPath, smoke];
+  return { VSTACK_MAINTAIN_COMMANDS: JSON.stringify(injected) };
+}
 function commands(f: ReturnType<typeof fixture>) {
   const command = join(f.dir, "gate.ts");
   writeFileSync(command, `const stage = process.argv[2]; console.log(stage); if(stage === "check") { console.log(JSON.stringify({failures: JSON.parse(process.env.FAILURES ?? "[]")})); if(process.env.FAILURES !== "[]" && process.env.FAILURES) process.exit(Number(process.env.CHECK_CODE ?? "1")); } if(process.env.FAIL_STAGE === stage) process.exit(1); if(stage === "smoke") console.log(JSON.stringify({skillCommands: ${JSON.stringify(register(f.root).items.flatMap((r: any) => r.artifacts).map((a: string) => a.split("/").at(-1)))}, warnings: []}));`);
@@ -149,16 +182,7 @@ test("gates run all four stages and fail on every failing stage", async () => {
   for (const stage of ["validate", "check", "test", "smoke"]) expect((await f.run(f.root, ["gates"], { ...env, FAIL_STAGE: stage })).code).toBe(2);
 }, 30000);
 test("gates isolate smoke output from home, delete temp output, and retain failure evidence in Scratch", async () => {
-  const f = fixture(); const env = commands(f);
-  const smoke = join(f.dir, "smoke.ts");
-  writeFileSync(smoke, `import { existsSync, writeFileSync } from "node:fs";
-const [plugin, out] = process.argv.slice(2);
-console.log(JSON.stringify({ plugin, out, exists: out ? existsSync(out) : false }));
-if (out) for (const name of ["summary.json", "rpc.jsonl", "rpc.err", "skills.json", "link.txt"]) writeFileSync(out + "/" + name, "Smoke evidence: " + name);
-if (process.env.FAIL_STAGE === "smoke") process.exit(1);`);
-  const injected = JSON.parse(env.VSTACK_MAINTAIN_COMMANDS);
-  injected.smoke = [process.execPath, smoke];
-  const smokeEnv = { VSTACK_MAINTAIN_COMMANDS: JSON.stringify(injected) };
+  const f = fixture(); const smokeEnv = smokeCommands(f);
   for (const failed of [false, true]) {
     const result = await f.run(f.root, ["gates"], { ...smokeEnv, FAIL_STAGE: failed ? "smoke" : "" });
     const report = JSON.parse(result.stdout);
@@ -184,6 +208,18 @@ if (process.env.FAIL_STAGE === "smoke") process.exit(1);`);
       }
     } finally { rmSync(observed.out, { recursive: true, force: true }); }
   }
+}, 30000);
+test("gates --scratch retain failed smoke evidence under the supplied Scratch dir", async () => {
+  const f = fixture(); const scratch = join(f.dir, "scratch"), maintain = join(scratch, "maintain");
+  const result = await f.run(f.root, ["gates", "--scratch", scratch], { ...smokeCommands(f), FAIL_STAGE: "smoke" });
+  expect(result.stdout).toContain(`Smoke output retained at ${maintain}/`);
+  expect(result.code).toBe(2);
+  const entries = readdirSync(maintain); expect(entries).toHaveLength(1);
+  const retained = join(maintain, entries[0]);
+  const stage = JSON.parse(result.stdout).stages.find((s: any) => s.name === "smoke");
+  expect(stage.output).toContain(`Smoke output retained at ${retained}`);
+  for (const name of ["summary.json", "rpc.jsonl", "rpc.err", "skills.json", "link.txt"]) expect(read(retained, name)).toBe(`Smoke evidence: ${name}`);
+  expect(existsSync(join(f.dir, "home", ".vstack", "tmp"))).toBe(false);
 }, 30000);
 test("in-place gates report only no-version-bump as pending and fail on all other failures", async () => {
   const f = fixture(); const env = commands(f);

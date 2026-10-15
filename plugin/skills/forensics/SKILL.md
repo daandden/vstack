@@ -5,7 +5,7 @@ description: "Diagnose a runtime symptom (leak, CPU spin, glitch) through live i
 
 # Forensics
 
-Own the diagnosis. Capture and query evidence before attributing a cause to source. Leave every tracked file unchanged.
+Own the diagnosis. Capture and query evidence before attributing a cause to source. Leave every tracked file in the checkout unchanged. In the live branch, one isolated worker runs the app and every probe in its own clone.
 
 Open the todo list with steps 1–7 copied verbatim before task-specific items. Keep an undone step as `skip: <reason>`. There is no End state, fix, commit, decision-trail, or throughput checkpoint in this skill. A request for a fix goes to the hand-back in step 7.
 
@@ -21,15 +21,17 @@ Record the artifact path, format, capture time, app revision when known, and the
 
 In the artifact branch, mark this step `skip: capture supplied` and continue to step 3.
 
-List the project's Verify skills named `verify-*`. In Private mode, also list `<vstack root>/skills/verify-*/` and deduplicate links and targets. In Private mode, if a link is missing, create `.omp/skills/verify-<app>` as an absolute symlink to `<vstack root>/skills/verify-<app>`. Never replace a tracked path. Add `.omp/skills/verify-*` to the git common dir's `info/exclude` when missing. Never change a tracked ignore file. Read the skill by absolute path for this session. Resolve its helpers relative to that directory.
+List the project's Verify skills named `verify-*`. In Private mode, also list `<vstack root>/skills/verify-*/`. Deduplicate the links and their targets in the combined list. In Private mode, if a link is missing, create `.omp/skills/verify-<app>` as an absolute symlink to `<vstack root>/skills/verify-<app>`. The link carries into the worker's clone (ADR 0009). Never replace a tracked path. Add `.omp/skills/verify-*` to the git common dir's `info/exclude` when missing. Never change a tracked ignore file. Read the skill by absolute path for this session.
 
-Use the only Verify skill, or the one whose description names the symptom's app feature. If several match without a clear choice, use `ask`. If none exists, record that live proof lacks a Verify skill. Capture with the app's profiler, debugger, or CDP (Chrome DevTools Protocol) instead. Recommend a Matt run through `/skill:grill-with-docs` to set up a Verify skill in the reply.
+Use the only Verify skill, or the one whose description names the symptom's app feature. If several match without a clear choice, use `ask`. If none exists, record that live proof lacks a Verify skill. The worker then captures with the app's profiler, debugger, or CDP (Chrome DevTools Protocol). Recommend a Matt run through `/skill:grill-with-docs` to set up a Verify skill in the reply.
 
-Run the selected Verify skill's Doctor, Launch, and Drive steps to reach the symptom. Attach the matching profiler or debugger. Capture a CPU profile for a spinning process, a heap snapshot for a leak, or a CDP trace for a glitch. Route capture output and app data to this run's Scratch entry. Read launch and helper commands before running them. If they write tracked files, use runtime tools or a disposable source copy as described in step 4 instead.
+Live-run brief: work only in your clone and in this run's Scratch entry. Never commit. Read the Verify skill at its path in your clone. Resolve its helpers relative to that directory. Run its Doctor, Launch, and Drive steps to reach the symptom. Without a Verify skill, use the app's own commands to launch and drive it. Read launch and helper commands before running them. Start the app as a named bash service, which is the bash tool called with `name` and, when the app signals readiness, `ready`. A process started with `cmd &` in a plain bash call is gone by your next round, but a named service keeps running. Attach the matching profiler or debugger. Capture a CPU profile for a spinning process, a heap snapshot for a leak, or a CDP trace for a glitch. Route capture output and app data to this run's Scratch entry. Drift is a failure in the Verify skill's instructions while Doctor passes, such as a missing command, route, selector, or fixture. Wrong app behavior is a finding, never Drift. On Drift, record the failed step and its evidence. Then capture through the app's profiler, debugger, or CDP instead. Never edit the Verify skill. Keep the app service running, because later rounds arrive as messages on the same app instance. A paired capture compares captures from one app instance. If the app is gone at a later round, or a source-edit probe needs a relaunch, record the break in continuity. Then capture a new baseline on the relaunched app before that round's probe workload. The pair for that round uses the new baseline, not the step 2 capture. Return the capture paths, the workload, your clone's source revision, and any Drift or capture blocker.
 
-Drift is a failure in the Verify skill's instructions while Doctor passes. A missing command, route, selector, or fixture is Drift. Wrong app behavior is a finding, never Drift. On Drift, record the failed step and its evidence. Capture through the app's profiler, debugger, or CDP instead. Never edit the Verify skill. Recommend a Matt run through `/skill:grill-with-docs` to repair the cited Drift in the reply.
+Spawn one `vstack-worker` via eval `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`: the live-run brief above with the selected Verify skill's path relative to the checkout root, the symptom's workload, and this run's evidence directory, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: report the live branch as not captured, and point at `/skill:setup-vstack` when `task.isolation.enabled` is off.
 
-This step ends with a real capture, or a cited capture blocker. Without a capture, report the blocker without claiming a diagnosis.
+Keep the worker's handle for steps 4 and 6. On reported Drift, recommend a Matt run through `/skill:grill-with-docs` to repair the cited Drift in the reply.
+
+This step ends with the worker's real capture, or a cited capture blocker. Without a capture, report the blocker without claiming a diagnosis.
 
 ## 3. Identify, shape, and reduce the artifact
 
@@ -51,11 +53,9 @@ This step ends with a reduced finding supported by saved queries and measurement
 
 In the artifact branch, mark this step `skip: fixed captured dataset` and continue to step 5.
 
-Test the reduced finding with injected instrumentation through CDP evaluation or the running process's debugger. Tag every debug log with one unique prefix, such as `[DEBUG-a4f2]`, per skill://diagnosing-bugs. Save the probe, its output, and the condition it tests. For example, count scheduling calls with no input, or measure allocations and the objects that remain retained.
+Send the reduced finding to the live-run worker through `write agent://<id>` or the handle's `.send()`. Take the worker's reply from the `wait` tool, which returns this round's new completion. The handle's `.wait()` returns only the step 2 result. Probe-round message: test the reduced finding on the running app. Inject instrumentation through CDP evaluation or the process's debugger. As an alternative to injection, probe through a source edit in your clone. A source-edit probe needs a relaunch of the app service from your clone. Tag every debug log with one unique prefix, such as `[DEBUG-a4f2]`, per skill://diagnosing-bugs. Save the probe, its output, and the condition it tests in this run's Scratch entry. For example, count scheduling calls with no input, or measure allocations and the objects that remain retained. Repeat the same workload. Capture the instrumented signal for comparison in this run's Scratch entry. Save the probe's effect on the symptom. Return the evidence paths, the capture path, your source edits, and any break in continuity with its new baseline path.
 
-Instrumentation never edits tracked files. Pstack's live hotfix step is dropped. If a probe needs source changes, copy the needed app files into an untracked Scratch directory without `.git`. Instrument and run only that disposable copy. Keep the original checkout, Verify skill, and tracked files in every worktree unchanged. Record the copy's source revision and any carried-over local changes. If a worktree is needed to run the app, create it through skill://vstack-worktree and instrument only through runtime tools there. A plain checkout that lacks required deps or environment files cannot prove that run.
-
-Repeat the same workload and capture the instrumented signal for comparison. Save the probe's effect on the symptom. Instrumentation alone is not a paired-capture confirmation. This step ends with evidence for or against the mechanism, or the missing live proof.
+Probes never edit tracked files in the main checkout. Pstack's live hotfix step is dropped. Instrumentation alone is not a paired-capture confirmation. This step ends with evidence for or against the mechanism, or the missing live proof.
 
 ## 5. Attribute the finding to source
 
@@ -65,11 +65,13 @@ If symbols are missing, try the matching build's symbols without modifying track
 
 ## 6. Compare paired captures and remove instrumentation
 
-If a paired capture exists, parse both through step 3 and diff them on the same workload and units. Explain whether the pair supports the proposed mechanism. Account for capture duration and workload differences before comparing counts or time. An inconclusive or unrelated pair does not confirm a cause. Do not change product code to create an after capture.
+In the live branch, send the worker the closing round through `write agent://<id>` or the handle's `.send()`. Take the worker's reply from the `wait` tool, which returns this round's new completion. The handle's `.wait()` returns only the step 2 result. Closing-round message: remove this run's tagged logs, breakpoints, hooks, and injected instrumentation. Stop the app's named bash service through its `proc://<id>/kill` path. Stop only processes this run started. Return the cleanup record.
+
+If a paired capture exists, parse both captures through step 3. Diff them on the same workload and units. If the worker recorded a break in continuity, pair the probe capture with that round's new baseline, not with the step 2 capture. Explain whether the pair supports the proposed mechanism. Account for capture duration and workload differences before comparing counts or time. An inconclusive or unrelated pair does not confirm a cause. Do not change product code to create an after capture.
 
 Use `confirmed` only when a paired capture supports the mechanism. Without that evidence, label the result `strongest hypothesis`, even when live probes support it. State unresolved alternatives and missing evidence.
 
-Remove this run's tagged logs, breakpoints, hooks, and injected instrumentation. Stop only processes this run started. Discard its disposable source copy and remove its worktree through skill://vstack-worktree. Keep captures, queries, probe evidence, and notes in Scratch. Leave pre-existing user changes untouched. This step ends with the evidence label and instrumentation cleanup recorded.
+Release the worker without applying its patch. Keep captures, queries, probe evidence, and notes in Scratch. Leave pre-existing user changes untouched. This step ends with the evidence label and instrumentation cleanup recorded.
 
 ## 7. Hand back the cited diagnosis
 
