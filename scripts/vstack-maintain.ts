@@ -3,7 +3,7 @@ import { parseArgs } from "node:util";
 import { randomUUID } from "node:crypto";
 import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { buildPlan, PLAN_SCHEMA, type PlanBody, type UpstreamRun } from "./lib/update-plan.ts";
 import { loadGate, run } from "./lib/update-gates.ts";
 import { applyRows, findRow, parseHouseStyle, selectRows, type MatchKind, type Replacement, type TextDisposition } from "./lib/house-style.ts";
@@ -88,14 +88,15 @@ function headRegister(wt: string) {
 
 interface UpstreamOptions { upstreams?: string; remote?: string; source?: string }
 
-function cacheOutsideCheckout(opts: UpstreamOptions): string {
-  const dir = resolve(opts.upstreams ?? defaultUpstreamsDir());
+function outsideCheckout(path: string, what: string): string {
+  const dir = resolve(path);
   let parent = dir;
   while (!existsSync(parent)) parent = dirname(parent);
   const checkout = Bun.spawnSync(["git", "rev-parse", "--show-toplevel"], { cwd: parent, stdout: "pipe", stderr: "pipe" });
-  if (checkout.exitCode === 0) throw new Error(`Upstream cache must be outside every checkout: ${dir}`);
+  if (checkout.exitCode === 0) throw new Error(`${what} must be outside every checkout: ${dir}`);
   return dir;
 }
+const cacheOutsideCheckout = (opts: UpstreamOptions) => outsideCheckout(opts.upstreams ?? defaultUpstreamsDir(), "Upstream cache");
 function clones(wt: string, opts: UpstreamOptions): string {
   const dir = cacheOutsideCheckout(opts);
   const { register } = headRegister(wt);
@@ -264,8 +265,11 @@ function targetPin(pin: Pin, clone: string, ref: string | undefined): { new: str
   return moved ? { new: sha, moved } : { new: pin.pin, moved };
 }
 
+/** Returns a fresh maintain entry under the supplied Scratch dir, or under this checkout's Scratch dir when none is given. */
+const maintainEntry = (root: string, scratch: string | undefined) =>
+  join(scratch ?? join(scratchRoot(homedir()), repoKey(root)), "maintain", `${Date.now()}-${randomUUID()}`);
 
-async function plan(root: string, refs: string[], opts: UpstreamOptions) {
+async function plan(root: string, refs: string[], opts: UpstreamOptions, scratch: string | undefined) {
   const pins = loadPins(root), register = loadRegister(root);
   const { houseStyle, problems } = loadHouseStyle(root, new Set(pins.keys()));
   if (problems.length) throw new Error(problems.map(p => `${p.id}: ${p.message}`).join("; "));
@@ -276,7 +280,7 @@ async function plan(root: string, refs: string[], opts: UpstreamOptions) {
     const { clone } = syncClone(dir, pin, opts.remote ?? defaultUpstreamRemote());
     runs.push({ pin, clone, ...targetPin(pin, clone, ref) });
   }
-  const out = join(scratchRoot(homedir()), repoKey(root), "maintain", `${Date.now()}-${randomUUID()}`);
+  const out = maintainEntry(root, scratch);
   mkdirSync(out, { recursive: true });
   const body = await buildPlan({ runs, register, replacements: houseStyle.replacements, source: cloneSource(dir), out });
   const p: Plan = { schema: PLAN_SCHEMA, root, out, moved: runs.some(r => r.moved), ...body };
@@ -550,7 +554,7 @@ function changedSkills(root: string): string[] {
   const files = [...git(root, "diff", "--name-only", defaultBase(root), "--", "plugin/skills").split("\n"), ...git(root, "ls-files", "--others", "--exclude-standard", "--", "plugin/skills").split("\n")];
   return [...new Set(files.filter(Boolean).map(f => f.split("/").slice(0, 3).join("/")))].filter(p => existsSync(join(root, p))).sort();
 }
-async function gates(root: string, inPlace: boolean, opts: UpstreamOptions) {
+async function gates(root: string, inPlace: boolean, opts: UpstreamOptions, scratch: string | undefined) {
   const commands: Record<string, string[]> = JSON.parse(process.env.VSTACK_MAINTAIN_COMMANDS ?? "{}");
   const stages: { name: string; ok: boolean; output: string; exitCode?: number }[] = [], pending: any[] = [];
   const execute = (name: string, cmd: string[]) => {
@@ -577,7 +581,7 @@ async function gates(root: string, inPlace: boolean, opts: UpstreamOptions) {
       stages.push(smoke);
     }
     if (!smoke.ok) {
-      const retained = join(scratchRoot(homedir()), repoKey(root), "maintain", `${Date.now()}-${randomUUID()}`);
+      const retained = maintainEntry(root, scratch);
       cpSync(out, retained, { recursive: true });
       smoke.output += `\nSmoke output retained at ${retained}`;
     }
@@ -592,27 +596,30 @@ const USAGE = `Usage: bun scripts/vstack-maintain.ts <command> [options]
         [--take <upstream>:<path>] [--rename <artifact>=<to>] [--remove <artifact>]
   prepare --decisions <file> [--plan <path>]  Write bookkeeping from HEAD.
   gates [--in-place]                     Run validation, checks, tests, and load smoke.
+  --scratch <dir>                        Absolute Scratch dir for plan and gates entries.
   --root <dir> --upstreams <cache> --remote <url> --source clones|github
   -h, --help                            Show this text.
 Tests may inject command arrays for validate, check, test, and smoke through
 VSTACK_MAINTAIN_COMMANDS (a JSON object). Smoke commands receive the plugin and output directories.`;
 try {
   const args = parseArgs({ allowPositionals: true, options: {
-    root: { type: "string" }, plan: { type: "string" }, decisions: { type: "string" }, upstreams: { type: "string" }, remote: { type: "string" }, source: { type: "string" },
+    root: { type: "string" }, plan: { type: "string" }, decisions: { type: "string" }, upstreams: { type: "string" }, remote: { type: "string" }, source: { type: "string" }, scratch: { type: "string" },
     take: { type: "string", multiple: true }, rename: { type: "string", multiple: true }, remove: { type: "string", multiple: true }, "in-place": { type: "boolean" }, help: { type: "boolean", short: "h" }
   } });
   if (args.values.help) console.log(USAGE);
   else {
     const [command, ...positionals] = args.positionals, opts = args.values;
+    if (opts.scratch !== undefined && !isAbsolute(opts.scratch)) throw new Error("--scratch needs an absolute path");
+    const scratch = opts.scratch === undefined ? undefined : outsideCheckout(opts.scratch, "Scratch");
     const p = opts.plan ? planAt(opts.plan) : undefined, root = resolve(opts.root ?? p?.root ?? scriptRoot);
     let result: unknown;
-    if (command === "plan") result = await plan(root, positionals, opts);
+    if (command === "plan") result = await plan(root, positionals, opts, scratch);
     else if (command === "merge") { if (!p) throw new Error("merge needs --plan"); result = mergePreview(p, root, opts.decisions ? readJson(opts.decisions).file_maps : undefined); }
     else if (command === "check") {
       const artifacts = [...new Set([...positionals, ...(p?.rows.flatMap(r => r.artifacts) ?? [])])];
       result = await checkTargets(root, artifacts, opts.take ?? [], opts.rename ?? [], opts.remove ?? [], opts);
     } else if (command === "prepare") { if (!opts.decisions) throw new Error("prepare needs --decisions"); result = await prepare(root, opts.decisions, p, opts); }
-    else if (command === "gates") { result = await gates(root, opts["in-place"] ?? false, opts); if (!(result as any).ok) process.exitCode = 2; }
+    else if (command === "gates") { result = await gates(root, opts["in-place"] ?? false, opts, scratch); if (!(result as any).ok) process.exitCode = 2; }
     else throw new Error(USAGE);
     console.log(typeof result === "string" ? result : JSON.stringify(result, null, 2));
   }

@@ -6,7 +6,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [2.0.12] - 2026-10-15
 
-- vstack-maintain drafts every Update and Hand edit in one isolated vstack-worker that runs `prepare` and `gates` in its own clone. implement applies the gated patch on its branch in the main checkout, and each wave of review fixes gets a fresh worker. forensics runs the app, every probe, the paired capture, and instrumentation cleanup in one isolated live-run worker, and never applies its patch. Both skills stop when isolation is off, and neither uses a worktree or a Scratch source copy anymore (amends ADR 0007).
+- vstack-maintain drafts every Update and Hand edit in one isolated vstack-worker that runs `prepare` and `gates` in its own clone. implement applies the gated patch on its branch in the main checkout, and each wave of review fixes gets a fresh worker. forensics runs the app, every probe, the paired capture, and instrumentation cleanup in one isolated live-run worker, and never applies its patch. Both skills stop when isolation is off, and neither uses a worktree or a Scratch source copy anymore (amends ADR 0007). The drafting worker passes the new `--scratch <dir>` option to `plan` and `gates`, so their Scratch entries land in the project's Scratch dir and not under the clone's own repo key. The script refuses a `--scratch` dir inside a checkout, as it already does for the Upstream cache.
 
 ## [2.0.11] - 2026-10-15
 

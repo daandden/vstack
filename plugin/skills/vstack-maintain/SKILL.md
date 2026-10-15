@@ -24,7 +24,7 @@ bun scripts/vstack-maintain.ts check --rename <artifact>=<new artifact>
 bun scripts/vstack-maintain.ts check --remove <artifact>
 ```
 
-`plan`, `merge`, and `check` make no branch or worktree and write nothing in a checkout. They can fetch into the external Upstream cache. `plan` writes one Scratch entry of kind `maintain` and prints its plan.json path, even when no Pin moves. Keep that path for `merge` and `check` in this session. All commands accept `--root <checkout>`, `--upstreams <cache>`, and `--remote <url>`. `-h` prints usage. JSON failures exit 2. The external cache must not be inside a checkout.
+`plan`, `merge`, and `check` make no branch or worktree and write nothing in a checkout. They can fetch into the external Upstream cache. `plan` writes one Scratch entry of kind `maintain` and prints its plan.json path, even when no Pin moves. Keep that path for `merge` and `check` in this session. All commands accept `--root <checkout>`, `--upstreams <cache>`, and `--remote <url>`. `plan` and `gates` also accept `--scratch <dir>`, the absolute Scratch dir for their entry. Without it, the entry goes under the Scratch dir that the checkout's own `.git` names. `-h` prints usage. JSON failures exit 2. The `--scratch` dir and the external cache must not be inside a checkout.
 
 The plan classifies unchanged, changed, moved, removed, and new rows. It groups rows that share an artifact and diffs each held row from its own `held_at` and `held_path`, not the global old Pin. Both Upstream sides of adapt and merge rows already contain the ordered House style replacements (ADR 0008). Judgment rules still need an agent.
 
@@ -66,7 +66,7 @@ For each wave of code-review fixes that implement accepts, run the single-subage
 
 ### Drafting brief
 
-Write only in your clone and under the Scratch dir. Never commit. Run every command from your clone's root, not from a checkout path in this brief. Run `gates` last. Return only after `gates` passes, with each stage name and its `ok` value. If a failure remains after your fixes, return the failing stage and its evidence path.
+Write only in your clone and under the Scratch dir. Never commit. Run every command from your clone's root, not from a checkout path in this brief. Pass `--scratch <Scratch dir>` to every `plan` and `gates` run. Your clone has its own `.git`, so the default Scratch entry is outside the Scratch dir. Run `gates` last. Return only after `gates` passes, with each stage name and its `ok` value. If a failure remains after your fixes, return the failing stage and its evidence path.
 
 For an Update, rerun `plan` at each stated `<upstream>@<ref>`. Compare its row set and new-item paths with the confirmed hand-off. If they differ, stop with a report of the difference. Do not apply decisions to unseen rows. Write the decisions file yourself from the confirmed decisions. For a Hand edit, rerun `check` at the current Pins for the targets and their callers.
 
