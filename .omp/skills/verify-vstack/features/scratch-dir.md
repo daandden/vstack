@@ -36,35 +36,26 @@ Preconditions:
 - Prove no deletion. Run `find "$V/.vstack/tmp" -mindepth 3 -maxdepth 3 | tee "$VERIFY_RUN_DIR/scratch-after-list.txt"`. Both entries remain.
 - Delete. Run `bun plugin/skills/vstack-tmp/scripts/clean.ts --home "$V" --older-than 14d --delete "${D}old-entry" | tee "$VERIFY_RUN_DIR/scratch-clean-delete.json"`. Exit 0. `deleted` holds that path.
 - Prove deletion. Run `find "$V/.vstack/tmp" -mindepth 3 -maxdepth 3 | tee "$VERIFY_RUN_DIR/scratch-after-delete.txt"`. Only `new-entry` remains.
+- Key. Make a throwaway repo with one worktree: `R="$VERIFY_RUN_DIR/data/keyrepo"; git init -q "$R/main" && git -C "$R/main" -c user.name=v -c user.email=v@v commit -q --allow-empty -m init && git -C "$R/main" worktree add -q "$R/wt"`. Run `bun "$CHECKOUT/plugin/skills/vstack-tmp/scripts/path.ts" --home "$V"` twice: once with the bash tool's `cwd` set to the absolute path of `$R/main`, and once with it set to that of `$R/wt`. Both print the same `$V/.vstack/tmp/main-<hex>/`. `main` is the main checkout's dir name, and `<hex>` is the first 6 characters that `printf %s "$(realpath "$R/main/.git")" | shasum -a 256` prints.
 
-### Command table through RPC
+### Command dialogs through RPC
+
+`drive.ts --ui-replies` answers the Command's `select` dialogs in order, as `../SKILL.md` Launch says. The Command needs no model request.
 
 1. Initialize the isolated home and plugin link with `bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN_DIR" --name clean-command-setup '{"type":"get_state"}'`.
 2. Set `C="$VERIFY_RUN_DIR/data/home/.vstack/tmp/_global/verify"`. Create fixtures with `mkdir -p "$C/old-one" "$C/old-two" "$C/new-entry" && echo one > "$C/old-one/notes.txt" && echo two > "$C/old-two/notes.txt" && echo new > "$C/new-entry/notes.txt" && touch -t 202601010000 "$C/old-one/notes.txt" "$C/old-one" "$C/old-two/notes.txt" "$C/old-two"`.
 3. Save `find "$C" -type f | sort` as `$VERIFY_RUN_DIR/clean-command-before.txt`.
-4. Run `bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN_DIR" --name clean-command-table '{"type":"prompt","message":"/vstack-clean 14d"}'`.
-5. Read `$VERIFY_RUN_DIR/clean-command-table/rpc.jsonl`. The `extension_ui_request` with `method: "notify"` shows a dry-run table with `old-one` and `old-two`, their ages and sizes, the total, and one kept entry. The following `method: "select"` request offers Apply all, Choose items, and Cancel.
-6. Save `find "$C" -type f | sort` as `$VERIFY_RUN_DIR/clean-command-after-table.txt`. Compare it with the before listing. All three files must remain.
-
-`drive.ts` sends commands in order and waits for each response. It cannot answer a `ctx.ui.select` request while that command waits. An `extension_ui_response` supplied as a later argument cannot pass that wait. With the expired fixtures, this drive times out after 90 seconds and exits 1. Record the table and choice request as observed, and record selection completion as skipped. A timeout is not proof of Cancel, Choose items, or refusal without a UI. No model request is needed for the Command.
-
-### Choose items and Cancel through the isolated TUI
-
-The current driver cannot complete these dialogs. Use the same isolated home in a terminal, or report these checks as skipped if no terminal is available. Do not substitute a direct cleanup CLI call for Command proof.
-
-1. Read the target of `$VERIFY_RUN_DIR/data/outside`. Set the bash tool's `cwd` to `<target>/proj`.
-2. Start `env -i PATH="$PATH" HOME="$VERIFY_RUN_DIR/data/home" TERM=xterm-256color omp --no-session --no-title --model stub/stub-model` with a PTY. The stub server from the drive is stopped. Enter only Commands, which need no model.
-3. Type `/vstack-clean 14d`. Capture the table and select Cancel. Save `find "$C" -type f | sort` after the action. All three fixture files remain.
-4. Type `/vstack-clean 14d` again. Select Choose items, mark `old-one`, then select Cancel. Capture the checklist and resulting notification. All three files remain.
-5. Type `/vstack-clean 14d` again. Select Choose items, mark only `old-one`, then select Done. Capture the checklist before Done and the deletion notification. A new file listing holds only `old-two` and `new-entry`.
-6. To cover Apply all, type `/vstack-clean 14d` once more and select Apply all. The notification names one deleted entry. Only `new-entry` remains.
-7. Exit the isolated omp session. Keep the terminal captures and file listings at the top level of `VERIFY_RUN_DIR`.
+4. Each step below is one drive. Write its UI replies to `$VERIFY_RUN_DIR/<drive>-ui.json`. Then run `bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN_DIR" --name <drive> --ui-replies "$VERIFY_RUN_DIR/<drive>-ui.json" '{"type":"prompt","message":"/vstack-clean 14d"}'`. Exit 0, the prompt result is `completed` with `agentInvoked: false`, and `model_requests` is `0`. Read the last notification with `jq -r 'select(.type=="extension_ui_request" and .method=="notify") | .message' "$VERIFY_RUN_DIR/<drive>/rpc.jsonl" | tail -n 1`. Save `find "$C" -type f | sort` as `$VERIFY_RUN_DIR/<drive>-after.txt`.
+5. Table, then Cancel. Drive `clean-command-cancel` with `[{"value":"Cancel"}]`. The first `notify` request is the dry-run table: `old-one` and `old-two` with their ages and sizes, then `Total: 2 entries, 8 bytes. Kept 1 entries.` The next `select` request has the title `Delete expired Scratch entries?` and the options `Apply all`, `Choose items`, and `Cancel`. The last notification is `Nothing deleted.`, and the listing equals the before listing.
+6. Choose items, then Cancel. Drive `clean-command-choose-cancel` with `[{"value":"Choose items"},{"pick":"old-one"},{"value":"Cancel"}]`. `ui-responses.jsonl` shows the checklist `Choose Scratch entries to delete`, with one option per expired entry and then `Done` and `Cancel`. The last notification is `Nothing deleted.`, and all three files remain.
+7. Choose items, then Done. Drive `clean-command-choose` with `[{"value":"Choose items"},{"pick":"old-one"},{"value":"Done"}]`. The last notification is `Deleted 1 entry; freed 4 bytes. Skipped 0 entries.` The listing holds only `old-two` and `new-entry`.
+8. Apply all. Drive `clean-command-apply` with `[{"value":"Apply all"}]`. The last notification names one deleted entry. Only `new-entry` remains.
 
 ### Refusal without a UI
 
-1. If this is a fresh run, initialize the isolated home with the `clean-command-setup` drive from Command table step 1. Set `C="$VERIFY_RUN_DIR/data/home/.vstack/tmp/_global/verify"`. Restore the fixtures with `mkdir -p "$C/old-one" "$C/new-entry" && echo one > "$C/old-one/notes.txt" && echo new > "$C/new-entry/notes.txt" && touch -t 202601010000 "$C/old-one/notes.txt" "$C/old-one"`. Save `find "$C" -type f | sort` as `$VERIFY_RUN_DIR/clean-command-no-ui-before.txt`.
+1. If this is a fresh run, initialize the isolated home with the `clean-command-setup` drive from Command dialogs step 1. Set `C="$VERIFY_RUN_DIR/data/home/.vstack/tmp/_global/verify"`. Restore the fixtures with `mkdir -p "$C/old-one" "$C/new-entry" && echo one > "$C/old-one/notes.txt" && echo new > "$C/new-entry/notes.txt" && touch -t 202601010000 "$C/old-one/notes.txt" "$C/old-one"`. Save `find "$C" -type f | sort` as `$VERIFY_RUN_DIR/clean-command-no-ui-before.txt`.
 2. Run Doctor for this fresh session. Then run `bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN_DIR" --name clean-command-no-ui --no-ui '{"type":"prompt","message":"/vstack-clean 14d"}'`. Capture stdout, stderr, and the exit code. The helper starts `omp --mode rpc --no-ui --no-session --no-title --model stub/stub-model`, so the extension context has no UI.
-3. Save `find "$C" -type f | sort` as `$VERIFY_RUN_DIR/clean-command-no-ui-after.txt`. Compare it with the before listing using `diff -u`. Both fixture files must remain. Read `clean-command-no-ui/summary.json` and `clean-command-no-ui/rpc.jsonl`: the Command must complete with `agentInvoked: false`, zero model requests, and no deletion dialog.
+3. Save `find "$C" -type f | sort` as `$VERIFY_RUN_DIR/clean-command-no-ui-after.txt`. Compare it with the before listing using `diff -u`. Both fixture files must remain. Read `clean-command-no-ui/summary.json` and `clean-command-no-ui/rpc.jsonl`: the Command must complete with `agentInvoked: false`, zero model requests, and `ui_requests` of `0`, so no deletion dialog was shown.
 4. The refusal is a displayed custom message, because `--no-ui` drops extension notifications. Run `jq -r 'select(.type=="message_end" and .message.customType=="vstack-clean") | .message.content' "$VERIFY_RUN_DIR/clean-command-no-ui/rpc.jsonl"`. It must print `/vstack-clean requires an interactive UI to confirm deletion. Nothing deleted.` Record the exact text. If it prints nothing, record a product finding: the no-UI refusal has no observable message. Unchanged files or a completed Command are not proof of the message. `--mode json --no-ui` is invalid and must not be used.
 
 ## Gotchas
@@ -73,4 +64,7 @@ The current driver cannot complete these dialogs. Use the same isolated home in 
 - An entry's age is its newest mtime, including descendants. Touch files first and the entry directory last.
 - Never change your own session's `HOME`. Direct CLIs use `--home`. Only the isolated omp process gets a throwaway `HOME`.
 - `--delete` needs absolute entry paths at `<repo-key>/<kind>/<entry>` depth. Other paths exit 2 before deletion.
-- TUI and RPC proof must come from the linked checkout. The fake extension host and cleanup CLI prove different entry points.
+- RPC proof must come from the linked checkout. The fake extension host and cleanup CLI prove different entry points.
+- RPC `select` frames do not carry the checklist's check marks. The proof that a mark worked is what Done deletes. Only the omp TUI shows the marks.
+- A dialog with no UI reply left is cancelled, so a missing reply looks like Cancel. Compare `ui_requests` in `summary.json` with the number of replies you wrote.
+- Checklist labels hold the entry's age in days, which changes every day. Use `pick` with the entry name, not `value` with the whole label.

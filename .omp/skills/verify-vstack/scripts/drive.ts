@@ -1,6 +1,6 @@
 // Drives one omp RPC session with a vstack plugin dir linked into a throwaway omp home, against a scripted stub model.
 //
-//   bun drive.ts --plugin <plugin dir> --run <run dir> --name <drive> [--no-ui] [--replies <replies.json>] <command-json>...
+//   bun drive.ts --plugin <plugin dir> --run <run dir> --name <drive> [--no-ui] [--replies <replies.json>] [--ui-replies <ui.json>] <command-json>...
 //
 // The home is <run>/data/home. The project cwd is <outside>/proj, where <outside> is a dir that mkdtemp makes once per
 // run as <os temp dir>/vstack-verify-XXXXXX and <run>/data/outside links to. load.sh reuses the same link. omp looks for
@@ -10,6 +10,11 @@
 // Each model request it gets is one line of <run>/<drive>/model-requests.jsonl. It answers with the next item of
 // --replies, a JSON array of {"text": "..."} or {"tool": "<name>", "args": {...}}, and with {"text": "stub: no reply left"}
 // after the last one.
+//
+// --ui-replies answers the dialogs that omp sends as extension_ui_request frames (select, confirm, input, editor), in
+// order. It is a JSON array of {"value": "<exact answer>"}, {"pick": "<text>"} (the first select option that contains
+// the text), {"confirmed": true|false}, or {"cancelled": true}. With no UI reply left, a dialog gets {"cancelled": true}.
+// Each answer sent goes to <run>/<drive>/ui-responses.jsonl with the dialog it answered.
 //
 // Each <command-json> is one RPC command such as '{"type":"get_state"}'. A missing id becomes c1, c2, and so on. The
 // script sends one command at a time and waits for its response. A prompt that starts agent work also waits for its
@@ -27,7 +32,7 @@ import { parseArgs } from "node:util";
 const STEP_TIMEOUT_MS = 90_000;
 
 function usage(message: string): never {
-  process.stderr.write(`drive.ts: ${message}\nusage: bun drive.ts --plugin <dir> --run <dir> --name <drive> [--no-ui] [--replies <file>] <command-json>...\n`);
+  process.stderr.write(`drive.ts: ${message}\nusage: bun drive.ts --plugin <dir> --run <dir> --name <drive> [--no-ui] [--replies <file>] [--ui-replies <file>] <command-json>...\n`);
   process.exit(2);
 }
 
@@ -35,7 +40,7 @@ let parsed;
 try {
   parsed = parseArgs({
     args: Bun.argv.slice(2),
-    options: { plugin: { type: "string" }, run: { type: "string" }, name: { type: "string" }, replies: { type: "string" }, "no-ui": { type: "boolean" } },
+    options: { plugin: { type: "string" }, run: { type: "string" }, name: { type: "string" }, replies: { type: "string" }, "ui-replies": { type: "string" }, "no-ui": { type: "boolean" } },
     allowPositionals: true,
   });
 } catch (e) {
@@ -59,6 +64,9 @@ const commands = positionals.map((text, i) => {
 type Reply = { text: string } | { tool: string; args?: unknown };
 const replies: Reply[] = values.replies ? JSON.parse(readFileSync(values.replies, "utf8")) : [];
 if (!Array.isArray(replies)) usage("--replies must hold a JSON array");
+type UiReply = { value: string } | { pick: string } | { confirmed: boolean } | { cancelled: true };
+const uiReplies: UiReply[] = values["ui-replies"] ? JSON.parse(readFileSync(values["ui-replies"], "utf8")) : [];
+if (!Array.isArray(uiReplies)) usage("--ui-replies must hold a JSON array");
 
 const run = resolve(values.run);
 const home = join(run, "data", "home");
@@ -147,6 +155,24 @@ writeFileSync(join(home, ".omp", "agent", "models.yml"), `providers:
 
 const rpcLog = join(out, "rpc.jsonl");
 writeFileSync(rpcLog, "");
+const uiLog = join(out, "ui-responses.jsonl");
+const DIALOGS = new Set(["select", "confirm", "input", "editor"]);
+let uiNext = 0;
+let uiFailed = false;
+/** Answers one dialog frame with the next --ui-replies item, or cancels it when none is left. */
+function answerDialog(frame: Frame): void {
+  const reply: UiReply = uiReplies[uiNext++] ?? { cancelled: true };
+  let answer: object = reply;
+  if ("pick" in reply) {
+    const option = (frame.options as string[] | undefined)?.find(o => o.includes(reply.pick));
+    if (option === undefined) uiFailed = true;
+    answer = option === undefined ? { cancelled: true } : { value: option };
+  }
+  const response = { type: "extension_ui_response", id: frame.id, ...answer };
+  appendFileSync(uiLog, JSON.stringify({ request: { method: frame.method, title: frame.title, options: frame.options }, reply, response }) + "\n");
+  child.stdin.write(JSON.stringify(response) + "\n");
+  child.stdin.flush();
+}
 const child = Bun.spawn(["omp", "--mode", "rpc", ...(values["no-ui"] ? ["--no-ui"] : []), "--no-session", "--no-title", "--model", "stub/stub-model"], {
   cwd: proj,
   env,
@@ -174,6 +200,7 @@ const frames: Frame[] = [];
       let frame: Frame;
       try { frame = JSON.parse(line); } catch { continue; }
       frames.push(frame);
+      if (frame.type === "extension_ui_request" && DIALOGS.has(frame.method)) answerDialog(frame);
       for (let i = waiters.length - 1; i >= 0; i--) if (waiters[i]!.match(frame)) waiters.splice(i, 1)[0]!.resolve(frame);
     }
   }
@@ -220,7 +247,8 @@ if (exited === "still running") child.kill();
 await child.exited;
 server.stop(true);
 
-const summary = { ok, drive: out, plugin, stub_port: stubPort, model_requests: next, results };
+if (uiFailed) ok = false;
+const summary = { ok, drive: out, plugin, stub_port: stubPort, model_requests: next, ui_requests: uiNext, ...(uiFailed ? { ui_error: "a pick matched no option, see ui-responses.jsonl" } : {}), results };
 writeFileSync(join(out, "summary.json"), JSON.stringify(summary, null, 2) + "\n");
 process.stdout.write(JSON.stringify(summary, null, 2) + "\n");
 process.exit(ok ? 0 : 1);

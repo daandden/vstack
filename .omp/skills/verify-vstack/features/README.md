@@ -14,7 +14,7 @@ This directory maps the user-facing features of the vstack omp plugin. Read this
 
 - Start every recipe from the baseline. A recipe that needs earlier state names it under `Preconditions:`.
 - Run session behavior through `scripts/drive.ts`. Use the feature ID as `--name`, so each drive has its own evidence dir. drive.ts refuses a name that the run already used. Retry with a new name such as `<feature>-retry1`, and read the proof from that new dir.
-- Run a skill's Bun CLI from `$CHECKOUT/plugin/skills/<skill>/scripts/`, not through `realpath skill://...`.
+- Run a skill's Bun CLI or Python script from `$CHECKOUT/plugin/skills/<skill>/scripts/`, not through `skill://...`.
 - Pass `--home "$VERIFY_RUN_DIR/data/<name>"` to every script that takes `--home`. Never let a script write to the real `~/.vstack/`.
 - In the browser, open tabs with a name, `app: { tern: false }`, and a 1280 by 900 `viewport`. Act by ARIA role and name.
 - Treat every command as literal. Keep quoted names and flags as they are.
@@ -46,9 +46,12 @@ Keep implementation details out of the map. Name only user paths, stable handles
 - [Rename session](./rename-session.md): the `vstack_rename_session` tool sets the session name.
 - [Scratch dir](./scratch-dir.md): the vstack-tmp scripts make and list Scratch entries. The `/vstack-clean` Command previews expired entries and deletes only confirmed choices.
 - [Grilling page](./grilling-page.md): the grilling-page script renders a Grilling page from a state file, and the page shows the questions and answers.
+- [Diagram scripts](./diagram-scripts.md): the diagram-design Python scripts extract Mermaid, draw.io, and Excalidraw files, self-check a diagram page, and export it to SVG.
 
 ## Not mapped yet
 
 - The run-gated Addon judge needs a typed Matt skill and a native TypeSafe `jev-latest` model with a key. The stub home has no key, so a drive cannot reach a pick.
-- The maintainer CLIs `scripts/check-register.ts`, `scripts/vstack-maintain.ts`, and the by-hand `scripts/addon-judge-check.ts`. `README.md` documents their commands and exit codes.
-- The setup-vstack scripts (`machine.ts`, `migrate.ts`, `migrate-project.ts`, `project.ts`). They change omp configuration and git state, so a recipe needs a throwaway `HOME` and a throwaway repo.
+- The maintainer CLIs `scripts/check-register.ts`, `scripts/vstack-maintain.ts`, and the by-hand jev checks `scripts/addon-judge-check.ts` and `scripts/visual-judge-check.ts`. `README.md` documents their commands and exit codes.
+- The grilling-page visual judge (`plugin/skills/grilling-page/scripts/visual_judge.py`). It runs in omp's Python eval and calls the jev judge through the `judge_batch` global. The stub home has no judge model, so a drive cannot reach a pick.
+- The setup-vstack scripts (`machine.ts`, `project.ts`) and the migrate-to-vstack scripts (`migrate.ts`, `migrate-project.ts`). They change omp configuration and git state, so a recipe needs a throwaway `HOME` and a throwaway repo.
+- The diagram-design PNG export. It needs Playwright and its Chromium in eval's Python, and the skill installs them only after the user approves through `ask`.

@@ -1,6 +1,6 @@
 ---
 name: verify-vstack
-description: Drives the vstack omp plugin from a checkout as a user and captures proof. Covers the plugin as a new omp session loads it (skills, /skill:<name> commands, agents, rules, the vstack_rename_session tool), the Bun CLIs that skills run, the Grilling page in a browser, and the maintainer CLIs under scripts/. Use to prove a change under plugin/ or scripts/ works before you report it done.
+description: Drives the vstack omp plugin from a checkout as a user and captures proof. Covers the plugin as a new omp session loads it (skills, /skill:<name> commands, agents, rules, the vstack_rename_session tool), the Bun CLIs and Python scripts that skills run, the Grilling page in a browser, and the maintainer CLIs under scripts/. Use to prove a change under plugin/ or scripts/ works before you report it done.
 ---
 
 # Verify vstack
@@ -11,6 +11,7 @@ The user-facing parts:
 
 - Primary: the plugin inside an omp session. That covers the skill list, `/skill:<name>` commands, the model-free `/vstack-clean` Command, the agents in `task`, the always-on rules, and the extension tool `vstack_rename_session`.
 - Bun CLIs that skills run through `bun "$(realpath skill://<skill>/scripts/<script>.ts)"`, such as the Scratch scripts under vstack-tmp and the grilling-page renderer.
+- Python scripts that skills run in omp's eval tool with `runpy`, such as the diagram-design scripts.
 - The HTML pages those scripts write, such as the Grilling page. You view them in a browser.
 - The maintainer CLIs in `scripts/` (`check-register.ts`, `vstack-maintain.ts`, `addon-judge-check.ts`, `load-smoke.sh`), documented in the repo `README.md`.
 
@@ -36,14 +37,15 @@ There is nothing to build. A launch is one drive: `scripts/drive.ts` links the p
 
 ```sh
 bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN_DIR" --name <drive> \
-  [--no-ui] [--replies <replies.json>] '<rpc command json>' ...
+  [--no-ui] [--replies <replies.json>] [--ui-replies <ui.json>] '<rpc command json>' ...
 ```
 
 - `<drive>` names the evidence dir `$VERIFY_RUN_DIR/<drive>/`. Use the feature ID. The dir must be new. If it exists, the script exits 2 and writes nothing, so the earlier proof stays as it was. To retry a drive, give a new name such as `<feature>-retry1`, or start a new run dir. Never delete the old dir to reuse its name.
 - Each RPC command is one JSON object from the omp RPC protocol, for example `'{"type":"get_state"}'` or `'{"type":"prompt","message":"/skill:vstack-tmp"}'`. The protocol reference is `omp://rpc.md`.
 - `--replies` is a JSON array of what the stub model answers, in order: `{"text": "..."}` or `{"tool": "<tool name>", "args": {...}}`. With no replies left, it answers the text `stub: no reply left`.
+- `--ui-replies` is a JSON array that answers the dialogs omp sends as `extension_ui_request` frames (`select`, `confirm`, `input`, `editor`), in order: `{"value": "<exact answer>"}`, `{"pick": "<text>"}` (the first `select` option that contains the text), `{"confirmed": true}` or `false`, or `{"cancelled": true}`. With no UI reply left, the script cancels the dialog. Each answer goes to `ui-responses.jsonl`, and `summary.json` counts the dialogs in `ui_requests`. A `pick` that matches no option cancels the dialog and fails the drive.
 
-Readiness: the script waits for the response to each command, and for the `prompt_result` of a prompt that starts agent work. It prints a summary JSON. `"ok": true` with exit 0 means omp started and every command completed. Exit 1 means a command failed or waited 90 seconds without a result. The summary then names that command. Exit 2 is a usage error.
+Readiness: the script waits for the response to each command, and for the `prompt_result` of a prompt, a Command such as `/vstack-clean` included. It prints a summary JSON. `"ok": true` with exit 0 means omp started and every command completed. Exit 1 means a command failed or waited 90 seconds without a result. The summary then names that command. Exit 2 is a usage error. A Command that waits for a dialog with no `--ui-replies` item gets it cancelled, so it does not hang.
 
 Teardown: the script stops its own omp process and stub server. If it was killed before that, `scripts/cleanup.sh` stops what it left (see Cleanup).
 `--no-ui` passes the same flag to `omp --mode rpc`. Extensions get `ctx.hasUI: false`. omp drops extension UI notifications, so a missing warning is a product finding when the feature requires an observable refusal.
@@ -72,6 +74,7 @@ Each feature file in `features/` gives the exact commands and the proof for one 
 
 - Session behavior (skills, commands, tools, rules, agents): `scripts/drive.ts`, as in Launch. Make the stub model act as the agent with `--replies`. A `{"tool": ...}` reply makes omp run that tool for real, in the session, with the plugin loaded.
 - Bun CLIs that skills run: run the checkout's script with the bash tool's `cwd` set to `CHECKOUT`, as `bun plugin/skills/<skill>/scripts/<script>.ts ...`. Pass `--home "$VERIFY_RUN_DIR/data/<name>"` when the script takes `--home`. Do not use `realpath skill://...` here. That path resolves to the plugin your own session loaded, which is not always `$CHECKOUT`.
+- Python scripts that skills run: run the checkout's `$CHECKOUT/plugin/skills/<skill>/scripts/<script>.py` in a Python eval cell with `runpy`, the way the skill's own eval cell does. `features/diagram-scripts.md` gives a runner that captures the exit code, stdout, and stderr. Never run them with `python3` through bash.
 - Pages: open the written HTML file in the omp `browser` with `app: { tern: false }` and a `viewport` of `{ width: 1280, height: 900 }`. Read state with `tab.ariaSnapshot()` and act by role and name, for example `role/link[name="Q1"]`.
 - Maintainer CLIs: run them with the bash tool's `cwd` set to `CHECKOUT`, as `README.md` documents. Capture the command, stdout, stderr, and exit code.
 
@@ -81,7 +84,7 @@ Set the working directory with the bash tool's `cwd` parameter, not with `cd`. O
 
 1. Resolve the Scratch dir through `skill://vstack-tmp`, or use the Scratch dir from the parent prompt. Set `VERIFY_RUN_DIR=<Scratch dir>/verify/vstack-<run-id>`, where `<run-id>` is a new `date +%Y%m%d-%H%M%S` value plus the feature ID. Make it with `mkdir -p`.
 2. Keep proof and notes at the top level of `VERIFY_RUN_DIR`. Keep throwaway app data in `$VERIFY_RUN_DIR/data/`: the omp home, the link to the temp working directory, and Scratch homes for the CLIs.
-3. A drive writes its proof to `$VERIFY_RUN_DIR/<drive>/`: `summary.json`, `rpc.jsonl` (every frame omp wrote), `rpc.err`, `model-requests.jsonl` (every request the model got), and `link.txt`. Read your proof out of these files with `jq`.
+3. A drive writes its proof to `$VERIFY_RUN_DIR/<drive>/`: `summary.json`, `rpc.jsonl` (every frame omp wrote), `rpc.err`, `model-requests.jsonl` (every request the model got), `ui-responses.jsonl` (every dialog answer it sent, when there was a dialog), and `link.txt`. Read your proof out of these files with `jq`.
 4. Prove the action and the state after it. For a tool, that is the `tool_execution_end` frame and a later `get_state` value or file. For a skill command, that is the text the model received in `model-requests.jsonl`. For a CLI, that is the stdout, the exit code, and a separate listing of the files it changed. For a dry run, list the files before and after and show that nothing changed. Do not trust the word "dry".
 5. For a page, capture a full-resolution PNG with `tab.screenshot({ format: "png", silent: true, fullPage: true })`. The call returns a temp PNG path. Convert it losslessly in eval, with `out` set to the evidence path that ends in `.webp`:
 
