@@ -36,7 +36,7 @@ One subagent is not Fan-out. A step with one part uses this line, or does the pa
 Spawn one `vstack-<role>` via `task` (`agent: "vstack-<role>"`): <role brief>, the vstack root. <Wait for its result. | Do not wait; keep working.> If it cannot be spawned, stop: <reason>.
 ```
 
-When the step has a result without the subagent, the last sentence is `If it cannot be spawned, skip it: <what the step reports instead>.` The caller still never does the subagent's work (today only compare-attempts' cross-judge).
+Only compare-attempts' cross-judge ends another way: `If it cannot be spawned, skip it: <what the step reports instead>.` Its report records `cross-judge: not run`, and the caller still never does the cross-judge's work. Every other single-subagent line stops.
 
 A role that runs in its own clone uses the eval form. If `task.isolation.enabled` is off, the skill stops and points at `/skill:setup-vstack` (ADR 0007).
 
@@ -50,7 +50,7 @@ In adapt, merge, and original markdown, outside frontmatter and code fences:
 
 - A Fan-out line follows one of the two forms above. The eval form carries `isolated=True, apply=False, merge=False` and says how it collects. Each form names only vstack agents, carries the vstack root, and ends with a stop clause.
 - The judge-gated forms are gone: the old gate line, the old fixed line, and the fan-out and inline branch lines fail.
-- A `Spawn one` line names the same vstack agent twice, carries the vstack root, and ends with `If it cannot be spawned, stop:` or `If it cannot be spawned, skip it:`.
+- A `Spawn one` line names the same vstack agent twice, carries the vstack root, and ends with `If it cannot be spawned, stop:`. Only compare-attempts' cross-judge line, which records `cross-judge: not run`, may end with `If it cannot be spawned, skip it:`.
 - Any other line that names an agent names a vstack agent, and a `task` or eval agent call with no agent named fails.
 - An agent's `spawns:` lists only vstack agents, never `*`.
 - A Headless run (a separate omp process) fails outside skill-creator.

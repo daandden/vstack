@@ -95,7 +95,9 @@ const VSTACK_ROOT = /the vstack root/;
 const ISOLATED_ARGS = "isolated=True, apply=False, merge=False";
 const NAMED_AGENT = /\bagent:\s*"([^"]*)"|\bagent\s*=\s*"([^"]*)"/g;
 const SINGLE_SPAWN = /Spawn one `([^`]+)` via (?:`task` \(`agent: "([^"]*)"`\)|eval `agent\([^`]*?\bagent="([^"]*)"[^`]*\)`)/;
-const SINGLE_STOP = /If it cannot be spawned, (?:stop|skip it): \S/;
+const SINGLE_STOP = /If it cannot be spawned, stop: \S/;
+const SINGLE_SKIP = /If it cannot be spawned, skip it: \S/;
+const SKIP_SITE = { artifact: "plugin/skills/compare-attempts", marker: "`cross-judge: not run`" };
 
 /** Markdown lines outside code fences (and frontmatter, unless asked): a form quoted in a fence is an example, not a spawn. */
 function proseLines(files: TextFile[], withFrontmatter = false): { path: string; n: number; line: string }[] {
@@ -152,7 +154,7 @@ function promptProblems(line: string): string[] {
   return VSTACK_ROOT.test(line) ? [] : ["does not pass the vstack root"];
 }
 
-function singleSpawnProblems(line: string, agents: Set<string>): string[] {
+function singleSpawnProblems(line: string, agents: Set<string>, artifact: string): string[] {
   const m = SINGLE_SPAWN.exec(line);
   if (!m) return ["a Spawn one line that is neither via `task` (`agent: \"…\"`) nor via eval `agent(…, agent=\"…\", …)`"];
   const out: string[] = [];
@@ -161,7 +163,9 @@ function singleSpawnProblems(line: string, agents: Set<string>): string[] {
   if (!agents.has(name)) out.push(`spawns ${JSON.stringify(name)}, not a vstack agent`);
   if (via !== name) out.push(`names ${JSON.stringify(name)} but passes agent ${JSON.stringify(via)}`);
   if (viaEval !== undefined && !line.includes(ISOLATED_ARGS)) out.push(`the eval form lacks ${ISOLATED_ARGS}`);
-  if (!SINGLE_STOP.test(line)) out.push("does not end `If it cannot be spawned, stop: …` or `If it cannot be spawned, skip it: …`");
+  if (SINGLE_SKIP.test(line)) {
+    if (artifact !== SKIP_SITE.artifact || !line.includes(SKIP_SITE.marker)) out.push("ends `If it cannot be spawned, skip it: …`, which only compare-attempts' cross-judge may use");
+  } else if (!SINGLE_STOP.test(line)) out.push("does not end `If it cannot be spawned, stop: …`");
   return [...out, ...promptProblems(line)];
 }
 
@@ -241,7 +245,7 @@ const LINTS: Record<string, Lint> = {
       for (const { path, n, line } of proseLines(t.files)) {
         if (isFanOutLine(line)) continue;
         let problems: string[];
-        if (line.includes("Spawn one ")) problems = singleSpawnProblems(line, agents);
+        if (line.includes("Spawn one ")) problems = singleSpawnProblems(line, agents, t.artifact);
         else {
           problems = [...line.matchAll(NAMED_AGENT)].length > 0 ? namedAgentProblems(line, agents) : [];
           if (/\bagent\(/.test(line) && !/\bagent\s*=\s*"/.test(line)) problems.push("an eval `agent()` call that names no agent");

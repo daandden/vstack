@@ -607,9 +607,24 @@ describe("spawn lints", () => {
     expect(r.json!.failures).toEqual([]);
   });
 
-  test("single spawns pass in the task form, the skip-it ending, and the isolated eval form", async () => {
-    const r = await runSpec(addTo("plugin/agents/fx-agent.md", FORM.single, FORM.singleSkip, FORM.singleIsolated));
+  test("single spawns pass in the task form and the isolated eval form", async () => {
+    const r = await runSpec(addTo("plugin/agents/fx-agent.md", FORM.single, FORM.singleIsolated));
     expect(r.json!.failures).toEqual([]);
+  });
+
+  test("the skip-it ending passes only for compare-attempts' cross-judge", async () => {
+    const compareAttempts = (line: string) => (s: RepoSpec) => {
+      s.register.originals.push("plugin/skills/compare-attempts");
+      s.register.utility.push("plugin/skills/compare-attempts");
+      s.files["plugin/skills/compare-attempts/SKILL.md"] = `---\nname: compare-attempts\ndescription: attempts\n---\n${line}\n`;
+    };
+    expect((await runSpec(compareAttempts(FORM.singleSkip))).json!.failures).toEqual([]);
+    const offSite = await runSpec(addTo("plugin/agents/fx-agent.md", FORM.singleSkip));
+    expect(failuresOf(offSite)).toEqual(["single-spawn plugin/agents/fx-agent.md"]);
+    expect(offSite.json!.failures[0].message).toContain("only compare-attempts' cross-judge");
+    const otherSkip = await runSpec(compareAttempts(FORM.singleSkip.replace("record `cross-judge: not run`", "keep going")));
+    expect(failuresOf(otherSkip)).toEqual(["single-spawn plugin/skills/compare-attempts"]);
+    expect(otherSkip.json!.failures[0].message).toContain("only compare-attempts' cross-judge");
   });
 
   test("adopt text is exempt: bundled agents in a single spawn and a Fan-out line pass in adopt and fail once the row is adapt", async () => {
