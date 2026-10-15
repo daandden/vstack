@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.11] - 2026-10-15
+
+- Only compare-attempts' cross-judge may end a single-subagent line with `skip it:`. check-register's `single-spawn` lint now fails that ending anywhere else, so every other single subagent stops when it cannot start.
+
 ## [2.0.10] - 2026-10-15
 
 - Every Fan-out step now always starts one subagent per part. The Fan-out gate, the jev judge cell, and the inline line are gone, and every multi-part step uses one `Fan-out (skill://vstack-fan-out)` line from FORMS.md (ADR 0004).
