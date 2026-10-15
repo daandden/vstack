@@ -9,7 +9,7 @@ vstack is a personal omp plugin. Matt Pocock's skills are its core. Addons suppl
 - A Utility skill works outside a Matt run. The register's `utility:` list names these skills, including vstack-prose, explain, and hidden helpers such as vstack-tmp.
 - A Command runs in the extension without a model. `/vstack-clean` is the Scratch cleanup Command, not a skill.
 
-Every change starts with the grill (`/skill:grill-with-docs` or `/skill:grill-me`). When the grill closes, it recommends the next step through `ask` and tells you what to type. For a change that fits one session, type `/skill:implement`. For a bigger change, continue through `/skill:to-spec` and `/skill:to-tickets`, then type `/skill:implement-spec`. implement and implement-spec own the changes and the settled End state. Specs and tickets carry the `skill://` pointers that later sessions need.
+Every change starts with the grill (`/skill:grill-with-docs` or `/skill:grill-me`). After the grill closes, type the next skill. For a change that fits one session, type `/skill:implement`. For a bigger change, continue through `/skill:to-spec` and `/skill:to-tickets`, then type `/skill:implement-spec`. implement and implement-spec own the changes and the settled End state. Specs and tickets carry the `skill://` pointers that later sessions need.
 
 ## Install
 

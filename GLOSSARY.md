@@ -49,7 +49,7 @@ A vstack skill that has at least one Base upstream row in the Decision register,
 _Avoid_: core skill, base skill
 
 **Matt flow**:
-Every Matt skill that only the user can start, such as grill-with-docs, grill-me, teach, implement, and implement-spec. A change takes one path through it, with the grill first and a build skill last. When the grill closes, it recommends the path, and the user types the next skill. A change that fits one session goes to implement. A bigger change goes through to-spec and to-tickets to implement-spec.
+Every Matt skill that only the user can start, such as grill-with-docs, grill-me, teach, implement, and implement-spec. A change takes one path through it, with the grill first and a build skill last. After the grill, the user picks the path and types the next skill. A change that fits one session goes to implement. A bigger change goes through to-spec and to-tickets to implement-spec.
 _Avoid_: main flow, pipeline, workflow (unqualified)
 
 **Matt run**:
