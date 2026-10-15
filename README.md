@@ -245,7 +245,7 @@ Project tests run these commands over throwaway repos. The runtime shares the ma
 
 ### vstack-maintain
 
-`skill://vstack-maintain` is the Addon for Updates and Hand edits to vstack. The grill gathers facts and confirms decisions. implement writes the text, uses the script for bookkeeping and gates, and owns git and the End state.
+`skill://vstack-maintain` is the Addon for Updates and Hand edits to vstack. The grill gathers facts and confirms decisions. implement's isolated drafting worker writes the text and runs the script's bookkeeping and gates in its own clone. implement applies the gated patch and owns git and the End state.
 
 ```sh
 bun scripts/vstack-maintain.ts plan [<upstream>|<upstream>@<ref> ...]
