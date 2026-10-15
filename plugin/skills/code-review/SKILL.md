@@ -17,13 +17,23 @@ Resolve the absolute vstack root through the Private-mode rule once. Read `docs/
 
 ### 1. Pin the fixed point
 
-Use the commit SHA, branch, tag, or merge-base that the user supplied. If none is supplied, use `ask` for the fixed point.
+When the caller passes a pinned fixed point or diff command and commit list, reuse that scope. Also reuse any uncommitted work and untracked paths that the caller names. The PR case below does not run, and you create no worktree, even when the user's words name a PR.
+
+Otherwise, when the user supplies a PR as a number or URL, pin it through these steps:
+
+1. Read `code-host.md` under the vstack root: `docs/vstack/code-host.md` in Standard mode, `<vstack root>/config/code-host.md` in Private mode. If the file is missing, has no `read-pr` row, or its `read-pr` row says `unsupported`, stop. Tell the user to run `/skill:setup-vstack` to add the Code host. Never guess the host from the remote (ADR 0020), and never use `ask` for a fixed point instead.
+2. Read the PR through `read-pr`. The fixed point is the target ref's latest commit (the base SHA). The reviewed commit is the source ref's latest commit (the head SHA).
+3. Fetch the target branch and the host's PR head ref from the remote of the repo that `code-host.md` names. A fork's head commit is on no branch of that remote, so always fetch the PR head ref: `refs/pull/<n>/head` on GitHub, `refs/merge-requests/<n>/head` on GitLab. Make sure that both SHAs resolve with `git rev-parse --verify <sha>^{commit}`.
+4. Create one detached worktree at the head SHA through `skill://vstack-worktree`, with the purpose `code-review-<first 12 characters of the head SHA>`. On a plain checkout, go on with tracked files only, because reviewers only read files. Leave the user's working tree, index, and current branch unchanged.
+5. When the run ends, also when it stops early, remove the worktree with `git worktree remove --force <path>`.
+
+Otherwise use the commit SHA, branch, tag, or merge-base that the user supplied. If none is supplied, use `ask` for the fixed point.
 
 Make sure that the ref resolves with `git rev-parse <fixed-point>`.
 
 Capture the review scope once. For committed work, use `git diff <fixed-point>...HEAD`; three-dot compares against the merge-base. When the caller passes uncommitted work, use `git diff <fixed-point>` against the working tree, including staged and unstaged changes, plus the contents of every untracked file the caller names. Capture those untracked paths explicitly; git diff does not include them. Stop for a bad ref or only when this complete scope is empty, not when `...HEAD` alone is empty.
 
-Capture the commit list with `git log <fixed-point>..HEAD --oneline`; it may be empty for uncommitted work. Give every reviewer the same diff command, untracked paths and contents, and commit list. Use this complete scope for Safety triggers and every axis.
+Capture the commit list with `git log <fixed-point>..HEAD --oneline`; it may be empty for uncommitted work. For a PR, use `git diff <base-sha>...<head-sha>` and `git log <base-sha>..<head-sha> --oneline`. The head SHA replaces `HEAD`, and the uncommitted-work case does not apply. Give every reviewer the same diff command, untracked paths and contents, and commit list, and for a PR the worktree's absolute path. Use this complete scope for Safety triggers and every axis.
 
 For Safety, a run exists when the user typed `/skill:code-review` or a user-typed Matt skill runs code-review (for example, implement's review step). The prompt header `[IMPORTANT: User invoked the "code-review" skill` marks a direct user invocation. A child reviewer uses the run fact in its parent's brief. A model-started code-review is not a run.
 
@@ -89,12 +99,14 @@ Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the Standar
 The Standards reviewer prompt must include:
 
 - The full diff command, named untracked paths and contents, and commit list.
+- For a PR, the worktree's absolute path from step 1: "Read changed files from this worktree at the head SHA, not from the current checkout."
 - The list of standards-source files you found in step 3, plus the smell baseline from step 3 pasted in full (the reviewer has no other access to it).
 - The brief: "Report, per file/hunk where relevant, (a) every place the diff violates a documented standard: cite the standard (file + the rule); and (b) any baseline smell you spot: name it and quote the hunk. Distinguish hard violations from judgement calls: documented-standard breaches can be hard, but baseline smells are always judgement calls, and a documented repo standard overrides the baseline. Skip anything tooling enforces. Under 400 words."
 
 The Spec reviewer prompt must include:
 
 - The full diff command, named untracked paths and contents, and commit list.
+- For a PR, the worktree's absolute path from step 1: "Read changed files from this worktree at the head SHA, not from the current checkout."
 - The path or fetched contents of the spec.
 - The brief: "Report: (a) requirements the spec asked for that are missing or partial; (b) behaviour in the diff that wasn't asked for (scope creep); (c) requirements that look implemented but where the implementation looks wrong. Quote the spec line for each finding. Under 400 words."
 
@@ -103,6 +115,7 @@ If the spec is missing, skip the Spec reviewer and note this in the final report
 The Safety reviewer prompt must include:
 
 - The pinned diff command, named untracked paths and contents, and commit list.
+- For a PR, the worktree's absolute path from step 1: "blast-radius reuses this worktree, runs its step 5 proof against the head SHA in it, and creates no second worktree."
 - Every trigger that fired.
 - The run fact from step 1: "A user-started Matt run exists." A child runs Safety only when its parent's brief states this fact.
 - The brief: "Run `skill://blast-radius` on this diff and skip its step 6. Return its hand-back in under 400 words, plus the proof script and its output."
@@ -112,7 +125,7 @@ The Safety reviewer prompt must include:
 
 Present the reports under `## Standards`, `## Spec`, and `## Safety`, verbatim or lightly cleaned. For an axis that did not run, state why. Never merge or re-rank findings.
 
-End with one line giving each axis's finding count and worst issue within that axis. For Safety include its trigger or skip reason. When the proof ran, state whether the safety fact is proven or unproven. When a trigger fired outside a run, use `Safety: triggered, no proof (not in a run)`. Keep any proof script and observed output alongside its report. Never select a worst issue across axes.
+End with one line giving each axis's finding count and worst issue within that axis. For Safety include its trigger or skip reason. When the proof ran, state whether the safety fact is proven or unproven. When a trigger fired outside a run, use `Safety: triggered, no proof (not in a run)`. Keep any proof script and observed output alongside its report. Never select a worst issue across axes. For a PR, remove the worktree as step 1 says.
 
 ## Why three axes
 

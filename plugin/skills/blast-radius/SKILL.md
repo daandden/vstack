@@ -32,18 +32,23 @@ Read `skill://vstack-tmp`. The top-level agent runs its path script with no argu
 bun "$(realpath skill://vstack-tmp/scripts/path.ts)"
 ```
 
-Use a distinct `<Scratch dir>/blast-radius/<run-id>/` entry for the proof scripts, outputs, and disposable data. Write these only in Scratch, not the product tree. A child uses the absolute project Scratch dir from its prompt, appends `blast-radius/`, and never runs the path script. Nested runners each get a disjoint entry. The vstack root is separate from Scratch and is passed unchanged to nested writers.
+Use a distinct `<Scratch dir>/blast-radius/<run-id>/` entry for the proof scripts, outputs, and disposable data. Write these only in Scratch, not the product tree or a PR worktree. A child uses the absolute project Scratch dir from its prompt, appends `blast-radius/`, and never runs the path script. Nested runners each get a disjoint entry. The vstack root is separate from Scratch and is passed unchanged to nested writers.
 
 ## Steps
 
-1. Read the change, its added, changed, and deleted symbols, and the behavior that the diff does not spell out. Reuse the caller's pinned diff command and commit list. Otherwise resolve the ref, pin `git diff <fixed-point>...HEAD` and `git log <fixed-point>..HEAD --oneline` once. If the fixed point is unknown, use `ask`. Use step 2 of `skill://why` to trace PRs and commits.
+1. Read the change, its added, changed, and deleted symbols, and the behavior that the diff does not spell out. Pin the change once:
+   - When the caller passes a pinned diff command and commit list, reuse them. Also reuse the caller's PR worktree path when it passes one, and create no second worktree.
+   - Otherwise, when the user supplies a PR as a number or URL, resolve the vstack root once through the Private-mode rule, or use a supplied one. Then follow the PR case in step 1 of `skill://code-review`, with the purpose `blast-radius-<first 12 characters of the head SHA>`. On a plain checkout, install deps first when the proof needs them.
+   - Otherwise resolve the ref, and pin `git diff <fixed-point>...HEAD` and `git log <fixed-point>..HEAD --oneline`. If the fixed point is unknown, use `ask`.
+
+   Use step 2 of `skill://why` to trace PRs and commits.
 2. Find the one fact that makes the change safe. For example, a cache operation only removes dead entries and has no other effect. Concentrate on proving that fact instead of listing hypothetical risks.
 3. Look where a symbol search stops. Read the library source at its pinned version and any local patch. Trace microtasks, unmount and teardown, framework semantics, API JSON, database columns, wire formats, other languages reading the bytes, feature flags, and downstream consumers.
 4. Assess each risk honestly. Name its likelihood and cost. Keep confirmed risks and list checked, cleared risks separately. Follow the evidence rules in `skill://why`. Cite a real `file:line`. Report a search with no results as such. Never invent callers or APIs.
-5. Prove the safety fact. Write a script or test in this run's Scratch entry that executes the real code, run it, and paste the observed output. Preserve its command and script path. If you cannot run a proof, state the missing prerequisite and mark the fact unproven. A source citation alone is not executed proof.
+5. Prove the safety fact. Write a script or test in this run's Scratch entry that executes the real code, run it, and paste the observed output. For a PR, run it from the PR worktree so that it executes the head SHA's code. Preserve its command and script path. If you cannot run a proof, state the missing prerequisite and mark the fact unproven. A source citation alone is not executed proof.
 6. Run `skill://compare-attempts` only when the user explicitly asks for compare-attempts or several attempts. A big or wide diff alone never starts it. If the caller says "skip step 6", skip it even when the request mentions several attempts. Without an explicit ask, a big or wide diff gets one optional `ask` offering the pass, not an automatic run.
 
-For step 6, declare kind `reply`. Give each runner the pinned diff command, commit list, this skill's steps 1–5, and "skip step 6" to prevent recursion. Require the full hand-back, proof script, command, and observed output. Pass the absolute Scratch dir and a distinct run entry for each runner.
+For step 6, declare kind `reply`. Give each runner the pinned diff command, commit list, any PR worktree path, this skill's steps 1–5, and "skip step 6" to prevent recursion. Require the full hand-back, proof script, command, and observed output. Pass the absolute Scratch dir and a distinct run entry for each runner.
 
 Keep the rubric with the parent. It covers the safety fact, depth on the proof ladder, risks with real `file:line` citations, and cleared items. Pick the strongest hand-back as the draft. Graft confirmed risks from the others and drop unproven duplicates. Re-run every retained proof script in `<Scratch dir>/blast-radius/<run-id>/` and record its output. Apply no patch for kind `reply`. Retain the compare-attempts synthesis note and evidence paths.
 

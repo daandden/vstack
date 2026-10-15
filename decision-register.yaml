@@ -20,7 +20,7 @@ items:
     tree: d8e341cee7980127dddda05159bedf25dc853615
     disposition: adapt
     artifacts: [plugin/skills/code-review]
-    reason: "Reads vstack configuration. Standards, Spec, and conditional Safety use Fan-out. Safety runs blast-radius only in a run, without step 6 (#84, #126)."
+    reason: "Reads vstack configuration. Standards, Spec, and conditional Safety use Fan-out. Safety runs blast-radius only in a run, without step 6. A supplied PR is reviewed at its exact base and head commits in a detached worktree made through vstack-worktree (#84, #126, #139)."
   - id: matt/codebase-design
     upstream: matt
     kind: skill
@@ -308,7 +308,7 @@ items:
     tree: 9437b18aef01b61d24b57d0fd3de24386398b643
     disposition: adapt
     artifacts: [plugin/skills/blast-radius]
-    reason: "Hidden Safety knowledge for code-review, with proof in Scratch and reply attempts only on explicit request (ADR 0015, #84)."
+    reason: "Hidden Safety knowledge for code-review, with proof in Scratch and reply attempts only on explicit request. A supplied PR is reviewed at its exact base and head commits in a detached worktree made through vstack-worktree (ADR 0015, #84, #139)."
   - id: pstack/bro
     upstream: pstack
     kind: skill

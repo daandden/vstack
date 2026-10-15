@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.17] - 2026-10-15
+
+- code-review and blast-radius review a supplied PR at its target and source commits from `read-pr`, in a detached worktree made through vstack-worktree, and leave the user's checkout unchanged. A scope that the caller pins still comes first. Without `code-host.md` or its `read-pr` row, they stop and point to `/skill:setup-vstack` (#139).
+
 ## [2.0.16] - 2026-10-15
 
 - grilling no longer asks about the next step when the user's own grill closes. The user types the next skill: implement for a change that fits one session, or to-spec, to-tickets, and implement-spec for a bigger one.

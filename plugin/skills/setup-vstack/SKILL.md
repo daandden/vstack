@@ -97,7 +97,7 @@ The GitHub and GitLab templates carry a "PRs as a request surface" flag, off by 
 
 Section B, Code host.
 
-> Explainer: The Code host is the service that holds this repo's remote and its PRs. implement's PR chain (open-pr, babysit, ship), why, session, and wizard run every PR operation through `code-host.md`. A repo without it can only commit. The Code host is a separate choice from the issue tracker. For example, a Bitbucket repo can track its issues in Jira.
+> Explainer: The Code host is the service that holds this repo's remote and its PRs. implement's PR chain (open-pr, babysit, ship), code-review, blast-radius, why, session, and wizard run every PR operation through `code-host.md`. A repo without it can only commit, and code-review and blast-radius cannot review a PR. The Code host is a separate choice from the issue tracker. For example, a Bitbucket repo can track its issues in Jira.
 
 Recommend GitHub when a remote points at `github.com`, GitLab when a remote points at GitLab (`gitlab.com` or a self-hosted host), and no option otherwise. The `ask` options:
 
@@ -177,7 +177,7 @@ Tell the user the setup is complete, in which mode, and where the config is. Rep
 List the skills that read the config:
 
 - `issue-tracker.md`: to-spec, to-tickets, triage, wayfinder, code-review, and why.
-- `code-host.md`: implement and its PR chain (open-pr, babysit, and ship), implement-spec, hillclimb, why, session, and wizard. Without it, implement offers only End state commit.
+- `code-host.md`: implement and its PR chain (open-pr, babysit, and ship), implement-spec, hillclimb, code-review, blast-radius, why, session, and wizard. Without it, implement offers only End state commit, and code-review and blast-radius cannot review a PR.
 - `triage-labels.md`: triage, to-spec, and to-tickets.
 - `domain.md` and the domain docs: domain-modeling, grill-with-docs, improve-codebase-architecture, codebase-design, diagnosing-bugs, tdd, and wait-what.
 
