@@ -6,7 +6,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [2.0.7] - 2026-10-15
 
-- The Addon judge takes the pointers it already sent only from the saved `vstack-addons` messages on the active branch. Before this, it also kept a per-session list that recorded picks before omp accepted them. A prompt cancelled during the up to 30-second restatement then lost its picks for the rest of the session.
+- The Addon judge takes the pointers it already sent only from the saved `vstack-addons` messages in the session, across all branches, so each pointer still appears once per session. Before this, it also kept a per-session list that recorded picks before omp accepted them. A prompt cancelled during the up to 30-second restatement then lost its picks for the rest of the session.
 
 ## [2.0.6] - 2026-10-15
 

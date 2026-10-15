@@ -21,7 +21,10 @@ export interface FakeModel {
 
 export interface FakeHostOptions {
   nativeJudge?: boolean;
+  /** The active branch, as ctx.sessionManager.getBranch returns it. */
   entries?: unknown[];
+  /** Every entry in the session across branches, as getEntries returns it; defaults to the active branch. */
+  sessionEntries?: unknown[];
   agent?: FakeAgent;
   /** Models ctx.modelRegistry.find can return, keyed "provider/id". */
   models?: FakeModel[];
@@ -143,6 +146,7 @@ export function fakeHost(options: FakeHostOptions = {}): FakeHost {
       getSessionId: () => options.sessionId ?? "session-1",
       getSessionName: () => session.name,
       getBranch: () => options.entries ?? [],
+      getEntries: () => options.sessionEntries ?? options.entries ?? [],
     },
   };
   vstack(pi as any);

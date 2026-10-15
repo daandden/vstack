@@ -107,6 +107,14 @@ describe("Addon selection", () => {
     const [retry]: any = await host.emit("before_agent_start", { prompt: "Open a PR" });
     expect(retry?.message.content).toContain("skill://open-pr");
   });
+  test("a pointer sent on another branch of the same session is not sent again", async () => {
+    fetchSpy = endpoint({ "open-pr": .9, "principle-prove-it-works": .9 });
+    const otherBranch = { type: "custom_message", customType: "vstack-addons", content: "Addons selected for this task: skill://open-pr." };
+    const host = fakeHost({ ...options, entries: [savedRun], sessionEntries: [savedRun, otherBranch] });
+    const [result]: any = await host.emit("before_agent_start", { prompt: "Open a PR" });
+    expect(result.message.content).not.toContain("skill://open-pr");
+    expect(result.message.content).toContain("skill://principle-prove-it-works");
+  });
   test("a resumed branch retains saved Addon pointers", async () => {
     fetchSpy = endpoint({ "open-pr": .9, "principle-prove-it-works": .9 });
     const host = fakeHost({ ...options, entries: [savedRun, { type: "custom_message", customType: "vstack-addons", content: "Addons selected for this task: skill://open-pr." }] });

@@ -71,7 +71,7 @@ The extension selects every score at least 0.75 with native TypeSafe jev and cre
 
 > Addons selected for this task: skill://<name>, skill://<name>. Ignore any that do not fit. When a principle conflicts with the steps of the running Matt skill or its Addons, those steps win.
 
-Each pointer appears once on the active branch, including after a resume. The extension reads the saved `vstack-addons` messages on the branch and keeps no list of its own. omp saves a hook message only when it accepts the prompt, so a pick from a cancelled prompt can return on the retry. A missing Matt skill set, native judge, or key skips silently. Request errors and the four-second deadline also skip silently. One retry shares that deadline. A restated prompt waits up to 30 seconds, omp's own hook limit. When omp stops the hook, omp shows its own extension error.
+Each pointer appears once per session, including after a resume and on other branches. The extension reads the saved `vstack-addons` messages in the whole session and keeps no list of its own. omp saves a hook message only when it accepts the prompt, so a pick from a cancelled prompt can return on the retry. A missing Matt skill set, native judge, or key skips silently. Request errors and the four-second deadline also skip silently. One retry shares that deadline. A restated prompt waits up to 30 seconds, omp's own hook limit. When omp stops the hook, omp shows its own extension error.
 
 #### By-hand judge check
 

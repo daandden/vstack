@@ -173,9 +173,10 @@ function registerAddonSelection(pi: ExtensionAPI): void {
           }
           request = restated.text.slice(0, RESTATEMENT_LIMIT);
         }
-        // omp saves a hook message only when it accepts the prompt, so the branch is the record of delivered pointers.
+        // omp saves a hook message only when it accepts the prompt. The saved messages on every branch
+        // of the session are the record of delivered pointers, so each pointer appears once per session.
         const seen = new Set<string>();
-        for (const entry of branch) {
+        for (const entry of ctx.sessionManager.getEntries()) {
           if (entry.type !== "custom_message" || entry.customType !== "vstack-addons") continue;
           const content = typeof entry.content === "string" ? entry.content : JSON.stringify(entry.content);
           for (const match of content.matchAll(/skill:\/\/([a-z0-9-]+)/g)) seen.add(match[1]!);
