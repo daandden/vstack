@@ -56,7 +56,7 @@ A timed-out answer is not confirmation. The grill uses its own question and clos
 
 ## Knowledge for implement
 
-Draft every Update and Hand edit in one isolated `vstack-worker`. An in-place session lesson is the exception and follows the "In-place session lessons" section below. The installed plugin can load from this checkout, so the main checkout never holds an ungated draft. implement still owns the branch choice, and its review, commit, and PR continue in the main checkout.
+Draft every Update and Hand edit in one isolated `vstack-worker`. The installed plugin can load from this checkout, so the main checkout never holds an ungated draft. implement still owns the branch choice, and its review, commit, and PR continue in the main checkout.
 
 Spawn one `vstack-worker` via eval `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`: the drafting brief below, the confirmed hand-off, and any open decision-trail log path, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: report the Update or Hand edit as not done, and point at `/skill:setup-vstack` when `task.isolation.enabled` is off.
 
@@ -101,10 +101,6 @@ Update rows use `action` accept, hold, or defer. A changed Disposition uses `dis
 Run `prepare --decisions <file> [--plan <rerun plan.json>]`. It starts from branch HEAD, not the default branch or a saved snapshot. It keeps earlier tickets' rows and CHANGELOG lines. It writes the Decision register, Pins, Hold fields, House style rows, adopt copies, takes, the version, and CHANGELOG only. The version goes above HEAD's version. Removed or renamed shipped skill or agent names need a major bump, but the branch gets at most one major bump compared with its merge base on the default branch.
 
 Run `gates` after the last change in your clone. It validates changed skill folders with skill-creator's quick_validate, runs check-register, runs `bun test`, and runs the load smoke. The smoke runs outside the home directory. The gate always deletes its temporary output directory. On failure, it copies the evidence into one Scratch entry of kind `maintain` and prints that path in the smoke stage output. Any failure blocks the patch. Fix its cause. Rerun `gates` after the final fix. No judge or sample corpus runs in this gate.
-
-### In-place session lessons
-
-For an in-place session lesson, use `gates --in-place` without prepare. Only `no-version-bump` is pending bookkeeping. Every other check, test, or load failure still fails. implement reports the pending bookkeeping through the lesson path.
 
 ## Extra criteria in implement's one code-review pass
 

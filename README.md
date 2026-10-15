@@ -253,7 +253,7 @@ bun scripts/vstack-maintain.ts merge --plan <plan.json> [--decisions <file>]
 bun scripts/vstack-maintain.ts check [--plan <plan.json>] [<artifact> ...] \
   [--take <upstream>:<path>] [--rename <artifact>=<to>] [--remove <artifact>]
 bun scripts/vstack-maintain.ts prepare --decisions <file> [--plan <plan.json>]
-bun scripts/vstack-maintain.ts gates [--in-place] [--scratch <dir>]
+bun scripts/vstack-maintain.ts gates [--scratch <dir>]
 ```
 
 | Command | Output and effects |
@@ -262,7 +262,7 @@ bun scripts/vstack-maintain.ts gates [--in-place] [--scratch <dir>]
 | `merge` | Prints JSON `{rows}` with `id`, `effective_old`, `overlaps`, and `changes` for rows with normalized sides. Each change names its path, binary status, overlapping regions, and local and Upstream edits. It previews overlaps without writing drafts or checkout files. `--decisions` can supply `file_maps: {<row id>: {<Upstream file>: <local suffix>}}`. |
 | `check` | Prints JSON `{targets}` for named artifacts and artifacts in `--plan`. It classifies additions and edits, reports register rows, dispositions, callers, and name clashes, and previews takes. Renames and removals also report adopt callers. Repeat `--take`, `--rename`, or `--remove` for multiple targets. A name clash refuses with the Upstream item and a possible take or another-name remedy. At least one target is required. |
 | `prepare` | Prints JSON `{version, rows, targets, taken}`. It rebuilds bookkeeping from branch HEAD: the register, Pins, Hold fields, House style, version, and CHANGELOG. It copies adopt items and taken items from the selected Pin. implement must write adapt and merge text, move renamed artifacts, remove deleted artifacts, and update callers first. |
-| `gates` | Prints JSON `{ok, pending, stages}`. It runs quick_validate for changed skills, check-register, `bun test`, and the load smoke. Each stage reports its name, result, output, and process exit code when available. The smoke runs outside the home directory. The gate always deletes its temporary output directory. On failure, it copies the evidence into one Scratch entry of kind `maintain` and prints that path in the smoke stage output. `--in-place` treats a check-register result containing only `no-version-bump` failures as pending bookkeeping. Every other failure still fails the gates. It does not run the live Addon judge. |
+| `gates` | Prints JSON `{ok, stages}`. It runs quick_validate for changed skills, check-register, `bun test`, and the load smoke. Each stage reports its name, result, output, and process exit code when available. The smoke runs outside the home directory. The gate always deletes its temporary output directory. On failure, it copies the evidence into one Scratch entry of kind `maintain` and prints that path in the smoke stage output. It does not run the live Addon judge. |
 
 `plan`, `merge`, and `check` are read-only fact-finding for the grill. They make no branch, worktree, or write in any checkout. Scratch and the Upstream cache must stay outside every checkout. The script refuses a `--scratch` dir or an `--upstreams` cache inside a checkout. `prepare` and `gates` serve implement. implement drafts every Update and Hand edit in one isolated drafting worker and applies the gated patch.
 
@@ -274,13 +274,12 @@ bun scripts/vstack-maintain.ts gates [--in-place] [--scratch <dir>]
 | `--source clones\|github` | | `clones`. `github` selects API tree reads for target checks and takes. Local clones still supply item bytes. `plan` and the register gate use clones. |
 | `--plan <path>` | | the Scratch `plan.json` for `merge`, Update `prepare`, or additional `check` targets |
 | `--decisions <file>` | | required by `prepare`. Optional file maps for `merge` |
-| `--in-place` | | only for `gates`. Report the version failure as pending bookkeeping |
 | `--scratch <dir>` | | only for `plan` and `gates`. The absolute Scratch dir for their `maintain/` entry, outside every checkout. vstack-maintain's drafting worker passes the project's Scratch dir, because its clone's own `.git` gives another repo key |
 | `-h`, `--help` | | print usage and exit 0 |
 
 `VSTACK_BASE_REF` overrides the ref used to find the branch's merge base. Otherwise the script uses `origin/HEAD`, or `main` when that remote ref is absent. Tests can inject command arrays named `validate`, `check`, `test`, and `smoke` through the JSON object `VSTACK_MAINTAIN_COMMANDS`.
 
-Exit codes: 0 for success, including a plan with no moved Pin and in-place gates with only pending bookkeeping. Exit 2 means refusal, bad arguments, inability to run, or failed gates. Refusals print JSON `{ok: false, reason}`, with `clashes` when relevant. There is no exit 1.
+Exit codes: 0 for success, including a plan with no moved Pin. Exit 2 means refusal, bad arguments, inability to run, or failed gates. Refusals print JSON `{ok: false, reason}`, with `clashes` when relevant. There is no exit 1.
 
 #### Decisions JSON
 
@@ -333,7 +332,7 @@ explain combines how and why through a Fan-out line. It keeps one conversation p
 
 The grill resolves skill targets with `omp skill list --json` and asks one question per finding on the Grilling page. implement edits only approved lessons. Own skills tracked by the session's checkout use its normal branch, commit, and End state. Other own skills get in-place, uncommitted edits with a Scratch snapshot and a no-index diff in the shared code-review pass. An approved environment finding is fixed at the highest level that works (architecture, types, a lint or CI check, a test, then docs), with one commit per mistake class.
 
-Inside a vstack clone, approved vstack lessons use `skill://vstack-maintain` for a normal Hand edit. From another project, an existing non-adopt vstack row gets an in-place edit in the linked clone and `gates --in-place`, without `prepare`. Pending bookkeeping is reported for a later Hand edit. Adopt items and new vstack skills from another project stay Backlog with proposed text. Others' installs also stay Backlog. Substantive edits, descriptions, and new skills use skill-creator. When no row is tracked, the reply states that nothing was committed. The reviewer references belong to the session artifact and its Upstream rows, not `originals:`.
+Inside a vstack clone, approved vstack lessons use `skill://vstack-maintain` for a normal Hand edit. From another project, implement files one issue in the vstack repo's tracker for each approved vstack lesson, or comments on a matching open issue, and leaves the linked clone unchanged. An adopt item's issue names the flip to adapt, and a new skill's issue carries its draft and confirmed home. Others' installs stay Backlog, which the reply only lists. Substantive edits, descriptions, and new skills use skill-creator. When no row is tracked, the reply states that nothing was committed. The reviewer references belong to the session artifact and its Upstream rows, not `originals:`.
 
 ### Tests
 
@@ -341,7 +340,7 @@ Inside a vstack clone, approved vstack lessons use `skill://vstack-maintain` for
 
 `bun run test` runs `tests/` only (`bunfig.toml`) with a 30 s test timeout, because the suites start real `git`, `omp`, and `bun` processes. Bun applies a `setDefaultTimeout` from a preload to one test file only, so the timeout is the `--timeout` flag in the `test` script. The check-register tests build fixture Upstream git repos with tags, a moved item, and a removed item, then a vstack checkout committed as the version base. They run the script as a process and assert its exit code and its failures by class and item. One case serves a local stand-in for the GitHub API, so the `github` source is tested too.
 
-`tests/vstack-maintain.test.ts` runs the maintainer CLI over fixture repos and Upstreams. It covers read-only planning, overlap previews and target checks, combined Update and Hand edit preparation, version bookkeeping, and gates including `--in-place`. Injected commands replace external validation and load boundaries. The tests inspect process output, exit codes, and resulting files. `tests/addon-selection.test.ts` drives the fake host with a stubbed judge endpoint and a stubbed `smol` completion. It covers the Matt run gate, full-name picks, saved-message deduplication, the hidden pointer message, and the restated input of a mid-session run start.
+`tests/vstack-maintain.test.ts` runs the maintainer CLI over fixture repos and Upstreams. It covers read-only planning, overlap previews and target checks, combined Update and Hand edit preparation, version bookkeeping, and gates. Injected commands replace external validation and load boundaries. The tests inspect process output, exit codes, and resulting files. `tests/addon-selection.test.ts` drives the fake host with a stubbed judge endpoint and a stubbed `smol` completion. It covers the Matt run gate, full-name picks, saved-message deduplication, the hidden pointer message, and the restated input of a mid-session run start.
 
 `tests/extension.test.ts` tests the extension through a fake omp host (`tests/support/extension-host.ts`, after omp-tools' advisor-concern-wake tests). `fakeHost(options)` runs the extension factory against a partial ExtensionAPI and ctx and returns the registered tools, the event handlers, `emit(name, event)` (awaits every handler and returns their results), `callTool(name, params)`, and the session name with its source. Options set `ctx.agent` (main or sub), the models `ctx.modelRegistry.find` returns, and their API keys. The fake `setSessionName` stores a `user` name, as every omp mode does, and `autoTitle(name)` is refused after one. Stub TypeSafe's endpoint with `spyOn(globalThis, "fetch")`. The repo has no omp SDK dependency. `tests/support/extension-mocks.ts` replaces the omp modules that the extension imports at runtime, and its `smol` object sets the `smol` role and completion for a test. The fake `pi.arktype` only records the schema.
 

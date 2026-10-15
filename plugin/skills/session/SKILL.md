@@ -72,8 +72,8 @@ Classify each skill target before approval:
 1. An own project or user skill that the session's checkout tracks goes through implement's normal path. It gets the normal branch, commit, and End state.
 2. An own skill that the session's checkout does not track gets an in-place, uncommitted edit. User-authored skills can live in `.omp/skills`, `.agents/skills`, `.claude/skills`, or `~/.omp/agent/skills`. A package symlink at one of these homes does not prove ownership.
 3. A vstack skill has its real path inside a vstack clone's `plugin/`. Resolve the clone that omp links, not another checkout with the same skill name. Inside a vstack clone, a vstack row is a normal Hand edit through implement and `skill://vstack-maintain`.
-4. From another project, an existing vstack row that is not adopt gets an in-place, uncommitted edit in the linked clone. implement reads `skill://vstack-maintain` for its review checks and gates. It runs `bun scripts/vstack-maintain.ts gates --in-place` from that clone's root. It does not run `prepare`. List all pending bookkeeping that the gates report, including `no-version-bump`, for a later Hand edit.
-5. From another project, an adopt item or a new vstack skill goes to Backlog with its proposed text. For an adopt item, include the needed flip to adapt. Leave the live tree unchanged.
+4. From another project, an existing vstack row that is not adopt gets one vstack issue with its proposed text. The run makes no change to the linked clone.
+5. From another project, an adopt item or a new vstack skill also gets one vstack issue. For an adopt item, the issue names the needed flip to adapt. For a new skill, it carries the draft and the confirmed home.
 6. Someone else's install, including another plugin, skills-CLI, or Skillshare package, stays Backlog only. Its next update can overwrite a local change. A vstack skill whose real path is not in a vstack clone counts as someone else's install.
 
 Classify each environment target before approval:
@@ -82,13 +82,28 @@ Classify each environment target before approval:
 2. The user's global AGENTS.md, outside any checkout, gets an in-place, uncommitted edit.
 3. A target in a repo other than the current checkout goes to Backlog with its proposed change.
 
+### vstack issues
+
+A class 4 or class 5 row goes to the tracker of the vstack repo that the linked clone belongs to. The clone root is the directory above `plugin/` in the real path of any linked vstack skill. Read the clone's tracker config through the vstack root rules: the tracked `docs/vstack/issue-tracker.md`, or `config/issue-tracker.md` under the clone's vstack root in Private mode. Run every `gh` command from the clone root.
+
+During the grill, search the vstack repo's open issues for the target skill. If an open issue already covers the lesson, the row's Grilling page question names that issue. Approval then adds a comment to that issue, not a new issue.
+
+After approval, implement files one issue for each approved row, the same way that it makes the other approved changes. A new issue gets only the `needs-triage` label. Its title is `<skill>: <lesson in a few words>`. The issue body and a comment on a matching issue have the same two sections:
+
+- Problem: the session evidence, summarized in plain words.
+- Proposal: the proposed text. For an adopt item, add the flip to adapt. For a new skill, add its draft and confirmed home.
+
+Never put transcript excerpts, session file paths, or code or paths from the other project in an issue or a comment.
+
+If filing or commenting fails, move the row to Backlog with its proposed text and the `gh` error. Continue with the other rows.
+
 ### Ask on the Grilling page
 
-Put every finding on the grill's Grilling page (skill://grilling-page): one round, with one question record per finding. Rank the findings most severe first, by the harm or rework that the mistake caused and how often it recurs. Then use one `ask` per finding, in that order. Each question carries the evidence, the proposed change, the resolved home, and the route. For an environment finding, it also carries the ladder level, why each higher level did not work, and the past mistake that the new check must fail on.
+Put every finding on the grill's Grilling page (skill://grilling-page): one round, with one question record per finding. Rank the findings most severe first, by the harm or rework that the mistake caused and how often it recurs. Then use one `ask` per finding, in that order. Each question carries the evidence, the proposed change, the resolved home, and the route. For a class 4 or class 5 row, it also names the matching open vstack issue, if one exists. For an environment finding, it also carries the ladder level, why each higher level did not work, and the past mistake that the new check must fail on.
 
 Record each approved lesson with its proposed text and resolved target for implement. A new skill's finding must name its project, user, or vstack-original home. Approval must confirm that home. Allow routing redirects, then resolve and classify each redirected target again. Changed proposals or homes need their own question before approval.
 
-The grill runs the lenses and synthesis as fact-finding. It makes no edits. implement makes only the approved edits on the routes above.
+The grill runs the lenses and synthesis as fact-finding. It makes no edits and files nothing. implement makes only the approved edits and files only the approved vstack issues, on the routes above.
 
 ### Skill edits
 
@@ -118,9 +133,9 @@ Before changing any target file, copy it to Scratch through `skill://vstack-tmp`
 
 In implement's one code-review pass, review `git diff --no-index <copy> <target>` for each in-place target. Review these diffs in the same pass as any repo diff. A no-index diff's exit code 1 means that they differ. Do not treat it as a failed review. The snapshot makes the approved lesson's edit distinct from the earlier changes.
 
-When no approved row is tracked by the session's checkout, implement skips END-STATE steps 0a–0c, 3b, 4, 6, and 7. Validation, skill-creator's evals when warranted, the in-place gates for vstack rows, and the one review pass are the proof. Make no branch, commit, or publication for the in-place edits. Say that nothing was committed.
+When no approved row is tracked by the session's checkout, implement skips END-STATE steps 0a–0c, 3b, 4, 6, and 7. Validation, skill-creator's evals when warranted, and the one review pass are the proof. Make no branch, commit, or publication for the in-place edits. Say that nothing was committed.
 
-Backlog is only listed, never filed or posted. Approval to edit skills or the environment does not authorize tracker mutations. The user files what they want.
+Backlog is only listed, never filed or posted. The user files what they want from it. Approving a class 4 or class 5 row authorizes filing its vstack issue, or commenting on its matching open issue, and no other tracker mutation. No other approval authorizes a tracker mutation.
 
 ## 6. Summarize
 
@@ -129,9 +144,9 @@ Return a short list:
 - Edits applied: absolute skill paths and one line per change. Distinguish tracked edits from in-place, uncommitted edits. Name earlier uncommitted changes on each in-place target.
 - Environment fixes: each class with its evidence, its ladder level, why a higher level did not work, its commit SHA, and the failing output that proves the check.
 - Review: each Scratch copy, its target, and the no-index diff reviewed in the shared pass.
-- vstack in-place rows: the linked clone, the observed in-place gates result, and pending bookkeeping for a later Hand edit.
+- Filed vstack issues: one URL for each class 4 or class 5 row, marked filed or commented.
 - New skills: absolute paths and confirmed homes.
-- Backlog: proposed text, any needed adopt flip, and the suggested mechanism or ownership restriction. List items without filing them.
+- Backlog: proposed text and the suggested mechanism or ownership restriction. For a row whose vstack issue failed, add its `gh` error and any needed adopt flip. List items without filing them.
 - Dropped: each Rejected finding and its reason, plus unapproved rows.
 - Review limits: digest gaps, missing evidence, or failed subagents, when present.
 

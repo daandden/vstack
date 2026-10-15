@@ -171,7 +171,7 @@ if (process.env.FAIL_STAGE === "smoke") process.exit(1);`);
 }
 function commands(f: ReturnType<typeof fixture>) {
   const command = join(f.dir, "gate.ts");
-  writeFileSync(command, `const stage = process.argv[2]; console.log(stage); if(stage === "check") { console.log(JSON.stringify({failures: JSON.parse(process.env.FAILURES ?? "[]")})); if(process.env.FAILURES !== "[]" && process.env.FAILURES) process.exit(Number(process.env.CHECK_CODE ?? "1")); } if(process.env.FAIL_STAGE === stage) process.exit(1); if(stage === "smoke") console.log(JSON.stringify({skillCommands: ${JSON.stringify(register(f.root).items.flatMap((r: any) => r.artifacts).map((a: string) => a.split("/").at(-1)))}, warnings: []}));`);
+  writeFileSync(command, `const stage = process.argv[2]; console.log(stage); if(process.env.FAIL_STAGE === stage) process.exit(1); if(stage === "smoke") console.log(JSON.stringify({skillCommands: ${JSON.stringify(register(f.root).items.flatMap((r: any) => r.artifacts).map((a: string) => a.split("/").at(-1)))}, warnings: []}));`);
   return { VSTACK_MAINTAIN_COMMANDS: JSON.stringify(Object.fromEntries(["validate", "check", "test", "smoke"].map(s => [s, [process.execPath, command, s]]))) };
 }
 
@@ -220,15 +220,6 @@ test("gates --scratch retain failed smoke evidence under the supplied Scratch di
   expect(stage.output).toContain(`Smoke output retained at ${retained}`);
   for (const name of ["summary.json", "rpc.jsonl", "rpc.err", "skills.json", "link.txt"]) expect(read(retained, name)).toBe(`Smoke evidence: ${name}`);
   expect(existsSync(join(f.dir, "home", ".vstack", "tmp"))).toBe(false);
-}, 30000);
-test("in-place gates report only no-version-bump as pending and fail on all other failures", async () => {
-  const f = fixture(); const env = commands(f);
-  const noVersion = JSON.stringify([{ class: "no-version-bump", item: "plugin", message: "Pending bump." }]);
-  const r = await f.run(f.root, ["gates", "--in-place"], { ...env, FAILURES: noVersion }); expect(r.code).toBe(0); expect(r.plan.pending[0].class).toBe("no-version-bump");
-  expect((await f.run(f.root, ["gates"], { ...env, FAILURES: noVersion })).code).toBe(2);
-  expect((await f.run(f.root, ["gates", "--in-place"], { ...env, FAILURES: JSON.stringify([{ class: "adopt-drift" }]) })).code).toBe(2);
-  expect((await f.run(f.root, ["gates", "--in-place"], { ...env, FAILURES: noVersion, FAIL_STAGE: "test" })).code).toBe(2);
-  expect((await f.run(f.root, ["gates", "--in-place"], { ...env, FAILURES: noVersion, CHECK_CODE: "2" })).code).toBe(2);
 }, 30000);
 
 

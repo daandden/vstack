@@ -554,22 +554,16 @@ function changedSkills(root: string): string[] {
   const files = [...git(root, "diff", "--name-only", defaultBase(root), "--", "plugin/skills").split("\n"), ...git(root, "ls-files", "--others", "--exclude-standard", "--", "plugin/skills").split("\n")];
   return [...new Set(files.filter(Boolean).map(f => f.split("/").slice(0, 3).join("/")))].filter(p => existsSync(join(root, p))).sort();
 }
-async function gates(root: string, inPlace: boolean, opts: UpstreamOptions, scratch: string | undefined) {
+async function gates(root: string, opts: UpstreamOptions, scratch: string | undefined) {
   const commands: Record<string, string[]> = JSON.parse(process.env.VSTACK_MAINTAIN_COMMANDS ?? "{}");
-  const stages: { name: string; ok: boolean; output: string; exitCode?: number }[] = [], pending: any[] = [];
+  const stages: { name: string; ok: boolean; output: string; exitCode?: number }[] = [];
   const execute = (name: string, cmd: string[]) => {
     const r = Bun.spawnSync(cmd, { cwd: root, stdout: "pipe", stderr: "pipe" });
     const stage = { name, ok: r.exitCode === 0, exitCode: r.exitCode, output: r.stdout.toString() + r.stderr.toString() }; stages.push(stage); return stage;
   };
   for (const skill of changedSkills(root)) execute("validate", [...(commands.validate ?? [process.execPath, join(root, "plugin/skills/skill-creator/scripts/quick_validate.ts")]), join(root, skill)]);
   if (!commands.check) clones(root, opts);
-  const check = execute("check", commands.check ?? [process.execPath, join(root, "scripts/check-register.ts"), "--root", root, "--source", "clones", "--upstreams", opts.upstreams ?? defaultUpstreamsDir(), "--json"]);
-  if (inPlace && !check.ok && check.exitCode === 1) {
-    const at = check.output.indexOf("{");
-    try { const failures = JSON.parse(check.output.slice(at)).failures;
-      if (Array.isArray(failures) && failures.length && failures.every(f => f.class === "no-version-bump")) { pending.push(...failures); check.ok = true; }
-    } catch { }
-  }
+  execute("check", commands.check ?? [process.execPath, join(root, "scripts/check-register.ts"), "--root", root, "--source", "clones", "--upstreams", opts.upstreams ?? defaultUpstreamsDir(), "--json"]);
   execute("test", commands.test ?? [process.execPath, "test"]);
   const out = mkdtempSync(join(tmpdir(), "vstack-maintain-load-"));
   let smoke: (typeof stages)[number];
@@ -586,7 +580,7 @@ async function gates(root: string, inPlace: boolean, opts: UpstreamOptions, scra
       smoke.output += `\nSmoke output retained at ${retained}`;
     }
   } finally { rmSync(out, { recursive: true, force: true }); }
-  return { ok: stages.every(s => s.ok), pending, stages };
+  return { ok: stages.every(s => s.ok), stages };
 }
 
 const USAGE = `Usage: bun scripts/vstack-maintain.ts <command> [options]
@@ -595,7 +589,7 @@ const USAGE = `Usage: bun scripts/vstack-maintain.ts <command> [options]
   check [--plan <path>] [<artifact> ...]  Find clashes, adopt flips, and callers.
         [--take <upstream>:<path>] [--rename <artifact>=<to>] [--remove <artifact>]
   prepare --decisions <file> [--plan <path>]  Write bookkeeping from HEAD.
-  gates [--in-place]                     Run validation, checks, tests, and load smoke.
+  gates                                  Run validation, checks, tests, and load smoke.
   --scratch <dir>                        Absolute Scratch dir for plan and gates entries.
   --root <dir> --upstreams <cache> --remote <url> --source clones|github
   -h, --help                            Show this text.
@@ -604,7 +598,7 @@ VSTACK_MAINTAIN_COMMANDS (a JSON object). Smoke commands receive the plugin and 
 try {
   const args = parseArgs({ allowPositionals: true, options: {
     root: { type: "string" }, plan: { type: "string" }, decisions: { type: "string" }, upstreams: { type: "string" }, remote: { type: "string" }, source: { type: "string" }, scratch: { type: "string" },
-    take: { type: "string", multiple: true }, rename: { type: "string", multiple: true }, remove: { type: "string", multiple: true }, "in-place": { type: "boolean" }, help: { type: "boolean", short: "h" }
+    take: { type: "string", multiple: true }, rename: { type: "string", multiple: true }, remove: { type: "string", multiple: true }, help: { type: "boolean", short: "h" }
   } });
   if (args.values.help) console.log(USAGE);
   else {
@@ -619,7 +613,7 @@ try {
       const artifacts = [...new Set([...positionals, ...(p?.rows.flatMap(r => r.artifacts) ?? [])])];
       result = await checkTargets(root, artifacts, opts.take ?? [], opts.rename ?? [], opts.remove ?? [], opts);
     } else if (command === "prepare") { if (!opts.decisions) throw new Error("prepare needs --decisions"); result = await prepare(root, opts.decisions, p, opts); }
-    else if (command === "gates") { result = await gates(root, opts["in-place"] ?? false, opts, scratch); if (!(result as any).ok) process.exitCode = 2; }
+    else if (command === "gates") { result = await gates(root, opts, scratch); if (!(result as any).ok) process.exitCode = 2; }
     else throw new Error(USAGE);
     console.log(typeof result === "string" ? result : JSON.stringify(result, null, 2));
   }

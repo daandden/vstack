@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.18] - 2026-10-15
+
+- From another project, skill://session files one vstack issue for each approved lesson on an existing vstack row that is not adopt, an adopt item, or a new vstack skill. An open issue that already covers the lesson gets a comment instead. The issue has only the `needs-triage` label, a Problem and a Proposal section, and no transcript excerpts or paths from the other project. A failed filing goes to Backlog with the `gh` error. The run no longer edits the linked clone, so `vstack-maintain.ts gates` drops `--in-place` and its `pending` field, and vstack-maintain and skill-creator drop their in-place session-lesson routes (#140).
+
 ## [2.0.17] - 2026-10-15
 
 - code-review and blast-radius review a supplied PR at its target and source commits from `read-pr`, in a detached worktree made through vstack-worktree, and leave the user's checkout unchanged. A scope that the caller pins still comes first. Without `code-host.md` or its `read-pr` row, they stop and point to `/skill:setup-vstack` (#139).
