@@ -1,282 +1,285 @@
 {
-  "principle-attack-the-premise": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the request say that two or more earlier fixes or attempts at the same problem have already been tried and failed?",
-    "criteria": {
-      "true": "E.g. 'we bumped the timeout twice and it still fails', 'three fixes and it still shows old data'.",
-      "false": "A first report of a problem, or a recurring human mistake such as forgetting a step, with no failed fixes."
-    }
-  },
-  "principle-boundary-discipline": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does this task involve validation, error handling, or adapters at a system boundary?",
-    "criteria": {
-      "true": "E.g. parsing or validating external input (HTTP requests, webhooks, config, CLI args, files, third-party APIs), or deciding where validation and error handling belong.",
-      "false": "Internal refactors, UI work, test runs, or verification with no external input handling."
-    }
-  },
-  "principle-build-the-lever": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does this task involve many repetitive edits or checks that a script or codemod could perform or prove?",
-    "criteria": {
-      "true": "E.g. dozens of files or call sites changed the same way, a repo-wide rename or API swap, a bulk audit, or many generated files.",
-      "false": "Edits in a handful of places, a design change where each edit differs, a single feature or fix, or a question."
-    }
-  },
-  "principle-encode-lessons-in-structure": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the request say the same mistake or correction keeps recurring, or ask to make sure a mistake cannot happen again?",
-    "criteria": {
-      "true": "E.g. 'third time this happened', 'reviewers keep flagging', 'I've told you before', 'make sure this can't happen again'.",
-      "false": "A first report of a bug, a one-off request, or several failed fix attempts on one bug, with no sign the same mistake recurs."
-    }
-  },
-  "principle-encode-the-domain": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does this task add or change domain states, statuses, phases, or modes whose handling is, or would end up, scattered as flags or if/else branches across several places?",
-    "criteria": {
-      "true": "E.g. several booleans that must stay in sync, a status checked in if/else chains in several files, or a new state added to existing branching.",
-      "false": "Debugging, data sync jobs, infrastructure, verification, UI tweaks, or design choices that do not add or reshape domain states."
-    }
-  },
-  "principle-experience-first": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the outcome of this task depend on how it feels to the people who use it (a UI interaction, a product or UX choice, or a feature-scope trade-off), not only on whether the logic is correct?",
-    "criteria": {
-      "true": "The task clearly is this situation.",
-      "false": "The task is not this situation, or only loosely resembles it."
-    }
-  },
-  "principle-explain-the-number": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Is the agent about to trust, report, or act on a number it measured, such as a speedup, a regression, a throughput, a latency, or an eval result?",
-    "criteria": {
-      "true": "The task clearly is this situation.",
-      "false": "The task is not this situation, or only loosely resembles it."
-    }
-  },
-  "principle-foundational-thinking": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does this task require choosing core data types, data structures, or state ownership before writing logic, or setting up scaffold (CI, lint, test infrastructure, shared types) that later work builds on?",
-    "criteria": {
-      "true": "The task clearly is this situation.",
-      "false": "The task is not this situation, or only loosely resembles it."
-    }
-  },
-  "principle-guard-the-context-window": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Will this task require reading large outputs or many long files?",
-    "criteria": {
-      "true": "The task clearly is this situation.",
-      "false": "The task is not this situation, or only loosely resembles it."
-    }
-  },
-  "principle-laziness-protocol": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the request propose or invite adding layers, wrappers, or abstractions, or threading a new value through many layers, or ask to simplify code that is over-layered or hard to follow?",
-    "criteria": {
-      "true": "E.g. 'thread a flag through every function', 'add a wrapper/manager/factory for this', 'wrappers calling wrappers, make it easier to follow'.",
-      "false": "Ordinary feature, migration, bug-fix, or refactor work where nothing in the request suggests extra layers or over-layered code."
-    }
-  },
-  "principle-make-operations-idempotent": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does this task write a command, migration, or loop that may crash midway and be re-run?",
-    "criteria": {
-      "true": "The task clearly is this situation.",
-      "false": "The task is not this situation, or only loosely resembles it."
-    }
-  },
-  "principle-migrate-callers-then-delete-legacy-apis": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does this task replace an internal API that existing callers use?",
-    "criteria": {
-      "true": "The task clearly is this situation.",
-      "false": "The task is not this situation, or only loosely resembles it."
-    }
-  },
-  "principle-minimize-reader-load": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Is this task about code that is hard to trace, or reviewing/reshaping code for readability?",
-    "criteria": {
-      "true": "E.g. tangled call chains, wrappers or adapters with one caller, or a request to make code easier to follow or to review it for readability.",
-      "false": "A cosmetic rename, a docstring, a typo, explaining how code works, or a bug or feature where readability is not the goal."
-    }
-  },
-  "principle-never-block-on-the-human": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the user tell the agent to go ahead without them (they are away, they delegate the calls, or they say not to ask), so the agent must settle reversible choices itself?",
-    "criteria": {
-      "true": "E.g. 'I'm away, make sensible calls', 'don't stop to ask me about each one', 'use your judgment and I'll review later'.",
-      "false": "No sign the user wants autonomy beyond doing the task, or the request is a question or a small well-specified change."
-    }
-  },
-  "principle-outcome-oriented-execution": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Is this task a planned rewrite or migration with explicit phases?",
-    "criteria": {
-      "true": "The task clearly is this situation.",
-      "false": "The task is not this situation, or only loosely resembles it."
-    }
-  },
-  "principle-prove-it-works": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the user ask for proof that the change works, or does the change alter runtime behavior that only running the real thing can confirm (performance, UI, deploys, data migrations, integrations)?",
-    "criteria": {
-      "true": "The task clearly is this situation.",
-      "false": "The task is not this situation, or only loosely resembles it."
-    }
-  },
-  "principle-redesign-from-first-principles": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does this task add a requirement that breaks an assumption the existing design is built on, so the change reaches across many parts of the system?",
-    "criteria": {
-      "true": "E.g. everything assumes one currency, one tenant, one region, or synchronous calls, and now must not.",
-      "false": "A self-contained feature, a new button, endpoint, or option, a bug fix, a refactor, or a performance change."
-    }
-  },
-  "principle-separate-before-serializing-shared-state": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does this task involve concurrent actors writing the same file, branch, key, or state?",
-    "criteria": {
-      "true": "The task clearly is this situation.",
-      "false": "The task is not this situation, or only loosely resembles it."
-    }
-  },
-  "principle-sequence-verifiable-units": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Is this task a sweep of many similar edits, a staged migration, or work the user wants delivered as a series of separately verifiable commits or PRs?",
-    "criteria": {
-      "true": "E.g. a rename or API swap across many files, a phased rewrite, or splitting work into a stack of commits that each pass on their own.",
-      "false": "A single feature or fix, even one touching a few files, a read-only audit or report, or a one-off script."
-    }
-  },
-  "principle-subtract-before-you-add": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does this task add to or refactor code that likely contains dead, redundant, or stub parts to remove first?",
-    "criteria": {
-      "true": "The task clearly is this situation.",
-      "false": "The task is not this situation, or only loosely resembles it."
-    }
-  },
-  "principle-type-system-discipline": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does this task involve designing or reshaping types, data models, or function signatures, for example to rule out invalid states or values that get mixed up?",
-    "criteria": {
-      "true": "E.g. turning flags into a union of states, giving IDs that share a primitive their own types, deriving types from an authoritative schema, typing an API envelope, or designing a function signature.",
-      "false": "Work that uses existing types without designing or changing them."
-    }
-  },
-  "open-pr": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the user ask to create or publish a pull request for a branch?",
-    "criteria": {
-      "true": "E.g. 'open a PR for this branch', 'publish these changes as a ready pull request', or a requested end state that includes opening a PR.",
-      "false": "Pushing or committing a branch without a PR request. reading, reviewing, fixing, or merging an existing PR."
-    }
-  },
-  "babysit": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the user ask to check an existing pull request or stack for outstanding work, or address its CI failures, conflicts, or review comments?",
-    "criteria": {
-      "true": "E.g. 'get PR 42 green', 'anything outstanding on this PR?', 'address the review comments', or 'babysit this stack until merge-ready'.",
-      "false": "Creating a new PR, reviewing code without an outstanding-work request, fixing a local test, or only merging an already ready PR."
-    }
-  },
-  "ship": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the user ask to land or merge a pull request or stack into its target branch?",
-    "criteria": {
-      "true": "E.g. 'merge PR 42', 'land this stack', or 'ship this PR'.",
-      "false": "Deploying an app, publishing a release, opening a PR, pushing commits, or making a PR merge-ready without asking to merge it."
-    }
-  },
-  "decision-trail": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the task require a durable log of decisions and their reasons for unattended work, or an audit of such a log?",
-    "criteria": {
-      "true": "E.g. 'keep a decision log while I am away', 'audit the decisions from this unattended run', or delegated work where the user steps away and leaves choices to the agent.",
-      "false": "Ordinary work with the user present, a short factual answer, a commit message, or a summary of changes with no unattended decisions or decision-log request."
-    }
-  },
-  "blast-radius": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the user ask what a change could break outside its diff, or to prove the safety of a change they do not trust?",
-    "criteria": {
-      "true": "E.g. 'what could this break downstream?', 'check the blast radius', or 'prove this small diff is safe for other callers'.",
-      "false": "Implementing a feature or fix without a safety-impact request, listing callers, explaining code, or reviewing only readability or tests."
-    }
-  },
-  "benchmark-checklist": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the task produce, report, or act on a performance number the agent measures, such as a benchmark result, a speedup, a regression, or a before-and-after timing?",
-    "criteria": {
-      "true": "E.g. 'benchmark the export and report the speedup', 'is this 40% faster claim real?', or 'measure p50 latency before and after the change'.",
-      "false": "A correctness bug with no measurement, reading a profile without reporting a number, or a performance question answered from the code alone."
-    }
-  },
-  "prune-comments": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the user ask to critique or remove needless, stale, misleading, or workaround comments in code, or replace claimed comment constraints with enforceable checks?",
-    "criteria": {
-      "true": "E.g. 'prune the comments in this diff', 'remove comments that restate the code', or 'audit these do-not-remove comments and enforce real constraints'.",
-      "false": "Adding a docstring, addressing pull-request review comments, deleting dead code without a comment critique, or ordinary feature work."
-    }
-  },
-  "setup-app-verification": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the user ask to create a project Verify skill that launches and drives the real app and captures proof, or repair its missing discovery link?",
-    "criteria": {
-      "true": "E.g. 'set up a verify skill for this CLI', 'we have no live app verification skill. create one', or 'restore the missing link to our shared Verify skill'.",
-      "false": "Writing unit or integration tests, running an existing Verify skill, fixing app behavior, or correcting stale instructions inside an existing Verify skill."
-    }
-  },
-  "maintain-app-verification": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the user ask to check or update an existing project Verify skill or feature map against source and the running app?",
-    "criteria": {
-      "true": "E.g. 'refresh our verify skill after the routes changed', 'audit its feature coverage', or 'the app is healthy but the Verify instructions use a stale selector. repair them'.",
-      "false": "Creating the first Verify skill, running correct Verify instructions, repairing a missing discovery link, or fixing a product regression or broken app instance."
-    }
-  },
-  "compare-attempts": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Do the user's words explicitly ask for several independent attempts at the same task, each producing a candidate answer or implementation?",
-    "criteria": {
-      "true": "E.g. 'try three independent implementations and pick the best', 'run several independent attempts at this review', or 'use compare-attempts on this task'.",
-      "false": "Sequential optimization experiments or a metric hillclimb, even if called repeated attempts or experiments. Also no for a large task alone, agents on different parts, past failed fixes, or comparing named alternatives without independent candidate attempts."
-    }
-  },
-  "hillclimb": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the user ask for sustained, repeated improvement of a measured metric toward a target, with comparable experiments and accepted wins?",
-    "criteria": {
-      "true": "E.g. 'keep improving throughput until it reaches 1000 requests per second', 'hillclimb this benchmark', or 'run repeated experiments against a frozen harness to lower latency'.",
-      "false": "A one-off performance fix, diagnosing one slow operation, fixing a correctness bug, or several implementations with no sustained metric-improvement goal."
-    }
-  },
-  "perf-issue": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the user ask to diagnose and fix a specific slow operation or performance regression, rather than sustain a sequence of improvements toward a metric target?",
-    "criteria": {
-      "true": "E.g. 'make this eight-second query faster', 'fix the startup latency regression', or 'reduce this operation's CPU cost and show before and after numbers'.",
-      "false": "A sustained metric hillclimb, a correctness bug with no slowness, inspecting a profile without asking for a fix, or changing the test harness alone."
-    }
-  },
-  "session": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the user ask to review a coding session or the repo's recent history for durable lessons, environment fixes such as missing checks or steering-file changes, or repeat agent mistakes to make impossible?",
-    "criteria": {
-      "true": "E.g. 'extract lessons from this session', 'run a retro on this session', or 'agents keep making the same mistake in this repo; make it impossible'.",
-      "false": "Fixing one product bug without a session or history review, auditing a decision trail against its transcript, summarizing commits, writing a decision log, or explaining an existing skill."
-    }
-  },
-  "vstack-maintain": {
-    "type": "noul",
-    "instructions": "The state is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation below; if torn, answer no. Situation: Does the task update vstack from its Upstream sources or make a Hand edit to vstack skills, agents, rules, or their maintenance records?",
-    "criteria": {
-      "true": "E.g. 'update vstack from Matt's latest skills', 'merge pstack changes into vstack', or 'edit vstack's skill, agent, or rule text and its Decision register'.",
-      "false": "Updating app dependencies, editing an own project skill outside vstack, using a vstack skill without changing vstack, or asking what a vstack skill does."
+  "preamble": "The state's `request` is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation in the question. If torn, answer no.",
+  "questions": {
+    "principle-attack-the-premise": {
+      "type": "noul",
+      "instructions": "Does the request say that two or more earlier fixes or attempts at the same problem have already been tried and failed?",
+      "criteria": {
+        "true": "E.g. 'we bumped the timeout twice and it still fails', 'three fixes and it still shows old data'.",
+        "false": "A first report of a problem, or a recurring human mistake such as forgetting a step, with no failed fixes."
+      }
+    },
+    "principle-boundary-discipline": {
+      "type": "noul",
+      "instructions": "Does this task involve validation, error handling, or adapters at a system boundary?",
+      "criteria": {
+        "true": "E.g. parsing or validating external input (HTTP requests, webhooks, config, CLI args, files, third-party APIs), or deciding where validation and error handling belong.",
+        "false": "Internal refactors, UI work, test runs, or verification with no external input handling."
+      }
+    },
+    "principle-build-the-lever": {
+      "type": "noul",
+      "instructions": "Does this task involve many repetitive edits or checks that a script or codemod could perform or prove?",
+      "criteria": {
+        "true": "E.g. dozens of files or call sites changed the same way, a repo-wide rename or API swap, a bulk audit, or many generated files.",
+        "false": "Edits in a handful of places, a design change where each edit differs, a single feature or fix, or a question."
+      }
+    },
+    "principle-encode-lessons-in-structure": {
+      "type": "noul",
+      "instructions": "Does the request say the same mistake or correction keeps recurring, or ask to make sure a mistake cannot happen again?",
+      "criteria": {
+        "true": "E.g. 'third time this happened', 'reviewers keep flagging', 'I've told you before', 'make sure this can't happen again'.",
+        "false": "A first report of a bug, a one-off request, or several failed fix attempts on one bug, with no sign the same mistake recurs."
+      }
+    },
+    "principle-encode-the-domain": {
+      "type": "noul",
+      "instructions": "Does this task add or change domain states, statuses, phases, or modes whose handling is, or would end up, scattered as flags or if/else branches across several places?",
+      "criteria": {
+        "true": "E.g. several booleans that must stay in sync, a status checked in if/else chains in several files, or a new state added to existing branching.",
+        "false": "Debugging, data sync jobs, infrastructure, verification, UI tweaks, or design choices that do not add or reshape domain states."
+      }
+    },
+    "principle-experience-first": {
+      "type": "noul",
+      "instructions": "Does the outcome of this task depend on how it feels to the people who use it (a UI interaction, a product or UX choice, or a feature-scope trade-off), not only on whether the logic is correct?",
+      "criteria": {
+        "true": "The task clearly is this situation.",
+        "false": "The task is not this situation, or only loosely resembles it."
+      }
+    },
+    "principle-explain-the-number": {
+      "type": "noul",
+      "instructions": "Is the agent about to trust, report, or act on a number it measured, such as a speedup, a regression, a throughput, a latency, or an eval result?",
+      "criteria": {
+        "true": "The task clearly is this situation.",
+        "false": "The task is not this situation, or only loosely resembles it."
+      }
+    },
+    "principle-foundational-thinking": {
+      "type": "noul",
+      "instructions": "Does this task require choosing core data types, data structures, or state ownership before writing logic, or setting up scaffold (CI, lint, test infrastructure, shared types) that later work builds on?",
+      "criteria": {
+        "true": "The task clearly is this situation.",
+        "false": "The task is not this situation, or only loosely resembles it."
+      }
+    },
+    "principle-guard-the-context-window": {
+      "type": "noul",
+      "instructions": "Will this task require reading large outputs or many long files?",
+      "criteria": {
+        "true": "The task clearly is this situation.",
+        "false": "The task is not this situation, or only loosely resembles it."
+      }
+    },
+    "principle-laziness-protocol": {
+      "type": "noul",
+      "instructions": "Does the request propose or invite adding layers, wrappers, or abstractions, or threading a new value through many layers, or ask to simplify code that is over-layered or hard to follow?",
+      "criteria": {
+        "true": "E.g. 'thread a flag through every function', 'add a wrapper/manager/factory for this', 'wrappers calling wrappers, make it easier to follow'.",
+        "false": "Ordinary feature, migration, bug-fix, or refactor work where nothing in the request suggests extra layers or over-layered code."
+      }
+    },
+    "principle-make-operations-idempotent": {
+      "type": "noul",
+      "instructions": "Does this task write a command, migration, or loop that may crash midway and be re-run?",
+      "criteria": {
+        "true": "The task clearly is this situation.",
+        "false": "The task is not this situation, or only loosely resembles it."
+      }
+    },
+    "principle-migrate-callers-then-delete-legacy-apis": {
+      "type": "noul",
+      "instructions": "Does this task replace an internal API that existing callers use?",
+      "criteria": {
+        "true": "The task clearly is this situation.",
+        "false": "The task is not this situation, or only loosely resembles it."
+      }
+    },
+    "principle-minimize-reader-load": {
+      "type": "noul",
+      "instructions": "Is this task about code that is hard to trace, or reviewing/reshaping code for readability?",
+      "criteria": {
+        "true": "E.g. tangled call chains, wrappers or adapters with one caller, or a request to make code easier to follow or to review it for readability.",
+        "false": "A cosmetic rename, a docstring, a typo, explaining how code works, or a bug or feature where readability is not the goal."
+      }
+    },
+    "principle-never-block-on-the-human": {
+      "type": "noul",
+      "instructions": "Does the user tell the agent to go ahead without them (they are away, they delegate the calls, or they say not to ask), so the agent must settle reversible choices itself?",
+      "criteria": {
+        "true": "E.g. 'I'm away, make sensible calls', 'don't stop to ask me about each one', 'use your judgment and I'll review later'.",
+        "false": "No sign the user wants autonomy beyond doing the task, or the request is a question or a small well-specified change."
+      }
+    },
+    "principle-outcome-oriented-execution": {
+      "type": "noul",
+      "instructions": "Is this task a planned rewrite or migration with explicit phases?",
+      "criteria": {
+        "true": "The task clearly is this situation.",
+        "false": "The task is not this situation, or only loosely resembles it."
+      }
+    },
+    "principle-prove-it-works": {
+      "type": "noul",
+      "instructions": "Does the user ask for proof that the change works, or does the change alter runtime behavior that only running the real thing can confirm (performance, UI, deploys, data migrations, integrations)?",
+      "criteria": {
+        "true": "The task clearly is this situation.",
+        "false": "The task is not this situation, or only loosely resembles it."
+      }
+    },
+    "principle-redesign-from-first-principles": {
+      "type": "noul",
+      "instructions": "Does this task add a requirement that breaks an assumption the existing design is built on, so the change reaches across many parts of the system?",
+      "criteria": {
+        "true": "E.g. everything assumes one currency, one tenant, one region, or synchronous calls, and now must not.",
+        "false": "A self-contained feature, a new button, endpoint, or option, a bug fix, a refactor, or a performance change."
+      }
+    },
+    "principle-separate-before-serializing-shared-state": {
+      "type": "noul",
+      "instructions": "Does this task involve concurrent actors writing the same file, branch, key, or state?",
+      "criteria": {
+        "true": "The task clearly is this situation.",
+        "false": "The task is not this situation, or only loosely resembles it."
+      }
+    },
+    "principle-sequence-verifiable-units": {
+      "type": "noul",
+      "instructions": "Is this task a sweep of many similar edits, a staged migration, or work the user wants delivered as a series of separately verifiable commits or PRs?",
+      "criteria": {
+        "true": "E.g. a rename or API swap across many files, a phased rewrite, or splitting work into a stack of commits that each pass on their own.",
+        "false": "A single feature or fix, even one touching a few files, a read-only audit or report, or a one-off script."
+      }
+    },
+    "principle-subtract-before-you-add": {
+      "type": "noul",
+      "instructions": "Does this task add to or refactor code that likely contains dead, redundant, or stub parts to remove first?",
+      "criteria": {
+        "true": "The task clearly is this situation.",
+        "false": "The task is not this situation, or only loosely resembles it."
+      }
+    },
+    "principle-type-system-discipline": {
+      "type": "noul",
+      "instructions": "Does this task involve designing or reshaping types, data models, or function signatures, for example to rule out invalid states or values that get mixed up?",
+      "criteria": {
+        "true": "E.g. turning flags into a union of states, giving IDs that share a primitive their own types, deriving types from an authoritative schema, typing an API envelope, or designing a function signature.",
+        "false": "Work that uses existing types without designing or changing them."
+      }
+    },
+    "open-pr": {
+      "type": "noul",
+      "instructions": "Does the user ask to create or publish a pull request for a branch?",
+      "criteria": {
+        "true": "E.g. 'open a PR for this branch', 'publish these changes as a ready pull request', or a requested end state that includes opening a PR.",
+        "false": "Pushing or committing a branch without a PR request. reading, reviewing, fixing, or merging an existing PR."
+      }
+    },
+    "babysit": {
+      "type": "noul",
+      "instructions": "Does the user ask to check an existing pull request or stack for outstanding work, or address its CI failures, conflicts, or review comments?",
+      "criteria": {
+        "true": "E.g. 'get PR 42 green', 'anything outstanding on this PR?', 'address the review comments', or 'babysit this stack until merge-ready'.",
+        "false": "Creating a new PR, reviewing code without an outstanding-work request, fixing a local test, or only merging an already ready PR."
+      }
+    },
+    "ship": {
+      "type": "noul",
+      "instructions": "Does the user ask to land or merge a pull request or stack into its target branch?",
+      "criteria": {
+        "true": "E.g. 'merge PR 42', 'land this stack', or 'ship this PR'.",
+        "false": "Deploying an app, publishing a release, opening a PR, pushing commits, or making a PR merge-ready without asking to merge it."
+      }
+    },
+    "decision-trail": {
+      "type": "noul",
+      "instructions": "Does the task require a durable log of decisions and their reasons for unattended work, or an audit of such a log?",
+      "criteria": {
+        "true": "E.g. 'keep a decision log while I am away', 'audit the decisions from this unattended run', or delegated work where the user steps away and leaves choices to the agent.",
+        "false": "Ordinary work with the user present, a short factual answer, a commit message, or a summary of changes with no unattended decisions or decision-log request."
+      }
+    },
+    "blast-radius": {
+      "type": "noul",
+      "instructions": "Does the user ask what a change could break outside its diff, or to prove the safety of a change they do not trust?",
+      "criteria": {
+        "true": "E.g. 'what could this break downstream?', 'check the blast radius', or 'prove this small diff is safe for other callers'.",
+        "false": "Implementing a feature or fix without a safety-impact request, listing callers, explaining code, or reviewing only readability or tests."
+      }
+    },
+    "benchmark-checklist": {
+      "type": "noul",
+      "instructions": "Does the task produce, report, or act on a performance number the agent measures, such as a benchmark result, a speedup, a regression, or a before-and-after timing?",
+      "criteria": {
+        "true": "E.g. 'benchmark the export and report the speedup', 'is this 40% faster claim real?', or 'measure p50 latency before and after the change'.",
+        "false": "A correctness bug with no measurement, reading a profile without reporting a number, or a performance question answered from the code alone."
+      }
+    },
+    "prune-comments": {
+      "type": "noul",
+      "instructions": "Does the user ask to critique or remove needless, stale, misleading, or workaround comments in code, or replace claimed comment constraints with enforceable checks?",
+      "criteria": {
+        "true": "E.g. 'prune the comments in this diff', 'remove comments that restate the code', or 'audit these do-not-remove comments and enforce real constraints'.",
+        "false": "Adding a docstring, addressing pull-request review comments, deleting dead code without a comment critique, or ordinary feature work."
+      }
+    },
+    "setup-app-verification": {
+      "type": "noul",
+      "instructions": "Does the user ask to create a project Verify skill that launches and drives the real app and captures proof, or repair its missing discovery link?",
+      "criteria": {
+        "true": "E.g. 'set up a verify skill for this CLI', 'we have no live app verification skill. create one', or 'restore the missing link to our shared Verify skill'.",
+        "false": "Writing unit or integration tests, running an existing Verify skill, fixing app behavior, or correcting stale instructions inside an existing Verify skill."
+      }
+    },
+    "maintain-app-verification": {
+      "type": "noul",
+      "instructions": "Does the user ask to check or update an existing project Verify skill or feature map against source and the running app?",
+      "criteria": {
+        "true": "E.g. 'refresh our verify skill after the routes changed', 'audit its feature coverage', or 'the app is healthy but the Verify instructions use a stale selector. repair them'.",
+        "false": "Creating the first Verify skill, running correct Verify instructions, repairing a missing discovery link, or fixing a product regression or broken app instance."
+      }
+    },
+    "compare-attempts": {
+      "type": "noul",
+      "instructions": "Do the user's words explicitly ask for several independent attempts at the same task, each producing a candidate answer or implementation?",
+      "criteria": {
+        "true": "E.g. 'try three independent implementations and pick the best', 'run several independent attempts at this review', or 'use compare-attempts on this task'.",
+        "false": "Sequential optimization experiments or a metric hillclimb, even if called repeated attempts or experiments. Also no for a large task alone, agents on different parts, past failed fixes, or comparing named alternatives without independent candidate attempts."
+      }
+    },
+    "hillclimb": {
+      "type": "noul",
+      "instructions": "Does the user ask for sustained, repeated improvement of a measured metric toward a target, with comparable experiments and accepted wins?",
+      "criteria": {
+        "true": "E.g. 'keep improving throughput until it reaches 1000 requests per second', 'hillclimb this benchmark', or 'run repeated experiments against a frozen harness to lower latency'.",
+        "false": "A one-off performance fix, diagnosing one slow operation, fixing a correctness bug, or several implementations with no sustained metric-improvement goal."
+      }
+    },
+    "perf-issue": {
+      "type": "noul",
+      "instructions": "Does the user ask to diagnose and fix a specific slow operation or performance regression, rather than sustain a sequence of improvements toward a metric target?",
+      "criteria": {
+        "true": "E.g. 'make this eight-second query faster', 'fix the startup latency regression', or 'reduce this operation's CPU cost and show before and after numbers'.",
+        "false": "A sustained metric hillclimb, a correctness bug with no slowness, inspecting a profile without asking for a fix, or changing the test harness alone."
+      }
+    },
+    "session": {
+      "type": "noul",
+      "instructions": "Does the user ask to review a coding session or the repo's recent history for durable lessons, environment fixes such as missing checks or steering-file changes, or repeat agent mistakes to make impossible?",
+      "criteria": {
+        "true": "E.g. 'extract lessons from this session', 'run a retro on this session', or 'agents keep making the same mistake in this repo; make it impossible'.",
+        "false": "Fixing one product bug without a session or history review, auditing a decision trail against its transcript, summarizing commits, writing a decision log, or explaining an existing skill."
+      }
+    },
+    "vstack-maintain": {
+      "type": "noul",
+      "instructions": "Does the task update vstack from its Upstream sources or make a Hand edit to vstack skills, agents, rules, or their maintenance records?",
+      "criteria": {
+        "true": "E.g. 'update vstack from Matt's latest skills', 'merge pstack changes into vstack', or 'edit vstack's skill, agent, or rule text and its Decision register'.",
+        "false": "Updating app dependencies, editing an own project skill outside vstack, using a vstack skill without changing vstack, or asking what a vstack skill does."
+      }
     }
   }
 }

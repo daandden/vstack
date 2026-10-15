@@ -40,7 +40,7 @@ exec(open(f"{skill}/scripts/visual_judge.py").read())
 await judge_round(skill, "<state.jsonl>", "<round id>")
 ```
 
-For each question, it prints one line per diagram kind in `references/visual-judge.json`:
+The helper sends jev one request per question. The request's judge state holds the question and diagram-design's visual-type guide, so jev reads the guide once. Its four questions are one yes-or-no question and one type ranking for each diagram kind in `references/visual-judge.json`. For each question, it prints one line per diagram kind:
 
 - A context diagram shows the logic the description explains: steps, branches, states, parts, or time.
 - An option diagram shows how the options differ in shape, in one figure.

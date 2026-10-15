@@ -129,12 +129,38 @@ describe("Addon routes", () => {
   test("a catalog key makes a skill with a non-reject Base row an Addon", async () => {
     const r = await runSpec((s) => {
       const catalog = JSON.parse(s.files["addon-questions.json"]);
-      catalog.held = catalog["fixture-addon"];
+      catalog.questions.held = catalog.questions["fixture-addon"];
       s.files["addon-questions.json"] = JSON.stringify(catalog);
     });
     expect(r.json!.failures).toEqual([]);
     expect(r.code).toBe(0);
   });
+
+  test("a non-skill key under questions fails with the questions map named", async () => {
+    const r = await runSpec((s) => {
+      const catalog = JSON.parse(s.files["addon-questions.json"]);
+      catalog.questions["not-a-skill"] = catalog.questions["fixture-addon"];
+      s.files["addon-questions.json"] = JSON.stringify(catalog);
+    });
+    expect(r.json!.failures).toEqual([{ class: "addon-question-mismatch", item: "not-a-skill", message: "key in the `questions` map of addon-questions.json does not name a shipped Addon" }]);
+  });
+
+  test("a top-level key beside preamble and questions makes no Addon", async () => {
+    const r = await runSpec((s) => {
+      const catalog = JSON.parse(s.files["addon-questions.json"]);
+      catalog.held = catalog.questions["fixture-addon"];
+      s.files["addon-questions.json"] = JSON.stringify(catalog);
+    });
+    expect(r.json!.failures).toEqual([]);
+  });
+});
+
+test("exit 2 when addon-questions.json has the flat shape with no preamble and questions", async () => {
+  const spec = clone(passingSpec(up));
+  spec.files["addon-questions.json"] = JSON.stringify(JSON.parse(spec.files["addon-questions.json"]).questions);
+  const r = await checkout(up, spec).run([], { json: false });
+  expect(r.code).toBe(2);
+  expect(r.stderr).toContain("addon-questions.json: preamble must be a non-empty string");
 });
 // One fixture per failure class. Each case lists the exact failures expected as "<class> <item>".
 const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expected: string[] }[] = [
@@ -155,7 +181,7 @@ const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expecte
     name: "a catalog key with no shipped Addon",
     mutate: (s) => {
       const catalog = JSON.parse(s.files["addon-questions.json"]);
-      catalog.missing = catalog["fixture-addon"];
+      catalog.questions.missing = catalog.questions["fixture-addon"];
       s.files["addon-questions.json"] = JSON.stringify(catalog);
     },
     expected: ["addon-question-mismatch missing"],
@@ -163,7 +189,7 @@ const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expecte
   {
     cls: "addon-question-mismatch",
     name: "a shipped Addon with no catalog key",
-    mutate: (s) => (s.files["addon-questions.json"] = "{}"),
+    mutate: (s) => (s.files["addon-questions.json"] = JSON.stringify({ ...JSON.parse(s.files["addon-questions.json"]), questions: {} })),
     expected: ["addon-question-mismatch fixture-addon"],
   },
   {
@@ -171,7 +197,7 @@ const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expecte
     name: "a catalog key naming a Utility skill",
     mutate: (s) => {
       const catalog = JSON.parse(s.files["addon-questions.json"]);
-      catalog["fixture-helper"] = catalog["fixture-addon"];
+      catalog.questions["fixture-helper"] = catalog.questions["fixture-addon"];
       s.files["addon-questions.json"] = JSON.stringify(catalog);
     },
     expected: ["addon-question-mismatch fixture-helper"],
@@ -181,7 +207,7 @@ const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expecte
     name: "a slash route to a catalog skill with a non-reject Base row",
     mutate: (s) => {
       const catalog = JSON.parse(s.files["addon-questions.json"]);
-      catalog.held = catalog["fixture-addon"];
+      catalog.questions.held = catalog.questions["fixture-addon"];
       s.files["addon-questions.json"] = JSON.stringify(catalog);
       s.files["plugin/rules/fx-rule.md"] += "Read /skill:held.\n";
     },

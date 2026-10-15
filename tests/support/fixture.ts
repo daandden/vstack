@@ -256,7 +256,7 @@ export function passingSpec(up: Upstreams): RepoSpec {
       "plugin/skills/gone/SKILL.md": GONE_TEXT,
       "plugin/skills/fixture-helper/SKILL.md": "---\nname: fixture-helper\ndescription: helper\n---\nhelper\n",
       "plugin/skills/fixture-addon/SKILL.md": "---\nname: fixture-addon\ndescription: addon\ndisable-model-invocation: true\n---\naddon\n",
-      "addon-questions.json": JSON.stringify({ "fixture-addon": { type: "noul", instructions: "Pick this Addon for the fixture task.", criteria: { true: "The task needs it.", false: "The task does not need it." } } }),
+      "addon-questions.json": JSON.stringify({ preamble: "Judge the fixture request.", questions: { "fixture-addon": { type: "noul", instructions: "Pick this Addon for the fixture task.", criteria: { true: "The task needs it.", false: "The task does not need it." } } } }),
       "plugin/skills/shared/SKILL.md": "---\nname: shared\ndescription: merged\n---\nmerged\n",
       "plugin/rules/fx-rule.md": "---\nalwaysApply: true\n---\nrule\n",
       "plugin/agents/fx-agent.md": "---\nname: fx-agent\ndescription: agent\n---\nagent\n",

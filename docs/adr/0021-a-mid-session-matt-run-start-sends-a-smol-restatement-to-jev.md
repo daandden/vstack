@@ -1,5 +1,7 @@
 # A mid-session Matt run start sends a smol restatement to jev
 
+> [ADR 0024](0024-shared-judge-text-goes-in-the-jev-state-once.md) amends this decision. jev reads the restatement as `request`, beside the catalog's `preamble`. When every Addon was delivered earlier in the session, the extension calls no smol and sends no request.
+
 A Matt run that starts mid-session gets its Addon picks from a restatement, not from the user's words after `User:`. A run starts mid-session when the active branch already holds user or assistant messages, a visible skill start, or a compaction before the prompt that starts the run. The common case is that the user talks with the agent first and types the Matt skill afterward. The words after `User:` then miss most of the goal. Before jev runs, the extension asks the `smol` role model to restate the user's goal. The instruction is the body of the in-your-own-words skill, and the extension adds a short frame. The model reads all user and assistant text since the last compaction, the compaction summary, and the new words. An earlier skill-start prompt gives only its user words. The model gets no tool calls, tool output, thinking, or hidden messages. jev reads the restatement as it is, cut to 10,000 characters. A fresh run start and every later prompt in a run still send the cleaned words of ADR 0018.
 
 ## Considered Options

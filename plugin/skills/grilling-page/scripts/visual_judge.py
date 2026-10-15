@@ -1,14 +1,3 @@
-# Decides which diagrams each question of one Grilling page round gets, with the jev judge.
-# Run in omp's Python eval, where judge_batch is a global:
-#   skill = "<grilling-page skill dir>"
-#   exec(open(f"{skill}/scripts/visual_judge.py").read())
-#   await judge_round(skill, "<state.jsonl>", "<round id>")
-# It reads the round's question records from the state file. For each diagram kind in
-# references/visual-judge.json, a yes-or-no question decides whether to draw it, and a choice question
-# over diagram-design's visual-type guide ranks the types. It prints one line per question and kind:
-# the probability, and for a yes the top types. Under the kind's threshold, or on any judge error,
-# the question gets no diagram of that kind.
-
 import json
 import os
 import re
@@ -31,9 +20,19 @@ def guide_types(path):
     return {name: shows for shows, name in rows}
 
 
-async def judge_round(skill_dir, state_path, round_id):
+def judge_request(skill_dir, pages):
+    """The rubric, one judge state per page question, and the questions that jev answers for each state.
+    The visual-type guide goes in each state once, so the two type questions name the types only."""
     rubric = json.load(open(f"{skill_dir}/references/visual-judge.json"))
     types = guide_types(os.path.normpath(os.path.join(skill_dir, rubric["types"]["guide"])))
+    asks = {}
+    for kind, d in rubric["diagrams"].items():
+        asks[kind] = {"type": "bool", "instructions": f"{rubric['instructions']} {d['question']}", "criteria": {"true": d["true"], "false": d["false"]}}
+        asks[f"{kind}_type"] = {"type": "choice", "instructions": f"{rubric['types']['instructions']} The diagram shows {d['shows']}.", "criteria": dict.fromkeys(types)}
+    return rubric, [{"question": page, "visual_types": types} for page in pages], asks
+
+
+async def judge_round(skill_dir, state_path, round_id):
     latest, order = {}, []
     for line in open(state_path):
         if not line.strip():
@@ -47,13 +46,10 @@ async def judge_round(skill_dir, state_path, round_id):
     questions = [latest[i] for i in order if latest[i]["round"] == round_id]
     if not questions:
         raise ValueError(f"round {round_id} has no question records in {state_path}")
-    asks = {}
-    for kind, d in rubric["diagrams"].items():
-        asks[kind] = {"type": "bool", "instructions": f"{rubric['instructions']} {d['question']}", "criteria": {"true": d["true"], "false": d["false"]}}
-        asks[f"{kind}_type"] = {"type": "choice", "instructions": f"{rubric['types']['instructions']} The diagram shows {d['shows']}.", "criteria": types}
+    rubric, states, asks = judge_request(skill_dir, [question_state(q) for q in questions])
     settled, batch_error = {}, None
     try:
-        batch = judge_batch({q["id"]: question_state(q) for q in questions}, asks, intent=f"Judging diagrams for {round_id}")
+        batch = judge_batch({q["id"]: state for q, state in zip(questions, states)}, asks, intent=f"Judging diagrams for {round_id}")
         try:
             async for key, item in batch.drain_iter(300):
                 settled[key] = item

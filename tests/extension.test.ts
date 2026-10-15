@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, spyOn, test } from "bun:test";
 import * as fs from "node:fs";
-import questions from "../addon-questions.json";
+import catalogFile from "../addon-questions.json";
+import { parseAddonCatalog } from "../plugin/extensions/addon-catalog.ts";
 import { mattSkillNames } from "../plugin/extensions/matt-skills.ts";
 import { fakeHost } from "./support/extension-host.ts";
 
@@ -59,7 +60,7 @@ describe("Matt skill class", () => {
   });
 
   describe("the extension", () => {
-    const addon = Object.keys(questions)[0]!;
+    const addon = Object.keys(parseAddonCatalog(catalogFile).questions)[0]!;
     const model = { provider: "typesafe", id: "jev-latest", api: "typesafe", baseUrl: "https://judge.test/" };
     const options = { models: [model], apiKeys: { "typesafe/jev-latest": "test-key" } };
     const start = (name: string) => `[IMPORTANT: User invoked the "${name}" skill. Follow this skill.]\nSkill text.\n---\n[Skill directory: /skills/${name}]\nUser: Open a PR`;

@@ -4,8 +4,8 @@ vstack is a personal omp plugin. Matt Pocock's skills are its core. Addons suppl
 
 ## Skill kinds and the Matt flow
 
-- A Matt skill has a non-reject Base upstream row in the Decision register and no key in `addon-questions.json`. A Matt skill that you type hosts Addons.
-- An Addon is a hidden skill that supplies knowledge to a running Matt skill. Addons load only through the jev judge during that run, or through a `skill://<addon>` pointer. A key in `addon-questions.json` makes a skill an Addon, even when it carries Base upstream text, as `session` does (ADR 0019). Addons do not own a separate workflow.
+- A Matt skill has a non-reject Base upstream row in the Decision register and no key in the `questions` map of `addon-questions.json`. A Matt skill that you type hosts Addons.
+- An Addon is a hidden skill that supplies knowledge to a running Matt skill. Addons load only through the jev judge during that run, or through a `skill://<addon>` pointer. A key in the `questions` map of `addon-questions.json` makes a skill an Addon, even when it carries Base upstream text, as `session` does (ADR 0019). Addons do not own a separate workflow.
 - A Utility skill works outside a Matt run. The register's `utility:` list names these skills, including vstack-prose, explain, and hidden helpers such as vstack-tmp.
 - A Command runs in the extension without a model. `/vstack-clean` is the Scratch cleanup Command, not a skill.
 
@@ -47,7 +47,7 @@ The repo scripts need Bun. Run `bun run test` and `bun scripts/check-register.ts
 | `pins.yaml` | no | One entry per Upstream: repo, Pin, how the next Pin is found, and which tree entries count as Upstream items. |
 | `decision-register.yaml` | no | One row per Upstream item, `originals:` for vstack-only artifacts, and `utility:` for Utility skills. |
 | `house-style.yaml` | no | The House style: replacement rows and rules that turn Upstream text into vstack text. |
-| `scripts/` | no | Bun CLIs: `check-register.ts`, `vstack-maintain.ts`, `addon-judge-check.ts`, and `visual-judge-check.ts`. `lib/` holds shared modules. `load-smoke.sh` checks a fresh omp load. |
+| `scripts/` | no | Bun CLIs: `check-register.ts`, `vstack-maintain.ts`, and `addon-judge-check.ts`. `visual_judge_check.py` runs in omp's Python eval. `lib/` holds shared modules. `load-smoke.sh` checks a fresh omp load. |
 | `addon-questions.json`, `sample-prompts.json` | no | The Addon judge catalog and sample corpus read from the linked clone. |
 | `.omp/skills/verify-vstack/` | no | The Verify skill, feature recipes, and omp driver. |
 | `tests/` | no | Test suites, run with `bun run test`. Each script is run as a process over temp-dir fixtures (`tests/support/`). |
@@ -59,19 +59,21 @@ Only `plugin/` ships. Upstreams are fetched when needed, never stored in this re
 
 ### Run-gated Addon judge
 
-`addon-questions.json` holds one `noul` question per Addon, keyed by its full skill name, such as `principle-prove-it-works` or `open-pr`. `sample-prompts.json` holds the sample corpus, expected and allowed picks, baseline probabilities, and the selection threshold.
+`addon-questions.json` holds a `preamble` and a `questions` map. The map holds one `noul` question per Addon, keyed by its full skill name, such as `principle-prove-it-works` or `open-pr`. Each question holds only its situation and its criteria. The preamble says how to judge `request` for every question, so jev reads it once in the state (ADR 0024). `sample-prompts.json` holds the sample corpus, expected and allowed picks, baseline probabilities, and the selection threshold.
 
-The extension reads the Matt skill set from the register and Pins when it loads, and leaves out every skill with a catalog key. A typed Matt skill starts a run. Later prompts count as part of that run when the active branch holds its saved `skill-prompt` entry. Reading a Matt skill through `skill://` does not start a run. Plain chat outside a run and child sessions receive no judge selection.
+Send every question about one state in one jev request. jev reads the state once per request and bills input tokens only, so separate requests pay for the state again.
 
-On the skill-start prompt, the judge sees only the user's words after `User:`. With no user words, it makes no request. Later prompts in the run use the current prompt. `plugin/extensions/prompt-cleaner.ts` cleans these words before the TypeSafe `/v1/systemone` request.
+The extension reads the Matt skill set from the register and Pins when it loads, and leaves out every skill with a key in the `questions` map of `addon-questions.json`. A typed Matt skill starts a run. Later prompts count as part of that run when the active branch holds its saved `skill-prompt` entry. Reading a Matt skill through `skill://` does not start a run. Plain chat outside a run and child sessions receive no judge selection.
+
+On the skill-start prompt, the judge sees only the user's words after `User:`. With no user words, it makes no request. Later prompts in the run use the current prompt. `plugin/extensions/prompt-cleaner.ts` cleans these words before the TypeSafe `/v1/systemone` request. The request's state holds `request`, the cleaned words, and then the catalog's `preamble`.
 
 A run that starts mid-session works differently (ADR 0021). Mid-session means that the active branch holds user or assistant messages, a visible skill start, or a compaction before the start prompt. The extension first asks the `smol` role model, at its configured effort, to restate the user's goal. The instruction is the body of `plugin/skills/in-your-own-words/SKILL.md`, and the extension adds a short frame. The model reads the user and assistant text since the last compaction, the compaction summary, and the new words. It gets no tool output, thinking, or hidden messages, and no skill text from earlier skill starts. jev reads the restatement as it is, cut to 10,000 characters. This also applies to a bare skill start. If the restatement fails, the prompt gets no picks. With a UI, the extension then shows `vstack: no Addon picks for this run start (<reason>)` as an omp warning, which is not stored in the session.
 
-The extension selects every score at least 0.75 with native TypeSafe jev and credentials. It sends one hidden message with `customType: "vstack-addons"` and `display: false`:
+The extension selects every score at least 0.70 with native TypeSafe jev and credentials. It sends one hidden message with `customType: "vstack-addons"` and `display: false`:
 
 > Addons selected for this task: skill://<name>, skill://<name>. Ignore any that do not fit. When a principle conflicts with the steps of the running Matt skill or its Addons, those steps win.
 
-Each pointer appears once per session, including after a resume and on other branches. The extension reads the saved `vstack-addons` messages in the whole session and keeps no list of its own. omp saves a hook message only when it accepts the prompt, so a pick from a cancelled prompt can return on the retry. A missing Matt skill set, native judge, or key skips silently. Request errors and the four-second deadline also skip silently. One retry shares that deadline. A restated prompt waits up to 30 seconds, omp's own hook limit. When omp stops the hook, omp shows its own extension error.
+Each pointer appears once per session, including after a resume and on other branches. The extension reads the saved `vstack-addons` messages in the whole session and keeps no list of its own. The request leaves out every Addon that these messages name. When they name every Addon, the extension makes no request and calls no smol. omp saves a hook message only when it accepts the prompt, so a pick from a cancelled prompt can return on the retry. A missing Matt skill set, native judge, or key skips silently. Request errors and the four-second deadline also skip silently. One retry shares that deadline. A restated prompt waits up to 30 seconds, omp's own hook limit. When omp stops the hook, omp shows its own extension error.
 
 #### By-hand judge check
 
@@ -81,12 +83,22 @@ After any change to the catalog or corpus, run:
 TYPESAFE_API_KEY=$(omp token typesafe) bun scripts/addon-judge-check.ts
 ```
 
-CI does not run this check. The script sends every sample prompt against every question to live jev. A sample with `restated: true` holds a stored smol restatement, and the script sends it as it is, cut to 10,000 characters. It cleans every other sample as the extension does. It flags an expected pick below 0.70 and an unexpected, non-allowed pick above 0.80. Scores from 0.70 through 0.80 are borderline. It prints flags, borderline picks, the pass count, question count, run count, and returned model. Exit codes are 0 with no flags, 1 with flags, and 2 for a missing key, bad arguments, or a failed or invalid response.
+CI does not run this check. The script sends every sample prompt against every question to live jev, in the state shape that the extension sends. A sample with `restated: true` holds a stored smol restatement, and the script sends it as it is, cut to 10,000 characters. It cleans every other sample as the extension does. It flags an expected pick below 0.65 and an unexpected, non-allowed pick above 0.80. Scores from 0.65 through 0.80 are borderline. It prints flags, borderline picks, the pass count, question count, run count, and returned model. Exit codes are 0 with no flags, 1 with flags, and 2 for a missing key, bad arguments, or a failed or invalid response.
 
-To record fresh baselines, run with `--runs 3 --print-means`. `--runs <n>` averages that many direct requests per prompt (default 1). `--print-means` prints a `MEANS` JSON line per prompt with `means`, `baseline_selected`, and `baseline_borderline`. Copy the matching baseline maps into `sample-prompts.json`, keep the returned model in the check evidence, and run the check after the corpus edit. The script prints the maps but does not rewrite the corpus.
+To record fresh baselines, run with `--runs 3 --print-means`. `--runs <n>` averages that many direct requests per prompt (default 1). `--print-means` prints a `MEANS` JSON line per prompt with `means`, `baseline_selected` (means at or above the `threshold` in `sample-prompts.json`), and `baseline_borderline` (means from 0.65 through 0.80). Copy the matching baseline maps into `sample-prompts.json`, keep the returned model in the check evidence, and run the check after the corpus edit. A change to the preamble, to the state shape, or to the threshold needs fresh baselines. The script prints the maps but does not rewrite the corpus.
 ### Visual judge calibration
 
-`visual-judge-cases.json` at the repo root is the calibration set for grilling-page's visual judge. The judge takes its two diagram questions and their thresholds from `plugin/skills/grilling-page/references/visual-judge.json`, and its types from the visual-type guide in diagram-design's `SKILL.md`. Diagram cases are real Grilling page questions from vstack and Tern pages, labeled by gpt-6.1-sol at high thinking. A diagram case passes when each kind's yes probability reaches its threshold exactly when the case labels that kind true. Type cases are one hand-written question per guide type. A type case passes when its expected type, or an allowed one, is among the judge's top three types. After a change to the rubric or to the guide, run `TYPESAFE_API_KEY=$(omp token typesafe) bun scripts/visual-judge-check.ts`. It sends every case to live jev and exits 1 when a case misses.
+`visual-judge-cases.json` at the repo root is the calibration set for grilling-page's visual judge. Each judge request asks four questions about one page question. Two are the yes-or-no diagram questions, with their thresholds from `plugin/skills/grilling-page/references/visual-judge.json`. The other two rank the diagram type for each kind and name the types only. The state holds the page question as `question` and the visual-type guide in diagram-design's `SKILL.md` as `visual_types`, a map from each type name to what it shows. jev reads the guide once per request this way, not once per type question (ADR 0024). Diagram cases are real Grilling page questions from vstack and Tern pages, labeled by gpt-6.1-sol at high thinking. A diagram case passes when each kind's yes probability reaches its threshold exactly when the case labels that kind true. Type cases are one hand-written question per guide type. A type case passes when its expected type, or an allowed one, is among the top three types of either type question.
+
+After a change to the rubric or to the guide, run the check in one omp Python eval cell, with the checkout root as the working directory:
+
+```python
+import runpy
+check = runpy.run_path("scripts/visual_judge_check.py")["check"]
+await check(judge_batch)
+```
+
+`scripts/visual_judge_check.py` builds each request with `judge_request()` from `plugin/skills/grilling-page/scripts/visual_judge.py`. It sends every case through eval's `judge_batch` global, as the helper does. It prints one `MISS` line per missed case, then the pass count and the judge model. It returns `True` when every case passes and `False` when a case misses. If `judge_batch` did not use a TypeSafe jev model, the check raises `RuntimeError` and grades nothing, because `judge_batch` falls back to a chat model without TypeSafe credentials. It also raises when a case gets no answer.
 
 
 ### Pins and Upstream clones
@@ -110,7 +122,7 @@ Every row has `id`, `upstream`, `kind` (skill, principle, playbook, agent), `pat
 
 An artifact is one unit under `plugin/`: a skill directory (`plugin/skills/<name>`), an agent or rule file, or another child of a top-level plugin directory. Several rows can name one artifact. Artifacts with no Upstream item go under `originals:`. Every non-reject row names at least one artifact. Only reject rows have `artifacts: []`.
 
-The top-level `utility:` list names Utility skills as paths such as `plugin/skills/vstack-prose`. Each entry must name a shipped skill with no non-reject Base upstream row. A shipped skill with a key in `addon-questions.json` is an Addon, whatever its rows (ADR 0019). Other shipped skills with a non-reject Base row are Matt skills. Every other shipped skill outside `utility:` is an Addon and needs a catalog key.
+The top-level `utility:` list names Utility skills as paths such as `plugin/skills/vstack-prose`. Each entry must name a shipped skill with no non-reject Base upstream row. A shipped skill with a key in the `questions` map of `addon-questions.json` is an Addon, whatever its rows (ADR 0019). Other shipped skills with a non-reject Base row are Matt skills. Every other shipped skill outside `utility:` is an Addon and needs a catalog key.
 
 An adopt artifact is the Upstream item copied byte for byte, minus `agents/openai.yaml`, under the Upstream name. To copy one from its Pin:
 
@@ -175,7 +187,7 @@ Text output prints one line per failure, `FAIL <class> <item>: <message>`, after
 | `page-css` | a page template breaks the CSS upstream's `check-css.mjs` at its Pin; the item is the template and the message holds the script's `path:line` lines |
 | `invalid-utility` | a `utility:` entry names no shipped skill, or names a skill with a non-reject Base upstream row |
 | `addon-slash-route` | text under `plugin/` or in `README.md` contains `/skill:<addon>`. Use `skill://<addon>` instead |
-| `addon-question-mismatch` | an `addon-questions.json` key names no shipped skill or names a Utility skill, or a shipped Addon has no catalog key |
+| `addon-question-mismatch` | a key in the `questions` map of `addon-questions.json` names no shipped skill or names a Utility skill, or a shipped Addon has no such key |
 
 Rows with an `invalid-row` or `invalid-disposition` failure are skipped by the checks that read their fields, so one bad row reports once. House style rows and rules with an `invalid-house-style` failure are skipped the same way.
 
