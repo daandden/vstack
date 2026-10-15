@@ -66,10 +66,9 @@ export const STYLE_TEXT = {
   phrasing: "Open a todolist with one entry per step.\n",
   /** The `from` of the fixture's required name row. */
   renamed: "Run old-setup first.\n",
-  /** A spawn naming a bundled agent and a Fan-out gate with no branch lines. */
   spawner:
-    'Spawn one `scout` via `task` (`agent: "scout"`): the question, the user\'s override words, the vstack root. Wait for its result.\n' +
-    "Fan-out gate (skill://vstack-fan-out): parts: one per file; size: lines in the file.\n",
+    'Spawn one `scout` via `task` (`agent: "scout"`): the question, the vstack root. Wait for its result. If it cannot be spawned, stop: name the open question.\n' +
+    'Fan-out (skill://vstack-fan-out): parts: one per file. One `task` call; `tasks[]` has one item per part, each with `agent: "scout"`. Each `task`: the brief, the vstack root. Wait for every result. If they cannot start, stop: name the unread files.\n',
 };
 const styleSkill = (name: string, body: string) => `---\nname: ${name}\ndescription: ${name}\n---\n${body}`;
 const STYLE_ITEMS: Files = {
@@ -192,7 +191,7 @@ const GONE_TEXT = [
   "argument-hint: \"Which one?\"",
   "---",
   "Run `/skill:keep` yourself, or load skill://keep. Read `GLOSSARY.md` in the format of CONTEXT-FORMAT.md.",
-  "Spawn one `vstack-explorer` via `task` (`agent: \"vstack-explorer\"`): the question, the user's override words, the vstack root. Do not wait; keep working. If it cannot be spawned, do the work yourself.",
+  "Spawn one `vstack-explorer` via `task` (`agent: \"vstack-explorer\"`): the question, the vstack root. Do not wait; keep working. If it cannot be spawned, stop: name the open question.",
   "Never ask the user for a fact you can find. Ask the user with `ask` which name to keep.",
   "Keep Scratch under ~/.vstack/tmp/fixture/notes/. Remove a tree with `git worktree remove ../wt`.",
   "```sh",

@@ -4,6 +4,15 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.10] - 2026-10-15
+
+- Every Fan-out step now always starts one subagent per part. The Fan-out gate, the jev judge cell, and the inline line are gone, and every multi-part step uses one `Fan-out (skill://vstack-fan-out)` line from FORMS.md (ADR 0004).
+- "sequential", "no fan-out", and "inline" no longer change how a step runs. The agent says in one line that vstack always fans out, then runs the step. compare-attempts no longer asks Go ahead / Cancel, and Headless eval runs always start at once (ADR 0010).
+- A step stops when its subagents cannot start and names the parts left undone. Single-subagent lines stop instead of doing the work in the caller, and a depth-limit stop names `task.maxRecursionDepth`. compare-attempts' cross-judge is skipped with `cross-judge: not run`.
+- vstack-figures never draws a figure in the caller. If the drawers cannot start, or one figure fails, the caller names the figures that were not drawn and why (ADR 0023).
+- Subagent prompts no longer carry the user's override words. check-register's `fan-out-block` and `fixed-fan-out` lints merge into one `fan-out` lint that fails the old gate, fixed, and branch lines.
+- ADR 0004 is now "Fan-out always uses subagents", and ADR 0022 is now "implement-spec's main agent only orchestrates". Both files are renamed.
+
 ## [2.0.9] - 2026-10-15
 
 - A new agent, `vstack-diagram-drawer`, draws diagram-design figures. It has no `model` field, so it runs on the Session model until you set its `vstack-diagram-drawer` key in `/agents` (`task.agentModelOverrides`). Then every figure runs on the model you picked.

@@ -10,7 +10,7 @@ Cover features from source and exercise them live. The feature is the unit of co
 
 ## Entries and outcomes
 
-A feature-scoped caller names one feature whose live proof encountered Drift. Run step 0, step 2 inline for that feature file only, then steps 3–6 for that feature. Skip index hygiene and the source-wave gate. If the caller names no feature, run the full pass over every feature.
+A feature-scoped caller names one feature whose live proof encountered Drift. Run step 0, step 2 for that feature file only, then steps 3–6 for that feature. Skip index hygiene and the source-wave Fan-out. If the caller names no feature, run the full pass over every feature.
 
 Report one outcome:
 
@@ -42,13 +42,11 @@ Read the feature map README and list its sibling files. Fix missing, extra, dupl
 
 For a feature-scoped entry, read source for that one feature yourself and return the same summary and recipe described below. This is one source read, not Fan-out.
 
-For a full pass, find the source entry points for each feature file and count them for the gate.
+For a full pass, use this Fan-out line.
 
-Before this step, read skill://vstack-fan-out and run its gate on the block below.
+Before this step, read skill://vstack-fan-out.
 
-Fan-out gate (skill://vstack-fan-out): parts: one per feature file; size: source entry points per feature.
-- fan-out → one `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: explain "how does this user-facing feature work?" from source, flag likely Drift with citations, return feature summary / source entry points / likely Drift or none / one recipe, never drive the app or edit files, the user's override words, the vstack root.
-- inline → do every part yourself, in order, from the same brief.
+Fan-out (skill://vstack-fan-out): parts: one per feature file. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: explain "how does this user-facing feature work?" from source, flag likely Drift with citations, return feature summary / source entry points / likely Drift or none / one recipe, never drive the app or edit files, the vstack root. Wait for every result. If they cannot start, stop: report the outcome as `blocked`, with no source coverage.
 
 ## 3. Reconcile
 

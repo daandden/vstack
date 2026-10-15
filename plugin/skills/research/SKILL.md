@@ -3,7 +3,7 @@ name: research
 description: Investigate a question against high-trust primary sources and capture the findings as a Markdown file in the repo. Use when the user wants a topic researched, docs or API facts gathered, or reading legwork delegated to a background agent.
 ---
 
-Spawn one `vstack-worker` via `task` (`agent: "vstack-worker"`) to do the research: the question, the job below, the checkout to save the file in, the user's override words, the vstack root. Do not wait; keep working while it reads. If it cannot be spawned, do the research yourself.
+Spawn one `vstack-worker` via `task` (`agent: "vstack-worker"`): research the question through the job below and save the file in the named checkout, the vstack root. Do not wait; keep working. If it cannot be spawned, stop: report the research as not started.
 
 Its job:
 

@@ -22,5 +22,5 @@ Each adopted pstack principle stays a hidden skill (`disable-model-invocation: t
 - When the judge isn't native jev (no TypeSafe credentials, or a failure or timeout), selection is skipped and the turn goes on without it: chat-model judges answer only 0 or 1, so the threshold means nothing there.
 - The judge sees only the current prompt, cleaned the same way as auto-thinking. A bare follow-up such as "still failing" can miss principles that the conversation would have revealed.
 - Subagent sessions are skipped. A vstack skill that writes a subagent brief names the principles that govern that role, the way pstack's architect runner prompt does.
-- The judge runs on its own classifier model, which ADR 0004 allows.
+- The judge runs on its own classifier model, not the Session model. It is a classifier call, not a subagent, so ADR 0004's Session model rule does not cover it.
 - `jev-latest` moves with new releases, and scores can shift with it. `vstack update` re-runs a stored set of sample prompts to check which principles get selected.

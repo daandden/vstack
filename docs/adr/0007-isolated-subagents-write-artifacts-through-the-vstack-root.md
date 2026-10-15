@@ -11,7 +11,7 @@ Five subagent roles need their own checkout: hillclimb hypothesis workers, compa
 
 ## Consequences
 
-- A Fan-out block's batch may be one eval `agent()` batch as well as one `tasks[]` batch. The lint in `check-register.ts` accepts both forms, and every spawn site still names a vstack agent.
+- A Fan-out line's batch may be one eval `agent()` batch as well as one `tasks[]` batch. The lint in `check-register.ts` accepts both forms, and every spawn site still names a vstack agent.
 - setup-vstack gains a seventh machine check: `task.isolation.enabled` is on, and it is set only with approval. A skill that needs an isolated role while isolation is off stops and points at setup-vstack. It never falls back to the shared checkout.
 - The vstack Private-mode rule gains one line: a subagent uses the vstack root from its prompt and never re-resolves `--git-common-dir`.
 - omp isolation is not a filesystem sandbox. Writes through the vstack root are immediate, and the patch does not cover them. Children write disjoint files under it.

@@ -1,6 +1,6 @@
 # Design It Twice
 
-When the user wants to explore alternative interfaces for a chosen deepening candidate, use this pattern: 3–4 radically different designs, drafted at once by subagents or one after another by you, as step 2's gate decides. Based on "Design It Twice" (Ousterhout): your first idea is unlikely to be the best.
+When the user wants to explore alternative interfaces for a chosen deepening candidate, use this pattern: 3–4 radically different designs, drafted at once by subagents. Based on "Design It Twice" (Ousterhout): your first idea is unlikely to be the best.
 
 Uses the vocabulary in [SKILL.md](SKILL.md): **module**, **interface**, **seam**, **adapter**, **leverage**.
 
@@ -37,13 +37,9 @@ Each design gives:
 4. Dependency strategy and adapters (see [DEEPENING.md](DEEPENING.md))
 5. Trade-offs: where leverage is high, where it's thin
 
-Before this step, read skill://vstack-fan-out and run its gate on the block below.
+Before this step, read skill://vstack-fan-out.
 
-Fan-out gate (skill://vstack-fan-out): parts: one per design (3–4, each with its design constraint); size: files and lines the technical brief names.
-- fan-out → one `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: the technical brief, its design constraint, the five outputs above, the user's override words, the vstack root.
-- inline → do every part yourself, in order, from the same brief.
-
-Inline, finish each design under its own constraint before you start the next, and keep each one radically different from the ones before it.
+Fan-out (skill://vstack-fan-out): parts: one per design (3–4, each with its design constraint). One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: the technical brief, its design constraint, the five outputs above, the vstack root. Wait for every result. If they cannot start, stop: report Design It Twice as not run, with the step 1 explanation as the only output.
 
 ### 3. Screen, present, and compare
 

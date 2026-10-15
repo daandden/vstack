@@ -134,31 +134,29 @@ Only the parent writes to the tracker: it claims tickets, posts resolutions, clo
 
 Resolve the mode and absolute vstack root once using the project's vstack config. Read its tracker and domain docs. Pass that root unchanged to every child; children never resolve the git common dir again. If a child writes Scratch, also resolve and pass the project's Scratch dir through skill://vstack-tmp. Use distinct names for each ticket's findings.
 
+Before either path below, check `task.isolation.enabled`. If it is off, stop and point at `/skill:setup-vstack`.
+
 For two or more claimed research tickets:
 
-Before this step, read skill://vstack-fan-out and run its gate on the block below.
+Before this step, read skill://vstack-fan-out.
 
-Fan-out gate (skill://vstack-fan-out): parts: one per research ticket; size: sources the question names.
-- fan-out → one eval cell: per part, `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`; `wait()` on all handles. Each prompt: the runner brief below, the user's override words, the vstack root. Land each runner's findings from its `patchPath` as below, one ticket at a time.
-- inline → do every part yourself, in order, from the same brief, writing each findings file straight into its landing worktree in Standard mode or under the vstack root in Private mode.
+Fan-out (skill://vstack-fan-out): parts: one per research ticket. One eval cell: per part, `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`; `wait()` on all handles. Each prompt: the runner brief below, the vstack root. Land each runner's findings from its `patchPath` as below, one ticket at a time. If they cannot start or isolation is off, stop: leave the tickets open and point at `/skill:setup-vstack` when isolation is off.
 
 For one claimed research ticket:
 
-Spawn one `vstack-worker` via eval `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`: the runner brief below, the user's override words, the vstack root. Wait for its result. If it cannot be spawned, stop: check isolation and use the fallback below.
-
-Before either isolated path, check `task.isolation.enabled`. If off, stop and point at `/skill:setup-vstack`; never run an isolated role in the shared checkout. The gate's inline path needs no isolation. For another inability to run a child, do the research yourself from the same brief, writing into the landing worktree in Standard mode or under the vstack root in Private mode.
+Spawn one `vstack-worker` via eval `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`: the runner brief below, the vstack root. Wait for its result. If it cannot be spawned, stop: leave the ticket open and point at `/skill:setup-vstack` when isolation is off.
 
 ### Runner brief
 
 Give the runner the ticket title, URL, Question, map Destination and relevant Notes, mode, findings name, and repo notes convention. It reads skill://research and does its research steps 1–3 itself: investigate primary sources, write one Markdown findings file with citations, and use the repo's existing notes location (or choose a sensible location if none exists). It does not start research's background agent.
 
-In Standard mode, write the findings inside the runner's own isolated clone, not through the vstack root: this branch artifact must travel in the patch, leaving the user's checkout clean (ADR 0007). Commit nothing. In Private mode, write only `<vstack root>/artifacts/<map-slug>/research/<name>.md`; these writes are immediate and outside the patch. Make no application-code changes. Return the file path, a cited answer under 300 words, a one-line gist, and all open questions. Pass the user's override words and root to any nested child.
+In Standard mode, write the findings inside the runner's own isolated clone, not through the vstack root: this branch artifact must travel in the patch, leaving the user's checkout clean (ADR 0007). Commit nothing. In Private mode, write only `<vstack root>/artifacts/<map-slug>/research/<name>.md`; these writes are immediate and outside the patch. Make no application-code changes. Return the file path, a cited answer under 300 words, a one-line gist, and all open questions. Pass the vstack root to any nested child.
 
 ### Landing (parent, one ticket at a time)
 
 Read `patchPath` from omp's completion notice, `Isolation: changes captured at … (apply=false). Not applied.`, not from the agent handle or a guessed id-based path. Read the patch before applying it. A completion without a recoverable notice is not an available Standard-mode candidate; leave the ticket open and report the missing patch. Confirm it contains only that runner's findings. No automatic application or merge is allowed.
 
-In Standard mode, read skill://vstack-worktree and create a temporary landing worktree off the default branch: `omp wt add -b research/<name> <base>/vstack-<repo>-research-<name> <default-branch>`. A plain-checkout fallback continues because landing needs only tracked files. In that worktree, apply the reviewed patch with `git apply <patchPath>`, commit the findings, and push the research branch if a remote exists. For inline research, create this worktree before writing the findings and commit them there without a patch. Remove the worktree with `git worktree remove --force <path>` after landing; keep the research branch while its ticket cites it. Never switch or dirty the user's checkout.
+In Standard mode, read skill://vstack-worktree and create a temporary landing worktree off the default branch: `omp wt add -b research/<name> <base>/vstack-<repo>-research-<name> <default-branch>`. A plain-checkout fallback continues because landing needs only tracked files. In that worktree, apply the reviewed patch with `git apply <patchPath>`, commit the findings, and push the research branch if a remote exists. Remove the worktree with `git worktree remove --force <path>` after landing; keep the research branch while its ticket cites it. Never switch or dirty the user's checkout.
 
 In Private mode, drop the patch. Findings already live under the vstack root; there is no branch or push and the resolution comment carries no asset link.
 

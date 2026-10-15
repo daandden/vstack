@@ -6,11 +6,11 @@ skill-creator's eval runs each run as its own `omp -p` process instead of a vsta
 
 - **`vstack-worker` via `task`**: rejected. It fits the roster and the lint as they are, but a baseline can't be kept away from the installed skill under test, and it inherits `CLAUDE.md`, MCP tools, and the parent's memory state. Task spawning does drop `AGENTS.md`.
 - **Isolated roles (ADR 0007)**: rejected. An APFS clone copies the whole repo, the opposite of "a directory with only its input files", and it still receives the full skill list.
-- **Judge-gated Fan-out with an inline fallback (ADR 0004)**: rejected. Inline would make the parent, which knows the skill and the expected answer, the subject of its own test.
+- **Run the evals in the parent session**, as ADR 0004's old inline fallback did: rejected. The parent knows the skill and the expected answer, so it would be the subject of its own test.
 
 ## Consequences
 
-- A headless run is not a subagent, so it is not Fan-out. Its batch is fixed: no judge, no inline, and no vstack cap. When the user says "sequential" or "no fan-out", the runs go one at a time and stay headless. If `omp` can't run, the step stops.
+- A headless run is not a subagent, so it is not Fan-out. The step starts every run at once, with no vstack cap, and the user's words do not change this. If `omp` can't run, the step stops.
 - A Headless run always uses the Session model, through `--model` and `--thinking`. `task.agentModelOverrides` does not apply to it.
 - The House style gains a `headless-run` rule, allowlisted to skill-creator. The lint fails on that form anywhere else. The analyzer, which sees both skills and the mapping, stays a normal `vstack-explorer` spawn.
 - Runs pass `--approval-mode yolo`, the mode omp subagents always run in. They write only in temp directories, and evaluation.md's approval rule for runs with outside side effects still applies.

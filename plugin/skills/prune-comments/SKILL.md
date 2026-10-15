@@ -16,7 +16,7 @@ Use the caller's files or diff. Otherwise use the current diff against the defau
 
 ### 1. Get the critique
 
-Spawn one `vstack-comment-critic` via `task` (`agent: "vstack-comment-critic"`): critique the scoped files or diff in the named tree and return its report, the user's override words, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: the critique needs a fresh context. Report prune-comments as not run.
+Spawn one `vstack-comment-critic` via `task` (`agent: "vstack-comment-critic"`): critique the scoped files or diff in the named tree and return its report, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: the critique needs a fresh context. Report prune-comments as not run.
 
 Pass the scope without restating the critic's rules.
 
