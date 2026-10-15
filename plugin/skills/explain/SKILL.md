@@ -15,14 +15,12 @@ Use the caller's vstack root and project Scratch dir if supplied. Otherwise reso
 ## Step 2. Let how and why investigate
 
 For a subsystem, run both. A small change can need just one. Keep why narrow unless the reasons are the question. Put the narrowing in its brief so its coverage map records the skipped categories. Do not request a Preserve / Change / Avoid / Risk tail for an explanation.
-Count the files in the touched subsystems and commits touching the target before the gate.
-Before this step, read skill://vstack-fan-out and run its gate on the block below.
 
-Fan-out gate (skill://vstack-fan-out): parts: one per skill (how, why); size: files in the touched subsystems (how), commits touching the target (why).
-- fan-out → one `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: run `skill://how` or `skill://why` on the scoped target and return its output unedited with citations and confidence language, the user's override words, the vstack root, the Scratch dir.
-- inline → do every part yourself, in order, from the same brief.
+Before this step, read skill://vstack-fan-out.
 
-The inline order is how, then why. Each skill still runs its own gate. Wait for both results before blending them. For a single selected skill, read and run it yourself without the two-part gate.
+Fan-out (skill://vstack-fan-out): parts: one per skill (how, why). One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: run `skill://how` or `skill://why` on the scoped target and return its output unedited with citations and confidence language, the vstack root, the Scratch dir. Wait for every result. If they cannot start, stop: report the explanation as not written, because it has no how or why findings.
+
+Wait for both results before blending them. For a single selected skill, read and run it yourself.
 
 ## Step 3. Explain
 

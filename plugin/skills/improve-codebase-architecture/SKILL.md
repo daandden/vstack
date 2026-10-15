@@ -24,9 +24,9 @@ Scope before you scan: YAGNI. Deepening a module pays off by making future chang
 
 Read the project's domain glossary (`GLOSSARY.md`) and any ADRs in the area you're touching first.
 
-Resolve the absolute vstack root once: the git common directory's `vstack/` when its `config/` exists (Private mode), otherwise the main checkout root (Standard mode). Read domain documents and ADRs from that mode's configured paths. Carry the user's override words unchanged.
+Resolve the absolute vstack root once: the git common directory's `vstack/` when its `config/` exists (Private mode), otherwise the main checkout root (Standard mode). Read domain documents and ADRs from that mode's configured paths.
 
-Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): walk the scoped codebase using the brief below and return evidence-backed candidates and open questions without editing or asking, the user's override words, the vstack root. Wait for its result. If it cannot be spawned, do the work yourself.
+Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): walk the scoped codebase using the brief below and return evidence-backed candidates and open questions without editing or asking, the vstack root. Wait for its result. If it cannot be spawned, stop: report the architecture review as not run, with no candidates.
 
 Don't follow rigid heuristics; explore organically and note where you experience friction:
 
@@ -74,6 +74,6 @@ Side effects happen inline as decisions crystallize. Run the `skill://domain-mod
 - Naming a deepened module after a concept not in `GLOSSARY.md`? Add the term to `GLOSSARY.md`. Create the file lazily if it doesn't exist.
 - Sharpening a fuzzy term during the conversation? Update `GLOSSARY.md` right there.
 - User rejects the candidate with a load-bearing reason? Use `ask` to offer recording an ADR so future architecture reviews do not re-suggest it. Only offer when the reason would actually be needed by a future explorer to avoid re-suggesting the same thing. Skip ephemeral reasons ("not worth it right now") and self-evident ones.
-- Want to explore alternative interfaces for the deepened module? Run the `skill://codebase-design` skill and use its DESIGN-IT-TWICE Fan-out block.
+- Want to explore alternative interfaces for the deepened module? Run the `skill://codebase-design` skill and use its DESIGN-IT-TWICE Fan-out line.
 
 Every in-session question goes through `ask`. A timed-out choice remains unanswered. For approval gates, re-ask once, then stop without acting if it times out again. If `ask` is absent in a subagent, return open questions to the parent; a headless run takes and reports the recommended answer.

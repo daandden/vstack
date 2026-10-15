@@ -38,7 +38,7 @@ Read the spec's testing decisions. to-spec confirmed those seams with the user t
 
 Use an **exploration subagent** only when the tickets need codebase files or external documentation that they do not point at. This lets **implementer subagents** focus on implementation rather than exploration.
 
-Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): read the spec and tickets, explore the code and documentation they need, save markdown notes under `<Scratch dir>/implement-spec/<run-id>/notes/`, and return each note path with a one-line gist, the user's override words, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, do the work yourself.
+Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): read the spec and tickets, explore the code and documentation they need, save markdown notes under `<Scratch dir>/implement-spec/<run-id>/notes/`, and return each note path with a one-line gist, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: report the tickets that need exploration notes and start no implementer.
 
 Pass the note paths to every implementer as context pointers.
 
@@ -56,11 +56,13 @@ Use **implementer subagents** to implement each ticket, each in its own isolated
 - builds the ticket with skill://tdd.
 - returns a patch and merges nothing. Its clone's refs are a snapshot, so the merger in step 5 lands the patch on the current tip.
 
-Before the first implementer, require `omp config get task.isolation.enabled` to print `true`. If isolation is off, stop and point at `/skill:setup-vstack`. If isolated workers cannot start, stop and report. Never move a ticket's work into the shared checkout or into your own hands.
+Before the first implementer, require `omp config get task.isolation.enabled` to print `true`. If isolation is off, stop and point at `/skill:setup-vstack`.
 
-Run the line below for the ready frontier now, and again in step 6 for each set of newly ready tickets. There is one part per ready ticket, and one ticket is enough. Start no implementer while a merger runs, because its uncommitted changes would enter the new clone.
+Run the line below for the ready frontier now, and again in step 6 for each set of newly ready tickets. There is one part per ready ticket. With one ready ticket, the line starts one implementer. Start no implementer while a merger runs, because its uncommitted changes would enter the new clone.
 
-Fan-out (always: the main agent only orchestrates): one eval cell: per part, `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`; no `wait()`, because each handle delivers its own result when it settles. Each prompt: the implementer brief below for one ticket, the user's override words, the vstack root, the Scratch dir. The merger in step 5 lands each `patchPath` on the integration branch, one ticket at a time. If it cannot spawn or isolation is off, stop: implement-spec needs isolated implementers; run `/skill:setup-vstack`.
+Before this step, read skill://vstack-fan-out.
+
+Fan-out (skill://vstack-fan-out): parts: one per ready ticket. One eval cell: per part, `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`; no `wait()`, because each handle delivers its own result when it settles. Each prompt: the implementer brief below for one ticket, the vstack root, the Scratch dir. The merger in step 5 lands each `patchPath` on the integration branch, one ticket at a time. If they cannot start or isolation is off, stop: implement-spec needs isolated implementers, so run `/skill:setup-vstack` and report each ticket left open.
 
 Record each handle's `agent://<id>` with its ticket in the run record. Act on each result in step 5 when it arrives. When nothing else needs you while implementers run, call the `wait` tool. It returns on the first result, so a slow ticket holds back no other ticket.
 
@@ -76,7 +78,7 @@ If the implementer returned an open question, start no merger for it. Hold its p
 
 Otherwise, land the patch with one merger. Only one merger runs at a time.
 
-Spawn one `vstack-worker` via `task` (`agent: "vstack-worker"`): the merger brief below for one ticket, with its patch path and the stopped slices its implementer listed, the user's override words, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: the main agent never merges a ticket itself, so report each unmerged patch path.
+Spawn one `vstack-worker` via `task` (`agent: "vstack-worker"`): the merger brief below for one ticket, with its patch path and the stopped slices its implementer listed, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: the main agent never merges a ticket itself, so report each unmerged patch path.
 
 Merger brief: land one ticket's patch on the integration branch in the parent checkout. Read the patch and confirm that it holds only this ticket's work. If it holds other work, apply nothing and return that. Apply it to the current integration branch tip with `git apply --3way -- "<patchPath>"`. If it conflicts, resolve the conflict against the ticket and the spec, then rerun the ticket's tests. Stage only the ticket's proven hunks and commit them as one commit on the integration branch. Use the repo's commit convention and write a body that names the ticket and the patch path. Leave the integration branch tree clean. Save a stopped slice's remaining hunks as `<Scratch dir>/implement-spec/<run-id>/<ticket>/stopped.patch`, remove them from the working tree, and name the slice in the commit body. If you cannot resolve the conflict, or the tests fail, return the working tree and the index to their state before your apply, and commit nothing. Push nothing. Save evidence under `<Scratch dir>/implement-spec/<run-id>/<ticket>/merge/`. Return the ticket, the commit SHA or the failure with its reason, each conflict with its resolution, the test outcomes, and the stopped-slice patch path.
 
@@ -96,7 +98,7 @@ A ticket that already failed in this run is not ready again: a failed worker, a 
 
 Once no ticket is ready and no implementer or merger runs, run shared step 3b, then shared step 4. Run shared step 5 once, before shared step 6 (Matt's order). It runs skill://code-review over the whole integration-branch diff from the base SHA, the ticket commits included. Fix every accepted finding in a single subagent. With no accepted finding, skip the fixer below.
 
-Spawn one `vstack-worker` via `task` (`agent: "vstack-worker"`): fix every accepted review finding in the parent checkout from the review's findings and the integration branch tip, with skill://tdd at the seams the spec confirms where a fix changes behavior, and return changed paths, checks with their outcomes, and any new seam as an open question, the user's override words, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: the main agent only orchestrates, so report each accepted finding as open. Put each returned seam question to the user through `ask` before the commit. A timed-out answer leaves that finding open. Report it.
+Spawn one `vstack-worker` via `task` (`agent: "vstack-worker"`): fix every accepted review finding in the parent checkout from the review's findings and the integration branch tip, with skill://tdd at the seams the spec confirms where a fix changes behavior, and return changed paths, checks with their outcomes, and any new seam as an open question, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: the main agent only orchestrates, so report each accepted finding as open. Put each returned seam question to the user through `ask` before the commit. A timed-out answer leaves that finding open. Report it.
 
 ### 8. Commit and close
 

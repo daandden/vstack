@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Review changes since a fixed point on three axes, Standards, Spec, and conditional Safety. Runs each axis as its own reviewer, in parallel when the Fan-out gate allows, and reports them side by side. Use to review a branch, PR, work-in-progress changes, or changes since a commit, branch, tag, or merge-base.
+description: Review changes since a fixed point on three axes, Standards, Spec, and conditional Safety. Runs each axis as its own reviewer in parallel and reports them side by side. Use to review a branch, PR, work-in-progress changes, or changes since a commit, branch, tag, or merge-base.
 ---
 
 Review the supplied change scope against the fixed point on separate axes:
@@ -9,7 +9,7 @@ Review the supplied change scope against the fixed point on separate axes:
 - Spec checks the originating issue or spec.
 - Safety runs blast-radius only in a run when the diff touches what outside code depends on, or the user requests it.
 
-Each axis runs as its own reviewer so that findings from one do not mask another. Inline keeps reports separate in one context.
+Each axis runs as its own reviewer so that findings from one do not mask another.
 
 Resolve the absolute vstack root through the Private-mode rule once. Read `docs/vstack/issue-tracker.md` under that root in Standard mode, or `<vstack root>/config/issue-tracker.md` in Private mode. If it is missing, stop and tell the user to run `/skill:setup-vstack`. Subagents use the supplied root, never resolve it again.
 
@@ -78,19 +78,13 @@ The axes that run are Standards, Spec unless step 2 found no spec, and Safety on
 
 When Safety runs, read `skill://vstack-tmp` and resolve the project Scratch dir once with its path script and no argument. Pass that absolute project dir, never the `blast-radius/` kind dir. A child uses the supplied dir without running the script. If this reviewer is itself a child, reuse the Scratch dir from its prompt.
 
-With two or three axes, use this block. With only Standards, use the single form below and do not run the gate.
+With two or three axes, use this Fan-out line. With only Standards, use the single-subagent line below.
 
-Before this step, read skill://vstack-fan-out and run its gate on the block below.
+Before this step, read skill://vstack-fan-out.
 
-Fan-out gate (skill://vstack-fan-out): parts: one per axis that runs; size: diff lines and files, plus spec lines for Spec.
-- fan-out → one `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: that axis's reviewer prompt below, the user's override words, the vstack root, the Scratch dir.
-- inline → do every part yourself, in order, from the same brief.
+Fan-out (skill://vstack-fan-out): parts: one per axis that runs. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: that axis's reviewer prompt below, the vstack root, the Scratch dir. Wait for every result. If they cannot start, stop: report code-review as not run.
 
-Finish each inline axis report before starting the next. Do not revise it after reading a later axis.
-
-When only Standards runs, use the single form below instead of the gate. No judge runs.
-
-Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the Standards reviewer prompt below, the user's override words, the vstack root. Wait for its result. If it cannot be spawned, do the work yourself.
+Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the Standards reviewer prompt below, the vstack root. Wait for its result. If it cannot be spawned, stop: report code-review as not run.
 
 The Standards reviewer prompt must include:
 

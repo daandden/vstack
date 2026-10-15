@@ -20,7 +20,7 @@ Resolve the absolute vstack root and mode through the Private-mode rule. Resolve
 
 ## 1. Verify every PR independently
 
-Read skill://vstack-fan-out and its FORMS.md. If eval is unavailable, isolation is off, or a verifier cannot start, stop and point to /skill:setup-vstack. Never verify your own PRs. Only a verdict from an agent that did not write the code counts, because an author checks what it meant to build. An inline gate still requires an isolated verifier.
+Never verify your own PRs. Only a verdict from an agent that did not write the code counts, because an author checks what it meant to build.
 
 List the project's Verify skills named `verify-*`. In Private mode, also list `<vstack root>/skills/verify-*/` and deduplicate links and targets. If a link is missing, repair the absolute `.omp/skills/verify-<app>` link at the top level as described in skill://setup-app-verification. Leave shared ignores unchanged. Read a newly linked skill by absolute path for this session. Resolve helpers relative to the directory from which SKILL.md was read.
 
@@ -30,17 +30,13 @@ Fetch each exact base and head commit. Read the base and head SHAs from `read-pr
 
 Verifier brief: run the named builds and tests and drive the Verify skill's Doctor, Launch, and Drive steps. Keep tracked files unchanged. Never commit, push, comment, merge, or maintain the Verify skill. Save logs, screenshots, and notes under `<Scratch dir>/verify/<app>-<run-id>/`, with a distinct entry per PR. A wrong app behavior is FAIL. A stale instruction while Doctor passes is DRIFT; name the failing step and evidence. Return the `vstack-verifier` output schema: `verdict` (PASS, PASS+NOTES, FAIL, DRIFT), `head_sha`, `base_sha`, `patch_id`, `evidence`, and optional `notes` and `open_questions`. Compute `patch_id` as the first field of `git diff <base_sha>...<head_sha> | git patch-id --stable`.
 
-For one PR, use the single form below. For two or more, run the gate and use its selected line.
+For one PR, use the single form below. For two or more, use the Fan-out line after it.
 
-Spawn one `vstack-verifier` via eval `agent(<prompt>, agent="vstack-verifier", isolated=True, apply=False, merge=False)`: the verifier brief above for this PR, the user's override words, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: ship cannot verify its own PRs.
+Spawn one `vstack-verifier` via eval `agent(<prompt>, agent="vstack-verifier", isolated=True, apply=False, merge=False)`: the verifier brief above for this PR, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: ship cannot verify its own PRs, so point to `/skill:setup-vstack`.
 
-Before this step, read skill://vstack-fan-out and run its gate on the block below.
+Before this step, read skill://vstack-fan-out.
 
-Fan-out gate (skill://vstack-fan-out): parts: one per PR; size: changed files and diff lines per PR.
-- fan-out → one eval cell: per part, `agent(<prompt>, agent="vstack-verifier", isolated=True, apply=False, merge=False)`; `wait()` on all handles. Each prompt: the verifier brief above for one PR, the user's override words, the vstack root, the Scratch dir. Read each completion notice's patch path and never apply a verifier patch.
-- inline → Spawn one `vstack-verifier` via eval `agent(<prompt>, agent="vstack-verifier", isolated=True, apply=False, merge=False)` that checks every part in order: the verifier brief above for every PR with separate evidence and a schema record per PR, the user's override words, the vstack root, the Scratch dir. If it cannot be spawned, stop: ship cannot verify its own PRs.
-
-For the inline multi-PR run, ask that verifier to save one schema-shaped JSON record per PR in its Scratch entry. Its schema-shaped final result describes the last checked PR and lists the absolute record paths in `evidence`. Read every record as an independent verdict. Never copy the last verdict onto other PRs.
+Fan-out (skill://vstack-fan-out): parts: one per PR. One eval cell: per part, `agent(<prompt>, agent="vstack-verifier", isolated=True, apply=False, merge=False)`; `wait()` on all handles. Each prompt: the verifier brief above for one PR, the vstack root, the Scratch dir. Read each completion notice's patch path and never apply a verifier patch. If they cannot start or isolation is off, stop: ship cannot verify its own PRs, so point to `/skill:setup-vstack`.
 
 Read each patch path from omp's completion notice, `Isolation: changes captured at … (apply=false). Not applied.` Never use `AgentHandle.patchPath` or derive a path from an agent id. Inspect a returned patch for tracked edits. A nonempty tracked patch invalidates that verifier's run. If the notice is unavailable, report that isolation evidence is missing and treat the result as unavailable. Never apply a verifier patch.
 

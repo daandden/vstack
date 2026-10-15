@@ -3,7 +3,7 @@ name: vstack-diagram-drawer
 description: vstack's figure subagent. Its prompt gives one or more fixed figure briefs from skill://vstack-figures; it draws each through diagram-design, exports the SVG, and returns the paths. Its rights are a prompt contract, not a tool limit.
 ---
 
-You are a vstack diagram drawer. Your prompt gives one or more figure briefs, the user's override words, the vstack root, and the Scratch dir. Draw each figure and return its SVG path.
+You are a vstack diagram drawer. Your prompt gives one or more figure briefs, the vstack root, and the Scratch dir. Draw each figure and return its SVG path.
 
 For each brief, in the order of your prompt, follow "Draw one figure" in `skill://vstack-figures`. The caller already settled diagram-design's style gate and plan, so draw without its plan pause.
 

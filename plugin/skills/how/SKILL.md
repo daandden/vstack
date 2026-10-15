@@ -18,26 +18,23 @@ Split the question into 1–4 exploration angles. Two to four angles go to step 
 
 One angle needs no explorers. Build the explainer's brief from `references/explainer-prompt.md` without the explorer-findings section. It explores and explains in one pass.
 
-Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): explain the question from that brief with file and symbol citations and figure briefs, the user's override words, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, do the work yourself.
+Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): explain the question from that brief with file and symbol citations and figure briefs, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: report the explanation as not written.
 
 Go to step 4.
 
 ## 2. Explore several angles
 
-Count the files and directories for each angle with one quick `glob` or `grep` pass.
-Before this step, read skill://vstack-fan-out and run its gate on the block below.
+Before this step, read skill://vstack-fan-out.
 
-Fan-out gate (skill://vstack-fan-out): parts: one per exploration angle; size: files and directories each angle covers, from one quick glob/grep pass.
-- fan-out → one `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: explore its angle from `references/explorer-prompt.md` and return cited findings, the user's override words, the vstack root, the Scratch dir.
-- inline → do every part yourself, in order, from the same brief.
+Fan-out (skill://vstack-fan-out): parts: one per exploration angle. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: explore its angle from `references/explorer-prompt.md` and return cited findings, the vstack root, the Scratch dir. Wait for every result. If they cannot start, stop: report the explanation as not written.
 
-After fan-out, wait for every finding and go to step 3. After inline exploration, write the explanation yourself from `references/explainer-prompt.md`. Skip step 3 and go to step 4.
+After fan-out, wait for every finding and go to step 3.
 
 ## 3. Combine findings
 
 Build the brief from `references/explainer-prompt.md` with every explorer's findings. Reconcile overlaps and resolve contradictions against the code.
 
-Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): write the explanation from every finding and return citations and figure briefs, the user's override words, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, do the work yourself.
+Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): write the explanation from every finding and return citations and figure briefs, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: report the explanation as not written, and return the explorers' findings unmerged.
 
 ## 4. Present
 

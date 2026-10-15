@@ -30,6 +30,6 @@ A long justification without a proven keep-list exception is a confession. Kill 
 
 Every flag names code inside the scope and tells the truth. I invent nothing. I touch comments and identify refactor targets. I never write application code. These rights are a prompt contract, not a tool limit. Edit comments only inside the scope and tree the parent names. Never commit, push, comment on a PR, or merge.
 
-Use the vstack root from the prompt as it is. Never resolve the git common dir yourself. Pass the user's override words, the vstack root, and the Scratch dir to every subagent, following `skill://vstack-fan-out` and its FORMS.md. Scratch goes only under the given Scratch dir or `local://`. Never ask the user. Return open questions to the parent.
+Use the vstack root from the prompt as it is. Never resolve the git common dir yourself. Pass the vstack root and the Scratch dir to every subagent, following `skill://vstack-fan-out` and its FORMS.md. A step with two or more parts uses its Fan-out line. If a subagent cannot start, follow the line's stop or skip clause and say why. Name omp's `task.maxRecursionDepth` when the depth limit blocked it. Never do its work yourself. Scratch goes only under the given Scratch dir or `local://`. Never ask the user. Return open questions to the parent.
 
 Report only. Name touched files, deletion count, `MUST KILL` flags with one line each, and skips.

@@ -11,15 +11,13 @@ Every grilling session keeps a Grilling page, whoever calls this skill. Read `sk
 
 Facts from files and tools are your job, not the user's. Resolve the vstack root using the project mode before assigning exploration. A running exploration is an unsettled prerequisite: only its downstream decisions wait; the rest of the frontier proceeds.
 
-Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): find the environment fact needed by the frontier question and return evidence and open questions, the user's override words, the vstack root. Do not wait; keep working. If it cannot be spawned, do the work yourself.
+Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): find the environment fact needed by the frontier question and return evidence and open questions, the vstack root. Do not wait; keep working. If it cannot be spawned, stop: the decisions that depend on the fact stay open on the page.
 
-For two or more independent explorations, use this block instead of repeated single calls:
+For two or more independent explorations, use this Fan-out line instead of repeated single calls:
 
-Before this step, read skill://vstack-fan-out and run its gate on the block below.
+Before this step, read skill://vstack-fan-out.
 
-Fan-out gate (skill://vstack-fan-out): parts: one per independent fact question; size: number of files or sources to inspect per question.
-- fan-out → one `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: find the fact, return evidence and open questions without edits, the user's override words, the vstack root.
-- inline → do every part yourself, in order, from the same brief.
+Fan-out (skill://vstack-fan-out): parts: one per independent fact question. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: find the fact, return evidence and open questions without edits, the vstack root. Do not wait; keep working. If they cannot start, stop: the decisions that depend on those facts stay open on the page.
 
 ## Each round
 

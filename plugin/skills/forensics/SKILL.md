@@ -41,7 +41,7 @@ For large artifacts that would crowd the main context, use one parser for the ca
 
 Parser brief: identify the formats and parse the supplied captures into this run's sqlite database. Query the cause and return the reduced finding, counts or timings with units, evidence queries, source mapping, and absolute artifact paths. Follow skill://principle-guard-the-context-window. Preserve inputs. Never edit tracked files or rerun the captured workload. Write only under the named Scratch entry. Return open questions to the parent.
 
-Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the parser brief above with the absolute capture paths and this run's evidence directory, the user's override words, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, do the work yourself.
+Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the parser brief above with the absolute capture paths and this run's evidence directory, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: report the artifact as not parsed, with the capture paths and the evidence directory.
 
 For a small artifact, do the same parsing and queries yourself. Query frames that hold the most time and walk the call tree to the hot path. For a leak, follow the retainer chain from the leaked object to a GC root. For a spindump, identify the thread stuck on-CPU or blocked and its wait reason. For a glitch, narrow the trace to the visible event and the scheduling work around it. Distinguish observed signal from inferred cause.
 

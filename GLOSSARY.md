@@ -79,7 +79,7 @@ Ship an Upstream item byte-for-byte as it is at the Pin, under its Upstream name
 _Avoid_: copy, vendor
 
 **Adapt**:
-Ship a changed copy of an Upstream item. Any change counts, including a rename, a swapped reference, an omp tool name, or a behavior change such as gating Fan-out on the complexity judgment.
+Ship a changed copy of an Upstream item. Any change counts, including a rename, a swapped reference, an omp tool name, or a behavior change such as running a step's parts as Fan-out.
 _Avoid_: port, fork
 
 **Merge**:
@@ -109,7 +109,7 @@ The model of the session that starts a subagent or a Headless run. For the user'
 _Avoid_: parent's model, run's model
 
 **Fan-out**:
-One skill step running two or more subagents at the same time. At each such step, a judgment of the job's complexity decides whether to fan out, and the user's explicit words override that judgment either way. Two kinds of skill always fan out and skip the judgment: a skill the user invokes in order to fan out, and a skill whose main agent only orchestrates. A step that draws figures also skips it: each figure gets its own subagent, and when the user asks for no Fan-out, one subagent draws every figure in order. Every subagent uses the Session model of the step's session unless the user has set a model for its agent.
+One skill step running two or more subagents at the same time. A step with two or more parts always fans out: no judgment of the job's size decides it, the agent at that step never does the parts itself, and the user's words, such as "sequential" or "no fan-out", do not turn it off. If the subagents cannot start, the step stops and says why. A step that draws figures gives each figure its own subagent. Every subagent uses the Session model of the step's session unless the user has set a model for its agent.
 _Avoid_: swarm, parallelism (unqualified)
 
 **Headless run**:

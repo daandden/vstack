@@ -38,15 +38,13 @@ Read `references/source-playbook.md`. Make a coverage map for all seven categori
 6. Error / exception tracking, through configured MCPs.
 7. Product analytics warehouse, through configured MCPs.
 
-Each reachable category gets a brief from `references/investigator-prompt.md` and its single source playbook. Include `references/sources/incident-postmortem.md` for defensive code such as retries, timeouts, null guards, feature flags, or rate limits. Include the profile, code anchor, and original question. Use one category per part. On fan-out, each investigator owns exactly one source. Keep additional reachable sources in that category visible in the coverage map and investigate them in a later gated wave. Never silently drop a reachable source.
+Each reachable category gets a brief from `references/investigator-prompt.md` and its single source playbook. Include `references/sources/incident-postmortem.md` for defensive code such as retries, timeouts, null guards, feature flags, or rate limits. Include the profile, code anchor, and original question. Use one category per part. Each investigator owns exactly one source. Keep additional reachable sources in that category visible in the coverage map and investigate them in a later wave. Never silently drop a reachable source.
 
-Before this step, read skill://vstack-fan-out and run its gate on the block below.
+Before this step, read skill://vstack-fan-out.
 
-Fan-out gate (skill://vstack-fan-out): parts: one per evidence category the profile and the MCP map can reach (source control always); size: commits and reviews in the code anchor, plus whether each category goes through a CLI, files, or an MCP.
-- fan-out → one `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: investigate its one category and source from the base prompt and category playbook with the profile, anchor, and original question, the user's override words, the vstack root.
-- inline → do every part yourself, in order, from the same brief.
+Fan-out (skill://vstack-fan-out): parts: one per evidence category the profile and the MCP map can reach (source control always). One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: investigate its one category and source from the base prompt and category playbook with the profile, anchor, and original question, the vstack root. Wait for every result. If they cannot start, stop: report the question as not answered, with the profile, the anchor, and the coverage map.
 
-Keep one findings section per category on both branches. Record cross-source leads instead of chasing another investigator's source. Wait for all findings before synthesis.
+Keep one findings section per category. Record cross-source leads instead of chasing another investigator's source. Wait for all findings before synthesis.
 If only one category is reachable, investigate it yourself. A batch of one is not Fan-out.
 
 Skip a category only with an explicit written justification in Sources consulted. Valid reasons are no reachable source or proven irrelevance. An unavailable source is a gap, not a choice. Caller-scoped omissions also stay visible with the caller's narrowing as the reason. Record null searches and their actual queries.
@@ -57,7 +55,7 @@ For a trivial single-commit target, answer directly from the anchor only after c
 
 On every path, use `references/synthesizer-prompt.md`. Supply all findings, null results, skips with reasons, the full profile and anchor, the question, and `references/epistemics.md`. A fresh context protects the confidence tiers.
 
-Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): synthesize the evidence with the confidence framework and spot-check citations without modifying files or external state, the user's override words, the vstack root. Wait for its result. If it cannot be spawned, do the work yourself.
+Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): synthesize the evidence with the confidence framework and spot-check citations without modifying files or external state, the vstack root. Wait for its result. If it cannot be spawned, stop: report the question as not answered, with the findings unsynthesized.
 
 ## Step 5. Present
 

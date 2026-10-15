@@ -22,7 +22,7 @@ To test one section, remove only that section and compare on the dimension it wa
 
 Read [evaluation.md](evaluation.md) for Scratch, model and thinking extraction, child environment and failure handling. Stage `<workspace>/compare/<eval>/` with only the prompt, `A/`, `B/`, and assertions. Keep `<workspace>/mapping.json`, both skills and both transcripts outside that cwd, and out of the comparator prompt. Request only those staged paths; do not reveal which label uses a skill. This is blinding, not a filesystem security boundary.
 
-Headless batch (ADR 0010): one eval cell starts every comparator at once, with no cap, as `omp -p --model <m> --thinking <t> --approval-mode yolo --cwd <compare dir> --session-dir <compare dir>/session --no-skills --no-rules --no-extensions --config <compare dir>/isolate.yml "<prompt>"`. Read <m> and <t> from the parent's `$PI_SESSION_FILE`. The per-run overlay sets `memory.backend: off`. If the user said "sequential" or "no fan-out", start them one at a time. If `omp` cannot run, stop: report the process error. No inline comparator replaces it.
+Headless batch (ADR 0010): one eval cell starts every comparator at once, with no cap, as `omp -p --model <m> --thinking <t> --approval-mode yolo --cwd <compare dir> --session-dir <compare dir>/session --no-skills --no-rules --no-extensions --config <compare dir>/isolate.yml "<prompt>"`. Read <m> and <t> from the parent's `$PI_SESSION_FILE`. The per-run overlay sets `memory.backend: off`. If `omp` cannot run, stop: report the process error.
 
 Give a headless run the eval prompt, output A, output B, and any assertions, without the skills, transcripts, or label mapping. Instruct it to:
 
@@ -36,7 +36,7 @@ Request the verdict, per-criterion scores, and reasoning with examples.
 
 ## Analyzer
 
-Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the mapping, both skills, both transcripts, the comparator's verdict, and the analyzer brief below, the user's override words, the vstack root. Wait for its result. If it cannot be spawned, do the work yourself.
+Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the mapping, both skills, both transcripts, the comparator's verdict, and the analyzer brief below, the vstack root. Wait for its result. If it cannot be spawned, stop: report the comparator's verdict with the analysis marked not run.
 
 The analyzer is not blind. Its brief is to explain the result:
 

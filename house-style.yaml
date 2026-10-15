@@ -179,31 +179,25 @@ replacements:
     uses: [migration]
 
 rules:
-  - id: fan-out-block
+  - id: fan-out
     scope: adapted
     text: |
-      A step that would run two or more subagents at once uses a Fan-out block: a gate line that cites skill://vstack-fan-out (it holds the rubric and the judge cell; the step fills only `parts`, each with a countable size), one fan-out line, and one inline line. The exact forms are in plugin/skills/vstack-fan-out/FORMS.md, the single source every skill copies: the `task` batch; the isolated eval batch for roles that fan out in their own clones (hillclimb workers, wayfinder research runners, ship verifiers); and the inline line that stops when the skill forbids doing the work itself (today only ship).
+      A step that runs two or more subagents at once uses the one Fan-out line in plugin/skills/vstack-fan-out/FORMS.md, the single source every skill copies. The step always fans out. The line cites skill://vstack-fan-out, names its parts, and starts one subagent per part in one batch. It is the `task` batch, or the isolated eval batch for roles that fan out in their own clones (compare-attempts runners, hillclimb workers, implement-spec implementers, wayfinder research runners, ship verifiers). It ends with a stop clause. If its subagents cannot start, the step stops and names the parts that were not done and the reason.
 
-      Every subagent prompt also carries the Scratch dir when the child writes Scratch.
+      Every subagent prompt carries the vstack root, and also the Scratch dir when the child writes Scratch.
     lint: >-
-      In markdown outside frontmatter and code fences, a `Fan-out gate (` line reads `Fan-out gate (skill://vstack-fan-out): parts: …; size: …` and the next two non-blank lines are one fan-out line and one inline line. The fan-out line is one `task` call with `tasks[]`, or one eval cell of `agent(…, isolated=True, apply=False, merge=False)` calls with `wait()`; it names only vstack agents (agents the plugin ships) and passes the user's override words and the vstack root. The inline line does every part itself, or is a `Spawn one` line that stops when it cannot spawn. A fan-out or inline line with no gate line above it fails too (adapt, merge, and original text).
-  - id: fixed-fan-out
-    scope: adapted
-    allowlist: [compare-attempts, implement-spec, vstack-figures]
-    text: |
-      Only where the skill fans out with no judge: its invocation is the user's request to fan out (compare-attempts), its main agent only orchestrates (implement-spec, ADR 0022), or it starts one drawer per figure (vstack-figures, ADR 0023). It uses a fixed Fan-out line in plugin/skills/vstack-fan-out/FORMS.md, with no gate line, no judge, and no inline line.
-    lint: A `Fan-out (always` line in markdown outside frontmatter and code fences fails outside the allowlisted skills (adapt, merge, and original text).
+      In markdown outside frontmatter and code fences, a line that holds `Fan-out (` or `Fan-out gate (` reads `Fan-out (skill://vstack-fan-out): parts: one per ….` It is one `task` call with `tasks[]`, or one eval cell of `agent(…, isolated=True, apply=False, merge=False)` calls that says `wait()` or no `wait()`. It names only vstack agents (agents the plugin ships), passes the vstack root, and ends with `If they cannot start, stop: …` or `If they cannot start or isolation is off, stop: …`. The removed judge-gated forms fail: a `Fan-out gate (` line, a `Fan-out (always` line, and a `- fan-out →` or `- inline →` branch line (adapt, merge, and original text).
   - id: single-spawn
     scope: adapted
     text: |
-      One subagent uses a single-spawn line from plugin/skills/vstack-fan-out/FORMS.md: the `task` form, or the isolated eval form for a role that runs in its own clone. An isolated role never uses the `task` form, in a batch, an inline line, or a single spawn. If isolation is off, the skill stops and points at setup-vstack (ADR 0007).
+      One subagent uses a single-spawn line from plugin/skills/vstack-fan-out/FORMS.md: the `task` form, or the isolated eval form for a role that runs in its own clone. An isolated role uses the eval form in a Fan-out line and in a single spawn. If isolation is off, the skill stops and points at setup-vstack (ADR 0007). The line ends `If it cannot be spawned, stop: …`. A step that has a result without the subagent ends `If it cannot be spawned, skip it: …` instead. In both cases the caller leaves the subagent's work undone.
     lint: >-
-      In markdown outside frontmatter and code fences, a `Spawn one` line names one vstack agent (an agent the plugin ships) in both places, uses the `task` form or the eval form with isolated=True, apply=False, merge=False, and passes the user's override words and the vstack root. Any other line that names an agent through `agent: "…"` or `agent="…"` names a vstack agent, and an eval `agent()` call or a `task` call that names no agent fails. The class `agent-spawns` follows this rule too, for agent files whose `spawns:` lists `*` or an agent the plugin does not ship (adapt, merge, and original text).
+      In markdown outside frontmatter and code fences, a `Spawn one` line names one vstack agent (an agent the plugin ships) in both places, uses the `task` form or the eval form with isolated=True, apply=False, merge=False, passes the vstack root, and ends with `If it cannot be spawned, stop: …` or `If it cannot be spawned, skip it: …`. Any other line that names an agent through `agent: "…"` or `agent="…"` names a vstack agent, and an eval `agent()` call or a `task` call that names no agent fails. The `fan-out` lint reads Fan-out lines instead. The class `agent-spawns` follows this rule too, for agent files whose `spawns:` lists `*` or an agent the plugin does not ship (adapt, merge, and original text).
   - id: headless-run
     scope: adapted
     allowlist: [skill-creator]
     text: |
-      Headless batch (ADR 0010): one eval cell starts every run at once, with no cap. Per run: `omp -p --model <m> --thinking <t> --approval-mode yolo --cwd <run dir> --session-dir <run dir>/session <isolation> "<prompt>"`, where <m> and <t> are the last `model_change.model` and `thinking_level_change.thinkingLevel` in `$PI_SESSION_FILE`. If the user said "sequential" or "no fan-out", start them one at a time. If `omp` cannot run, stop: <reason>.
+      Headless batch (ADR 0010): one eval cell starts every run at once, with no cap. Per run: `omp -p --model <m> --thinking <t> --approval-mode yolo --cwd <run dir> --session-dir <run dir>/session <isolation> "<prompt>"`, where <m> and <t> are the last `model_change.model` and `thinking_level_change.thinkingLevel` in `$PI_SESSION_FILE`. If `omp` cannot run, stop: <reason>.
 
       <isolation>: with-skill and baseline runs use `--no-rules --config <run dir>/isolate.yml` (memory off; the overlay includes only the skills the run cites plus any staged competitors, and the run uses `--no-skills` when that list is empty; never `--no-extensions`, which also removes plugin agents). The comparator uses `--no-skills --no-rules --no-extensions` with memory off. Trigger runs add the origin project's skill directories to the overlay, the candidate description's directory first, with `*/<name>` ignored.
 
@@ -218,8 +212,8 @@ rules:
     scope: adapted
     allowlist: [writing-for-agents]
     text: |
-      Spawn wording appears only in a single-spawn line (`Spawn one …`) or a Fan-out block (`Fan-out gate (…`). Cursor's spawn terms (`subagent_type`, `generalPurpose`, `Task` in backticks) never appear.
-    lint: In markdown outside code fences, `subagent_type`, `generalPurpose`, or `Task` in backticks fails, and spawn or spin up outside inline code fails on a line that holds no `Spawn one `, `Fan-out gate (`, `Fan-out (always`, or `Headless batch (` (adapt, merge, and original text). Dispatch fails only when the same sentence names an agent, subagent, helper, worker, explorer, reviewer, designer, verifier, investigator, or runner; reducer and request dispatch are not delegation. A `spawns:` frontmatter key and words inside inline code are names, not wording, and a code fence quotes text instead of instructing. Allowlisted skills only describe spawning and are not linted.
+      Spawn wording appears only in a single-spawn line (`Spawn one …`) or a Fan-out line (`Fan-out (skill://vstack-fan-out)…`). Cursor's spawn terms (`subagent_type`, `generalPurpose`, `Task` in backticks) never appear.
+    lint: In markdown outside code fences, `subagent_type`, `generalPurpose`, or `Task` in backticks fails, and spawn or spin up outside inline code fails on a line that holds no `Spawn one `, `Fan-out (skill://vstack-fan-out)`, or `Headless batch (` (adapt, merge, and original text). The `fan-out` lint reads every line that holds `Fan-out (` or `Fan-out gate (` instead. Dispatch fails only when the same sentence names an agent, subagent, helper, worker, explorer, reviewer, designer, verifier, investigator, or runner; reducer and request dispatch are not delegation. A `spawns:` frontmatter key and words inside inline code are names, not wording, and a code fence quotes text instead of instructing. Allowlisted skills only describe spawning and are not linted.
   - id: worktree-cmd
     scope: adapted
     text: |

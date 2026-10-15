@@ -10,9 +10,7 @@ Run independent attempts at the same task. Read every candidate, pick a base, gr
 
 ## Start
 
-The grill uses kind `reply` for fact-finding. implement uses kind `tree` for changes at real target paths. Run only when the user's words ask for several attempts. A judge pick or a caller's preference alone does not authorize attempts. implement owns the End state.
-
-If the user also said "sequential" or "no fan-out", say that the attempts run at once. Use one `ask` with Go ahead / Cancel before starting. A timed-out answer is not approval. Re-ask once, then stop if no answer arrives. Keep the user's override words in every prompt even when they approve this batch.
+The grill uses kind `reply` for fact-finding. implement uses kind `tree` for changes at real target paths. Run only when the user's words ask for several attempts. A caller's preference alone does not authorize attempts. implement owns the End state.
 
 ## Phase A: Frame
 
@@ -22,18 +20,20 @@ The runners receive one shared prompt. The rubric stays with the parent.
 2. Declare the caller's artifact kind. implement uses `tree`, a change at real target paths in the working tree. The grill uses `reply`, a written answer. Its patch is evidence only, never a change to apply.
 3. Derive 3–6 concrete criteria from what success means for this task. Keep the rubric out of every runner's prompt.
 4. Use three runners by default. The user's count overrides this, such as "5 attempts". When the caller or user supplies directions, give each runner its direction line. Otherwise each gets the same prompt in a fresh context.
-5. Resolve the absolute vstack root and, for nested Scratch writers, the project Scratch dir once. Follow "What every subagent prompt carries" in `skill://vstack-fan-out`; this lookup does not run its gate. A child uses these paths from its prompt and never resolves them again.
+5. Resolve the absolute vstack root and, for nested Scratch writers, the project Scratch dir once. Follow "What every subagent prompt carries" in `skill://vstack-fan-out`. A child uses these paths from its prompt and never resolves them again.
 6. For `tree`, name the real target paths relative to the checkout. Each runner writes them inside its own clone. Make sure that the target paths are not gitignored, because ignored files do not enter the patch. The candidate never goes through the vstack root. That path is only for nested writers of vstack artifacts, which must use disjoint paths. Follow `skill://principle-separate-before-serializing-shared-state`.
 
-The shared prompt includes the task, artifact kind, target paths, grounding paths, and the caller's brief. It instructs the runner to produce the artifact plus a rationale naming the alternatives it considered and rejected. It also requires a plain-text final reply with the artifact for kind `reply`, the rationale, and every path written. For kind `tree`, the artifact is the patch, not a separate candidate directory. Pass the user's override words and the absolute vstack root. Pass the Scratch dir when any nested writer needs it.
+The shared prompt includes the task, artifact kind, target paths, grounding paths, and the caller's brief. It instructs the runner to produce the artifact plus a rationale naming the alternatives it considered and rejected. It also requires a plain-text final reply with the artifact for kind `reply`, the rationale, and every path written. For kind `tree`, the artifact is the patch, not a separate candidate directory. Pass the absolute vstack root. Pass the Scratch dir when any nested writer needs it.
 
 omp captures the delta against the parent's working tree at the start of each runner, including its uncommitted state. Keep the candidate paths unchanged in the parent until Pick. Writes through the vstack root are immediate and are outside the patch.
 
 ## Phase B: Fan out
 
-Fan-out (always: the user asked for several attempts): one eval cell: per part, `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`; `wait()` on all handles. Each prompt: the shared runner brief from Frame and its direction line when given, the user's override words, the vstack root, the Scratch dir when needed. The parent recovers each `patchPath` from the completion text and applies only the chosen base for kind `tree`. If it cannot spawn or isolation is off, stop: compare-attempts needs isolated attempts; run `/skill:setup-vstack`.
+Before this step, read skill://vstack-fan-out.
 
-There is one part per runner. Make sure that `omp config get task.isolation.enabled` prints `true` before starting. With no eval tool or no permission to start these workers, stop and point at `/skill:setup-vstack`. There is no judge call, sequential batch, or shared-checkout fallback.
+Fan-out (skill://vstack-fan-out): parts: one per runner. One eval cell: per part, `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`; `wait()` on all handles. Each prompt: the shared runner brief from Frame and its direction line when given, the vstack root, the Scratch dir. The parent recovers each `patchPath` from the completion text and applies only the chosen base for kind `tree`. If they cannot start or isolation is off, stop: compare-attempts needs isolated attempts, so run `/skill:setup-vstack`.
+
+Make sure that `omp config get task.isolation.enabled` prints `true` before starting. Every runner starts at once, each in its own clone.
 
 In Python eval, set `shared_prompt` to the complete brief from Frame and `runner_count` to the chosen count. Set `directions` to one supplied direction line per runner, or an empty list when none are given. Reuse supplied directions for extra runners. Start every handle before waiting:
 
@@ -58,17 +58,15 @@ Isolation: changes captured at `<absolute patch path>` (apply=false). Not applie
 
 Read that path as `patchPath`. Read the patch itself before treating it as a candidate; never invent a path from an agent id. If structured output hides the notice, read the full completion with the handle's `output()` or `agent://<id>`. If the path still cannot be recovered, report that candidate as unavailable rather than applying an unknown patch.
 
-A failed runner or one that produces no artifact drops out. For `tree`, an empty patch is no artifact. For `reply`, a substantive answer still counts when its evidence patch is empty. Note every dropout and continue with N−1. With fewer than two candidates left, stop and report. A failure to start isolated workers stops the batch instead of changing its execution mode.
+A failed runner or one that produces no artifact drops out. For `tree`, an empty patch is no artifact. For `reply`, a substantive answer still counts when its evidence patch is empty. Note every dropout and continue with N−1. With fewer than two candidates left, stop and report.
 
 ## Phase C: Cross-judge
 
 Start this step only after every runner finishes. Label the remaining candidates A/B/C, continuing for larger counts. Prepare each candidate's `patchPath`, rationale, and, for kind `reply`, its full answer. Keep runner ids and your scores out of the brief. Labels identify candidates; ids embedded in patch filenames are not evidence of quality.
 
-Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the artifact kind, the rubric, and the labeled candidates with their patch paths and rationales; read every candidate, score each criterion, recommend a base with reasons, and ignore runner identity in paths, the user's override words, the vstack root. Do not wait; keep working. If it cannot be spawned, do the work yourself.
+Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the artifact kind, the rubric, and the labeled candidates with their patch paths and rationales; read every candidate, score each criterion, recommend a base with reasons, and ignore runner identity in paths, the vstack root. Do not wait; keep working. If it cannot be spawned, skip it: the parent's scoring in Pick stands, and the synthesis note says `cross-judge: not run`.
 
-The fallback is the parent's scoring in Pick, not a second judgment in the same context. When the cross-judge cannot run, skip it and write `cross-judge: not run` in the synthesis note. This read-only explorer is not isolated.
-
-The cross-judge runs on the Session model unless the user overrides vstack-explorer. Name the model it ran on in the synthesis note. It uses a context that wrote no candidate and did not see your scores. On the Session model it buys independence, not a second model's taste. Agreement means the rubric reads one way. It does not rule out a blind spot you both share.
+This read-only explorer is not isolated. The cross-judge runs on the Session model unless the user overrides vstack-explorer. Name the model it ran on in the synthesis note. It uses a context that wrote no candidate and did not see your scores. On the Session model it buys independence, not a second model's taste. Agreement means the rubric reads one way. It does not rule out a blind spot you both share.
 
 ## Phase D: Pick a base
 

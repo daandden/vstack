@@ -2,8 +2,8 @@
 // scope of its row or rule in house-style.yaml, through house-style.ts `inScope`/`selectRows`:
 // - house-style-leftover: a row's `from` still in text its row covers (adopt: required rows only).
 // - skill-ref, spawn-vocab, worktree-cmd, tmp-path: adapted rules (adapt, merge, and original text).
-// - fan-out-block, single-spawn, agent-spawns, fixed-fan-out, headless-run: the spawn lints (ADR 0004, 0007),
-//   adapted rules too. The forms they read are in plugin/skills/vstack-fan-out/FORMS.md.
+// - fan-out, single-spawn, agent-spawns, headless-run: the spawn lints (ADR 0004, 0007), adapted rules too.
+//   The forms they read are in plugin/skills/vstack-fan-out/FORMS.md.
 // - ask-tool: a required rule, so adopt artifacts too.
 
 import { readFileSync } from "node:fs";
@@ -80,22 +80,22 @@ const SPAWN_TERMS = /subagent_type|generalPurpose|`Task`/;
 const SPAWN_WORDS = /\b(?:spawn|spawns|spawned|spawning|(?:spin|spins|spinning|spun)\s+up)\b/i;
 const DISPATCH_WORDS = /\bdispatch(?:es|ed|ing)?\b/i;
 const DELEGATION_CONTEXT = /\b(?:sub[- ]?agents?|agents?|helpers?|workers?|explorers?|reviewers?|designers?|verifiers?|investigators?|runners?)\b/i;
-const SPAWN_LINES = ["Spawn one ", "Fan-out gate (", "Fan-out (always", "Headless batch ("];
+const SPAWN_LINES = /Spawn one |Headless batch \(/;
 const WORKTREE_ADD = /git(\s+-C\s+\S+)?\s+worktree\s+add\s+[^\s`'"]/;
 const TMP_PATHS = [/\$\{?TMPDIR\}?\//, /(?<![\w.~/-])\/tmp(?![\w-])/, /\b(?:the\s+)?OS(?:'s)?\s+temp(?:orary)?\s+dir(?:ectory)?\b/i];
 const NEGATION = /\b(?:don['’]t|do not|never|not)\s+$/i;
 
 // Spawn forms (plugin/skills/vstack-fan-out/FORMS.md). Each form is one markdown line.
-const GATE_MARK = "Fan-out gate (";
-const GATE_FORM = /Fan-out gate \(`?skill:\/\/vstack-fan-out`?\): parts: .+; size: .+/;
+const FAN_OUT_MARK = /Fan-out (?:gate )?\(/;
+const FAN_OUT_FORM = /Fan-out \(`?skill:\/\/vstack-fan-out`?\): parts: one per .+?\. One /;
+const FAN_OUT_STOP = /If they cannot start(?: or isolation is off)?, stop: \S/;
 const BRANCH = /^\s*(?:[-*+]|\d+[.)])\s+(fan-out|inline)\s*(?:→|->)/;
-const FIXED_MARK = "Fan-out (always";
 const HEADLESS = /Headless batch \(|\bomp\s+(?:-p|--print)\b/;
-const OVERRIDE_WORDS = /the user['’]s override words/;
 const VSTACK_ROOT = /the vstack root/;
 const ISOLATED_ARGS = "isolated=True, apply=False, merge=False";
 const NAMED_AGENT = /\bagent:\s*"([^"]*)"|\bagent\s*=\s*"([^"]*)"/g;
 const SINGLE_SPAWN = /Spawn one `([^`]+)` via (?:`task` \(`agent: "([^"]*)"`\)|eval `agent\([^`]*?\bagent="([^"]*)"[^`]*\)`)/;
+const SINGLE_STOP = /If it cannot be spawned, (?:stop|skip it): \S/;
 
 /** Markdown lines outside code fences (and frontmatter, unless asked): a form quoted in a fence is an example, not a spawn. */
 function proseLines(files: TextFile[], withFrontmatter = false): { path: string; n: number; line: string }[] {
@@ -149,10 +149,7 @@ function namedAgentProblems(line: string, agents: Set<string>): string[] {
 
 /** What every subagent prompt carries (ADR 0007). */
 function promptProblems(line: string): string[] {
-  const out: string[] = [];
-  if (!OVERRIDE_WORDS.test(line)) out.push("does not pass the user's override words");
-  if (!VSTACK_ROOT.test(line)) out.push("does not pass the vstack root");
-  return out;
+  return VSTACK_ROOT.test(line) ? [] : ["does not pass the vstack root"];
 }
 
 function singleSpawnProblems(line: string, agents: Set<string>): string[] {
@@ -164,29 +161,27 @@ function singleSpawnProblems(line: string, agents: Set<string>): string[] {
   if (!agents.has(name)) out.push(`spawns ${JSON.stringify(name)}, not a vstack agent`);
   if (via !== name) out.push(`names ${JSON.stringify(name)} but passes agent ${JSON.stringify(via)}`);
   if (viaEval !== undefined && !line.includes(ISOLATED_ARGS)) out.push(`the eval form lacks ${ISOLATED_ARGS}`);
+  if (!SINGLE_STOP.test(line)) out.push("does not end `If it cannot be spawned, stop: …` or `If it cannot be spawned, skip it: …`");
   return [...out, ...promptProblems(line)];
 }
 
-function fanOutLineProblems(line: string, agents: Set<string>): string[] {
-  if (line.includes("one `task` call") && line.includes("`tasks[]`")) return [...namedAgentProblems(line, agents), ...promptProblems(line)];
-  if (line.includes("one eval cell") && /\bagent\(/.test(line)) {
-    const out = namedAgentProblems(line, agents);
+function fanOutProblems(line: string, agents: Set<string>): string[] {
+  if (line.includes("Fan-out gate (")) return ["the `Fan-out gate (` line of the removed judge-gated form; copy the Fan-out line in FORMS.md"];
+  if (line.includes("Fan-out (always")) return ["the `Fan-out (always` line, removed with the judge-gated form; copy the Fan-out line in FORMS.md"];
+  if (BRANCH.test(line)) return ["a fan-out or inline branch line of the removed judge-gated form; copy the Fan-out line in FORMS.md"];
+  const out: string[] = [];
+  if (!FAN_OUT_FORM.test(line)) out.push("does not start `Fan-out (skill://vstack-fan-out): parts: one per ….`");
+  if (line.includes("One `task` call") && line.includes("`tasks[]`")) out.push(...namedAgentProblems(line, agents));
+  else if (line.includes("One eval cell") && /\bagent\(/.test(line)) {
+    out.push(...namedAgentProblems(line, agents));
     if (!line.includes(ISOLATED_ARGS)) out.push(`the eval batch lacks ${ISOLATED_ARGS}`);
-    if (!line.includes("`wait()`")) out.push("the eval batch does not `wait()` on all handles");
-    return [...out, ...promptProblems(line)];
-  }
-  return ["the fan-out line is neither one `task` call with `tasks[]` nor one eval cell of `agent()` calls"];
+    if (!line.includes("`wait()`")) out.push("the eval batch says neither `wait()` on all handles nor no `wait()`");
+  } else out.push("is neither one `task` call with `tasks[]` nor one eval cell of `agent()` calls");
+  if (!FAN_OUT_STOP.test(line)) out.push("does not end `If they cannot start, stop: …` or `If they cannot start or isolation is off, stop: …`");
+  return [...out, ...promptProblems(line)];
 }
 
-function inlineLineProblems(line: string, agents: Set<string>): string[] {
-  if (line.includes("do every part yourself")) return [];
-  if (line.includes("Spawn one ")) {
-    const out = singleSpawnProblems(line, agents);
-    if (!line.includes("If it cannot be spawned, stop:")) out.push("the spawning inline line does not stop when it cannot spawn");
-    return out;
-  }
-  return ["the inline line neither does every part itself nor spawns one agent that stops when it cannot spawn"];
-}
+const isFanOutLine = (line: string) => FAN_OUT_MARK.test(line) || BRANCH.test(line);
 
 /** Lines a spawn lint flags, with the reasons in the excerpt. */
 const flagged = (path: string, n: number, problems: string[], line: string): Hit => ({ path, line: n, excerpt: `${problems.join("; ")}: ${excerpt(line)}` });
@@ -220,44 +215,20 @@ const LINTS: Record<string, Lint> = {
         .filter(({ line }) => {
           if (SPAWN_TERMS.test(line)) return true;
           const wording = line.replace(/`[^`]*`/g, "");
-          return !SPAWN_LINES.some((m) => line.includes(m)) &&
+          return !SPAWN_LINES.test(line) && !isFanOutLine(line) &&
             (SPAWN_WORDS.test(wording) || wording.split(/(?<=[.!?])\s+/).some((sentence) => DISPATCH_WORDS.test(sentence) && DELEGATION_CONTEXT.test(sentence)));
         })
         .map(({ path, n, line }) => ({ path, line: n, excerpt: excerpt(line) })),
   },
-  "fan-out-block": {
-    rule: "fan-out-block",
+  "fan-out": {
+    rule: "fan-out",
     run: (t, _rule, ctx) => {
       const agents = vstackAgents(ctx);
       const hits: Hit[] = [];
-      for (const f of t.files) {
-        if (!isMarkdown(f.path)) continue;
-        const lines = [...markdownLines(f.text)];
-        const prose = (i: number) => !lines[i].frontmatter && !lines[i].fence;
-        const inBlock = new Set<number>();
-        for (let i = 0; i < lines.length; i++) {
-          if (!prose(i) || !lines[i].line.includes(GATE_MARK)) continue;
-          const problems: string[] = [];
-          if (!GATE_FORM.test(lines[i].line)) problems.push("the gate line is not `Fan-out gate (skill://vstack-fan-out): parts: …; size: …`");
-          const branches = new Map<string, string>();
-          for (let j = i + 1, seen = 0; j < lines.length && seen < 2 && prose(j); j++) {
-            if (lines[j].line.trim() === "") continue;
-            const b = BRANCH.exec(lines[j].line);
-            if (!b) break;
-            seen++;
-            inBlock.add(j);
-            if (branches.has(b[1])) problems.push(`two ${b[1]} lines`);
-            else branches.set(b[1], lines[j].line);
-          }
-          const fanOut = branches.get("fan-out");
-          const inline = branches.get("inline");
-          problems.push(...(fanOut === undefined ? ["no fan-out line"] : fanOutLineProblems(fanOut, agents)));
-          problems.push(...(inline === undefined ? ["no inline line"] : inlineLineProblems(inline, agents)));
-          if (problems.length > 0) hits.push(flagged(f.path, lines[i].n, problems, lines[i].line));
-        }
-        for (let i = 0; i < lines.length; i++) {
-          if (prose(i) && !inBlock.has(i) && BRANCH.test(lines[i].line)) hits.push(flagged(f.path, lines[i].n, ["a fan-out or inline line with no gate line above it"], lines[i].line));
-        }
+      for (const { path, n, line } of proseLines(t.files)) {
+        if (!isFanOutLine(line)) continue;
+        const problems = fanOutProblems(line, agents);
+        if (problems.length > 0) hits.push(flagged(path, n, problems, line));
       }
       return hits;
     },
@@ -268,7 +239,7 @@ const LINTS: Record<string, Lint> = {
       const agents = vstackAgents(ctx);
       const hits: Hit[] = [];
       for (const { path, n, line } of proseLines(t.files)) {
-        if (line.includes(GATE_MARK) || BRANCH.test(line)) continue; // fan-out-block reads these
+        if (isFanOutLine(line)) continue;
         let problems: string[];
         if (line.includes("Spawn one ")) problems = singleSpawnProblems(line, agents);
         else {
@@ -299,10 +270,6 @@ const LINTS: Record<string, Lint> = {
       }
       return hits;
     },
-  },
-  "fixed-fan-out": {
-    rule: "fixed-fan-out",
-    run: (t) => proseLines(t.files).filter(({ line }) => line.includes(FIXED_MARK)).map(({ path, n, line }) => flagged(path, n, ["the fixed Fan-out form"], line)),
   },
   "headless-run": {
     rule: "headless-run",

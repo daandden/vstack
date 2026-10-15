@@ -28,19 +28,19 @@ Each brief has these fields:
 
 ## 3. Start the drawers
 
-Start the drawers as soon as their briefs are fixed. For two or more figures, use this line:
+Start the drawers as soon as their briefs are fixed. For two or more figures, use the Fan-out line below.
 
-Fan-out (always: figures, ADR 0023): one `task` call; `tasks[]` has one item per figure, each with `agent: "vstack-diagram-drawer"`. Each `task`: draw and export the figure from its brief and return its SVG path, the user's override words, the vstack root, the Scratch dir. Do not wait; keep working.
+Before this step, read skill://vstack-fan-out.
 
-For one figure, or when the user's words for this run say "sequential" or "no fan-out", use this line instead:
+Fan-out (skill://vstack-fan-out): parts: one per figure. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-diagram-drawer"`. Each `task`: draw and export the figure from its brief and return its SVG path, the vstack root, the Scratch dir. Do not wait; keep working. If they cannot start, stop: place no figure, and say in one line which figures were not drawn and why.
 
-Spawn one `vstack-diagram-drawer` via `task` (`agent: "vstack-diagram-drawer"`): draw and export every figure from its brief, in order, and return each SVG path, the user's override words, the vstack root, the Scratch dir. Do not wait; keep working. If it cannot be spawned, do the work yourself.
+For one figure, use this line instead:
 
-If the drawers cannot start (no `task` tool, a refused agent, or the depth limit), draw every figure yourself with "Draw one figure" below. Say in one line why the drawers did not run.
+Spawn one `vstack-diagram-drawer` via `task` (`agent: "vstack-diagram-drawer"`): draw and export the figure from its brief and return its SVG path, the vstack root, the Scratch dir. Do not wait; keep working. If it cannot be spawned, stop: place no figure, and say in one line which figure was not drawn and why.
 
 ## 4. Keep working, then collect
 
-Write the caller's own text while the drawers run. Wait for the drawers only at the caller's collect point, the step that places the figures. Each drawer returns an SVG path or a failure for each brief. If a figure failed, draw it yourself with "Draw one figure" and name it in one line.
+Write the caller's own text while the drawers run. Wait for the drawers only at the caller's collect point, the step that places the figures. Each drawer returns an SVG path or a failure for its brief. If a figure failed, name it and its reason in one line, and place the rest.
 
 ## 5. Place the figures
 
@@ -50,7 +50,7 @@ If no figure can be drawn (no eval tool for the export script), report that miss
 
 ## Draw one figure
 
-A drawer follows these steps for each brief, in order. A caller follows them when it draws a figure itself.
+Only a drawer follows these steps. It runs them for each brief, in order.
 
 1. Read `skill://diagram-design`, the type reference for the brief's type, and `references/export.md`. Read the profile that the brief names from `~/.vstack/diagram-design/profiles/`, or use the shipped style guide for `default`.
 2. Draw the figure with the brief's type, size, content, variant, and profile. Add no node, edge, or label that the brief does not give.

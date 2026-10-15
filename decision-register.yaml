@@ -20,7 +20,7 @@ items:
     tree: d8e341cee7980127dddda05159bedf25dc853615
     disposition: adapt
     artifacts: [plugin/skills/code-review]
-    reason: "Reads vstack configuration. Standards, Spec, and conditional Safety use judge-gated Fan-out. Safety runs blast-radius only in a run, without step 6 (#84, #126)."
+    reason: "Reads vstack configuration. Standards, Spec, and conditional Safety use Fan-out. Safety runs blast-radius only in a run, without step 6 (#84, #126)."
   - id: matt/codebase-design
     upstream: matt
     kind: skill
@@ -28,7 +28,7 @@ items:
     tree: 07ba1cd60efc12d0d3a083005c1d9651cf15e39a
     disposition: adapt
     artifacts: [plugin/skills/codebase-design]
-    reason: "DESIGN-IT-TWICE runs judge-gated Fan-out of vstack agents (#36)."
+    reason: "DESIGN-IT-TWICE runs a Fan-out of vstack agents (#36)."
   - id: matt/diagnosing-bugs
     upstream: matt
     kind: skill
@@ -132,7 +132,7 @@ items:
     tree: 8ec0462658381bd1606d3f9db14ffc67df6a2a43
     disposition: adapt
     artifacts: [plugin/skills/wayfinder]
-    reason: "Names setup-vstack; charting research is judge-gated Fan-out; its user questions go through ask."
+    reason: "Names setup-vstack; charting research is Fan-out; its user questions go through ask."
   - id: matt/wizard
     upstream: matt
     kind: skill
@@ -340,7 +340,7 @@ items:
     tree: 3fd1c05ec675e7225d51e19e8ec80b92217adfbf
     disposition: adapt
     artifacts: [plugin/skills/how]
-    reason: "One angle uses an explainer; 2–4 angles use judge-gated explorers, with figures on a Scratch page (#49, #60)."
+    reason: "One angle uses an explainer; 2–4 angles fan out to explorers, with figures on a Scratch page (#49, #60)."
   - id: pstack/interrogate
     upstream: pstack
     kind: skill
@@ -356,7 +356,7 @@ items:
     tree: b6ce4dcdc378492f9acd55a4e56ae111204b4f11
     disposition: adapt
     artifacts: [plugin/skills/maintain-app-verification]
-    reason: "Renamed for feature-scoped or judge-gated source passes and live proof, with Standard fixes committed by implement (ADR 0009, ADR 0015)."
+    reason: "Renamed for feature-scoped or Fan-out source passes and live proof, with Standard fixes committed by implement (ADR 0009, ADR 0015)."
   - id: pstack/make-bot-ui
     upstream: pstack
     kind: skill
@@ -620,7 +620,7 @@ items:
     tree: 3ee517292dae0476dc516f9f3805c08fb943c6ff
     disposition: adapt
     artifacts: [plugin/skills/explain]
-    reason: "Renamed from pstack teach, starts from its description, and combines how and why behind a gate on a Scratch page (ADR 0015)."
+    reason: "Renamed from pstack teach, starts from its description, and combines how and why as Fan-out on a Scratch page (ADR 0015)."
   - id: pstack/technical-writing
     upstream: pstack
     kind: skill
@@ -652,7 +652,7 @@ items:
     tree: ba549f92c3a8dc1506b21674e8794eb980019bf3
     disposition: adapt
     artifacts: [plugin/skills/why]
-    reason: "Profiles git, the code host, tracker, and MCPs; gates investigators and always uses fresh-context synthesis (#49)."
+    reason: "Profiles git, the code host, tracker, and MCPs; fans out investigators and always uses fresh-context synthesis (#49)."
   - id: pstack/playbook-authoring-a-skill
     upstream: pstack
     kind: playbook
@@ -812,7 +812,7 @@ items:
     tree: 0a0c3cfde8948e3aa8ee80c6f3f9ce7e3e64fcba
     disposition: adapt
     artifacts: [plugin/skills/ship]
-    reason: "Verifiers are vstack agents behind judge-gated Fan-out; cloud agents dropped."
+    reason: "Verifiers are vstack agents in a Fan-out; cloud agents dropped."
   - id: pstack/playbook-trace-forensics
     upstream: pstack
     kind: playbook

@@ -38,7 +38,7 @@ output:
         description: Questions for the top-level agent to ask the user with ask.
 ---
 
-You are a vstack verifier, a run-only checker. Your prompt gives the head SHA, the base SHA, what to verify, the Verify skill to drive the app with, the user's override words, the vstack root, and the Scratch dir. Check the change and return the verdict.
+You are a vstack verifier, a run-only checker. Your prompt gives the head SHA, the base SHA, what to verify, the Verify skill to drive the app with, the vstack root, and the Scratch dir. Check the change and return the verdict.
 
 Rights. Your tools do not enforce these; you keep them.
 
@@ -57,6 +57,6 @@ Steps.
    - FAIL: a build, test, or app step shows wrong behavior on the head SHA. The evidence names each failing check.
    - DRIFT: the Verify skill no longer matches the app (a stale step, selector, or command), so the run proves nothing either way. `notes` names the stale step.
 
-Subagents. Your only subagent is `vstack-explorer`, started only where your brief asks for one, with the lines in skill://vstack-fan-out (FORMS.md). A step that would run two or more at once runs that skill's gate first. Every subagent prompt carries the user's override words, the vstack root, and the Scratch dir, as your prompt gave them to you.
+Subagents. Your only subagent is `vstack-explorer`, started only where your brief asks for one, with the lines in skill://vstack-fan-out (FORMS.md). A step with two or more parts uses its Fan-out line. If a subagent cannot start, follow the line's stop or skip clause and say why. Name omp's `task.maxRecursionDepth` when the depth limit blocked it. Never do its work yourself. Every subagent prompt carries the vstack root and the Scratch dir, as your prompt gave them to you.
 
 Questions. Never ask the user: you have no `ask` tool. Put each open question in `open_questions`, and the top-level agent asks it.

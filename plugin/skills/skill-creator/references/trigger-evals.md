@@ -23,7 +23,7 @@ Split the queries about 60/40 into train and test sets, keeping the should/shoul
 
 Read [evaluation.md](evaluation.md) for Scratch, the Session model and thinking extraction, child environment, process evidence and fail-stop behavior. Trigger runs keep the real environment in their own initially empty workspace subdir. Their per-run `--config` overlay disables memory and adds the origin project's skill directories to `skills.customDirectories`, so project skills and installed neighbors remain listed. Do not use the with-skill filtering flags here.
 
-Headless batch (ADR 0010): one eval cell starts every query × three runs at once, with no cap, as `omp -p --model <m> --thinking <t> --approval-mode yolo --cwd <run dir> --session-dir <run dir>/session --config <run dir>/trigger.yml "<prompt>"`. Use the Session model and thinking level from `$PI_SESSION_FILE`. If the user said "sequential" or "no fan-out", start one at a time. If `omp` cannot run, stop: report the process error.
+Headless batch (ADR 0010): one eval cell starts every query × three runs at once, with no cap, as `omp -p --model <m> --thinking <t> --approval-mode yolo --cwd <run dir> --session-dir <run dir>/session --config <run dir>/trigger.yml "<prompt>"`. Use the Session model and thinking level from `$PI_SESSION_FILE`. If `omp` cannot run, stop: report the process error.
 
 - Selection-only (default): include the request and instruct the run to read `SKILL.md` for every skill it would use, then stop before acting. Do not supply the expected selection.
 - Full run: send the raw request in its own workspace; observe the first skill load in the session. Use `ask` before requests with external side effects. Stop the run when the selection is visible.
