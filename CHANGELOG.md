@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.20] - 2026-10-15
+
+- implement-spec's merger takes stopped-slice hunks out of the index before the ticket commit. `git apply --3way` stages every hunk it applies, so the old order (stage the proven hunks, commit, then remove the stopped hunks) committed the stopped slice too. The merger now records the full tree with `git write-tree` after the apply. It takes out each stopped slice as its own delta patch under `held/` with `git apply -R --index`. After each removal, it regenerates `stopped.patch` as the diff from the current tree to the full tree, so that one file holds every held hunk. `stopped.patch` applies only on the ticket commit. It can change a file that only the ticket adds, so it never applies on the tip, and a failed merge returns the original ticket patch instead. The merger then runs typechecking and the ticket's tests on that final tree on every merge, not only after a conflict. A kept hunk that fails without its stopped slice comes out as one more delta and joins `stopped.patch`. Any other failure commits nothing. The merger confirms that `git diff --cached` holds only the checked hunks before it commits. A stopped hunk found there comes out as one more delta, so `stopped.patch` stays current.
+
 ## [2.0.19] - 2026-10-15
 
 - The Addon judge sends its shared preamble once per request, in the jev state, and not in each of its 35 questions. `addon-questions.json` is now `{ "preamble": ..., "questions": { <addon name>: question } }`, and the state is `{ request, preamble }`. jev bills input tokens only and reads the state once, so the corpus costs 27.5% fewer input tokens. The new state put two expected picks just under 0.75, so the extension now selects every score at 0.70 or more. `scripts/addon-judge-check.ts` flags an expected pick under 0.65, not 0.70, and an unexpected, non-allowed pick over 0.80, as before. With 3 runs per prompt, the check passes 131/131 prompts with 0 flags, and `sample-prompts.json` holds fresh baselines (ADR 0024, amends ADR 0002, 0018, 0019, and 0021).
