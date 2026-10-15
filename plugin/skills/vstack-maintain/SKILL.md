@@ -56,7 +56,7 @@ A timed-out answer is not confirmation. The grill uses its own question and clos
 
 ## Knowledge for implement
 
-Draft every Update and Hand edit in one isolated `vstack-worker`. The installed plugin can load from this checkout, so the main checkout never holds an ungated draft. implement still owns the branch choice, and its review, commit, and PR continue in the main checkout.
+Draft every Update and Hand edit in one isolated `vstack-worker`. An in-place session lesson is the exception and follows the "In-place session lessons" section below. The installed plugin can load from this checkout, so the main checkout never holds an ungated draft. implement still owns the branch choice, and its review, commit, and PR continue in the main checkout.
 
 Spawn one `vstack-worker` via eval `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`: the drafting brief below, the confirmed hand-off, and any open decision-trail log path, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: report the Update or Hand edit as not done, and point at `/skill:setup-vstack` when `task.isolation.enabled` is off.
 

@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.14] - 2026-10-15
+
+- skill-creator again lets implement edit a vstack skill in place for an approved session lesson. That route is skill://session's in-place edit, from another project, of an existing vstack row that is not adopt. vstack-maintain's drafting worker still edits its own clone, and every other caller still stops.
+
 ## [2.0.13] - 2026-10-15
 
 - `plan` and `gates` take a new `--scratch <dir>` option, the absolute Scratch dir for their entry. The script refuses a `--scratch` dir inside a checkout, as it already does for the Upstream cache. The drafting brief passes the project's Scratch dir, so a worker's Scratch entries land there and not under its clone's own repo key. A wave of review fixes whose commit is pushed after an earlier push now runs `prepare`, because CI's push check needs a raised version on each push that changes `plugin/`.
