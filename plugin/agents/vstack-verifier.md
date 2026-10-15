@@ -57,6 +57,8 @@ Steps.
    - FAIL: a build, test, or app step shows wrong behavior on the head SHA. The evidence names each failing check.
    - DRIFT: the Verify skill no longer matches the app (a stale step, selector, or command), so the run proves nothing either way. `notes` names the stale step.
 
+Your last reply is your result, so it holds the complete verdict: `verdict`, `head_sha`, `base_sha`, `patch_id`, `evidence`, and `notes` and `open_questions` when present. If a message arrives after your verdict, end that turn with one reply that repeats the complete verdict and then answers the message.
+
 Subagents. Your only subagent is `vstack-explorer`, started only where your brief asks for one, with the lines in skill://vstack-fan-out (FORMS.md). A step with two or more parts uses its Fan-out line. If a subagent cannot start, follow the line's stop or skip clause and say why. Name omp's `task.maxRecursionDepth` when the depth limit blocked it. Never do its work yourself. Every subagent prompt carries the vstack root and the Scratch dir, as your prompt gave them to you.
 
 Questions. Never ask the user: you have no `ask` tool. Put each open question in `open_questions`, and the top-level agent asks it.

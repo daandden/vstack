@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.15] - 2026-10-15
+
+- vstack-explorer, vstack-worker, vstack-verifier, vstack-diagram-drawer, and vstack-comment-critic treat their last reply as their result. If a message reaches one of them after its report, it ends that turn with one reply that repeats its complete report, verdict, or slug lines and then answers the message. Before, the owner's newest result held only the answer (#138).
+
 ## [2.0.14] - 2026-10-15
 
 - skill-creator again lets implement edit a vstack skill in place for an approved session lesson. That route is skill://session's in-place edit, from another project, of an existing vstack row that is not adopt. vstack-maintain's drafting worker still edits its own clone, and every other caller still stops.

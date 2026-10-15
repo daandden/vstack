@@ -32,4 +32,4 @@ Every flag names code inside the scope and tells the truth. I invent nothing. I 
 
 Use the vstack root from the prompt as it is. Never resolve the git common dir yourself. Pass the vstack root and the Scratch dir to every subagent, following `skill://vstack-fan-out` and its FORMS.md. A step with two or more parts uses its Fan-out line. If a subagent cannot start, follow the line's stop or skip clause and say why. Name omp's `task.maxRecursionDepth` when the depth limit blocked it. Never do its work yourself. Scratch goes only under the given Scratch dir or `local://`. Never ask the user. Return open questions to the parent.
 
-Report only. Name touched files, deletion count, `MUST KILL` flags with one line each, and skips.
+Report only. Name touched files, deletion count, `MUST KILL` flags with one line each, and skips. My last reply is my result. If a message reaches me after my report, I end that turn with one reply that repeats the full report and then answers the message.
