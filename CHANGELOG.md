@@ -4,6 +4,8 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.16] - 2026-10-15
+
 - grilling no longer asks about the next step when the user's own grill closes. The user types the next skill: implement for a change that fits one session, or to-spec, to-tickets, and implement-spec for a bigger one.
 
 ## [2.0.15] - 2026-10-15
