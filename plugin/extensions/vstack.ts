@@ -5,7 +5,8 @@ import type { ExtensionAPI, ExtensionContext } from "@oh-my-pi/pi-coding-agent";
 import { settings } from "@oh-my-pi/pi-coding-agent";
 import { getModelMatchPreferences, resolveModelRoleValue } from "@oh-my-pi/pi-coding-agent/config/model-resolver";
 import { hasNativeJudge } from "@oh-my-pi/pi-coding-agent/judgment";
-import questions from "../../addon-questions.json";
+import catalogFile from "../../addon-questions.json";
+import { addonJudgeState, parseAddonCatalog, type AddonCatalog } from "./addon-catalog.ts";
 import { mattSkillNames, type MattSkillRow } from "./matt-skills.ts";
 import { preprocessTinyMessage } from "./prompt-cleaner.ts";
 import * as fs from "node:fs";
@@ -39,11 +40,15 @@ function registerRenameSession(pi: ExtensionAPI): void {
   });
 }
 
-function readMattSkills(): Set<string> {
+function readAddonCatalog(): AddonCatalog | undefined {
+  try { return parseAddonCatalog(catalogFile); } catch { return undefined; }
+}
+
+function readMattSkills(addons: Iterable<string>): Set<string> {
   try {
     const register = Bun.YAML.parse(fs.readFileSync(new URL("../../decision-register.yaml", import.meta.url), "utf8")) as { items: MattSkillRow[] };
     const pins = Bun.YAML.parse(fs.readFileSync(new URL("../../pins.yaml", import.meta.url), "utf8")) as { upstreams: Record<string, { role: string }> };
-    return mattSkillNames(register.items, upstream => pins.upstreams[upstream]?.role, Object.keys(questions));
+    return mattSkillNames(register.items, upstream => pins.upstreams[upstream]?.role, addons);
   } catch { return new Set(); }
 }
 
@@ -136,10 +141,11 @@ async function restate(ctx: ExtensionContext, instruction: string | undefined, t
 }
 
 function registerAddonSelection(pi: ExtensionAPI): void {
-  const mattSkills = readMattSkills();
+  const catalog = readAddonCatalog();
+  const mattSkills = catalog ? readMattSkills(Object.keys(catalog.questions)) : new Set<string>();
   const instruction = readRestateInstruction();
   pi.on("before_agent_start", async (event, ctx) => {
-    if (ctx.agent.kind !== "main" || !mattSkills.size) return;
+    if (ctx.agent.kind !== "main" || !catalog || !mattSkills.size) return;
     const header = /^\[IMPORTANT: User invoked the "([^"]+)" skill/.exec(event.prompt);
     const startsRun = header && mattSkills.has(header[1]!);
     const branch = ctx.sessionManager.getBranch();
@@ -164,6 +170,16 @@ function registerAddonSelection(pi: ExtensionAPI): void {
         if (!model || model.api !== "typesafe") return;
         const key = await ctx.modelRegistry.getApiKey(model);
         if (!key || controller.signal.aborted) return;
+        // omp saves a hook message only when it accepts the prompt. The saved messages on every branch
+        // of the session are the record of delivered pointers, so each pointer appears once per session.
+        const seen = new Set<string>();
+        for (const entry of ctx.sessionManager.getEntries()) {
+          if (entry.type !== "custom_message" || entry.customType !== "vstack-addons") continue;
+          const content = typeof entry.content === "string" ? entry.content : JSON.stringify(entry.content);
+          for (const match of content.matchAll(/skill:\/\/([a-z0-9-]+)/g)) seen.add(match[1]!);
+        }
+        const questions = Object.fromEntries(Object.entries(catalog.questions).filter(([name]) => !seen.has(name)));
+        if (!Object.keys(questions).length) return;
         if (midSession) {
           const restated = await restate(ctx, instruction, talk, userWords, controller.signal);
           if (!restated || controller.signal.aborted) return;
@@ -173,15 +189,7 @@ function registerAddonSelection(pi: ExtensionAPI): void {
           }
           request = restated.text.slice(0, RESTATEMENT_LIMIT);
         }
-        // omp saves a hook message only when it accepts the prompt. The saved messages on every branch
-        // of the session are the record of delivered pointers, so each pointer appears once per session.
-        const seen = new Set<string>();
-        for (const entry of ctx.sessionManager.getEntries()) {
-          if (entry.type !== "custom_message" || entry.customType !== "vstack-addons") continue;
-          const content = typeof entry.content === "string" ? entry.content : JSON.stringify(entry.content);
-          for (const match of content.matchAll(/skill:\/\/([a-z0-9-]+)/g)) seen.add(match[1]!);
-        }
-        const body = JSON.stringify({ model: model.id, state: { request }, questions });
+        const body = JSON.stringify({ model: model.id, state: addonJudgeState(catalog, request), questions });
         for (let attempt = 0; attempt < 2 && !controller.signal.aborted; attempt++) {
           try {
             const response = await fetch(`${model.baseUrl.replace(/\/+$/, "")}/v1/systemone`, {
@@ -192,7 +200,7 @@ function registerAddonSelection(pi: ExtensionAPI): void {
             if (controller.signal.aborted) return;
             const picked = Object.keys(questions).filter(name => {
               const answer = result.answers?.[name];
-              return answer?.type === "noul" && typeof answer.noul === "number" && answer.noul >= .75 && !seen.has(name);
+              return answer?.type === "noul" && typeof answer.noul === "number" && answer.noul >= .7;
             });
             if (!picked.length) return;
             return { message: { customType: "vstack-addons", display: false, attribution: "agent" as const,

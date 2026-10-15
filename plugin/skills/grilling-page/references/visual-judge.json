@@ -1,5 +1,5 @@
 {
-  "instructions": "The state is one question from a grilling session: a decision the user must make, its description, and its options. The reader prefers a figure to prose whenever a figure carries logic: order of steps, branches, states, messages between parts, containment, dependencies, time, or overlap.",
+  "instructions": "The state's `question` is one question from a grilling session: a decision the user must make, its description, and its options. The reader prefers a figure to prose whenever a figure carries logic: order of steps, branches, states, messages between parts, containment, dependencies, time, or overlap.",
   "diagrams": {
     "context": {
       "question": "Would a diagram of the context help: the logic the description explains, such as today's flow, rules with branches, states, parts and how they connect, a before and after, or events in time, whatever the options are?",
@@ -17,7 +17,7 @@
     }
   },
   "types": {
-    "instructions": "The state is one question from a grilling session, a decision the user must make. A diagram will be drawn for it. Pick the diagram-design visual type that best fits what the diagram must show.",
+    "instructions": "The state's `question` is one question from a grilling session, a decision the user must make. A diagram will be drawn for it. The state's `visual_types` maps each diagram-design visual type to what it shows. Pick the visual type that best fits what the diagram must show.",
     "guide": "../diagram-design/SKILL.md",
     "top": 3
   }

@@ -9,7 +9,7 @@ export interface MattSkillRow {
 
 /**
  * Names of the skills that have a non-reject row from an Upstream whose role is Base, less the Addons:
- * a skill with a key in addon-questions.json is an Addon whatever its rows (ADR 0019).
+ * a skill with a key in the `questions` map of addon-questions.json is an Addon whatever its rows (ADR 0019).
  */
 export function mattSkillNames(
   rows: readonly MattSkillRow[],

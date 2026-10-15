@@ -964,6 +964,7 @@ originals:
   - plugin/extensions/vstack.ts
   - plugin/extensions/prompt-cleaner.ts
   - plugin/extensions/matt-skills.ts
+  - plugin/extensions/addon-catalog.ts
   - plugin/rules/vstack-private-mode.md
   - plugin/rules/vstack-writing.md
   - plugin/skills/vstack-tmp

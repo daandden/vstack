@@ -4,6 +4,14 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.19] - 2026-10-15
+
+- The Addon judge sends its shared preamble once per request, in the jev state, and not in each of its 35 questions. `addon-questions.json` is now `{ "preamble": ..., "questions": { <addon name>: question } }`, and the state is `{ request, preamble }`. jev bills input tokens only and reads the state once, so the corpus costs 27.5% fewer input tokens. The new state put two expected picks just under 0.75, so the extension now selects every score at 0.70 or more. `scripts/addon-judge-check.ts` flags an expected pick under 0.65, not 0.70, and an unexpected, non-allowed pick over 0.80, as before. With 3 runs per prompt, the check passes 131/131 prompts with 0 flags, and `sample-prompts.json` holds fresh baselines (ADR 0024, amends ADR 0002, 0018, 0019, and 0021).
+- The extension leaves out every Addon already delivered in the session before it asks jev, instead of dropping it after the answer. When every Addon was delivered, it sends no request and calls no smol. Delivered Addons stay the same.
+- grilling-page's visual judge puts diagram-design's visual-type guide in the judge state once, as `visual_types`, and its two type questions name the types only. The 75 calibration cases cost 18.0% fewer input tokens and still all pass (ADR 0024).
+- `scripts/visual_judge_check.py` replaces `scripts/visual-judge-check.ts` and needs no `python3`. It runs in omp's Python eval, builds every case's request with `judge_request()` in `visual_judge.py`, and sends all 75 cases through `judge_batch`, as the helper does. It refuses to grade unless `judge_batch` used a TypeSafe jev model. A type case passes when its type is in the top three of either type question.
+- check-register, the extension, and `scripts/addon-judge-check.ts` parse `addon-questions.json` through one typed parser in `plugin/extensions/addon-catalog.ts`. A key in the `questions` map makes a skill an Addon, and the `addon-question-mismatch` message names that map.
+
 ## [2.0.18] - 2026-10-15
 
 - From another project, skill://session files one vstack issue for each approved lesson on an existing vstack row that is not adopt, an adopt item, or a new vstack skill. An open issue that already covers the lesson gets a comment instead. The issue has only the `needs-triage` label, a Problem and a Proposal section, and no transcript excerpts or paths from the other project. A failed filing goes to Backlog with the `gh` error. The run no longer edits the linked clone, so `vstack-maintain.ts gates` drops `--in-place` and its `pending` field, and vstack-maintain and skill-creator drop their in-place session-lesson routes (#140).

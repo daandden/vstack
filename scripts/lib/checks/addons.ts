@@ -1,6 +1,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { parseAddonCatalog } from "../../../plugin/extensions/addon-catalog.ts";
 import { mattSkillNames } from "../../../plugin/extensions/matt-skills.ts";
 import { ConfigError } from "../vstack-repo.ts";
 import { shippedSkillNames, textFiles } from "./scope.ts";
@@ -12,16 +13,12 @@ export const addonChecks: Check = {
     const out: Failure[] = [];
     const shipped = shippedSkillNames(ctx);
     const catalogPath = join(ctx.root, "addon-questions.json");
-    let catalog: unknown;
+    let questions: Set<string>;
     try {
-      catalog = JSON.parse(readFileSync(catalogPath, "utf8"));
+      questions = new Set(Object.keys(parseAddonCatalog(JSON.parse(readFileSync(catalogPath, "utf8"))).questions));
     } catch (error) {
       throw new ConfigError(`${catalogPath}: ${(error as Error).message}`);
     }
-    if (!catalog || typeof catalog !== "object" || Array.isArray(catalog)) {
-      throw new ConfigError(`${catalogPath}: expected an object keyed by Addon name`);
-    }
-    const questions = new Set(Object.keys(catalog));
     const roleOf = (upstream: string) => ctx.pins.get(upstream)?.role;
     const skillsWithBaseRows = mattSkillNames(ctx.validRows, roleOf, []);
     const matt = mattSkillNames(ctx.validRows, roleOf, questions);
@@ -51,10 +48,10 @@ export const addonChecks: Check = {
     }
 
     for (const name of [...questions].sort()) {
-      if (!addons.has(name)) out.push({ class: "addon-question-mismatch", item: name, message: "addon-questions.json key does not name a shipped Addon" });
+      if (!addons.has(name)) out.push({ class: "addon-question-mismatch", item: name, message: "key in the `questions` map of addon-questions.json does not name a shipped Addon" });
     }
     for (const name of [...addons].sort()) {
-      if (!questions.has(name)) out.push({ class: "addon-question-mismatch", item: name, message: "shipped Addon has no key in addon-questions.json" });
+      if (!questions.has(name)) out.push({ class: "addon-question-mismatch", item: name, message: "shipped Addon has no key in the `questions` map of addon-questions.json" });
     }
     return out;
   },

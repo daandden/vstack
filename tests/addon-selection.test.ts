@@ -1,8 +1,12 @@
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import * as fs from "node:fs";
-import questions from "../addon-questions.json";
+import catalogFile from "../addon-questions.json";
+import { parseAddonCatalog } from "../plugin/extensions/addon-catalog.ts";
 import { fakeHost } from "./support/extension-host.ts";
 import { smol } from "./support/extension-mocks.ts";
+
+const catalog = parseAddonCatalog(catalogFile);
+const questions = catalog.questions;
 
 const model = { provider: "typesafe", id: "jev-latest", api: "typesafe", baseUrl: "https://judge.test/" };
 const options = { models: [model], apiKeys: { "typesafe/jev-latest": "test-key" } };
@@ -56,9 +60,10 @@ describe("Addon selection", () => {
     expect(url).toBe("https://judge.test/v1/systemone");
     expect(init.headers.Authorization).toBe("Bearer test-key");
     const body = JSON.parse(init.body);
-    expect(body.state).toEqual({ request: "Fix login now abcdef1" });
+    expect(body.state).toEqual({ preamble: catalog.preamble, request: "Fix login now abcdef1" });
     expect(body.questions).toEqual(questions);
     expect(Object.values(body.questions).every((q: any) => q.type === "noul")).toBe(true);
+    expect(Object.values(body.questions).some((q: any) => q.instructions.includes(catalog.preamble) || q.instructions.startsWith("The state is"))).toBe(false);
   });
   test("a skill body dialogue does not enter the start request", async () => {
     fetchSpy = endpoint({});
@@ -66,7 +71,7 @@ describe("Addon selection", () => {
     await fakeHost(options).emit("before_agent_start", { prompt });
     expect(fetchSpy).toHaveBeenCalledTimes(1);
     const [, init]: any = fetchSpy.mock.calls[0];
-    expect(JSON.parse(init.body).state).toEqual({ request: "Fix login" });
+    expect(JSON.parse(init.body).state).toEqual({ preamble: catalog.preamble, request: "Fix login" });
   });
   test("a bare skill start with a body dialogue sends no request", async () => {
     fetchSpy = endpoint({});
@@ -88,7 +93,7 @@ describe("Addon selection", () => {
     expect(fetchSpy.mock.calls.map(([, init]: any) => JSON.parse(init.body).state.request)).toEqual(["Follow up on login", "Steer here", "Continue after compaction"]);
   });
   test("full-name pointers use the threshold and the precedence text, once per session", async () => {
-    fetchSpy = endpoint({ "principle-prove-it-works": .75, "open-pr": .9, "principle-experience-first": .749 });
+    fetchSpy = endpoint({ "principle-prove-it-works": .7, "open-pr": .9, "principle-experience-first": .699 });
     const entries: unknown[] = [savedRun];
     const host = fakeHost({ ...options, entries });
     const [result]: any = await host.emit("before_agent_start", { prompt: "Open a PR" });
@@ -122,8 +127,27 @@ describe("Addon selection", () => {
     expect(result.message.content).not.toContain("skill://open-pr");
     expect(result.message.content).toContain("skill://principle-prove-it-works");
   });
+  test("an Addon delivered earlier in the session is left out of the request", async () => {
+    fetchSpy = endpoint({ "principle-prove-it-works": .9 });
+    const otherBranch = { type: "custom_message", customType: "vstack-addons", content: "Addons selected for this task: skill://open-pr." };
+    const kept = { type: "custom_message", customType: "vstack-addons", content: "Addons selected for this task: skill://principle-experience-first." };
+    await fakeHost({ ...options, entries: [savedRun, kept], sessionEntries: [savedRun, otherBranch, kept] }).emit("before_agent_start", { prompt: "Open a PR" });
+    const [, init]: any = fetchSpy.mock.calls[0];
+    const asked = Object.keys(JSON.parse(init.body).questions);
+    expect(asked).not.toContain("open-pr");
+    expect(asked).not.toContain("principle-experience-first");
+    expect(asked).toEqual(Object.keys(questions).filter(name => name !== "open-pr" && name !== "principle-experience-first"));
+  });
+  test("no request and no restatement when every Addon was delivered earlier in the session", async () => {
+    fetchSpy = endpoint({ "open-pr": .9 });
+    const delivered = { type: "custom_message", customType: "vstack-addons", content: `Addons selected for this task: ${Object.keys(questions).map(name => `skill://${name}`).join(", ")}.` };
+    expect(await fakeHost({ ...options, entries: [savedRun, delivered] }).emit("before_agent_start", { prompt: "Open a PR" })).toEqual([undefined]);
+    expect(await fakeHost({ ...withSmol, entries: [...talk, delivered] }).emit("before_agent_start", { prompt: start("implement", "Open a PR") })).toEqual([undefined]);
+    expect(calls).toHaveLength(0);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
   test("there is no cap on picked Addons", async () => {
-    fetchSpy = endpoint(Object.fromEntries(Object.keys(questions).map(name => [name, .75])));
+    fetchSpy = endpoint(Object.fromEntries(Object.keys(questions).map(name => [name, .7])));
     const [result]: any = await fakeHost(running).emit("before_agent_start", { prompt: "Do the work" });
     expect(result.message.content.match(/skill:\/\//g)).toHaveLength(Object.keys(questions).length);
   });
@@ -222,7 +246,7 @@ describe("Restated input for a mid-session run start", () => {
     expect(options.apiKey).toBe("smol-key");
     expect(options.reasoning).toBe("high");
     const [, init]: any = fetchSpy.mock.calls[0];
-    expect(JSON.parse(init.body).state).toEqual({ request: "The user wants jev to read a restated goal. ```keep this```" });
+    expect(JSON.parse(init.body).state).toEqual({ preamble: catalog.preamble, request: "The user wants jev to read a restated goal. ```keep this```" });
   });
   test("after a compaction, smol reads its summary and the kept talk, not the talk it replaced", async () => {
     fetchSpy = endpoint({});

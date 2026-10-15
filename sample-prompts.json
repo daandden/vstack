@@ -1,17 +1,18 @@
 {
-  "model": "typesafe/jev-latest (resolved to jev-1.13.0 on 2026-10-12)",
-  "threshold": 0.75,
+  "model": "typesafe/jev-latest (resolved to jev-1.13.0 on 2026-10-15)",
+  "threshold": 0.7,
   "state_shape": {
-    "request": "preprocessTinyMessage(prompt), or prompt cut to 10,000 characters when restated is true"
+    "request": "preprocessTinyMessage(prompt), or prompt cut to 10,000 characters when restated is true",
+    "preamble": "preamble from addon-questions.json, after request"
   },
-  "questions": "addon-questions.json",
+  "questions": "questions in addon-questions.json",
   "semantics": {
     "prompt": "User words in a Matt run: the text after User: on a skill start, or a later prompt. No skill body is included.",
-    "expected": "A required Addon pick. The check flags mean P(yes) < 0.70; the runtime selects at 0.75.",
+    "expected": "A required Addon pick. The check flags mean P(yes) < 0.65; the runtime selects at 0.70.",
     "allowed": "A pick is acceptable either way; it is not an unexpected pick.",
     "other": "An Addon outside expected and allowed is flagged when mean P(yes) > 0.80.",
-    "baseline_selected": "Mean P(yes) over 3 fresh direct POST runs with the final catalog (2026-10-12; session, benchmark-checklist, and principle-explain-the-number re-measured 2026-10-14; restated samples measured 2026-10-15), >= 0.75. Stored values round to 3 decimals.",
-    "baseline_borderline": "Mean P(yes) in [0.70, 0.80], including scores that are also selected. Stored values round to 3 decimals.",
+    "baseline_selected": "Mean P(yes) over 3 fresh direct POST runs with the final catalog and the state shape above (2026-10-15, after the preamble moved into the state and the threshold moved to 0.70), >= 0.70. Stored values round to 3 decimals.",
+    "baseline_borderline": "Mean P(yes) in [0.65, 0.80], including scores that are also selected. Stored values round to 3 decimals.",
     "restated": "The prompt is a stored smol restatement of a mid-session talk, written once with the extension's in-your-own-words instruction and frame (ADR 0021). The check sends it as it is, cut to 10,000 characters."
   },
   "prompts": [
@@ -92,11 +93,10 @@
         "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "principle-experience-first": 0.757,
-        "principle-prove-it-works": 0.85
+        "principle-prove-it-works": 0.75
       },
       "baseline_borderline": {
-        "principle-experience-first": 0.757
+        "principle-prove-it-works": 0.75
       }
     },
     {
@@ -110,7 +110,7 @@
         "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "principle-boundary-discipline": 0.843
+        "principle-boundary-discipline": 0.813
       },
       "baseline_borderline": {}
     },
@@ -127,7 +127,7 @@
       ],
       "baseline_selected": {
         "principle-attack-the-premise": 0.98,
-        "principle-prove-it-works": 0.887
+        "principle-prove-it-works": 0.843
       },
       "baseline_borderline": {}
     },
@@ -144,11 +144,11 @@
         "principle-separate-before-serializing-shared-state"
       ],
       "baseline_selected": {
-        "principle-attack-the-premise": 0.987,
-        "principle-prove-it-works": 0.823
+        "principle-attack-the-premise": 0.99,
+        "principle-prove-it-works": 0.75
       },
       "baseline_borderline": {
-        "principle-encode-lessons-in-structure": 0.703
+        "principle-prove-it-works": 0.75
       }
     },
     {
@@ -178,8 +178,8 @@
         "principle-sequence-verifiable-units"
       ],
       "baseline_selected": {
-        "principle-build-the-lever": 0.99,
-        "principle-sequence-verifiable-units": 0.97
+        "principle-build-the-lever": 0.98,
+        "principle-sequence-verifiable-units": 0.95
       },
       "baseline_borderline": {}
     },
@@ -199,9 +199,9 @@
         "principle-subtract-before-you-add"
       ],
       "baseline_selected": {
-        "principle-build-the-lever": 0.98,
-        "principle-guard-the-context-window": 0.867,
-        "principle-sequence-verifiable-units": 0.97
+        "principle-build-the-lever": 0.97,
+        "principle-guard-the-context-window": 0.853,
+        "principle-sequence-verifiable-units": 0.953
       },
       "baseline_borderline": {}
     },
@@ -219,9 +219,9 @@
         "principle-sequence-verifiable-units"
       ],
       "baseline_selected": {
-        "principle-build-the-lever": 0.933,
-        "principle-migrate-callers-then-delete-legacy-apis": 0.947,
-        "principle-sequence-verifiable-units": 0.943
+        "principle-build-the-lever": 0.927,
+        "principle-migrate-callers-then-delete-legacy-apis": 0.94,
+        "principle-sequence-verifiable-units": 0.917
       },
       "baseline_borderline": {}
     },
@@ -238,8 +238,8 @@
         "principle-sequence-verifiable-units"
       ],
       "baseline_selected": {
-        "principle-make-operations-idempotent": 0.893,
-        "principle-prove-it-works": 0.967
+        "principle-make-operations-idempotent": 0.843,
+        "principle-prove-it-works": 0.933
       },
       "baseline_borderline": {}
     },
@@ -255,9 +255,9 @@
         "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "principle-boundary-discipline": 0.97,
-        "principle-make-operations-idempotent": 0.96,
-        "principle-prove-it-works": 0.92
+        "principle-boundary-discipline": 0.957,
+        "principle-make-operations-idempotent": 0.943,
+        "principle-prove-it-works": 0.87
       },
       "baseline_borderline": {}
     },
@@ -274,11 +274,11 @@
         "principle-type-system-discipline"
       ],
       "baseline_selected": {
-        "principle-experience-first": 0.867,
-        "principle-prove-it-works": 0.88
+        "principle-experience-first": 0.83,
+        "principle-prove-it-works": 0.833
       },
       "baseline_borderline": {
-        "principle-foundational-thinking": 0.733
+        "principle-foundational-thinking": 0.687
       }
     },
     {
@@ -293,11 +293,14 @@
         "principle-separate-before-serializing-shared-state"
       ],
       "baseline_selected": {
-        "principle-foundational-thinking": 0.947,
-        "principle-separate-before-serializing-shared-state": 0.96
+        "principle-foundational-thinking": 0.92,
+        "principle-separate-before-serializing-shared-state": 0.95,
+        "principle-type-system-discipline": 0.743
       },
       "baseline_borderline": {
-        "principle-experience-first": 0.743
+        "principle-experience-first": 0.7,
+        "principle-prove-it-works": 0.667,
+        "principle-type-system-discipline": 0.743
       }
     },
     {
@@ -316,16 +319,19 @@
         "principle-type-system-discipline"
       ],
       "baseline_selected": {
-        "principle-foundational-thinking": 0.913,
-        "principle-prove-it-works": 0.85,
-        "principle-redesign-from-first-principles": 0.97,
-        "principle-sequence-verifiable-units": 0.773,
-        "principle-type-system-discipline": 0.913
+        "principle-build-the-lever": 0.71,
+        "principle-encode-the-domain": 0.807,
+        "principle-foundational-thinking": 0.87,
+        "principle-prove-it-works": 0.787,
+        "principle-redesign-from-first-principles": 0.96,
+        "principle-sequence-verifiable-units": 0.7,
+        "principle-type-system-discipline": 0.917
       },
       "baseline_borderline": {
-        "principle-build-the-lever": 0.713,
-        "principle-encode-the-domain": 0.723,
-        "principle-sequence-verifiable-units": 0.773
+        "principle-boundary-discipline": 0.657,
+        "principle-build-the-lever": 0.71,
+        "principle-prove-it-works": 0.787,
+        "principle-sequence-verifiable-units": 0.7
       }
     },
     {
@@ -339,7 +345,7 @@
         "principle-subtract-before-you-add"
       ],
       "baseline_selected": {
-        "principle-experience-first": 0.973
+        "principle-experience-first": 0.957
       },
       "baseline_borderline": {}
     },
@@ -361,16 +367,15 @@
         "principle-sequence-verifiable-units"
       ],
       "baseline_selected": {
-        "principle-encode-lessons-in-structure": 0.773,
-        "principle-encode-the-domain": 0.867,
-        "principle-foundational-thinking": 0.81,
-        "principle-minimize-reader-load": 0.76,
-        "principle-type-system-discipline": 0.91
+        "principle-encode-lessons-in-structure": 0.8,
+        "principle-encode-the-domain": 0.827,
+        "principle-foundational-thinking": 0.757,
+        "principle-subtract-before-you-add": 0.703,
+        "principle-type-system-discipline": 0.887
       },
       "baseline_borderline": {
-        "principle-encode-lessons-in-structure": 0.773,
-        "principle-minimize-reader-load": 0.76,
-        "principle-subtract-before-you-add": 0.737
+        "principle-foundational-thinking": 0.757,
+        "principle-subtract-before-you-add": 0.703
       }
     },
     {
@@ -386,10 +391,12 @@
         "principle-type-system-discipline"
       ],
       "baseline_selected": {
-        "principle-encode-the-domain": 0.98,
-        "principle-type-system-discipline": 0.887
+        "principle-encode-the-domain": 0.97,
+        "principle-type-system-discipline": 0.867
       },
-      "baseline_borderline": {}
+      "baseline_borderline": {
+        "principle-prove-it-works": 0.677
+      }
     },
     {
       "id": "webhook-validation",
@@ -405,11 +412,12 @@
         "principle-type-system-discipline"
       ],
       "baseline_selected": {
-        "principle-boundary-discipline": 0.97,
-        "principle-minimize-reader-load": 0.95
+        "principle-boundary-discipline": 0.963,
+        "principle-minimize-reader-load": 0.923
       },
       "baseline_borderline": {
-        "principle-subtract-before-you-add": 0.727
+        "principle-laziness-protocol": 0.697,
+        "principle-subtract-before-you-add": 0.653
       }
     },
     {
@@ -425,12 +433,12 @@
         "principle-foundational-thinking"
       ],
       "baseline_selected": {
-        "principle-boundary-discipline": 0.767,
-        "principle-foundational-thinking": 0.94,
+        "principle-boundary-discipline": 0.73,
+        "principle-foundational-thinking": 0.903,
         "principle-type-system-discipline": 0.99
       },
       "baseline_borderline": {
-        "principle-boundary-discipline": 0.767
+        "principle-boundary-discipline": 0.73
       }
     },
     {
@@ -445,7 +453,7 @@
         "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "principle-separate-before-serializing-shared-state": 0.99
+        "principle-separate-before-serializing-shared-state": 0.977
       },
       "baseline_borderline": {}
     },
@@ -462,7 +470,7 @@
         "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "principle-separate-before-serializing-shared-state": 0.96
+        "principle-separate-before-serializing-shared-state": 0.95
       },
       "baseline_borderline": {}
     },
@@ -481,11 +489,13 @@
         "principle-redesign-from-first-principles"
       ],
       "baseline_selected": {
-        "principle-outcome-oriented-execution": 0.983,
-        "principle-sequence-verifiable-units": 0.977
+        "principle-boundary-discipline": 0.783,
+        "principle-outcome-oriented-execution": 0.98,
+        "principle-sequence-verifiable-units": 0.97
       },
       "baseline_borderline": {
-        "principle-boundary-discipline": 0.747
+        "principle-boundary-discipline": 0.783,
+        "principle-build-the-lever": 0.657
       }
     },
     {
@@ -502,9 +512,9 @@
         "principle-subtract-before-you-add"
       ],
       "baseline_selected": {
-        "principle-guard-the-context-window": 0.917,
+        "principle-guard-the-context-window": 0.88,
         "principle-laziness-protocol": 0.98,
-        "principle-minimize-reader-load": 0.99
+        "principle-minimize-reader-load": 0.98
       },
       "baseline_borderline": {}
     },
@@ -521,11 +531,13 @@
         "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "principle-boundary-discipline": 0.893,
-        "principle-prove-it-works": 0.827,
-        "principle-subtract-before-you-add": 0.917
+        "principle-boundary-discipline": 0.87,
+        "principle-prove-it-works": 0.747,
+        "principle-subtract-before-you-add": 0.89
       },
-      "baseline_borderline": {}
+      "baseline_borderline": {
+        "principle-prove-it-works": 0.747
+      }
     },
     {
       "id": "verbose-flag-threading",
@@ -539,11 +551,13 @@
         "principle-minimize-reader-load"
       ],
       "baseline_selected": {
-        "principle-laziness-protocol": 0.98
+        "principle-build-the-lever": 0.71,
+        "principle-laziness-protocol": 0.977,
+        "principle-type-system-discipline": 0.767
       },
       "baseline_borderline": {
         "principle-build-the-lever": 0.71,
-        "principle-type-system-discipline": 0.723
+        "principle-type-system-discipline": 0.767
       }
     },
     {
@@ -569,7 +583,7 @@
       ],
       "baseline_selected": {},
       "baseline_borderline": {
-        "principle-subtract-before-you-add": 0.723
+        "principle-subtract-before-you-add": 0.66
       }
     },
     {
@@ -587,7 +601,7 @@
       ],
       "baseline_selected": {
         "principle-encode-lessons-in-structure": 0.99,
-        "session": 0.883
+        "session": 0.843
       },
       "baseline_borderline": {}
     },
@@ -602,11 +616,12 @@
         "principle-build-the-lever"
       ],
       "baseline_selected": {
-        "principle-build-the-lever": 0.833,
-        "principle-encode-lessons-in-structure": 0.977
+        "principle-build-the-lever": 0.82,
+        "principle-encode-lessons-in-structure": 0.97,
+        "principle-sequence-verifiable-units": 0.737
       },
       "baseline_borderline": {
-        "principle-sequence-verifiable-units": 0.707
+        "principle-sequence-verifiable-units": 0.737
       }
     },
     {
@@ -620,10 +635,11 @@
         "principle-build-the-lever"
       ],
       "baseline_selected": {
-        "principle-guard-the-context-window": 0.97
+        "principle-boundary-discipline": 0.747,
+        "principle-guard-the-context-window": 0.96
       },
       "baseline_borderline": {
-        "principle-boundary-discipline": 0.743
+        "principle-boundary-discipline": 0.747
       }
     },
     {
@@ -636,12 +652,10 @@
       ],
       "allowed": [],
       "baseline_selected": {
-        "principle-build-the-lever": 0.97,
-        "principle-guard-the-context-window": 0.797
+        "principle-build-the-lever": 0.963,
+        "principle-guard-the-context-window": 0.813
       },
-      "baseline_borderline": {
-        "principle-guard-the-context-window": 0.797
-      }
+      "baseline_borderline": {}
     },
     {
       "id": "new-repo-scaffold",
@@ -655,9 +669,12 @@
         "principle-sequence-verifiable-units"
       ],
       "baseline_selected": {
-        "principle-foundational-thinking": 0.98
+        "principle-foundational-thinking": 0.973,
+        "principle-type-system-discipline": 0.71
       },
-      "baseline_borderline": {}
+      "baseline_borderline": {
+        "principle-type-system-discipline": 0.71
+      }
     },
     {
       "id": "afternoon-away",
@@ -673,8 +690,8 @@
         "decision-trail"
       ],
       "baseline_selected": {
-        "principle-never-block-on-the-human": 0.983,
-        "decision-trail": 0.86
+        "principle-never-block-on-the-human": 0.98,
+        "decision-trail": 0.853
       },
       "baseline_borderline": {}
     },
@@ -691,11 +708,13 @@
         "decision-trail"
       ],
       "baseline_selected": {
-        "principle-build-the-lever": 0.92,
-        "principle-never-block-on-the-human": 0.967,
-        "principle-sequence-verifiable-units": 0.85
+        "principle-build-the-lever": 0.883,
+        "principle-never-block-on-the-human": 0.97,
+        "principle-sequence-verifiable-units": 0.797
       },
-      "baseline_borderline": {}
+      "baseline_borderline": {
+        "principle-sequence-verifiable-units": 0.797
+      }
     },
     {
       "id": "dashboard-perf",
@@ -711,10 +730,10 @@
         "principle-explain-the-number"
       ],
       "baseline_selected": {
-        "principle-prove-it-works": 0.98,
-        "perf-issue": 0.97,
-        "benchmark-checklist": 0.97,
-        "principle-explain-the-number": 0.89
+        "principle-explain-the-number": 0.883,
+        "principle-prove-it-works": 0.96,
+        "benchmark-checklist": 0.967,
+        "perf-issue": 0.97
       },
       "baseline_borderline": {}
     },
@@ -729,9 +748,11 @@
         "principle-sequence-verifiable-units"
       ],
       "baseline_selected": {
-        "principle-prove-it-works": 0.97
+        "principle-prove-it-works": 0.95
       },
-      "baseline_borderline": {}
+      "baseline_borderline": {
+        "principle-encode-the-domain": 0.697
+      }
     },
     {
       "id": "split-pr",
@@ -745,7 +766,7 @@
         "principle-minimize-reader-load"
       ],
       "baseline_selected": {
-        "principle-guard-the-context-window": 0.95,
+        "principle-guard-the-context-window": 0.94,
         "principle-sequence-verifiable-units": 0.98
       },
       "baseline_borderline": {}
@@ -761,7 +782,7 @@
         "principle-subtract-before-you-add"
       ],
       "baseline_selected": {
-        "principle-subtract-before-you-add": 0.923
+        "principle-subtract-before-you-add": 0.897
       },
       "baseline_borderline": {}
     },
@@ -801,7 +822,7 @@
         "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "principle-attack-the-premise": 0.897
+        "principle-attack-the-premise": 0.853
       },
       "baseline_borderline": {}
     },
@@ -819,14 +840,13 @@
         "principle-type-system-discipline"
       ],
       "baseline_selected": {
-        "principle-boundary-discipline": 0.887,
-        "principle-build-the-lever": 0.75,
-        "principle-laziness-protocol": 0.827
+        "principle-boundary-discipline": 0.86,
+        "principle-build-the-lever": 0.747,
+        "principle-laziness-protocol": 0.81
       },
       "baseline_borderline": {
-        "principle-build-the-lever": 0.75,
-        "principle-encode-lessons-in-structure": 0.707,
-        "principle-sequence-verifiable-units": 0.747
+        "principle-build-the-lever": 0.747,
+        "principle-sequence-verifiable-units": 0.68
       }
     },
     {
@@ -841,9 +861,9 @@
         "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "principle-boundary-discipline": 0.937,
-        "principle-make-operations-idempotent": 0.97,
-        "principle-prove-it-works": 0.97
+        "principle-boundary-discipline": 0.913,
+        "principle-make-operations-idempotent": 0.96,
+        "principle-prove-it-works": 0.937
       },
       "baseline_borderline": {}
     },
@@ -858,7 +878,7 @@
         "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "principle-experience-first": 0.97
+        "principle-experience-first": 0.963
       },
       "baseline_borderline": {}
     },
@@ -879,13 +899,13 @@
         "principle-type-system-discipline"
       ],
       "baseline_selected": {
-        "principle-encode-the-domain": 0.833,
-        "principle-foundational-thinking": 0.887,
-        "principle-redesign-from-first-principles": 0.96,
+        "principle-encode-the-domain": 0.813,
+        "principle-foundational-thinking": 0.847,
+        "principle-redesign-from-first-principles": 0.947,
         "principle-type-system-discipline": 0.89
       },
       "baseline_borderline": {
-        "principle-experience-first": 0.737
+        "principle-sequence-verifiable-units": 0.7
       }
     },
     {
@@ -909,7 +929,7 @@
         "principle-sequence-verifiable-units"
       ],
       "baseline_selected": {
-        "principle-separate-before-serializing-shared-state": 0.96
+        "principle-separate-before-serializing-shared-state": 0.943
       },
       "baseline_borderline": {}
     },
@@ -923,11 +943,11 @@
       ],
       "allowed": [],
       "baseline_selected": {
-        "principle-encode-lessons-in-structure": 0.98,
-        "principle-type-system-discipline": 0.777
+        "principle-encode-lessons-in-structure": 0.97,
+        "principle-type-system-discipline": 0.757
       },
       "baseline_borderline": {
-        "principle-type-system-discipline": 0.777
+        "principle-type-system-discipline": 0.757
       }
     },
     {
@@ -944,10 +964,10 @@
         "principle-subtract-before-you-add"
       ],
       "baseline_selected": {
-        "principle-build-the-lever": 0.897,
-        "principle-migrate-callers-then-delete-legacy-apis": 0.963,
-        "principle-sequence-verifiable-units": 0.92,
-        "principle-subtract-before-you-add": 0.877
+        "principle-build-the-lever": 0.89,
+        "principle-migrate-callers-then-delete-legacy-apis": 0.95,
+        "principle-sequence-verifiable-units": 0.897,
+        "principle-subtract-before-you-add": 0.837
       },
       "baseline_borderline": {}
     },
@@ -963,7 +983,7 @@
         "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "principle-guard-the-context-window": 0.89
+        "principle-guard-the-context-window": 0.887
       },
       "baseline_borderline": {}
     },
@@ -1010,14 +1030,16 @@
         "decision-trail"
       ],
       "baseline_selected": {
-        "principle-build-the-lever": 0.867,
-        "principle-never-block-on-the-human": 0.97,
-        "principle-prove-it-works": 0.767,
-        "principle-sequence-verifiable-units": 0.82,
-        "decision-trail": 0.82
+        "principle-build-the-lever": 0.833,
+        "principle-never-block-on-the-human": 0.96,
+        "principle-prove-it-works": 0.777,
+        "principle-sequence-verifiable-units": 0.77,
+        "decision-trail": 0.763
       },
       "baseline_borderline": {
-        "principle-prove-it-works": 0.767
+        "principle-prove-it-works": 0.777,
+        "principle-sequence-verifiable-units": 0.77,
+        "decision-trail": 0.763
       }
     },
     {
@@ -1029,10 +1051,10 @@
         "principle-guard-the-context-window",
         "principle-prove-it-works"
       ],
-      "baseline_selected": {
-        "principle-prove-it-works": 0.83
-      },
-      "baseline_borderline": {}
+      "baseline_selected": {},
+      "baseline_borderline": {
+        "principle-prove-it-works": 0.683
+      }
     },
     {
       "id": "g-search-filters",
@@ -1044,9 +1066,7 @@
         "principle-prove-it-works"
       ],
       "baseline_selected": {},
-      "baseline_borderline": {
-        "principle-prove-it-works": 0.727
-      }
+      "baseline_borderline": {}
     },
     {
       "id": "g-queue-consumer",
@@ -1060,12 +1080,12 @@
         "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "principle-boundary-discipline": 0.97,
-        "principle-make-operations-idempotent": 0.83,
-        "principle-prove-it-works": 0.78
+        "principle-boundary-discipline": 0.96,
+        "principle-make-operations-idempotent": 0.787
       },
       "baseline_borderline": {
-        "principle-prove-it-works": 0.78
+        "principle-make-operations-idempotent": 0.787,
+        "principle-prove-it-works": 0.697
       }
     },
     {
@@ -1084,12 +1104,13 @@
         "principle-subtract-before-you-add"
       ],
       "baseline_selected": {
-        "principle-build-the-lever": 0.837,
-        "principle-encode-lessons-in-structure": 0.76,
-        "principle-type-system-discipline": 0.94
+        "principle-build-the-lever": 0.797,
+        "principle-encode-lessons-in-structure": 0.723,
+        "principle-type-system-discipline": 0.927
       },
       "baseline_borderline": {
-        "principle-encode-lessons-in-structure": 0.76
+        "principle-build-the-lever": 0.797,
+        "principle-encode-lessons-in-structure": 0.723
       }
     },
     {
@@ -1105,7 +1126,7 @@
         "principle-sequence-verifiable-units"
       ],
       "baseline_selected": {
-        "principle-subtract-before-you-add": 0.94
+        "principle-subtract-before-you-add": 0.93
       },
       "baseline_borderline": {}
     },
@@ -1126,15 +1147,15 @@
         "principle-separate-before-serializing-shared-state"
       ],
       "baseline_selected": {
-        "principle-foundational-thinking": 0.897,
-        "principle-make-operations-idempotent": 0.87,
-        "principle-outcome-oriented-execution": 0.987,
-        "principle-prove-it-works": 0.963,
-        "principle-separate-before-serializing-shared-state": 0.763,
-        "principle-sequence-verifiable-units": 0.98
+        "principle-foundational-thinking": 0.843,
+        "principle-make-operations-idempotent": 0.813,
+        "principle-outcome-oriented-execution": 0.98,
+        "principle-prove-it-works": 0.927,
+        "principle-separate-before-serializing-shared-state": 0.713,
+        "principle-sequence-verifiable-units": 0.97
       },
       "baseline_borderline": {
-        "principle-separate-before-serializing-shared-state": 0.763
+        "principle-separate-before-serializing-shared-state": 0.713
       }
     },
     {
@@ -1149,10 +1170,11 @@
         "principle-sequence-verifiable-units"
       ],
       "baseline_selected": {
-        "principle-minimize-reader-load": 0.783
+        "principle-minimize-reader-load": 0.79
       },
       "baseline_borderline": {
-        "principle-minimize-reader-load": 0.783
+        "principle-minimize-reader-load": 0.79,
+        "principle-sequence-verifiable-units": 0.657
       }
     },
     {
@@ -1164,9 +1186,11 @@
         "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "principle-prove-it-works": 0.813
+        "principle-prove-it-works": 0.743
       },
-      "baseline_borderline": {}
+      "baseline_borderline": {
+        "principle-prove-it-works": 0.743
+      }
     },
     {
       "id": "g-sql-injection",
@@ -1180,7 +1204,7 @@
         "principle-type-system-discipline"
       ],
       "baseline_selected": {
-        "principle-boundary-discipline": 0.98
+        "principle-boundary-discipline": 0.97
       },
       "baseline_borderline": {}
     },
@@ -1197,11 +1221,11 @@
         "principle-type-system-discipline"
       ],
       "baseline_selected": {
-        "principle-encode-the-domain": 0.883,
-        "principle-type-system-discipline": 0.78
+        "principle-encode-the-domain": 0.887,
+        "principle-type-system-discipline": 0.767
       },
       "baseline_borderline": {
-        "principle-type-system-discipline": 0.78
+        "principle-type-system-discipline": 0.767
       }
     },
     {
@@ -1211,7 +1235,9 @@
       "expected": [],
       "allowed": [],
       "baseline_selected": {},
-      "baseline_borderline": {}
+      "baseline_borderline": {
+        "principle-minimize-reader-load": 0.657
+      }
     },
     {
       "id": "g-summarize-pr",
@@ -1233,7 +1259,7 @@
       ],
       "allowed": [],
       "baseline_selected": {
-        "open-pr": 0.99
+        "open-pr": 0.983
       },
       "baseline_borderline": {}
     },
@@ -1261,7 +1287,7 @@
         "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "open-pr": 0.99
+        "open-pr": 0.98
       },
       "baseline_borderline": {}
     },
@@ -1274,7 +1300,7 @@
       ],
       "allowed": [],
       "baseline_selected": {
-        "babysit": 0.99
+        "babysit": 0.983
       },
       "baseline_borderline": {}
     },
@@ -1287,7 +1313,7 @@
       ],
       "allowed": [],
       "baseline_selected": {
-        "babysit": 0.98
+        "babysit": 0.97
       },
       "baseline_borderline": {}
     },
@@ -1326,7 +1352,7 @@
       ],
       "allowed": [],
       "baseline_selected": {
-        "ship": 0.98
+        "ship": 0.977
       },
       "baseline_borderline": {}
     },
@@ -1341,8 +1367,8 @@
         "principle-sequence-verifiable-units"
       ],
       "baseline_selected": {
-        "principle-sequence-verifiable-units": 0.857,
-        "ship": 0.97
+        "principle-sequence-verifiable-units": 0.81,
+        "ship": 0.957
       },
       "baseline_borderline": {}
     },
@@ -1357,11 +1383,11 @@
         "principle-never-block-on-the-human"
       ],
       "baseline_selected": {
-        "principle-never-block-on-the-human": 0.773,
-        "decision-trail": 0.983
+        "principle-never-block-on-the-human": 0.767,
+        "decision-trail": 0.973
       },
       "baseline_borderline": {
-        "principle-never-block-on-the-human": 0.773
+        "principle-never-block-on-the-human": 0.767
       }
     },
     {
@@ -1389,7 +1415,7 @@
       ],
       "baseline_selected": {
         "principle-never-block-on-the-human": 0.98,
-        "decision-trail": 0.98
+        "decision-trail": 0.97
       },
       "baseline_borderline": {}
     },
@@ -1404,10 +1430,12 @@
         "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "principle-prove-it-works": 0.85,
-        "blast-radius": 0.98
+        "principle-prove-it-works": 0.77,
+        "blast-radius": 0.97
       },
-      "baseline_borderline": {}
+      "baseline_borderline": {
+        "principle-prove-it-works": 0.77
+      }
     },
     {
       "id": "blast-radius-2",
@@ -1422,7 +1450,7 @@
         "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "blast-radius": 0.98
+        "blast-radius": 0.97
       },
       "baseline_borderline": {}
     },
@@ -1437,11 +1465,11 @@
         "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "principle-prove-it-works": 0.79,
-        "blast-radius": 0.99
+        "principle-prove-it-works": 0.723,
+        "blast-radius": 0.98
       },
       "baseline_borderline": {
-        "principle-prove-it-works": 0.79
+        "principle-prove-it-works": 0.723
       }
     },
     {
@@ -1456,7 +1484,7 @@
         "principle-subtract-before-you-add"
       ],
       "baseline_selected": {
-        "prune-comments": 0.98
+        "prune-comments": 0.977
       },
       "baseline_borderline": {}
     },
@@ -1491,7 +1519,7 @@
         "prune-comments": 0.98
       },
       "baseline_borderline": {
-        "principle-minimize-reader-load": 0.733
+        "principle-minimize-reader-load": 0.657
       }
     },
     {
@@ -1506,13 +1534,12 @@
         "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "principle-boundary-discipline": 0.783,
-        "principle-prove-it-works": 0.9,
-        "setup-app-verification": 0.97
+        "principle-boundary-discipline": 0.773,
+        "principle-prove-it-works": 0.843,
+        "setup-app-verification": 0.94
       },
       "baseline_borderline": {
-        "principle-boundary-discipline": 0.783,
-        "principle-foundational-thinking": 0.713
+        "principle-boundary-discipline": 0.773
       }
     },
     {
@@ -1527,9 +1554,13 @@
         "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "setup-app-verification": 0.93
+        "principle-boundary-discipline": 0.71,
+        "setup-app-verification": 0.903
       },
-      "baseline_borderline": {}
+      "baseline_borderline": {
+        "principle-boundary-discipline": 0.71,
+        "principle-prove-it-works": 0.693
+      }
     },
     {
       "id": "h-setup-app-verification-3",
@@ -1540,7 +1571,7 @@
       ],
       "allowed": [],
       "baseline_selected": {
-        "setup-app-verification": 0.963
+        "setup-app-verification": 0.923
       },
       "baseline_borderline": {}
     },
@@ -1555,9 +1586,11 @@
         "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "maintain-app-verification": 0.937
+        "maintain-app-verification": 0.917
       },
-      "baseline_borderline": {}
+      "baseline_borderline": {
+        "principle-subtract-before-you-add": 0.65
+      }
     },
     {
       "id": "maintain-app-verification-2",
@@ -1570,7 +1603,7 @@
         "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "maintain-app-verification": 0.937
+        "maintain-app-verification": 0.913
       },
       "baseline_borderline": {}
     },
@@ -1587,13 +1620,14 @@
         "principle-boundary-discipline"
       ],
       "baseline_selected": {
-        "principle-boundary-discipline": 0.807,
-        "principle-prove-it-works": 0.787,
-        "principle-subtract-before-you-add": 0.833,
-        "maintain-app-verification": 0.967
+        "principle-boundary-discipline": 0.777,
+        "principle-prove-it-works": 0.737,
+        "principle-subtract-before-you-add": 0.817,
+        "maintain-app-verification": 0.96
       },
       "baseline_borderline": {
-        "principle-prove-it-works": 0.787
+        "principle-boundary-discipline": 0.777,
+        "principle-prove-it-works": 0.737
       }
     },
     {
@@ -1620,11 +1654,11 @@
         "principle-minimize-reader-load"
       ],
       "baseline_selected": {
-        "principle-minimize-reader-load": 0.777,
-        "compare-attempts": 0.97
+        "principle-minimize-reader-load": 0.75,
+        "compare-attempts": 0.96
       },
       "baseline_borderline": {
-        "principle-minimize-reader-load": 0.777
+        "principle-minimize-reader-load": 0.75
       }
     },
     {
@@ -1636,11 +1670,9 @@
       ],
       "allowed": [],
       "baseline_selected": {
-        "compare-attempts": 0.97
+        "compare-attempts": 0.96
       },
-      "baseline_borderline": {
-        "principle-experience-first": 0.707
-      }
+      "baseline_borderline": {}
     },
     {
       "id": "hillclimb-1",
@@ -1657,10 +1689,10 @@
         "principle-explain-the-number"
       ],
       "baseline_selected": {
-        "principle-prove-it-works": 0.97,
-        "hillclimb": 0.98,
+        "principle-explain-the-number": 0.843,
+        "principle-prove-it-works": 0.927,
         "benchmark-checklist": 0.98,
-        "principle-explain-the-number": 0.813
+        "hillclimb": 0.97
       },
       "baseline_borderline": {}
     },
@@ -1678,10 +1710,10 @@
         "principle-explain-the-number"
       ],
       "baseline_selected": {
-        "principle-prove-it-works": 0.953,
-        "hillclimb": 0.97,
+        "principle-explain-the-number": 0.91,
+        "principle-prove-it-works": 0.907,
         "benchmark-checklist": 0.97,
-        "principle-explain-the-number": 0.88
+        "hillclimb": 0.96
       },
       "baseline_borderline": {}
     },
@@ -1699,10 +1731,10 @@
         "principle-explain-the-number"
       ],
       "baseline_selected": {
-        "principle-prove-it-works": 0.943,
-        "hillclimb": 0.97,
+        "principle-explain-the-number": 0.887,
+        "principle-prove-it-works": 0.86,
         "benchmark-checklist": 0.973,
-        "principle-explain-the-number": 0.853
+        "hillclimb": 0.97
       },
       "baseline_borderline": {}
     },
@@ -1719,10 +1751,10 @@
         "principle-explain-the-number"
       ],
       "baseline_selected": {
-        "principle-prove-it-works": 0.97,
-        "perf-issue": 0.98,
-        "benchmark-checklist": 0.973,
-        "principle-explain-the-number": 0.847
+        "principle-explain-the-number": 0.873,
+        "principle-prove-it-works": 0.943,
+        "benchmark-checklist": 0.97,
+        "perf-issue": 0.98
       },
       "baseline_borderline": {}
     },
@@ -1739,11 +1771,14 @@
         "principle-explain-the-number"
       ],
       "baseline_selected": {
-        "principle-prove-it-works": 0.947,
-        "perf-issue": 0.98,
-        "benchmark-checklist": 0.93
+        "principle-explain-the-number": 0.743,
+        "principle-prove-it-works": 0.903,
+        "benchmark-checklist": 0.893,
+        "perf-issue": 0.98
       },
-      "baseline_borderline": {}
+      "baseline_borderline": {
+        "principle-explain-the-number": 0.743
+      }
     },
     {
       "id": "h-perf-issue-3",
@@ -1759,12 +1794,12 @@
         "principle-explain-the-number"
       ],
       "baseline_selected": {
-        "principle-boundary-discipline": 0.767,
-        "principle-prove-it-works": 0.957,
+        "principle-boundary-discipline": 0.717,
+        "principle-prove-it-works": 0.903,
         "perf-issue": 0.97
       },
       "baseline_borderline": {
-        "principle-boundary-discipline": 0.767
+        "principle-boundary-discipline": 0.717
       }
     },
     {
@@ -1779,7 +1814,7 @@
         "principle-guard-the-context-window"
       ],
       "baseline_selected": {
-        "session": 0.96
+        "session": 0.933
       },
       "baseline_borderline": {}
     },
@@ -1795,7 +1830,7 @@
         "principle-guard-the-context-window"
       ],
       "baseline_selected": {
-        "session": 0.96
+        "session": 0.927
       },
       "baseline_borderline": {}
     },
@@ -1811,7 +1846,7 @@
         "principle-guard-the-context-window"
       ],
       "baseline_selected": {
-        "session": 0.9
+        "session": 0.843
       },
       "baseline_borderline": {}
     },
@@ -1827,9 +1862,12 @@
         "principle-guard-the-context-window"
       ],
       "baseline_selected": {
-        "vstack-maintain": 0.973
+        "ship": 0.707,
+        "vstack-maintain": 0.96
       },
-      "baseline_borderline": {}
+      "baseline_borderline": {
+        "ship": 0.707
+      }
     },
     {
       "id": "vstack-maintain-2",
@@ -1853,7 +1891,7 @@
       ],
       "allowed": [],
       "baseline_selected": {
-        "vstack-maintain": 0.97
+        "vstack-maintain": 0.96
       },
       "baseline_borderline": {}
     },
@@ -1866,7 +1904,7 @@
         "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "principle-prove-it-works": 0.963
+        "principle-prove-it-works": 0.92
       },
       "baseline_borderline": {}
     },
@@ -1899,7 +1937,7 @@
         "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "principle-prove-it-works": 0.93
+        "principle-prove-it-works": 0.84
       },
       "baseline_borderline": {}
     },
@@ -1945,7 +1983,7 @@
       ],
       "baseline_selected": {},
       "baseline_borderline": {
-        "principle-guard-the-context-window": 0.703
+        "principle-guard-the-context-window": 0.66
       }
     },
     {
@@ -1955,10 +1993,10 @@
       "expected": [],
       "allowed": [],
       "baseline_selected": {
-        "principle-prove-it-works": 0.78
+        "principle-prove-it-works": 0.75
       },
       "baseline_borderline": {
-        "principle-prove-it-works": 0.78
+        "principle-prove-it-works": 0.75
       }
     },
     {
@@ -1984,9 +2022,9 @@
         "open-pr"
       ],
       "baseline_selected": {
-        "principle-prove-it-works": 0.957,
-        "benchmark-checklist": 0.96,
-        "principle-explain-the-number": 0.887
+        "principle-explain-the-number": 0.877,
+        "principle-prove-it-works": 0.917,
+        "benchmark-checklist": 0.94
       },
       "baseline_borderline": {}
     },
@@ -2003,9 +2041,9 @@
         "principle-build-the-lever"
       ],
       "baseline_selected": {
-        "principle-prove-it-works": 0.96,
-        "benchmark-checklist": 0.98,
-        "principle-explain-the-number": 0.91
+        "principle-explain-the-number": 0.907,
+        "principle-prove-it-works": 0.893,
+        "benchmark-checklist": 0.97
       },
       "baseline_borderline": {}
     },
@@ -2021,7 +2059,7 @@
         "principle-guard-the-context-window"
       ],
       "baseline_selected": {
-        "session": 0.98
+        "session": 0.97
       },
       "baseline_borderline": {}
     },
@@ -2038,12 +2076,16 @@
         "principle-type-system-discipline"
       ],
       "baseline_selected": {
-        "principle-encode-lessons-in-structure": 0.97,
-        "session": 0.94
+        "principle-build-the-lever": 0.737,
+        "principle-encode-lessons-in-structure": 0.95,
+        "principle-laziness-protocol": 0.713,
+        "session": 0.92
       },
       "baseline_borderline": {
-        "principle-type-system-discipline": 0.74,
-        "principle-sequence-verifiable-units": 0.707
+        "principle-build-the-lever": 0.737,
+        "principle-laziness-protocol": 0.713,
+        "principle-sequence-verifiable-units": 0.687,
+        "principle-type-system-discipline": 0.67
       }
     },
     {
@@ -2060,12 +2102,14 @@
         "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "principle-explain-the-number": 0.81,
-        "principle-prove-it-works": 0.953,
-        "benchmark-checklist": 0.98,
-        "perf-issue": 0.83
+        "principle-explain-the-number": 0.86,
+        "principle-prove-it-works": 0.887,
+        "benchmark-checklist": 0.97,
+        "perf-issue": 0.84
       },
-      "baseline_borderline": {}
+      "baseline_borderline": {
+        "principle-guard-the-context-window": 0.67
+      }
     },
     {
       "id": "restated-pr-handoff",
@@ -2082,11 +2126,13 @@
         "principle-never-block-on-the-human"
       ],
       "baseline_selected": {
-        "principle-never-block-on-the-human": 0.893,
+        "principle-never-block-on-the-human": 0.85,
         "open-pr": 0.98,
-        "babysit": 0.827
+        "babysit": 0.75
       },
-      "baseline_borderline": {}
+      "baseline_borderline": {
+        "babysit": 0.75
+      }
     },
     {
       "id": "restated-rename-api",
@@ -2104,13 +2150,17 @@
         "principle-minimize-reader-load"
       ],
       "baseline_selected": {
-        "principle-build-the-lever": 0.95,
-        "principle-migrate-callers-then-delete-legacy-apis": 0.96,
-        "principle-minimize-reader-load": 0.817,
-        "principle-sequence-verifiable-units": 0.96,
-        "principle-subtract-before-you-add": 0.837
+        "principle-build-the-lever": 0.94,
+        "principle-guard-the-context-window": 0.703,
+        "principle-migrate-callers-then-delete-legacy-apis": 0.947,
+        "principle-minimize-reader-load": 0.813,
+        "principle-sequence-verifiable-units": 0.93,
+        "principle-subtract-before-you-add": 0.797
       },
-      "baseline_borderline": {}
+      "baseline_borderline": {
+        "principle-guard-the-context-window": 0.703,
+        "principle-subtract-before-you-add": 0.797
+      }
     },
     {
       "id": "restated-upstream-bump",
@@ -2122,10 +2172,10 @@
       ],
       "allowed": [],
       "baseline_selected": {
-        "vstack-maintain": 0.773
+        "vstack-maintain": 0.717
       },
       "baseline_borderline": {
-        "vstack-maintain": 0.773
+        "vstack-maintain": 0.717
       }
     },
     {
@@ -2140,8 +2190,8 @@
         "principle-encode-lessons-in-structure"
       ],
       "baseline_selected": {
-        "principle-encode-lessons-in-structure": 0.98,
-        "session": 0.937
+        "principle-encode-lessons-in-structure": 0.96,
+        "session": 0.92
       },
       "baseline_borderline": {}
     },

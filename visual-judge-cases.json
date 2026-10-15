@@ -2,7 +2,7 @@
   "rubric": "plugin/skills/grilling-page/references/visual-judge.json",
   "semantics": {
     "diagram_cases": "Real Grilling page questions from vstack and Tern pages. context and option are the labels gpt-6.1-sol gave at high thinking. Each case's probabilities sat at least 0.1 from the thresholds when chosen, so judge noise does not flip it. A case passes when each kind's probability is at or over its threshold exactly when its label is true.",
-    "type_cases": "One hand-written question per type in diagram-design's visual-type guide. A case passes when expected, or a type in allowed, is among the judge's top types."
+    "type_cases": "One hand-written question per type in diagram-design's visual-type guide. A case passes when expected, or a type in allowed, is among the top types of context_type or option_type, in the request that grilling-page's helper sends through judge_batch. scripts/visual_judge_check.py runs every case in omp's Python eval."
   },
   "diagram_cases": [
     {

@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import { preprocessTinyMessage } from "../plugin/extensions/prompt-cleaner.ts";
-import questions from "../addon-questions.json";
+import catalogFile from "../addon-questions.json";
+import { parseAddonCatalog } from "../plugin/extensions/addon-catalog.ts";
 import samples from "../sample-prompts.json";
 test("cleaner keeps code-only requests, inline code, tilde fences and unpaired tags", () => {
   expect(preprocessTinyMessage("```const x = 1;``` ")).toBe("```const x = 1;```");
@@ -16,5 +17,5 @@ test("cleaner bounds raw and clean windows, shortens hashes and preserves both e
 });
 test("stored corpus labels name Addon questions", () => {
   expect(samples.prompts.length).toBeGreaterThan(0);
-  for (const prompt of samples.prompts) for (const name of [...prompt.expected, ...prompt.allowed]) expect(name in questions).toBe(true);
+  for (const prompt of samples.prompts) for (const name of [...prompt.expected, ...prompt.allowed]) expect(name in parseAddonCatalog(catalogFile).questions).toBe(true);
 });

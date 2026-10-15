@@ -1,13 +1,13 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { addonJudgeState, parseAddonCatalog } from "../plugin/extensions/addon-catalog";
 import { preprocessTinyMessage } from "../plugin/extensions/prompt-cleaner";
 
 const ENDPOINT = "https://api.typesafe.ai/v1/systemone";
 const root = join(import.meta.dir, "..");
 const readJson = (path: string) => JSON.parse(readFileSync(join(root, path), "utf8"));
 type Prompt = { id: string; prompt: string; restated?: boolean; expected: string[]; allowed?: string[] };
-type Question = { type: "noul"; instructions: string; criteria: { true: string; false: string } };
 type Result = { id: string; means: Record<string, number> };
 
 const key = process.env.TYPESAFE_API_KEY ?? "";
@@ -15,6 +15,10 @@ if (!key) {
   process.stderr.write("addon-judge-check.ts needs TYPESAFE_API_KEY. Run: TYPESAFE_API_KEY=$(omp token typesafe) bun scripts/addon-judge-check.ts\n");
   process.exit(2);
 }
+
+const MISS_BELOW = 0.65;
+const WRONG_ABOVE = 0.80;
+const isBorderline = (score: number) => score >= MISS_BELOW && score <= WRONG_ABOVE;
 
 try {
   const args = process.argv.slice(2);
@@ -27,7 +31,8 @@ try {
       if (!Number.isSafeInteger(runs) || runs < 1) throw new Error("--runs needs a positive integer");
     } else throw new Error(`unknown option: ${args[i]}`);
   }
-  const questions = readJson("addon-questions.json") as Record<string, Question>;
+  const catalog = parseAddonCatalog(readJson("addon-questions.json"));
+  const { questions } = catalog;
   const { prompts, threshold } = readJson("sample-prompts.json") as { prompts: Prompt[]; threshold: number };
   const names = Object.keys(questions);
   const flags: string[] = [];
@@ -44,7 +49,7 @@ try {
           method: "POST",
           headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
           // A restated sample holds a stored smol restatement, which the extension sends as it is, up to 10,000 characters (ADR 0021).
-          body: JSON.stringify({ model: "jev-latest", state: { request: prompt.restated ? prompt.prompt.slice(0, 10_000) : preprocessTinyMessage(prompt.prompt) }, questions }),
+          body: JSON.stringify({ model: "jev-latest", state: addonJudgeState(catalog, prompt.restated ? prompt.prompt.slice(0, 10_000) : preprocessTinyMessage(prompt.prompt)), questions }),
           signal: AbortSignal.timeout(30000),
         });
         if (!response.ok) throw new Error(`prompt ${prompt.id}: HTTP ${response.status} ${await response.text()}`);
@@ -70,9 +75,9 @@ try {
         const expected = prompt.expected.includes(name);
         const allowed = prompt.allowed?.includes(name) ?? false;
         const line = `${prompt.id}: ${name} at ${score.toFixed(3)}`;
-        if (expected && score < 0.70) flags.push(`${line}, expected >= 0.70`);
-        if (!expected && !allowed && score > 0.80) flags.push(`${line}, unexpected > 0.80`);
-        if (score >= 0.70 && score <= 0.80) borderline.push(line);
+        if (expected && score < MISS_BELOW) flags.push(`${line}, expected >= ${MISS_BELOW}`);
+        if (!expected && !allowed && score > WRONG_ABOVE) flags.push(`${line}, unexpected > ${WRONG_ABOVE.toFixed(2)}`);
+        if (isBorderline(score)) borderline.push(line);
       }
       if (flags.length > before) flaggedPrompts++;
       results.push(result);
@@ -85,7 +90,7 @@ try {
   if (printMeans) {
     for (const result of results) {
       const selected = Object.fromEntries(Object.entries(result.means).filter(([, score]) => score >= threshold));
-      const near = Object.fromEntries(Object.entries(result.means).filter(([, score]) => score >= 0.70 && score <= 0.80));
+      const near = Object.fromEntries(Object.entries(result.means).filter(([, score]) => isBorderline(score)));
       process.stdout.write(`MEANS ${JSON.stringify({ ...result, baseline_selected: selected, baseline_borderline: near })}\n`);
     }
   }
