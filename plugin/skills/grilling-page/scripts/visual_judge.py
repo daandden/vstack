@@ -6,6 +6,10 @@ import re
 def question_state(rec):
     """The judge's view of one question record: what the page shows, without option letters."""
     state = {"title": rec["title"], "description": rec["description"]}
+    if rec.get("today"):
+        state["today"] = [{"text": f["text"], "source": f["source"]} for f in rec["today"]]
+    if rec.get("terms"):
+        state["terms"] = [{"term": t["term"], "text": t["text"]} for t in rec["terms"]]
     if rec.get("example"):
         state["example"] = rec["example"]
     state["options"] = [{"label": re.sub(r"^[A-Z]\. ", "", o["label"]), "does": o["does"]} for o in rec["options"]]

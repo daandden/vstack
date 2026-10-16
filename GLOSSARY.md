@@ -153,7 +153,7 @@ The page a grilling session keeps for the user. It shows every round's questions
 _Avoid_: Grilling HTML, question page, round page
 
 **Context diagram**:
-A figure on a Grilling page question that shows the logic its description explains: steps, branches, states, parts, or time.
+A figure on a Grilling page question that shows the logic its description and Today facts explain: steps, branches, states, parts, or time.
 _Avoid_: background figure
 
 **Option diagram**:
