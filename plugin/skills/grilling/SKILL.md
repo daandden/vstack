@@ -25,11 +25,11 @@ Fan-out (skill://vstack-fan-out): parts: one per independent fact question. One 
 2. Print the page path before the first `ask` and before every later `ask`, including the closing gate and retries.
 3. Put the whole frontier in one `ask` call, with one `questions[]` entry per decision. Each `question` is one line starting with its Q number, matching the page. Use a short `header`, short option labels that start with the option's letter, and one-line `description` values. Put full bodies, context, and trade-offs only on the page. Set `recommended` to the recommended option's index and `multi: true` only when choices combine. Never add Other; the UI supplies it. Wait for the result before advancing dependent decisions.
 4. Read each returned answer and record it on the page with its notes and Other text:
-   - A cancelled or `timedOut: true` answer, or one with no pick, no Other text, and no note, is unanswered, not consent. Ignore any auto-selection. Keep the decision open with its Q number, and ask it in the next round.
+   - A cancelled or `timedOut: true` answer, or one with no pick, no Other text, and no note, is unanswered, not consent. Ignore any auto-selection. Keep the decision open with its Q number. Ask it in the next round.
    - An option that the user picked settles its decision. Notes and Other text beside a pick never reopen it, even a note on an option that was not picked. Decide whether a note needs a reply on the page or a new frontier question.
-   - Text with no pick reopens the decision unless it plainly names a choice. This covers Other text and notes on options that were not picked. The Flexible Ask picker returns a note-only answer as `Unanswered` followed by `Note (<option>, not picked)`. Read it as text with no pick, not as a missing answer. Reply to the text on the page. Ask the decision again next round with its Q number, and revise its options when the reply calls for them.
+   - Text with no pick reopens the decision unless it plainly names a choice. This covers Other text and notes on options that were not picked. The Flexible Ask picker returns a note-only answer as `Unanswered` followed by `Note (<option>, not picked)`. Read it as text with no pick, not as a missing answer. Reply to the text on the page. Ask the decision again next round with its Q number. If the reply calls for revised options, revise the options of the decision.
 
-   Settle only picks and text that names a choice, then recompute the frontier.
+   Settle only picks and text that names a choice. Then recompute the frontier.
 
 The page is a record, not an input form: answers come only through `ask`.
 
