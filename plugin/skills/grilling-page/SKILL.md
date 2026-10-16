@@ -26,7 +26,7 @@ Each command checks every record, renders the whole page, and prints the page's 
 
 Text fields are plain text; `` `code` `` and `[text](url)` are kept. A `preview` is one visual, and a question's `visual` is one visual or a list that renders in order. A visual is one of `{ "text" }`, `{ "html", "css" }`, or `{ "svg": "<path>" }`. The script parses HTML and SVG the way a browser does and refuses scripts, `on…` attributes, `javascript:`, `vbscript:`, and `data:` URLs (entities included), frames, forms, and SVG animation. It scopes `css` to the element and refuses at-rules in it. An SVG file can keep its `<style>` and a Google Fonts `@import`, as diagram-design exports have.
 
-A page that exists with no state file was written by hand before the script, and a question with `plain`, `why`, and `settled` comes from a page before the description. The script refuses both. Start a new page with a new slug and do not link the old one. To continue a page, append a new `round` with the next session number. Continue page round numbers; question numbers start at Q1 for each session and increase across it. A repeated unanswered decision keeps its Q number in a new question record.
+A page that exists with no state file was written by hand before the script, and a question with `plain`, `why`, and `settled` comes from a page before the description. The script refuses both. Start a new page with a new slug and do not link the old one. To continue a page, append a new `round` with the next session number. Continue page round numbers; question numbers start at Q1 for each session and increase across it. A decision that is asked again, because it was unanswered or reopened, keeps its Q number in a new question record.
 
 ## Add a round
 
@@ -65,7 +65,9 @@ Never open the page. Print the plain absolute path that the script printed, with
 
 ## Record answers
 
-Record each returned answer with the `answer` command, including custom notes (`A:<note>`) and Other answers (`other:<text>`). Record a missing, cancelled, or timed-out answer with `unanswered`. In a headless run, record the recommended answer with the note `headless: recommended answer, not the user's`.
+Record each returned answer with the `answer` command, including custom notes (`A:<note>`) and Other answers (`other:<text>`). Record text with no pick as `other:<text>`. For a note-only answer, the text is each note with its option, such as `other:Note on B, not picked: <text>`. Record an empty, missing, cancelled, or timed-out answer with `unanswered`. In a headless run, record the recommended answer with the note `headless: recommended answer, not the user's`.
+
+When grilling reopens a decision, write its reply in the existing records, where it reads best. One place is the description of the question that asks the decision again.
 
 ## Close the page
 

@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.21] - 2026-10-16
+
+- grilling reads text with no pick as a reply. A picked option settles its decision, and notes or Other text beside a pick never reopen it. Other text and notes on options that were not picked reopen the decision unless they plainly name a choice. The grill then replies on the page and asks the decision again next round with the same Q number, with revised options when the reply calls for them. A note-only answer from the Flexible Ask picker (`Unanswered` followed by `Note (<option>, not picked)`) counts as text with no pick, and grilling-page records it with its text as `other:<text>`. An empty, cancelled, or timed-out answer stays unanswered, as before. The `matt/grilling` reason in the Decision register adds that pushback reopens its decision (#145).
+
 ## [2.0.20] - 2026-10-15
 
 - implement-spec's merger takes stopped-slice hunks out of the index before the ticket commit. `git apply --3way` stages every hunk it applies, so the old order (stage the proven hunks, commit, then remove the stopped hunks) committed the stopped slice too. The merger now records the full tree with `git write-tree` after the apply. It takes out each stopped slice as its own delta patch under `held/` with `git apply -R --index`. After each removal, it regenerates `stopped.patch` as the diff from the current tree to the full tree, so that one file holds every held hunk. `stopped.patch` applies only on the ticket commit. It can change a file that only the ticket adds, so it never applies on the tip, and a failed merge returns the original ticket patch instead. The merger then runs typechecking and the ticket's tests on that final tree on every merge, not only after a conflict. A kept hunk that fails without its stopped slice comes out as one more delta and joins `stopped.patch`. Any other failure commits nothing. The merger confirms that `git diff --cached` holds only the checked hunks before it commits. A stopped hunk found there comes out as one more delta, so `stopped.patch` stays current.
