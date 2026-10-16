@@ -48,7 +48,7 @@ The repo scripts need Bun. Run `bun run test` and `bun scripts/check-register.ts
 | `decision-register.yaml` | no | One row per Upstream item, `originals:` for vstack-only artifacts, and `utility:` for Utility skills. |
 | `house-style.yaml` | no | The House style: replacement rows and rules that turn Upstream text into vstack text. |
 | `scripts/` | no | Bun CLIs: `check-register.ts`, `vstack-maintain.ts`, and `addon-judge-check.ts`. `visual_judge_check.py` runs in omp's Python eval. `lib/` holds shared modules. `load-smoke.sh` checks a fresh omp load. |
-| `addon-questions.json`, `sample-prompts.json` | no | The Addon judge catalog and sample corpus read from the linked clone. |
+| `addon-questions.json`, `sample-prompts.json`, `sample-briefs.json` | no | The Addon judge catalog and its two sample corpora, read from the linked clone. |
 | `.omp/skills/verify-vstack/` | no | The Verify skill, feature recipes, and omp driver. |
 | `tests/` | no | Test suites, run with `bun run test`. Each script is run as a process over temp-dir fixtures (`tests/support/`). |
 | `.github/workflows/` | no | CI: the tests and `check-register` on every push and pull request. |
@@ -59,11 +59,11 @@ Only `plugin/` ships. Upstreams are fetched when needed, never stored in this re
 
 ### Run-gated Addon judge
 
-`addon-questions.json` holds a `preamble` and a `questions` map. The map holds one `noul` question per Addon, keyed by its full skill name, such as `principle-prove-it-works` or `open-pr`. Each question holds only its situation and its criteria. The preamble says how to judge `request` for every question, so jev reads it once in the state (ADR 0024). `sample-prompts.json` holds the sample corpus, expected and allowed picks, baseline probabilities, and the selection threshold.
+`addon-questions.json` holds a `preamble`, a `brief_preamble`, and a `questions` map. The map holds one `noul` question per Addon, keyed by its full skill name, such as `principle-prove-it-works` or `open-pr`. Each question holds only its situation and its criteria. The preamble says how to judge `request` for every question, so jev reads it once in the state (ADR 0024). The `brief_preamble` takes its place when `request` is a subagent brief, and tells jev to read "the user" in a question as the brief's author (ADR 0025). `sample-prompts.json` holds the sample corpus, expected and allowed picks, baseline probabilities, and the selection threshold. `sample-briefs.json` holds the same for subagent briefs.
 
 Send every question about one state in one jev request. jev reads the state once per request and bills input tokens only, so separate requests pay for the state again.
 
-The extension reads the Matt skill set from the register and Pins when it loads, and leaves out every skill with a key in the `questions` map of `addon-questions.json`. A typed Matt skill starts a run. Later prompts count as part of that run when the active branch holds its saved `skill-prompt` entry. Reading a Matt skill through `skill://` does not start a run. Plain chat outside a run and child sessions receive no judge selection.
+The extension reads the Matt skill set from the register and Pins when it loads, and leaves out every skill with a key in the `questions` map of `addon-questions.json`. A typed Matt skill starts a run. Later prompts count as part of that run when the active branch holds its saved `skill-prompt` entry. Reading a Matt skill through `skill://` does not start a run. Plain chat outside a run receives no judge selection. Subagent sessions follow their own rules, described below.
 
 On the skill-start prompt, the judge sees only the user's words after `User:`. With no user words, it makes no request. Later prompts in the run use the current prompt. `plugin/extensions/prompt-cleaner.ts` cleans these words before the TypeSafe `/v1/systemone` request. The request's state holds `request`, the cleaned words, and then the catalog's `preamble`.
 
@@ -75,17 +75,30 @@ The extension selects every score at least 0.70 with native TypeSafe jev and cre
 
 Each pointer appears once per session, including after a resume and on other branches. The extension reads the saved `vstack-addons` messages in the whole session and keeps no list of its own. The request leaves out every Addon that these messages name. When they name every Addon, the extension makes no request and calls no smol. omp saves a hook message only when it accepts the prompt, so a pick from a cancelled prompt can return on the retry. A missing Matt skill set, native judge, or key skips silently. Request errors and the four-second deadline also skip silently. One retry shares that deadline. A restated prompt waits up to 30 seconds, omp's own hook limit. When omp stops the hook, omp shows its own extension error.
 
+#### Subagent briefs
+
+During a Matt run, the extension also judges the brief of a `vstack-explorer`, `vstack-worker`, or `vstack-verifier` subagent (ADR 0025). A constant in `plugin/extensions/vstack.ts` lists these three agents, matched against the session's agent name. Every other subagent gets no picks: `vstack-diagram-drawer`, `vstack-comment-critic`, omp's own agents such as `task` and `scout`, and `/tan` clones.
+
+omp loads the extension module once and rebinds it to every subagent session. When a session's `before_agent_start` fires for the first time, the extension records the session under its agent id. For a top-level session, the record keeps a way to read the active branch. For a subagent, the record links to the record of its parent, which the extension finds through `parentId`. A subagent follows these links to the top-level session that started it, also through a nested subagent. It gets a request only when that session's active branch holds a Matt run.
+
+When a session shuts down (`session_shutdown`), the extension drops the session's record. A dropped top-level record no longer reads the branch. A top-level record also stops reading the branch when its session switches to another session file (`session_switch`), or when a new session takes its agent id. A subagent below such a record gets no request. A subagent whose parent's record the extension dropped gets none either.
+
+Only the subagent's first prompt, the brief, gets a request. A later prompt, or a revived subagent, finds earlier user or assistant messages on its own branch and gets none. jev reads the brief without omp's `Complete assignment thoroughly:` line. The brief goes through the same cleaner stages, but the cleaner squeezes it to 10,000 characters, not 2,000. The request asks the 20 principle questions, every principle except never-block-on-the-human, and the state holds `request` and then `brief_preamble`. The deadline, the retry, and the silent skips are the same as above. The hidden message has no sentence about which rule wins:
+
+> Addons selected for this task: skill://<name>, skill://<name>. Ignore any that do not fit.
+
 #### By-hand judge check
 
-After any change to the catalog or corpus, run:
+After any change to the catalog or a corpus, run the check for each corpus:
 
 ```sh
 TYPESAFE_API_KEY=$(omp token typesafe) bun scripts/addon-judge-check.ts
+TYPESAFE_API_KEY=$(omp token typesafe) bun scripts/addon-judge-check.ts sample-briefs.json
 ```
 
-CI does not run this check. The script sends every sample prompt against every question to live jev, in the state shape that the extension sends. A sample with `restated: true` holds a stored smol restatement, and the script sends it as it is, cut to 10,000 characters. It cleans every other sample as the extension does. It flags an expected pick below 0.65 and an unexpected, non-allowed pick above 0.80. Scores from 0.65 through 0.80 are borderline. It prints flags, borderline picks, the pass count, question count, run count, and returned model. Exit codes are 0 with no flags, 1 with flags, and 2 for a missing key, bad arguments, or a failed or invalid response.
+CI does not run this check. The script reads the corpus at the path in its argument, `sample-prompts.json` by default. It sends every sample against its questions to live jev, in the state shape that the extension sends. A sample with `restated: true` holds a stored smol restatement, and the script sends it as it is, cut to 10,000 characters. A sample with `brief: true` holds a real subagent brief from a past Matt run. The script cleans it with the brief cleaner, puts `brief_preamble` in the state, and asks the 20 principle questions. It cleans every other sample as the extension cleans a prompt and asks every question. It flags an expected pick below 0.65 and an unexpected, non-allowed pick above 0.85. Scores from 0.65 through 0.85 are borderline. It prints flags, borderline picks, the pass count, question count, run count, and returned model. Exit codes are 0 with no flags, 1 with flags, and 2 for a missing key, bad arguments, or a failed or invalid response.
 
-To record fresh baselines, run with `--runs 3 --print-means`. `--runs <n>` averages that many direct requests per prompt (default 1). `--print-means` prints a `MEANS` JSON line per prompt with `means`, `baseline_selected` (means at or above the `threshold` in `sample-prompts.json`), and `baseline_borderline` (means from 0.65 through 0.80). Copy the matching baseline maps into `sample-prompts.json`, keep the returned model in the check evidence, and run the check after the corpus edit. A change to the preamble, to the state shape, or to the threshold needs fresh baselines. The script prints the maps but does not rewrite the corpus.
+To record fresh baselines, run with `--runs 3 --print-means`. `--runs <n>` averages that many direct requests per prompt (default 1). `--print-means` prints a `MEANS` JSON line per prompt with `means`, `baseline_selected` (means at or above the `threshold` in the corpus), and `baseline_borderline` (means from 0.65 through 0.85). Copy the matching baseline maps into the corpus. Keep the returned model in the check evidence. After the corpus edit, run the check. A change to a preamble, to the state shape, or to the threshold needs fresh baselines. The script prints the maps but does not rewrite the corpus.
 ### Visual judge calibration
 
 `visual-judge-cases.json` at the repo root is the calibration set for grilling-page's visual judge. Each judge request asks four questions about one page question. Two are the yes-or-no diagram questions, with their thresholds from `plugin/skills/grilling-page/references/visual-judge.json`. The other two rank the diagram type for each kind and name the types only. The state holds the page question as `question` and the visual-type guide in diagram-design's `SKILL.md` as `visual_types`, a map from each type name to what it shows. jev reads the guide once per request this way, not once per type question (ADR 0024). Diagram cases are real Grilling page questions from vstack and Tern pages, labeled by gpt-6.1-sol at high thinking. A diagram case passes when each kind's yes probability reaches its threshold exactly when the case labels that kind true. Type cases are one hand-written question per guide type. A type case passes when its expected type, or an allowed one, is among the top three types of either type question.
@@ -188,6 +201,7 @@ Text output prints one line per failure, `FAIL <class> <item>: <message>`, after
 | `invalid-utility` | a `utility:` entry names no shipped skill, or names a skill with a non-reject Base upstream row |
 | `addon-slash-route` | text under `plugin/` or in `README.md` contains `/skill:<addon>`. Use `skill://<addon>` instead |
 | `addon-question-mismatch` | a key in the `questions` map of `addon-questions.json` names no shipped skill or names a Utility skill, or a shipped Addon has no such key |
+| `brief-sample-mismatch` | a sample in `sample-briefs.json` has an empty `prompt`, or an `expected` or `allowed` label that is not a subagent question (a principle in `addon-questions.json` other than `principle-never-block-on-the-human`). The item is `sample-briefs.json:<id>` |
 
 Rows with an `invalid-row` or `invalid-disposition` failure are skipped by the checks that read their fields, so one bad row reports once. House style rows and rules with an `invalid-house-style` failure are skipped the same way.
 

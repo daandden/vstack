@@ -8,6 +8,8 @@
 
 > [ADR 0024](0024-shared-judge-text-goes-in-the-jev-state-once.md) amends this decision. The shared judging text sits once in the jev state as `preamble`, not in each question, and the request leaves out every Addon already delivered in the session. The selection threshold is 0.70, not 0.75.
 
+> [ADR 0025](0025-subagents-get-principle-picks-from-their-own-brief.md) amends this decision. During a Matt run, the subagent sessions of `vstack-explorer`, `vstack-worker`, and `vstack-verifier` get principle picks from their own brief. A skill no longer has to name the principles for each brief.
+
 Each adopted pstack principle stays a hidden skill (`disable-model-invocation: true`) that maps 1:1 to its Upstream item, and no principle text sits in the system prompt. An omp extension that ships in the vstack plugin handles `before_agent_start` in the main session. It sends the user's prompt to TypeSafe jev (`jev-latest`) through `POST /v1/systemone`, with one `noul` question per principle, written in auto-thinking's style: "judge the inherent task, not its phrasing; if torn, answer no", with true/false criteria. Every principle scoring 0.75 or higher that hasn't already been injected this session is added as one hidden message pointing at `skill://principle-<name>`, which tells the agent to ignore it if it doesn't fit. Skill steps still cite principles as `skill://principle-<name>`. We chose this design because a principle list the agent sees on every turn, or re-reads whenever a trigger fires, pulls the agent off course over a session. We also chose it because many pstack triggers are broad or already covered by omp's harness prompt, so no hand-curated list stayed both small and useful.
 
 ## Considered Options

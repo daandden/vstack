@@ -155,12 +155,54 @@ describe("Addon routes", () => {
   });
 });
 
+/** Ships a principle Addon and never-block-on-the-human, and writes a one-sample brief corpus with these fields. */
+function withBriefCorpus(sample: { prompt?: string; expected?: string[]; allowed?: string[] }) {
+  return (s: RepoSpec) => {
+    const catalog = JSON.parse(s.files["addon-questions.json"]);
+    for (const name of ["principle-fixture", "principle-never-block-on-the-human"]) {
+      s.files[`plugin/skills/${name}/SKILL.md`] = `---\nname: ${name}\ndescription: principle\ndisable-model-invocation: true\n---\nprinciple\n`;
+      s.register.originals.push(`plugin/skills/${name}`);
+      catalog.questions[name] = catalog.questions["fixture-addon"];
+    }
+    s.files["addon-questions.json"] = JSON.stringify(catalog);
+    s.files["sample-briefs.json"] = JSON.stringify({
+      threshold: 0.7,
+      prompts: [{ id: "brief-fixture", brief: true, prompt: "Review the fixture.", expected: ["principle-fixture"], allowed: [], ...sample }],
+    });
+  };
+}
+
+describe("brief corpus labels", () => {
+  test("labels that name a subagent question pass", async () => {
+    const r = await runSpec(withBriefCorpus({ allowed: ["principle-fixture"] }));
+    expect(r.json!.failures).toEqual([]);
+    expect(r.code).toBe(0);
+  });
+
+  test("a label that names never-block-on-the-human fails with the field and the label named", async () => {
+    const r = await runSpec(withBriefCorpus({ expected: ["principle-never-block-on-the-human"] }));
+    expect(r.json!.failures).toEqual([{
+      class: "brief-sample-mismatch",
+      item: "sample-briefs.json:brief-fixture",
+      message: "`expected` label principle-never-block-on-the-human names no subagent question (a principle in addon-questions.json other than principle-never-block-on-the-human)",
+    }]);
+  });
+});
+
 test("exit 2 when addon-questions.json has the flat shape with no preamble and questions", async () => {
   const spec = clone(passingSpec(up));
   spec.files["addon-questions.json"] = JSON.stringify(JSON.parse(spec.files["addon-questions.json"]).questions);
   const r = await checkout(up, spec).run([], { json: false });
   expect(r.code).toBe(2);
   expect(r.stderr).toContain("addon-questions.json: preamble must be a non-empty string");
+});
+test("exit 2 when addon-questions.json has no brief_preamble", async () => {
+  const spec = clone(passingSpec(up));
+  const { brief_preamble: _, ...catalog } = JSON.parse(spec.files["addon-questions.json"]);
+  spec.files["addon-questions.json"] = JSON.stringify(catalog);
+  const r = await checkout(up, spec).run([], { json: false });
+  expect(r.code).toBe(2);
+  expect(r.stderr).toContain("addon-questions.json: brief_preamble must be a non-empty string");
 });
 // One fixture per failure class. Each case lists the exact failures expected as "<class> <item>".
 const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expected: string[] }[] = [
@@ -201,6 +243,24 @@ const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expecte
       s.files["addon-questions.json"] = JSON.stringify(catalog);
     },
     expected: ["addon-question-mismatch fixture-helper"],
+  },
+  {
+    cls: "brief-sample-mismatch",
+    name: "a brief label that names a non-principle Addon",
+    mutate: withBriefCorpus({ allowed: ["fixture-addon"] }),
+    expected: ["brief-sample-mismatch sample-briefs.json:brief-fixture"],
+  },
+  {
+    cls: "brief-sample-mismatch",
+    name: "a brief label that names never-block-on-the-human",
+    mutate: withBriefCorpus({ allowed: ["principle-never-block-on-the-human"] }),
+    expected: ["brief-sample-mismatch sample-briefs.json:brief-fixture"],
+  },
+  {
+    cls: "brief-sample-mismatch",
+    name: "a brief sample with an empty prompt",
+    mutate: withBriefCorpus({ prompt: " " }),
+    expected: ["brief-sample-mismatch sample-briefs.json:brief-fixture"],
   },
   {
     cls: "addon-slash-route",
@@ -503,7 +563,7 @@ describe("each failure class names the item", () => {
       const r = await runSpec(c.mutate);
       expect(failuresOf(r)).toEqual(c.expected);
       expect(r.code).toBe(1);
-      if (["addon-slash-route", "addon-question-mismatch", "invalid-utility"].includes(c.cls)) {
+      if (["addon-slash-route", "addon-question-mismatch", "invalid-utility", "brief-sample-mismatch"].includes(c.cls)) {
         const spec = clone(passingSpec(up));
         c.mutate(spec);
         const printed = await checkout(up, spec).run([], { json: false });

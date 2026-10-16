@@ -1,5 +1,7 @@
 # Shared judge text goes in the jev state once
 
+> [ADR 0025](0025-subagents-get-principle-picks-from-their-own-brief.md) amends this decision. The check flags an unexpected, non-allowed pick over 0.85, not 0.80, in `sample-prompts.json` and `sample-briefs.json`. Scores from 0.65 through 0.85 are borderline.
+
 TypeSafe jev (`POST /v1/systemone`) bills input tokens only, at $0.042 per million. It reads the `state` once per request and answers every question in that request, so text repeated in every question is billed once per question, and text in the state is billed once. The Addon judge therefore moves its shared preamble out of all 35 questions and into the state, and the Grilling page visual judge moves diagram-design's 45-row visual-type guide out of its two type questions and into the state. The extension also leaves out every Addon already delivered in the session before it sends the request, instead of dropping it after the answer. The new state put two expected picks under the 0.75 selection threshold, so the threshold moves to 0.70. We chose the lower input cost over the calibration that the old shapes had, and we recalibrated both judges against their corpora before the move shipped.
 
 ## Considered Options

@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { preprocessTinyMessage } from "../plugin/extensions/prompt-cleaner.ts";
+import { cleanBrief, preprocessTinyMessage } from "../plugin/extensions/prompt-cleaner.ts";
 import catalogFile from "../addon-questions.json";
 import { parseAddonCatalog } from "../plugin/extensions/addon-catalog.ts";
 import samples from "../sample-prompts.json";
@@ -14,6 +14,16 @@ test("cleaner bounds raw and clean windows, shortens hashes and preserves both e
   expect(output.endsWith(" TAIL")).toBe(true);
   expect(output).toContain("chars omitted");
   expect(preprocessTinyMessage("One  two\n\n\nthree abcdef1234567890")).toBe("One two\n\nthree abcdef1");
+});
+test("the brief cleaner drops omp's assignment line and squeezes to 10,000 characters", () => {
+  const output = cleanBrief("Complete assignment thoroughly:\n\nHEAD " + "x".repeat(600000) + " TAIL");
+  expect(output.length).toBe(10_000);
+  expect(output.startsWith("HEAD ")).toBe(true);
+  expect(output.endsWith(" TAIL")).toBe(true);
+  expect(output).toContain("chars omitted");
+  const brief = `Role template. ${"Read the code. ".repeat(400)}Task data at the end.`;
+  expect(cleanBrief(`Complete assignment thoroughly:\n\n${brief}`)).toBe(brief);
+  expect(cleanBrief("Complete assignment thoroughly:\n\nFix the parser ```noise``` <system-reminder>noise</system-reminder> abcdef1234567890")).toBe("Fix the parser abcdef1");
 });
 test("stored corpus labels name Addon questions", () => {
   expect(samples.prompts.length).toBeGreaterThan(0);

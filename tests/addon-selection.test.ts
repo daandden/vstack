@@ -183,9 +183,9 @@ describe("Addon selection", () => {
     }
     expect(fetchSpy).not.toHaveBeenCalled();
   });
-  test("subagents, missing credentials, chat judges, and missing native models skip", async () => {
+  test("missing credentials, chat judges, and missing native models skip", async () => {
     fetchSpy = endpoint({ "open-pr": 1 });
-    for (const override of [{ agent: { kind: "sub", id: "Child", name: "worker", depth: 1 } }, { apiKeys: {} }, { nativeJudge: false }, { models: [{ ...model, api: "openai-completions" }] }, { models: [] }]) expect(await fakeHost({ ...running, ...override } as any).emit("before_agent_start", { prompt: "Open a PR" })).toEqual([undefined]);
+    for (const override of [{ apiKeys: {} }, { nativeJudge: false }, { models: [{ ...model, api: "openai-completions" }] }, { models: [] }]) expect(await fakeHost({ ...running, ...override } as any).emit("before_agent_start", { prompt: "Open a PR" })).toEqual([undefined]);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
   test("bad answer types and scores select nothing", async () => {
@@ -213,6 +213,146 @@ describe("Addon selection", () => {
     expect(performance.now() - begin).toBeLessThan(4500);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
   }, 5000);
+});
+
+describe("Principle picks in subagent sessions", () => {
+  // The 20 principle questions of a subagent brief: every principle except never-block-on-the-human (ADR 0025).
+  const briefQuestionNames = [
+    "principle-attack-the-premise", "principle-boundary-discipline", "principle-build-the-lever", "principle-encode-lessons-in-structure",
+    "principle-encode-the-domain", "principle-experience-first", "principle-explain-the-number", "principle-foundational-thinking",
+    "principle-guard-the-context-window", "principle-laziness-protocol", "principle-make-operations-idempotent",
+    "principle-migrate-callers-then-delete-legacy-apis", "principle-minimize-reader-load", "principle-outcome-oriented-execution",
+    "principle-prove-it-works", "principle-redesign-from-first-principles", "principle-separate-before-serializing-shared-state",
+    "principle-sequence-verifiable-units", "principle-subtract-before-you-add", "principle-type-system-discipline",
+  ];
+  const child = (name: string, id = "0-Child", parentId = "Main", entries: unknown[] = []) =>
+    fakeHost({ ...options, entries, agent: { kind: "sub", id, name, depth: 1, parentId } });
+  // omp's subagent-user-prompt template puts this line before every assignment.
+  const brief = (assignment: string) => `Complete assignment thoroughly:\n\n${assignment}`;
+  /** A main session's before_agent_start fires before any subagent starts. Its own judge call is not under test. */
+  async function registerMainSession(main: ReturnType<typeof fakeHost>) {
+    await main.emit("before_agent_start", { prompt: "Plan the next step" });
+    fetchSpy.mockClear();
+  }
+
+  test("a judged agent in a Matt run gets principle picks from its cleaned brief, with no precedence sentence", async () => {
+    fetchSpy = endpoint({ "principle-prove-it-works": .9, "principle-guard-the-context-window": .7, "principle-explain-the-number": .699 });
+    await registerMainSession(fakeHost(running));
+    const [result]: any = await child("vstack-worker").emit("before_agent_start", { prompt: brief("Fix the parser \u001b[31mnow\u001b[0m <system-reminder>noise</system-reminder> abcdef1234567890") });
+    expect(result.message).toEqual({ customType: "vstack-addons", display: false, attribution: "agent",
+      content: "Addons selected for this task: skill://principle-guard-the-context-window, skill://principle-prove-it-works. Ignore any that do not fit." });
+    const body = JSON.parse((fetchSpy.mock.calls[0] as any)[1].body);
+    expect(body.state).toEqual({ request: "Fix the parser now abcdef1", preamble: catalog.brief_preamble });
+    expect(Object.keys(body.questions)).toEqual(briefQuestionNames);
+    for (const name of briefQuestionNames) expect(body.questions[name]).toEqual(questions[name]);
+  });
+  test("a long brief reaches jev cut to 10,000 characters, with its task data at the end", async () => {
+    fetchSpy = endpoint({});
+    await registerMainSession(fakeHost(running));
+    await child("vstack-explorer").emit("before_agent_start", { prompt: brief(`Role template. ${"Read the code. ".repeat(1000)}Task data at the end.`) });
+    const { request } = JSON.parse((fetchSpy.mock.calls[0] as any)[1].body).state;
+    expect(request).toHaveLength(10_000);
+    expect(request.startsWith("Role template.")).toBe(true);
+    expect(request.endsWith("Task data at the end.")).toBe(true);
+  });
+  test("the brief request retries once and has the four-second deadline, and a failure skips silently", async () => {
+    fetchSpy = endpoint({ "principle-prove-it-works": .9 });
+    await registerMainSession(fakeHost(running));
+    fetchSpy.mockRejectedValueOnce(new Error("network"));
+    expect((await child("vstack-verifier").emit("before_agent_start", { prompt: brief("Verify PR #12") }))[0]).toBeDefined();
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    fetchSpy.mockReset().mockResolvedValue(new Response("unavailable", { status: 503 }));
+    expect(await child("vstack-verifier").emit("before_agent_start", { prompt: brief("Verify PR #12") })).toEqual([undefined]);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    fetchSpy.mockReset().mockImplementation((() => new Promise(() => {})) as unknown as typeof fetch);
+    const begin = performance.now();
+    expect(await child("vstack-verifier").emit("before_agent_start", { prompt: brief("Verify PR #12") })).toEqual([undefined]);
+    expect(performance.now() - begin).toBeGreaterThanOrEqual(3900);
+    expect(performance.now() - begin).toBeLessThan(4500);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  }, 6000);
+  test("the diagram drawer, the comment critic, omp's own agents, and /tan clones get no picks", async () => {
+    fetchSpy = endpoint({ "principle-prove-it-works": .9 });
+    await registerMainSession(fakeHost(running));
+    for (const name of ["vstack-diagram-drawer", "vstack-comment-critic", "task", "scout", "worker", "sub"]) {
+      expect(await child(name).emit("before_agent_start", { prompt: brief("Fix the parser") })).toEqual([undefined]);
+    }
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+  test("a child of a main session outside a Matt run, or of an unknown session, gets no picks", async () => {
+    fetchSpy = endpoint({ "principle-prove-it-works": .9 });
+    await registerMainSession(fakeHost(options));
+    expect(await child("vstack-worker").emit("before_agent_start", { prompt: brief("Fix the parser") })).toEqual([undefined]);
+    await registerMainSession(fakeHost(running));
+    expect(await child("vstack-worker", "0-Child", "Unknown").emit("before_agent_start", { prompt: brief("Fix the parser") })).toEqual([undefined]);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+  test("a nested child follows the top-level session, also below an agent that gets no picks", async () => {
+    fetchSpy = endpoint({ "principle-prove-it-works": .9 });
+    const entries: unknown[] = [savedRun];
+    await registerMainSession(fakeHost({ ...options, entries }));
+    expect((await child("vstack-worker", "0-Worker").emit("before_agent_start", { prompt: brief("Build ticket 3") }))[0]).toBeDefined();
+    expect(await child("task", "1-Task").emit("before_agent_start", { prompt: brief("Look around") })).toEqual([undefined]);
+    for (const parentId of ["0-Worker", "1-Task"]) {
+      expect((await child("vstack-explorer", `${parentId}.0-Explore`, parentId).emit("before_agent_start", { prompt: brief("Find the fact") }))[0]).toBeDefined();
+    }
+    // The top-level session's active branch no longer holds the run.
+    entries.length = 0;
+    fetchSpy.mockClear();
+    expect(await child("vstack-explorer", "0-Worker.0-Explore", "0-Worker").emit("before_agent_start", { prompt: brief("Find the fact") })).toEqual([undefined]);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+  test("only the first prompt of a subagent session, its brief, is judged, also when omp dropped and resent it", async () => {
+    fetchSpy = endpoint({ "principle-prove-it-works": .9 });
+    await registerMainSession(fakeHost(running));
+    const entries: unknown[] = [];
+    const worker = child("vstack-worker", "0-Child", "Main", entries);
+    for (let attempt = 0; attempt < 2; attempt++) expect((await worker.emit("before_agent_start", { prompt: brief("Build ticket 3") }))[0]).toBeDefined();
+    // omp saves the accepted brief and the reply on the subagent's branch.
+    entries.push(said("user", brief("Build ticket 3")), said("assistant", "Ticket 3 is built."));
+    for (const prompt of ["Yield your result now.", "Also check the README."]) expect(await worker.emit("before_agent_start", { prompt })).toEqual([undefined]);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+  test("a child started after its top-level session shut down gets no picks", async () => {
+    fetchSpy = endpoint({ "principle-prove-it-works": .9 });
+    const main = fakeHost(running);
+    await registerMainSession(main);
+    await main.emit("session_shutdown");
+    expect(await child("vstack-worker").emit("before_agent_start", { prompt: brief("Fix the parser") })).toEqual([undefined]);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+  test("a later top-level session with the same agent id does not serve the descendants of one that shut down", async () => {
+    fetchSpy = endpoint({ "principle-prove-it-works": .9 });
+    const old = fakeHost(running);
+    await registerMainSession(old);
+    expect((await child("vstack-worker", "0-Worker").emit("before_agent_start", { prompt: brief("Build ticket 3") }))[0]).toBeDefined();
+    await registerMainSession(old);
+    await old.emit("session_shutdown");
+    await registerMainSession(fakeHost(running));
+    expect(await child("vstack-explorer", "0-Worker.0-Explore", "0-Worker").emit("before_agent_start", { prompt: brief("Find the fact") })).toEqual([undefined]);
+    expect((await child("vstack-worker", "1-Worker").emit("before_agent_start", { prompt: brief("Build ticket 4") }))[0]).toBeDefined();
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+  test("a top-level session that switches to another session file does not serve the descendants it started before", async () => {
+    fetchSpy = endpoint({ "principle-prove-it-works": .9 });
+    const main = fakeHost(running);
+    await registerMainSession(main);
+    expect((await child("vstack-worker", "0-Worker").emit("before_agent_start", { prompt: brief("Build ticket 3") }))[0]).toBeDefined();
+    await main.emit("session_switch", { reason: "new" });
+    await registerMainSession(main);
+    expect(await child("vstack-explorer", "0-Worker.0-Explore", "0-Worker").emit("before_agent_start", { prompt: brief("Find the fact") })).toEqual([undefined]);
+    expect((await child("vstack-worker", "1-Worker").emit("before_agent_start", { prompt: brief("Build ticket 4") }))[0]).toBeDefined();
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+  test("a subagent that shut down leaves no record, so a child that names it as parent gets no picks", async () => {
+    fetchSpy = endpoint({ "principle-prove-it-works": .9 });
+    await registerMainSession(fakeHost(running));
+    const worker = child("vstack-worker", "0-Worker");
+    expect((await worker.emit("before_agent_start", { prompt: brief("Build ticket 3") }))[0]).toBeDefined();
+    await worker.emit("session_shutdown");
+    expect(await child("vstack-explorer", "0-Worker.0-Explore", "0-Worker").emit("before_agent_start", { prompt: brief("Find the fact") })).toEqual([undefined]);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
 });
 
 const smolModel = { provider: "openai-codex", id: "gpt-6.1-sol", api: "openai-codex-responses", baseUrl: "https://smol.test/" };

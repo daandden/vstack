@@ -6,9 +6,9 @@ import { settings } from "@oh-my-pi/pi-coding-agent";
 import { getModelMatchPreferences, resolveModelRoleValue } from "@oh-my-pi/pi-coding-agent/config/model-resolver";
 import { hasNativeJudge } from "@oh-my-pi/pi-coding-agent/judgment";
 import catalogFile from "../../addon-questions.json";
-import { addonJudgeState, parseAddonCatalog, type AddonCatalog } from "./addon-catalog.ts";
+import { addonJudgeState, briefJudgeState, briefQuestions, parseAddonCatalog, type AddonCatalog, type AddonQuestion } from "./addon-catalog.ts";
 import { mattSkillNames, type MattSkillRow } from "./matt-skills.ts";
-import { preprocessTinyMessage } from "./prompt-cleaner.ts";
+import { cleanBrief, preprocessTinyMessage } from "./prompt-cleaner.ts";
 import * as fs from "node:fs";
 import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -54,7 +54,11 @@ function readMattSkills(addons: Iterable<string>): Set<string> {
 
 // omp stops a before_agent_start handler at 30 s and reports the timeout itself (ADR 0021).
 const OMP_HANDLER_CAP_MS = 30_000;
+const JEV_DEADLINE_MS = 4000;
 const RESTATEMENT_LIMIT = 10_000;
+const PRECEDENCE = " When a principle conflicts with the steps of the running Matt skill or its Addons, those steps win.";
+// The subagents whose first prompt, the brief, gets principle picks during a Matt run (ADR 0025).
+const JUDGED_AGENTS = new Set(["vstack-explorer", "vstack-worker", "vstack-verifier"]);
 const RESTATE_FRAME = "The input is the conversation so far, then the user's new words that start a task, if any. Reply with plain text only.";
 const EFFORTS = new Set(["minimal", "low", "medium", "high", "xhigh", "max"]);
 
@@ -140,78 +144,166 @@ async function restate(ctx: ExtensionContext, instruction: string | undefined, t
   }
 }
 
+interface Jev {
+  model: { id: string; baseUrl: string };
+  key: string;
+}
+
+/** Native TypeSafe jev and its key, or undefined when the judge is not native jev or has no credentials. */
+async function jevAccess(ctx: ExtensionContext): Promise<Jev | undefined> {
+  if (!hasNativeJudge(settings, ctx.modelRegistry)) return;
+  const model = ctx.modelRegistry.find("typesafe", "jev-latest");
+  if (!model || model.api !== "typesafe") return;
+  const key = await ctx.modelRegistry.getApiKey(model);
+  return key ? { model, key } : undefined;
+}
+
+/** Asks jev every question about one state and retries once inside the same signal. Returns each Addon that scores 0.70 or more. */
+async function pickAddons(jev: Jev, state: object, questions: Record<string, AddonQuestion>, signal: AbortSignal): Promise<string[]> {
+  const body = JSON.stringify({ model: jev.model.id, state, questions });
+  for (let attempt = 0; attempt < 2 && !signal.aborted; attempt++) {
+    try {
+      const response = await fetch(`${jev.model.baseUrl.replace(/\/+$/, "")}/v1/systemone`, {
+        method: "POST", headers: { Authorization: `Bearer ${jev.key}`, "Content-Type": "application/json" }, body, signal,
+      });
+      if (!response.ok) throw new Error("Judge request failed");
+      const result = await response.json();
+      if (signal.aborted) return [];
+      return Object.keys(questions).filter(name => {
+        const answer = result.answers?.[name];
+        return answer?.type === "noul" && typeof answer.noul === "number" && answer.noul >= .7;
+      });
+    } catch { /* Retry once inside the same deadline. */ }
+  }
+  return [];
+}
+
+function picksMessage(picked: string[], precedence = "") {
+  if (!picked.length) return;
+  return { message: { customType: "vstack-addons", display: false, attribution: "agent" as const,
+    content: `Addons selected for this task: ${picked.map(name => `skill://${name}`).join(", ")}. Ignore any that do not fit.${precedence}` } };
+}
+
+/** Runs a selection under a deadline that aborts it. The deadline holds even when fetch ignores the abort. */
+async function withDeadline<T>(ms: number, select: (signal: AbortSignal) => Promise<T | undefined>): Promise<T | undefined> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout>;
+  const deadline = new Promise<undefined>(resolve => {
+    timer = setTimeout(() => { controller.abort(); resolve(undefined); }, ms);
+  });
+  try { return await Promise.race([select(controller.signal), deadline]); }
+  catch { return undefined; }
+  finally { clearTimeout(timer!); controller.abort(); }
+}
+
+/** True when the branch holds the saved `skill-prompt` entry of a Matt skill, so it is in a Matt run. */
+function holdsMattRun(branch: readonly any[], mattSkills: ReadonlySet<string>): boolean {
+  return branch.some(entry => entry.type === "custom_message" && entry.customType === "skill-prompt" &&
+    typeof entry.details === "object" && entry.details !== null && "name" in entry.details &&
+    typeof entry.details.name === "string" && mattSkills.has(entry.details.name));
+}
+
+/**
+ * A session that this module served. A top-level session reads its active branch. A subagent links to the record of
+ * the session that started it, so a later session with the same agent id does not take over its descendants.
+ * Only a top-level session reads `ended`. An ended top-level session serves no branch.
+ */
+type SessionRecord = { manager: object; ended: boolean } & ({ branch: () => readonly any[] } | { parent: SessionRecord | undefined });
+
+/**
+ * The live sessions, keyed by agent id. omp imports the extension once and rebinds it to every subagent session,
+ * so a subagent finds the record of the session that started it here, through its `parentId`.
+ */
+const sessions = new Map<string, SessionRecord>();
+
+/** The active branch of the top-level session above a record, or undefined when that session ended or is unknown. */
+function topBranch(record: SessionRecord | undefined): readonly any[] | undefined {
+  while (record && "parent" in record) record = record.parent;
+  return record && !record.ended ? record.branch() : undefined;
+}
+
+/** Returns the session's record, and makes one on its first prompt. A new session with the same agent id ends the old record. */
+function register(ctx: ExtensionContext): SessionRecord {
+  const manager = ctx.sessionManager;
+  const known = sessions.get(ctx.agent.id);
+  if (known) {
+    if (known.manager === manager) return known;
+    known.ended = true;
+  }
+  const parentId = ctx.agent.parentId;
+  const record: SessionRecord = ctx.agent.kind === "main" ? { manager, ended: false, branch: () => manager.getBranch() }
+    : { manager, ended: false, parent: parentId === undefined ? undefined : sessions.get(parentId) };
+  sessions.set(ctx.agent.id, record);
+  return record;
+}
+
+/** Ends the session's record when omp shuts the session down or replaces it with another session file. */
+function unregister(ctx: ExtensionContext): void {
+  const record = sessions.get(ctx.agent.id);
+  if (!record || record.manager !== ctx.sessionManager) return;
+  record.ended = true;
+  sessions.delete(ctx.agent.id);
+}
+
 function registerAddonSelection(pi: ExtensionAPI): void {
   const catalog = readAddonCatalog();
   const mattSkills = catalog ? readMattSkills(Object.keys(catalog.questions)) : new Set<string>();
   const instruction = readRestateInstruction();
   pi.on("before_agent_start", async (event, ctx) => {
-    if (ctx.agent.kind !== "main" || !catalog || !mattSkills.size) return;
+    const session = register(ctx);
+    const manager = ctx.sessionManager;
+    if (!catalog || !mattSkills.size) return;
+    if (ctx.agent.kind !== "main") {
+      if (!JUDGED_AGENTS.has(ctx.agent.name)) return;
+      // Only the brief is judged. A later prompt, or a revived subagent, finds earlier talk on its own branch.
+      if (startsMidSession(manager.getBranch())) return;
+      const top = topBranch(session);
+      if (!top || !holdsMattRun(top, mattSkills)) return;
+      const request = cleanBrief(event.prompt);
+      if (!request) return;
+      return withDeadline(JEV_DEADLINE_MS, async signal => {
+        const jev = await jevAccess(ctx);
+        if (!jev || signal.aborted) return;
+        return picksMessage(await pickAddons(jev, briefJudgeState(catalog, request), briefQuestions(catalog), signal));
+      });
+    }
     const header = /^\[IMPORTANT: User invoked the "([^"]+)" skill/.exec(event.prompt);
     const startsRun = header && mattSkills.has(header[1]!);
-    const branch = ctx.sessionManager.getBranch();
-    if (!startsRun && !branch.some(entry => entry.type === "custom_message" && entry.customType === "skill-prompt" &&
-      typeof entry.details === "object" && entry.details !== null && "name" in entry.details &&
-      typeof entry.details.name === "string" && mattSkills.has(entry.details.name))) return;
+    const branch = manager.getBranch();
+    if (!startsRun && !holdsMattRun(branch, mattSkills)) return;
     const userWords = startsRun ? skillUserWords(event.prompt) : event.prompt;
     // A Matt run that starts mid-session gets a restatement of the earlier talk (ADR 0021).
     const midSession = startsRun && startsMidSession(branch);
     const talk = midSession ? earlierTalk(branch) : "";
     let request = preprocessTinyMessage(userWords);
     if (startsRun && !request && !talk) return;
-    const controller = new AbortController();
-    let timer: ReturnType<typeof setTimeout>;
-    const deadline = new Promise<undefined>(resolve => {
-      timer = setTimeout(() => { controller.abort(); resolve(undefined); }, midSession ? OMP_HANDLER_CAP_MS : 4000);
+    return withDeadline(midSession ? OMP_HANDLER_CAP_MS : JEV_DEADLINE_MS, async signal => {
+      const jev = await jevAccess(ctx);
+      if (!jev || signal.aborted) return;
+      // omp saves a hook message only when it accepts the prompt. The saved messages on every branch
+      // of the session are the record of delivered pointers, so each pointer appears once per session.
+      const seen = new Set<string>();
+      for (const entry of ctx.sessionManager.getEntries()) {
+        if (entry.type !== "custom_message" || entry.customType !== "vstack-addons") continue;
+        const content = typeof entry.content === "string" ? entry.content : JSON.stringify(entry.content);
+        for (const match of content.matchAll(/skill:\/\/([a-z0-9-]+)/g)) seen.add(match[1]!);
+      }
+      const questions = Object.fromEntries(Object.entries(catalog.questions).filter(([name]) => !seen.has(name)));
+      if (!Object.keys(questions).length) return;
+      if (midSession) {
+        const restated = await restate(ctx, instruction, talk, userWords, signal);
+        if (!restated || signal.aborted) return;
+        if ("warning" in restated) {
+          if (ctx.hasUI) ctx.ui.notify(`vstack: no Addon picks for this run start (${restated.warning})`, "warning");
+          return;
+        }
+        request = restated.text.slice(0, RESTATEMENT_LIMIT);
+      }
+      return picksMessage(await pickAddons(jev, addonJudgeState(catalog, request), questions, signal), PRECEDENCE);
     });
-    try {
-      const selection = (async () => {
-        if (!hasNativeJudge(settings, ctx.modelRegistry)) return;
-        const model = ctx.modelRegistry.find("typesafe", "jev-latest");
-        if (!model || model.api !== "typesafe") return;
-        const key = await ctx.modelRegistry.getApiKey(model);
-        if (!key || controller.signal.aborted) return;
-        // omp saves a hook message only when it accepts the prompt. The saved messages on every branch
-        // of the session are the record of delivered pointers, so each pointer appears once per session.
-        const seen = new Set<string>();
-        for (const entry of ctx.sessionManager.getEntries()) {
-          if (entry.type !== "custom_message" || entry.customType !== "vstack-addons") continue;
-          const content = typeof entry.content === "string" ? entry.content : JSON.stringify(entry.content);
-          for (const match of content.matchAll(/skill:\/\/([a-z0-9-]+)/g)) seen.add(match[1]!);
-        }
-        const questions = Object.fromEntries(Object.entries(catalog.questions).filter(([name]) => !seen.has(name)));
-        if (!Object.keys(questions).length) return;
-        if (midSession) {
-          const restated = await restate(ctx, instruction, talk, userWords, controller.signal);
-          if (!restated || controller.signal.aborted) return;
-          if ("warning" in restated) {
-            if (ctx.hasUI) ctx.ui.notify(`vstack: no Addon picks for this run start (${restated.warning})`, "warning");
-            return;
-          }
-          request = restated.text.slice(0, RESTATEMENT_LIMIT);
-        }
-        const body = JSON.stringify({ model: model.id, state: addonJudgeState(catalog, request), questions });
-        for (let attempt = 0; attempt < 2 && !controller.signal.aborted; attempt++) {
-          try {
-            const response = await fetch(`${model.baseUrl.replace(/\/+$/, "")}/v1/systemone`, {
-              method: "POST", headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" }, body, signal: controller.signal,
-            });
-            if (!response.ok) throw new Error("Judge request failed");
-            const result = await response.json();
-            if (controller.signal.aborted) return;
-            const picked = Object.keys(questions).filter(name => {
-              const answer = result.answers?.[name];
-              return answer?.type === "noul" && typeof answer.noul === "number" && answer.noul >= .7;
-            });
-            if (!picked.length) return;
-            return { message: { customType: "vstack-addons", display: false, attribution: "agent" as const,
-              content: `Addons selected for this task: ${picked.map(name => `skill://${name}`).join(", ")}. Ignore any that do not fit. When a principle conflicts with the steps of the running Matt skill or its Addons, those steps win.` } };
-          } catch { /* Retry once inside the same deadline. */ }
-        }
-      })();
-      return await Promise.race([selection, deadline]);
-    } catch { }
-    finally { clearTimeout(timer!); controller.abort(); }
   });
+  pi.on("session_shutdown", (_event, ctx) => unregister(ctx));
+  pi.on("session_switch", (_event, ctx) => unregister(ctx));
 }
 
 interface ScratchEntry {

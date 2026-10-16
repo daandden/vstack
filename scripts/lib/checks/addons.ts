@@ -1,24 +1,25 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { parseAddonCatalog } from "../../../plugin/extensions/addon-catalog.ts";
+import { briefQuestions, parseAddonCatalog, type AddonCatalog } from "../../../plugin/extensions/addon-catalog.ts";
 import { mattSkillNames } from "../../../plugin/extensions/matt-skills.ts";
 import { ConfigError } from "../vstack-repo.ts";
 import { shippedSkillNames, textFiles } from "./scope.ts";
 import type { Check, Failure } from "./types.ts";
 
 export const addonChecks: Check = {
-  classes: ["invalid-utility", "addon-slash-route", "addon-question-mismatch"],
+  classes: ["invalid-utility", "addon-slash-route", "addon-question-mismatch", "brief-sample-mismatch"],
   async run(ctx) {
     const out: Failure[] = [];
     const shipped = shippedSkillNames(ctx);
     const catalogPath = join(ctx.root, "addon-questions.json");
-    let questions: Set<string>;
+    let catalog: AddonCatalog;
     try {
-      questions = new Set(Object.keys(parseAddonCatalog(JSON.parse(readFileSync(catalogPath, "utf8"))).questions));
+      catalog = parseAddonCatalog(JSON.parse(readFileSync(catalogPath, "utf8")));
     } catch (error) {
       throw new ConfigError(`${catalogPath}: ${(error as Error).message}`);
     }
+    const questions = new Set(Object.keys(catalog.questions));
     const roleOf = (upstream: string) => ctx.pins.get(upstream)?.role;
     const skillsWithBaseRows = mattSkillNames(ctx.validRows, roleOf, []);
     const matt = mattSkillNames(ctx.validRows, roleOf, questions);
@@ -53,6 +54,39 @@ export const addonChecks: Check = {
     for (const name of [...addons].sort()) {
       if (!questions.has(name)) out.push({ class: "addon-question-mismatch", item: name, message: "shipped Addon has no key in the `questions` map of addon-questions.json" });
     }
+    out.push(...briefSampleFailures(ctx.root, new Set(Object.keys(briefQuestions(catalog)))));
     return out;
   },
 };
+
+/** Checks each sample in `sample-briefs.json`: a non-empty `prompt`, and labels that name a subagent question (ADR 0025). */
+function briefSampleFailures(root: string, subagentQuestions: Set<string>): Failure[] {
+  const path = join(root, "sample-briefs.json");
+  if (!existsSync(path)) return [];
+  let prompts: unknown;
+  try {
+    prompts = JSON.parse(readFileSync(path, "utf8")).prompts;
+  } catch (error) {
+    throw new ConfigError(`${path}: ${(error as Error).message}`);
+  }
+  if (!Array.isArray(prompts)) throw new ConfigError(`${path}: prompts must be an array`);
+  const out: Failure[] = [];
+  prompts.forEach((sample, index) => {
+    const item = `sample-briefs.json:${typeof sample?.id === "string" && sample.id ? sample.id : `prompts[${index}]`}`;
+    const fail = (message: string) => out.push({ class: "brief-sample-mismatch", item, message });
+    if (typeof sample?.prompt !== "string" || !sample.prompt.trim()) fail("`prompt` must be a non-empty string");
+    for (const field of ["expected", "allowed"] as const) {
+      const labels: unknown = field === "allowed" ? sample?.allowed ?? [] : sample?.expected;
+      if (!Array.isArray(labels)) {
+        fail(`\`${field}\` must be an array of principle names`);
+        continue;
+      }
+      for (const label of labels) {
+        if (typeof label !== "string" || !subagentQuestions.has(label)) {
+          fail(`\`${field}\` label ${label} names no subagent question (a principle in addon-questions.json other than principle-never-block-on-the-human)`);
+        }
+      }
+    }
+  });
+  return out;
+}

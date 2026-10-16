@@ -43,6 +43,15 @@ describe("vstack_rename_session", () => {
   });
 });
 
+describe("Addon catalog", () => {
+  test("a brief_preamble for subagent briefs sits beside the preamble", () => {
+    const { brief_preamble: _, ...withoutBriefPreamble } = catalogFile as Record<string, unknown>;
+    expect(() => parseAddonCatalog(withoutBriefPreamble)).toThrow("brief_preamble must be a non-empty string");
+    expect(() => parseAddonCatalog({ ...withoutBriefPreamble, brief_preamble: " " })).toThrow("brief_preamble must be a non-empty string");
+    expect(parseAddonCatalog(catalogFile).brief_preamble).toBe("The state's `request` is a task brief that a coding agent wrote for a subagent. Read \"the user\" in a question as the brief's author. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation in the question. If torn, answer no.");
+  });
+});
+
 describe("Matt skill class", () => {
   const roleOf = (upstream: string) => ({ base: "Base", other: "Enhancement" })[upstream];
   const rows = [
