@@ -93,6 +93,17 @@ const strList = (v: unknown, key: string, where: string): string[] => {
   if (!Array.isArray(v) || v.length === 0 || v.some((s) => typeof s !== "string" || s.trim() === "")) fail(where, `${key} must be a list of one or more non-empty strings`);
   return v as string[];
 };
+/** An optional list of one or more objects, each with every field in `fields` as a non-empty string. */
+function entryList(r: Rec, key: string, fields: string[], where: string): void {
+  const v = r[key];
+  if (v === undefined) return;
+  if (!Array.isArray(v) || v.length === 0) fail(where, `${key} must be a list of one or more { ${fields.join(", ")} }`);
+  v.forEach((e: unknown, i: number) => {
+    const ew = `${where}: ${key} ${i + 1}`;
+    if (typeof e !== "object" || e === null || Array.isArray(e)) fail(ew, `must be an object with ${fields.join(" and ")}`);
+    for (const f of fields) str(e as Rec, f, ew);
+  });
+}
 
 function checkVisual(v: unknown, where: string): Visual {
   if (typeof v !== "object" || v === null || Array.isArray(v)) fail(where, "must be an object with text, html, or svg");
@@ -145,6 +156,8 @@ function check(lines: Line[]): State {
         if (["plain", "why", "settled"].some((k) => r[k] !== undefined)) fail(where, "has plain, why, and settled from an older page; write one description instead and start a new page");
         for (const k of ["title", "description"]) str(r, k, where);
         str(r, "example", where, true);
+        entryList(r, "today", ["text", "source"], where);
+        entryList(r, "terms", ["term", "text"], where);
         if (Array.isArray(r.visual)) {
           if (!r.visual.length) fail(where, "visual must be one visual or a list of one or more");
           r.visual.forEach((v: unknown, i: number) => checkVisual(v, `${where}: visual ${i + 1}`));
@@ -295,6 +308,10 @@ function description(s: string): string {
 
 function questionHtml(q: Rec, a: Rec | undefined, baseDir: string): string {
   const qid = `q-${q.id}`;
+  const facts = ((q.today ?? []) as Rec[]).map((f) => `<li>${text(f.text)} <span class="source">${text(f.source)}</span></li>`).join("");
+  const today = facts ? `\n<div class="today"><p class="label">Today</p><ul class="bullets">${facts}</ul></div>` : "";
+  const notes = ((q.terms ?? []) as Rec[]).map((t) => `<dt>${text(t.term)}</dt><dd>${text(t.text)}</dd>`).join("");
+  const terms = notes ? `\n<div class="terms"><p class="label">Term notes</p><dl>${notes}</dl></div>` : "";
   const example = q.example ? `\n<div class="example"><p class="label">Example</p><p>${text(q.example)}</p></div>` : "";
   const picks = new Set<string>(a?.picks ?? []);
   const options = (q.options as Option[])
@@ -315,7 +332,7 @@ function questionHtml(q: Rec, a: Rec | undefined, baseDir: string): string {
   const visual = visuals.map((v, i) => visualHtml(v, `${qid}-visual${i ? `-${i + 1}` : ""}`, "visual", baseDir)).join("\n");
   return `<article class="question" id="${qid}" data-state="${state}" data-stop>
 <h3><span class="qnum">Q${q.q}</span>${text(q.title)}</h3>
-<div class="description">${description(q.description)}</div>${example}
+<div class="description">${description(q.description)}</div>${today}${terms}${example}
 ${visual}<ol class="options">
 ${options}
 </ol>${line ? `\n<p class="answer" data-state="${state}"><span class="label">${line[0]}</span><span>${line[1]}</span></p>` : ""}

@@ -7,6 +7,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 ## [2.0.21] - 2026-10-16
 
 - grilling reads text with no pick as a reply. A picked option settles its decision, and notes or Other text beside a pick never reopen it. Other text and notes on options that were not picked reopen the decision unless they plainly name a choice. The grill then replies on the page and asks the decision again next round with the same Q number, with revised options when the reply calls for them. A note-only answer from the Flexible Ask picker (`Unanswered` followed by `Note (<option>, not picked)`) counts as text with no pick, and grilling-page records it with its text as `other:<text>`. An empty, cancelled, or timed-out answer stays unanswered, as before. The `matt/grilling` reason in the Decision register adds that pushback reopens its decision (#145).
+- A Grilling page question can carry two new optional parts, each rendered as its own block under the description: `today`, a list of `{ text, source }` facts about how things work now, each with its file and line, and `terms`, a list of `{ term, text }` Term notes. The template styles both blocks in the page's palette. The render script refuses a malformed entry (a missing or empty field, an entry that is not an object, an empty list, or a value that is not a list), names the record, and writes nothing. It escapes the new text like other text fields and keeps `code` and links. A question without them, and a state file from before this change, render as before (#143).
 
 ## [2.0.20] - 2026-10-15
 

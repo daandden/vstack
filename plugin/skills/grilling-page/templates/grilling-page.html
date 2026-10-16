@@ -80,8 +80,13 @@
     .description { display: grid; gap: 0.5rem; }
     .bullets { display: grid; gap: 0.125rem; padding-inline-start: 1.25rem; }
     .bullets > li::marker { color: var(--overlay0); }
-    .example { display: grid; gap: 0.125rem; }
-    .example .label { font-weight: 600; }
+    .example, .today, .terms { display: grid; gap: 0.125rem; }
+    .example .label, .today .label, .terms .label { font-weight: 600; }
+    /* Today lists how things work now, each fact followed by its file and line. */
+    .source { color: var(--subtext0); font-size: var(--fs-small); }
+    /* Term notes put each name beside its one-line definition. */
+    .terms dl { display: grid; grid-template-columns: fit-content(14rem) 1fr; gap: 0.125rem 0.75rem; }
+    .terms dt { font-weight: 600; color: var(--lavender); }
     /* An example can be a list or a screen, so it keeps its line breaks and leading spaces. */
     .example p:not(.label) { white-space: pre-wrap; }
 

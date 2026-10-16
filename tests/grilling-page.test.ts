@@ -51,6 +51,74 @@ test("the description renders paragraphs and bullet lists", () => {
   expect(readFileSync(page, "utf8")).toContain('<div class="description"><p>First line same paragraph.</p><ul class="bullets"><li>one</li><li><code>two</code></li></ul><p>Last.</p></div>');
 });
 
+const TODAY = [{ text: "A btw answer reaches only you.", source: "extensions/picker-btw.md:3" }, { text: "The grill records Other text as the answer.", source: "plugin/skills/grilling/SKILL.md:27" }];
+const TERMS = [{ term: "Picker btw", text: "A side question asked inside the picker while an ask waits." }];
+/** The HTML of one question, from its title to its options. */
+const questionBody = (html: string, id: string) => {
+  const start = html.indexOf(`id="q-${id}"`);
+  return html.slice(start, html.indexOf('<ol class="options">', start));
+};
+const block = (html: string, cls: string) => {
+  const start = html.indexOf(`class="${cls}"`);
+  return start < 0 ? undefined : html.slice(start, html.indexOf("</div>", start));
+};
+
+test("Today and Term notes render as their own blocks under the description", () => {
+  expect(append(PAGE, ROUND, question("s1-r1-q1", 1, { today: TODAY, terms: TERMS })).code).toBe(0);
+  const body = questionBody(readFileSync(page, "utf8"), "s1-r1-q1");
+  const today = block(body, "today")!;
+  const terms = block(body, "terms")!;
+  expect(today).toMatch(/A btw answer reaches only you\.[\s\S]*extensions\/picker-btw\.md:3[\s\S]*The grill records Other text as the answer\.[\s\S]*plugin\/skills\/grilling\/SKILL\.md:27/);
+  expect(terms).toMatch(/Picker btw[\s\S]*A side question asked inside the picker while an ask waits\./);
+  expect(body.indexOf('class="today"')).toBeGreaterThan(body.indexOf("Description 1"));
+  expect(body.indexOf('class="terms"')).toBeGreaterThan(body.indexOf("Description 1"));
+});
+
+test("a state file from before Today and Term notes renders its questions unchanged, with no empty blocks", () => {
+  writeFileSync(state, `${lines(PAGE, ROUND, question("s1-r1-q1", 1))}\n`);
+  expect(run(["render", state]).code).toBe(0);
+  const article = readFileSync(page, "utf8").match(/<article class="question"[\s\S]*?<\/article>/)![0];
+  expect(article).toBe(`<article class="question" id="q-s1-r1-q1" data-state="open" data-stop>
+<h3><span class="qnum">Q1</span>Title 1?</h3>
+<div class="description"><p>Description 1</p></div>
+<ol class="options">
+<li class="option" data-recommended><h4>First${STAR}</h4><p>A. First does</p><ul class="trade"><li class="gain">A. First gain</li><li class="cost">A. First cost</li></ul><p class="why">Recommended: it is first</p></li>
+<li class="option"><h4>Second</h4><p>B. Second does</p><ul class="trade"><li class="gain">B. Second gain</li><li class="cost">B. Second cost</li></ul></li>
+</ol>
+</article>`);
+});
+
+test.each([
+  ["a Today fact with no source", { today: [{ text: "A fact." }] }, "today 1: source"],
+  ["a Today fact with an empty text", { today: [TODAY[0], { text: " ", source: "a.ts:1" }] }, "today 2: text"],
+  ["a Today fact that is not an object", { today: ["A fact. a.ts:1"] }, "today 1: must be an object"],
+  ["a term with no text", { terms: [{ term: "Picker btw" }] }, "terms 1: text"],
+  ["an empty Today list", { today: [] }, "today must"],
+  ["Term notes that are not a list", { terms: { term: "Picker btw", text: "A side question." } }, "terms must"],
+])("%s is refused, names the record, and writes nothing", (_, extra, problem) => {
+  append(PAGE, ROUND, question("s1-r1-q1", 1));
+  const before = readFileSync(state, "utf8");
+  const pageBefore = readFileSync(page, "utf8");
+  const r = append(question("s1-r1-q2", 2, extra));
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain(`question s1-r1-q2: ${problem}`);
+  expect(readFileSync(state, "utf8")).toBe(before);
+  expect(readFileSync(page, "utf8")).toBe(pageBefore);
+});
+
+test("markup in Today facts and Term notes is escaped, and code and links are kept", () => {
+  const marked = (s: string) => `${s} <img src=x onerror=alert(1)> \`${s}-code\` [${s}-link](https://example.com/${s})`;
+  const fields = ["fact", "source", "term", "note"];
+  expect(append(PAGE, ROUND, question("s1-r1-q1", 1, { today: [{ text: marked("fact"), source: marked("source") }], terms: [{ term: marked("term"), text: marked("note") }] })).code).toBe(0);
+  const body = questionBody(readFileSync(page, "utf8"), "s1-r1-q1");
+  expect(body).not.toContain("<img");
+  for (const f of fields) {
+    expect(body).toContain(`${f} &lt;img src=x onerror=alert(1)&gt;`);
+    expect(body).toContain(`<code>${f}-code</code>`);
+    expect(body).toContain(`<a href="https://example.com/${f}">${f}-link</a>`);
+  }
+});
+
 test("a question from before the description field is refused with the fix", () => {
   append(PAGE, ROUND);
   const { description, ...old } = question("s1-r1-q1", 1);
