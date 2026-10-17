@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.29] - 2026-10-17
+
+- migrate-to-vstack no longer turns an old `.diagram-design` marker into a `diagram-profile:` line, in Standard or Private mode, and no longer moves `~/.diagram-design/profiles/` to `~/.vstack/diagram-design/profiles/`. The marker and every home profile file stay where they are, and vstack does not read them. Migration has no cleanup step for them. A failed profile move can no longer keep the old private rule, because no profile move runs (#153).
+
 ## [2.0.28] - 2026-10-18
 
 - The End state chain states each chain rule once. implement's shared End state block owns each rule in one step. Step 0a holds Code host routing, the reuse of the vstack root and Scratch dir, and the run record with its list of chain facts. Step 0b holds branch ownership and the force-push lease. Step 0c holds logging to the decision-trail log. Step 4 holds Verify discovery and link repair, step 5 holds the Safety hand-off to open-pr, and step 7 holds the Conflict owner, which rebases under the step 0b rule. open-pr, babysit, and ship accept the chain facts and name the owning step for each rule in place of their own copies. When no Verify skill exists, open-pr, ship, and hillclimb follow step 4, which runs setup-app-verification in the same run, in place of a fallback to tests. babysit and ship still never rebase or force-push, and the caller owns each conflict through step 7. The checks in the chain and their order do not change (#173).

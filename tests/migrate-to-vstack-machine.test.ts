@@ -80,7 +80,7 @@ function skillsCli(h: string) {
   Bun.spawnSync(["chmod", "+x", script]); return { VSTACK_SKILLS_CLI: script };
 }
 
-test("machine smoke: 25 Matt skills, diagram/css copies, private repo, linked checkout, submodule, separate git dir, rules and profiles migrate", () => {
+test("machine smoke: 25 Matt skills, diagram/css copies, private repo, linked checkout, submodule, separate git dir and rules migrate; home profiles stay", () => {
   const h = home(), r = repo(h), common = join(r, ".git"), wt = join(h, "linked");
   git(r, "worktree", "add", "-qb", "linked", wt); store(common);
   const source = repo(h, "source"); git(r, "-c", "protocol.file.allow=always", "submodule", "add", "-q", source, "sub");
@@ -90,9 +90,10 @@ test("machine smoke: 25 Matt skills, diagram/css copies, private repo, linked ch
   put(join(h, ".agents/rules/matt-pocock-private-config.md"), "Private rule");
   const rule = join(h, ".omp/agent/rules/custom.md");
   put(rule, `Run /setup-matt-pocock-skills. Use ask-matt. Keep docs/agents/issue-tracker.md.\n${sub}/matt-pocock/docs-agents/domain.md\n`);
-  put(join(h, ".diagram-design/profiles/plain.md"), "hand profile");
+  put(join(h, ".diagram-design/profiles/plain.md"), "hand profile"); put(join(h, ".vstack/diagram-design/profiles/saved.md"), "saved profile");
   const p = run(h, ["plan", "--scan-root", h]); expect(p.code).toBe(0);
   const plan = p.json(); expect(plan.items.filter((i: any) => i.kind === "private-move")).toHaveLength(3);
+  expect(plan.items.some((i: any) => i.id === "profiles" || i.from?.includes("diagram-design/profiles"))).toBe(false);
   expect(plan.items.find((i: any) => i.kind === "skills-remove").names).toHaveLength(27);
   expect(plan.items.find((i: any) => i.kind === "rule-rewrite").changes[0].diff).toContain("+Run /skill:setup-vstack. Use ask-matt.");
   expect(plan.notices.join(" ")).toContain("downgrade");
@@ -104,7 +105,9 @@ test("machine smoke: 25 Matt skills, diagram/css copies, private repo, linked ch
   const lock = JSON.parse(readFileSync(join(h, ".agents/.skill-lock.json"), "utf8")); expect(Object.keys(lock.skills)).toEqual(["obsidian-markdown"]); expect(lock.dismissed.untouched).toBe(true);
   for (const name of [...MATT_NAMES, "diagram-design", "good-css"]) { expect(existsSync(join(h, ".agents/skills", name))).toBe(false); expect(existsSync(join(h, ".claude/skills", name))).toBe(false); }
   expect(existsSync(join(h, ".agents/skills/obsidian-markdown"))).toBe(true);
-  expect(readFileSync(join(h, ".vstack/diagram-design/profiles/plain.md"), "utf8")).toBe("hand profile");
+  expect(readFileSync(join(h, ".diagram-design/profiles/plain.md"), "utf8")).toBe("hand profile");
+  expect(readFileSync(join(h, ".vstack/diagram-design/profiles/saved.md"), "utf8")).toBe("saved profile");
+  expect(existsSync(join(h, ".vstack/diagram-design/profiles/plain.md"))).toBe(false);
   expect(run(h, ["plan", "--scan-root", h]).json().items).toEqual([]);
 });
 
@@ -155,15 +158,17 @@ test("all four global rule locations get proposed diffs; whole-name matching and
   for (const p of paths) expect(readFileSync(join(h, p), "utf8")).toBe("## vstack\nRun /skill:setup-vstack and ask-matt. ask-matt-extra stays. docs/vstack/config.md\n");
 });
 
-test("a profile move failure also retains the old rule; a skill removal failure warns without blocking private moves", () => {
+test("home profile files never hold the old rule; a skill removal failure warns without blocking private moves", () => {
   const h = home(), r = repo(h), c = join(r, ".git"); store(c); installedSkills(h);
   put(join(h, ".agents/rules/matt-pocock-private-config.md"), "rule");
   put(join(h, ".diagram-design/profiles/old.md"), "old"); put(join(h, ".vstack/diagram-design/profiles/new.md"), "new");
   const failCli = join(h, "bin/fail-cli"); put(failCli, "#!/bin/sh\nexit 1\n"); Bun.spawnSync(["chmod", "+x", failCli]);
   const a = run(h, ["apply"], { VSTACK_SKILLS_CLI: failCli }); expect(a.code).toBe(1);
   expect(a.json().warnings).toHaveLength(1); expect(existsSync(join(c, "vstack/config"))).toBe(true);
-  expect(existsSync(join(h, ".agents/rules/matt-pocock-private-config.md"))).toBe(true);
-  expect(existsSync(join(h, ".diagram-design/profiles/old.md"))).toBe(true);
+  expect(existsSync(join(h, ".agents/rules/matt-pocock-private-config.md"))).toBe(false);
+  expect(readFileSync(join(h, ".diagram-design/profiles/old.md"), "utf8")).toBe("old");
+  expect(readFileSync(join(h, ".vstack/diagram-design/profiles/new.md"), "utf8")).toBe("new");
+  expect(existsSync(join(h, ".vstack/diagram-design/profiles/old.md"))).toBe(false);
 });
 
 test("a filesystem rename failure rolls back rewrites and config naming and keeps the old rule", () => {
