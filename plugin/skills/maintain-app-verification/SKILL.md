@@ -15,8 +15,10 @@ A feature-scoped caller names one feature whose live proof encountered Drift. Ru
 Report one outcome:
 
 - `clean` means every feature in the caller's scope got source and live coverage, with nothing to change.
-- `changed` means proven corrections are ready for implement to commit in Standard mode, or are in place in Private mode.
+- `changed` means proven corrections are committed in Standard mode, handed back to a caller that commits them, or in place in Private mode.
 - `blocked` means coverage could not finish or a correction could not be made safely. State the exact blocker and incomplete coverage.
+
+The introduction to skill://setup-app-verification defines a committing run and the `commit.ts` command. On a committing run, this skill runs the dirty check in step 0 and commits only a `changed` outcome in step 6.
 
 ## Edit scope
 
@@ -33,6 +35,8 @@ If several targets remain, choose through `ask`. If none exists, return to imple
 For a Private-mode target with no link, create an absolute `.omp/skills/verify-<app>` symlink in this checkout to the shared skill directory. Add `.omp/skills/verify-*` once to `git rev-parse --git-path info/exclude`, leaving shared ignores unchanged. Report any conflicting directory or link instead of overwriting it. Read SKILL.md by absolute path for the rest of the session. Discovery sees a new link next session.
 
 Read the target skill and follow its helper paths relative to the directory its SKILL.md was read from. Resolve Scratch through `skill://vstack-tmp` at the top level, or use the parent's Scratch dir. Keep run notes and proof at `<Scratch dir>/verify/<app>-<run-id>/`, and throwaway app data in its `data/`. Never commit those paths.
+
+On a committing run, run the dirty check now, before any edit, as skill://setup-app-verification step 2 says.
 
 ## 1. Index hygiene
 
@@ -70,6 +74,8 @@ Re-drive every harness correction live before it lands. Tear down after the last
 
 Fix wrong or missing user-POV instructions and harness gaps that prevent driving working behavior. Keep helpers executable and show their invocation in SKILL.md, relative to its own directory. Record broken app behavior as product findings. Keep those findings out of the corrections and do not weaken expected results to pass.
 
-## 6. Report
+## 6. Commit and report
 
-For `changed`, re-read every changed file. Return the outcome, coverage, changed files, evidence and run-note paths, and product findings. implement commits the Standard-mode output. Private-mode output stays untracked. For `clean` or `blocked`, report the outcome and coverage honestly.
+For `changed`, re-read every changed file. Then, on a committing run, commit as skill://setup-app-verification step 5 says. If no title convention is visible, use `fix(verify-<app>): <feature>`, where `<feature>` names each fixed feature. If `commit.ts` refuses, report the corrections as uncommitted.
+
+Return the outcome, coverage, changed files, the commit or the caller that commits the output, evidence and run-note paths, and product findings. Private-mode output stays untracked. For `clean`, there is nothing to commit. For `blocked`, leave any edits uncommitted. Report the outcome and coverage honestly.

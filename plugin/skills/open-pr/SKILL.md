@@ -31,7 +31,7 @@ List the project's Verify skills named `verify-*`. In Private mode, also list `<
 
 Use the only Verify skill, or the one whose description names the changed surface. If several match without a clear choice, use one `ask`. If none exists, prove the change with tests and scripts. State that live proof is absent and recommend skill://setup-app-verification to the caller.
 
-Save proof under `<Scratch dir>/verify/<app>-<run-id>/`. A stale Verify instruction while Doctor passes is drift. Run skill://maintain-app-verification for that named feature, then retry once. Return Standard-mode setup and maintenance output to implement for its step 5 review and step 6 commit. Do not commit that output or run a separate review here. Resume with implement's updated final-diff proof and review. Private-mode maintenance edits the single copy in place with no commit. Treat product gaps as findings. Wrong app behavior is a finding, never drift. Preserve failed or unavailable proof as such.
+Save proof under `<Scratch dir>/verify/<app>-<run-id>/`. A stale Verify instruction while Doctor passes is drift. Run skill://maintain-app-verification for that named feature, and state that implement commits its output in step 6. Then retry once. Return Standard-mode setup and maintenance output to implement for its step 5 review and step 6 commit. Do not commit that output or run a separate review here. Resume with implement's updated final-diff proof and review. Private-mode maintenance edits the single copy in place with no commit. Treat product gaps as findings. Wrong app behavior is a finding, never drift. Preserve failed or unavailable proof as such.
 
 ## 3. Order the unpushed commits
 

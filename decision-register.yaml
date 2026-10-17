@@ -324,7 +324,7 @@ items:
     tree: 5aa2dae2726d09d219397fbbedc1e9500a239d28
     disposition: adapt
     artifacts: [plugin/skills/setup-app-verification]
-    reason: "Renamed for live proof in implement, which commits Standard output, while Private mode links the shared copy (ADR 0009, ADR 0015)."
+    reason: "Renamed for live proof in implement. It commits its own Standard output unless implement runs it and commits, and Private mode links the shared copy (ADR 0009, ADR 0015)."
   - id: pstack/figure-it-out
     upstream: pstack
     kind: skill
@@ -356,7 +356,7 @@ items:
     tree: b6ce4dcdc378492f9acd55a4e56ae111204b4f11
     disposition: adapt
     artifacts: [plugin/skills/maintain-app-verification]
-    reason: "Renamed for feature-scoped or Fan-out source passes and live proof, with Standard fixes committed by implement (ADR 0009, ADR 0015)."
+    reason: "Renamed for feature-scoped or Fan-out source passes and live proof. It commits its own Standard fixes unless implement runs it and commits (ADR 0009, ADR 0015)."
   - id: pstack/make-bot-ui
     upstream: pstack
     kind: skill

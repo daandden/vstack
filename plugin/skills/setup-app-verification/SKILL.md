@@ -10,6 +10,14 @@ A Verify skill drives the app as a user and captures proof. Write it for an agen
 
 Use the vstack root and mode from the Private-mode rule. A subagent uses the root from its prompt. Resolve Scratch through `skill://vstack-tmp` at the top level, or use the Scratch dir from the parent.
 
+In Standard mode, this run commits its output in step 5. If the caller states that it commits the output, as implement does, hand the output back uncommitted. Private mode commits nothing. A committing run is a Standard-mode run whose caller does not commit the output. It runs the commit script with the bash tool, from inside the repo:
+
+```sh
+bun "$(realpath skill://setup-app-verification/scripts/commit.ts)" <args>
+```
+
+Below, `commit.ts` stands for this command.
+
 ## 1. Interview the repo
 
 Read the code and docs before any question through `ask`. Find:
@@ -23,6 +31,8 @@ Read the code and docs before any question through `ask`. Find:
 Run the build and launch as found. If the checkout does not build or start as-is, report the exact failure and stop. Product fixes go through `skill://diagnosing-bugs` or `skill://implement`. The one exception is an irrelevant missing asset, such as a static directory the API never serves or a sample configuration. The generated skill can create it as marked verification scaffolding, and must remove it in cleanup.
 
 ## 2. Generate the Verify skill
+
+On a committing run, run the dirty check before you write anything. The dirty check runs `commit.ts state --app <app>`, which prints `mode`, `dir`, and `dirty` as JSON. When `dirty` is true, tell the user that `<dir>` has uncommitted changes and that the commit is going to include them. Call `ask` with the options Go on and include them, and Stop so I can commit them first. On Stop, stop. An answer marked `timedOut: true` is not the user's. Call `ask` once more, and if that times out too, stop.
 
 In Standard mode, write `.omp/skills/verify-<app>/SKILL.md` in this checkout. In Private mode, write `<vstack root>/skills/verify-<app>/SKILL.md`. Create an absolute symlink at this checkout's `.omp/skills/verify-<app>` to that directory. Add the literal line `.omp/skills/verify-*` once to the file returned by `git rev-parse --git-path info/exclude`. Leave shared ignore files unchanged. Never overwrite a conflicting directory or link. Report the conflict instead.
 
@@ -68,6 +78,10 @@ Run its instructions end to end once: launch, Doctor, drive one mapped feature, 
 
 If you proved it in a stand-in for the real target, such as a container in place of a fresh VM or a local stack in place of a remote one, list every setup step that the stand-in did and the target will not. Those steps stay unverified until a run on the real target covers them.
 
-## 5. Report
+## 5. Commit
 
-Report the skill path, changed files, surfaces, feature map, proof paths, and any stand-in setup steps that stay unverified. implement commits the Standard-mode output. Private-mode output stays untracked, including the link and exclude file. Upkeep uses `skill://maintain-app-verification`. State a cadence only when the user requests one.
+On a committing run, take the title from the repo's convention. Read `git log --format=%s -n 20` on the default branch (`git symbolic-ref --short refs/remotes/origin/HEAD`, else the current branch) and follow the pattern you see there. When no convention is visible, use `chore: set up verify-<app>`. Run `commit.ts commit --app <app> --title "<title>"`. It stages only `.omp/skills/verify-<app>/`, deletions included, and commits it alone on the current branch. Anything else the user had staged stays staged. It prints `commit`, `title`, and `dir` as JSON, with `commit` null when nothing changed. Exit 2 means it refused. Show its message.
+
+## 6. Report
+
+Report the skill path, changed files, the commit or the caller that commits the output, surfaces, feature map, proof paths, and any stand-in setup steps that stay unverified. Private-mode output stays untracked, including the link and exclude file. Upkeep uses `skill://maintain-app-verification`. State a cadence only when the user requests one.
