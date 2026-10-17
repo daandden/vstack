@@ -37,9 +37,3 @@ Over budget → split into one deployment diagram per environment.
 - Cloud-vendor icon soup standing in for named nodes — name the host or service, don't decorate it.
 - Unlabelled network paths. Protocol and port are the content of a deployment diagram, not decoration.
 - Mixing two environments in one diagram (e.g. staging and production nodes side by side without a zone boundary that actually separates them).
-
-## Examples
-
-- `assets/example-deployment.html` — minimal light
-- `assets/example-deployment-dark.html` — minimal dark
-- `assets/example-deployment-full.html` — full editorial

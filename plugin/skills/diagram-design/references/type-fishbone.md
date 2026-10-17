@@ -67,9 +67,3 @@ The tick itself is a 32px horizontal line from `(tick_x, tick_y)` to `(tick_x - 
 - **Using fishbone for a sequence of failures.** A chain of things that happened in order is a timeline or sequence diagram — fishbone is for causes of *one* effect, not a chronology.
 - **Pasting in the classic 6M template (Man/Machine/Material/Method/Measurement/Environment) with empty categories.** Name categories from the actual investigation, not a generic checklist waiting to be filled in later.
 - **Effect box phrased as a solution.** "Add a p99 alert" is a fix, not an observed effect. The box states what was seen — a symptom, a measurement, an incident — never the remedy.
-
-## Examples
-
-- `assets/example-fishbone.html` — minimal light. Checkout p99 latency incident, 5 categories, Data confirmed as root cause.
-- `assets/example-fishbone-dark.html` — minimal dark, same data.
-- `assets/example-fishbone-full.html` — full editorial: container framing + 3 summary cards of varied widths + footer.

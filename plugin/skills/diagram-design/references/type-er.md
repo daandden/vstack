@@ -18,8 +18,3 @@
 - Drawing an arrow for every FK on a model with dozens — lay out by cluster instead.
 - Inconsistent cardinality notation between ends of the same relationship.
 - Fields padded to equal-height boxes — natural height by content is fine.
-
-## Examples
-- `assets/example-er.html` — minimal light
-- `assets/example-er-dark.html` — minimal dark
-- `assets/example-er-full.html` — full editorial

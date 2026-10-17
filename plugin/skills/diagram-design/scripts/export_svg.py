@@ -1115,13 +1115,6 @@ def main(argv: list[str] | None = None) -> int:
     if not source.is_file():
         print(f"error: source not found: {source}", file=sys.stderr)
         return 2
-    if source.name == "index.html" and source.parent.name == "assets":
-        print(
-            "error: refuse to export the gallery (assets/index.html); "
-            "pick a specific diagram file",
-            file=sys.stderr,
-        )
-        return 2
 
     try:
         html = source.read_text(encoding="utf-8")

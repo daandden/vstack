@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.31] - 2026-10-17
+
+- diagram-design no longer ships its example gallery. The 210 `assets/example-*.html` files and the `assets/index.html` gallery page are gone, and so is every pointer to them in SKILL.md, the type references, the import, export, style-guide, and output-spec references, and the gallery refusal in `scripts/export_svg.py`. Worked cases keep their rules, worked YAML, and fidelity ledgers. The five templates and the `assets/icons.html` icon gallery still ship (ADR 0027, #154).
+
 ## [2.0.30] - 2026-10-17
 
 - diagram-design draws in any project without a skin question. The style gate, the onboarding and profiles references, and the profile verbs are gone, and the skill never reads or writes a project config for diagrams. Drawers read the shipped `references/style-guide.md`. A vstack-figures brief names light or dark and no profile, a caller that runs as a subagent returns no skin question, grilling-page asks for the dark variant only, and vstack-diagram-drawer drops its style-gate wording. The `diagram-profiles` House style row and this repo's `docs/vstack/diagram.md` are removed. Files in `~/.vstack/diagram-design/profiles/` stay where they are, and nothing reads them (ADR 0027, supersedes parts of ADR 0011 and 0023, #152).

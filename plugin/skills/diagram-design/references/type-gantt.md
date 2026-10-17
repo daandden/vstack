@@ -37,9 +37,3 @@ Duration in pixels: `(end_week - start_week) × pitch`. Pitch = timeline_width /
 - Dependency arrows between tasks in v1 (add only when essential; use the annotation primitive for labels).
 - Start/end dates in the bar label (put them in the x-axis or tooltip comment instead).
 - Equal visual weight for all bars (the focal task must stand out).
-
-## Examples
-
-- `assets/example-gantt.html` — minimal light
-- `assets/example-gantt-dark.html` — minimal dark
-- `assets/example-gantt-full.html` — full editorial

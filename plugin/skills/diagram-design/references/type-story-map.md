@@ -38,9 +38,3 @@ Exactly 2 accent elements: the release cut line with its `RELEASE CUT` label (co
 - **Mixing two personas in one map.** One map per persona, same as user journey.
 - **Adding state columns.** That turns it into a kanban board — this type has no state.
 - **Adding a sentiment curve.** That turns it into a user journey — this type has no feelings axis.
-
-## Examples
-
-- `assets/example-story-map.html` — minimal light. *Reporting, first release*: four activities (`Find the data`, `Build the report`, `Share it`, `Trust it`), MVP/Release 2/Later slices, release cut under MVP, `Row-level permissions` flagged as the riskiest story.
-- `assets/example-story-map-dark.html` — minimal dark, same data.
-- `assets/example-story-map-full.html` — full editorial: container framing + 3 summary cards of varied widths + footer.

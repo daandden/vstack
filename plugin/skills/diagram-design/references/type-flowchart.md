@@ -16,8 +16,3 @@
 - Using fill color to signal node type (shape does that).
 - Decision diamond with 4+ exits — refactor into nested diamonds.
 - Unlabeled decision branches.
-
-## Examples
-- `assets/example-flowchart.html` — minimal light
-- `assets/example-flowchart-dark.html` — minimal dark
-- `assets/example-flowchart-full.html` — full editorial

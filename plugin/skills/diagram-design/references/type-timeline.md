@@ -13,8 +13,3 @@
 - Equal-spacing events that aren't equally spaced in time.
 - Missing axis labels ("what unit is this?").
 - Crowded labels without vertical offset — illegible.
-
-## Examples
-- `assets/example-timeline.html` — minimal light
-- `assets/example-timeline-dark.html` — minimal dark
-- `assets/example-timeline-full.html` — full editorial

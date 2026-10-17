@@ -26,8 +26,3 @@ Don't mix orientations on one diagram.
 - Pyramid for non-hierarchical data (use a tree or bar chart).
 - Dishonest widths (fake equal spacing when drops are unequal).
 - Coral on the base layer (dilutes the "apex = rare" signal).
-
-## Examples
-- `assets/example-pyramid.html` — minimal light
-- `assets/example-pyramid-dark.html` — minimal dark
-- `assets/example-pyramid-full.html` — full editorial

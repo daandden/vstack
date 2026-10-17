@@ -15,8 +15,3 @@
 - Irregular padding between levels — unaligned nesting looks accidental.
 - Content inside rings that isn't part of the hierarchy — use a sibling diagram.
 - Coral on multiple levels — hierarchy collapses.
-
-## Examples
-- `assets/example-nested.html` — minimal light
-- `assets/example-nested-dark.html` — minimal dark
-- `assets/example-nested-full.html` — full editorial

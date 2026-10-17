@@ -25,7 +25,7 @@ A rounded-rectangle footprint of corner radius `r` projects to straight edges jo
 
 Draw faces as plain SVG `<path>` and `<polygon>` elements with the projected points written in. No CSS 3D, no canvas, no WebGL, and no `transform` to place geometry. If content ever has to sit flat on a face, the matrices that agree with `iso()` are `matrix(1,0.5,-1,0.5,tx,ty)` for the top face, `matrix(1,0.5,0,-1,tx,ty)` for the left face, and `matrix(-1,0.5,0,-1,tx,ty)` for the right face. Labels never use them: labels stay horizontal.
 
-`scripts/build-exploded-examples.py` in the repository builds every shipped example from this function and is the worked reference for the helpers below.
+`scripts/build-exploded-examples.py` in the Upstream repository builds every Upstream example from this function and is the worked reference for the helpers below.
 
 ## Layout conventions
 
@@ -100,16 +100,3 @@ The silhouette verifier accepts signed decimal and scientific-notation coordinat
 - More than one part in the accent, or the other parts faded to show which one matters.
 - Blurred contact shadows, gradients on solid faces, or glow.
 - An exploded view of something with no physical sense of parts. If the layers are just a list, use the layer stack.
-
-## Examples
-
-- `assets/example-exploded.html`: app stack, minimal light
-- `assets/example-exploded-dark.html`: app stack, minimal dark
-- `assets/example-exploded-full.html`: app stack, full editorial
-- `assets/example-exploded-phone.html`, `-dark`, `-full`: phone teardown with a housing, a shared board and battery level, and a display
-- `assets/example-exploded-unboxing.html`, `-dark`, `-full`: packaging with a telescoping lid, a product and cable on one level, an insert, and a box
-- `assets/example-exploded-ai-stack.html`, `-dark`, `-full`: an AI agent stack with a secrets vault, tools, skills as small cards on one layer, the agent harness around the model, and the interface
-- `assets/example-exploded-keyboard.html`, `-dark`, `-full`: a mechanical keyboard with a case tray, PCB, plate, a grid of switches, and a grid of keycaps
-- `assets/example-exploded-phone-animated.html`: the phone assembled, then exploded once
-- `assets/example-exploded-unboxing-animated.html`: the box closed, then unpacked once
-- `assets/example-exploded-ai-stack-animated.html`, `assets/example-exploded-keyboard-animated.html`: the stack and the keyboard assembled, then exploded once

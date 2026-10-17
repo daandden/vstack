@@ -36,9 +36,3 @@ Over budget: collapse a leaf cluster into one aggregate node labelled with its c
 - Unlabelled external dependencies — version or registry belongs in the `sublabel` (`v3.23 · npm`), not left implicit.
 - Highlighting more than one cycle in a single diagram — pick the one that matters editorially; a second cycle competes with the first and neither reads.
 - Omitting the fan-in badges — without them the reader can't see at a glance where dependencies concentrate, which is the entire reason this type exists over a plain tree.
-
-## Examples
-
-- `assets/example-dependency.html` — minimal light
-- `assets/example-dependency-dark.html` — minimal dark
-- `assets/example-dependency-full.html` — full editorial

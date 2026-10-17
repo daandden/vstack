@@ -67,9 +67,3 @@ Over budget → split into two linked Sankeys (e.g. an overview stage-1→stage-
 - **Using Sankey for a plain step sequence.** If nothing splits, merges, or varies in thickness, it's a process diagram — the whole point of Sankey is quantity that branches.
 - **Stacking two flows at the same node-edge offset.** Every flow gets its own offset range within the node's height, in a consistent top-to-bottom order — never two ribbons overlapping at the same attach point.
 - **Percentages or quantities that don't sum to the source total.** Every node's outgoing (or incoming) flows must sum to that node's own height. A Sankey that doesn't balance reads as an error, not a design choice.
-
-## Examples
-
-- `assets/example-sankey.html` — minimal light. A month of CI compute (12,000 minutes) splitting into test/build/lint stages, merging into passed/failed/flaked outcomes; the flaky-rerun path is the one accent flow.
-- `assets/example-sankey-dark.html` — minimal dark, same data.
-- `assets/example-sankey-full.html` — full editorial: container framing + 3 summary cards of varied widths + footer.

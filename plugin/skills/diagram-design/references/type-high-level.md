@@ -419,7 +419,7 @@ The chevron banner needs a **dark band with a light label in both modes**. `ink`
 | `band-3` | `#4a5270` | Lightest step: even chevrons, dark mode |
 | `band-label` | `#f5f5f5` | Fixed label color: 11.82:1, 8.78:1, and 7.05:1 against the three bands |
 
-**These are type-scoped tokens, not skin roles, and they do not invert.** They are the one deliberate exception to the rule that hex values live only in [`style-guide.md`](style-guide.md). `scripts/lint-skin.py` rejects `band-2` and `band-3` as off-palette, which is why the shipped high-level examples are listed in `scripts/lint-skin-baseline.txt`. Phase labels always use `band-label`, and `band-label` has to hold at least 4.5:1 against every band, because these are 7px labels in either mode. When you re-skin, derive three analogous steps from the new brand's darkest neutral and pick a fixed label color that holds 4.5:1 against all three.
+**These are type-scoped tokens, not skin roles, and they do not invert.** They are the one deliberate exception to the rule that hex values live only in [`style-guide.md`](style-guide.md). `scripts/lint-skin.py` rejects `band-2` and `band-3` as off-palette, which is why the Upstream high-level examples are listed in `scripts/lint-skin-baseline.txt`. Phase labels always use `band-label`, and `band-label` has to hold at least 4.5:1 against every band, because these are 7px labels in either mode. When you re-skin, derive three analogous steps from the new brand's darkest neutral and pick a fixed label color that holds 4.5:1 against all three.
 
 ---
 
@@ -454,17 +454,3 @@ Before emitting SVG, verify **every** item. If any fails, fix it — don't ship.
 - Vertical chevron without a paired bar/cross-cutting component — see §5 pairing rule.
 - Bar-component edges drawn solid — orchestration triggers must be dashed.
 - Source fanning out to >3 components without a hub.
-
----
-
-## 9. Examples
-
-- `assets/example-high-level.html` — horizontal-only, 5 phases, light skin.
-- `assets/example-high-level-dark.html` — same, dark skin.
-- `assets/example-high-level-full.html` — same, editorial-card frame.
-- `assets/example-high-level-vertical.html` — adds vertical Orchestration + Security chevrons, Airflow bar, Keycloak cross-cutting. **Reference render of the full parametric pattern.**
-- `assets/example-high-level-vertical-dark.html` — vertical pattern, dark skin.
-- `assets/example-high-level-vertical-full.html` — vertical pattern, editorial-card frame.
-- `assets/example-datalake.html` — unclustered five-phase data stack (Sources → Ingest → Data Lake → Query → Consume), zone-based flow without a container-orchestrator boundary. The MinIO lake is the focal node; vertical concerns are flattened into the horizontal chevron banner. Light skin.
-- `assets/example-datalake-dark.html` — same, dark skin.
-- `assets/example-datalake-full.html` — same, editorial-card frame.

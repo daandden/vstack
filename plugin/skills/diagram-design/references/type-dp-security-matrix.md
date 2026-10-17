@@ -289,17 +289,9 @@ Before emitting SVG, verify **every** item:
 
 ---
 
-## 9. Examples
+## 9. Worked YAML — full inputs for the canonical matrix
 
-- `assets/example-dp-security-matrix.html` — minimal light (NatStat canonical: 4 roles × 8 components, focal at Data Consumers × Trino aggregated). Gallery default.
-- `assets/example-dp-security-matrix-dark.html` — same, dark skin.
-- `assets/example-dp-security-matrix-full.html` — same, editorial-card frame with subtitle + summary cards.
-
----
-
-## 10. Worked YAML — full inputs for `example-dp-security-matrix.html`
-
-The complete inputs that map to the shipped canonical example. Every coordinate in that SVG is derivable from §2 applied to these inputs.
+The complete inputs for the NatStat canonical matrix: 4 roles × 8 components, focal at Data Consumers × Trino aggregated. Every coordinate in its SVG is derivable from §2 applied to these inputs.
 
 ```yaml
 title:    "Platform Access Matrix"
@@ -366,7 +358,7 @@ cells:
 dark: false
 ```
 
-### 10.1 What this YAML proves
+### 9.1 What this YAML proves
 
 Run §2 with these inputs:
 - `n_roles = 4`, `n_components = 8`, no color overrides, one focal cell.
@@ -375,5 +367,3 @@ Run §2 with these inputs:
 - `rows_bottom = 420 + 36 = 456`; `legend_y_top = 476`; `viewBox_h = 520` ✓
 - `role_col_x(j) = [232, 396, 560, 724]` ✓
 - Focal cell at `(row=5, col=3)` → rect `(724, 340, 148, 36)` with accent stroke 1.4 ✓
-
-A fresh generation from this YAML produces a diagram visually indistinguishable from the shipped `example-dp-security-matrix.html`.

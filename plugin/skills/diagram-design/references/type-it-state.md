@@ -94,7 +94,7 @@ n_zones         = len(zones)
 
 # Zone widths: base 200 + 24 per component to give vertical room for icons + 2-line subs.
 # In the canonical example (3 / 3 / 3 components) the replication used 256 / 360 / 272 —
-# the formula approximates that with hand-picked widths in the worked YAML (§10).
+# the formula approximates that with hand-picked widths in the worked YAML (§9).
 zone_w(i)       = base + n_components_i * comp_slack             # base ≈ 200, slack ≈ 24
 viewBox_w       = left_pad + Σ zone_w(i) + (n_zones-1) * zone_gap + right_pad
 
@@ -391,17 +391,9 @@ Before emitting SVG, verify **every** item:
 
 ---
 
-## 9. Examples
+## 9. Worked YAML — full inputs for the canonical landscape
 
-- `assets/example-it-state.html` — minimal light (NatStat canonical: 3 zones, 9 components, 8 connectors, 0 footer bars, SQL Server tinted olive). Gallery default.
-- `assets/example-it-state-dark.html` — same, dark skin.
-- `assets/example-it-state-full.html` — same, editorial-card frame with summary cards.
-
----
-
-## 10. Worked YAML — full inputs for `example-it-state.html`
-
-The complete inputs that map to the shipped canonical example. Every coordinate in that SVG is derivable from §2 applied to these inputs.
+The complete inputs for the NatStat canonical landscape: 3 zones, 9 components, 8 connectors, 0 footer bars, SQL Server tinted olive. Every coordinate in its SVG is derivable from §2 applied to these inputs.
 
 ```yaml
 title:    "Current IT Landscape"
@@ -440,7 +432,7 @@ connectors:
 dark: false
 ```
 
-### 10.1 What this YAML proves
+### 9.1 What this YAML proves
 
 - `n_zones = 3`, components per zone `= [3, 3, 3]`, custom color count = 1 (SQL Server), focal count = 2 (Shared Drive, LegacyPortal), external count = 2 (Civil Registry, Ministry Partners).
 - Zone widths in canonical: 256 / 360 / 272 ⇒ `viewBox_w = 16 + 256 + 20 + 360 + 20 + 272 + 16 = 960` ✓

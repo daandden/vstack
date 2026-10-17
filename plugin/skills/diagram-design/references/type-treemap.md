@@ -9,7 +9,7 @@ Not for: ranked lists where exact values matter more than proportion (use a **ba
 - **Plot area:** `x` 40 → 956, `y` 40 → 420 inside a `0 0 1000 500` viewBox — the same vertical rhythm as bar, line and scatter, so the legend block sits where a reader of those types already expects it (rule at `y=462`, `LEGEND` at `478`, keys at `488`).
 - **Squarified layout** (Bruls et al., 2000): sort descending, lay each row against the *shorter* side of the remaining rectangle. Aspect ratios stay near 1, which is what makes two areas comparable by eye. Never lay cells out in simple stripes — long thin cells cannot be compared.
 - **Cell count:** 4–8. Past 8, the tail becomes unlabelable slivers — group the tail into a single explicit "Other" cell and name what it contains in the source line.
-- **4px grid:** cell edges snap to the grid like everything else, with a 4px gutter between cells. Snapping and gutters both move area, so check the result — and check it as **relative** error (`(drawn − true) ÷ true`), not percentage points. A 0.1pp slip is nothing on a 59% cell and a quarter of a 0.5% cell; absolute error hides exactly the mistake you need to catch. Keep every cell within a few percent of its true share — the shipped example is within 2.7%, its worst case being the sliver, where the grid cannot do better — and state the encoding in the source line (`AREA = POPULATION`). `scripts/verify-treemap.py` gates this.
+- **4px grid:** cell edges snap to the grid like everything else, with a 4px gutter between cells. Snapping and gutters both move area, so check the result — and check it as **relative** error (`(drawn − true) ÷ true`), not percentage points. A 0.1pp slip is nothing on a 59% cell and a quarter of a 0.5% cell; absolute error hides exactly the mistake you need to catch. Keep every cell within a few percent of its true share — 2.7% is achievable, with the worst case at the sliver, where the grid cannot do better — and state the encoding in the source line (`AREA = POPULATION`). `scripts/verify-treemap.py` gates this.
 - **Fill:** a rank-ordered `ink` opacity ramp (e.g. `0.16 → 0.04`), so the non-focal order survives greyscale printing and colour-blind readers. One accent cell only — the editorially focal one, not automatically the largest. Note what this does *not* buy you: the focal cell is painted off-ramp, so in greyscale it lands wherever its tint happens to fall, not at its rank. Identify it by the accent stroke, and never let tone carry meaning the area doesn't already carry. `ink` is a role, not a colour: it resolves near-black on light paper and near-white on dark, so one ramp of opacities composites *darker* as it strengthens in the light skin and *lighter* in the dark one. The opacities are identical in both; only their lightness flips.
 - **Stroke:** 1px `ink @ 0.30` hairline on every cell; the focal cell takes a 1.5px `accent` stroke.
 - **Labels sit inside the cell**, top-left, 16px in from the edge: name in the `node-name` role 12–14px 600, value in the `sublabel` role 9px on the next line. Three tiers by cell size:
@@ -79,7 +79,7 @@ Not for: a one-way split (that is the parent treemap, and a marimekko with one s
 
 #### Layout conventions
 
-- **Plot area:** the treemap's — `x` 40 → 956, `y` 40 → 420 inside a `0 0 1000 500` viewBox, legend block at `y=462`/`478`/`488`. Column captions sit under the plot at `y=438`, `sublabel` role 9px, centred on their column. The shipped example spends 900px of column width across five columns with four 4px gutters.
+- **Plot area:** the treemap's — `x` 40 → 956, `y` 40 → 420 inside a `0 0 1000 500` viewBox, legend block at `y=462`/`478`/`488`. Column captions sit under the plot at `y=438`, `sublabel` role 9px, centred on their column. For example, five columns with four 4px gutters spend 900px of column width.
 - **Column width is category share** of the whole, over the sum of column widths. Column edges snap to the 4px grid, so the gutters do; keep the gutter constant — a widened gap reads as a narrower column.
 - **Every column is the full plot height**, and its segments tile it top to bottom with no gaps and no gutters, separated by the hairline stroke alone. **Segment height is the series' share within its column**, so the same height means the same within-category share whatever the column's width. Segment boundaries are data and land on whole pixels, exempt from the 4px grid as the waterfall's bar tops are.
 - **One series order, top to bottom, in every column** — the order of the series' overall totals, largest at the top. A series absent from a category is omitted from that column, never drawn at zero height; the rows do not align across columns and are not meant to, which is why every segment prints its own share.
@@ -126,12 +126,3 @@ Every segment is one `<rect>` (over its paper mask, as in the parent) carrying t
 - A category or series silently dropped from the grid.
 - More than 5 series or 8 categories without an "Other".
 - A stated total the segments contradict by more than display rounding.
-
-## Examples
-
-- `assets/example-treemap.html` — minimal light
-- `assets/example-treemap-dark.html` — minimal dark
-- `assets/example-treemap-full.html` — full editorial
-- `assets/example-marimekko.html` — marimekko, minimal light
-- `assets/example-marimekko-dark.html` — marimekko, minimal dark
-- `assets/example-marimekko-full.html` — marimekko, full editorial

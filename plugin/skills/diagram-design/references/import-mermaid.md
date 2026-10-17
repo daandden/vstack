@@ -90,7 +90,7 @@ Load the selected `type-*.md`. Override the grammar only when the content disagr
 
 ## Worked example
 
-[`assets/example-import-mermaid.html`](../assets/example-import-mermaid.html) redraws `scripts/fixtures/sample-flowchart.mmd` at `format=html`, `size=doc-inline`, `detail=balanced`, `audience=mixed`.
+This procedure redrew `scripts/fixtures/sample-flowchart.mmd` at `format=html`, `size=doc-inline`, `detail=balanced`, `audience=mixed`.
 
 | Source | Output | Reason |
 |---|---|---|

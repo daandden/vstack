@@ -19,8 +19,3 @@
 - Skipped numbering (missing L4 between L3 and L5 without explanation).
 - Every layer a different color — hierarchy invisible.
 - Inconsistent layer heights without reason.
-
-## Examples
-- `assets/example-layers.html` — minimal light
-- `assets/example-layers-dark.html` — minimal dark
-- `assets/example-layers-full.html` — full editorial

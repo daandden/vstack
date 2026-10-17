@@ -34,7 +34,7 @@
 
 ### Bubble
 
-**Best for:** three quantities per item — x, y, and a magnitude — where the *joint* reading is the story: which items combine a bad position with a big footprint. The shipped example plots services by p95 latency and error rate with area as request volume, and the point of the figure is exactly the multiplication a two-variable scatter cannot do — the slowest service barely matters and the risky one is not the slowest.
+**Best for:** three quantities per item — x, y, and a magnitude — where the *joint* reading is the story: which items combine a bad position with a big footprint. For example, a figure can plot services by p95 latency and error rate with area as request volume. The point of that figure is exactly the multiplication a two-variable scatter cannot do — the slowest service barely matters and the risky one is not the slowest.
 
 Not for: a third value that is really a category (use the focal accent or facet it); two variables (that is the parent scatter — size on everything is decoration); or magnitudes spanning several orders (the small bubbles vanish; bin, or plot the magnitude on an axis of its own).
 
@@ -42,7 +42,7 @@ Not for: a third value that is really a category (use the focal accent or facet 
 
 - **Same plot frame as the parent:** margins left 80, bottom 60, top 40, right 40 inside `0 0 1000 500`; X rule at `y=420`, Y rule at `x=80`; gridlines at the parent's positions; legend on the house rhythm (rule `y=462`, `LEGEND` at `478`, keys at `490`).
 - **Item count:** 5–15. Below 5 the leave-one-out scale check has nothing to hold onto and a table says it better; above 15 the areas start stacking and the reading degrades to a density cloud — which is the parent's contour territory, not this.
-- **Radius from area:** `r = K·√value` for one constant K across the figure, sized so the largest bubble stays inside the plot (the shipped example uses `K = 1.4` on requests-per-second, giving 10.8–42px). State the area scale in the source line.
+- **Radius from area:** `r = K·√value` for one constant K across the figure, sized so the largest bubble stays inside the plot (for example, `K = 1.4` on requests-per-second gives 10.8–42px). State the area scale in the source line.
 - **Bound axis ticks:** every tick carries `data-tick` (axis) and `data-value` (the number it prints). 4–6 per axis at equal intervals, `arrow-label` role 8px, same placement as the parent.
 - **Paper underlay per bubble**, same radius, painted immediately beneath — the translucent fill must not show gridlines through itself, because the fill's job is to read as one solid area.
 - **Draw order: largest first.** A small bubble painted early is buried under a later giant and its area is unreadable. `verify-bubble.py` checks paint order on every overlapping pair.
@@ -52,8 +52,8 @@ Not for: a third value that is really a category (use the focal accent or facet 
 #### Colour
 
 - **One accent bubble, and an `ink` opacity ramp for everything else** — never a hue per item. Every labelled bubble is named where it sits, so hue would re-encode what the labels already carry.
-- **The accent marks the editorially focal item, not the biggest or the worst single number.** In the shipped example it marks the service whose *combination* is the risk: near-peak volume on the worst error rate.
-- **The ramp runs faintest-on-largest** (0.14 on the largest fill up to 0.35 on the smallest in the shipped example). This is ink-mass compensation, not an encoding: a giant bubble at the same opacity as a small one dominates the page by area alone, so opacity scales down as area scales up and every bubble ends up with comparable visual weight. Tone is **not** a fourth variable — the legend must say which end of the ramp is which, in skin-neutral terms ("faintest fill is the largest bubble" survives both skins; "darkest" ships false on one of them).
+- **The accent marks the editorially focal item, not the biggest or the worst single number.** For example, it can mark the service whose *combination* is the risk: near-peak volume on the worst error rate.
+- **The ramp runs faintest-on-largest** (for example, 0.14 on the largest fill up to 0.35 on the smallest). This is ink-mass compensation, not an encoding: a giant bubble at the same opacity as a small one dominates the page by area alone, so opacity scales down as area scales up and every bubble ends up with comparable visual weight. Tone is **not** a fourth variable — the legend must say which end of the ramp is which, in skin-neutral terms ("faintest fill is the largest bubble" survives both skins; "darkest" ships false on one of them).
 - **Every bubble keeps a `muted` stroke** (6.11:1 on light paper, 7.07:1 on dark) — the fills sit at opacities well under 3:1, so the stroke is what carries WCAG 1.4.11 for the mark's edge. The focal bubble's accent stroke measures 4.71:1 on light paper with the default skin and may measure less with another accent; as with the focal bar, line and slopegraph, its data is carried redundantly — position, label, and the legend naming it in words — and the accent adds only *which bubble is focal*.
 - **Labels stay `ink` or `muted`**, including the focal one. Accent text at 8px misses AA on light paper.
 
@@ -113,22 +113,22 @@ What each binding buys, and what it costs to omit:
 
 ### Beeswarm
 
-**Best for:** a full distribution where every unit deserves its own mark — one dot per item on a single shared value axis, dodged perpendicular so nothing overlaps. Use when the *shape* of the crowd and its outliers are the story a summary number would hide: the shipped example plots 138 per-request latency samples for one endpoint, and the point of the figure is that a healthy median and an ugly p99 are the same dataset.
+**Best for:** a full distribution where every unit deserves its own mark — one dot per item on a single shared value axis, dodged perpendicular so nothing overlaps. Use when the *shape* of the crowd and its outliers are the story a summary number would hide: for example, a figure can plot 138 per-request latency samples for one endpoint, and the point of that figure is that a healthy median and an ugly p99 are the same dataset.
 
 Not for: two variables (that is the parent scatter); comparing distributions across many groups (facet, or reach for a ridgeline); more than ~300 items (the packing outgrows the band — bin into a histogram); or a handful of values (below 20 there is no distribution to swarm, and a table says it shorter).
 
 #### Layout conventions
 
 - **One value axis, horizontal, at the parent's baseline** (`y=420` inside `0 0 1000 500`, plot margins left 80, right 40), with 4–6 bound ticks at equal intervals in the `arrow-label` role at 8px and **vertical gridlines only** — the swarm axis has no scale to grid, and a horizontal rule through the band would invite reading the packing offsets as values.
-- **Dot count: 20–300**, one dot per item, all at one radius (the shipped example uses `r=4`). Both ends of the budget are enforced by `scripts/verify-beeswarm.py`.
-- **Greedy dodge around a midline** (`y=230` in the shipped example): each dot takes the first free slot alternating above/below at a fixed pitch of `2r+2`. The dodge is packing, not data — any collision-free arrangement is legitimate, and the algorithm is not part of the contract.
+- **Dot count: 20–300**, one dot per item, all at one radius (for example, `r=4`). Both ends of the budget are enforced by `scripts/verify-beeswarm.py`.
+- **Greedy dodge around a midline** (for example, `y=230`): each dot takes the first free slot alternating above/below at a fixed pitch of `2r+2`. The dodge is packing, not data — any collision-free arrangement is legitimate, and the algorithm is not part of the contract.
 - **Labels: the focal dot plus the outliers a reader will look for, at most 6.** `arrow-label` role 8px small-caps on a paper mask, one tier per label, alternating sides of the band, each tied to its dot by an unbound hairline leader and bound to it with `data-name`.
 - **4px grid** applies to the designed constants — the axis rule, gridlines, tick baselines, legend rows. Dot positions are data-scaled on the value axis and packing-scaled on the swarm axis, and both are exempt; snapping them would move the data.
 
 #### Colour
 
-- **One ink fill for every non-focal dot** (`ink` at 0.55 in the shipped example) plus a `muted` stroke for the mark's edge, and **at most one accent dot**. Density must read as swarm *thickness*, never as tone: opacity as a value encoding while also dodging says one thing twice in two different lies, so `verify-beeswarm.py` requires the non-focal fill to be literally identical across the swarm.
-- **The accent marks the editorially focal item** — in the shipped example the single slowest request, the one the title is about — never a hue per group. Groups are a facet decision, not a palette decision.
+- **One ink fill for every non-focal dot** (for example, `ink` at 0.55) plus a `muted` stroke for the mark's edge, and **at most one accent dot**. Density must read as swarm *thickness*, never as tone: opacity as a value encoding while also dodging says one thing twice in two different lies, so `verify-beeswarm.py` requires the non-focal fill to be literally identical across the swarm.
+- **The accent marks the editorially focal item** — for example, the single slowest request, the one the title is about — never a hue per group. Groups are a facet decision, not a palette decision.
 - **The focal dot keeps the shared radius.** Its cues are the accent fill and stroke, its label, and the legend naming it in words; a bigger focal dot is a second encoding and breaks the packing.
 
 #### Honest-data rule
@@ -183,15 +183,3 @@ What each binding buys, and what it costs to omit:
 - Positioning a dot, a bound label, a tick or an ancestor group from CSS — `transform`, `translate`, `rotate`, `scale`, a geometry property (`cx`/`cy`/`r`/`x`/`y`) or a motion path — whether as an attribute, an inline `style`, or a rule in a `<style>` block.
 - Two dots wearing the same `data-name`, or an empty one: a name that identifies two marks identifies neither.
 - An unbound visible string: a label or an axis tick with no attribute stating the same thing.
-
-## Examples
-
-- `assets/example-scatter.html` — minimal light
-- `assets/example-scatter-dark.html` — minimal dark
-- `assets/example-scatter-full.html` — full editorial
-- `assets/example-bubble.html` — bubble, minimal light
-- `assets/example-bubble-dark.html` — bubble, minimal dark
-- `assets/example-bubble-full.html` — bubble, full editorial
-- `assets/example-beeswarm.html` — beeswarm, minimal light
-- `assets/example-beeswarm-dark.html` — beeswarm, minimal dark
-- `assets/example-beeswarm-full.html` — beeswarm, full editorial

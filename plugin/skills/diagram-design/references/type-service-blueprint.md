@@ -15,7 +15,7 @@
 ## Layout conventions
 
 - **Orientation:** stages as equal columns (left → right in narrative order), layers as labeled rows (top → bottom). No connector arrows in this version — that is swimlane territory.
-- **ViewBox:** `0 0 1280 720` for the minimal examples. Full editorial keeps the same SVG and adds cards.
+- **ViewBox:** `0 0 1280 720` for the minimal variants. Full editorial keeps the same SVG and adds cards.
 - **Left margin:** 96px for layer labels. Geist Mono 8px, uppercase, horizontal, `text-anchor="end"` at x=88. **Never** `writing-mode: vertical`.
 - **Stage grid:** 4–6 columns. The worked example is 5 × 208px with 16px gutters (`col_x = 96 + i·224`). Each header carries `data-stage` on a rect at the column origin; every cell in that column uses the same `x`.
 - **Layer order, top to bottom:**
@@ -94,10 +94,4 @@ No `transform`, geometry `style`, or `<style>` rules that move marks.
 - **The visibility line is checkable.** It spans the plot, sits in the frontstage/backstage gap, and its stroke clears 3:1 against paper.
 - **Printed text matches `data-name`.** A cell that draws "Retry payment" and declares another action is two stories.
 
-These rules are executable: `scripts/verify-service-blueprint.py` reads the declarations and fails on layer order, visibility, grid, census, focal, budget, printed-label, contrast, or CSS-moved marks. `scripts/test-verify-service-blueprint.py` proves both polarities — the shipped examples pass, and each mutation class above fails with a named finding.
-
-## Examples
-
-- `assets/example-service-blueprint.html` — minimal light. *Trial to paid — what the customer never sees*, 5 stages, focal backstage `dunning-job timeout` under "Hit the limit".
-- `assets/example-service-blueprint-dark.html` — minimal dark, same data.
-- `assets/example-service-blueprint-full.html` — full editorial: container framing + 3 varied-width summary cards + footer.
+These rules are executable: `scripts/verify-service-blueprint.py` reads the declarations and fails on layer order, visibility, grid, census, focal, budget, printed-label, contrast, or CSS-moved marks. `scripts/test-verify-service-blueprint.py` proves both polarities — the Upstream examples pass, and each mutation class above fails with a named finding.

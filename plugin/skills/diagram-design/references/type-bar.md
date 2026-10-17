@@ -99,10 +99,4 @@ Values 34 and 71 on a 0–100 domain compute to 458.4 and 739.6, rounded to 458 
 
 Two of these rules live in a formula rather than a drawing, so they are executable: `scripts/verify-dumbbell.py` resolves the domain over every sign case and asserts finite coordinates and 3:1 marks, and `scripts/test-verify-dumbbell.py` exercises both polarities — including all-zero and zero-touching data, and the sub-3:1 treatments this replaced. The checker reads the tokens out of this file, so prose and thresholds cannot drift apart. A shipped dumbbell example would additionally owe a check of drawn positions against the values printed at them.
 
-## Examples
-
-- `assets/example-bar.html` — minimal light
-- `assets/example-bar-dark.html` — minimal dark
-- `assets/example-bar-full.html` — full editorial
-
 Dumbbell domain resolution retains finite bounds for representable subnormal and extreme values. If the next nice ladder step would overflow, the finite extreme is used; opposite-sign extreme domains are scaled without overflowing their span.
