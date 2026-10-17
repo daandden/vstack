@@ -584,7 +584,7 @@ async function gates(root: string, opts: UpstreamOptions, scratch: string | unde
     }
     if (!smoke.ok) {
       const retained = maintainEntry(root, scratch);
-      cpSync(out, retained, { recursive: true });
+      cpSync(out, retained, { recursive: true, filter: src => !/[/\\]\.omp[/\\]natives$/.test(src) });
       smoke.output += `\nSmoke output retained at ${retained}`;
     }
   } finally { rmSync(out, { recursive: true, force: true }); }

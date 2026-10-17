@@ -18,6 +18,7 @@ PLUGIN=$(cd "$1" && pwd)
 OUT=${2:-$(mktemp -d /tmp/vstack-load-smoke.XXXXXX)}
 H="$OUT/home"; P="$OUT/proj"
 mkdir -p "$H/.omp/agent" "$P"
+trap 'rm -rf "$H/.omp/natives"' EXIT
 # Clean env: no inherited PI_*/OMP_* vars from a parent omp session, real HOME hidden.
 run() { env -i PATH="$PATH" HOME="$H" TERM=dumb "$@"; }
 if [ -n "${SMOKE_HOME_SEED:-}" ]; then cp -R "$SMOKE_HOME_SEED"/. "$H"/; fi
