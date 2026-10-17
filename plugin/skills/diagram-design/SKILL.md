@@ -1,6 +1,6 @@
 ---
 name: diagram-design
-description: Create branded architecture, architecture delta, IT current-state, flowchart, sequence, state machine, ER/data model, timeline, swimlane, quadrant, radar/spider, polar chart (polar/radial lollipop), loop/flywheel, nested, tree, org chart, layer stack, exploded axonometric, axonometric plan, Venn, pyramid/funnel, treemap and marimekko, heatmap, bar and dumbbell, waterfall, line (slopegraph, ridgeline, streamgraph, bump), Gantt and scatter charts (bubble, beeswarm), high-level, process, medallion, data flow, DP integration, DP security matrix, Sankey, fishbone, Wardley map, kanban, user journey, service blueprint, deployment, dependency graph, UML class, story map, or database schema diagrams as HTML/SVG/PNG, with .drawio, Mermaid, and .excalidraw import, plus lifecycle phase maps, block decomposition trees, and onboarding guidance.
+description: Create branded architecture, architecture delta, IT current-state, flowchart, sequence, state machine, ER/data model, timeline, swimlane, quadrant, radar/spider, polar chart (polar/radial lollipop), loop/flywheel, nested, tree, org chart, layer stack, exploded axonometric, axonometric plan, Venn, pyramid/funnel, treemap and marimekko, heatmap, bar and dumbbell, waterfall, line (slopegraph, ridgeline, streamgraph, bump), Gantt and scatter charts (bubble, beeswarm), high-level, process, medallion, data flow, DP integration, DP security matrix, Sankey, fishbone, Wardley map, kanban, user journey, service blueprint, deployment, dependency graph, UML class, story map, or database schema diagrams as HTML/SVG/PNG, with .drawio, Mermaid, and .excalidraw import, plus lifecycle phase maps and block decomposition trees.
 license: MIT
 metadata:
   version: "2.6"
@@ -16,23 +16,7 @@ Forty-five visual types. Semantic patterns describe behavior; type references de
 
 ---
 
-## 0. First-time setup — style guide gate
-
-**Before generating your first diagram in a new project, verify the project has picked a profile.**
-
-Do not silently ship default-skinned diagrams into a branded project.
-
-First read the project's `diagram-profile:` line per [`references/profiles.md`](references/profiles.md), using the parent's supplied absolute vstack root and mode. That reference owns config-path resolution, failures, the protected default, and save behavior. A valid line selects its profile from `~/.vstack/diagram-design/profiles/` and bypasses this gate.
-
-The installed [`references/style-guide.md`](references/style-guide.md) is the shipped skin. Never write it; every customization is saved as a profile.
-
-With no valid profile line, ask once with `ask` (question: "This is the first diagram in this project. Which skin?"; options: website URL, installed skill, local folder or design system, paste tokens, keep the shipped default, load a saved profile).
-
-Then branch per the matching section of [`references/onboarding.md`](references/onboarding.md); for "load a saved profile" follow `load` in [`references/profiles.md`](references/profiles.md).
-
-Every answer ends in a profile: onboarding saves its guide as a named profile, and "keep the shipped default" selects `default`. Then ask with `ask` whether to write `diagram-profile: <slug>` into the project config; write it only on a yes. With the line in place the gate does not run again in this project; without it, the next session asks again.
-
-When another skill called diagram-design, put the gate question through `ask` the same way: the caller's run waits for the answer. A subagent uses `default` for this figure and returns the gate question in its result.
+## 0. Setup
 
 For diagnostics, health checks, first-run troubleshooting, or the diagram-design doctor, read [Environment doctor](references/doctor.md).
 
@@ -191,11 +175,11 @@ Type-specific anti-patterns live in each type reference linked in the guide.
 
 ## 5. Design System
 
-**The design system is skinnable.** [`references/style-guide.md`](references/style-guide.md) is the shipped skin and the shape of every profile: colors, typography, tokens, and the default palette; this file names semantic roles (`paper`, `ink`, `muted`, `accent`, `link`, …). The effective style guide is the project's profile (§0). To apply a brand, run a flow in [`references/onboarding.md`](references/onboarding.md), which saves a profile; never edit `style-guide.md`.
+**The design system is fixed.** [`references/style-guide.md`](references/style-guide.md) holds the colors, typography, and tokens. This file names semantic roles (`paper`, `ink`, `muted`, `accent`, `link`, …).
 
-> When specs below or in type references mention "ink", "accent", "muted", etc., look up the current hex value in the effective style guide (the project's profile, else `style-guide.md`).
+> When specs below or in type references mention "ink", "accent", "muted", etc., look up the current hex value in `style-guide.md`.
 
-Type-reference snippets write roles as placeholders: `{ink}`, `{ink @ 0.40}` for a role at an opacity, and `{node-name}`, `{sublabel}`, `{eyebrow}`, `{arrow-label}`, `{title}`, `{callout}` for fonts. Resolve every placeholder against the effective style guide (§5) before emitting.
+Type-reference snippets write roles as placeholders: `{ink}`, `{ink @ 0.40}` for a role at an opacity, and `{node-name}`, `{sublabel}`, `{eyebrow}`, `{arrow-label}`, `{title}`, `{callout}` for fonts. Resolve every placeholder against `style-guide.md` before emitting.
 
 ### Semantic roles (at a glance)
 
@@ -346,7 +330,7 @@ Every diagram ships in three variants (see `assets/`):
 
 **Sketchy variant** (optional, applied to any of the above): a hand-drawn stroke filter for essays, not technical docs. See [primitive-sketchy.md](references/primitive-sketchy.md).
 
-**Terminal variant** (optional, replaces any of the above): CLI-window chrome for dev-tool posts. Start from `assets/template-terminal.html` and follow [primitive-terminal.md](references/primitive-terminal.md); examples are named `example-<type>-terminal.html`. Not brand-tokenized, so skip it for onboarded output.
+**Terminal variant** (optional, replaces any of the above): CLI-window chrome for dev-tool posts. Start from `assets/template-terminal.html` and follow [primitive-terminal.md](references/primitive-terminal.md); examples are named `example-<type>-terminal.html`. It keeps its own fixed palette.
 
 **Animation** (optional presentation layer) — see [animation.md](references/animation.md). Modes are `none` (default), `reveal`, `step`, and `loop`; motion never changes the static meaning or raises the complexity budget.
 

@@ -868,7 +868,7 @@ items:
     tree: d7d66b45810294ae98e8a2c1de72d4ce9af80616
     disposition: adapt
     artifacts: [plugin/skills/diagram-design]
-    reason: "ask-tool covers its questions; onboarding must not write the shipped copy (#60)."
+    reason: "put the style into the skill instead of making the user choose it"
   - id: css/good-css
     upstream: css
     kind: skill

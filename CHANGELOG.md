@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.30] - 2026-10-17
+
+- diagram-design draws in any project without a skin question. The style gate, the onboarding and profiles references, and the profile verbs are gone, and the skill never reads or writes a project config for diagrams. Drawers read the shipped `references/style-guide.md`. A vstack-figures brief names light or dark and no profile, a caller that runs as a subagent returns no skin question, grilling-page asks for the dark variant only, and vstack-diagram-drawer drops its style-gate wording. The `diagram-profiles` House style row and this repo's `docs/vstack/diagram.md` are removed. Files in `~/.vstack/diagram-design/profiles/` stay where they are, and nothing reads them (ADR 0027, supersedes parts of ADR 0011 and 0023, #152).
+
 ## [2.0.29] - 2026-10-17
 
 - migrate-to-vstack no longer turns an old `.diagram-design` marker into a `diagram-profile:` line, in Standard or Private mode, and no longer moves `~/.diagram-design/profiles/` to `~/.vstack/diagram-design/profiles/`. The marker and every home profile file stay where they are, and vstack does not read them. Migration has no cleanup step for them. A failed profile move can no longer keep the old private rule, because no profile move runs (#153).

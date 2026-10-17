@@ -4,7 +4,7 @@ Routed from SKILL.md §6. SKILL.md keeps the six connector rules as one line eac
 
 Type-specialized primitives (lifeline, activation bar, region) live in the relevant type reference linked in SKILL.md §3.
 
-Snippets here and in every type reference name colors and fonts by role, never by value: `{ink}`, `{muted}`, `{paper}`, `{accent}`, `{link}`, `{soft}` for colors, `{ink @ 0.10}` for a role at an opacity, and `{title}`, `{node-name}`, `{sublabel}`, `{eyebrow}`, `{arrow-label}`, `{callout}` for font families. Resolve each against the active skin (the project's profile, else [`style-guide.md`](style-guide.md)) before emitting: `{ink @ 0.10}` becomes the `ink` color as `rgba(r,g,b,0.10)`, and `{sublabel}` becomes that role's full family stack. Uppercase names (`X`, `FILL`, `STROKE`) are geometry and per-node values you compute.
+Snippets here and in every type reference name colors and fonts by role, never by value: `{ink}`, `{muted}`, `{paper}`, `{accent}`, `{link}`, `{soft}` for colors, `{ink @ 0.10}` for a role at an opacity, and `{title}`, `{node-name}`, `{sublabel}`, `{eyebrow}`, `{arrow-label}`, `{callout}` for font families. Resolve each against [`style-guide.md`](style-guide.md) before emitting: `{ink @ 0.10}` becomes the `ink` color as `rgba(r,g,b,0.10)`, and `{sublabel}` becomes that role's full family stack. Uppercase names (`X`, `FILL`, `STROKE`) are geometry and per-node values you compute.
 
 ## Background
 
