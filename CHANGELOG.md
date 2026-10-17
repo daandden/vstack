@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.26] - 2026-10-17
+
+- maintain-app-verification passes the directory it read its Verify skill from to `commit.ts state` and `commit.ts commit` as `--target <dir>`. Both refuse with exit 2, before any staging, when that directory is not `.omp/skills/verify-<app>/`, such as a Verify skill under `.claude/skills/`. Such a run is not a committing run. Maintenance tells the user that vstack commits only `.omp/skills/verify-<app>/`, continues, and leaves its corrections uncommitted.
+
 ## [2.0.25] - 2026-10-17
 
 - setup-app-verification and maintain-app-verification commit their Standard-mode output when they run on their own: setup when it finishes, and maintenance on a `changed` outcome. Under implement or open-pr, they hand the output back, and implement reviews and commits it in step 6 as before. Private mode commits nothing. The new `setup-app-verification/scripts/commit.ts` refuses in Private mode, for a missing directory or SKILL.md, and for a symlinked Verify skill. It stages only `.omp/skills/verify-<app>/`, deletions included, and commits it alone on the current branch. Its `state` subcommand reports uncommitted changes in that directory, so the run can ask before it starts. setup-vstack is unchanged.

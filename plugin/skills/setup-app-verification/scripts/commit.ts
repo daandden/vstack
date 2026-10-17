@@ -1,12 +1,14 @@
 // The Standard-mode commit of a Verify skill, for setup-app-verification and maintain-app-verification (ADR 0009).
 //
-//   bun commit.ts state --app <app>                  JSON facts: mode, the Verify skill dir, and whether it has uncommitted changes
-//   bun commit.ts commit --app <app> --title <t>     Standard mode: commit .omp/skills/verify-<app>/, and only it, on the current branch
+//   bun commit.ts state --app <app> [--target <dir>]                  JSON facts: mode, the Verify skill dir, and whether it has uncommitted changes
+//   bun commit.ts commit --app <app> --title <t> [--target <dir>]     Standard mode: commit .omp/skills/verify-<app>/, and only it, on the current branch
 //
-// Run from inside the repo. Exit codes: 0 done; 2 usage error, not in a git repo, or a refused commit.
+// --target names the directory the caller's Verify skill was read from. Both commands refuse when it is not .omp/skills/verify-<app>.
+//
+// Run from inside the repo. Exit codes: 0 done; 2 usage error, not in a git repo, a target mismatch, or a refused commit.
 
 import { existsSync, lstatSync, realpathSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 
 function fail(message: string): never {
   console.error(message);
@@ -26,7 +28,13 @@ function gitOrDie(cwd: string, ...args: string[]): string {
 
 const isDir = (p: string) => existsSync(p) && statSync(p).isDirectory();
 
-function repoState(cwd: string, app: string) {
+// The real parent plus the last name. A link at the last name stays a link, so commit's symlink refusal still sees it.
+function canonical(p: string): string {
+  const parent = dirname(p);
+  return join(existsSync(parent) ? realpathSync(parent) : parent, basename(p));
+}
+
+function repoState(cwd: string, app: string, target?: string) {
   const top = git(cwd, "rev-parse", "--show-toplevel");
   if (top.code !== 0) fail("not inside a git repository: run this inside the app's git checkout");
   const root = realpathSync(top.stdout);
@@ -34,14 +42,17 @@ function repoState(cwd: string, app: string) {
   const vstackRoot = join(commonDir, "vstack");
   const mode = isDir(join(vstackRoot, "config")) ? "private" : "standard";
   const dir = `.omp/skills/verify-${app}`;
+  if (target !== undefined && canonical(resolve(cwd, target)) !== canonical(join(root, dir))) {
+    fail(`refusing: ${target} is not ${dir}; vstack commits only that directory`);
+  }
   // Staged, unstaged, deleted, and untracked files all count: each would go into the commit.
   const dirty = git(root, "status", "--porcelain", "--untracked-files=all", "--", dir).stdout !== "";
   return { root, vstack_root: vstackRoot, mode, dir, dirty };
 }
 
-function commit(cwd: string, app: string, title: string | undefined) {
+function commit(cwd: string, app: string, title: string | undefined, target: string | undefined) {
   if (!title?.trim()) fail("commit needs --title <commit title>");
-  const s = repoState(cwd, app);
+  const s = repoState(cwd, app, target);
   if (s.mode === "private") fail(`refusing to commit: Private mode is on (${s.vstack_root}/config/ exists), and Private mode commits nothing`);
 
   const abs = join(s.root, s.dir);
@@ -68,16 +79,18 @@ function flag(argv: string[], name: string): string | undefined {
 }
 
 function main(argv: string[]) {
-  const usage = "Usage: commit.ts state --app <app>\n       commit.ts commit --app <app> --title <commit title>";
+  const usage = "Usage: commit.ts state --app <app> [--target <dir>]\n       commit.ts commit --app <app> --title <commit title> [--target <dir>]";
   const app = flag(argv, "--app");
   if (!app || !/^[A-Za-z0-9._-]+$/.test(app) || app.startsWith(".")) fail(`${usage}\n<app> is the name after verify- in .omp/skills/verify-<app>`);
+  const target = flag(argv, "--target");
+  if (argv.includes("--target") && !target) fail(`${usage}\n--target needs the directory the Verify skill's SKILL.md was read from`);
   const cwd = process.cwd();
   if (argv[0] === "state") {
-    console.log(JSON.stringify(repoState(cwd, app), null, 2));
+    console.log(JSON.stringify(repoState(cwd, app, target), null, 2));
     return;
   }
   if (argv[0] === "commit") {
-    commit(cwd, app, flag(argv, "--title"));
+    commit(cwd, app, flag(argv, "--title"), target);
     return;
   }
   fail(usage);

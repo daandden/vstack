@@ -146,6 +146,45 @@ test("state reports the mode, the directory, and whether the directory has uncom
   expect(state(priv).mode).toBe("private");
 });
 
+test("with a --target outside .omp/skills/verify-<app>, state and commit refuse and leave HEAD and the index unchanged", () => {
+  const repo = makeRepo({ ...SKILL, "README.md": "# app\n", ".claude/skills/verify-web/SKILL.md": "# Verify web, other home\n" });
+  // Both homes have changes, and unrelated work is staged.
+  writeFiles(repo, {
+    [`${DIR}/SKILL.md`]: "# Verify web, edited\n",
+    ".claude/skills/verify-web/SKILL.md": "# Verify web, other home, edited\n",
+    "README.md": "# app, staged\n",
+  });
+  git(repo, "add", "README.md");
+  const before = head(repo);
+
+  for (const target of [".claude/skills/verify-web", join(repo, ".claude", "skills", "verify-web")]) {
+    for (const r of [run(repo, "state", "--app", "web", "--target", target), run(repo, "commit", "--app", "web", "--title", "fix(verify-web): x", "--target", target)]) {
+      expect(r.code).toBe(2);
+      expect(r.stderr).toContain(`refusing: ${target} is not ${DIR}`);
+      expect(r.stdout).toBe("");
+    }
+  }
+  expect(head(repo)).toBe(before);
+  expect(git(repo, "diff", "--cached", "--name-only")).toBe("README.md");
+});
+
+test("a --target that names .omp/skills/verify-<app>, absolute or relative, behaves as without one", () => {
+  const repo = makeRepo({ ...SKILL, "src/a.ts": "a\n" });
+  writeFiles(repo, { [`${DIR}/features/login.md`]: "# Login\n" });
+  const sub = join(repo, "src");
+
+  for (const [cwd, target] of [[repo, DIR], [repo, `./${DIR}/`], [sub, `../${DIR}`], [sub, join(repo, DIR)]]) {
+    const r = run(cwd!, "state", "--app", "web", "--target", target!);
+    expect(r.code).toBe(0);
+    expect(JSON.parse(r.stdout)).toMatchObject({ mode: "standard", dir: DIR, dirty: true });
+  }
+
+  const r = run(sub, "commit", "--app", "web", "--title", "fix(verify-web): login", "--target", join(repo, DIR));
+  expect(r.code).toBe(0);
+  expect(JSON.parse(r.stdout).commit).toBe(head(repo));
+  expect(committed(repo)).toEqual([`A\t${DIR}/features/login.md`]);
+});
+
 test("outside a git repo, state and commit exit 2", () => {
   const plain = join(dir, "plain");
   mkdirSync(plain, { recursive: true });

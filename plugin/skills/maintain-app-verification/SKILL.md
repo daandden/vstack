@@ -36,7 +36,7 @@ For a Private-mode target with no link, create an absolute `.omp/skills/verify-<
 
 Read the target skill and follow its helper paths relative to the directory its SKILL.md was read from. Resolve Scratch through `skill://vstack-tmp` at the top level, or use the parent's Scratch dir. Keep run notes and proof at `<Scratch dir>/verify/<app>-<run-id>/`, and throwaway app data in its `data/`. Never commit those paths.
 
-On a committing run, run the dirty check now, before any edit, as skill://setup-app-verification step 2 says.
+On a committing run, run the dirty check now, before any edit, as skill://setup-app-verification step 2 says. Add `--target <dir>`, where `<dir>` is the directory the target's SKILL.md was read from. If `state` refuses because the target is not `.omp/skills/verify-<app>/`, the run is not a committing run. Tell the user in one line that vstack commits only `.omp/skills/verify-<app>/`. Then continue, and leave the corrections uncommitted.
 
 ## 1. Index hygiene
 
@@ -76,6 +76,6 @@ Fix wrong or missing user-POV instructions and harness gaps that prevent driving
 
 ## 6. Commit and report
 
-For `changed`, re-read every changed file. Then, on a committing run, commit as skill://setup-app-verification step 5 says. If no title convention is visible, use `fix(verify-<app>): <feature>`, where `<feature>` names each fixed feature. If `commit.ts` refuses, report the corrections as uncommitted.
+For `changed`, re-read every changed file. Then, on a committing run, commit as skill://setup-app-verification step 5 says, with the same `--target`. If no title convention is visible, use `fix(verify-<app>): <feature>`, where `<feature>` names each fixed feature. If `commit.ts` refused in step 0 or refuses here, report the corrections as uncommitted.
 
 Return the outcome, coverage, changed files, the commit or the caller that commits the output, evidence and run-note paths, and product findings. Private-mode output stays untracked. For `clean`, there is nothing to commit. For `blocked`, leave any edits uncommitted. Report the outcome and coverage honestly.
