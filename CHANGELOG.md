@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.23] - 2026-10-17
+
+- vstack-maintain prepare preserves comments, quoting, flow style, key order, and untouched YAML text through the yaml Document and source-token APIs. The plugin manifest changes only at its version value. An edit target can set every matching adapt row's one-line reason without an Update plan. Clones and CI install the locked yaml dependency before running maintainer commands (#146).
+
 ## [2.0.22] - 2026-10-16
 
 - During a Matt run, the jev judge also picks principles for the brief of a `vstack-explorer`, `vstack-worker`, or `vstack-verifier` subagent. It reads the subagent's first prompt without omp's `Complete assignment thoroughly:` line, through the same cleaner stages but squeezed to 10,000 characters, and asks the 20 principle questions, every principle except never-block-on-the-human. The state holds the new `brief_preamble` from `addon-questions.json`, which tells jev to read "the user" as the brief's author. A subagent finds the top-level session that started it through the `parentId` chain, also from a nested subagent, and gets picks only when that session is in a Matt run. Later prompts in the subagent session, the diagram drawer, the comment critic, omp's own agents, and `/tan` clones get none. The deadline, the retry, and the silent skips match the main session, and the hidden message has no sentence about which rule wins. `scripts/addon-judge-check.ts` takes a corpus path, and the new `sample-briefs.json` holds 17 real briefs from past Matt runs, with private paths and names replaced, and baselines from 3 runs per brief. The check now flags an unexpected, non-allowed pick over 0.85, not 0.80, in both corpora, because `verifier-ship-pr` scores `principle-encode-the-domain` at 0.81 on a brief that does not fit it. With fresh baselines, 17/17 briefs and 131/131 prompts pass with 0 flags. check-register's new `brief-sample-mismatch` class fails a brief sample with an empty `prompt` or a label that is not one of the 20 subagent questions (ADR 0025, amends ADR 0002, 0018, and 0024).

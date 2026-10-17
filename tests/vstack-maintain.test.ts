@@ -105,6 +105,65 @@ test("check reads a rejected take through fake GitHub at the current Pin", async
   finally { server.stop(true); }
 }, 30000);
 
+test("prepare leaves unchanged bookkeeping byte-identical and changes only the manifest version", async () => {
+  const f = fixture();
+  const pins = `# Pins keep their comments.\nupstreams: ${JSON.stringify((Bun.YAML.parse(read(f.root, "pins.yaml")) as any).upstreams)} # Flow map\n`;
+  const style = `# House style keeps its comments.\n${read(f.root, "house-style.yaml")}`;
+  const reg = `# Decision register header.\n${read(f.root, "decision-register.yaml")}`.replace(/artifacts: *\n      - (plugin\/skills\/[^\n]+)/g, 'artifacts: ["$1"] # Flow list');
+  const manifest = '{\n  "name": "vstack", "version" : "0.1.0",\n  "omp": {"extensions": ["./extensions/vstack.ts"]}\n}\n';
+  writeFiles(f.root, { "pins.yaml": pins, "house-style.yaml": style, "decision-register.yaml": reg, "plugin/package.json": manifest });
+  git(f.root, "add", "-A"); git(f.root, "commit", "-qm", "formatted bookkeeping");
+  const r = await f.run(f.root, ["prepare", "--decisions", choices(f, undefined, [{ action: "edit", kind: "skill", artifact: "plugin/skills/wording" }])]);
+  expect(r.code).toBe(0);
+  expect(read(f.root, "decision-register.yaml")).toBe(reg);
+  expect(read(f.root, "pins.yaml")).toBe(pins);
+  expect(read(f.root, "house-style.yaml")).toBe(style);
+  expect(read(f.root, "plugin/package.json")).toBe(manifest.replace('"0.1.0"', '"0.1.1"'));
+}, 30000);
+
+test("prepare changes only an adapt reason inside a flow row", async () => {
+  const f = fixture();
+  const data = register(f.root);
+  data.items.find((row: any) => row.id === "matt/wording").reason = "Existing adaptation.";
+  const before = `# Decision register header.\nitems:\n${data.items.map((row: any) => `  - ${JSON.stringify(row)} # ${row.id}\n`).join("")}originals: []\n`;
+  writeFiles(f.root, { "decision-register.yaml": before });
+  git(f.root, "add", "-A"); git(f.root, "commit", "-qm", "flow register");
+  const target = { action: "edit", kind: "skill", artifact: "plugin/skills/wording", reason: "Updated adaptation." };
+  const r = await f.run(f.root, ["prepare", "--decisions", choices(f, undefined, [target])]);
+  expect(r.code).toBe(0);
+  expect(register(f.root).items.find((row: any) => row.id === "matt/wording").reason).toBe("Updated adaptation.");
+  expect(read(f.root, "decision-register.yaml")).toBe(before.replace('"Existing adaptation."', '"Updated adaptation."'));
+}, 30000);
+
+test("prepare preserves flow descendants and comments when an Update adds Hold fields and rows", async () => {
+  const f = fixture(); const data = register(f.root);
+  const kept = JSON.stringify(data.items.find((row: any) => row.id === "matt/keep"));
+  const source = `# Register header.\nitems: [${data.items.map((row: any) => JSON.stringify(row)).join(",")}] # Items footer.\noriginals: []\n`;
+  writeFiles(f.root, { "decision-register.yaml": source });
+  git(f.root, "add", "-A"); git(f.root, "commit", "-qm", "flow collection");
+  const { plan, path } = await planned(f);
+  const r = await f.run(f.root, ["prepare", "--plan", path, "--decisions", choices(f, plan)]);
+  expect(r.code).toBe(0);
+  const result = read(f.root, "decision-register.yaml");
+  expect(result).toContain(kept);
+  expect(result).toStartWith("# Register header.\n");
+  expect(result).toContain('"artifacts":["plugin/skills/wording"]');
+  expect(result).toContain("] # Items footer.");
+  expect(register(f.root).items.find((row: any) => row.id === "matt/wording").held_at).toBe("v1.1.0");
+  expect(register(f.root).items.find((row: any) => row.id === "matt/fresh").disposition).toBe("reject");
+}, 30000);
+
+test("prepare refuses invalid edit reasons before writing bookkeeping", async () => {
+  const f = fixture(); const before = state(f.root);
+  for (const reason of ["", "   ", "First line.\nSecond line."]) {
+    const target = { action: "edit", kind: "skill", artifact: "plugin/skills/wording", reason };
+    const r = await f.run(f.root, ["prepare", "--decisions", choices(f, undefined, [target])]);
+    expect(r.code).toBe(2);
+    expect(JSON.parse(r.stdout).reason).toContain("reason needs one line");
+    expect(state(f.root)).toEqual(before);
+  }
+}, 30000);
+
 test("prepare keeps earlier ticket rows and CHANGELOG lines and raises the version above HEAD", async () => {
   const f = fixture(); git(f.root, "checkout", "-qb", "feature");
   writeFiles(f.root, { "plugin/rules/first.md": "First rule.\n" });
@@ -252,11 +311,14 @@ test("read-only commands refuse a cache within any checkout", async () => {
 
 test("prepare preserves a rename's callers, confirmed adopt flip, and House style row", async () => {
   const f = fixture();
+  writeFiles(f.root, { "decision-register.yaml": read(f.root, "decision-register.yaml").replace(/- plugin\/skills\/wording\n/, '- "plugin/skills/wording" # Keep the artifact annotation.\n') });
+  git(f.root, "add", "-A"); git(f.root, "commit", "-qm", "annotated artifact");
   const { renameSync } = await import("node:fs"); renameSync(join(f.root, "plugin/skills/wording"), join(f.root, "plugin/skills/phrasing"));
   writeFiles(f.root, { "plugin/skills/phrasing/SKILL.md": "---\nname: phrasing\ndescription: Phrase notes\n---\nPhrase the notes.\n", "plugin/skills/keep/SKILL.md": "---\nname: keep\ndescription: Keep notes\n---\nRun skill://phrasing after.\n" });
   const file = choices(f, undefined, [{ action: "rename", kind: "skill", artifact: "plugin/skills/wording", to: "plugin/skills/phrasing" }, { action: "edit", kind: "skill", artifact: "plugin/skills/keep", flip: { confirmed: true, reason: "The caller uses the new name." } }]);
   const r = await f.run(f.root, ["prepare", "--decisions", file]); expect(r.code).toBe(0); expect(r.plan.version).toBe("1.0.0");
   expect(register(f.root).items.find((x: any) => x.id === "matt/wording").artifacts).toEqual(["plugin/skills/phrasing"]);
+  expect(read(f.root, "decision-register.yaml")).toContain('"plugin/skills/phrasing" # Keep the artifact annotation.');
   expect(read(f.root, "house-style.yaml")).toContain("rename-wording"); expect(read(f.root, "plugin/skills/keep/SKILL.md")).toContain("skill://phrasing");
 }, 30000);
 
