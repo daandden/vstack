@@ -273,6 +273,8 @@ Project tests run these commands over throwaway repos. The runtime shares the ma
 
 `skill://vstack-maintain` is the Addon for Updates and Hand edits to vstack. The grill gathers facts and confirms decisions. implement's isolated drafting worker writes the text and runs the script's bookkeeping and gates in its own clone. implement applies the gated patch and owns git and the End state.
 
+Run `bun install --frozen-lockfile` in each clone before running these commands.
+
 ```sh
 bun scripts/vstack-maintain.ts plan [--scratch <dir>] [<upstream>|<upstream>@<ref> ...]
 bun scripts/vstack-maintain.ts merge --plan <plan.json> [--decisions <file>]
@@ -315,7 +317,11 @@ Each Update decision has a unique `id` and an `action` (`accept`, `hold`, or `de
 
 Each Hand edit target has `action` (`add`, `edit`, `take`, `rename`, or `remove`), `kind` (`skill`, `agent`, or `rule`), and `artifact`. Artifact paths use `plugin/skills/<name>`, `plugin/agents/<name>.md`, or `plugin/rules/<name>.md`. A take adds `upstream`, `path`, and `reason`. A rename adds `to`. An adopt edit or rename needs `flip: { "confirmed": true, "reason": "..." }`. A removal that leaves a register row with no artifacts needs a reason. Each target appears once.
 
+An `edit` target can also carry an optional, nonempty, one-line `reason`. `prepare` applies it to every adapt row that lists the artifact. Other Dispositions keep their reasons, and an adopt flip still uses `flip.reason`.
+
 `prepare` validates decisions before its first checkout write. It reads bookkeeping from HEAD, not from earlier uncommitted bookkeeping. Its version exceeds HEAD's version, with at most one major bump per branch. Hold preserves the old contribution while current Pins and item identities move. The grill records moved refs and confirmed decisions. implement reruns `plan` at those refs and stops with a report if the row set differs.
+
+`prepare` uses the `yaml` package's Document and source-token APIs to keep comments, quoting, flow style, key order, and untouched text. It changes only the version value in `plugin/package.json`.
 
 #### Plan JSON
 

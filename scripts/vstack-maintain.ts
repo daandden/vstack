@@ -10,6 +10,7 @@ import { applyRows, findRow, parseHouseStyle, selectRows, type MatchKind, type R
 import { asText, cloneSource, githubSource, defaultUpstreamRemote, defaultUpstreamsDir, fetchRefs, readBlobs, writeEntry, syncClone, newestTag, newestCommit, compareSemverTags, hasTag, resolveRef, isAncestor, gitBlobSha, type UpstreamSource, type UpstreamTree } from "./lib/upstreams.ts";
 import { loadPins, loadRegister, loadHouseStyle, NEVER_SHIPPED, parseRegister, upstreamItems, type Pin, type Register } from "./lib/vstack-repo.ts";
 import { repoKey, scratchRoot } from "../plugin/skills/vstack-tmp/scripts/scratch.ts";
+import { manifestVersion, yamlBookkeeping } from "./lib/bookkeeping.ts";
 
 const scriptRoot = resolve(import.meta.dir, "..");
 const HEAD = "HEAD";
@@ -17,8 +18,12 @@ const TARGET = /^plugin\/(?:(skills)\/([a-z0-9-]+)|(agents|rules)\/([a-z0-9-]+)\
 const KIND = { skills: "skill", agents: "agent", rules: "rule" } as const;
 const git = (cwd: string, ...args: string[]) => run(["git", ...args], cwd);
 const readJson = (file: string) => JSON.parse(readFileSync(file, "utf8"));
-const atHead = (root: string, file: string) => git(root, "show", `HEAD:${file}`);
-const yamlHead = (root: string, file: string): any => Bun.YAML.parse(atHead(root, file));
+function atHead(root: string, file: string) {
+  const result = Bun.spawnSync(["git", "show", `HEAD:${file}`], { cwd: root, stdout: "pipe", stderr: "pipe" });
+  if (result.exitCode !== 0) throw new Error(result.stderr.toString().trim());
+  return result.stdout.toString();
+}
+const yamlHead = (root: string, file: string) => yamlBookkeeping(atHead(root, file));
 type Plan = PlanBody & { schema: number; moved: boolean; root: string; out: string };
 function planAt(file: string): Plan {
   const p = readJson(file);
@@ -378,6 +383,7 @@ async function validateTargets(root: string, targets: HandTarget[], opts: Upstre
     if (!["add", "edit", "rename", "remove"].includes(t.action)) throw new Error(`unknown target action ${t.action}`);
     const c = classify(root, pins, register, t.artifact, t.action !== "rename" && t.action !== "remove");
     if ((t.action === "add") !== (c.action === "add")) throw new Error(`${t.artifact}: action does not match HEAD`);
+    if (t.action === "edit" && t.reason !== undefined && !oneLine(t.reason)) throw new Error(`${t.artifact}: reason needs one line`);
     if (t.action === "edit" || t.action === "rename") {
       if (c.dispositions.includes("adopt") && (t.flip?.confirmed !== true || !oneLine(t.flip.reason))) throw new Error(`${t.artifact}: adopt needs a confirmed flip and reason`);
       if (!c.dispositions.includes("adopt") && t.flip) throw new Error(`${t.artifact}: only adopt takes a flip`);
@@ -446,7 +452,8 @@ function shippedNames(doc: any): Set<string> {
   return names;
 }
 async function prepare(root: string, file: string, p: Plan | undefined, opts: UpstreamOptions) {
-  const d = decisionsAt(file), doc = yamlHead(root, "decision-register.yaml"), pins = yamlHead(root, "pins.yaml"), style = yamlHead(root, "house-style.yaml");
+  const d = decisionsAt(file), registerFile = yamlHead(root, "decision-register.yaml"), pinsFile = yamlHead(root, "pins.yaml"), styleFile = yamlHead(root, "house-style.yaml");
+  const doc = registerFile.value, pins = pinsFile.value, style = styleFile.value;
   const { taken, renames } = await validateTargets(root, d.targets, opts);
   const copies: { source: string; artifact: string }[] = [];
   const shippedAtHead = shippedNames(doc);
@@ -520,6 +527,7 @@ async function prepare(root: string, file: string, p: Plan | undefined, opts: Up
     if (t.action === "add") doc.originals.push(t.artifact);
     for (const row of doc.items) {
       if (!row.artifacts.includes(t.artifact)) continue;
+      if (t.action === "edit" && t.reason !== undefined && row.disposition === "adapt") row.reason = t.reason;
       if (t.flip && row.disposition === "adopt") { row.disposition = "adapt"; row.reason = t.flip.reason; }
       if (t.action === "rename") row.artifacts = row.artifacts.map((a: string) => a === t.artifact ? t.to : a);
       if (t.action === "remove") { row.artifacts = row.artifacts.filter((a: string) => a !== t.artifact); if (!row.artifacts.length) { row.disposition = "reject"; row.reason = t.reason; } }
@@ -535,17 +543,17 @@ async function prepare(root: string, file: string, p: Plan | undefined, opts: Up
   }
   for (const t of renames) { if (style.replacements.some((r: any) => r.id === t.house_style_row.id)) throw new Error(`House style row already exists: ${t.house_style_row.id}`); style.replacements.push(t.house_style_row); }
   const shipped = shippedNames(doc), breaking = [...shippedAtHead].some(name => !shipped.has(name));
-  const version = nextVersion(root, breaking, !!p?.moved), manifest = JSON.parse(atHead(root, "plugin/package.json")); manifest.version = version;
+  const version = nextVersion(root, breaking, !!p?.moved);
   const log = changelog(atHead(root, "CHANGELOG.md"), version, d.changelog);
   for (const c of copies) { rmSync(join(root, c.artifact), { recursive: true, force: true }); mkdirSync(dirname(join(root, c.artifact)), { recursive: true }); cpSync(c.source, join(root, c.artifact), { recursive: true, dereference: false }); }
   for (const t of taken) if (t.disposition === "adopt" || !existsSync(join(root, t.artifact))) {
     if (t.disposition === "adopt") rmSync(join(root, t.artifact), { recursive: true, force: true });
     for (const f of t.files) writeEntry(join(root, f.file), f.entry, f.bytes);
   }
-  writeFileSync(join(root, "decision-register.yaml"), Bun.YAML.stringify(doc, null, 2));
-  writeFileSync(join(root, "pins.yaml"), Bun.YAML.stringify(pins, null, 2));
-  writeFileSync(join(root, "house-style.yaml"), Bun.YAML.stringify(style, null, 2));
-  writeFileSync(join(root, "plugin/package.json"), JSON.stringify(manifest, null, 2) + "\n");
+  writeFileSync(join(root, "decision-register.yaml"), registerFile.text());
+  writeFileSync(join(root, "pins.yaml"), pinsFile.text());
+  writeFileSync(join(root, "house-style.yaml"), styleFile.text());
+  writeFileSync(join(root, "plugin/package.json"), manifestVersion(atHead(root, "plugin/package.json"), version));
   writeFileSync(join(root, "CHANGELOG.md"), log);
   return { version, rows: d.rows, targets: d.targets, taken: taken.map(t => ({ id: t.id, disposition: t.disposition })) };
 }

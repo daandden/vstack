@@ -5,5 +5,8 @@
   "scripts": {
     "test": "bun test --timeout 30000",
     "check-register": "bun scripts/check-register.ts"
+  },
+  "dependencies": {
+    "yaml": "^2.9.1"
   }
 }

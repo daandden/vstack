@@ -68,6 +68,8 @@ For each wave of code-review fixes that implement accepts, run the single-subage
 
 Write only in your clone and under the Scratch dir. Never commit. Run every command from your clone's root, not from a checkout path in this brief. Pass `--scratch <Scratch dir>` to every `plan` and `gates` run. Your clone has its own `.git`, so the default Scratch entry is outside the Scratch dir. Run `gates` last. Return only after `gates` passes, with each stage name and its `ok` value. If a failure remains after your fixes, return the failing stage and its evidence path.
 
+Run `bun install --frozen-lockfile` in your clone before the maintainer commands.
+
 For an Update, rerun `plan` at each stated `<upstream>@<ref>`. Compare its row set and new-item paths with the confirmed hand-off. If they differ, stop with a report of the difference. Do not apply decisions to unseen rows. Write the decisions file yourself from the confirmed decisions. For a Hand edit, rerun `check` at the current Pins for the targets and their callers.
 
 Before drafting, read `plugin/rules/vstack-writing.md` and `skill://vstack-prose`. Read `skill://skill-creator` for skill changes. Write and merge each accepted row's Upstream text into the vstack text yourself. Keep each row's effective old baseline and reason in view, especially for shared artifacts. Keep clean hunks and resolve overlaps from the actual texts. No script composes row drafts. Leave held rows' text alone.
@@ -89,6 +91,7 @@ Store the file outside your clone, under `<Scratch dir>/maintain/`. It can conta
   ],
   "targets": [
     { "action": "edit", "kind": "skill", "artifact": "plugin/skills/local-example" },
+    { "action": "edit", "kind": "skill", "artifact": "plugin/skills/adapt-example", "reason": "The edit adds the local contract." },
     { "action": "edit", "kind": "skill", "artifact": "plugin/skills/adopt-example", "flip": { "confirmed": true, "reason": "The caller needs the local contract." } },
     { "action": "add", "kind": "rule", "artifact": "plugin/rules/local-contract.md" }
   ],
@@ -98,7 +101,11 @@ Store the file outside your clone, under `<Scratch dir>/maintain/`. It can conta
 
 Update rows use `action` accept, hold, or defer. A changed Disposition uses `disposition`, `artifacts`, and `reason`. New accepted rows also need `upstream`, `path`, and a unique `id`. Removed rows use `removal` drop, original, remove-contribution, or keep-contribution. Renamed adopts use `rename` follow or keep. Keep needs `disposition: adapt` and a new reason. Hand edit actions are add, edit, take, rename, and remove. `kind` is skill, agent, or rule. Takes also need `upstream`, `path`, and `reason`. Renames need `to`. Removals that make rows reject need `reason`. `flip` belongs only to an adopt edit or rename.
 
+An `edit` target can carry an optional, nonempty, one-line `reason`. `prepare` sets that reason on every adapt row that lists the artifact. Other Dispositions keep their reasons. An adopt flip still uses `flip.reason`.
+
 Run `prepare --decisions <file> [--plan <rerun plan.json>]`. It starts from branch HEAD, not the default branch or a saved snapshot. It keeps earlier tickets' rows and CHANGELOG lines. It writes the Decision register, Pins, Hold fields, House style rows, adopt copies, takes, the version, and CHANGELOG only. The version goes above HEAD's version. Removed or renamed shipped skill or agent names need a major bump, but the branch gets at most one major bump compared with its merge base on the default branch.
+
+`prepare` keeps comments, quoting, flow style, key order, and untouched text in the YAML files. It changes only the version value in `plugin/package.json`.
 
 Run `gates` after the last change in your clone. It validates changed skill folders with skill-creator's quick_validate, runs check-register, runs `bun test`, and runs the load smoke. The smoke runs outside the home directory. The gate always deletes its temporary output directory. On failure, it copies the evidence into one Scratch entry of kind `maintain` and prints that path in the smoke stage output. Any failure blocks the patch. Fix its cause. Rerun `gates` after the final fix. No judge or sample corpus runs in this gate.
 
