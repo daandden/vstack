@@ -197,7 +197,7 @@ rules:
     scope: adapted
     allowlist: [skill-creator]
     text: |
-      Headless batch (ADR 0010): one eval cell starts every run at once, with no cap. Per run: `omp -p --model <m> --thinking <t> --approval-mode yolo --cwd <run dir> --session-dir <run dir>/session <isolation> "<prompt>"`, where <m> and <t> are the last `model_change.model` and `thinking_level_change.thinkingLevel` in `$PI_SESSION_FILE`. If `omp` cannot run, stop: <reason>.
+      Headless batch (ADR 0010): one eval cell, or one bundled launcher script, starts every run at once, with no cap, before it awaits any run. Per run: `omp -p --model <m> --thinking <t> --approval-mode yolo --cwd <run dir> --session-dir <run dir>/session <isolation> "<prompt>"`, where <m> and <t> are the last `model_change.model` and `thinking_level_change.thinkingLevel` in `$PI_SESSION_FILE`. If `omp` cannot run, stop: <reason>.
 
       <isolation>: with-skill and baseline runs use `--no-rules --config <run dir>/isolate.yml` (memory off; the overlay includes only the skills the run cites plus any staged competitors, and the run uses `--no-skills` when that list is empty; never `--no-extensions`, which also removes plugin agents). The comparator uses `--no-skills --no-rules --no-extensions` with memory off. Trigger runs add the origin project's skill directories to the overlay, the candidate description's directory first, with `*/<name>` ignored.
 

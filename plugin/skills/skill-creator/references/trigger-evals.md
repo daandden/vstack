@@ -21,16 +21,30 @@ Split the queries about 60/40 into train and test sets, keeping the should/shoul
 
 ## Run the Queries
 
-Read [evaluation.md](evaluation.md) for Scratch, the Session model and thinking extraction, child environment, process evidence and fail-stop behavior. Trigger runs keep the real environment in their own initially empty workspace subdir. Their per-run `--config` overlay disables memory and adds the origin project's skill directories to `skills.customDirectories`, so project skills and installed neighbors remain listed. Do not use the with-skill filtering flags here.
+Create the workspace under Scratch as [evaluation.md](evaluation.md) describes. Write the queries to `queries.json` in the workspace: an array of objects with `id`, `split` (`train` or `test`), `request`, and `expected`. `expected` maps each tested skill name to `true` if the query must select the skill and `false` if it must not. The `id` names the run directories of the query. It uses only lowercase letters, digits, and hyphens, and each `id` is unique. Otherwise the script exits before it writes anything.
 
-Headless batch (ADR 0010): one eval cell starts every query × three runs at once, with no cap, as `omp -p --model <m> --thinking <t> --approval-mode yolo --cwd <run dir> --session-dir <run dir>/session --config <run dir>/trigger.yml "<prompt>"`. Use the Session model and thinking level from `$PI_SESSION_FILE`. If `omp` cannot run, stop: report the process error.
+Resolve the script path relative to this skill's directory. Pass each skill directory of the origin project with its own `--skills-dir`, so project skills and installed neighbors stay listed:
 
-- Selection-only (default): include the request and instruct the run to read `SKILL.md` for every skill it would use, then stop before acting. Do not supply the expected selection.
-- Full run: send the raw request in its own workspace; observe the first skill load in the session. Use `ask` before requests with external side effects. Stop the run when the selection is visible.
+```bash
+bun scripts/trigger-evals.ts <workspace>/queries.json <workspace>/iteration-<N> --skills-dir <dir> [--candidate <workspace>/candidate/<name>] [--runs 3] [--full]
+```
 
-Score actual successful load events: a `read` tool call resolving `skill://<name>` (including `tool.read` inside eval) or the tested skill's `SKILL.md` path resolved against the run cwd (absolute or relative), paired with a non-error result. Inspect tool calls and results in the JSONL session, including eval calls that contain the read. A name in prose, the initial skill list, or an unsuccessful read is not a load. Record per-query successes/trials and the first load for full runs. Preserve the load evidence and transcript paths so another reader can reproduce the score.
+Give each batch a new `iteration-<N>` dir. If the run dir exists, the script exits before it writes anything, so old sessions never mix into new scores.
 
-For a candidate description, copy the complete skill to `<workspace>/candidate/<name>/`, change only that copy's description, and put that directory first in `skills.customDirectories`, before the origin project directories. Set `skills.ignoredSkills: ["*/<name>"]` to hide displaced installs while keeping the bare candidate. Inspect the list under the overlay and confirm exactly one bare candidate with its candidate file path. The installed file is never touched while testing. Apply an accepted description by the home rules in step 2 of SKILL.md, the rules for a vstack target included.
+Headless batch (ADR 0010): the script starts every query × three runs at once, with no cap, and waits for all of them. Each run is an `omp -p` process with the Session model and thinking level from `$PI_SESSION_FILE`. It runs in its own empty `workspace/` subdir, and its `trigger.yml` overlay turns memory off. Runs keep the real environment, `HOME` included, without the inherited `PI_*` and `OMP_*` variables. If the session file has no model or thinking record, or `omp` cannot start, the script exits with the reason. Report it and stop.
+
+- Selection-only (default): the script adds an instruction to read `SKILL.md` for every skill that applies to this request, then stop before acting. It never supplies the expected selection.
+- Full run (`--full`): the script sends the raw request. Use `ask` before requests with external side effects. When the session shows the selection, stop the run through its pid in `commands.json`.
+
+The script scores successful load events. A load is a `read` tool call that resolves `skill://<name>` or the tested skill's `SKILL.md` path against the run cwd (absolute or relative) and gets a non-error result. A `tool.read` inside eval is a load only when the eval result's `details.statusEvents` records that read with its path and no error. A name in prose, the initial skill list, eval source text, or an unsuccessful read is not a load. A trial is correct when the run loads the skill exactly when `expected` says it must. The script writes three files to the run dir:
+
+- `commands.json`: the argv, cwd, and pid of each run.
+- `results.json`: the exit code of each run and the loads in order, with the session file and line numbers of each call and result. The first load of a full run is the first entry.
+- `scores.json`: correct trials per tested skill for all queries, train, and test.
+
+A selection-only run with a nonzero `exit_code` did not finish. `scores.json` leaves it out, and `results.json` keeps it. Rerun its query in a new `iteration-<N>` before you use the score. A full run stays in the score, because a stop through its pid gives it a nonzero `exit_code`. Keep the run dir so another reader can reproduce the score.
+
+For a candidate description, copy the complete skill to `<workspace>/candidate/<name>/` and change only that copy's description. Pass that directory with `--candidate`. The overlay lists `<workspace>/candidate` first in `skills.customDirectories`, before the origin project directories, and sets `skills.ignoredSkills: ["*/<name>"]` to hide displaced installs while keeping the bare candidate. After the batch, open the result line of one candidate load from `results.json` and confirm that its `Skill file:` path is the candidate's `SKILL.md`. The installed file is never touched while testing. Apply an accepted description by the home rules in step 2 of SKILL.md, the rules for a vstack target included.
 
 ## Apply the Result
 
