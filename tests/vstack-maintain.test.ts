@@ -219,10 +219,11 @@ test("prepare takes from the Pin and requires confirmed adopt flips before any w
 
 function smokeCommands(f: ReturnType<typeof fixture>) {
   const smoke = join(f.dir, "smoke.ts");
-  writeFileSync(smoke, `import { existsSync, writeFileSync } from "node:fs";
+  writeFileSync(smoke, `import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 const [plugin, out] = process.argv.slice(2);
 console.log(JSON.stringify({ plugin, out, exists: out ? existsSync(out) : false }));
 if (out) for (const name of ["summary.json", "rpc.jsonl", "rpc.err", "skills.json", "link.txt"]) writeFileSync(out + "/" + name, "Smoke evidence: " + name);
+if (out) { mkdirSync(out + "/home/.omp/natives/1.0.0", { recursive: true }); writeFileSync(out + "/home/.omp/natives/1.0.0/pi_natives.node", "native addon"); writeFileSync(out + "/home/.omp/models.yml", "Smoke evidence: models.yml"); }
 if (process.env.FAIL_STAGE === "smoke") process.exit(1);`);
   const injected = JSON.parse(commands(f).VSTACK_MAINTAIN_COMMANDS);
   injected.smoke = [process.execPath, smoke];
@@ -278,6 +279,8 @@ test("gates --scratch retain failed smoke evidence under the supplied Scratch di
   const stage = JSON.parse(result.stdout).stages.find((s: any) => s.name === "smoke");
   expect(stage.output).toContain(`Smoke output retained at ${retained}`);
   for (const name of ["summary.json", "rpc.jsonl", "rpc.err", "skills.json", "link.txt"]) expect(read(retained, name)).toBe(`Smoke evidence: ${name}`);
+  expect(read(retained, "home/.omp/models.yml")).toBe("Smoke evidence: models.yml");
+  expect(existsSync(join(retained, "home", ".omp", "natives"))).toBe(false);
   expect(existsSync(join(f.dir, "home", ".vstack", "tmp"))).toBe(false);
 }, 30000);
 

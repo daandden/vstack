@@ -4,6 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.24] - 2026-10-17
+
+- skill-creator's new `scripts/trigger-evals.ts` launches and scores selection-only trigger evals, so agents no longer write their own eval cell. It reads the Session model and thinking level from the last records in `$PI_SESSION_FILE`, writes each run's `trigger.yml` overlay (memory off, the origin project's skill dirs, and a `--candidate` dir first with `*/<name>` ignored), and starts every query × 3 runs at once. Each run keeps the real `HOME`, credentials, and PATH, without inherited `PI_*` and `OMP_*` variables. The last acceptance batch gave each of its 120 runs its own HOME, and each HOME unpacked a 93 MiB copy of omp's native addon into Scratch. After every run exits, the script counts only successful `skill://<name>` or `SKILL.md` reads, and writes `commands.json`, `results.json`, and `scores.json`. An eval `tool.read` counts only when the eval result's `details.statusEvents` records that read as successful. `scores.json` leaves out a selection-only run with a nonzero exit code. The script exits before it writes anything when the run dir exists, or when a query id is a duplicate or holds a character other than lowercase letters, digits, and hyphens. `--full` sends the raw request for a full run. Replayed on the last batch's 120 transcripts, it reproduces that batch's scores. trigger-evals.md now points at the script instead of a hand-written eval cell. The House style `headless-run` rule now also accepts a bundled launcher script that starts every run at once.
+- `scripts/load-smoke.sh` deletes its throwaway home's `.omp/natives` when it exits, and `vstack-maintain.ts gates` leaves `.omp/natives` out when it keeps a failed smoke in Scratch. omp unpacks its 93 MiB native addon into every fresh home. That cache is not evidence, but each kept smoke home kept a copy in Scratch.
+
 ## [2.0.23] - 2026-10-17
 
 - vstack-maintain prepare preserves comments, quoting, flow style, key order, and untouched YAML text through the yaml Document and source-token APIs. The plugin manifest changes only at its version value. An edit target can set every matching adapt row's one-line reason without an Update plan. Clones and CI install the locked yaml dependency before running maintainer commands (#146).
