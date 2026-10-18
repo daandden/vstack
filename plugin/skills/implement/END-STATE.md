@@ -2,11 +2,24 @@
 
 implement, implement-spec, and hillclimb read this file before work. Reuse these steps by reference. Do not maintain a second copy in a caller. The caller inserts its work steps between 0c and 3b. Before task-specific todo items, copy the steps below verbatim, including their paragraphs, into its todo list in execution order. Keep an unfinished step as `skip: <reason>`.
 
-Run every Code host operation through the project's `code-host.md`: `<vstack root>/docs/vstack/code-host.md` in Standard mode, `<vstack root>/config/code-host.md` in Private mode. Look up each operation by its id there, and pass the file's path to each chained skill. Use git for local history and pushes. Resolve the vstack root once through the Private-mode rule and reuse a supplied root. Resolve the absolute project Scratch dir once through skill://vstack-tmp with its path script and no kind argument; reuse a supplied Scratch dir.
-
-Keep one run record across every ticket: requested and effective End state, current branch, whether this run created it (false unless observed), base SHA and whole-diff command, last SHA this run pushed, stopped slices, prune-comments outcome, final-diff Safety findings, Verify evidence paths, and any open decision-trail log path. Pass these facts into each chained skill and retain its hand-back.
-
 ## 0a. Settle the End state
+
+If the caller supplies a vstack root, reuse it. Otherwise, resolve the vstack root once through the Private-mode rule. If the caller supplies a Scratch dir, reuse it. Otherwise, resolve the absolute project Scratch dir once through skill://vstack-tmp with its path script and no kind argument. Run every Code host operation through the project's `code-host.md`: `<vstack root>/docs/vstack/code-host.md` in Standard mode, `<vstack root>/config/code-host.md` in Private mode. Look up each operation by its id there. Use git for local history and pushes. Chained skills use the paths that the run passes them. They never resolve these paths again.
+
+Keep one run record across every ticket. It holds the requested End state, stopped slices, and the chain facts. Retain each chained skill's hand-back in the record. The chain facts are what step 7 passes to each chained skill:
+
+- The effective End state
+- The `code-host.md` path
+- The vstack root
+- The Scratch dir
+- The current branch
+- The remote branch name and whether the branch is an Owned branch (step 0b)
+- The base SHA and the whole-diff command
+- The last SHA this run pushed
+- The prune-comments outcome with its open work
+- The final-diff Safety findings (step 5)
+- The Verify evidence paths
+- Any open decision-trail log path
 
 Settle the End state once, before any work: commit, merge-ready, or shipped. Commit stays on the current branch. Merge-ready opens a PR and drives it until it can merge. Shipped merges it into the default branch. If the user's words or the ticket name an End state, use that. Words that only ask to open a PR settle merge-ready. Say so before work. Otherwise use `ask` with the End states on offer and commit recommended. Reuse an already settled caller End state rather than asking again.
 
@@ -20,11 +33,22 @@ Every other operation is optional. A step whose optional operation is unsupporte
 
 An interactive timeout does not settle the End state. Re-ask the unanswered gate once. If it times out again, stop before work, branching, or committing. Only in a Headless run with no `ask` tool, take the recommended End state (commit) and say so. Tool absence is not a timed-out answer.
 
-The End state authorizes every step up to it: merge-ready authorizes babysit in drive mode; shipped authorizes ship to merge the verified run into the default branch. Deploys and releases are outside this flow. Never force-push a branch this run did not create. A stopped tdd slice caps the effective End state at commit even if a further state was requested.
+The End state authorizes every step up to it: merge-ready authorizes babysit in drive mode; shipped authorizes ship to merge the verified run into the default branch. Deploys and releases are outside this flow. A stopped tdd slice caps the effective End state at commit even if a further state was requested.
 
 ## 0b. Branch
 
-With End state commit, stay on the current branch. Otherwise read the default branch through the `default-branch` operation and the current branch through git. If HEAD is on the default branch, create and switch to `<type>/<slug>` from HEAD, with a type and slug that describe the work. Use no worktree. Record that this run created the branch. An existing branch is not this run's creation; detached HEAD cannot start a PR chain.
+With End state commit, stay on the current branch. Otherwise read the default branch through the `default-branch` operation and the current branch through git. If HEAD is on the default branch, create and switch to `<type>/<slug>` from HEAD, with a type and slug that describe the work. Otherwise stay on the current branch, an omp worktree's `wt/<time>` branch included. Use no worktree. Detached HEAD cannot start a PR chain.
+
+Record the remote branch name. If the local branch is `wt/*`, the remote branch name is a new `<type>/<slug>` that describes the work. Otherwise it is the local branch's name. Never rename the local branch.
+
+The first push decides whether the branch is Owned. Before it, read the remote ref with `git ls-remote --exit-code <remote> refs/heads/<remote branch>`. Exit code 2 means that the ref is absent. Then push by the state of the ref:
+
+- Absent ref: create it with `git push --porcelain --force-with-lease=<remote branch>: -u <remote> <local branch>:<remote branch>`. The empty lease value requires the ref to be absent. With `--porcelain`, git prints one status line per ref on standard output. Read the status line whose destination is `refs/heads/<remote branch>`. Only a `*` status (a new ref) proves that this push created the ref. If that line starts with `*`, record the branch as Owned. In every other case, stop and report the push output. The branch stays unowned. An `=` status means that another pusher created the ref at the same SHA. A `!` status means that the lease rejected the push because the ref appeared.
+- Existing ref: push with `git push -u <remote> <local branch>:<remote branch>`, a fast-forward push. The branch stays unowned.
+
+Push every later fast-forward with `git push <remote> <local branch>:<remote branch>`. After every push that updates the remote branch, record its SHA as the last SHA this run pushed. Return that SHA to the caller.
+
+A rewrite of pushed commits is a rebase or a force-push. Before a rewrite, confirm that the branch is Owned. Then confirm that a fresh read of the remote tip still equals the last SHA this run pushed. Push each rewrite with `git push --force-with-lease=<remote branch>:<last pushed SHA> <remote> <local branch>:<remote branch>`. Record the new pushed SHA. Never adopt another pusher's remote tip as this run's last push. If the branch is not Owned, the tip moved, or the lease fails, stop and report which branch needs the rebase. Ordering commits that were never pushed needs no ownership.
 
 ## 0c. Decision trail
 
@@ -52,7 +76,9 @@ Run-only consumers (ship's verifier and forensics) may reuse this live-proof pro
 
 Run skill://code-review once over the whole completed diff at every End state, including commit. Pin the base SHA, diff command, and commit list. Include accepted cleanup and Standard-mode Verify edits, plus the proven uncommitted work that implement will commit. Exclude stopped slices from what can be committed or published and identify them in the review brief.
 
-implement reviews before its step 6 commit (Matt's order). implement-spec's merger commits each ticket as it lands, implement-spec reviews once after its last merge, and step 6 commits the accepted review fixes. hillclimb commits each accepted win, reviews once after its last accepted win, and fixes accepted findings in new commits. Resolve accepted findings and update affected proof before advancing. Keep Standards, Spec, and Safety findings separate. Carry the Safety result and final-diff proof to open-pr. code-review owns the Safety trigger list.
+implement reviews before its step 6 commit (Matt's order). implement-spec's merger commits each ticket as it lands, implement-spec reviews once after its last merge, and step 6 commits the accepted review fixes. hillclimb commits each accepted win, reviews once after its last accepted win, and fixes accepted findings in new commits. Resolve accepted findings and update affected proof before advancing. Keep Standards, Spec, and Safety findings separate. code-review owns the Safety trigger list.
+
+Carry the Safety findings and the final-diff proof to open-pr: the proven or unproven safety fact, confirmed risks, cleared items, proof paths, and the base and diff that they cover. open-pr reuses the Safety findings only when they cover its final diff and base.
 
 ## 6. Commit
 
@@ -64,8 +90,8 @@ The approved environment fixes from skill://session get one commit per approved 
 
 Run the chain once, after all the work of the invocation, not once per ticket. At commit, stop. If a tdd slice stopped, keep its changes uncommitted, commit the independent proven work, report the cap at commit, and skip the whole chain.
 
-For merge-ready or shipped, run skill://open-pr with the effective End state, the `code-host.md` path, branch-ownership flag, last pushed SHA, "prune-comments already run", any open cleanup work, final-diff Safety findings, Verify evidence, absolute Scratch dir, vstack root, and any open decision-trail log. Retain the PR URL, observed status and head SHA, and last pushed SHA. Stop on an unavailable or mismatched published head rather than advancing on an assumed PR.
+For merge-ready or shipped, run skill://open-pr with the chain facts from step 0a. Retain the PR URL, observed status and head SHA, and last pushed SHA. Stop on an unavailable or mismatched published head rather than advancing on an assumed PR.
 
-Then run skill://babysit in drive mode with the same chain facts and PR frontier. For shipped, after merge-ready is observed, run skill://ship with those facts. open-pr and babysit return to this caller; neither starts the next link. Chained skills append only to an existing decision-trail log. Stop at the effective End state or a reported blocker and report what was actually reached.
+Then run skill://babysit in drive mode with the chain facts and PR frontier. For shipped, after merge-ready is observed, run skill://ship with those facts. open-pr and babysit return to this caller; neither starts the next link. Stop at the effective End state or a reported blocker and report what was actually reached.
 
-Conflict owner: if babysit reports a conflict, this run created the branch, and a fresh remote-tip read still equals the last SHA this run pushed, fetch the default branch, reconcile the reported caller drift, rebase onto that branch, and push with `--force-with-lease=<branch>:<last-pushed-sha>`. Record the new pushed SHA and run babysit again. Re-establish affected proof and Safety findings if the diff changed. If either ownership fact fails, stop and report which branch needs the rebase. Never adopt somebody else's remote tip as this run's last push to bypass the gate.
+Conflict owner: babysit reports each conflict here, and ship reports each branch that needs a rebase. The step 0b facts cover only the remote branch in the chain facts. If the reported branch is another branch, stop and report which branch needs the rebase. Otherwise, rebase only under the step 0b rewrite rule. Fetch the default branch. Reconcile the reported caller drift. Run `git rebase --onto <remote>/<default branch> <base SHA>`. Push the rebase with the step 0b lease. Record the new pushed SHA and the new base SHA. Then run babysit again. If the diff changed, re-establish the affected proof and Safety findings.

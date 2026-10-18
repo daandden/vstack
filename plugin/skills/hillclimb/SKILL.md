@@ -24,7 +24,7 @@ Run skill://how over the target. Name realistic workload dimensions that move th
 
 Follow skill://principle-build-the-lever. Run contrasting realistic workloads: the target reproduces the symptom and easier cases separate as expected. If not, revise the workload or metric before freezing. Vet the harness with skill://benchmark-checklist before you freeze it. Make the harness print its error count and a count of the work done. Freeze one repeatable command, its inputs, environment, sample count, statistic (median of N), and noise threshold. Save the harness and raw baseline samples as evidence under the project Scratch dir. Keep a hash or revision of the harness and named fixtures so each result can be tied to the frozen version.
 
-Record the baseline and a green regression gate before changing product code. The gate is the agreed set of checks that must keep passing. For a user-facing metric, use the project's Verify skill as the measurement surface, discovering and maintaining it through shared step 4. If none exists, report that gap and use tests or scripts that exercise the real surface, not an invented Verify result. Changes to the harness invalidate comparisons; restart measurement with a new declared baseline rather than calling it a product win.
+Record the baseline and a green regression gate before changing product code. The gate is the agreed set of checks that must keep passing. For a user-facing metric, use the project's Verify skill as the measurement surface, discovering and maintaining it through shared step 4. Changes to the harness invalidate comparisons; restart measurement with a new declared baseline rather than calling it a product win.
 
 ## 3. Fix the attempt trail
 

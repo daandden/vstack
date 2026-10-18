@@ -6,18 +6,23 @@ disable-model-invocation: true
 
 # Open a PR
 
-Run every Code host read and write through the operation ids in `code-host.md`. Git commands handle local history and pushes. Open the PR, then return to the caller. Never start babysit or ship.
+Open the PR, then return to the caller. Never start babysit or ship.
 
-Accept the caller's End state, `code-host.md` path, whether this run created the branch, "prune-comments already run", Safety findings, verification evidence, and any closing references: the issues or tickets the PR resolves. Without a supplied path, read `<vstack root>/docs/vstack/code-host.md` in Standard mode or `<vstack root>/config/code-host.md` in Private mode. If that file is missing, stop and tell the user to run `/skill:setup-vstack` to add the Code host. Keep an unknown branch-ownership flag false. If a decision-trail log is open, append decisions through skill://decision-trail to that exact path. Never start a log here.
+Accept the chain facts and any closing references: the issues or tickets the PR resolves. Follow these rules in skill://implement/END-STATE.md:
 
+- Step 0a: the chain facts, Code host routing, and the reuse of the vstack root and Scratch dir.
+- Step 0b: the remote branch name, the first push, and the Owned branch rewrite rule.
+- Step 0c: logging to the decision-trail log.
+- Step 4: Verify discovery and link repair.
+- Step 5: the Safety hand-off.
 
-Resolve the absolute project Scratch dir once through skill://vstack-tmp with its path script and no kind argument. Reuse the caller's supplied Scratch dir. Keep PR body files under `<Scratch dir>/verify/<app>-<run-id>/`, beside the proof they describe.
+Keep PR body files under `<Scratch dir>/verify/<app>-<run-id>/`, beside the proof they describe.
 
 ## 1. Check the branch
 
 Read the default branch through `default-branch`. Fetch its tip and read the current branch. Stop on the default branch, detached HEAD, or no commits beyond the base. Leave unrelated working-tree changes untouched. Stop if they prevent cleanup or history edits.
 
-Use the default branch as the base unless the user requested a stack. Pin the base SHA, diff command, and commit list. For a stack, use the parent's exact tip as the child's base. Record the branch-ownership flag and any last pushed SHA from the caller.
+Use the default branch as the base unless the user requested a stack. Pin the base SHA, diff command, and commit list. For a stack, use the parent's exact tip as the child's base.
 
 ## 2. Clean up the diff
 
@@ -25,27 +30,21 @@ If the caller says "prune-comments already run", skip cleanup and use its final-
 
 If prune-comments stops because its critic is unavailable or rejects the second report, return accepted fixes to implement and keep going. Record prune-comments as open in the todo list and reply. Its failure never blocks the chain.
 
-Use the caller's final-diff proof and review. If cleanup changes the diff, return accepted edits to implement for live proof, its one review, and its step 6 commit before continuing to step 3.
-
-List the project's Verify skills named `verify-*`. In Private mode, also list `<vstack root>/skills/verify-*/` using the root from the Private-mode rule. Deduplicate links and targets. Repair missing absolute `.omp/skills/verify-<app>` links through skill://setup-app-verification. Leave shared ignores unchanged. Read a newly linked SKILL.md by absolute path for this session.
-
-Use the only Verify skill, or the one whose description names the changed surface. If several match without a clear choice, use one `ask`. If none exists, prove the change with tests and scripts. State that live proof is absent and recommend skill://setup-app-verification to the caller.
-
-Save proof under `<Scratch dir>/verify/<app>-<run-id>/`. A stale Verify instruction while Doctor passes is drift. Run skill://maintain-app-verification for that named feature, and state that implement commits its output in step 6. Then retry once. Return Standard-mode setup and maintenance output to implement for its step 5 review and step 6 commit. Do not commit that output or run a separate review here. Resume with implement's updated final-diff proof and review. Private-mode maintenance edits the single copy in place with no commit. Treat product gaps as findings. Wrong app behavior is a finding, never drift. Preserve failed or unavailable proof as such.
+Use the caller's final-diff proof and review. If cleanup changes the diff, return accepted edits to implement for live proof in END-STATE step 4, its one review, and its step 6 commit before continuing to step 3.
 
 ## 3. Order the unpushed commits
 
-Compare local history with the fetched remote branch. Rebase only unpushed commits into small, ordered commits. Each commit has one separable change and tells the story in order. Amend when a fix belongs to a just-made unpushed commit. Use a new commit for a separable fix.
+Compare local history with the fetched remote branch from END-STATE step 0b. If that remote branch does not exist yet, every commit after the base is unpushed. Rebase only unpushed commits into small, ordered commits. Each commit has one separable change and tells the story in order. Amend when a fix belongs to a just-made unpushed commit. Use a new commit for a separable fix.
 
-Never rewrite commits already pushed to a branch this run did not create. This step orders only the unpushed suffix, even on a branch this run created. Do not force-push here. If ordering changes the diff rather than only history, return the changed diff to implement for updated live proof, review, and commit before step 4.
+This step orders only the unpushed suffix, on any branch, Owned or not, and never force-pushes. If ordering changes the diff rather than only history, return the changed diff to implement for updated live proof, review, and commit before step 4.
 
 ## 4. Push the final tip
 
-Run `git push -u <remote> <branch>` after every cleanup commit and rebase. Stop on a failed push. Record the pushed head SHA. After this step, change neither the diff nor the branch history before PR creation. Steps 5–8 gather findings and write PR text only.
+Push the final tip to the remote branch with the push commands in END-STATE step 0b. Stop on a failed push. Record the pushed head SHA and whether the branch is Owned. After this step, change neither the diff nor the branch history before PR creation. Steps 5–8 gather findings and write PR text only.
 
 ## 5. Gather Blast Radius
 
-Reuse code-review's Safety findings only when they cover the final diff and base. Preserve its proven or unproven safety fact, confirmed risks, cleared items, and proof paths.
+Reuse code-review's Safety findings under the hand-off in END-STATE step 5.
 
 Otherwise read the Safety trigger list in skill://code-review. It owns the only trigger list. Apply the user's Safety override. If Safety is requested or triggered, run skill://blast-radius on the pinned final diff. Keep tracked files unchanged. If Safety does not run, record the reason for step 6. Never turn a source citation or an unavailable proof into an executed safety claim.
 
@@ -67,7 +66,7 @@ Save the body in this run's Scratch `verify/` entry and pass it to `create-pr` o
 
 ## 7. Create the ready PR
 
-Create the PR through `create-pr`, as a ready PR, never a draft. Use `list-prs` to find an existing PR for this head and base before creating a duplicate. Update an existing PR through `edit-pr` with the same body-file contract. If `edit-pr` is unsupported, report that the existing PR keeps its old title and body.
+Create the PR through `create-pr`, as a ready PR, never a draft. Its head branch is the remote branch from END-STATE step 0b. Use `list-prs` to find an existing PR for this head and base before creating a duplicate. Update an existing PR through `edit-pr` with the same body-file contract. If `edit-pr` is unsupported, report that the existing PR keeps its old title and body.
 
 Create a stack only on request, and only when `code-host.md` supports `retarget-pr`. The root targets the default branch. Each child rebases onto its parent's exact tip and targets that parent's branch. As a parent merges, skill://ship moves its child onto the default branch. Keep independent work outside the chain. Rebase on the default branch before substantial stack work. Complete those history changes before each branch's final push in step 4. Retarget an existing child through `retarget-pr` to its parent's branch.
 
@@ -77,4 +76,4 @@ Read the PR through `read-pr`: its URL, title, draft state, state, base branch, 
 
 ## Reply
 
-Return each PR URL, its title, observed status, and whether Blast Radius reused Safety findings, ran blast-radius, or reports that Safety did not run. Include proof paths, limits, every stopped or skipped step, and any open prune-comments work. Pass the End state, branch-ownership flag, and last pushed SHA back to the caller. Stop here. The caller owns the next End-state link.
+Return each PR URL, its title, observed status, and whether Blast Radius reused Safety findings, ran blast-radius, or reports that Safety did not run. Include proof paths, limits, every stopped or skipped step, and any open prune-comments work. Pass the chain facts back to the caller with the new last pushed SHA and whether the branch is Owned. Stop here. The caller owns the next End-state link.
