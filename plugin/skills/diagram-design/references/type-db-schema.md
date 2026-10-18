@@ -40,9 +40,3 @@ Max 5 tables, max 8 column rows shown per table, max 6 FK edges, max 2 accent el
 - Constraint chips on every row until the chips are the noise.
 - Index compartments listing every index rather than the ones that matter to the story.
 - Mixing conceptual entity names with physical table names in one diagram.
-
-## Examples
-
-- `assets/example-db-schema.html` — minimal light
-- `assets/example-db-schema-dark.html` — minimal dark
-- `assets/example-db-schema-full.html` — full editorial

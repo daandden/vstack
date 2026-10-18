@@ -18,7 +18,7 @@ Infer choices that are clear from the request (for example, "for my deck" implie
 | Format | Deliverable | Keeps | Drops |
 |---|---|---|---|
 | `html` | self-contained `.html` (default) | header, diagram, summary cards, footer, live fonts | nothing |
-| `svg` | `.svg` next to the source | the `<svg>` node, vector text | editorial wrapper; fonts substitute in offline tools |
+| `svg` | `.svg` next to the source | the `<svg>` node, vector text | editorial wrapper; fonts substitute where the Iosevka faces are not installed |
 | `png` | `.png` at `device_scale_factor` | pixels exactly as the browser renders them | vector editability |
 | `html+png` | both | — | — |
 
@@ -97,10 +97,12 @@ because a media query adds no specificity and a later plain rule would win:
 }
 ```
 
-`scripts/lint-render.py --all` renders every template at 390px and fails on
-page overflow, an unreachable clipped SVG, a missing local scroller, or a
-`min-width` that disagrees with the viewBox — including an absent one, which
-lets the SVG shrink into the phone and takes the type ramp with it.
+Upstream's `scripts/lint-render.py --all` renders every template at 390px and
+fails on page overflow, an unreachable clipped SVG, a missing local scroller,
+or a `min-width` that disagrees with the viewBox — including an absent one,
+which lets the SVG shrink into the phone and takes the type ramp with it. It
+does not ship with this skill. Check these four failures by hand at 390px
+before output.
 
 ### Deriving `fit`
 
@@ -112,55 +114,40 @@ Node names shrink relative to the canvas as it grows — resist that. Scale the 
 
 | Role | standard | presentation | print |
 |---|---|---|---|
-| Title (Instrument Serif) | 28 | 40 | 32 |
-| Node name (Geist 600) | 12 | 16 | 12 |
-| Sublabel (Geist Mono) | 9 | 12 | 9 |
-| Arrow label (Geist Mono) | 8 | 12 | 8 |
-| Eyebrow / tag (Geist Mono) | 8 | 8 | 8 |
+| Title (IosevkaTermSlab Nerd Font Mono) | 28 | 40 | 32 |
+| Node name (IosevkaTerm Nerd Font Mono 600) | 12 | 16 | 12 |
+| Sublabel (IosevkaTerm Nerd Font Mono) | 9 | 12 | 9 |
+| Arrow label (IosevkaTerm Nerd Font Mono) | 8 | 12 | 8 |
+| Eyebrow / tag (IosevkaTerm Nerd Font Mono) | 8 | 8 | 8 |
 | Node box min height | 48 | 64 | 48 |
 | Min gap between nodes | 24 | 40 | 24 |
 
-The families named in these tables are the default skin's, and they are what `scripts/verify-docs-sync.py` binds each size to. Under a custom skin, read them as the `title`, `node-name`, `sublabel`, `arrow-label`, and `eyebrow` roles from [`style-guide.md`](style-guide.md); type references write those roles as `{node-name}` and so on.
+The families named in these tables are the built-in style's, and they are what Upstream's `scripts/verify-docs-sync.py` binds each size to. That script does not ship with this skill, so check each size against these tables by hand. Read them as the `title`, `node-name`, `sublabel`, `arrow-label`, and `eyebrow` roles from [`style-guide.md`](style-guide.md); type references write those roles as `{node-name}` and so on.
 
 Every `font-size` is one of the role values above for the preset in use, or one of these named exceptions:
 
 | Exception | Font | Sizes |
 |---|---|---|
-| Dense annotation: legend keys, axis ticks, chart data labels, source lines, in-box tags | Geist Mono or Geist regular | 7 to 11, half steps allowed |
-| Chart series or row name: bar category, line or bump series, gantt row, matrix header | Geist 600 | 10 to 11 |
-| Group or entity heading | Geist 600 | 14 |
+| Dense annotation: legend keys, axis ticks, chart data labels, source lines, in-box tags | IosevkaTerm Nerd Font Mono at 400 or 500 | 7 to 11, half steps allowed |
+| Chart series or row name: bar category, line or bump series, gantt row, matrix header | IosevkaTerm Nerd Font Mono 600 | 10 to 11 |
+| Group or entity heading | IosevkaTerm Nerd Font Mono 600 | 14 |
 | Decorative watermark numerals at or under 0.08 opacity | any | any |
 
-An exception is bound to the font beside it, weight included: Geist at 600 or heavier is the node-name voice, lighter Geist is annotation. So a Geist 600 node name cannot borrow the dense-annotation range down to 7, and a Geist Mono tick cannot borrow the 14 reserved for headings. A chart row carries a name in the same Geist 600 voice at a rank the ramp has no row for, which is why it has an exception of its own rather than a licence to shrink: `type-bar.md`, `type-gantt.md` and `type-line.md` all set that name at 10 or 11.
+An exception is bound to the font beside it, weight included: IosevkaTerm at 600 or heavier is the node-name voice, and lighter IosevkaTerm is annotation. So a 600 node name cannot borrow the dense-annotation range down to 7, and a 400 tick cannot borrow the 14 reserved for headings. A chart row carries a name in the same 600 voice at a rank the ramp has no row for, which is why it has an exception of its own rather than a licence to shrink: `type-bar.md`, `type-gantt.md` and `type-line.md` all set that name at 10 or 11.
 
 Anything else is a bug in the diagram, not a new size. The one standing carve-out is the closed inventory below.
 
 ### Registered legacy sizes
 
-Thirty-three declared sizes across sixteen files predate this contract. They are recorded here so the rule above is exact rather than aspirational, and frozen so the list cannot quietly grow. `scripts/verify-docs-sync.py` reads these rows against the files and fails if one gains an off-ramp size, loses one, or drops off disk.
+One declared size in one file predates this contract. It is recorded here so the rule above is exact rather than aspirational, and frozen so the list cannot quietly grow. Upstream's `scripts/verify-docs-sync.py` reads these rows against the files and fails if one gains an off-ramp size, loses one, or drops off disk. That script does not ship with this skill.
 
-Each is registered against the font carrying it, because that is what the sweep checks. It classifies every element first, resolving `class` attributes through the stylesheet, `var(--font-mono)` back to the family it names, and a `{node-name}` token to the ramp row that owns it, then applies only the exceptions open to that font. The canonical role sizes stay one union, so a size on the ramp for any role is on contract wherever it appears. An element whose font it cannot read gets no exception at all. It reads the `<svg>` and any CSS rule worn by an element inside it, so the prose around a diagram does not count as diagram type.
+The size is registered against the font carrying it, because that is what the sweep checks. It classifies every element first, resolving `class` attributes through the stylesheet, `var(--font-mono)` back to the family it names, and a `{node-name}` token to the ramp row that owns it, then applies only the exceptions open to that font. The canonical role sizes stay one union, so a size on the ramp for any role is on contract wherever it appears. An element whose font it cannot read gets no exception at all. It reads the `<svg>` and any CSS rule worn by an element inside it, so the prose around a diagram does not count as diagram type.
 
 | File | Sizes | What they are |
 |---|---|---|
-| `assets/example-data-flow.html` | Geist Mono 5, Geist Mono 6 | chip text and role label, both set in CSS |
-| `assets/example-data-flow-dark.html` | Geist Mono 5, Geist Mono 6 | chip text and role label, both set in CSS |
-| `assets/example-data-flow-full.html` | Geist Mono 5, Geist Mono 6 | chip text and role label, both set in CSS |
-| `assets/example-nested.html` | Instrument Serif 14, Instrument Serif 14 | two italic serif asides |
-| `assets/example-nested-dark.html` | Instrument Serif 14, Instrument Serif 14 | two italic serif asides |
-| `assets/example-nested-full.html` | Instrument Serif 14, Instrument Serif 14 | two italic serif asides |
-| `assets/example-paved-road-animated.html` | Geist 600 13 | boundary node name |
-| `assets/example-process.html` | Geist Mono 6 | role chip |
-| `assets/example-process-dark.html` | Geist Mono 6 | role chip |
-| `assets/example-process-full.html` | Geist Mono 6 | role chip |
-| `assets/example-quadrant-consultant.html` | Geist 600 13 | inline dot glyph in a `tspan` |
-| `assets/example-queue-animated.html` | Geist 600 13, Geist 600 22, Geist 600 24 | state caption and two fill counters |
-| `assets/example-treemap.html` | Geist 600 7, Geist 600 7, Geist 600 13, Geist 600 13 | two cell index glyphs and two cell names |
-| `assets/example-treemap-dark.html` | Geist 600 7, Geist 600 7, Geist 600 13, Geist 600 13 | two cell index glyphs and two cell names |
-| `assets/example-treemap-full.html` | Geist 600 7, Geist 600 7, Geist 600 13, Geist 600 13 | two cell index glyphs and two cell names |
-| `references/type-treemap.md` | Geist 600 13 | the cell-name line of the documented pattern |
+| `references/type-treemap.md` | IosevkaTerm Nerd Font Mono 600 13 | the cell-name line of the documented pattern |
 
-New diagrams get no rows here. Bringing one of these onto the ramp is a visual change to a shipped example and belongs in its own PR.
+New diagrams get no rows here. Bringing this size onto the ramp is a visual change to the documented pattern and belongs in its own PR.
 
 Presentation ramp implies fewer nodes — 16px names in 64px boxes eat the canvas. If a `slide-16x9` layout won't fit, that's the size dial telling you the detail dial is set too high; drop a level rather than shrinking the type.
 
@@ -229,16 +216,16 @@ Two rules that hold at every audience level:
 
 ### Non-Latin labels
 
-Geist has no CJK coverage. When labels contain Japanese, Chinese, or Korean text, extend the family on those `<text>` elements — don't swap the whole skin:
+The Iosevka faces have no CJK coverage. When labels contain Japanese, Chinese, or Korean text, keep the role's stack on those `<text>` elements as written and set `lang` to the label's language. Never swap the style, and name no system CJK face:
 
 ```svg
-<text font-family="'Geist', 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', sans-serif">認証サービス</text>
-<text font-family="'Geist', 'Noto Sans KR', 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif">인증 서비스</text>
-<text font-family="'Geist', 'PingFang SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif">认证服务</text>
-<text font-family="'Geist', 'Noto Sans TC', 'PingFang TC', 'Microsoft JhengHei', sans-serif">認證服務</text>
+<text lang="ja" font-family="'IosevkaTerm Nerd Font Mono', ui-monospace, monospace">認証サービス</text>
+<text lang="ko" font-family="'IosevkaTerm Nerd Font Mono', ui-monospace, monospace">인증 서비스</text>
+<text lang="zh-Hans" font-family="'IosevkaTerm Nerd Font Mono', ui-monospace, monospace">认证服务</text>
+<text lang="zh-Hant" font-family="'IosevkaTerm Nerd Font Mono', ui-monospace, monospace">認證服務</text>
 ```
 
-These stacks lead with the default skin's sans. Under a custom skin, lead with the `node-name` family instead and keep the CJK fallbacks after it. The Hiragino/Yu Gothic stack carries no Hangul glyphs, so Korean labels need the Korean stack — don't reuse the Japanese one. Noto Sans KR ships in the skin's font link, so it leads that stack and the local families follow it; the register, floor, and title rules Korean needs beyond the font live in [`style-guide.md`](style-guide.md#korean-labels). Japanese fonts also cover only a subset of the Chinese character set and render Simplified forms with Japanese glyph variants, so Chinese labels need a Chinese stack; Simplified and Traditional are separate stacks for the same reason. Noto Sans TC now ships in the link too, so it leads the Traditional stack and the local families follow; the register, floor, and title rules Traditional Chinese needs beyond the font live in [`style-guide.md`](style-guide.md#traditional-chinese-labels). For mono sublabels use `'Geist Mono', 'Noto Sans Mono CJK JP', monospace` (Japanese), `'Geist Mono', 'Noto Sans Mono CJK KR', monospace` (Korean), or `'Geist Mono', 'Noto Sans Mono CJK SC', monospace` / `'Geist Mono', 'Noto Sans Mono CJK TC', monospace` (Chinese). Budget **1em per full-width CJK glyph**, not a small percentage over the average Latin glyph; `verify-treemap.py` uses that conservative contract for Unicode wide/full-width characters and treats combining marks as non-advancing. Prefer 12px names over 8px sublabels for CJK; Hangul and Han go muddy below 12px, so treat 12px as the floor rather than 10px. Actual width still varies by fallback font, so run the relevant geometry verifier after translating labels.
+Each stack ends in the generic families, so the viewer's system picks an installed CJK face for the glyphs that Iosevka lacks. The `lang` value selects the script's face. A Japanese face carries no Hangul, covers only a subset of the Chinese character set, and draws Simplified forms with Japanese glyph variants. So a Korean or Chinese label never takes `lang="ja"`, and Simplified and Traditional labels take separate values. The register, floor, and title rules Korean needs beyond the font live in [`style-guide.md`](style-guide.md#korean-labels). The rules Traditional Chinese needs beyond the font live in [`style-guide.md`](style-guide.md#traditional-chinese-labels). Sublabels use the same stack, because the `sublabel` role is the same IosevkaTerm face. Budget **1em per full-width CJK glyph**, not a small percentage over the average Latin glyph, and treat combining marks as non-advancing. Prefer 12px names over 8px sublabels for CJK; Hangul and Han go muddy below 12px, so treat 12px as the floor rather than 10px. Actual width still varies by fallback font, so check the rendered labels in a browser after translating them.
 
 ---
 
@@ -271,7 +258,6 @@ Run alongside the SKILL.md §9 taste gate.
 - [ ] Node count inside the detail level's ceiling?
 - [ ] `faithful` above 9 nodes → zoned, and split above 24?
 - [ ] Node names, sublabels, and edge labels all at the same audience level?
-- [ ] CJK labels given a font fallback?
+- [ ] CJK labels keep the role's stack and set `lang`?
 - [ ] Fidelity ledger reported for anything cut?
-- [ ] Diagram `<svg>` has `role="img"`, resolving `aria-labelledby`, a non-empty first-child `<title>`, a non-empty `<desc>`, and per-diagram/variant prefixed IDs?
 - [ ] Requested non-HTML formats produced via [`export.md`](export.md), not hand-authored?

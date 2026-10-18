@@ -2,7 +2,7 @@
 
 Optional full-page skin that wraps any diagram in a fake terminal window — titlebar with three dots, a `$` prompt line, monospace type throughout. Use for dev-tool announcements, CLI-product posts, and technical social cards where a screenshot needs to read as "terminal," not "editorial doc."
 
-This is a **second, fixed skin** — see [style-guide.md § Terminal skin](style-guide.md#terminal-skin-opt-in-alternate) for the token table. It does not inherit from `onboarding.md` brand tokens and isn't part of the light/dark inversion rule; every terminal example uses the same nine tokens regardless of the host site's brand.
+This is a **second, fixed skin** — see [style-guide.md § Terminal skin](style-guide.md#terminal-skin-opt-in-alternate) for the token table. It isn't part of the light/dark inversion rule; every terminal example uses the same ten tokens regardless of the host site's brand.
 
 ## Grammar
 
@@ -49,9 +49,9 @@ Inside the SVG, swap the default light/dark tokens 1:1 for their `terminal-*` eq
 
 ## Typography
 
-**Everything is monospace** — this is the one variant where that's correct. Drop Instrument Serif and Geist sans entirely; set the page title in mono, bold, prefixed with `# ` (reads as a comment line). The eyebrow becomes a shell prompt: `$ ` in `terminal-accent`, the command in `terminal-muted`.
+**Everything is IosevkaTerm Nerd Font Mono**, including the page title: set it bold, prefixed with `# ` (reads as a comment line), not in the slab `title` face. The eyebrow becomes a shell prompt: `$ ` in `terminal-accent`, the command in `terminal-muted`.
 
-Run every text role about **1–2px above** the default type scale in `style-guide.md` (e.g. `node-name` 12px → 14px, `sublabel`/`arrow-label` 8–9px → 9–10px, hub label 16px → 18px). Monospace at the default sizes reads small next to the sans/serif mix it's replacing, and these cards are usually viewed at social-feed scale, not full-bleed.
+Run every text role about **1–2px above** the default type scale in `style-guide.md` (e.g. `node-name` 12px → 14px, `sublabel`/`arrow-label` 8–9px → 9–10px, hub label 16px → 18px). These cards are usually viewed at social-feed scale, not full-bleed, so the default sizes read small.
 
 ## Titlebar dots
 
@@ -71,6 +71,5 @@ Three 10px circles, macOS-style. The **1-accent rule caps the color use here too
 
 ## When not to use
 
-- Editorial / long-form posts — pair with the default light or full-editorial variant instead.
-- Brand-matched output from `onboarding.md` — terminal is a fixed skin, not brand-tokenized. Don't try to reconcile the two.
+- Editorial / long-form posts — pair with the default dark, the light, or the full-editorial variant instead.
 - Any diagram where the audience isn't developer-coded to read `$`/`#`/titlebar-dots as chrome rather than content.

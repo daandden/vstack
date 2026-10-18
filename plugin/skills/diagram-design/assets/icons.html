@@ -4,23 +4,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Icon library · Diagram Design</title>
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --color-paper:   #f5f5f5;
-      --color-paper-2: #ececec;
-      --color-ink:     #2d3142;
-      --color-muted:   #4f5d75;
-      --color-soft:    #5a6580;
-      --color-rule:    rgba(45,49,66,0.12);
-      --color-accent:  #bf4520;
-      --font-sans:     'Geist', system-ui, sans-serif;
-      --font-serif:    'Instrument Serif', serif;
-      --font-mono:     'Geist Mono', ui-monospace, monospace;
+      --color-paper:   #eff1f5;
+      --color-paper-2: #e6e9ef;
+      --color-ink:     #4c4f69;
+      --color-muted:   #5c5f77;
+      --color-soft:    #6c6f85;
+      --color-rule:    rgba(76,79,105,0.12);
+      --color-accent:  #8839ef;
+      --font-slab:     'IosevkaTermSlab Nerd Font Mono', ui-monospace, monospace;
+      --font-term:     'IosevkaTerm Nerd Font Mono', ui-monospace, monospace;
     }
     body {
-      font-family: var(--font-sans);
+      font-family: var(--font-term);
       background: var(--color-paper);
       color: var(--color-ink);
       min-height: 100vh;
@@ -29,7 +27,7 @@
     .container { max-width: 1200px; margin: 0 auto; }
     .header { margin-bottom: 2.5rem; }
     .eyebrow {
-      font-family: var(--font-mono);
+      font-family: var(--font-term);
       font-size: 0.66rem;
       font-weight: 500;
       letter-spacing: 0.18em;
@@ -38,7 +36,7 @@
       margin-bottom: 0.75rem;
     }
     h1 {
-      font-family: var(--font-serif);
+      font-family: var(--font-slab);
       font-size: clamp(1.75rem, 3vw + 1rem, 2.5rem);
       font-weight: 400;
       letter-spacing: -0.02em;
@@ -53,7 +51,7 @@
     }
     .cat { margin-top: 2.5rem; }
     .cat h2 {
-      font-family: var(--font-serif);
+      font-family: var(--font-slab);
       font-size: 1.25rem;
       font-weight: 400;
       margin-bottom: 1rem;
@@ -69,7 +67,7 @@
     @media (max-width: 980px) { .grid { grid-template-columns: repeat(4, 1fr); } }
     @media (max-width: 600px) { .grid { grid-template-columns: repeat(2, 1fr); } }
     .cell {
-      background: #fff;
+      background: var(--color-paper-2);
       border: 1px solid var(--color-rule);
       border-radius: 6px;
       padding: 1rem 0.5rem 0.75rem;
@@ -84,7 +82,7 @@
     .cell .icon { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; }
     .cell .icon svg { width: 100%; height: 100%; }
     .cell .name {
-      font-family: var(--font-mono);
+      font-family: var(--font-term);
       font-size: 0.62rem;
       letter-spacing: 0.06em;
       color: var(--color-muted);
@@ -96,7 +94,7 @@
       margin-top: 3rem;
       padding-top: 1.5rem;
       border-top: 1px solid var(--color-rule);
-      font-family: var(--font-mono);
+      font-family: var(--font-term);
       font-size: 0.72rem;
       letter-spacing: 0.06em;
       color: var(--color-soft);

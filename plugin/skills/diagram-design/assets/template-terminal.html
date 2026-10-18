@@ -4,10 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Diagram</title>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
     <style>
       *,
       *::before,
@@ -26,11 +22,11 @@
         --color-soft: #5c5c5c;
         --color-accent: #ff5a36;
         --color-accent-tint: rgba(255, 90, 54, 0.12);
-        --font-mono: "Geist Mono", ui-monospace, monospace;
+        --font-term: "IosevkaTerm Nerd Font Mono", ui-monospace, monospace;
       }
 
       body {
-        font-family: var(--font-mono);
+        font-family: var(--font-term);
         background: var(--color-page);
         min-height: 100vh;
         display: flex;
@@ -94,7 +90,7 @@
       }
 
       h1 {
-        font-family: var(--font-mono);
+        font-family: var(--font-term);
         font-size: clamp(1.5rem, 2.2vw + 0.8rem, 2.05rem);
         font-weight: 700;
         letter-spacing: -0.01em;

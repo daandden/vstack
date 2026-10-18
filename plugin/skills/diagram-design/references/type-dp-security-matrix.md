@@ -60,8 +60,8 @@ dark: false
 ```
 
 **Reserved field semantics:**
-- `roles[j].name` — primary role label (`node-name` role at 11px, white text on the ink banner)
-- `roles[j].code` — secondary AD-group identifier (`sublabel` role, white text at 0.85 opacity)
+- `roles[j].name` — primary role label (`node-name` role at 11px, `paper` text on the `ink` banner)
+- `roles[j].code` — secondary AD-group identifier (`sublabel` role, `paper` text at 0.85 opacity)
 - `components[i].hint` — optional right-aligned `sublabel` text in the label cell (e.g., `"SSO"`, `"S3 API"`)
 - `cells[k].level` — closed vocabulary `full | rw | read | none`. Drives fill/stroke/text-color per §2.4.
 - `cells[k].value` — free-form display text. Domain-specific labels (`"R/W"`, `"SELECT"`, `"Login"`) work without inventing new levels.
@@ -116,7 +116,7 @@ Solid paper fill across the full viewBox. No dot pattern.
 ### 2.2 Header row (`y = 72, h = 52`)
 
 **Component-column header cell:**
-- Rect: `(comp_col_x, header_y, comp_col_w, header_h)`, fill white, stroke `ink @ 0.12` 0.8, `rx=6`
+- Rect: `(comp_col_x, header_y, comp_col_w, header_h)`, fill `paper`, stroke `ink @ 0.12` 0.8, `rx=6`
 - Two-line label centered at `(comp_col_x + comp_col_w/2, header_y+24)` and `(…, header_y+40)`:
   - Line 1: `"Component"` — `node-name` role at 11px, ink
   - Line 2: `"vs. AD group"` — `sublabel` role, muted
@@ -124,13 +124,13 @@ Solid paper fill across the full viewBox. No dot pattern.
 **Role banners (one per role):**
 - Rect: `(role_col_x(j), header_y, role_col_w, header_h)`, fill `ink`, `rx=6`
 - Two-line label centered:
-  - Line 1 at `y=92`: `roles[j].name` — `node-name` role at 11px, white
-  - Line 2 at `y=108`: `roles[j].code` — `sublabel` role, white at opacity 0.85
+  - Line 1 at `y=92`: `roles[j].name` — `node-name` role at 11px, `paper`
+  - Line 2 at `y=108`: `roles[j].code` — `sublabel` role, `paper` at opacity 0.85
 
 ### 2.3 Data row (`y = row_y(k), h = 36`)
 
 **Component label cell:**
-- Rect: `(comp_col_x, row_y(k), comp_col_w, row_h)`, fill white, stroke `ink @ 0.12` 0.8, `rx=4`
+- Rect: `(comp_col_x, row_y(k), comp_col_w, row_h)`, fill `paper`, stroke `ink @ 0.12` 0.8, `rx=4`
 - Name at `(comp_col_x + 12, row_y(k) + 22)`: `node-name` role at 11px, ink, left-aligned
 - Hint (if present) at `(comp_col_x + comp_col_w − 12, row_y(k) + 22)`: `sublabel` role, muted, right-aligned
 
@@ -145,7 +145,7 @@ Solid paper fill across the full viewBox. No dot pattern.
 | `level` | Fill | Stroke | Text color | Text weight |
 |---|---|---|---|---|
 | `full` | `ink @ 0.08` | `ink @ 0.12` | `ink` | 600 |
-| `rw` | `#FFFFFF` | `ink @ 0.12` | `ink` | 400 |
+| `rw` | `paper` | `ink @ 0.12` | `ink` | 400 |
 | `read` | `muted @ 0.08` | `ink @ 0.12` | `muted` | 400 |
 | `none` | `paper` | `ink @ 0.12` | `soft` | 400 |
 | **focal** | `accent @ 0.07` | `accent` (1.4) | `accent` | 600 |
@@ -185,7 +185,7 @@ Tints a specific intersection cell. Applied to:
 | Value text | `C` | `C_light` |
 | Sub text (if present) | `rgba(C, 0.85)` | `rgba(C_light, 0.95)` |
 
-`C_light` = the same hex lightened ~15% for dark-mode contrast.
+`C_light` = the Mocha value of the same Catppuccin color, for dark-mode contrast.
 
 ### 4.2 Per-component `color`  (`components[i].color`)
 
@@ -205,9 +205,9 @@ Tints the **column banner only** (top row). Cells underneath keep their `level` 
 | Element | Light & Dark (banner is the same in both modes) |
 |---|---|
 | Banner fill | `C` |
-| Role name + code text | `#FFFFFF` if `C` is dark (luminance ≤ 0.5), else `ink` |
+| Role name + code text | `#eff1f5` (Latte base) if `C` is dark (luminance ≤ 0.5), else `#1e1e2e` (Mocha base) |
 
-If you pick a mid-luminance hex (e.g., yellow `#c9a23a`), the text auto-flips to ink for contrast. Pair `roles[j].text_color: "#hex"` to override this auto-pick.
+If you pick a mid-luminance hex (e.g., yellow `#df8e1d`), the text auto-flips to Mocha base for contrast. Pair `roles[j].text_color: "#hex"` to override this auto-pick.
 
 ### 4.4 Rules
 
@@ -218,11 +218,11 @@ If you pick a mid-luminance hex (e.g., yellow `#c9a23a`), the text auto-flips to
 
 ### 4.5 Recommended palette (same as the other parametric types)
 
-- `#b85450` rust-red — Security elevation / break-glass / SoX-flagged
-- `#5a7d9a` slate-blue — Quality / monitoring / observability gate
-- `#7a8c47` olive-green — Approved / governance-cleared / publication-ready
-- `#c9a23a` warm yellow — Working / sandbox / data-scientist zone
-- `#8c6d3f` warm-brown — Archive / cold / DR
+- `#d20f39` red — Security elevation / break-glass / SoX-flagged
+- `#209fb5` sapphire — Quality / monitoring / observability gate
+- `#40a02b` green — Approved / governance-cleared / publication-ready
+- `#df8e1d` yellow — Working / sandbox / data-scientist zone
+- `#fe640b` peach — Archive / cold / DR
 
 ---
 
@@ -249,12 +249,12 @@ If zero or >1 `focal: true` cells are declared, halt and ask with `ask`.
 | Role-banner fill | `ink` | `ink` |
 | Header / row stroke | `ink @ 0.12` | `paper @ 0.18` |
 | Full / Admin fill | `ink @ 0.08` | `paper @ 0.10` |
-| R/W fill | `#FFFFFF` | `paper @ 0.06` |
+| R/W fill | `paper` | `paper @ 0.06` |
 | Read fill | `muted @ 0.08` | `soft @ 0.12` |
 | No-access fill | `paper` | `paper @ 0.02` |
 | Focal fill | `accent @ 0.07` | `accent @ 0.12` |
 | Focal stroke | `accent` | `accent` |
-| Custom component colors | `C` | `C_light` (lighten ~15%) |
+| Custom component colors | `C` | the Mocha color of the same Catppuccin name as `C` |
 
 ---
 
@@ -263,7 +263,7 @@ If zero or >1 `focal: true` cells are declared, halt and ask with `ask`.
 Before emitting SVG, verify **every** item:
 
 1. `viewBox = "0 0 {viewBox_w} {viewBox_h}"` derived via §2 (4 roles × 8 components → 920 × 520).
-2. Header row at `y=72 h=52`. Component header cell white-filled with two-line `Component / vs. AD group` label. Role banners filled `ink` with name + AD-group code in white.
+2. Header row at `y=72 h=52`. Component header cell `paper`-filled with two-line `Component / vs. AD group` label. Role banners filled `ink` with name + AD-group code in `paper`.
 3. Data rows start at `y=140`, stride 40, height 36. `rows_bottom = 140 + (n_components−1)·40 + 36`.
 4. Component label cell `rx=4`, name left-aligned at `x=24`, optional `hint` right-aligned at `x = comp_col_x + comp_col_w − 12`.
 5. Every value cell `rx=4`, stroke `ink @ 0.12` 0.6, fill + text matching §2.4 for its `level`.
@@ -289,17 +289,9 @@ Before emitting SVG, verify **every** item:
 
 ---
 
-## 9. Examples
+## 9. Worked YAML for the canonical matrix
 
-- `assets/example-dp-security-matrix.html` — minimal light (NatStat canonical: 4 roles × 8 components, focal at Data Consumers × Trino aggregated). Gallery default.
-- `assets/example-dp-security-matrix-dark.html` — same, dark skin.
-- `assets/example-dp-security-matrix-full.html` — same, editorial-card frame with subtitle + summary cards.
-
----
-
-## 10. Worked YAML — full inputs for `example-dp-security-matrix.html`
-
-The complete inputs that map to the shipped canonical example. Every coordinate in that SVG is derivable from §2 applied to these inputs.
+These are the complete inputs for the NatStat canonical matrix: 4 roles × 8 components, with the focal cell at Data Consumers × Trino aggregated. Every coordinate in its SVG is derivable from §2 applied to these inputs.
 
 ```yaml
 title:    "Platform Access Matrix"
@@ -366,7 +358,7 @@ cells:
 dark: false
 ```
 
-### 10.1 What this YAML proves
+### 9.1 What this YAML proves
 
 Run §2 with these inputs:
 - `n_roles = 4`, `n_components = 8`, no color overrides, one focal cell.
@@ -375,5 +367,3 @@ Run §2 with these inputs:
 - `rows_bottom = 420 + 36 = 456`; `legend_y_top = 476`; `viewBox_h = 520` ✓
 - `role_col_x(j) = [232, 396, 560, 724]` ✓
 - Focal cell at `(row=5, col=3)` → rect `(724, 340, 148, 36)` with accent stroke 1.4 ✓
-
-A fresh generation from this YAML produces a diagram visually indistinguishable from the shipped `example-dp-security-matrix.html`.

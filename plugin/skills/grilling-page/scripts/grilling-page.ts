@@ -268,8 +268,7 @@ function visualHtml(v: Visual, id: string, cls: string, baseDir: string): string
     const svg = readFileSync(path, "utf8").replace(/<\?xml[^>]*\?>\s*/, "").trim();
     if (!svg.startsWith("<svg")) fail(`visual ${id}`, `${path} must be an <svg>`);
     const svgProblems = unsafeMarkup(svg, true);
-    const styleText = svg.replace(/@import\s+url\(\s*['"]?https:\/\/fonts\.googleapis\.com\/[^)'"]*['"]?\s*\)\s*;/gi, "");
-    if (/@import|javascript:|expression\(/i.test(styleText)) svgProblems.push("its styles import a file other than Google Fonts or hold a script URL");
+    if (/@import|javascript:|expression\(/i.test(svg)) svgProblems.push("its styles import a file or hold a script URL");
     if (svgProblems.length) fail(`visual ${id}`, `${path} is not safe: ${svgProblems.join("; ")}`);
     return `<figure class="${cls}" id="${id}">${svg}</figure>`;
   }

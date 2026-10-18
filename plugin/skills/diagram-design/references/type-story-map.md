@@ -13,7 +13,7 @@ This is neither **Kanban** nor **User journey**, and the distinction is load-bea
 Vertical stack, top to bottom:
 
 1. **Backbone** — up to 5 activities in left-to-right narrative order, as wide header cards (200px, `rx=6`, `ink @ 0.05` fill, `muted` stroke). Each card: the activity name in the `node-name` role, 12px, weight 600, above an `eyebrow`-role 8px uppercase tracked eyebrow (`ACTIVITY 1` … `ACTIVITY 5`). 24px gutters between cards.
-2. **Walking skeleton row** — directly under each activity, its user *steps* as smaller cards (`rx=4`, 32px tall, white fill, `ink` stroke), `node-name` family 12px. One or two per activity; reserve room for two so every activity's row bottom aligns even when it only has one step.
+2. **Walking skeleton row** — directly under each activity, its user *steps* as smaller cards (`rx=4`, 32px tall, `paper` fill, `ink` stroke), `node-name` family 12px. One or two per activity; reserve room for two so every activity's row bottom aligns even when it only has one step.
 3. **Release slices** — horizontal bands below the skeleton row, each a full-width lane with an `eyebrow`-role 8px uppercase tracked label (`MVP`, `RELEASE 2`, `LATER`) sitting in a 96px left margin. Band background alternates `ink @ 0.02` / none. Inside each band, story cards (`rx=4`, 48px tall) sit in their activity's column: story title in the `node-name` role, 12px, weight 600, plus a `sublabel`-role 9px estimate/ticket sublabel (e.g. `RPT-114 · 3pt`). Whenever any slice has a gap (an activity with no card in that row), add `rule` hairline column separators (0.8px, dashed `4,4`, 0.10 opacity) running from just under the backbone down to the bottom of the last slice, drawn before the cards — without them, a gappy grid reads as scattered rather than mapped to its activity.
 4. **The release cut line** — a full-width horizontal `accent` rule (1.5px) immediately under the MVP band, with a masked `arrow-label`-role 8px label `RELEASE CUT` at its right end. This is accent element one.
 5. **Legend** — horizontal strip at the bottom per the global rule (hairline separator above): one swatch for the default story card, one for the highest-risk treatment, one for the release-cut line.
@@ -38,9 +38,3 @@ Exactly 2 accent elements: the release cut line with its `RELEASE CUT` label (co
 - **Mixing two personas in one map.** One map per persona, same as user journey.
 - **Adding state columns.** That turns it into a kanban board — this type has no state.
 - **Adding a sentiment curve.** That turns it into a user journey — this type has no feelings axis.
-
-## Examples
-
-- `assets/example-story-map.html` — minimal light. *Reporting, first release*: four activities (`Find the data`, `Build the report`, `Share it`, `Trust it`), MVP/Release 2/Later slices, release cut under MVP, `Row-level permissions` flagged as the riskiest story.
-- `assets/example-story-map-dark.html` — minimal dark, same data.
-- `assets/example-story-map-full.html` — full editorial: container framing + 3 summary cards of varied widths + footer.

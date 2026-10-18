@@ -1,5 +1,7 @@
 # diagram-design ships as the Diagram upstream
 
+> The profile, onboarding, and example provisions are superseded by [ADR 0027](0027-diagram-design-ships-one-fixed-catppuccin-style.md): diagram-design ships one fixed style, with no profiles, no onboarding, no `diagram-profile:` line, and no example gallery. The rest of this ADR still stands.
+
 vstack ships `cathrynlavery/diagram-design` inside the plugin as a third kind of Upstream, the Diagram upstream. It has a SHA Pin, which the Update moves to the latest commit, and one adapt item: the whole `skills/diagram-design/` directory, 279 files and 5.4 MB, examples included. Seven vstack skills draw their figures through it, so it should install, version, and update with vstack instead of living apart from it.
 
 ## Considered Options

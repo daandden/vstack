@@ -156,13 +156,6 @@ replacements:
     upstream: pstack
     scope: adapted
     uses: [update]
-  - id: diagram-profiles
-    from: ~/.diagram-design/profiles/
-    to: ~/.vstack/diagram-design/profiles/
-    match: literal
-    upstream: any
-    scope: adapted
-    uses: [update]
   # Migration-only rows: the relative private-storage forms, the specific one first. `docs-agents` is never
   # replaced as a bare word. Exact absolute <common> prefixes are generated per repo at plan time, not stored.
   - id: mig-config

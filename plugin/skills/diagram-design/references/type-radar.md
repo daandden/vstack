@@ -12,7 +12,7 @@
 - **Series polygon:** stroke 1.5px at the series color, fill the same color at `0.18` opacity (`0.22` in dark). Stroke 1.8px on the focal series — a subtle weight bump.
 - **Vertex dots:** **only on the focal series**, `r=4` filled with the series color. Non-focal series are stroke-and-fill only. This is the load-bearing rule that keeps the chart readable at 4–5 series.
 - **Drawing order:** dots-pattern bg → grid rings → axis spokes → axis labels → scale ticks → non-focal series (smallest area first) → focal series → focal vertex dots → legend.
-- **Legend:** horizontal strip at the bottom (per the global rule). Swatch is a 16×8 rectangle (matches the polygon stroke+fill, not a circle), then the entity name. ~140px between entries. Optional italic tail on the right with the rationale (`"One coral. Position is the signal — color reserved for the recommended option."`).
+- **Legend:** horizontal strip at the bottom (per the global rule). Swatch is a 16×8 rectangle (matches the polygon stroke+fill, not a circle), then the entity name. ~140px between entries. Optional italic tail on the right with the rationale (`"One accent. Position is the signal — color reserved for the recommended option."`).
 
 ## Math
 
@@ -51,18 +51,18 @@ Each vertex: `center + (v/10) · (outer_i − center)`, rounded to the nearest p
 
 ## Series palette
 
-The skill's "1-focal" rule still holds: `accent` is reserved for the focal series, and a small editorial palette (`series-1` through `series-5`, defined in [`style-guide.md`](style-guide.md)) covers the non-focal series. Don't reach for free-form colors.
+The skill's "1-focal" rule still holds: `accent` is reserved for the focal series, and the Catppuccin series tokens (`series-1` through `series-5`, defined in [`style-guide.md`](style-guide.md)) cover the non-focal series. Don't reach for free-form colors.
 
 | Slot | Token | Hue |
 |---|---|---|
-| Focal | `accent` | the skin's accent |
-| 1 | `series-1` | sage |
-| 2 | `series-2` | dusty-blue |
-| 3 | `series-3` | mustard |
-| 4 | `series-4` | rust-brown |
-| 5 | `series-5` | slate |
+| Focal | `accent` | mauve |
+| 1 | `series-1` | green |
+| 2 | `series-2` | teal |
+| 3 | `series-3` | peach |
+| 4 | `series-4` | maroon |
+| 5 | `series-5` | sapphire |
 
-Light and dark values for every slot live in [`style-guide.md` § Series palette](style-guide.md#series-palette-multi-series-chart-types-only).
+Light (Latte) and dark (Mocha) values for every slot live in [`style-guide.md` § Semantic roles](style-guide.md#semantic-roles).
 
 ## Anti-patterns
 
@@ -72,11 +72,5 @@ Light and dark values for every slot live in [`style-guide.md` § Series palette
 - **Dots on every series.** Only the focal carries dots. Adding them to all 4–5 series turns the chart into a bead curtain.
 - **Radar with 2 series** — a comparison bar chart or a 2-row table is clearer.
 - **Non-quantitative axes.** All axes must be measurable on the same normalized scale. "Speed" + "color" + "year" mixes don't belong on a radar.
-- **Mono-font axis labels.** Names go in the `node-name` sans family (the global rule). Mono is for technical sublabels only.
+- **Axis names in the `sublabel` or `eyebrow` role.** Axis names are names: set them in the `node-name` role. The small roles are for technical values and tags.
 - **Rainbow palette.** Even with the new `series-*` tokens, you don't need all 5 in one chart — use only as many as you have non-focal entities.
-
-## Examples
-
-- `assets/example-radar.html` — minimal light. 4 storage backends × 5 workload dimensions, MinIO focal.
-- `assets/example-radar-dark.html` — minimal dark, same data.
-- `assets/example-radar-full.html` — full editorial: container framing + 4 cards (one per backend) with varied widths + footer.

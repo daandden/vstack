@@ -7,7 +7,7 @@ import { change, files, hits, machinePlan, privateMove, rewrite, rows, type Chan
 type Mode = "move" | "private";
 interface ProjectItem {
   id: string;
-  kind: "config-move" | "config-copy" | "code-host" | "rewrite" | "domain-move" | "marker" | "old-delete" | "old-store-delete" | "private-move";
+  kind: "config-move" | "config-copy" | "code-host" | "rewrite" | "domain-move" | "old-delete" | "old-store-delete" | "private-move";
   mandatory: boolean;
   destructive: boolean;
   from?: string;
@@ -71,7 +71,7 @@ export function projectPlan(cwd: string, mode: Mode = "move"): ProjectPlan {
   const replacements = rows(), relative = join(root,".git") === common;
   const substitute = (t: string) => rewrite(t,[common],relative,replacements);
   const add = (kind: ProjectItem["kind"], from: string, to: string, before: string, after: string, mandatory = false) => {
-    const i: ProjectItem = {id:`${kind}:${from}`,kind,mandatory,destructive:["old-delete","old-store-delete","marker"].includes(kind),from,to,changes:[change(from,to,before,after)],manual_hits:hits(to,after,replacements)};
+    const i: ProjectItem = {id:`${kind}:${from}`,kind,mandatory,destructive:["old-delete","old-store-delete"].includes(kind),from,to,changes:[change(from,to,before,after)],manual_hits:hits(to,after,replacements)};
     plan.items.push(i); return i;
   };
   let movedStore: Item | undefined;
@@ -139,14 +139,6 @@ export function projectPlan(cwd: string, mode: Mode = "move"): ProjectPlan {
       else add("domain-move",path,to,before,after);
     } else if (before !== after) add("rewrite",path,path,before,after);
   }
-  const marker = join(root,".diagram-design");
-  if (existsSync(marker) && lstatSync(marker).isFile()) {
-    const before = text(marker), match = /^profile:\s*([a-zA-Z0-9_-]+)\s*$/m.exec(before);
-    if (!match) throw new Error(`${marker}: expected profile: <slug>`);
-    const to = join(destination,"diagram.md");
-    if (existsSync(to)) add("old-delete",marker,to,before,text(to));
-    else add("marker",marker,to,before,`diagram-profile: ${match[1]}\n`);
-  }
   return plan;
 }
 function move(root: string, from: string, to: string) {
@@ -173,7 +165,6 @@ export function applyProject(plan: ProjectPlan, skip: string[] = []) {
         const ch=item.changes[0]!;
         if (item.kind === "config-move" || item.kind === "domain-move") move(plan.root,ch.path,ch.after_path);
         mkdirSync(dirname(ch.after_path),{recursive:true});writeFileSync(ch.after_path,ch.after);
-        if (item.kind === "marker") rmSync(item.from!);
       }
       applied.push(item.id);
     } catch(e) { failures.push({id:item.id,error:e instanceof Error?e.message:String(e)}); break; }

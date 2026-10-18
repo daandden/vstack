@@ -21,7 +21,7 @@ Applies only to diagrams using the Traceable block decomposition pattern (Tree n
 
 ```json
 {
-  "source": "example-tree-block-decomposition.html",
+  "source": "payments-blocks.html",
   "blocks": [
     {
       "id": "PAY-001",
@@ -59,19 +59,18 @@ No other keys, and no generation timestamp: the registry is meant to be regenera
 3. For each matched node, read `data-block-id`, `data-block-parent`, `data-block-name`, `data-block-input`, `data-block-output`, `data-block-constraint`, `data-block-assumption`, `data-block-impl` — whichever are present. Map `data-block-name` to the JSON key `name`; map the rest by dropping the `data-block-` prefix.
 4. Preserve attribute values verbatim — no trimming beyond surrounding whitespace, no case changes, no re-formatting of the `impl` path.
 5. Assemble the `blocks` array in document order, as defined under *JSON schema* above.
-6. Write to `<basename>.registry.json` next to the source (e.g. `example-tree-block-decomposition.html` → `example-tree-block-decomposition.registry.json`). Honour an explicit `--output` path if the user provided one to the parent export command.
+6. Write to `<basename>.registry.json` next to the source (e.g. `payments-blocks.html` → `payments-blocks.registry.json`). Honour an explicit `--output` path if the user provided one to the parent export command.
 
 ## Edge cases
 
 - **No `data-block-id` attributes anywhere in the source**: refuse and tell the user; don't write an empty `{"blocks": []}` file. This is very likely `--registry` requested on a diagram that doesn't use the pattern at all — say so.
-- **Duplicate `data-block-id` values**: emit every matching entry in document order; don't deduplicate or pick one. A duplicate ID is a correctness problem for `scripts/verify-block-registry.py` to catch, not for export to silently resolve.
-- **`data-block-parent` pointing at an ID absent from the file, or a parent cycle**: emit the data exactly as authored, including the broken or cyclic reference. Same reasoning as duplicates — export mirrors the source; `scripts/verify-block-registry.py` is the structural check, and running it is a separate, explicit step, not implied by `--registry` itself.
-- **Source is `assets/index.html`** (the gallery): refuse, same as the SVG/PNG path — ask which specific diagram file.
+- **Duplicate `data-block-id` values**: emit every matching entry in document order; don't deduplicate or pick one. A duplicate ID is a correctness problem for a structural check to catch, not for export to silently resolve. Upstream's `scripts/verify-block-registry.py` is that check, but it does not ship with this skill, so check the IDs by hand.
+- **`data-block-parent` pointing at an ID absent from the file, or a parent cycle**: emit the data exactly as authored, including the broken or cyclic reference. Same reasoning as duplicates — export mirrors the source. The structural check is a separate, explicit step by hand, not implied by `--registry` itself.
 - **`--registry` combined with `--svg-only` or `--png-only`**: independent outputs — produce the registry JSON in addition to whichever raster/vector format was requested. `--registry` has no interaction with `--scale`; it produces no image.
 
 ## What this never does
 
-- Validates ID uniqueness, parent resolution, or cycles. That's `scripts/verify-block-registry.py` — run it as its own step, not implied by export.
+- Validates ID uniqueness, parent resolution, or cycles. Upstream's `scripts/verify-block-registry.py` does that, but it does not ship with this skill. Check them by hand as their own step, not implied by export.
 - Correlates a block's metadata against its drawn position or connector geometry. Out of scope for the registry entirely, not just deferred — the JSON is a metadata projection, not a geometry audit.
 - Writes a generation timestamp, tool version, or any field not literally sourced from a `data-block-*` attribute.
 - Modifies the source HTML.

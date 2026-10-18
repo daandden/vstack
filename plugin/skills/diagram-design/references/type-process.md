@@ -30,11 +30,11 @@ nodes:                              # explicit per-cell entries; empty cells ren
   - { lane: "RDE", step: 0,  title: "Survey design",      sub: "questionnaire · sampling", tool: "Excel · CSPro",
       chips: {in: null,  out: "FL"} }              # first step has no input chip
   - { lane: "IT",  step: 1,  title: "Build app",          sub: "form + validation",        tool: "CSPro · scripts",
-      chips: {in: "FL", out: "TB"}, color: "#5a7d9a" }    # slate-blue — data quality concern
+      chips: {in: "FL", out: "TB"}, color: "#209fb5" }    # sapphire — data quality concern
   - { lane: "RDE", step: 2,  title: "Pilot test",         sub: "field debug",              tool: "tablet · script",
       chips: {in: "TB", out: "TB"}, focal: true }   # focal node — accent border
   - { lane: "FLD", step: 3,  title: "Train enumerators",  sub: "protocols · safety",       tool: "manual",
-      chips: {in: "TB", out: "LS"}, color: "#b85450" }    # rust-red — governance / training
+      chips: {in: "TB", out: "LS"}, color: "#d20f39" }    # red — governance / training
   # ... etc
 
 arrows:                             # explicit edges; styles bind to topology (see §3)
@@ -147,9 +147,9 @@ Per-lane `color` override (§4): replaces the label fill with `C` and the lane s
 role_chip          rect 14×10 at (node_x+4, node_y+4),  rx=2
 role_chip_text     centered at (node_x+11, node_y+12), font-size=6, weight=600
                                                                 # text = lanes[k].key (3-letter lane code)
-title              centered at (step_cx(j), node_y+26),  font-size=9 sans semibold
-in→out             centered at (step_cx(j), node_y+40),  font-size=6.5 mono muted
-tool               centered at (step_cx(j), node_y+52),  font-size=6.5 mono soft
+title              centered at (step_cx(j), node_y+26),  font-size=9 node-name 600
+in→out             centered at (step_cx(j), node_y+40),  font-size=6.5 sublabel muted
+tool               centered at (step_cx(j), node_y+52),  font-size=6.5 sublabel soft
 data chip IN       rect 16×8 at (node_x+4,   node_y+54), rx=2      # payload entering
 data chip OUT      rect 16×8 at (node_x+80,  node_y+54), rx=2      # payload leaving
 ```
@@ -241,7 +241,7 @@ Applied to:
 | Data-type chips | **unchanged** | **unchanged** |
 | Arrows touching this node | **unchanged** — topology-driven | **unchanged** |
 
-`C_light` = the same hex lightened ~15% for dark-mode contrast (e.g., `#b85450` → `#d97a78`).
+`C_light` = the Mocha value of the same Catppuccin color, for dark-mode contrast (e.g., Latte red `#d20f39` → Mocha red `#f38ba8`, Latte green `#40a02b` → Mocha green `#a6e3a1`).
 
 ### 4.2 Per-step `color`
 
@@ -262,10 +262,10 @@ Replaces the lane stripe tint with `rgba(C, 0.04)` and the lane label text fill 
 
 Same palette as `type-high-level.md`, `type-dp-integration.md`, `type-data-flow.md`:
 
-- `#b85450` rust-red — Security / Identity / Governance (access control, training, approvals)
-- `#5a7d9a` slate-blue — Observability / Quality (data quality gates, validation, monitoring)
-- `#7a8c47` olive-green — Data Products / Publication (consumer-ready outputs, releases)
-- `#8c6d3f` warm-brown — Backup / DR / Archive
+- `#d20f39` red — Security / Identity / Governance (access control, training, approvals)
+- `#209fb5` sapphire — Observability / Quality (data quality gates, validation, monitoring)
+- `#40a02b` green — Data Products / Publication (consumer-ready outputs, releases)
+- `#fe640b` peach — Backup / DR / Archive
 
 ---
 
@@ -293,10 +293,10 @@ Only these differ between modes, and only in opacity:
 | Label col divider | `ink @ 0.20` | `ink @ 0.22` | ditto |
 | Focal chip fill | `accent @ 0.20` | `accent @ 0.22` | ditto |
 | Focal node fill | `accent @ 0.08` | `accent @ 0.12` | ditto |
-| Default node fill | `#ffffff` (white) | `ink @ 0.04` | White is opaque; on dark paper the node lifts off the ground instead |
+| Default node fill | `paper` | `ink @ 0.04` | `paper` is opaque; on dark paper the node lifts off the ground instead |
 | Default node stroke | `ink @ 0.25` | `ink @ 0.20` | Light ink on dark paper reads stronger at equal opacity |
 
-Unchanged across modes: dot pattern `ink @ 0.10`, dividers `ink @ 0.12`, default chip fill `ink @ 0.12`, focal node stroke `accent`, and custom component colors (`C` light → `C_light`, lightened ~15%).
+Unchanged across modes: dot pattern `ink @ 0.10`, dividers `ink @ 0.12`, default chip fill `ink @ 0.12`, focal node stroke `accent`, and custom component colors (`C` Latte → `C_light` Mocha).
 
 ---
 
@@ -331,16 +331,16 @@ Same catalog as `type-data-flow.md` §8.
 
 | Code | Color (light) | Color (dark) | Meaning |
 |------|---------------|--------------|---------|
-| `LS` | `#7c8f6f` sage | `#9caf8f` | List / assignment / task |
-| `DB` | `#5e7a9b` dusty-blue | `#82a0c0` | Dataset / tabular records |
-| `TB` | `#b8915a` mustard | `#d3ad7a` | Table (analysis-ready) |
-| `FL` | `#9c6b50` rust-brown | `#b88670` | File / document / report |
-| `WB` | `#6e6479` slate | `#8d8298` | Web / press / public release |
+| `LS` | `#40a02b` green | `#a6e3a1` | List / assignment / task |
+| `DB` | `#209fb5` sapphire | `#74c7ec` | Dataset / tabular records |
+| `TB` | `#df8e1d` yellow | `#f9e2af` | Table (analysis-ready) |
+| `FL` | `#fe640b` peach | `#fab387` | File / document / report |
+| `WB` | `#7287fd` lavender | `#b4befe` | Web / press / public release |
 | N/A | omit chip entirely | — | Unknown or not applicable |
 
-Text inside chip: white, font-size 5, weight 700, mono.
+Text inside chip: `paper`, font-size 5, weight 700, mono.
 
-Data-type chip colors are a **separate semantic axis** from the per-node color override (§4). Chip colors describe *payload format*; node color describes *concern type*. A node can have both an `out: TB` mustard chip and a rust-red border simultaneously.
+Data-type chip colors are a **separate semantic axis** from the per-node color override (§4). Chip colors describe *payload format*; node color describes *concern type*. A node can have both an `out: TB` yellow chip and a red border simultaneously.
 
 ---
 
@@ -423,9 +423,9 @@ nodes:
   - { lane: "FLD", step: 2,  title: "Data Collection",   sub: "→ 10,464 dwellings",
       tool: "Survey Solutions",            chips: {in: "LS", out: "DB"},  focal: true }   # focal node
   - { lane: "SVY", step: 3,  title: "HQ Review",         sub: "Submissions → Approved",
-      tool: "Survey Sol. HQ",              chips: {in: "DB", out: "DB"},  color: "#b85450" }   # rust-red · governance
+      tool: "Survey Sol. HQ",              chips: {in: "DB", out: "DB"},  color: "#d20f39" }   # red · governance
   - { lane: "IT",  step: 4,  title: "Error Checks",      sub: "Approved → Cleaned",
-      tool: "SAS · Scripts",               chips: {in: "DB", out: "DB"},  color: "#5a7d9a" }   # slate-blue · data quality
+      tool: "SAS · Scripts",               chips: {in: "DB", out: "DB"},  color: "#209fb5" }   # sapphire · data quality
   - { lane: "RDE", step: 5,  title: "Weight Calculation", sub: "Cleaned → Weighted",
       tool: "SAS",                         chips: null }                                  # 2-line title — chips skipped
   - { lane: "HHU", step: 6,  title: "2° Cleaning",       sub: "Weighted → Analysis",
@@ -435,7 +435,7 @@ nodes:
   - { lane: "CMM", step: 8,  title: "Stats Review",      sub: "Tables → Approved",
       tool: "Internal review",             chips: {in: "FL", out: "FL"} }
   - { lane: "CMM", step: 9,  title: "Public Release",    sub: "Approved → Public",
-      tool: "Press conference",            chips: {in: "FL", out: "WB"}, color: "#7a8c47" }   # olive-green · data products
+      tool: "Press conference",            chips: {in: "FL", out: "WB"}, color: "#40a02b" }   # green · data products
   - { lane: "IT",  step: 10, title: "Upload NatStat / SDMX", sub: "Results → Published",
       tool: "Web · SDMX API",              chips: null }                                  # 2-line title — chips skipped
 
@@ -476,15 +476,7 @@ To document a different process, change only the value of these inputs:
 - **Lanes**: rename `lanes[k].name` to your team names; update each `nodes[i].lane` to match. Up to 6 lanes.
 - **Steps**: rename `steps[j].label`, move `focal: true` to the step that defines the diagram's central claim. Up to 12 steps.
 - **Nodes**: write one entry per `(lane, step)` cell that has work. Leave cells empty (no entry) to render nothing.
-- **Colors**: choose `color: "#hex"` on at most 3 nodes (§4 cap). Stick to the recommended palette unless brand demands otherwise.
+- **Colors**: choose `color: "#hex"` on at most 3 nodes (§4 cap). Stick to the recommended Catppuccin palette.
 - **Arrows**: declare every edge explicitly with `style: normal | focal-in | focal-out | trigger`. The routing rule (§3.1) fills in the geometry.
 
 Everything else — viewBox sizing, chip positions, legend layout, dark-mode token swap — is derivable. The YAML is the **source of truth**; the SVG is one of many possible renderings of it (light/dark/full all derive from the same inputs with different style tokens).
-
----
-
-## 13. Examples
-
-- `assets/example-process.html` — minimal light (quarterly survey: 11 steps, 6 divisions, data-type chips). Gallery default.
-- `assets/example-process-dark.html` — same, dark skin.
-- `assets/example-process-full.html` — same, editorial-card frame.

@@ -8,7 +8,7 @@
 - Nodes are the standard node-box pattern (§6, [primitives-core.md](primitives-core.md#node-box--full-pattern)): `rx=6`, 160px wide, 56px tall.
 - **Fan-in badge.** Every node carries an `eyebrow`-role 8px badge in its top-right corner, inside a small `rx=2` box, showing how many nodes depend on it (`4 in`). A mask fully inside a node is a badge chip, not a label — legitimate under §6 rule 6. The node with the highest fan-in is the diagram's structural story; size nothing else to compete with it.
 - **Node treatments** ([style-guide.md § Node type → treatment](style-guide.md#node-type--treatment)):
-  - Internal package/service → white fill + `ink` stroke.
+  - Internal package/service → `paper` fill + `ink` stroke.
   - External / third-party → `ink @ 0.03` fill + `ink @ 0.30` stroke (the External/Cloud treatment).
   - Leaf with no outgoing edges → `ink @ 0.05` fill + `muted` stroke.
 - **The cycle.** At most one back-edge points upward against rank order. It is the editorial point of the diagram: `accent` stroke, dashed `5,4`, `marker-end="url(#arrow-accent)"`, routed **around the outside** of the node stack — never straight through the middle, and never behind a node it doesn't connect to — with a masked `arrow-label`-role 8px `CYCLE` label at its visible end. The two nodes the cycle touches stay in their normal node treatment (§5) — no accent stroke or fill on the nodes themselves, or the 2-accent budget is blown on the wrong elements.
@@ -36,9 +36,3 @@ Over budget: collapse a leaf cluster into one aggregate node labelled with its c
 - Unlabelled external dependencies — version or registry belongs in the `sublabel` (`v3.23 · npm`), not left implicit.
 - Highlighting more than one cycle in a single diagram — pick the one that matters editorially; a second cycle competes with the first and neither reads.
 - Omitting the fan-in badges — without them the reader can't see at a glance where dependencies concentrate, which is the entire reason this type exists over a plain tree.
-
-## Examples
-
-- `assets/example-dependency.html` — minimal light
-- `assets/example-dependency-dark.html` — minimal dark
-- `assets/example-dependency-full.html` — full editorial

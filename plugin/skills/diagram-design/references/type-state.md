@@ -14,17 +14,9 @@
 - Transitions: curved arrows labeled in the `arrow-label` role as `event [guard] / action` (omit sections you don't need).
 - Self-loops curve above the state.
 - Orient along the dominant flow direction (left→right or top→down); rearrange before crossing transitions.
-- Coral on the state the reader should notice — typically the error state, or "happy completion".
+- Accent on the state the reader should notice — typically the error state, or "happy completion".
 
 ## Anti-patterns
 - More transitions than states × 2 → likely two state machines.
 - "From any state" transitions drawn from every state — use a single annotation (`* → Error on timeout`) instead.
 - Unlabeled transitions (the whole point is *what triggers this*).
-
-## Examples
-- `assets/example-state.html` — minimal light
-- `assets/example-state-dark.html` — minimal dark
-- `assets/example-state-full.html` — full editorial
-- `assets/example-state-lifecycle.html` — lifecycle phase map, minimal light
-- `assets/example-state-lifecycle-dark.html` — lifecycle phase map, minimal dark
-- `assets/example-state-lifecycle-full.html` — lifecycle phase map, full editorial

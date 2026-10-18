@@ -18,16 +18,11 @@ Don't mix orientations on one diagram.
   - **Side annotation** (right or left) — optional. For funnels: drop-off percentage here (`−40%`).
 - Fill: subtle graded tints OR all paper-2 with hairline dividers (cleaner). Pick one.
 - Stroke: 1px hairline between layers; outer silhouette 1px muted or ink.
-- **Coral on ONE layer only**: apex of pyramid, conversion layer of funnel, or critical bottleneck.
+- **Accent on ONE layer only**: apex of pyramid, conversion layer of funnel, or critical bottleneck.
 - Optional left-margin axis arrow + `eyebrow`-role label (`rarer ↑`, `drop-off ↓`).
 
 ## Anti-patterns
 - 7+ layers (illegible — compress or split).
 - Pyramid for non-hierarchical data (use a tree or bar chart).
 - Dishonest widths (fake equal spacing when drops are unequal).
-- Coral on the base layer (dilutes the "apex = rare" signal).
-
-## Examples
-- `assets/example-pyramid.html` — minimal light
-- `assets/example-pyramid-dark.html` — minimal dark
-- `assets/example-pyramid-full.html` — full editorial
+- Accent on the base layer (dilutes the "apex = rare" signal).

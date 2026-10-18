@@ -14,7 +14,7 @@
 - **Three panels, one reading order: Before · Changes · After.** Both topology panels use the same width, height, and internal grid pitch. The center panel is a short change ledger, not a third topology. Name the two snapshots with meaningful versions or dates.
 - **Keep the mental map stable.** Start by copying the Before coordinates into After. Move a retained component only when its movement is part of the story and receives a `MOVED` entry. Do not independently run a layout algorithm on each panel.
 - **Panel positions are not component positions.** Put each snapshot in one SVG `<g transform="translate(x y)">`; write component bounds and relationship paths in local coordinates. The Before and After origins share one y-coordinate, with the ledger occupying the horizontal gap.
-- **Shared grid:** use a 4px pitch by default. Every component's local x, y, width, and height is a multiple of that pitch. The shipped example uses two `336 480 4` grids; scale the overall SVG responsively without changing their local geometry.
+- **Shared grid:** use a 4px pitch by default. Every component's local x, y, width, and height is a multiple of that pitch. For example, use two `336 480 4` grids, and scale the overall SVG responsively without changing their local geometry.
 - **Budget:** at most **8 unique components**, **10 unique relationships**, and **8 ledger entries** across the complete comparison. A retained ID counts once, not once per snapshot. A component that is both changed and moved consumes two ledger entries. Split larger migrations into named subsystems or phases; never drop edges to fit.
 - **Connectors:** use Architecture's rounded orthogonal routing and port rules. In this type, even straight connectors are `<path>` elements so relationship identity and endpoints have one grammar. Draw paths before components. A stable relationship may take a different route to meet a moved component without becoming `REWIRED`.
 - **Nodes:** print the same stable ID in both states along with the human-readable name. Treat names, responsibilities, implementation versions, and protocols as semantic attributes; identities survive a rename when the underlying object survives.
@@ -42,7 +42,7 @@ This is the authoring and validation surface, not a serialization inferred from 
 
 ### Diagram and snapshots
 
-The file has exactly one `<svg data-diagram="architecture-delta">`. Keep the standard accessible SVG title/description contract. Two direct child `<g>` elements declare `data-snapshot="before"` and `data-snapshot="after"`. Each has:
+The file has exactly one `<svg data-diagram="architecture-delta">`. The accessible SVG title and description contract is optional guidance, as in SKILL.md. Two direct child `<g>` elements declare `data-snapshot="before"` and `data-snapshot="after"`. Each has:
 
 - `data-grid="<width> <height> <pitch>"`: the same three positive finite numbers in both panels. Width and height are multiples of pitch.
 - `transform="translate(<x> <y>)"`: exactly one finite two-number translation, solely for the panel origin. Comma-separated translations are also accepted.
@@ -90,7 +90,7 @@ The ledger is an exact set of `(target, change)` pairs implied by object statuse
 
 ### Worked metadata pattern
 
-This excerpt shows one changed component; a complete diagram also needs its other components, relationships, and accessible SVG title/description.
+This excerpt shows one changed component; a complete diagram also needs its other components and relationships.
 
 ```svg
 <svg data-diagram="architecture-delta" viewBox="0 0 1000 400">
@@ -117,11 +117,11 @@ This excerpt shows one changed component; a complete diagram also needs its othe
 
 ## Verification and its boundaries
 
-From a repository checkout, run the eval cells for `scripts/verify-architecture-delta.py --all` (or pass explicit HTML paths) and `scripts/test-verify-architecture-delta.py` (see SKILL.md "Running the bundled scripts"). No arguments also checks shipped examples. The stdlib HTML parser reads real attributes, including unquoted values and entities, ignores comments, and rejects malformed SVG nesting. Synthetic fixtures prove both legal cases and adversarial changes independently of the shipped coordinates; the light, dark, and full variants are checked too.
+Upstream's `scripts/verify-architecture-delta.py` checks this contract, but it does not ship with this skill. Check the rules in the next paragraph by hand before output.
 
-The verifier enforces the declared structure, differential semantics, grid/bounds geometry, drawn relationship endpoints, budgets, and exact ledger coverage. It rejects CSS transforms/position overrides, CSS sizing that could change bounds, escaped CSS declarations, explicit hidden objects/ledger, and common CSS hiding rules. Ordinary responsive sizing of the outer SVG remains legal.
+The Upstream verifier enforces the declared structure, differential semantics, grid/bounds geometry, drawn relationship endpoints, budgets, and exact ledger coverage. It rejects CSS transforms/position overrides, CSS sizing that could change bounds, escaped CSS declarations, explicit hidden objects/ledger, and common CSS hiding rules. Ordinary responsive sizing of the outer SVG remains legal.
 
-It is **not** a browser renderer or a proof of the source system. Authors remain responsible for honest signatures, labels matching those signatures, readable shape/dash treatments, and an accurate migration story. Exotic CSS cascade/variable effects, clipping and occlusion, connector crossings, intermediate segment clearance, ledger placement, and screen-reader quality still require the normal skin, accessibility, geometry, and rendered-layout gates plus desktop/mobile visual review. Keep semantic geometry in the SVG attributes instead of making CSS part of the data model.
+It is **not** a browser renderer or a proof of the source system. Authors remain responsible for honest signatures, labels matching those signatures, readable shape/dash treatments, and an accurate migration story. Run the shipped static checks on the figure: `scripts/verify-geometry.py`, `scripts/lint-skin.py`, and `scripts/self_check.py`. Then review the rendered figure on desktop and mobile for exotic CSS cascade and variable effects, clipping and occlusion, connector crossings, intermediate segment clearance, and ledger placement. Keep semantic geometry in the SVG attributes instead of making CSS part of the data model.
 
 ## Anti-patterns
 
@@ -134,10 +134,6 @@ It is **not** a browser renderer or a proof of the source system. Authors remain
 - Counting retained objects twice to justify dropping other objects from the comparison.
 - Treating this comparison as an executable migration plan. Ordering, rollback, availability, and data consistency need their own explanation.
 
-## Examples
+## Worked case
 
-- `assets/example-architecture-delta.html` — minimal light order-fulfilment migration; all five change kinds.
-- `assets/example-architecture-delta-dark.html` — minimal dark, identical IDs, signatures, topology, and coordinates.
-- `assets/example-architecture-delta-full.html` — full editorial treatment of the same migration.
-
-The example retains the storefront and order store, changes the order API to enqueue work, removes the legacy dispatcher, adds a durable order queue, moves the fulfilment worker, and rewires order submission. Stable relationships follow the worker's new location while preserving their IDs and endpoint semantics.
+An order-fulfilment migration uses all five change kinds. It retains the storefront and order store, changes the order API to enqueue work, removes the legacy dispatcher, adds a durable order queue, moves the fulfilment worker, and rewires order submission. Stable relationships follow the worker's new location while preserving their IDs and endpoint semantics.

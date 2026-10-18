@@ -31,18 +31,6 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Callable, Iterator
 
-GOOGLE_FONTS_IMPORT = (
-    "@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1"
-    "&amp;family=Geist:wght@400;500;600"
-    "&amp;family=Geist+Mono:wght@400;500;600"
-    "&amp;family=Noto+Serif:ital@0;1"
-    "&amp;family=Noto+Sans+KR:wght@400;500;600"
-    "&amp;family=Noto+Serif+KR:wght@400"
-    "&amp;family=Noto+Sans+TC:wght@400;500;600"
-    "&amp;family=Noto+Serif+TC:wght@400"
-    "&amp;display=swap');"
-)
-
 # Page chrome that must not follow a diagram fragment out of its host document.
 # The bare `svg { width; min-width }` rule is page layout too (see
 # is_chrome_selector); `svg .zone` and `svg text` are diagram rules.
@@ -680,18 +668,10 @@ def leading_accessibility_end(svg: str, pos: int) -> int:
         pos = close.end()
 
 
-def merge_style_into_defs(svg: str, style_css: str, system_fonts: bool = False) -> str:
-    """Ensure one <defs> and place a <style> with fonts + diagram CSS first.
-
-    With system_fonts the Google Fonts @import is left out, so the SVG makes no
-    network request and its font stacks fall through to installed faces.
-    """
-    parts = [] if system_fonts else [GOOGLE_FONTS_IMPORT]
-    if style_css.strip():
-        parts.append(style_css.strip())
-    if not parts:
+def merge_style_into_defs(svg: str, style_css: str) -> str:
+    if not style_css.strip():
         return svg
-    style_tag = "<style>" + "\n      ".join(parts) + "</style>"
+    style_tag = "<style>" + style_css.strip() + "</style>"
 
     defs_match = re.search(r"<defs\b[^>]*>", svg, re.IGNORECASE)
     if defs_match:
@@ -1032,7 +1012,6 @@ def normalize_rgba_presentation_attrs(svg: str) -> str:
 
 
 def has_diagram_stylesheet(svg: str) -> bool:
-    """True when a <style> block contains CSS rules beyond the fonts @import."""
     for block in STYLE_BLOCK_RE.findall(svg):
         stripped = re.sub(r"@import\b[^;]*;", "", block, flags=re.IGNORECASE)
         stripped = re.sub(r"/\*.*?\*/", "", stripped, flags=re.DOTALL)
@@ -1042,11 +1021,6 @@ def has_diagram_stylesheet(svg: str) -> bool:
 
 
 def assert_export_gate(svg: str) -> None:
-    """Refuse a class-styled fragment that shipped without diagram CSS.
-
-    A fonts-only <style> (Google Fonts @import with no rules) does not count —
-    class-based fills would still render as black boxes.
-    """
     uses_classes = False
     for region in REFERENCE_REGION_RE.finditer(svg):
         tag = START_TAG_RE.fullmatch(region.group(0))
@@ -1062,7 +1036,7 @@ def assert_export_gate(svg: str) -> None:
         )
 
 
-def export_svg_document(html: str, source_path: Path, system_fonts: bool = False) -> str:
+def export_svg_document(html: str, source_path: Path) -> str:
     """Transform source HTML into a standalone SVG document string."""
     slug = slug_for(source_path)
     root_id = f"{slug}-root"
@@ -1079,7 +1053,7 @@ def export_svg_document(html: str, source_path: Path, system_fonts: bool = False
     )
     svg = set_root_id(svg, root_id)
     diagram_css = diagram_css_from_html(html, root_id, original_root_id)
-    svg = merge_style_into_defs(svg, diagram_css, system_fonts)
+    svg = merge_style_into_defs(svg, diagram_css)
     svg = namespace_defs_ids(svg, slug)
     svg = xml_safe_comments(svg)
     svg = normalize_rgba_presentation_attrs(svg)
@@ -1104,28 +1078,16 @@ def main(argv: list[str] | None = None) -> int:
         nargs="?",
         help="Output .svg path (default: <source-stem>.svg next to the source)",
     )
-    parser.add_argument(
-        "--system-fonts",
-        action="store_true",
-        help="omit the Google Fonts @import so the SVG makes no network request",
-    )
     args = parser.parse_args(argv)
 
     source: Path = args.source
     if not source.is_file():
         print(f"error: source not found: {source}", file=sys.stderr)
         return 2
-    if source.name == "index.html" and source.parent.name == "assets":
-        print(
-            "error: refuse to export the gallery (assets/index.html); "
-            "pick a specific diagram file",
-            file=sys.stderr,
-        )
-        return 2
 
     try:
         html = source.read_text(encoding="utf-8")
-        document = export_svg_document(html, source, system_fonts=args.system_fonts)
+        document = export_svg_document(html, source)
     except (ValueError, OSError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2

@@ -15,7 +15,7 @@ Every card renders in exactly one of four states. Document and use all four when
 
 | State | Fill | Stroke | Extra |
 |---|---|---|---|
-| `default` | white | `ink` | — |
+| `default` | `paper` | `ink` | — |
 | `blocked` | `accent @ 0.05` | `accent` (full opacity) dashed `4,4` | 4px `accent` bar on the card's left edge |
 | `waiting / external` | `ink @ 0.02` | `ink @ 0.20` dashed `4,3` | — |
 | `done` | `ink @ 0.05` | `muted` | — |
@@ -41,9 +41,3 @@ When a column's card count `n` exceeds its stated `limit`, the WIP chip's stroke
 - **Accenting every blocked card.** One or two blocked cards read as signal; a column full of accent reads as noise and erases the focal rule.
 - **A "Done" column that grows without bound.** Cap it and note the archive point in the sublabel or a footnote — an unbounded Done column just becomes a second Backlog.
 - **Pill-shaped WIP tags.** The chip is a rectangle at `rx=2`, matching the type-tag primitive in the §6 node box ([primitives-core.md](primitives-core.md#node-box--full-pattern)) — pills read as status badges from an unrelated design language.
-
-## Examples
-
-- `assets/example-kanban.html` — minimal light. Platform-team board: Backlog (3), In progress (4/3, over limit), Review (2/3), Done (2), one blocked card.
-- `assets/example-kanban-dark.html` — minimal dark, same data.
-- `assets/example-kanban-full.html` — full editorial: container framing + 3 summary cards of varied widths + footer.

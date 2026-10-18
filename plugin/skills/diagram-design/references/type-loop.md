@@ -213,11 +213,3 @@ The semantic relationship stays unchanged in dark mode: one `ink`-filled hub, on
 | Accent on multiple stations | The editorial gate disappears. Keep one focal station at most. |
 | More than 8 stations | Labels and spokes crowd the hub. Split into overview + detail. |
 | A cycle that never actually returns | That is a Flowchart arranged in a circle. Use Flowchart and show the real endpoint. |
-
----
-
-## 8. Examples
-
-- `assets/example-loop.html` — minimal light: six-station self-improving operating loop.
-- `assets/example-loop-dark.html` — the same geometry under the dark token inversion.
-- `assets/example-loop-full.html` — editorial page with the flagship loop, three summary cards, and colophon.

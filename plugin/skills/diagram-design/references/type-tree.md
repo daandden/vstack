@@ -8,7 +8,7 @@
 - **Connectors are orthogonal (elbow-style), never diagonal.** Parent drops a short vertical line, then a horizontal bus connects siblings, then each child has a short vertical drop into its top edge. 1px muted stroke.
 - Leaf indicator: thinner stroke (0.8) or different fill — OR let terminal position do the work.
 - Max depth: 4 (root + 3 tiers). Max breadth per level: 5.
-- Coral on **one** node: root OR critical leaf. Not both.
+- Accent on **one** node: root OR critical leaf. Not both.
 - Draw connectors before nodes.
 
 ## Anti-patterns
@@ -16,9 +16,4 @@
 - Nodes of wildly varying widths — pick 2 widths max.
 - Diagonal connector lines.
 - Skipped levels (parent connected to grandchild with no middle).
-- Coral on root AND a leaf.
-
-## Examples
-- `assets/example-tree.html` — minimal light
-- `assets/example-tree-dark.html` — minimal dark
-- `assets/example-tree-full.html` — full editorial
+- Accent on root AND a leaf.

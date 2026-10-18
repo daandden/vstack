@@ -30,11 +30,13 @@ upstreams:
   diagram:
     role: Diagram
     repo: cathrynlavery/diagram-design
-    path: skills/diagram-design
+    path: ""
     pin_kind: commit
     pin: 0482b93fc796b950417f264879997f8f1686e5e6
     items:
       - { match: "skills/diagram-design", type: tree, kind: skill }
+      - { match: "scripts/verify-geometry.py", type: blob, kind: skill }
+      - { match: "scripts/lint-skin.py", type: blob, kind: skill }
   css:
     role: CSS
     repo: vojtaholik/good-css

@@ -25,8 +25,6 @@ A rounded-rectangle footprint of corner radius `r` projects to straight edges jo
 
 Draw faces as plain SVG `<path>` and `<polygon>` elements with the projected points written in. No CSS 3D, no canvas, no WebGL, and no `transform` to place geometry. If content ever has to sit flat on a face, the matrices that agree with `iso()` are `matrix(1,0.5,-1,0.5,tx,ty)` for the top face, `matrix(1,0.5,0,-1,tx,ty)` for the left face, and `matrix(-1,0.5,0,-1,tx,ty)` for the right face. Labels never use them: labels stay horizontal.
 
-`scripts/build-exploded-examples.py` in the repository builds every shipped example from this function and is the worked reference for the helpers below.
-
 ## Layout conventions
 
 - **Parts:** 2 to 5, listed bottom to top. Each part is a rounded prism (`rect`, thickness `t`) plus at most two levels of detail on its top face, because the top face is the one the reader sees.
@@ -41,7 +39,7 @@ Draw faces as plain SVG `<path>` and `<polygon>` elements with the projected poi
 
 | Element | Light | Dark |
 |---|---|---|
-| Face base (opaque, under every face) | `#ffffff` | `paper-2` |
+| Face base (opaque, under every face) | `paper` | `paper-2` |
 | Top face | base | base + `ink @ 0.10` |
 | Left face (lit side) | base + `ink @ 0.07` | base |
 | Right face (shade side) | base + `ink @ 0.15` | base + `paper @ 0.45` |
@@ -80,7 +78,7 @@ An exploded view may open as the assembled object and explode once, because watc
 
 ## Metadata contract
 
-`scripts/verify-exploded.py` reprojects each part from what it declares:
+Upstream's `scripts/verify-exploded.py` reprojects each part from what it declares, but it does not ship with this skill. Check each part's projection against its metadata by hand before output. Each part declares this metadata:
 
 - The figure: one `<g data-exploded data-origin="ox oy" data-gap="g">` wrapping every part.
 - Each part: a `<g>` with `data-part` (key), `data-name` (the label text), `data-rect="x0 y0 x1 y1 r"`, `data-z`, `data-t`, `data-level`, optional `data-kind="housing"` for a container and `data-focal` for the focal part. Animated parts add `data-closed-z`.
@@ -100,16 +98,3 @@ The silhouette verifier accepts signed decimal and scientific-notation coordinat
 - More than one part in the accent, or the other parts faded to show which one matters.
 - Blurred contact shadows, gradients on solid faces, or glow.
 - An exploded view of something with no physical sense of parts. If the layers are just a list, use the layer stack.
-
-## Examples
-
-- `assets/example-exploded.html`: app stack, minimal light
-- `assets/example-exploded-dark.html`: app stack, minimal dark
-- `assets/example-exploded-full.html`: app stack, full editorial
-- `assets/example-exploded-phone.html`, `-dark`, `-full`: phone teardown with a housing, a shared board and battery level, and a display
-- `assets/example-exploded-unboxing.html`, `-dark`, `-full`: packaging with a telescoping lid, a product and cable on one level, an insert, and a box
-- `assets/example-exploded-ai-stack.html`, `-dark`, `-full`: an AI agent stack with a secrets vault, tools, skills as small cards on one layer, the agent harness around the model, and the interface
-- `assets/example-exploded-keyboard.html`, `-dark`, `-full`: a mechanical keyboard with a case tray, PCB, plate, a grid of switches, and a grid of keycaps
-- `assets/example-exploded-phone-animated.html`: the phone assembled, then exploded once
-- `assets/example-exploded-unboxing-animated.html`: the box closed, then unpacked once
-- `assets/example-exploded-ai-stack-animated.html`, `assets/example-exploded-keyboard-animated.html`: the stack and the keyboard assembled, then exploded once

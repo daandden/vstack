@@ -7,7 +7,7 @@
 - **Axis labels: Jobs-minimal.** One single word at each arrow tip — no glyphs baked into the label (no `↑` / `→` / `←` / `↓`), no parentheticals, no "HIGH / LOW" modifiers. `eyebrow` role at 9px regular weight, tracked 0.18em, uppercase. Flank the arrow tips — never sit labels on top of the axis line. Shorten the arrow enough (~60–80px inside the viewBox edge) to leave breathing room for the labels beyond the tips.
 - Never label at the midpoint.
 - Items: small labeled dots (`r=4`) positioned in the quadrants. Labels 8–10px away; don't let labels cross axis lines.
-- Coral on the "do first" item (typically top-right).
+- Accent on the "do first" item (typically top-right).
 - Limit to ~12 items; cluster or split beyond that.
 
 ## Anti-patterns
@@ -15,17 +15,11 @@
 - Items placed on axis lines (ambiguous quadrant).
 - Missing axis names.
 
-## Examples
-- `assets/example-quadrant.html` — minimal light
-- `assets/example-quadrant-dark.html` — minimal dark
-- `assets/example-quadrant-full.html` — full editorial
-- `assets/example-quadrant-consultant.html` — consultant special (see below)
-
 ---
 
 ## Consultant special (2×2 scenario matrix)
 
-A **layout variant** of the standard quadrant — same house skin (warm paper, dot pattern, `title` serif, mono `eyebrow`s, one accent focal). The grammar shifts: axes hold a **range** rather than a measurement; cells hold **named scenarios** rather than positioned items.
+A **layout variant** of the standard quadrant — same house style (Catppuccin paper, dot pattern, slab `title`, `eyebrow` tags, one accent focal). The grammar shifts: axes hold a **range** rather than a measurement; cells hold **named scenarios** rather than positioned items.
 
 **Use when:** you're framing four futures, archetypes, or strategic options across two independent drivers — classic scenario planning, positioning frames, or 2×2 strategy decks (BCG/McKinsey territory). The reader should come away with four named bets, not a point cloud.
 
@@ -38,7 +32,7 @@ A **layout variant** of the standard quadrant — same house skin (warm paper, d
 | Axis arrows | single-ended | **double-ended** — both axes have `marker-start` + `marker-end` |
 | Cell content | small dots with labels | **named scenario + 1–3 line description** |
 | Quadrant corner | short tag (e.g. DO FIRST) | **numbered tag + axis combination** (`01 · DIMENSION-A / DIMENSION-B`) |
-| Focal accent | coral on one *item* | coral on one *quadrant* — tinted bg + coral stroke + coral corner tag |
+| Focal accent | accent on one *item* | accent on one *quadrant* — tinted bg + accent stroke + accent corner tag |
 | Axes | 1px muted ink | **1.2px ink** (slightly heavier — the axes carry more of the figure) |
 
 Both variants use the same Jobs-minimal axis labels: one word at each arrow tip, no glyphs, no parentheticals. The only axis difference is that the consultant variant uses double-ended arrows instead of single-ended.
@@ -67,14 +61,14 @@ Everything else — paper, dot pattern, typography, legend strip, 4px grid, comp
 - Axis cross passes *between* the cells, not through them.
 - Arrow tips live ~20–40px outside the outermost cell edge; single-word axis labels sit ~12px beyond each tip (see Axis labels above).
 - Exactly one focal cell. Picking none makes it a placeholder template; picking two erases the signal.
-- Keep the legend strip + horizontal rule at the bottom — same as the standard quadrant. Legend swatches should show both "headline bet" (coral) and "candidate future" (neutral).
+- Keep the legend strip + horizontal rule at the bottom — same as the standard quadrant. Legend swatches should show both "headline bet" (accent) and "candidate future" (neutral).
 
 ### Anti-patterns (variant-specific)
 
-- Plain white background — the warm paper + dot pattern is load-bearing across the skill; dropping it to "look consultant" turns the diagram generic.
-- Sans-serif H1 — keep the `title` role's serif for the page title. The title/diagram contrast is the house signature.
+- Plain white background — the Catppuccin paper + dot pattern is load-bearing across the skill; dropping it to "look consultant" turns the diagram generic.
+- A page title outside the `title` role — keep IosevkaTermSlab for the H1. The slab title against the IosevkaTerm diagram text is the house signature.
 - Unnamed cells ("Scenario 1/2/3/4") in a shipped diagram — OK as a blank template; not OK as a finished artifact.
-- Coral on more than one cell — same focal rule as everywhere else in the skill.
+- Accent on more than one cell — same focal rule as everywhere else in the skill.
 - 3×3 or 2×3 grids — those are different diagrams, not this variant.
 - Positioning dots *inside* the cells — if position matters, use the standard quadrant.
 - Bolded axis labels, arrow glyphs in the text (`↑ DRIVER`), or "HIGH / LOW" parentheticals — all forbidden. Jobs-minimal is non-negotiable on this variant.

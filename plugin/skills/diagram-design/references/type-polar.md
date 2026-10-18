@@ -50,7 +50,7 @@ Angles are expressed in radians for calculation; `start_angle` is supplied in de
 
 The value ray is the line segment from `(cx, cy)` to `(x_i, y_i)`. Its visible length is exactly proportional to `v`. Endpoint circles have constant radius and encode no additional quantity. No filled sector may sit behind or beneath a value ray, because its area would compete with the declared radius encoding.
 
-The element carrying `data-polar-chart` must be the chart's root `<svg>`. Its descendants are limited to `<g>`, `<line>`, `<circle>`, `<rect>`, `<text>`, `<title>`, and `<desc>`; nested SVGs, paths, polygons, external references, images, and every other element are rejected. Duplicate attributes, mismatched markup, URL-valued SVG references, transforms, CSS loading through `@import`/`url()`, and geometry-affecting CSS are forbidden. Chart elements carry neither `class` nor inline `style`; document styles may not use selectors capable of matching the chart, except the canonical root `svg` layout rule. The only external stylesheet allowed is Google Fonts. Every line carries exactly one of `data-polar-spoke`, `data-polar-ray`, or `data-polar-rule` and uses the role's declared stroke width; spoke and ray geometry is verified within `min(0.75 px, 5% of R)`. The five grid circles carry `data-polar-ring`, use `fill="none"`, a 0.8 px stroke, the chart center, and the 20% through 100% radius intervals exactly once. Every endpoint circle carries `data-polar-marker` and uses the declared 4 px radius, or 5 px for the focal category, with a 1.2 px stroke. The optional full-canvas background is the only rectangle and carries `data-polar-background`. This fail-closed allowlist prevents contributors from bypassing the radius-only encoding with an unannotated or falsely annotated filled shape.
+The element carrying `data-polar-chart` must be the chart's root `<svg>`. Its descendants are limited to `<g>`, `<line>`, `<circle>`, `<rect>`, `<text>`, `<title>`, and `<desc>`; nested SVGs, paths, polygons, external references, images, and every other element are rejected. Duplicate attributes, mismatched markup, URL-valued SVG references, transforms, CSS loading through `@import`/`url()`, and geometry-affecting CSS are forbidden. Chart elements carry neither `class` nor inline `style`; document styles may not use selectors capable of matching the chart, except the canonical root `svg` layout rule. No external stylesheet is allowed. Every line carries exactly one of `data-polar-spoke`, `data-polar-ray`, or `data-polar-rule` and uses the role's declared stroke width; spoke and ray geometry is verified within `min(0.75 px, 5% of R)`. The five grid circles carry `data-polar-ring`, use `fill="none"`, a 0.8 px stroke, the chart center, and the 20% through 100% radius intervals exactly once. Every endpoint circle carries `data-polar-marker` and uses the declared 4 px radius, or 5 px for the focal category, with a 1.2 px stroke. The optional full-canvas background is the only rectangle and carries `data-polar-background`. This fail-closed allowlist prevents contributors from bypassing the radius-only encoding with an unannotated or falsely annotated filled shape.
 
 ### Zero
 
@@ -65,7 +65,7 @@ Version 1 supports:
 - a shared linear scale with `min = 0` and `max > 0`;
 - five circular grid rings at 20%, 40%, 60%, 80%, and 100%;
 - one optional focal category rendered with the accent token;
-- minimal light, minimal dark, and full-editorial examples;
+- minimal light, minimal dark, and full-editorial variants;
 - horizontal, upright category labels outside the outer ring;
 - one numeric value label per category.
 
@@ -81,19 +81,19 @@ Use Radar for multiple entities scored across common criteria, Line for more tha
 
 ## Geometry
 
-All three examples use `viewBox="0 0 1000 520"`, center `(500, 230)`, and `R = 160`.
+All three variants use `viewBox="0 0 1000 520"`, center `(500, 230)`, and `R = 160`.
 
 - Grid rings: `r = 32, 64, 96, 128, 160`.
 - Category spokes: center to `R`, 0.8 px rule stroke, no arrowhead.
 - Non-focal value rays: 2 px muted stroke; endpoint marker radius 4.
 - Focal value ray: 2.4 px accent stroke; endpoint marker radius 5.
-- Ring labels: `0.2 × max` through `1.0 × max` on the first axis only, `arrow-label` role 8 px; the example therefore shows `20, 40, 60, 80, 100`.
+- Ring labels: `0.2 × max` through `1.0 × max` on the first axis only, `arrow-label` role 8 px; a max of 100 therefore shows `20, 40, 60, 80, 100`.
 - Category labels: at `R + 28`, `node-name` role 11 px semibold, horizontal and upright.
 - Numeric labels: at `R + 44`, `arrow-label` role 8 px, including the unit in the chart subtitle rather than repeating it eight times.
 - Label anchor: `middle` within 15 degrees of vertical, `start` on the right half, and `end` on the left half.
 - Drawing order: background, rings, spokes, scale labels, non-focal rays, focal ray, endpoint markers, category labels, numeric labels, legend/source note.
 
-The minimal examples use the full 1000×520 canvas. The full-editorial example places the same chart in the existing editorial frame and adds summary cards without changing chart geometry.
+The minimal variants use the full 1000×520 canvas. The full-editorial variant places the same chart in the existing editorial frame and adds summary cards without changing chart geometry.
 
 ## Visual treatment
 
@@ -128,9 +128,3 @@ The minimal examples use the full 1000×520 canvas. The full-editorial example p
 - Truncated scales whose minimum is not zero.
 - Categories sorted by value instead of retaining their meaningful circular order.
 - Treating a missing value as zero.
-
-## Examples
-
-- `assets/example-polar.html` — minimal light.
-- `assets/example-polar-dark.html` — minimal dark with the same dataset and geometry.
-- `assets/example-polar-full.html` — full editorial with three unequal summary cards and unchanged chart geometry.

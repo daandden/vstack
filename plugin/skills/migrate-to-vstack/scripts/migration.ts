@@ -1,7 +1,7 @@
 // Machine Migration (#40): read-only plans, mandatory private moves, fail-closed application.
 // vstack is linked from a full clone (ADR 0005). Use the clone's pure House style module, but read
 // rows only from the shipped copy: the root YAML is not a runtime input.
-import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, readlinkSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, readFileSync, readdirSync, readlinkSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { dirname, extname, join, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { applyRows, findRow, parseReplacements, type Replacement } from "../../../../scripts/lib/house-style.ts";
@@ -21,7 +21,7 @@ export interface Change { path: string; after_path: string; before: string; afte
 export interface Hit { path: string; line: number; text: string }
 export interface Item {
   id: string;
-  kind: "private-move" | "profiles-move" | "skills-remove" | "rule-rewrite" | "store-rewrite" | "old-rule-delete";
+  kind: "private-move" | "skills-remove" | "rule-rewrite" | "store-rewrite" | "old-rule-delete";
   mandatory: boolean;
   destructive: boolean;
   from?: string;
@@ -159,8 +159,6 @@ export function machinePlan(home: string, scanRoots: string[]): Plan {
     plan.items.push(item);
   }
   plan.standard_projects = [...new Set(plan.standard_projects)].sort();
-  const profiles = join(home, ".diagram-design/profiles");
-  if (existsSync(profiles)) plan.items.push({ id: "profiles", kind: "profiles-move", mandatory: true, destructive: true, from: profiles, to: join(home, ".vstack/diagram-design/profiles") });
   const lock = process.env.XDG_STATE_HOME ? join(process.env.XDG_STATE_HOME, "skills/.skill-lock.json") : join(home, ".agents/.skill-lock.json");
   const names = new Set<string>();
   if (existsSync(lock)) {
@@ -231,10 +229,7 @@ export async function applyMachine(plan: Plan, skip: string[] = []) {
     if (skip.includes(item.id)) continue;
     try {
       if (item.kind === "private-move") privateMove(item);
-      else if (item.kind === "profiles-move") {
-        if (existsSync(item.to!)) throw new Error(`${item.to} already exists; no automatic merge`);
-        mkdirSync(dirname(item.to!), { recursive: true }); renameSync(item.from!, item.to!);
-      } else if (item.kind === "skills-remove") {
+      else if (item.kind === "skills-remove") {
         const cmd = process.env.VSTACK_SKILLS_CLI ? [process.env.VSTACK_SKILLS_CLI] : ["npx", "--yes", "skills@1.7.0"];
         const p = Bun.spawn([...cmd, "remove", "-g", ...item.names!, "-y"], { cwd: plan.home, env: { ...process.env, HOME: plan.home }, stdin: "ignore", stdout: "pipe", stderr: "pipe" });
         const [code, stdout, stderr] = await Promise.all([p.exited, new Response(p.stdout).text(), new Response(p.stderr).text()]);
@@ -242,14 +237,14 @@ export async function applyMachine(plan: Plan, skip: string[] = []) {
       } else if (item.kind === "rule-rewrite" || item.kind === "store-rewrite") {
         for (const ch of item.changes!) writeFileSync(ch.path, ch.after);
       } else if (item.kind === "old-rule-delete") {
-        if (!movesSucceeded) throw new Error("kept: a private or profile move failed");
+        if (!movesSucceeded) throw new Error("kept: a private move failed");
         rmSync(item.from!);
       }
       applied.push(item.id);
     } catch (e) {
       if (item.kind === "skills-remove") warnings.push({ id: item.id, error: errorText(e) });
       else {
-        if (item.kind === "private-move" || item.kind === "profiles-move") movesSucceeded = false;
+        if (item.kind === "private-move") movesSucceeded = false;
         failures.push({ id: item.id, error: errorText(e) });
       }
     }

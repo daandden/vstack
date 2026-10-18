@@ -4,7 +4,7 @@ Routed from SKILL.md §6. SKILL.md keeps the six connector rules as one line eac
 
 Type-specialized primitives (lifeline, activation bar, region) live in the relevant type reference linked in SKILL.md §3.
 
-Snippets here and in every type reference name colors and fonts by role, never by value: `{ink}`, `{muted}`, `{paper}`, `{accent}`, `{link}`, `{soft}` for colors, `{ink @ 0.10}` for a role at an opacity, and `{title}`, `{node-name}`, `{sublabel}`, `{eyebrow}`, `{arrow-label}`, `{callout}` for font families. Resolve each against the active skin (the project's profile, else [`style-guide.md`](style-guide.md)) before emitting: `{ink @ 0.10}` becomes the `ink` color as `rgba(r,g,b,0.10)`, and `{sublabel}` becomes that role's full family stack. Uppercase names (`X`, `FILL`, `STROKE`) are geometry and per-node values you compute.
+Snippets here and in every type reference name colors and fonts by role, never by value: `{ink}`, `{muted}`, `{paper}`, `{accent}`, `{link}`, `{soft}` for colors, `{ink @ 0.10}` for a role at an opacity, and `{title}`, `{node-name}`, `{sublabel}`, `{eyebrow}`, `{arrow-label}`, `{callout}` for font families. Resolve each against [`style-guide.md`](style-guide.md) before emitting: `{ink @ 0.10}` becomes the `ink` color as `rgba(r,g,b,0.10)`, and `{sublabel}` becomes that role's full family stack. Uppercase names (`X`, `FILL`, `STROKE`) are geometry and per-node values you compute.
 
 ## Background
 
@@ -57,7 +57,7 @@ The geometry source gate excludes shapes inside definition-only containers (`def
 
 These six rules are **non-negotiable**. Run the pre-output checklist (SKILL.md §9) to verify before producing any diagram.
 
-1. **Rounded right-angle (orthogonal) connectors are mandatory.** Never use diagonal `<line>` or straight slanted paths between nodes that don't share an x or y axis. Every bend must be a quarter-arc with `r=8` (or `r=6` minimum for tight layouts). See `references/type-architecture.md` for the elbow-path formula. Reserve plain straight `<line>` only for connections whose endpoints share the same x or y coordinate. Diagonal connectors are an automatic fail. A connector also leaves and enters each box perpendicular to the edge it touches, at a port on the straight part of that edge at least 8px from a corner. A horizontal segment that starts on a top or bottom edge, or a vertical one that starts on a side edge, runs along the border behind the node fill and reads as an arrow coming out of the corner. From a repository checkout, the eval cell for `<repo-root>/scripts/verify-geometry.py <file>` reports diagonal connectors, border-riding segments, and corner ports.
+1. **Rounded right-angle (orthogonal) connectors are mandatory.** Never use diagonal `<line>` or straight slanted paths between nodes that don't share an x or y axis. Every bend must be a quarter-arc with `r=8` (or `r=6` minimum for tight layouts). See `references/type-architecture.md` for the elbow-path formula. Reserve plain straight `<line>` only for connections whose endpoints share the same x or y coordinate. Diagonal connectors are an automatic fail. A connector also leaves and enters each box perpendicular to the edge it touches, at a port on the straight part of that edge at least 8px from a corner. A horizontal segment that starts on a top or bottom edge, or a vertical one that starts on a side edge, runs along the border behind the node fill and reads as an arrow coming out of the corner. The eval cell for `<skill-dir>/scripts/verify-geometry.py <file>` reports diagonal connectors, border-riding segments, and corner ports.
 
 2. **Label-to-connector margin: 6–10px gap, always.** A label must never sit *on* its arrow — the connector must remain visible. Place the label centered above (or beside, for vertical segments) the line with a **minimum 6px gap** between the bottom of the label's mask rect and the connector stroke. The opaque mask rect prevents the arrow from bleeding through, but the *visible* gap between mask edge and line preserves the reader's ability to trace the connection. If the label is large enough that 6px feels cramped, push it to 8–10px. Never let the mask rect touch or overlap the stroke.
 
@@ -77,7 +77,7 @@ These six rules are **non-negotiable**. Run the pre-output checklist (SKILL.md �
 
    When in doubt, reroute. The exception exists for the narrow case where rerouting is geometrically impossible, not as a shortcut to avoid layout work.
 
-6. **A label mask must not overlap a node drawn after it.** Compare their bounds after supported group and element `translate()` offsets, in the shared canvas rather than separate panel-local coordinates. Rule 2 keeps the label off its own connector; this one keeps it off the boxes. Because nodes are painted after labels, a mask that lands partly inside a node is covered by the node fill and the text renders as a fragment sitting on the node border. Place the label on a segment of the connector that runs through open canvas — for a connector leaving a node's right edge, that means clearing the node's `x + width` before the mask starts. A mask fully *inside* a node is a badge chip and is fine; a mask overlapping a zone container is fine too, since zones are painted first. From a repository checkout, verify with the eval cell for `<repo-root>/scripts/verify-geometry.py <file>`.
+6. **A label mask must not overlap a node drawn after it.** Compare their bounds after supported group and element `translate()` offsets, in the shared canvas rather than separate panel-local coordinates. Rule 2 keeps the label off its own connector; this one keeps it off the boxes. Because nodes are painted after labels, a mask that lands partly inside a node is covered by the node fill and the text renders as a fragment sitting on the node border. Place the label on a segment of the connector that runs through open canvas — for a connector leaving a node's right edge, that means clearing the node's `x + width` before the mask starts. A mask fully *inside* a node is a badge chip and is fine; a mask overlapping a zone container is fine too, since zones are painted first. Verify with the eval cell for `<skill-dir>/scripts/verify-geometry.py <file>`.
 
 ## Node box — full pattern
 
@@ -90,10 +90,10 @@ These six rules are **non-negotiable**. Run the pre-output checklist (SKILL.md �
 <rect x="X+8" y="Y+6" width="28" height="12" rx="2" fill="transparent" stroke="STROKE@0.40" stroke-width="0.8"/>
 <text x="X+22" y="Y+15" fill="STROKE@0.8" font-size="7" font-family="{eyebrow}"
       text-anchor="middle" letter-spacing="0.08em">API</text>
-<!-- 4. Node name (node-name role, sans: human-readable) -->
+<!-- 4. Node name (node-name role, 600: human-readable) -->
 <text x="CX" y="CY+2" fill="{ink}" font-size="12" font-weight="600"
       font-family="{node-name}" text-anchor="middle">Node Name</text>
-<!-- 5. Technical sublabel (sublabel role, mono) -->
+<!-- 5. Technical sublabel (sublabel role) -->
 <text x="CX" y="CY+18" fill="{muted}" font-size="9"
       font-family="{sublabel}" text-anchor="middle">tech:port</text>
 ```
@@ -116,7 +116,7 @@ Rules:
 - Never `writing-mode` vertical.
 - For vertical segments, place the label to the side (not on the line) with the same 6–10px horizontal gap.
 
-**Font substitution.** Don't estimate per-character widths — use the `style-guide.md` budget (0.60em sans / 0.62em mono per char). A production run sized mono labels at ~0.47em/char and clipped twice; the calibrated budget fits both the default skin's mono face (Geist Mono) and the common substituted mono faces (Menlo, Courier New, Monaco, all ≈0.60em). Previews via `rsvg`/`inkscape` can't fetch the injected Google Fonts, so verify with the eval cell for `<repo-root>/scripts/verify-geometry.py` (see SKILL.md "Running the bundled scripts") — it checks masks against later-painted nodes, not text fit; holding the budget is yours.
+**Font substitution.** Don't estimate per-character widths — use the `style-guide.md` budget (0.50em per char, the measured IosevkaTerm Nerd Font Mono advance). A production run sized labels at ~0.47em/char and clipped twice. A viewer without the Iosevka faces falls back to a platform monospace face such as Menlo at ≈0.60em, so keep the 8px label padding. Previews via `rsvg`/`inkscape` render with whatever faces their host has installed, so verify with the eval cell for `<skill-dir>/scripts/verify-geometry.py <file>` (see SKILL.md "Running the bundled scripts") — it checks masks against later-painted nodes, not text fit; holding the budget is yours.
 
 ## Legend — horizontal strip at the bottom
 
@@ -136,11 +136,11 @@ Expand SVG `viewBox` height by ~60px.
 
 SKILL.md §12 lists these six points one line each; this is the long form.
 
-Every diagram is an accessible figure by default:
+This contract is optional guidance, and no check enforces it. A figure that follows it is an accessible figure:
 
 1. Its `<svg>` carries `role="img"` and `aria-labelledby` naming the diagram's `<title>` and `<desc>`.
 2. `<title>` is the first child of `<svg>`, before `<defs>`. Assistive technology may ignore a title placed later.
-3. The IDs are prefixed per diagram and variant: `<slug>-title` / `<slug>-desc`, where the slug matches the file (`loop`, `loop-dark`, `loop-full`). Bare `title` / `desc` IDs are banned — two inline diagrams would otherwise share one ID, and the second could be announced with the first's name. Each naming ID must also be unique across the whole document, including non-SVG elements; the packaged `scripts/self_check.py` rejects these collisions.
+3. The IDs are prefixed per diagram and variant: `<slug>-title` / `<slug>-desc`, where the slug matches the file (`loop`, `loop-dark`, `loop-full`). Bare `title` / `desc` IDs are banned — two inline diagrams would otherwise share one ID, and the second could be announced with the first's name. Each naming ID must also be unique across the whole document, including non-SVG elements.
 4. `<title>` is the short name of the subject — roughly the page `<h1>`, and about 60 characters or fewer.
 5. `<desc>` is one sentence stating what the diagram shows in terms a reader needs without the image. Describe the content, not the geometry: “Org chart showing a command center routing work to specialist agents and escalation owners,” not “A box at the top with five boxes below it.” A shape-by-shape narration is worse than no useful description.
 6. Decorative-only SVG, such as the specimen glyphs in `assets/icons.html`, carries `aria-hidden="true"` instead.

@@ -1,6 +1,6 @@
 ---
 name: diagram-design
-description: Create branded architecture, architecture delta, IT current-state, flowchart, sequence, state machine, ER/data model, timeline, swimlane, quadrant, radar/spider, polar chart (polar/radial lollipop), loop/flywheel, nested, tree, org chart, layer stack, exploded axonometric, axonometric plan, Venn, pyramid/funnel, treemap and marimekko, heatmap, bar and dumbbell, waterfall, line (slopegraph, ridgeline, streamgraph, bump), Gantt and scatter charts (bubble, beeswarm), high-level, process, medallion, data flow, DP integration, DP security matrix, Sankey, fishbone, Wardley map, kanban, user journey, service blueprint, deployment, dependency graph, UML class, story map, or database schema diagrams as HTML/SVG/PNG, with .drawio, Mermaid, and .excalidraw import, plus lifecycle phase maps, block decomposition trees, and onboarding guidance.
+description: Create branded architecture, architecture delta, IT current-state, flowchart, sequence, state machine, ER/data model, timeline, swimlane, quadrant, radar/spider, polar chart (polar/radial lollipop), loop/flywheel, nested, tree, org chart, layer stack, exploded axonometric, axonometric plan, Venn, pyramid/funnel, treemap and marimekko, heatmap, bar and dumbbell, waterfall, line (slopegraph, ridgeline, streamgraph, bump), Gantt and scatter charts (bubble, beeswarm), high-level, process, medallion, data flow, DP integration, DP security matrix, Sankey, fishbone, Wardley map, kanban, user journey, service blueprint, deployment, dependency graph, UML class, story map, or database schema diagrams as HTML/SVG/PNG, with .drawio, Mermaid, and .excalidraw import, plus lifecycle phase maps and block decomposition trees.
 license: MIT
 metadata:
   version: "2.6"
@@ -16,23 +16,7 @@ Forty-five visual types. Semantic patterns describe behavior; type references de
 
 ---
 
-## 0. First-time setup — style guide gate
-
-**Before generating your first diagram in a new project, verify the project has picked a profile.**
-
-Do not silently ship default-skinned diagrams into a branded project.
-
-First read the project's `diagram-profile:` line per [`references/profiles.md`](references/profiles.md), using the parent's supplied absolute vstack root and mode. That reference owns config-path resolution, failures, the protected default, and save behavior. A valid line selects its profile from `~/.vstack/diagram-design/profiles/` and bypasses this gate.
-
-The installed [`references/style-guide.md`](references/style-guide.md) is the shipped skin. Never write it; every customization is saved as a profile.
-
-With no valid profile line, ask once with `ask` (question: "This is the first diagram in this project. Which skin?"; options: website URL, installed skill, local folder or design system, paste tokens, keep the shipped default, load a saved profile).
-
-Then branch per the matching section of [`references/onboarding.md`](references/onboarding.md); for "load a saved profile" follow `load` in [`references/profiles.md`](references/profiles.md).
-
-Every answer ends in a profile: onboarding saves its guide as a named profile, and "keep the shipped default" selects `default`. Then ask with `ask` whether to write `diagram-profile: <slug>` into the project config; write it only on a yes. With the line in place the gate does not run again in this project; without it, the next session asks again.
-
-When another skill called diagram-design, put the gate question through `ask` the same way: the caller's run waits for the answer. A subagent uses `default` for this figure and returns the gate question in its result.
+## 0. Setup
 
 For diagnostics, health checks, first-run troubleshooting, or the diagram-design doctor, read [Environment doctor](references/doctor.md).
 
@@ -62,7 +46,7 @@ Applied to schematics:
 
 - Every node represents a distinct idea. Two nodes that always travel together are one node.
 - Every connection carries information. If the relationship is obvious from layout, remove the line.
-- Coral is **editorial, not a flag.** 1–2 focal nodes per diagram. Using it on 5 nodes erases the signal.
+- The accent (mauve) is **editorial, not a flag.** 1–2 focal nodes per diagram. Using it on 5 nodes erases the signal.
 - The schematic isn't done when everything is added. It's done when nothing can be removed.
 
 **Target density: 4/10.** Enough to be technically complete. Not so dense it needs a guide. Above 9 nodes, it's probably two diagrams.
@@ -172,8 +156,8 @@ These mark "AI slop" schematics of any type:
 
 | Anti-pattern | Why it fails |
 |---|---|
-| Dark mode + cyan/purple glow | Looks "technical" without design decisions |
-| JetBrains Mono as blanket "dev" font | Mono is for *technical* content — ports, commands, URLs. Names go in Geist sans. |
+| Glow, neon, or gradient effects on a dark figure | Looks "technical" without design decisions. Mocha figures use flat Catppuccin fills and hairlines. |
+| A third font family, or any face outside the two Iosevka faces | Breaks the two-face rule: IosevkaTermSlab for the title and callouts, IosevkaTerm for everything else. |
 | Identical boxes for every node | Erases hierarchy |
 | Legend floating inside the diagram area | Collides with nodes |
 | Arrow labels with no masking rect | Bleeds through the line |
@@ -181,7 +165,7 @@ These mark "AI slop" schematics of any type:
 | 3 equal-width summary cards as default | Generic grid — vary widths |
 | Shadow on any element | Shadows are out. Borders are in. |
 | `rounded-2xl` on boxes | Max radius 6–10px or none |
-| Coral on every "important" node | Coral is 1–2 editorial accents, not a signaling system |
+| Accent on every "important" node | The accent is 1–2 editorial marks, not a signaling system |
 | Reproducing Mermaid's renderer layout | Imports automatic spacing and routing instead of making an editorial layout |
 | Any breach of the six §6 connector rules | Automatic fail: diagonal slants, labels touching their stroke, masks clipped by a later node, overlapping paths, shared attach points, transit behind a non-endpoint box |
 
@@ -191,11 +175,13 @@ Type-specific anti-patterns live in each type reference linked in the guide.
 
 ## 5. Design System
 
-**The design system is skinnable.** [`references/style-guide.md`](references/style-guide.md) is the shipped skin and the shape of every profile: colors, typography, tokens, and the default palette; this file names semantic roles (`paper`, `ink`, `muted`, `accent`, `link`, …). The effective style guide is the project's profile (§0). To apply a brand, run a flow in [`references/onboarding.md`](references/onboarding.md), which saves a profile; never edit `style-guide.md`.
+**The design system is fixed.** The skill has one built-in Catppuccin style: Mocha for dark figures (the default), Latte for light figures, a mauve accent, and two installed Iosevka faces. [`references/style-guide.md`](references/style-guide.md) holds the colors, typography, and tokens. This file names semantic roles (`paper`, `ink`, `muted`, `accent`, `link`, …).
 
-> When specs below or in type references mention "ink", "accent", "muted", etc., look up the current hex value in the effective style guide (the project's profile, else `style-guide.md`).
+> When specs below or in type references mention "ink", "accent", "muted", etc., look up the current hex value in `style-guide.md`.
 
-Type-reference snippets write roles as placeholders: `{ink}`, `{ink @ 0.40}` for a role at an opacity, and `{node-name}`, `{sublabel}`, `{eyebrow}`, `{arrow-label}`, `{title}`, `{callout}` for fonts. Resolve every placeholder against the effective style guide (§5) before emitting.
+Type-reference snippets write roles as placeholders: `{ink}`, `{ink @ 0.40}` for a role at an opacity, and `{node-name}`, `{sublabel}`, `{eyebrow}`, `{arrow-label}`, `{title}`, `{callout}` for fonts. Resolve every placeholder against `style-guide.md` before emitting.
+
+The eval cell for `<skill-dir>/scripts/lint-skin.py <file>` checks the figure against `style-guide.md`. It reports pure black and a color outside the figure's Catppuccin flavor, including a CSS named color such as `red` and any `hsl()` value. `none`, `transparent`, `currentColor`, and the CSS-wide keywords pass. It reports a font family other than the two Iosevka faces and their generic fallbacks, in `font-family`, in the `font` shorthand, or in a custom property that either one reads through `var()`. It reports a font `<link>`, an `@import`, or another remote resource. It skips HTML comments.
 
 ### Semantic roles (at a glance)
 
@@ -212,11 +198,11 @@ Type-reference snippets write roles as placeholders: `{ink}`, `{ink @ 0.40}` for
 
 **Node treatments** (focal, backend/API/step, store/state, external/cloud, input/user, optional/async, security/boundary): fill and stroke per [style-guide.md § Node type → treatment](references/style-guide.md#node-type--treatment).
 
-**Typography:** Instrument Serif for the H1 title and italic callouts, Geist sans 600 for node names, Geist Mono for sublabels, eyebrows, and arrow labels. Sizes, weights, and the font `<link>`: [style-guide.md § Typography](references/style-guide.md#typography); per-preset type ramp: [output-spec.md](references/output-spec.md). When the user asks for offline output, system fonts, or no Google Fonts, follow [style-guide.md § Font source](references/style-guide.md#font-source).
+**Typography:** IosevkaTermSlab Nerd Font Mono for the H1 title and italic callouts. IosevkaTerm Nerd Font Mono at 600 for node names, and at the smaller role sizes for sublabels, eyebrows, and arrow labels. Both faces come from installed fonts: a figure never links or imports a font. Sizes, weights, and family stacks: [style-guide.md § Typography](references/style-guide.md#typography); per-preset type ramp: [output-spec.md](references/output-spec.md).
 
 **Non-Latin labels** — extend the family: [Korean](references/style-guide.md#korean-labels), [Chinese](references/style-guide.md#traditional-chinese-labels), [Cyrillic](references/style-guide.md#cyrillic-labels).
 
-**Mono is for technical content only** — never as a blanket "dev" font, and never JetBrains Mono.
+**Two-face rule:** the slab face carries the title and callouts, and IosevkaTerm carries every other role. Roles, not faces, separate a name from a technical value: size, weight, tracking, and case.
 
 ---
 
@@ -233,7 +219,7 @@ Universal building blocks. Type-specialized primitives (lifeline, activation bar
 Exact markup (background, dotted paper, markers, node box, arrow label, legend) and the long form of each connector rule: [`references/primitives-core.md`](references/primitives-core.md). The static templates (`template.html`, `template-dark.html`, `template-full.html`) already define the background and the `arrow`, `arrow-accent`, and `arrow-link` markers; `template-motion.html` defines only its own prefixed marker, so add the others from primitives-core.md when a motion diagram needs them.
 
 - **Arrows:** `muted` by default, `accent` for the headline path, `link` for HTTP/API and external calls, dashed `5,4` for optional, passive, return, or async. Draw arrows before boxes so lines sit behind nodes.
-- **Node box:** an opaque paper mask rect, then the styled box at `rx=6`, a rectangular type tag at `rx=2` (not a pill), the name in Geist 600, and a Geist Mono sublabel.
+- **Node box:** an opaque paper mask rect, then the styled box at `rx=6`, a rectangular type tag at `rx=2` (not a pill), the name in the `node-name` role (600), and a `sublabel` below it.
 
 ### Mandatory connector rules
 
@@ -244,7 +230,9 @@ Non-negotiable, and §9 checks each one. Full text and edge cases: [primitives-c
 3. **No overlaps.** No shared or stacked strokes: offset parallel routes by 12px or more, and use the bridge/hop at a single crossing.
 4. **Fan attach points.** Connectors on one box edge each get their own point at `L * k / (N + 1)`, 12px or more apart (8px on very small boxes).
 5. **No transit behind a non-endpoint box.** Reroute. Only when the box is geometrically unavoidable: dashed stroke (`4,3`), label at the visible end, no marker on the intervening box.
-6. **Mask before node.** A label mask must not overlap a node drawn after it; badge masks fully inside a node and masks over earlier zones are fine. From a repository checkout, verify with the eval cell for `<repo-root>/scripts/verify-geometry.py <file>`.
+6. **Mask before node.** A label mask must not overlap a node drawn after it; badge masks fully inside a node and masks over earlier zones are fine.
+
+The eval cell for `<skill-dir>/scripts/verify-geometry.py <file>` checks rules 1, 3, 4, and 6. It reports diagonal segments, segments along a node border, ports near a corner, stacked connectors, ports closer than rule 4 allows, and label masks under a later node.
 
 ---
 
@@ -258,7 +246,7 @@ Structural geometry sits on a 4px grid: node origins, widths, heights, gaps, and
 |---|---|
 | Max nodes | 9 |
 | Max arrows / transitions | 12 |
-| Max coral elements | 2 |
+| Max accent elements | 2 |
 | Max annotation callouts | 2 |
 | Max motion (optional) | 8 steps, 12 marked items, 2 simultaneous items — see [animation.md](references/animation.md) |
 
@@ -270,7 +258,7 @@ If you exceed, split into two diagrams (overview + detail).
 
 ## 8. Summary Card Pattern
 
-Don't use 3 identical generic cards. Vary the treatment: column widths such as `1.1fr 1fr 0.9fr`, a white background with a 1px hairline border and 6px radius, no `box-shadow`. Markup and the card-dot variants: [layout-budget.md § Summary Card Pattern](references/layout-budget.md#summary-card-pattern).
+Don't use 3 identical generic cards. Vary the treatment: column widths such as `1.1fr 1fr 0.9fr`, a `paper-2` background with a 1px hairline border and 6px radius, no `box-shadow`. Markup and the card-dot variants: [layout-budget.md § Summary Card Pattern](references/layout-budget.md#summary-card-pattern).
 
 ---
 
@@ -297,62 +285,59 @@ Run before producing any diagram.
 
 **Signal:**
 
-- [ ] Coral used on ≤2 elements? If more, which actually deserve focal status?
+- [ ] Accent used on ≤2 elements? If more, which actually deserve focal status?
 - [ ] Legend covers every type used — and nothing extra?
 - [ ] Within the type's complexity budget (§7)?
 
 **Technical:**
 
-- [ ] Diagram `<svg>` has `role="img"` and `aria-labelledby` resolving to its `<title>` and `<desc>`?
-- [ ] `<title>` is the first child of `<svg>` (before `<defs>`) and both `<title>` and `<desc>` are filled in?
-- [ ] `<title>` / `<desc>` IDs are prefixed for this diagram and variant — never bare `title` / `desc`?
 - [ ] Arrows drawn before boxes?
 - [ ] **§6 rule 1:** off-axis connectors are `r=8` elbows, no diagonal slants?
 - [ ] **§6 rule 2:** a visible 6 to 10px gap between every label mask and its connector?
 - [ ] **§6 rule 3:** no overlapping or stacked connectors; bridge/hop at crossings?
 - [ ] **§6 rule 4:** a distinct attach point per connector on a shared edge, 12px or more apart, none hiding another?
 - [ ] **§6 rule 5:** no transit behind a non-endpoint box, except the unavoidable case (dashed, label at the visible end)?
-- [ ] **§6 rule 6:** no label mask overlapping a node drawn after it? (From a repository checkout, run the eval cell for `<repo-root>/scripts/verify-geometry.py <file>`.)
-- [ ] Every arrow label has an opaque `fill="#f5f5f5"` rect behind it?
+- [ ] **§6 rule 6:** no label mask overlapping a node drawn after it?
+- [ ] Every arrow label has an opaque `paper`-filled rect behind it?
 - [ ] Legend is a horizontal bottom strip, not floating?
 - [ ] No vertical `writing-mode` text?
 - [ ] `viewBox` expanded for the legend strip (~60px)?
 - [ ] **`min-width` equals the viewBox width, and the SVG sits in a local `overflow-x: auto` wrapper? (Otherwise a phone scrolls the whole page — or an `overflow: hidden` ancestor clips the diagram with no scrollbar at all. See [output-spec.md](references/output-spec.md).)**
 - [ ] Node origins, dimensions, gaps, padding on the 4px grid; type sizes on the role ramp?
-- [ ] Did the eval cell for `<skill-dir>/scripts/self_check.py <file>` pass? (Accessible-SVG contract, single-file safety, content inside the viewBox, motion basics.)
-- [ ] If animated, does the complete static/no-JS frame work, does reduced motion hide/disable playback, and is the controller copied verbatim from `assets/template-motion.html`? From a repository checkout, also run the eval cell for `<repo-root>/scripts/verify-motion.py path/to/generated.html` plus the skin linter; from an installed skill, manually check print and static-query states on top of the self-check.
+- [ ] Did the eval cell for `<skill-dir>/scripts/verify-geometry.py <file>` pass? (§6 rules 1, 3, 4, and 6.)
+- [ ] Did the eval cell for `<skill-dir>/scripts/lint-skin.py <file>` pass? (Every color from the figure's flavor in `style-guide.md`, only the Iosevka faces and their generic fallbacks, and no remote resource.)
+- [ ] Did the eval cell for `<skill-dir>/scripts/self_check.py <file>` pass? (No remote asset or font, no executable attribute or URL, no script other than the controller in `assets/template-motion.html`, and content inside the viewBox.)
 
 **Typography:**
 
-- [ ] Brand match uses exact public families/weights, verified via `getComputedStyle`; fallbacks disclosed?
-- [ ] Human-readable names in Geist sans, not Geist Mono?
-- [ ] Technical sublabels (ports, commands, URLs) in Geist Mono?
-- [ ] Page title in Instrument Serif?
-- [ ] Annotation callouts (if any) in *italic* Instrument Serif? (see [primitive-annotation.md](references/primitive-annotation.md))
-- [ ] No JetBrains Mono anywhere?
+- [ ] Both Iosevka faces resolve in the browser? A canvas `measureText("0123456789")` at `100px` in each family stack measures 500px; any other width means the face fell back to a platform monospace face.
+- [ ] Page title in IosevkaTermSlab Nerd Font Mono?
+- [ ] Annotation callouts (if any) in *italic* IosevkaTermSlab Nerd Font Mono? (see [primitive-annotation.md](references/primitive-annotation.md))
+- [ ] Node names, sublabels, eyebrows, and arrow labels in IosevkaTerm Nerd Font Mono, each at its role's size and weight?
+- [ ] No font `<link>`, `@font-face`, or `@import`, and every family stack ends in `ui-monospace, monospace`?
 
 ---
 
 ## 10. Templates & Variants
 
-Every diagram ships in three variants (see `assets/`):
+Every diagram has three variants, and each variant starts from its template in `assets/`. Dark is the default. A dark figure takes every role from the Mocha column of [style-guide.md](references/style-guide.md), and a light figure takes the Latte column.
 
-| Variant | File pattern | When to use |
-|---|---|---|
-| **Minimal light** (default) | `assets/template.html`, `example-<type>.html` | Screenshot-ready. Diagram + title. Warm paper. |
-| **Minimal dark** | `assets/template-dark.html`, `example-<type>-dark.html` | Dark mode sites, slides, high-contrast posts. |
-| **Full editorial** | `assets/template-full.html`, `example-<type>-full.html` | Long-form posts where the diagram is the hero. |
-| **Consultant special** (quadrant only) | `example-quadrant-consultant.html` | BCG/McKinsey-style 2×2 scenario matrix. See [type-quadrant.md](references/type-quadrant.md#consultant-special-2x2-scenario-matrix). |
+| Variant | Template | Palette | When to use |
+|---|---|---|---|
+| **Minimal dark** (default) | `assets/template-dark.html` | Mocha | Every figure unless the page or the request asks for light. Diagram + title. |
+| **Minimal light** | `assets/template.html` | Latte | Light pages, print, and light slides. |
+| **Full editorial** | `assets/template-full.html` | Mocha | Long-form posts where the diagram is the hero. For a light page, swap its role values to Latte. |
+| **Consultant special** (quadrant only) | `assets/template-dark.html` | Mocha | BCG/McKinsey-style 2×2 scenario matrix. See [type-quadrant.md](references/type-quadrant.md#consultant-special-2x2-scenario-matrix). |
 
 **Sketchy variant** (optional, applied to any of the above): a hand-drawn stroke filter for essays, not technical docs. See [primitive-sketchy.md](references/primitive-sketchy.md).
 
-**Terminal variant** (optional, replaces any of the above): CLI-window chrome for dev-tool posts. Start from `assets/template-terminal.html` and follow [primitive-terminal.md](references/primitive-terminal.md); examples are named `example-<type>-terminal.html`. Not brand-tokenized, so skip it for onboarded output.
+**Terminal variant** (optional, replaces any of the above): CLI-window chrome for dev-tool posts. Start from `assets/template-terminal.html` and follow [primitive-terminal.md](references/primitive-terminal.md). It keeps its own fixed palette.
 
 **Animation** (optional presentation layer) — see [animation.md](references/animation.md). Modes are `none` (default), `reveal`, `step`, and `loop`; motion never changes the static meaning or raises the complexity budget.
 
 ### To create a new diagram
 
-1. Copy the variant closest to what you want (`assets/template.html` for minimal, `assets/template-full.html` for cards, `assets/template-motion.html` only when motion is requested).
+1. Copy the variant closest to what you want (`assets/template-dark.html` for the default minimal figure, `assets/template.html` for a light one, `assets/template-full.html` for cards, `assets/template-motion.html` (Mocha) only when motion is requested).
 2. If behavior is load-bearing, choose a semantic pattern; then load the matching type reference linked in the visual-type guide.
 3. Replace the eyebrow, h1, and SVG body. Replace `[diagram-slug]` with the file slug and fill `<title>` / `<desc>`.
 4. If motion is requested, load `animation.md`; otherwise keep mode `none` and no script.
@@ -392,15 +377,15 @@ The size preset sets the `viewBox` **and** the type ramp; `faithful` is the only
 
 Always produce a single self-contained `.html` file:
 
-- Embedded CSS (no external except Google Fonts)
+- Embedded CSS, with no external stylesheet and no font `<link>`, `@font-face`, or `@import`; text uses the installed faces
 - Inline SVG (no external images)
 - Static by default; minimal inline JavaScript only for explicit animation controls/state
 
 Renders correctly in any modern browser. Motion-enabled output must render its complete meaning without JavaScript; under `prefers-reduced-motion: reduce` it shows the complete static frame and hides/disables playback controls.
 
-### Accessible SVG contract
+### Accessible SVG contract (optional)
 
-Every diagram is an accessible figure by default (long form: [primitives-core.md § Accessible SVG contract](references/primitives-core.md#accessible-svg-contract)):
+This contract is optional guidance, and no check enforces it. Long form: [primitives-core.md § Accessible SVG contract](references/primitives-core.md#accessible-svg-contract). A figure that follows it does these six things:
 
 1. `<svg>` carries `role="img"` and `aria-labelledby` naming its `<title>` and `<desc>`.
 2. `<title>` is the first child of `<svg>`, before `<defs>`.

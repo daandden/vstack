@@ -21,7 +21,7 @@
   3. **Operations** — one line each, `sublabel` role 9px, left-aligned: `+ method(arg): Return`.
   Omit a compartment entirely when a class has no members in it (an interface with no attributes skips that compartment).
 - Attribute/operation lines are a single combined string, not the two-column field/type layout ER uses — that visual distinction keeps the two types from reading the same.
-- Coral (accent) is reserved for the class being implemented or extended (the focal type) — accent-tint fill, accent stroke. Its inbound inheritance/realization edges count as **one** additional accent element (treated as a group), for 2 accent elements total per diagram.
+- The accent is reserved for the class being implemented or extended (the focal type) — accent-tint fill, accent stroke. Its inbound inheritance/realization edges count as **one** additional accent element (treated as a group), for 2 accent elements total per diagram.
 
 ## Relationship vocabulary
 
@@ -46,7 +46,7 @@ All six SKILL.md §6 connector rules apply in full — orthogonal rounded elbows
 
 Max 7 classes, max 8 relationships, max 5 members per compartment (overflow becomes a `sublabel`-role `…` line), max 2 accent elements. Over budget → split by package.
 
-Seven is the ceiling rather than the target. Three compartments per box makes a class diagram dense fast, so treat 4–5 classes as the normal size; the shipped example uses all seven only because it doubles as the legend for the full relationship vocabulary.
+Seven is the ceiling rather than the target. Three compartments per box makes a class diagram dense fast, so treat 4–5 classes as the normal size; use all seven only when the figure doubles as the legend for the full relationship vocabulary.
 
 ## Anti-patterns
 
@@ -57,9 +57,3 @@ Seven is the ceiling rather than the target. Three compartments per box makes a 
 - Drawing a class diagram when there's no inheritance and no operations — that's ER.
 - Stereotype guillemets on everything, not just the interfaces/abstracts that need them.
 - Boxes padded to equal height.
-
-## Examples
-
-- `assets/example-uml-class.html` — minimal light
-- `assets/example-uml-class-dark.html` — minimal dark
-- `assets/example-uml-class-full.html` — full editorial

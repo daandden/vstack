@@ -207,6 +207,19 @@ test("an SVG file with an event handler is refused, and one with only styles is 
   expect(readFileSync(page, "utf8")).toContain('<rect class="n"');
 });
 
+test.each([
+  ["a Google Fonts import", "https://fonts.googleapis.com/css2?family=IosevkaTerm+Nerd+Font+Mono"],
+  ["an import from another host", "https://example.com/figure.css"],
+])("an SVG file whose styles hold %s is refused", (_, url) => {
+  append(PAGE, ROUND);
+  const svg = join(dir, "import.svg");
+  writeFileSync(svg, `<svg xmlns="http://www.w3.org/2000/svg"><style>@import url('${url}');</style><rect width="1" height="1"/></svg>`);
+  const r = append(question("s1-r1-q1", 1, { visual: { svg } }));
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain(`${svg} is not safe: its styles import a file`);
+  expect(existsSync(page) ? readFileSync(page, "utf8") : "").not.toContain(url);
+});
+
 test("a question with a list of visuals renders each one in order, and a bad entry is refused", () => {
   append(PAGE, ROUND);
   const context = join(dir, "context.svg");

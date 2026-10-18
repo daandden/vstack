@@ -47,9 +47,3 @@ Max 6 stages · max 3 content rows · 5 sentiment levels (ordinal, named — nev
 - **Pain markers on every stage.** If nothing is un-marked, nothing is focal.
 - **`writing-mode` vertical row labels.** Horizontal only, in the left margin — same rule as every other type in this skill.
 - **Using it for an internal system flow with no human in it.** No person, no sentiment, no journey map — that's an architecture or data-flow diagram.
-
-## Examples
-
-- `assets/example-journey.html` — minimal light. *Trial to paid: the first week*, 5 stages, trough at "Hit the limit".
-- `assets/example-journey-dark.html` — minimal dark, same data.
-- `assets/example-journey-full.html` — full editorial: container framing + 3 varied-width summary cards + footer.
