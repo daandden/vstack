@@ -128,6 +128,10 @@ _Avoid_: update (for this), manual edit, patch
 How far a flow that produces a commit goes before it stops: commit, merge-ready, or shipped. Commit stays on the current branch. Merge-ready opens a PR and drives it until it can merge. Shipped means every PR in the run is merged into the default branch; deploys and releases are not part of it. The flow settles it once, before it starts.
 _Avoid_: goal, target, finish line
 
+**Owned branch**:
+A branch whose remote branch did not exist until the run's first push created it. The remote decides it, not the local branch name: a new `<type>/<slug>` branch or an omp worktree's `wt/<time>` branch is usually one, but a branch that someone already pushed is not. Only the run that owns a branch rewrites its pushed commits, by rebasing them or force-pushing. Reordering commits that were never pushed needs no ownership.
+_Avoid_: run branch, created branch
+
 **Code host**:
 The service that holds a repo's remote and its PRs, such as GitHub, GitLab, or Bitbucket. It is a separate choice from the issue tracker: a repo on Bitbucket can track its issues in Jira.
 _Avoid_: git host, VCS host, forge

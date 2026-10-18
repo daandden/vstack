@@ -11,6 +11,7 @@ Never merge, enable auto-merge, enqueue a merge, retarget a base, or change stac
 Follow these rules in skill://implement/END-STATE.md:
 
 - Step 0a: the chain facts, Code host routing, and the reuse of the vstack root and Scratch dir.
+- Step 0b: the push to the remote branch, and the last SHA this run pushed. Fix waves are fast-forward pushes.
 - Step 0c: logging to the decision-trail log.
 
 ## Establish the frontier
@@ -42,7 +43,7 @@ Work in this order: conflicts, review threads, then CI. Batch all known fixes in
 
 ### Conflicts belong to the caller
 
-On a conflict, stop before threads or CI. Report the branch needing rebase and the drift sweep: reconcile callers added on the base for code this stack deletes or moves. Babysit itself never rebases or force-pushes. The caller owns the conflict through the Conflict owner in END-STATE step 7, under the step 0b rewrite rule.
+On a conflict, stop before threads or CI. Report the branch needing rebase and the drift sweep: reconcile callers added on the base for code this stack deletes or moves. Babysit itself never rebases or force-pushes. The caller owns the conflict through the Conflict owner in END-STATE step 7.
 
 ### Review threads
 
@@ -64,6 +65,6 @@ After publishing fixes, watch required checks, then read merge state, review dec
 
 ## Hand-back
 
-Return mode, frontier URL and branch, head SHA, merge state, required checks, unresolved threads, review decision, fixed versus dismissed findings with reasons and proof, retries used, pending upstack work, and what needs the human.
+Return mode, frontier URL and branch, head SHA, the last SHA this run pushed, merge state, required checks, unresolved threads, review decision, fixed versus dismissed findings with reasons and proof, retries used, pending upstack work, and what needs the human.
 
 Do not create a bot rubric or a dismissal-pattern PR.

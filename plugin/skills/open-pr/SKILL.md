@@ -11,7 +11,7 @@ Open the PR, then return to the caller. Never start babysit or ship.
 Accept the chain facts and any closing references: the issues or tickets the PR resolves. Follow these rules in skill://implement/END-STATE.md:
 
 - Step 0a: the chain facts, Code host routing, and the reuse of the vstack root and Scratch dir.
-- Step 0b: branch ownership and the force-push lease.
+- Step 0b: the remote branch name, the first push, and the Owned branch rewrite rule.
 - Step 0c: logging to the decision-trail log.
 - Step 4: Verify discovery and link repair.
 - Step 5: the Safety hand-off.
@@ -34,13 +34,13 @@ Use the caller's final-diff proof and review. If cleanup changes the diff, retur
 
 ## 3. Order the unpushed commits
 
-Compare local history with the fetched remote branch. Rebase only unpushed commits into small, ordered commits. Each commit has one separable change and tells the story in order. Amend when a fix belongs to a just-made unpushed commit. Use a new commit for a separable fix.
+Compare local history with the fetched remote branch from END-STATE step 0b. If that remote branch does not exist yet, every commit after the base is unpushed. Rebase only unpushed commits into small, ordered commits. Each commit has one separable change and tells the story in order. Amend when a fix belongs to a just-made unpushed commit. Use a new commit for a separable fix.
 
-This step orders only the unpushed suffix, on any branch, and never force-pushes. If ordering changes the diff rather than only history, return the changed diff to implement for updated live proof, review, and commit before step 4.
+This step orders only the unpushed suffix, on any branch, Owned or not, and never force-pushes. If ordering changes the diff rather than only history, return the changed diff to implement for updated live proof, review, and commit before step 4.
 
 ## 4. Push the final tip
 
-Run `git push -u <remote> <branch>` after every cleanup commit and rebase. Stop on a failed push. Record the pushed head SHA. After this step, change neither the diff nor the branch history before PR creation. Steps 5–8 gather findings and write PR text only.
+Push the final tip to the remote branch with the push commands in END-STATE step 0b. Stop on a failed push. Record the pushed head SHA and whether the branch is Owned. After this step, change neither the diff nor the branch history before PR creation. Steps 5–8 gather findings and write PR text only.
 
 ## 5. Gather Blast Radius
 
@@ -66,7 +66,7 @@ Save the body in this run's Scratch `verify/` entry and pass it to `create-pr` o
 
 ## 7. Create the ready PR
 
-Create the PR through `create-pr`, as a ready PR, never a draft. Use `list-prs` to find an existing PR for this head and base before creating a duplicate. Update an existing PR through `edit-pr` with the same body-file contract. If `edit-pr` is unsupported, report that the existing PR keeps its old title and body.
+Create the PR through `create-pr`, as a ready PR, never a draft. Its head branch is the remote branch from END-STATE step 0b. Use `list-prs` to find an existing PR for this head and base before creating a duplicate. Update an existing PR through `edit-pr` with the same body-file contract. If `edit-pr` is unsupported, report that the existing PR keeps its old title and body.
 
 Create a stack only on request, and only when `code-host.md` supports `retarget-pr`. The root targets the default branch. Each child rebases onto its parent's exact tip and targets that parent's branch. As a parent merges, skill://ship moves its child onto the default branch. Keep independent work outside the chain. Rebase on the default branch before substantial stack work. Complete those history changes before each branch's final push in step 4. Retarget an existing child through `retarget-pr` to its parent's branch.
 
@@ -76,4 +76,4 @@ Read the PR through `read-pr`: its URL, title, draft state, state, base branch, 
 
 ## Reply
 
-Return each PR URL, its title, observed status, and whether Blast Radius reused Safety findings, ran blast-radius, or reports that Safety did not run. Include proof paths, limits, every stopped or skipped step, and any open prune-comments work. Pass the chain facts back to the caller with the new last pushed SHA. Stop here. The caller owns the next End-state link.
+Return each PR URL, its title, observed status, and whether Blast Radius reused Safety findings, ran blast-radius, or reports that Safety did not run. Include proof paths, limits, every stopped or skipped step, and any open prune-comments work. Pass the chain facts back to the caller with the new last pushed SHA and whether the branch is Owned. Stop here. The caller owns the next End-state link.

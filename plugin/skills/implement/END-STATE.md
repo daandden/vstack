@@ -6,7 +6,7 @@ implement, implement-spec, and hillclimb read this file before work. Reuse these
 
 Resolve the vstack root once through the Private-mode rule, and reuse a supplied root. Resolve the absolute project Scratch dir once through skill://vstack-tmp with its path script and no kind argument, and reuse a supplied Scratch dir. Run every Code host operation through the project's `code-host.md`: `<vstack root>/docs/vstack/code-host.md` in Standard mode, `<vstack root>/config/code-host.md` in Private mode. Look up each operation by its id there. Use git for local history and pushes. Chained skills use the paths that the run passes them and never resolve them again.
 
-Keep one run record across every ticket. It holds the requested End state, stopped slices, and the chain facts. The chain facts are what step 7 passes to each chained skill: the effective End state, the `code-host.md` path, the vstack root, the Scratch dir, the current branch, whether this run created it (step 0b), the base SHA and whole-diff command, the last SHA this run pushed, the prune-comments outcome with its open work, the final-diff Safety findings (step 5), the Verify evidence paths, and any open decision-trail log path. Retain each chained skill's hand-back in the record.
+Keep one run record across every ticket. It holds the requested End state, stopped slices, and the chain facts. The chain facts are what step 7 passes to each chained skill: the effective End state, the `code-host.md` path, the vstack root, the Scratch dir, the current branch, the remote branch name and whether the branch is an Owned branch (step 0b), the base SHA and whole-diff command, the last SHA this run pushed, the prune-comments outcome with its open work, the final-diff Safety findings (step 5), the Verify evidence paths, and any open decision-trail log path. Retain each chained skill's hand-back in the record.
 
 Settle the End state once, before any work: commit, merge-ready, or shipped. Commit stays on the current branch. Merge-ready opens a PR and drives it until it can merge. Shipped merges it into the default branch. If the user's words or the ticket name an End state, use that. Words that only ask to open a PR settle merge-ready. Say so before work. Otherwise use `ask` with the End states on offer and commit recommended. Reuse an already settled caller End state rather than asking again.
 
@@ -24,9 +24,18 @@ The End state authorizes every step up to it: merge-ready authorizes babysit in 
 
 ## 0b. Branch
 
-With End state commit, stay on the current branch. Otherwise read the default branch through the `default-branch` operation and the current branch through git. If HEAD is on the default branch, create and switch to `<type>/<slug>` from HEAD, with a type and slug that describe the work. Use no worktree. Detached HEAD cannot start a PR chain.
+With End state commit, stay on the current branch. Otherwise read the default branch through the `default-branch` operation and the current branch through git. If HEAD is on the default branch, create and switch to `<type>/<slug>` from HEAD, with a type and slug that describe the work. Otherwise stay on the current branch, an omp worktree's `wt/<time>` branch included. Use no worktree. Detached HEAD cannot start a PR chain.
 
-Record whether this run created the branch. It did only when this step created it. An existing branch, or a fact that the run did not observe, counts as not created. A rewrite of pushed commits (a rebase or a force-push) needs two facts: this run created the branch, and a fresh read of the remote tip still equals the last SHA this run pushed. Push each rewrite with `--force-with-lease=<branch>:<last-pushed-sha>`, and record the new pushed SHA. Never adopt another pusher's remote tip as this run's last push. If either fact fails, stop and report which branch needs the rebase. Ordering commits that were never pushed needs neither fact.
+Record the remote branch name. If the local branch is `wt/*`, the remote branch name is a new `<type>/<slug>` that describes the work. Otherwise it is the local branch's name. Never rename the local branch.
+
+The first push decides whether the branch is Owned. Before it, read the remote ref with `git ls-remote --exit-code <remote> refs/heads/<remote branch>`. Exit code 2 means that the ref is absent. Then push by the state of the ref:
+
+- Absent ref: create it with `git push --force-with-lease=<remote branch>: -u <remote> <local branch>:<remote branch>`. The empty lease value requires the ref to be absent. Record the branch as Owned only after this push succeeds. If the lease fails because the ref appeared, stop and report it.
+- Existing ref: push with `git push -u <remote> <local branch>:<remote branch>`, a fast-forward push. The branch stays unowned.
+
+Push every later fast-forward with `git push <remote> <local branch>:<remote branch>`. After every push, record its SHA as the last SHA this run pushed, and return it to the caller.
+
+A rewrite of pushed commits (a rebase or a force-push) needs an Owned branch and a fresh read of the remote tip that still equals the last SHA this run pushed. Push each rewrite with `git push --force-with-lease=<remote branch>:<last pushed SHA> <remote> <local branch>:<remote branch>`, and record the new pushed SHA. Never adopt another pusher's remote tip as this run's last push. If the branch is not Owned, the tip moved, or the lease fails, stop and report which branch needs the rebase. Ordering commits that were never pushed needs no ownership.
 
 ## 0c. Decision trail
 
@@ -72,4 +81,4 @@ For merge-ready or shipped, run skill://open-pr with the chain facts from step 0
 
 Then run skill://babysit in drive mode with the chain facts and PR frontier. For shipped, after merge-ready is observed, run skill://ship with those facts. open-pr and babysit return to this caller; neither starts the next link. Stop at the effective End state or a reported blocker and report what was actually reached.
 
-Conflict owner: if babysit reports a conflict, fetch the default branch, reconcile the reported caller drift, and rebase onto that branch under the step 0b rewrite rule. Then run babysit again. Re-establish affected proof and Safety findings if the diff changed.
+Conflict owner: if babysit reports a conflict, rebase only under the step 0b rewrite rule. Fetch the default branch, reconcile the reported caller drift, and run `git rebase --onto <remote>/<default branch> <base SHA>`. Push the rebase with the step 0b lease, and record the new pushed SHA and the new base SHA. Then run babysit again. Re-establish affected proof and Safety findings if the diff changed.
