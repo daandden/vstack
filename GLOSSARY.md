@@ -149,12 +149,32 @@ The absolute directory where a run writes the project's vstack config and workfl
 _Avoid_: artifact dir, private root
 
 **Scratch**:
-A vstack output that nothing reads after its run, such as an explanation page, proof evidence, an eval workspace, or a decision-trail log. It is kept under `~/.vstack/tmp/`, grouped by project, until vstack-clean deletes it after a retention period. Temporary files a script creates and deletes itself are not Scratch.
+A vstack output that nothing reads after its run, such as an explanation page, proof evidence, an eval workspace, or a decision-trail log. It is kept under `~/.vstack/tmp/`, grouped by project, until vstack-clean deletes it after a retention period. Temporary files a script creates and deletes itself are not Scratch. A later Stage of the same flow can continue a Grilling page.
 _Avoid_: temp files, artifacts, tmp output
 
 **Grilling page**:
-The page a grilling session keeps for the user. It shows every round's questions in full, with their context, options, trade-offs, and the answers given, while the `ask` call carries only short forms of the same questions. It is Scratch.
+The page that one flow keeps for the user across all its Stages. A flow is the run of skills on one change, such as grill-with-docs through implement-spec, or on one tracker item, such as the triage of one issue. The page shows every `ask` of the flow as a question in full, with its context, options, trade-offs, and the answer given, while the `ask` call carries only the question and its option labels. It is Scratch.
 _Avoid_: Grilling HTML, question page, round page
+
+**Stage**:
+One skill's part of a flow on the flow's Grilling page, such as the to-spec part or one wayfinder ticket. Each Stage has its own tab and a state: not started, in progress, or finished.
+_Avoid_: step, phase, section
+
+**Report block**:
+A report that a Stage shows on the Grilling page before the questions it leads to, such as code-review's findings or to-tickets' proposed breakdown. It has one of three shapes. Cards show one finding or candidate each, with its impact, evidence, and suggested action. A ledger lists claims, each confirmed, cleared, or unproven, with its evidence and the proof that is missing. A table lists rows under named columns, such as tickets or run results.
+_Avoid_: result block, stage result, report section
+
+**Background**:
+An explanation at the top of a Stage tab that gives the context that all of the Stage's questions share. A question's own rationale stays in its description.
+_Avoid_: intro, explain block, context section
+
+**Topic note**:
+An explanation of one concept that the Grilling page shows once, in a shared area, and that questions in any Stage link to. It differs from a Term note, which defines one name in one line on one question.
+_Avoid_: explain block, glossary entry
+
+**flow.json**:
+The file beside a flow's Grilling page that names the flow's original topic slug, its spec issue, tickets, branch, and run ids. A later Stage, even one in another omp session, finds the flow's page by any of them.
+_Avoid_: flow manifest, flow index
 
 **Context diagram**:
 A figure on a Grilling page question that shows the logic its description and Today facts explain: steps, branches, states, parts, or time.

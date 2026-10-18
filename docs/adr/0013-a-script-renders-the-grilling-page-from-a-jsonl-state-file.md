@@ -1,5 +1,7 @@
 # A script renders the Grilling page from a JSONL state file
 
+> [ADR 0029](0029-a-flow-keeps-one-grilling-page-tabbed-by-stage.md) amends the page identity. One flow keeps one Grilling page across its Stages, in one Scratch folder that to-spec renames after the spec issue, with one tab per Stage, and every `ask` in the flow goes on the page. The rest of this ADR still stands.
+
 grilling-page ships `scripts/grilling-page.ts`. The agent no longer writes the Grilling page. Each round, it appends JSON records to a `.jsonl` state file beside the page: one line per round, question, answer, or close. A later line with the same `id` replaces an earlier one, so the agent can change a record with one more line instead of rewriting the file. Each command checks every record, renders the whole page from `templates/grilling-page.html`, and prints the page's absolute path. The agent writes only what changes from question to question: the words, and the optional previews and visuals.
 
 ## Considered Options
