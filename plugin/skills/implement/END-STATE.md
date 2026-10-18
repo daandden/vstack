@@ -4,9 +4,22 @@ implement, implement-spec, and hillclimb read this file before work. Reuse these
 
 ## 0a. Settle the End state
 
-Resolve the vstack root once through the Private-mode rule, and reuse a supplied root. Resolve the absolute project Scratch dir once through skill://vstack-tmp with its path script and no kind argument, and reuse a supplied Scratch dir. Run every Code host operation through the project's `code-host.md`: `<vstack root>/docs/vstack/code-host.md` in Standard mode, `<vstack root>/config/code-host.md` in Private mode. Look up each operation by its id there. Use git for local history and pushes. Chained skills use the paths that the run passes them and never resolve them again.
+If the caller supplies a vstack root, reuse it. Otherwise, resolve the vstack root once through the Private-mode rule. If the caller supplies a Scratch dir, reuse it. Otherwise, resolve the absolute project Scratch dir once through skill://vstack-tmp with its path script and no kind argument. Run every Code host operation through the project's `code-host.md`: `<vstack root>/docs/vstack/code-host.md` in Standard mode, `<vstack root>/config/code-host.md` in Private mode. Look up each operation by its id there. Use git for local history and pushes. Chained skills use the paths that the run passes them. They never resolve these paths again.
 
-Keep one run record across every ticket. It holds the requested End state, stopped slices, and the chain facts. The chain facts are what step 7 passes to each chained skill: the effective End state, the `code-host.md` path, the vstack root, the Scratch dir, the current branch, the remote branch name and whether the branch is an Owned branch (step 0b), the base SHA and whole-diff command, the last SHA this run pushed, the prune-comments outcome with its open work, the final-diff Safety findings (step 5), the Verify evidence paths, and any open decision-trail log path. Retain each chained skill's hand-back in the record.
+Keep one run record across every ticket. It holds the requested End state, stopped slices, and the chain facts. Retain each chained skill's hand-back in the record. The chain facts are what step 7 passes to each chained skill:
+
+- The effective End state
+- The `code-host.md` path
+- The vstack root
+- The Scratch dir
+- The current branch
+- The remote branch name and whether the branch is an Owned branch (step 0b)
+- The base SHA and the whole-diff command
+- The last SHA this run pushed
+- The prune-comments outcome with its open work
+- The final-diff Safety findings (step 5)
+- The Verify evidence paths
+- Any open decision-trail log path
 
 Settle the End state once, before any work: commit, merge-ready, or shipped. Commit stays on the current branch. Merge-ready opens a PR and drives it until it can merge. Shipped merges it into the default branch. If the user's words or the ticket name an End state, use that. Words that only ask to open a PR settle merge-ready. Say so before work. Otherwise use `ask` with the End states on offer and commit recommended. Reuse an already settled caller End state rather than asking again.
 
@@ -30,12 +43,12 @@ Record the remote branch name. If the local branch is `wt/*`, the remote branch 
 
 The first push decides whether the branch is Owned. Before it, read the remote ref with `git ls-remote --exit-code <remote> refs/heads/<remote branch>`. Exit code 2 means that the ref is absent. Then push by the state of the ref:
 
-- Absent ref: create it with `git push --force-with-lease=<remote branch>: -u <remote> <local branch>:<remote branch>`. The empty lease value requires the ref to be absent. Record the branch as Owned only after this push succeeds. If the lease fails because the ref appeared, stop and report it.
+- Absent ref: create it with `git push --porcelain --force-with-lease=<remote branch>: -u <remote> <local branch>:<remote branch>`. The empty lease value requires the ref to be absent. With `--porcelain`, git prints one status line per ref on standard output. Read the status line whose destination is `refs/heads/<remote branch>`. Only a `*` status (a new ref) proves that this push created the ref. If that line starts with `*`, record the branch as Owned. In every other case, stop and report the push output. The branch stays unowned. An `=` status means that another pusher created the ref at the same SHA. A `!` status means that the lease rejected the push because the ref appeared.
 - Existing ref: push with `git push -u <remote> <local branch>:<remote branch>`, a fast-forward push. The branch stays unowned.
 
-Push every later fast-forward with `git push <remote> <local branch>:<remote branch>`. After every push, record its SHA as the last SHA this run pushed, and return it to the caller.
+Push every later fast-forward with `git push <remote> <local branch>:<remote branch>`. After every push that updates the remote branch, record its SHA as the last SHA this run pushed. Return that SHA to the caller.
 
-A rewrite of pushed commits (a rebase or a force-push) needs an Owned branch and a fresh read of the remote tip that still equals the last SHA this run pushed. Push each rewrite with `git push --force-with-lease=<remote branch>:<last pushed SHA> <remote> <local branch>:<remote branch>`, and record the new pushed SHA. Never adopt another pusher's remote tip as this run's last push. If the branch is not Owned, the tip moved, or the lease fails, stop and report which branch needs the rebase. Ordering commits that were never pushed needs no ownership.
+A rewrite of pushed commits is a rebase or a force-push. Before a rewrite, confirm that the branch is Owned. Then confirm that a fresh read of the remote tip still equals the last SHA this run pushed. Push each rewrite with `git push --force-with-lease=<remote branch>:<last pushed SHA> <remote> <local branch>:<remote branch>`. Record the new pushed SHA. Never adopt another pusher's remote tip as this run's last push. If the branch is not Owned, the tip moved, or the lease fails, stop and report which branch needs the rebase. Ordering commits that were never pushed needs no ownership.
 
 ## 0c. Decision trail
 
@@ -81,4 +94,4 @@ For merge-ready or shipped, run skill://open-pr with the chain facts from step 0
 
 Then run skill://babysit in drive mode with the chain facts and PR frontier. For shipped, after merge-ready is observed, run skill://ship with those facts. open-pr and babysit return to this caller; neither starts the next link. Stop at the effective End state or a reported blocker and report what was actually reached.
 
-Conflict owner: if babysit reports a conflict, rebase only under the step 0b rewrite rule. Fetch the default branch, reconcile the reported caller drift, and run `git rebase --onto <remote>/<default branch> <base SHA>`. Push the rebase with the step 0b lease, and record the new pushed SHA and the new base SHA. Then run babysit again. Re-establish affected proof and Safety findings if the diff changed.
+Conflict owner: babysit reports each conflict here, and ship reports each branch that needs a rebase. The step 0b facts cover only the remote branch in the chain facts. If the reported branch is another branch, stop and report which branch needs the rebase. Otherwise, rebase only under the step 0b rewrite rule. Fetch the default branch. Reconcile the reported caller drift. Run `git rebase --onto <remote>/<default branch> <base SHA>`. Push the rebase with the step 0b lease. Record the new pushed SHA and the new base SHA. Then run babysit again. If the diff changed, re-establish the affected proof and Safety findings.

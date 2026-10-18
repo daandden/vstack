@@ -11,7 +11,6 @@ You own what lands. Verify each PR independently, land only the verified run fro
 Accept the caller's chain facts. Follow these rules in skill://implement/END-STATE.md:
 
 - Step 0a: the chain facts, Code host routing, and the reuse of the vstack root and Scratch dir.
-- Step 0b: the Owned branch rewrite rule and its force-push lease.
 - Step 0c: logging to the decision-trail log.
 - Step 4: Verify discovery and link repair.
 
@@ -19,7 +18,7 @@ Accept the caller's chain facts. Follow these rules in skill://implement/END-STA
 
 Take the PR or bottom-to-top stack from the caller. Resolve the default branch through `default-branch`. Read each PR's base, head, state, checks, review state, and merge state through `read-pr`. Freeze the bottom-to-top PR numbers for this pass. Confirm that each descendant depends on the previous PR. Keep independent work outside this chain.
 
-If the frontier is not merge-ready, run skill://babysit in drive mode first with the chain facts. Continue only after its blockers clear. The caller owns each conflict through the Conflict owner in END-STATE step 7. ship never rebases or force-pushes outside the step 0b rewrite rule.
+If the frontier is not merge-ready, run skill://babysit in drive mode first with the chain facts. Continue only after its blockers clear. ship never rebases or force-pushes. The caller owns each conflict and each needed rebase through the Conflict owner in END-STATE step 7.
 
 ## 1. Verify every PR independently
 
@@ -45,7 +44,7 @@ Require a schema record for each PR with the requested head and base SHAs, its c
 
 ## 2. Find the contiguous verified run
 
-Walk upward from the lowest unmerged PR. PASS and PASS+NOTES pass. Stop at the first FAIL, DRIFT, or unavailable verdict. The PRs below it are the verified run, and the top PR of the run is the ceiling. A passing PR above the stop waits, because it cannot land without the code below it. A PR whose branch neither holds nor needs that code can move onto the default branch under the END-STATE step 0b rewrite rule and land on its own. It needs a fresh verdict through step 1 first, because its old verdict ran with that code beneath it and the default branch does not have it. Freeze this run for the current pass and report its PR numbers and ceiling. DRIFT never passes. Name its stale step and recommend skill://maintain-app-verification to the caller. ship never maintains it.
+Walk upward from the lowest unmerged PR. PASS and PASS+NOTES pass. Stop at the first FAIL, DRIFT, or unavailable verdict. The PRs below it are the verified run, and the top PR of the run is the ceiling. A passing PR above the stop waits, because it cannot land without the code below it. A PR whose branch neither holds nor needs that code can land on its own after it moves onto the default branch. ship does not make that move. Report it to the caller's Conflict owner in END-STATE step 7. The moved PR needs a fresh verdict through step 1 first, because its old verdict ran with that code beneath it and the default branch does not have it. Freeze this run for the current pass and report its PR numbers and ceiling. DRIFT never passes. Name its stale step and recommend skill://maintain-app-verification to the caller. ship never maintains it.
 
 ## 3. Recheck the patch before landing
 
@@ -53,9 +52,9 @@ A verdict covers a patch, not its commits, and a chain rebase moves every PR abo
 
 ## 4. Prepare only the bottom PR
 
-Fetch the exact current default-branch tip. Prepare only the lowest PR in the verified run. If it is behind, rebase only under the END-STATE step 0b rewrite rule. Otherwise use `update-branch`, which never rebases or force-pushes. If the Code host cannot update the branch, stop and report the branch that needs its owner. If `update-branch` is unsupported, report the gap and continue only when `read-pr` says that the PR can merge.
+Fetch the exact current default-branch tip. Prepare only the lowest PR in the verified run. If it is behind, use `update-branch`, which never rebases or force-pushes. If the branch needs a rebase, or the Code host cannot update the branch, stop and report the branch to the caller's Conflict owner in END-STATE step 7. If `update-branch` is unsupported, report the gap and continue only when `read-pr` says that the PR can merge.
 
-If this PR's base is not the default branch, retarget only this PR to the default branch through `retarget-pr`, because a PR whose base is still its parent's branch merges into that branch, not the default branch. Re-read its SHAs, checks, and merge state. Repeat step 3 after every update, push, or retarget. Leave descendants untouched until this PR merges.
+If this PR's base is not the default branch, retarget only this PR to the default branch through `retarget-pr`, because a PR whose base is still its parent's branch merges into that branch, not the default branch. Re-read its SHAs, checks, and merge state. Repeat step 3 after every update or retarget. Leave descendants untouched until this PR merges.
 
 ## 5. Land one PR at a time
 
