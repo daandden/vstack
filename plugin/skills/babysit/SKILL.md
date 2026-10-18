@@ -6,17 +6,20 @@ disable-model-invocation: true
 
 # Babysit
 
-Run every Code host read and write through the operation ids in the caller's `code-host.md`. Never merge, enable auto-merge, enqueue a merge, retarget a base, or change stack topology. Do not call ship or the next skill in a chain. A request to ship belongs to the caller, not this loop.
+Never merge, enable auto-merge, enqueue a merge, retarget a base, or change stack topology. Do not call ship or the next skill in a chain. A request to ship belongs to the caller, not this loop.
+
+Follow these rules in skill://implement/END-STATE.md:
+
+- Step 0a: the chain facts, Code host routing, and the reuse of the vstack root and Scratch dir.
+- Step 0c: logging to the decision-trail log.
 
 ## Establish the frontier
 
-Accept the caller's settled End state, `code-host.md` path, branch ownership, last pushed SHAs, and any open decision-trail log path. Use `drive` mode: repeat the loop until merge-ready or a human-owned blocker.
+Accept the caller's chain facts. Use `drive` mode: repeat the loop until merge-ready or a human-owned blocker.
 
 Resolve repository, PR number, head branch, base branch, and the bottom-to-top stack through `read-pr` and `list-prs`. The frontier is the lowest unmerged PR. Work only there. Read and batch upstack findings, but do not fix them while the frontier is blocked. If another actor merges it, refresh the stack and continue at the new frontier. If every PR is already merged, report that and stop without merging anything.
 
 Before starting, check the session's active workers and ownership records for this stack. Reuse an existing babysitter or report its ownership; never start a second one. If stack order or ownership cannot be established, return the missing fact rather than guessing.
-
-Resolve the absolute project Scratch dir once through skill://vstack-tmp, with its path script and no kind argument. Reuse the caller's supplied Scratch dir.
 
 ## Read the state
 
@@ -39,9 +42,7 @@ Work in this order: conflicts, review threads, then CI. Batch all known fixes in
 
 ### Conflicts belong to the caller
 
-On a conflict, stop before threads or CI. Report the branch needing rebase and the drift sweep: reconcile callers added on the base for code this stack deletes or moves. Babysit itself never rebases or force-pushes.
-
-The caller may rebase onto the default branch only if this run created the branch and the remote tip still equals the last SHA this run pushed. The caller checks both facts, rebases, pushes with `--force-with-lease`, then runs babysit again. Otherwise stop and report which branch needs the rebase.
+On a conflict, stop before threads or CI. Report the branch needing rebase and the drift sweep: reconcile callers added on the base for code this stack deletes or moves. Babysit itself never rebases or force-pushes. The caller owns the conflict through the Conflict owner in END-STATE step 7, under the step 0b rewrite rule.
 
 ### Review threads
 
@@ -56,7 +57,7 @@ Push the batched wave before replying so replies cite the fix commit and proof. 
 Read failing run and job logs through `ci-logs`. Classify the failure before retriggering:
 
 - Diff-owned failure: fix with a red-first proof and include it in the push wave.
-- Stale base: fetch the current base and check `git merge-base --is-ancestor <base-tip> <head>`. For failures outside the diff, inspect whether missing base changes explain them. Report a needed rebase under the conflict-owner rule; do not spend a retry on it.
+- Stale base: fetch the current base and check `git merge-base --is-ancestor <base-tip> <head>`. For failures outside the diff, inspect whether missing base changes explain them. Report a needed rebase to the caller's Conflict owner; do not spend a retry on it.
 - Proven flake or infrastructure failure: one fresh full rerun through `rerun-ci` for that failure, not a failed-job-only retry. Record the retry so a new poll or worker does not reset the allowance. An identical second failure must be reclassified from child logs; never retry blindly. If `rerun-ci` is unsupported, report the flake for the human.
 
 After publishing fixes, watch required checks, then read merge state, review decision, and all threads again. Stop at merge-ready. Owner approval, permissions, a conflict, or a policy decision is the human's line: report it, finish independent actionable items where safe, then return. Never merge to make a blocked state disappear.
@@ -65,4 +66,4 @@ After publishing fixes, watch required checks, then read merge state, review dec
 
 Return mode, frontier URL and branch, head SHA, merge state, required checks, unresolved threads, review decision, fixed versus dismissed findings with reasons and proof, retries used, pending upstack work, and what needs the human.
 
-When called in a chain, read skill://decision-trail and append meaningful decisions to the already-open log with its `scripts/log.sh` helper and the absolute path passed by the caller. This grants no writes to adjacent files. Never start a log here. Do not create a bot rubric or a dismissal-pattern PR.
+Do not create a bot rubric or a dismissal-pattern PR.

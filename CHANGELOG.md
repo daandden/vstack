@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.28] - 2026-10-18
+
+- The End state chain states each chain rule once. implement's shared End state block owns each rule in one step. Step 0a holds Code host routing, the reuse of the vstack root and Scratch dir, and the run record with its list of chain facts. Step 0b holds branch ownership and the force-push lease. Step 0c holds logging to the decision-trail log. Step 4 holds Verify discovery and link repair, step 5 holds the Safety hand-off to open-pr, and step 7 holds the Conflict owner, which rebases under the step 0b rule. open-pr, babysit, and ship accept the chain facts and name the owning step for each rule in place of their own copies. When no Verify skill exists, open-pr, ship, and hillclimb follow step 4, which runs setup-app-verification in the same run, in place of a fallback to tests. babysit still never rebases or force-pushes. ship rebases or force-pushes only under the step 0b rule, and the caller owns each conflict through step 7. The checks in the chain and their order do not change (#173).
+
 ## [2.0.27] - 2026-10-18
 
 - Every Matt run start gets its Addon picks from a `smol` restatement, also the first prompt of a session (ADR 0026, amends ADR 0018 and 0021). On a fresh start, smol reads only the user's words after `User:`, with the in-your-own-words instruction and the frame of ADR 0021. Later prompts in a run still send the cleaned prompt and call no smol, and a fresh bare `/skill:<name>` with no words still makes no request. For the 125 fresh-start restatements in the corpus, `openai-codex/gpt-6.1-sol` at high effort took 1.5 to 14.8 seconds each, with a median of 4.8 seconds.

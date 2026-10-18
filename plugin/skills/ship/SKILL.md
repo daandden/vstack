@@ -8,23 +8,24 @@ disable-model-invocation: true
 
 You own what lands. Verify each PR independently, land only the verified run from the bottom, then keep your hands off the stack. Shipped ends at merge. Deploys and releases are outside this skill.
 
-Run every Code host operation through the operation ids in the caller's `code-host.md`. Accept the caller's settled End state, `code-host.md` path, branch ownership, last pushed SHAs, and any open decision-trail log path.
+Accept the caller's chain facts. Follow these rules in skill://implement/END-STATE.md:
+
+- Step 0a: the chain facts, Code host routing, and the reuse of the vstack root and Scratch dir.
+- Step 0b: branch ownership and the force-push lease.
+- Step 0c: logging to the decision-trail log.
+- Step 4: Verify discovery and link repair.
 
 ## 0. Establish the frontier
 
 Take the PR or bottom-to-top stack from the caller. Resolve the default branch through `default-branch`. Read each PR's base, head, state, checks, review state, and merge state through `read-pr`. Freeze the bottom-to-top PR numbers for this pass. Confirm that each descendant depends on the previous PR. Keep independent work outside this chain.
 
-If the frontier is not merge-ready, run skill://babysit in drive mode first. Pass the End state, the `code-host.md` path, and whether this run created the branch. Continue only after its blockers clear. A conflict belongs to the run that created the branch. Rebase only when this run created it and its remote tip remains the last SHA this run pushed. Otherwise report the conflict and stop.
-
-Resolve the absolute vstack root and mode through the Private-mode rule. Resolve the project Scratch dir once through skill://vstack-tmp, with its path script run without a kind argument. Pass both absolute paths to each verifier. If a decision-trail log is open, append decisions through skill://decision-trail to that exact log. Do not start a new log in a chained invocation.
+If the frontier is not merge-ready, run skill://babysit in drive mode first with the chain facts. Continue only after its blockers clear. The caller owns each conflict through the Conflict owner in END-STATE step 7. ship never rebases or force-pushes outside the step 0b rewrite rule.
 
 ## 1. Verify every PR independently
 
 Never verify your own PRs. Only a verdict from an agent that did not write the code counts, because an author checks what it meant to build.
 
-List the project's Verify skills named `verify-*`. In Private mode, also list `<vstack root>/skills/verify-*/` and deduplicate links and targets. If a link is missing, repair the absolute `.omp/skills/verify-<app>` link at the top level as described in skill://setup-app-verification. Leave shared ignores unchanged. Read a newly linked skill by absolute path for this session. Resolve helpers relative to the directory from which SKILL.md was read.
-
-Use the only Verify skill, or the one whose description names the changed surface. If several match without a clear choice, use one `ask`. If none exists, report that live proof is absent. Give the verifier the project's tests and scripts instead and recommend skill://setup-app-verification to the caller. CI green and approving bot reviews are not verifier verdicts, because neither runs the change as a user would.
+Choose the Verify skill through END-STATE step 4. CI green and approving bot reviews are not verifier verdicts, because neither runs the change as a user would.
 
 Fetch each exact base and head commit. Read the base and head SHAs from `read-pr`; do not substitute the default branch for a stacked PR's parent. Count changed files and diff lines for each PR. Give each verifier these full SHAs, the PR number, the relevant builds and tests, and the chosen Verify skill's name or absolute path. Its brief requires parent-versus-head proof of the real changed surface, not only a successful launch. The verifier runs on its own clone and checks out only the supplied head SHA. It reads the base for comparison without moving its checkout to another commit.
 
@@ -44,7 +45,7 @@ Require a schema record for each PR with the requested head and base SHAs, its c
 
 ## 2. Find the contiguous verified run
 
-Walk upward from the lowest unmerged PR. PASS and PASS+NOTES pass. Stop at the first FAIL, DRIFT, or unavailable verdict. The PRs below it are the verified run, and the top PR of the run is the ceiling. A passing PR above the stop waits, because it cannot land without the code below it. A PR whose branch neither holds nor needs that code can move onto the default branch under step 0's Conflict owner rule and land on its own. It needs a fresh verdict through step 1 first, because its old verdict ran with that code beneath it and the default branch does not have it. Freeze this run for the current pass and report its PR numbers and ceiling. DRIFT never passes. Name its stale step and recommend skill://maintain-app-verification to the caller. ship never maintains it.
+Walk upward from the lowest unmerged PR. PASS and PASS+NOTES pass. Stop at the first FAIL, DRIFT, or unavailable verdict. The PRs below it are the verified run, and the top PR of the run is the ceiling. A passing PR above the stop waits, because it cannot land without the code below it. A PR whose branch neither holds nor needs that code can move onto the default branch under the END-STATE step 0b rewrite rule and land on its own. It needs a fresh verdict through step 1 first, because its old verdict ran with that code beneath it and the default branch does not have it. Freeze this run for the current pass and report its PR numbers and ceiling. DRIFT never passes. Name its stale step and recommend skill://maintain-app-verification to the caller. ship never maintains it.
 
 ## 3. Recheck the patch before landing
 
@@ -52,7 +53,7 @@ A verdict covers a patch, not its commits, and a chain rebase moves every PR abo
 
 ## 4. Prepare only the bottom PR
 
-Fetch the exact current default-branch tip. Prepare only the lowest PR in the verified run. If it is behind, rebase only under step 0's Conflict owner rule and push with `--force-with-lease`. Never force-push a branch this run did not create. Otherwise use `update-branch`, which never rebases or force-pushes. If the Code host cannot update the branch, stop and report the branch that needs its owner. If `update-branch` is unsupported, report the gap and continue only when `read-pr` says that the PR can merge.
+Fetch the exact current default-branch tip. Prepare only the lowest PR in the verified run. If it is behind, rebase only under the END-STATE step 0b rewrite rule. Otherwise use `update-branch`, which never rebases or force-pushes. If the Code host cannot update the branch, stop and report the branch that needs its owner. If `update-branch` is unsupported, report the gap and continue only when `read-pr` says that the PR can merge.
 
 If this PR's base is not the default branch, retarget only this PR to the default branch through `retarget-pr`, because a PR whose base is still its parent's branch merges into that branch, not the default branch. Re-read its SHAs, checks, and merge state. Repeat step 3 after every update, push, or retarget. Leave descendants untouched until this PR merges.
 
