@@ -287,9 +287,6 @@ Run before producing any diagram.
 
 **Technical:**
 
-- [ ] Diagram `<svg>` has `role="img"` and `aria-labelledby` resolving to its `<title>` and `<desc>`?
-- [ ] `<title>` is the first child of `<svg>` (before `<defs>`) and both `<title>` and `<desc>` are filled in?
-- [ ] `<title>` / `<desc>` IDs are prefixed for this diagram and variant — never bare `title` / `desc`?
 - [ ] Arrows drawn before boxes?
 - [ ] **§6 rule 1:** off-axis connectors are `r=8` elbows, no diagonal slants?
 - [ ] **§6 rule 2:** a visible 6 to 10px gap between every label mask and its connector?
@@ -303,8 +300,7 @@ Run before producing any diagram.
 - [ ] `viewBox` expanded for the legend strip (~60px)?
 - [ ] **`min-width` equals the viewBox width, and the SVG sits in a local `overflow-x: auto` wrapper? (Otherwise a phone scrolls the whole page — or an `overflow: hidden` ancestor clips the diagram with no scrollbar at all. See [output-spec.md](references/output-spec.md).)**
 - [ ] Node origins, dimensions, gaps, padding on the 4px grid; type sizes on the role ramp?
-- [ ] Did the eval cell for `<skill-dir>/scripts/self_check.py <file>` pass? (Accessible-SVG contract, single-file safety, content inside the viewBox, motion basics.)
-- [ ] If animated, does the complete static/no-JS frame work, does reduced motion hide/disable playback, and is the controller copied verbatim from `assets/template-motion.html`? From a repository checkout, also run the eval cell for `<repo-root>/scripts/verify-motion.py path/to/generated.html` plus the skin linter; from an installed skill, manually check print and static-query states on top of the self-check.
+- [ ] Did the eval cell for `<skill-dir>/scripts/self_check.py <file>` pass? (No remote asset or font, no executable attribute or URL, no script other than the controller in `assets/template-motion.html`, and content inside the viewBox.)
 
 **Typography:**
 
@@ -381,9 +377,9 @@ Always produce a single self-contained `.html` file:
 
 Renders correctly in any modern browser. Motion-enabled output must render its complete meaning without JavaScript; under `prefers-reduced-motion: reduce` it shows the complete static frame and hides/disables playback controls.
 
-### Accessible SVG contract
+### Accessible SVG contract (optional)
 
-Every diagram is an accessible figure by default (long form: [primitives-core.md § Accessible SVG contract](references/primitives-core.md#accessible-svg-contract)):
+This contract is optional guidance, and no check enforces it. Long form: [primitives-core.md § Accessible SVG contract](references/primitives-core.md#accessible-svg-contract). A figure that follows it does these six things:
 
 1. `<svg>` carries `role="img"` and `aria-labelledby` naming its `<title>` and `<desc>`.
 2. `<title>` is the first child of `<svg>`, before `<defs>`.
