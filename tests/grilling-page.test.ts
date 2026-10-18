@@ -1,7 +1,7 @@
 // grilling-page's render script run as a process: records in, page out, bad input refused (ADR 0013).
 
 import { afterAll, beforeEach, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -270,4 +270,144 @@ test("every keyboard stop has its link in the Q row, and a reopened summary is n
   const links = [...html.matchAll(/data-for="([^"]+)"/g)].map((m) => m[1]);
   expect(stops).toEqual(["q-s1-r1-q1", "close-c2"]);
   expect(links).toEqual(stops);
+});
+
+// A flow folder: <Scratch dir>/grilling/<project>-<key>/ with page.jsonl, page.html, flow.json, and figures/.
+const FLOW = { type: "flow", id: "flow", slug: "page-per-flow", key: "page-per-flow", state: "open" };
+/** Points state and page at page.jsonl in a new flow folder <dir>/vstack-<key>/ and returns the folder. */
+function flowFolder(key = "page-per-flow") {
+  const folder = join(dir, `vstack-${key}`);
+  Bun.spawnSync(["mkdir", "-p", folder]);
+  state = join(folder, "page.jsonl");
+  page = join(folder, "page.html");
+  return folder;
+}
+
+test.each([
+  ["no slug", { slug: undefined }, "flow flow: slug must be"],
+  ["a state that is not open or closed", { state: "paused" }, "flow flow: state must be open or closed"],
+  ["tickets that are not a list", { tickets: "160" }, "flow flow: tickets must be a list"],
+  ["a key that is not the folder's key", { key: "151" }, "flow flow: key 151 does not match the folder vstack-page-per-flow"],
+])("append refuses a flow record with %s, names it, and writes nothing", (_, extra, problem) => {
+  const folder = flowFolder();
+  expect(append(PAGE).code).toBe(0);
+  const before = readFileSync(state, "utf8");
+  const r = append({ ...FLOW, ...extra });
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain(problem);
+  expect(readFileSync(state, "utf8")).toBe(before);
+  expect(existsSync(join(folder, "flow.json"))).toBe(false);
+});
+
+const flowJson = (folder: string) => JSON.parse(readFileSync(join(folder, "flow.json"), "utf8"));
+
+test("every command writes flow.json from the flow record, and a later flow record with the same id replaces it", () => {
+  const folder = flowFolder();
+  const flow = { ...FLOW, spec: "151", tickets: ["160", "161"], branch: "feat/flow-grilling-page", runs: ["spec151-r1"] };
+  const r = append(PAGE, flow, ROUND, question("s1-r1-q1", 1));
+  expect(r.code).toBe(0);
+  expect(r.stdout.trim()).toBe(page);
+  expect(flowJson(folder)).toEqual({ id: "flow", slug: "page-per-flow", key: "page-per-flow", state: "open", spec: "151", tickets: ["160", "161"], branch: "feat/flow-grilling-page", runs: ["spec151-r1"] });
+  expect(existsSync(join(folder, "figures"))).toBe(true);
+
+  expect(append({ ...flow, tickets: ["160", "161", "162"], state: "closed" }).code).toBe(0);
+  expect(flowJson(folder)).toMatchObject({ tickets: ["160", "161", "162"], state: "closed", slug: "page-per-flow" });
+
+  rmSync(join(folder, "flow.json"));
+  expect(run(["answer", state, "s1-r1-q1=A"]).code).toBe(0);
+  expect(flowJson(folder).state).toBe("closed");
+  rmSync(join(folder, "flow.json"));
+  expect(run(["render", state]).code).toBe(0);
+  expect(flowJson(folder).tickets).toEqual(["160", "161", "162"]);
+
+  const second = append({ ...FLOW, id: "flow-2" });
+  expect(second.code).toBe(1);
+  expect(second.stderr).toContain("flow flow-2: a page has one flow record, and flow flow is already on it");
+});
+
+test("a page with no flow record writes no flow.json", () => {
+  expect(append(PAGE).code).toBe(0);
+  expect(existsSync(join(dir, "flow.json"))).toBe(false);
+  expect(existsSync(join(dir, "figures"))).toBe(false);
+});
+
+test("rename moves the flow folder, keeps the old key in flow.json, and prints the new page path", () => {
+  const old = flowFolder();
+  append(PAGE, { ...FLOW, spec: "151" }, ROUND, question("s1-r1-q1", 1));
+  const r = run(["rename", state, "151"]);
+  expect(r.code).toBe(0);
+  const moved = join(dir, "vstack-151");
+  expect(r.stdout.trim()).toBe(join(moved, "page.html"));
+  expect(existsSync(old)).toBe(false);
+  expect(flowJson(moved)).toMatchObject({ slug: "page-per-flow", key: "151", old_keys: ["page-per-flow"], spec: "151" });
+  expect(readFileSync(join(moved, "page.html"), "utf8")).toContain("Title 1?");
+  expect(run(["append", join(moved, "page.jsonl"), "-"], lines(question("s1-r1-q2", 2))).code).toBe(0);
+  expect(readFileSync(join(moved, "page.html"), "utf8")).toContain("Title 2?");
+  expect(run(["rename", join(moved, "page.jsonl"), "151-b"]).code).toBe(0);
+  expect(flowJson(join(dir, "vstack-151-b")).old_keys).toEqual(["page-per-flow", "151"]);
+});
+
+test("rename refuses when the target folder exists, and writes nothing", () => {
+  const old = flowFolder();
+  append(PAGE, FLOW, ROUND, question("s1-r1-q1", 1));
+  const before = readFileSync(state, "utf8");
+  const target = join(dir, "vstack-151");
+  Bun.spawnSync(["mkdir", "-p", target]);
+  const r = run(["rename", state, "151"]);
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain(`${target} already exists`);
+  expect(readFileSync(join(old, "page.jsonl"), "utf8")).toBe(before);
+  expect(flowJson(old).key).toBe("page-per-flow");
+  expect(readdirSync(target)).toEqual([]);
+});
+
+test("rename refuses a page with no flow record, and a key that is not lowercase letters, digits, and hyphens", () => {
+  flowFolder();
+  append(PAGE);
+  const none = run(["rename", state, "151"]);
+  expect(none.code).toBe(1);
+  expect(none.stderr).toContain("rename needs a flow record");
+  expect(existsSync(join(dir, "vstack-151"))).toBe(false);
+  expect(run(["rename", state, "Spec 151"]).code).toBe(2);
+});
+
+const figure = (id: string) => `<svg xmlns="http://www.w3.org/2000/svg"><rect id="${id}" width="1" height="1"/></svg>`;
+
+test("rename keeps an SVG stored relative and one stored as an absolute path into the old folder, and later commands show both", () => {
+  const old = flowFolder();
+  Bun.spawnSync(["mkdir", "-p", join(old, "figures")]);
+  writeFileSync(join(old, "figures", "context.svg"), figure("relative-figure"));
+  writeFileSync(join(old, "figures", "options.svg"), figure("absolute-figure"));
+  const q2 = question("s1-r1-q2", 2, { options: [option("A. First", { preview: { svg: join(old, "figures", "options.svg") } }), option("B. Second")] });
+  expect(append(PAGE, FLOW, ROUND, question("s1-r1-q1", 1, { visual: { svg: "figures/context.svg" } }), q2).code).toBe(0);
+
+  const r = run(["rename", state, "151"]);
+  expect(r.code).toBe(0);
+  const moved = join(dir, "vstack-151");
+  expect(r.stdout.trim()).toBe(join(moved, "page.html"));
+  expect(existsSync(old)).toBe(false);
+  const newState = join(moved, "page.jsonl");
+  expect(run(["append", newState, "-"], lines(question("s1-r1-q3", 3))).code).toBe(0);
+  const render = run(["render", newState]);
+  expect(render.code).toBe(0);
+  expect(render.stdout.trim()).toBe(join(moved, "page.html"));
+  const html = readFileSync(join(moved, "page.html"), "utf8");
+  expect(html).toContain('id="relative-figure"');
+  expect(html).toContain('id="absolute-figure"');
+  expect(html).toContain("Title 3?");
+});
+
+test("a rename that would leave an SVG unresolved exits 1 and leaves the old folder unchanged", () => {
+  const old = flowFolder();
+  Bun.spawnSync(["mkdir", "-p", join(old, "figures")]);
+  writeFileSync(join(old, "figures", "context.svg"), figure("context-figure"));
+  const roundabout = "../vstack-page-per-flow/figures/context.svg";
+  expect(append(PAGE, FLOW, ROUND, question("s1-r1-q1", 1, { visual: { svg: roundabout } })).code).toBe(0);
+  const files = Object.fromEntries(["page.jsonl", "page.html", "flow.json"].map((f) => [f, readFileSync(join(old, f), "utf8")]));
+
+  const r = run(["rename", state, "151"]);
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain(`question s1-r1-q1: ${roundabout} would not resolve after the move`);
+  expect(existsSync(join(dir, "vstack-151"))).toBe(false);
+  for (const [f, text] of Object.entries(files)) expect(readFileSync(join(old, f), "utf8")).toBe(text);
 });

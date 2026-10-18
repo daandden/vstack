@@ -3,15 +3,18 @@
 //   bun grilling-page.ts append <state.jsonl> [<records.jsonl> | -]
 //   bun grilling-page.ts answer <state.jsonl> <question-id>=<spec> ...
 //   bun grilling-page.ts render <state.jsonl>
+//   bun grilling-page.ts rename <state.jsonl> <new-key>
 //
 // The page is the state path with .html in place of .jsonl. Each state line is one JSON record.
 // A later line with the same id replaces an earlier one. Every command checks all records,
 // renders the page from templates/grilling-page.html, and prints the page's absolute path.
+// With a flow record, the state file's folder is the flow folder <project>-<key>/: every command also
+// writes flow.json from that record and makes figures/. rename moves the folder to <project>-<new-key>/.
 // An answer <spec> is A or A,B (picked options), with an optional :note; other:<text>; or unanswered[:<reason>].
 // Exit 0 prints the path; exit 1 is a record error and writes nothing; exit 2 is a usage error.
 
-import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, realpathSync, renameSync, writeFileSync } from "node:fs";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
 type Visual = { text?: string; html?: string; css?: string; svg?: string };
 type Option = { label: string; does: string; gains: string[]; costs: string[]; recommended?: string; preview?: Visual };
@@ -54,7 +57,7 @@ const fail = (where: string, message: string): never => {
 };
 
 function usage(message: string): never {
-  process.stderr.write(`grilling-page.ts: ${message}\nusage: bun grilling-page.ts append <state.jsonl> [<records.jsonl> | -]\n       bun grilling-page.ts answer <state.jsonl> <question-id>=<spec> ...\n       bun grilling-page.ts render <state.jsonl>\n`);
+  process.stderr.write(`grilling-page.ts: ${message}\nusage: bun grilling-page.ts append <state.jsonl> [<records.jsonl> | -]\n       bun grilling-page.ts answer <state.jsonl> <question-id>=<spec> ...\n       bun grilling-page.ts render <state.jsonl>\n       bun grilling-page.ts rename <state.jsonl> <new-key>\n`);
   process.exit(2);
 }
 
@@ -118,9 +121,11 @@ function checkVisual(v: unknown, where: string): Visual {
   return vis;
 }
 
-type State = { page: Rec; order: Rec[]; questions: Map<string, Rec>; answers: Map<string, Rec>; rounds: Map<string, Rec> };
+/** `records` holds the latest record of each id, in the order the ids first appear. */
+type State = { page: Rec; order: Rec[]; questions: Map<string, Rec>; answers: Map<string, Rec>; rounds: Map<string, Rec>; flow?: Rec; records: Rec[] };
 
-function check(lines: Line[]): State {
+/** Checks every record. `folder` is the basename of the state file's folder, which a flow record's key must end. */
+function check(lines: Line[], folder: string): State {
   const latest = new Map<string, Line>();
   const first: string[] = [];
   for (const l of lines) {
@@ -134,6 +139,7 @@ function check(lines: Line[]): State {
   const questions = new Map<string, Rec>();
   const answers = new Map<string, Rec>();
   let page: Rec | undefined;
+  let flow: Rec | undefined;
   const order: Rec[] = [];
   for (const { rec: r, line } of all) {
     const where = `line ${line}: ${r.type} ${r.id}`;
@@ -207,8 +213,20 @@ function check(lines: Line[]): State {
         order.push(r);
         break;
       }
+      case "flow": {
+        for (const k of ["slug", "key"]) if (typeof r[k] !== "string" || !ID.test(r[k])) fail(where, `${k} must be lowercase letters, digits, and hyphens`);
+        if (r.state !== "open" && r.state !== "closed") fail(where, "state must be open or closed");
+        str(r, "spec", where, true);
+        str(r, "branch", where, true);
+        for (const k of ["tickets", "runs", "old_keys"]) if (r[k] !== undefined) strList(r[k], k, where);
+        if ((r.old_keys ?? []).some((k: string) => !ID.test(k))) fail(where, "old_keys must be lowercase letters, digits, and hyphens");
+        if (flow) fail(where, `a page has one flow record, and flow ${flow.id} is already on it`);
+        if (!folder.endsWith(`-${r.key}`) || folder.length <= r.key.length + 1) fail(where, `key ${r.key} does not match the folder ${folder}, which must be <project>-${r.key}. Change the key with rename`);
+        flow = r;
+        break;
+      }
       default:
-        fail(where, "type must be page, round, question, answer, or close");
+        fail(where, "type must be page, round, question, answer, close, or flow");
     }
   }
   if (!page) fail("state", "needs one page record");
@@ -232,7 +250,7 @@ function check(lines: Line[]): State {
     }
     for (const [n] of latest) if (!named.has(n)) fail(`close ${c.id}`, `Q${n} has no decision`);
   }
-  return { page: page!, order, questions, answers, rounds };
+  return { page: page!, order, questions, answers, rounds, flow, records: all.map((l) => l.rec) };
 }
 
 /** The latest ask of each Q number in one session, by Q number, among the rounds in `order`. */
@@ -376,6 +394,13 @@ ${bullets}
   return readFileSync(TEMPLATE, "utf8").replace("{{title}}", esc(s.page.title)).replace("<!-- NAV -->", navHtml).replace("<!-- BODY -->", body.join("\n"));
 }
 
+/** Writes flow.json from the flow record, so a later Stage can match the flow by any of its values, and makes figures/. */
+function writeFlow(flow: Rec, folder: string): void {
+  const { type: _, ...fields } = flow;
+  writeFileSync(join(folder, "flow.json"), `${JSON.stringify(fields, null, 2)}\n`);
+  mkdirSync(join(folder, "figures"), { recursive: true });
+}
+
 function answerRecords(specs: string[]): string {
   if (specs.length === 0) usage("answer needs one or more <question-id>=<spec>");
   return specs
@@ -397,8 +422,44 @@ function answerRecords(specs: string[]): string {
     .join("\n");
 }
 
+/** A copy of `v` with `fix` applied to the path of every SVG visual in it, at any depth. */
+function mapSvgs(v: unknown, fix: (path: string) => string): any {
+  if (Array.isArray(v)) return v.map((x) => mapSvgs(x, fix));
+  if (typeof v !== "object" || v === null) return v;
+  return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, k === "svg" && typeof x === "string" ? fix(x) : mapSvgs(x, fix)]));
+}
+
+const inside = (path: string, dir: string) => path.startsWith(dir + sep);
+
+/** The records that rename appends to move the flow folder from `folder` to `target`: each record with an absolute
+ *  SVG path into the folder, stored again with that path relative to the folder, and then the flow record with its
+ *  new key and the old key in old_keys. Refuses when any SVG visual would not resolve after the move. */
+function renameRecords(s: State, folder: string, target: string, newKey: string): string {
+  const realFolder = realpathSync(folder);
+  const unresolved: string[] = [];
+  const out: Rec[] = [];
+  for (const r of s.records) {
+    let changed = false;
+    const fixed = mapSvgs(r, (p) => {
+      const after = isAbsolute(p) ? p : resolve(target, p);
+      const now = inside(after, target) ? join(folder, relative(target, after)) : after;
+      const real = existsSync(now) ? realpathSync(now) : undefined;
+      if (real !== undefined && inside(real, realFolder) && isAbsolute(p)) {
+        changed = true;
+        return relative(realFolder, real);
+      }
+      if (real === undefined || (inside(real, realFolder) && !inside(after, target))) unresolved.push(`${r.type} ${r.id}: ${p}`);
+      return p;
+    });
+    if (changed) out.push(fixed);
+  }
+  if (unresolved.length) fail("rename", `${unresolved.join(", ")} would not resolve after the move. Store each SVG as a path relative to the flow folder`);
+  out.push({ ...s.flow!, key: newKey, old_keys: [...(s.flow!.old_keys ?? []), s.flow!.key] });
+  return out.map((r) => JSON.stringify(r)).join("\n");
+}
+
 const [command, statePath, ...rest] = Bun.argv.slice(2);
-if (!["append", "answer", "render"].includes(command ?? "")) usage("give a command: append, answer, or render");
+if (!["append", "answer", "render", "rename"].includes(command ?? "")) usage("give a command: append, answer, render, or rename");
 if (!statePath || !statePath.endsWith(".jsonl")) usage("give the state file, ending in .jsonl");
 const state = resolve(statePath);
 const page = state.replace(/\.jsonl$/, ".html");
@@ -413,16 +474,35 @@ if (command === "append") {
   added = rest[0] === undefined || rest[0] === "-" ? await Bun.stdin.text() : readFileSync(rest[0], "utf8");
   if (added.trim() === "") usage("append got no records");
 } else if (command === "answer") added = answerRecords(rest);
-else if (rest.length) usage("render takes no more arguments");
+else if (command === "rename") {
+  if (rest.length !== 1 || !ID.test(rest[0])) usage("rename takes one new key of lowercase letters, digits, and hyphens");
+} else if (rest.length) usage("render takes no more arguments");
 
 try {
   const old = existsSync(state) ? readFileSync(state, "utf8") : "";
   const oldLines = old === "" ? 0 : old.replace(/\n$/, "").split("\n").length;
-  const lines = [...parseLines(old, 1, "state"), ...parseLines(added, oldLines + 1, command === "append" && rest[0] && rest[0] !== "-" ? rest[0] : "input")];
-  const html = render(check(lines), dirname(state));
-  if (added.trim() !== "") appendFileSync(state, (old === "" || old.endsWith("\n") ? "" : "\n") + added.trim() + "\n");
-  writeFileSync(page, html);
-  process.stdout.write(`${page}\n`);
+  let lines = [...parseLines(old, 1, "state"), ...parseLines(added, oldLines + 1, command === "append" && rest[0] && rest[0] !== "-" ? rest[0] : "input")];
+  const folder = dirname(state);
+  let s = check(lines, basename(folder));
+  let target = folder;
+  if (command === "rename") {
+    if (!s.flow) fail("rename", "rename needs a flow record. Append one first");
+    target = join(dirname(folder), basename(folder).slice(0, -s.flow!.key.length) + rest[0]);
+    if (existsSync(target)) fail("rename", `${target} already exists`);
+    added = renameRecords(s, folder, target, rest[0]);
+    lines = [...lines, ...parseLines(added, oldLines + 1, "rename")];
+    s = check(lines, basename(target));
+  }
+  // Render before the move: after rename's records, every SVG path reads the same file from the old folder as from the new one.
+  const html = render(s, folder);
+  mkdirSync(folder, { recursive: true });
+  if (target !== folder) renameSync(folder, target);
+  const newState = join(target, basename(state));
+  const newPage = join(target, basename(page));
+  if (added.trim() !== "") appendFileSync(newState, (old === "" || old.endsWith("\n") ? "" : "\n") + added.trim() + "\n");
+  writeFileSync(newPage, html);
+  if (s.flow) writeFlow(s.flow, target);
+  process.stdout.write(`${newPage}\n`);
 } catch (e) {
   if (!(e instanceof RecordError)) throw e;
   process.stderr.write(`grilling-page.ts: ${e.message}\nNothing was written.\n`);

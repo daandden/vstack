@@ -7,6 +7,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 ## [3.0.2] - 2026-10-18
 
 - Scratch is kept for 90 days instead of 14. The vstack-tmp clean script and the `/vstack-clean` Command with no age now list only entries older than 90 days, for every Scratch kind, so a paused flow keeps its Grilling page. A flow folder is one Scratch entry, so its page, state file, figures, and `flow.json` expire and go together (#164).
+- grilling-page keeps each flow's page in one flow folder, `<Scratch dir>/grilling/<project>-<key>/`, with `page.jsonl`, `page.html`, `flow.json`, and `figures/`. A new `flow` record holds the flow's first slug, current key, spec issue, ticket ids, branch, run ids, and open or closed state, and every command writes `flow.json` from it. Its key must end the folder name. The new `rename <state.jsonl> <new-key>` command moves the folder to `<project>-<new-key>/`, keeps the old key in `old_keys`, renders again, and prints the new page path. Before the move, it stores each absolute SVG path into the folder again as a relative path. It refuses and writes nothing when the target folder exists or an SVG visual would not resolve after the move. Figures go to the flow folder's `figures/`, stored relative to the folder (#161).
 
 ## [3.0.1] - 2026-10-20
 
