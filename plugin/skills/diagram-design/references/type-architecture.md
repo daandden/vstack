@@ -6,7 +6,7 @@
 - Group components by tier or trust boundary (frontend → backend → data; public → private).
 - Primary flow runs left→right or top→down. Pick one and hold it.
 - Draw arrows before boxes so z-order puts connections behind components.
-- 1–2 coral focal nodes: the primary integration point, the primary data store, or the key decision node.
+- 1–2 accent focal nodes: the primary integration point, the primary data store, or the key decision node.
 - Dashed boundary rectangles mark regions (VPC, security group, trust zone); labels sit on a paper-colored mask over the boundary line.
 
 ## Connector style
@@ -66,7 +66,7 @@ Group 2+ nodes that serve the same tier or trust boundary with a zone rect — d
 Rules:
 - Leave 12–16px above the first enclosed node — the eyebrow label sits in this margin.
 - Zone fill: `ink @ 0.02` (2% ink wash). Any stronger competes with node fills.
-- **Zone label: `soft`, never ink at an opacity.** A zone eyebrow is a boundary label, and `soft` is the boundary-label role in [`style-guide.md`](style-guide.md). An opacity such as `ink @ 0.40` composites differently on every `paper`; on a light warm paper it falls near 2.2:1, unreadable at 7px. The role carries its own contrast contract under any skin.
+- **Zone label: `soft`, never ink at an opacity.** A zone eyebrow is a boundary label, and `soft` is the boundary-label role in [`style-guide.md`](style-guide.md). An opacity such as `ink @ 0.40` composites differently on every `paper`; on Latte paper it falls to 1.91:1, unreadable at 7px. `soft` measures 4.37:1 on Latte and 7.37:1 on Mocha.
 - Max 3 **flat** zones per diagram. More and it reads like a swimlane (use that type instead). Nested administrative and traffic scopes under **Containment** below are not this cap — they nest, so the cap is sibling traffic scopes at one level.
 - Dark mode: the roles invert with the skin, so nothing is swapped by hand. Take `ink`, `soft`, and `paper` from the dark column in [`style-guide.md`](style-guide.md); opacities stay the same.
 
@@ -101,7 +101,7 @@ Provider-neutral metadata (no vendor prefix):
 `scripts/verify-architecture-containment.py` checks unique IDs, resolving innermost parents, geometric containment, `<rect>` bounds, the admin-band vs traffic-box shapes (with `stroke-dasharray` resolved as rendered, so `none` or all-zero dashes count as solid), PaaS placement, endpoint targets, sibling axes, declared peerings, and the moved-geometry rule above. Files without `data-grammar="architecture-containment"` are skipped.
 
 ## Anti-patterns
-- Every box in coral ("this is important too") — hierarchy collapses.
+- Every box in the accent ("this is important too") — hierarchy collapses.
 - Bidirectional arrow when one direction is obvious from context.
 - Legend floating inside the diagram area.
 - Flattening two containment levels into one zone eyebrow (`VNET · SNET-APP`) — the hierarchy is the claim.

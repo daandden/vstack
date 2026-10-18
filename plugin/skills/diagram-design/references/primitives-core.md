@@ -90,10 +90,10 @@ These six rules are **non-negotiable**. Run the pre-output checklist (SKILL.md �
 <rect x="X+8" y="Y+6" width="28" height="12" rx="2" fill="transparent" stroke="STROKE@0.40" stroke-width="0.8"/>
 <text x="X+22" y="Y+15" fill="STROKE@0.8" font-size="7" font-family="{eyebrow}"
       text-anchor="middle" letter-spacing="0.08em">API</text>
-<!-- 4. Node name (node-name role, sans: human-readable) -->
+<!-- 4. Node name (node-name role, 600: human-readable) -->
 <text x="CX" y="CY+2" fill="{ink}" font-size="12" font-weight="600"
       font-family="{node-name}" text-anchor="middle">Node Name</text>
-<!-- 5. Technical sublabel (sublabel role, mono) -->
+<!-- 5. Technical sublabel (sublabel role) -->
 <text x="CX" y="CY+18" fill="{muted}" font-size="9"
       font-family="{sublabel}" text-anchor="middle">tech:port</text>
 ```
@@ -116,7 +116,7 @@ Rules:
 - Never `writing-mode` vertical.
 - For vertical segments, place the label to the side (not on the line) with the same 6–10px horizontal gap.
 
-**Font substitution.** Don't estimate per-character widths — use the `style-guide.md` budget (0.60em sans / 0.62em mono per char). A production run sized mono labels at ~0.47em/char and clipped twice; the calibrated budget fits both the default skin's mono face (Geist Mono) and the common substituted mono faces (Menlo, Courier New, Monaco, all ≈0.60em). Previews via `rsvg`/`inkscape` can't fetch the injected Google Fonts, so verify with the eval cell for `<repo-root>/scripts/verify-geometry.py` (see SKILL.md "Running the bundled scripts") — it checks masks against later-painted nodes, not text fit; holding the budget is yours.
+**Font substitution.** Don't estimate per-character widths — use the `style-guide.md` budget (0.50em per char, the measured IosevkaTerm Nerd Font Mono advance). A production run sized labels at ~0.47em/char and clipped twice. A viewer without the Iosevka faces falls back to a platform monospace face such as Menlo at ≈0.60em, so keep the 8px label padding. Previews via `rsvg`/`inkscape` render with whatever faces their host has installed, so verify with the eval cell for `<repo-root>/scripts/verify-geometry.py` (see SKILL.md "Running the bundled scripts") — it checks masks against later-painted nodes, not text fit; holding the budget is yours.
 
 ## Legend — horizontal strip at the bottom
 

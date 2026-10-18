@@ -4,21 +4,19 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Diagram</title>
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=Noto+Serif:ital@0;1&family=Noto+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@400&family=Noto+Sans+TC:wght@400;500;600&family=Noto+Serif+TC:wght@400&display=swap" rel="stylesheet">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --color-paper:   #2d3142;   /* deep warm charcoal */
-      --color-ink:     #f5f5f5;   /* warm off-white */
-      --color-muted:   #bfc0c0;
-      --color-accent:  #f08a59;
-      --font-sans:     'Geist', system-ui, sans-serif;
-      --font-serif:    'Instrument Serif', 'Noto Serif', 'Noto Serif KR', serif;
-      --font-mono:     'Geist Mono', ui-monospace, monospace;
+      --color-paper:   #1e1e2e;   /* Mocha base */
+      --color-ink:     #cdd6f4;   /* Mocha text */
+      --color-muted:   #bac2de;   /* Mocha subtext1 */
+      --color-accent:  #cba6f7;   /* Mocha mauve */
+      --font-slab:     'IosevkaTermSlab Nerd Font Mono', ui-monospace, monospace;
+      --font-term:     'IosevkaTerm Nerd Font Mono', ui-monospace, monospace;
     }
 
     body {
-      font-family: var(--font-sans);
+      font-family: var(--font-term);
       background: var(--color-paper);
       color: var(--color-ink);
       min-height: 100vh;
@@ -35,7 +33,7 @@
     .diagram-container { width: 100%; overflow-x: auto; }
 
     .eyebrow {
-      font-family: var(--font-mono);
+      font-family: var(--font-term);
       font-size: 0.66rem;
       font-weight: 500;
       letter-spacing: 0.18em;
@@ -45,7 +43,7 @@
     }
 
     h1 {
-      font-family: var(--font-serif);
+      font-family: var(--font-slab);
       font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem);
       font-weight: 400;
       letter-spacing: -0.02em;
@@ -76,19 +74,19 @@
         <title id="[diagram-slug]-title">[Diagram title]</title>
         <desc id="[diagram-slug]-desc">[One sentence describing what the diagram shows]</desc>
         <defs>
-          <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#bfc0c0"/></marker>
-          <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#f08a59"/></marker>
-          <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#739fdf"/></marker>
+          <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#bac2de"/></marker>
+          <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#cba6f7"/></marker>
+          <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#89b4fa"/></marker>
 
           <!-- OPTIONAL: dot-pattern background. Uncomment and add <rect fill="url(#dots)"/> after the paper rect to enable. -->
           <!--
           <pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse">
-            <circle cx="1" cy="1" r="0.9" fill="rgba(245,245,245,0.08)"/>
+            <circle cx="1" cy="1" r="0.9" fill="rgba(205,214,244,0.08)"/>
           </pattern>
           -->
         </defs>
 
-        <rect width="100%" height="100%" fill="#2d3142"/>
+        <rect width="100%" height="100%" fill="#1e1e2e"/>
 
         <!-- Draw arrows first, then nodes. Replace with your content. -->
 

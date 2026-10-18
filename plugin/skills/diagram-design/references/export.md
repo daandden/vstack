@@ -32,7 +32,7 @@ If the user explicitly asks for "a screenshot of the whole page including the ca
 
 ```python
 import runpy, sys
-sys.argv = ["<skill-dir>/scripts/export_svg.py", "<html-file>", "<out.svg>"]  # drop "<out.svg>" to write <basename>.svg; append "--system-fonts" for no font request
+sys.argv = ["<skill-dir>/scripts/export_svg.py", "<html-file>", "<out.svg>"]  # drop "<out.svg>" to write <basename>.svg
 try:
     runpy.run_path(sys.argv[0], run_name="__main__")
 except SystemExit as e:
@@ -42,7 +42,7 @@ except SystemExit as e:
 
 To put the figure in a one-file page, read the exported `.svg`, drop its `<?xml …?>` line, and paste the `<svg …>…</svg>` element into the page body. Its carried `<style>` is scoped to `#<slug>-root` and its `<defs>` IDs are prefixed, so several figures share a page safely. Keep the SVG and its `<style>` exactly as exported.
 
-`--system-fonts` skips the Google Fonts `@import` (step 5) so the SVG makes no network request; use it when the skin's font source is `system` (see [style-guide.md § Font source](style-guide.md#font-source)). The diagram CSS still carries over.
+The export imports no font and makes no network request. Text renders in the installed Iosevka faces that the carried CSS and the presentation attributes name.
 
 Source read and output write failures return exit 2 with an error diagnostic. The viewport must contain four finite SVG numbers with positive width and height; empty or disabled viewports are refused. The class-without-style gate inspects nonempty actual `class` attributes; comments, visible text, empty class values, and `data-class` metadata do not require a stylesheet. Export selects a live SVG and carries live style blocks; HTML comments and script literals do not contribute diagrams or CSS. The selected SVG ends at its own closing tag, so nested icon `<svg>` elements stay inside it. Comments inside the selected SVG remain intact, except that XML forbids `--` inside a comment and a comment ending in `-`: each `--` becomes `- -` and a trailing `-` gets a space. That script is the source of truth for the transform below (CSS carry-forward, defs ID namespacing, rgba normalization, and the class-without-style gate). Reimplement only when the helper is unavailable; keep the behaviour identical.
 
@@ -66,10 +66,10 @@ Source read and output write failures return exit 2 with an error diagnostic. Th
    - **Drop** page chrome: `*`, `html`, `body`, `main`, `h1`/`h2`/`h3`, `p`, `.frame`, `.eyebrow`, `.summary`, `.card(s)`, `.footer`, `.header`, and the bare `svg { min-width: … }` layout rule. Only the bare `svg` selector is layout; `svg .zone` and `svg text` are diagram rules (see above). Those must not follow a fragment.
    - Carry `color` and `font-family` from the dropped `body` rule onto `#<slug>-root`. SVG content inherits both: `stroke="currentColor"` reads `color`, and text without its own font rule reads `font-family`.
    - **XML-escape** the carried CSS text (`&` → `&amp;`, `<` → `&lt;`) before inserting it into the SVG. Rule bodies can contain XML-sensitive characters (e.g. `content: "R&D"`); a bare `&` makes the standalone file fail to parse.
-5. Inject Google Fonts `@import` so the SVG renders with correct typography in a browser. **XML-escape the `&` separators as `&amp;`** — a standalone `.svg` is parsed as strict XML, where a bare `&` starts an entity reference and makes the whole file fail to parse. (Don't copy the raw URL from the HTML `<link href>`; that ampersand form is only valid in HTML.) Merge into the same `<defs>` `<style>` as the carried rules (don't add a second `<defs>`). If a new `<defs>` is needed, insert it after the existing leading `<title>` and `<desc>` so the first-child accessible-title contract is preserved:
+5. **Import no font.** The SVG carries its family stacks in the carried CSS and the presentation attributes, and renders with the viewer's installed faces. Never add an `@import`, `@font-face`, or font `<link>`. If the carried rules need a new `<defs>`, insert it after the existing leading `<title>` and `<desc>` so the first-child accessible-title contract is preserved:
      ```svg
      <defs>
-       <style>@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500;600&amp;family=Noto+Serif:ital@0;1&amp;family=Noto+Sans+KR:wght@400;500;600&amp;family=Noto+Serif+KR:wght@400&amp;family=Noto+Sans+TC:wght@400;500;600&amp;family=Noto+Serif+TC:wght@400&amp;display=swap');
+       <style>
        /* …scoped diagram rules… */
        </style>
        <!-- existing markers / patterns stay here -->
@@ -281,18 +281,18 @@ Source read and output write failures return exit 2 with an error diagnostic. Th
    svg = normalize_rgba_presentation_attrs(svg)
    ```
 
-   Channels and alpha are clamped to the CSS ranges 0–255 and 0–1 so out-of-range rgba values retain their browser paint when converted. The `\s*` around each channel tolerates a spaced `rgba(45, 49, 66, 0.03)` as well as the compact `rgba(45,49,66,0.03)` the templates normally use; `\d*\.?\d+` accepts an alpha value with or without a leading zero (both `0.03` and `.03` appear in shipped tokens). Matching is scoped to the `fill="..."` / `stroke="..."` presentation attribute. Class-styled diagrams may still carry `rgba(...)` inside the embedded `<style>` block via custom properties (e.g. `--accent-tint`); that form is correct in browsers and in Figma/Illustrator, and is out of scope for this presentation-attribute pass. (A future `style-guide.md` palette could in principle add a third notation such as `hsl()`; none exists in any shipped token today, so this pass doesn't handle it — extend the regex if one is ever introduced.)
-8. **Gate:** if the exported SVG still contains `class=` but no diagram CSS rules, stop and fix the CSS carry step — that fragment will render as black boxes. A fonts-only `<style>` (Google Fonts `@import` with no rules) does **not** satisfy the gate.
+   Channels and alpha are clamped to the CSS ranges 0–255 and 0–1 so out-of-range rgba values retain their browser paint when converted. The `\s*` around each channel tolerates a spaced `rgba(76, 79, 105, 0.03)` as well as the compact `rgba(76,79,105,0.03)` the templates normally use; `\d*\.?\d+` accepts an alpha value with or without a leading zero (both `0.03` and `.03` appear in shipped tokens). Matching is scoped to the `fill="..."` / `stroke="..."` presentation attribute. Class-styled diagrams may still carry `rgba(...)` inside the embedded `<style>` block via custom properties (e.g. `--accent-tint`); that form is correct in browsers and in Figma/Illustrator, and is out of scope for this presentation-attribute pass. (A future `style-guide.md` palette could in principle add a third notation such as `hsl()`; none exists in any shipped token today, so this pass doesn't handle it — extend the regex if one is ever introduced.)
+8. **Gate:** if the exported SVG still contains `class=` but no diagram CSS rules, stop and fix the CSS carry step — that fragment will render as black boxes. A `<style>` with no rules (for example, one that holds only an `@import`) does **not** satisfy the gate.
 9. Prepend `<?xml version="1.0" encoding="UTF-8"?>\n` so the file is well-formed XML.
 10. Write to `<basename>.svg` next to the source (e.g. `architecture.html` → `architecture.svg`). Honour an explicit output path if the user provides one.
 
 ### Caveat to surface to the user
 
-Tools that don't fetch remote fonts at import time (offline Illustrator, some Figma import paths, older SVG viewers) will substitute typography. The SVG renders correctly in any modern browser. For pixel-perfect portability, recommend the PNG export.
+Tools without the IosevkaTerm and IosevkaTermSlab faces installed (Illustrator on another machine, some Figma import paths, older SVG viewers) will substitute typography. The SVG renders correctly in any modern browser on a machine that has both faces. For pixel-perfect portability, recommend the PNG export.
 
 ## PNG export procedure
 
-Render **the original HTML** (not the extracted SVG) and screenshot only the `<svg>` element's bounding box. This keeps font loading reliable (already wired in the source HTML) while satisfying the "diagram only" rule. The PNG always has a **transparent background** (`omit_background=True`) so it can be placed on any slide or doc colour without a white halo. For motion-enabled HTML, append `?motion=static`, await `document.fonts.ready`, and assert the motion root has `data-frame="static"` before capture; never export at an arbitrary wall-clock delay.
+Render **the original HTML** (not the extracted SVG) and screenshot only the `<svg>` element's bounding box. This renders the installed faces exactly as the browser does while satisfying the "diagram only" rule. The PNG always has a **transparent background** (`omit_background=True`) so it can be placed on any slide or doc colour without a white halo. For motion-enabled HTML, append `?motion=static`, await `document.fonts.ready`, and assert the motion root has `data-frame="static"` before capture; never export at an arbitrary wall-clock delay.
 
 ### Detection
 
@@ -423,7 +423,7 @@ If the target aspect ratio doesn't match the `viewBox` aspect ratio, say so and 
 
 - **No `<svg>` block found**: the source isn't a diagram file. Tell the user; don't write anything.
 - **Surrounding HTML matters to the user**: they want cards/header in the image. Tell them this skill exports diagrams only, and recommend a browser-based full-page screenshot (or a separate PDF print).
-- **Source is missing fonts at runtime**: Playwright will substitute, the screenshot will look off. Check that the source HTML has the `<link href="...fonts.googleapis.com...">` tag in `<head>`. If absent, the file isn't from a current template — fix the source rather than working around it in export.
+- **The Iosevka faces are missing on the export host**: Chromium substitutes the platform monospace face and the screenshot runs wider than the 0.50em budget. Install both faces on that host, then export again, rather than working around it in export.
 
 ## What this command never does
 

@@ -8,8 +8,8 @@
 - Messages: horizontal arrows between lifelines; time flows top→down.
 - **Activation bar**: narrow rectangle (`w=8`, muted fill, 0.8 hairline stroke) on a lifeline spanning the interval that actor holds control. Stack for nested calls.
 - Self-messages: short U-shaped loop returning to the same lifeline; label right of the loop.
-- Return messages: **dashed** stroke + **filled** marker (never open). Prefer muted; optionally match the originating call color when pairing multi-hop stacks. Headline success may use solid coral (see Message kinds).
-- Coral on the primary success response or headline message — one, maybe two. Actor focal strokes do not count toward the coral message budget.
+- Return messages: **dashed** stroke + **filled** marker (never open). Prefer muted; optionally match the originating call color when pairing multi-hop stacks. Headline success may use the solid accent (see Message kinds).
+- Accent on the primary success response or headline message — one, maybe two. Actor focal strokes do not count toward the accent message budget.
 - When the flow **branches** (valid vs invalid token, retry, optional step), draw a **combined fragment** frame — do not invent free-floating if/else arrow clusters.
 
 ## Message kinds
@@ -80,7 +80,7 @@ Dark mode: the roles invert with the skin, so only the frame fill changes, to `i
 - Divider y on the 4px grid; ≥16px clear of messages above and below.
 - Nested fragments: **max 1 level**. Prefer two separate diagrams over deep nesting.
 - Default: **one** fragment per diagram. A second only if both stay under the complexity budget.
-- Coral stays on **one** headline success message across the whole diagram (usually the happy-path return inside the first `alt` region, or the final success outside a loop). Do not coral both `alt` branches.
+- The accent stays on **one** headline success message across the whole diagram (usually the happy-path return inside the first `alt` region, or the final success outside a loop). Do not accent both `alt` branches.
 
 ### Out of scope (do not invent)
 - `par`, `critical`, `break`, `ref`, and other UML operators — second PR if needed.
@@ -92,7 +92,7 @@ Dark mode: the roles invert with the skin, so only the frame fill changes, to `i
 - Max combined fragments: 1 (hard default); 2 only if each is a single-region `opt`/`loop`.
 - Max `alt` regions: 2.
 - Max fragment nesting depth: 1.
-- Max coral elements: 2 (prefer 1 for fragment diagrams).
+- Max accent elements: 2 (prefer 1 for fragment diagrams).
 
 If you exceed, split: overview (happy path) + detail (failure / refresh path).
 
@@ -115,8 +115,8 @@ If you exceed, split: overview (happy path) + detail (failure / refresh path).
 - Swimlane-style lanes instead of lifelines (different grammar).
 - Drawing `if/else` as two free-floating arrow clusters with **no** fragment frame.
 - Nested `alt` inside `alt` (split into two diagrams).
-- Fragment operator label in the `node-name` sans family — must be mono (`eyebrow`): `ALT` / `OPT` / `LOOP`.
-- Coral on both `alt` branches.
+- Fragment operator label in the `node-name` role — it must use the `eyebrow` role (uppercase, tracked): `ALT` / `OPT` / `LOOP`.
+- Accent on both `alt` branches.
 - Frame that covers actors with no messages inside the fragment.
 - Filled arrowhead on async fire-and-forget (use open marker).
 - Open arrowhead on return messages (returns stay filled + dashed).

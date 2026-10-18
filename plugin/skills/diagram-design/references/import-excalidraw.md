@@ -103,7 +103,7 @@ This procedure redrew `scripts/fixtures/sample-whiteboard.excalidraw` (10 IR nod
 | `Web Form` rectangle and `CSV Import` ellipse | Two input treatments | Both are entry points; the ellipse was a sketch choice, not a state |
 | `Valid record?` diamond | One decision diamond | Its yes/no branches are content |
 | `CRM DB` rectangle | Flat Store/State box | Role inferred from the label; Excalidraw has no store shape |
-| Five palette fills | White services, ink-tint store, one accent | Source color signals role; roles map to the design system |
+| Five palette fills | `paper` services, ink-tint store, one accent | Source color signals role; roles map to the design system |
 | Freedraw underline, logo image | Dropped | Decoration and pixels; both counted in the ledger |
 | `Old flow — ignore` sticky text | Dropped | Unconnected; step 1 of the degrade ladder |
 

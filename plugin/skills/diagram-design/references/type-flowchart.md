@@ -9,7 +9,7 @@
   - **Diamond** — decision (≤3 exits)
   - **Small filled ink dot** (`r=4`) — merge point where branches rejoin
 - Flow runs top→down. From a diamond, conventional exits: Yes to the right, No below — but label every outgoing arrow regardless.
-- Use coral on the happy path *or* on the single most consequential decision — never on every decision.
+- Use the accent on the happy path *or* on the single most consequential decision — never on every decision.
 - If two arrows must cross, use a small arc jump on one so the crossing is readable.
 
 ## Anti-patterns

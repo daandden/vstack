@@ -18,7 +18,7 @@ chevrons:                       # ordered left → right; reserved names auto-pr
   - { name: "Transformation",       columns: 1 }
   - { name: "Visualization",        columns: 1 }
   - { name: "Orchestration",        vertical: true }                     # reserved → pairs with the bar
-  - { name: "Security",             vertical: true, color: "#b85450" }   # tinted to match the Identity bar below
+  - { name: "Security",             vertical: true, color: "#d20f39" }   # tinted to match the Identity bar below
   - { name: "Observability",        vertical: true }                     # reserved → pairs with crosscut #2
 
 sources:                        # external; rendered in the dashed zone on the left
@@ -34,7 +34,7 @@ components:                     # inside the cluster, plus bars and cross-cuttin
   - { name: "Notebooks",  chevron: "Transformation", kind: node,          icon: jupyter,  role: "ANLZ"  }
   - { name: "Superset",   chevron: "Visualization",  kind: node,          icon: superset, role: "DASH" }
   - { name: "Airflow",    chevron: "Orchestration",  kind: bar,           icon: airflow,    subtitle: "Apache Airflow" }
-  - { name: "Identity",   chevron: "Security",       kind: cross-cutting, icon: keycloak,   subtitle: "Keycloak · LDAP · OIDC",     color: "#b85450" }
+  - { name: "Identity",   chevron: "Security",       kind: cross-cutting, icon: keycloak,   subtitle: "Keycloak · LDAP · OIDC",     color: "#d20f39" }
   - { name: "Monitoring", chevron: "Observability",  kind: cross-cutting, icon: prometheus, subtitle: "Prometheus · Grafana · Loki" }
 
 connections:                    # explicit edges; focal-touching ones become accent automatically
@@ -111,7 +111,7 @@ chevron_cx(C)      = (x_boundaries[index(C)] + x_boundaries[index(C)+1]) / 2
 
 Fills alternate between two steps of the **phase-band palette** (§6.1): `band-1` / `band-2` in light mode, `band-2` / `band-3` in dark. Labels: `band-label` fill, `eyebrow` role (mono), `font-size=7`, `letter-spacing=0.14em`, `text-anchor=middle`, centered at `chevron_cx, 21`.
 
-**Color override** (per chevron, both horizontal and vertical): a chevron may declare an optional `color: "#hex"` that replaces the alternation fill for that one chevron. Use it to flag a phase that pairs with a custom-colored component (e.g., `Security` chevron in red when the Identity bar uses `color: "#b85450"`). Rules:
+**Color override** (per chevron, both horizontal and vertical): a chevron may declare an optional `color: "#hex"` that replaces the alternation fill for that one chevron. Use it to flag a phase that pairs with a custom-colored component (e.g., `Security` chevron in red when the Identity bar uses `color: "#d20f39"`). Rules:
 
 - Override applies to the polygon fill only. The label stays `band-label`; it never takes the active skin's `paper`.
 - The alternation index doesn't shift; neighboring chevrons keep their natural fill, even if it produces two adjacent same-fill chevrons. Don't try to "fix" this — overrides should be rare (≤ 2 per diagram).
@@ -191,9 +191,9 @@ gap                = 16
 row_top(k)         = first_top_y + k * (node_h + gap)   # k = 0..K-1
 ```
 
-**Focal node:** `fill="{accent @ 0.08}"`, `stroke="{accent}"`, `stroke-width=1.2`. Title text in `accent`. All other nodes: white fill, `stroke={ink @ 0.25}`, `stroke-width=1`.
+**Focal node:** `fill="{accent @ 0.08}"`, `stroke="{accent}"`, `stroke-width=1.2`. Title text in `accent`. All other nodes: `paper` fill, `stroke={ink @ 0.25}`, `stroke-width=1`.
 
-Role badge top-left at `(node_x+8, node_y+6)`, size 12 high. Icon top-right at `(node_x+node_w-32, node_y+6)`, 24×24, monochrome via `currentColor`. Name centered at `(node_cx, node_y+44)` size 11 sans semibold. Subtitle at `(node_cx, node_y+56)` size 8 mono muted.
+Role badge top-left at `(node_x+8, node_y+6)`, size 12 high. Icon top-right at `(node_x+node_w-32, node_y+6)`, 24×24, monochrome via `currentColor`. Name centered at `(node_cx, node_y+44)`, `node-name` role size 11, weight 600. Subtitle at `(node_cx, node_y+56)`, `sublabel` role size 8, muted.
 
 ### 2.8 Source nodes (inside dashed zone)
 
@@ -310,12 +310,12 @@ The subtitle stays muted because it's parenthetical metadata — only the primar
 - **No color on connectors.** If you find yourself wanting a colored edge, the right move is to pick a different `style` from §3, not to override.
 
 **Semantic uses** (recommended):
-- `#b85450` (rust-red) — Security / Identity (Keycloak, Vault)
-- `#5a7d9a` (slate-blue) — Observability (Prometheus, Datadog)
-- `#7a8c47` (olive-green) — Governance / Lineage (OpenMetadata)
-- `#8c6d3f` (warm-brown) — Backup / DR
+- `#d20f39` (red) — Security / Identity (Keycloak, Vault)
+- `#209fb5` (sapphire) — Observability (Prometheus, Datadog)
+- `#40a02b` (green) — Governance / Lineage (OpenMetadata)
+- `#fe640b` (peach) — Backup / DR
 
-Stick to these unless the user's brand demands otherwise. Random hex per component is exactly the failure mode this skill avoids.
+Stick to these Catppuccin colors. Random hex per component is exactly the failure mode this skill avoids.
 
 ---
 
@@ -401,7 +401,7 @@ Only these differ between modes:
 |---|---|---|---|
 | Muted text | `muted` | `ink @ 0.65` | Dark mode softens secondary text by opacity rather than by hue |
 | Dashed border | `ink @ 0.20` | `ink @ 0.22` | A hairline needs marginally more presence on dark paper |
-| Node fill | `#ffffff` (white) | `ink @ 0.06` | White is opaque; on dark paper the node lifts off the ground instead |
+| Node fill | `paper` | `ink @ 0.06` | `paper` is opaque; on dark paper the node lifts off the ground instead |
 | Node stroke | `ink @ 0.25` | `ink @ 0.20` | Light ink on dark paper reads stronger at equal opacity |
 | Focal fill | `accent @ 0.08` | `accent @ 0.12` | ditto |
 | Phase bands | `band-1` / `band-2` | `band-2` / `band-3` | The alternation shifts one step lighter (§6.1) |
@@ -414,12 +414,12 @@ The chevron banner needs a **dark band with a light label in both modes**. `ink`
 
 | Token | Value | Use |
 |---|---|---|
-| `band-1` | `#2d3142` | Darkest step: odd chevrons, light mode |
-| `band-2` | `#3d4460` | Middle step: even chevrons light, odd chevrons dark |
-| `band-3` | `#4a5270` | Lightest step: even chevrons, dark mode |
-| `band-label` | `#f5f5f5` | Fixed label color: 11.82:1, 8.78:1, and 7.05:1 against the three bands |
+| `band-1` | `#1e1e2e` (Mocha base) | Darkest step: odd chevrons, light mode |
+| `band-2` | `#313244` (Mocha surface0) | Middle step: even chevrons light, odd chevrons dark |
+| `band-3` | `#45475a` (Mocha surface1) | Lightest step: even chevrons, dark mode |
+| `band-label` | `#cdd6f4` (Mocha text) | Fixed label color: 11.34:1, 8.69:1, and 6.31:1 against the three bands |
 
-**These are type-scoped tokens, not skin roles, and they do not invert.** They are the one deliberate exception to the rule that hex values live only in [`style-guide.md`](style-guide.md). `scripts/lint-skin.py` rejects `band-2` and `band-3` as off-palette, which is why the Upstream high-level examples are listed in `scripts/lint-skin-baseline.txt`. Phase labels always use `band-label`, and `band-label` has to hold at least 4.5:1 against every band, because these are 7px labels in either mode. When you re-skin, derive three analogous steps from the new brand's darkest neutral and pick a fixed label color that holds 4.5:1 against all three.
+**These are type-scoped tokens, not skin roles, and they do not invert.** They are the one deliberate exception to the rule that hex values live only in [`style-guide.md`](style-guide.md). `scripts/lint-skin.py` rejects `band-2` and `band-3` as off-palette, which is why the Upstream high-level examples are listed in `scripts/lint-skin-baseline.txt`. Phase labels always use `band-label`, and `band-label` has to hold at least 4.5:1 against every band, because these are 7px labels in either mode.
 
 ---
 

@@ -17,7 +17,7 @@ Routed from SKILL.md §7 and §8. SKILL.md keeps the grid rule in one line, the 
 
 ### Complexity budget (per diagram)
 
-These are the per-type limits. The universal rows in SKILL.md §7 (9 nodes, 12 arrows or transitions, 2 coral elements, 2 annotation callouts, and the motion limits) apply to every type on top of these, and a semantic pattern's own budget in [semantic-patterns.md](semantic-patterns.md) can only tighten them.
+These are the per-type limits. The universal rows in SKILL.md §7 (9 nodes, 12 arrows or transitions, 2 accent elements, 2 annotation callouts, and the motion limits) apply to every type on top of these, and a semantic pattern's own budget in [semantic-patterns.md](semantic-patterns.md) can only tighten them.
 
 | Limit | Rule |
 |---|---|
@@ -80,7 +80,7 @@ Don't use 3 identical generic cards. Vary the treatment:
 <div class="card">
   <p class="eyebrow">SECTION LABEL</p>
   <div class="card-header">
-    <span class="card-dot coral"></span>
+    <span class="card-dot accent"></span>
     <h3>Card Title</h3>
   </div>
   <ul><li>Item</li></ul>
@@ -89,8 +89,8 @@ Don't use 3 identical generic cards. Vary the treatment:
 
 Rules:
 
-- `background: #ffffff` (not paper — slight lift without shadow)
+- `background:` the `paper-2` color (not `paper`: the mantle tone sets the card apart without a shadow)
 - `border: 1px solid` the `rule` color
 - `border-radius: 6px`, `padding: 1.25rem`
 - **No `box-shadow`**
-- Card dots: 7px, `border-radius: 50%` — ink / muted / coral / link / soft variants
+- Card dots: 7px, `border-radius: 50%` — ink / muted / accent / link / soft variants

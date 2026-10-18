@@ -47,7 +47,7 @@ consumers:                          # right column, 0..6 nodes
 
 footer:                             # 0..N cross-cutting bars stacked below zone (full-canvas width)
   - { name: "Active Directory", icon: key,        subtitle: "LDAP · SSO · group RBAC",
-      color: "#b85450" }            # tinted red to flag the security concern
+      color: "#d20f39" }            # tinted red to flag the security concern
   # additional footer nodes (Observability, Backup, …) stack below this one
 
 internal_connections:               # explicit platform-component edges
@@ -276,7 +276,7 @@ Any source, consumer, platform component (node or bar), or footer node accepts a
 | Subtitle text | **unchanged** (muted) | **unchanged** (muted) |
 | Connectors touching this component | **unchanged** — topology-driven | **unchanged** |
 
-`C_light` = the same hex lightened ~15% for dark-mode contrast (e.g., `#b85450` → `#d97a78`).
+`C_light` = the Mocha value of the same Catppuccin color, for dark-mode contrast (e.g., Latte red `#d20f39` → Mocha red `#f38ba8`, Latte green `#40a02b` → Mocha green `#a6e3a1`).
 
 **Rules:**
 
@@ -284,11 +284,11 @@ Any source, consumer, platform component (node or bar), or footer node accepts a
 - **Never on connectors.** If you want a colored edge, pick a different `style` from §3, not a color override.
 - **Cap at 2 custom-colored components** per diagram (in addition to the focal pair).
 
-**Semantic palette** (use these unless brand demands otherwise):
-- `#b85450` rust-red — Security / Identity (AD, Keycloak, Vault)
-- `#5a7d9a` slate-blue — Observability (Prometheus, Datadog, OpenTelemetry)
-- `#7a8c47` olive-green — Governance / Lineage (OpenMetadata, DataHub)
-- `#8c6d3f` warm-brown — Backup / DR (Velero, Restic)
+**Semantic palette** (Catppuccin colors; use only these):
+- `#d20f39` red — Security / Identity (AD, Keycloak, Vault)
+- `#209fb5` sapphire — Observability (Prometheus, Datadog, OpenTelemetry)
+- `#40a02b` green — Governance / Lineage (OpenMetadata, DataHub)
+- `#fe640b` peach — Backup / DR (Velero, Restic)
 
 ---
 
@@ -318,7 +318,7 @@ Only these differ between modes:
 | Non-focal bar fill | `ink @ 0.05` | `ink @ 0.06` | ditto |
 | Focal fill | `accent @ 0.08` | `accent @ 0.12` | ditto |
 
-Unchanged across modes: zone stroke `ink @ 0.32`, focal stroke `accent`, and custom component colors (`C` light → `C_light`, lightened ~15%).
+Unchanged across modes: zone stroke `ink @ 0.32`, focal stroke `accent`, and custom component colors (`C` Latte → `C_light` Mocha).
 
 ---
 
@@ -389,7 +389,7 @@ When this gets unwieldy:
 
 - **Sources or consumers as a single collapsed node** when ≥3 distinct items exist — defeats the whole point of this type. Use Architecture or High-level if you want collapsing.
 - **One bus arrow from "sources" to "the platform"** — every wire is labeled with its protocol; this is how integration teams read the diagram.
-- **Per-tool color coding** (teal-NiFi, magenta-MinIO, yellow-Jupyter) inside the zone — collapses hierarchy; only the two focal accents earn coral, plus up to 2 custom colors on cross-cutting components (§4 cap).
+- **Per-tool color coding** (teal-NiFi, magenta-MinIO, yellow-Jupyter) inside the zone — collapses hierarchy; only the two focal accents earn the accent color, plus up to 2 custom colors on cross-cutting components (§4 cap).
 - **More than 2 focal components** — focal exists to distinguish "platform" from "pile of tools"; >2 erases the signal (same rule as SKILL.md §1).
 - **`color` override on a focal component** — ignored. Focal_accent always wins.
 - **Footer wired to one specific tool** (e.g., AD → Airflow only) — wrong unless that service truly only protects one tool. The default is the layer-wide connection.

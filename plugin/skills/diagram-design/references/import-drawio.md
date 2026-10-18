@@ -95,7 +95,7 @@ Fresh layout on the 4px grid, per the type reference and SKILL.md §6–§7. Exp
 
 | draw.io default fill | Typical meaning | Maps to |
 |---|---|---|
-| `#dae8fc` / `#6c8ebf` (blue) | generic component | Backend/API — white fill, `ink` stroke |
+| `#dae8fc` / `#6c8ebf` (blue) | generic component | Backend/API — `paper` fill, `ink` stroke |
 | `#d5e8d4` / `#82b366` (green) | ok / primary path | `ink` treatment; accent **only** if focal |
 | `#ffe6cc` / `#d79b00` (orange) | attention / queue | `ink` treatment; accent only if focal |
 | `#f8cecc` / `#b85450` (red) | failure / risk / legacy | Optional/Async — dashed `ink @ 0.20` |
@@ -140,7 +140,7 @@ This procedure ran on `scripts/fixtures/sample-architecture.drawio` (12 nodes, 8
 | Postgres, Redis, Object Store scattered down the right | One `DATA` zone in a bottom row | Regrouping by role removed every connector crossing |
 | `Token valid?` decision diamond | The `VERIFY` label on Gateway → Auth | A single decision inside an architecture diagram is an edge label |
 | Sticky note "Legacy path, to be retired" | Dropped | Unconnected in the source; step 1 of the degrade ladder |
-| `#dae8fc` / `#d5e8d4` / `#e1d5e7` fills | White services, ink-tint stores, one accent | Source color signals role; roles map to the design system |
+| `#dae8fc` / `#d5e8d4` / `#e1d5e7` fills | `paper` services, ink-tint stores, one accent | Source color signals role; roles map to the design system |
 | API Gateway (degree 4, the digest's top hub) | The one accent node | Highest-degree node was also the story's pivot |
 
 12 source nodes → 8 drawn, inside the standard §7 budget even at a level that allows 12.
@@ -165,7 +165,7 @@ Default is page 0. When the file has several pages:
 | Unconnected nodes listed | Usually legends, titles, or abandoned boxes. Drop unless the label says otherwise; mention in the ledger if it looked meaningful. |
 | Labels are empty across the board | The source carries meaning in shape and position only. Ask with `ask` what the boxes are — don't invent names. |
 | Source has 40+ nodes | Don't offer `faithful`. Propose overview + per-zone detail up front, before drawing anything. |
-| Source is someone else's branded diagram | Redraw in the *project's* skin (`style-guide.md`), not the source's. Say so — it's a feature, not a bug. |
+| Source is someone else's branded diagram | Redraw in the built-in Catppuccin style (`style-guide.md`), not the source's. Say so — it's a feature, not a bug. |
 | CJK / non-Latin labels | Font fallback per [`output-spec.md` §4](output-spec.md). Don't romanize labels. |
 
 ## Anti-patterns

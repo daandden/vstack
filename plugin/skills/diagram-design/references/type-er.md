@@ -12,7 +12,7 @@
   - `1`, `N`, `0..1`, `1..*` in the `arrow-label` role, 8px, placed 10–12px from the entity edge.
   - Optional relationship label ("has", "belongs to") centered on the line.
 - Group related entities close; lay out so most relationships are straight lines, not tangles.
-- Coral on the aggregate root or central entity of the model.
+- Accent on the aggregate root or central entity of the model.
 
 ## Anti-patterns
 - Drawing an arrow for every FK on a model with dozens — lay out by cluster instead.

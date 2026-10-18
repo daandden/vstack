@@ -46,7 +46,7 @@ Applied to schematics:
 
 - Every node represents a distinct idea. Two nodes that always travel together are one node.
 - Every connection carries information. If the relationship is obvious from layout, remove the line.
-- Coral is **editorial, not a flag.** 1–2 focal nodes per diagram. Using it on 5 nodes erases the signal.
+- The accent (mauve) is **editorial, not a flag.** 1–2 focal nodes per diagram. Using it on 5 nodes erases the signal.
 - The schematic isn't done when everything is added. It's done when nothing can be removed.
 
 **Target density: 4/10.** Enough to be technically complete. Not so dense it needs a guide. Above 9 nodes, it's probably two diagrams.
@@ -156,8 +156,8 @@ These mark "AI slop" schematics of any type:
 
 | Anti-pattern | Why it fails |
 |---|---|
-| Dark mode + cyan/purple glow | Looks "technical" without design decisions |
-| JetBrains Mono as blanket "dev" font | Mono is for *technical* content — ports, commands, URLs. Names go in Geist sans. |
+| Glow, neon, or gradient effects on a dark figure | Looks "technical" without design decisions. Mocha figures use flat Catppuccin fills and hairlines. |
+| A third font family, or any face outside the two Iosevka faces | Breaks the two-face rule: IosevkaTermSlab for the title and callouts, IosevkaTerm for everything else. |
 | Identical boxes for every node | Erases hierarchy |
 | Legend floating inside the diagram area | Collides with nodes |
 | Arrow labels with no masking rect | Bleeds through the line |
@@ -165,7 +165,7 @@ These mark "AI slop" schematics of any type:
 | 3 equal-width summary cards as default | Generic grid — vary widths |
 | Shadow on any element | Shadows are out. Borders are in. |
 | `rounded-2xl` on boxes | Max radius 6–10px or none |
-| Coral on every "important" node | Coral is 1–2 editorial accents, not a signaling system |
+| Accent on every "important" node | The accent is 1–2 editorial marks, not a signaling system |
 | Reproducing Mermaid's renderer layout | Imports automatic spacing and routing instead of making an editorial layout |
 | Any breach of the six §6 connector rules | Automatic fail: diagonal slants, labels touching their stroke, masks clipped by a later node, overlapping paths, shared attach points, transit behind a non-endpoint box |
 
@@ -175,7 +175,7 @@ Type-specific anti-patterns live in each type reference linked in the guide.
 
 ## 5. Design System
 
-**The design system is fixed.** [`references/style-guide.md`](references/style-guide.md) holds the colors, typography, and tokens. This file names semantic roles (`paper`, `ink`, `muted`, `accent`, `link`, …).
+**The design system is fixed.** The skill has one built-in Catppuccin style: Mocha for dark figures (the default), Latte for light figures, a mauve accent, and two installed Iosevka faces. [`references/style-guide.md`](references/style-guide.md) holds the colors, typography, and tokens. This file names semantic roles (`paper`, `ink`, `muted`, `accent`, `link`, …).
 
 > When specs below or in type references mention "ink", "accent", "muted", etc., look up the current hex value in `style-guide.md`.
 
@@ -196,11 +196,11 @@ Type-reference snippets write roles as placeholders: `{ink}`, `{ink @ 0.40}` for
 
 **Node treatments** (focal, backend/API/step, store/state, external/cloud, input/user, optional/async, security/boundary): fill and stroke per [style-guide.md § Node type → treatment](references/style-guide.md#node-type--treatment).
 
-**Typography:** Instrument Serif for the H1 title and italic callouts, Geist sans 600 for node names, Geist Mono for sublabels, eyebrows, and arrow labels. Sizes, weights, and the font `<link>`: [style-guide.md § Typography](references/style-guide.md#typography); per-preset type ramp: [output-spec.md](references/output-spec.md). When the user asks for offline output, system fonts, or no Google Fonts, follow [style-guide.md § Font source](references/style-guide.md#font-source).
+**Typography:** IosevkaTermSlab Nerd Font Mono for the H1 title and italic callouts. IosevkaTerm Nerd Font Mono at 600 for node names, and at the smaller role sizes for sublabels, eyebrows, and arrow labels. Both faces come from installed fonts: a figure never links or imports a font. Sizes, weights, and family stacks: [style-guide.md § Typography](references/style-guide.md#typography); per-preset type ramp: [output-spec.md](references/output-spec.md).
 
 **Non-Latin labels** — extend the family: [Korean](references/style-guide.md#korean-labels), [Chinese](references/style-guide.md#traditional-chinese-labels), [Cyrillic](references/style-guide.md#cyrillic-labels).
 
-**Mono is for technical content only** — never as a blanket "dev" font, and never JetBrains Mono.
+**Two-face rule:** the slab face carries the title and callouts, and IosevkaTerm carries every other role. Roles, not faces, separate a name from a technical value: size, weight, tracking, and case.
 
 ---
 
@@ -217,7 +217,7 @@ Universal building blocks. Type-specialized primitives (lifeline, activation bar
 Exact markup (background, dotted paper, markers, node box, arrow label, legend) and the long form of each connector rule: [`references/primitives-core.md`](references/primitives-core.md). The static templates (`template.html`, `template-dark.html`, `template-full.html`) already define the background and the `arrow`, `arrow-accent`, and `arrow-link` markers; `template-motion.html` defines only its own prefixed marker, so add the others from primitives-core.md when a motion diagram needs them.
 
 - **Arrows:** `muted` by default, `accent` for the headline path, `link` for HTTP/API and external calls, dashed `5,4` for optional, passive, return, or async. Draw arrows before boxes so lines sit behind nodes.
-- **Node box:** an opaque paper mask rect, then the styled box at `rx=6`, a rectangular type tag at `rx=2` (not a pill), the name in Geist 600, and a Geist Mono sublabel.
+- **Node box:** an opaque paper mask rect, then the styled box at `rx=6`, a rectangular type tag at `rx=2` (not a pill), the name in the `node-name` role (600), and a `sublabel` below it.
 
 ### Mandatory connector rules
 
@@ -242,7 +242,7 @@ Structural geometry sits on a 4px grid: node origins, widths, heights, gaps, and
 |---|---|
 | Max nodes | 9 |
 | Max arrows / transitions | 12 |
-| Max coral elements | 2 |
+| Max accent elements | 2 |
 | Max annotation callouts | 2 |
 | Max motion (optional) | 8 steps, 12 marked items, 2 simultaneous items — see [animation.md](references/animation.md) |
 
@@ -254,7 +254,7 @@ If you exceed, split into two diagrams (overview + detail).
 
 ## 8. Summary Card Pattern
 
-Don't use 3 identical generic cards. Vary the treatment: column widths such as `1.1fr 1fr 0.9fr`, a white background with a 1px hairline border and 6px radius, no `box-shadow`. Markup and the card-dot variants: [layout-budget.md § Summary Card Pattern](references/layout-budget.md#summary-card-pattern).
+Don't use 3 identical generic cards. Vary the treatment: column widths such as `1.1fr 1fr 0.9fr`, a `paper-2` background with a 1px hairline border and 6px radius, no `box-shadow`. Markup and the card-dot variants: [layout-budget.md § Summary Card Pattern](references/layout-budget.md#summary-card-pattern).
 
 ---
 
@@ -281,7 +281,7 @@ Run before producing any diagram.
 
 **Signal:**
 
-- [ ] Coral used on ≤2 elements? If more, which actually deserve focal status?
+- [ ] Accent used on ≤2 elements? If more, which actually deserve focal status?
 - [ ] Legend covers every type used — and nothing extra?
 - [ ] Within the type's complexity budget (§7)?
 
@@ -297,7 +297,7 @@ Run before producing any diagram.
 - [ ] **§6 rule 4:** a distinct attach point per connector on a shared edge, 12px or more apart, none hiding another?
 - [ ] **§6 rule 5:** no transit behind a non-endpoint box, except the unavoidable case (dashed, label at the visible end)?
 - [ ] **§6 rule 6:** no label mask overlapping a node drawn after it? (From a repository checkout, run the eval cell for `<repo-root>/scripts/verify-geometry.py <file>`.)
-- [ ] Every arrow label has an opaque `fill="#f5f5f5"` rect behind it?
+- [ ] Every arrow label has an opaque `paper`-filled rect behind it?
 - [ ] Legend is a horizontal bottom strip, not floating?
 - [ ] No vertical `writing-mode` text?
 - [ ] `viewBox` expanded for the legend strip (~60px)?
@@ -308,25 +308,24 @@ Run before producing any diagram.
 
 **Typography:**
 
-- [ ] Brand match uses exact public families/weights, verified via `getComputedStyle`; fallbacks disclosed?
-- [ ] Human-readable names in Geist sans, not Geist Mono?
-- [ ] Technical sublabels (ports, commands, URLs) in Geist Mono?
-- [ ] Page title in Instrument Serif?
-- [ ] Annotation callouts (if any) in *italic* Instrument Serif? (see [primitive-annotation.md](references/primitive-annotation.md))
-- [ ] No JetBrains Mono anywhere?
+- [ ] Both Iosevka faces resolve in the browser? A canvas `measureText("0123456789")` at `100px` in each family stack measures 500px; any other width means the face fell back to a platform monospace face.
+- [ ] Page title in IosevkaTermSlab Nerd Font Mono?
+- [ ] Annotation callouts (if any) in *italic* IosevkaTermSlab Nerd Font Mono? (see [primitive-annotation.md](references/primitive-annotation.md))
+- [ ] Node names, sublabels, eyebrows, and arrow labels in IosevkaTerm Nerd Font Mono, each at its role's size and weight?
+- [ ] No font `<link>`, `@font-face`, or `@import`, and every family stack ends in `ui-monospace, monospace`?
 
 ---
 
 ## 10. Templates & Variants
 
-Every diagram has three variants, and each variant starts from its template in `assets/`:
+Every diagram has three variants, and each variant starts from its template in `assets/`. Dark is the default. A dark figure takes every role from the Mocha column of [style-guide.md](references/style-guide.md), and a light figure takes the Latte column.
 
-| Variant | Template | When to use |
-|---|---|---|
-| **Minimal light** (default) | `assets/template.html` | Screenshot-ready. Diagram + title. Warm paper. |
-| **Minimal dark** | `assets/template-dark.html` | Dark mode sites, slides, high-contrast posts. |
-| **Full editorial** | `assets/template-full.html` | Long-form posts where the diagram is the hero. |
-| **Consultant special** (quadrant only) | `assets/template.html` | BCG/McKinsey-style 2×2 scenario matrix. See [type-quadrant.md](references/type-quadrant.md#consultant-special-2x2-scenario-matrix). |
+| Variant | Template | Palette | When to use |
+|---|---|---|---|
+| **Minimal dark** (default) | `assets/template-dark.html` | Mocha | Every figure unless the page or the request asks for light. Diagram + title. |
+| **Minimal light** | `assets/template.html` | Latte | Light pages, print, and light slides. |
+| **Full editorial** | `assets/template-full.html` | Mocha | Long-form posts where the diagram is the hero. For a light page, swap its role values to Latte. |
+| **Consultant special** (quadrant only) | `assets/template-dark.html` | Mocha | BCG/McKinsey-style 2×2 scenario matrix. See [type-quadrant.md](references/type-quadrant.md#consultant-special-2x2-scenario-matrix). |
 
 **Sketchy variant** (optional, applied to any of the above): a hand-drawn stroke filter for essays, not technical docs. See [primitive-sketchy.md](references/primitive-sketchy.md).
 
@@ -336,7 +335,7 @@ Every diagram has three variants, and each variant starts from its template in `
 
 ### To create a new diagram
 
-1. Copy the variant closest to what you want (`assets/template.html` for minimal, `assets/template-full.html` for cards, `assets/template-motion.html` only when motion is requested).
+1. Copy the variant closest to what you want (`assets/template-dark.html` for the default minimal figure, `assets/template.html` for a light one, `assets/template-full.html` for cards, `assets/template-motion.html` (Mocha) only when motion is requested).
 2. If behavior is load-bearing, choose a semantic pattern; then load the matching type reference linked in the visual-type guide.
 3. Replace the eyebrow, h1, and SVG body. Replace `[diagram-slug]` with the file slug and fill `<title>` / `<desc>`.
 4. If motion is requested, load `animation.md`; otherwise keep mode `none` and no script.
@@ -376,7 +375,7 @@ The size preset sets the `viewBox` **and** the type ramp; `faithful` is the only
 
 Always produce a single self-contained `.html` file:
 
-- Embedded CSS (no external except Google Fonts)
+- Embedded CSS, with no external stylesheet and no font `<link>`, `@font-face`, or `@import`; text uses the installed faces
 - Inline SVG (no external images)
 - Static by default; minimal inline JavaScript only for explicit animation controls/state
 

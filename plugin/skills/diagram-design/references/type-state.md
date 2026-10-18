@@ -14,7 +14,7 @@
 - Transitions: curved arrows labeled in the `arrow-label` role as `event [guard] / action` (omit sections you don't need).
 - Self-loops curve above the state.
 - Orient along the dominant flow direction (left→right or top→down); rearrange before crossing transitions.
-- Coral on the state the reader should notice — typically the error state, or "happy completion".
+- Accent on the state the reader should notice — typically the error state, or "happy completion".
 
 ## Anti-patterns
 - More transitions than states × 2 → likely two state machines.
