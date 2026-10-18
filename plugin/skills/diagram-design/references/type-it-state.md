@@ -353,7 +353,7 @@ If your diagram needs more than 2 focal components, you've collapsed two narrati
 | footer fill | `ink @ 0.03` | `paper @ 0.05` |
 | footer stroke | `ink @ 0.18` | `paper @ 0.20` |
 | label mask fill | `paper` | `ink` |
-| custom-color components | `C` | `C_light` (≈ +15 %) |
+| custom-color components | `C` | the Mocha color of the same Catppuccin name as `C` |
 
 ---
 
@@ -391,9 +391,9 @@ Before emitting SVG, verify **every** item:
 
 ---
 
-## 9. Worked YAML — full inputs for the canonical landscape
+## 9. Worked YAML for the canonical landscape
 
-The complete inputs for the NatStat canonical landscape: 3 zones, 9 components, 8 connectors, 0 footer bars, SQL Server tinted green. Every coordinate in its SVG is derivable from §2 applied to these inputs.
+These are the complete inputs for the NatStat canonical landscape: 3 zones, 9 components, 8 connectors, and no footer bars, with SQL Server tinted green. Every coordinate in its SVG is derivable from §2 applied to these inputs.
 
 ```yaml
 title:    "Current IT Landscape"

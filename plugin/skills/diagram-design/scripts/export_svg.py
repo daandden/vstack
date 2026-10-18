@@ -669,11 +669,6 @@ def leading_accessibility_end(svg: str, pos: int) -> int:
 
 
 def merge_style_into_defs(svg: str, style_css: str) -> str:
-    """Ensure one <defs> and place a <style> with the diagram CSS first.
-
-    No font is imported: the SVG names its family stacks and renders with the
-    viewer's installed faces, so it makes no network request.
-    """
     if not style_css.strip():
         return svg
     style_tag = "<style>" + style_css.strip() + "</style>"
@@ -1017,7 +1012,6 @@ def normalize_rgba_presentation_attrs(svg: str) -> str:
 
 
 def has_diagram_stylesheet(svg: str) -> bool:
-    """True when a <style> block contains CSS rules beyond any @import."""
     for block in STYLE_BLOCK_RE.findall(svg):
         stripped = re.sub(r"@import\b[^;]*;", "", block, flags=re.IGNORECASE)
         stripped = re.sub(r"/\*.*?\*/", "", stripped, flags=re.DOTALL)
@@ -1027,11 +1021,6 @@ def has_diagram_stylesheet(svg: str) -> bool:
 
 
 def assert_export_gate(svg: str) -> None:
-    """Refuse a class-styled fragment that shipped without diagram CSS.
-
-    A <style> with no rules (for example, one that holds only an @import) does
-    not count — class-based fills would still render as black boxes.
-    """
     uses_classes = False
     for region in REFERENCE_REGION_RE.finditer(svg):
         tag = START_TAG_RE.fullmatch(region.group(0))

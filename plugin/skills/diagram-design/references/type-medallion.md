@@ -310,7 +310,7 @@ If zero or >1 tiers carry `focal: true`, halt and ask with `ask`.
 | Header band muted-tint | `muted @ 0.10` | `soft @ 0.16` |
 | Header band cold-tint | `muted @ 0.18` | `soft @ 0.24` |
 | Header band accent-tint | `accent @ 0.14` | `accent @ 0.20` |
-| Custom component colors | `C` | `C_light` (lighten ~15%) |
+| Custom component colors | `C` | the Mocha color of the same Catppuccin name as `C` |
 
 ---
 

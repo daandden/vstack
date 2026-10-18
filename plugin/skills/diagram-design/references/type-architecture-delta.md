@@ -42,7 +42,7 @@ This is the authoring and validation surface, not a serialization inferred from 
 
 ### Diagram and snapshots
 
-The file has exactly one `<svg data-diagram="architecture-delta">`. Keep the standard accessible SVG title/description contract. Two direct child `<g>` elements declare `data-snapshot="before"` and `data-snapshot="after"`. Each has:
+The file has exactly one `<svg data-diagram="architecture-delta">`. The accessible SVG title and description contract is optional guidance, as in SKILL.md. Two direct child `<g>` elements declare `data-snapshot="before"` and `data-snapshot="after"`. Each has:
 
 - `data-grid="<width> <height> <pitch>"`: the same three positive finite numbers in both panels. Width and height are multiples of pitch.
 - `transform="translate(<x> <y>)"`: exactly one finite two-number translation, solely for the panel origin. Comma-separated translations are also accepted.
@@ -90,7 +90,7 @@ The ledger is an exact set of `(target, change)` pairs implied by object statuse
 
 ### Worked metadata pattern
 
-This excerpt shows one changed component; a complete diagram also needs its other components, relationships, and accessible SVG title/description.
+This excerpt shows one changed component; a complete diagram also needs its other components and relationships.
 
 ```svg
 <svg data-diagram="architecture-delta" viewBox="0 0 1000 400">
@@ -121,7 +121,7 @@ Upstream's `scripts/verify-architecture-delta.py` checks this contract, but it d
 
 The Upstream verifier enforces the declared structure, differential semantics, grid/bounds geometry, drawn relationship endpoints, budgets, and exact ledger coverage. It rejects CSS transforms/position overrides, CSS sizing that could change bounds, escaped CSS declarations, explicit hidden objects/ledger, and common CSS hiding rules. Ordinary responsive sizing of the outer SVG remains legal.
 
-It is **not** a browser renderer or a proof of the source system. Authors remain responsible for honest signatures, labels matching those signatures, readable shape/dash treatments, and an accurate migration story. Exotic CSS cascade/variable effects, clipping and occlusion, connector crossings, intermediate segment clearance, ledger placement, and screen-reader quality still require the normal skin, accessibility, geometry, and rendered-layout gates plus desktop/mobile visual review. Keep semantic geometry in the SVG attributes instead of making CSS part of the data model.
+It is **not** a browser renderer or a proof of the source system. Authors remain responsible for honest signatures, labels matching those signatures, readable shape/dash treatments, and an accurate migration story. Run the shipped static checks on the figure: `scripts/verify-geometry.py`, `scripts/lint-skin.py`, and `scripts/self_check.py`. Then review the rendered figure on desktop and mobile for exotic CSS cascade and variable effects, clipping and occlusion, connector crossings, intermediate segment clearance, and ledger placement. Keep semantic geometry in the SVG attributes instead of making CSS part of the data model.
 
 ## Anti-patterns
 

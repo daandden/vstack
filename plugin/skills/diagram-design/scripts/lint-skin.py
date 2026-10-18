@@ -1,20 +1,4 @@
 #!/usr/bin/env python3
-"""Check diagram figures against the colors and fonts in the style guide.
-
-A figure uses one Catppuccin flavor, Latte or Mocha. Every hex or rgba() color
-must come from the palette tables in references/style-guide.md, at any opacity.
-Every named font family must appear in that file's Typography table: the two
-Iosevka faces and their generic fallbacks. A remote resource (a font <link>,
-a CSS @import, a non-fragment url(), an http(s) src), pure black, and an
-executable attribute or URL fail as well.
-
-The checker reads text only. It never renders the figure, runs its scripts, or
-fetches a URL. It skips HTML comments, because a browser draws nothing in them.
-It does not check accessibility attributes or motion markup.
-
-Usage (in omp's eval Python; see SKILL.md "Running the bundled scripts"):
-    <skill-dir>/scripts/lint-skin.py <figure.html> [<figure.html> ...]
-"""
 
 from __future__ import annotations
 
@@ -26,7 +10,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 
-ROOT = Path(__file__).resolve().parent.parent  # the skill directory
+ROOT = Path(__file__).resolve().parent.parent
 STYLE_GUIDE = ROOT / "references/style-guide.md"
 
 FLAVORS = ("Latte", "Mocha")
@@ -35,11 +19,14 @@ PALETTE_TABLES = ("### Semantic roles", "### Flavor palette", "### Terminal skin
 HEX_RE = re.compile(
     r"(?<![\w-])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})(?![0-9a-fA-F])"
 )
-RGBA_RE = re.compile(
-    r"rgba\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*([^)]+)\)",
+RGB_RE = re.compile(
+    r"(?<![\w-])rgba?\(\s*(\d{1,3})\s*(?:,\s*|\s+)(\d{1,3})\s*(?:,\s*|\s+)(\d{1,3})\s*"
+    r"(?:[,/]\s*([^)]+))?\)",
     re.IGNORECASE,
 )
-BLACK_RGB_RE = re.compile(r"rgb\(\s*0\s*,\s*0\s*,\s*0\s*\)", re.IGNORECASE)
+COLOR_FUNCTION_RE = re.compile(
+    r"(?<![\w-])(rgba?|hsla?|hwb|lab|lch|oklab|oklch|color)\(", re.IGNORECASE
+)
 SRC_HTTP_RE = re.compile(r"\bsrc\s*=\s*(['\"])\s*(?:https?:)?//", re.IGNORECASE)
 IMPORT_ANY_RE = re.compile(r"@import\b", re.IGNORECASE)
 URL_ANY_RE = re.compile(r"url\(\s*([^)]+?)\s*\)", re.IGNORECASE)
@@ -49,14 +36,62 @@ FONT_CSS_RE = re.compile(r"font-family\s*:\s*([^;}]+)", re.IGNORECASE)
 FONT_ATTR_RE = re.compile(
     r"\bfont-family\s*=\s*(['\"])(.*?)\1", re.IGNORECASE | re.DOTALL
 )
+STYLE_BLOCK_RE = re.compile(r"<style\b[^>]*>(.*?)(?:</style>|\Z)", re.IGNORECASE | re.DOTALL)
+STYLE_ATTR_RE = re.compile(r"(?<![\w-])style\s*=\s*(['\"])(.*?)\1", re.IGNORECASE | re.DOTALL)
+CSS_DECLARATION_RE = re.compile(r"(?<![\w-])(-?-?[a-zA-Z][\w-]*)\s*:\s*([^;{}]+)")
+PRESENTATION_ATTR_RE = re.compile(
+    r"(?<![\w-])(fill|stroke|color|stop-color|flood-color|lighting-color|font)\s*=\s*(['\"])(.*?)\2",
+    re.IGNORECASE | re.DOTALL,
+)
+QUOTED_RE = re.compile(r"'[^']*'|\"[^\"]*\"")
+WORD_RE = re.compile(r"(?<![\w#-])[a-zA-Z]+(?![\w(-])")
+FONT_SIZE_RE = re.compile(
+    r"(?:^|\s)(?:[\d.]+(?:px|r?em|r?lh|pt|pc|%|ex|ch|vw|vh|vmin|vmax|cm|mm|in|q)"
+    r"|xx-small|x-small|small|medium|large|x-large|xx-large|xxx-large|smaller|larger"
+    r"|(?:calc|var|clamp|min|max)\([^)]*\))(?![\w-])"
+    r"(?:\s*/\s*\S+)?\s+(?P<families>\S.*)$",
+    re.IGNORECASE | re.DOTALL,
+)
 # An unterminated comment runs to the end of the file, as it does in a browser.
 HTML_COMMENT_RE = re.compile(r"<!--.*?(?:-->|\Z)", re.DOTALL)
 
 CSS_FONT_KEYWORDS = {"inherit", "initial", "revert", "revert-layer", "unset"}
+COLOR_PROPERTIES = {
+    "fill",
+    "stroke",
+    "background",
+    "outline",
+    "box-shadow",
+    "text-shadow",
+    "text-decoration",
+    "column-rule",
+}
+# CSS Color 4 named colors; keywords such as none, transparent, and currentColor are absent.
+CSS_NAMED_COLORS = set(
+    """
+    aliceblue antiquewhite aqua aquamarine azure beige bisque black blanchedalmond blue
+    blueviolet brown burlywood cadetblue chartreuse chocolate coral cornflowerblue cornsilk
+    crimson cyan darkblue darkcyan darkgoldenrod darkgray darkgreen darkgrey darkkhaki
+    darkmagenta darkolivegreen darkorange darkorchid darkred darksalmon darkseagreen
+    darkslateblue darkslategray darkslategrey darkturquoise darkviolet deeppink deepskyblue
+    dimgray dimgrey dodgerblue firebrick floralwhite forestgreen fuchsia gainsboro ghostwhite
+    gold goldenrod gray green greenyellow grey honeydew hotpink indianred indigo ivory khaki
+    lavender lavenderblush lawngreen lemonchiffon lightblue lightcoral lightcyan
+    lightgoldenrodyellow lightgray lightgreen lightgrey lightpink lightsalmon lightseagreen
+    lightskyblue lightslategray lightslategrey lightsteelblue lightyellow lime limegreen linen
+    magenta maroon mediumaquamarine mediumblue mediumorchid mediumpurple mediumseagreen
+    mediumslateblue mediumspringgreen mediumturquoise mediumvioletred midnightblue mintcream
+    mistyrose moccasin navajowhite navy oldlace olive olivedrab orange orangered orchid
+    palegoldenrod palegreen paleturquoise palevioletred papayawhip peachpuff peru pink plum
+    powderblue purple rebeccapurple red rosybrown royalblue saddlebrown salmon sandybrown
+    seagreen seashell sienna silver skyblue slateblue slategray slategrey snow springgreen
+    steelblue tan teal thistle tomato turquoise violet wheat white whitesmoke yellow
+    yellowgreen
+    """.split()
+)
 
 
 class ResourceParser(HTMLParser):
-    """Collect remote resource dependencies without executing the document."""
 
     RESOURCE_ATTRS = {
         "base": ("href",),
@@ -114,7 +149,6 @@ class ResourceParser(HTMLParser):
 
 
 def style_guide_families():
-    """Read only the Family cells in the style guide's Typography table."""
     markdown = STYLE_GUIDE.read_text(encoding="utf-8")
     match = re.search(
         r"^## Typography\s*$.*?^\| Role \| Family \|.*?\n(?P<rows>.*?)(?=^### |^## |\Z)",
@@ -145,7 +179,6 @@ def normalize_hex(value):
 
 
 def table_rows(markdown, heading):
-    """Return the cells of each row of the first Markdown table after *heading*, header row first."""
     start = markdown.find(heading)
     if start < 0:
         raise ValueError(f"missing {heading!r} in {STYLE_GUIDE}")
@@ -162,11 +195,6 @@ def table_rows(markdown, heading):
 
 
 def flavor_palettes():
-    """Return {flavor: (hex colors, rgb triplets)} from the style guide's palette tables.
-
-    A table with a Latte and a Mocha column gives each flavor only its own column.
-    A table without them, such as the terminal skin, gives its colors to both.
-    """
     markdown = STYLE_GUIDE.read_text(encoding="utf-8")
     palettes = {flavor: (set(), set()) for flavor in FLAVORS}
     for heading in PALETTE_TABLES:
@@ -179,7 +207,7 @@ def flavor_palettes():
                     colors.update(normalize_hex(match.group()) for match in HEX_RE.finditer(cell))
                     rgb_triplets.update(
                         tuple(int(match.group(group)) for group in (1, 2, 3))
-                        for match in RGBA_RE.finditer(cell)
+                        for match in RGB_RE.finditer(cell)
                     )
     for colors, rgb_triplets in palettes.values():
         rgb_triplets.update(
@@ -214,8 +242,26 @@ def named_families(value, allowed_fonts):
 
 
 def without_comments(text):
-    """Blank every HTML comment, keeping its line breaks so that line numbers and offsets stay."""
     return HTML_COMMENT_RE.sub(lambda match: re.sub(r"[^\n]", " ", match.group()), text)
+
+
+def declarations(text):
+    spans = [(match.start(1), match.group(1)) for match in STYLE_BLOCK_RE.finditer(text)]
+    spans += [(match.start(2), match.group(2)) for match in STYLE_ATTR_RE.finditer(text)]
+    for start, css in spans:
+        for match in CSS_DECLARATION_RE.finditer(css):
+            yield start + match.start(), match.group(1).casefold(), match.group(2)
+    for match in PRESENTATION_ATTR_RE.finditer(text):
+        yield match.start(3), match.group(1).casefold(), match.group(3)
+
+
+def is_color_property(name):
+    return (
+        name in COLOR_PROPERTIES
+        or name.endswith("color")
+        or name.startswith("border")
+        or name.startswith("--")
+    )
 
 
 def lint_text(text, palettes):
@@ -248,7 +294,6 @@ def lint_text(text, palettes):
     def add(offset, category, message):
         findings.append((line_number(text, offset), offset, category, message))
 
-    # (offset, as written, hex or rgb triplet) for every color the figure names
     used = []
     for match in HEX_RE.finditer(text):
         value = match.group()
@@ -257,9 +302,20 @@ def lint_text(text, palettes):
             add(match.start(), "pure-black", f"pure black {value} is not allowed")
         else:
             used.append((match.start(), value, normalized))
-    for match in RGBA_RE.finditer(text):
+    for match in RGB_RE.finditer(text):
         rgb = tuple(int(match.group(index)) for index in (1, 2, 3))
-        used.append((match.start(), match.group(), rgb))
+        if rgb == (0, 0, 0) and match.group(4) is None:
+            add(match.start(), "pure-black", f"pure black {match.group()} is not allowed")
+        else:
+            used.append((match.start(), match.group(), rgb))
+    parsed_rgb = {match.start() for match in RGB_RE.finditer(text)}
+    for match in COLOR_FUNCTION_RE.finditer(text):
+        if match.start() not in parsed_rgb:
+            add(
+                match.start(),
+                "color",
+                f"{match.group(1)}() is not a palette color; write the palette hex or rgba()",
+            )
 
     def off_palette(flavor):
         colors, rgb_triplets = palettes[flavor]
@@ -269,13 +325,24 @@ def lint_text(text, palettes):
             if key not in (colors if isinstance(key, str) else rgb_triplets)
         ]
 
-    # The figure's flavor is the one that fits most of its colors; a tie goes to Mocha, the default.
     flavor = min(("Mocha", "Latte"), key=lambda name: len(off_palette(name)))
     for offset, value in off_palette(flavor):
         add(offset, "color", f"{value} is not in the Catppuccin {flavor} palette")
 
-    for match in BLACK_RGB_RE.finditer(text):
-        add(match.start(), "pure-black", "pure black rgb(0,0,0) is not allowed")
+    for offset, name, value in declarations(text):
+        if is_color_property(name):
+            for word in WORD_RE.finditer(QUOTED_RE.sub(lambda m: " " * len(m.group()), value)):
+                if word.group().casefold() in CSS_NAMED_COLORS:
+                    add(
+                        offset,
+                        "color",
+                        f"named color {word.group()} is not in the Catppuccin palette",
+                    )
+        elif name == "font":
+            shorthand = FONT_SIZE_RE.search(value.strip())
+            unsupported = named_families(shorthand.group("families"), allowed_fonts) if shorthand else []
+            if unsupported:
+                add(offset, "font-family", "unsupported font family: " + ", ".join(unsupported))
 
     for match in SRC_HTTP_RE.finditer(text):
         add(match.start(), "external-asset", "external HTTP(S) src is not allowed")

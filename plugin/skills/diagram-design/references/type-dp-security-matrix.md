@@ -254,7 +254,7 @@ If zero or >1 `focal: true` cells are declared, halt and ask with `ask`.
 | No-access fill | `paper` | `paper @ 0.02` |
 | Focal fill | `accent @ 0.07` | `accent @ 0.12` |
 | Focal stroke | `accent` | `accent` |
-| Custom component colors | `C` | `C_light` (lighten ~15%) |
+| Custom component colors | `C` | the Mocha color of the same Catppuccin name as `C` |
 
 ---
 
@@ -289,9 +289,9 @@ Before emitting SVG, verify **every** item:
 
 ---
 
-## 9. Worked YAML — full inputs for the canonical matrix
+## 9. Worked YAML for the canonical matrix
 
-The complete inputs for the NatStat canonical matrix: 4 roles × 8 components, focal at Data Consumers × Trino aggregated. Every coordinate in its SVG is derivable from §2 applied to these inputs.
+These are the complete inputs for the NatStat canonical matrix: 4 roles × 8 components, with the focal cell at Data Consumers × Trino aggregated. Every coordinate in its SVG is derivable from §2 applied to these inputs.
 
 ```yaml
 title:    "Platform Access Matrix"

@@ -115,7 +115,7 @@ Fills alternate between two steps of the **phase-band palette** (§6.1): `band-1
 
 - Override applies to the polygon fill only. The label stays `band-label`. Don't swap in the `paper` role: it matches the Latte label, but it is dark in a Mocha figure.
 - The alternation index doesn't shift; neighboring chevrons keep their natural fill, even if it produces two adjacent same-fill chevrons. Don't try to "fix" this — overrides should be rare (≤ 2 per diagram).
-- In dark mode, use the same hex unless contrast against `band-label` falls below 4.5:1; if it does, pick a darker shade for dark mode and document it as a `color_dark` field on that chevron.
+- In dark mode, swap the override to the Mocha color of the same Catppuccin name, as the inversion rule in [style-guide.md](style-guide.md) says: `#d20f39` (Latte red) becomes `#f38ba8` (Mocha red). A dark figure takes the override only from the Mocha column.
 - A chevron color override is independent of any paired component's color, but pairing them (same hex on chevron + bar) is the conventional way to make the column "read" as one concern.
 
 ### 2.3 Source zone (dashed, external)
@@ -287,7 +287,7 @@ These are non-negotiable. Pick the style **automatically** from the topology —
 
 A component may declare an optional `color: "#hex"` (CSS color string). The override **only** retints the component's container and content — connectors are never recolored. Edges keep their topology-driven style from §3.
 
-**Where the color is applied** (given `C = color`):
+**Where the color is applied** (given `C = color` in the figure's flavor: the declared Latte hex in light mode, and the Mocha color of the same Catppuccin name in dark mode, such as `#f38ba8` for red):
 
 | Element | Light mode | Dark mode |
 |---|---|---|
@@ -295,8 +295,8 @@ A component may declare an optional `color: "#hex"` (CSS color string). The over
 | Container stroke | `rgba(C, 0.35)` (`stroke-width=1` for nodes, `0.8` for bars) | `rgba(C, 0.45)` |
 | Role badge stroke (nodes) | `rgba(C, 0.40)` | `rgba(C, 0.55)` |
 | Role badge text (nodes) | `rgba(C, 0.85)` | `rgba(C, 1.0)` |
-| Icon fill / stroke | `C` | lighten `C` by ~15% (or use `C` if already light) |
-| Name text | `C` | lighten `C` |
+| Icon fill / stroke | `C` | `C` |
+| Name text | `C` | `C` |
 | Subtitle text | **unchanged** (`muted`) | **unchanged** (`muted`) |
 | Connectors touching this component | **unchanged** (still topology-driven) | **unchanged** |
 
@@ -309,11 +309,11 @@ The subtitle stays muted because it's parenthetical metadata — only the primar
 - **Cap at 2 custom-colored components** per diagram (in addition to the focal). Three or more colored things erases the signal — the same reason §1 limits accent to 1–2 elements.
 - **No color on connectors.** If you find yourself wanting a colored edge, the right move is to pick a different `style` from §3, not to override.
 
-**Semantic uses** (recommended):
-- `#d20f39` (red) — Security / Identity (Keycloak, Vault)
-- `#209fb5` (sapphire) — Observability (Prometheus, Datadog)
-- `#40a02b` (green) — Governance / Lineage (OpenMetadata)
-- `#fe640b` (peach) — Backup / DR
+**Semantic uses** (recommended, Latte / Mocha):
+- red, `#d20f39` / `#f38ba8`: Security / Identity (Keycloak, Vault)
+- sapphire, `#209fb5` / `#74c7ec`: Observability (Prometheus, Datadog)
+- green, `#40a02b` / `#a6e3a1`: Governance / Lineage (OpenMetadata)
+- peach, `#fe640b` / `#fab387`: Backup / DR
 
 Stick to these Catppuccin colors. Random hex per component is exactly the failure mode this skill avoids.
 

@@ -1,6 +1,3 @@
-// diagram-design's shipped verify-geometry.py runs as a process on one figure file (spec #149, Testing
-// Decisions, main seam). Each case reads the exit code and the reported findings, never the wording.
-// The figures are the Catppuccin smoke figures of #155. Each failing case changes one thing in the Mocha one.
 
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { mkdtempSync, realpathSync, rmSync } from "node:fs";
@@ -16,7 +13,6 @@ beforeAll(() => {
 });
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
-/** The checker's verdict on one file: the exit code and one entry per finding line before its summary line. */
 function verifyGeometry(path: string) {
   const r = runScript("verify-geometry.py", [path]);
   const lines = r.stdout.split("\n").filter((l) => l !== "");
@@ -34,7 +30,6 @@ function expectFail(path: string) {
   const r = verifyGeometry(path);
   expect(r.stderr).toBe("");
   expect(r.findings.length).toBeGreaterThan(0);
-  // Every finding names the figure it was found in.
   for (const finding of r.findings) expect(finding.startsWith(`${basename(path)}:`)).toBe(true);
   expect(r.code).toBe(1);
 }

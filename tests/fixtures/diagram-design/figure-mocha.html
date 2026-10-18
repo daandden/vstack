@@ -7,10 +7,10 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --color-paper:   #1e1e2e;   /* Mocha base */
-      --color-ink:     #cdd6f4;   /* Mocha text */
-      --color-muted:   #bac2de;   /* Mocha subtext1 */
-      --color-accent:  #cba6f7;   /* Mocha mauve */
+      --color-paper:   #1e1e2e;
+      --color-ink:     #cdd6f4;
+      --color-muted:   #bac2de;
+      --color-accent:  #cba6f7;
       --font-slab:     'IosevkaTermSlab Nerd Font Mono', ui-monospace, monospace;
       --font-term:     'IosevkaTerm Nerd Font Mono', ui-monospace, monospace;
     }
@@ -27,9 +27,6 @@
     }
 
     .frame { max-width: 1200px; width: 100%; }
-    /* The SVG holds its readable width (min-width == the viewBox width, so the
-       type ramp is never silently scaled down). This wrapper lets a narrow
-       screen scroll the diagram instead of the whole page. */
     .diagram-container { width: 100%; overflow-x: auto; }
 
     .eyebrow {
@@ -53,10 +50,8 @@
     }
 
     svg { width: 100%; min-width: 1000px; display: block; }
-    /* Paper has no scrollbar, so the local scroller would clip instead of
-       scroll. Let the diagram scale down to the sheet: smaller but whole
-       beats sharp but cut off. Must come after the svg rule above - a media
-       query adds no specificity, so a later plain rule would win. */
+    /* Print cannot scroll overflow. Keep these overrides after the base rules.
+       Media queries do not increase selector specificity. */
     @media print {
       .diagram-container { overflow-x: visible; }
       svg { min-width: 0; }
@@ -68,7 +63,6 @@
     <p class="eyebrow">Architecture · Diagram Design</p>
     <h1>How a figure ships</h1>
 
-    <!-- Replace figure-ship-mocha with a unique slug for this diagram before export. -->
     <div class="diagram-container">
       <svg viewBox="0 0 1000 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="figure-ship-mocha-title figure-ship-mocha-desc">
         <title id="figure-ship-mocha-title">How a figure ships</title>
@@ -78,12 +72,6 @@
           <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#cba6f7"/></marker>
           <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#89b4fa"/></marker>
 
-          <!-- OPTIONAL: dot-pattern background. Uncomment and add <rect fill="url(#dots)"/> after the paper rect to enable. -->
-          <!--
-          <pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse">
-            <circle cx="1" cy="1" r="0.9" fill="rgba(205,214,244,0.08)"/>
-          </pattern>
-          -->
         </defs>
 
         <rect width="100%" height="100%" fill="#1e1e2e"/>

@@ -1,6 +1,3 @@
-// diagram-design's shipped lint-skin.py runs as a process on one figure file (spec #149, Testing Decisions,
-// main seam). Each case reads the exit code and the reported findings, never the wording.
-// The figures are the Catppuccin smoke figures of #155. Each variant changes one thing in one of them.
 
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
@@ -16,7 +13,6 @@ beforeAll(() => {
 });
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
-/** The checker's verdict on one file: the exit code and one entry per finding line before its summary line. */
 function lintSkin(path: string) {
   const r = runScript("lint-skin.py", [path]);
   const lines = r.stdout.split("\n").filter((l) => l !== "");
@@ -34,7 +30,6 @@ function expectFail(path: string) {
   const r = lintSkin(path);
   expect(r.stderr).toBe("");
   expect(r.findings.length).toBeGreaterThan(0);
-  // Every finding names the figure it was found in.
   for (const finding of r.findings) expect(finding.split(":")[0]!.endsWith(basename(path))).toBe(true);
   expect(r.code).toBe(1);
 }
@@ -51,23 +46,53 @@ test.skipIf(NO_PYTHON)("an off-palette color fails", () => {
 });
 
 test.skipIf(NO_PYTHON)("an off-palette color inside an HTML comment passes", () => {
-  // The same color fails outside the comment, so only the comment can make the figure pass.
   const color = '<rect x="0" y="0" width="4" height="4" fill="#b5523b"/>';
   expectPass(mocha("commented-color", [["      </svg>", `        <!-- ${color} -->\n      </svg>`]]));
   expectFail(mocha("uncommented-color", [["      </svg>", `        ${color}\n      </svg>`]]));
 });
 
 test.skipIf(NO_PYTHON)("the terminal skin's dot-grid white passes", () => {
-  // primitive-terminal.md draws the terminal dot grid in white at 0.06 to 0.08 opacity.
   const dot = '<circle cx="1" cy="1" r="0.9" fill="rgba(255,255,255,0.06)"/>';
   expectPass(mocha("terminal-dot-grid", [["      </svg>", `        ${dot}\n      </svg>`]]));
 });
 
 test.skipIf(NO_PYTHON)("a color from the other flavor fails", () => {
-  // Mocha mauve in a Latte figure, then Latte mauve in a Mocha one: each is on-palette only in its own flavor.
   expectFail(writeVariant(dir, "mocha-in-latte", FIGURES.latte, [['stroke="#8839ef" stroke-width="1"/>', 'stroke="#cba6f7" stroke-width="1"/>']]));
   expectFail(mocha("latte-in-mocha", [['stroke="#cba6f7" stroke-width="1"/>', 'stroke="#8839ef" stroke-width="1"/>']]));
   expectFail(mocha("latte-rgba-in-mocha", [["rgba(203,166,247,0.10)", "rgba(136,57,239,0.10)"]]));
+});
+
+const shape = (attrs: string) => `<rect x="0" y="0" width="4" height="4" ${attrs}/>`;
+const withShape = (name: string, attrs: string) => mocha(name, [["      </svg>", `        ${shape(attrs)}\n      </svg>`]]);
+const withCss = (name: string, rule: string) => mocha(name, [["<style>", `<style>\n    ${rule}`]]);
+
+test.skipIf(NO_PYTHON)("an off-palette CSS named color fails", () => {
+  expectFail(withShape("named-fill", 'fill="red"'));
+  expectFail(withShape("named-style-attr", 'style="stroke: Tomato"'));
+  expectFail(withCss("named-css", ".note { color: white; }"));
+  expectFail(withCss("named-custom-property", ".note { --edge: rebeccapurple; }"));
+});
+
+test.skipIf(NO_PYTHON)("an off-palette rgb() or hsl() color fails", () => {
+  expectFail(withShape("rgb-fill", 'fill="rgb(181,82,59)"'));
+  expectFail(withShape("rgb-space", 'fill="rgb(181 82 59)"'));
+  expectFail(withShape("hsl-fill", 'fill="hsl(0, 100%, 50%)"'));
+  expectFail(withCss("hsla-css", ".note { background: hsla(270 80% 80% / 0.5); }"));
+});
+
+test.skipIf(NO_PYTHON)("color keywords and an on-palette rgb() pass", () => {
+  expectPass(withShape("keyword-none", 'fill="none" stroke="currentColor"'));
+  expectPass(withShape("keyword-transparent", 'fill="transparent" color="inherit"'));
+  expectPass(withShape("keyword-css-wide", 'style="fill: unset; stroke: revert-layer; color: initial"'));
+  expectPass(withShape("on-palette-rgb", 'fill="rgb(203,166,247)" stroke="rgb(203 166 247 / 50%)"'));
+});
+
+test.skipIf(NO_PYTHON)("a font shorthand that names an unsupported family fails", () => {
+  expectFail(withCss("font-shorthand-geist", ".note { font: 12px Geist; }"));
+  expectFail(withShape("font-shorthand-serif", `style="font: italic 600 14px/1.4 'Instrument Serif', serif"`));
+  expectPass(withCss("font-shorthand-stack", ".note { font: 600 12px/1.2 'IosevkaTerm Nerd Font Mono', ui-monospace, monospace; }"));
+  expectPass(withCss("font-shorthand-var", ".note { font: italic 14px var(--font-slab); }"));
+  expectPass(withCss("font-shorthand-keyword", ".note { font: inherit; }"));
 });
 
 test.skipIf(NO_PYTHON)("a figure with no accessibility attributes passes", () => {
@@ -93,7 +118,6 @@ test.skipIf(NO_PYTHON)("a figure that names Geist or Instrument Serif fails", ()
 });
 
 test.skipIf(NO_PYTHON)("a figure with a Google Fonts link or font import fails", () => {
-  // The link names an Iosevka face, so only the link itself can fail the figure.
   const link = '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IosevkaTerm+Nerd+Font+Mono&display=swap">';
   expectFail(mocha("google-fonts-link", [['<meta charset="UTF-8">', `<meta charset="UTF-8">\n  ${link}`]]));
   const fontImport = "@import url('https://fonts.googleapis.com/css2?family=IosevkaTerm+Nerd+Font+Mono');";
@@ -101,7 +125,6 @@ test.skipIf(NO_PYTHON)("a figure with a Google Fonts link or font import fails",
 });
 
 test.skipIf(NO_PYTHON)("a figure with motion markup passes", () => {
-  // The motion pieces come from the shipped motion template: controls, live region, and the inline controller.
   const template = readFileSync(join(DIAGRAM_SCRIPTS, "..", "assets", "template-motion.html"), "utf8");
   const piece = (re: RegExp) => {
     const m = template.match(re);
@@ -122,6 +145,5 @@ test.skipIf(NO_PYTHON)("a figure with motion markup passes", () => {
       ["    </div>\n  </div>\n</body>", `    </div>\n    ${controls}\n    ${status}\n  </div>\n${script}\n</body>`],
     ]);
   expectPass(motion("motion", controller));
-  // Controller identity is not a style rule: a copy nested one level deeper passes too.
   expectPass(motion("motion-nested", controller.replace(/^/gm, "  ")));
 });

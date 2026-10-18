@@ -1,16 +1,5 @@
 #!/usr/bin/env python3
-"""Self-check a generated diagram HTML file with static checks only, and no third-party deps.
-
-Ships inside the skill so an installed agent can verify its own output. Run it in
-omp's eval tool with the HTML file paths as arguments (SKILL.md, "Running the
-bundled scripts").
-
-Checks single-file safety and bounds. A file fails for a remote asset of any kind,
-fonts included, for an executable attribute or URL, and for a script other than
-the canonical controller in assets/template-motion.html. It also fails when
-painted content sits past an SVG's viewBox. Accessibility and motion structure
-are not checked.
-"""
+"""Check diagram HTML safety and SVG bounds without rendering."""
 
 from __future__ import annotations
 

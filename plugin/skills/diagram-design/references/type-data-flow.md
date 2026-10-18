@@ -274,7 +274,7 @@ If zero or >1 of any focal slot are declared, halt and ask with `ask`.
 | Default node stroke | `ink @ 0.25` | `paper @ 0.20` |
 | Focal node fill | `accent @ 0.07` | `accent @ 0.12` |
 | Focal node stroke | `accent` | `accent` |
-| Custom component colors | `C` | `C_light` (lighten ~15%) |
+| Custom component colors | `C` | the Mocha color of the same Catppuccin name as `C` |
 
 ---
 

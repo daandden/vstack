@@ -1,6 +1,3 @@
-// diagram-design's shipped self_check.py and export_svg.py run as processes on one figure file (spec #149,
-// Testing Decisions, main seam). Each case reads the exit code and the reported findings, never the wording.
-// The figures are the Catppuccin smoke figures of #155. Each failing case changes one thing in the Mocha one.
 
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { mkdtempSync, realpathSync, rmSync } from "node:fs";
@@ -16,7 +13,6 @@ beforeAll(() => {
 });
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
-/** self_check's verdict on one file: the exit code, the OK or FAIL line, and one entry per `  - ` finding. */
 function selfCheck(path: string, extra: string[] = []) {
   const r = runScript("self_check.py", [...extra, path]);
   const lines = r.stdout.split("\n").filter((l) => l !== "");
@@ -103,8 +99,6 @@ test.skipIf(NO_PYTHON)("export of a passing figure gives a well-formed SVG that 
   const r = runScript("export_svg.py", [source, out]);
   expect(r.code).toBe(0);
   expect(r.stdout.trim()).toBe(out);
-  // Parse the export with the strict XML parser of the same interpreter, then report the root tag
-  // and whether any <style> in the SVG carries the class rule.
   const parsed = runPython([
     "-c",
     [

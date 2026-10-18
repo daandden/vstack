@@ -7,10 +7,10 @@
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
-      --color-paper:   #eff1f5;   /* Latte base */
-      --color-ink:     #4c4f69;   /* Latte text */
-      --color-muted:   #5c5f77;   /* Latte subtext1 */
-      --color-accent:  #8839ef;   /* Latte mauve */
+      --color-paper:   #eff1f5;
+      --color-ink:     #4c4f69;
+      --color-muted:   #5c5f77;
+      --color-accent:  #8839ef;
       --font-slab:     'IosevkaTermSlab Nerd Font Mono', ui-monospace, monospace;
       --font-term:     'IosevkaTerm Nerd Font Mono', ui-monospace, monospace;
     }
@@ -27,9 +27,6 @@
     }
 
     .frame { max-width: 1200px; width: 100%; }
-    /* The SVG holds its readable width (min-width == the viewBox width, so the
-       type ramp is never silently scaled down). This wrapper lets a narrow
-       screen scroll the diagram instead of the whole page. */
     .diagram-container { width: 100%; overflow-x: auto; }
 
     .eyebrow {
@@ -53,10 +50,8 @@
     }
 
     svg { width: 100%; min-width: 960px; display: block; }
-    /* Paper has no scrollbar, so the local scroller would clip instead of
-       scroll. Let the diagram scale down to the sheet: smaller but whole
-       beats sharp but cut off. Must come after the svg rule above - a media
-       query adds no specificity, so a later plain rule would win. */
+    /* Print cannot scroll overflow. Keep these overrides after the base rules.
+       Media queries do not increase selector specificity. */
     @media print {
       .diagram-container { overflow-x: visible; }
       svg { min-width: 0; }
@@ -68,7 +63,6 @@
     <p class="eyebrow">Architecture · Diagram Design</p>
     <h1>How a figure ships</h1>
 
-    <!-- Replace figure-ship-latte with a unique slug for this diagram before export. -->
     <div class="diagram-container">
       <svg viewBox="0 0 960 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="figure-ship-latte-title figure-ship-latte-desc">
         <title id="figure-ship-latte-title">How a figure ships</title>
@@ -78,16 +72,9 @@
           <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#8839ef"/></marker>
           <marker id="arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#1e66f5"/></marker>
 
-          <!-- OPTIONAL: dot-pattern background. Uncomment the <pattern> and the second <rect> below if you want the dotted paper look. -->
-          <!--
-          <pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse">
-            <circle cx="1" cy="1" r="0.9" fill="rgba(76,79,105,0.10)"/>
-          </pattern>
-          -->
         </defs>
 
         <rect width="100%" height="100%" fill="#eff1f5"/>
-        <!-- <rect width="100%" height="100%" fill="url(#dots)" opacity="0.55"/> -->
 
         <line x1="200" y1="148" x2="278" y2="148" stroke="#5c5f77" stroke-width="1.2" marker-end="url(#arrow)"/>
         <line x1="440" y1="148" x2="518" y2="148" stroke="#5c5f77" stroke-width="1.2" marker-end="url(#arrow)"/>

@@ -1,8 +1,3 @@
-// Runs diagram-design's packaged Python scripts as processes, under the interpreter that omp's eval uses
-// (spec #149, Testing Decisions). `omp setup python --check` reports that interpreter, so this file resolves
-// nothing itself. Without omp, or when omp reports no usable Python, EVAL_PYTHON is null and the
-// checker tests skip, as the setup-vstack machine test does without omp.
-
 import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
