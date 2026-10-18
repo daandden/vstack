@@ -181,7 +181,7 @@ Type-specific anti-patterns live in each type reference linked in the guide.
 
 Type-reference snippets write roles as placeholders: `{ink}`, `{ink @ 0.40}` for a role at an opacity, and `{node-name}`, `{sublabel}`, `{eyebrow}`, `{arrow-label}`, `{title}`, `{callout}` for fonts. Resolve every placeholder against `style-guide.md` before emitting.
 
-The eval cell for `<skill-dir>/scripts/lint-skin.py <file>` checks the figure against `style-guide.md`. It reports pure black and a color outside the figure's Catppuccin flavor, including a CSS named color such as `red` and any `hsl()` value. `none`, `transparent`, `currentColor`, and the CSS-wide keywords pass. It reports a font family other than the two Iosevka faces and their generic fallbacks, in `font-family` or in the `font` shorthand. It reports a font `<link>`, an `@import`, or another remote resource. It skips HTML comments.
+The eval cell for `<skill-dir>/scripts/lint-skin.py <file>` checks the figure against `style-guide.md`. It reports pure black and a color outside the figure's Catppuccin flavor, including a CSS named color such as `red` and any `hsl()` value. `none`, `transparent`, `currentColor`, and the CSS-wide keywords pass. It reports a font family other than the two Iosevka faces and their generic fallbacks, in `font-family`, in the `font` shorthand, or in a custom property that either one reads through `var()`. It reports a font `<link>`, an `@import`, or another remote resource. It skips HTML comments.
 
 ### Semantic roles (at a glance)
 

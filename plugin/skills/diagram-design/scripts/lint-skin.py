@@ -36,6 +36,7 @@ FONT_CSS_RE = re.compile(r"font-family\s*:\s*([^;}]+)", re.IGNORECASE)
 FONT_ATTR_RE = re.compile(
     r"\bfont-family\s*=\s*(['\"])(.*?)\1", re.IGNORECASE | re.DOTALL
 )
+VAR_REF_RE = re.compile(r"var\(\s*(--[\w-]+)", re.IGNORECASE)
 STYLE_BLOCK_RE = re.compile(r"<style\b[^>]*>(.*?)(?:</style>|\Z)", re.IGNORECASE | re.DOTALL)
 STYLE_ATTR_RE = re.compile(r"(?<![\w-])style\s*=\s*(['\"])(.*?)\1", re.IGNORECASE | re.DOTALL)
 CSS_DECLARATION_RE = re.compile(r"(?<![\w-])(-?-?[a-zA-Z][\w-]*)\s*:\s*([^;{}]+)")
@@ -329,7 +330,11 @@ def lint_text(text, palettes):
     for offset, value in off_palette(flavor):
         add(offset, "color", f"{value} is not in the Catppuccin {flavor} palette")
 
+    custom_properties = {}
+    font_values = []
     for offset, name, value in declarations(text):
+        if name.startswith("--"):
+            custom_properties.setdefault(name, []).append((offset, value))
         if is_color_property(name):
             for word in WORD_RE.finditer(QUOTED_RE.sub(lambda m: " " * len(m.group()), value)):
                 if word.group().casefold() in CSS_NAMED_COLORS:
@@ -339,6 +344,7 @@ def lint_text(text, palettes):
                         f"named color {word.group()} is not in the Catppuccin palette",
                     )
         elif name == "font":
+            font_values.append(value)
             shorthand = FONT_SIZE_RE.search(value.strip())
             unsupported = named_families(shorthand.group("families"), allowed_fonts) if shorthand else []
             if unsupported:
@@ -367,6 +373,7 @@ def lint_text(text, palettes):
             add(href_offset, "external-asset", "external HTTP(S) <link> is not allowed")
 
     for match in FONT_CSS_RE.finditer(text):
+        font_values.append(match.group(1))
         unsupported = named_families(match.group(1), allowed_fonts)
         if unsupported:
             add(
@@ -376,6 +383,7 @@ def lint_text(text, palettes):
             )
 
     for match in FONT_ATTR_RE.finditer(text):
+        font_values.append(match.group(2))
         unsupported = named_families(match.group(2), allowed_fonts)
         if unsupported:
             add(
@@ -383,6 +391,20 @@ def lint_text(text, palettes):
                 "font-family",
                 "unsupported font family: " + ", ".join(unsupported),
             )
+
+    # A font declaration's var() takes its families from the custom property's definitions.
+    pending = [ref.casefold() for value in font_values for ref in VAR_REF_RE.findall(value)]
+    font_properties = set()
+    while pending:
+        name = pending.pop()
+        if name in font_properties:
+            continue
+        font_properties.add(name)
+        for offset, value in custom_properties.get(name, ()):
+            pending += [ref.casefold() for ref in VAR_REF_RE.findall(value)]
+            unsupported = named_families(value, allowed_fonts)
+            if unsupported:
+                add(offset, "font-family", f"unsupported font family in {name}: " + ", ".join(unsupported))
 
     findings.sort(key=lambda finding: (finding[0], finding[1], finding[2]))
     return findings

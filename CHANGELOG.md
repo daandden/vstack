@@ -8,6 +8,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 - diagram-design's style checker `scripts/lint-skin.py` now also fails a CSS named color such as `red`, an `rgb()` color outside the figure's flavor, any `hsl()`, `hwb()`, `lab()`, `lch()`, or `color()` value, and a font family set through the `font` shorthand. `none`, `transparent`, `currentColor`, and the CSS-wide keywords pass. A dark figure swaps a custom component or chevron color to the Mocha color of the same Catppuccin name, as the style guide's inversion rule says, instead of reusing the Latte hex or lightening it. This applies in the high-level, data-flow, security-matrix, medallion, and IT-state references. The architecture-delta reference names the shipped static checks and leaves the accessible title and description optional.
 - grilling-page refuses an SVG visual whose styles hold any `@import`, a Google Fonts import included, and its SKILL.md no longer says that diagram-design exports carry one.
+- diagram-design's style checker `scripts/lint-skin.py` now also checks the custom properties that a `font-family` or `font` declaration reads through `var()`. A figure whose `--font-slab` or `--font-term` names Geist or another family outside the two Iosevka faces and their generic fallbacks fails.
 
 ## [2.0.35] - 2026-10-18
 

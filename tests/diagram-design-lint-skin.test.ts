@@ -117,6 +117,14 @@ test.skipIf(NO_PYTHON)("a figure that names Geist or Instrument Serif fails", ()
   );
 });
 
+test.skipIf(NO_PYTHON)("a font custom property that names Geist fails", () => {
+  expectFail(
+    mocha("font-var-geist", [
+      ["--font-slab:     'IosevkaTermSlab Nerd Font Mono', ui-monospace, monospace;", "--font-slab:     'Geist';"],
+    ]),
+  );
+});
+
 test.skipIf(NO_PYTHON)("a figure with a Google Fonts link or font import fails", () => {
   const link = '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IosevkaTerm+Nerd+Font+Mono&display=swap">';
   expectFail(mocha("google-fonts-link", [['<meta charset="UTF-8">', `<meta charset="UTF-8">\n  ${link}`]]));
