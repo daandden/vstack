@@ -52,8 +52,8 @@ function readMattSkills(addons: Iterable<string>): Set<string> {
   } catch { return new Set(); }
 }
 
-// omp stops a before_agent_start handler at 30 s and reports the timeout itself (ADR 0021).
-const OMP_HANDLER_CAP_MS = 30_000;
+// One cap covers smol and jev together on a restated run start, under omp's 30-second hook cap (ADR 0026).
+const RESTATED_START_CAP_MS = 25_000;
 const JEV_DEADLINE_MS = 4000;
 const RESTATEMENT_LIMIT = 10_000;
 const PRECEDENCE = " When a principle conflicts with the steps of the running Matt skill or its Addons, those steps win.";
@@ -184,12 +184,15 @@ function picksMessage(picked: string[], precedence = "") {
     content: `Addons selected for this task: ${picked.map(name => `skill://${name}`).join(", ")}. Ignore any that do not fit.${precedence}` } };
 }
 
-/** Runs a selection under a deadline that aborts it. The deadline holds even when fetch ignores the abort. */
-async function withDeadline<T>(ms: number, select: (signal: AbortSignal) => Promise<T | undefined>): Promise<T | undefined> {
+/**
+ * Runs a selection under a deadline that aborts it, and calls `onTimeout` when the deadline ends it.
+ * The deadline holds even when fetch ignores the abort.
+ */
+async function withDeadline<T>(ms: number, select: (signal: AbortSignal) => Promise<T | undefined>, onTimeout?: () => void): Promise<T | undefined> {
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout>;
   const deadline = new Promise<undefined>(resolve => {
-    timer = setTimeout(() => { controller.abort(); resolve(undefined); }, ms);
+    timer = setTimeout(() => { controller.abort(); onTimeout?.(); resolve(undefined); }, ms);
   });
   try { return await Promise.race([select(controller.signal), deadline]); }
   catch { return undefined; }
@@ -272,12 +275,14 @@ function registerAddonSelection(pi: ExtensionAPI): void {
     const branch = manager.getBranch();
     if (!startsRun && !holdsMattRun(branch, mattSkills)) return;
     const userWords = startsRun ? skillUserWords(event.prompt) : event.prompt;
-    // A Matt run that starts mid-session gets a restatement of the earlier talk (ADR 0021).
+    // Every Matt run start gets a smol restatement (ADR 0026). A mid-session start adds the earlier talk (ADR 0021).
     const midSession = startsRun && startsMidSession(branch);
     const talk = midSession ? earlierTalk(branch) : "";
     let request = preprocessTinyMessage(userWords);
-    if (startsRun && !request && !talk) return;
-    return withDeadline(midSession ? OMP_HANDLER_CAP_MS : JEV_DEADLINE_MS, async signal => {
+    // smol reads the raw words, so words that clean to nothing still start a restatement.
+    if (startsRun && !userWords.trim() && !talk) return;
+    const timedOut = () => { if (ctx.hasUI) ctx.ui.notify("vstack: no Addon picks for this run start (timed out)", "warning"); };
+    return withDeadline(startsRun ? RESTATED_START_CAP_MS : JEV_DEADLINE_MS, async signal => {
       const jev = await jevAccess(ctx);
       if (!jev || signal.aborted) return;
       // omp saves a hook message only when it accepts the prompt. The saved messages on every branch
@@ -290,17 +295,19 @@ function registerAddonSelection(pi: ExtensionAPI): void {
       }
       const questions = Object.fromEntries(Object.entries(catalog.questions).filter(([name]) => !seen.has(name)));
       if (!Object.keys(questions).length) return;
-      if (midSession) {
+      if (startsRun) {
         const restated = await restate(ctx, instruction, talk, userWords, signal);
         if (!restated || signal.aborted) return;
         if ("warning" in restated) {
-          if (ctx.hasUI) ctx.ui.notify(`vstack: no Addon picks for this run start (${restated.warning})`, "warning");
-          return;
-        }
-        request = restated.text.slice(0, RESTATEMENT_LIMIT);
+          // A fresh start's cleaned words are its whole goal, so jev reads them when smol fails. A mid-session start's words can miss it.
+          const fallback = !midSession && request;
+          const warning = fallback ? `Addon picks from your words, restatement failed (${restated.warning})` : `no Addon picks for this run start (${restated.warning})`;
+          if (ctx.hasUI) ctx.ui.notify(`vstack: ${warning}`, "warning");
+          if (!fallback) return;
+        } else request = restated.text.slice(0, RESTATEMENT_LIMIT);
       }
       return picksMessage(await pickAddons(jev, addonJudgeState(catalog, request), questions, signal), PRECEDENCE);
-    });
+    }, startsRun ? timedOut : undefined);
   });
   pi.on("session_shutdown", (_event, ctx) => unregister(ctx));
   pi.on("session_switch", (_event, ctx) => unregister(ctx));

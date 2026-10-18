@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
+import { afterEach, beforeEach, describe, expect, jest, spyOn, test } from "bun:test";
 import * as fs from "node:fs";
 import catalogFile from "../addon-questions.json";
 import { parseAddonCatalog } from "../plugin/extensions/addon-catalog.ts";
@@ -53,8 +53,9 @@ describe("Addon selection", () => {
     expect(await fakeHost(options).emit("before_agent_start", { prompt })).toEqual([undefined]);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
-  test("the start request contains only cleaned user words, not skill text", async () => {
+  test("a start that smol cannot restate sends only cleaned user words, not skill text", async () => {
     fetchSpy = endpoint({});
+    smol.role = {};
     await fakeHost(options).emit("before_agent_start", { prompt: start("implement", "Fix login \u001b[31mnow\u001b[0m ```noise``` <system-reminder>noise</system-reminder> abcdef1234567890") });
     const [url, init]: any = fetchSpy.mock.calls[0];
     expect(url).toBe("https://judge.test/v1/systemone");
@@ -65,12 +66,15 @@ describe("Addon selection", () => {
     expect(Object.values(body.questions).every((q: any) => q.type === "noul")).toBe(true);
     expect(Object.values(body.questions).some((q: any) => q.instructions.includes(catalog.preamble) || q.instructions.startsWith("The state is"))).toBe(false);
   });
-  test("a skill body dialogue does not enter the start request", async () => {
+  test("a skill body dialogue enters neither the restatement input nor the fallback request", async () => {
     fetchSpy = endpoint({});
     const prompt = start("implement", "Fix login", "Example dialogue:\nUser: Ship the example\nAssistant: Plan the example");
-    await fakeHost(options).emit("before_agent_start", { prompt });
-    expect(fetchSpy).toHaveBeenCalledTimes(1);
-    const [, init]: any = fetchSpy.mock.calls[0];
+    await fakeHost(withSmol).emit("before_agent_start", { prompt });
+    expect(calls.map(({ context }) => context.messages[0].content)).toEqual(["New words: Fix login"]);
+    smol.role = {};
+    await fakeHost(withSmol).emit("before_agent_start", { prompt });
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    const [, init]: any = fetchSpy.mock.calls[1];
     expect(JSON.parse(init.body).state).toEqual({ preamble: catalog.preamble, request: "Fix login" });
   });
   test("a bare skill start with a body dialogue sends no request", async () => {
@@ -206,12 +210,14 @@ describe("Addon selection", () => {
     expect((await fakeHost(running).emit("before_agent_start", { prompt: "Open a PR" }))[0]).toBeDefined();
     expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
-  test("the whole request has a four-second deadline even when fetch ignores abort", async () => {
+  test("a prompt that is not restated has a silent four-second deadline even when fetch ignores abort", async () => {
     fetchSpy = spyOn(globalThis, "fetch").mockImplementation((() => new Promise(() => {})) as unknown as typeof fetch);
     const begin = performance.now();
-    expect(await fakeHost(running).emit("before_agent_start", { prompt: "Fix login" })).toEqual([undefined]);
+    const host = fakeHost({ ...running, hasUI: true });
+    expect(await host.emit("before_agent_start", { prompt: "Fix login" })).toEqual([undefined]);
     expect(performance.now() - begin).toBeLessThan(4500);
     expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(host.uiCalls).toEqual([]);
   }, 5000);
 });
 
@@ -370,6 +376,16 @@ let calls: { context: any; options: any }[];
 const restates = (reply: unknown) => { smol.complete = async (_model, context, options) => { calls.push({ context, options }); return reply; }; };
 const replied = (text: string) => ({ role: "assistant", stopReason: "stop", content: [{ type: "text", text }] });
 beforeEach(() => { calls = []; smol.role = { model: smolModel, thinkingLevel: "high" }; restates(replied("The user wants better Addon picks.")); });
+/** Each way smol can fail, with the reason that the warning names. */
+const restatementFailures: [string, () => void][] = [
+  ["no smol model", () => { smol.role = {}; }],
+  ["no key for the smol model", () => { smol.role = { model: { ...smolModel, id: "no-key" } }; }],
+  ["smol failed: rate limited", () => restates({ role: "assistant", stopReason: "error", errorMessage: "rate limited", content: [] })],
+  ["smol returned no text", () => restates(replied("  "))],
+  ["smol failed: socket closed", () => { smol.complete = async () => { throw new Error("socket closed"); }; }],
+  ["smol failed: keychain locked", () => { smol.role = { model: { ...smolModel, id: "locked" } }; }],
+];
+const restateInstruction = fs.readFileSync(new URL("../plugin/skills/in-your-own-words/SKILL.md", import.meta.url), "utf8").replace(/^---\n[\s\S]*?\n---\n/, "").trim();
 
 describe("Restated input for a mid-session run start", () => {
   test("smol restates the earlier talk with in-your-own-words, and jev reads that restatement as it is", async () => {
@@ -378,7 +394,7 @@ describe("Restated input for a mid-session run start", () => {
     await fakeHost({ ...withSmol, entries: talk }).emit("before_agent_start", { prompt: start("grill-with-docs", "Update the jev judge") });
     expect(calls).toHaveLength(1);
     const { context, options } = calls[0]!;
-    expect(context.systemPrompt[0]).toBe("Restate in your own words what you think the user's goals are and what problem they're trying to solve.");
+    expect(context.systemPrompt[0]).toBe(restateInstruction);
     const input = context.messages[0].content;
     for (const kept of ["Should jev read a restated goal instead of my words?", "Yes, restate the earlier talk first.", "Grill the restatement idea"]) expect(input).toContain(kept);
     for (const dropped of ["SECRET THINKING", "TOOL ARGS", "TOOL OUTPUT", "HIDDEN POINTERS", "EARLIER SKILL TEXT", "HIDDEN SKILL WORDS"]) expect(input).not.toContain(dropped);
@@ -416,24 +432,15 @@ describe("Restated input for a mid-session run start", () => {
     expect(calls).toHaveLength(1);
     expect(calls[0]!.context.messages[0].content.trimEnd().endsWith("Plan the screen in that image")).toBe(true);
   });
-  test("a fresh run start and every later prompt keep the cleaned words and call no smol", async () => {
+  test("every later prompt in a run keeps the cleaned words and calls no smol", async () => {
     fetchSpy = endpoint({});
-    await fakeHost({ ...withSmol, entries: [{ type: "model_change", model: "a/b" }] }).emit("before_agent_start", { prompt: start("implement", "Fix the login page ```noise```") });
-    await fakeHost({ ...withSmol, entries: [...talk, savedRun] }).emit("before_agent_start", { prompt: "Follow up on the login page ```noise```" });
+    for (const entries of [[savedRun], [...talk, savedRun]]) await fakeHost({ ...withSmol, entries }).emit("before_agent_start", { prompt: "Follow up on the login page ```noise```" });
     expect(calls).toHaveLength(0);
-    expect(fetchSpy.mock.calls.map(([, init]: any) => JSON.parse(init.body).state.request)).toEqual(["Fix the login page", "Follow up on the login page"]);
+    expect(fetchSpy.mock.calls.map(([, init]: any) => JSON.parse(init.body).state.request)).toEqual(["Follow up on the login page", "Follow up on the login page"]);
   });
   test("a failed restatement skips selection and shows a warning only when there is a UI", async () => {
-    const failures: [string, () => void][] = [
-      ["no smol model", () => { smol.role = {}; }],
-      ["no key for the smol model", () => { smol.role = { model: { ...smolModel, id: "no-key" } }; }],
-      ["smol failed: rate limited", () => restates({ role: "assistant", stopReason: "error", errorMessage: "rate limited", content: [] })],
-      ["smol returned no text", () => restates(replied("  "))],
-      ["smol failed: socket closed", () => { smol.complete = async () => { throw new Error("socket closed"); }; }],
-      ["smol failed: keychain locked", () => { smol.role = { model: { ...smolModel, id: "locked" } }; }],
-    ];
     fetchSpy = endpoint({ "open-pr": 1 });
-    for (const [reason, arrange] of failures) {
+    for (const [reason, arrange] of restatementFailures) {
       smol.role = { model: smolModel, thinkingLevel: "high" };
       arrange();
       const host = fakeHost({ ...withSmol, entries: talk, hasUI: true });
@@ -446,19 +453,132 @@ describe("Restated input for a mid-session run start", () => {
     expect(headless.uiCalls).toEqual([]);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
-  test("without native jev, a mid-session start calls no smol and warns nothing", async () => {
+  test("without native jev, a fresh or mid-session start calls no smol and warns nothing", async () => {
     fetchSpy = endpoint({ "open-pr": 1 });
-    const host = fakeHost({ ...withSmol, apiKeys: { "openai-codex/gpt-6.1-sol": "smol-key" }, entries: talk, hasUI: true });
-    expect(await host.emit("before_agent_start", { prompt: start("implement", "Open a PR") })).toEqual([undefined]);
+    for (const entries of [[], talk]) {
+      const host = fakeHost({ ...withSmol, apiKeys: { "openai-codex/gpt-6.1-sol": "smol-key" }, entries, hasUI: true });
+      expect(await host.emit("before_agent_start", { prompt: start("implement", "Open a PR") })).toEqual([undefined]);
+      expect(host.uiCalls).toEqual([]);
+    }
     expect(calls).toHaveLength(0);
-    expect(host.uiCalls).toEqual([]);
   });
-  test("a restatement slower than the four-second deadline still reaches jev", async () => {
-    fetchSpy = endpoint({ "open-pr": .9 });
-    smol.complete = async () => { await Bun.sleep(4500); return replied("The user wants a PR."); };
-    const [result]: any = await fakeHost({ ...withSmol, entries: talk }).emit("before_agent_start", { prompt: start("implement", "Open a PR") });
-    expect(result.message.content).toContain("skill://open-pr");
+});
+
+describe("Restated input for a fresh run start", () => {
+  test("smol restates only the new words, and jev reads that restatement as it is", async () => {
+    fetchSpy = endpoint({});
+    restates(replied("The user wants the jev judge updated. ```keep this```"));
+    await fakeHost({ ...withSmol, entries: [{ type: "model_change", model: "a/b" }] }).emit("before_agent_start", { prompt: start("grill-with-docs", " Update the jev judge ```noise``` ") });
+    expect(calls).toHaveLength(1);
+    const { context, options } = calls[0]!;
+    expect(context.systemPrompt[0]).toBe(restateInstruction);
+    expect(context.messages).toEqual([{ role: "user", content: "New words: Update the jev judge ```noise```", timestamp: expect.any(Number) }]);
+    expect(options.reasoning).toBe("high");
     const [, init]: any = fetchSpy.mock.calls[0];
-    expect(JSON.parse(init.body).state.request).toBe("The user wants a PR.");
-  }, 7000);
+    expect(JSON.parse(init.body).state).toEqual({ preamble: catalog.preamble, request: "The user wants the jev judge updated. ```keep this```" });
+  });
+  test("a fresh start with no words calls neither smol nor jev and warns nothing", async () => {
+    fetchSpy = endpoint({ "open-pr": 1 });
+    for (const prompt of [start("implement"), start("implement", "   ")]) {
+      const host = fakeHost({ ...withSmol, hasUI: true });
+      expect(await host.emit("before_agent_start", { prompt })).toEqual([undefined]);
+      expect(host.uiCalls).toEqual([]);
+    }
+    expect(calls).toHaveLength(0);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+  test("a fresh start whose words clean to nothing still sends its raw words to smol, and jev reads the restatement", async () => {
+    fetchSpy = endpoint({});
+    restates(replied("The user wants a README typo fixed."));
+    for (const words of ["<request>Fix README typo</request>", "<system-reminder>noise</system-reminder>"]) {
+      await fakeHost(withSmol).emit("before_agent_start", { prompt: start("implement", words) });
+    }
+    expect(calls.map(({ context }) => context.messages[0].content)).toEqual(["New words: <request>Fix README typo</request>", "New words: <system-reminder>noise</system-reminder>"]);
+    expect(fetchSpy.mock.calls.map(([, init]: any) => JSON.parse(init.body).state.request)).toEqual(["The user wants a README typo fixed.", "The user wants a README typo fixed."]);
+  });
+  test("when smol fails on a fresh start whose words clean to nothing, jev gets no request and the warning says no picks", async () => {
+    fetchSpy = endpoint({ "open-pr": .9 });
+    for (const [reason, arrange] of restatementFailures) {
+      smol.role = { model: smolModel, thinkingLevel: "high" };
+      arrange();
+      const host = fakeHost({ ...withSmol, hasUI: true });
+      expect(await host.emit("before_agent_start", { prompt: start("implement", "<request>Fix README typo</request>") })).toEqual([undefined]);
+      expect(host.uiCalls).toEqual([{ method: "notify", args: [`vstack: no Addon picks for this run start (${reason})`, "warning"] }]);
+    }
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+  test("when smol fails on a fresh start, jev reads the cleaned words, with a warning only when there is a UI", async () => {
+    fetchSpy = endpoint({ "open-pr": .9 });
+    for (const [reason, arrange] of restatementFailures) {
+      smol.role = { model: smolModel, thinkingLevel: "high" };
+      arrange();
+      const host = fakeHost({ ...withSmol, hasUI: true });
+      const [result]: any = await host.emit("before_agent_start", { prompt: start("implement", "Open a PR <system-reminder>noise</system-reminder>") });
+      expect(result.message.content).toContain("skill://open-pr");
+      expect(host.uiCalls).toEqual([{ method: "notify", args: [`vstack: Addon picks from your words, restatement failed (${reason})`, "warning"] }]);
+    }
+    expect(fetchSpy.mock.calls.map(([, init]: any) => JSON.parse(init.body).state.request)).toEqual(Array(restatementFailures.length).fill("Open a PR"));
+    smol.role = {};
+    const headless = fakeHost({ ...withSmol, hasUI: false });
+    expect((await headless.emit("before_agent_start", { prompt: start("implement", "Open a PR") }))[0]).toBeDefined();
+    expect(headless.uiCalls).toEqual([]);
+    const read = fs.readFileSync;
+    readSpy = spyOn(fs, "readFileSync").mockImplementation(((path: any, ...args: any[]) => {
+      if (String(path).endsWith("in-your-own-words/SKILL.md")) throw new Error("Cannot read");
+      return (read as any)(path, ...args);
+    }) as any);
+    const unreadable = fakeHost({ ...withSmol, hasUI: true });
+    readSpy.mockRestore();
+    expect((await unreadable.emit("before_agent_start", { prompt: start("implement", "Open a PR") }))[0]).toBeDefined();
+    expect(unreadable.uiCalls).toEqual([{ method: "notify", args: ["vstack: Addon picks from your words, restatement failed (in-your-own-words is unreadable)", "warning"] }]);
+  });
+});
+
+describe("The 25-second cap on a restated run start", () => {
+  /** Lets the handler's promise chain run between fake-timer steps. */
+  const settle = async () => { for (let step = 0; step < 50; step++) await Promise.resolve(); };
+  afterEach(() => jest.useRealTimers());
+  async function expectCapAt25Seconds(host: ReturnType<typeof fakeHost>) {
+    let result: unknown[] | undefined;
+    void host.emit("before_agent_start", { prompt: start("implement", "Open a PR") }).then(value => { result = value; });
+    await settle();
+    jest.advanceTimersByTime(24_999);
+    await settle();
+    expect(result).toBeUndefined();
+    expect(host.uiCalls).toEqual([]);
+    jest.advanceTimersByTime(1);
+    await settle();
+    expect(result).toEqual([undefined]);
+    expect(host.uiCalls).toEqual([{ method: "notify", args: ["vstack: no Addon picks for this run start (timed out)", "warning"] }]);
+  }
+  test("a fresh or mid-session start whose smol never answers gets no picks, a timed-out warning, and no fallback request", async () => {
+    fetchSpy = endpoint({ "open-pr": .9 });
+    smol.complete = (_model, context, options) => { calls.push({ context, options }); return new Promise(() => {}); };
+    jest.useFakeTimers();
+    for (const entries of [[], talk]) await expectCapAt25Seconds(fakeHost({ ...withSmol, entries, hasUI: true }));
+    expect(calls).toHaveLength(2);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+  test("the cap covers smol and jev together", async () => {
+    fetchSpy = spyOn(globalThis, "fetch").mockImplementation((() => new Promise(() => {})) as unknown as typeof fetch);
+    smol.complete = () => new Promise(resolve => setTimeout(() => resolve(replied("The user wants a PR.")), 20_000));
+    jest.useFakeTimers();
+    for (const entries of [[], talk]) await expectCapAt25Seconds(fakeHost({ ...withSmol, entries, hasUI: true }));
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+  test("a restatement slower than four seconds still reaches jev on a fresh or mid-session start", async () => {
+    fetchSpy = endpoint({ "open-pr": .9 });
+    smol.complete = () => new Promise(resolve => setTimeout(() => resolve(replied("The user wants a PR.")), 4500));
+    jest.useFakeTimers();
+    for (const entries of [[], talk]) {
+      const host = fakeHost({ ...withSmol, entries, hasUI: true });
+      const emitted = host.emit("before_agent_start", { prompt: start("implement", "Open a PR") });
+      await settle();
+      jest.advanceTimersByTime(4500);
+      const [result]: any = await emitted;
+      expect(result.message.content).toContain("skill://open-pr");
+      expect(host.uiCalls).toEqual([]);
+    }
+    expect(fetchSpy.mock.calls.map(([, init]: any) => JSON.parse(init.body).state.request)).toEqual(["The user wants a PR.", "The user wants a PR."]);
+  });
 });

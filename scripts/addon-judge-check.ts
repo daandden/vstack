@@ -39,7 +39,7 @@ try {
   const questionsFor = (prompt: Prompt) => prompt.brief ? briefQuestions(catalog) : catalog.questions;
   const stateFor = (prompt: Prompt) => {
     if (prompt.brief) return briefJudgeState(catalog, cleanBrief(prompt.prompt));
-    // A restated sample holds a stored smol restatement, which the extension sends as it is, up to 10,000 characters (ADR 0021).
+    // A restated sample holds a stored smol restatement of a mid-session or fresh run start, which the extension sends as it is, up to 10,000 characters (ADR 0021, ADR 0026).
     return addonJudgeState(catalog, prompt.restated ? prompt.prompt.slice(0, 10_000) : preprocessTinyMessage(prompt.prompt));
   };
   const asked = new Set(prompts.flatMap(prompt => Object.keys(questionsFor(prompt))));

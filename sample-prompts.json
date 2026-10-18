@@ -11,9 +11,9 @@
     "expected": "A required Addon pick. The check flags mean P(yes) < 0.65; the runtime selects at 0.70.",
     "allowed": "A pick is acceptable either way; it is not an unexpected pick.",
     "other": "An Addon outside expected and allowed is flagged when mean P(yes) > 0.85.",
-    "baseline_selected": "Mean P(yes) over 3 fresh direct POST runs with the final catalog and the state shape above (2026-10-16, after the unexpected-pick ceiling moved to 0.85), >= 0.70. Stored values round to 3 decimals.",
+    "baseline_selected": "Mean P(yes) over 3 fresh direct POST runs with the final catalog and the state shape above (2026-10-16, after the unexpected-pick ceiling moved to 0.85; 2026-10-18 for the fresh-<id> samples), >= 0.70. Stored values round to 3 decimals.",
     "baseline_borderline": "Mean P(yes) in [0.65, 0.85], including scores that are also selected. Stored values round to 3 decimals.",
-    "restated": "The prompt is a stored smol restatement of a mid-session talk, written once with the extension's in-your-own-words instruction and frame (ADR 0021). The check sends it as it is, cut to 10,000 characters."
+    "restated": "The prompt is a stored smol restatement, written once with the extension's in-your-own-words instruction and frame. A restated-<name> sample restates a synthetic mid-session talk (ADR 0021). A fresh-<id> sample restates only the words of the plain sample <id>, as a fresh run start does, and keeps that sample's expected and allowed lists unchanged (ADR 0026). The check sends the prompt as it is, cut to 10,000 characters."
   },
   "prompts": [
     {
@@ -2238,6 +2238,2259 @@
       "allowed": [],
       "baseline_selected": {},
       "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-readme-typo",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to fix the misspelling “recieve” in README.md by changing it to “receive.”",
+      "expected": [],
+      "allowed": [],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-cli-flag-question",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to understand what the --frozen-lockfile flag does when running bun install, especially whether it prevents lockfile changes and what happens if the lockfile is out of sync with package.json.",
+      "expected": [],
+      "allowed": [],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-bump-dependency",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to update the eslint dependency in package.json from version 9.1.0 to 9.2.0.",
+      "expected": [],
+      "allowed": [
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-add-docstring",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to add a short docstring to `parseConfig` that explains what it returns, so callers can understand its output.",
+      "expected": [],
+      "allowed": [],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-explain-auth",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to understand how the authentication middleware in src/server/auth.ts determines which routes are public and can be accessed without authentication, including the rules or checks it uses to make that decision.",
+      "expected": [],
+      "allowed": [
+        "principle-minimize-reader-load"
+      ],
+      "baseline_selected": {},
+      "baseline_borderline": {
+        "principle-boundary-discipline": 0.653
+      }
+    },
+    {
+      "id": "fresh-button-color",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to update theme.css so the primary button color changes from #3b82f6 to #2563eb, giving it a darker blue appearance.",
+      "expected": [],
+      "allowed": [],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-commit-push",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want me to commit your staged changes with a clear, descriptive commit message, then push the current branch to its remote.",
+      "expected": [],
+      "allowed": [],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-csv-export",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to add a button to the reports page that lets users export report data as a CSV file, making it easy to download and use in spreadsheets or other tools.",
+      "expected": [],
+      "allowed": [
+        "principle-experience-first",
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-prove-it-works": 0.717
+      },
+      "baseline_borderline": {
+        "principle-prove-it-works": 0.717
+      }
+    },
+    {
+      "id": "fresh-restart-crash",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You’re trying to understand why an app that worked before now crashes after a restart with “Unexpected token in JSON at position 0,” and how to fix it so it starts normally again.",
+      "expected": [],
+      "allowed": [
+        "principle-boundary-discipline",
+        "principle-make-operations-idempotent",
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-boundary-discipline": 0.813
+      },
+      "baseline_borderline": {
+        "principle-boundary-discipline": 0.813
+      }
+    },
+    {
+      "id": "fresh-timeout-still-failing",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to find and fix the underlying cause of the integration test timeout, rather than keep increasing the timeout or adding retries, since those changes haven’t helped.",
+      "expected": [
+        "principle-attack-the-premise"
+      ],
+      "allowed": [
+        "principle-encode-lessons-in-structure",
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-attack-the-premise": 0.917,
+        "principle-prove-it-works": 0.813,
+        "perf-issue": 0.837
+      },
+      "baseline_borderline": {
+        "principle-prove-it-works": 0.813,
+        "perf-issue": 0.837
+      }
+    },
+    {
+      "id": "fresh-stale-cache-three-fixes",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You’re trying to figure out why the profile page still shows stale data after an update, despite three cache-invalidation fixes, and find the root cause rather than ship another fix that doesn’t solve it.",
+      "expected": [
+        "principle-attack-the-premise"
+      ],
+      "allowed": [
+        "principle-encode-lessons-in-structure",
+        "principle-prove-it-works",
+        "principle-separate-before-serializing-shared-state"
+      ],
+      "baseline_selected": {
+        "principle-attack-the-premise": 0.98
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-cart-off-by-cent",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want me to investigate why some orders have a one-cent discrepancy in their cart totals, identify and fix the root cause, and verify that the fix prevents the issue from recurring.",
+      "expected": [],
+      "allowed": [
+        "principle-boundary-discipline",
+        "principle-encode-lessons-in-structure",
+        "principle-encode-the-domain",
+        "principle-prove-it-works",
+        "principle-type-system-discipline"
+      ],
+      "baseline_selected": {
+        "principle-encode-lessons-in-structure": 0.897,
+        "principle-prove-it-works": 0.777
+      },
+      "baseline_borderline": {
+        "principle-prove-it-works": 0.777
+      }
+    },
+    {
+      "id": "fresh-rename-logger",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to rename oldLogger to logger throughout the repository, across roughly 140 files, updating its definitions and references consistently without changing behavior.",
+      "expected": [
+        "principle-build-the-lever"
+      ],
+      "allowed": [
+        "principle-migrate-callers-then-delete-legacy-apis",
+        "principle-prove-it-works",
+        "principle-sequence-verifiable-units"
+      ],
+      "baseline_selected": {
+        "principle-build-the-lever": 0.98,
+        "principle-guard-the-context-window": 0.727,
+        "principle-sequence-verifiable-units": 0.953
+      },
+      "baseline_borderline": {
+        "principle-guard-the-context-window": 0.727
+      }
+    },
+    {
+      "id": "fresh-moment-to-datefns",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to migrate the codebase from Moment.js to date-fns, replacing roughly 300 call sites across 90 files while preserving existing date and time behavior. The goal is to eliminate Moment.js usage without introducing regressions.",
+      "expected": [
+        "principle-build-the-lever",
+        "principle-sequence-verifiable-units"
+      ],
+      "allowed": [
+        "principle-guard-the-context-window",
+        "principle-migrate-callers-then-delete-legacy-apis",
+        "principle-outcome-oriented-execution",
+        "principle-prove-it-works",
+        "principle-subtract-before-you-add"
+      ],
+      "baseline_selected": {
+        "principle-build-the-lever": 0.97,
+        "principle-guard-the-context-window": 0.837,
+        "principle-prove-it-works": 0.717,
+        "principle-sequence-verifiable-units": 0.95
+      },
+      "baseline_borderline": {
+        "principle-guard-the-context-window": 0.837,
+        "principle-prove-it-works": 0.717
+      }
+    },
+    {
+      "id": "fresh-fetchjson-callers",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to migrate all 40 callers from the old httpGet() helper to fetchJson(), adjusting each call as needed to preserve its existing behavior.",
+      "expected": [
+        "principle-migrate-callers-then-delete-legacy-apis"
+      ],
+      "allowed": [
+        "principle-boundary-discipline",
+        "principle-build-the-lever",
+        "principle-prove-it-works",
+        "principle-sequence-verifiable-units"
+      ],
+      "baseline_selected": {
+        "principle-build-the-lever": 0.86,
+        "principle-migrate-callers-then-delete-legacy-apis": 0.857,
+        "principle-sequence-verifiable-units": 0.9
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-backfill-migration",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want a database migration that runs during deployment and backfills users.plan using the corresponding data in legacy_plans, carrying existing users’ plan information into the new field.",
+      "expected": [
+        "principle-make-operations-idempotent"
+      ],
+      "allowed": [
+        "principle-boundary-discipline",
+        "principle-prove-it-works",
+        "principle-sequence-verifiable-units"
+      ],
+      "baseline_selected": {
+        "principle-make-operations-idempotent": 0.78,
+        "principle-outcome-oriented-execution": 0.73,
+        "principle-prove-it-works": 0.94
+      },
+      "baseline_borderline": {
+        "principle-make-operations-idempotent": 0.78,
+        "principle-outcome-oriented-execution": 0.73
+      }
+    },
+    {
+      "id": "fresh-stripe-sync-cron",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want a nightly job that syncs Stripe invoices into your invoices table and stays reliable even if the scheduler kills it partway through. The key is making interrupted runs safe to retry, so future runs catch up without creating duplicate invoices, missing updates, or leaving partially written records.",
+      "expected": [
+        "principle-make-operations-idempotent"
+      ],
+      "allowed": [
+        "principle-boundary-discipline",
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-boundary-discipline": 0.95,
+        "principle-make-operations-idempotent": 0.96,
+        "principle-prove-it-works": 0.843
+      },
+      "baseline_borderline": {
+        "principle-prove-it-works": 0.843
+      }
+    },
+    {
+      "id": "fresh-kanban-drag",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to add drag-and-drop reordering to your React + TypeScript kanban board so users can rearrange cards visually. Since there’s no existing drag-and-drop functionality, this needs to be built from scratch, including the drag interaction and updating the board’s state to reflect the new card order.",
+      "expected": [
+        "principle-experience-first"
+      ],
+      "allowed": [
+        "principle-prove-it-works",
+        "principle-redesign-from-first-principles",
+        "principle-type-system-discipline"
+      ],
+      "baseline_selected": {
+        "principle-experience-first": 0.78,
+        "principle-prove-it-works": 0.837
+      },
+      "baseline_borderline": {
+        "principle-experience-first": 0.78,
+        "principle-prove-it-works": 0.837
+      }
+    },
+    {
+      "id": "fresh-collab-sync-design",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You need to choose a collaboration and document-sync approach for the editor—CRDTs, operational transformation (OT), or server-locked sections. Since the codebase has no existing collaboration infrastructure, you’re making a foundational architecture decision about how collaborators’ edits will be coordinated and conflicts handled.",
+      "expected": [],
+      "allowed": [
+        "principle-experience-first",
+        "principle-foundational-thinking",
+        "principle-redesign-from-first-principles",
+        "principle-separate-before-serializing-shared-state"
+      ],
+      "baseline_selected": {
+        "principle-foundational-thinking": 0.933,
+        "principle-redesign-from-first-principles": 0.763,
+        "principle-separate-before-serializing-shared-state": 0.887
+      },
+      "baseline_borderline": {
+        "principle-redesign-from-first-principles": 0.763
+      }
+    },
+    {
+      "id": "fresh-multi-currency",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to expand the system from USD-only to multi-currency support across checkout, invoices, and reports. The core problem is removing hard-coded USD assumptions so amounts are processed, stored, displayed, and reported correctly and consistently in the relevant currencies.",
+      "expected": [
+        "principle-redesign-from-first-principles"
+      ],
+      "allowed": [
+        "principle-encode-the-domain",
+        "principle-foundational-thinking",
+        "principle-outcome-oriented-execution",
+        "principle-prove-it-works",
+        "principle-sequence-verifiable-units",
+        "principle-type-system-discipline"
+      ],
+      "baseline_selected": {
+        "principle-build-the-lever": 0.793,
+        "principle-encode-the-domain": 0.76,
+        "principle-foundational-thinking": 0.86,
+        "principle-prove-it-works": 0.817,
+        "principle-redesign-from-first-principles": 0.953,
+        "principle-sequence-verifiable-units": 0.783,
+        "principle-type-system-discipline": 0.92
+      },
+      "baseline_borderline": {
+        "principle-boundary-discipline": 0.657,
+        "principle-build-the-lever": 0.793,
+        "principle-encode-the-domain": 0.76,
+        "principle-prove-it-works": 0.817,
+        "principle-sequence-verifiable-units": 0.783
+      }
+    },
+    {
+      "id": "fresh-notification-presets",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You’re trying to simplify an overwhelming notification settings page. You want to decide whether to keep all 14 individual toggles or replace them with three presets, balancing ease of use with users’ ability to control which notifications they receive.",
+      "expected": [
+        "principle-experience-first"
+      ],
+      "allowed": [
+        "principle-subtract-before-you-add"
+      ],
+      "baseline_selected": {
+        "principle-experience-first": 0.967
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-order-booleans",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to refactor order-status tracking across the five files so isPaid, isShipped, isCancelled, and isRefunded no longer drift out of sync. The goal is a single authoritative status model with clear update rules, replacing scattered flag changes while preserving valid order behavior.",
+      "expected": [
+        "principle-encode-the-domain",
+        "principle-type-system-discipline"
+      ],
+      "allowed": [
+        "principle-encode-lessons-in-structure",
+        "principle-foundational-thinking",
+        "principle-migrate-callers-then-delete-legacy-apis",
+        "principle-minimize-reader-load",
+        "principle-prove-it-works",
+        "principle-redesign-from-first-principles",
+        "principle-sequence-verifiable-units"
+      ],
+      "baseline_selected": {
+        "principle-encode-the-domain": 0.933,
+        "principle-foundational-thinking": 0.873,
+        "principle-sequence-verifiable-units": 0.71,
+        "principle-type-system-discipline": 0.963
+      },
+      "baseline_borderline": {
+        "principle-sequence-verifiable-units": 0.71
+      }
+    },
+    {
+      "id": "fresh-archived-status",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to add an “archived” project status and make sure it’s handled consistently across the API handlers, UI, and export job. Since status logic is currently scattered across if/else chains, the challenge is updating every relevant path without missing cases or introducing inconsistent behavior.",
+      "expected": [
+        "principle-encode-the-domain"
+      ],
+      "allowed": [
+        "principle-prove-it-works",
+        "principle-redesign-from-first-principles",
+        "principle-type-system-discipline"
+      ],
+      "baseline_selected": {
+        "principle-build-the-lever": 0.723,
+        "principle-encode-the-domain": 0.97,
+        "principle-prove-it-works": 0.723,
+        "principle-sequence-verifiable-units": 0.717
+      },
+      "baseline_borderline": {
+        "principle-build-the-lever": 0.723,
+        "principle-prove-it-works": 0.723,
+        "principle-sequence-verifiable-units": 0.717
+      }
+    },
+    {
+      "id": "fresh-webhook-validation",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to simplify the webhook handler by parsing and validating the JSON body in one place, rather than repeating that work and separate null checks across five helpers. The goal is less duplication and consistent validation while preserving the handler’s existing behavior.",
+      "expected": [
+        "principle-boundary-discipline"
+      ],
+      "allowed": [
+        "principle-laziness-protocol",
+        "principle-minimize-reader-load",
+        "principle-subtract-before-you-add",
+        "principle-type-system-discipline"
+      ],
+      "baseline_selected": {
+        "principle-boundary-discipline": 0.97,
+        "principle-minimize-reader-load": 0.877
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-api-envelope-types",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want TypeScript types for a consistent API response envelope with two distinct outcomes: success containing data, or failure containing an error code and message. The goal is to make those outcomes easy to distinguish and handle safely, with success data supporting different payload types.",
+      "expected": [
+        "principle-type-system-discipline"
+      ],
+      "allowed": [
+        "principle-boundary-discipline",
+        "principle-encode-the-domain",
+        "principle-foundational-thinking"
+      ],
+      "baseline_selected": {
+        "principle-foundational-thinking": 0.89,
+        "principle-type-system-discipline": 0.98
+      },
+      "baseline_borderline": {
+        "principle-boundary-discipline": 0.67
+      }
+    },
+    {
+      "id": "fresh-workers-state-json",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want both background workers to reliably save their progress to state.json without losing updates. You’re likely dealing with a race condition where one worker’s write overwrites changes made by the other.",
+      "expected": [
+        "principle-separate-before-serializing-shared-state"
+      ],
+      "allowed": [
+        "principle-make-operations-idempotent",
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-separate-before-serializing-shared-state": 0.947
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-parallel-build-manifest",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to update the build script so all four packages compile concurrently, while ensuring their writes to dist/manifest.json don’t conflict or overwrite one another’s entries.",
+      "expected": [
+        "principle-separate-before-serializing-shared-state"
+      ],
+      "allowed": [
+        "principle-build-the-lever",
+        "principle-foundational-thinking",
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-separate-before-serializing-shared-state": 0.97
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-fastify-phases",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to migrate the payments service from Express to Fastify in three phases: routes first, middleware second, and plugins last. Start with phase one by converting the Express routes to Fastify while preserving their existing behavior and leaving middleware and plugin migration for later.",
+      "expected": [
+        "principle-outcome-oriented-execution",
+        "principle-sequence-verifiable-units"
+      ],
+      "allowed": [
+        "principle-boundary-discipline",
+        "principle-migrate-callers-then-delete-legacy-apis",
+        "principle-prove-it-works",
+        "principle-redesign-from-first-principles"
+      ],
+      "baseline_selected": {
+        "principle-boundary-discipline": 0.77,
+        "principle-outcome-oriented-execution": 0.98,
+        "principle-sequence-verifiable-units": 0.97
+      },
+      "baseline_borderline": {
+        "principle-boundary-discipline": 0.77
+      }
+    },
+    {
+      "id": "fresh-order-service-tangle",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to make the 900-line OrderService easier to follow by reducing layers of wrappers and clarifying the order-processing flow. The main goal is to make it obvious where and how discounts are applied, without changing the service’s behavior.",
+      "expected": [
+        "principle-laziness-protocol",
+        "principle-minimize-reader-load"
+      ],
+      "allowed": [
+        "principle-encode-the-domain",
+        "principle-guard-the-context-window",
+        "principle-subtract-before-you-add"
+      ],
+      "baseline_selected": {
+        "principle-guard-the-context-window": 0.85,
+        "principle-laziness-protocol": 0.957,
+        "principle-minimize-reader-load": 0.98
+      },
+      "baseline_borderline": {
+        "principle-guard-the-context-window": 0.85
+      }
+    },
+    {
+      "id": "fresh-rate-limit-leftovers",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to add rate limiting to the API to control excessive requests. There’s already a partially built throttle module and two unused middleware files, so the task should start by reviewing that earlier work and deciding what to reuse, finish, or replace rather than building a duplicate solution.",
+      "expected": [
+        "principle-subtract-before-you-add"
+      ],
+      "allowed": [
+        "principle-boundary-discipline",
+        "principle-laziness-protocol",
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-boundary-discipline": 0.837,
+        "principle-subtract-before-you-add": 0.927
+      },
+      "baseline_borderline": {
+        "principle-boundary-discipline": 0.837,
+        "principle-prove-it-works": 0.67
+      }
+    },
+    {
+      "id": "fresh-verbose-flag-threading",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to add a configuration option that lets users enable or disable verbose logging. Your plan is to pass a verbose flag through every function in the call chain until it reaches the logger, which will use it to control logging detail.",
+      "expected": [
+        "principle-laziness-protocol"
+      ],
+      "allowed": [
+        "principle-boundary-discipline",
+        "principle-minimize-reader-load"
+      ],
+      "baseline_selected": {
+        "principle-laziness-protocol": 0.97,
+        "principle-type-system-discipline": 0.783
+      },
+      "baseline_borderline": {
+        "principle-build-the-lever": 0.683,
+        "principle-type-system-discipline": 0.783
+      }
+    },
+    {
+      "id": "fresh-write-tests",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to add automated tests for the slugify utility and the checkout reducer, verifying that slug generation and checkout state updates behave as expected, including relevant edge cases.",
+      "expected": [],
+      "allowed": [
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {},
+      "baseline_borderline": {
+        "principle-prove-it-works": 0.68
+      }
+    },
+    {
+      "id": "fresh-mock-heavy-tests",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to replace weak “the mock was called” checks with tests that verify correct behavior—such as meaningful outputs, state changes, and the arguments passed to dependencies. The goal is for tests to fail when the code is wrong, not merely pass because it executed a call.",
+      "expected": [],
+      "allowed": [
+        "principle-build-the-lever",
+        "principle-prove-it-works",
+        "principle-sequence-verifiable-units"
+      ],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-api-client-regen",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want a reliable safeguard that keeps the generated API client in sync whenever the OpenAPI spec changes. Since this has been missed three times, the goal is to make regeneration an enforced part of the workflow, not something that depends on remembering it.",
+      "expected": [
+        "principle-encode-lessons-in-structure"
+      ],
+      "allowed": [
+        "principle-build-the-lever",
+        "principle-prove-it-works",
+        "principle-type-system-discipline",
+        "session"
+      ],
+      "baseline_selected": {
+        "principle-encode-lessons-in-structure": 0.97,
+        "principle-foundational-thinking": 0.733
+      },
+      "baseline_borderline": {
+        "principle-foundational-thinking": 0.733
+      }
+    },
+    {
+      "id": "fresh-lodash-imports",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want the team to consistently use 'lodash-es' instead of 'lodash', without needing repeated reminders or relying on reviewers to catch the same mistake. The problem is making that convention stick, not explaining it a sixth time.",
+      "expected": [
+        "principle-encode-lessons-in-structure"
+      ],
+      "allowed": [
+        "principle-build-the-lever"
+      ],
+      "baseline_selected": {
+        "principle-build-the-lever": 0.793,
+        "principle-encode-lessons-in-structure": 0.957
+      },
+      "baseline_borderline": {
+        "principle-build-the-lever": 0.793,
+        "principle-foundational-thinking": 0.677
+      }
+    },
+    {
+      "id": "fresh-log-dump",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want me to analyze the 3 GB production log dump in logs/, correlate error patterns with deployment times, and summarize which errors spike after deploys, including when the spikes occur and how large they are. The goal is to identify errors that may be deployment-related rather than normal background noise.",
+      "expected": [
+        "principle-guard-the-context-window"
+      ],
+      "allowed": [
+        "principle-build-the-lever"
+      ],
+      "baseline_selected": {
+        "principle-guard-the-context-window": 0.96
+      },
+      "baseline_borderline": {
+        "principle-boundary-discipline": 0.677
+      }
+    },
+    {
+      "id": "fresh-node16-audit",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want me to review the READMEs and Dockerfiles for all 60 services in the monorepo, identify which still specify or reference Node.js 16, and report the affected services with the relevant file locations.",
+      "expected": [
+        "principle-build-the-lever",
+        "principle-guard-the-context-window"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "principle-build-the-lever": 0.96,
+        "principle-guard-the-context-window": 0.843
+      },
+      "baseline_borderline": {
+        "principle-guard-the-context-window": 0.843
+      }
+    },
+    {
+      "id": "fresh-new-repo-scaffold",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to get the new repository’s foundation in place before building features: set up CI, linting, a test runner, and shared types so future development starts with consistent tooling and automated checks.",
+      "expected": [
+        "principle-foundational-thinking"
+      ],
+      "allowed": [
+        "principle-build-the-lever",
+        "principle-sequence-verifiable-units"
+      ],
+      "baseline_selected": {
+        "principle-foundational-thinking": 0.98
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-afternoon-away",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want me to carry out the plan in PLAN.md from start to finish, making reasonable decisions independently while you’re away rather than waiting for clarification. The goal is to have the implementation completed and validated for your review tonight, with a clear summary of what changed, any assumptions I made, and anything still unresolved.",
+      "expected": [
+        "principle-never-block-on-the-human"
+      ],
+      "allowed": [
+        "principle-outcome-oriented-execution",
+        "principle-prove-it-works",
+        "principle-sequence-verifiable-units",
+        "decision-trail"
+      ],
+      "baseline_selected": {
+        "principle-never-block-on-the-human": 0.98,
+        "decision-trail": 0.903
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-lint-dont-ask",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want me to clean up lint warnings throughout the repository, making sensible fixes while preserving existing behavior, without interrupting you to discuss or approve each one.",
+      "expected": [
+        "principle-never-block-on-the-human"
+      ],
+      "allowed": [
+        "principle-build-the-lever",
+        "principle-sequence-verifiable-units",
+        "decision-trail"
+      ],
+      "baseline_selected": {
+        "principle-build-the-lever": 0.87,
+        "principle-never-block-on-the-human": 0.96,
+        "principle-sequence-verifiable-units": 0.82
+      },
+      "baseline_borderline": {
+        "principle-sequence-verifiable-units": 0.82
+      }
+    },
+    {
+      "id": "fresh-dashboard-perf",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to optimize the dashboard query, which currently takes 8 seconds, and prove it’s faster with actual before-and-after measurements—not just estimates or claims.",
+      "expected": [
+        "principle-prove-it-works",
+        "perf-issue"
+      ],
+      "allowed": [
+        "principle-build-the-lever",
+        "benchmark-checklist",
+        "principle-explain-the-number"
+      ],
+      "baseline_selected": {
+        "principle-explain-the-number": 0.903,
+        "principle-prove-it-works": 0.973,
+        "benchmark-checklist": 0.97,
+        "perf-issue": 0.96
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-confirm-login",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want me to finish the session-handling refactor, then run the actual app and verify that the login flow still works. I should only report the work as done after confirming it works in the running app—not just after reviewing the code or passing tests.",
+      "expected": [
+        "principle-prove-it-works"
+      ],
+      "allowed": [
+        "principle-sequence-verifiable-units"
+      ],
+      "baseline_selected": {
+        "principle-prove-it-works": 0.94
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-split-pr",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to reorganize a 2,000-line pull request into a logically ordered stack of small, focused commits, with CI passing at every step. The goal is to make the changes easier to review and understand without introducing broken intermediate states.",
+      "expected": [
+        "principle-sequence-verifiable-units"
+      ],
+      "allowed": [
+        "principle-guard-the-context-window",
+        "principle-minimize-reader-load"
+      ],
+      "baseline_selected": {
+        "principle-guard-the-context-window": 0.923,
+        "principle-minimize-reader-load": 0.943,
+        "principle-sequence-verifiable-units": 0.977
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-delete-old-flag",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to clean up the codebase by removing unused feature-flag logic for the old onboarding flow, without changing how the current onboarding flow works.",
+      "expected": [],
+      "allowed": [
+        "principle-laziness-protocol",
+        "principle-migrate-callers-then-delete-legacy-apis",
+        "principle-subtract-before-you-add"
+      ],
+      "baseline_selected": {
+        "principle-subtract-before-you-add": 0.933
+      },
+      "baseline_borderline": {
+        "principle-minimize-reader-load": 0.653
+      }
+    },
+    {
+      "id": "fresh-translate-strings",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to create locales/de.json containing German translations of the error messages in locales/en.json, preserving the JSON structure, keys, and any placeholders.",
+      "expected": [],
+      "allowed": [
+        "principle-build-the-lever"
+      ],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-h-login-500",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to find and fix why POST /login returns HTTP 500 when an email address contains a plus sign, so valid plus-addressed emails work with the normal authentication flow instead of causing a server error.",
+      "expected": [],
+      "allowed": [
+        "principle-boundary-discipline",
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-boundary-discipline": 0.97
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-h-flaky-third-try",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You’re trying to find and fix the root cause of a flaky checkout end-to-end test. It still fails roughly 20% of the time despite longer waits and a mocked clock, so your goal is to understand what’s causing the intermittent failures rather than keep adjusting timing.",
+      "expected": [
+        "principle-attack-the-premise"
+      ],
+      "allowed": [
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-attack-the-premise": 0.813
+      },
+      "baseline_borderline": {
+        "principle-attack-the-premise": 0.813
+      }
+    },
+    {
+      "id": "fresh-h-env-parsing",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to replace scattered process.env reads with a centralized configuration layer that services use consistently. Required variables should be validated at startup, so missing configuration produces a clear, immediate error instead of causing crashes later in unpredictable places.",
+      "expected": [
+        "principle-boundary-discipline"
+      ],
+      "allowed": [
+        "principle-foundational-thinking",
+        "principle-laziness-protocol",
+        "principle-minimize-reader-load",
+        "principle-type-system-discipline"
+      ],
+      "baseline_selected": {
+        "principle-boundary-discipline": 0.957,
+        "principle-foundational-thinking": 0.753,
+        "principle-laziness-protocol": 0.933,
+        "principle-type-system-discipline": 0.74
+      },
+      "baseline_borderline": {
+        "principle-build-the-lever": 0.683,
+        "principle-foundational-thinking": 0.753,
+        "principle-sequence-verifiable-units": 0.657,
+        "principle-type-system-discipline": 0.74
+      }
+    },
+    {
+      "id": "fresh-h-deploy-script-rerun",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want a deployment script that creates an S3 bucket, uploads the assets, and updates DNS. It needs to be safe to rerun after a partial failure: it should recognize completed steps, reuse existing resources, and finish the deployment without creating duplicates or breaking a working setup.",
+      "expected": [
+        "principle-make-operations-idempotent"
+      ],
+      "allowed": [
+        "principle-boundary-discipline",
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-boundary-discipline": 0.917,
+        "principle-make-operations-idempotent": 0.96,
+        "principle-prove-it-works": 0.92
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-h-onboarding-wizard",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to design the desktop app’s first-ever onboarding experience, but you’re not sure what it should include or how it should work. The goal is to define a clear first-run flow that helps new users understand the app, complete any essential setup, and get to something useful without feeling overwhelmed.",
+      "expected": [
+        "principle-experience-first"
+      ],
+      "allowed": [
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-experience-first": 0.963
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-h-multitenant",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to support separate customer workspaces, but the application is currently built around a single organization. The challenge is adapting the data model and queries so records belong to the right workspace and customers can access only the data in their own workspaces.",
+      "expected": [
+        "principle-redesign-from-first-principles"
+      ],
+      "allowed": [
+        "principle-boundary-discipline",
+        "principle-encode-the-domain",
+        "principle-foundational-thinking",
+        "principle-outcome-oriented-execution",
+        "principle-prove-it-works",
+        "principle-sequence-verifiable-units",
+        "principle-type-system-discipline"
+      ],
+      "baseline_selected": {
+        "principle-foundational-thinking": 0.823,
+        "principle-redesign-from-first-principles": 0.933,
+        "principle-type-system-discipline": 0.937
+      },
+      "baseline_borderline": {
+        "principle-foundational-thinking": 0.823,
+        "principle-prove-it-works": 0.657
+      }
+    },
+    {
+      "id": "fresh-h-snapshot-tests",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want a review of the tests added in this PR, focusing on whether they validate intended behavior or just snapshot current outputs—including possible bugs. The goal is to flag weak tests and suggest assertions or cases that would better catch regressions.",
+      "expected": [],
+      "allowed": [],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-h-shared-branch",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to implement the feature faster by having three agents work on it in parallel, with all three committing their changes to the same branch.",
+      "expected": [
+        "principle-separate-before-serializing-shared-state"
+      ],
+      "allowed": [
+        "principle-never-block-on-the-human",
+        "principle-sequence-verifiable-units"
+      ],
+      "baseline_selected": {
+        "principle-separate-before-serializing-shared-state": 0.95
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-h-ids-mixup",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to prevent order IDs from being passed into places that expect user IDs. Because both are plain strings, these mix-ups currently slip through. The goal is to make the two ID types distinct so incorrect usage is caught automatically, rather than relying on naming conventions or code reviews.",
+      "expected": [
+        "principle-encode-lessons-in-structure",
+        "principle-type-system-discipline"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "principle-encode-lessons-in-structure": 0.747,
+        "principle-foundational-thinking": 0.82,
+        "principle-type-system-discipline": 0.98
+      },
+      "baseline_borderline": {
+        "principle-encode-lessons-in-structure": 0.747,
+        "principle-foundational-thinking": 0.82
+      }
+    },
+    {
+      "id": "fresh-h-legacy-config-api",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to finish migrating to loadSettings(): update all 25 callers of getConfig() to use it, then remove the obsolete getConfig() implementation while preserving existing behavior.",
+      "expected": [
+        "principle-migrate-callers-then-delete-legacy-apis"
+      ],
+      "allowed": [
+        "principle-build-the-lever",
+        "principle-outcome-oriented-execution",
+        "principle-prove-it-works",
+        "principle-sequence-verifiable-units",
+        "principle-subtract-before-you-add"
+      ],
+      "baseline_selected": {
+        "principle-build-the-lever": 0.923,
+        "principle-migrate-callers-then-delete-legacy-apis": 0.937,
+        "principle-outcome-oriented-execution": 0.917,
+        "principle-sequence-verifiable-units": 0.937,
+        "principle-subtract-before-you-add": 0.883
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-h-big-test-output",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want me to run the full test suite—roughly 4,000 tests—and compare the failures against main so I can report which failures are new on the current branch, rather than pre-existing on main.",
+      "expected": [
+        "principle-guard-the-context-window"
+      ],
+      "allowed": [
+        "principle-build-the-lever",
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-build-the-lever": 0.727,
+        "principle-guard-the-context-window": 0.87
+      },
+      "baseline_borderline": {
+        "principle-build-the-lever": 0.727,
+        "principle-explain-the-number": 0.69
+      }
+    },
+    {
+      "id": "fresh-h-rename-var",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to rename the local variable tmp to retryCount in retry.ts and update its references without changing the code’s behavior.",
+      "expected": [],
+      "allowed": [],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-h-what-is-crdt",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to understand how conflict-free replicated data types (CRDTs) differ from operational transformation (OT), especially how they handle concurrent edits in collaborative applications and what trade-offs might make you choose one over the other.",
+      "expected": [],
+      "allowed": [],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-h-add-tooltip",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want the export button to show a tooltip reading “Download as CSV” so users know what the button does.",
+      "expected": [],
+      "allowed": [
+        "principle-experience-first"
+      ],
+      "baseline_selected": {},
+      "baseline_borderline": {
+        "principle-experience-first": 0.673
+      }
+    },
+    {
+      "id": "fresh-h-go-ahead",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want all project dependencies upgraded to their latest major versions, with any necessary code or configuration changes to handle breaking changes. You’re delegating those decisions to me so the upgrades are ready for your review tomorrow.",
+      "expected": [
+        "principle-never-block-on-the-human"
+      ],
+      "allowed": [
+        "principle-build-the-lever",
+        "principle-prove-it-works",
+        "principle-sequence-verifiable-units",
+        "decision-trail"
+      ],
+      "baseline_selected": {
+        "principle-build-the-lever": 0.817,
+        "principle-never-block-on-the-human": 0.93,
+        "principle-prove-it-works": 0.763,
+        "principle-sequence-verifiable-units": 0.82,
+        "decision-trail": 0.797
+      },
+      "baseline_borderline": {
+        "principle-build-the-lever": 0.817,
+        "principle-guard-the-context-window": 0.66,
+        "principle-prove-it-works": 0.763,
+        "principle-sequence-verifiable-units": 0.82,
+        "decision-trail": 0.797
+      }
+    },
+    {
+      "id": "fresh-g-memory-leak",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want me to investigate the Node.js server’s steadily growing memory usage, identify what’s causing it, and find a fix so it stops being OOM-killed every few hours.",
+      "expected": [],
+      "allowed": [
+        "principle-guard-the-context-window",
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-prove-it-works": 0.83
+      },
+      "baseline_borderline": {
+        "principle-prove-it-works": 0.83
+      }
+    },
+    {
+      "id": "fresh-g-search-filters",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to add date and author filters to the search page, reusing the FilterBar component already used on other list pages so the filtering interface stays consistent across the app.",
+      "expected": [],
+      "allowed": [
+        "principle-experience-first",
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {},
+      "baseline_borderline": {
+        "principle-prove-it-works": 0.68
+      }
+    },
+    {
+      "id": "fresh-g-queue-consumer",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to build a consumer that reads payment jobs from SQS and charges customers’ cards. Because SQS can deliver the same message more than once, the key problem is making payment processing idempotent: retries and duplicate deliveries must not charge a customer twice, while legitimate jobs still get processed reliably.",
+      "expected": [
+        "principle-make-operations-idempotent"
+      ],
+      "allowed": [
+        "principle-boundary-discipline",
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-boundary-discipline": 0.94,
+        "principle-encode-the-domain": 0.733,
+        "principle-prove-it-works": 0.713
+      },
+      "baseline_borderline": {
+        "principle-encode-the-domain": 0.733,
+        "principle-foundational-thinking": 0.677,
+        "principle-make-operations-idempotent": 0.663,
+        "principle-prove-it-works": 0.713
+      }
+    },
+    {
+      "id": "fresh-g-graphql-codegen",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to replace the hand-written TypeScript types for your GraphQL API with types generated directly from the schema, so they stay in sync as the API changes and no longer require manual maintenance.",
+      "expected": [
+        "principle-encode-lessons-in-structure",
+        "principle-type-system-discipline"
+      ],
+      "allowed": [
+        "principle-boundary-discipline",
+        "principle-build-the-lever",
+        "principle-migrate-callers-then-delete-legacy-apis",
+        "principle-prove-it-works",
+        "principle-subtract-before-you-add"
+      ],
+      "baseline_selected": {
+        "principle-build-the-lever": 0.827,
+        "principle-type-system-discipline": 0.903
+      },
+      "baseline_borderline": {
+        "principle-build-the-lever": 0.827,
+        "principle-foundational-thinking": 0.683
+      }
+    },
+    {
+      "id": "fresh-g-cleanup-before-feature",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to clean up auth/ before adding SSO by removing the three unused authentication strategies and the commented-out OAuth code, leaving a cleaner foundation for the SSO work.",
+      "expected": [
+        "principle-subtract-before-you-add"
+      ],
+      "allowed": [
+        "principle-laziness-protocol",
+        "principle-prove-it-works",
+        "principle-sequence-verifiable-units"
+      ],
+      "baseline_selected": {
+        "principle-minimize-reader-load": 0.747,
+        "principle-subtract-before-you-add": 0.95
+      },
+      "baseline_borderline": {
+        "principle-minimize-reader-load": 0.747
+      }
+    },
+    {
+      "id": "fresh-g-postgres-to-dynamo",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to plan and begin a phased migration of session storage from Postgres to DynamoDB without disrupting active sessions. The sequence is to write to both stores, backfill existing sessions into DynamoDB, switch reads to DynamoDB once it’s validated, and finally stop Postgres writes and drop the old table. The goal is to keep session data consistent and preserve a rollback path until the migration is proven safe.",
+      "expected": [
+        "principle-outcome-oriented-execution",
+        "principle-sequence-verifiable-units"
+      ],
+      "allowed": [
+        "principle-foundational-thinking",
+        "principle-make-operations-idempotent",
+        "principle-migrate-callers-then-delete-legacy-apis",
+        "principle-prove-it-works",
+        "principle-redesign-from-first-principles",
+        "principle-separate-before-serializing-shared-state"
+      ],
+      "baseline_selected": {
+        "principle-encode-the-domain": 0.8,
+        "principle-foundational-thinking": 0.793,
+        "principle-make-operations-idempotent": 0.78,
+        "principle-outcome-oriented-execution": 0.98,
+        "principle-prove-it-works": 0.933,
+        "principle-separate-before-serializing-shared-state": 0.793,
+        "principle-sequence-verifiable-units": 0.96
+      },
+      "baseline_borderline": {
+        "principle-boundary-discipline": 0.667,
+        "principle-encode-the-domain": 0.8,
+        "principle-foundational-thinking": 0.793,
+        "principle-make-operations-idempotent": 0.78,
+        "principle-separate-before-serializing-shared-state": 0.793
+      }
+    },
+    {
+      "id": "fresh-g-ask-each-step",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to improve the billing module’s structure and maintainability without changing its behavior. Before making each individual change, I should explain what I propose and wait for your approval.",
+      "expected": [],
+      "allowed": [
+        "principle-laziness-protocol",
+        "principle-minimize-reader-load",
+        "principle-prove-it-works",
+        "principle-sequence-verifiable-units"
+      ],
+      "baseline_selected": {
+        "principle-minimize-reader-load": 0.88,
+        "principle-sequence-verifiable-units": 0.753
+      },
+      "baseline_borderline": {
+        "principle-sequence-verifiable-units": 0.753
+      }
+    },
+    {
+      "id": "fresh-g-add-unit-test",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to add a regression test that reproduces the date-parsing bug fixed yesterday, verifies the fix, and catches the issue if it returns in future changes.",
+      "expected": [],
+      "allowed": [
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-encode-lessons-in-structure": 0.823,
+        "principle-prove-it-works": 0.763
+      },
+      "baseline_borderline": {
+        "principle-encode-lessons-in-structure": 0.823,
+        "principle-prove-it-works": 0.763
+      }
+    },
+    {
+      "id": "fresh-g-sql-injection",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to secure the reports endpoint against SQL injection through user-supplied sort and filter parameters, while preserving valid sorting and filtering behavior.",
+      "expected": [
+        "principle-boundary-discipline"
+      ],
+      "allowed": [
+        "principle-prove-it-works",
+        "principle-type-system-discipline"
+      ],
+      "baseline_selected": {
+        "principle-boundary-discipline": 0.96
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-g-wizard-state",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to fix the checkout wizard’s inconsistent navigation state: three booleans and a stepIndex can disagree about which step is active. The goal is to use one reliable source of truth for the current step and prevent users from reaching payment before providing an address.",
+      "expected": [
+        "principle-encode-the-domain"
+      ],
+      "allowed": [
+        "principle-prove-it-works",
+        "principle-redesign-from-first-principles",
+        "principle-type-system-discipline"
+      ],
+      "baseline_selected": {
+        "principle-encode-the-domain": 0.923,
+        "principle-type-system-discipline": 0.867
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-g-format-file",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to run Prettier on src/utils/date.ts to make its formatting consistent with the project’s configured style.",
+      "expected": [],
+      "allowed": [],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-g-summarize-pr",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want a concise summary of the changes introduced in the five most recent commits, highlighting the main updates across them.",
+      "expected": [],
+      "allowed": [
+        "principle-guard-the-context-window"
+      ],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-open-pr-1",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want me to open a pull request for the current branch that’s ready for review, not a draft.",
+      "expected": [
+        "open-pr"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "open-pr": 0.98
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-open-pr-2",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to publish these commits as a pull request targeting main, leaving the PR open and unmerged.",
+      "expected": [
+        "open-pr"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "open-pr": 0.98
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-h-open-pr-3",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to create a pull request for the current feature branch and include proof that the changes work—such as test results or other verification evidence—in the pull request body.",
+      "expected": [
+        "open-pr"
+      ],
+      "allowed": [
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-prove-it-works": 0.867,
+        "open-pr": 0.98
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-babysit-1",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want PR #42 brought to a passing state by fixing any failing checks and addressing all unresolved review threads, so it’s ready for approval and merge.",
+      "expected": [
+        "babysit"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "babysit": 0.99
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-babysit-2",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want me to check PR #19 for outstanding review comments, unresolved issues, or failing checks and report what still needs attention, without merging it.",
+      "expected": [
+        "babysit"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "babysit": 0.98
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-h-babysit-3",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want me to shepherd the existing stack of changes through CI and review, fixing CI failures and addressing reviewer feedback until the checks pass and all outstanding comments are resolved.",
+      "expected": [
+        "babysit"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "babysit": 0.98
+      },
+      "baseline_borderline": {
+        "principle-guard-the-context-window": 0.67
+      }
+    },
+    {
+      "id": "fresh-ship-1",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to merge pull request #42 into the main branch so its changes become part of the main codebase.",
+      "expected": [
+        "ship"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "ship": 0.99
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-ship-2",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want me to merge the ready pull request into its target branch without triggering or performing an app deployment.",
+      "expected": [
+        "ship"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "ship": 0.98
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-h-ship-3",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to merge the approved stack of changes into the default branch, starting with the base change and working upward so each dependent change lands after its prerequisites.",
+      "expected": [
+        "ship"
+      ],
+      "allowed": [
+        "principle-sequence-verifiable-units"
+      ],
+      "baseline_selected": {
+        "principle-sequence-verifiable-units": 0.84,
+        "ship": 0.98
+      },
+      "baseline_borderline": {
+        "principle-sequence-verifiable-units": 0.84
+      }
+    },
+    {
+      "id": "fresh-decision-trail-1",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want a running decision log of tonight’s unattended work, recording each significant decision, the reasons behind it, and the supporting evidence so you can review what was done and why afterward.",
+      "expected": [
+        "decision-trail"
+      ],
+      "allowed": [
+        "principle-never-block-on-the-human"
+      ],
+      "baseline_selected": {
+        "decision-trail": 0.97
+      },
+      "baseline_borderline": {
+        "principle-never-block-on-the-human": 0.693
+      }
+    },
+    {
+      "id": "fresh-decision-trail-2",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want me to compare the unattended run’s decision trail with its transcript, verify that the recorded decisions are supported by what actually happened, and flag discrepancies, missing steps, or unsupported reasoning. The goal is to assess whether the decision trail accurately and completely accounts for the run.",
+      "expected": [
+        "decision-trail"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "decision-trail": 0.967
+      },
+      "baseline_borderline": {
+        "principle-guard-the-context-window": 0.697
+      }
+    },
+    {
+      "id": "fresh-h-decision-trail-3",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want me to keep the work moving while you’re away, make reversible decisions without waiting for your input, and record each decision with its rationale. Anything irreversible should wait for your approval.",
+      "expected": [
+        "decision-trail"
+      ],
+      "allowed": [
+        "principle-never-block-on-the-human"
+      ],
+      "baseline_selected": {
+        "principle-never-block-on-the-human": 0.97,
+        "decision-trail": 0.98
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-blast-radius-1",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to identify what downstream behavior this cache-eviction change could break, then prove the key invariant that makes the change safe—not merely argue that it looks harmless or passes tests.",
+      "expected": [
+        "blast-radius"
+      ],
+      "allowed": [
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-prove-it-works": 0.817,
+        "blast-radius": 0.967
+      },
+      "baseline_borderline": {
+        "principle-prove-it-works": 0.817
+      }
+    },
+    {
+      "id": "fresh-blast-radius-2",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to assess the broader impact of the schema change, not just review the files in the diff. That means tracing dependencies and downstream consumers to identify code, queries, APIs, migrations, or tests that could break or need updates, including compatibility risks the diff alone might miss.",
+      "expected": [
+        "blast-radius"
+      ],
+      "allowed": [
+        "principle-boundary-discipline",
+        "principle-type-system-discipline",
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "blast-radius": 0.967
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-h-blast-radius-3",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want a rigorous safety review of the teardown patch, not reassurance based on its small size. The goal is to trace its effects across other callers, check for lifecycle and cleanup regressions, and support any safety conclusion with concrete evidence and tests—clearly identifying anything that remains unproven.",
+      "expected": [
+        "blast-radius"
+      ],
+      "allowed": [
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "blast-radius": 0.98
+      },
+      "baseline_borderline": {
+        "principle-prove-it-works": 0.7
+      }
+    },
+    {
+      "id": "fresh-prune-comments-1",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to clean up the diff by removing outdated and redundant comments while keeping those that provide useful context.",
+      "expected": [
+        "prune-comments"
+      ],
+      "allowed": [
+        "principle-minimize-reader-load",
+        "principle-subtract-before-you-add"
+      ],
+      "baseline_selected": {
+        "prune-comments": 0.96
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-prune-comments-2",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want me to audit the file’s “do not remove” comments, distinguish genuine requirements from unjustified restrictions, remove the false constraints, and propose concrete checks or tests to verify that the real requirements remain satisfied.",
+      "expected": [
+        "prune-comments"
+      ],
+      "allowed": [
+        "principle-minimize-reader-load",
+        "principle-subtract-before-you-add"
+      ],
+      "baseline_selected": {
+        "prune-comments": 0.973
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-h-prune-comments-3",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to clean up retry.ts by removing comments that simply repeat what the code does, and critique the workaround comments for how clearly they explain why each workaround is necessary and when it could be removed.",
+      "expected": [
+        "prune-comments"
+      ],
+      "allowed": [
+        "principle-minimize-reader-load",
+        "principle-subtract-before-you-add"
+      ],
+      "baseline_selected": {
+        "principle-minimize-reader-load": 0.83,
+        "prune-comments": 0.98
+      },
+      "baseline_borderline": {
+        "principle-minimize-reader-load": 0.83
+      }
+    },
+    {
+      "id": "fresh-setup-app-verification-1",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want a Verify skill that launches this CLI, exercises it with real commands, and captures evidence of the results, so you can confirm it works end to end rather than relying solely on static checks or mocked tests.",
+      "expected": [
+        "setup-app-verification"
+      ],
+      "allowed": [
+        "principle-foundational-thinking",
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-prove-it-works": 0.943,
+        "setup-app-verification": 0.917
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-setup-app-verification-2",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to set up a live-verification skill your app currently lacks, with a workflow that uses Doctor to check readiness, Launch to start the app, Drive to exercise and verify it, and cleanup to stop processes and remove temporary resources afterward.",
+      "expected": [
+        "setup-app-verification"
+      ],
+      "allowed": [
+        "principle-foundational-thinking",
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-prove-it-works": 0.91,
+        "setup-app-verification": 0.883
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-h-setup-app-verification-3",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to restore the missing .omp/skills/verify-shop link so it points to the existing shared Verify skill, making that skill available again without duplicating it.",
+      "expected": [
+        "setup-app-verification"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "setup-app-verification": 0.92
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-maintain-app-verification-1",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to update the existing verify-shop skill so its verification steps and coverage align with the current routes and feature map, replacing outdated references and addressing any coverage gaps.",
+      "expected": [
+        "maintain-app-verification"
+      ],
+      "allowed": [
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-subtract-before-you-add": 0.813,
+        "maintain-app-verification": 0.937
+      },
+      "baseline_borderline": {
+        "principle-subtract-before-you-add": 0.813
+      }
+    },
+    {
+      "id": "fresh-maintain-app-verification-2",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want the Verify instructions updated because verify-dashboard targets a selector that no longer exists, even though the app’s Doctor checks pass. The goal is to make dashboard verification use the current UI rather than an outdated selector.",
+      "expected": [
+        "maintain-app-verification"
+      ],
+      "allowed": [
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "maintain-app-verification": 0.92
+      },
+      "baseline_borderline": {
+        "principle-prove-it-works": 0.673
+      }
+    },
+    {
+      "id": "fresh-h-maintain-app-verification-3",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want me to audit the existing CLI Verify skill against the current source code and a live verification run, identify stale or inaccurate feature recipes, and update them to reflect how the CLI actually works.",
+      "expected": [
+        "maintain-app-verification"
+      ],
+      "allowed": [
+        "principle-prove-it-works",
+        "principle-subtract-before-you-add",
+        "principle-boundary-discipline"
+      ],
+      "baseline_selected": {
+        "maintain-app-verification": 0.967
+      },
+      "baseline_borderline": {
+        "principle-guard-the-context-window": 0.66
+      }
+    },
+    {
+      "id": "fresh-compare-attempts-1",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want three independently developed implementations of the same helper, followed by a comparison of their correctness, clarity, efficiency, and trade-offs, so you can choose the strongest option rather than settle on the first approach.",
+      "expected": [
+        "compare-attempts"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "compare-attempts": 0.973
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-compare-attempts-2",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want several independent passes at the code review to catch issues a single pass might miss, followed by a consolidated report of the strongest, most actionable findings, with duplicates and weak claims filtered out.",
+      "expected": [
+        "compare-attempts"
+      ],
+      "allowed": [
+        "principle-minimize-reader-load"
+      ],
+      "baseline_selected": {
+        "compare-attempts": 0.86
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-h-compare-attempts-3",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want five distinct attempts at solving the design question, followed by a synthesis: choose the strongest attempt as the foundation and incorporate useful ideas from the others into a refined final design.",
+      "expected": [
+        "compare-attempts"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "compare-attempts": 0.96
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-hillclimb-1",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want me to iteratively improve the benchmark’s throughput until it exceeds 1,000 requests per second, measuring every attempt with the same harness so the results are consistent and directly comparable.",
+      "expected": [
+        "hillclimb"
+      ],
+      "allowed": [
+        "principle-prove-it-works",
+        "principle-build-the-lever",
+        "principle-sequence-verifiable-units",
+        "benchmark-checklist",
+        "principle-explain-the-number"
+      ],
+      "baseline_selected": {
+        "principle-explain-the-number": 0.893,
+        "principle-prove-it-works": 0.897,
+        "benchmark-checklist": 0.98,
+        "hillclimb": 0.97
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-hillclimb-2",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to iteratively reduce rendering latency through repeated, controlled experiments using the same fixed inputs. Measure each change against the baseline, keep only reproducible latency improvements, and revert changes that regress performance or show no clear win.",
+      "expected": [
+        "hillclimb"
+      ],
+      "allowed": [
+        "principle-prove-it-works",
+        "principle-build-the-lever",
+        "benchmark-checklist",
+        "principle-explain-the-number"
+      ],
+      "baseline_selected": {
+        "principle-explain-the-number": 0.927,
+        "principle-prove-it-works": 0.917,
+        "benchmark-checklist": 0.98,
+        "hillclimb": 0.963
+      },
+      "baseline_borderline": {
+        "principle-build-the-lever": 0.673
+      }
+    },
+    {
+      "id": "fresh-h-hillclimb-3",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to iteratively optimize the parser and test each change against the frozen benchmark, repeating the experiments until the measured median latency is below 5 ms.",
+      "expected": [
+        "hillclimb"
+      ],
+      "allowed": [
+        "principle-prove-it-works",
+        "principle-build-the-lever",
+        "benchmark-checklist",
+        "principle-explain-the-number"
+      ],
+      "baseline_selected": {
+        "principle-explain-the-number": 0.91,
+        "principle-prove-it-works": 0.91,
+        "benchmark-checklist": 0.98,
+        "hillclimb": 0.97
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-perf-issue-1",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to reduce the report query’s current eight-second runtime by identifying and fixing the bottleneck, then measure and compare performance before and after the changes to verify the improvement.",
+      "expected": [
+        "perf-issue"
+      ],
+      "allowed": [
+        "principle-prove-it-works",
+        "benchmark-checklist",
+        "principle-explain-the-number"
+      ],
+      "baseline_selected": {
+        "principle-explain-the-number": 0.82,
+        "principle-prove-it-works": 0.95,
+        "benchmark-checklist": 0.97,
+        "perf-issue": 0.97
+      },
+      "baseline_borderline": {
+        "principle-explain-the-number": 0.82
+      }
+    },
+    {
+      "id": "fresh-perf-issue-2",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want me to find what in the latest change caused startup time to increase from 1 second to 4 seconds, fix the underlying cause, and verify that startup returns to its previous speed without breaking the change’s intended functionality.",
+      "expected": [
+        "perf-issue"
+      ],
+      "allowed": [
+        "principle-prove-it-works",
+        "benchmark-checklist",
+        "principle-explain-the-number"
+      ],
+      "baseline_selected": {
+        "principle-explain-the-number": 0.85,
+        "principle-prove-it-works": 0.927,
+        "benchmark-checklist": 0.96,
+        "perf-issue": 0.98
+      },
+      "baseline_borderline": {
+        "principle-explain-the-number": 0.85
+      }
+    },
+    {
+      "id": "fresh-h-perf-issue-3",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to reduce the CSV import’s current runtime of 30 seconds for 100 rows with one targeted fix, then measure the before-and-after performance to verify the improvement. The scope is that single fix—not an ongoing optimization campaign.",
+      "expected": [
+        "perf-issue"
+      ],
+      "allowed": [
+        "principle-prove-it-works",
+        "principle-boundary-discipline",
+        "benchmark-checklist",
+        "principle-explain-the-number"
+      ],
+      "baseline_selected": {
+        "principle-explain-the-number": 0.86,
+        "principle-prove-it-works": 0.95,
+        "benchmark-checklist": 0.97,
+        "perf-issue": 0.97
+      },
+      "baseline_borderline": {
+        "principle-boundary-discipline": 0.677
+      }
+    },
+    {
+      "id": "fresh-session-1",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want me to review this coding session for reusable lessons—what worked, what failed, and where friction arose—and propose concrete additions or revisions to your skills. The goal is to turn session-specific experience into durable guidance that improves future coding work, rather than just summarize what happened.",
+      "expected": [
+        "session"
+      ],
+      "allowed": [
+        "principle-encode-lessons-in-structure",
+        "principle-guard-the-context-window"
+      ],
+      "baseline_selected": {
+        "session": 0.95
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-session-2",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to review the run for generalizable lessons that could improve your agent guidance: what worked, where instructions were unclear or insufficient, and what should change for future runs—not a recap of the commits.",
+      "expected": [
+        "session"
+      ],
+      "allowed": [
+        "principle-encode-lessons-in-structure",
+        "principle-guard-the-context-window"
+      ],
+      "baseline_selected": {
+        "session": 0.93
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-h-session-3",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to identify which of your existing skills should be updated based on mistakes made and useful discoveries in this session, and what specific changes would help avoid repeating those mistakes or preserve what worked.",
+      "expected": [
+        "session"
+      ],
+      "allowed": [
+        "principle-encode-lessons-in-structure",
+        "principle-guard-the-context-window"
+      ],
+      "baseline_selected": {
+        "session": 0.88
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-vstack-maintain-1",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to update vstack with the latest skills from Matt Upstream, merging the upstream changes with vstack’s existing local adaptations so those customizations are preserved.",
+      "expected": [
+        "vstack-maintain"
+      ],
+      "allowed": [
+        "principle-prove-it-works",
+        "principle-guard-the-context-window"
+      ],
+      "baseline_selected": {
+        "vstack-maintain": 0.967
+      },
+      "baseline_borderline": {
+        "ship": 0.69
+      }
+    },
+    {
+      "id": "fresh-vstack-maintain-2",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to make a Hand edit to vstack’s babysit skill and update its corresponding Decision register row so the two stay aligned.",
+      "expected": [
+        "vstack-maintain"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "vstack-maintain": 0.973
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-h-vstack-maintain-3",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to revise vstack’s agent instructions and writing rules, while keeping its maintenance records aligned with those changes so the guidance and change history remain consistent.",
+      "expected": [
+        "vstack-maintain"
+      ],
+      "allowed": [],
+      "baseline_selected": {
+        "vstack-maintain": 0.957
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-n-release",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to deploy version 2.0 to production. There is no pull request to merge, so the deployment needs to proceed without a PR merge step.",
+      "expected": [],
+      "allowed": [
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-prove-it-works": 0.897
+      },
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-n-local-test",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to diagnose why the local slugify test is failing and make the necessary fix so it passes. There’s no existing pull request to review; this is a local debugging and repair task.",
+      "expected": [],
+      "allowed": [
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-n-docstring",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to add a docstring to the helper function that clearly explains its return value.",
+      "expected": [],
+      "allowed": [],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-n-existing-verify",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want me to run the existing Verify skill exactly as documented and capture evidence of the login flow, showing what happened and whether it passed verification.",
+      "expected": [],
+      "allowed": [
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {
+        "principle-prove-it-works": 0.83
+      },
+      "baseline_borderline": {
+        "principle-prove-it-works": 0.83
+      }
+    },
+    {
+      "id": "fresh-n-product-regression",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to fix the product bug that causes the app to return the wrong total. The Verify instructions are correct, so the fix should be in the app itself—not in those instructions.",
+      "expected": [],
+      "allowed": [
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-n-parallel-parts",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to split the feature work between two agents: one owns the API work, and the other owns the UI work, with clear responsibility for each part.",
+      "expected": [],
+      "allowed": [
+        "principle-experience-first",
+        "principle-prove-it-works"
+      ],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-n-alternative-question",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want a clear comparison of conflict-free replicated data types (CRDTs) and operational transformation (OT): how they handle concurrent changes, their tradeoffs in coordination, offline support, performance, storage, and implementation complexity, and when each is a better fit. You want one direct explanation, without multiple attempts or alternative drafts.",
+      "expected": [],
+      "allowed": [],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-n-profile-only",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want me to analyze the CPU profile, identify which functions and call paths consumed the most time, and explain the main performance bottlenecks—without changing any code.",
+      "expected": [],
+      "allowed": [
+        "principle-guard-the-context-window"
+      ],
+      "baseline_selected": {
+        "principle-guard-the-context-window": 0.713
+      },
+      "baseline_borderline": {
+        "principle-guard-the-context-window": 0.713
+      }
+    },
+    {
+      "id": "fresh-n-own-skill",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want me to edit the project-owned deploy skill under .omp/skills, not a vstack skill. Any changes should target that project-local skill.",
+      "expected": [],
+      "allowed": [],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-n-vstack-explain",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want an explanation of what vstack’s babysit skill does and how it works, without making any changes to it.",
+      "expected": [],
+      "allowed": [],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "fresh-benchmark-checklist-1",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to verify that the claimed 40% export speedup is supported by fair, reproducible benchmarks and that the wording accurately reflects the results before including it in the PR description.",
+      "expected": [
+        "benchmark-checklist"
+      ],
+      "allowed": [
+        "principle-explain-the-number",
+        "principle-prove-it-works",
+        "perf-issue",
+        "open-pr"
+      ],
+      "baseline_selected": {
+        "principle-explain-the-number": 0.723,
+        "principle-prove-it-works": 0.847,
+        "benchmark-checklist": 0.917
+      },
+      "baseline_borderline": {
+        "principle-explain-the-number": 0.723,
+        "principle-prove-it-works": 0.847
+      }
+    },
+    {
+      "id": "fresh-benchmark-checklist-2",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want to benchmark both JSON parsers on your 60,000-row file, compare their parsing times under the same conditions, and find out which is faster and by how much.",
+      "expected": [
+        "benchmark-checklist"
+      ],
+      "allowed": [
+        "principle-explain-the-number",
+        "principle-prove-it-works",
+        "principle-build-the-lever"
+      ],
+      "baseline_selected": {
+        "principle-explain-the-number": 0.903,
+        "principle-prove-it-works": 0.857,
+        "benchmark-checklist": 0.977
+      },
+      "baseline_borderline": {
+        "principle-boundary-discipline": 0.673
+      }
+    },
+    {
+      "id": "fresh-session-retro-1",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want a retrospective of this session focused on the agent’s mistakes and which repo-level safeguards—such as tests, linting, CI checks, or AGENTS.md instructions—would have caught or prevented them. The goal is to identify concrete improvements to the repo’s environment that would keep those mistakes from recurring.",
+      "expected": [
+        "session"
+      ],
+      "allowed": [
+        "principle-encode-lessons-in-structure",
+        "principle-guard-the-context-window"
+      ],
+      "baseline_selected": {
+        "session": 0.97
+      },
+      "baseline_borderline": {
+        "principle-encode-lessons-in-structure": 0.65
+      }
+    },
+    {
+      "id": "fresh-session-correct-1",
+      "split": "restated",
+      "restated": true,
+      "prompt": "You want this repo to enforce a hard architectural boundary: only the repository layer may access the database client, and all other code must go through that layer. The goal is to prevent agents from bypassing it through enforceable constraints, not just documentation or reminders.",
+      "expected": [
+        "session"
+      ],
+      "allowed": [
+        "principle-encode-lessons-in-structure",
+        "principle-boundary-discipline",
+        "principle-type-system-discipline"
+      ],
+      "baseline_selected": {
+        "principle-laziness-protocol": 0.807
+      },
+      "baseline_borderline": {
+        "principle-build-the-lever": 0.663,
+        "principle-laziness-protocol": 0.807,
+        "principle-redesign-from-first-principles": 0.677,
+        "principle-type-system-discipline": 0.673
+      }
     }
   ]
 }
