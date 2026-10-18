@@ -82,18 +82,40 @@ test("one recent file anywhere inside an entry keeps the whole entry", () => {
   expect(listedPaths()).toEqual([join(root, "shop-aaaaaa/decision-trail/log")]);
 });
 
-test("--older-than overrides the 14-day TTL, and the default is 14 days", () => {
-  file("k-000000/explain/a.html", "a", 10);
-  expect(listedPaths("14d")).toEqual([]);
-  expect(listedPaths("7d")).toEqual([join(root, "k-000000/explain/a.html")]);
-  expect(listedPaths("1w")).toEqual([join(root, "k-000000/explain/a.html")]);
-  expect(listedPaths("7")).toEqual([join(root, "k-000000/explain/a.html")]);
-  expect(listedPaths("300h")).toEqual([]);
+test("--older-than overrides the 90-day TTL, and the default is 90 days", () => {
+  file("k-000000/explain/a.html", "a", 60);
+  expect(listedPaths("90d")).toEqual([]);
+  expect(listedPaths("30d")).toEqual([join(root, "k-000000/explain/a.html")]);
+  expect(listedPaths("4w")).toEqual([join(root, "k-000000/explain/a.html")]);
+  expect(listedPaths("30")).toEqual([join(root, "k-000000/explain/a.html")]);
+  expect(listedPaths("2000h")).toEqual([]);
   const r = clean("--home", home);
   expect(r.code).toBe(0);
+  expect(r.json.older_than).toBe("90d");
   expect(r.json.entries).toEqual([]);
-  file("k-000000/explain/b.html", "b", 15);
+  file("k-000000/explain/b.html", "b", 91);
   expect((clean("--home", home).json.entries as Listed[]).map((e) => e.entry)).toEqual(["b.html"]);
+});
+
+test("a paused flow folder is kept for 90 days by default, then listed and deleted as one entry", () => {
+  const flow = "shop-aaaaaa/grilling/shop-151";
+  const files = ["state.jsonl", "state.html", "flow.json", "figures/flow.svg"];
+  const setAge = (days: number) => {
+    for (const f of files) file(`${flow}/${f}`, "x", days);
+    age(`${flow}/figures`, days);
+    age(flow, days);
+  };
+  setAge(60);
+  expect(clean("--home", home).json.entries).toEqual([]);
+
+  setAge(100);
+  const listed = clean("--home", home).json.entries as Listed[];
+  expect(listed).toHaveLength(1);
+  expect(listed[0]).toMatchObject({ path: join(root, flow), kind: "grilling", entry: "shop-151", size: files.length });
+  const r = clean("--home", home, "--delete", join(root, flow));
+  expect(r.code).toBe(0);
+  expect(r.json.deleted).toEqual([join(root, flow)]);
+  expect(existsSync(join(root, flow))).toBe(false);
 });
 
 test("a home with no Scratch lists nothing", () => {

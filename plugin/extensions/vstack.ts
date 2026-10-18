@@ -326,7 +326,7 @@ interface ScratchEntry {
 function registerCleanCommand(pi: ExtensionAPI): void {
   const script = fileURLToPath(new URL("../skills/vstack-tmp/scripts/clean.ts", import.meta.url));
   pi.registerCommand("vstack-clean", {
-    description: "Delete expired Scratch entries: /vstack-clean [age] (default 14d).",
+    description: "Delete expired Scratch entries: /vstack-clean [age] (default 90d).",
     async handler(age, ctx) {
       if (!ctx.hasUI) {
         pi.sendMessage({
@@ -336,7 +336,7 @@ function registerCleanCommand(pi: ExtensionAPI): void {
         }, { triggerTurn: false });
         return;
       }
-      const args = [script, "--home", homedir(), "--older-than", age.trim() || "14d"];
+      const args = [script, "--home", homedir(), "--older-than", age.trim() || "90d"];
       let deleteStarted = false;
       try {
         const preview = await pi.exec("bun", args);

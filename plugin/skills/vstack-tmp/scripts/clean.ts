@@ -3,7 +3,7 @@
 //   bun clean.ts --home <dir> [--older-than <age>]                     list (dry run)
 //   bun clean.ts --home <dir> [--older-than <age>] --delete <path>...  delete those entries
 //
-// <age> is <n>d, <n>h, <n>w, or a bare <n> for days (default 14d). An entry's age comes from the newest mtime of the entry and
+// <age> is <n>d, <n>h, <n>w, or a bare <n> for days (default 90d). An entry's age comes from the newest mtime of the entry and
 // everything inside it. Symlinks are never followed: a link counts by its own mtime and is deleted as a link.
 // The listing prints JSON {root, older_than, entries: [{path, repo_key, kind, entry, newest_mtime, age_days, size}], kept}.
 // A delete re-checks each entry, deletes the ones still older than <age>, removes kind and key dirs it leaves
@@ -35,9 +35,9 @@ try {
 const { values, positionals } = parsed;
 if (!values.home) usage("--home is required");
 if (positionals.length > 0 && !values.delete) usage(`unexpected argument ${positionals[0]}`);
-const olderThan = values["older-than"] ?? "14d";
+const olderThan = values["older-than"] ?? "90d";
 const m = /^(\d+)([hdw]?)$/.exec(olderThan);
-if (!m) usage(`--older-than must look like 14d, 14, 36h, or 2w, got ${JSON.stringify(olderThan)}`);
+if (!m) usage(`--older-than must look like 90d, 90, 36h, or 2w, got ${JSON.stringify(olderThan)}`);
 const ttl = Number(m[1]) * UNITS[m[2] || "d"];
 const home = resolve(values.home);
 const root = scratchRoot(home);

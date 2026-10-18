@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [3.0.2] - 2026-10-18
+
+- Scratch is kept for 90 days instead of 14. The vstack-tmp clean script and the `/vstack-clean` Command with no age now list only entries older than 90 days, for every Scratch kind, so a paused flow keeps its Grilling page. A flow folder is one Scratch entry, so its page, state file, figures, and `flow.json` expire and go together (#164).
+
 ## [3.0.1] - 2026-10-20
 
 - setup-vstack gives each run its own Scratch entry, `setup-vstack/run-XXXXXX/`, for its Migration plans. Every worktree of a repo shares the Scratch dir, so two setup runs at once could overwrite each other's `plan-1.json`. `migrate.ts apply` now refuses, with exit 2 and no writes, a plan whose `root` is not the checkout it runs in, so a plan from another worktree never migrates that worktree.

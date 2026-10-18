@@ -5,14 +5,14 @@ import { fakeHost } from "./support/extension-host.ts";
 
 const script = fileURLToPath(new URL("../plugin/skills/vstack-tmp/scripts/clean.ts", import.meta.url));
 const entries = [
-  { path: "/scratch/repo-a/review/first", repo_key: "repo-a", kind: "review", entry: "first", newest_mtime: "2026-01-01", age_days: 30, size: 1024 },
-  { path: "/scratch/repo-b/maintain/second", repo_key: "repo-b", kind: "maintain", entry: "second", newest_mtime: "2026-01-02", age_days: 20, size: 2048 },
+  { path: "/scratch/repo-a/review/first", repo_key: "repo-a", kind: "review", entry: "first", newest_mtime: "2026-01-01", age_days: 130, size: 1024 },
+  { path: "/scratch/repo-b/maintain/second", repo_key: "repo-b", kind: "maintain", entry: "second", newest_mtime: "2026-01-02", age_days: 120, size: 2048 },
 ];
-const listing = { root: "/scratch", older_than: "14d", entries, kept: 7 };
+const listing = { root: "/scratch", older_than: "90d", entries, kept: 7 };
 const result = (value: unknown) => ({ stdout: JSON.stringify(value), stderr: "", code: 0, killed: false });
 const notifications = (host: ReturnType<typeof fakeHost>) => host.uiCalls.filter(call => call.method === "notify").map(call => call.args[0]).join("\n");
-const baseArgs = (age = "14d") => [script, "--home", homedir(), "--older-than", age];
-const label = "repo-b / maintain / second — 20 days, 2048 bytes";
+const baseArgs = (age = "90d") => [script, "--home", homedir(), "--older-than", age];
+const label = "repo-b / maintain / second — 120 days, 2048 bytes";
 let fetchSpy: ReturnType<typeof spyOn>;
 afterEach(() => fetchSpy?.mockRestore());
 
@@ -20,11 +20,11 @@ describe("/vstack-clean", () => {
   test("registers the Command, shows the dry-run table and total, then applies all without a model", async () => {
     fetchSpy = spyOn(globalThis, "fetch").mockRejectedValue(new Error("No model request allowed"));
     const host = fakeHost({ hasUI: true, selections: ["Apply all"], exec: async (_command, args) => result(args.includes("--delete") ? { deleted: [entries[0].path], skipped: [{ path: entries[1].path, reason: "newer than the TTL" }], pruned: [] } : listing) });
-    expect(host.commands.get("vstack-clean")?.description).toContain("[age]");
+    expect(host.commands.get("vstack-clean")?.description).toContain("[age] (default 90d)");
     await host.callCommand("vstack-clean");
     expect(host.execCalls).toEqual([{ command: "bun", args: baseArgs() }, { command: "bun", args: [...baseArgs(), "--delete", ...entries.map(entry => entry.path)] }]);
     const text = notifications(host);
-    for (const part of ["Repo key", "Kind", "Entry", "Age (days)", "Size (bytes)", "repo-a", "review", "first", "30", "1024", "repo-b", "maintain", "second", "20", "2048", "Total: 2 entries, 3072 bytes", "Deleted 1 entry; freed 1024 bytes", entries[1].path, "newer than the TTL"]) expect(text).toContain(part);
+    for (const part of ["Repo key", "Kind", "Entry", "Age (days)", "Size (bytes)", "repo-a", "review", "first", "130", "1024", "repo-b", "maintain", "second", "120", "2048", "Total: 2 entries, 3072 bytes", "Deleted 1 entry; freed 1024 bytes", entries[1].path, "newer than the TTL"]) expect(text).toContain(part);
     expect(host.uiCalls.find(call => call.method === "select")?.args[1]).toEqual(["Apply all", "Choose items", "Cancel"]);
     expect(fetchSpy).not.toHaveBeenCalled();
   });

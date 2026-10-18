@@ -21,7 +21,7 @@ bun "$(realpath skill://vstack-tmp/scripts/path.ts)" <kind>   # one kind dir in 
 
 - `<repo-key>` is the dir name of the main checkout plus the first 6 hex chars of a SHA-256 hash of the absolute git common dir. All worktrees of a repo get the same key. Outside a git repo the key is `_global`.
 - `<kind>` is one lowercase path segment. Use the kind your skill names: explain, verify, skill-creator, blast-radius, explorer, decision-trail, architecture-review, handoff, grilling, how, teach, session, implement-spec, or ketchup.
-- Put each run's output in its own entry in the kind dir: one file, or one dir when the run writes several files. The `/vstack-clean` Command deletes whole entries, and it judges an entry's age by the newest file in it.
+- Put each run's output in its own entry in the kind dir: one file, or one dir when the run writes several files. The `/vstack-clean` Command deletes whole entries older than 90 days by default, and it judges an entry's age by the newest file in it. A flow folder (`grilling/<project>-<key>/`) is one entry, so its page, state file, figures, and `flow.json` expire together.
 
 ## Subagents
 
