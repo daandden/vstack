@@ -97,10 +97,12 @@ because a media query adds no specificity and a later plain rule would win:
 }
 ```
 
-`scripts/lint-render.py --all` renders every template at 390px and fails on
-page overflow, an unreachable clipped SVG, a missing local scroller, or a
-`min-width` that disagrees with the viewBox — including an absent one, which
-lets the SVG shrink into the phone and takes the type ramp with it.
+Upstream's `scripts/lint-render.py --all` renders every template at 390px and
+fails on page overflow, an unreachable clipped SVG, a missing local scroller,
+or a `min-width` that disagrees with the viewBox — including an absent one,
+which lets the SVG shrink into the phone and takes the type ramp with it. It
+does not ship with this skill. Check these four failures by hand at 390px
+before output.
 
 ### Deriving `fit`
 
@@ -120,7 +122,7 @@ Node names shrink relative to the canvas as it grows — resist that. Scale the 
 | Node box min height | 48 | 64 | 48 |
 | Min gap between nodes | 24 | 40 | 24 |
 
-The families named in these tables are the built-in style's, and they are what `scripts/verify-docs-sync.py` binds each size to. Read them as the `title`, `node-name`, `sublabel`, `arrow-label`, and `eyebrow` roles from [`style-guide.md`](style-guide.md); type references write those roles as `{node-name}` and so on.
+The families named in these tables are the built-in style's, and they are what Upstream's `scripts/verify-docs-sync.py` binds each size to. That script does not ship with this skill, so check each size against these tables by hand. Read them as the `title`, `node-name`, `sublabel`, `arrow-label`, and `eyebrow` roles from [`style-guide.md`](style-guide.md); type references write those roles as `{node-name}` and so on.
 
 Every `font-size` is one of the role values above for the preset in use, or one of these named exceptions:
 
@@ -137,7 +139,7 @@ Anything else is a bug in the diagram, not a new size. The one standing carve-ou
 
 ### Registered legacy sizes
 
-One declared size in one file predates this contract. It is recorded here so the rule above is exact rather than aspirational, and frozen so the list cannot quietly grow. `scripts/verify-docs-sync.py` reads these rows against the files and fails if one gains an off-ramp size, loses one, or drops off disk.
+One declared size in one file predates this contract. It is recorded here so the rule above is exact rather than aspirational, and frozen so the list cannot quietly grow. Upstream's `scripts/verify-docs-sync.py` reads these rows against the files and fails if one gains an off-ramp size, loses one, or drops off disk. That script does not ship with this skill.
 
 The size is registered against the font carrying it, because that is what the sweep checks. It classifies every element first, resolving `class` attributes through the stylesheet, `var(--font-mono)` back to the family it names, and a `{node-name}` token to the ramp row that owns it, then applies only the exceptions open to that font. The canonical role sizes stay one union, so a size on the ramp for any role is on contract wherever it appears. An element whose font it cannot read gets no exception at all. It reads the `<svg>` and any CSS rule worn by an element inside it, so the prose around a diagram does not count as diagram type.
 

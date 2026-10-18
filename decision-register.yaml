@@ -957,6 +957,15 @@ items:
     disposition: adopt
     artifacts: [plugin/skills/principle-explain-the-number]
     reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
+  - id: diagram/verify-geometry
+    upstream: diagram
+    kind: skill
+    path: scripts/verify-geometry.py
+    tree: 20e6550f1744cd4b9fcc2c637eb5bf556d3ff577
+    disposition: adapt
+    artifacts:
+      - plugin/skills/diagram-design
+    reason: "static SVG checks only: geometry, style, bounds, and export validity"
 originals:
   - plugin/agents/vstack-explorer.md
   - plugin/agents/vstack-verifier.md

@@ -228,7 +228,9 @@ Non-negotiable, and §9 checks each one. Full text and edge cases: [primitives-c
 3. **No overlaps.** No shared or stacked strokes: offset parallel routes by 12px or more, and use the bridge/hop at a single crossing.
 4. **Fan attach points.** Connectors on one box edge each get their own point at `L * k / (N + 1)`, 12px or more apart (8px on very small boxes).
 5. **No transit behind a non-endpoint box.** Reroute. Only when the box is geometrically unavoidable: dashed stroke (`4,3`), label at the visible end, no marker on the intervening box.
-6. **Mask before node.** A label mask must not overlap a node drawn after it; badge masks fully inside a node and masks over earlier zones are fine. From a repository checkout, verify with the eval cell for `<repo-root>/scripts/verify-geometry.py <file>`.
+6. **Mask before node.** A label mask must not overlap a node drawn after it; badge masks fully inside a node and masks over earlier zones are fine.
+
+The eval cell for `<skill-dir>/scripts/verify-geometry.py <file>` checks rules 1, 3, 4, and 6. It reports diagonal segments, segments along a node border, ports near a corner, stacked connectors, ports closer than rule 4 allows, and label masks under a later node.
 
 ---
 
@@ -293,13 +295,14 @@ Run before producing any diagram.
 - [ ] **§6 rule 3:** no overlapping or stacked connectors; bridge/hop at crossings?
 - [ ] **§6 rule 4:** a distinct attach point per connector on a shared edge, 12px or more apart, none hiding another?
 - [ ] **§6 rule 5:** no transit behind a non-endpoint box, except the unavoidable case (dashed, label at the visible end)?
-- [ ] **§6 rule 6:** no label mask overlapping a node drawn after it? (From a repository checkout, run the eval cell for `<repo-root>/scripts/verify-geometry.py <file>`.)
+- [ ] **§6 rule 6:** no label mask overlapping a node drawn after it?
 - [ ] Every arrow label has an opaque `paper`-filled rect behind it?
 - [ ] Legend is a horizontal bottom strip, not floating?
 - [ ] No vertical `writing-mode` text?
 - [ ] `viewBox` expanded for the legend strip (~60px)?
 - [ ] **`min-width` equals the viewBox width, and the SVG sits in a local `overflow-x: auto` wrapper? (Otherwise a phone scrolls the whole page — or an `overflow: hidden` ancestor clips the diagram with no scrollbar at all. See [output-spec.md](references/output-spec.md).)**
 - [ ] Node origins, dimensions, gaps, padding on the 4px grid; type sizes on the role ramp?
+- [ ] Did the eval cell for `<skill-dir>/scripts/verify-geometry.py <file>` pass? (§6 rules 1, 3, 4, and 6.)
 - [ ] Did the eval cell for `<skill-dir>/scripts/self_check.py <file>` pass? (No remote asset or font, no executable attribute or URL, no script other than the controller in `assets/template-motion.html`, and content inside the viewBox.)
 
 **Typography:**

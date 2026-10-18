@@ -45,7 +45,7 @@ Optional focal cell: `data-focal="true"` on at most one cell.
 
 No `transform`, geometry `style`, or `<style>` rules that move marks.
 
-`scripts/verify-service-blueprint.py` reads these and fails the build when the drawing and the declaration disagree.
+Upstream's `scripts/verify-service-blueprint.py` reads these and fails the build when the drawing and the declaration disagree. It does not ship with this skill (see the rules below).
 
 ### Service-blueprint element pattern
 
@@ -94,4 +94,4 @@ No `transform`, geometry `style`, or `<style>` rules that move marks.
 - **The visibility line is checkable.** It spans the plot, sits in the frontstage/backstage gap, and its stroke clears 3:1 against paper.
 - **Printed text matches `data-name`.** A cell that draws "Retry payment" and declares another action is two stories.
 
-These rules are executable: `scripts/verify-service-blueprint.py` reads the declarations and fails on layer order, visibility, grid, census, focal, budget, printed-label, contrast, or CSS-moved marks. `scripts/test-verify-service-blueprint.py` proves both polarities — the Upstream examples pass, and each mutation class above fails with a named finding.
+Upstream's `scripts/verify-service-blueprint.py` checks these rules and the data contract above, but it does not ship with this skill. Check each rule by hand before output.

@@ -25,8 +25,6 @@ A rounded-rectangle footprint of corner radius `r` projects to straight edges jo
 
 Draw faces as plain SVG `<path>` and `<polygon>` elements with the projected points written in. No CSS 3D, no canvas, no WebGL, and no `transform` to place geometry. If content ever has to sit flat on a face, the matrices that agree with `iso()` are `matrix(1,0.5,-1,0.5,tx,ty)` for the top face, `matrix(1,0.5,0,-1,tx,ty)` for the left face, and `matrix(-1,0.5,0,-1,tx,ty)` for the right face. Labels never use them: labels stay horizontal.
 
-`scripts/build-exploded-examples.py` in the Upstream repository builds every Upstream example from this function and is the worked reference for the helpers below.
-
 ## Layout conventions
 
 - **Parts:** 2 to 5, listed bottom to top. Each part is a rounded prism (`rect`, thickness `t`) plus at most two levels of detail on its top face, because the top face is the one the reader sees.
@@ -80,7 +78,7 @@ An exploded view may open as the assembled object and explode once, because watc
 
 ## Metadata contract
 
-`scripts/verify-exploded.py` reprojects each part from what it declares:
+Upstream's `scripts/verify-exploded.py` reprojects each part from what it declares, but it does not ship with this skill. Check each part's projection against its metadata by hand before output. Each part declares this metadata:
 
 - The figure: one `<g data-exploded data-origin="ox oy" data-gap="g">` wrapping every part.
 - Each part: a `<g>` with `data-part` (key), `data-name` (the label text), `data-rect="x0 y0 x1 y1 r"`, `data-z`, `data-t`, `data-level`, optional `data-kind="housing"` for a container and `data-focal` for the focal part. Animated parts add `data-closed-z`.

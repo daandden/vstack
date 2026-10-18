@@ -19,7 +19,7 @@ def iso(x, y, z, ox, oy):
     return ox + x - y, oy + (x + y) / 2 - z
 ```
 
-Every element is a rounded prism standing on the plate: `r = 0` for walls, furniture, and buildings, `r = w / 2` for a tree canopy. `type-exploded.md` § Projection covers the corner ellipse and the face matrices; `scripts/build-axonometric-plan-examples.py` in the Upstream repository builds every Upstream example from the same helpers.
+Every element is a rounded prism standing on the plate: `r = 0` for walls, furniture, and buildings, `r = w / 2` for a tree canopy. `type-exploded.md` § Projection covers the corner ellipse and the face matrices.
 
 ## Layout conventions
 
@@ -51,7 +51,7 @@ A floor plan can reveal by zone the same way. Give each zone's furniture a `step
 
 ## Metadata contract
 
-`scripts/verify-axonometric-plan.py` reprojects each element from what it declares:
+Upstream's `scripts/verify-axonometric-plan.py` reprojects each element from what it declares, but it does not ship with this skill. Check each element's projection against its metadata by hand before output. Each element declares this metadata:
 
 - The figure: one `<g data-axo-plan data-origin="ox oy">`.
 - The plate: one `<g data-plate data-rect="x0 y0 x1 y1 r" data-z="0" data-t="t">`.

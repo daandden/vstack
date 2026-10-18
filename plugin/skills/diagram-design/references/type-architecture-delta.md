@@ -117,9 +117,9 @@ This excerpt shows one changed component; a complete diagram also needs its othe
 
 ## Verification and its boundaries
 
-From a repository checkout, run the eval cells for `scripts/verify-architecture-delta.py --all` (or pass explicit HTML paths) and `scripts/test-verify-architecture-delta.py` (see SKILL.md "Running the bundled scripts"). No arguments also checks the Upstream examples. The stdlib HTML parser reads real attributes, including unquoted values and entities, ignores comments, and rejects malformed SVG nesting. Synthetic fixtures prove both legal cases and adversarial changes independently of the Upstream example coordinates; the light, dark, and full variants are checked too.
+Upstream's `scripts/verify-architecture-delta.py` checks this contract, but it does not ship with this skill. Check the rules in the next paragraph by hand before output.
 
-The verifier enforces the declared structure, differential semantics, grid/bounds geometry, drawn relationship endpoints, budgets, and exact ledger coverage. It rejects CSS transforms/position overrides, CSS sizing that could change bounds, escaped CSS declarations, explicit hidden objects/ledger, and common CSS hiding rules. Ordinary responsive sizing of the outer SVG remains legal.
+The Upstream verifier enforces the declared structure, differential semantics, grid/bounds geometry, drawn relationship endpoints, budgets, and exact ledger coverage. It rejects CSS transforms/position overrides, CSS sizing that could change bounds, escaped CSS declarations, explicit hidden objects/ledger, and common CSS hiding rules. Ordinary responsive sizing of the outer SVG remains legal.
 
 It is **not** a browser renderer or a proof of the source system. Authors remain responsible for honest signatures, labels matching those signatures, readable shape/dash treatments, and an accurate migration story. Exotic CSS cascade/variable effects, clipping and occlusion, connector crossings, intermediate segment clearance, ledger placement, and screen-reader quality still require the normal skin, accessibility, geometry, and rendered-layout gates plus desktop/mobile visual review. Keep semantic geometry in the SVG attributes instead of making CSS part of the data model.
 

@@ -45,17 +45,15 @@ Run all checks in this order and report each as `pass`, `warn`, or `fail`.
   Playwright with `%pip` after the user approves it through `ask`.
 - Never auto-install dependencies.
 
-3. Expected script presence (maintainer-checkout mode only)
-- Verify these repository scripts exist:
-  - `scripts/verify-drawio-import.py`
-  - `scripts/verify-mermaid-import.py`
-  - `scripts/verify-excalidraw-import.py`
-  - `scripts/verify-motion.py`
-  - `scripts/lint-skin.py`
-  - `scripts/verify-docs-sync.py`
-- Missing scripts are `fail` in maintainer-checkout mode.
-- In installed-skill mode, report that maintainer scripts are not applicable;
-  their absence is not a warning or failure.
+3. Shipped script presence
+- Verify these scripts exist in the resolved skill's `scripts/` folder:
+  - `drawio_extract.py`
+  - `mermaid_extract.py`
+  - `excalidraw_extract.py`
+  - `self_check.py`
+  - `verify-geometry.py`
+  - `export_svg.py`
+- A missing script is `fail`. Suggest reinstalling or updating Diagram Design.
 
 4. Plugin wiring surfaces (maintainer-checkout mode only)
 - Verify Claude command files exist and point to their references:
@@ -94,7 +92,7 @@ Always print:
 2. A checklist with one line per check:
 - `[PASS] Python 3.11.9 found at ...`
 - `[WARN] Playwright not installed ...`
-- `[FAIL] Missing scripts/verify-docs-sync.py`
+- `[FAIL] Missing scripts/verify-geometry.py`
 
 3. A `Next actions` section only when warn/fail exists.
 
@@ -114,7 +112,7 @@ Always print:
 Doctor summary: WARN (6 pass, 2 warn, 0 fail)
 [PASS] Python 3.11.9 found at /usr/bin/python3
 [WARN] Playwright package not found in active interpreter
-[PASS] scripts/verify-drawio-import.py present
+[PASS] scripts/verify-geometry.py present
 ...
 
 Next actions

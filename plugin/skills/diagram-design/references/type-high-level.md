@@ -419,7 +419,7 @@ The chevron banner needs a **dark band with a light label in both modes**. `ink`
 | `band-3` | `#45475a` (Mocha surface1) | Lightest step: even chevrons, dark mode |
 | `band-label` | `#cdd6f4` (Mocha text) | Fixed label color: 11.34:1, 8.69:1, and 6.31:1 against the three bands |
 
-**These are type-scoped tokens, not skin roles, and they do not invert.** They are the one deliberate exception to the rule that hex values live only in [`style-guide.md`](style-guide.md). `scripts/lint-skin.py` rejects `band-2` and `band-3` as off-palette, which is why the Upstream high-level examples are listed in `scripts/lint-skin-baseline.txt`. Phase labels always use `band-label`, and `band-label` has to hold at least 4.5:1 against every band, because these are 7px labels in either mode.
+**These are type-scoped tokens, not skin roles, and they do not invert.** They are the one deliberate exception to the rule that hex values live only in [`style-guide.md`](style-guide.md). Phase labels always use `band-label`, and `band-label` has to hold at least 4.5:1 against every band, because these are 7px labels in either mode.
 
 ---
 

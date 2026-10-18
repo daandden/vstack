@@ -90,7 +90,7 @@ Provider-neutral metadata (no vendor prefix):
 - An `endpoint` carries `data-target` naming the `managed` node it reaches.
 - A peering path carries `data-peering`, `data-from`, and `data-to` naming the two traffic scopes it joins.
 
-**PaaS placement (normative).** A managed service is never inside a traffic scope. It sits in the administrative band that owns it. What lives in the subnet is its private endpoint. Drawing a database inside a subnet tells the reader it sits behind that subnet's security rules, which it does not. `scripts/verify-architecture-containment.py` fails a `managed` node whose bounds fall inside any `traffic` scope, and an `endpoint` that is not inside one.
+**PaaS placement (normative).** A managed service is never inside a traffic scope. It sits in the administrative band that owns it. What lives in the subnet is its private endpoint. Drawing a database inside a subnet tells the reader it sits behind that subnet's security rules, which it does not. Upstream's `scripts/verify-architecture-containment.py` fails a `managed` node whose bounds fall inside any `traffic` scope, and an `endpoint` that is not inside one.
 
 **Sibling axis.** Sibling traffic scopes at one level share one axis. Directly under an administrative band the parent's aspect chooses it: wider than tall (or square) → a row sharing one `y`; taller than wide → a column sharing one `x`. Nested children take the perpendicular axis: siblings inside a traffic scope that sits in a row form a column, and their own children form a row again. Do not mix axes at one level.
 
@@ -98,7 +98,7 @@ Provider-neutral metadata (no vendor prefix):
 
 **Draw scopes in place.** Containment is read from each bounds rect's own `x`, `y`, `width`, and `height`. Do not position a scope or node with a `transform` attribute, a moving inline style (`transform`, `translate`, `x`, `y`, `position`, `margin`, and similar), a nested `<svg>`, a `<style>` rule, or an animation, on the element or any group around it. The checker fails each of those. It does not evaluate external stylesheets or script, so keep containment geometry out of both.
 
-`scripts/verify-architecture-containment.py` checks unique IDs, resolving innermost parents, geometric containment, `<rect>` bounds, the admin-band vs traffic-box shapes (with `stroke-dasharray` resolved as rendered, so `none` or all-zero dashes count as solid), PaaS placement, endpoint targets, sibling axes, declared peerings, and the moved-geometry rule above. Files without `data-grammar="architecture-containment"` are skipped.
+Upstream's `scripts/verify-architecture-containment.py` checks unique IDs, resolving innermost parents, geometric containment, `<rect>` bounds, the admin-band vs traffic-box shapes (with `stroke-dasharray` resolved as rendered, so `none` or all-zero dashes count as solid), PaaS placement, endpoint targets, sibling axes, declared peerings, and the moved-geometry rule above. Files without `data-grammar="architecture-containment"` are skipped. That script does not ship with this skill. Check these rules by hand before output.
 
 ## Anti-patterns
 - Every box in the accent ("this is important too") — hierarchy collapses.
