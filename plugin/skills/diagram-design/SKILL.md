@@ -181,6 +181,8 @@ Type-specific anti-patterns live in each type reference linked in the guide.
 
 Type-reference snippets write roles as placeholders: `{ink}`, `{ink @ 0.40}` for a role at an opacity, and `{node-name}`, `{sublabel}`, `{eyebrow}`, `{arrow-label}`, `{title}`, `{callout}` for fonts. Resolve every placeholder against `style-guide.md` before emitting.
 
+The eval cell for `<skill-dir>/scripts/lint-skin.py <file>` checks the figure against `style-guide.md`. It reports a color outside the figure's Catppuccin flavor, a font family other than the two Iosevka faces and their generic fallbacks, pure black, and a font `<link>`, an `@import`, or another remote resource. It skips HTML comments.
+
 ### Semantic roles (at a glance)
 
 | Role | Purpose |
@@ -303,6 +305,7 @@ Run before producing any diagram.
 - [ ] **`min-width` equals the viewBox width, and the SVG sits in a local `overflow-x: auto` wrapper? (Otherwise a phone scrolls the whole page — or an `overflow: hidden` ancestor clips the diagram with no scrollbar at all. See [output-spec.md](references/output-spec.md).)**
 - [ ] Node origins, dimensions, gaps, padding on the 4px grid; type sizes on the role ramp?
 - [ ] Did the eval cell for `<skill-dir>/scripts/verify-geometry.py <file>` pass? (§6 rules 1, 3, 4, and 6.)
+- [ ] Did the eval cell for `<skill-dir>/scripts/lint-skin.py <file>` pass? (Every color from the figure's flavor in `style-guide.md`, only the Iosevka faces and their generic fallbacks, and no remote resource.)
 - [ ] Did the eval cell for `<skill-dir>/scripts/self_check.py <file>` pass? (No remote asset or font, no executable attribute or URL, no script other than the controller in `assets/template-motion.html`, and content inside the viewBox.)
 
 **Typography:**

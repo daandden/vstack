@@ -36,6 +36,7 @@ upstreams:
     items:
       - { match: "skills/diagram-design", type: tree, kind: skill }
       - { match: "scripts/verify-geometry.py", type: blob, kind: skill }
+      - { match: "scripts/lint-skin.py", type: blob, kind: skill }
   css:
     role: CSS
     repo: vojtaholik/good-css

@@ -2,7 +2,7 @@
 
 Optional full-page skin that wraps any diagram in a fake terminal window — titlebar with three dots, a `$` prompt line, monospace type throughout. Use for dev-tool announcements, CLI-product posts, and technical social cards where a screenshot needs to read as "terminal," not "editorial doc."
 
-This is a **second, fixed skin** — see [style-guide.md § Terminal skin](style-guide.md#terminal-skin-opt-in-alternate) for the token table. It isn't part of the light/dark inversion rule; every terminal example uses the same nine tokens regardless of the host site's brand.
+This is a **second, fixed skin** — see [style-guide.md § Terminal skin](style-guide.md#terminal-skin-opt-in-alternate) for the token table. It isn't part of the light/dark inversion rule; every terminal example uses the same ten tokens regardless of the host site's brand.
 
 ## Grammar
 

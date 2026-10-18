@@ -51,5 +51,5 @@ Only a drawer follows these steps. It runs them for each brief, in order.
 
 1. Read `skill://diagram-design`, its `references/style-guide.md`, the type reference for the brief's type, and `references/export.md`.
 2. Draw the figure with the brief's type, size, content, and variant. Add no node, edge, or label that the brief does not give.
-3. Save the source as `<out dir>/<slug>.html`. Run diagram-design's taste gate and the eval cells for `scripts/verify-geometry.py` and `scripts/self_check.py` on that file, and fix what fails.
+3. Save the source as `<out dir>/<slug>.html`. Run diagram-design's taste gate and the eval cells for `scripts/verify-geometry.py`, `scripts/lint-skin.py`, and `scripts/self_check.py` on that file, and fix what fails.
 4. Export `<out dir>/<slug>.svg` with the eval cell for `scripts/export_svg.py`.

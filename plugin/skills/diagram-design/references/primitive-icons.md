@@ -8,6 +8,8 @@ Find the icon by name (the `### name` headings below). Copy the fenced `<svg>` s
 
 Generic icons are stroked (1.5px, hairline, like the rest of the skill); brand silhouettes are filled. Don't mix the two styles in the same diagram unnecessarily.
 
+A few brand icons keep colors of their own: `dagster` has a `fill="#fff"`, and `hop` carries Inkscape metadata with `pagecolor="#ffffff"` and `bordercolor="#666666"`. When you copy a brand icon, recolor each such color to a palette role of the figure's flavor from [style-guide.md](style-guide.md), for example `paper` for a detail that has to stand out from the icon's ink. The eval cell for `<skill-dir>/scripts/lint-skin.py <file>` reports any of these colors that you leave.
+
 ## Compute
 
 ### laptop

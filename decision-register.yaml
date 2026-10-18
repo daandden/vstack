@@ -966,6 +966,15 @@ items:
     artifacts:
       - plugin/skills/diagram-design
     reason: "static SVG checks only: geometry, style, bounds, and export validity"
+  - id: diagram/lint-skin
+    upstream: diagram
+    kind: skill
+    path: scripts/lint-skin.py
+    tree: c999e08af1b9fe758d162dde8daaf65f32332eb5
+    disposition: adapt
+    artifacts:
+      - plugin/skills/diagram-design
+    reason: "static SVG checks only: geometry, style, bounds, and export validity"
 originals:
   - plugin/agents/vstack-explorer.md
   - plugin/agents/vstack-verifier.md

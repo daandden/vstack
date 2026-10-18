@@ -111,6 +111,7 @@ The terminal-window primitive (see [primitive-terminal.md](primitive-terminal.md
 | `terminal-soft` | `#5c5c5c` | Tertiary — inactive dots, spokes |
 | `terminal-accent` | `#ff5a36` | The one accent — focal station, prompt sign, active dot |
 | `terminal-accent-tint` | `rgba(255,90,54,0.12)` | Fill for accent-bordered boxes |
+| `terminal-grid` | `rgba(255,255,255,0.08)` | Background dot grid, at 0.06–0.08 opacity |
 
 **1-accent rule still holds.** Everything that isn't `terminal-ink` or `terminal-muted`/`terminal-soft` should be `terminal-accent` — never introduce a second hue.
 

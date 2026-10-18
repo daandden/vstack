@@ -52,6 +52,7 @@ Run all checks in this order and report each as `pass`, `warn`, or `fail`.
   - `excalidraw_extract.py`
   - `self_check.py`
   - `verify-geometry.py`
+  - `lint-skin.py`
   - `export_svg.py`
 - A missing script is `fail`. Suggest reinstalling or updating Diagram Design.
 

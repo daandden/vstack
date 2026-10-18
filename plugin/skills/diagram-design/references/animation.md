@@ -90,7 +90,7 @@ When focus is within the motion root: `ArrowRight` advances, `ArrowLeft` goes ba
 
 Provide visible instructions and a scoped `role="status" aria-live="polite" aria-atomic="true"`. Keep that live region inside the motion root but outside `[data-motion-controls]`, so hiding controls for reduced/static states cannot hide announcements. Announce user actions such as “Step 3 of 5: first divergence”; do not announce every autoplay frame. Controls operate only on their nearest `[data-motion-root]`.
 
-Use [`assets/template-motion.html`](../assets/template-motion.html) rather than inventing another controller. Its inline controller is the executable implementation contract: copy that script body verbatim. The skin linter rejects modified or additional controllers, even when they carry `data-diagram-controls`. Replace diagram content and slug-prefixed IDs, but preserve the controller and its state/control attributes.
+Use [`assets/template-motion.html`](../assets/template-motion.html) rather than inventing another controller. Its inline controller is the executable implementation contract: copy that script body verbatim. Replace diagram content and slug-prefixed IDs, but preserve the controller and its state/control attributes.
 
 ## Reduced motion, color, and accessibility
 
@@ -114,7 +114,7 @@ The final-state capture contract is synchronous: `?motion=static`, `<html data-m
 
 PNG and SVG exports are static final-state artifacts unless the user explicitly requests a named step. Before capture, open `?motion=static`, await `document.fonts.ready`, and assert `data-frame="static"`. SVG extraction omits HTML controls and scripts; source-visible semantic markup keeps the result complete.
 
-No shipped script checks motion structure. The eval cell for `<skill-dir>/scripts/self_check.py <file>` (see SKILL.md "Running the bundled scripts") still fails any script other than the canonical controller in `assets/template-motion.html`.
+No shipped script checks motion structure. Run the eval cells for `<skill-dir>/scripts/lint-skin.py <file>` and `<skill-dir>/scripts/self_check.py <file>` on an animated figure as on a static one (see SKILL.md "Running the bundled scripts"). The style checker skips motion markup and checks the colors and fonts. The self-check fails a modified or additional controller, even one that carries `data-diagram-controls`, and any other script.
 
 Verify in a browser:
 

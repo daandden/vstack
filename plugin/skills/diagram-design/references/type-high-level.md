@@ -113,7 +113,7 @@ Fills alternate between two steps of the **phase-band palette** (§6.1): `band-1
 
 **Color override** (per chevron, both horizontal and vertical): a chevron may declare an optional `color: "#hex"` that replaces the alternation fill for that one chevron. Use it to flag a phase that pairs with a custom-colored component (e.g., `Security` chevron in red when the Identity bar uses `color: "#d20f39"`). Rules:
 
-- Override applies to the polygon fill only. The label stays `band-label`; it never takes the active skin's `paper`.
+- Override applies to the polygon fill only. The label stays `band-label`. Don't swap in the `paper` role: it matches the Latte label, but it is dark in a Mocha figure.
 - The alternation index doesn't shift; neighboring chevrons keep their natural fill, even if it produces two adjacent same-fill chevrons. Don't try to "fix" this — overrides should be rare (≤ 2 per diagram).
 - In dark mode, use the same hex unless contrast against `band-label` falls below 4.5:1; if it does, pick a darker shade for dark mode and document it as a `color_dark` field on that chevron.
 - A chevron color override is independent of any paired component's color, but pairing them (same hex on chevron + bar) is the conventional way to make the column "read" as one concern.
@@ -410,16 +410,24 @@ Unchanged across modes: cluster border `ink @ 0.18`, dot pattern `ink @ 0.10`, f
 
 ### 6.1 Phase-band palette
 
-The chevron banner needs a **dark band with a light label in both modes**. `ink` and `paper` swap places between modes, so the banner can't be built from them. It uses four fixed tokens that ignore the light/dark flip:
+The chevron banner needs a **dark band with a light label in both modes**. `ink` and `paper` swap places between modes, so the banner can't be built from them. It uses four type-scoped tokens. A light figure takes their Latte values, and a dark figure takes their Mocha values:
 
-| Token | Value | Use |
+| Token | Light (Latte) | Dark (Mocha) | Use |
+|---|---|---|---|
+| `band-1` | `#4c4f69` (text) | `#1e1e2e` (base) | Darkest step: odd chevrons, light mode |
+| `band-2` | `#5c5f77` (subtext1) | `#313244` (surface0) | Middle step: even chevrons light, odd chevrons dark |
+| `band-3` | none | `#45475a` (surface1) | Lightest step: even chevrons, dark mode |
+| `band-label` | `#eff1f5` (base) | `#cdd6f4` (text) | Every phase label |
+
+Measured WCAG 2.x contrast of `band-label` against each band, on 2026-10-18:
+
+| Band | Latte label `#eff1f5` | Mocha label `#cdd6f4` |
 |---|---|---|
-| `band-1` | `#1e1e2e` (Mocha base) | Darkest step: odd chevrons, light mode |
-| `band-2` | `#313244` (Mocha surface0) | Middle step: even chevrons light, odd chevrons dark |
-| `band-3` | `#45475a` (Mocha surface1) | Lightest step: even chevrons, dark mode |
-| `band-label` | `#cdd6f4` (Mocha text) | Fixed label color: 11.34:1, 8.69:1, and 6.31:1 against the three bands |
+| `band-1` | 7.06:1 | 11.34:1 |
+| `band-2` | 5.53:1 | 8.69:1 |
+| `band-3` | none | 6.31:1 |
 
-**These are type-scoped tokens, not skin roles, and they do not invert.** They are the one deliberate exception to the rule that hex values live only in [`style-guide.md`](style-guide.md). Phase labels always use `band-label`, and `band-label` has to hold at least 4.5:1 against every band, because these are 7px labels in either mode.
+**These are type-scoped tokens, not skin roles.** They are the one deliberate exception to the rule that hex values live only in [`style-guide.md`](style-guide.md). Each value is a color of its flavor in that file's flavor palette. Phase labels always use `band-label`, and `band-label` has to hold at least 4.5:1 against every band, because these are 7px labels in either mode. A light figure has no `band-3`: Latte subtext0, the next step, holds only 4.37:1 against the Latte label.
 
 ---
 
