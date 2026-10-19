@@ -10,7 +10,7 @@ metadata:
 
 Create diagrams as self-contained HTML files with inline SVG and an editorial design system.
 
-Every question this skill or its references put to the user ("ask", "ask once", "ask which page", a confirmation) goes through omp's `ask` tool, with the likely answers as options. A subagent never asks: it returns each open question in its result for the top-level agent to ask.
+Every question this skill or its references put to the user ("ask", "ask once", "ask which page", a confirmation) goes through omp's `ask` tool, with the likely answers as options. This skill runs inside a flow during a Matt run, or after this session printed the path of a flow's Grilling page. Inside a flow, each question is also a question on the flow's Grilling page, as `skill://grilling-page` says. Inside another skill's Stage, the question joins that Stage. Otherwise add a diagram-design Stage before the first question, and mark it finished when its last question is answered. A subagent never asks: it returns each open question in its result for the top-level agent to ask.
 
 Forty-five visual types. Semantic patterns describe behavior; type references describe layout.
 

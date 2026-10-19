@@ -8,6 +8,8 @@ Turn something the user can't answer alone into a **questionnaire**: a Markdown 
 
 **Grill the send, not the subject.** Interview the user through `ask` only about the _send_, which they can always answer: who it goes to, and what they need back. The questions in the document then target the **gap** between what the recipient knows and what the user needs. An answer `ask` picks after a timeout is not the user's: ask once more, and if that times out too, stop without writing the questionnaire and say why.
 
+Add a to-questionnaire Stage to the flow's Grilling page before step 1, as `skill://grilling-page` says. Write each `ask` of steps 1 and 2 as a question in that Stage. After step 3 writes the file, mark the Stage finished.
+
 1. **Who is it going to?** Ask, in one `ask` call with one question each, the recipient's role, expertise, and relationship to the user. This fixes the questionnaire's tone and how much context it must carry. Done when you know who the recipient is and what they know that the user doesn't.
 
 2. **What do you need back?** Ask, in one `ask` call, the specific decisions or facts the user can't resolve alone and needs from this person; offer the likely ones as options, and the user types the rest through Other. Done when you have a concrete list of what the user must walk away able to do or decide.

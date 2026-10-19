@@ -150,6 +150,6 @@ Draw lesson and reference figures through `skill://vstack-figures`, with type, s
 
 ## In-session questions
 
-Use `ask` for every question addressed to the learner during the session: mission discovery, prior knowledge, topic choices, preferences, and approvals. Use short option labels and descriptions, mark the recommendation with `recommended`, and let the tool supply Other. Lesson quizzes and in-browser tasks are unchanged: they remain in the lesson and provide immediate feedback, not session `ask` calls.
+Every question addressed to the learner during the session goes through `ask` and is a question in a teach Stage on the flow's Grilling page, as `skill://grilling-page` says: mission discovery, prior knowledge, topic choices, preferences, and approvals. Add the Stage before the first question, and mark it finished when this run asks the learner nothing more. Use short option labels, mark the recommendation with `recommended`, and let the tool supply Other. Lesson quizzes and in-browser tasks are unchanged: they remain in the lesson and provide immediate feedback, not session `ask` calls.
 
 A timed-out answer is not the learner's answer. Leave ordinary questions unanswered; for an approval, re-ask once, then stop without acting if it times out again. A subagent without `ask` returns open questions to its parent. A headless run takes the recommended answer and reports that choice.

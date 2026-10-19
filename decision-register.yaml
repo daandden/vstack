@@ -172,7 +172,7 @@ items:
     tree: 2ab11f2f51f3c29771edb5d4258d807a49462491
     disposition: adapt
     artifacts: [plugin/skills/teach]
-    reason: "Its user questions go through ask (ask-tool, #58)."
+    reason: "Its user questions go through ask and on the flow's Grilling page in a teach Stage (ask-tool, #58, #172)."
   - id: matt/to-questionnaire
     upstream: matt
     kind: skill
@@ -180,7 +180,7 @@ items:
     tree: 46dfbeeba12a9e52eef446676f42e7551023d9a9
     disposition: adapt
     artifacts: [plugin/skills/to-questionnaire]
-    reason: "Its user questions go through ask (ask-tool, #58)."
+    reason: "Its user questions go through ask and on the flow's Grilling page in a to-questionnaire Stage (ask-tool, #58, #172)."
   - id: matt/wait-what
     upstream: matt
     kind: skill
