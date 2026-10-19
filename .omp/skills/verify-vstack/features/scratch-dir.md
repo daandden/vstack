@@ -17,7 +17,7 @@ vstack skills write throwaway output to Scratch, `~/.vstack/tmp/<repo-key>/<kind
 ## How to get to it (user POV)
 
 - An agent runs `bun "$(realpath skill://vstack-tmp/scripts/path.ts)" [<kind>]` when a skill needs Scratch.
-- A user types `/vstack-clean [age]`. The extension runs `plugin/skills/vstack-tmp/scripts/clean.ts`, shows the dry-run table, and offers Apply all, Choose items, and Cancel. No agent turn runs. The default age is `14d`.
+- A user types `/vstack-clean [age]`. The extension runs `plugin/skills/vstack-tmp/scripts/clean.ts`, shows the dry-run table, and offers Apply all, Choose items, and Cancel. No agent turn runs. The default age is `90d`.
 
 ## Driving it with bash and drive.ts
 

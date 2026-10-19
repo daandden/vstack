@@ -3,15 +3,18 @@
 //   bun grilling-page.ts append <state.jsonl> [<records.jsonl> | -]
 //   bun grilling-page.ts answer <state.jsonl> <question-id>=<spec> ...
 //   bun grilling-page.ts render <state.jsonl>
+//   bun grilling-page.ts rename <state.jsonl> <new-key>
 //
 // The page is the state path with .html in place of .jsonl. Each state line is one JSON record.
 // A later line with the same id replaces an earlier one. Every command checks all records,
 // renders the page from templates/grilling-page.html, and prints the page's absolute path.
+// With a flow record, the state file's folder is the flow folder <project>-<key>/: every command also
+// writes flow.json from that record and makes figures/. rename moves the folder to <project>-<new-key>/.
 // An answer <spec> is A or A,B (picked options), with an optional :note; other:<text>; or unanswered[:<reason>].
 // Exit 0 prints the path; exit 1 is a record error and writes nothing; exit 2 is a usage error.
 
-import { appendFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { appendFileSync, existsSync, mkdirSync, readFileSync, realpathSync, renameSync, writeFileSync } from "node:fs";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
 type Visual = { text?: string; html?: string; css?: string; svg?: string };
 type Option = { label: string; does: string; gains: string[]; costs: string[]; recommended?: string; preview?: Visual };
@@ -54,7 +57,7 @@ const fail = (where: string, message: string): never => {
 };
 
 function usage(message: string): never {
-  process.stderr.write(`grilling-page.ts: ${message}\nusage: bun grilling-page.ts append <state.jsonl> [<records.jsonl> | -]\n       bun grilling-page.ts answer <state.jsonl> <question-id>=<spec> ...\n       bun grilling-page.ts render <state.jsonl>\n`);
+  process.stderr.write(`grilling-page.ts: ${message}\nusage: bun grilling-page.ts append <state.jsonl> [<records.jsonl> | -]\n       bun grilling-page.ts answer <state.jsonl> <question-id>=<spec> ...\n       bun grilling-page.ts render <state.jsonl>\n       bun grilling-page.ts rename <state.jsonl> <new-key>\n`);
   process.exit(2);
 }
 
@@ -93,10 +96,9 @@ const strList = (v: unknown, key: string, where: string): string[] => {
   if (!Array.isArray(v) || v.length === 0 || v.some((s) => typeof s !== "string" || s.trim() === "")) fail(where, `${key} must be a list of one or more non-empty strings`);
   return v as string[];
 };
-/** An optional list of one or more objects, each with every field in `fields` as a non-empty string. */
-function entryList(r: Rec, key: string, fields: string[], where: string): void {
+function entryList(r: Rec, key: string, fields: string[], where: string, required = false): void {
   const v = r[key];
-  if (v === undefined) return;
+  if (v === undefined && !required) return;
   if (!Array.isArray(v) || v.length === 0) fail(where, `${key} must be a list of one or more { ${fields.join(", ")} }`);
   v.forEach((e: unknown, i: number) => {
     const ew = `${where}: ${key} ${i + 1}`;
@@ -118,9 +120,58 @@ function checkVisual(v: unknown, where: string): Visual {
   return vis;
 }
 
-type State = { page: Rec; order: Rec[]; questions: Map<string, Rec>; answers: Map<string, Rec>; rounds: Map<string, Rec> };
+function checkVisuals(v: unknown, where: string): Visual[] {
+  if (!Array.isArray(v)) return [checkVisual(v, `${where}: visual`)];
+  if (!v.length) fail(where, "visual must be one visual or a list of one or more");
+  return v.map((x, i) => checkVisual(x, `${where}: visual ${i + 1}`));
+}
+const visualsOf = (v: Visual | Visual[] | undefined): Visual[] => (v === undefined ? [] : Array.isArray(v) ? v : [v]);
 
-function check(lines: Line[]): State {
+const STATE_LABELS: Record<string, string> = { "not-started": "Not started", "in-progress": "In progress", finished: "Finished" };
+const STAGE_STATES = Object.keys(STATE_LABELS);
+const CLAIM_LABELS: Record<string, string> = { confirmed: "Confirmed", cleared: "Cleared", unproven: "Unproven" };
+const CLAIM_STATES = Object.keys(CLAIM_LABELS);
+const SHAPES = ["cards", "ledger", "table"];
+const listed = (xs: string[]) => `${xs.slice(0, -1).join(", ")}, or ${xs.at(-1)}`;
+
+const entriesOf = (r: Rec): Rec[] => (r.shape === "table" ? r.rows : r.entries);
+
+function checkReport(r: Rec, where: string): void {
+  str(r, "stage", where);
+  str(r, "title", where);
+  str(r, "summary", where, true);
+  if (!SHAPES.includes(r.shape)) fail(where, `shape must be ${listed(SHAPES)}`);
+  const [key, other] = r.shape === "table" ? ["rows", "entries"] : ["entries", "rows"];
+  if (r[other] !== undefined) fail(where, `a ${r.shape} report has ${key}, not ${other}`);
+  if (r.shape === "table") strList(r.columns, "columns", where);
+  else if (r.columns !== undefined) fail(where, `a ${r.shape} report has no columns`);
+  if (!Array.isArray(r[key]) || r[key].length === 0) fail(where, `${key} must list one or more ${r.shape === "table" ? "rows" : "entries"}`);
+  const seen = new Set<string>();
+  (r[key] as unknown[]).forEach((e, i) => {
+    const kind = r.shape === "table" ? "row" : "entry";
+    if (typeof e !== "object" || e === null || Array.isArray(e)) fail(`${where}: ${kind} ${i + 1}`, "must be an object");
+    const en = e as Rec;
+    if (typeof en.id !== "string" || !ID.test(en.id)) fail(`${where}: ${kind} ${i + 1}`, "id must be lowercase letters, digits, and hyphens");
+    const ew = `${where}: ${kind} ${en.id}`;
+    if (seen.has(en.id)) fail(ew, "id is used by another entry of this report");
+    seen.add(en.id);
+    str(en, "question", ew, true);
+    if (r.shape === "cards") {
+      for (const k of ["title", "label", "impact", "evidence", "action"]) str(en, k, ew);
+      if (typeof en.blocking !== "boolean") fail(ew, "blocking must be true or false");
+      if (en.visual !== undefined) checkVisuals(en.visual, ew);
+    } else if (r.shape === "ledger") {
+      for (const k of ["claim", "evidence", "missing_proof", "consequence"]) str(en, k, ew);
+      if (!CLAIM_STATES.includes(en.status)) fail(ew, `status must be ${listed(CLAIM_STATES)}`);
+    } else if (!Array.isArray(en.cells) || en.cells.length !== r.columns.length || en.cells.some((c: unknown) => typeof c !== "string")) {
+      fail(ew, `cells must list ${r.columns.length} strings, one per column`);
+    }
+  });
+}
+
+type State = { page: Rec; order: Rec[]; questions: Map<string, Rec>; answers: Map<string, Rec>; rounds: Map<string, Rec>; stages: Rec[]; reports: Map<string, Rec>; backgrounds: Map<string, Rec>; topics: Map<string, Rec>; flow?: Rec; records: Rec[] };
+
+function check(lines: Line[], folder: string): State {
   const latest = new Map<string, Line>();
   const first: string[] = [];
   for (const l of lines) {
@@ -131,9 +182,14 @@ function check(lines: Line[]): State {
   }
   const all = first.map((id) => latest.get(id)!);
   const rounds = new Map<string, Rec>();
+  const stages = new Map<string, Rec>();
   const questions = new Map<string, Rec>();
   const answers = new Map<string, Rec>();
+  const reports = new Map<string, Rec>();
+  const backgrounds: Rec[] = [];
+  const topics = new Map<string, Rec>();
   let page: Rec | undefined;
+  let flow: Rec | undefined;
   const order: Rec[] = [];
   for (const { rec: r, line } of all) {
     const where = `line ${line}: ${r.type} ${r.id}`;
@@ -143,9 +199,17 @@ function check(lines: Line[]): State {
         str(r, "crumb", where, true);
         page = r;
         break;
+      case "stage":
+        str(r, "skill", where);
+        str(r, "title", where);
+        if (!STAGE_STATES.includes(r.state)) fail(where, `state must be ${listed(STAGE_STATES)}`);
+        int(r, "order", where);
+        stages.set(r.id, r);
+        break;
       case "round":
         int(r, "session", where);
         int(r, "round", where);
+        str(r, "stage", where, true);
         if (typeof r.time !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(r.time)) fail(where, "time must be an ISO timestamp such as 2026-10-09T15:00:00+07:00");
         rounds.set(r.id, r);
         order.push(r);
@@ -158,11 +222,10 @@ function check(lines: Line[]): State {
         str(r, "example", where, true);
         entryList(r, "today", ["text", "source"], where);
         entryList(r, "terms", ["term", "text"], where);
-        if (Array.isArray(r.visual)) {
-          if (!r.visual.length) fail(where, "visual must be one visual or a list of one or more");
-          r.visual.forEach((v: unknown, i: number) => checkVisual(v, `${where}: visual ${i + 1}`));
-        } else if (r.visual !== undefined) checkVisual(r.visual, `${where}: visual`);
-        if (!Array.isArray(r.options) || r.options.length < 2) fail(where, "options must list two or more options");
+        if (r.visual !== undefined) checkVisuals(r.visual, where);
+        if (r.report_entries !== undefined && strList(r.report_entries, "report_entries", where).some((e) => !/^[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9-]*$/.test(e))) fail(where, "report_entries must list <report id>/<entry id> strings");
+        if (r.topics !== undefined) strList(r.topics, "topics", where);
+        if (!Array.isArray(r.options) || r.options.length === 0) fail(where, "options must list one or more options");
         let recommended = 0;
         (r.options as Option[]).forEach((o, i) => {
           const ow = `${where}: option ${letter(i)}`;
@@ -197,6 +260,7 @@ function check(lines: Line[]): State {
         int(r, "session", where);
         str(r, "answer", where, true);
         str(r, "note", where, true);
+        if (r.gate !== undefined && typeof r.gate !== "boolean") fail(where, "gate must be true or false");
         if (!Array.isArray(r.decisions) || r.decisions.length === 0) fail(where, "decisions must list one { question, text } per decision");
         for (const dec of r.decisions) {
           if (typeof dec !== "object" || dec === null) fail(where, "each decision must be an object");
@@ -207,12 +271,58 @@ function check(lines: Line[]): State {
         order.push(r);
         break;
       }
+      case "background":
+        for (const k of ["stage", "title", "summary"]) str(r, k, where);
+        entryList(r, "sections", ["heading", "body"], where, true);
+        strList(r.sources, "sources", where);
+        if (r.visual !== undefined) checkVisuals(r.visual, where);
+        backgrounds.push(r);
+        break;
+      case "topic":
+        for (const k of ["title", "summary", "body"]) str(r, k, where);
+        strList(r.sources, "sources", where);
+        topics.set(r.id, r);
+        break;
+      case "flow": {
+        for (const k of ["slug", "key"]) if (typeof r[k] !== "string" || !ID.test(r[k])) fail(where, `${k} must be lowercase letters, digits, and hyphens`);
+        if (r.state !== "open" && r.state !== "closed") fail(where, "state must be open or closed");
+        str(r, "spec", where, true);
+        str(r, "branch", where, true);
+        for (const k of ["tickets", "runs", "old_keys"]) if (r[k] !== undefined) strList(r[k], k, where);
+        if ((r.old_keys ?? []).some((k: string) => !ID.test(k))) fail(where, "old_keys must be lowercase letters, digits, and hyphens");
+        if (flow) fail(where, `a page has one flow record, and flow ${flow.id} is already on it`);
+        if (!folder.endsWith(`-${r.key}`) || folder.length <= r.key.length + 1) fail(where, `key ${r.key} does not match the folder ${folder}, which must be <project>-${r.key}. Change the key with rename`);
+        flow = r;
+        break;
+      }
+      case "report":
+        checkReport(r, where);
+        reports.set(r.id, r);
+        break;
       default:
-        fail(where, "type must be page, round, question, answer, or close");
+        fail(where, "type must be page, stage, round, question, answer, close, flow, report, background, or topic");
     }
   }
   if (!page) fail("state", "needs one page record");
+  for (const r of rounds.values()) if (r.stage !== undefined && !stages.has(r.stage)) fail(`round ${r.id}`, `stage ${r.stage} does not exist`);
+  const backgroundOf = new Map<string, Rec>();
+  for (const b of backgrounds) {
+    if (!stages.has(b.stage)) fail(`background ${b.id}`, `stage ${b.stage} does not exist`);
+    const other = backgroundOf.get(b.stage);
+    if (other) fail(`background ${b.id}`, `stage ${b.stage} already has background ${other.id}`);
+    backgroundOf.set(b.stage, b);
+  }
   for (const q of questions.values()) if (!rounds.has(q.round)) fail(`question ${q.id}`, `round ${q.round} does not exist`);
+  for (const r of reports.values()) {
+    if (!stages.has(r.stage)) fail(`report ${r.id}`, `stage ${r.stage} does not exist`);
+    for (const e of entriesOf(r)) if (e.question !== undefined && !questions.has(e.question)) fail(`report ${r.id}`, `${r.shape === "table" ? "row" : "entry"} ${e.id} links question ${e.question}, which does not exist`);
+  }
+  for (const q of questions.values())
+    for (const link of (q.report_entries ?? []) as string[]) {
+      const [rid, eid] = link.split("/");
+      if (!reports.has(rid) || !entriesOf(reports.get(rid)!).some((e) => e.id === eid)) fail(`question ${q.id}`, `report entry ${link} does not exist`);
+    }
+  for (const q of questions.values()) for (const t of q.topics ?? []) if (!topics.has(t)) fail(`question ${q.id}`, `topic ${t} does not exist`);
   for (const a of answers.values()) {
     const q = questions.get(a.question);
     if (!q) fail(`answer ${a.id}`, `question ${a.question} does not exist`);
@@ -232,7 +342,7 @@ function check(lines: Line[]): State {
     }
     for (const [n] of latest) if (!named.has(n)) fail(`close ${c.id}`, `Q${n} has no decision`);
   }
-  return { page: page!, order, questions, answers, rounds };
+  return { page: page!, order, questions, answers, rounds, stages: [...stages.values()], reports, backgrounds: backgroundOf, topics, flow, records: all.map((l) => l.rec) };
 }
 
 /** The latest ask of each Q number in one session, by Q number, among the rounds in `order`. */
@@ -305,13 +415,24 @@ function description(s: string): string {
     .join("");
 }
 
-function questionHtml(q: Rec, a: Rec | undefined, baseDir: string): string {
+const entryAnchor = (report: string, entry: string) => `report-${report}_${entry}`;
+const entryName = (r: Rec, e: Rec): string => (r.shape === "cards" ? e.title : r.shape === "ledger" ? e.claim : e.cells[0] || e.id);
+
+function questionHtml(q: Rec, a: Rec | undefined, baseDir: string, reports: Map<string, Rec>, topics: Map<string, Rec>): string {
   const qid = `q-${q.id}`;
   const facts = ((q.today ?? []) as Rec[]).map((f) => `<li>${text(f.text)} <span class="source">${text(f.source)}</span></li>`).join("");
   const today = facts ? `\n<div class="today"><p class="label">Today</p><ul class="bullets">${facts}</ul></div>` : "";
   const notes = ((q.terms ?? []) as Rec[]).map((t) => `<dt>${text(t.term)}</dt><dd>${text(t.text)}</dd>`).join("");
   const terms = notes ? `\n<div class="terms"><p class="label">Term notes</p><dl>${notes}</dl></div>` : "";
+  const links = ((q.topics ?? []) as string[]).map((id) => `<li><a href="#topic-${id}">${text(topics.get(id)!.title)}</a>: ${text(topics.get(id)!.summary)}</li>`).join("");
+  const topicNotes = links ? `\n<div class="topics"><p class="label">Topic notes</p><ul class="bullets">${links}</ul></div>` : "";
   const example = q.example ? `\n<div class="example"><p class="label">Example</p><p>${text(q.example)}</p></div>` : "";
+  const refs = ((q.report_entries ?? []) as string[]).map((ref) => {
+    const [rid, eid] = ref.split("/");
+    const r = reports.get(rid)!;
+    return `<li><a href="#${entryAnchor(rid, eid)}">${text(r.title)} <span class="entry-id">${eid}</span></a>: ${text(entryName(r, entriesOf(r).find((e) => e.id === eid)!))}</li>`;
+  });
+  const reportLinks = refs.length ? `\n<div class="report-links"><p class="label">From the report</p><ul class="bullets">${refs.join("")}</ul></div>` : "";
   const picks = new Set<string>(a?.picks ?? []);
   const options = (q.options as Option[])
     .map((o, i) => {
@@ -327,53 +448,162 @@ function questionHtml(q: Rec, a: Rec | undefined, baseDir: string): string {
     .join("\n");
   const state = stateOf(a);
   const line = answerLine(a);
-  const visuals: Visual[] = q.visual === undefined ? [] : Array.isArray(q.visual) ? q.visual : [q.visual];
-  const visual = visuals.map((v, i) => visualHtml(v, `${qid}-visual${i ? `-${i + 1}` : ""}`, "visual", baseDir)).join("\n");
+  const visual = visualsOf(q.visual).map((v, i) => visualHtml(v, `${qid}-visual${i ? `-${i + 1}` : ""}`, "visual", baseDir)).join("\n");
   return `<article class="question" id="${qid}" data-state="${state}" data-stop>
 <h3><span class="qnum">Q${q.q}</span>${text(q.title)}</h3>
-<div class="description">${description(q.description)}</div>${today}${terms}${example}
+<div class="description">${description(q.description)}</div>${reportLinks}${today}${terms}${topicNotes}${example}
 ${visual}<ol class="options">
 ${options}
 </ol>${line ? `\n<p class="answer" data-state="${state}"><span class="label">${line[0]}</span><span>${line[1]}</span></p>` : ""}
 </article>`;
 }
 
+function reportHtml(r: Rec, questions: Map<string, Rec>, baseDir: string): string {
+  const rid = `report-${r.id}`;
+  const ask = (e: Rec) => {
+    const q = e.question === undefined ? undefined : questions.get(e.question)!;
+    return q ? `<a href="#q-${q.id}">Q${q.q}</a>: ${text(q.title)}` : "";
+  };
+  const fields = (pairs: [string, string][]) => `<dl class="fields">${pairs.map(([k, v]) => `<dt>${k}</dt><dd>${text(v)}</dd>`).join("")}</dl>`;
+  const askLine = (e: Rec) => (e.question === undefined ? "" : `\n<p class="ask"><span class="label">Question</span><span>${ask(e)}</span></p>`);
+  let entries: string;
+  if (r.shape === "table") {
+    const linked = (r.rows as Rec[]).some((e) => e.question !== undefined);
+    const head = `<tr>${(r.columns as string[]).map((c) => `<th scope="col">${text(c)}</th>`).join("")}${linked ? `<th scope="col">Question</th>` : ""}</tr>`;
+    const rows = (r.rows as Rec[]).map((e) => `<tr id="${entryAnchor(r.id, e.id)}">${(e.cells as string[]).map((c) => `<td>${text(c)}</td>`).join("")}${linked ? `<td>${ask(e)}</td>` : ""}</tr>`);
+    entries = `<div class="table"><table>\n<thead>${head}</thead>\n<tbody>\n${rows.join("\n")}\n</tbody>\n</table></div>`;
+  } else if (r.shape === "ledger") {
+    const claims = (r.entries as Rec[]).map(
+      (e) => `<li class="claim" id="${entryAnchor(r.id, e.id)}" data-status="${e.status}">
+<h3><span class="entry-id">${e.id}</span>${text(e.claim)}</h3>
+<p class="tag">${CLAIM_LABELS[e.status]}</p>
+${fields([["Evidence", e.evidence], ["Missing proof", e.missing_proof], ["Consequence", e.consequence]])}${askLine(e)}
+</li>`,
+    );
+    entries = `<ol class="entries">\n${claims.join("\n")}\n</ol>`;
+  } else {
+    const cards = (r.entries as Rec[]).map((e) => {
+      const id = entryAnchor(r.id, e.id);
+      const visual = visualsOf(e.visual).map((v, i) => visualHtml(v, `${id}_visual${i ? `-${i + 1}` : ""}`, "visual", baseDir)).join("\n");
+      return `<li class="card" id="${id}"${e.blocking ? " data-blocking" : ""}>
+<h3><span class="entry-id">${e.id}</span>${text(e.title)}</h3>
+<p class="tag">${text(e.label)} (${e.blocking ? "blocking" : "non-blocking"})</p>
+${fields([["Impact", e.impact], ["Evidence", e.evidence], ["Action", e.action]])}${visual ? `\n${visual}` : ""}${askLine(e)}
+</li>`;
+    });
+    entries = `<ol class="entries">\n${cards.join("\n")}\n</ol>`;
+  }
+  const summary = r.summary ? `<p class="report-summary">${text(r.summary)}</p>` : "";
+  return `<section class="report" id="${rid}" data-shape="${r.shape}" aria-labelledby="${rid}-title">
+<header><h2 id="${rid}-title">${text(r.title)}</h2>${summary}</header>
+${entries}
+</section>`;
+}
+
+const sourcesHtml = (sources: string[]) => `<div class="sources"><p class="label">Sources</p><ul class="bullets">${sources.map((src) => `<li>${text(src)}</li>`).join("")}</ul></div>`;
+
+function backgroundHtml(b: Rec, baseDir: string): string {
+  const id = `background-${b.id}`;
+  const visual = visualsOf(b.visual).map((v, i) => visualHtml(v, `${id}-visual${i ? `-${i + 1}` : ""}`, "visual", baseDir)).join("\n");
+  const sections = (b.sections as Rec[]).map((sec) => `<section><h3>${text(sec.heading)}</h3><div class="description">${description(sec.body)}</div></section>`).join("\n");
+  return `<section class="background" id="${id}" aria-labelledby="${id}-title">
+<header><p class="label">Background</p><h2 id="${id}-title">${text(b.title)}</h2></header>
+<p class="summary-line">${text(b.summary)}</p>
+${visual}${sections}
+${sourcesHtml(b.sources)}
+</section>`;
+}
+
+const IMPLICIT_STAGE = "_grilling";
+
 function render(s: State, baseDir: string): string {
-  const nav: string[] = [];
-  const body: string[] = [`<header class="page-head">${s.page.crumb ? `<p class="crumb">${text(s.page.crumb)}</p>` : ""}<h1>${text(s.page.title)}</h1></header>`];
+  const stageOf = new Map<Rec, string>();
+  const sessionStage = new Map<number, string>();
+  for (const item of s.order) {
+    if (item.type === "round") sessionStage.set(item.session, item.stage ?? IMPLICIT_STAGE);
+    stageOf.set(item, sessionStage.get(item.session)!);
+  }
+  const stages = [...s.stages].sort((a, b) => a.order - b.order);
+  if (s.order.some((r) => r.type === "round" && r.stage === undefined)) stages.unshift({ type: "stage", id: IMPLICIT_STAGE, title: "Grilling" });
   const questionsOf = (roundId: string) => [...s.questions.values()].filter((q) => q.round === roundId);
   const lastClose = new Map<number, string>();
   for (const r of s.order) if (r.type === "close") lastClose.set(r.session, r.id);
-  for (const item of s.order) {
-    if (item.type === "round") {
-      const qs = questionsOf(item.id);
-      const head = `<header><h2 id="round-${item.id}">Session ${item.session}, round ${item.round}<time datetime="${esc(item.time)}">${formatTime(item.time)}</time></h2></header>`;
-      body.push(`<section class="round" aria-labelledby="round-${item.id}">\n${head}\n${qs.map((q) => questionHtml(q, s.answers.get(q.id), baseDir)).join("\n")}\n</section>`);
-      if (qs.length) {
-        if (nav.length) nav.push(`<span class="sep" aria-hidden="true"></span>`);
-        for (const q of qs) nav.push(`<a href="#q-${q.id}" data-for="q-${q.id}"><span class="dot" data-state="${stateOf(s.answers.get(q.id))}"></span>Q${q.q}</a>`);
-      }
-    } else {
-      const qnum = (id: string) => s.questions.get(id)!.q;
-      const decisions = [...(item.decisions as Rec[])].sort((a, b) => qnum(a.question) - qnum(b.question));
-      const bullets = [
-        ...decisions.map((dec) => `<li><a href="#q-${dec.question}">Q${qnum(dec.question)}</a>: ${text(dec.text)}</li>`),
-        ...((item.extra as string[] | undefined) ?? []).map((e) => `<li>${text(e)}</li>`),
-      ].join("\n");
-      const gate = item.answer ? (item.note ? `${item.answer}. Note: "${item.note}"` : `${item.answer}.`) : "Waiting for your answer.";
-      const latest = lastClose.get(item.session) === item.id;
-      body.push(`<section class="summary" id="close-${item.id}" aria-labelledby="close-${item.id}-title"${latest ? " data-stop" : ""}>
+  const qnum = (id: string) => s.questions.get(id)!.q;
+  const decisionsOf = (close: Rec) => [...(close.decisions as Rec[])].sort((a, b) => qnum(a.question) - qnum(b.question)).map((dec) => `<li><a href="#q-${dec.question}">Q${qnum(dec.question)}</a>: ${text(dec.text)}</li>`);
+
+  const tabs = [`<a role="tab" id="tab-overview" aria-selected="true" aria-controls="overview" href="#overview">Overview</a>`];
+  const qrows: string[] = [];
+  const overview: string[] = [];
+  const panels: string[] = [];
+  for (const st of stages) {
+    const pid = `stage-${st.id}`;
+    const nav: string[] = [];
+    const body: string[] = [];
+    const bg = s.backgrounds.get(st.id);
+    if (bg) body.push(backgroundHtml(bg, baseDir));
+    for (const r of s.reports.values()) if (r.stage === st.id) body.push(reportHtml(r, s.questions, baseDir));
+    const items = s.order.filter((i) => stageOf.get(i) === st.id);
+    for (const item of items) {
+      if (item.type === "round") {
+        const qs = questionsOf(item.id);
+        const head = `<header><h2 id="round-${item.id}">Session ${item.session}, round ${item.round}<time datetime="${esc(item.time)}">${formatTime(item.time)}</time></h2></header>`;
+        body.push(`<section class="round" aria-labelledby="round-${item.id}">\n${head}\n${qs.map((q) => questionHtml(q, s.answers.get(q.id), baseDir, s.reports, s.topics)).join("\n")}\n</section>`);
+        if (qs.length) {
+          if (nav.length) nav.push(`<span class="sep" aria-hidden="true"></span>`);
+          for (const q of qs) nav.push(`<a href="#q-${q.id}" data-for="q-${q.id}"><span class="dot" data-state="${stateOf(s.answers.get(q.id))}"></span>Q${q.q}</a>`);
+        }
+      } else {
+        const bullets = [...decisionsOf(item), ...((item.extra as string[] | undefined) ?? []).map((e) => `<li>${text(e)}</li>`)].join("\n");
+        const shown = item.answer ? `${item.answer}.` : item.note ? "No answer." : "Waiting for your answer.";
+        const gate = item.gate || item.answer || item.note ? `\n<p class="answer"><span class="label">Closing gate</span><span>${text(item.note ? `${shown} Note: "${item.note}"` : shown)}</span></p>` : "";
+        const latest = lastClose.get(item.session) === item.id;
+        body.push(`<section class="summary" id="close-${item.id}" aria-labelledby="close-${item.id}-title"${latest ? " data-stop" : ""}>
 <h2 id="close-${item.id}-title">Summary of session ${item.session}</h2>
 <ul class="decisions">
 ${bullets}
-</ul>
-<p class="answer"><span class="label">Closing gate</span><span>${text(gate)}</span></p>
+</ul>${gate}
 </section>`);
-      if (latest) nav.push(`<span class="sep" aria-hidden="true"></span><a href="#close-${item.id}" data-for="close-${item.id}">Summary</a>`);
+        if (latest) nav.push(`<span class="sep" aria-hidden="true"></span><a href="#close-${item.id}" data-for="close-${item.id}">Summary</a>`);
+      }
     }
+    const last = items.at(-1);
+    const state = st.state ?? (last?.type === "close" && last.answer ? "finished" : "in-progress");
+    const dot = `<span class="dot" data-state="${state}"></span>`;
+    const decisions = items.filter((i) => i.type === "close" && lastClose.get(i.session) === i.id).flatMap(decisionsOf);
+    const sessions = new Set(items.filter((i) => i.type === "round").map((r) => r.session as number));
+    const open = [...sessions].flatMap((n) => [...latestBySession(items, s.questions, n).values()]).filter((q) => stateOf(s.answers.get(q.id)) !== "answered");
+    const openItems = open.map((q) => `<li><a href="#q-${q.id}">Q${q.q}</a>: ${text(q.title)}</li>`);
+    tabs.push(`<a role="tab" id="tab-${pid}" aria-selected="false" aria-controls="${pid}" href="#${pid}">${dot}${text(st.title)}</a>`);
+    if (nav.length) qrows.push(`<nav class="qnav" aria-label="Questions in ${esc(st.title)}" data-tab="${pid}" hidden>${nav.join("")}</nav>`);
+    overview.push(`<li class="stage" data-state="${state}">
+<h3><a href="#${pid}">${dot}${text(st.title)}</a><span class="meta"><span class="state">${STATE_LABELS[state]}</span>${st.skill ? `<span>${text(st.skill)}</span>` : ""}</span></h3>
+<p class="label">Decisions</p>${decisions.length ? `<ul>${decisions.join("")}</ul>` : `<p class="empty">No decisions yet.</p>`}
+<p class="label">Open questions</p>${openItems.length ? `<ul>${openItems.join("")}</ul>` : `<p class="empty">No open questions.</p>`}
+</li>`);
+    panels.push(`<section class="tab" id="${pid}" role="tabpanel" aria-labelledby="tab-${pid}" hidden>\n${body.join("\n") || `<p class="empty">No rounds yet.</p>`}\n</section>`);
   }
-  const navHtml = nav.length ? `<nav class="qnav" aria-label="Questions">${nav.join("")}</nav>` : "";
-  return readFileSync(TEMPLATE, "utf8").replace("{{title}}", esc(s.page.title)).replace("<!-- NAV -->", navHtml).replace("<!-- BODY -->", body.join("\n"));
+  if (s.topics.size) {
+    const topics = [...s.topics.values()];
+    tabs.push(`<a role="tab" id="tab-topics" aria-selected="false" aria-controls="topics" href="#topics">Topics</a>`);
+    qrows.push(`<nav class="qnav" aria-label="Topic notes" data-tab="topics" hidden>${topics.map((t) => `<a href="#topic-${t.id}" data-for="topic-${t.id}">${text(t.title)}</a>`).join("")}</nav>`);
+    const notes = topics.map((t) => `<article class="topic" id="topic-${t.id}" data-stop>
+<h3>${text(t.title)}</h3>
+<p class="summary-line">${text(t.summary)}</p>
+<div class="description">${description(t.body)}</div>
+${sourcesHtml(t.sources)}
+</article>`);
+    panels.push(`<section class="tab" id="topics" role="tabpanel" aria-labelledby="tab-topics" hidden>\n${notes.join("\n")}\n</section>`);
+  }
+  const head = `<header class="page-head">${s.page.crumb ? `<p class="crumb">${text(s.page.crumb)}</p>` : ""}<h1>${text(s.page.title)}</h1></header>`;
+  const overviewPanel = `<section class="tab" id="overview" role="tabpanel" aria-labelledby="tab-overview">\n${overview.length ? `<ol class="stages">\n${overview.join("\n")}\n</ol>` : `<p class="empty">No Stage yet.</p>`}\n</section>`;
+  const bar = `<header class="bar">\n<div class="tabs" role="tablist" aria-label="Stages">${tabs.join("")}</div>\n${qrows.join("\n")}\n</header>`;
+  return readFileSync(TEMPLATE, "utf8").replace("{{title}}", esc(s.page.title)).replace("<!-- NAV -->", bar).replace("<!-- BODY -->", [head, overviewPanel, ...panels].join("\n"));
+}
+
+function writeFlow(flow: Rec, folder: string): void {
+  const { type: _, ...fields } = flow;
+  writeFileSync(join(folder, "flow.json"), `${JSON.stringify(fields, null, 2)}\n`);
+  mkdirSync(join(folder, "figures"), { recursive: true });
 }
 
 function answerRecords(specs: string[]): string {
@@ -397,8 +627,40 @@ function answerRecords(specs: string[]): string {
     .join("\n");
 }
 
+function mapSvgs(v: unknown, fix: (path: string) => string): any {
+  if (Array.isArray(v)) return v.map((x) => mapSvgs(x, fix));
+  if (typeof v !== "object" || v === null) return v;
+  return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, k === "svg" && typeof x === "string" ? fix(x) : mapSvgs(x, fix)]));
+}
+
+const inside = (path: string, dir: string) => path.startsWith(dir + sep);
+
+function renameRecords(s: State, folder: string, target: string, newKey: string): string {
+  const realFolder = realpathSync(folder);
+  const unresolved: string[] = [];
+  const out: Rec[] = [];
+  for (const r of s.records) {
+    let changed = false;
+    const fixed = mapSvgs(r, (p) => {
+      const after = isAbsolute(p) ? p : resolve(target, p);
+      const now = inside(after, target) ? join(folder, relative(target, after)) : after;
+      const real = existsSync(now) ? realpathSync(now) : undefined;
+      if (real !== undefined && inside(real, realFolder) && isAbsolute(p)) {
+        changed = true;
+        return relative(realFolder, real);
+      }
+      if (real === undefined || (inside(real, realFolder) && !inside(after, target))) unresolved.push(`${r.type} ${r.id}: ${p}`);
+      return p;
+    });
+    if (changed) out.push(fixed);
+  }
+  if (unresolved.length) fail("rename", `${unresolved.join(", ")} would not resolve after the move. Store each SVG as a path relative to the flow folder`);
+  out.push({ ...s.flow!, key: newKey, old_keys: [...(s.flow!.old_keys ?? []), s.flow!.key] });
+  return out.map((r) => JSON.stringify(r)).join("\n");
+}
+
 const [command, statePath, ...rest] = Bun.argv.slice(2);
-if (!["append", "answer", "render"].includes(command ?? "")) usage("give a command: append, answer, or render");
+if (!["append", "answer", "render", "rename"].includes(command ?? "")) usage("give a command: append, answer, render, or rename");
 if (!statePath || !statePath.endsWith(".jsonl")) usage("give the state file, ending in .jsonl");
 const state = resolve(statePath);
 const page = state.replace(/\.jsonl$/, ".html");
@@ -413,16 +675,48 @@ if (command === "append") {
   added = rest[0] === undefined || rest[0] === "-" ? await Bun.stdin.text() : readFileSync(rest[0], "utf8");
   if (added.trim() === "") usage("append got no records");
 } else if (command === "answer") added = answerRecords(rest);
-else if (rest.length) usage("render takes no more arguments");
+else if (command === "rename") {
+  if (rest.length !== 1 || !ID.test(rest[0])) usage("rename takes one new key of lowercase letters, digits, and hyphens");
+} else if (rest.length) usage("render takes no more arguments");
 
 try {
   const old = existsSync(state) ? readFileSync(state, "utf8") : "";
   const oldLines = old === "" ? 0 : old.replace(/\n$/, "").split("\n").length;
-  const lines = [...parseLines(old, 1, "state"), ...parseLines(added, oldLines + 1, command === "append" && rest[0] && rest[0] !== "-" ? rest[0] : "input")];
-  const html = render(check(lines), dirname(state));
-  if (added.trim() !== "") appendFileSync(state, (old === "" || old.endsWith("\n") ? "" : "\n") + added.trim() + "\n");
-  writeFileSync(page, html);
-  process.stdout.write(`${page}\n`);
+  let lines = [...parseLines(old, 1, "state"), ...parseLines(added, oldLines + 1, command === "append" && rest[0] && rest[0] !== "-" ? rest[0] : "input")];
+  const folder = dirname(state);
+  let s = check(lines, basename(folder));
+  let target = folder;
+  if (command === "rename") {
+    if (!s.flow) fail("rename", "rename needs a flow record. Append one first");
+    target = join(dirname(folder), basename(folder).slice(0, -s.flow!.key.length) + rest[0]);
+    if (existsSync(target)) fail("rename", `${target} already exists`);
+    added = renameRecords(s, folder, target, rest[0]);
+    lines = [...lines, ...parseLines(added, oldLines + 1, "rename")];
+    s = check(lines, basename(target));
+  }
+  let html = render(s, folder);
+  mkdirSync(folder, { recursive: true });
+  const newState = join(target, basename(state));
+  const newPage = join(target, basename(page));
+  const write = () => {
+    if (added.trim() !== "") appendFileSync(newState, (old === "" || old.endsWith("\n") ? "" : "\n") + added.trim() + "\n");
+    writeFileSync(newPage, html);
+    if (s.flow) writeFlow(s.flow, target);
+  };
+  if (target === folder) write();
+  else {
+    renameSync(folder, target);
+    try {
+      html = render(s, target);
+      write();
+    } catch (e) {
+      if (readFileSync(newState, "utf8") !== old) writeFileSync(newState, old);
+      renameSync(target, folder);
+      if (e instanceof RecordError) fail("rename", `${e.message} after the move. Store each SVG as a path relative to the flow folder`);
+      throw e;
+    }
+  }
+  process.stdout.write(`${newPage}\n`);
 } catch (e) {
   if (!(e instanceof RecordError)) throw e;
   process.stderr.write(`grilling-page.ts: ${e.message}\nNothing was written.\n`);

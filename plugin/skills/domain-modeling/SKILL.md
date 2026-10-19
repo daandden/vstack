@@ -41,7 +41,7 @@ Create files lazily: only when you have something to write. If no `GLOSSARY.md` 
 
 ## During the session
 
-Every question below goes to the user through `ask`: the question in one line, the likely answers as options (the user types any other answer through Other). An answer `ask` picks after a timeout is not the user's. A term stays open and is not written down, and an ADR offer asks once more, then creates no ADR.
+Every question below is a question on the flow's Grilling page and goes to the user through `ask`, as `skill://grilling-page` says. Inside another skill's Stage, such as grill-with-docs's, the question joins that Stage. Otherwise add a domain-modeling Stage before the first question, and mark it finished when its last question is answered. The `ask` holds the question in one line and the likely answers as option labels only (the user types any other answer through Other). The page question carries each option's description and trade-offs. An answer `ask` picks after a timeout is not the user's. A term stays open and is not written down, and an ADR offer asks once more, then creates no ADR.
 
 ### Challenge against the glossary
 

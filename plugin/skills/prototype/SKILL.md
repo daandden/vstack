@@ -19,6 +19,10 @@ The three branches produce very different artifacts, so getting this wrong waste
 
 When the question has more than one plausible answer, build the variants the user did not ask for as well.
 
+## The flow's Grilling page
+
+Every `ask` of a prototype, the branch question above included, goes on the Grilling page of its flow. Read skill://grilling-page before the first `ask`. A prototype detour leaves a flow to answer one question and then goes back to it. The detour continues the page of the flow that it left and adds a prototype Stage there. If the detour runs in a new session, take the page path from the handoff document that started that session. A prototype that resolves a wayfinder ticket asks inside that ticket's Stage instead.
+
 ## Rules that apply to all three
 
 1. **Throwaway from day one, and clearly marked as such.** Locate the prototype code close to where it will actually be used (next to the module or page it's prototyping for) so context is obvious, but name it so a casual reader can see it's a prototype, not production. For throwaway UI routes, obey whatever routing convention the project already uses; don't invent a new top-level structure. In Private mode, the location is different: see [Private mode](#private-mode).

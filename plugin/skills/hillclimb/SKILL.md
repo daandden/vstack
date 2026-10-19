@@ -68,7 +68,7 @@ Stop when the target and attempt floor are both met, or when remaining ideas are
 
 ## 8. Return to implement
 
-After the loop, implement resumes its End state chain. Keep accepted wins in separate commits and in landing order. Run code-review once after the last work commit. Put accepted review fixes in new commits. Live proof covers the final diff, including cleanup and Verify maintenance. Finish decision-trail's audit and fresh-context review in that same pass.
+After the loop, implement resumes its End state chain. Keep accepted wins in separate commits and in landing order. Run code-review once after the last work commit. Put the review fixes in new commits. Live proof covers the final diff, including cleanup and Verify maintenance. Finish decision-trail's audit and fresh-context review in that same pass.
 
 ## Reply
 

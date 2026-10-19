@@ -5,7 +5,7 @@ description: Grill the user relentlessly about a plan, decision, or idea. Use wh
 
 Interview the user through `ask` until you reach a shared understanding. Map a design tree: every decision branches into the decisions that depend on it. Work in rounds. The frontier contains every decision whose prerequisites are settled. A question that depends on an open decision waits for a later round.
 
-Every grilling session keeps a Grilling page, whoever calls this skill. Read `skill://grilling-page` before the first round. It says how to start the page, add rounds, print its path, record answers, and close it.
+Every grilling session writes into the Grilling page of the flow it belongs to, as a Stage. Read `skill://grilling-page` before the first round. It says how to find or start the page, add a Stage, add rounds, print its path, record answers, and close it. If the calling skill added no Stage, add one before the first round: its `skill` is the calling skill's name, or `grilling` when the user started grilling directly.
 
 ## Find facts
 
@@ -23,7 +23,7 @@ Fan-out (skill://vstack-fan-out): parts: one per independent fact question. One 
 
 1. Add the entire frontier to the page before asking.
 2. Print the page path before the first `ask` and before every later `ask`, including the closing gate and retries.
-3. Put the whole frontier in one `ask` call, with one `questions[]` entry per decision. Each `question` is one line starting with its Q number, matching the page. Use a short `header`, short option labels that start with the option's letter, and one-line `description` values. Put full bodies, context, and trade-offs only on the page. Set `recommended` to the recommended option's index and `multi: true` only when choices combine. Never add Other; the UI supplies it. Wait for the result before advancing dependent decisions.
+3. Put the whole frontier in one `ask` call, with one `questions[]` entry per decision. Each `question` is one line starting with its Q number, matching the page. Use a short `header` and short option labels that start with the option's letter. Give each option only its label. The page question carries its description, trade-offs, and context. Set `recommended` to the recommended option's index and `multi: true` only when choices combine. Never add Other; the UI supplies it. Wait for the result before advancing dependent decisions.
 4. Read each returned answer and record it on the page with its notes and Other text:
    - A cancelled or `timedOut: true` answer, or one with no pick, no Other text, and no note, is unanswered, not consent. Ignore any auto-selection. Keep the decision open with its Q number. Ask it in the next round.
    - An option that the user picked settles its decision. Notes and Other text beside a pick never reopen it, even a note on an option that was not picked. Decide whether a note needs a reply on the page or a new frontier question.
@@ -31,10 +31,8 @@ Fan-out (skill://vstack-fan-out): parts: one per independent fact question. One 
 
    Settle only picks and text that names a choice. Then recompute the frontier.
 
-The page is a record, not an input form: answers come only through `ask`.
-
 ## Close
 
-An empty frontier means every branch was visited and no decision remains silently assumed. Add the closing summary to the page. Print the page path, then make one `ask` with Shared understanding / Not yet. Only Shared understanding confirms the result and permits the caller to act. Not yet reopens the tree from the user's note. Record the closing answer on the page. A timeout at this gate is no answer: print the path and retry once; a second timeout stops without acting and records why on the page.
+An empty frontier means every branch was visited and no decision remains silently assumed. Add the closing summary to the page. Print the page path, then make one `ask` with Shared understanding / Not yet. Only Shared understanding confirms the result and permits the caller to act. Not yet reopens the tree from the user's note. Record the closing answer on the page. After Shared understanding, mark the Stage finished if grilling added it. A timeout at this gate is no answer: print the path and retry once; a second timeout stops without acting and records why on the page.
 
-When `ask` is unavailable in a headless run, take the recommended answer, record it on the page as headless, then continue. Mark the closing summary as headless, not user-confirmed. A subagent never asks or claims user confirmation: return open decisions for the top-level agent to put through `ask`.
+When `ask` is unavailable in a headless run, take the recommended answer, record it on the page as headless, then continue. Mark the closing summary as headless, not user-confirmed. A subagent never asks or claims user confirmation. It returns its open decisions, and the top-level agent puts them on the page and asks them.

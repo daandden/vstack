@@ -1,7 +1,7 @@
 // grilling-page's render script run as a process: records in, page out, bad input refused (ADR 0013).
 
 import { afterAll, beforeEach, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, lstatSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -132,6 +132,25 @@ test("an option label must start with its own letter", () => {
   const r = append(question("s1-r1-q1", 1, { options: [option("A. First"), option("First again")] }));
   expect(r.code).toBe(1);
   expect(r.stderr).toContain('option B: label must start with "B. ", the same text as the ask label');
+});
+
+test("a question with one option renders it and takes its answer", () => {
+  const r = append(PAGE, ROUND, question("s1-r1-q1", 1, { options: [option("A. Only candidate", { recommended: "it is the only one" })] }));
+  expect(r.code).toBe(0);
+  expect(r.stdout.trim()).toBe(page);
+  expect(readFileSync(page, "utf8")).toContain(`<li class="option" data-recommended><h4>Only candidate${STAR}</h4>`);
+  expect(run(["answer", state, "s1-r1-q1=A"]).code).toBe(0);
+  expect(readFileSync(page, "utf8")).toMatch(/<li class="option" data-recommended data-picked><h4>Only candidate/);
+  expect(run(["answer", state, "s1-r1-q1=B"]).stderr).toContain("question s1-r1-q1 has no option B");
+});
+
+test("a question with no options is refused and writes nothing", () => {
+  append(PAGE, ROUND);
+  const before = readFileSync(state, "utf8");
+  const r = append(question("s1-r1-q1", 1, { options: [] }));
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain("question s1-r1-q1: options must list one or more options");
+  expect(readFileSync(state, "utf8")).toBe(before);
 });
 
 test("answer marks the picked option and shows a line only for a note", () => {
@@ -270,4 +289,633 @@ test("every keyboard stop has its link in the Q row, and a reopened summary is n
   const links = [...html.matchAll(/data-for="([^"]+)"/g)].map((m) => m[1]);
   expect(stops).toEqual(["q-s1-r1-q1", "close-c2"]);
   expect(links).toEqual(stops);
+});
+
+const summary = (html: string) => html.match(/<section class="summary"[\s\S]*?<\/section>/)![0];
+const gateRow = (shown: string) => `<p class="answer"><span class="label">Closing gate</span><span>${shown}</span></p>`;
+
+test("a close with no gate shows its decisions and no Closing gate row", () => {
+  expect(append(PAGE, ROUND, question("s1-r1-q1", 1), { type: "close", id: "c1", session: 1, decisions: [{ question: "s1-r1-q1", text: "One is true." }] }).code).toBe(0);
+  const html = summary(readFileSync(page, "utf8"));
+  expect(html).toContain("One is true.");
+  expect(html).not.toContain("Closing gate");
+  expect(html).not.toContain("Waiting for your answer.");
+});
+
+test.each([
+  ["a pending gate", { gate: true }, "Waiting for your answer."],
+  ["an answered gate", { gate: true, answer: "Shared understanding", note: "Go on." }, "Shared understanding. Note: &quot;Go on.&quot;"],
+  ["a gate from before the gate field", { answer: "Shared understanding" }, "Shared understanding."],
+  ["a gate that stopped after two timeouts", { gate: true, note: "Two timeouts, no answer." }, "No answer. Note: &quot;Two timeouts, no answer.&quot;"],
+])("a close with %s shows its Closing gate row", (_, extra, shown) => {
+  expect(append(PAGE, ROUND, question("s1-r1-q1", 1), { type: "close", id: "c1", session: 1, decisions: [{ question: "s1-r1-q1", text: "One is true." }], ...extra }).code).toBe(0);
+  expect(summary(readFileSync(page, "utf8"))).toContain(gateRow(shown));
+});
+
+test("a close whose gate is not true or false is refused and writes nothing", () => {
+  const r = append(PAGE, ROUND, question("s1-r1-q1", 1), { type: "close", id: "c1", session: 1, decisions: [{ question: "s1-r1-q1", text: "One is true." }], gate: "yes" });
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain("close c1: gate must be true or false");
+  expect(existsSync(state)).toBe(false);
+});
+
+const FLOW = { type: "flow", id: "flow", slug: "page-per-flow", key: "page-per-flow", state: "open" };
+function flowFolder(key = "page-per-flow") {
+  const folder = join(dir, `vstack-${key}`);
+  Bun.spawnSync(["mkdir", "-p", folder]);
+  state = join(folder, "page.jsonl");
+  page = join(folder, "page.html");
+  return folder;
+}
+
+test.each([
+  ["no slug", { slug: undefined }, "flow flow: slug must be"],
+  ["a state that is not open or closed", { state: "paused" }, "flow flow: state must be open or closed"],
+  ["tickets that are not a list", { tickets: "160" }, "flow flow: tickets must be a list"],
+  ["a key that is not the folder's key", { key: "151" }, "flow flow: key 151 does not match the folder vstack-page-per-flow"],
+])("append refuses a flow record with %s, names it, and writes nothing", (_, extra, problem) => {
+  const folder = flowFolder();
+  expect(append(PAGE).code).toBe(0);
+  const before = readFileSync(state, "utf8");
+  const r = append({ ...FLOW, ...extra });
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain(problem);
+  expect(readFileSync(state, "utf8")).toBe(before);
+  expect(existsSync(join(folder, "flow.json"))).toBe(false);
+});
+
+const flowJson = (folder: string) => JSON.parse(readFileSync(join(folder, "flow.json"), "utf8"));
+
+test("every command writes flow.json from the flow record, and a later flow record with the same id replaces it", () => {
+  const folder = flowFolder();
+  const flow = { ...FLOW, spec: "151", tickets: ["160", "161"], branch: "feat/flow-grilling-page", runs: ["spec151-r1"] };
+  const r = append(PAGE, flow, ROUND, question("s1-r1-q1", 1));
+  expect(r.code).toBe(0);
+  expect(r.stdout.trim()).toBe(page);
+  expect(flowJson(folder)).toEqual({ id: "flow", slug: "page-per-flow", key: "page-per-flow", state: "open", spec: "151", tickets: ["160", "161"], branch: "feat/flow-grilling-page", runs: ["spec151-r1"] });
+  expect(existsSync(join(folder, "figures"))).toBe(true);
+
+  expect(append({ ...flow, tickets: ["160", "161", "162"], state: "closed" }).code).toBe(0);
+  expect(flowJson(folder)).toMatchObject({ tickets: ["160", "161", "162"], state: "closed", slug: "page-per-flow" });
+
+  rmSync(join(folder, "flow.json"));
+  expect(run(["answer", state, "s1-r1-q1=A"]).code).toBe(0);
+  expect(flowJson(folder).state).toBe("closed");
+  rmSync(join(folder, "flow.json"));
+  expect(run(["render", state]).code).toBe(0);
+  expect(flowJson(folder).tickets).toEqual(["160", "161", "162"]);
+
+  const second = append({ ...FLOW, id: "flow-2" });
+  expect(second.code).toBe(1);
+  expect(second.stderr).toContain("flow flow-2: a page has one flow record, and flow flow is already on it");
+});
+
+test("a page with no flow record writes no flow.json", () => {
+  expect(append(PAGE).code).toBe(0);
+  expect(existsSync(join(dir, "flow.json"))).toBe(false);
+  expect(existsSync(join(dir, "figures"))).toBe(false);
+});
+
+test("rename moves the flow folder, keeps the old key in flow.json, and prints the new page path", () => {
+  const old = flowFolder();
+  append(PAGE, { ...FLOW, spec: "151" }, ROUND, question("s1-r1-q1", 1));
+  const r = run(["rename", state, "151"]);
+  expect(r.code).toBe(0);
+  const moved = join(dir, "vstack-151");
+  expect(r.stdout.trim()).toBe(join(moved, "page.html"));
+  expect(existsSync(old)).toBe(false);
+  expect(flowJson(moved)).toMatchObject({ slug: "page-per-flow", key: "151", old_keys: ["page-per-flow"], spec: "151" });
+  expect(readFileSync(join(moved, "page.html"), "utf8")).toContain("Title 1?");
+  expect(run(["append", join(moved, "page.jsonl"), "-"], lines(question("s1-r1-q2", 2))).code).toBe(0);
+  expect(readFileSync(join(moved, "page.html"), "utf8")).toContain("Title 2?");
+  expect(run(["rename", join(moved, "page.jsonl"), "151-b"]).code).toBe(0);
+  expect(flowJson(join(dir, "vstack-151-b")).old_keys).toEqual(["page-per-flow", "151"]);
+});
+
+test("rename refuses when the target folder exists, and writes nothing", () => {
+  const old = flowFolder();
+  append(PAGE, FLOW, ROUND, question("s1-r1-q1", 1));
+  const before = readFileSync(state, "utf8");
+  const target = join(dir, "vstack-151");
+  Bun.spawnSync(["mkdir", "-p", target]);
+  const r = run(["rename", state, "151"]);
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain(`${target} already exists`);
+  expect(readFileSync(join(old, "page.jsonl"), "utf8")).toBe(before);
+  expect(flowJson(old).key).toBe("page-per-flow");
+  expect(readdirSync(target)).toEqual([]);
+});
+
+test("rename refuses a page with no flow record, and a key that is not lowercase letters, digits, and hyphens", () => {
+  flowFolder();
+  append(PAGE);
+  const none = run(["rename", state, "151"]);
+  expect(none.code).toBe(1);
+  expect(none.stderr).toContain("rename needs a flow record");
+  expect(existsSync(join(dir, "vstack-151"))).toBe(false);
+  expect(run(["rename", state, "Spec 151"]).code).toBe(2);
+});
+
+const figure = (id: string) => `<svg xmlns="http://www.w3.org/2000/svg"><rect id="${id}" width="1" height="1"/></svg>`;
+
+test("rename keeps an SVG stored relative and one stored as an absolute path into the old folder, and later commands show both", () => {
+  const old = flowFolder();
+  Bun.spawnSync(["mkdir", "-p", join(old, "figures")]);
+  writeFileSync(join(old, "figures", "context.svg"), figure("relative-figure"));
+  writeFileSync(join(old, "figures", "options.svg"), figure("absolute-figure"));
+  const q2 = question("s1-r1-q2", 2, { options: [option("A. First", { preview: { svg: join(old, "figures", "options.svg") } }), option("B. Second")] });
+  expect(append(PAGE, FLOW, ROUND, question("s1-r1-q1", 1, { visual: { svg: "figures/context.svg" } }), q2).code).toBe(0);
+
+  const r = run(["rename", state, "151"]);
+  expect(r.code).toBe(0);
+  const moved = join(dir, "vstack-151");
+  expect(r.stdout.trim()).toBe(join(moved, "page.html"));
+  expect(existsSync(old)).toBe(false);
+  const newState = join(moved, "page.jsonl");
+  expect(run(["append", newState, "-"], lines(question("s1-r1-q3", 3))).code).toBe(0);
+  const render = run(["render", newState]);
+  expect(render.code).toBe(0);
+  expect(render.stdout.trim()).toBe(join(moved, "page.html"));
+  const html = readFileSync(join(moved, "page.html"), "utf8");
+  expect(html).toContain('id="relative-figure"');
+  expect(html).toContain('id="absolute-figure"');
+  expect(html).toContain("Title 3?");
+});
+
+test("a rename that would leave an SVG unresolved exits 1 and leaves the old folder unchanged", () => {
+  const old = flowFolder();
+  Bun.spawnSync(["mkdir", "-p", join(old, "figures")]);
+  writeFileSync(join(old, "figures", "context.svg"), figure("context-figure"));
+  const roundabout = "../vstack-page-per-flow/figures/context.svg";
+  expect(append(PAGE, FLOW, ROUND, question("s1-r1-q1", 1, { visual: { svg: roundabout } })).code).toBe(0);
+  const files = Object.fromEntries(["page.jsonl", "page.html", "flow.json"].map((f) => [f, readFileSync(join(old, f), "utf8")]));
+
+  const r = run(["rename", state, "151"]);
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain(`question s1-r1-q1: ${roundabout} would not resolve after the move`);
+  expect(existsSync(join(dir, "vstack-151"))).toBe(false);
+  for (const [f, text] of Object.entries(files)) expect(readFileSync(join(old, f), "utf8")).toBe(text);
+});
+
+/** Every file and symlink under `folder`, with its bytes or link target. */
+const tree = (folder: string) => readdirSync(folder, { recursive: true }).map(String).sort().map((f) => {
+  const path = join(folder, f);
+  return lstatSync(path).isSymbolicLink() ? [f, `-> ${readlinkSync(path)}`] : lstatSync(path).isDirectory() ? [f, "dir"] : [f, readFileSync(path, "utf8")];
+});
+
+test.each([
+  ["an absolute path to a symlink in the folder whose target is outside it", "absolute"],
+  ["a relative path to a symlink whose target is the old folder's absolute path", "relative"],
+])("rename refuses %s, writes nothing, and leaves a flow that renders", (_, kind) => {
+  const old = flowFolder();
+  Bun.spawnSync(["mkdir", "-p", join(old, "figures")]);
+  writeFileSync(join(old, "figures", "real.svg"), figure("real-figure"));
+  const external = join(dir, "external.svg");
+  writeFileSync(external, figure("external-figure"));
+  const link = join(old, "figures", "link.svg");
+  symlinkSync(kind === "absolute" ? external : join(old, "figures", "real.svg"), link);
+  expect(append(PAGE, FLOW, ROUND, question("s1-r1-q1", 1, { visual: { svg: kind === "absolute" ? link : "figures/link.svg" } })).code).toBe(0);
+  const before = tree(old);
+
+  const r = run(["rename", state, "151"]);
+  expect(r.code).toBe(1);
+  expect(r.stdout).toBe("");
+  expect(r.stderr).toContain("svg file");
+  expect(r.stderr).toContain("does not exist after the move");
+  expect(existsSync(join(dir, "vstack-151"))).toBe(false);
+  expect(tree(old)).toEqual(before);
+  const render = run(["render", state]);
+  expect(render.code).toBe(0);
+  expect(render.stdout.trim()).toBe(page);
+  expect(flowJson(old).key).toBe("page-per-flow");
+});
+
+test("a rename whose state write fails moves the folder back, and the flow still renders under its old key", () => {
+  const old = flowFolder();
+  expect(append(PAGE, FLOW, ROUND, question("s1-r1-q1", 1)).code).toBe(0);
+  chmodSync(state, 0o444);
+  const before = tree(old);
+
+  const r = run(["rename", state, "151"]);
+  if (existsSync(state)) chmodSync(state, 0o644);
+  expect(r.code).toBe(1);
+  expect(r.stdout).toBe("");
+  expect(existsSync(join(dir, "vstack-151"))).toBe(false);
+  expect(tree(old)).toEqual(before);
+  const render = run(["render", state]);
+  expect(render.code).toBe(0);
+  expect(render.stdout.trim()).toBe(page);
+  expect(flowJson(old)).toMatchObject({ key: "page-per-flow" });
+});
+
+const stage = (id: string, order: number, extra: object = {}) => ({ type: "stage", id, skill: "grill-with-docs", title: `Stage ${id}`, state: "in-progress", order, ...extra });
+
+test.each([
+  ["a state that is not a Stage state", { state: "done" }, "state must be not-started, in-progress, or finished"],
+  ["no skill", { skill: undefined }, "skill must be a non-empty string"],
+  ["an empty title", { title: " " }, "title must be a non-empty string"],
+  ["an order that is not a whole number", { order: 1.5 }, "order must be a whole number of 1 or more"],
+])("a stage with %s is refused, names the record, and writes nothing", (_, extra, problem) => {
+  expect(append(PAGE).code).toBe(0);
+  const before = readFileSync(state, "utf8");
+  const pageBefore = readFileSync(page, "utf8");
+  const r = append(stage("grill", 1, extra));
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain(`stage grill: ${problem}`);
+  expect(readFileSync(state, "utf8")).toBe(before);
+  expect(readFileSync(page, "utf8")).toBe(pageBefore);
+});
+
+test("a round that names an unknown stage is refused, names the round, and writes nothing", () => {
+  expect(append(PAGE, stage("grill", 1)).code).toBe(0);
+  const before = readFileSync(state, "utf8");
+  const r = append({ ...ROUND, stage: "spec" }, question("s1-r1-q1", 1));
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain("round s1-r1: stage spec does not exist");
+  expect(readFileSync(state, "utf8")).toBe(before);
+  expect(readFileSync(page, "utf8")).not.toContain("Title 1?");
+});
+
+const tabs = (html: string) => [...html.matchAll(/<a role="tab"[^>]*aria-selected="(true|false)"[^>]*href="#([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)].map((m) => [m[2], m[3].replace(/<[^>]+>/g, ""), m[1] === "true"]);
+const panel = (html: string, id: string) => {
+  const head = `id="${id}" role="tabpanel"`;
+  const start = html.indexOf(head);
+  if (start < 0) return "";
+  const next = html.indexOf('role="tabpanel"', start + head.length);
+  return html.slice(start, next < 0 ? html.indexOf("</main>") : next);
+};
+const SPEC_ROUND = { type: "round", id: "s2-r1", session: 2, round: 2, stage: "spec", time: "2026-10-10T09:00:00+07:00" };
+
+test("the page opens on an Overview tab, then has one tab per Stage in order, each with its own rounds", () => {
+  const r = append(PAGE, stage("spec", 2, { title: "Write the spec", state: "not-started" }), stage("grill", 1, { title: "Grill the plan" }), { ...ROUND, stage: "grill" }, question("s1-r1-q1", 1), SPEC_ROUND, { ...question("s2-r1-q1", 1), round: "s2-r1", title: "Spec question?" });
+  expect(r.code).toBe(0);
+  const html = readFileSync(page, "utf8");
+  expect(tabs(html)).toEqual([["overview", "Overview", true], ["stage-grill", "Grill the plan", false], ["stage-spec", "Write the spec", false]]);
+  expect(html.indexOf('id="overview" role="tabpanel"')).toBeLessThan(html.indexOf('id="stage-grill" role="tabpanel"'));
+  expect(panel(html, "stage-grill")).toContain('id="q-s1-r1-q1"');
+  expect(panel(html, "stage-grill")).not.toContain("Spec question?");
+  expect(panel(html, "stage-spec")).toContain('id="q-s2-r1-q1"');
+});
+
+const overviewItem = (html: string, id: string) => panel(html, "overview").split('<li class="stage"').find((p) => p.includes(`href="#stage-${id}"`)) ?? "";
+
+test("the Overview shows each Stage's state, its decisions, and its open questions, linked into the tabs", () => {
+  expect(
+    append(
+      PAGE,
+      stage("grill", 1, { title: "Grill the plan", state: "finished" }),
+      stage("spec", 2, { title: "Write the spec", skill: "to-spec" }),
+      stage("tickets", 3, { title: "Break into tickets", state: "not-started" }),
+      { ...ROUND, stage: "grill" },
+      question("s1-r1-q1", 1),
+      question("s1-r1-q2", 2),
+      SPEC_ROUND,
+      { ...question("s2-r1-q1", 1), round: "s2-r1", title: "Answered spec question?" },
+      { ...question("s2-r1-q2", 2), round: "s2-r1", title: "Open spec question?" },
+      { ...question("s2-r1-q3", 3), round: "s2-r1", title: "Timed-out spec question?" },
+    ).code,
+  ).toBe(0);
+  expect(run(["answer", state, "s1-r1-q1=A", "s1-r1-q2=B", "s2-r1-q1=A", "s2-r1-q3=unanswered"]).code).toBe(0);
+  const decisions = [{ question: "s1-r1-q2", text: "Two is true." }, { question: "s1-r1-q1", text: "One is true." }];
+  expect(append({ type: "close", id: "c1", session: 1, decisions, answer: "Not yet" }, { type: "close", id: "c2", session: 1, decisions: [decisions[1], { ...decisions[0], text: "Two is now true." }], answer: "Yes" }).code).toBe(0);
+  const html = readFileSync(page, "utf8");
+
+  const ids = [...panel(html, "overview").matchAll(/<li class="stage"[\s\S]*?href="#stage-([^"]+)"/g)].map((m) => m[1]);
+  expect(ids).toEqual(["grill", "spec", "tickets"]);
+
+  const grill = overviewItem(html, "grill");
+  expect(grill).toContain('data-state="finished"');
+  expect(grill).toContain("Finished");
+  expect(grill).toContain("grill-with-docs");
+  expect(grill).toMatch(/<a href="#q-s1-r1-q1">Q1<\/a>: One is true\.[\s\S]*<a href="#q-s1-r1-q2">Q2<\/a>: Two is now true\./);
+  expect(grill).not.toContain("Two is true.");
+  expect(grill).toContain("No open questions.");
+
+  const spec = overviewItem(html, "spec");
+  expect(spec).toContain('data-state="in-progress"');
+  expect(spec).toContain("In progress");
+  expect(spec).toContain("to-spec");
+  expect(spec).toContain("No decisions yet.");
+  expect(spec).toMatch(/<a href="#q-s2-r1-q2">Q2<\/a>: Open spec question\?[\s\S]*<a href="#q-s2-r1-q3">Q3<\/a>: Timed-out spec question\?/);
+  expect(spec).not.toContain("Answered spec question?");
+
+  const tickets = overviewItem(html, "tickets");
+  expect(tickets).toContain('data-state="not-started"');
+  expect(tickets).toContain("Not started");
+  expect(panel(html, "stage-tickets")).toContain("No rounds yet.");
+
+  expect(tabs(html).map(([id]) => id)).toEqual(["overview", "stage-grill", "stage-spec", "stage-tickets"]);
+  expect(html).toMatch(/<a role="tab"[^>]*href="#stage-grill"><span class="dot" data-state="finished"><\/span>Grill the plan<\/a>/);
+});
+
+test("a later stage record with the same id replaces the earlier one", () => {
+  expect(append(PAGE, stage("grill", 1, { title: "Grill the plan" }), { ...ROUND, stage: "grill" }, question("s1-r1-q1", 1)).code).toBe(0);
+  expect(overviewItem(readFileSync(page, "utf8"), "grill")).toContain('data-state="in-progress"');
+  expect(append(stage("grill", 1, { title: "Grill the plan again", state: "finished" })).code).toBe(0);
+  const html = readFileSync(page, "utf8");
+  expect(overviewItem(html, "grill")).toContain('data-state="finished"');
+  expect(tabs(html)).toEqual([["overview", "Overview", true], ["stage-grill", "Grill the plan again", false]]);
+  expect(readFileSync(state, "utf8").trim().split("\n")).toHaveLength(5);
+});
+
+test("a state file from before Stages renders as one Stage, and a Stage added later gets its own tab", () => {
+  const close = { type: "close", id: "c1", session: 1, decisions: [{ question: "s1-r1-q1", text: "One is true." }], answer: "Yes" };
+  writeFileSync(state, `${lines(PAGE, ROUND, question("s1-r1-q1", 1), close)}\n`);
+  const r = run(["render", state]);
+  expect(r.code).toBe(0);
+  expect(r.stderr).toBe("");
+  let html = readFileSync(page, "utf8");
+  expect(tabs(html)).toEqual([["overview", "Overview", true], ["stage-_grilling", "Grilling", false]]);
+  expect(panel(html, "stage-_grilling")).toMatch(/id="q-s1-r1-q1"[\s\S]*id="close-c1"/);
+  expect(overviewItem(html, "_grilling")).toContain('data-state="finished"');
+  expect(overviewItem(html, "_grilling")).toContain('<a href="#q-s1-r1-q1">Q1</a>: One is true.');
+
+  expect(append(stage("spec", 1), SPEC_ROUND, { ...question("s2-r1-q1", 1), round: "s2-r1" }).code).toBe(0);
+  html = readFileSync(page, "utf8");
+  expect(tabs(html).map(([id]) => id)).toEqual(["overview", "stage-_grilling", "stage-spec"]);
+  expect(panel(html, "stage-_grilling")).not.toContain('id="q-s2-r1-q1"');
+  expect(panel(html, "stage-spec")).toContain('id="q-s2-r1-q1"');
+});
+
+test("each tab's keyboard stops have their links in that tab's Q row, and every link on the page has its target", () => {
+  const close = { type: "close", id: "c1", session: 1, decisions: [{ question: "s1-r1-q1", text: "One is true." }] };
+  const crossLink = { description: "Builds on [the grill's Q1](#q-s1-r1-q1)." };
+  expect(append(PAGE, stage("grill", 1), stage("spec", 2), { ...ROUND, stage: "grill" }, question("s1-r1-q1", 1), close, SPEC_ROUND, { ...question("s2-r1-q1", 1, crossLink), round: "s2-r1" }).code).toBe(0);
+  const html = readFileSync(page, "utf8");
+  const stopsIn = (id: string) => [...panel(html, id).matchAll(/id="([^"]+)"[^>]*data-stop/g)].map((m) => m[1]);
+  const qrow = (id: string) => [...(html.match(new RegExp(`<nav class="qnav"[^>]*data-tab="${id}"[\\s\\S]*?</nav>`))?.[0] ?? "").matchAll(/data-for="([^"]+)"/g)].map((m) => m[1]);
+  expect(stopsIn("overview")).toEqual([]);
+  expect(stopsIn("stage-grill")).toEqual(["q-s1-r1-q1", "close-c1"]);
+  expect(qrow("stage-grill")).toEqual(["q-s1-r1-q1", "close-c1"]);
+  expect(stopsIn("stage-spec")).toEqual(["q-s2-r1-q1"]);
+  expect(qrow("stage-spec")).toEqual(["q-s2-r1-q1"]);
+  expect(panel(html, "stage-spec")).toContain('<a href="#q-s1-r1-q1">the grill\'s Q1</a>');
+  const ids = new Set([...html.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]));
+  const targets = [...html.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]);
+  expect(targets.filter((t) => !ids.has(t))).toEqual([]);
+});
+
+const REVIEW_ROUND = { ...SPEC_ROUND, id: "s2-r1", stage: "review" };
+const card = (id: string, extra: object = {}) => ({ id, title: `Finding ${id}`, label: "issue", blocking: false, impact: `Impact ${id}`, evidence: `Evidence ${id}`, action: `Action ${id}`, ...extra });
+const report = (id: string, shape: string, extra: object = {}) => ({ type: "report", id, stage: "review", title: `Report ${id}`, shape, ...extra });
+const entry = (html: string, id: string) => {
+  const start = html.indexOf(` id="${id}"`);
+  if (start < 0) return "";
+  const ends = ["<li class=", "<tr ", "</section>"].map((s) => html.indexOf(s, start + 1)).filter((i) => i > 0);
+  return html.slice(start, Math.min(...ends));
+};
+
+test("a cards Report block renders each card's id, title, label, blocking flag, impact, evidence, action, and visual", () => {
+  const cards = [card("s1", { blocking: true, visual: { text: "before -> after" } }), card("s2", { label: "suggestion" })];
+  const r = append(PAGE, stage("review", 1, { skill: "code-review" }), report("standards", "cards", { summary: "Two findings on `grilling-page.ts`.", entries: cards }));
+  expect(r.code).toBe(0);
+  const tab = panel(readFileSync(page, "utf8"), "stage-review");
+  expect(tab).toContain('id="report-standards"');
+  expect(tab).toContain("Report standards");
+  expect(tab).toContain("Two findings on <code>grilling-page.ts</code>.");
+  const s1 = entry(tab, "report-standards_s1");
+  for (const t of ["s1", "Finding s1", "issue (blocking)", "Impact s1", "Evidence s1", "Action s1", "before -&gt; after"]) expect(s1).toContain(t);
+  const s2 = entry(tab, "report-standards_s2");
+  for (const t of ["Finding s2", "suggestion (non-blocking)", "Impact s2", "Evidence s2", "Action s2"]) expect(s2).toContain(t);
+  expect(tab).not.toContain("No rounds yet.");
+});
+
+test("a ledger Report block renders each claim with its status, evidence, missing proof, and consequence", () => {
+  const claim = (id: string, status: string) => ({ id, claim: `Claim ${id}`, status, evidence: `Evidence ${id}`, missing_proof: `Missing ${id}`, consequence: `Consequence ${id}` });
+  const r = append(PAGE, stage("review", 1, { skill: "code-review" }), report("safety", "ledger", { entries: [claim("p1", "confirmed"), claim("p2", "cleared"), claim("p3", "unproven")] }));
+  expect(r.code).toBe(0);
+  const tab = panel(readFileSync(page, "utf8"), "stage-review");
+  for (const [id, status, label] of [["p1", "confirmed", "Confirmed"], ["p2", "cleared", "Cleared"], ["p3", "unproven", "Unproven"]]) {
+    const html = entry(tab, `report-safety_${id}`);
+    expect(html).toContain(`data-status="${status}"`);
+    for (const t of [`Claim ${id}`, label, `Evidence ${id}`, "Missing proof", `Missing ${id}`, `Consequence ${id}`]) expect(html).toContain(t);
+  }
+});
+
+test("a table Report block renders its columns and rows, and a row that links a question gets a Question cell", () => {
+  const rows = [{ id: "t1", cells: ["#160 Stage tabs", "none", "M"] }, { id: "t2", cells: ["#162 Report blocks", "#160", "M"], question: "s2-r1-q1" }];
+  const r = append(PAGE, stage("review", 1, { title: "Tickets" }), report("breakdown", "table", { columns: ["Ticket", "Blocked by", "Size"], rows }), REVIEW_ROUND, { ...question("s2-r1-q1", 1), round: "s2-r1", title: "Approve the breakdown?" });
+  expect(r.code).toBe(0);
+  const tab = panel(readFileSync(page, "utf8"), "stage-review");
+  expect(tab).toMatch(/<th scope="col">Ticket<\/th><th scope="col">Blocked by<\/th><th scope="col">Size<\/th><th scope="col">Question<\/th>/);
+  expect(entry(tab, "report-breakdown_t1")).toMatch(/<td>#160 Stage tabs<\/td><td>none<\/td><td>M<\/td><td><\/td>/);
+  expect(entry(tab, "report-breakdown_t2")).toMatch(/<td>#162 Report blocks<\/td><td>#160<\/td><td>M<\/td><td><a href="#q-s2-r1-q1">Q1<\/a>: Approve the breakdown\?<\/td>/);
+});
+
+test("entries link to their questions and questions link back to entries, also across tabs", () => {
+  const r = append(
+    PAGE,
+    stage("grill", 1),
+    stage("review", 2),
+    { ...ROUND, stage: "grill" },
+    question("s1-r1-q1", 1, { title: "Keep the old flag?", report_entries: ["standards/s1", "safety/p1"] }),
+    report("standards", "cards", { entries: [card("s1", { question: "s1-r1-q1" }), card("s2", { question: "s2-r1-q1" })] }),
+    report("safety", "ledger", { entries: [{ id: "p1", claim: "Input reaches the shell", status: "unproven", evidence: "e", missing_proof: "m", consequence: "c" }] }),
+    REVIEW_ROUND,
+    { ...question("s2-r1-q1", 1), round: "s2-r1", title: "Fix S2 now?", report_entries: ["standards/s2"] },
+  );
+  expect(r.code).toBe(0);
+  const html = readFileSync(page, "utf8");
+  const review = panel(html, "stage-review");
+  const grill = panel(html, "stage-grill");
+  expect(entry(review, "report-standards_s1")).toContain('<a href="#q-s1-r1-q1">Q1</a>: Keep the old flag?');
+  expect(grill).toContain('id="q-s1-r1-q1"');
+  expect(questionBody(grill, "s1-r1-q1")).toMatch(/<a href="#report-standards_s1">Report standards <span class="entry-id">s1<\/span><\/a>: Finding s1[\s\S]*<a href="#report-safety_p1">Report safety <span class="entry-id">p1<\/span><\/a>: Input reaches the shell/);
+  expect(entry(review, "report-standards_s2")).toContain('<a href="#q-s2-r1-q1">Q1</a>: Fix S2 now?');
+  expect(questionBody(review, "s2-r1-q1")).toContain('<a href="#report-standards_s2">');
+  const ids = new Set([...html.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]));
+  const targets = [...html.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]);
+  expect(targets.filter((t) => !ids.has(t))).toEqual([]);
+});
+
+test("inside a tab, Report blocks render before the rounds, even when they were appended after them", () => {
+  expect(append(PAGE, stage("review", 1), REVIEW_ROUND, { ...question("s2-r1-q1", 1), round: "s2-r1" }).code).toBe(0);
+  expect(append(report("standards", "cards", { entries: [card("s1")] }), report("safety", "ledger", { entries: [{ id: "p1", claim: "c", status: "cleared", evidence: "e", missing_proof: "m", consequence: "c" }] })).code).toBe(0);
+  const tab = panel(readFileSync(page, "utf8"), "stage-review");
+  const at = (s: string) => tab.indexOf(s);
+  expect(at('id="report-standards"')).toBeGreaterThan(0);
+  expect(at('id="report-standards"')).toBeLessThan(at('id="report-safety"'));
+  expect(at('id="report-safety"')).toBeLessThan(at('aria-labelledby="round-s2-r1"'));
+});
+
+test("a later report record with the same id replaces the earlier one", () => {
+  expect(append(PAGE, stage("review", 1), report("standards", "cards", { entries: [card("s1"), card("s2")] })).code).toBe(0);
+  expect(append(report("standards", "cards", { title: "Standards, second pass", entries: [card("s1", { title: "Finding s1, fixed" })] })).code).toBe(0);
+  const tab = panel(readFileSync(page, "utf8"), "stage-review");
+  expect(tab).toContain("Standards, second pass");
+  expect(tab).toContain("Finding s1, fixed");
+  expect(tab).not.toContain('id="report-standards_s2"');
+  expect(tab.match(/id="report-standards"/g)).toHaveLength(1);
+});
+
+const LEDGER_ENTRY = { id: "p1", claim: "c", status: "cleared", evidence: "e", missing_proof: "m", consequence: "c" };
+test.each([
+  ["an unknown shape", report("standards", "list", { entries: [card("s1")] }), "report standards: shape must be cards, ledger, or table"],
+  ["no title", report("standards", "cards", { title: undefined, entries: [card("s1")] }), "report standards: title must be a non-empty string"],
+  ["an unknown stage", report("standards", "cards", { stage: "spec", entries: [card("s1")] }), "report standards: stage spec does not exist"],
+  ["no entries", report("standards", "cards"), "report standards: entries must list one or more entries"],
+  ["a card with no impact", report("standards", "cards", { entries: [card("s1", { impact: undefined })] }), "report standards: entry s1: impact must be a non-empty string"],
+  ["a card with a blocking flag that is not true or false", report("standards", "cards", { entries: [card("s1", { blocking: "yes" })] }), "report standards: entry s1: blocking must be true or false"],
+  ["a card with an unsafe visual", report("standards", "cards", { entries: [card("s1", { visual: { html: "<script>x</script>" } })] }), "report standards: entry s1: visual: html is not safe"],
+  ["two entries with one id", report("standards", "cards", { entries: [card("s1"), card("s1")] }), "report standards: entry s1: id is used by another entry of this report"],
+  ["a claim with an unknown status", report("safety", "ledger", { entries: [{ ...LEDGER_ENTRY, status: "maybe" }] }), "report safety: entry p1: status must be confirmed, cleared, or unproven"],
+  ["a claim with no missing proof", report("safety", "ledger", { entries: [{ ...LEDGER_ENTRY, missing_proof: undefined }] }), "report safety: entry p1: missing_proof must be a non-empty string"],
+  ["a table with no columns", report("breakdown", "table", { rows: [{ id: "t1", cells: ["a"] }] }), "report breakdown: columns must be a list of one or more non-empty strings"],
+  ["a row with a cell too few", report("breakdown", "table", { columns: ["Ticket", "Size"], rows: [{ id: "t1", cells: ["a"] }] }), "report breakdown: row t1: cells must list 2 strings, one per column"],
+  ["a table with entries in place of rows", report("breakdown", "table", { columns: ["Ticket"], entries: [{ id: "t1", cells: ["a"] }] }), "report breakdown: a table report has rows, not entries"],
+  ["an entry that links an unknown question", report("standards", "cards", { entries: [card("s1", { question: "s9-r1-q1" })] }), "report standards: entry s1 links question s9-r1-q1, which does not exist"],
+  ["a row that links an unknown question", report("breakdown", "table", { columns: ["Ticket"], rows: [{ id: "t1", cells: ["a"], question: "nope" }] }), "report breakdown: row t1 links question nope, which does not exist"],
+])("a report with %s is refused, names the record, and writes nothing", (_, rec, problem) => {
+  expect(append(PAGE, stage("review", 1)).code).toBe(0);
+  const before = readFileSync(state, "utf8");
+  const pageBefore = readFileSync(page, "utf8");
+  const r = append(rec);
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain(problem);
+  expect(r.stderr).toContain("Nothing was written.");
+  expect(readFileSync(state, "utf8")).toBe(before);
+  expect(readFileSync(page, "utf8")).toBe(pageBefore);
+});
+
+test("a question that links an unknown report or entry is refused, names the question, and writes nothing", () => {
+  expect(append(PAGE, stage("review", 1), report("standards", "cards", { entries: [card("s1")] }), REVIEW_ROUND).code).toBe(0);
+  const before = readFileSync(state, "utf8");
+  for (const [link, problem] of [["standards/s9", "question s2-r1-q1: report entry standards/s9 does not exist"], ["safety/p1", "question s2-r1-q1: report entry safety/p1 does not exist"], ["standards", "report_entries must list <report id>/<entry id> strings"]]) {
+    const r = append({ ...question("s2-r1-q1", 1), round: "s2-r1", report_entries: [link] });
+    expect(r.code).toBe(1);
+    expect(r.stderr).toContain(problem);
+    expect(readFileSync(state, "utf8")).toBe(before);
+  }
+});
+
+const background = (id: string, stageId: string, extra: object = {}) => ({
+  type: "background", id, stage: stageId, title: "How a flow keeps its page", summary: "One page follows the flow from grill to merge.",
+  sections: [{ heading: "One folder per flow", body: "The folder holds the state file and the page." }], sources: ["docs/adr/0028-flow-grilling-page.md"], ...extra,
+});
+
+test.each([
+  ["no stage", { stage: undefined }, "stage must be a non-empty string"],
+  ["an empty title", { title: " " }, "title must be a non-empty string"],
+  ["no summary", { summary: undefined }, "summary must be a non-empty string"],
+  ["no sections", { sections: [] }, "sections must be a list of one or more { heading, body }"],
+  ["a section with no body", { sections: [{ heading: "One folder per flow" }] }, "sections 1: body must be a non-empty string"],
+  ["no sources", { sources: undefined }, "sources must be a list of one or more non-empty strings"],
+  ["a visual with two kinds", { visual: { text: "a", html: "<p>b</p>" } }, "visual: must have exactly one of text, html, or svg"],
+  ["an unknown stage", { stage: "spec" }, "stage spec does not exist"],
+])("a background with %s is refused, names the record, and writes nothing", (_, extra, problem) => {
+  expect(append(PAGE, stage("grill", 1)).code).toBe(0);
+  const before = readFileSync(state, "utf8");
+  const pageBefore = readFileSync(page, "utf8");
+  const r = append(background("context", "grill", extra));
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain(`background context: ${problem}`);
+  expect(readFileSync(state, "utf8")).toBe(before);
+  expect(readFileSync(page, "utf8")).toBe(pageBefore);
+});
+
+test("a Stage has at most one background", () => {
+  expect(append(PAGE, stage("grill", 1), background("context", "grill")).code).toBe(0);
+  const before = readFileSync(state, "utf8");
+  const r = append(background("more-context", "grill"));
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain("background more-context: stage grill already has background context");
+  expect(readFileSync(state, "utf8")).toBe(before);
+});
+
+test("a Background renders at the top of its Stage tab, before the rounds, even when appended after them", () => {
+  const sections = [{ heading: "One folder per flow", body: "The folder holds the state file.\n\n- `page.jsonl`\n- `page.html`" }, { heading: "Renamed at to-spec", body: "The key becomes the spec issue." }];
+  const visual = { text: "grilling/vstack-151/" };
+  expect(append(PAGE, stage("grill", 1), stage("spec", 2), { ...ROUND, stage: "grill" }, question("s1-r1-q1", 1), SPEC_ROUND, { ...question("s2-r1-q1", 1), round: "s2-r1" }).code).toBe(0);
+  expect(append(background("context", "spec", { sections, visual, sources: ["[ADR 0028](https://example.com/0028)", "GLOSSARY.md: Stage"] })).code).toBe(0);
+  const html = readFileSync(page, "utf8");
+  const spec = panel(html, "stage-spec");
+  const bg = spec.slice(spec.indexOf('class="background"'), spec.indexOf('class="round"'));
+  expect(spec.indexOf('class="background"')).toBeGreaterThan(-1);
+  expect(spec.indexOf('class="background"')).toBeLessThan(spec.indexOf('class="round"'));
+  expect(bg).toContain("How a flow keeps its page");
+  expect(bg).toContain("One page follows the flow from grill to merge.");
+  expect(bg).toMatch(/One folder per flow<\/h3>[\s\S]*<p>The folder holds the state file\.<\/p><ul class="bullets"><li><code>page\.jsonl<\/code><\/li><li><code>page\.html<\/code><\/li><\/ul>[\s\S]*Renamed at to-spec<\/h3>[\s\S]*<p>The key becomes the spec issue\.<\/p>/);
+  expect(bg).toContain("<pre>grilling/vstack-151/</pre>");
+  expect(bg).toMatch(/Sources[\s\S]*<li><a href="https:\/\/example\.com\/0028">ADR 0028<\/a><\/li><li>GLOSSARY\.md: Stage<\/li>/);
+  expect(panel(html, "stage-grill")).not.toContain('class="background"');
+});
+
+test("a later background record with the same id replaces the earlier one", () => {
+  expect(append(PAGE, stage("grill", 1), background("context", "grill")).code).toBe(0);
+  expect(append(background("context", "grill", { title: "How a flow page moves", summary: "rename moves the folder." })).code).toBe(0);
+  const tab = panel(readFileSync(page, "utf8"), "stage-grill");
+  expect(tab.match(/class="background"/g)).toHaveLength(1);
+  expect(tab).toContain("How a flow page moves");
+  expect(tab).toContain("rename moves the folder.");
+  expect(tab).not.toContain("How a flow keeps its page");
+});
+
+const topic = (id: string, extra: object = {}) => ({
+  type: "topic", id, title: `Topic ${id}`, summary: `What ${id} is, in one line.`, body: `The long form of ${id}.`, sources: [`GLOSSARY.md: ${id}`], ...extra,
+});
+
+test.each([
+  ["an empty title", { title: " " }, "title must be a non-empty string"],
+  ["no summary", { summary: undefined }, "summary must be a non-empty string"],
+  ["no body", { body: undefined }, "body must be a non-empty string"],
+  ["empty sources", { sources: [] }, "sources must be a list of one or more non-empty strings"],
+])("a topic with %s is refused, names the record, and writes nothing", (_, extra, problem) => {
+  expect(append(PAGE).code).toBe(0);
+  const before = readFileSync(state, "utf8");
+  const pageBefore = readFileSync(page, "utf8");
+  const r = append(topic("scratch", extra));
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain(`topic scratch: ${problem}`);
+  expect(readFileSync(state, "utf8")).toBe(before);
+  expect(readFileSync(page, "utf8")).toBe(pageBefore);
+});
+
+test.each([
+  ["names an unknown topic", ["scratch", "stage"], "topic stage does not exist"],
+  ["has an empty topics list", [], "topics must be a list of one or more non-empty strings"],
+])("a question that %s is refused, names the question, and writes nothing", (_, topics, problem) => {
+  expect(append(PAGE, topic("scratch"), ROUND).code).toBe(0);
+  const before = readFileSync(state, "utf8");
+  const r = append(question("s1-r1-q1", 1, { topics }));
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain(`question s1-r1-q1: ${problem}`);
+  expect(readFileSync(state, "utf8")).toBe(before);
+  expect(readFileSync(page, "utf8")).not.toContain("Title 1?");
+});
+
+test("each Topic note renders once in the Topics tab, and each question that names it links to it from any tab", () => {
+  const scratch = topic("scratch", { body: "Scratch is temporary.\n\n- kept 90 days", sources: ["[GLOSSARY.md](https://example.com/glossary)"] });
+  expect(
+    append(
+      PAGE, scratch, topic("stage"), stage("grill", 1), stage("spec", 2),
+      { ...ROUND, stage: "grill" }, question("s1-r1-q1", 1, { topics: ["scratch", "stage"] }), question("s1-r1-q2", 2),
+      SPEC_ROUND, { ...question("s2-r1-q1", 1), round: "s2-r1", topics: ["scratch"] },
+    ).code,
+  ).toBe(0);
+  expect(append(topic("stage", { title: "Stage, again" })).code).toBe(0);
+  const html = readFileSync(page, "utf8");
+  expect(tabs(html)).toEqual([["overview", "Overview", true], ["stage-grill", "Stage grill", false], ["stage-spec", "Stage spec", false], ["topics", "Topics", false]]);
+  expect(html.match(/<article class="topic" id="topic-scratch"/g)).toHaveLength(1);
+  const topicsTab = panel(html, "topics");
+  expect(topicsTab).toMatch(/id="topic-scratch"[\s\S]*Topic scratch[\s\S]*What scratch is, in one line\.[\s\S]*<p>Scratch is temporary\.<\/p><ul class="bullets"><li>kept 90 days<\/li><\/ul>[\s\S]*Sources[\s\S]*<a href="https:\/\/example\.com\/glossary">GLOSSARY\.md<\/a>[\s\S]*id="topic-stage"[\s\S]*Stage, again/);
+  expect(questionBody(html, "s1-r1-q1")).toMatch(/<a href="#topic-scratch">Topic scratch<\/a>: What scratch is, in one line\.[\s\S]*<a href="#topic-stage">Stage, again<\/a>/);
+  expect(questionBody(html, "s2-r1-q1")).toContain('<a href="#topic-scratch">Topic scratch</a>');
+  expect(questionBody(html, "s1-r1-q2")).not.toContain("#topic-");
+  const qrow = [...(html.match(/<nav class="qnav"[^>]*data-tab="topics"[\s\S]*?<\/nav>/)?.[0] ?? "").matchAll(/data-for="([^"]+)"/g)].map((m) => m[1]);
+  const stops = [...topicsTab.matchAll(/id="([^"]+)"[^>]*data-stop/g)].map((m) => m[1]);
+  expect(stops).toEqual(["topic-scratch", "topic-stage"]);
+  expect(qrow).toEqual(stops);
+  const ids = new Set([...html.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]));
+  expect([...html.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]).filter((t) => !ids.has(t))).toEqual([]);
+});
+
+test("inside a tab, the Background renders first, then Report blocks, then rounds, whatever the append order", () => {
+  expect(append(PAGE, stage("review", 1), REVIEW_ROUND, { ...question("s2-r1-q1", 1), round: "s2-r1" }).code).toBe(0);
+  expect(append(report("standards", "cards", { entries: [card("s1")] })).code).toBe(0);
+  expect(append(background("context", "review")).code).toBe(0);
+  const tab = panel(readFileSync(page, "utf8"), "stage-review");
+  const at = (s: string) => tab.indexOf(s);
+  expect(at('id="background-context"')).toBeGreaterThan(-1);
+  expect(at('id="background-context"')).toBeLessThan(at('id="report-standards"'));
+  expect(at('id="report-standards"')).toBeLessThan(at('aria-labelledby="round-s2-r1"'));
 });

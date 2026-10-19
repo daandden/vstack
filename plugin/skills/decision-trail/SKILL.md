@@ -36,7 +36,7 @@ The top-level agent reads `skill://vstack-tmp` and resolves the project Scratch 
 
 Fix the absolute log path once. Pass it, the project Scratch dir, and the vstack root in every prompt that logs. Chained open-pr, babysit, and ship append to that real file, never a clone's copy. Children never resolve Scratch again.
 
-The log is Scratch, outside the vstack root under ADR 0007's Scratch exception. Children append only to the named log through `scripts/log.sh`. This permission grants no writes to adjacent files. Committing or publishing the log needs the user's approval through `ask`.
+The log is Scratch, outside the vstack root under ADR 0007's Scratch exception. Children append only to the named log through `scripts/log.sh`. This permission grants no writes to adjacent files. Committing or publishing the log needs the user's approval through `ask`. That `ask` is a question on the flow's Grilling page, as `skill://grilling-page` says. Inside another skill's Stage, such as implement's or implement-spec's, it joins that Stage. Otherwise find or start the page, add a decision-trail Stage before the question, and mark the Stage finished after the answer.
 
 ## The format
 

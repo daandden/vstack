@@ -23,6 +23,8 @@ A **seam** is the public boundary you test at: the interface where you observe b
 
 Put this question in the `ask`: "What's the public interface, and which seams should we test?" An answer that `ask` picks after a timeout is not the user's, so the seam stays unconfirmed.
 
+This `ask`, and the substitute-check `ask` in [BUG-FIX.md](BUG-FIX.md), are questions on the flow's Grilling page, as `skill://grilling-page` says. Inside another skill's Stage, such as implement's or implement-spec's, they join that Stage. Otherwise find or start the page and add a tdd Stage before the first one, and mark the Stage finished when the loop ends.
+
 When the shape of that interface is itself in question (how deep the module is, where the seam belongs, what the interface should expose), use `skill://codebase-design` for the vocabulary. It is the shared source of the module, interface, depth, seam, adapter, leverage and locality terms, and it is a reference to consult, not a session to run.
 
 ## Anti-patterns

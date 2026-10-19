@@ -20,7 +20,7 @@ items:
     tree: d8e341cee7980127dddda05159bedf25dc853615
     disposition: adapt
     artifacts: [plugin/skills/code-review]
-    reason: "Reads vstack configuration. Standards, Spec, and conditional Safety use Fan-out. Safety runs blast-radius only in a run, without step 6. A supplied PR is reviewed at its exact base and head commits in a detached worktree made through vstack-worktree (#84, #126, #139)."
+    reason: "Reads vstack configuration. Standards, Spec, and conditional Safety use Fan-out. Safety runs blast-radius only in a run, without step 6. A supplied PR is reviewed at its exact base and head commits in a detached worktree made through vstack-worktree. It runs as its own Stage on the flow's Grilling page, shows Standards and Spec as cards and Safety as a ledger before any question, and asks only about findings it cannot decide (#84, #126, #139, #168)."
   - id: matt/codebase-design
     upstream: matt
     kind: skill
@@ -44,7 +44,7 @@ items:
     tree: ea30ee454ba264543dbe40737973b1a5afb9f0e6
     disposition: adapt
     artifacts: [plugin/skills/domain-modeling]
-    reason: "Its user questions go through ask (ask-tool, #58)."
+    reason: "Its user questions go through ask and on the flow's Grilling page, with option labels only in ask (ask-tool, #58, #165)."
   - id: matt/grill-with-docs
     upstream: matt
     kind: skill
@@ -52,7 +52,7 @@ items:
     tree: eedaf2562c83155115e9c649fa3ecaac2e10e81d
     disposition: adapt
     artifacts: [plugin/skills/grill-with-docs]
-    reason: "Names skill://grilling and skill://domain-modeling where Matt calls the Skill tool."
+    reason: "Names skill://grilling and skill://domain-modeling where Matt calls the Skill tool, and adds a grill-with-docs Stage to the flow's Grilling page (#165)."
   - id: matt/implement
     upstream: matt
     kind: skill
@@ -60,7 +60,7 @@ items:
     tree: f07d230f645fc9ac390cf13a450bbff12ad791a3
     disposition: adapt
     artifacts: [plugin/skills/implement]
-    reason: "Settles the End state with one ask, then chains open-pr, babysit, ship; uses the verify skill (#34)."
+    reason: "Settles the End state with one ask, then chains open-pr, babysit, ship; uses the verify skill. Keeps its asks and a run results table Report block in its own Stage on the flow's Grilling page, and closes the flow when the run ends with no ticket open (#34, #167)."
   - id: matt/improve-codebase-architecture
     upstream: matt
     kind: skill
@@ -68,7 +68,7 @@ items:
     tree: 39bd9cc130f7dfcc4e3ea0b3613f6ebed0d0ad2b
     disposition: adapt
     artifacts: [plugin/skills/improve-codebase-architecture]
-    reason: "Its sub-agent spawn names a vstack agent (ADR 0004); report goes to Scratch (#42, #57)."
+    reason: "Its sub-agent spawn names a vstack agent (ADR 0004); its candidates go on the flow's Grilling page as a cards Report block, not an HTML report (#169)."
   - id: matt/prototype
     upstream: matt
     kind: skill
@@ -108,7 +108,7 @@ items:
     tree: 136b9651747cfccbfbb7c50a6b0dfb757e7547d2
     disposition: adapt
     artifacts: [plugin/skills/to-spec]
-    reason: "Names setup-vstack."
+    reason: "Names setup-vstack, puts its seam confirmation in a to-spec Stage on the flow's Grilling page, and renames the page after the spec issue (#166)."
   - id: matt/to-tickets
     upstream: matt
     kind: skill
@@ -116,7 +116,7 @@ items:
     tree: b32c94e5a51c24ee9c41fcb7fe9ea9fff9af6369
     disposition: adapt
     artifacts: [plugin/skills/to-tickets]
-    reason: "Names setup-vstack."
+    reason: "Names setup-vstack, finds the flow's Grilling page from the spec issue, and shows the breakdown as a table Report block before one approval question (#166)."
   - id: matt/triage
     upstream: matt
     kind: skill
@@ -124,7 +124,7 @@ items:
     tree: 4cb951d62ecccaed601cdc5f9a1b7b3d8a799635
     disposition: adapt
     artifacts: [plugin/skills/triage]
-    reason: "Names setup-vstack. Its questions to the maintainer go through ask (ask-tool, #58)."
+    reason: "Names setup-vstack. Its questions to the maintainer go through ask, and every ask after the item pick goes on the item's Grilling page (ask-tool, #58, #170)."
   - id: matt/wayfinder
     upstream: matt
     kind: skill
@@ -132,7 +132,7 @@ items:
     tree: 8ec0462658381bd1606d3f9db14ffc67df6a2a43
     disposition: adapt
     artifacts: [plugin/skills/wayfinder]
-    reason: "Names setup-vstack; charting research is Fan-out; its user questions go through ask."
+    reason: "Names setup-vstack; charting research is Fan-out; its user questions go through ask and on the map's Grilling page, with one Stage per ticket (#171)."
   - id: matt/wizard
     upstream: matt
     kind: skill
@@ -148,7 +148,7 @@ items:
     tree: 3df14e2d3a89459bf300614be9247e3ce74798f8
     disposition: adapt
     artifacts: [plugin/skills/grill-me]
-    reason: "Names skill://grilling where Matt calls the Skill tool."
+    reason: "Names skill://grilling where Matt calls the Skill tool, and adds a grill-me Stage to the flow's Grilling page (#165)."
   - id: matt/grilling
     upstream: matt
     kind: skill
@@ -156,7 +156,7 @@ items:
     tree: f0732035b8b1b60ae39454e4191caef32fa91903
     disposition: adapt
     artifacts: [plugin/skills/grilling]
-    reason: "Sub-agent spawn names a vstack agent; one round is one ask; the Grilling page lives in grilling-page; pushback reopens its decision (#42, #58, #145)."
+    reason: "Sub-agent spawn names a vstack agent; one round is one ask; the Grilling page lives in grilling-page; pushback reopens its decision; a session writes into its flow's page as a Stage, and ask options carry labels only (#42, #58, #145, #165)."
   - id: matt/handoff
     upstream: matt
     kind: skill
@@ -164,7 +164,7 @@ items:
     tree: 2242e8f05424b8c2ae94194a90d97b88d16108ec
     disposition: adapt
     artifacts: [plugin/skills/handoff]
-    reason: "Saves to Scratch under ~/.vstack/tmp instead of the OS temp dir (tmp-path, #57)."
+    reason: "Saves to Scratch under ~/.vstack/tmp instead of the OS temp dir, and carries the flow's Grilling page path (tmp-path, #57, #171)."
   - id: matt/teach
     upstream: matt
     kind: skill
@@ -172,7 +172,7 @@ items:
     tree: 2ab11f2f51f3c29771edb5d4258d807a49462491
     disposition: adapt
     artifacts: [plugin/skills/teach]
-    reason: "Its user questions go through ask (ask-tool, #58)."
+    reason: "Its user questions go through ask and on the flow's Grilling page in a teach Stage (ask-tool, #58, #172)."
   - id: matt/to-questionnaire
     upstream: matt
     kind: skill
@@ -180,7 +180,7 @@ items:
     tree: 46dfbeeba12a9e52eef446676f42e7551023d9a9
     disposition: adapt
     artifacts: [plugin/skills/to-questionnaire]
-    reason: "Its user questions go through ask (ask-tool, #58)."
+    reason: "Its user questions go through ask and on the flow's Grilling page in a to-questionnaire Stage (ask-tool, #58, #172)."
   - id: matt/wait-what
     upstream: matt
     kind: skill
@@ -596,7 +596,7 @@ items:
     tree: 118c0642360ab53de52b3f8dd044102567dbcaa9
     disposition: adapt
     artifacts: [plugin/skills/decision-trail]
-    reason: "Renamed; final review is one fresh-context vstack subagent on the Session model or the user's override (#51)."
+    reason: "Renamed; final review is one fresh-context vstack subagent on the Session model or the user's override. Its publish approval is a question on the flow's Grilling page (#51, #167)."
   - id: pstack/swarm
     upstream: pstack
     kind: skill
@@ -892,7 +892,7 @@ items:
     tree: 0cfefc751d0cb64f0c948ffcb17e13b94e778f08
     disposition: adapt
     artifacts: [plugin/skills/implement-spec]
-    reason: "Runs Matt's steps with an orchestrator-only main agent: isolated vstack-worker implementers start as tickets become ready, a merger vstack-worker commits each ticket, and implement's END-STATE steps finish the run (ADR 0019, ADR 0022)."
+    reason: "Runs Matt's steps with an orchestrator-only main agent: isolated vstack-worker implementers start as tickets become ready, a merger vstack-worker commits each ticket, and implement's END-STATE steps finish the run. It finds the flow's Grilling page from the spec issue and puts its seam confirmations and relayed implementer questions in its own Stage (ADR 0019, ADR 0022, #167)."
   - id: matt/pr
     upstream: matt
     kind: skill

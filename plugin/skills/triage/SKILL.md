@@ -12,6 +12,8 @@ If this repo treats external pull requests as a request surface (see the issue-t
 
 Every question to the maintainer during the session goes through `ask`, in this file and in its reference docs. That covers picks, confirmations, "ask before proceeding", and "wait for direction". Questions for a reporter go into tracker comments, not `ask`. An answer `ask` picks after a timeout is not the maintainer's. Ask once more, then stop without acting.
 
+Each issue or PR keeps one Grilling page, keyed by its number (`skill://grilling-page`). The pick of an item in discovery is a plain `ask` and goes on no page. Every later `ask` about the item goes on its page. Before the first one, find or start the item's page and add a triage Stage. When triage of the item ends, mark the Stage finished. Leave the flow open, so that a later to-spec on the same issue continues the page.
+
 Every comment or issue posted to the issue tracker during triage **must** start with this disclaimer:
 
 ```
