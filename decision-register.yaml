@@ -44,7 +44,7 @@ items:
     tree: ea30ee454ba264543dbe40737973b1a5afb9f0e6
     disposition: adapt
     artifacts: [plugin/skills/domain-modeling]
-    reason: "Its user questions go through ask (ask-tool, #58)."
+    reason: "Its user questions go through ask and on the flow's Grilling page, with option labels only in ask (ask-tool, #58, #165)."
   - id: matt/grill-with-docs
     upstream: matt
     kind: skill
@@ -52,7 +52,7 @@ items:
     tree: eedaf2562c83155115e9c649fa3ecaac2e10e81d
     disposition: adapt
     artifacts: [plugin/skills/grill-with-docs]
-    reason: "Names skill://grilling and skill://domain-modeling where Matt calls the Skill tool."
+    reason: "Names skill://grilling and skill://domain-modeling where Matt calls the Skill tool, and adds a grill-with-docs Stage to the flow's Grilling page (#165)."
   - id: matt/implement
     upstream: matt
     kind: skill
@@ -148,7 +148,7 @@ items:
     tree: 3df14e2d3a89459bf300614be9247e3ce74798f8
     disposition: adapt
     artifacts: [plugin/skills/grill-me]
-    reason: "Names skill://grilling where Matt calls the Skill tool."
+    reason: "Names skill://grilling where Matt calls the Skill tool, and adds a grill-me Stage to the flow's Grilling page (#165)."
   - id: matt/grilling
     upstream: matt
     kind: skill
@@ -156,7 +156,7 @@ items:
     tree: f0732035b8b1b60ae39454e4191caef32fa91903
     disposition: adapt
     artifacts: [plugin/skills/grilling]
-    reason: "Sub-agent spawn names a vstack agent; one round is one ask; the Grilling page lives in grilling-page; pushback reopens its decision (#42, #58, #145)."
+    reason: "Sub-agent spawn names a vstack agent; one round is one ask; the Grilling page lives in grilling-page; pushback reopens its decision; a session writes into its flow's page as a Stage, and ask options carry labels only (#42, #58, #145, #165)."
   - id: matt/handoff
     upstream: matt
     kind: skill

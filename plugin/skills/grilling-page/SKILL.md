@@ -1,14 +1,22 @@
 ---
 name: grilling-page
-description: How a grilling session keeps its Grilling page. Covers the state file, the render script, its records, the Stage tabs, the visual judge, visuals and previews, and the printed path. grilling loads it.
+description: How a flow keeps its Grilling page. Covers the every-ask rule, the flow folder, the render script, its records, Stages, the visual judge, visuals and previews, and the printed path. Each skill that asks in a flow loads it.
 disable-model-invocation: true
 ---
 
-grilling says when each page step happens. This skill says how to do it.
+The skill that asks says when each page step happens. This skill says how to do it.
 
-## Start the page
+## Every ask in a flow
 
-Read `skill://vstack-tmp` and run its path script with kind `grilling` from the repo being discussed. A flow keeps its page in one flow folder there, `<Scratch dir>/grilling/<project>-<key>/`. The key is the issue number for an issue, otherwise the topic slug. Resolve `<project>` as the main checkout's basename, not a worktree's; outside Git use the current directory's basename. Choose a 3–5 word kebab topic slug at the first round and keep it. The flow folder holds:
+Every `ask` in a flow is a question on the flow's Grilling page, whichever skill asks it. Before each `ask`, add its question to the running Stage, as Add a round says, and print the page path. The `ask` question is one line that starts with its Q number. Each `ask` option carries only its label. The page question carries the description, the trade-offs, and the context. When `ask` returns, record the answer on the page. A closing gate, such as grilling's, goes on the page as the answer of a `close` record. The page is a record, not an input form, so answers come only through `ask`.
+
+A subagent never asks. It returns its open questions. The top-level agent puts them on the page and asks them.
+
+## Find or start the page
+
+A skill continues the page of the flow that it belongs to. Use the page path that this session already printed, or the flow folder whose `flow.json` names the calling skill's issue, spec, ticket, branch, or run. If neither exists, start a new flow folder.
+
+To start one, read `skill://vstack-tmp` and run its path script with kind `grilling` from the repo being discussed. A flow keeps its page in one flow folder there, `<Scratch dir>/grilling/<project>-<key>/`. The key is the issue number for an issue, otherwise the topic slug. Resolve `<project>` as the main checkout's basename, not a worktree's; outside Git use the current directory's basename. Choose a 3–5 word kebab topic slug at the first round and keep it. The flow folder holds:
 
 - `page.jsonl`: the state file.
 - `page.html`: the page.
@@ -36,13 +44,19 @@ If the decision of a question changes something that already exists, give the qu
 
 Text fields are plain text; `` `code` `` and `[text](url)` are kept. A `preview` is one visual, and a question's `visual` is one visual or a list that renders in order. A visual is one of `{ "text" }`, `{ "html", "css" }`, or `{ "svg": "<path>" }`. The script reads each SVG file again on every render. In a flow folder, store an SVG path relative to the folder, such as `figures/context.svg`, so that the path still resolves after `rename`. The script parses HTML and SVG the way a browser does and refuses scripts, `on…` attributes, `javascript:`, `vbscript:`, and `data:` URLs (entities included), frames, forms, and SVG animation. It scopes `css` to the element and refuses at-rules in it. An SVG file can keep its `<style>`, but the script refuses an `@import` in it.
 
-A page that exists with no state file was written by hand before the script, and a question with `plain`, `why`, and `settled` comes from a page before the description. The script refuses both. Start a new page with a new slug and do not link the old one. To continue a page, append a new `round` with the next session number. Continue page round numbers; question numbers start at Q1 for each session and increase across it. A decision that is asked again, because it was unanswered or reopened, keeps its Q number in a new question record.
+A page that exists with no state file was written by hand before the script, and a question with `plain`, `why`, and `settled` comes from a page before the description. The script refuses both. Start a new page with a new slug and do not link the old one.
 
 The page opens on an Overview tab, then has one tab per Stage, in `order`. The Overview lists each Stage with its state color, the decisions of its latest summary in each session, and its open questions, each linked into its tab. A Stage tab holds the Stage's rounds and summaries. A summary renders in the tab of its session's last round. A question is open until it has an answer that is not `unanswered`. The user switches tabs with h/l or the left and right arrow keys, and moves between the questions and summaries of the open tab with j/k or the up and down arrow keys. A link to a question in another tab opens that tab. Rounds with no `stage` come from a page before Stages. They render in one implicit Grilling tab before the other tabs. That tab is finished when its last record is an answered `close`.
 
+## Add a Stage
+
+Each skill that asks in a flow runs its part as one Stage. Before its first question, append a `stage` record: `skill` is the skill's name, `title` names its part of the flow, `state` is `in-progress`, and `order` is one more than the highest `order` on the page. A skill that runs inside another skill's Stage adds no Stage of its own, and its questions join that Stage. For example, domain-modeling's challenges inside grill-with-docs join the grill-with-docs Stage. When the skill that added the Stage ends its part, it marks the Stage finished: append the same `stage` record with state `finished`. A skill that comes back after its Stage finished adds a new Stage with a new id.
+
+Each Stage is one session on the page. Its first `round` takes the next session number, and each of its rounds names the Stage in `stage`. Round numbers continue across the page. Q numbers start at Q1 in each session and increase across it. A decision that is asked again, because it was unanswered or reopened, keeps its Q number in a new question record. When the Stage asks no more, append a `close` record for its session with its decisions, so that the Overview lists them. Only a closing gate, such as grilling's, gives the `close` an `answer`.
+
 ## Add a round
 
-Append one `round` record and one `question` record per frontier decision, with no `visual` or `preview` yet.
+Append one `round` record and one `question` record per question of the next `ask`, with no `visual` or `preview` yet.
 
 Then let the jev judge decide each question's diagrams. Run this in one Python eval cell, with `skill` set to this skill's directory:
 
