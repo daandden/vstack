@@ -20,7 +20,7 @@ items:
     tree: d8e341cee7980127dddda05159bedf25dc853615
     disposition: adapt
     artifacts: [plugin/skills/code-review]
-    reason: "Reads vstack configuration. Standards, Spec, and conditional Safety use Fan-out. Safety runs blast-radius only in a run, without step 6. A supplied PR is reviewed at its exact base and head commits in a detached worktree made through vstack-worktree (#84, #126, #139)."
+    reason: "Reads vstack configuration. Standards, Spec, and conditional Safety use Fan-out. Safety runs blast-radius only in a run, without step 6. A supplied PR is reviewed at its exact base and head commits in a detached worktree made through vstack-worktree. It runs as its own Stage on the flow's Grilling page, shows Standards and Spec as cards and Safety as a ledger before any question, and asks only about findings it cannot decide (#84, #126, #139, #168)."
   - id: matt/codebase-design
     upstream: matt
     kind: skill

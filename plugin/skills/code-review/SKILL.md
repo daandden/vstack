@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Review changes since a fixed point on three axes, Standards, Spec, and conditional Safety. Runs each axis as its own reviewer in parallel and reports them side by side. Use to review a branch, PR, work-in-progress changes, or changes since a commit, branch, tag, or merge-base.
+description: Review changes since a fixed point on three axes, Standards, Spec, and conditional Safety. Runs each axis as its own reviewer in parallel, shows their reports on the flow's Grilling page, and asks only about findings it cannot decide. Use to review a branch, PR, work-in-progress changes, or changes since a commit, branch, tag, or merge-base.
 ---
 
 Review the supplied change scope against the fixed point on separate axes:
@@ -12,6 +12,8 @@ Review the supplied change scope against the fixed point on separate axes:
 Each axis runs as its own reviewer so that findings from one do not mask another.
 
 Resolve the absolute vstack root through the Private-mode rule once. Read `docs/vstack/issue-tracker.md` under that root in Standard mode, or `<vstack root>/config/issue-tracker.md` in Private mode. If it is missing, stop and tell the user to run `/skill:setup-vstack`. Subagents use the supplied root, never resolve it again.
+
+code-review runs as its own Stage on the flow's Grilling page, also when implement or implement-spec runs it. Read `skill://grilling-page` before the first `ask`. Find or start the page and add a code-review Stage, as it says. Every `ask` below is a question in that Stage. A code-review that runs in a subagent writes no page and asks nothing. It returns its Report blocks and its open questions, and the top-level agent puts them on the page and asks them.
 
 ## Process
 
@@ -101,16 +103,16 @@ The Standards reviewer prompt must include:
 - The full diff command, named untracked paths and contents, and commit list.
 - For a PR, the worktree's absolute path from step 1: "Read changed files from this worktree at the head SHA, not from the current checkout."
 - The list of standards-source files you found in step 3, plus the smell baseline from step 3 pasted in full (the reviewer has no other access to it).
-- The brief: "Report, per file/hunk where relevant, (a) every place the diff violates a documented standard: cite the standard (file + the rule); and (b) any baseline smell you spot: name it and quote the hunk. Distinguish hard violations from judgement calls: documented-standard breaches can be hard, but baseline smells are always judgement calls, and a documented repo standard overrides the baseline. Skip anything tooling enforces. Under 400 words."
+- The brief: "Report, per file/hunk where relevant, (a) every place the diff violates a documented standard: cite the standard (file + the rule); and (b) any baseline smell you spot: name it and quote the hunk. Distinguish hard violations from judgement calls: documented-standard breaches can be hard, but baseline smells are always judgement calls, and a documented repo standard overrides the baseline. Skip anything tooling enforces. Give each finding a short title, a label (`issue` for a hard violation, `suggestion` for a judgement call), whether it blocks the merge, its impact, its evidence, and the suggested change. Say whether the cited sources settle the change, or why it needs the user's judgement. Under 400 words."
 
 The Spec reviewer prompt must include:
 
 - The full diff command, named untracked paths and contents, and commit list.
 - For a PR, the worktree's absolute path from step 1: "Read changed files from this worktree at the head SHA, not from the current checkout."
 - The path or fetched contents of the spec.
-- The brief: "Report: (a) requirements the spec asked for that are missing or partial; (b) behaviour in the diff that wasn't asked for (scope creep); (c) requirements that look implemented but where the implementation looks wrong. Quote the spec line for each finding. Under 400 words."
+- The brief: "Report: (a) requirements the spec asked for that are missing or partial; (b) behaviour in the diff that wasn't asked for (scope creep); (c) requirements that look implemented but where the implementation looks wrong. Quote the spec line for each finding. Give each finding a short title, a label such as `issue` or `suggestion`, whether it blocks the merge, its impact, its evidence, and the suggested change. Say whether the spec settles the change, or why it needs the user's judgement, such as a spec line that reads two ways. Under 400 words."
 
-If the spec is missing, skip the Spec reviewer and note this in the final report.
+If the spec is missing, skip the Spec reviewer and say so in the chat line of step 5.
 
 The Safety reviewer prompt must include:
 
@@ -121,11 +123,19 @@ The Safety reviewer prompt must include:
 - The brief: "Run `skill://blast-radius` on this diff and skip its step 6. Return its hand-back in under 400 words, plus the proof script and its output."
 - The supplied Scratch dir, with a distinct run entry under `blast-radius/`.
 
-### 5. Aggregate
+### 5. Show the report, then ask
 
-Present the reports under `## Standards`, `## Spec`, and `## Safety`, verbatim or lightly cleaned. For an axis that did not run, state why. Never merge or re-rank findings.
+Show the reports on the page before any question about them, so that the user reads the evidence first. Append one Report block per axis that has findings to the code-review Stage, as `skill://grilling-page` says. Keep the axes separate. Never merge or re-rank findings, and keep each reviewer's order.
 
-End with one line giving each axis's finding count and worst issue within that axis. For Safety include its trigger or skip reason. When the proof ran, state whether the safety fact is proven or unproven. When a trigger fired outside a run, use `Safety: triggered, no proof (not in a run)`. Keep any proof script and observed output alongside its report. Never select a worst issue across axes. For a PR, remove the worktree as step 1 says.
+- Standards and Spec are each a `cards` block. Each finding is one card with its id (such as `std-1` or `spec-1`), title, label, blocking flag, impact, evidence, and suggested action.
+- Safety is a `ledger` block. The safety fact is one claim, `confirmed` when executed proof established it and `unproven` otherwise. Each risk is one claim, `confirmed` when the proof showed it and `unproven` otherwise. Each cleared item is a `cleared` claim. The evidence names the proof script, command, and observed output in the run's `blast-radius/` entry. The missing proof names the check that would settle the claim, or `none`. The consequence says what follows if the claim holds.
+- When a trigger fired outside a run, the Safety ledger has one `unproven` claim per trigger. Its missing proof is the blast-radius proof that `/skill:code-review` runs.
+
+Give each block a summary line with the axis's finding count and worst issue. For Safety, add its trigger and whether the safety fact is proven or unproven. An axis with no findings, or one that did not run, gets no Report block, because the page script refuses an empty one. The chat line below says why.
+
+Decide each finding that its evidence settles: a breach of a documented standard, a spec requirement that the diff misses or gets wrong, a confirmed risk, or a cleared claim. A card holds the decision in its blocking flag and suggested action, and a claim in its status and consequence. Ask about every other finding, one question per finding. Examples are a baseline smell that the sources do not settle, behavior that the spec neither asks for nor rules out, a spec line that reads two ways, and an unproven claim. If every finding is decided, ask nothing. Otherwise add the questions as one round, as grilling-page says, and put them in one `ask`. Each question title names the finding's id and ends with "?". Its options are the likely actions, such as Fix as suggested and Keep as is. Link each asked finding and its question both ways. Record the answers. If the Stage asked any question, close its session as grilling-page says. Then mark the Stage finished.
+
+In chat, print the page path and one line per axis instead of the findings. Give the axis's finding count and worst issue, or say why it did not run. For Safety include its trigger or skip reason. When the proof ran, state whether the safety fact is proven or unproven. When a trigger fired outside a run, use `Safety: triggered, no proof (not in a run)`. Never select a worst issue across axes. The review's result for the caller is each finding that code-review decided, plus the answer to each question. For a PR, remove the worktree as step 1 says.
 
 ## Why three axes
 
