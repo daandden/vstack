@@ -121,11 +121,60 @@ function checkVisual(v: unknown, where: string): Visual {
   return vis;
 }
 
+/** One visual or a list of one or more, as the list. */
+function checkVisuals(v: unknown, where: string): Visual[] {
+  if (!Array.isArray(v)) return [checkVisual(v, `${where}: visual`)];
+  if (!v.length) fail(where, "visual must be one visual or a list of one or more");
+  return v.map((x, i) => checkVisual(x, `${where}: visual ${i + 1}`));
+}
+const visualsOf = (v: Visual | Visual[] | undefined): Visual[] => (v === undefined ? [] : Array.isArray(v) ? v : [v]);
+
 const STATE_LABELS: Record<string, string> = { "not-started": "Not started", "in-progress": "In progress", finished: "Finished" };
 const STAGE_STATES = Object.keys(STATE_LABELS);
+const CLAIM_LABELS: Record<string, string> = { confirmed: "Confirmed", cleared: "Cleared", unproven: "Unproven" };
+const CLAIM_STATES = Object.keys(CLAIM_LABELS);
+const SHAPES = ["cards", "ledger", "table"];
+const listed = (xs: string[]) => `${xs.slice(0, -1).join(", ")}, or ${xs.at(-1)}`;
 
-/** `records` holds the latest record of each id, in the order the ids first appear. */
-type State = { page: Rec; order: Rec[]; questions: Map<string, Rec>; answers: Map<string, Rec>; rounds: Map<string, Rec>; stages: Rec[]; flow?: Rec; records: Rec[] };
+/** A report's entries: the rows of a table, the entries of cards and a ledger. */
+const entriesOf = (r: Rec): Rec[] => (r.shape === "table" ? r.rows : r.entries);
+
+/** Checks a report's shape and every field of its entries. Links to questions are checked once every record is read. */
+function checkReport(r: Rec, where: string): void {
+  str(r, "stage", where);
+  str(r, "title", where);
+  str(r, "summary", where, true);
+  if (!SHAPES.includes(r.shape)) fail(where, `shape must be ${listed(SHAPES)}`);
+  const [key, other] = r.shape === "table" ? ["rows", "entries"] : ["entries", "rows"];
+  if (r[other] !== undefined) fail(where, `a ${r.shape} report has ${key}, not ${other}`);
+  if (r.shape === "table") strList(r.columns, "columns", where);
+  else if (r.columns !== undefined) fail(where, `a ${r.shape} report has no columns`);
+  if (!Array.isArray(r[key]) || r[key].length === 0) fail(where, `${key} must list one or more ${r.shape === "table" ? "rows" : "entries"}`);
+  const seen = new Set<string>();
+  (r[key] as unknown[]).forEach((e, i) => {
+    const kind = r.shape === "table" ? "row" : "entry";
+    if (typeof e !== "object" || e === null || Array.isArray(e)) fail(`${where}: ${kind} ${i + 1}`, "must be an object");
+    const en = e as Rec;
+    if (typeof en.id !== "string" || !ID.test(en.id)) fail(`${where}: ${kind} ${i + 1}`, "id must be lowercase letters, digits, and hyphens");
+    const ew = `${where}: ${kind} ${en.id}`;
+    if (seen.has(en.id)) fail(ew, "id is used by another entry of this report");
+    seen.add(en.id);
+    str(en, "question", ew, true);
+    if (r.shape === "cards") {
+      for (const k of ["title", "label", "impact", "evidence", "action"]) str(en, k, ew);
+      if (typeof en.blocking !== "boolean") fail(ew, "blocking must be true or false");
+      if (en.visual !== undefined) checkVisuals(en.visual, ew);
+    } else if (r.shape === "ledger") {
+      for (const k of ["claim", "evidence", "missing_proof", "consequence"]) str(en, k, ew);
+      if (!CLAIM_STATES.includes(en.status)) fail(ew, `status must be ${listed(CLAIM_STATES)}`);
+    } else if (!Array.isArray(en.cells) || en.cells.length !== r.columns.length || en.cells.some((c: unknown) => typeof c !== "string")) {
+      fail(ew, `cells must list ${r.columns.length} strings, one per column`);
+    }
+  });
+}
+
+/** `records` holds the latest record of each id, in the order the ids first appear, and so does `reports`. */
+type State = { page: Rec; order: Rec[]; questions: Map<string, Rec>; answers: Map<string, Rec>; rounds: Map<string, Rec>; stages: Rec[]; reports: Map<string, Rec>; flow?: Rec; records: Rec[] };
 
 /** Checks every record. `folder` is the basename of the state file's folder, which a flow record's key must end. */
 function check(lines: Line[], folder: string): State {
@@ -142,6 +191,7 @@ function check(lines: Line[], folder: string): State {
   const stages = new Map<string, Rec>();
   const questions = new Map<string, Rec>();
   const answers = new Map<string, Rec>();
+  const reports = new Map<string, Rec>();
   let page: Rec | undefined;
   let flow: Rec | undefined;
   const order: Rec[] = [];
@@ -156,7 +206,7 @@ function check(lines: Line[], folder: string): State {
       case "stage":
         str(r, "skill", where);
         str(r, "title", where);
-        if (!STAGE_STATES.includes(r.state)) fail(where, `state must be ${STAGE_STATES.slice(0, -1).join(", ")}, or ${STAGE_STATES.at(-1)}`);
+        if (!STAGE_STATES.includes(r.state)) fail(where, `state must be ${listed(STAGE_STATES)}`);
         int(r, "order", where);
         stages.set(r.id, r);
         break;
@@ -176,10 +226,8 @@ function check(lines: Line[], folder: string): State {
         str(r, "example", where, true);
         entryList(r, "today", ["text", "source"], where);
         entryList(r, "terms", ["term", "text"], where);
-        if (Array.isArray(r.visual)) {
-          if (!r.visual.length) fail(where, "visual must be one visual or a list of one or more");
-          r.visual.forEach((v: unknown, i: number) => checkVisual(v, `${where}: visual ${i + 1}`));
-        } else if (r.visual !== undefined) checkVisual(r.visual, `${where}: visual`);
+        if (r.visual !== undefined) checkVisuals(r.visual, where);
+        if (r.report_entries !== undefined && strList(r.report_entries, "report_entries", where).some((e) => !/^[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9-]*$/.test(e))) fail(where, "report_entries must list <report id>/<entry id> strings");
         if (!Array.isArray(r.options) || r.options.length < 2) fail(where, "options must list two or more options");
         let recommended = 0;
         (r.options as Option[]).forEach((o, i) => {
@@ -237,13 +285,26 @@ function check(lines: Line[], folder: string): State {
         flow = r;
         break;
       }
+      case "report":
+        checkReport(r, where);
+        reports.set(r.id, r);
+        break;
       default:
-        fail(where, "type must be page, stage, round, question, answer, close, or flow");
+        fail(where, "type must be page, stage, round, question, answer, close, flow, or report");
     }
   }
   if (!page) fail("state", "needs one page record");
   for (const r of rounds.values()) if (r.stage !== undefined && !stages.has(r.stage)) fail(`round ${r.id}`, `stage ${r.stage} does not exist`);
   for (const q of questions.values()) if (!rounds.has(q.round)) fail(`question ${q.id}`, `round ${q.round} does not exist`);
+  for (const r of reports.values()) {
+    if (!stages.has(r.stage)) fail(`report ${r.id}`, `stage ${r.stage} does not exist`);
+    for (const e of entriesOf(r)) if (e.question !== undefined && !questions.has(e.question)) fail(`report ${r.id}`, `${r.shape === "table" ? "row" : "entry"} ${e.id} links question ${e.question}, which does not exist`);
+  }
+  for (const q of questions.values())
+    for (const link of (q.report_entries ?? []) as string[]) {
+      const [rid, eid] = link.split("/");
+      if (!reports.has(rid) || !entriesOf(reports.get(rid)!).some((e) => e.id === eid)) fail(`question ${q.id}`, `report entry ${link} does not exist`);
+    }
   for (const a of answers.values()) {
     const q = questions.get(a.question);
     if (!q) fail(`answer ${a.id}`, `question ${a.question} does not exist`);
@@ -263,7 +324,7 @@ function check(lines: Line[], folder: string): State {
     }
     for (const [n] of latest) if (!named.has(n)) fail(`close ${c.id}`, `Q${n} has no decision`);
   }
-  return { page: page!, order, questions, answers, rounds, stages: [...stages.values()], flow, records: all.map((l) => l.rec) };
+  return { page: page!, order, questions, answers, rounds, stages: [...stages.values()], reports, flow, records: all.map((l) => l.rec) };
 }
 
 /** The latest ask of each Q number in one session, by Q number, among the rounds in `order`. */
@@ -336,13 +397,24 @@ function description(s: string): string {
     .join("");
 }
 
-function questionHtml(q: Rec, a: Rec | undefined, baseDir: string): string {
+/** The page id of one report entry. An underscore cannot occur in a record id, so two entries never share it. */
+const entryAnchor = (report: string, entry: string) => `report-${report}_${entry}`;
+/** The text that names an entry in a link: a card's title, a ledger's claim, a table row's first cell. */
+const entryName = (r: Rec, e: Rec): string => (r.shape === "cards" ? e.title : r.shape === "ledger" ? e.claim : e.cells[0] || e.id);
+
+function questionHtml(q: Rec, a: Rec | undefined, baseDir: string, reports: Map<string, Rec>): string {
   const qid = `q-${q.id}`;
   const facts = ((q.today ?? []) as Rec[]).map((f) => `<li>${text(f.text)} <span class="source">${text(f.source)}</span></li>`).join("");
   const today = facts ? `\n<div class="today"><p class="label">Today</p><ul class="bullets">${facts}</ul></div>` : "";
   const notes = ((q.terms ?? []) as Rec[]).map((t) => `<dt>${text(t.term)}</dt><dd>${text(t.text)}</dd>`).join("");
   const terms = notes ? `\n<div class="terms"><p class="label">Term notes</p><dl>${notes}</dl></div>` : "";
   const example = q.example ? `\n<div class="example"><p class="label">Example</p><p>${text(q.example)}</p></div>` : "";
+  const refs = ((q.report_entries ?? []) as string[]).map((ref) => {
+    const [rid, eid] = ref.split("/");
+    const r = reports.get(rid)!;
+    return `<li><a href="#${entryAnchor(rid, eid)}">${text(r.title)} <span class="entry-id">${eid}</span></a>: ${text(entryName(r, entriesOf(r).find((e) => e.id === eid)!))}</li>`;
+  });
+  const reportLinks = refs.length ? `\n<div class="report-links"><p class="label">From the report</p><ul class="bullets">${refs.join("")}</ul></div>` : "";
   const picks = new Set<string>(a?.picks ?? []);
   const options = (q.options as Option[])
     .map((o, i) => {
@@ -358,15 +430,57 @@ function questionHtml(q: Rec, a: Rec | undefined, baseDir: string): string {
     .join("\n");
   const state = stateOf(a);
   const line = answerLine(a);
-  const visuals: Visual[] = q.visual === undefined ? [] : Array.isArray(q.visual) ? q.visual : [q.visual];
-  const visual = visuals.map((v, i) => visualHtml(v, `${qid}-visual${i ? `-${i + 1}` : ""}`, "visual", baseDir)).join("\n");
+  const visual = visualsOf(q.visual).map((v, i) => visualHtml(v, `${qid}-visual${i ? `-${i + 1}` : ""}`, "visual", baseDir)).join("\n");
   return `<article class="question" id="${qid}" data-state="${state}" data-stop>
 <h3><span class="qnum">Q${q.q}</span>${text(q.title)}</h3>
-<div class="description">${description(q.description)}</div>${today}${terms}${example}
+<div class="description">${description(q.description)}</div>${reportLinks}${today}${terms}${example}
 ${visual}<ol class="options">
 ${options}
 </ol>${line ? `\n<p class="answer" data-state="${state}"><span class="label">${line[0]}</span><span>${line[1]}</span></p>` : ""}
 </article>`;
+}
+
+/** A Report block: a Stage's findings as cards, its claims as a ledger, or its rows as a table, each entry linked to its question. */
+function reportHtml(r: Rec, questions: Map<string, Rec>, baseDir: string): string {
+  const rid = `report-${r.id}`;
+  const ask = (e: Rec) => {
+    const q = e.question === undefined ? undefined : questions.get(e.question)!;
+    return q ? `<a href="#q-${q.id}">Q${q.q}</a>: ${text(q.title)}` : "";
+  };
+  const fields = (pairs: [string, string][]) => `<dl class="fields">${pairs.map(([k, v]) => `<dt>${k}</dt><dd>${text(v)}</dd>`).join("")}</dl>`;
+  const askLine = (e: Rec) => (e.question === undefined ? "" : `\n<p class="ask"><span class="label">Question</span><span>${ask(e)}</span></p>`);
+  let entries: string;
+  if (r.shape === "table") {
+    const linked = (r.rows as Rec[]).some((e) => e.question !== undefined);
+    const head = `<tr>${(r.columns as string[]).map((c) => `<th scope="col">${text(c)}</th>`).join("")}${linked ? `<th scope="col">Question</th>` : ""}</tr>`;
+    const rows = (r.rows as Rec[]).map((e) => `<tr id="${entryAnchor(r.id, e.id)}">${(e.cells as string[]).map((c) => `<td>${text(c)}</td>`).join("")}${linked ? `<td>${ask(e)}</td>` : ""}</tr>`);
+    entries = `<div class="table"><table>\n<thead>${head}</thead>\n<tbody>\n${rows.join("\n")}\n</tbody>\n</table></div>`;
+  } else if (r.shape === "ledger") {
+    const claims = (r.entries as Rec[]).map(
+      (e) => `<li class="claim" id="${entryAnchor(r.id, e.id)}" data-status="${e.status}">
+<h3><span class="entry-id">${e.id}</span>${text(e.claim)}</h3>
+<p class="tag">${CLAIM_LABELS[e.status]}</p>
+${fields([["Evidence", e.evidence], ["Missing proof", e.missing_proof], ["Consequence", e.consequence]])}${askLine(e)}
+</li>`,
+    );
+    entries = `<ol class="entries">\n${claims.join("\n")}\n</ol>`;
+  } else {
+    const cards = (r.entries as Rec[]).map((e) => {
+      const id = entryAnchor(r.id, e.id);
+      const visual = visualsOf(e.visual).map((v, i) => visualHtml(v, `${id}_visual${i ? `-${i + 1}` : ""}`, "visual", baseDir)).join("\n");
+      return `<li class="card" id="${id}"${e.blocking ? " data-blocking" : ""}>
+<h3><span class="entry-id">${e.id}</span>${text(e.title)}</h3>
+<p class="tag">${text(e.label)} (${e.blocking ? "blocking" : "non-blocking"})</p>
+${fields([["Impact", e.impact], ["Evidence", e.evidence], ["Action", e.action]])}${visual ? `\n${visual}` : ""}${askLine(e)}
+</li>`;
+    });
+    entries = `<ol class="entries">\n${cards.join("\n")}\n</ol>`;
+  }
+  const summary = r.summary ? `<p class="report-summary">${text(r.summary)}</p>` : "";
+  return `<section class="report" id="${rid}" data-shape="${r.shape}" aria-labelledby="${rid}-title">
+<header><h2 id="${rid}-title">${text(r.title)}</h2>${summary}</header>
+${entries}
+</section>`;
 }
 
 /** Rounds with no stage, from before Stages, render in this one implicit Stage. Its id cannot be a record id. */
@@ -396,12 +510,14 @@ function render(s: State, baseDir: string): string {
     const pid = `stage-${st.id}`;
     const nav: string[] = [];
     const body: string[] = [];
+    // Report blocks come before the rounds, whatever the order in which their records were added.
+    for (const r of s.reports.values()) if (r.stage === st.id) body.push(reportHtml(r, s.questions, baseDir));
     const items = s.order.filter((i) => stageOf.get(i) === st.id);
     for (const item of items) {
       if (item.type === "round") {
         const qs = questionsOf(item.id);
         const head = `<header><h2 id="round-${item.id}">Session ${item.session}, round ${item.round}<time datetime="${esc(item.time)}">${formatTime(item.time)}</time></h2></header>`;
-        body.push(`<section class="round" aria-labelledby="round-${item.id}">\n${head}\n${qs.map((q) => questionHtml(q, s.answers.get(q.id), baseDir)).join("\n")}\n</section>`);
+        body.push(`<section class="round" aria-labelledby="round-${item.id}">\n${head}\n${qs.map((q) => questionHtml(q, s.answers.get(q.id), baseDir, s.reports)).join("\n")}\n</section>`);
         if (qs.length) {
           if (nav.length) nav.push(`<span class="sep" aria-hidden="true"></span>`);
           for (const q of qs) nav.push(`<a href="#q-${q.id}" data-for="q-${q.id}"><span class="dot" data-state="${stateOf(s.answers.get(q.id))}"></span>Q${q.q}</a>`);

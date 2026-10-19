@@ -561,3 +561,139 @@ test("each tab's keyboard stops have their links in that tab's Q row, and every 
   const targets = [...html.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]);
   expect(targets.filter((t) => !ids.has(t))).toEqual([]);
 });
+
+const REVIEW_ROUND = { ...SPEC_ROUND, id: "s2-r1", stage: "review" };
+const card = (id: string, extra: object = {}) => ({ id, title: `Finding ${id}`, label: "issue", blocking: false, impact: `Impact ${id}`, evidence: `Evidence ${id}`, action: `Action ${id}`, ...extra });
+const report = (id: string, shape: string, extra: object = {}) => ({ type: "report", id, stage: "review", title: `Report ${id}`, shape, ...extra });
+/** The HTML of one report entry, from its own tag to the next entry or the end of its report. */
+const entry = (html: string, id: string) => {
+  const start = html.indexOf(` id="${id}"`);
+  if (start < 0) return "";
+  const ends = ["<li class=", "<tr ", "</section>"].map((s) => html.indexOf(s, start + 1)).filter((i) => i > 0);
+  return html.slice(start, Math.min(...ends));
+};
+
+test("a cards Report block renders each card's id, title, label, blocking flag, impact, evidence, action, and visual", () => {
+  const cards = [card("s1", { blocking: true, visual: { text: "before -> after" } }), card("s2", { label: "suggestion" })];
+  const r = append(PAGE, stage("review", 1, { skill: "code-review" }), report("standards", "cards", { summary: "Two findings on `grilling-page.ts`.", entries: cards }));
+  expect(r.code).toBe(0);
+  const tab = panel(readFileSync(page, "utf8"), "stage-review");
+  expect(tab).toContain('id="report-standards"');
+  expect(tab).toContain("Report standards");
+  expect(tab).toContain("Two findings on <code>grilling-page.ts</code>.");
+  const s1 = entry(tab, "report-standards_s1");
+  for (const t of ["s1", "Finding s1", "issue (blocking)", "Impact s1", "Evidence s1", "Action s1", "before -&gt; after"]) expect(s1).toContain(t);
+  const s2 = entry(tab, "report-standards_s2");
+  for (const t of ["Finding s2", "suggestion (non-blocking)", "Impact s2", "Evidence s2", "Action s2"]) expect(s2).toContain(t);
+  expect(tab).not.toContain("No rounds yet.");
+});
+
+test("a ledger Report block renders each claim with its status, evidence, missing proof, and consequence", () => {
+  const claim = (id: string, status: string) => ({ id, claim: `Claim ${id}`, status, evidence: `Evidence ${id}`, missing_proof: `Missing ${id}`, consequence: `Consequence ${id}` });
+  const r = append(PAGE, stage("review", 1, { skill: "code-review" }), report("safety", "ledger", { entries: [claim("p1", "confirmed"), claim("p2", "cleared"), claim("p3", "unproven")] }));
+  expect(r.code).toBe(0);
+  const tab = panel(readFileSync(page, "utf8"), "stage-review");
+  for (const [id, status, label] of [["p1", "confirmed", "Confirmed"], ["p2", "cleared", "Cleared"], ["p3", "unproven", "Unproven"]]) {
+    const html = entry(tab, `report-safety_${id}`);
+    expect(html).toContain(`data-status="${status}"`);
+    for (const t of [`Claim ${id}`, label, `Evidence ${id}`, "Missing proof", `Missing ${id}`, `Consequence ${id}`]) expect(html).toContain(t);
+  }
+});
+
+test("a table Report block renders its columns and rows, and a row that links a question gets a Question cell", () => {
+  const rows = [{ id: "t1", cells: ["#160 Stage tabs", "none", "M"] }, { id: "t2", cells: ["#162 Report blocks", "#160", "M"], question: "s2-r1-q1" }];
+  const r = append(PAGE, stage("review", 1, { title: "Tickets" }), report("breakdown", "table", { columns: ["Ticket", "Blocked by", "Size"], rows }), REVIEW_ROUND, { ...question("s2-r1-q1", 1), round: "s2-r1", title: "Approve the breakdown?" });
+  expect(r.code).toBe(0);
+  const tab = panel(readFileSync(page, "utf8"), "stage-review");
+  expect(tab).toMatch(/<th scope="col">Ticket<\/th><th scope="col">Blocked by<\/th><th scope="col">Size<\/th><th scope="col">Question<\/th>/);
+  expect(entry(tab, "report-breakdown_t1")).toMatch(/<td>#160 Stage tabs<\/td><td>none<\/td><td>M<\/td><td><\/td>/);
+  expect(entry(tab, "report-breakdown_t2")).toMatch(/<td>#162 Report blocks<\/td><td>#160<\/td><td>M<\/td><td><a href="#q-s2-r1-q1">Q1<\/a>: Approve the breakdown\?<\/td>/);
+});
+
+test("entries link to their questions and questions link back to entries, also across tabs", () => {
+  const r = append(
+    PAGE,
+    stage("grill", 1),
+    stage("review", 2),
+    { ...ROUND, stage: "grill" },
+    question("s1-r1-q1", 1, { title: "Keep the old flag?", report_entries: ["standards/s1", "safety/p1"] }),
+    report("standards", "cards", { entries: [card("s1", { question: "s1-r1-q1" }), card("s2", { question: "s2-r1-q1" })] }),
+    report("safety", "ledger", { entries: [{ id: "p1", claim: "Input reaches the shell", status: "unproven", evidence: "e", missing_proof: "m", consequence: "c" }] }),
+    REVIEW_ROUND,
+    { ...question("s2-r1-q1", 1), round: "s2-r1", title: "Fix S2 now?", report_entries: ["standards/s2"] },
+  );
+  expect(r.code).toBe(0);
+  const html = readFileSync(page, "utf8");
+  const review = panel(html, "stage-review");
+  const grill = panel(html, "stage-grill");
+  // A card in the review tab links to a question in the grill tab, and that question links back across the tabs.
+  expect(entry(review, "report-standards_s1")).toContain('<a href="#q-s1-r1-q1">Q1</a>: Keep the old flag?');
+  expect(grill).toContain('id="q-s1-r1-q1"');
+  expect(questionBody(grill, "s1-r1-q1")).toMatch(/<a href="#report-standards_s1">Report standards <span class="entry-id">s1<\/span><\/a>: Finding s1[\s\S]*<a href="#report-safety_p1">Report safety <span class="entry-id">p1<\/span><\/a>: Input reaches the shell/);
+  // Inside one tab, the links go both ways too.
+  expect(entry(review, "report-standards_s2")).toContain('<a href="#q-s2-r1-q1">Q1</a>: Fix S2 now?');
+  expect(questionBody(review, "s2-r1-q1")).toContain('<a href="#report-standards_s2">');
+  const ids = new Set([...html.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]));
+  const targets = [...html.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]);
+  expect(targets.filter((t) => !ids.has(t))).toEqual([]);
+});
+
+test("inside a tab, Report blocks render before the rounds, even when they were appended after them", () => {
+  expect(append(PAGE, stage("review", 1), REVIEW_ROUND, { ...question("s2-r1-q1", 1), round: "s2-r1" }).code).toBe(0);
+  expect(append(report("standards", "cards", { entries: [card("s1")] }), report("safety", "ledger", { entries: [{ id: "p1", claim: "c", status: "cleared", evidence: "e", missing_proof: "m", consequence: "c" }] })).code).toBe(0);
+  const tab = panel(readFileSync(page, "utf8"), "stage-review");
+  const at = (s: string) => tab.indexOf(s);
+  expect(at('id="report-standards"')).toBeGreaterThan(0);
+  expect(at('id="report-standards"')).toBeLessThan(at('id="report-safety"'));
+  expect(at('id="report-safety"')).toBeLessThan(at('aria-labelledby="round-s2-r1"'));
+});
+
+test("a later report record with the same id replaces the earlier one", () => {
+  expect(append(PAGE, stage("review", 1), report("standards", "cards", { entries: [card("s1"), card("s2")] })).code).toBe(0);
+  expect(append(report("standards", "cards", { title: "Standards, second pass", entries: [card("s1", { title: "Finding s1, fixed" })] })).code).toBe(0);
+  const tab = panel(readFileSync(page, "utf8"), "stage-review");
+  expect(tab).toContain("Standards, second pass");
+  expect(tab).toContain("Finding s1, fixed");
+  expect(tab).not.toContain('id="report-standards_s2"');
+  expect(tab.match(/id="report-standards"/g)).toHaveLength(1);
+});
+
+const LEDGER_ENTRY = { id: "p1", claim: "c", status: "cleared", evidence: "e", missing_proof: "m", consequence: "c" };
+test.each([
+  ["an unknown shape", report("standards", "list", { entries: [card("s1")] }), "report standards: shape must be cards, ledger, or table"],
+  ["no title", report("standards", "cards", { title: undefined, entries: [card("s1")] }), "report standards: title must be a non-empty string"],
+  ["an unknown stage", report("standards", "cards", { stage: "spec", entries: [card("s1")] }), "report standards: stage spec does not exist"],
+  ["no entries", report("standards", "cards"), "report standards: entries must list one or more entries"],
+  ["a card with no impact", report("standards", "cards", { entries: [card("s1", { impact: undefined })] }), "report standards: entry s1: impact must be a non-empty string"],
+  ["a card with a blocking flag that is not true or false", report("standards", "cards", { entries: [card("s1", { blocking: "yes" })] }), "report standards: entry s1: blocking must be true or false"],
+  ["a card with an unsafe visual", report("standards", "cards", { entries: [card("s1", { visual: { html: "<script>x</script>" } })] }), "report standards: entry s1: visual: html is not safe"],
+  ["two entries with one id", report("standards", "cards", { entries: [card("s1"), card("s1")] }), "report standards: entry s1: id is used by another entry of this report"],
+  ["a claim with an unknown status", report("safety", "ledger", { entries: [{ ...LEDGER_ENTRY, status: "maybe" }] }), "report safety: entry p1: status must be confirmed, cleared, or unproven"],
+  ["a claim with no missing proof", report("safety", "ledger", { entries: [{ ...LEDGER_ENTRY, missing_proof: undefined }] }), "report safety: entry p1: missing_proof must be a non-empty string"],
+  ["a table with no columns", report("breakdown", "table", { rows: [{ id: "t1", cells: ["a"] }] }), "report breakdown: columns must be a list of one or more non-empty strings"],
+  ["a row with a cell too few", report("breakdown", "table", { columns: ["Ticket", "Size"], rows: [{ id: "t1", cells: ["a"] }] }), "report breakdown: row t1: cells must list 2 strings, one per column"],
+  ["a table with entries in place of rows", report("breakdown", "table", { columns: ["Ticket"], entries: [{ id: "t1", cells: ["a"] }] }), "report breakdown: a table report has rows, not entries"],
+  ["an entry that links an unknown question", report("standards", "cards", { entries: [card("s1", { question: "s9-r1-q1" })] }), "report standards: entry s1 links question s9-r1-q1, which does not exist"],
+  ["a row that links an unknown question", report("breakdown", "table", { columns: ["Ticket"], rows: [{ id: "t1", cells: ["a"], question: "nope" }] }), "report breakdown: row t1 links question nope, which does not exist"],
+])("a report with %s is refused, names the record, and writes nothing", (_, rec, problem) => {
+  expect(append(PAGE, stage("review", 1)).code).toBe(0);
+  const before = readFileSync(state, "utf8");
+  const pageBefore = readFileSync(page, "utf8");
+  const r = append(rec);
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain(problem);
+  expect(r.stderr).toContain("Nothing was written.");
+  expect(readFileSync(state, "utf8")).toBe(before);
+  expect(readFileSync(page, "utf8")).toBe(pageBefore);
+});
+
+test("a question that links an unknown report or entry is refused, names the question, and writes nothing", () => {
+  expect(append(PAGE, stage("review", 1), report("standards", "cards", { entries: [card("s1")] }), REVIEW_ROUND).code).toBe(0);
+  const before = readFileSync(state, "utf8");
+  for (const [link, problem] of [["standards/s9", "question s2-r1-q1: report entry standards/s9 does not exist"], ["safety/p1", "question s2-r1-q1: report entry safety/p1 does not exist"], ["standards", "report_entries must list <report id>/<entry id> strings"]]) {
+    const r = append({ ...question("s2-r1-q1", 1), round: "s2-r1", report_entries: [link] });
+    expect(r.code).toBe(1);
+    expect(r.stderr).toContain(problem);
+    expect(readFileSync(state, "utf8")).toBe(before);
+  }
+});
