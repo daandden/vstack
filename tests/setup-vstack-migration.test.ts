@@ -159,3 +159,13 @@ test("a linked worktree plans the shared store's domain files too", () => {
   expect(apply(linked).code).toBe(0);
   expect(readFileSync(join(r, ".git/vstack/domain/GLOSSARY.md"), "utf8")).toBe("private domain");
 });
+test("apply refuses a plan made in another checkout and writes nothing", () => {
+  const a = repo(), b = repo(); matt(a);
+  const f = join(b, ".git/approved.json");
+  put(f, JSON.stringify(run(a, "plan").json()));
+  const r = run(b, "apply", "--plan", f);
+  expect(r.code).toBe(2);
+  expect(r.stderr).toContain(a);
+  expect(existsSync(join(a, "docs/agents/domain.md"))).toBe(true);
+  expect(existsSync(join(a, "docs/vstack"))).toBe(false);
+});

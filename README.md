@@ -258,6 +258,8 @@ The old private store moves to `<common dir>/vstack/` as one mandatory item for 
 
 `migrate.ts apply --plan <file> [--skip <id>...]` rejects stale state and skipped mandatory items before writing. It moves tracked files with git and untracked files with filesystem rename, copies Private config with private artifact and domain paths, rewrites rule and store hits, and renames old domain files and their map links. It leaves a `.diagram-design` marker in place. Failures stop later actions. Exit codes are 0 applied, 1 incomplete, and 2 refusal or inability to run. The report lists `paths`: every repo-relative path that it moved from, wrote, or deleted, and none under the git common dir. setup-vstack passes them to `project.ts commit --migration-path <path>...`, which stages them with the config files and the block file, deletions and both sides of a move included, and commits only those paths. In Standard mode one setup commit holds the whole Migration. Private mode commits nothing. Migration never touches machine state: Matt's global skills, global rules, the old private rule, and diagram profiles stay where they are.
 
+Each setup run keeps its plan JSON in its own Scratch entry, `setup-vstack/run-XXXXXX/` from `mktemp -d`, because every worktree of a repo shares the Scratch dir. `migrate.ts apply` also refuses a plan whose `root` is not the checkout it runs in, so a plan from another worktree never applies there.
+
 ### vstack-maintain
 
 `skill://vstack-maintain` is the Addon for Updates and Hand edits to vstack. The grill gathers facts and confirms decisions. implement's isolated drafting worker writes the text and runs the script's bookkeeping and gates in its own clone. implement applies the gated patch and owns git and the End state.

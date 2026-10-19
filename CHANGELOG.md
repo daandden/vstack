@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [3.0.1] - 2026-10-20
+
+- setup-vstack gives each run its own Scratch entry, `setup-vstack/run-XXXXXX/`, for its Migration plans. Every worktree of a repo shares the Scratch dir, so two setup runs at once could overwrite each other's `plan-1.json`. `migrate.ts apply` now refuses, with exit 2 and no writes, a plan whose `root` is not the checkout it runs in, so a plan from another worktree never migrates that worktree.
+
 ## [3.0.0] - 2026-10-20
 
 - migrate-to-vstack is removed, and setup-vstack is the one entry point (ADR 0028, #185). Its project section runs a read-only Migration plan of this repo after the machine checks. When the plan finds Matt config, it asks whether to migrate first, asks Standard or Private once, shows the plan with its Apply all, Choose items, and Cancel gate, and then goes on with setup in the same run, with no `/new`. A no or Cancel sets up beside the Matt files, and Done names them. An incomplete Migration stops the run. In Standard mode one setup commit holds the Migration and setup changes. `project.ts commit` takes `--migration-path` for each path that the Migration moved from, wrote, or deleted, treats each as a literal file name, refuses a path outside the repo, and leaves other staged work alone. The dirty-block-file gate ignores edits that this run's Migration made. A Migration that fills every config file still reaches Write and the commit. A manual hit that the user declined comes back on the next run, also in moved Standard config.
