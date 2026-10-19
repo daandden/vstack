@@ -697,3 +697,135 @@ test("a question that links an unknown report or entry is refused, names the que
     expect(readFileSync(state, "utf8")).toBe(before);
   }
 });
+
+const background = (id: string, stageId: string, extra: object = {}) => ({
+  type: "background", id, stage: stageId, title: "How a flow keeps its page", summary: "One page follows the flow from grill to merge.",
+  sections: [{ heading: "One folder per flow", body: "The folder holds the state file and the page." }], sources: ["docs/adr/0028-flow-grilling-page.md"], ...extra,
+});
+
+test.each([
+  ["no stage", { stage: undefined }, "stage must be a non-empty string"],
+  ["an empty title", { title: " " }, "title must be a non-empty string"],
+  ["no summary", { summary: undefined }, "summary must be a non-empty string"],
+  ["no sections", { sections: [] }, "sections must be a list of one or more { heading, body }"],
+  ["a section with no body", { sections: [{ heading: "One folder per flow" }] }, "sections 1: body must be a non-empty string"],
+  ["no sources", { sources: undefined }, "sources must be a list of one or more non-empty strings"],
+  ["a visual with two kinds", { visual: { text: "a", html: "<p>b</p>" } }, "visual: must have exactly one of text, html, or svg"],
+  ["an unknown stage", { stage: "spec" }, "stage spec does not exist"],
+])("a background with %s is refused, names the record, and writes nothing", (_, extra, problem) => {
+  expect(append(PAGE, stage("grill", 1)).code).toBe(0);
+  const before = readFileSync(state, "utf8");
+  const pageBefore = readFileSync(page, "utf8");
+  const r = append(background("context", "grill", extra));
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain(`background context: ${problem}`);
+  expect(readFileSync(state, "utf8")).toBe(before);
+  expect(readFileSync(page, "utf8")).toBe(pageBefore);
+});
+
+test("a Stage has at most one background", () => {
+  expect(append(PAGE, stage("grill", 1), background("context", "grill")).code).toBe(0);
+  const before = readFileSync(state, "utf8");
+  const r = append(background("more-context", "grill"));
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain("background more-context: stage grill already has background context");
+  expect(readFileSync(state, "utf8")).toBe(before);
+});
+
+test("a Background renders at the top of its Stage tab, before the rounds, even when appended after them", () => {
+  const sections = [{ heading: "One folder per flow", body: "The folder holds the state file.\n\n- `page.jsonl`\n- `page.html`" }, { heading: "Renamed at to-spec", body: "The key becomes the spec issue." }];
+  const visual = { text: "grilling/vstack-151/" };
+  expect(append(PAGE, stage("grill", 1), stage("spec", 2), { ...ROUND, stage: "grill" }, question("s1-r1-q1", 1), SPEC_ROUND, { ...question("s2-r1-q1", 1), round: "s2-r1" }).code).toBe(0);
+  expect(append(background("context", "spec", { sections, visual, sources: ["[ADR 0028](https://example.com/0028)", "GLOSSARY.md: Stage"] })).code).toBe(0);
+  const html = readFileSync(page, "utf8");
+  const spec = panel(html, "stage-spec");
+  const bg = spec.slice(spec.indexOf('class="background"'), spec.indexOf('class="round"'));
+  expect(spec.indexOf('class="background"')).toBeGreaterThan(-1);
+  expect(spec.indexOf('class="background"')).toBeLessThan(spec.indexOf('class="round"'));
+  expect(bg).toContain("How a flow keeps its page");
+  expect(bg).toContain("One page follows the flow from grill to merge.");
+  expect(bg).toMatch(/One folder per flow<\/h3>[\s\S]*<p>The folder holds the state file\.<\/p><ul class="bullets"><li><code>page\.jsonl<\/code><\/li><li><code>page\.html<\/code><\/li><\/ul>[\s\S]*Renamed at to-spec<\/h3>[\s\S]*<p>The key becomes the spec issue\.<\/p>/);
+  expect(bg).toContain("<pre>grilling/vstack-151/</pre>");
+  expect(bg).toMatch(/Sources[\s\S]*<li><a href="https:\/\/example\.com\/0028">ADR 0028<\/a><\/li><li>GLOSSARY\.md: Stage<\/li>/);
+  expect(panel(html, "stage-grill")).not.toContain('class="background"');
+});
+
+test("a later background record with the same id replaces the earlier one", () => {
+  expect(append(PAGE, stage("grill", 1), background("context", "grill")).code).toBe(0);
+  expect(append(background("context", "grill", { title: "How a flow page moves", summary: "rename moves the folder." })).code).toBe(0);
+  const tab = panel(readFileSync(page, "utf8"), "stage-grill");
+  expect(tab.match(/class="background"/g)).toHaveLength(1);
+  expect(tab).toContain("How a flow page moves");
+  expect(tab).toContain("rename moves the folder.");
+  expect(tab).not.toContain("How a flow keeps its page");
+});
+
+const topic = (id: string, extra: object = {}) => ({
+  type: "topic", id, title: `Topic ${id}`, summary: `What ${id} is, in one line.`, body: `The long form of ${id}.`, sources: [`GLOSSARY.md: ${id}`], ...extra,
+});
+
+test.each([
+  ["an empty title", { title: " " }, "title must be a non-empty string"],
+  ["no summary", { summary: undefined }, "summary must be a non-empty string"],
+  ["no body", { body: undefined }, "body must be a non-empty string"],
+  ["empty sources", { sources: [] }, "sources must be a list of one or more non-empty strings"],
+])("a topic with %s is refused, names the record, and writes nothing", (_, extra, problem) => {
+  expect(append(PAGE).code).toBe(0);
+  const before = readFileSync(state, "utf8");
+  const pageBefore = readFileSync(page, "utf8");
+  const r = append(topic("scratch", extra));
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain(`topic scratch: ${problem}`);
+  expect(readFileSync(state, "utf8")).toBe(before);
+  expect(readFileSync(page, "utf8")).toBe(pageBefore);
+});
+
+test.each([
+  ["names an unknown topic", ["scratch", "stage"], "topic stage does not exist"],
+  ["has an empty topics list", [], "topics must be a list of one or more non-empty strings"],
+])("a question that %s is refused, names the question, and writes nothing", (_, topics, problem) => {
+  expect(append(PAGE, topic("scratch"), ROUND).code).toBe(0);
+  const before = readFileSync(state, "utf8");
+  const r = append(question("s1-r1-q1", 1, { topics }));
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain(`question s1-r1-q1: ${problem}`);
+  expect(readFileSync(state, "utf8")).toBe(before);
+  expect(readFileSync(page, "utf8")).not.toContain("Title 1?");
+});
+
+test("each Topic note renders once in the Topics tab, and each question that names it links to it from any tab", () => {
+  const scratch = topic("scratch", { body: "Scratch is temporary.\n\n- kept 90 days", sources: ["[GLOSSARY.md](https://example.com/glossary)"] });
+  expect(
+    append(
+      PAGE, scratch, topic("stage"), stage("grill", 1), stage("spec", 2),
+      { ...ROUND, stage: "grill" }, question("s1-r1-q1", 1, { topics: ["scratch", "stage"] }), question("s1-r1-q2", 2),
+      SPEC_ROUND, { ...question("s2-r1-q1", 1), round: "s2-r1", topics: ["scratch"] },
+    ).code,
+  ).toBe(0);
+  expect(append(topic("stage", { title: "Stage, again" })).code).toBe(0);
+  const html = readFileSync(page, "utf8");
+  expect(tabs(html)).toEqual([["overview", "Overview", true], ["stage-grill", "Stage grill", false], ["stage-spec", "Stage spec", false], ["topics", "Topics", false]]);
+  expect(html.match(/<article class="topic" id="topic-scratch"/g)).toHaveLength(1);
+  const topicsTab = panel(html, "topics");
+  expect(topicsTab).toMatch(/id="topic-scratch"[\s\S]*Topic scratch[\s\S]*What scratch is, in one line\.[\s\S]*<p>Scratch is temporary\.<\/p><ul class="bullets"><li>kept 90 days<\/li><\/ul>[\s\S]*Sources[\s\S]*<a href="https:\/\/example\.com\/glossary">GLOSSARY\.md<\/a>[\s\S]*id="topic-stage"[\s\S]*Stage, again/);
+  expect(questionBody(html, "s1-r1-q1")).toMatch(/<a href="#topic-scratch">Topic scratch<\/a>: What scratch is, in one line\.[\s\S]*<a href="#topic-stage">Stage, again<\/a>/);
+  expect(questionBody(html, "s2-r1-q1")).toContain('<a href="#topic-scratch">Topic scratch</a>');
+  expect(questionBody(html, "s1-r1-q2")).not.toContain("#topic-");
+  const qrow = [...(html.match(/<nav class="qnav"[^>]*data-tab="topics"[\s\S]*?<\/nav>/)?.[0] ?? "").matchAll(/data-for="([^"]+)"/g)].map((m) => m[1]);
+  const stops = [...topicsTab.matchAll(/id="([^"]+)"[^>]*data-stop/g)].map((m) => m[1]);
+  expect(stops).toEqual(["topic-scratch", "topic-stage"]);
+  expect(qrow).toEqual(stops);
+  const ids = new Set([...html.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]));
+  expect([...html.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]).filter((t) => !ids.has(t))).toEqual([]);
+});
+
+test("inside a tab, the Background renders first, then Report blocks, then rounds, whatever the append order", () => {
+  expect(append(PAGE, stage("review", 1), REVIEW_ROUND, { ...question("s2-r1-q1", 1), round: "s2-r1" }).code).toBe(0);
+  expect(append(report("standards", "cards", { entries: [card("s1")] })).code).toBe(0);
+  expect(append(background("context", "review")).code).toBe(0);
+  const tab = panel(readFileSync(page, "utf8"), "stage-review");
+  const at = (s: string) => tab.indexOf(s);
+  expect(at('id="background-context"')).toBeGreaterThan(-1);
+  expect(at('id="background-context"')).toBeLessThan(at('id="report-standards"'));
+  expect(at('id="report-standards"')).toBeLessThan(at('aria-labelledby="round-s2-r1"'));
+});
