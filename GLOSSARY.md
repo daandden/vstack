@@ -61,7 +61,7 @@ A hidden vstack skill that the jev judge selects during a Matt run, or that a sk
 _Avoid_: extension, plugin
 
 **Utility skill**:
-A vstack skill that is not a Matt skill and that the user can use whatever the work is. vstack-prose, diagram-design, good-css, and skill-creator set how text, figures, styles, and skills are made. explain, how, why, and forensics answer questions about existing work. in-your-own-words and ketchup check that the user and the agent agree. The first restates the user's goal, and the second catches the user up. migrate-to-vstack moves a machine or project from the Base upstream to vstack. The hidden helpers are vstack-tmp, vstack-fan-out, vstack-figures, grilling-page, and vstack-worktree. Other skills name these helpers by `skill://`. Utility skills can start from their descriptions, from a rule, or by name, subject to each skill's invocation settings.
+A vstack skill that is not a Matt skill and that the user can use whatever the work is. vstack-prose, diagram-design, good-css, and skill-creator set how text, figures, styles, and skills are made. explain, how, why, and forensics answer questions about existing work. in-your-own-words and ketchup check that the user and the agent agree. The first restates the user's goal, and the second catches the user up. The hidden helpers are vstack-tmp, vstack-fan-out, vstack-figures, grilling-page, and vstack-worktree. Other skills name these helpers by `skill://`. Utility skills can start from their descriptions, from a rule, or by name, subject to each skill's invocation settings.
 _Avoid_: standalone skill, helper skill
 
 **Command**:
@@ -137,8 +137,8 @@ The service that holds a repo's remote and its PRs, such as GitHub, GitLab, or B
 _Avoid_: git host, VCS host, forge
 
 **Migration**:
-Moving a project or a machine that is set up for the Base upstream onto vstack.
-_Avoid_: conversion, reinstall
+Moving one project that is set up for the Base upstream onto vstack, before its vstack setup. It changes only that project and its shared private store. Machine state such as global skills, global rules, and diagram profiles is not part of it.
+_Avoid_: conversion, reinstall, machine Migration
 
 **Private mode**:
 A project setup where vstack's project config and workflow artifacts are kept untracked under the git common directory and shared by all of the project's worktrees. The default, Standard mode, keeps them tracked in the repo.

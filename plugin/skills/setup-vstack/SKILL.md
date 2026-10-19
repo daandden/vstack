@@ -1,6 +1,6 @@
 ---
 name: setup-vstack
-description: Check this machine's omp settings for vstack, then configure this repo for the vstack skills (its issue tracker, Code host, triage label vocabulary, and domain doc layout) in Standard or Private mode. Run once before first use of the other vstack skills, and again to add a config file that is missing.
+description: Check this machine's omp settings for vstack, then configure this repo for the vstack skills (its issue tracker, Code host, triage label vocabulary, and domain doc layout) in Standard or Private mode. Offers to migrate a repo set up for Matt Pocock's skills first. Run once before first use of the other vstack skills, and again to add a config file that is missing.
 disable-model-invocation: true
 ---
 
@@ -13,7 +13,7 @@ Two parts, in this order. The machine section checks the omp settings vstack nee
 - Triage labels: the strings used for the five canonical triage roles.
 - Domain docs: where `GLOSSARY.md` and ADRs live, and the rules for reading them.
 
-For a machine or project set up for Matt Pocock's skills, run `/skill:migrate-to-vstack` first. This skill does not detect or apply Migration.
+The project section first checks this repo for Matt Pocock's config. When it finds some, it offers a Migration before setup, in the same run. Migration changes only this repo and its shared private store. It never changes machine state such as global skills, global rules, or diagram profiles.
 
 This is a prompt-driven skill with helper scripts. Explore, present what you found, settle each choice through `ask`, then write.
 
@@ -24,9 +24,10 @@ Run the scripts with the bash tool, from inside the repo when there is one:
 ```sh
 bun "$(realpath skill://setup-vstack/scripts/machine.ts)" <args>
 bun "$(realpath skill://setup-vstack/scripts/project.ts)" <args>
+bun "$(realpath skill://setup-vstack/scripts/migrate.ts)" <args>
 ```
 
-Below, `machine.ts` and `project.ts` stand for these commands.
+Below, `machine.ts`, `project.ts`, and `migrate.ts` stand for these commands.
 
 ## Machine section
 
@@ -47,7 +48,7 @@ Below, `machine.ts` and `project.ts` stand for these commands.
 
 ## Project section
 
-Outside a git repo, skip this section and say that it runs only inside a git checkout.
+Outside a git repo, skip this section, the Matt check included, and say that it runs only inside a git checkout.
 
 ### 1. Read the state
 
@@ -58,14 +59,31 @@ Run `project.ts state`. It prints JSON:
 - `missing_config`: the config files that the mode's config directory does not have yet, from `issue-tracker.md`, `code-host.md`, `triage-labels.md`, and `domain.md`.
 - `block_file`: `CLAUDE.md` when it exists, else `AGENTS.md` when it exists, else null. `block_exists`: that file already holds a `## vstack` block. `block_file_dirty`: that file has uncommitted changes.
 
-### 2. Mode
+Keep `block_file_dirty` from this first read for step 7. Edits that this run's Migration makes to the block file do not count.
 
-When `mode` is set, tell the user that this repo is already set up in that mode, and keep it. If `missing_config` is empty, tell the user that every config file exists and that they can edit any of them directly, then skip to step 7. Otherwise run only the sections for the missing files in step 4, and draft and write only those files in steps 5 and 6. A repo set up before the Code host existed misses only `code-host.md`, so it gets one section. When `mode` is null, call `ask` with two options:
+### 2. Matt check
+
+Read `skill://vstack-tmp` and resolve the project Scratch dir once. Create `<Scratch dir>/setup-vstack/`. Run `migrate.ts plan > <Scratch dir>/setup-vstack/plan-1.json`. The plan reads this repo and changes nothing. When its `items` list is empty, go on to step 3. Otherwise read [references/migration.md](references/migration.md) and follow it. The Matt files are the `from` paths of the plan's items inside `root` or `common_dir`. A `code-host` item's `from` is a shipped template, not a Matt file. The reference returns here in one of three ways:
+
+- The user set up beside the Matt files, through the first question or Cancel. Keep the Matt files for step 8 and go on to step 3.
+- The Migration is incomplete. Stop the run after showing the failure.
+- The Migration applied. Run `project.ts state` again. Use its facts from here on, except `block_file_dirty`. Keep the Migration paths and the mode that Migration settled.
+
+### 3. Mode
+
+When `mode` is set, or Migration settled the mode, tell the user the mode and keep it. Then take the first branch that applies:
+
+- `missing_config` is empty and this run's Migration changed nothing: tell the user that every config file exists and that they can edit any of them directly. Skip to step 8.
+- `missing_config` is empty and this run's Migration changed files, in Standard mode: skip steps 4 and 5. Draft only the `## vstack` block in step 6. Go on to the commit in step 7.
+- `missing_config` is empty and this run's Migration changed files, in Private mode: skip to step 8.
+- Otherwise: run only the sections for the missing files in step 5. Draft and write only those files in steps 6 and 7. A repo set up before the Code host existed misses only `code-host.md`, so it gets one section.
+
+When `mode` is null, call `ask` with two options:
 
 - Standard (Recommended): the config is tracked in `docs/vstack/`, with a `## vstack` block in `CLAUDE.md` or `AGENTS.md`, and setup-vstack commits it.
 - Private: the config lives in `<vstack_root>/config/`, inside the git common dir, so every worktree of this repo shares it and git never tracks it. Nothing is committed. The `vstack-private-mode` rule then sends every vstack skill there.
 
-### 3. Explore
+### 4. Explore
 
 Look at the repo to understand its starting state. Read whatever exists; do not assume:
 
@@ -78,7 +96,7 @@ Look at the repo to understand its starting state. Read whatever exists; do not 
 - `.scratch/`: a sign that a local-markdown issue tracker is already in use.
 - Monorepo signals: a `pnpm-workspace.yaml`, a `workspaces` field in `package.json`, or a populated `packages/*` with its own `src/`. Only a large multi-package repo has them. Without them the repo is single-context, which is almost every repo.
 
-### 4. Present findings and settle each section
+### 5. Present findings and settle each section
 
 Summarize what is present and what is missing. Then take the sections in order, one `ask` per section. Put the recommended answer first and mark it Recommended, so the user can accept it in one pick. Add a one-line explainer only when the choice really branches.
 
@@ -105,13 +123,13 @@ Recommend GitHub when a remote points at `github.com`, GitLab when a remote poin
 - GitLab: merge requests live on GitLab (uses the `glab` CLI).
 - Other (Bitbucket Cloud, Bitbucket Data Center, and so on): the user names, through the Other answer of `ask`, the MCP server or CLI that is already set up for this project.
 
-For Other, draft the operation rows yourself. Read the named MCP server's tool list or the CLI's `--help` output for each command group. Write one row per operation id in [code-host-github.md](./code-host-github.md), in the same order, with the tool or command and the arguments it needs. Write `unsupported` for each id with no matching tool or command. Never write a tool or command that the list or the help does not show. The user checks the rows in step 5.
+For Other, draft the operation rows yourself. Read the named MCP server's tool list or the CLI's `--help` output for each command group. Write one row per operation id in [code-host-github.md](./code-host-github.md), in the same order, with the tool or command and the arguments it needs. Write `unsupported` for each id with no matching tool or command. Never write a tool or command that the list or the help does not show. The user checks the rows in step 6.
 
 Section C, triage labels. This section runs whenever `triage-labels.md` is missing, whatever the tracker, because triage always ships. Call `ask` with one question, whether to keep the default triage labels, and the options Keep the defaults (Recommended) and Use other names. The defaults are the five canonical roles, each label string equal to its name: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. Only on Use other names (usually because the tracker already uses other names, such as `bug:triage` for `needs-triage`), call `ask` once more with one question per role to collect the names, so triage applies the existing labels instead of creating duplicates.
 
 Section D, domain docs. Default to single-context: one `GLOSSARY.md` plus `docs/adr/` at the repo root. This fits almost every repo; write it without a question. Only when exploration found monorepo signals, call `ask` with single-context and multi-context (a root `GLOSSARY-MAP.md` that points to one `GLOSSARY.md` per context).
 
-### 5. Draft and confirm
+### 6. Draft and confirm
 
 Write the drafts from the seed templates in this skill's directory:
 
@@ -130,13 +148,13 @@ In Private mode, change two drafts so that they point under the vstack root by a
 - `issue-tracker.md` for local markdown: replace every `.scratch/` path, the Wayfinding map, ticket, and frontier paths included, with `<vstack_root>/artifacts/`.
 - `domain.md`: the domain docs live in `<vstack_root>/domain/`, as `GLOSSARY.md` (or `GLOSSARY-MAP.md`) and `adr/`, in place of the repo-root files. Add one line saying that the repo's own tracked `GLOSSARY.md` and `docs/adr/` are read as well when they exist.
 
-Show the user each draft and, in Standard mode, the `## vstack` block (see Write). Then call `ask` with the options Write it (Recommended) and Change something. On Change something, make the user's edits, show the new drafts, and call `ask` again.
+Show the user each draft and, in Standard mode, the `## vstack` block (see step 7). Then call `ask` with the options Write it (Recommended) and Change something. On Change something, make the user's edits, show the new drafts, and call `ask` again.
 
-### 6. Write
+### 7. Write
 
 Standard mode:
 
-1. When `block_file_dirty` is true, tell the user that `<block_file>` has uncommitted changes and that the setup commit is going to include them. Call `ask` with the options Go on and include them, and Stop so I can commit them first. On Stop, stop.
+1. When `block_file_dirty` from step 1 is true, tell the user that `<block_file>` has uncommitted changes and that the setup commit is going to include them. Call `ask` with the options Go on and include them, and Stop so I can commit them first. On Stop, stop.
 2. Write each config file that this run drafted: `docs/vstack/issue-tracker.md`, `docs/vstack/code-host.md`, `docs/vstack/triage-labels.md`, and `docs/vstack/domain.md`, or only the missing ones on a re-run.
 3. Pick the file for the block. When `CLAUDE.md` exists, edit it. Else when `AGENTS.md` exists, edit it. When neither exists, call `ask` with the options `CLAUDE.md` and `AGENTS.md` and no recommended option, and create the one the user picks. Never create `AGENTS.md` when `CLAUDE.md` exists, or the other way round.
 4. When the file already has a `## vstack` block, update that block in place instead of adding a second one, and leave the other sections as they are. The block:
@@ -161,18 +179,18 @@ Standard mode:
    [one-line summary of the layout: "single-context" or "multi-context"]. See `docs/vstack/domain.md`.
    ```
 
-5. Commit. Take the title from the repo's convention: read `git log --format=%s -n 20` on the default branch (`git symbolic-ref --short refs/remotes/origin/HEAD`, else the current branch) and follow the pattern you see there. When no convention is visible, use Conventional Commits: `chore: set up vstack config`. Run `project.ts commit --title "<title>"`. It stages only the four config files and the block file, never `-A`, and commits them alone on the current branch; anything else the user had staged stays staged. It prints `commit`, `title`, and `paths` as JSON, with `commit` null when nothing changed since the last setup commit. Exit 2 means it refused: show its message.
+5. Commit. Take the title from the repo's convention: read `git log --format=%s -n 20` on the default branch (`git symbolic-ref --short refs/remotes/origin/HEAD`, else the current branch) and follow the pattern you see there. When no convention is visible, use Conventional Commits: `chore: set up vstack config`. Run `project.ts commit --title "<title>"`, with one `--migration-path <path>` per Migration path from step 2. It stages the four config files, the block file, and the Migration paths, deletions and both sides of a move included, never `-A` on the whole repo. It commits them alone on the current branch; anything else the user had staged stays staged. It prints `commit`, `title`, and `paths` as JSON, with `commit` null when nothing changed since the last setup commit. Exit 2 means it refused: show its message.
 
 Private mode:
 
 1. Write each drafted config file to `<vstack_root>/config/`: `issue-tracker.md`, `code-host.md`, `triage-labels.md`, and `domain.md`, or only the missing ones on a re-run. Creating that directory turns Private mode on for every worktree of this repo.
 2. Write no `## vstack` block, change no tracked file and no ignore file, and commit nothing.
 
-In both modes, when this run wrote `code-host.md`, check its tool once with a read-only call. Run the file's Check command for a CLI. For an MCP server, call one read-only tool from the drafted rows, such as `list-prs`. If the call fails, print `WARN code-host: <what failed>. Remedy: <log in to the CLI, or connect the MCP server>.` Keep the written file either way.
+In both modes, when this run or its Migration wrote `code-host.md`, check its tool once with a read-only call. Run the file's Check command for a CLI. For an MCP server, call one read-only tool from the drafted rows, such as `list-prs`. If the call fails, print `WARN code-host: <what failed>. Remedy: <log in to the CLI, or connect the MCP server>.` Keep the written file either way.
 
-### 7. Done
+### 8. Done
 
-Tell the user the setup is complete, in which mode, and where the config is. Repeat every machine line that still fails.
+Tell the user the setup is complete, in which mode, and where the config is. Repeat every machine line that still fails. Report the Migration result: applied and skipped items, remaining manual hits, and notices. When the user set up beside the Matt files, name the Matt files that remain.
 
 List the skills that read the config:
 

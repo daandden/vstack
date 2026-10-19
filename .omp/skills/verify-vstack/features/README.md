@@ -54,5 +54,5 @@ Keep implementation details out of the map. Name only user paths, stable handles
 - The maintainer CLIs `scripts/check-register.ts`, `scripts/vstack-maintain.ts`, and the by-hand jev check `scripts/addon-judge-check.ts`. `README.md` documents their commands and exit codes.
 - The by-hand visual judge check `scripts/visual_judge_check.py`. It runs in omp's Python eval and calls the jev judge through the `judge_batch` global, as the grilling-page helper does. The stub home has no judge model, so a drive cannot grade a case.
 - The grilling-page visual judge (`plugin/skills/grilling-page/scripts/visual_judge.py`). It runs in omp's Python eval and calls the jev judge through the `judge_batch` global. The stub home has no judge model, so a drive cannot reach a pick.
-- The setup-vstack scripts (`machine.ts`, `project.ts`) and the migrate-to-vstack scripts (`migrate.ts`, `migrate-project.ts`). They change omp configuration and git state, so a recipe needs a throwaway `HOME` and a throwaway repo.
+- The setup-vstack scripts (`machine.ts`, `project.ts`, and the Migration helper `migrate.ts`). They change omp configuration and git state, so a recipe needs a throwaway `HOME` and a throwaway repo.
 - The diagram-design PNG export. It needs Playwright and its Chromium in eval's Python, and the skill installs them only after the user approves through `ask`.

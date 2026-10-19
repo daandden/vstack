@@ -13,6 +13,6 @@ setup-vstack writes `code-host.md` beside `issue-tracker.md`. It names the Code 
 
 - A repo with no `code-host.md`, every repo set up before this ADR included, gets only End state commit. Step 0a points at `/skill:setup-vstack`, which on a re-run asks only the sections whose files are missing. why and session record the missing setting as a gap. No skill guesses the host from the remote.
 - Each End state names the operations it needs. Step 0a offers only End states whose needed operations exist in `code-host.md`. A missing optional operation skips with a reported gap.
-- migrate-to-vstack adds `code-host.md` to the project plan from a GitHub or GitLab template when the remote is github.com or gitlab.com, and leaves a notice for other remotes.
+- Migration adds `code-host.md` to the project plan from a GitHub or GitLab template when the remote is github.com or gitlab.com, and leaves a notice for other remotes. ADR 0028 moved Migration into setup-vstack.
 - `code-host.md` rows in a repo do not pick up later vstack template fixes; the user edits them or re-runs setup.
 - This amends ADR 0006: setup-vstack writes four config files.
