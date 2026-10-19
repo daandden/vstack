@@ -31,7 +31,7 @@ Define once in `<defs>` and use for fire-and-forget only:
 </marker>
 ```
 
-Dark mode: `muted` inverts with the skin, so the stroke needs no change. Do not fill the open marker — the hollow head is the async signal. Return messages keep the **filled** marker even when dashed.
+Do not fill the open marker — the hollow head is the async signal. Return messages keep the **filled** marker even when dashed.
 
 ## Combined fragments (`alt` / `opt` / `loop`)
 
@@ -40,9 +40,9 @@ Use a rectangular **frame** that spans only the lifelines participating in the b
 ### Frame primitive (shared)
 
 ```svg
-<!-- Frame: light ink wash + hairline. Label tab top-left. -->
+<!-- Frame: faint ink wash + hairline. Label tab top-left. -->
 <rect x="X" y="Y" width="W" height="H" rx="4"
-      fill="{ink @ 0.02}" stroke="{ink @ 0.22}" stroke-width="1"/>
+      fill="{ink @ 0.04}" stroke="{ink @ 0.22}" stroke-width="1"/>
 <!-- Operator tab -->
 <rect x="X" y="Y" width="40" height="16" rx="2"
       fill="{paper}" stroke="{ink @ 0.22}" stroke-width="1"/>
@@ -50,8 +50,6 @@ Use a rectangular **frame** that spans only the lifelines participating in the b
       font-family="{eyebrow}" text-anchor="middle"
       letter-spacing="0.12em">ALT</text>
 ```
-
-Dark mode: the roles invert with the skin, so only the frame fill changes, to `ink @ 0.04` from `ink @ 0.02`. Stroke stays `ink @ 0.22`, tab fill stays `paper`, tab text stays `muted`.
 
 ### Operators
 

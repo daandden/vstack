@@ -4,6 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [2.0.37] - 2026-10-18
+
+- diagram-design keeps one palette, Catppuccin Mocha, and the light variant (Catppuccin Latte) is gone. Light pages and print get no matching light figure. `references/style-guide.md` has one Mocha column in its role, flavor, and contrast tables and no inversion rule. `assets/template.html` (the 960×600 doc-inline minimal template) and `assets/icons.html` are Mocha, and the type references drop every Latte value, light/dark table, and `dark:` input. `assets/template-dark.html` is gone, and `assets/template.html` is the one minimal template, for the default figure and the consultant 2×2. A vstack-figures brief and grilling-page name no variant, and ADR 0027 records Mocha only.
+- diagram-design's style checker `scripts/lint-skin.py` checks a figure against one palette, the Mocha tables or the terminal skin table, so white and Latte colors fail in a Mocha figure. It also accepts the generic families `sans-serif`, `serif`, and `system-ui` and eight CJK system faces. The data-flow and process chips take the Mocha series tokens with `paper` text, `icons.html` cells take `paper-2`, the Dagster eye takes Mocha base, and the Inkscape metadata is gone from `icons.html` and `references/primitive-icons.md`.
+
 ## [2.0.36] - 2026-10-18
 
 - diagram-design's style checker `scripts/lint-skin.py` now also fails a CSS named color such as `red`, an `rgb()` color outside the figure's flavor, any `hsl()`, `hwb()`, `lab()`, `lch()`, or `color()` value, and a font family set through the `font` shorthand. `none`, `transparent`, `currentColor`, and the CSS-wide keywords pass. A dark figure swaps a custom component or chevron color to the Mocha color of the same Catppuccin name, as the style guide's inversion rule says, instead of reusing the Latte hex or lightening it. This applies in the high-level, data-flow, security-matrix, medallion, and IT-state references. The architecture-delta reference names the shipped static checks and leaves the accessible title and description optional.

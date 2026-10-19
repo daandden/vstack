@@ -9,7 +9,7 @@
 - **Axis spokes** from center to each outer vertex. `rule-solid` 0.20 opacity. **No arrowheads.**
 - **Axis labels:** one word per spoke (Jobs-minimal). `node-name` role 11px weight 600. Place 16px outside the outer ring along the axis vector. Top/bottom = `text-anchor="middle"`; right side = `start`; left side = `end`.
 - **Scale ticks** (e.g. `2 4 6 8 10`) only on the **first (top) axis** — putting numbers on every spoke clutters the chart fast. `arrow-label` role 8px, `muted`, anchored end at `cx − 6`.
-- **Series polygon:** stroke 1.5px at the series color, fill the same color at `0.18` opacity (`0.22` in dark). Stroke 1.8px on the focal series — a subtle weight bump.
+- **Series polygon:** stroke 1.5px at the series color, fill the same color at `0.22` opacity. Stroke 1.8px on the focal series — a subtle weight bump.
 - **Vertex dots:** **only on the focal series**, `r=4` filled with the series color. Non-focal series are stroke-and-fill only. This is the load-bearing rule that keeps the chart readable at 4–5 series.
 - **Drawing order:** dots-pattern bg → grid rings → axis spokes → axis labels → scale ticks → non-focal series (smallest area first) → focal series → focal vertex dots → legend.
 - **Legend:** horizontal strip at the bottom (per the global rule). Swatch is a 16×8 rectangle (matches the polygon stroke+fill, not a circle), then the entity name. ~140px between entries. Optional italic tail on the right with the rationale (`"One accent. Position is the signal — color reserved for the recommended option."`).
@@ -62,7 +62,7 @@ The skill's "1-focal" rule still holds: `accent` is reserved for the focal serie
 | 4 | `series-4` | maroon |
 | 5 | `series-5` | sapphire |
 
-Light (Latte) and dark (Mocha) values for every slot live in [`style-guide.md` § Semantic roles](style-guide.md#semantic-roles).
+The Mocha value for every slot lives in [`style-guide.md` § Semantic roles](style-guide.md#semantic-roles).
 
 ## Anti-patterns
 

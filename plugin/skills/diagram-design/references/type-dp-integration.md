@@ -47,7 +47,7 @@ consumers:                          # right column, 0..6 nodes
 
 footer:                             # 0..N cross-cutting bars stacked below zone (full-canvas width)
   - { name: "Active Directory", icon: key,        subtitle: "LDAP · SSO · group RBAC",
-      color: "#d20f39" }            # tinted red to flag the security concern
+      color: "#f38ba8" }            # tinted red to flag the security concern
   # additional footer nodes (Observability, Backup, …) stack below this one
 
 internal_connections:               # explicit platform-component edges
@@ -59,7 +59,6 @@ internal_connections:               # explicit platform-component edges
 
 focal_accent: accent                # one color for all focal components; the `accent` role by default,
                                     # or an explicit "#hex" to override it
-dark: false
 ```
 
 **Reserved `kind` values for `platform.rows`:**
@@ -178,7 +177,7 @@ bar_w      = zone_w - 2*zone_pad_x       # 664
 bar_cx     = zone_cx                     # 608
 ```
 
-Bars span the full zone width minus 16-px padding on each side. Bars marked `focal: true` use `bar_h_focal=56` and accent styling (fill `rgba(focal_accent, 0.08)`, stroke `focal_accent`). Non-focal bars use `bar_h_default=44` with muted styling (fill `ink @ 0.05`, stroke `ink @ 0.32`).
+Bars span the full zone width minus 16-px padding on each side. Bars marked `focal: true` use `bar_h_focal=56` and accent styling (fill `rgba(focal_accent, 0.12)`, stroke `focal_accent`). Non-focal bars use `bar_h_default=44` with muted styling (fill `ink @ 0.06`, stroke `ink @ 0.32`).
 
 ### 2.4 Source / consumer placement (side columns)
 
@@ -189,7 +188,7 @@ consumer_y(k)     = source_y(k)                 # mirrored
 consumer_cy(k)    = source_cy(k)
 ```
 
-All side-column nodes use fixed `w=160 h=64`. Same fill / stroke pattern: fill `muted @ 0.06`, stroke `soft`, stroke-width 1.
+All side-column nodes use fixed `w=160 h=64`. Same fill / stroke pattern: fill `ink @ 0.06`, stroke `ink @ 0.30`, stroke-width 1.
 
 ---
 
@@ -263,20 +262,18 @@ Avoid. Re-route via the corridor x positions before accepting a crossing. If una
 
 Any source, consumer, platform component (node or bar), or footer node accepts an optional `color: "#hex"`. Mirrors high-level so the rule reads identically across types.
 
-**Where the color is applied** (`C = color`):
+**Where the color is applied** (`C = color`, a Mocha color from [`style-guide.md`](style-guide.md#flavor-palette)):
 
-| Element | Light | Dark |
-|---|---|---|
-| Container fill (`rect` body) | `rgba(C, 0.06)` | `rgba(C_light, 0.10)` |
-| Container stroke | `rgba(C, 0.35)` (`stroke-width=1` for nodes, `0.8` for bars) | `rgba(C_light, 0.45)` |
-| Role badge stroke | `rgba(C, 0.40)` | `rgba(C_light, 0.55)` |
-| Role badge text | `rgba(C, 0.85)` | `rgba(C_light, 1.0)` |
-| Icon stroke / fill | `C` | `C_light` |
-| Name text | `C` | `C_light` |
-| Subtitle text | **unchanged** (muted) | **unchanged** (muted) |
-| Connectors touching this component | **unchanged** — topology-driven | **unchanged** |
-
-`C_light` = the Mocha value of the same Catppuccin color, for dark-mode contrast (e.g., Latte red `#d20f39` → Mocha red `#f38ba8`, Latte green `#40a02b` → Mocha green `#a6e3a1`).
+| Element | Value |
+|---|---|
+| Container fill (`rect` body) | `rgba(C, 0.10)` |
+| Container stroke | `rgba(C, 0.45)` (`stroke-width=1` for nodes, `0.8` for bars) |
+| Role badge stroke | `rgba(C, 0.55)` |
+| Role badge text | `C` |
+| Icon stroke / fill | `C` |
+| Name text | `C` |
+| Subtitle text | **unchanged** (muted) |
+| Connectors touching this component | **unchanged** — topology-driven |
 
 **Rules:**
 
@@ -284,11 +281,11 @@ Any source, consumer, platform component (node or bar), or footer node accepts a
 - **Never on connectors.** If you want a colored edge, pick a different `style` from §3, not a color override.
 - **Cap at 2 custom-colored components** per diagram (in addition to the focal pair).
 
-**Semantic palette** (Catppuccin colors; use only these):
-- `#d20f39` red — Security / Identity (AD, Keycloak, Vault)
-- `#209fb5` sapphire — Observability (Prometheus, Datadog, OpenTelemetry)
-- `#40a02b` green — Governance / Lineage (OpenMetadata, DataHub)
-- `#fe640b` peach — Backup / DR (Velero, Restic)
+**Semantic palette** (Mocha colors; use only these):
+- `#f38ba8` red — Security / Identity (AD, Keycloak, Vault)
+- `#74c7ec` sapphire — Observability (Prometheus, Datadog, OpenTelemetry)
+- `#a6e3a1` green — Governance / Lineage (OpenMetadata, DataHub)
+- `#fab387` peach — Backup / DR (Velero, Restic)
 
 ---
 
@@ -304,21 +301,19 @@ Any source, consumer, platform component (node or bar), or footer node accepts a
 
 ---
 
-## 6. Dark mode
+## 6. Colors
 
-`paper`, `ink`, `muted`, `soft`, `accent`, and `link` invert with the skin: take their values from the dark column in [`style-guide.md`](style-guide.md). A **role at an opacity** needs no dark-mode handling, since `ink @ 0.32` resolves against whichever ink is active.
+Every role takes its Mocha value from [`style-guide.md`](style-guide.md). A **role at an opacity**, such as `ink @ 0.32`, resolves against Mocha `ink`. These values are set only here:
 
-Only these differ between modes:
-
-| Element | Light | Dark | Why it differs |
-|---|---|---|---|
-| Side-column fill | `muted @ 0.06` | `ink @ 0.06` | The slate tint reads as mud on dark paper; plain ink stays neutral |
-| Side-column stroke | `soft` | `ink @ 0.30` | ditto |
-| Zone fill | `ink @ 0.025` | `ink @ 0.04` | A wash needs slightly more presence on dark paper |
-| Non-focal bar fill | `ink @ 0.05` | `ink @ 0.06` | ditto |
-| Focal fill | `accent @ 0.08` | `accent @ 0.12` | ditto |
-
-Unchanged across modes: zone stroke `ink @ 0.32`, focal stroke `accent`, and custom component colors (`C` Latte → `C_light` Mocha).
+| Element | Value |
+|---|---|
+| Side-column fill | `ink @ 0.06` |
+| Side-column stroke | `ink @ 0.30` |
+| Zone fill | `ink @ 0.04` |
+| Zone stroke | `ink @ 0.32` |
+| Non-focal bar fill | `ink @ 0.06` |
+| Focal fill | `accent @ 0.12` |
+| Focal stroke | `accent` |
 
 ---
 

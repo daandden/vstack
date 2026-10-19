@@ -30,11 +30,11 @@ nodes:                              # explicit per-cell entries; empty cells ren
   - { lane: "RDE", step: 0,  title: "Survey design",      sub: "questionnaire · sampling", tool: "Excel · CSPro",
       chips: {in: null,  out: "FL"} }              # first step has no input chip
   - { lane: "IT",  step: 1,  title: "Build app",          sub: "form + validation",        tool: "CSPro · scripts",
-      chips: {in: "FL", out: "TB"}, color: "#209fb5" }    # sapphire — data quality concern
+      chips: {in: "FL", out: "TB"}, color: "#74c7ec" }    # sapphire — data quality concern
   - { lane: "RDE", step: 2,  title: "Pilot test",         sub: "field debug",              tool: "tablet · script",
       chips: {in: "TB", out: "TB"}, focal: true }   # focal node — accent border
   - { lane: "FLD", step: 3,  title: "Train enumerators",  sub: "protocols · safety",       tool: "manual",
-      chips: {in: "TB", out: "LS"}, color: "#d20f39" }    # red — governance / training
+      chips: {in: "TB", out: "LS"}, color: "#f38ba8" }    # red — governance / training
   # ... etc
 
 arrows:                             # explicit edges; styles bind to topology (see §3)
@@ -44,7 +44,6 @@ arrows:                             # explicit edges; styles bind to topology (s
   - { from: {lane: "RDE", step: 2}, to: {lane: "IT",  step: 1}, style: "trigger" }      # dashed trigger
   # ... etc
 
-dark: false
 ```
 
 **Reserved field semantics:**
@@ -105,9 +104,9 @@ legend_row_y     = [legend_y_top + 16, legend_y_top + 37,
 
 - Paper fill across full viewBox.
 - Dot pattern: 22×22 grid, `circle r=0.8`, `fill ink @ 0.10`. Opacity 0.55.
-- Alternating lane tints: odd-indexed lanes (0, 2, …) receive `ink @ 0.018` fill from `x=140` to `viewBox_w`.
+- Alternating lane tints: odd-indexed lanes (0, 2, …) receive `ink @ 0.025` fill from `x=140` to `viewBox_w`.
 - Lane dividers: horizontal hairlines at every `lane_y_top(k)` and at `legend_y_top`; stroke `ink @ 0.12` width 0.8.
-- Label column right border: vertical hairline at `x = label_col_w`, stroke `ink @ 0.20` width 1, from `y = header_h` to `y = legend_y_top`.
+- Label column right border: vertical hairline at `x = label_col_w`, stroke `ink @ 0.22` width 1, from `y = header_h` to `y = legend_y_top`.
 
 ### 2.2 Step header chip + label
 
@@ -122,7 +121,7 @@ label_anchor     = (step_cx(j), 32)              # 8-px gap below chip
 
 **Chip** (the numbered pill at the top of each column):
 - Default fill: `ink @ 0.12`, number text ink.
-- Focal fill: `accent @ 0.20`, number text accent (§5).
+- Focal fill: `accent @ 0.22`, number text accent (§5).
 - Per-step `color` override (§4): replaces the fill with `rgba(C, 0.20)` and the number fill with `C`.
 
 **Label** (the uppercase mono text below the chip):
@@ -229,19 +228,19 @@ Any node, lane, or step accepts an optional `color: "#hex"`. Mirrors `type-data-
 
 Applied to:
 
-| Element | Light | Dark |
-|---|---|---|
-| Container fill (`rect`) | `rgba(C, 0.06)` | `rgba(C_light, 0.10)` |
-| Container stroke | `rgba(C, 0.35)` (stroke-width 1) | `rgba(C_light, 0.45)` |
-| Role chip fill | `rgba(C, 0.18)` | `rgba(C_light, 0.22)` |
-| Role chip text | `C` | `C_light` |
-| Title text | `C` | `C_light` |
-| Sub-label (in → out) | **unchanged** (muted) | **unchanged** (muted) |
-| Tool label | **unchanged** (soft) | **unchanged** (soft) |
-| Data-type chips | **unchanged** | **unchanged** |
-| Arrows touching this node | **unchanged** — topology-driven | **unchanged** |
+| Element | Value |
+|---|---|
+| Container fill (`rect`) | `rgba(C, 0.10)` |
+| Container stroke | `rgba(C, 0.45)` (stroke-width 1) |
+| Role chip fill | `rgba(C, 0.22)` |
+| Role chip text | `C` |
+| Title text | `C` |
+| Sub-label (in → out) | **unchanged** (muted) |
+| Tool label | **unchanged** (soft) |
+| Data-type chips | **unchanged** |
+| Arrows touching this node | **unchanged** — topology-driven |
 
-`C_light` = the Mocha value of the same Catppuccin color, for dark-mode contrast (e.g., Latte red `#d20f39` → Mocha red `#f38ba8`, Latte green `#40a02b` → Mocha green `#a6e3a1`).
+`C` is a Mocha color from [`style-guide.md`](style-guide.md#flavor-palette), such as red `#f38ba8` or green `#a6e3a1`.
 
 ### 4.2 Per-step `color`
 
@@ -262,10 +261,10 @@ Replaces the lane stripe tint with `rgba(C, 0.04)` and the lane label text fill 
 
 Same palette as `type-high-level.md`, `type-dp-integration.md`, `type-data-flow.md`:
 
-- `#d20f39` red — Security / Identity / Governance (access control, training, approvals)
-- `#209fb5` sapphire — Observability / Quality (data quality gates, validation, monitoring)
-- `#40a02b` green — Data Products / Publication (consumer-ready outputs, releases)
-- `#fe640b` peach — Backup / DR / Archive
+- `#f38ba8` red — Security / Identity / Governance (access control, training, approvals)
+- `#74c7ec` sapphire — Observability / Quality (data quality gates, validation, monitoring)
+- `#a6e3a1` green — Data Products / Publication (consumer-ready outputs, releases)
+- `#fab387` peach — Backup / DR / Archive
 
 ---
 
@@ -281,22 +280,22 @@ If zero or >1 of any focal slot are declared, halt and ask with `ask`.
 
 ---
 
-## 6. Dark mode
+## 6. Colors
 
-`paper`, `ink`, `muted`, `soft`, and `accent` invert with the skin: take their values from the dark column in [`style-guide.md`](style-guide.md). Every derived value in this reference is a **role at an opacity**, so most need no dark-mode handling: `ink @ 0.12` resolves to dark ink on light paper and light ink on dark paper.
+Every role takes its Mocha value from [`style-guide.md`](style-guide.md). Every derived value in this reference is a **role at an opacity**. These values are set only here:
 
-Only these differ between modes, and only in opacity:
-
-| Element | Light | Dark | Why it differs |
-|---|---|---|---|
-| Lane tint | `ink @ 0.018` | `ink @ 0.025` | A wash needs slightly more presence on dark paper |
-| Label col divider | `ink @ 0.20` | `ink @ 0.22` | ditto |
-| Focal chip fill | `accent @ 0.20` | `accent @ 0.22` | ditto |
-| Focal node fill | `accent @ 0.08` | `accent @ 0.12` | ditto |
-| Default node fill | `paper` | `ink @ 0.04` | `paper` is opaque; on dark paper the node lifts off the ground instead |
-| Default node stroke | `ink @ 0.25` | `ink @ 0.20` | Light ink on dark paper reads stronger at equal opacity |
-
-Unchanged across modes: dot pattern `ink @ 0.10`, dividers `ink @ 0.12`, default chip fill `ink @ 0.12`, focal node stroke `accent`, and custom component colors (`C` Latte → `C_light` Mocha).
+| Element | Value |
+|---|---|
+| Lane tint | `ink @ 0.025` |
+| Label col divider | `ink @ 0.22` |
+| Focal chip fill | `accent @ 0.22` |
+| Focal node fill | `accent @ 0.12` |
+| Default node fill | `ink @ 0.04` |
+| Default node stroke | `ink @ 0.20` |
+| Dot pattern | `ink @ 0.10` |
+| Dividers | `ink @ 0.12` |
+| Default chip fill | `ink @ 0.12` |
+| Focal node stroke | `accent` |
 
 ---
 
@@ -329,18 +328,18 @@ Same catalog as `type-data-flow.md` §8.
 
 ### Chip codes
 
-| Code | Color (light) | Color (dark) | Meaning |
-|------|---------------|--------------|---------|
-| `LS` | `#40a02b` green | `#a6e3a1` | List / assignment / task |
-| `DB` | `#209fb5` sapphire | `#74c7ec` | Dataset / tabular records |
-| `TB` | `#df8e1d` yellow | `#f9e2af` | Table (analysis-ready) |
-| `FL` | `#fe640b` peach | `#fab387` | File / document / report |
-| `WB` | `#7287fd` lavender | `#b4befe` | Web / press / public release |
-| N/A | omit chip entirely | — | Unknown or not applicable |
+| Code | Color | Meaning |
+|------|-------|---------|
+| `LS` | `series-1` `#a6e3a1` (green) | List / assignment / task |
+| `DB` | `series-5` `#74c7ec` (sapphire) | Dataset / tabular records |
+| `TB` | `series-2` `#94e2d5` (teal) | Table (analysis-ready) |
+| `FL` | `series-3` `#fab387` (peach) | File / document / report |
+| `WB` | `series-4` `#eba0ac` (maroon) | Web / press / public release |
+| N/A | omit chip entirely | Unknown or not applicable |
 
-Text inside chip: `paper`, font-size 5, weight 700, mono.
+Every chip color is a series token from [`style-guide.md`](style-guide.md#semantic-roles), and each code keeps the color it has in `type-data-flow.md` §8. Text inside chip: `paper` (`#1e1e2e`), font-size 5, weight 700, mono. White text fails on every chip color, as `type-data-flow.md` §8 measures.
 
-Data-type chip colors are a **separate semantic axis** from the per-node color override (§4). Chip colors describe *payload format*; node color describes *concern type*. A node can have both an `out: TB` yellow chip and a red border simultaneously.
+Data-type chip colors are a **separate semantic axis** from the per-node color override (§4). Chip colors describe *payload format*; node color describes *concern type*. A node can have both an `out: TB` teal chip and a red border simultaneously.
 
 ---
 
@@ -423,9 +422,9 @@ nodes:
   - { lane: "FLD", step: 2,  title: "Data Collection",   sub: "→ 10,464 dwellings",
       tool: "Survey Solutions",            chips: {in: "LS", out: "DB"},  focal: true }   # focal node
   - { lane: "SVY", step: 3,  title: "HQ Review",         sub: "Submissions → Approved",
-      tool: "Survey Sol. HQ",              chips: {in: "DB", out: "DB"},  color: "#d20f39" }   # red · governance
+      tool: "Survey Sol. HQ",              chips: {in: "DB", out: "DB"},  color: "#f38ba8" }   # red · governance
   - { lane: "IT",  step: 4,  title: "Error Checks",      sub: "Approved → Cleaned",
-      tool: "SAS · Scripts",               chips: {in: "DB", out: "DB"},  color: "#209fb5" }   # sapphire · data quality
+      tool: "SAS · Scripts",               chips: {in: "DB", out: "DB"},  color: "#74c7ec" }   # sapphire · data quality
   - { lane: "RDE", step: 5,  title: "Weight Calculation", sub: "Cleaned → Weighted",
       tool: "SAS",                         chips: null }                                  # 2-line title — chips skipped
   - { lane: "HHU", step: 6,  title: "2° Cleaning",       sub: "Weighted → Analysis",
@@ -435,7 +434,7 @@ nodes:
   - { lane: "CMM", step: 8,  title: "Stats Review",      sub: "Tables → Approved",
       tool: "Internal review",             chips: {in: "FL", out: "FL"} }
   - { lane: "CMM", step: 9,  title: "Public Release",    sub: "Approved → Public",
-      tool: "Press conference",            chips: {in: "FL", out: "WB"}, color: "#40a02b" }   # green · data products
+      tool: "Press conference",            chips: {in: "FL", out: "WB"}, color: "#a6e3a1" }   # green · data products
   - { lane: "IT",  step: 10, title: "Upload NatStat / SDMX", sub: "Results → Published",
       tool: "Web · SDMX API",              chips: null }                                  # 2-line title — chips skipped
 
@@ -450,8 +449,6 @@ arrows:
   - { from: {lane: "HHU", step: 7}, to: {lane: "CMM", step: 8},  style: "normal"    }
   - { from: {lane: "CMM", step: 8}, to: {lane: "CMM", step: 9},  style: "normal"    }     # same lane
   - { from: {lane: "CMM", step: 9}, to: {lane: "IT",  step: 10}, style: "normal"    }     # upward, skips 4 lanes
-
-dark: false
 ```
 
 ### 12.1 What this YAML proves
@@ -476,7 +473,7 @@ To document a different process, change only the value of these inputs:
 - **Lanes**: rename `lanes[k].name` to your team names; update each `nodes[i].lane` to match. Up to 6 lanes.
 - **Steps**: rename `steps[j].label`, move `focal: true` to the step that defines the diagram's central claim. Up to 12 steps.
 - **Nodes**: write one entry per `(lane, step)` cell that has work. Leave cells empty (no entry) to render nothing.
-- **Colors**: choose `color: "#hex"` on at most 3 nodes (§4 cap). Stick to the recommended Catppuccin palette.
+- **Colors**: choose `color: "#hex"` on at most 3 nodes (§4 cap). Stick to the recommended Mocha palette.
 - **Arrows**: declare every edge explicitly with `style: normal | focal-in | focal-out | trigger`. The routing rule (§3.1) fills in the geometry.
 
-Everything else — viewBox sizing, chip positions, legend layout, dark-mode token swap — is derivable. The YAML is the **source of truth**; the SVG is one of many possible renderings of it (light/dark/full all derive from the same inputs with different style tokens).
+Everything else — viewBox sizing, chip positions, legend layout, colors — is derivable. The YAML is the **source of truth**; the SVG is one of many possible renderings of it (minimal and full both derive from the same inputs).

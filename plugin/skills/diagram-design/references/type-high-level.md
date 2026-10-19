@@ -18,7 +18,7 @@ chevrons:                       # ordered left → right; reserved names auto-pr
   - { name: "Transformation",       columns: 1 }
   - { name: "Visualization",        columns: 1 }
   - { name: "Orchestration",        vertical: true }                     # reserved → pairs with the bar
-  - { name: "Security",             vertical: true, color: "#d20f39" }   # tinted to match the Identity bar below
+  - { name: "Security",             vertical: true, color: "#f38ba8" }   # tinted to match the Identity bar below
   - { name: "Observability",        vertical: true }                     # reserved → pairs with crosscut #2
 
 sources:                        # external; rendered in the dashed zone on the left
@@ -34,7 +34,7 @@ components:                     # inside the cluster, plus bars and cross-cuttin
   - { name: "Notebooks",  chevron: "Transformation", kind: node,          icon: jupyter,  role: "ANLZ"  }
   - { name: "Superset",   chevron: "Visualization",  kind: node,          icon: superset, role: "DASH" }
   - { name: "Airflow",    chevron: "Orchestration",  kind: bar,           icon: airflow,    subtitle: "Apache Airflow" }
-  - { name: "Identity",   chevron: "Security",       kind: cross-cutting, icon: keycloak,   subtitle: "Keycloak · LDAP · OIDC",     color: "#d20f39" }
+  - { name: "Identity",   chevron: "Security",       kind: cross-cutting, icon: keycloak,   subtitle: "Keycloak · LDAP · OIDC",     color: "#f38ba8" }
   - { name: "Monitoring", chevron: "Observability",  kind: cross-cutting, icon: prometheus, subtitle: "Prometheus · Grafana · Loki" }
 
 connections:                    # explicit edges; focal-touching ones become accent automatically
@@ -46,7 +46,6 @@ connections:                    # explicit edges; focal-touching ones become acc
   - { from: "Airflow", to: ["NiFi", "Trino", "Notebooks"], style: "trigger" }
 
 focal: "MinIO"                  # exactly one; defaults to first kind=node under "Storage"
-dark: false
 ```
 
 **Reserved chevron names** (always vertical, even if `vertical: true` is omitted): `Orchestration`, `Security`, `Observability`, `Governance`, `Backup`.
@@ -109,13 +108,13 @@ chevron_cx(C)      = (x_boundaries[index(C)] + x_boundaries[index(C)+1]) / 2
 - Middle: `(x0,4) (x1-12,4) (x1,18) (x1-12,32) (x0,32) (x0+12,18)`
 - Last (rightmost): `(x0,4) (effective_w,4) (effective_w,32) (x0,32) (x0+12,18)`
 
-Fills alternate between two steps of the **phase-band palette** (§6.1): `band-1` / `band-2` in light mode, `band-2` / `band-3` in dark. Labels: `band-label` fill, `eyebrow` role (mono), `font-size=7`, `letter-spacing=0.14em`, `text-anchor=middle`, centered at `chevron_cx, 21`.
+Fills alternate between the two steps of the **phase-band palette** (§6.1): `band-2` / `band-3`. Labels: `band-label` fill, `eyebrow` role (mono), `font-size=7`, `letter-spacing=0.14em`, `text-anchor=middle`, centered at `chevron_cx, 21`.
 
-**Color override** (per chevron, both horizontal and vertical): a chevron may declare an optional `color: "#hex"` that replaces the alternation fill for that one chevron. Use it to flag a phase that pairs with a custom-colored component (e.g., `Security` chevron in red when the Identity bar uses `color: "#d20f39"`). Rules:
+**Color override** (per chevron, both horizontal and vertical): a chevron may declare an optional `color: "#hex"` that replaces the alternation fill for that one chevron. Use it to flag a phase that pairs with a custom-colored component (e.g., `Security` chevron in red when the Identity bar uses `color: "#f38ba8"`). Rules:
 
-- Override applies to the polygon fill only. The label stays `band-label`. Don't swap in the `paper` role: it matches the Latte label, but it is dark in a Mocha figure.
+- Override applies to the polygon fill, and the label on that chevron takes `paper` instead of `band-label`. Every color of the recommended palette (§3.4) is light, so `band-label` drops to 1.03:1–1.60:1 on it, while `paper` measures 7.08:1 on red up to 11.03:1 on green.
 - The alternation index doesn't shift; neighboring chevrons keep their natural fill, even if it produces two adjacent same-fill chevrons. Don't try to "fix" this — overrides should be rare (≤ 2 per diagram).
-- In dark mode, swap the override to the Mocha color of the same Catppuccin name, as the inversion rule in [style-guide.md](style-guide.md) says: `#d20f39` (Latte red) becomes `#f38ba8` (Mocha red). A dark figure takes the override only from the Mocha column.
+- Take the override from the Mocha [flavor palette](style-guide.md#flavor-palette), such as `#f38ba8` for red.
 - A chevron color override is independent of any paired component's color, but pairing them (same hex on chevron + bar) is the conventional way to make the column "read" as one concern.
 
 ### 2.3 Source zone (dashed, external)
@@ -127,7 +126,7 @@ sources_w          = x_boundaries[1] - 8           # width of the first chevron,
 sources_h          = 336
 ```
 
-Stroke: `ink @ 0.20`, `stroke-width=0.8`, `stroke-dasharray=6,3`, `rx=6`. Zone fill: `ink @ 0.02`.
+Stroke: `ink @ 0.22`, `stroke-width=0.8`, `stroke-dasharray=6,3`, `rx=6`. Zone fill: `ink @ 0.02`.
 
 ### 2.4 Cluster boundary (solid)
 
@@ -191,7 +190,7 @@ gap                = 16
 row_top(k)         = first_top_y + k * (node_h + gap)   # k = 0..K-1
 ```
 
-**Focal node:** `fill="{accent @ 0.08}"`, `stroke="{accent}"`, `stroke-width=1.2`. Title text in `accent`. All other nodes: `paper` fill, `stroke={ink @ 0.25}`, `stroke-width=1`.
+**Focal node:** `fill="{accent @ 0.12}"`, `stroke="{accent}"`, `stroke-width=1.2`. Title text in `accent`. All other nodes: `ink @ 0.06` fill, `stroke={ink @ 0.20}`, `stroke-width=1`.
 
 Role badge top-left at `(node_x+8, node_y+6)`, size 12 high. Icon top-right at `(node_x+node_w-32, node_y+6)`, 24×24, monochrome via `currentColor`. Name centered at `(node_cx, node_y+44)`, `node-name` role size 11, weight 600. Subtitle at `(node_cx, node_y+56)`, `sublabel` role size 8, muted.
 
@@ -232,9 +231,9 @@ Adjacent edges share the same y (no gap), like horizontal chevrons share x at th
 - Middle: notch on top, point on bottom — `(strip_x, y0) (strip_x+strip_w/2, y0+12) (strip_x+strip_w, y0) (strip_x+strip_w, y1-12) (strip_x+strip_w/2, y1) (strip_x, y1-12)`
 - Last (bottommost): notch on top, flat bottom — `(strip_x, y0) (strip_x+strip_w/2, y0+12) (strip_x+strip_w, y0) (strip_x+strip_w, y1) (strip_x, y1)`
 
-Fills alternate `band-1` / `band-2` (same phase-band palette as the horizontals, §6.1). Labels: `band-label` fill, `eyebrow` role (mono), `font-size=7`, `letter-spacing=0.14em`, **rotated −90°**, anchored at `(strip_x + strip_w/2, (y0+y1)/2)`.
+Fills alternate `band-2` / `band-3` (same phase-band palette as the horizontals, §6.1). Labels: `band-label` fill, `eyebrow` role (mono), `font-size=7`, `letter-spacing=0.14em`, **rotated −90°**, anchored at `(strip_x + strip_w/2, (y0+y1)/2)`.
 
-Vertical chevrons honor the per-chevron `color` override documented in §2.2 — apply the hex to the polygon fill, leave the rotated label `band-label`. Pair the override with the same hex on the chevron's paired bar/crosscut to bind them visually as one concern.
+Vertical chevrons honor the per-chevron `color` override documented in §2.2 — apply the hex to the polygon fill and set the rotated label in `paper`. Pair the override with the same hex on the chevron's paired bar/crosscut to bind them visually as one concern.
 
 ---
 
@@ -287,18 +286,18 @@ These are non-negotiable. Pick the style **automatically** from the topology —
 
 A component may declare an optional `color: "#hex"` (CSS color string). The override **only** retints the component's container and content — connectors are never recolored. Edges keep their topology-driven style from §3.
 
-**Where the color is applied** (given `C = color` in the figure's flavor: the declared Latte hex in light mode, and the Mocha color of the same Catppuccin name in dark mode, such as `#f38ba8` for red):
+**Where the color is applied** (given `C = color`, a Mocha color such as `#f38ba8` for red):
 
-| Element | Light mode | Dark mode |
-|---|---|---|
-| Container fill (`rect` body) | `rgba(C, 0.06)` | `rgba(C, 0.10)` |
-| Container stroke | `rgba(C, 0.35)` (`stroke-width=1` for nodes, `0.8` for bars) | `rgba(C, 0.45)` |
-| Role badge stroke (nodes) | `rgba(C, 0.40)` | `rgba(C, 0.55)` |
-| Role badge text (nodes) | `rgba(C, 0.85)` | `rgba(C, 1.0)` |
-| Icon fill / stroke | `C` | `C` |
-| Name text | `C` | `C` |
-| Subtitle text | **unchanged** (`muted`) | **unchanged** (`muted`) |
-| Connectors touching this component | **unchanged** (still topology-driven) | **unchanged** |
+| Element | Value |
+|---|---|
+| Container fill (`rect` body) | `rgba(C, 0.10)` |
+| Container stroke | `rgba(C, 0.45)` (`stroke-width=1` for nodes, `0.8` for bars) |
+| Role badge stroke (nodes) | `rgba(C, 0.55)` |
+| Role badge text (nodes) | `C` |
+| Icon fill / stroke | `C` |
+| Name text | `C` |
+| Subtitle text | **unchanged** (`muted`) |
+| Connectors touching this component | **unchanged** (still topology-driven) |
 
 The subtitle stays muted because it's parenthetical metadata — only the primary identity (name + icon + border) carries the color signal.
 
@@ -309,13 +308,13 @@ The subtitle stays muted because it's parenthetical metadata — only the primar
 - **Cap at 2 custom-colored components** per diagram (in addition to the focal). Three or more colored things erases the signal — the same reason §1 limits accent to 1–2 elements.
 - **No color on connectors.** If you find yourself wanting a colored edge, the right move is to pick a different `style` from §3, not to override.
 
-**Semantic uses** (recommended, Latte / Mocha):
-- red, `#d20f39` / `#f38ba8`: Security / Identity (Keycloak, Vault)
-- sapphire, `#209fb5` / `#74c7ec`: Observability (Prometheus, Datadog)
-- green, `#40a02b` / `#a6e3a1`: Governance / Lineage (OpenMetadata)
-- peach, `#fe640b` / `#fab387`: Backup / DR
+**Semantic uses** (recommended Mocha colors):
+- red, `#f38ba8`: Security / Identity (Keycloak, Vault)
+- sapphire, `#74c7ec`: Observability (Prometheus, Datadog)
+- green, `#a6e3a1`: Governance / Lineage (OpenMetadata)
+- peach, `#fab387`: Backup / DR
 
-Stick to these Catppuccin colors. Random hex per component is exactly the failure mode this skill avoids.
+Stick to these Mocha colors. Random hex per component is exactly the failure mode this skill avoids.
 
 ---
 
@@ -391,43 +390,35 @@ The visual contract: the vertical chevron's column visually "owns" the bar/cross
 
 ---
 
-## 6. Dark mode
+## 6. Colors
 
-`paper`, `ink`, `muted`, and `accent` invert with the skin: take their values from the dark column in [`style-guide.md`](style-guide.md). Every derived value in this reference is a **role at an opacity**, so `ink @ 0.18` resolves to dark ink on light paper and light ink on dark paper with no extra handling.
+Every role takes its Mocha value from [`style-guide.md`](style-guide.md). Every derived value in this reference is a **role at an opacity**, such as `ink @ 0.18`. The phase-band palette (§6.1) is the one exception. These values are set only here:
 
-Only these differ between modes:
-
-| Element | Light | Dark | Why it differs |
-|---|---|---|---|
-| Muted text | `muted` | `ink @ 0.65` | Dark mode softens secondary text by opacity rather than by hue |
-| Dashed border | `ink @ 0.20` | `ink @ 0.22` | A hairline needs marginally more presence on dark paper |
-| Node fill | `paper` | `ink @ 0.06` | `paper` is opaque; on dark paper the node lifts off the ground instead |
-| Node stroke | `ink @ 0.25` | `ink @ 0.20` | Light ink on dark paper reads stronger at equal opacity |
-| Focal fill | `accent @ 0.08` | `accent @ 0.12` | ditto |
-| Phase bands | `band-1` / `band-2` | `band-2` / `band-3` | The alternation shifts one step lighter (§6.1) |
-
-Unchanged across modes: cluster border `ink @ 0.18`, dot pattern `ink @ 0.10`, focal stroke `accent`, accent connector `accent`, and the chevron label, which is always `band-label`.
+| Element | Value |
+|---|---|
+| Muted text | `ink @ 0.65` (5.60:1 on `paper`) |
+| Dashed border | `ink @ 0.22` |
+| Node fill | `ink @ 0.06` |
+| Node stroke | `ink @ 0.20` |
+| Focal fill | `accent @ 0.12` |
+| Cluster border | `ink @ 0.18` |
+| Dot pattern | `ink @ 0.10` |
+| Focal stroke, accent connector | `accent` |
+| Phase bands | `band-2` / `band-3` (§6.1) |
 
 ### 6.1 Phase-band palette
 
-The chevron banner needs a **dark band with a light label in both modes**. `ink` and `paper` swap places between modes, so the banner can't be built from them. It uses four type-scoped tokens. A light figure takes their Latte values, and a dark figure takes their Mocha values:
+The chevron banner needs **opaque surface bands under one fixed label color**. It uses three type-scoped tokens:
 
-| Token | Light (Latte) | Dark (Mocha) | Use |
-|---|---|---|---|
-| `band-1` | `#4c4f69` (text) | `#1e1e2e` (base) | Darkest step: odd chevrons, light mode |
-| `band-2` | `#5c5f77` (subtext1) | `#313244` (surface0) | Middle step: even chevrons light, odd chevrons dark |
-| `band-3` | none | `#45475a` (surface1) | Lightest step: even chevrons, dark mode |
-| `band-label` | `#eff1f5` (base) | `#cdd6f4` (text) | Every phase label |
-
-Measured WCAG 2.x contrast of `band-label` against each band, on 2026-10-18:
-
-| Band | Latte label `#eff1f5` | Mocha label `#cdd6f4` |
+| Token | Mocha | Use |
 |---|---|---|
-| `band-1` | 7.06:1 | 11.34:1 |
-| `band-2` | 5.53:1 | 8.69:1 |
-| `band-3` | none | 6.31:1 |
+| `band-2` | `#313244` (surface0) | Odd chevrons |
+| `band-3` | `#45475a` (surface1) | Even chevrons |
+| `band-label` | `#cdd6f4` (text) | Every phase label, except on an override chevron (§2.2) |
 
-**These are type-scoped tokens, not skin roles.** They are the one deliberate exception to the rule that hex values live only in [`style-guide.md`](style-guide.md). Each value is a color of its flavor in that file's flavor palette. Phase labels always use `band-label`, and `band-label` has to hold at least 4.5:1 against every band, because these are 7px labels in either mode. A light figure has no `band-3`: Latte subtext0, the next step, holds only 4.37:1 against the Latte label.
+Measured WCAG 2.x contrast of `band-label` against each band, on 2026-10-18: 8.69:1 on `band-2` and 6.31:1 on `band-3`.
+
+**These are type-scoped tokens, not skin roles.** They are the one deliberate exception to the rule that hex values live only in [`style-guide.md`](style-guide.md). Each value is a color of that file's Mocha flavor palette. Phase labels on the bands always use `band-label`, and `band-label` has to hold at least 4.5:1 against every band, because these are 7px labels.
 
 ---
 

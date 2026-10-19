@@ -36,9 +36,8 @@ function expectFail(path: string) {
 
 const variant = (name: string, edits: [string | RegExp, string][]) => writeVariant(dir, name, FIGURES.mocha, edits);
 
-test.skipIf(NO_PYTHON)("a Mocha figure and a Latte figure pass", () => {
+test.skipIf(NO_PYTHON)("a Mocha figure passes", () => {
   expectPass(FIGURES.mocha);
-  expectPass(FIGURES.latte);
 });
 
 test.skipIf(NO_PYTHON)("a diagonal connector fails", () => {

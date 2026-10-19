@@ -27,10 +27,10 @@
   6. Backstage actions (required) — 64px
   7. Line of internal interaction (hairline)
   8. Support processes (optional) — 48px
-- **Hairlines:** 8px band including stroke. Interaction and internal-interaction are 1px `rule` (`data-role="interaction"` / `data-role="internal-interaction"`). Visibility is 2px `ink` at 0.65 opacity (`data-role="visibility"`), which must clear 3:1 on paper. It measures 3.10:1 on Latte and 5.60:1 on Mocha; 0.55 fails that bar on Latte, so do not go thinner.
+- **Hairlines:** 8px band including stroke. Interaction and internal-interaction are 1px `rule` (`data-role="interaction"` / `data-role="internal-interaction"`). Visibility is 2px `ink` at 0.65 opacity (`data-role="visibility"`), which must clear 3:1 on paper. It measures 5.60:1 on `paper`.
 - **Cells:** one action per stage per layer. `node-name` role 12px, one line, centered on the column. A second muted `sublabel` line is allowed for a system or wait (`dunning-job · 4h`). Empty required cells are allowed only with an explicit `—` or `Not applicable` as `data-name` and as the printed text.
-- **Fills:** customer and frontstage are `paper` with `ink` stroke. Backstage and support take a light `ink` tint so the below-the-line band reads as hidden work, not another onstage row.
-- **Focal cell (≤1, optional):** the failure, wait, or handoff the figure exists to show — usually on or below the visibility line. Fill `accent @ 0.12` (dark: `accent @ 0.18`), `accent` stroke, `data-focal="true"`.
+- **Fills:** customer and frontstage are `paper` with `ink` stroke. Backstage and support take a faint `ink` tint so the below-the-line band reads as hidden work, not another onstage row.
+- **Focal cell (≤1, optional):** the failure, wait, or handoff the figure exists to show — usually on or below the visibility line. Fill `accent @ 0.18`, `accent` stroke, `data-focal="true"`.
 - **Legend:** horizontal strip after a hairline rule, three keys in this order — visibility line, backstage layer, focal cell.
 
 ### Machine-readable data contract

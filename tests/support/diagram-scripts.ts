@@ -6,10 +6,9 @@ const REPO = join(import.meta.dir, "..", "..");
 /** The shipped scripts folder that a drawer runs from the installed plugin. */
 export const DIAGRAM_SCRIPTS = join(REPO, "plugin", "skills", "diagram-design", "scripts");
 
-/** Figures in the Catppuccin style, one per flavor; each passes every shipped checker. */
+/** A figure in the Catppuccin Mocha style; it passes every shipped checker. */
 export const FIGURES = {
   mocha: join(import.meta.dir, "..", "fixtures", "diagram-design", "figure-mocha.html"),
-  latte: join(import.meta.dir, "..", "fixtures", "diagram-design", "figure-latte.html"),
 } as const;
 
 function resolveEvalPython(): string | null {

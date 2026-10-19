@@ -11,7 +11,7 @@ The CSS geometry guard ignores comments; active transform declarations still fai
 - **Row count:** 3–7. Fewer → a table says it with less ink; more → the cells shrink below readability at the minimum viewBox width.
 - **Column count:** 3–8. Same constraint: 8 × 116 = 928px exceeds the available 800px at this viewBox, so either reduce columns or reduce cell width proportionally (minimum cell width 80px).
 - **Axes:** row labels right-aligned in the left gutter (`sublabel` role 9px, `text-anchor="end"`, x=148); column labels centered above each column (`sublabel` role 9px, `text-anchor="middle"`); axis titles in the `eyebrow` role 7px small-caps rotated/positioned in the margins.
-- **Value text (optional):** `arrow-label` role 8px centered inside each cell. Flip text color to paper when fill opacity ≥ 0.40 (the ink ramp becomes dark enough to carry white); keep ink text below that threshold.
+- **Value text (optional):** `arrow-label` role 8px centered inside each cell. Flip text color to `paper` when fill opacity ≥ 0.45; keep `ink` text below that threshold. On Mocha the ink ramp gets lighter as it strengthens, and 0.45 is where `paper` text starts to beat `ink` (3.41:1 against 3.33:1). Neither text reaches 4.5:1 on cells from 0.35 to 0.60, so a value printed in that band needs its own contrast check.
 
 ### Cell pattern
 
@@ -46,7 +46,7 @@ Every cell is two overlapping `<rect>` elements: a paper-fill underlay (no data 
 - A hue per row or per column — hue is not a continuous variable; it maps "which series" (slopegraph contract), not "how much". The ramp carries quantity; the label carries category identity.
 - A multi-hue diverging ramp (e.g. blue–white–red) — these read as two variables (negative and positive deviation from center) and are only honest when the data is signed and the center is meaningful. For unsigned rates or counts, the single ink ramp is the honest encoding.
 - Focal accent on more than one cell — if two cells are both focal the figure needs a different title; hue-coding two things is a palette decision masquerading as an editorial one.
-- A value axis (color bar with a continuous legend) instead of a discrete ramp strip — the ink ramp is not a gradient legend; it encodes comparative reading ("S4 is much darker than S3"), not precise magnitude retrieval. If readers need the exact value, the number printed inside the cell carries it.
+- A value axis (color bar with a continuous legend) instead of a discrete ramp strip — the ink ramp is not a gradient legend; it encodes comparative reading ("S4 is much stronger than S3"), not precise magnitude retrieval. If readers need the exact value, the number printed inside the cell carries it.
 - Rows or columns dropped because they made the pattern less clean — omitted rows and columns are invisible to the reader and look like "the services that didn't have this problem". Name everything included and say in the footnote if anything is excluded.
 - A transform on a cell, its underlay, or an ancestor `<g>`. The verifier reads raw `x`/`y`/`width`/`height` attributes; a transform silently moves the rendered mark off the verified position.
 
@@ -75,6 +75,6 @@ Upstream's `scripts/verify-heatmap.py` enforces the complete `rows × cols` grid
 
 Focal-text contrast measurement accepts finite unitless and explicit `px` coordinates. Unsupported relative units or malformed lengths produce a named measurement finding, never a traceback; this does not add a quantitative cell-geometry check.
 
-Focal-text contrast composites translucent foreground text against the resolved focal-cell fill before measuring WCAG AA. The 4.5:1 minimum applies to that foreground/background pair in both themes.
+Focal-text contrast composites translucent foreground text against the resolved focal-cell fill before measuring WCAG AA. The 4.5:1 minimum applies to that foreground/background pair.
 
 **No `transform` on any verified element.** Bake any coordinate offsets directly into `x`/`y` attributes.

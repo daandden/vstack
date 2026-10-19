@@ -27,7 +27,7 @@ steps:                              # 1..6 columns (left to right)
 nodes:                              # explicit per-cell entries; empty cells render nothing
   - { lane: "ADM", step: 0, title: "Project Setup",   sub: "create · assign roles",     tool: "Platform console" }
   - { lane: "ADM", step: 1, title: "Access Control",  sub: "bucket policies · LDAP",    tool: "MinIO · LDAP console",
-      color: "#d20f39" }            # tinted red to flag governance/identity concern
+      color: "#f38ba8" }            # tinted red to flag governance/identity concern
   - { lane: "ENG", step: 0, title: "Source Ingest",   sub: "ext. sources → raw",        tool: "NiFi · API · SFTP",
       chips: {in: "WB", out: "DB"} }                    # web payload in, dataset out
   - { lane: "ENG", step: 1, title: "Raw Store",       sub: "raw landing zones",         tool: "MinIO raw",
@@ -50,9 +50,7 @@ arrows:                             # explicit edges; styles bind to topology (s
   - { from: {lane: "ENG", step: 2}, to: {lane: "SCI", step: 3}, style: "accent",     # focal cross-role
       label: "anon data" }
   - { from: {lane: "SCI", step: 3}, to: {lane: "SCI", step: 4}, style: "muted" }
-  - { from: {lane: "SCI", step: 4}, to: {lane: "CON", step: 4}, style: "link" }     # teal: published
-
-dark: false
+  - { from: {lane: "SCI", step: 4}, to: {lane: "CON", step: 4}, style: "link" }     # blue: published
 ```
 
 **Reserved field semantics:**
@@ -64,7 +62,7 @@ dark: false
   - **Object form (preferred):** `{in: "<CODE>", out: "<CODE>"}` — explicit input/output semantic. Either side optional.
   - **Array form:** `["<INPUT_CODE>", "<OUTPUT_CODE>"]` — first item is input, second is output.
   - Codes from §8 (`WB`, `DB`, `TB`, `FL`, `LS`). Position is **fixed**: input chip on the node's bottom-**left**, output chip on the bottom-**right**.
-- `nodes[i].color` — optional **per-node color override**. Any valid `"#hex"` string is accepted; the §4 palette is recommended for cross-diagram consistency but not required. Every node can carry its own color independently of others.
+- `nodes[i].color` — optional **per-node color override**. Any `"#hex"` of the Mocha [flavor palette](style-guide.md#flavor-palette) is accepted; the §4 palette is recommended for cross-diagram consistency but not required. Every node can carry its own color independently of others.
 
 ---
 
@@ -114,7 +112,7 @@ legend_row_y     = [legend_y_top + 16, legend_y_top + 37, legend_y_top + 59]
 
 - Paper fill across full viewBox.
 - Dot pattern: 22×22 grid, `circle r=0.8`, `fill ink @ 0.10`.
-- Alternating lane tints: odd-indexed lanes (0, 2, …) receive `ink @ 0.018` fill.
+- Alternating lane tints: odd-indexed lanes (0, 2, …) receive `ink @ 0.025` fill.
 - Lane dividers: horizontal hairlines at every `lane_y_top(k)` and at `legend_y_top`, stroke `ink @ 0.12` width 0.8.
 - Label column right border: vertical hairline at `x = label_col_w`, from `y = header_h` to `y = legend_y_top`.
 
@@ -133,7 +131,7 @@ label_anchor     = (step_cx(j), 29)
 ```
 
 Default fill: `ink @ 0.12`, number text ink, label text muted.
-Focal fill: `accent @ 0.20`, number + label text accent.
+Focal fill: `accent @ 0.22`, number + label text accent.
 Per-step `color` override (§4): replaces the fill with `rgba(C, 0.20)` and the text fill with `C`.
 
 ### 2.3 Lane labels
@@ -142,7 +140,7 @@ Two-line `eyebrow` role label, both lines uppercase, fill muted:
 - Line 1 at `(lane_label_x, lane_y_mid(k) - 4)`
 - Line 2 at `(lane_label_x, lane_y_mid(k) + 8)`
 
-Per-lane `color` override (§4): replaces the label fill with `C` and the lane tint with `rgba(C, 0.04)` (instead of the default `ink @ 0.018`).
+Per-lane `color` override (§4): replaces the label fill with `C` and the lane tint with `rgba(C, 0.04)` (instead of the default `ink @ 0.025`).
 
 ### 2.4 Node content layout (inside the 100×64 rect)
 
@@ -203,19 +201,19 @@ Any node, lane, or step may declare an optional `color: "#hex"`. Mirrors high-le
 
 Applied to:
 
-| Element | Light | Dark |
-|---|---|---|
-| Container fill (`rect`) | `rgba(C, 0.06)` | `rgba(C_light, 0.10)` |
-| Container stroke | `rgba(C, 0.35)` (stroke-width 1) | `rgba(C_light, 0.45)` |
-| Role chip fill | `rgba(C, 0.18)` | `rgba(C_light, 0.22)` |
-| Role chip text | `C` | `C_light` |
-| Title text | `C` | `C_light` |
-| Sub-label | **unchanged** (muted) | **unchanged** (muted) |
-| Tool label | **unchanged** (soft) | **unchanged** (soft) |
-| Data-type chips | **unchanged** | **unchanged** |
-| Arrows touching this node | **unchanged** — topology-driven | **unchanged** |
+| Element | Value |
+|---|---|
+| Container fill (`rect`) | `rgba(C, 0.10)` |
+| Container stroke | `rgba(C, 0.45)` (stroke-width 1) |
+| Role chip fill | `rgba(C, 0.22)` |
+| Role chip text | `C` |
+| Title text | `C` |
+| Sub-label | **unchanged** (muted) |
+| Tool label | **unchanged** (soft) |
+| Data-type chips | **unchanged** |
+| Arrows touching this node | **unchanged** — topology-driven |
 
-`C_light` = the Mocha value of the same Catppuccin color, for dark-mode contrast (e.g., Latte red `#d20f39` → Mocha red `#f38ba8`, Latte green `#40a02b` → Mocha green `#a6e3a1`).
+`C` is a Mocha color from [`style-guide.md`](style-guide.md#flavor-palette), such as red `#f38ba8` or green `#a6e3a1`.
 
 ### 4.2 Per-step `color`
 
@@ -236,10 +234,10 @@ Replaces the lane stripe tint with `rgba(C, 0.04)` (only for odd-indexed lanes t
 
 Same palette as high-level / dp-integration so a reader scanning multiple diagrams sees the same colors meaning the same thing:
 
-- `#d20f39` red — Security / Identity / Governance (admin nodes, LDAP, access control)
-- `#209fb5` sapphire — Observability / Quality (monitoring, data-quality gates, lineage)
-- `#40a02b` green — Governance / Lineage (catalog, metadata)
-- `#fe640b` peach — Backup / DR / Archive
+- `#f38ba8` red — Security / Identity / Governance (admin nodes, LDAP, access control)
+- `#74c7ec` sapphire — Observability / Quality (monitoring, data-quality gates, lineage)
+- `#a6e3a1` green — Governance / Lineage (catalog, metadata)
+- `#fab387` peach — Backup / DR / Archive
 
 ---
 
@@ -255,26 +253,21 @@ If zero or >1 of any focal slot are declared, halt and ask with `ask`.
 
 ---
 
-## 6. Dark mode
+## 6. Colors
 
-| Token | Light | Dark |
-|---|---|---|
-| Paper | `paper` | `ink` |
-| Ink | `ink` | `paper` |
-| Muted | `muted` | `soft` |
-| Soft | `soft` | `rule-solid` |
-| Accent | `accent` | `accent` |
-| Link | `link` | `link` |
-| Dot pattern | `ink @ 0.10` | `paper @ 0.10` |
-| Lane tint | `ink @ 0.018` | `paper @ 0.025` |
-| Dividers | `ink @ 0.12` | `paper @ 0.12` |
-| Default chip fill | `ink @ 0.12` | `paper @ 0.12` |
-| Focal chip fill | `accent @ 0.20` | `accent @ 0.22` |
-| Default node fill | `paper` | `paper @ 0.04` |
-| Default node stroke | `ink @ 0.25` | `paper @ 0.20` |
-| Focal node fill | `accent @ 0.07` | `accent @ 0.12` |
-| Focal node stroke | `accent` | `accent` |
-| Custom component colors | `C` | the Mocha color of the same Catppuccin name as `C` |
+Every role takes its Mocha value from [`style-guide.md`](style-guide.md). These values are set only here:
+
+| Element | Value |
+|---|---|
+| Dot pattern | `ink @ 0.10` |
+| Lane tint | `ink @ 0.025` |
+| Dividers | `ink @ 0.12` |
+| Default chip fill | `ink @ 0.12` |
+| Focal chip fill | `accent @ 0.22` |
+| Default node fill | `ink @ 0.04` |
+| Default node stroke | `ink @ 0.20` |
+| Focal node fill | `accent @ 0.12` |
+| Focal node stroke | `accent` |
 
 ---
 
@@ -310,15 +303,15 @@ Either chip may be omitted (e.g., a sink node has only an input chip; a source-o
 
 | Code | Color | Meaning |
 |------|-------|---------|
-| `WB` | `#7287fd` (lavender) | Web / Public data |
-| `DB` | `#209fb5` (sapphire) | Dataset / Raw file |
-| `TB` | `#df8e1d` (yellow) | Table / Analysis-ready |
-| `FL` | `#fe640b` (peach) | File / Report / Export |
-| `LS` | `#40a02b` (green) | Live stream / Event |
+| `WB` | `series-4` `#eba0ac` (maroon) | Web / Public data |
+| `DB` | `series-5` `#74c7ec` (sapphire) | Dataset / Raw file |
+| `TB` | `series-2` `#94e2d5` (teal) | Table / Analysis-ready |
+| `FL` | `series-3` `#fab387` (peach) | File / Report / Export |
+| `LS` | `series-1` `#a6e3a1` (green) | Live stream / Event |
 
-Text inside chip: `paper`, `eyebrow` role at 5px, weight 700.
+Every chip color is a series token from [`style-guide.md`](style-guide.md#semantic-roles). Text inside chip: `paper` (`#1e1e2e`), `eyebrow` role at 5px, weight 700. It measures 7.93:1 on maroon up to 11.03:1 on green. White text fails on every chip color (1.49:1 to 2.07:1).
 
-Data-type chip colors are a **separate semantic axis** from the per-node color override (§4). The chip colors describe *payload format*; the node color override describes *concern type* (governance, observability, …). Don't conflate them — a node can have both an `out: TB` yellow chip and a red border color simultaneously.
+Data-type chip colors are a **separate semantic axis** from the per-node color override (§4). The chip colors describe *payload format*; the node color override describes *concern type* (governance, observability, …). Don't conflate them — a node can have both an `out: TB` teal chip and a red border color simultaneously.
 
 ---
 
