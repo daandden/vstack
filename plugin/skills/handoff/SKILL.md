@@ -11,6 +11,8 @@ Include a "suggested skills" section in the document, naming each skill the next
 
 Do not duplicate content already captured in other artifacts (specs, plans, ADRs, issues, commits, diffs). Reference them by path or URL instead.
 
+If this session printed a Grilling page path, put that path in the document. The next session then continues the flow's page instead of starting a new one.
+
 Redact any sensitive information, such as API keys, passwords, or personally identifiable information.
 
 If the user passed arguments, treat them as a description of what the next session will focus on and tailor the doc accordingly.

@@ -132,7 +132,7 @@ items:
     tree: 8ec0462658381bd1606d3f9db14ffc67df6a2a43
     disposition: adapt
     artifacts: [plugin/skills/wayfinder]
-    reason: "Names setup-vstack; charting research is Fan-out; its user questions go through ask."
+    reason: "Names setup-vstack; charting research is Fan-out; its user questions go through ask and on the map's Grilling page, with one Stage per ticket (#171)."
   - id: matt/wizard
     upstream: matt
     kind: skill
@@ -164,7 +164,7 @@ items:
     tree: 2242e8f05424b8c2ae94194a90d97b88d16108ec
     disposition: adapt
     artifacts: [plugin/skills/handoff]
-    reason: "Saves to Scratch under ~/.vstack/tmp instead of the OS temp dir (tmp-path, #57)."
+    reason: "Saves to Scratch under ~/.vstack/tmp instead of the OS temp dir, and carries the flow's Grilling page path (tmp-path, #57, #171)."
   - id: matt/teach
     upstream: matt
     kind: skill
