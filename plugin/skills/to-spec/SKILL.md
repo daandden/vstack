@@ -14,11 +14,13 @@ The issue tracker and triage label vocabulary should have been provided to you. 
 
 2. Sketch out the seams at which you're going to test the feature. Existing seams should be preferred to new ones. Use the highest seam possible. If new seams are needed, propose them at the highest point you can. The fewer seams across the codebase, the better - the ideal number is one.
 
-Confirm with one `ask` that these seams match the user's expectations.
+Confirm with one `ask` that these seams match the user's expectations. This `ask` is a question on the flow's Grilling page, as `skill://grilling-page` says. Before it, find the page as grilling-page's "Find or start the page" says. The issue that this run starts from counts as this skill's issue. So if an earlier Stage, such as triage, keyed the page by that issue, continue that page. Then add a to-spec Stage.
 
 3. Write the spec using the template below, then publish it to the project issue tracker. Apply the `ready-for-agent` triage label - no need for additional triage.
 
 Write a `skill://<addon>` pointer in the spec for each Addon that the session loaded, from the hidden Addon message or a `skill://` read by a running skill.
+
+After you publish, key the flow's page by the spec. Append the page's `flow` record again with `spec` set to the spec issue number, or to the feature slug of a local-markdown spec. Then run the page script's `rename` with that value as the new key, and print the page path that it prints. Later Stages find the page from the spec issue. End the to-spec Stage as grilling-page's "Add a Stage" says.
 
 <spec-template>
 

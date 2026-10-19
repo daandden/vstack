@@ -16,6 +16,8 @@ The issue tracker and triage label vocabulary should have been provided to you. 
 
 Work from whatever is already in the conversation context. If the user passes a reference (a spec path, an issue number or URL) as an argument, fetch it and read its full body and comments.
 
+Find the flow's Grilling page as `skill://grilling-page`'s "Find or start the page" says. The spec that this run breaks down counts as this skill's spec, so a new omp session finds the page that to-spec renamed after the spec issue. Then add a to-tickets Stage.
+
 ### 2. Explore the codebase (optional)
 
 If you have not already explored the codebase, do so to understand the current state of the code. Ticket titles and descriptions should use the project's domain glossary vocabulary, and respect ADRs in the area you're touching.
@@ -43,19 +45,19 @@ Copy from the spec into each ticket the Addon pointers that its work needs.
 
 ### 4. Quiz the user
 
-Present the proposed breakdown as a numbered list. For each ticket, show:
+Write the proposed breakdown on the to-tickets Stage as a table Report block, as grilling-page says. Its columns are Ticket, Blocked by, and Size, with one row per ticket:
 
-- **Title**: short descriptive name
-- **Blocked by**: which other tickets (if any) must complete first
-- **What it delivers**: the end-to-end behaviour this ticket makes work
+- Ticket: the ticket's number and short title, then one sentence on the end-to-end behavior that it delivers.
+- Blocked by: the numbers of the tickets that must complete first, or "None".
+- Size: small, medium, or large, compared with one fresh context window.
 
-Ask these questions through one `ask`:
+After the Report block, ask one approval question on the page through `ask`, with the options Approve and Change something. Link the question and every row both ways. Its description asks these questions:
 
 - Does the granularity feel right? (too coarse / too fine)
 - Are the blocking edges correct: does each ticket only depend on tickets that genuinely gate it?
 - Should any tickets be merged or split further?
 
-Iterate until the user approves the breakdown.
+Iterate until the user approves the breakdown. For each revision, append the Report block again with the revised rows, and ask the approval again in a new question record with the same Q number.
 
 ### 5. Publish the tickets to the configured tracker
 
@@ -67,6 +69,8 @@ Publish the approved tickets. **How** depends on the tracker `/skill:setup-vstac
 Work the **frontier**: any ticket whose blockers are all done. For a purely linear chain that means top to bottom.
 
 Do NOT close or modify any parent issue.
+
+After you publish, append the page's `flow` record again with the ticket ids in `tickets`. Then end the to-tickets Stage as grilling-page's "Add a Stage" says.
 
 <local-ticket-template>
 
