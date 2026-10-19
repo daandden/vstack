@@ -124,7 +124,7 @@ items:
     tree: 4cb951d62ecccaed601cdc5f9a1b7b3d8a799635
     disposition: adapt
     artifacts: [plugin/skills/triage]
-    reason: "Names setup-vstack. Its questions to the maintainer go through ask (ask-tool, #58)."
+    reason: "Names setup-vstack. Its questions to the maintainer go through ask, and every ask after the item pick goes on the item's Grilling page (ask-tool, #58, #170)."
   - id: matt/wayfinder
     upstream: matt
     kind: skill
