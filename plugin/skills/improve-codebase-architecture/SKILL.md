@@ -1,6 +1,6 @@
 ---
 name: improve-codebase-architecture
-description: Scan a codebase for deepening opportunities, present them as a visual HTML report, then grill through whichever one you pick.
+description: Scan a codebase for deepening opportunities, show them as candidate cards on the flow's Grilling page, then grill through whichever one you pick.
 disable-model-invocation: true
 ---
 
@@ -38,36 +38,34 @@ Don't follow rigid heuristics; explore organically and note where you experience
 
 Apply the deletion test to anything you suspect is shallow: would deleting it concentrate complexity, or just move it? A "yes, concentrates" is the signal you want.
 
-### 2. Present candidates as an HTML report
+### 2. Present candidates on the flow's Grilling page
 
-Read `skill://vstack-tmp` and resolve the `architecture-review/` kind. Create a fresh `architecture-review-<timestamp>/` entry there. Start from [templates/architecture-review.html](templates/architecture-review.html) and write `index.html` in that entry. Keep the report one-file and usable offline: inline styles and SVG, no CDN scripts, remote fonts, or linked assets.
+Read `skill://grilling-page`. Find or start the flow's page, as its "Find or start the page" section says. Add an improve-codebase-architecture Stage, as its "Add a Stage" section says. The candidates, the pick, and the grilling that follows all go in this Stage.
 
-Draw every candidate's before/after figure through `skill://vstack-figures`, with type, size, labels, and content fixed from the evidence. The out dir is this entry, with unique figure filenames so their IDs do not collide. Write the cards while the drawers run, then collect the figures and inline each exported `<svg>` in the report. Do not hand-draw replacement figures or fall back to Mermaid. If drawing cannot run, stop and report the missing prerequisite.
+Draw a before figure and an after figure for each candidate through `skill://vstack-figures`, with type, size, labels, and content fixed from the evidence. The before figure shows the shallowness, and the after figure shows the deepening. Give both figures of a candidate the same type and layout, so that the reader compares them part by part. Label leakage and seams in words as well as in color. The out dir is the flow folder's `figures/`, and each figure gets a unique basename. Do not hand-draw replacement figures or fall back to Mermaid. If drawing cannot run, stop and report the missing prerequisite.
 
-Open the completed page with the platform opener when available (`open`, `xdg-open`, or `start`). Always print its plain absolute path, with no `file://` prefix, even if opening is unavailable.
+Write the candidates as one `report` record with shape `cards` while the drawers run. Give each candidate one card:
 
-For each candidate, render a card with:
+- `title`: the deepening, named in the domain and architecture vocabulary.
+- `label`: the recommendation strength, one of `Strong`, `Worth exploring`, or `Speculative`.
+- `blocking`: `false`.
+- `evidence`: the files and modules involved, then the problem: why the current architecture causes friction.
+- `action`: the solution, a plain English description of what would change.
+- `impact`: the benefits in terms of locality and leverage, and how tests would improve.
+- `visual`: `{ "svg": "figures/<before file>" }`, then `{ "svg": "figures/<after file>" }`.
+- `question`: the id of the pick question.
 
-- Files: which files/modules are involved
-- Problem: why the current architecture is causing friction
-- Solution: plain English description of what would change
-- Benefits: explained in terms of locality and leverage, and how tests would improve
-- Before / After diagram: side-by-side, custom-drawn, illustrating the shallowness and the deepening
-- Recommendation strength: one of `Strong`, `Worth exploring`, `Speculative`, rendered as a badge
-
-End the report with a Top recommendation section: which candidate you'd tackle first and why.
+Put the top recommendation in the report's `summary` line: which candidate you would tackle first, and why.
 
 Use GLOSSARY.md vocabulary for the domain, and the `skill://codebase-design` vocabulary for the architecture. If `GLOSSARY.md` defines "Order," talk about "the Order intake module," not "the FooBarHandler," and not "the Order service."
 
-ADR conflicts: if a candidate contradicts an existing ADR, only surface it when the friction is real enough to warrant revisiting the ADR. Mark it clearly in the card (e.g. a warning callout: _"contradicts ADR-0007, but worth reopening because…"_). Don't list every theoretical refactor an ADR forbids.
+ADR conflicts: if a candidate contradicts an existing ADR, only surface it when the friction is real enough to warrant revisiting the ADR. Start the card's `evidence` with the conflict, such as _"Contradicts ADR-0007, but worth reopening because…"_. Don't list every theoretical refactor an ADR forbids.
 
-See [HTML-REPORT.md](HTML-REPORT.md) for the full HTML scaffold, diagram patterns, and styling guidance.
-
-Do NOT propose interfaces yet. After the file is written, use `ask` to select a candidate, with one short option per candidate and the top recommendation marked `recommended`.
+Do NOT propose interfaces yet. The pick question is the next question: which candidate to explore. Write it as the first round of the Stage, as grilling-page's "Add a round" section says, with one option per candidate in card order and the top recommendation as the recommended option. Give it `report_entries` with every card. Collect the figures, then append the report, the round, and the pick question in one `append`, because they link to each other. Print the page path, then `ask` the pick question.
 
 ### 3. Grilling loop
 
-Once the user picks a candidate, run the `skill://grilling` skill to walk the decision tree with them: constraints, dependencies, the shape of the deepened module, what sits behind the seam, what tests survive.
+Once the user picks a candidate, run the `skill://grilling` skill to walk the decision tree with them: constraints, dependencies, the shape of the deepened module, what sits behind the seam, what tests survive. Its rounds continue in this skill's Stage on the same page. After grilling's closing gate gets Shared understanding, mark the Stage finished. If no candidate is picked, the Stage asks no more: close its session and mark it finished, as grilling-page's "Add a Stage" section says.
 
 Side effects happen inline as decisions crystallize. Run the `skill://domain-modeling` skill to keep the domain model current as you go:
 
@@ -76,4 +74,4 @@ Side effects happen inline as decisions crystallize. Run the `skill://domain-mod
 - User rejects the candidate with a load-bearing reason? Use `ask` to offer recording an ADR so future architecture reviews do not re-suggest it. Only offer when the reason would actually be needed by a future explorer to avoid re-suggesting the same thing. Skip ephemeral reasons ("not worth it right now") and self-evident ones.
 - Want to explore alternative interfaces for the deepened module? Run the `skill://codebase-design` skill and use its DESIGN-IT-TWICE Fan-out line.
 
-Every in-session question goes through `ask`. A timed-out choice remains unanswered. For approval gates, re-ask once, then stop without acting if it times out again. If `ask` is absent in a subagent, return open questions to the parent; a headless run takes and reports the recommended answer.
+Every in-session question, the pick and the ADR offer included, is a question on the flow's Grilling page, as grilling-page's "Every ask in a flow" section says. A timed-out choice remains unanswered. For approval gates, re-ask once, then stop without acting if it times out again. A headless run takes the recommended answer and records it, as grilling-page's "Record answers" section says.

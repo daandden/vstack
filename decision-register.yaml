@@ -68,7 +68,7 @@ items:
     tree: 39bd9cc130f7dfcc4e3ea0b3613f6ebed0d0ad2b
     disposition: adapt
     artifacts: [plugin/skills/improve-codebase-architecture]
-    reason: "Its sub-agent spawn names a vstack agent (ADR 0004); report goes to Scratch (#42, #57)."
+    reason: "Its sub-agent spawn names a vstack agent (ADR 0004); its candidates go on the flow's Grilling page as a cards Report block, not an HTML report (#169)."
   - id: matt/prototype
     upstream: matt
     kind: skill
