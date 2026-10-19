@@ -56,12 +56,12 @@ Focal bar: replace fill with `accent @ 0.12`, stroke with `accent`, label fill w
   | 7 | 52 | 72 | 384 |
   | 8 | 48 | 68 | 404 |
 
-- **Gridlines:** vertical at each tick, `ink @ 0.08` 0.8px, spanning y 56→408. At the domain floor the axis line replaces the gridline rather than doubling it: `ink @ 0.25` 1px, y 40→420.
+- **Gridlines:** vertical at each tick, `ink @ 0.08` 0.8px, spanning y 56→408. At the domain floor the axis line replaces the gridline rather than doubling it: `ink @ 0.20` 1px, y 40→420.
 - **Tick labels:** centered under each gridline at y=440, `arrow-label` role 8px `muted`.
 - **Axis title:** the value axis carries the family's axis label — `eyebrow` role 7px `muted`, `letter-spacing="0.14em"`, centered at x=580, y=456, below the tick labels and clear of the legend rule. A horizontal axis takes the un-rotated form the scatter x-axis uses, not the `rotate(-90 24 230)` form the column charts apply to their y-axis. The category axis needs no title: the row labels name themselves.
 - **Dots:** r=6, positioned by value. Style by *series*: the reference end hollow (paper fill, `muted` stroke 1.5px), the focal end solid `accent` with a 1px `ink` stroke. Both marks therefore have a boundary above 3:1 even though the accent fill is not — see below. Fill weight, not hue, carries the pairing.
 - **Accent marks the series, not a focal row.** The solid dot repeats on every row — the one place this variant departs from the one-accent rule above, because the two ends must be told apart in each pair. Do not additionally accent a "most changed" row; the sort order already carries rank.
-- **Connector:** `ink @ 0.65` 1px (`rgba(76,79,105,0.65)` on Latte), declared before both dots so the dots cap it. It is not the axis hairline: the connector is what says *these two dots are one row*, so it has to clear 3:1 (0.65 gives 3.10:1 on Latte; the 0.25 the axis uses gives 1.47:1).
+- **Connector:** `ink @ 0.45` 1px (`rgba(205,214,244,0.45)`), declared before both dots so the dots cap it. It is not the axis hairline: the connector is what says *these two dots are one row*, so it has to clear 3:1 (0.45 gives 3.41:1 on `paper`; the 0.20 the axis uses gives 1.69:1).
 - **Endpoint positions round, they never snap.** `x = 200 + (v − floor) ÷ (ceil − floor) × 760`, with `floor` and `ceil` set by the axis rule below, rounded to the nearest integer pixel — at most 0.5px, below one rendered pixel. Data coordinates are exempt from the 4px grid; snapping them moves the data.
 - **Value labels sit outside the pair, placed by geometry rather than by series.** A focal value *below* its reference reverses the dots, so derive `x_left = min(x_ref, x_focal)` and `x_right = max(x_ref, x_focal)`: left label right-anchored at `x_left − 12`, right label left-anchored at `x_right + 12`, both baseline `y + 4`, `arrow-label` role 8px `muted`, each still carrying its own series' value. Keying the offsets to start/end instead puts both labels *inside* the pair on every decreasing row.
 - **Floor exception.** A value sitting on the domain floor lands its label at x=188, right-anchored on baseline `y + 4` — exactly the category label's anchor and baseline, so the two texts overlap. When `x_left − 12 < 200`, centre that label above its dot at baseline `y − 10` instead.
@@ -69,7 +69,7 @@ Focal bar: replace fill with `accent @ 0.12`, stroke with `accent`, label fill w
 
 **Why the dots differ by fill, not hue.** The focal bar pattern above (12% tint + accent stroke) does not transfer to a 6px dot: the 12% tint across a 6px-radius disc contributes roughly 14 square pixels of colour, so the mark reads as its stroke alone and the pair separates by hue only. A solid accent dot against a hollow one separates by shape, survives greyscale and colour-vision deficiency, and leaves hue as redundant encoding.
 
-**Non-text contrast: the boundary carries it, not the fill.** The mauve accent clears the 3:1 WCAG 1.4.11 asks of a graphical object (4.79:1 on Latte, 8.07:1 on Mocha), but shape redundancy does not waive that floor, because the reader still has to see the mark's edge and the line joining the pair. So neither is left to the accent: the solid endpoint takes a 1px `ink` stroke (7.06:1 against Latte paper, 11.34:1 against Mocha) and the connector takes 65% ink on Latte, 45% on Mocha (3.10:1 and 3.41:1). The hollow end already cleared it via its `muted` stroke at 5.53:1 on Latte and 9.26:1 on Mocha. The hollow/solid shape difference stays as redundant encoding for greyscale and colour-vision deficiency — do not collapse the two dots to a single fill.
+**Non-text contrast: the boundary carries it, not the fill.** The mauve accent clears the 3:1 WCAG 1.4.11 asks of a graphical object (8.07:1 on `paper`), but shape redundancy does not waive that floor, because the reader still has to see the mark's edge and the line joining the pair. So neither is left to the accent: the solid endpoint takes a 1px `ink` stroke (11.34:1 against `paper`) and the connector takes 45% ink (3.41:1). The hollow end already cleared it via its `muted` stroke at 9.26:1. The hollow/solid shape difference stays as redundant encoding for greyscale and colour-vision deficiency — do not collapse the two dots to a single fill.
 
 **Minimum drawn gap — never clamp it.** Both dots carry `r="6"`; the hollow one paints out to 6.75 because its 1.5px stroke straddles the path, so the marks touch at 12.75px of centre separation and below about 16px the pair reads as one blob — on a 0–100 domain across 760px, a data gap of 2.1 units. Do **not** widen the separation to clear it: moving a dot off its scaled position breaks the shared-scale rule below. Keep the true positions and shrink both marks (r=4 touches at 8.75px), or print the two values and mark the row as too close to resolve.
 
@@ -77,7 +77,7 @@ Focal bar: replace fill with `accent @ 0.12`, stroke with `accent`, label fill w
 
 ```svg
 <!-- One row. Connector first so the dots cap it; labels outside the pair. -->
-<line x1="458" y1="96" x2="740" y2="96" stroke="{ink @ 0.65}" stroke-width="1"/>
+<line x1="458" y1="96" x2="740" y2="96" stroke="{ink @ 0.45}" stroke-width="1"/>
 <circle cx="458" cy="96" r="6" fill="{paper}" stroke="{muted}" stroke-width="1.5"/>
 <circle cx="740" cy="96" r="6" fill="{accent}" stroke="{ink}" stroke-width="1"/>
 <text x="446" y="100" fill="{muted}" font-size="8" font-family="{arrow-label}" text-anchor="end">34</text>
@@ -86,8 +86,6 @@ Focal bar: replace fill with `accent @ 0.12`, stroke with `accent`, label fill w
 ```
 
 Values 34 and 71 on a 0–100 domain compute to 458.4 and 739.6, rounded to 458 and 740. Had this row fallen instead, the accent dot would sit on the left; the two anchors stay tied to left and right, and each label carries its own series' value.
-
-**Dark theme.** Dots and labels keep their roles and take the Mocha column of [`style-guide.md`](style-guide.md): hollow `paper` fill with a `muted` stroke, solid `accent` with an `ink` stroke, labels `muted`. **The hairline opacities change too:** gridlines `ink @ 0.08`, axis `ink @ 0.20`, connector `ink @ 0.45` (`rgba(205,214,244,0.45)` on Mocha). The connector stays heavier than the axis, for the same 3:1 reason. Resolve `ink` against the Mocha column, never the Latte one: Latte `ink` measures only 2.05:1 on Mocha `paper`, so a connector, gridline, or axis carried over from light nearly vanishes, and the gap encoding and the scale go with it.
 
 ### Dumbbell honesty rules
 

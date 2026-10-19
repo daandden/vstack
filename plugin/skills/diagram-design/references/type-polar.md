@@ -65,7 +65,7 @@ Version 1 supports:
 - a shared linear scale with `min = 0` and `max > 0`;
 - five circular grid rings at 20%, 40%, 60%, 80%, and 100%;
 - one optional focal category rendered with the accent token;
-- minimal light, minimal dark, and full-editorial variants;
+- minimal and full-editorial variants;
 - horizontal, upright category labels outside the outer ring;
 - one numeric value label per category.
 
@@ -81,7 +81,7 @@ Use Radar for multiple entities scored across common criteria, Line for more tha
 
 ## Geometry
 
-All three variants use `viewBox="0 0 1000 520"`, center `(500, 230)`, and `R = 160`.
+Both variants use `viewBox="0 0 1000 520"`, center `(500, 230)`, and `R = 160`.
 
 - Grid rings: `r = 32, 64, 96, 128, 160`.
 - Category spokes: center to `R`, 0.8 px rule stroke, no arrowhead.
@@ -93,7 +93,7 @@ All three variants use `viewBox="0 0 1000 520"`, center `(500, 230)`, and `R = 1
 - Label anchor: `middle` within 15 degrees of vertical, `start` on the right half, and `end` on the left half.
 - Drawing order: background, rings, spokes, scale labels, non-focal rays, focal ray, endpoint markers, category labels, numeric labels, legend/source note.
 
-The minimal variants use the full 1000×520 canvas. The full-editorial variant places the same chart in the existing editorial frame and adds summary cards without changing chart geometry.
+The minimal variant uses the full 1000×520 canvas. The full-editorial variant places the same chart in the existing editorial frame and adds summary cards without changing chart geometry.
 
 ## Visual treatment
 

@@ -16,7 +16,7 @@
 - **Bar count:** 3–8 bars total, including both totals and at most one subtotal. More contributions than that → merge the tail into one named "Other" bridge (disclose what it contains) or split the walk into two charts.
 - **Bar width / pitch:** equal-width bars on an even pitch, bar ≥ 50% of the pitch. Six bars fit as width=96 on a 144px pitch starting at x=112.
 - **Totals anchor, bridges float.** The start total, any subtotal, and the end total are drawn from the domain floor (the x-axis baseline) up to their value. Bridge bars span exactly the running total before and after their contribution — an increase rises from the previous level, a decrease falls from it.
-- **Carry rules (the bridge grammar).** A horizontal connector line carries the running total across each gap between adjacent bars, drawn at the shared level: from the right edge of one bar to the left edge of the next, `ink @ 0.55` at 1px on light paper (`ink @ 0.40` on dark) — the dumbbell's connector weight, because the carry is load-bearing and must clear 3:1, not the 0.25 axis hairline. Each carry declares the running total it transports in `data-carry`.
+- **Carry rules (the bridge grammar).** A horizontal connector line carries the running total across each gap between adjacent bars, drawn at the shared level: from the right edge of one bar to the left edge of the next, `ink @ 0.45` at 1px (3.41:1 on `paper`) — the dumbbell's connector weight, because the carry is load-bearing and must clear 3:1, not the 0.25 axis hairline. Each carry declares the running total it transports in `data-carry`.
 - **Machine-readable data contract.** Every bar rect declares `data-role` (`total`, `delta`, or `subtotal`), `data-value` (totals unsigned, deltas explicitly signed `+`/`-`), and `data-name`. Upstream's `scripts/verify-waterfall.py` reads these and fails the build when the drawing and the declaration disagree, but it does not ship with this skill — see the honesty rules below.
 - **Sign is encoded by fill weight, not hue.** Increases take the bar family's default tint (`muted @ 0.15` fill, `muted` stroke). Decreases are hollow — paper fill, same `muted` stroke — so the two directions survive greyscale and colour-vision deficiency without leaning on the accent. The geometry (which end of the bar meets the carry) and the signed printed value are the second and third encodings of the same fact.
 - **Totals are the heaviest marks:** `ink @ 0.08` fill with a 1px `ink` stroke. The reader's eye should land on the two anchors first, then walk the bridges.
@@ -36,7 +36,7 @@
 <text x="160" y="184" fill="{muted}" font-size="8" font-family="{arrow-label}" text-anchor="middle">240</text>
 
 <!-- Carry: the running total (240) crosses the gap at its own level -->
-<line x1="208" y1="192" x2="256" y2="192" stroke="{ink @ 0.55}" stroke-width="1" data-carry="240"/>
+<line x1="208" y1="192" x2="256" y2="192" stroke="{ink @ 0.45}" stroke-width="1" data-carry="240"/>
 
 <!-- Increase bridge: +64 rises from 240 to 304 -->
 <rect x="256" y="131" width="96" height="61" fill="{paper}"/>

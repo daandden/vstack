@@ -2,7 +2,7 @@
 
 Optional full-page skin that wraps any diagram in a fake terminal window — titlebar with three dots, a `$` prompt line, monospace type throughout. Use for dev-tool announcements, CLI-product posts, and technical social cards where a screenshot needs to read as "terminal," not "editorial doc."
 
-This is a **second, fixed skin** — see [style-guide.md § Terminal skin](style-guide.md#terminal-skin-opt-in-alternate) for the token table. It isn't part of the light/dark inversion rule; every terminal example uses the same ten tokens regardless of the host site's brand.
+This is a **second, fixed skin** — see [style-guide.md § Terminal skin](style-guide.md#terminal-skin-opt-in-alternate) for the token table. It does not use the Catppuccin roles; every terminal example uses the same ten tokens regardless of the host site's brand.
 
 ## Grammar
 
@@ -45,7 +45,7 @@ body {
 }
 ```
 
-Inside the SVG, swap the default light/dark tokens 1:1 for their `terminal-*` equivalents: `paper` → `terminal-paper`, `ink` → `terminal-ink`, `muted`/`soft` → `terminal-muted`/`terminal-soft`, `accent`/`accent-tint` → `terminal-accent`/`terminal-accent-tint`. The hub/focal-node pattern (inverted fill for the one highlighted element) still applies.
+Inside the SVG, swap the default Catppuccin tokens 1:1 for their `terminal-*` equivalents: `paper` → `terminal-paper`, `ink` → `terminal-ink`, `muted`/`soft` → `terminal-muted`/`terminal-soft`, `accent`/`accent-tint` → `terminal-accent`/`terminal-accent-tint`. The hub/focal-node pattern (inverted fill for the one highlighted element) still applies.
 
 ## Typography
 
@@ -71,5 +71,5 @@ Three 10px circles, macOS-style. The **1-accent rule caps the color use here too
 
 ## When not to use
 
-- Editorial / long-form posts — pair with the default dark, the light, or the full-editorial variant instead.
+- Editorial / long-form posts — pair with the minimal or full-editorial variant instead.
 - Any diagram where the audience isn't developer-coded to read `$`/`#`/titlebar-dots as chrome rather than content.

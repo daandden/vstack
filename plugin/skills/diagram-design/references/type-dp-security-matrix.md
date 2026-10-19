@@ -4,7 +4,7 @@
 
 Use when stakeholders need to audit *who can do what* across the platform. Prefer **DP integration** when the question is *who can talk to what* (topology/protocol) rather than *who can write/read what* (permissions).
 
-This type is **parametric** — the inputs schema in §1 drives every coordinate via the formulas in §2. The rule shape mirrors `type-medallion.md` / `type-process.md` / `type-data-flow.md` so the focal rule, color override, dark mode, and reproducibility checklist read identically across types.
+This type is **parametric** — the inputs schema in §1 drives every coordinate via the formulas in §2. The rule shape mirrors `type-medallion.md` / `type-process.md` / `type-data-flow.md` so the focal rule, color override, colors, and reproducibility checklist read identically across types.
 
 ---
 
@@ -56,7 +56,6 @@ cells:                                  # explicit (row, col) entries; omitted �
   # ... rows 6..7 ...
 
 none_label: "No access"                 # default text rendered when a cell is omitted
-dark: false
 ```
 
 **Reserved field semantics:**
@@ -116,7 +115,7 @@ Solid paper fill across the full viewBox. No dot pattern.
 ### 2.2 Header row (`y = 72, h = 52`)
 
 **Component-column header cell:**
-- Rect: `(comp_col_x, header_y, comp_col_w, header_h)`, fill `paper`, stroke `ink @ 0.12` 0.8, `rx=6`
+- Rect: `(comp_col_x, header_y, comp_col_w, header_h)`, fill `paper`, stroke `ink @ 0.18` 0.8, `rx=6`
 - Two-line label centered at `(comp_col_x + comp_col_w/2, header_y+24)` and `(…, header_y+40)`:
   - Line 1: `"Component"` — `node-name` role at 11px, ink
   - Line 2: `"vs. AD group"` — `sublabel` role, muted
@@ -130,12 +129,12 @@ Solid paper fill across the full viewBox. No dot pattern.
 ### 2.3 Data row (`y = row_y(k), h = 36`)
 
 **Component label cell:**
-- Rect: `(comp_col_x, row_y(k), comp_col_w, row_h)`, fill `paper`, stroke `ink @ 0.12` 0.8, `rx=4`
+- Rect: `(comp_col_x, row_y(k), comp_col_w, row_h)`, fill `paper`, stroke `ink @ 0.18` 0.8, `rx=4`
 - Name at `(comp_col_x + 12, row_y(k) + 22)`: `node-name` role at 11px, ink, left-aligned
 - Hint (if present) at `(comp_col_x + comp_col_w − 12, row_y(k) + 22)`: `sublabel` role, muted, right-aligned
 
 **Value cells (one per role × component):**
-- Rect: `(role_col_x(j), row_y(k), role_col_w, row_h)`, `rx=4`, stroke `ink @ 0.12` 0.6
+- Rect: `(role_col_x(j), row_y(k), role_col_w, row_h)`, `rx=4`, stroke `ink @ 0.18` 0.6
 - Fill and text-color depend on `level` (or focal flag) — see §2.4
 - Value text centered at `(role_col_cx(j), row_y(k) + 22)`: `node-name` role at 10px
 - Focal cell uses a slightly raised primary text at `y=18` and a sub-line at `y=30` (`sublabel` role at 8px)
@@ -144,11 +143,11 @@ Solid paper fill across the full viewBox. No dot pattern.
 
 | `level` | Fill | Stroke | Text color | Text weight |
 |---|---|---|---|---|
-| `full` | `ink @ 0.08` | `ink @ 0.12` | `ink` | 600 |
-| `rw` | `paper` | `ink @ 0.12` | `ink` | 400 |
-| `read` | `muted @ 0.08` | `ink @ 0.12` | `muted` | 400 |
-| `none` | `paper` | `ink @ 0.12` | `soft` | 400 |
-| **focal** | `accent @ 0.07` | `accent` (1.4) | `accent` | 600 |
+| `full` | `ink @ 0.10` | `ink @ 0.18` | `ink` | 600 |
+| `rw` | `ink @ 0.06` | `ink @ 0.18` | `ink` | 400 |
+| `read` | `muted @ 0.12` | `ink @ 0.18` | `muted` | 400 |
+| `none` | `ink @ 0.02` | `ink @ 0.18` | `soft` | 400 |
+| **focal** | `accent @ 0.12` | `accent` (1.4) | `accent` | 600 |
 
 The focal cell can carry a 2nd line (`sub:`) rendered in `accent` with the `sublabel` role at 8px and 0.85 opacity.
 
@@ -178,36 +177,36 @@ Three independent override axes — per-cell, per-component (row), per-role (col
 
 Tints a specific intersection cell. Applied to:
 
-| Element | Light | Dark |
-|---|---|---|
-| Cell fill | `rgba(C, 0.08)` | `rgba(C_light, 0.12)` |
-| Cell stroke | `rgba(C, 0.45)` width 1.0 | `rgba(C_light, 0.55)` width 1.0 |
-| Value text | `C` | `C_light` |
-| Sub text (if present) | `rgba(C, 0.85)` | `rgba(C_light, 0.95)` |
+| Element | Value |
+|---|---|
+| Cell fill | `rgba(C, 0.12)` |
+| Cell stroke | `rgba(C, 0.55)` width 1.0 |
+| Value text | `C` |
+| Sub text (if present) | `rgba(C, 0.95)` |
 
-`C_light` = the Mocha value of the same Catppuccin color, for dark-mode contrast.
+`C` is a Mocha color from [`style-guide.md`](style-guide.md#flavor-palette).
 
 ### 4.2 Per-component `color`  (`components[i].color`)
 
 Tints the row's **label cell only** (left column). The data cells in that row keep their per-cell `level` styling — the row color flags *what* this component is, not *what permissions live in it*.
 
-| Element | Light | Dark |
-|---|---|---|
-| Label cell fill | `rgba(C, 0.06)` | `rgba(C_light, 0.10)` |
-| Label cell stroke | `rgba(C, 0.45)` width 0.8 | `rgba(C_light, 0.55)` width 0.8 |
-| Component name | `C` | `C_light` |
-| Hint text | unchanged (muted) | unchanged (muted) |
+| Element | Value |
+|---|---|
+| Label cell fill | `rgba(C, 0.10)` |
+| Label cell stroke | `rgba(C, 0.55)` width 0.8 |
+| Component name | `C` |
+| Hint text | unchanged (muted) |
 
 ### 4.3 Per-role `color`  (`roles[j].color`)
 
-Tints the **column banner only** (top row). Cells underneath keep their `level` styling. Replaces the default navy banner fill with the chosen hex.
+Tints the **column banner only** (top row). Cells underneath keep their `level` styling. Replaces the default `ink` banner fill with the chosen hex.
 
-| Element | Light & Dark (banner is the same in both modes) |
+| Element | Value |
 |---|---|
 | Banner fill | `C` |
-| Role name + code text | `#eff1f5` (Latte base) if `C` is dark (luminance ≤ 0.5), else `#1e1e2e` (Mocha base) |
+| Role name + code text | `paper` (`#1e1e2e`) |
 
-If you pick a mid-luminance hex (e.g., yellow `#df8e1d`), the text auto-flips to Mocha base for contrast. Pair `roles[j].text_color: "#hex"` to override this auto-pick.
+Every color of the recommended palette is light, so `paper` text stays readable on each of them: 7.08:1 on red up to 12.91:1 on yellow. Pair `roles[j].text_color: "#hex"` to override this pick.
 
 ### 4.4 Rules
 
@@ -218,11 +217,11 @@ If you pick a mid-luminance hex (e.g., yellow `#df8e1d`), the text auto-flips to
 
 ### 4.5 Recommended palette (same as the other parametric types)
 
-- `#d20f39` red — Security elevation / break-glass / SoX-flagged
-- `#209fb5` sapphire — Quality / monitoring / observability gate
-- `#40a02b` green — Approved / governance-cleared / publication-ready
-- `#df8e1d` yellow — Working / sandbox / data-scientist zone
-- `#fe640b` peach — Archive / cold / DR
+- `#f38ba8` red — Security elevation / break-glass / SoX-flagged
+- `#74c7ec` sapphire — Quality / monitoring / observability gate
+- `#a6e3a1` green — Approved / governance-cleared / publication-ready
+- `#f9e2af` yellow — Working / sandbox / data-scientist zone
+- `#fab387` peach — Archive / cold / DR
 
 ---
 
@@ -237,24 +236,9 @@ If zero or >1 `focal: true` cells are declared, halt and ask with `ask`.
 
 ---
 
-## 6. Dark mode
+## 6. Colors
 
-| Token | Light | Dark |
-|---|---|---|
-| Paper | `paper` | `ink` |
-| Ink | `ink` | `paper` |
-| Muted | `muted` | `soft` |
-| Soft (no-access text) | `soft` | `muted` |
-| Accent | `accent` | `accent` |
-| Role-banner fill | `ink` | `ink` |
-| Header / row stroke | `ink @ 0.12` | `paper @ 0.18` |
-| Full / Admin fill | `ink @ 0.08` | `paper @ 0.10` |
-| R/W fill | `paper` | `paper @ 0.06` |
-| Read fill | `muted @ 0.08` | `soft @ 0.12` |
-| No-access fill | `paper` | `paper @ 0.02` |
-| Focal fill | `accent @ 0.07` | `accent @ 0.12` |
-| Focal stroke | `accent` | `accent` |
-| Custom component colors | `C` | the Mocha color of the same Catppuccin name as `C` |
+Every role takes its Mocha value from [`style-guide.md`](style-guide.md). §2.4 gives the cell fills and strokes, and §4 gives the custom colors.
 
 ---
 
@@ -266,7 +250,7 @@ Before emitting SVG, verify **every** item:
 2. Header row at `y=72 h=52`. Component header cell `paper`-filled with two-line `Component / vs. AD group` label. Role banners filled `ink` with name + AD-group code in `paper`.
 3. Data rows start at `y=140`, stride 40, height 36. `rows_bottom = 140 + (n_components−1)·40 + 36`.
 4. Component label cell `rx=4`, name left-aligned at `x=24`, optional `hint` right-aligned at `x = comp_col_x + comp_col_w − 12`.
-5. Every value cell `rx=4`, stroke `ink @ 0.12` 0.6, fill + text matching §2.4 for its `level`.
+5. Every value cell `rx=4`, stroke `ink @ 0.18` 0.6, fill + text matching §2.4 for its `level`.
 6. Exactly **one** focal cell (or zero). Focal cell stroke `accent` width 1.4. Primary value at `y = row_y(k) + 18`; `sub` (if present) at `y = row_y(k) + 30`.
 7. Cells omitted from `cells:` render as `level: "none"` with `none_label` text (default `"No access"`).
 8. Custom-colored cells ≤ 2 (in addition to the focal cell).
@@ -354,8 +338,6 @@ cells:
   - { row: 7, col: 1, value: "R/W",   level: "rw"   }
   - { row: 7, col: 2, value: "Read",  level: "read" }
   - { row: 7, col: 3, value: "No access", level: "none" }
-
-dark: false
 ```
 
 ### 9.1 What this YAML proves

@@ -66,13 +66,13 @@ Not for: three or more states (that is the **line chart** above, or a bump chart
 #### Colour
 
 - **One accent, and an `ink` opacity ramp for everything else** — not the series palette. In a line chart hue is the only way to follow a series across eight x-positions, so `series-1`…`series-4` earn their place. Here every series is named at both ends, so hue would be a second encoding of something the labels already carry, and it would spend the one-accent rule for nothing.
-- **The ramp runs 0.90 → 0.72**, ordered by the left-hand value. The hard floor is **0.64** — that is where an `ink` stroke crosses 3:1 against Latte paper (0.64 measures 3.05:1, 0.63 measures 2.98:1), and every line in this figure is data, not decoration. This ramp bottoms out at 0.72 (3.63:1) rather than hugging the floor, because a ramp whose lightest member is only just legible has no room left to add a series.
+- **The ramp runs 0.90 → 0.72**, ordered by the left-hand value. The hard floor is **0.41** — that is where an `ink` stroke crosses 3:1 against `paper` (0.41 measures 3.04:1, 0.40 measures 2.98:1), and every line in this figure is data, not decoration. This ramp bottoms out at 0.72 (6.50:1) rather than hugging the floor, because a ramp whose faintest member is only just legible has no room left to add a series.
 - **Note what the ramp does not buy you.** It separates the ends of the range, not adjacent members — 0.90 and 0.84 are not distinguishable at 1.2px. It is there to help trace one line through a crossing. It must never be the only way to tell two series apart; that is the labels' job.
 - **The accent marks the editorially focal series, not the best or the biggest.** For example, it can mark the one service that got *worse*.
-- **Focus is carried by stroke weight, not tone** — 2.4px focal against 1.2px. The mauve `accent` measures **4.79:1 on Latte paper** and 8.07:1 on Mocha, still less contrast than the top of the ink ramp it is meant to dominate (5.53:1 and 9.46:1 at 0.90), so weight is the only cue that survives both palettes and greyscale.
-- **Be honest about what that leaves.** The accent clears WCAG 1.4.11's 3:1 floor for a graphical object, but a heavier stroke does not raise a contrast ratio — it only makes the mark easier to find. The focal line therefore clears the bar on redundancy as well as contrast: its position and its two endpoint labels (`ink` at 7.06:1, `muted` at 5.53:1 on Latte) carry the data, and its accent adds only *which series is focal*, which the legend states in words and the stroke weight repeats. Nothing here rests on the accent alone. The focal bar, the focal line and the focal treemap cell inherit the accent's contrast too; style-guide.md records the measured values.
-- **Labels stay `ink` (names) and `muted` (values) on every series, including the focal one.** The mauve accent passes AA as text (4.79:1 on Latte), but only just, and a focal value label in accent is the most common way to make a slopegraph fail contrast while looking deliberate.
-- **Legend wording must be skin-neutral: "strongest tone", never "darkest".** The ramp is ink-at-opacity, so the top of it is the darkest line on light paper and the *lightest* on dark. A legend that says "darker is higher" ships false in one of the two variants — and it renders perfectly in both, so only reading the dark file catches it.
+- **Focus is carried by stroke weight, not tone** — 2.4px focal against 1.2px. The mauve `accent` measures 8.07:1 on `paper`, still less contrast than the top of the ink ramp it is meant to dominate (9.46:1 at 0.90), so weight is the only cue that survives greyscale.
+- **Be honest about what that leaves.** The accent clears WCAG 1.4.11's 3:1 floor for a graphical object, but a heavier stroke does not raise a contrast ratio — it only makes the mark easier to find. The focal line therefore clears the bar on redundancy as well as contrast: its position and its two endpoint labels (`ink` at 11.34:1, `muted` at 9.26:1) carry the data, and its accent adds only *which series is focal*, which the legend states in words and the stroke weight repeats. Nothing here rests on the accent alone. The focal bar, the focal line and the focal treemap cell inherit the accent's contrast too; style-guide.md records the measured values.
+- **Labels stay `ink` (names) and `muted` (values) on every series, including the focal one.** A focal value label in accent spends the accent a second time on the same series, and the stroke weight and the legend already mark it.
+- **Legend wording names tone strength: "strongest tone", never "darkest".** The ramp is ink-at-opacity, and on Mocha `paper` the strongest tone is the *lightest* line. A legend that says "darker is higher" states the opposite of what the reader sees.
 
 #### Honest-data rule
 
@@ -134,7 +134,7 @@ Upstream's `scripts/verify-slopegraph.py` requires all of them, cross-checks eac
 - More than 10 series (labels collide) or fewer than 4 (a sentence is shorter).
 - Three or more state columns — that is the parent line chart, or a bump chart, not this.
 - One hue per series instead of the ink ramp plus a single accent.
-- A value label in `accent`, or any text in `soft` (4.37:1 on Latte paper).
+- A value label in `accent`.
 - Gridlines, or a value axis that repeats numbers the endpoints already print.
 - Annotating the crossing with a date, or reading any intermediate value off a slope.
 - A `transform` on a series line, a bound label, an ancestor group, or in CSS — it moves the mark away from the checked coordinate.
@@ -159,10 +159,10 @@ Not for: a single distribution (that is a histogram — one ridge is a ridgeline
 
 #### Colour
 
-The slopegraph's colour section holds here unchanged, with one addition for the fill. One accent on the editorially focal ridge (stroke `accent`, fill the accent at `0.16`), an `ink` opacity ramp for the rest (`0.90 → 0.72`, floor `0.64`) ordered top row to bottom, and focus carried by stroke weight — 2.4px against 1.2px — rather than tone. Labels stay `ink` (names) and `muted` (ranges) on every ridge including the focal one.
+The slopegraph's colour section holds here unchanged, with one addition for the fill. One accent on the editorially focal ridge (stroke `accent`, fill the accent at `0.16`), an `ink` opacity ramp for the rest (`0.90 → 0.72`, floor `0.41`) ordered top row to bottom, and focus carried by stroke weight — 2.4px against 1.2px — rather than tone. Labels stay `ink` (names) and `muted` (ranges) on every ridge including the focal one.
 
 - **Fill `ink` at `0.12` on every non-focal ridge**, low enough that two overlapping ridges read as depth rather than as a third tone. This is the one place the type needs a fill at all: the outline alone does not say which side of the curve is mass.
-- **Legend wording stays skin-neutral** — "strongest tone", never "darkest". The ramp is ink-at-opacity, so its top is the darkest line on light paper and the lightest on dark, and a legend that says "darker" ships false in one of the two skins while rendering perfectly in both.
+- **Legend wording names tone strength** — "strongest tone", never "darkest". The ramp is ink-at-opacity, so on Mocha `paper` its top is the lightest line, and a legend that says "darker" states the opposite of what the reader sees.
 - **The accent marks the ridge the story is about, not the worst performer.** For example, it can mark the service whose *shape* is unusual, not the slowest one.
 
 #### Honest-data rule
@@ -201,7 +201,7 @@ The binding contract is the slopegraph's, applied to areas: the outline declares
 - A ridge clipped mid-mass so the outline closes as a cliff.
 - Pitch so tight that peaks hide behind peaks — increase the pitch, never shrink one ridge.
 - One hue per ridge instead of the ink ramp plus a single accent.
-- A legend that says "darker is faster", which is false on one of the two skins.
+- A legend that says "darker is faster", which states the opposite of what the reader sees on Mocha `paper`.
 - Fewer than 3 ridges (that is a histogram or a pair of small multiples) or more than 12.
 - Reading traffic off ridge height, or shipping a figure whose source line lets a reader do so.
 ### Streamgraph
@@ -228,7 +228,7 @@ Not for: exact per-period values (the reader gets shape, not numbers — use a *
 
 - **One accent layer — the editorially focal series — and an `ink` opacity ramp for the rest**, never the series palette. Layers are named in the legend, so hue would re-encode what the labels already say. For example, a ramp of 0.78 → 0.30 puts the **strongest tone on the largest layer**; adjacent tones in the stack need at least ~0.15 of separation or the hairline is doing all the work.
 - Fills may run lighter than a line could: these are areas bounded by `paper` hairlines with no text on them, so the 3:1 stroke floor that binds the slopegraph ramp does not bind here. What does bind: every fill must still be `ink` at opacity (or `accent`), and no text ever sits on a layer.
-- **Legend wording must be skin-neutral** — "strongest tone", never "darkest". The ramp inverts on dark paper.
+- **Legend wording names tone strength** — "strongest tone", never "darkest". On Mocha `paper` the strongest tone is the lightest layer.
 - **Layer names must not contain digits.** The legend prints one number per entry (the total) and the checker refuses a label carrying two numeric tokens — `E2E` fails, `End-to-end` passes.
 
 #### Honest-data rule
@@ -294,7 +294,7 @@ Not for: exactly two snapshots (that is the **slopegraph** above); magnitude sto
 
 #### Colour
 
-Everything the slopegraph's colour section says holds here unchanged: one accent on the editorially focal series, an `ink` opacity ramp (`0.90 → 0.72`, floor 0.64) for the rest — ordered by first-snapshot rank, so the legend can say "strongest tone was highest-ranked", skin-neutrally — focus carried by stroke weight (2.4px against 1.2px) and dot size rather than tone, and labels in `ink`/`muted` on every series including the focal one. The accent marks the series the story is about, never the winner. For example, spend it on the package that *fell*.
+Everything the slopegraph's colour section says holds here unchanged: one accent on the editorially focal series, an `ink` opacity ramp (`0.90 → 0.72`, floor 0.41) for the rest — ordered by first-snapshot rank, so the legend can say "strongest tone was highest-ranked" — focus carried by stroke weight (2.4px against 1.2px) and dot size rather than tone, and labels in `ink`/`muted` on every series including the focal one. The accent marks the series the story is about, never the winner. For example, spend it on the package that *fell*.
 
 #### Honest-data rule
 

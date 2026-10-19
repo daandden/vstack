@@ -13,8 +13,21 @@ from urllib.parse import urlparse
 ROOT = Path(__file__).resolve().parent.parent
 STYLE_GUIDE = ROOT / "references/style-guide.md"
 
-FLAVORS = ("Latte", "Mocha")
-PALETTE_TABLES = ("### Semantic roles", "### Flavor palette", "### Terminal skin")
+PALETTES = {
+    "Catppuccin Mocha": ("### Semantic roles", "### Flavor palette"),
+    "Terminal skin": ("### Terminal skin",),
+}
+GENERIC_FONTS = {"ui-monospace", "monospace", "sans-serif", "serif", "system-ui"}
+CJK_SYSTEM_FONTS = {
+    "apple sd gothic neo",
+    "malgun gothic",
+    "pingfang tc",
+    "pingfang sc",
+    "microsoft jhenghei",
+    "microsoft yahei",
+    "hiragino sans",
+    "yu gothic",
+}
 
 HEX_RE = re.compile(
     r"(?<![\w-])#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})(?![0-9a-fA-F])"
@@ -195,22 +208,19 @@ def table_rows(markdown, heading):
     return rows
 
 
-def flavor_palettes():
+def palettes_from_style_guide():
     markdown = STYLE_GUIDE.read_text(encoding="utf-8")
-    palettes = {flavor: (set(), set()) for flavor in FLAVORS}
-    for heading in PALETTE_TABLES:
-        header, *rows = table_rows(markdown, heading)
-        for flavor, (colors, rgb_triplets) in palettes.items():
-            columns = [index for index, name in enumerate(header) if flavor in name]
-            for row in rows:
-                for index in columns or range(len(row)):
-                    cell = row[index] if index < len(row) else ""
+    palettes = {}
+    for name, headings in PALETTES.items():
+        colors, rgb_triplets = palettes[name] = (set(), set())
+        for heading in headings:
+            for row in table_rows(markdown, heading)[1:]:
+                for cell in row:
                     colors.update(normalize_hex(match.group()) for match in HEX_RE.finditer(cell))
                     rgb_triplets.update(
                         tuple(int(match.group(group)) for group in (1, 2, 3))
                         for match in RGB_RE.finditer(cell)
                     )
-    for colors, rgb_triplets in palettes.values():
         rgb_triplets.update(
             tuple(int(color[offset : offset + 2], 16) for offset in (1, 3, 5))
             for color in colors
@@ -267,7 +277,7 @@ def is_color_property(name):
 
 def lint_text(text, palettes):
     findings = []
-    allowed_fonts = style_guide_families()
+    allowed_fonts = style_guide_families() | GENERIC_FONTS | CJK_SYSTEM_FONTS
     text = without_comments(text)
 
     resources = ResourceParser()
@@ -318,17 +328,17 @@ def lint_text(text, palettes):
                 f"{match.group(1)}() is not a palette color; write the palette hex or rgba()",
             )
 
-    def off_palette(flavor):
-        colors, rgb_triplets = palettes[flavor]
+    def off_palette(name):
+        colors, rgb_triplets = palettes[name]
         return [
             (offset, value)
             for offset, value, key in used
             if key not in (colors if isinstance(key, str) else rgb_triplets)
         ]
 
-    flavor = min(("Mocha", "Latte"), key=lambda name: len(off_palette(name)))
-    for offset, value in off_palette(flavor):
-        add(offset, "color", f"{value} is not in the Catppuccin {flavor} palette")
+    palette = min(palettes, key=lambda name: len(off_palette(name)))
+    for offset, value in off_palette(palette):
+        add(offset, "color", f"{value} is not in the {palette} palette")
 
     custom_properties = {}
     font_values = []
@@ -423,7 +433,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    palettes = flavor_palettes()
+    palettes = palettes_from_style_guide()
 
     total_findings = 0
     for path in args.files:

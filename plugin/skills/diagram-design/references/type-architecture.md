@@ -66,9 +66,8 @@ Group 2+ nodes that serve the same tier or trust boundary with a zone rect — d
 Rules:
 - Leave 12–16px above the first enclosed node — the eyebrow label sits in this margin.
 - Zone fill: `ink @ 0.02` (2% ink wash). Any stronger competes with node fills.
-- **Zone label: `soft`, never ink at an opacity.** A zone eyebrow is a boundary label, and `soft` is the boundary-label role in [`style-guide.md`](style-guide.md). An opacity such as `ink @ 0.40` composites differently on every `paper`; on Latte paper it falls to 1.91:1, unreadable at 7px. `soft` measures 4.37:1 on Latte and 7.37:1 on Mocha.
+- **Zone label: `soft`, never ink at an opacity.** A zone eyebrow is a boundary label, and `soft` is the boundary-label role in [`style-guide.md`](style-guide.md). An opacity such as `ink @ 0.40` measures 2.98:1 on `paper`, unreadable at 7px. `soft` measures 7.37:1.
 - Max 3 **flat** zones per diagram. More and it reads like a swimlane (use that type instead). Nested administrative and traffic scopes under **Containment** below are not this cap — they nest, so the cap is sibling traffic scopes at one level.
-- Dark mode: the roles invert with the skin, so nothing is swapped by hand. Take `ink`, `soft`, and `paper` from the dark column in [`style-guide.md`](style-guide.md); opacities stay the same.
 
 ## Containment
 

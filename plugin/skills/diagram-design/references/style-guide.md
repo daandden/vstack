@@ -2,7 +2,7 @@
 
 **The single source of truth for colors, typography, and tokens.** Every diagram draws from this file, not from hex values inlined in other reference files.
 
-The skill has one built-in style, Catppuccin. Dark figures use Catppuccin Mocha, and dark is the default. Light figures use Catppuccin Latte. The focal accent is mauve. Text uses two installed faces: IosevkaTermSlab Nerd Font Mono and IosevkaTerm Nerd Font Mono. Every figure in every project uses this style, so a drawer never chooses a skin.
+The skill has one built-in style, Catppuccin Mocha, so every figure is dark. The focal accent is mauve. Text uses two installed faces: IosevkaTermSlab Nerd Font Mono and IosevkaTerm Nerd Font Mono. Every figure in every project uses this style, so a drawer never chooses a skin.
 
 ---
 
@@ -10,91 +10,89 @@ The skill has one built-in style, Catppuccin. Dark figures use Catppuccin Mocha,
 
 ### Semantic roles
 
-Every token is referred to by **semantic role**, not by its hex value. Type references (`type-*.md`) and SKILL.md say `accent`, not `#cba6f7`. The light column is Catppuccin Latte and the dark column is Catppuccin Mocha. The parenthesized names are the Catppuccin color names.
+Every token is referred to by **semantic role**, not by its hex value. Type references (`type-*.md`) and SKILL.md say `accent`, not `#cba6f7`. The parenthesized names are the Catppuccin color names.
 
-| Role | Purpose | Light (Latte) | Dark (Mocha) |
-|---|---|---|---|
-| `paper` | Page background, default node fill | `#eff1f5` (base) | `#1e1e2e` (base) |
-| `paper-2` | Diagram container bg, secondary fill | `#e6e9ef` (mantle) | `#181825` (mantle) |
-| `ink` | Primary text, primary stroke | `#4c4f69` (text) | `#cdd6f4` (text) |
-| `ink-strong` | High-contrast text on accent fills | `#11111b` | `#11111b` (crust) |
-| `muted` | Secondary text, default arrow stroke | `#5c5f77` (subtext1) | `#bac2de` (subtext1) |
-| `soft` | Sublabels, boundary labels | `#6c6f85` (subtext0) | `#a6adc8` (subtext0) |
-| `rule` | Hairline borders | `rgba(76,79,105,0.12)` | `rgba(205,214,244,0.12)` |
-| `rule-solid` | Stronger borders, baselines | `#bcc0cc` (surface1) | `rgba(186,194,222,0.25)` |
-| `accent` | Focal / 1–2 max per diagram | `#8839ef` (mauve) | `#cba6f7` (mauve) |
-| `accent-tint` | Fill for accent-bordered boxes | `rgba(136,57,239,0.08)` | `rgba(203,166,247,0.10)` |
-| `link` | HTTP/API calls, external arrows | `#1e66f5` (blue) | `#89b4fa` (blue) |
-| `series-1` | Non-focal chart series | `#40a02b` (green) | `#a6e3a1` (green) |
-| `series-2` | Non-focal chart series | `#179299` (teal) | `#94e2d5` (teal) |
-| `series-3` | Non-focal chart series | `#fe640b` (peach) | `#fab387` (peach) |
-| `series-4` | Non-focal chart series | `#e64553` (maroon) | `#eba0ac` (maroon) |
-| `series-5` | Non-focal chart series | `#209fb5` (sapphire) | `#74c7ec` (sapphire) |
+| Role | Purpose | Mocha |
+|---|---|---|
+| `paper` | Page background, default node fill | `#1e1e2e` (base) |
+| `paper-2` | Diagram container bg, secondary fill | `#181825` (mantle) |
+| `ink` | Primary text, primary stroke | `#cdd6f4` (text) |
+| `ink-strong` | High-contrast text on accent fills | `#11111b` (crust) |
+| `muted` | Secondary text, default arrow stroke | `#bac2de` (subtext1) |
+| `soft` | Sublabels, boundary labels | `#a6adc8` (subtext0) |
+| `rule` | Hairline borders | `rgba(205,214,244,0.12)` |
+| `rule-solid` | Stronger borders, baselines | `rgba(186,194,222,0.25)` |
+| `accent` | Focal / 1–2 max per diagram | `#cba6f7` (mauve) |
+| `accent-tint` | Fill for accent-bordered boxes | `rgba(203,166,247,0.10)` |
+| `link` | HTTP/API calls, external arrows | `#89b4fa` (blue) |
+| `series-1` | Non-focal chart series | `#a6e3a1` (green) |
+| `series-2` | Non-focal chart series | `#94e2d5` (teal) |
+| `series-3` | Non-focal chart series | `#fab387` (peach) |
+| `series-4` | Non-focal chart series | `#eba0ac` (maroon) |
+| `series-5` | Non-focal chart series | `#74c7ec` (sapphire) |
 
 ### Flavor palette
 
-A figure uses one Catppuccin flavor: Latte for a light figure, Mocha for a dark one. Every color of that flavor is on-palette, not only the role values above. The table gives all 26 colors of each flavor by their Catppuccin names.
+Every color of Catppuccin Mocha is on-palette, not only the role values above. The table gives all 26 Mocha colors by their Catppuccin names.
 
-A figure draws from the role table first. A type reference can name another color of the flavor by its Catppuccin name, for example a custom component color or a band fill. A light figure takes those colors only from the Latte column, and a dark figure only from the Mocha column. The role values above stay on-palette in their own column, including the Latte `ink-strong` value. An `rgba()` value of an on-palette color is on-palette at any opacity.
+A figure draws from the role table first. A type reference can name another Mocha color by its Catppuccin name, for example a custom component color or a band fill. An `rgba()` value of an on-palette color is on-palette at any opacity. A color from another Catppuccin flavor is off-palette.
 
-| Color | Light (Latte) | Dark (Mocha) |
-|---|---|---|
-| `rosewater` | `#dc8a78` | `#f5e0dc` |
-| `flamingo` | `#dd7878` | `#f2cdcd` |
-| `pink` | `#ea76cb` | `#f5c2e7` |
-| `mauve` | `#8839ef` | `#cba6f7` |
-| `red` | `#d20f39` | `#f38ba8` |
-| `maroon` | `#e64553` | `#eba0ac` |
-| `peach` | `#fe640b` | `#fab387` |
-| `yellow` | `#df8e1d` | `#f9e2af` |
-| `green` | `#40a02b` | `#a6e3a1` |
-| `teal` | `#179299` | `#94e2d5` |
-| `sky` | `#04a5e5` | `#89dceb` |
-| `sapphire` | `#209fb5` | `#74c7ec` |
-| `blue` | `#1e66f5` | `#89b4fa` |
-| `lavender` | `#7287fd` | `#b4befe` |
-| `text` | `#4c4f69` | `#cdd6f4` |
-| `subtext1` | `#5c5f77` | `#bac2de` |
-| `subtext0` | `#6c6f85` | `#a6adc8` |
-| `overlay2` | `#7c7f93` | `#9399b2` |
-| `overlay1` | `#8c8fa1` | `#7f849c` |
-| `overlay0` | `#9ca0b0` | `#6c7086` |
-| `surface2` | `#acb0be` | `#585b70` |
-| `surface1` | `#bcc0cc` | `#45475a` |
-| `surface0` | `#ccd0da` | `#313244` |
-| `base` | `#eff1f5` | `#1e1e2e` |
-| `mantle` | `#e6e9ef` | `#181825` |
-| `crust` | `#dce0e8` | `#11111b` |
+| Color | Mocha |
+|---|---|
+| `rosewater` | `#f5e0dc` |
+| `flamingo` | `#f2cdcd` |
+| `pink` | `#f5c2e7` |
+| `mauve` | `#cba6f7` |
+| `red` | `#f38ba8` |
+| `maroon` | `#eba0ac` |
+| `peach` | `#fab387` |
+| `yellow` | `#f9e2af` |
+| `green` | `#a6e3a1` |
+| `teal` | `#94e2d5` |
+| `sky` | `#89dceb` |
+| `sapphire` | `#74c7ec` |
+| `blue` | `#89b4fa` |
+| `lavender` | `#b4befe` |
+| `text` | `#cdd6f4` |
+| `subtext1` | `#bac2de` |
+| `subtext0` | `#a6adc8` |
+| `overlay2` | `#9399b2` |
+| `overlay1` | `#7f849c` |
+| `overlay0` | `#6c7086` |
+| `surface2` | `#585b70` |
+| `surface1` | `#45475a` |
+| `surface0` | `#313244` |
+| `base` | `#1e1e2e` |
+| `mantle` | `#181825` |
+| `crust` | `#11111b` |
 
 ### Measured contrast
 
-No script checks contrast. The table gives WCAG 2.x ratios against each palette's `paper`, measured on 2026-10-18. It leaves out the translucent roles, which are decorative.
+No script checks contrast. The table gives WCAG 2.x ratios against `paper` (`#1e1e2e`), measured on 2026-10-18. It leaves out the translucent roles, which are decorative.
 
-| Role | Latte on `#eff1f5` | Mocha on `#1e1e2e` |
-|---|---|---|
-| `ink` | 7.06:1 | 11.34:1 |
-| `muted` | 5.53:1 | 9.26:1 |
-| `soft` | 4.37:1 | 7.37:1 |
-| `accent` | 4.79:1 | 8.07:1 |
-| `link` | 4.34:1 | 7.79:1 |
-| `ink-strong` on `accent` at 0.85 | 4.35:1 | 7.13:1 |
-| `series-1` | 2.96:1 | 11.03:1 |
-| `series-2` | 3.31:1 | 11.01:1 |
-| `series-3` | 2.64:1 | 9.27:1 |
-| `series-4` | 3.48:1 | 7.93:1 |
-| `series-5` | 2.78:1 | 8.69:1 |
+| Role | On `#1e1e2e` |
+|---|---|
+| `ink` | 11.34:1 |
+| `muted` | 9.26:1 |
+| `soft` | 7.37:1 |
+| `accent` | 8.07:1 |
+| `link` | 7.79:1 |
+| `ink-strong` on `accent` at 0.85 | 7.13:1 |
+| `series-1` | 11.03:1 |
+| `series-2` | 11.01:1 |
+| `series-3` | 9.27:1 |
+| `series-4` | 7.93:1 |
+| `series-5` | 8.69:1 |
 
-The targets are 4.5:1 for regular text, 3:1 for large text (24px+, or 18.7px+ at weight 600+), and 3:1 for lines, arrows, borders, and data marks. Every Mocha value clears them. The Latte `link` (4.34:1) and `soft` (4.37:1) fall short of 4.5:1 as regular text. If a Latte label in one of those roles must reach 4.5:1, set it in `muted`. `ink-strong` on a Latte accent fill (4.35:1) is for large text only. Latte `series-1`, `series-3`, and `series-5` fall short of 3:1 as strokes, so give their marks a direct label. On `paper-2` and inside `accent-tint` boxes every ratio drops, so measure text placed there against that surface.
+The targets are 4.5:1 for regular text, 3:1 for large text (24px+, or 18.7px+ at weight 600+), and 3:1 for lines, arrows, borders, and data marks. Every value clears them. On `paper-2` and inside `accent-tint` boxes every ratio drops, so measure text placed there against that surface.
 
-### Inversion rule (light → dark)
-
-Each role swaps its Latte value for its Mocha value. An `rgba()` value keeps its opacity and takes the Mocha color of the same role: `rgba(76,79,105,X)` (Latte text) becomes `rgba(205,214,244,X)` (Mocha text), and `rgba(136,57,239,X)` (Latte mauve) becomes `rgba(203,166,247,X)` (Mocha mauve). A flavor color outside the roles swaps to the Mocha color of the same Catppuccin name.
-
-### Series tokens (multi-series chart types only)
+### Series tokens (charts and data-type chips)
 
 The `series-*` rows above are for chart types that must distinguish several overlapping entities (currently: **radar**). The "1-focal" rule still holds: `accent` is reserved for the focal series, and the series tokens cover the rest.
 
-Fills sit at `0.18` opacity light, `0.22` dark; strokes use the full color. **Don't backfill these tokens to non-chart types**: architecture, swimlane, and the other schematic types keep the `ink`, `muted`, and `soft` roles. The series tokens are opt-in for diagrams where overlapping shapes need distinguishable color, not a license to add color elsewhere.
+In a chart, fills sit at `0.22` opacity and strokes use the full color.
+
+Data-flow and process figures are the one non-chart exception. Their data-type chips take one fixed series token per payload code at full color, as §8 of [`type-data-flow.md`](type-data-flow.md) and §8 of [`type-process.md`](type-process.md) list. Do not backfill these tokens to any other non-chart type. Architecture, swimlane, and the other schematic types keep the `ink`, `muted`, and `soft` roles. The series tokens are opt-in for diagrams where overlapping shapes need distinguishable color, not a license to add color elsewhere.
 
 ### Terminal skin (opt-in alternate)
 
@@ -132,7 +130,7 @@ The terminal-window primitive (see [primitive-terminal.md](primitive-terminal.md
 
 ### Installed faces
 
-Both faces come from the viewer's installed fonts. A figure has no font `<link>`, no `@font-face`, and no `@import`, so it makes no network request for type. Each stack ends in `ui-monospace, monospace`. A viewer without Iosevka gets the platform's monospace face, which runs wider (see the width budget). Both faces ship in the Nerd Fonts `IosevkaTerm` and `IosevkaTermSlab` releases.
+Both faces come from the viewer's installed fonts. A figure has no font `<link>`, no `@font-face`, and no `@import`, so it makes no network request for type. Each stack ends in `ui-monospace, monospace`. A viewer without Iosevka gets the platform's monospace face, which runs wider (see the width budget). Both faces ship in the Nerd Fonts `IosevkaTerm` and `IosevkaTermSlab` releases. Besides the stacks above, `scripts/lint-skin.py` also accepts the generic families `sans-serif`, `serif`, and `system-ui` and the CJK system faces Apple SD Gothic Neo, Malgun Gothic, PingFang TC, PingFang SC, Microsoft JhengHei, Microsoft YaHei, Hiragino Sans, and Yu Gothic.
 
 ### Width budget
 
@@ -220,10 +218,11 @@ Semantic role combinations — reference these by name in type specs.
 
 ## Constraints (don't break these)
 
-- **Contrast**: no script checks it. Use the [measured contrast](#measured-contrast) table, and keep text that must reach 4.5:1 out of the Latte `link` and `soft` roles.
+- **Contrast**: no script checks it. Use the [measured contrast](#measured-contrast) table, and measure text on `paper-2` or `accent-tint` against that surface.
 - **One accent**: `accent` is mauve. A second accent color erases the focal signal.
-- **No rainbow palette**: schematic types use `paper`, `ink`, `muted`, `soft`, `accent`, and `link`. Only multi-series charts use the `series-*` tokens. Other [flavor colors](#flavor-palette) appear only where a type reference names them.
+- **No rainbow palette**: schematic types use `paper`, `ink`, `muted`, `soft`, `accent`, and `link`. Only multi-series charts and the data-type chips of data-flow and process figures use the `series-*` tokens. Other [flavor colors](#flavor-palette) appear only where a type reference names them.
 - **Two faces**: IosevkaTermSlab Nerd Font Mono for `title` and `callout`, IosevkaTerm Nerd Font Mono for everything else. No third family.
-- **Paper is Catppuccin base**: Latte base `#eff1f5` or Mocha base `#1e1e2e`. Never pure white or pure black.
+- **Paper is Mocha base** `#1e1e2e`. Never pure white or pure black.
+- A figure uses one palette. It takes every color from the Mocha tables above. If it uses the terminal skin, it takes every color from the terminal table instead. `scripts/lint-skin.py` fails a color outside the palette the figure uses, so white fails in a Mocha figure.
 - **Dot pattern is optional, not default**: the 22×22 dot pattern is an opt-in "dotted paper" variant (good for long-form editorial hero diagrams). The default background is a clean `paper` fill, no pattern. When the pattern is enabled, it should sit at ~10% opacity of `ink` on `paper` — visible but quiet.
 - **Container is clean by default**: the diagram sits directly on the page paper, no secondary container background or border. A framed variant (`paper-2` bg + `rule` border + 8px radius + padding) is available as an opt-in for card-heavy layouts, but don't reach for it by default — the extra chrome fights the figure.

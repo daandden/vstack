@@ -175,7 +175,7 @@ Type-specific anti-patterns live in each type reference linked in the guide.
 
 ## 5. Design System
 
-**The design system is fixed.** The skill has one built-in Catppuccin style: Mocha for dark figures (the default), Latte for light figures, a mauve accent, and two installed Iosevka faces. [`references/style-guide.md`](references/style-guide.md) holds the colors, typography, and tokens. This file names semantic roles (`paper`, `ink`, `muted`, `accent`, `link`, …).
+**The design system is fixed.** The skill has one built-in style: Catppuccin Mocha, a mauve accent, and two installed Iosevka faces. [`references/style-guide.md`](references/style-guide.md) holds the colors, typography, and tokens. This file names semantic roles (`paper`, `ink`, `muted`, `accent`, `link`, …).
 
 > When specs below or in type references mention "ink", "accent", "muted", etc., look up the current hex value in `style-guide.md`.
 
@@ -216,7 +216,7 @@ Universal building blocks. Type-specialized primitives (lifeline, activation bar
 - Terminal / CLI-window variant → [primitive-terminal.md](references/primitive-terminal.md)
 - Optional explanatory motion → [animation.md](references/animation.md)
 
-Exact markup (background, dotted paper, markers, node box, arrow label, legend) and the long form of each connector rule: [`references/primitives-core.md`](references/primitives-core.md). The static templates (`template.html`, `template-dark.html`, `template-full.html`) already define the background and the `arrow`, `arrow-accent`, and `arrow-link` markers; `template-motion.html` defines only its own prefixed marker, so add the others from primitives-core.md when a motion diagram needs them.
+Exact markup (background, dotted paper, markers, node box, arrow label, legend) and the long form of each connector rule: [`references/primitives-core.md`](references/primitives-core.md). The static templates (`template.html`, `template-full.html`) already define the background and the `arrow`, `arrow-accent`, and `arrow-link` markers; `template-motion.html` defines only its own prefixed marker, so add the others from primitives-core.md when a motion diagram needs them.
 
 - **Arrows:** `muted` by default, `accent` for the headline path, `link` for HTTP/API and external calls, dashed `5,4` for optional, passive, return, or async. Draw arrows before boxes so lines sit behind nodes.
 - **Node box:** an opaque paper mask rect, then the styled box at `rx=6`, a rectangular type tag at `rx=2` (not a pill), the name in the `node-name` role (600), and a `sublabel` below it.
@@ -320,14 +320,13 @@ Run before producing any diagram.
 
 ## 10. Templates & Variants
 
-Every diagram has three variants, and each variant starts from its template in `assets/`. Dark is the default. A dark figure takes every role from the Mocha column of [style-guide.md](references/style-guide.md), and a light figure takes the Latte column.
+Every diagram starts from a template in `assets/`. Every template and every variant uses Catppuccin Mocha and takes its roles from [style-guide.md](references/style-guide.md).
 
-| Variant | Template | Palette | When to use |
-|---|---|---|---|
-| **Minimal dark** (default) | `assets/template-dark.html` | Mocha | Every figure unless the page or the request asks for light. Diagram + title. |
-| **Minimal light** | `assets/template.html` | Latte | Light pages, print, and light slides. |
-| **Full editorial** | `assets/template-full.html` | Mocha | Long-form posts where the diagram is the hero. For a light page, swap its role values to Latte. |
-| **Consultant special** (quadrant only) | `assets/template-dark.html` | Mocha | BCG/McKinsey-style 2×2 scenario matrix. See [type-quadrant.md](references/type-quadrant.md#consultant-special-2x2-scenario-matrix). |
+| Variant | Template | When to use |
+|---|---|---|
+| **Minimal** (default) | `assets/template.html` | Every figure unless another variant fits better. Diagram + title on the 960×600 `doc-inline` canvas of [output-spec.md](references/output-spec.md). |
+| **Full editorial** | `assets/template-full.html` | Long-form posts where the diagram is the hero. |
+| **Consultant special** (quadrant only) | `assets/template.html` | BCG/McKinsey-style 2×2 scenario matrix. See [type-quadrant.md](references/type-quadrant.md#consultant-special-2x2-scenario-matrix). |
 
 **Sketchy variant** (optional, applied to any of the above): a hand-drawn stroke filter for essays, not technical docs. See [primitive-sketchy.md](references/primitive-sketchy.md).
 
@@ -337,7 +336,7 @@ Every diagram has three variants, and each variant starts from its template in `
 
 ### To create a new diagram
 
-1. Copy the variant closest to what you want (`assets/template-dark.html` for the default minimal figure, `assets/template.html` for a light one, `assets/template-full.html` for cards, `assets/template-motion.html` (Mocha) only when motion is requested).
+1. Copy the variant closest to what you want (`assets/template.html` for the default minimal figure, `assets/template-full.html` for cards, `assets/template-motion.html` only when motion is requested).
 2. If behavior is load-bearing, choose a semantic pattern; then load the matching type reference linked in the visual-type guide.
 3. Replace the eyebrow, h1, and SVG body. Replace `[diagram-slug]` with the file slug and fill `<title>` / `<desc>`.
 4. If motion is requested, load `animation.md`; otherwise keep mode `none` and no script.
@@ -389,7 +388,7 @@ This contract is optional guidance, and no check enforces it. Long form: [primit
 
 1. `<svg>` carries `role="img"` and `aria-labelledby` naming its `<title>` and `<desc>`.
 2. `<title>` is the first child of `<svg>`, before `<defs>`.
-3. IDs are `<slug>-title` / `<slug>-desc`, the slug matching the file (`loop`, `loop-dark`, `loop-full`); never bare `title` / `desc`.
+3. IDs are `<slug>-title` / `<slug>-desc`, the slug matching the file (`loop`, `loop-full`); never bare `title` / `desc`.
 4. `<title>` is the subject's short name, roughly the page `<h1>`, 60 characters or fewer.
 5. `<desc>` is one sentence about the content, not the geometry.
 6. Decorative-only SVG, such as the glyphs in `assets/icons.html`, carries `aria-hidden="true"` instead.

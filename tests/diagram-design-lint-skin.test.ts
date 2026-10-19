@@ -36,9 +36,8 @@ function expectFail(path: string) {
 
 const mocha = (name: string, edits: [string | RegExp, string][]) => writeVariant(dir, name, FIGURES.mocha, edits);
 
-test.skipIf(NO_PYTHON)("a Mocha figure and a Latte figure pass", () => {
+test.skipIf(NO_PYTHON)("a Mocha figure passes", () => {
   expectPass(FIGURES.mocha);
-  expectPass(FIGURES.latte);
 });
 
 test.skipIf(NO_PYTHON)("an off-palette color fails", () => {
@@ -51,13 +50,16 @@ test.skipIf(NO_PYTHON)("an off-palette color inside an HTML comment passes", () 
   expectFail(mocha("uncommented-color", [["      </svg>", `        ${color}\n      </svg>`]]));
 });
 
-test.skipIf(NO_PYTHON)("the terminal skin's dot-grid white passes", () => {
-  const dot = '<circle cx="1" cy="1" r="0.9" fill="rgba(255,255,255,0.06)"/>';
-  expectPass(mocha("terminal-dot-grid", [["      </svg>", `        ${dot}\n      </svg>`]]));
+test.skipIf(NO_PYTHON)("white fails in a Mocha figure", () => {
+  const white = (name: string, fill: string) =>
+    mocha(name, [["      </svg>", `        <circle cx="1" cy="1" r="0.9" fill="${fill}"/>\n      </svg>`]]);
+  expectFail(white("white-hex", "#ffffff"));
+  expectFail(white("white-short-hex", "#fff"));
+  expectFail(white("white-rgb", "rgb(255,255,255)"));
+  expectFail(white("white-dot-grid", "rgba(255,255,255,0.06)"));
 });
 
-test.skipIf(NO_PYTHON)("a color from the other flavor fails", () => {
-  expectFail(writeVariant(dir, "mocha-in-latte", FIGURES.latte, [['stroke="#8839ef" stroke-width="1"/>', 'stroke="#cba6f7" stroke-width="1"/>']]));
+test.skipIf(NO_PYTHON)("a Latte color fails in a Mocha figure", () => {
   expectFail(mocha("latte-in-mocha", [['stroke="#cba6f7" stroke-width="1"/>', 'stroke="#8839ef" stroke-width="1"/>']]));
   expectFail(mocha("latte-rgba-in-mocha", [["rgba(203,166,247,0.10)", "rgba(136,57,239,0.10)"]]));
 });
@@ -93,6 +95,30 @@ test.skipIf(NO_PYTHON)("a font shorthand that names an unsupported family fails"
   expectPass(withCss("font-shorthand-stack", ".note { font: 600 12px/1.2 'IosevkaTerm Nerd Font Mono', ui-monospace, monospace; }"));
   expectPass(withCss("font-shorthand-var", ".note { font: italic 14px var(--font-slab); }"));
   expectPass(withCss("font-shorthand-keyword", ".note { font: inherit; }"));
+});
+
+test.skipIf(NO_PYTHON)("a stack that ends in sans-serif, serif, or system-ui passes", () => {
+  expectPass(withCss("generic-sans-serif", ".note { font-family: 'IosevkaTerm Nerd Font Mono', sans-serif; }"));
+  expectPass(withCss("generic-serif", ".note { font-family: 'IosevkaTermSlab Nerd Font Mono', serif; }"));
+  expectPass(withShape("generic-system-ui", `font-family="'IosevkaTerm Nerd Font Mono', system-ui, monospace"`));
+  expectFail(withCss("generic-cursive", ".note { font-family: 'IosevkaTerm Nerd Font Mono', cursive; }"));
+});
+
+test.skipIf(NO_PYTHON)("a stack that names a CJK system face passes", () => {
+  const faces = [
+    "Apple SD Gothic Neo",
+    "Malgun Gothic",
+    "PingFang TC",
+    "PingFang SC",
+    "Microsoft JhengHei",
+    "Microsoft YaHei",
+    "Hiragino Sans",
+    "Yu Gothic",
+  ];
+  for (const face of faces) {
+    const slug = face.toLowerCase().replaceAll(" ", "-");
+    expectPass(withShape(`cjk-${slug}`, `font-family="'IosevkaTerm Nerd Font Mono', '${face}', ui-monospace, monospace"`));
+  }
 });
 
 test.skipIf(NO_PYTHON)("a figure with no accessibility attributes passes", () => {
