@@ -15,7 +15,7 @@ function main() {
   if(cmd==="cancel") { console.log(JSON.stringify({complete:false,applied:[],message:"Cancelled the whole project Migration; no changes."}));return 0; }
   if(cmd==="plan") { console.log(JSON.stringify(projectPlan(process.cwd(),mode),null,2));return 0; }
   if(cmd!=="apply" || !planPath) throw new Error("Usage: migrate.ts plan [--mode move|private] | apply --plan <approved JSON> [--skip <id>...] | cancel");
-  const report=applyProject(JSON.parse(readFileSync(planPath,"utf8")) as Plan,skip);
+  const report=applyProject(JSON.parse(readFileSync(planPath,"utf8")) as Plan,process.cwd(),skip);
   console.log(JSON.stringify(report,null,2));return report.complete?0:1;
 }
 try { process.exit(main()); } catch(e) { console.error(e instanceof Error?e.message:String(e));process.exit(2); }

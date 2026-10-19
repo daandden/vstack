@@ -4,7 +4,7 @@ Read this file when step 2 of the project section finds Matt work in this repo. 
 
 `migrate.ts` stands for `bun "$(realpath skill://setup-vstack/scripts/migrate.ts)"`. Run it from inside the repo. It uses the shipped [House style rows](house-style.yaml) for path and reference changes. Keep that file as replacement data.
 
-Save each later plan JSON unchanged beside the first one, as `<Scratch dir>/setup-vstack/plan-<n>.json`. Keep proposed manual diffs separate from that JSON.
+Save each later plan JSON unchanged in the run entry from step 2 of SKILL.md, as `<run entry>/plan-<n>.json`. Never read or write a plan in another run's entry. Keep proposed manual diffs separate from that JSON.
 
 ## 1. Ask
 
@@ -39,7 +39,7 @@ Call `ask` once with Apply all (Recommended), Choose items, and Cancel. On Choos
 
 Run `migrate.ts apply --plan <absolute plan path>`, with one `--skip <id>` per declined optional item:
 
-- Exit 2 means that the repo changed since the plan, or that a skip named a mandatory id. Nothing was written. Make a fresh plan. Show it through `ask` as in steps 3 and 4. Apply the approved fresh plan.
+- Exit 2 means that the repo changed since the plan, that the plan was made in another checkout, or that a skip named a mandatory id. Nothing was written. Make a fresh plan in this checkout. Show it through `ask` as in steps 3 and 4. Apply the approved fresh plan.
 - Exit 1 means that the Migration is incomplete: an item failed, or old storage stays. Show `failures` and the remaining work, and stop the run. Setup does not go on.
 - Exit 0 means complete. Apply each approved manual diff only after its parent item applied, at its `after_path`. Leave declined manual diffs as remaining hits.
 
