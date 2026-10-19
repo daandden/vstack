@@ -92,7 +92,7 @@ items:
     tree: b1568cde855a189b16e5d7dd8a0fa4c3f156bc2e
     disposition: adapt
     artifacts: [plugin/skills/setup-vstack]
-    reason: "Renamed to setup-vstack for machine configuration and fresh project setup, with Migration in migrate-to-vstack (ADR 0006)."
+    reason: "Renamed to setup-vstack for machine configuration and project setup. Its project section offers a repo-only Migration from Matt's config first (ADR 0006, ADR 0028)."
   - id: matt/tdd
     upstream: matt
     kind: skill
@@ -991,7 +991,6 @@ originals:
   - plugin/skills/vstack-worktree
   - plugin/skills/skill-creator
   - plugin/skills/vstack-maintain
-  - plugin/skills/migrate-to-vstack
   - plugin/agents/vstack-diagram-drawer.md
   - plugin/skills/vstack-figures
 utility:
@@ -1008,6 +1007,5 @@ utility:
   - plugin/skills/vstack-figures
   - plugin/skills/grilling-page
   - plugin/skills/vstack-worktree
-  - plugin/skills/migrate-to-vstack
   - plugin/skills/in-your-own-words
   - plugin/skills/ketchup

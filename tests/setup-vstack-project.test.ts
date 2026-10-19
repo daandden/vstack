@@ -216,3 +216,72 @@ test("Private-mode config under the vstack root leaves the repo with nothing to 
   expect(git(repo, "status", "--porcelain")).toBe("");
   expect(readFileSync(join(repo, ".git", "vstack", "config", "domain.md"), "utf8")).toBe("# Domain\n");
 });
+
+const MIGRATE = join(import.meta.dir, "..", "plugin", "skills", "setup-vstack", "scripts", "migrate.ts");
+const migrationPaths = (paths: string[]) => paths.flatMap((p) => ["--migration-path", p]);
+
+test("one commit holds a Migration that filled every config file, and the setup output, and nothing else", () => {
+  const repo = makeRepo({
+    "AGENTS.md": "# a\n\n## Agent skills\n\nSee docs/agents/issue-tracker.md\n",
+    "docs/agents/issue-tracker.md": "# GitHub\n",
+    "docs/agents/triage-labels.md": "# Labels\n",
+    "docs/agents/domain.md": "Read CONTEXT.md\n",
+    "CONTEXT.md": "# Domain\n",
+    ".omp/rules/setup.md": "Run /setup-matt-pocock-skills\n",
+    "src/a.ts": "a\n",
+  });
+  git(repo, "remote", "add", "origin", "git@github.com:acme/app.git");
+  write(repo, { "src/a.ts": "a staged\n" });
+  git(repo, "add", "src/a.ts");
+
+  const plan = Bun.spawnSync([process.execPath, MIGRATE, "plan"], { cwd: repo, env: ENV, stdout: "pipe" });
+  const planPath = join(dirname(repo), "plan.json");
+  writeFileSync(planPath, plan.stdout.toString());
+  const applied = Bun.spawnSync([process.execPath, MIGRATE, "apply", "--plan", planPath], { cwd: repo, env: ENV, stdout: "pipe" });
+  expect(applied.exitCode).toBe(0);
+  const report = JSON.parse(applied.stdout.toString());
+  const s = state(repo);
+  expect(s.missing_config).toEqual([]);
+  expect(s.block_exists).toBe(true);
+
+  const r = run(repo, "commit", "--title", "chore: set up vstack", ...migrationPaths(report.paths));
+  expect(r.code).toBe(0);
+  expect(git(repo, "show", "--no-renames", "--name-only", "--format=", "HEAD").split("\n").sort()).toEqual([
+    ".omp/rules/setup.md", "AGENTS.md", "CONTEXT.md", "GLOSSARY.md",
+    "docs/agents/domain.md", "docs/agents/issue-tracker.md", "docs/agents/triage-labels.md",
+    ...CONFIG,
+  ].sort());
+  expect(git(repo, "ls-tree", "-r", "--name-only", "HEAD", "docs/agents")).toBe("");
+  expect(git(repo, "status", "--porcelain")).toBe("M  src/a.ts");
+});
+
+test("a commit whose only changes are Migration paths still commits when the setup output is unchanged", () => {
+  const repo = makeRepo({ "AGENTS.md": `# a\n\n${BLOCK}`, ...configFiles(), "CONTEXT.md": "# Domain\n" });
+  git(repo, "mv", "CONTEXT.md", "GLOSSARY.md");
+  const r = run(repo, "commit", "--title", "chore: migrate to vstack", ...migrationPaths(["CONTEXT.md", "GLOSSARY.md"]));
+  expect(r.code).toBe(0);
+  expect(JSON.parse(r.stdout).commit).toBe(git(repo, "rev-parse", "HEAD"));
+  expect(git(repo, "show", "--no-renames", "--name-only", "--format=", "HEAD").split("\n").sort()).toEqual(["CONTEXT.md", "GLOSSARY.md"]);
+});
+
+test("commit refuses a Migration path outside the repo", () => {
+  const repo = makeRepo({ "AGENTS.md": `# a\n\n${BLOCK}`, ...configFiles() });
+  const head = git(repo, "rev-parse", "HEAD");
+  for (const outside of ["../elsewhere.md", join(dir, "elsewhere.md"), ".git/config"]) {
+    const r = run(repo, "commit", "--title", "chore: set up vstack", ...migrationPaths([outside]));
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain(outside);
+  }
+  expect(git(repo, "rev-parse", "HEAD")).toBe(head);
+});
+
+test("Migration paths are literal: a bracketed directory name commits no other staged path", () => {
+  const repo = makeRepo({ "AGENTS.md": `# a\n\n${BLOCK}`, ...configFiles(), "packages/[slug]/CONTEXT.md": "# Domain\n", "packages/s/GLOSSARY.md": "s\n" });
+  git(repo, "mv", "packages/[slug]/CONTEXT.md", "packages/[slug]/GLOSSARY.md");
+  write(repo, { "packages/s/GLOSSARY.md": "s staged\n" });
+  git(repo, "add", "packages/s/GLOSSARY.md");
+  const r = run(repo, "commit", "--title", "chore: migrate", ...migrationPaths(["packages/[slug]/CONTEXT.md", "packages/[slug]/GLOSSARY.md"]));
+  expect(r.code).toBe(0);
+  expect(git(repo, "show", "--no-renames", "--name-only", "--format=", "HEAD").split("\n").sort()).toEqual(["packages/[slug]/CONTEXT.md", "packages/[slug]/GLOSSARY.md"]);
+  expect(git(repo, "status", "--porcelain")).toBe("M  packages/s/GLOSSARY.md");
+});

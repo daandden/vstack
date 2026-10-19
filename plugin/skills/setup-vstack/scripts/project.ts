@@ -1,12 +1,12 @@
-// setup-vstack's project section helpers (spec #63 "setup-vstack"; ADR 0006).
-//
 //   bun project.ts state                 JSON facts the project section starts from, with the config files still missing
-//   bun project.ts commit --title <t>    Standard mode: commit the setup output, and only it, on the current branch
+//   bun project.ts commit --title <t> [--migration-path <repo path>...]
+//                                        Standard mode: commit the setup output and this run's Migration paths, and only
+//                                        them, on the current branch
 //
 // Run from inside the repo. Exit codes: 0 done; 2 usage error, not in a git repo, or a refused commit.
 
 import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative, resolve } from "node:path";
 
 // One file per setup section, in section order (ADR 0006, ADR 0020).
 const CONFIG_FILES = ["issue-tracker.md", "code-host.md", "triage-labels.md", "domain.md"];
@@ -20,7 +20,8 @@ function fail(message: string): never {
 }
 
 function git(cwd: string, ...args: string[]): { code: number; stdout: string; stderr: string } {
-  const r = Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe" });
+  // Paths are file names, never patterns: a Migration path such as `packages/[slug]/` must not match other files.
+  const r = Bun.spawnSync(["git", ...args], { cwd, stdout: "pipe", stderr: "pipe", env: { ...process.env, GIT_LITERAL_PATHSPECS: "1" } });
   return { code: r.exitCode, stdout: r.stdout.toString().trim(), stderr: r.stderr.toString().trim() };
 }
 
@@ -69,7 +70,7 @@ function hasBlock(text: string): boolean {
   return text.split("\n").some((line) => line.trimEnd() === BLOCK_HEADING);
 }
 
-function commit(cwd: string, title: string | undefined) {
+function commit(cwd: string, title: string | undefined, migrationPaths: string[]) {
   if (!title?.trim()) fail("commit needs --title <commit title>");
   const s = repoState(cwd);
   if (s.mode === "private") fail(`refusing to commit: Private mode is on (${s.vstack_root}/config/ exists), and Private mode commits nothing`);
@@ -77,8 +78,18 @@ function commit(cwd: string, title: string | undefined) {
   for (const p of CONFIG) if (!existsSync(join(s.root, p))) fail(`refusing to commit: ${p} is missing; Standard mode writes all ${CONFIG.length} config files`);
   if (!s.block_file || !s.block_exists) fail(`refusing to commit: no ${BLOCK_HEADING} block in CLAUDE.md or AGENTS.md`);
 
-  const paths = [...CONFIG, s.block_file];
-  gitOrDie(s.root, "add", "--", ...paths);
+  const migrated = migrationPaths.map((p) => {
+    const rel = relative(s.root, resolve(s.root, p));
+    if (!rel || rel === ".." || rel.startsWith("../") || rel.startsWith("/") || rel === ".git" || rel.startsWith(".git/")) {
+      fail(`refusing to commit: Migration path ${p} is outside the repo`);
+    }
+    return rel;
+  });
+  const onDiskOrIndexed = (p: string) => existsSync(join(s.root, p)) || git(s.root, "ls-files", "--", p).stdout !== "";
+  const inHead = (p: string) => git(s.root, "ls-tree", "--name-only", "HEAD", "--", p).stdout !== "";
+  const all = [...new Set([...CONFIG, s.block_file, ...migrated])];
+  gitOrDie(s.root, "add", "-A", "--", ...all.filter(onDiskOrIndexed));
+  const paths = all.filter((p) => onDiskOrIndexed(p) || inHead(p));
   if (git(s.root, "diff", "--cached", "--quiet", "HEAD", "--", ...paths).code === 0) {
     console.log(JSON.stringify({ commit: null, title, paths, note: "nothing changed since the last setup commit" }));
     return;
@@ -95,11 +106,19 @@ function main(argv: string[]) {
     return;
   }
   if (argv[0] === "commit") {
-    const i = argv.indexOf("--title");
-    commit(cwd, i === -1 ? undefined : argv[i + 1]);
+    let title: string | undefined;
+    const migrationPaths: string[] = [];
+    for (let i = 1; i < argv.length; i += 2) {
+      const value = argv[i + 1];
+      if (value === undefined) fail(`${argv[i]} needs a value`);
+      if (argv[i] === "--title") title = value;
+      else if (argv[i] === "--migration-path") migrationPaths.push(value);
+      else fail(`unknown option ${argv[i]}`);
+    }
+    commit(cwd, title, migrationPaths);
     return;
   }
-  fail("Usage: project.ts state\n       project.ts commit --title <commit title>");
+  fail("Usage: project.ts state\n       project.ts commit --title <commit title> [--migration-path <repo path>...]");
 }
 
 main(process.argv.slice(2));

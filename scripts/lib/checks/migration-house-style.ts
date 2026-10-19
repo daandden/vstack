@@ -9,7 +9,7 @@ export const migrationHouseStyleChecks: Check = {
   classes: ["migration-house-style"],
   async run(ctx) {
     const copy = join(ctx.root, HOUSE_STYLE_COPY);
-    if (!existsSync(join(ctx.root, "plugin/skills/migrate-to-vstack"))) return [];
+    if (!existsSync(join(ctx.root, "plugin/skills/setup-vstack"))) return [];
     const fail = (message: string) => [{ class: "migration-house-style", item: HOUSE_STYLE_COPY, message }];
     try {
       const doc = Bun.YAML.parse(readFileSync(copy, "utf8")) as any;
