@@ -1,7 +1,7 @@
 // grilling-page's render script run as a process: records in, page out, bad input refused (ADR 0013).
 
 import { afterAll, beforeEach, expect, test } from "bun:test";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, lstatSync, mkdtempSync, readdirSync, readFileSync, readlinkSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -132,6 +132,25 @@ test("an option label must start with its own letter", () => {
   const r = append(question("s1-r1-q1", 1, { options: [option("A. First"), option("First again")] }));
   expect(r.code).toBe(1);
   expect(r.stderr).toContain('option B: label must start with "B. ", the same text as the ask label');
+});
+
+test("a question with one option renders it and takes its answer", () => {
+  const r = append(PAGE, ROUND, question("s1-r1-q1", 1, { options: [option("A. Only candidate", { recommended: "it is the only one" })] }));
+  expect(r.code).toBe(0);
+  expect(r.stdout.trim()).toBe(page);
+  expect(readFileSync(page, "utf8")).toContain(`<li class="option" data-recommended><h4>Only candidate${STAR}</h4>`);
+  expect(run(["answer", state, "s1-r1-q1=A"]).code).toBe(0);
+  expect(readFileSync(page, "utf8")).toMatch(/<li class="option" data-recommended data-picked><h4>Only candidate/);
+  expect(run(["answer", state, "s1-r1-q1=B"]).stderr).toContain("question s1-r1-q1 has no option B");
+});
+
+test("a question with no options is refused and writes nothing", () => {
+  append(PAGE, ROUND);
+  const before = readFileSync(state, "utf8");
+  const r = append(question("s1-r1-q1", 1, { options: [] }));
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain("question s1-r1-q1: options must list one or more options");
+  expect(readFileSync(state, "utf8")).toBe(before);
 });
 
 test("answer marks the picked option and shows a line only for a note", () => {
@@ -272,9 +291,35 @@ test("every keyboard stop has its link in the Q row, and a reopened summary is n
   expect(links).toEqual(stops);
 });
 
-// A flow folder: <Scratch dir>/grilling/<project>-<key>/ with page.jsonl, page.html, flow.json, and figures/.
+const summary = (html: string) => html.match(/<section class="summary"[\s\S]*?<\/section>/)![0];
+const gateRow = (shown: string) => `<p class="answer"><span class="label">Closing gate</span><span>${shown}</span></p>`;
+
+test("a close with no gate shows its decisions and no Closing gate row", () => {
+  expect(append(PAGE, ROUND, question("s1-r1-q1", 1), { type: "close", id: "c1", session: 1, decisions: [{ question: "s1-r1-q1", text: "One is true." }] }).code).toBe(0);
+  const html = summary(readFileSync(page, "utf8"));
+  expect(html).toContain("One is true.");
+  expect(html).not.toContain("Closing gate");
+  expect(html).not.toContain("Waiting for your answer.");
+});
+
+test.each([
+  ["a pending gate", { gate: true }, "Waiting for your answer."],
+  ["an answered gate", { gate: true, answer: "Shared understanding", note: "Go on." }, "Shared understanding. Note: &quot;Go on.&quot;"],
+  ["a gate from before the gate field", { answer: "Shared understanding" }, "Shared understanding."],
+  ["a gate that stopped after two timeouts", { gate: true, note: "Two timeouts, no answer." }, "No answer. Note: &quot;Two timeouts, no answer.&quot;"],
+])("a close with %s shows its Closing gate row", (_, extra, shown) => {
+  expect(append(PAGE, ROUND, question("s1-r1-q1", 1), { type: "close", id: "c1", session: 1, decisions: [{ question: "s1-r1-q1", text: "One is true." }], ...extra }).code).toBe(0);
+  expect(summary(readFileSync(page, "utf8"))).toContain(gateRow(shown));
+});
+
+test("a close whose gate is not true or false is refused and writes nothing", () => {
+  const r = append(PAGE, ROUND, question("s1-r1-q1", 1), { type: "close", id: "c1", session: 1, decisions: [{ question: "s1-r1-q1", text: "One is true." }], gate: "yes" });
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain("close c1: gate must be true or false");
+  expect(existsSync(state)).toBe(false);
+});
+
 const FLOW = { type: "flow", id: "flow", slug: "page-per-flow", key: "page-per-flow", state: "open" };
-/** Points state and page at page.jsonl in a new flow folder <dir>/vstack-<key>/ and returns the folder. */
 function flowFolder(key = "page-per-flow") {
   const folder = join(dir, `vstack-${key}`);
   Bun.spawnSync(["mkdir", "-p", folder]);
@@ -412,6 +457,57 @@ test("a rename that would leave an SVG unresolved exits 1 and leaves the old fol
   for (const [f, text] of Object.entries(files)) expect(readFileSync(join(old, f), "utf8")).toBe(text);
 });
 
+/** Every file and symlink under `folder`, with its bytes or link target. */
+const tree = (folder: string) => readdirSync(folder, { recursive: true }).map(String).sort().map((f) => {
+  const path = join(folder, f);
+  return lstatSync(path).isSymbolicLink() ? [f, `-> ${readlinkSync(path)}`] : lstatSync(path).isDirectory() ? [f, "dir"] : [f, readFileSync(path, "utf8")];
+});
+
+test.each([
+  ["an absolute path to a symlink in the folder whose target is outside it", "absolute"],
+  ["a relative path to a symlink whose target is the old folder's absolute path", "relative"],
+])("rename refuses %s, writes nothing, and leaves a flow that renders", (_, kind) => {
+  const old = flowFolder();
+  Bun.spawnSync(["mkdir", "-p", join(old, "figures")]);
+  writeFileSync(join(old, "figures", "real.svg"), figure("real-figure"));
+  const external = join(dir, "external.svg");
+  writeFileSync(external, figure("external-figure"));
+  const link = join(old, "figures", "link.svg");
+  symlinkSync(kind === "absolute" ? external : join(old, "figures", "real.svg"), link);
+  expect(append(PAGE, FLOW, ROUND, question("s1-r1-q1", 1, { visual: { svg: kind === "absolute" ? link : "figures/link.svg" } })).code).toBe(0);
+  const before = tree(old);
+
+  const r = run(["rename", state, "151"]);
+  expect(r.code).toBe(1);
+  expect(r.stdout).toBe("");
+  expect(r.stderr).toContain("svg file");
+  expect(r.stderr).toContain("does not exist after the move");
+  expect(existsSync(join(dir, "vstack-151"))).toBe(false);
+  expect(tree(old)).toEqual(before);
+  const render = run(["render", state]);
+  expect(render.code).toBe(0);
+  expect(render.stdout.trim()).toBe(page);
+  expect(flowJson(old).key).toBe("page-per-flow");
+});
+
+test("a rename whose state write fails moves the folder back, and the flow still renders under its old key", () => {
+  const old = flowFolder();
+  expect(append(PAGE, FLOW, ROUND, question("s1-r1-q1", 1)).code).toBe(0);
+  chmodSync(state, 0o444);
+  const before = tree(old);
+
+  const r = run(["rename", state, "151"]);
+  if (existsSync(state)) chmodSync(state, 0o644);
+  expect(r.code).toBe(1);
+  expect(r.stdout).toBe("");
+  expect(existsSync(join(dir, "vstack-151"))).toBe(false);
+  expect(tree(old)).toEqual(before);
+  const render = run(["render", state]);
+  expect(render.code).toBe(0);
+  expect(render.stdout.trim()).toBe(page);
+  expect(flowJson(old)).toMatchObject({ key: "page-per-flow" });
+});
+
 const stage = (id: string, order: number, extra: object = {}) => ({ type: "stage", id, skill: "grill-with-docs", title: `Stage ${id}`, state: "in-progress", order, ...extra });
 
 test.each([
@@ -440,9 +536,7 @@ test("a round that names an unknown stage is refused, names the round, and write
   expect(readFileSync(page, "utf8")).not.toContain("Title 1?");
 });
 
-/** The tab strip as [panel id, label, selected] in order. */
 const tabs = (html: string) => [...html.matchAll(/<a role="tab"[^>]*aria-selected="(true|false)"[^>]*href="#([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)].map((m) => [m[2], m[3].replace(/<[^>]+>/g, ""), m[1] === "true"]);
-/** The HTML of one tab panel, up to the next panel or the end of the page body. */
 const panel = (html: string, id: string) => {
   const head = `id="${id}" role="tabpanel"`;
   const start = html.indexOf(head);
@@ -463,7 +557,6 @@ test("the page opens on an Overview tab, then has one tab per Stage in order, ea
   expect(panel(html, "stage-spec")).toContain('id="q-s2-r1-q1"');
 });
 
-/** One Stage's entry on the Overview. */
 const overviewItem = (html: string, id: string) => panel(html, "overview").split('<li class="stage"').find((p) => p.includes(`href="#stage-${id}"`)) ?? "";
 
 test("the Overview shows each Stage's state, its decisions, and its open questions, linked into the tabs", () => {
@@ -565,7 +658,6 @@ test("each tab's keyboard stops have their links in that tab's Q row, and every 
 const REVIEW_ROUND = { ...SPEC_ROUND, id: "s2-r1", stage: "review" };
 const card = (id: string, extra: object = {}) => ({ id, title: `Finding ${id}`, label: "issue", blocking: false, impact: `Impact ${id}`, evidence: `Evidence ${id}`, action: `Action ${id}`, ...extra });
 const report = (id: string, shape: string, extra: object = {}) => ({ type: "report", id, stage: "review", title: `Report ${id}`, shape, ...extra });
-/** The HTML of one report entry, from its own tag to the next entry or the end of its report. */
 const entry = (html: string, id: string) => {
   const start = html.indexOf(` id="${id}"`);
   if (start < 0) return "";
@@ -626,11 +718,9 @@ test("entries link to their questions and questions link back to entries, also a
   const html = readFileSync(page, "utf8");
   const review = panel(html, "stage-review");
   const grill = panel(html, "stage-grill");
-  // A card in the review tab links to a question in the grill tab, and that question links back across the tabs.
   expect(entry(review, "report-standards_s1")).toContain('<a href="#q-s1-r1-q1">Q1</a>: Keep the old flag?');
   expect(grill).toContain('id="q-s1-r1-q1"');
   expect(questionBody(grill, "s1-r1-q1")).toMatch(/<a href="#report-standards_s1">Report standards <span class="entry-id">s1<\/span><\/a>: Finding s1[\s\S]*<a href="#report-safety_p1">Report safety <span class="entry-id">p1<\/span><\/a>: Input reaches the shell/);
-  // Inside one tab, the links go both ways too.
   expect(entry(review, "report-standards_s2")).toContain('<a href="#q-s2-r1-q1">Q1</a>: Fix S2 now?');
   expect(questionBody(review, "s2-r1-q1")).toContain('<a href="#report-standards_s2">');
   const ids = new Set([...html.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]));

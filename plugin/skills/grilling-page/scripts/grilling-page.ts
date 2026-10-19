@@ -96,7 +96,6 @@ const strList = (v: unknown, key: string, where: string): string[] => {
   if (!Array.isArray(v) || v.length === 0 || v.some((s) => typeof s !== "string" || s.trim() === "")) fail(where, `${key} must be a list of one or more non-empty strings`);
   return v as string[];
 };
-/** A list of one or more objects, each with every field in `fields` as a non-empty string. Optional unless `required`. */
 function entryList(r: Rec, key: string, fields: string[], where: string, required = false): void {
   const v = r[key];
   if (v === undefined && !required) return;
@@ -121,7 +120,6 @@ function checkVisual(v: unknown, where: string): Visual {
   return vis;
 }
 
-/** One visual or a list of one or more, as the list. */
 function checkVisuals(v: unknown, where: string): Visual[] {
   if (!Array.isArray(v)) return [checkVisual(v, `${where}: visual`)];
   if (!v.length) fail(where, "visual must be one visual or a list of one or more");
@@ -136,10 +134,8 @@ const CLAIM_STATES = Object.keys(CLAIM_LABELS);
 const SHAPES = ["cards", "ledger", "table"];
 const listed = (xs: string[]) => `${xs.slice(0, -1).join(", ")}, or ${xs.at(-1)}`;
 
-/** A report's entries: the rows of a table, the entries of cards and a ledger. */
 const entriesOf = (r: Rec): Rec[] => (r.shape === "table" ? r.rows : r.entries);
 
-/** Checks a report's shape and every field of its entries. Links to questions are checked once every record is read. */
 function checkReport(r: Rec, where: string): void {
   str(r, "stage", where);
   str(r, "title", where);
@@ -173,10 +169,8 @@ function checkReport(r: Rec, where: string): void {
   });
 }
 
-/** `records` holds the latest record of each id, in the order the ids first appear, and so do `reports` and `topics`. `backgrounds` maps a Stage id to its Background. */
 type State = { page: Rec; order: Rec[]; questions: Map<string, Rec>; answers: Map<string, Rec>; rounds: Map<string, Rec>; stages: Rec[]; reports: Map<string, Rec>; backgrounds: Map<string, Rec>; topics: Map<string, Rec>; flow?: Rec; records: Rec[] };
 
-/** Checks every record. `folder` is the basename of the state file's folder, which a flow record's key must end. */
 function check(lines: Line[], folder: string): State {
   const latest = new Map<string, Line>();
   const first: string[] = [];
@@ -231,7 +225,7 @@ function check(lines: Line[], folder: string): State {
         if (r.visual !== undefined) checkVisuals(r.visual, where);
         if (r.report_entries !== undefined && strList(r.report_entries, "report_entries", where).some((e) => !/^[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9-]*$/.test(e))) fail(where, "report_entries must list <report id>/<entry id> strings");
         if (r.topics !== undefined) strList(r.topics, "topics", where);
-        if (!Array.isArray(r.options) || r.options.length < 2) fail(where, "options must list two or more options");
+        if (!Array.isArray(r.options) || r.options.length === 0) fail(where, "options must list one or more options");
         let recommended = 0;
         (r.options as Option[]).forEach((o, i) => {
           const ow = `${where}: option ${letter(i)}`;
@@ -266,6 +260,7 @@ function check(lines: Line[], folder: string): State {
         int(r, "session", where);
         str(r, "answer", where, true);
         str(r, "note", where, true);
+        if (r.gate !== undefined && typeof r.gate !== "boolean") fail(where, "gate must be true or false");
         if (!Array.isArray(r.decisions) || r.decisions.length === 0) fail(where, "decisions must list one { question, text } per decision");
         for (const dec of r.decisions) {
           if (typeof dec !== "object" || dec === null) fail(where, "each decision must be an object");
@@ -420,9 +415,7 @@ function description(s: string): string {
     .join("");
 }
 
-/** The page id of one report entry. An underscore cannot occur in a record id, so two entries never share it. */
 const entryAnchor = (report: string, entry: string) => `report-${report}_${entry}`;
-/** The text that names an entry in a link: a card's title, a ledger's claim, a table row's first cell. */
 const entryName = (r: Rec, e: Rec): string => (r.shape === "cards" ? e.title : r.shape === "ledger" ? e.claim : e.cells[0] || e.id);
 
 function questionHtml(q: Rec, a: Rec | undefined, baseDir: string, reports: Map<string, Rec>, topics: Map<string, Rec>): string {
@@ -465,7 +458,6 @@ ${options}
 </article>`;
 }
 
-/** A Report block: a Stage's findings as cards, its claims as a ledger, or its rows as a table, each entry linked to its question. */
 function reportHtml(r: Rec, questions: Map<string, Rec>, baseDir: string): string {
   const rid = `report-${r.id}`;
   const ask = (e: Rec) => {
@@ -522,11 +514,9 @@ ${sourcesHtml(b.sources)}
 </section>`;
 }
 
-/** Rounds with no stage, from before Stages, render in this one implicit Stage. Its id cannot be a record id. */
 const IMPLICIT_STAGE = "_grilling";
 
 function render(s: State, baseDir: string): string {
-  // A round renders in its stage's tab, and a close in the tab of its session's last round before it.
   const stageOf = new Map<Rec, string>();
   const sessionStage = new Map<number, string>();
   for (const item of s.order) {
@@ -551,7 +541,6 @@ function render(s: State, baseDir: string): string {
     const body: string[] = [];
     const bg = s.backgrounds.get(st.id);
     if (bg) body.push(backgroundHtml(bg, baseDir));
-    // Report blocks come before the rounds, whatever the order in which their records were added.
     for (const r of s.reports.values()) if (r.stage === st.id) body.push(reportHtml(r, s.questions, baseDir));
     const items = s.order.filter((i) => stageOf.get(i) === st.id);
     for (const item of items) {
@@ -565,19 +554,18 @@ function render(s: State, baseDir: string): string {
         }
       } else {
         const bullets = [...decisionsOf(item), ...((item.extra as string[] | undefined) ?? []).map((e) => `<li>${text(e)}</li>`)].join("\n");
-        const gate = item.answer ? (item.note ? `${item.answer}. Note: "${item.note}"` : `${item.answer}.`) : "Waiting for your answer.";
+        const shown = item.answer ? `${item.answer}.` : item.note ? "No answer." : "Waiting for your answer.";
+        const gate = item.gate || item.answer || item.note ? `\n<p class="answer"><span class="label">Closing gate</span><span>${text(item.note ? `${shown} Note: "${item.note}"` : shown)}</span></p>` : "";
         const latest = lastClose.get(item.session) === item.id;
         body.push(`<section class="summary" id="close-${item.id}" aria-labelledby="close-${item.id}-title"${latest ? " data-stop" : ""}>
 <h2 id="close-${item.id}-title">Summary of session ${item.session}</h2>
 <ul class="decisions">
 ${bullets}
-</ul>
-<p class="answer"><span class="label">Closing gate</span><span>${text(gate)}</span></p>
+</ul>${gate}
 </section>`);
         if (latest) nav.push(`<span class="sep" aria-hidden="true"></span><a href="#close-${item.id}" data-for="close-${item.id}">Summary</a>`);
       }
     }
-    // An implicit Stage is finished once its last record is an answered close.
     const last = items.at(-1);
     const state = st.state ?? (last?.type === "close" && last.answer ? "finished" : "in-progress");
     const dot = `<span class="dot" data-state="${state}"></span>`;
@@ -594,7 +582,6 @@ ${bullets}
 </li>`);
     panels.push(`<section class="tab" id="${pid}" role="tabpanel" aria-labelledby="tab-${pid}" hidden>\n${body.join("\n") || `<p class="empty">No rounds yet.</p>`}\n</section>`);
   }
-  // Topic notes render once, in their own tab after the Stages, so that questions in any tab can link to them.
   if (s.topics.size) {
     const topics = [...s.topics.values()];
     tabs.push(`<a role="tab" id="tab-topics" aria-selected="false" aria-controls="topics" href="#topics">Topics</a>`);
@@ -613,7 +600,6 @@ ${sourcesHtml(t.sources)}
   return readFileSync(TEMPLATE, "utf8").replace("{{title}}", esc(s.page.title)).replace("<!-- NAV -->", bar).replace("<!-- BODY -->", [head, overviewPanel, ...panels].join("\n"));
 }
 
-/** Writes flow.json from the flow record, so a later Stage can match the flow by any of its values, and makes figures/. */
 function writeFlow(flow: Rec, folder: string): void {
   const { type: _, ...fields } = flow;
   writeFileSync(join(folder, "flow.json"), `${JSON.stringify(fields, null, 2)}\n`);
@@ -641,7 +627,6 @@ function answerRecords(specs: string[]): string {
     .join("\n");
 }
 
-/** A copy of `v` with `fix` applied to the path of every SVG visual in it, at any depth. */
 function mapSvgs(v: unknown, fix: (path: string) => string): any {
   if (Array.isArray(v)) return v.map((x) => mapSvgs(x, fix));
   if (typeof v !== "object" || v === null) return v;
@@ -650,9 +635,6 @@ function mapSvgs(v: unknown, fix: (path: string) => string): any {
 
 const inside = (path: string, dir: string) => path.startsWith(dir + sep);
 
-/** The records that rename appends to move the flow folder from `folder` to `target`: each record with an absolute
- *  SVG path into the folder, stored again with that path relative to the folder, and then the flow record with its
- *  new key and the old key in old_keys. Refuses when any SVG visual would not resolve after the move. */
 function renameRecords(s: State, folder: string, target: string, newKey: string): string {
   const realFolder = realpathSync(folder);
   const unresolved: string[] = [];
@@ -712,15 +694,28 @@ try {
     lines = [...lines, ...parseLines(added, oldLines + 1, "rename")];
     s = check(lines, basename(target));
   }
-  // Render before the move: after rename's records, every SVG path reads the same file from the old folder as from the new one.
-  const html = render(s, folder);
+  let html = render(s, folder);
   mkdirSync(folder, { recursive: true });
-  if (target !== folder) renameSync(folder, target);
   const newState = join(target, basename(state));
   const newPage = join(target, basename(page));
-  if (added.trim() !== "") appendFileSync(newState, (old === "" || old.endsWith("\n") ? "" : "\n") + added.trim() + "\n");
-  writeFileSync(newPage, html);
-  if (s.flow) writeFlow(s.flow, target);
+  const write = () => {
+    if (added.trim() !== "") appendFileSync(newState, (old === "" || old.endsWith("\n") ? "" : "\n") + added.trim() + "\n");
+    writeFileSync(newPage, html);
+    if (s.flow) writeFlow(s.flow, target);
+  };
+  if (target === folder) write();
+  else {
+    renameSync(folder, target);
+    try {
+      html = render(s, target);
+      write();
+    } catch (e) {
+      if (readFileSync(newState, "utf8") !== old) writeFileSync(newState, old);
+      renameSync(target, folder);
+      if (e instanceof RecordError) fail("rename", `${e.message} after the move. Store each SVG as a path relative to the flow folder`);
+      throw e;
+    }
+  }
   process.stdout.write(`${newPage}\n`);
 } catch (e) {
   if (!(e instanceof RecordError)) throw e;

@@ -50,12 +50,12 @@ Write the candidates as one `report` record with shape `cards` while the drawers
 - `label`: the recommendation strength, one of `Strong`, `Worth exploring`, or `Speculative`.
 - `blocking`: `false`.
 - `evidence`: the files and modules involved, then the problem: why the current architecture causes friction.
-- `action`: the solution, a plain English description of what would change.
-- `impact`: the benefits in terms of locality and leverage, and how tests would improve.
+- `action`: the solution, a plain English description of what changes.
+- `impact`: the benefits in terms of locality and leverage, and how the tests improve.
 - `visual`: `{ "svg": "figures/<before file>" }`, then `{ "svg": "figures/<after file>" }`.
 - `question`: the id of the pick question.
 
-Put the top recommendation in the report's `summary` line: which candidate you would tackle first, and why.
+Put the top recommendation in the report's `summary` line: which candidate to tackle first, and why.
 
 Use GLOSSARY.md vocabulary for the domain, and the `skill://codebase-design` vocabulary for the architecture. If `GLOSSARY.md` defines "Order," talk about "the Order intake module," not "the FooBarHandler," and not "the Order service."
 

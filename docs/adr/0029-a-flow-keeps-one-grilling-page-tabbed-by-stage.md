@@ -9,7 +9,7 @@ We chose the rename because it reuses the issue key that pages already had and k
 ## Considered Options
 
 - Only grilling writes to the page, and the other asks stay plain `ask`. Approvals, picks, and review findings then stay in the chat.
-- Every ask goes on the page, plus a separate stage-result record. Each Stage would write its result twice: to the chat or the tracker, and to the page. Report blocks show the results that lead to questions instead.
+- Every ask goes on the page, plus a separate stage-result record. Each Stage then writes its result twice: to the chat or the tracker, and to the page. Report blocks show the results that lead to questions instead.
 - to-spec writes the page path into the spec body. A local path then lands in a published issue where nobody else can use it, and a flow with no spec has no body to carry it.
 - The page path lives only in the chat. The flow then splits whenever Stages run in different sessions, which is common for implement-spec.
 - The page lives in the vstack root as an artifact. In Standard mode it lands in the checkout and needs ignoring, and one page type gets a second location rule.
@@ -21,7 +21,7 @@ We chose the rename because it reuses the issue key that pages already had and k
 ## Consequences
 
 - This amends the page identity of [ADR 0013](0013-a-script-renders-the-grilling-page-from-a-jsonl-state-file.md): one page per flow in one Scratch folder, renamed at to-spec and tabbed by Stage, in place of one page per grilling session. ADR 0013's other decisions still stand. The script is the only writer of the page, the state file is JSONL, a later line with the same `id` replaces an earlier one, and the script checks every record. A state file with no Stage records renders as one Stage, so older pages stay readable.
-- The page script reads every SVG visual again on each render, so figures sit in the folder's `figures/` dir, and a visual stores its path relative to the folder. `rename` refuses, and writes nothing, when the target exists or when a visual would not resolve after the move.
+- The page script reads every SVG visual again on each render, so figures sit in the folder's `figures/` dir, and a visual stores its path relative to the folder. `rename` refuses, and writes nothing, when the target exists or when a visual does not resolve after the move.
 - `/vstack-clean` removes a flow's folder as one entry.
 - grilling's rule that every `ask` option carries a one-line description no longer holds.
 - improve-codebase-architecture shows its candidates as a Report block on the flow's page, and its separate HTML report goes away.

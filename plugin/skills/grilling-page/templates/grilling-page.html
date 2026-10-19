@@ -28,7 +28,6 @@
       --red: oklch(75.6% 0.130 2.8);
       --line: color-mix(in oklch, var(--surface1) 60%, transparent);
       scrollbar-gutter: stable;
-      /* The tab and Q rows' height plus a gap; the script sets the measured value, since the rows wrap on a narrow pane. */
       --nav-clearance: 5rem;
       scroll-padding-block-start: var(--nav-clearance);
       /* Three font sizes only: title, body, small. */
@@ -43,7 +42,6 @@
     [data-state="answered"] { --state: var(--yellow); }
     [data-state="unanswered"] { --state: var(--red); }
     [data-state="open"] { --state: var(--overlay0); }
-    /* A Stage's state: green when finished, peach while in progress, grey before it starts. */
     [data-state="finished"] { --state: var(--green); }
     [data-state="in-progress"] { --state: var(--peach); }
     [data-state="not-started"] { --state: var(--overlay0); }
@@ -61,7 +59,6 @@
     pre { white-space: pre-wrap; font-size: var(--fs-small); }
     svg, img { display: block; max-inline-size: 100%; block-size: auto; }
 
-    /* The tab row and the open tab's Q row stay at the top. */
     .bar { position: sticky; inset-block-start: 0; z-index: 1; background: var(--mantle); border-block-end: 1px solid var(--line); font-size: var(--fs-small); }
     .tabs, .qnav { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; align-items: center; padding-block: 0.375rem; padding-inline: 1.25rem; }
     .qnav { border-block-start: 1px solid var(--line); }
@@ -81,7 +78,6 @@
     .tab, .round { display: grid; gap: 1.5rem; }
     .empty { color: var(--subtext0); }
 
-    /* The Overview lists each Stage with its state, decisions, and open questions. */
     .stages { display: grid; gap: 1rem; padding-inline-start: 0; list-style: none; }
     .stage { display: grid; gap: 0.375rem; padding-block-end: 0.75rem; border-block-end: 1px solid var(--line); }
     .stage h3 { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; align-items: baseline; }
@@ -93,7 +89,6 @@
     .stage li::marker { color: var(--overlay0); }
     .stage li a { font-weight: 600; text-decoration: none; }
 
-    /* A Background opens its Stage tab with the context that all of the Stage's questions share. */
     .background { display: grid; gap: 0.625rem; }
     .background > header { display: grid; gap: 0.125rem; }
     .background > header .label { font-weight: 600; text-transform: uppercase; }
@@ -104,7 +99,6 @@
     .sources { display: grid; gap: 0.125rem; }
     .sources .label { font-weight: 600; }
 
-    /* A Topic note explains one shared concept once, in the Topics tab. Questions link to it from any tab. */
     .topic { display: grid; gap: 0.5rem; padding-block-end: 0.75rem; border-block-end: 1px solid var(--line); }
     .topics { display: grid; gap: 0.125rem; }
     .topics .label { font-weight: 600; }
@@ -154,7 +148,6 @@
     .decisions > li::marker { color: var(--overlay0); }
     .decisions a { font-weight: 600; text-decoration: none; }
 
-    /* A Report block shows a Stage's findings, claims, or rows before the questions that they lead to. */
     .report { display: grid; gap: 0.75rem; }
     .report > header { display: grid; gap: 0.25rem; padding-block-start: 0.5rem; border-block-start: 1px solid var(--surface1); }
     .report-summary { color: var(--subtext1); }
@@ -165,7 +158,6 @@
     .report-links .entry-id { margin-inline-end: 0; }
     .tag { color: var(--subtext0); font-size: var(--fs-small); font-weight: 600; }
     .card[data-blocking] .tag { color: var(--red); }
-    /* A claim's status: red when confirmed, green when cleared, peach while unproven. */
     [data-status="confirmed"] { --state: var(--red); }
     [data-status="cleared"] { --state: var(--green); }
     [data-status="unproven"] { --state: var(--peach); }
@@ -179,7 +171,6 @@
     .report table { border-collapse: collapse; font-variant-numeric: tabular-nums; }
     .report th, .report td { padding-block: 0.25rem; padding-inline: 0.5rem; border-block-end: 1px solid var(--line); text-align: start; vertical-align: top; }
     .report th { color: var(--subtext0); font-size: var(--fs-small); font-weight: 600; }
-    /* The entry that a question's link opened. */
     .card:target, .claim:target, .report tr:target { background: var(--surface0); }
   </style>
 </head>
@@ -189,15 +180,11 @@
 <!-- BODY -->
   </main>
   <script>
-    // h or Left opens the previous tab, l or Right the next one. A link into another tab opens that tab.
-    // j or Down goes to the next question or summary in the open tab, k or Up to the previous one.
-    // The open tab's Q row highlights the current stop, also after a mouse scroll or a link click.
     const bar = document.querySelector(".bar");
     const tabs = [...document.querySelectorAll('[role="tab"]')];
     const panels = tabs.map((t) => document.getElementById(t.getAttribute("aria-controls")));
     const pad = () => (bar ? bar.offsetHeight : 0) + 8;
     document.querySelector(".tabs")?.insertAdjacentHTML("beforeend", '<span class="keys">h/l or ←/→ tabs, j/k or ↓/↑ questions</span>');
-    // The rows wrap with the pane width and the web font, so their height is measured whenever it changes.
     const setClearance = () => document.documentElement.style.setProperty("--nav-clearance", `${pad()}px`);
     if (bar) new ResizeObserver(setClearance).observe(bar);
     setClearance();
@@ -222,7 +209,6 @@
       history.replaceState(null, "", `#${panels[t].id}`);
       scrollTo({ top: 0, behavior: "instant" });
     }
-    // Opens the tab that holds the element with this id and returns the element.
     function reveal(id) {
       const el = id ? document.getElementById(id) : null;
       const t = el ? panels.findIndex((p) => p.contains(el)) : -1;
@@ -243,7 +229,6 @@
       stops[i].scrollIntoView({ block: "start", behavior: "instant" });
       mark(i);
     }
-    // A tab link opens its tab at the top. Any other link first opens the tab of its target, so the browser can scroll to it.
     addEventListener("click", (e) => {
       const a = e.target.closest?.('a[href^="#"]');
       if (!a) return;
@@ -258,7 +243,6 @@
       const i = stops.findIndex((s) => s.id === id);
       if (i >= 0) mark(i);
     });
-    // The URL's #id, on load or on Back and Forward, opens its tab, scrolls to it, and marks it when it is a stop.
     function goToHash() {
       const el = reveal(decodeURIComponent(location.hash.slice(1)));
       if (!el) return;
