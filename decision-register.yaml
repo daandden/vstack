@@ -60,7 +60,7 @@ items:
     tree: f07d230f645fc9ac390cf13a450bbff12ad791a3
     disposition: adapt
     artifacts: [plugin/skills/implement]
-    reason: "Settles the End state with one ask, then chains open-pr, babysit, ship; uses the verify skill (#34)."
+    reason: "Settles the End state with one ask, then chains open-pr, babysit, ship; uses the verify skill. Keeps its asks and a run results table Report block in its own Stage on the flow's Grilling page, and closes the flow when the run ends with no ticket open (#34, #167)."
   - id: matt/improve-codebase-architecture
     upstream: matt
     kind: skill
@@ -596,7 +596,7 @@ items:
     tree: 118c0642360ab53de52b3f8dd044102567dbcaa9
     disposition: adapt
     artifacts: [plugin/skills/decision-trail]
-    reason: "Renamed; final review is one fresh-context vstack subagent on the Session model or the user's override (#51)."
+    reason: "Renamed; final review is one fresh-context vstack subagent on the Session model or the user's override. Its publish approval is a question on the flow's Grilling page (#51, #167)."
   - id: pstack/swarm
     upstream: pstack
     kind: skill
@@ -892,7 +892,7 @@ items:
     tree: 0cfefc751d0cb64f0c948ffcb17e13b94e778f08
     disposition: adapt
     artifacts: [plugin/skills/implement-spec]
-    reason: "Runs Matt's steps with an orchestrator-only main agent: isolated vstack-worker implementers start as tickets become ready, a merger vstack-worker commits each ticket, and implement's END-STATE steps finish the run (ADR 0019, ADR 0022)."
+    reason: "Runs Matt's steps with an orchestrator-only main agent: isolated vstack-worker implementers start as tickets become ready, a merger vstack-worker commits each ticket, and implement's END-STATE steps finish the run. It finds the flow's Grilling page from the spec issue and puts its seam confirmations and relayed implementer questions in its own Stage (ADR 0019, ADR 0022, #167)."
   - id: matt/pr
     upstream: matt
     kind: skill

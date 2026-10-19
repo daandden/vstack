@@ -14,7 +14,7 @@ The tickets are not a list of steps. They are a **task graph** with blocking rel
 
 Communication to and from subagents should be sparse. Communicate primarily through **context pointers**: to the spec, tickets, research notes, and previous commits. Don't duplicate information already available via pointers.
 
-**Implementer subagents** run in the background for maximum concurrency. You are the orchestrator. You read the task graph, start subagents, act on their results, and put questions to the user through `ask`. You never build or merge a ticket yourself.
+**Implementer subagents** run in the background for maximum concurrency. You are the orchestrator. You read the task graph, start subagents, act on their results, and put questions to the user on the flow's Grilling page through `ask`. You never build or merge a ticket yourself.
 
 ## Shared steps
 
@@ -24,7 +24,7 @@ Before task-specific items, open the todo list with the shared steps and the ste
 
 Every subagent uses the Session model unless the user set a model for that agent. Resolve the vstack root and the project Scratch dir once, as END-STATE.md says, and pass both to every subagent. This run keeps its notes and evidence under `<Scratch dir>/implement-spec/<run-id>/`.
 
-Run shared steps 0a–0c once, before step 1. 0a settles one End state for the whole spec. If the issue tracker closes work through PRs and 0a asks, say in its `ask` text that End state commit leaves those tickets open.
+Run shared steps 0a–0c once, before step 1. 0a finds the flow's Grilling page from the spec issue and adds an implement-spec Stage. Then append the page's `flow` record again with this run's id in `runs`. Every `ask` of this run is a question in that Stage: the End state, each seam confirmation in steps 1 and 6, each implementer question that step 5 relays, each seam question from the fixer in step 7, and the Verify skill choice. 0a settles one End state for the whole spec. If the issue tracker closes work through PRs and 0a asks, say in the End state question's description that End state commit leaves those tickets open.
 
 ## Steps
 
@@ -96,13 +96,13 @@ A ticket that already failed in this run is not ready again: a failed worker, a 
 
 ### 7. Review
 
-Once no ticket is ready and no implementer or merger runs, run shared step 3b, then shared step 4. Run shared step 5 once, before shared step 6 (Matt's order). It runs skill://code-review over the whole integration-branch diff from the base SHA, the ticket commits included. Fix every accepted finding in a single subagent. With no accepted finding, skip the fixer below.
+Once no ticket is ready and no implementer or merger runs, run shared step 3b, then shared step 4. Run shared step 5 once, before shared step 6 (Matt's order). It runs skill://code-review over the whole integration-branch diff from the base SHA, the ticket commits included. Make every review fix that shared step 5 names in a single subagent. With no review fix, skip the fixer below.
 
-Spawn one `vstack-worker` via `task` (`agent: "vstack-worker"`): fix every accepted review finding in the parent checkout from the review's findings and the integration branch tip, with skill://tdd at the seams the spec confirms where a fix changes behavior, and return changed paths, checks with their outcomes, and any new seam as an open question, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: the main agent only orchestrates, so report each accepted finding as open. Put each returned seam question to the user through `ask` before the commit. A timed-out answer leaves that finding open. Report it.
+Spawn one `vstack-worker` via `task` (`agent: "vstack-worker"`): make every review fix in the parent checkout from code-review's result and the integration branch tip, with skill://tdd at the seams the spec confirms where a fix changes behavior, and return changed paths, checks with their outcomes, and any new seam as an open question, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: the main agent only orchestrates, so report each review fix as open. Put each returned seam question to the user through `ask` before the commit. A timed-out answer leaves that fix open. Report it.
 
 ### 8. Commit and close
 
-Update the affected checks and live proof. Then run shared step 6. It commits the accepted review fixes after the ticket commits.
+Update the affected checks and live proof. Then run shared step 6. It commits the review fixes after the ticket commits.
 
 Resolve each complete ticket the way the issue tracker closes work. The spec is done only when every one of its tickets is complete in this run or was closed before this run. Resolve a done spec the same way. A ticket that stays open keeps the spec open. If the tracker closes work through PRs, pass the complete tickets to open-pr in shared step 7 as the PR's closing references instead, and add the spec only when it is done. At End state commit, those tickets and the spec stay open.
 
@@ -114,4 +114,4 @@ Add no cleanup step. omp parks and reclaims the implementer workspaces. Leave th
 
 ## Reply
 
-Report the requested and reached End state, the integration branch, commits (one per ticket, then the review-fix commit), PR URLs and observed status, each ticket's outcome (resolved, open with its reason, or closing through the PR), the spec's outcome (resolved, closing through the PR, or open with the tickets that keep it open), checks and live proof with evidence paths, Safety findings, open prune-comments work, stopped slices with missing red evidence and their held patch paths, failed merges, unanswered questions with their held patch paths, worker patch paths, and every skipped step or blocker. If a decision-trail is open, include its log and Attention result. Do not claim a PR, readiness, merge, or closed ticket that the chain did not observe.
+Print the flow's page path first. Then report the requested and reached End state, the integration branch, commits (one per ticket, then the review-fix commit), PR URLs and observed status, each ticket's outcome (resolved, open with its reason, or closing through the PR), the spec's outcome (resolved, closing through the PR, or open with the tickets that keep it open), checks and live proof with evidence paths, Safety findings, open prune-comments work, stopped slices with missing red evidence and their held patch paths, failed merges, unanswered questions with their held patch paths, worker patch paths, and every skipped step or blocker. If a decision-trail is open, include its log and Attention result. Do not claim a PR, readiness, merge, or closed ticket that the chain did not observe.

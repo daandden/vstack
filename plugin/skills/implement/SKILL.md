@@ -30,4 +30,4 @@ After all tickets and independent slices are finished, run shared step 3b, then 
 
 ## Reply
 
-Report the requested and reached End state, commits, PR URLs and observed status, checks and live proof with evidence paths, Safety findings, open prune-comments work, stopped slices with missing red evidence, and every skipped step or blocker. If a decision-trail is open, include its log and Attention result. Do not claim a PR, readiness, or merge that the chain did not observe.
+Print the flow's page path first. Then report the requested and reached End state, commits, PR URLs and observed status, checks and live proof with evidence paths, Safety findings, open prune-comments work, stopped slices with missing red evidence, and every skipped step or blocker. If a decision-trail is open, include its log and Attention result. Do not claim a PR, readiness, or merge that the chain did not observe.
