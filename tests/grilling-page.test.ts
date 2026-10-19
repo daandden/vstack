@@ -411,3 +411,153 @@ test("a rename that would leave an SVG unresolved exits 1 and leaves the old fol
   expect(existsSync(join(dir, "vstack-151"))).toBe(false);
   for (const [f, text] of Object.entries(files)) expect(readFileSync(join(old, f), "utf8")).toBe(text);
 });
+
+const stage = (id: string, order: number, extra: object = {}) => ({ type: "stage", id, skill: "grill-with-docs", title: `Stage ${id}`, state: "in-progress", order, ...extra });
+
+test.each([
+  ["a state that is not a Stage state", { state: "done" }, "state must be not-started, in-progress, or finished"],
+  ["no skill", { skill: undefined }, "skill must be a non-empty string"],
+  ["an empty title", { title: " " }, "title must be a non-empty string"],
+  ["an order that is not a whole number", { order: 1.5 }, "order must be a whole number of 1 or more"],
+])("a stage with %s is refused, names the record, and writes nothing", (_, extra, problem) => {
+  expect(append(PAGE).code).toBe(0);
+  const before = readFileSync(state, "utf8");
+  const pageBefore = readFileSync(page, "utf8");
+  const r = append(stage("grill", 1, extra));
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain(`stage grill: ${problem}`);
+  expect(readFileSync(state, "utf8")).toBe(before);
+  expect(readFileSync(page, "utf8")).toBe(pageBefore);
+});
+
+test("a round that names an unknown stage is refused, names the round, and writes nothing", () => {
+  expect(append(PAGE, stage("grill", 1)).code).toBe(0);
+  const before = readFileSync(state, "utf8");
+  const r = append({ ...ROUND, stage: "spec" }, question("s1-r1-q1", 1));
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain("round s1-r1: stage spec does not exist");
+  expect(readFileSync(state, "utf8")).toBe(before);
+  expect(readFileSync(page, "utf8")).not.toContain("Title 1?");
+});
+
+/** The tab strip as [panel id, label, selected] in order. */
+const tabs = (html: string) => [...html.matchAll(/<a role="tab"[^>]*aria-selected="(true|false)"[^>]*href="#([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)].map((m) => [m[2], m[3].replace(/<[^>]+>/g, ""), m[1] === "true"]);
+/** The HTML of one tab panel, up to the next panel or the end of the page body. */
+const panel = (html: string, id: string) => {
+  const head = `id="${id}" role="tabpanel"`;
+  const start = html.indexOf(head);
+  if (start < 0) return "";
+  const next = html.indexOf('role="tabpanel"', start + head.length);
+  return html.slice(start, next < 0 ? html.indexOf("</main>") : next);
+};
+const SPEC_ROUND = { type: "round", id: "s2-r1", session: 2, round: 2, stage: "spec", time: "2026-10-10T09:00:00+07:00" };
+
+test("the page opens on an Overview tab, then has one tab per Stage in order, each with its own rounds", () => {
+  const r = append(PAGE, stage("spec", 2, { title: "Write the spec", state: "not-started" }), stage("grill", 1, { title: "Grill the plan" }), { ...ROUND, stage: "grill" }, question("s1-r1-q1", 1), SPEC_ROUND, { ...question("s2-r1-q1", 1), round: "s2-r1", title: "Spec question?" });
+  expect(r.code).toBe(0);
+  const html = readFileSync(page, "utf8");
+  expect(tabs(html)).toEqual([["overview", "Overview", true], ["stage-grill", "Grill the plan", false], ["stage-spec", "Write the spec", false]]);
+  expect(html.indexOf('id="overview" role="tabpanel"')).toBeLessThan(html.indexOf('id="stage-grill" role="tabpanel"'));
+  expect(panel(html, "stage-grill")).toContain('id="q-s1-r1-q1"');
+  expect(panel(html, "stage-grill")).not.toContain("Spec question?");
+  expect(panel(html, "stage-spec")).toContain('id="q-s2-r1-q1"');
+});
+
+/** One Stage's entry on the Overview. */
+const overviewItem = (html: string, id: string) => panel(html, "overview").split('<li class="stage"').find((p) => p.includes(`href="#stage-${id}"`)) ?? "";
+
+test("the Overview shows each Stage's state, its decisions, and its open questions, linked into the tabs", () => {
+  expect(
+    append(
+      PAGE,
+      stage("grill", 1, { title: "Grill the plan", state: "finished" }),
+      stage("spec", 2, { title: "Write the spec", skill: "to-spec" }),
+      stage("tickets", 3, { title: "Break into tickets", state: "not-started" }),
+      { ...ROUND, stage: "grill" },
+      question("s1-r1-q1", 1),
+      question("s1-r1-q2", 2),
+      SPEC_ROUND,
+      { ...question("s2-r1-q1", 1), round: "s2-r1", title: "Answered spec question?" },
+      { ...question("s2-r1-q2", 2), round: "s2-r1", title: "Open spec question?" },
+      { ...question("s2-r1-q3", 3), round: "s2-r1", title: "Timed-out spec question?" },
+    ).code,
+  ).toBe(0);
+  expect(run(["answer", state, "s1-r1-q1=A", "s1-r1-q2=B", "s2-r1-q1=A", "s2-r1-q3=unanswered"]).code).toBe(0);
+  const decisions = [{ question: "s1-r1-q2", text: "Two is true." }, { question: "s1-r1-q1", text: "One is true." }];
+  expect(append({ type: "close", id: "c1", session: 1, decisions, answer: "Not yet" }, { type: "close", id: "c2", session: 1, decisions: [decisions[1], { ...decisions[0], text: "Two is now true." }], answer: "Yes" }).code).toBe(0);
+  const html = readFileSync(page, "utf8");
+
+  const ids = [...panel(html, "overview").matchAll(/<li class="stage"[\s\S]*?href="#stage-([^"]+)"/g)].map((m) => m[1]);
+  expect(ids).toEqual(["grill", "spec", "tickets"]);
+
+  const grill = overviewItem(html, "grill");
+  expect(grill).toContain('data-state="finished"');
+  expect(grill).toContain("Finished");
+  expect(grill).toContain("grill-with-docs");
+  expect(grill).toMatch(/<a href="#q-s1-r1-q1">Q1<\/a>: One is true\.[\s\S]*<a href="#q-s1-r1-q2">Q2<\/a>: Two is now true\./);
+  expect(grill).not.toContain("Two is true.");
+  expect(grill).toContain("No open questions.");
+
+  const spec = overviewItem(html, "spec");
+  expect(spec).toContain('data-state="in-progress"');
+  expect(spec).toContain("In progress");
+  expect(spec).toContain("to-spec");
+  expect(spec).toContain("No decisions yet.");
+  expect(spec).toMatch(/<a href="#q-s2-r1-q2">Q2<\/a>: Open spec question\?[\s\S]*<a href="#q-s2-r1-q3">Q3<\/a>: Timed-out spec question\?/);
+  expect(spec).not.toContain("Answered spec question?");
+
+  const tickets = overviewItem(html, "tickets");
+  expect(tickets).toContain('data-state="not-started"');
+  expect(tickets).toContain("Not started");
+  expect(panel(html, "stage-tickets")).toContain("No rounds yet.");
+
+  expect(tabs(html).map(([id]) => id)).toEqual(["overview", "stage-grill", "stage-spec", "stage-tickets"]);
+  expect(html).toMatch(/<a role="tab"[^>]*href="#stage-grill"><span class="dot" data-state="finished"><\/span>Grill the plan<\/a>/);
+});
+
+test("a later stage record with the same id replaces the earlier one", () => {
+  expect(append(PAGE, stage("grill", 1, { title: "Grill the plan" }), { ...ROUND, stage: "grill" }, question("s1-r1-q1", 1)).code).toBe(0);
+  expect(overviewItem(readFileSync(page, "utf8"), "grill")).toContain('data-state="in-progress"');
+  expect(append(stage("grill", 1, { title: "Grill the plan again", state: "finished" })).code).toBe(0);
+  const html = readFileSync(page, "utf8");
+  expect(overviewItem(html, "grill")).toContain('data-state="finished"');
+  expect(tabs(html)).toEqual([["overview", "Overview", true], ["stage-grill", "Grill the plan again", false]]);
+  expect(readFileSync(state, "utf8").trim().split("\n")).toHaveLength(5);
+});
+
+test("a state file from before Stages renders as one Stage, and a Stage added later gets its own tab", () => {
+  const close = { type: "close", id: "c1", session: 1, decisions: [{ question: "s1-r1-q1", text: "One is true." }], answer: "Yes" };
+  writeFileSync(state, `${lines(PAGE, ROUND, question("s1-r1-q1", 1), close)}\n`);
+  const r = run(["render", state]);
+  expect(r.code).toBe(0);
+  expect(r.stderr).toBe("");
+  let html = readFileSync(page, "utf8");
+  expect(tabs(html)).toEqual([["overview", "Overview", true], ["stage-_grilling", "Grilling", false]]);
+  expect(panel(html, "stage-_grilling")).toMatch(/id="q-s1-r1-q1"[\s\S]*id="close-c1"/);
+  expect(overviewItem(html, "_grilling")).toContain('data-state="finished"');
+  expect(overviewItem(html, "_grilling")).toContain('<a href="#q-s1-r1-q1">Q1</a>: One is true.');
+
+  expect(append(stage("spec", 1), SPEC_ROUND, { ...question("s2-r1-q1", 1), round: "s2-r1" }).code).toBe(0);
+  html = readFileSync(page, "utf8");
+  expect(tabs(html).map(([id]) => id)).toEqual(["overview", "stage-_grilling", "stage-spec"]);
+  expect(panel(html, "stage-_grilling")).not.toContain('id="q-s2-r1-q1"');
+  expect(panel(html, "stage-spec")).toContain('id="q-s2-r1-q1"');
+});
+
+test("each tab's keyboard stops have their links in that tab's Q row, and every link on the page has its target", () => {
+  const close = { type: "close", id: "c1", session: 1, decisions: [{ question: "s1-r1-q1", text: "One is true." }] };
+  const crossLink = { description: "Builds on [the grill's Q1](#q-s1-r1-q1)." };
+  expect(append(PAGE, stage("grill", 1), stage("spec", 2), { ...ROUND, stage: "grill" }, question("s1-r1-q1", 1), close, SPEC_ROUND, { ...question("s2-r1-q1", 1, crossLink), round: "s2-r1" }).code).toBe(0);
+  const html = readFileSync(page, "utf8");
+  const stopsIn = (id: string) => [...panel(html, id).matchAll(/id="([^"]+)"[^>]*data-stop/g)].map((m) => m[1]);
+  const qrow = (id: string) => [...(html.match(new RegExp(`<nav class="qnav"[^>]*data-tab="${id}"[\\s\\S]*?</nav>`))?.[0] ?? "").matchAll(/data-for="([^"]+)"/g)].map((m) => m[1]);
+  expect(stopsIn("overview")).toEqual([]);
+  expect(stopsIn("stage-grill")).toEqual(["q-s1-r1-q1", "close-c1"]);
+  expect(qrow("stage-grill")).toEqual(["q-s1-r1-q1", "close-c1"]);
+  expect(stopsIn("stage-spec")).toEqual(["q-s2-r1-q1"]);
+  expect(qrow("stage-spec")).toEqual(["q-s2-r1-q1"]);
+  expect(panel(html, "stage-spec")).toContain('<a href="#q-s1-r1-q1">the grill\'s Q1</a>');
+  const ids = new Set([...html.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]));
+  const targets = [...html.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]);
+  expect(targets.filter((t) => !ids.has(t))).toEqual([]);
+});

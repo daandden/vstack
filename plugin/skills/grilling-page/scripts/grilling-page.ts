@@ -121,8 +121,11 @@ function checkVisual(v: unknown, where: string): Visual {
   return vis;
 }
 
+const STATE_LABELS: Record<string, string> = { "not-started": "Not started", "in-progress": "In progress", finished: "Finished" };
+const STAGE_STATES = Object.keys(STATE_LABELS);
+
 /** `records` holds the latest record of each id, in the order the ids first appear. */
-type State = { page: Rec; order: Rec[]; questions: Map<string, Rec>; answers: Map<string, Rec>; rounds: Map<string, Rec>; flow?: Rec; records: Rec[] };
+type State = { page: Rec; order: Rec[]; questions: Map<string, Rec>; answers: Map<string, Rec>; rounds: Map<string, Rec>; stages: Rec[]; flow?: Rec; records: Rec[] };
 
 /** Checks every record. `folder` is the basename of the state file's folder, which a flow record's key must end. */
 function check(lines: Line[], folder: string): State {
@@ -136,6 +139,7 @@ function check(lines: Line[], folder: string): State {
   }
   const all = first.map((id) => latest.get(id)!);
   const rounds = new Map<string, Rec>();
+  const stages = new Map<string, Rec>();
   const questions = new Map<string, Rec>();
   const answers = new Map<string, Rec>();
   let page: Rec | undefined;
@@ -149,9 +153,17 @@ function check(lines: Line[], folder: string): State {
         str(r, "crumb", where, true);
         page = r;
         break;
+      case "stage":
+        str(r, "skill", where);
+        str(r, "title", where);
+        if (!STAGE_STATES.includes(r.state)) fail(where, `state must be ${STAGE_STATES.slice(0, -1).join(", ")}, or ${STAGE_STATES.at(-1)}`);
+        int(r, "order", where);
+        stages.set(r.id, r);
+        break;
       case "round":
         int(r, "session", where);
         int(r, "round", where);
+        str(r, "stage", where, true);
         if (typeof r.time !== "string" || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(r.time)) fail(where, "time must be an ISO timestamp such as 2026-10-09T15:00:00+07:00");
         rounds.set(r.id, r);
         order.push(r);
@@ -226,10 +238,11 @@ function check(lines: Line[], folder: string): State {
         break;
       }
       default:
-        fail(where, "type must be page, round, question, answer, close, or flow");
+        fail(where, "type must be page, stage, round, question, answer, close, or flow");
     }
   }
   if (!page) fail("state", "needs one page record");
+  for (const r of rounds.values()) if (r.stage !== undefined && !stages.has(r.stage)) fail(`round ${r.id}`, `stage ${r.stage} does not exist`);
   for (const q of questions.values()) if (!rounds.has(q.round)) fail(`question ${q.id}`, `round ${q.round} does not exist`);
   for (const a of answers.values()) {
     const q = questions.get(a.question);
@@ -250,7 +263,7 @@ function check(lines: Line[], folder: string): State {
     }
     for (const [n] of latest) if (!named.has(n)) fail(`close ${c.id}`, `Q${n} has no decision`);
   }
-  return { page: page!, order, questions, answers, rounds, flow, records: all.map((l) => l.rec) };
+  return { page: page!, order, questions, answers, rounds, stages: [...stages.values()], flow, records: all.map((l) => l.rec) };
 }
 
 /** The latest ask of each Q number in one session, by Q number, among the rounds in `order`. */
@@ -356,42 +369,78 @@ ${options}
 </article>`;
 }
 
+/** Rounds with no stage, from before Stages, render in this one implicit Stage. Its id cannot be a record id. */
+const IMPLICIT_STAGE = "_grilling";
+
 function render(s: State, baseDir: string): string {
-  const nav: string[] = [];
-  const body: string[] = [`<header class="page-head">${s.page.crumb ? `<p class="crumb">${text(s.page.crumb)}</p>` : ""}<h1>${text(s.page.title)}</h1></header>`];
+  // A round renders in its stage's tab, and a close in the tab of its session's last round before it.
+  const stageOf = new Map<Rec, string>();
+  const sessionStage = new Map<number, string>();
+  for (const item of s.order) {
+    if (item.type === "round") sessionStage.set(item.session, item.stage ?? IMPLICIT_STAGE);
+    stageOf.set(item, sessionStage.get(item.session)!);
+  }
+  const stages = [...s.stages].sort((a, b) => a.order - b.order);
+  if (s.order.some((r) => r.type === "round" && r.stage === undefined)) stages.unshift({ type: "stage", id: IMPLICIT_STAGE, title: "Grilling" });
   const questionsOf = (roundId: string) => [...s.questions.values()].filter((q) => q.round === roundId);
   const lastClose = new Map<number, string>();
   for (const r of s.order) if (r.type === "close") lastClose.set(r.session, r.id);
-  for (const item of s.order) {
-    if (item.type === "round") {
-      const qs = questionsOf(item.id);
-      const head = `<header><h2 id="round-${item.id}">Session ${item.session}, round ${item.round}<time datetime="${esc(item.time)}">${formatTime(item.time)}</time></h2></header>`;
-      body.push(`<section class="round" aria-labelledby="round-${item.id}">\n${head}\n${qs.map((q) => questionHtml(q, s.answers.get(q.id), baseDir)).join("\n")}\n</section>`);
-      if (qs.length) {
-        if (nav.length) nav.push(`<span class="sep" aria-hidden="true"></span>`);
-        for (const q of qs) nav.push(`<a href="#q-${q.id}" data-for="q-${q.id}"><span class="dot" data-state="${stateOf(s.answers.get(q.id))}"></span>Q${q.q}</a>`);
-      }
-    } else {
-      const qnum = (id: string) => s.questions.get(id)!.q;
-      const decisions = [...(item.decisions as Rec[])].sort((a, b) => qnum(a.question) - qnum(b.question));
-      const bullets = [
-        ...decisions.map((dec) => `<li><a href="#q-${dec.question}">Q${qnum(dec.question)}</a>: ${text(dec.text)}</li>`),
-        ...((item.extra as string[] | undefined) ?? []).map((e) => `<li>${text(e)}</li>`),
-      ].join("\n");
-      const gate = item.answer ? (item.note ? `${item.answer}. Note: "${item.note}"` : `${item.answer}.`) : "Waiting for your answer.";
-      const latest = lastClose.get(item.session) === item.id;
-      body.push(`<section class="summary" id="close-${item.id}" aria-labelledby="close-${item.id}-title"${latest ? " data-stop" : ""}>
+  const qnum = (id: string) => s.questions.get(id)!.q;
+  const decisionsOf = (close: Rec) => [...(close.decisions as Rec[])].sort((a, b) => qnum(a.question) - qnum(b.question)).map((dec) => `<li><a href="#q-${dec.question}">Q${qnum(dec.question)}</a>: ${text(dec.text)}</li>`);
+
+  const tabs = [`<a role="tab" id="tab-overview" aria-selected="true" aria-controls="overview" href="#overview">Overview</a>`];
+  const qrows: string[] = [];
+  const overview: string[] = [];
+  const panels: string[] = [];
+  for (const st of stages) {
+    const pid = `stage-${st.id}`;
+    const nav: string[] = [];
+    const body: string[] = [];
+    const items = s.order.filter((i) => stageOf.get(i) === st.id);
+    for (const item of items) {
+      if (item.type === "round") {
+        const qs = questionsOf(item.id);
+        const head = `<header><h2 id="round-${item.id}">Session ${item.session}, round ${item.round}<time datetime="${esc(item.time)}">${formatTime(item.time)}</time></h2></header>`;
+        body.push(`<section class="round" aria-labelledby="round-${item.id}">\n${head}\n${qs.map((q) => questionHtml(q, s.answers.get(q.id), baseDir)).join("\n")}\n</section>`);
+        if (qs.length) {
+          if (nav.length) nav.push(`<span class="sep" aria-hidden="true"></span>`);
+          for (const q of qs) nav.push(`<a href="#q-${q.id}" data-for="q-${q.id}"><span class="dot" data-state="${stateOf(s.answers.get(q.id))}"></span>Q${q.q}</a>`);
+        }
+      } else {
+        const bullets = [...decisionsOf(item), ...((item.extra as string[] | undefined) ?? []).map((e) => `<li>${text(e)}</li>`)].join("\n");
+        const gate = item.answer ? (item.note ? `${item.answer}. Note: "${item.note}"` : `${item.answer}.`) : "Waiting for your answer.";
+        const latest = lastClose.get(item.session) === item.id;
+        body.push(`<section class="summary" id="close-${item.id}" aria-labelledby="close-${item.id}-title"${latest ? " data-stop" : ""}>
 <h2 id="close-${item.id}-title">Summary of session ${item.session}</h2>
 <ul class="decisions">
 ${bullets}
 </ul>
 <p class="answer"><span class="label">Closing gate</span><span>${text(gate)}</span></p>
 </section>`);
-      if (latest) nav.push(`<span class="sep" aria-hidden="true"></span><a href="#close-${item.id}" data-for="close-${item.id}">Summary</a>`);
+        if (latest) nav.push(`<span class="sep" aria-hidden="true"></span><a href="#close-${item.id}" data-for="close-${item.id}">Summary</a>`);
+      }
     }
+    // An implicit Stage is finished once its last record is an answered close.
+    const last = items.at(-1);
+    const state = st.state ?? (last?.type === "close" && last.answer ? "finished" : "in-progress");
+    const dot = `<span class="dot" data-state="${state}"></span>`;
+    const decisions = items.filter((i) => i.type === "close" && lastClose.get(i.session) === i.id).flatMap(decisionsOf);
+    const sessions = new Set(items.filter((i) => i.type === "round").map((r) => r.session as number));
+    const open = [...sessions].flatMap((n) => [...latestBySession(items, s.questions, n).values()]).filter((q) => stateOf(s.answers.get(q.id)) !== "answered");
+    const openItems = open.map((q) => `<li><a href="#q-${q.id}">Q${q.q}</a>: ${text(q.title)}</li>`);
+    tabs.push(`<a role="tab" id="tab-${pid}" aria-selected="false" aria-controls="${pid}" href="#${pid}">${dot}${text(st.title)}</a>`);
+    if (nav.length) qrows.push(`<nav class="qnav" aria-label="Questions in ${esc(st.title)}" data-tab="${pid}" hidden>${nav.join("")}</nav>`);
+    overview.push(`<li class="stage" data-state="${state}">
+<h3><a href="#${pid}">${dot}${text(st.title)}</a><span class="meta"><span class="state">${STATE_LABELS[state]}</span>${st.skill ? `<span>${text(st.skill)}</span>` : ""}</span></h3>
+<p class="label">Decisions</p>${decisions.length ? `<ul>${decisions.join("")}</ul>` : `<p class="empty">No decisions yet.</p>`}
+<p class="label">Open questions</p>${openItems.length ? `<ul>${openItems.join("")}</ul>` : `<p class="empty">No open questions.</p>`}
+</li>`);
+    panels.push(`<section class="tab" id="${pid}" role="tabpanel" aria-labelledby="tab-${pid}" hidden>\n${body.join("\n") || `<p class="empty">No rounds yet.</p>`}\n</section>`);
   }
-  const navHtml = nav.length ? `<nav class="qnav" aria-label="Questions">${nav.join("")}</nav>` : "";
-  return readFileSync(TEMPLATE, "utf8").replace("{{title}}", esc(s.page.title)).replace("<!-- NAV -->", navHtml).replace("<!-- BODY -->", body.join("\n"));
+  const head = `<header class="page-head">${s.page.crumb ? `<p class="crumb">${text(s.page.crumb)}</p>` : ""}<h1>${text(s.page.title)}</h1></header>`;
+  const overviewPanel = `<section class="tab" id="overview" role="tabpanel" aria-labelledby="tab-overview">\n${overview.length ? `<ol class="stages">\n${overview.join("\n")}\n</ol>` : `<p class="empty">No Stage yet.</p>`}\n</section>`;
+  const bar = `<header class="bar">\n<div class="tabs" role="tablist" aria-label="Stages">${tabs.join("")}</div>\n${qrows.join("\n")}\n</header>`;
+  return readFileSync(TEMPLATE, "utf8").replace("{{title}}", esc(s.page.title)).replace("<!-- NAV -->", bar).replace("<!-- BODY -->", [head, overviewPanel, ...panels].join("\n"));
 }
 
 /** Writes flow.json from the flow record, so a later Stage can match the flow by any of its values, and makes figures/. */

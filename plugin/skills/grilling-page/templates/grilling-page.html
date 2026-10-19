@@ -23,12 +23,13 @@
       --blue: oklch(76.6% 0.111 259.9);
       --lavender: oklch(81.7% 0.091 277.3);
       --yellow: oklch(91.9% 0.070 86.5);
+      --peach: oklch(82.4% 0.101 52.6);
       --green: oklch(85.8% 0.109 142.7);
       --red: oklch(75.6% 0.130 2.8);
       --line: color-mix(in oklch, var(--surface1) 60%, transparent);
       scrollbar-gutter: stable;
-      /* The Q row's height plus a gap; the script sets the measured value, since the row wraps on a narrow pane. */
-      --nav-clearance: 3.5rem;
+      /* The tab and Q rows' height plus a gap; the script sets the measured value, since the rows wrap on a narrow pane. */
+      --nav-clearance: 5rem;
       scroll-padding-block-start: var(--nav-clearance);
       /* Three font sizes only: title, body, small. */
       --fs-title: 0.9375rem;
@@ -42,6 +43,11 @@
     [data-state="answered"] { --state: var(--yellow); }
     [data-state="unanswered"] { --state: var(--red); }
     [data-state="open"] { --state: var(--overlay0); }
+    /* A Stage's state: green when finished, peach while in progress, grey before it starts. */
+    [data-state="finished"] { --state: var(--green); }
+    [data-state="in-progress"] { --state: var(--peach); }
+    [data-state="not-started"] { --state: var(--overlay0); }
+    [hidden] { display: none !important; }
     /* Same font and metrics as the Tern terminal: the font's own line height and letter width, no extra spacing. */
     body { margin: 0; min-block-size: 100svh; background: var(--base); color: var(--text); font: var(--fs-body)/normal "JetBrainsMono Nerd Font Mono", "JetBrainsMono Nerd Font", "JetBrains Mono", ui-monospace, monospace; letter-spacing: 0; }
     h1, h2, h3, h4 { margin-block: 0; color: var(--text); text-wrap: balance; font-size: var(--fs-body); line-height: normal; }
@@ -55,11 +61,14 @@
     pre { white-space: pre-wrap; font-size: var(--fs-small); }
     svg, img { display: block; max-inline-size: 100%; block-size: auto; }
 
-    .qnav { position: sticky; inset-block-start: 0; z-index: 1; display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; align-items: center; padding-block: 0.375rem; padding-inline: 1.25rem; background: var(--mantle); border-block-end: 1px solid var(--line); font-size: var(--fs-small); }
-    .qnav a { display: inline-flex; gap: 0.375rem; align-items: center; padding-inline: 0.25rem; border-radius: 0.25rem; color: var(--subtext1); text-decoration: none; font-weight: 600; font-variant-numeric: tabular-nums; }
-    .qnav a[aria-current="true"] { background: var(--surface1); color: var(--mauve); }
+    /* The tab row and the open tab's Q row stay at the top. */
+    .bar { position: sticky; inset-block-start: 0; z-index: 1; background: var(--mantle); border-block-end: 1px solid var(--line); font-size: var(--fs-small); }
+    .tabs, .qnav { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; align-items: center; padding-block: 0.375rem; padding-inline: 1.25rem; }
+    .qnav { border-block-start: 1px solid var(--line); }
+    .tabs a, .qnav a { display: inline-flex; gap: 0.375rem; align-items: center; padding-inline: 0.25rem; border-radius: 0.25rem; color: var(--subtext1); text-decoration: none; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .tabs a[aria-selected="true"], .qnav a[aria-current="true"] { background: var(--surface1); color: var(--mauve); }
     .qnav .sep { inline-size: 1px; block-size: 1rem; background: var(--surface1); }
-    .qnav .keys { margin-inline-start: auto; color: var(--overlay0); }
+    .tabs .keys { margin-inline-start: auto; color: var(--overlay0); }
     .dot { flex: none; inline-size: 0.4375rem; block-size: 0.4375rem; border-radius: 50%; background: var(--state, var(--overlay0)); }
 
     main { display: grid; gap: 1.5rem; max-inline-size: 60rem; margin-inline: auto; padding-block: 1rem; padding-inline: 1.25rem; }
@@ -69,7 +78,21 @@
     .crumb, time, .label, .why { font-size: var(--fs-small); }
     h1 { font-size: var(--fs-title); font-weight: 700; }
 
-    .round { display: grid; gap: 1.5rem; }
+    .tab, .round { display: grid; gap: 1.5rem; }
+    .empty { color: var(--subtext0); }
+
+    /* The Overview lists each Stage with its state, decisions, and open questions. */
+    .stages { display: grid; gap: 1rem; padding-inline-start: 0; list-style: none; }
+    .stage { display: grid; gap: 0.375rem; padding-block-end: 0.75rem; border-block-end: 1px solid var(--line); }
+    .stage h3 { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; align-items: baseline; }
+    .stage h3 a { display: inline-flex; gap: 0.5rem; align-items: center; color: var(--mauve); text-decoration: none; }
+    .stage .meta { display: inline-flex; gap: 0.75rem; font-size: var(--fs-small); font-weight: 400; color: var(--subtext0); }
+    .stage .meta .state { color: var(--state); font-weight: 600; }
+    .stage .label { font-weight: 600; }
+    .stage ul { display: grid; gap: 0.125rem; padding-inline-start: 1.25rem; }
+    .stage li::marker { color: var(--overlay0); }
+    .stage li a { font-weight: 600; text-decoration: none; }
+
     .round > header { display: grid; gap: 0.125rem; padding-block-start: 0.5rem; border-block-start: 1px solid var(--surface1); }
     h2 { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; align-items: baseline; font-size: var(--fs-small); font-weight: 650; text-transform: uppercase; color: var(--subtext0); }
     h2 time { font-weight: 400; text-transform: none; font-variant-numeric: tabular-nums; }
@@ -121,21 +144,45 @@
 <!-- BODY -->
   </main>
   <script>
-    // j or Down goes to the next question or summary, k or Up to the previous one.
-    // The Q row highlights the current stop, also after a mouse scroll or a link click.
-    const nav = document.querySelector(".qnav");
-    const stops = [...document.querySelectorAll("[data-stop]")];
-    const pad = () => (nav ? nav.offsetHeight : 0) + 8;
-    if (nav && stops.length) nav.insertAdjacentHTML("beforeend", '<span class="keys">j/k or ↓/↑</span>');
-    // The Q row wraps with the pane width and the web font, so its height is measured whenever it changes.
+    // h or Left opens the previous tab, l or Right the next one. A link into another tab opens that tab.
+    // j or Down goes to the next question or summary in the open tab, k or Up to the previous one.
+    // The open tab's Q row highlights the current stop, also after a mouse scroll or a link click.
+    const bar = document.querySelector(".bar");
+    const tabs = [...document.querySelectorAll('[role="tab"]')];
+    const panels = tabs.map((t) => document.getElementById(t.getAttribute("aria-controls")));
+    const pad = () => (bar ? bar.offsetHeight : 0) + 8;
+    document.querySelector(".tabs")?.insertAdjacentHTML("beforeend", '<span class="keys">h/l or ←/→ tabs, j/k or ↓/↑ questions</span>');
+    // The rows wrap with the pane width and the web font, so their height is measured whenever it changes.
     const setClearance = () => document.documentElement.style.setProperty("--nav-clearance", `${pad()}px`);
-    if (nav) new ResizeObserver(setClearance).observe(nav);
+    if (bar) new ResizeObserver(setClearance).observe(bar);
     setClearance();
+    let open = 0;
+    let stops = [];
     let current = -1;
     function mark(i) {
       current = i;
       const id = stops[i]?.id;
       document.querySelectorAll(".qnav a[data-for]").forEach((a) => a.setAttribute("aria-current", String(a.dataset.for === id)));
+    }
+    function show(t) {
+      open = t;
+      tabs.forEach((tab, n) => tab.setAttribute("aria-selected", String(n === t)));
+      panels.forEach((p, n) => { p.hidden = n !== t; });
+      document.querySelectorAll(".qnav[data-tab]").forEach((q) => { q.hidden = q.dataset.tab !== panels[t].id; });
+      stops = [...panels[t].querySelectorAll("[data-stop]")];
+      mark(-1);
+    }
+    function openTab(t) {
+      show(t);
+      history.replaceState(null, "", `#${panels[t].id}`);
+      scrollTo({ top: 0, behavior: "instant" });
+    }
+    // Opens the tab that holds the element with this id and returns the element.
+    function reveal(id) {
+      const el = id ? document.getElementById(id) : null;
+      const t = el ? panels.findIndex((p) => p.contains(el)) : -1;
+      if (t >= 0 && t !== open) show(t);
+      return t >= 0 ? el : null;
     }
     // At the page end the last stops cannot scroll up to the Q row.
     // There a stop that j, k or a Q row link picked stays current while it is on screen.
@@ -151,18 +198,40 @@
       stops[i].scrollIntoView({ block: "start", behavior: "instant" });
       mark(i);
     }
+    // A tab link opens its tab at the top. Any other link first opens the tab of its target, so the browser can scroll to it.
     addEventListener("click", (e) => {
-      const id = e.target.closest?.('a[href^="#"]')?.getAttribute("href").slice(1);
-      const i = id ? stops.findIndex((s) => s.id === id) : -1;
+      const a = e.target.closest?.('a[href^="#"]');
+      if (!a) return;
+      const t = tabs.indexOf(a);
+      if (t >= 0) {
+        e.preventDefault();
+        openTab(t);
+        return;
+      }
+      const id = decodeURIComponent(a.getAttribute("href").slice(1));
+      reveal(id);
+      const i = stops.findIndex((s) => s.id === id);
       if (i >= 0) mark(i);
     });
+    // The URL's #id, on load or on Back and Forward, opens its tab, scrolls to it, and marks it when it is a stop.
+    function goToHash() {
+      const el = reveal(decodeURIComponent(location.hash.slice(1)));
+      if (!el) return;
+      el.scrollIntoView({ block: "start", behavior: "instant" });
+      if (stops.includes(el)) mark(stops.indexOf(el));
+    }
+    addEventListener("hashchange", goToHash);
     addEventListener("scroll", markFromScroll, { passive: true });
     addEventListener("keydown", (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
-      if (e.key === "j" || e.key === "ArrowDown") { e.preventDefault(); jump(current + 1); }
+      if ((e.key === "h" || e.key === "ArrowLeft") && open > 0) { e.preventDefault(); openTab(open - 1); }
+      else if ((e.key === "l" || e.key === "ArrowRight") && open < tabs.length - 1) { e.preventDefault(); openTab(open + 1); }
+      else if (!stops.length) return;
+      else if (e.key === "j" || e.key === "ArrowDown") { e.preventDefault(); jump(current + 1); }
       else if (e.key === "k" || e.key === "ArrowUp") { e.preventDefault(); jump(Math.max(current - 1, 0)); }
     });
-    markFromScroll();
+    show(0);
+    goToHash();
   </script>
 </body>
 </html>
