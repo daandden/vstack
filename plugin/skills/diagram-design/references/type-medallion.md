@@ -21,7 +21,7 @@ tiers:                                # 3..6 tier columns, ordered left → righ
   - { name: "Anonymized", bucket: "anon-bucket",       style: "default",
       fields: { tool: "Trino INSERT",              format: "Iceberg · partitioned", writer: "Data Engineer",
                 example: ["no name · address", "stable household ID"] } }
-  - { name: "Staging",    bucket: "staging-bucket",    style: "default",  color: "#f9e2af",   # yellow — analytical working zone
+  - { name: "Staging",    bucket: "staging-bucket",    style: "default",  color: "#f9e2af",
       fields: { tool: "Trino · JupyterHub",        format: "Iceberg · cleaned",     writer: "Data Scientist",
                 example: ["weighted records", "harmonised codings"] } }
   - { name: "Aggregated", bucket: "aggregated-bucket", style: "focal",  focal: true,

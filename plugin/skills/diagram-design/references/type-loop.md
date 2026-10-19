@@ -170,7 +170,7 @@ SKILL.md §6 applies in full except for the two Loop-specific connector primitiv
 
 ## 5. Colors
 
-Every role takes its Mocha value from [`style-guide.md`](style-guide.md); do not invent a second palette. The hub keeps the one solid `ink` fill, the optional focal station keeps `accent`, the ring arrows stay neutral and solid, and the write-backs stay quieter and dashed.
+Every role takes its Mocha value from [`style-guide.md`](style-guide.md). Do not invent a second palette. The hub keeps the one solid `ink` fill, the optional focal station keeps `accent`, the ring arrows stay neutral and solid, and the write-backs stay quieter and dashed.
 
 ---
 

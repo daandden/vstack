@@ -86,11 +86,13 @@ No script checks contrast. The table gives WCAG 2.x ratios against `paper` (`#1e
 
 The targets are 4.5:1 for regular text, 3:1 for large text (24px+, or 18.7px+ at weight 600+), and 3:1 for lines, arrows, borders, and data marks. Every value clears them. On `paper-2` and inside `accent-tint` boxes every ratio drops, so measure text placed there against that surface.
 
-### Series tokens (multi-series chart types only)
+### Series tokens (charts and data-type chips)
 
 The `series-*` rows above are for chart types that must distinguish several overlapping entities (currently: **radar**). The "1-focal" rule still holds: `accent` is reserved for the focal series, and the series tokens cover the rest.
 
-Fills sit at `0.22` opacity; strokes use the full color. **Don't backfill these tokens to non-chart types**: architecture, swimlane, and the other schematic types keep the `ink`, `muted`, and `soft` roles. The series tokens are opt-in for diagrams where overlapping shapes need distinguishable color, not a license to add color elsewhere.
+In a chart, fills sit at `0.22` opacity and strokes use the full color.
+
+Data-flow and process figures are the one non-chart exception. Their data-type chips take one fixed series token per payload code at full color, as §8 of [`type-data-flow.md`](type-data-flow.md) and §8 of [`type-process.md`](type-process.md) list. Do not backfill these tokens to any other non-chart type. Architecture, swimlane, and the other schematic types keep the `ink`, `muted`, and `soft` roles. The series tokens are opt-in for diagrams where overlapping shapes need distinguishable color, not a license to add color elsewhere.
 
 ### Terminal skin (opt-in alternate)
 
@@ -218,9 +220,9 @@ Semantic role combinations — reference these by name in type specs.
 
 - **Contrast**: no script checks it. Use the [measured contrast](#measured-contrast) table, and measure text on `paper-2` or `accent-tint` against that surface.
 - **One accent**: `accent` is mauve. A second accent color erases the focal signal.
-- **No rainbow palette**: schematic types use `paper`, `ink`, `muted`, `soft`, `accent`, and `link`. Only multi-series charts use the `series-*` tokens. Other [flavor colors](#flavor-palette) appear only where a type reference names them.
+- **No rainbow palette**: schematic types use `paper`, `ink`, `muted`, `soft`, `accent`, and `link`. Only multi-series charts and the data-type chips of data-flow and process figures use the `series-*` tokens. Other [flavor colors](#flavor-palette) appear only where a type reference names them.
 - **Two faces**: IosevkaTermSlab Nerd Font Mono for `title` and `callout`, IosevkaTerm Nerd Font Mono for everything else. No third family.
 - **Paper is Mocha base** `#1e1e2e`. Never pure white or pure black.
-- **One palette per figure**: a figure takes every color from the Mocha tables above, or, when it uses the terminal skin, from the terminal table. `scripts/lint-skin.py` fails a color outside the palette the figure uses, so white fails in a Mocha figure.
+- A figure uses one palette. It takes every color from the Mocha tables above. If it uses the terminal skin, it takes every color from the terminal table instead. `scripts/lint-skin.py` fails a color outside the palette the figure uses, so white fails in a Mocha figure.
 - **Dot pattern is optional, not default**: the 22×22 dot pattern is an opt-in "dotted paper" variant (good for long-form editorial hero diagrams). The default background is a clean `paper` fill, no pattern. When the pattern is enabled, it should sit at ~10% opacity of `ink` on `paper` — visible but quiet.
 - **Container is clean by default**: the diagram sits directly on the page paper, no secondary container background or border. A framed variant (`paper-2` bg + `rule` border + 8px radius + padding) is available as an opt-in for card-heavy layouts, but don't reach for it by default — the extra chrome fights the figure.

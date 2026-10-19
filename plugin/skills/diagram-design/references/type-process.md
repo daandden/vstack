@@ -30,11 +30,11 @@ nodes:                              # explicit per-cell entries; empty cells ren
   - { lane: "RDE", step: 0,  title: "Survey design",      sub: "questionnaire · sampling", tool: "Excel · CSPro",
       chips: {in: null,  out: "FL"} }              # first step has no input chip
   - { lane: "IT",  step: 1,  title: "Build app",          sub: "form + validation",        tool: "CSPro · scripts",
-      chips: {in: "FL", out: "TB"}, color: "#74c7ec" }    # sapphire — data quality concern
+      chips: {in: "FL", out: "TB"}, color: "#74c7ec" }
   - { lane: "RDE", step: 2,  title: "Pilot test",         sub: "field debug",              tool: "tablet · script",
       chips: {in: "TB", out: "TB"}, focal: true }   # focal node — accent border
   - { lane: "FLD", step: 3,  title: "Train enumerators",  sub: "protocols · safety",       tool: "manual",
-      chips: {in: "TB", out: "LS"}, color: "#f38ba8" }    # red — governance / training
+      chips: {in: "TB", out: "LS"}, color: "#f38ba8" }
   # ... etc
 
 arrows:                             # explicit edges; styles bind to topology (see §3)
@@ -152,6 +152,8 @@ tool               centered at (step_cx(j), node_y+52),  font-size=6.5 sublabel 
 data chip IN       rect 16×8 at (node_x+4,   node_y+54), rx=2      # payload entering
 data chip OUT      rect 16×8 at (node_x+80,  node_y+54), rx=2      # payload leaving
 ```
+
+The node rect takes fill `ink @ 0.04` and stroke `ink @ 0.20`. The focal node (§5) takes fill `accent @ 0.12` and stroke `accent`.
 
 **Role chip text rule:** the badge inside each node renders `lanes[k].key` where `k` is the node's lane index — **not** the step number (the step number already lives in the column header chip at the top, §2.2). Showing the lane key as the node badge gives each node a self-contained "who" identifier that survives when a single node is excerpted out of context. Mirrors the same rule in `type-data-flow.md` §2.4.
 
@@ -282,20 +284,7 @@ If zero or >1 of any focal slot are declared, halt and ask with `ask`.
 
 ## 6. Colors
 
-Every role takes its Mocha value from [`style-guide.md`](style-guide.md). Every derived value in this reference is a **role at an opacity**. These values are set only here:
-
-| Element | Value |
-|---|---|
-| Lane tint | `ink @ 0.025` |
-| Label col divider | `ink @ 0.22` |
-| Focal chip fill | `accent @ 0.22` |
-| Focal node fill | `accent @ 0.12` |
-| Default node fill | `ink @ 0.04` |
-| Default node stroke | `ink @ 0.20` |
-| Dot pattern | `ink @ 0.10` |
-| Dividers | `ink @ 0.12` |
-| Default chip fill | `ink @ 0.12` |
-| Focal node stroke | `accent` |
+Every role takes its Mocha value from [`style-guide.md`](style-guide.md). A **role at an opacity**, such as `ink @ 0.025`, resolves against the Mocha role. §2 gives the background, step chip, and node values, §4 gives the custom colors, and §8 gives the data-type chip colors.
 
 ---
 
@@ -422,9 +411,9 @@ nodes:
   - { lane: "FLD", step: 2,  title: "Data Collection",   sub: "→ 10,464 dwellings",
       tool: "Survey Solutions",            chips: {in: "LS", out: "DB"},  focal: true }   # focal node
   - { lane: "SVY", step: 3,  title: "HQ Review",         sub: "Submissions → Approved",
-      tool: "Survey Sol. HQ",              chips: {in: "DB", out: "DB"},  color: "#f38ba8" }   # red · governance
+      tool: "Survey Sol. HQ",              chips: {in: "DB", out: "DB"},  color: "#f38ba8" }
   - { lane: "IT",  step: 4,  title: "Error Checks",      sub: "Approved → Cleaned",
-      tool: "SAS · Scripts",               chips: {in: "DB", out: "DB"},  color: "#74c7ec" }   # sapphire · data quality
+      tool: "SAS · Scripts",               chips: {in: "DB", out: "DB"},  color: "#74c7ec" }
   - { lane: "RDE", step: 5,  title: "Weight Calculation", sub: "Cleaned → Weighted",
       tool: "SAS",                         chips: null }                                  # 2-line title — chips skipped
   - { lane: "HHU", step: 6,  title: "2° Cleaning",       sub: "Weighted → Analysis",
@@ -434,7 +423,7 @@ nodes:
   - { lane: "CMM", step: 8,  title: "Stats Review",      sub: "Tables → Approved",
       tool: "Internal review",             chips: {in: "FL", out: "FL"} }
   - { lane: "CMM", step: 9,  title: "Public Release",    sub: "Approved → Public",
-      tool: "Press conference",            chips: {in: "FL", out: "WB"}, color: "#a6e3a1" }   # green · data products
+      tool: "Press conference",            chips: {in: "FL", out: "WB"}, color: "#a6e3a1" }
   - { lane: "IT",  step: 10, title: "Upload NatStat / SDMX", sub: "Results → Published",
       tool: "Web · SDMX API",              chips: null }                                  # 2-line title — chips skipped
 

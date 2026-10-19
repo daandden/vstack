@@ -13,7 +13,6 @@ from urllib.parse import urlparse
 ROOT = Path(__file__).resolve().parent.parent
 STYLE_GUIDE = ROOT / "references/style-guide.md"
 
-# A figure takes its colors from one palette: the Catppuccin Mocha style or the terminal skin.
 PALETTES = {
     "Catppuccin Mocha": ("### Semantic roles", "### Flavor palette"),
     "Terminal skin": ("### Terminal skin",),

@@ -40,7 +40,6 @@ Use a rectangular **frame** that spans only the lifelines participating in the b
 ### Frame primitive (shared)
 
 ```svg
-<!-- Frame: faint ink wash + hairline. Label tab top-left. -->
 <rect x="X" y="Y" width="W" height="H" rx="4"
       fill="{ink @ 0.04}" stroke="{ink @ 0.22}" stroke-width="1"/>
 <!-- Operator tab -->

@@ -27,7 +27,7 @@ steps:                              # 1..6 columns (left to right)
 nodes:                              # explicit per-cell entries; empty cells render nothing
   - { lane: "ADM", step: 0, title: "Project Setup",   sub: "create · assign roles",     tool: "Platform console" }
   - { lane: "ADM", step: 1, title: "Access Control",  sub: "bucket policies · LDAP",    tool: "MinIO · LDAP console",
-      color: "#f38ba8" }            # tinted red to flag governance/identity concern
+      color: "#f38ba8" }
   - { lane: "ENG", step: 0, title: "Source Ingest",   sub: "ext. sources → raw",        tool: "NiFi · API · SFTP",
       chips: {in: "WB", out: "DB"} }                    # web payload in, dataset out
   - { lane: "ENG", step: 1, title: "Raw Store",       sub: "raw landing zones",         tool: "MinIO raw",
@@ -50,7 +50,7 @@ arrows:                             # explicit edges; styles bind to topology (s
   - { from: {lane: "ENG", step: 2}, to: {lane: "SCI", step: 3}, style: "accent",     # focal cross-role
       label: "anon data" }
   - { from: {lane: "SCI", step: 3}, to: {lane: "SCI", step: 4}, style: "muted" }
-  - { from: {lane: "SCI", step: 4}, to: {lane: "CON", step: 4}, style: "link" }     # blue: published
+  - { from: {lane: "SCI", step: 4}, to: {lane: "CON", step: 4}, style: "link" }
 ```
 
 **Reserved field semantics:**
@@ -154,6 +154,8 @@ data chip IN       rect 16×8 at (node_x+4,   node_y+54), rx=3      # payload ty
 data chip OUT      rect 16×8 at (node_x+80,  node_y+54), rx=3      # payload type leaving the node
 ```
 
+The node rect takes fill `ink @ 0.04` and stroke `ink @ 0.20`. The focal node (§5) takes fill `accent @ 0.12` and stroke `accent`.
+
 Empty cells (no node entry) render **nothing**. No placeholder rect, no role chip, no label — the cell is invisible.
 
 ---
@@ -255,19 +257,7 @@ If zero or >1 of any focal slot are declared, halt and ask with `ask`.
 
 ## 6. Colors
 
-Every role takes its Mocha value from [`style-guide.md`](style-guide.md). These values are set only here:
-
-| Element | Value |
-|---|---|
-| Dot pattern | `ink @ 0.10` |
-| Lane tint | `ink @ 0.025` |
-| Dividers | `ink @ 0.12` |
-| Default chip fill | `ink @ 0.12` |
-| Focal chip fill | `accent @ 0.22` |
-| Default node fill | `ink @ 0.04` |
-| Default node stroke | `ink @ 0.20` |
-| Focal node fill | `accent @ 0.12` |
-| Focal node stroke | `accent` |
+Every role takes its Mocha value from [`style-guide.md`](style-guide.md). §2 gives the background, step chip, and node values, §4 gives the custom colors, and §8 gives the data-type chip colors.
 
 ---
 

@@ -18,7 +18,7 @@ chevrons:                       # ordered left → right; reserved names auto-pr
   - { name: "Transformation",       columns: 1 }
   - { name: "Visualization",        columns: 1 }
   - { name: "Orchestration",        vertical: true }                     # reserved → pairs with the bar
-  - { name: "Security",             vertical: true, color: "#f38ba8" }   # tinted to match the Identity bar below
+  - { name: "Security",             vertical: true, color: "#f38ba8" }
   - { name: "Observability",        vertical: true }                     # reserved → pairs with crosscut #2
 
 sources:                        # external; rendered in the dashed zone on the left
@@ -88,6 +88,8 @@ viewBox            = f"0 0 1000 {viewBox_h}"
 Every horizontal element (chevron banner, cluster, orchestration bar, identity / cross-cutting bars) ends at `effective_w`. The right strip sits at `x = 1000 - right_strip_w` (= 972). The 8-px band between them is visual breathing room — never put content there.
 
 `viewBox_h` grows when more than one cross-cutting bar is declared: 1 crosscut → 540, 2 → 600 (or 584 if you want it tight; the rule rounds to the next multiple of 20 for clean grids).
+
+Muted text in this type, such as every subtitle, takes `ink @ 0.65` (5.60:1 on `paper`) instead of the `muted` role. If the figure uses the optional dot pattern, its dots take `ink @ 0.10`.
 
 ### 2.2 Horizontal chevron banner
 
@@ -392,19 +394,7 @@ The visual contract: the vertical chevron's column visually "owns" the bar/cross
 
 ## 6. Colors
 
-Every role takes its Mocha value from [`style-guide.md`](style-guide.md). Every derived value in this reference is a **role at an opacity**, such as `ink @ 0.18`. The phase-band palette (§6.1) is the one exception. These values are set only here:
-
-| Element | Value |
-|---|---|
-| Muted text | `ink @ 0.65` (5.60:1 on `paper`) |
-| Dashed border | `ink @ 0.22` |
-| Node fill | `ink @ 0.06` |
-| Node stroke | `ink @ 0.20` |
-| Focal fill | `accent @ 0.12` |
-| Cluster border | `ink @ 0.18` |
-| Dot pattern | `ink @ 0.10` |
-| Focal stroke, accent connector | `accent` |
-| Phase bands | `band-2` / `band-3` (§6.1) |
+Every role takes its Mocha value from [`style-guide.md`](style-guide.md). Every derived value in this reference is a **role at an opacity**, such as `ink @ 0.18`. The phase-band palette (§6.1) is the one exception. §2 gives the canvas, zone, cluster, bar, node, and chevron values, and §3 gives the connector and custom colors.
 
 ### 6.1 Phase-band palette
 

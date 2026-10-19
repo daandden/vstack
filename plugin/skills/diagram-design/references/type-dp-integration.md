@@ -47,7 +47,7 @@ consumers:                          # right column, 0..6 nodes
 
 footer:                             # 0..N cross-cutting bars stacked below zone (full-canvas width)
   - { name: "Active Directory", icon: key,        subtitle: "LDAP · SSO · group RBAC",
-      color: "#f38ba8" }            # tinted red to flag the security concern
+      color: "#f38ba8" }
   # additional footer nodes (Observability, Backup, …) stack below this one
 
 internal_connections:               # explicit platform-component edges
@@ -123,6 +123,8 @@ bar_h_default    = 44
 row_h            = 72
 row_gap          = 16
 ```
+
+The platform zone rect takes fill `ink @ 0.04` and stroke `ink @ 0.32`.
 
 ### 2.1 Row placement (cursor algorithm)
 
@@ -295,7 +297,7 @@ Any source, consumer, platform component (node or bar), or footer node accepts a
 
 - Mark with `focal: true` on the component entry.
 - A focal `kind: bar` uses `bar_h_focal=56` (taller) and accent styling.
-- A focal `kind: row` node keeps `row_h=72` but uses accent styling.
+- A focal `kind: row` node keeps `row_h=72` and takes the accent fill and stroke of a focal bar (§2.3).
 - The **Trino → all consumers** edges are always `primary` (accent), regardless of focal flag on each consumer — this is the serve-flow rule.
 - If fewer than 2 or more than 2 components are marked `focal: true`, halt and ask with `ask`.
 
@@ -303,17 +305,7 @@ Any source, consumer, platform component (node or bar), or footer node accepts a
 
 ## 6. Colors
 
-Every role takes its Mocha value from [`style-guide.md`](style-guide.md). A **role at an opacity**, such as `ink @ 0.32`, resolves against Mocha `ink`. These values are set only here:
-
-| Element | Value |
-|---|---|
-| Side-column fill | `ink @ 0.06` |
-| Side-column stroke | `ink @ 0.30` |
-| Zone fill | `ink @ 0.04` |
-| Zone stroke | `ink @ 0.32` |
-| Non-focal bar fill | `ink @ 0.06` |
-| Focal fill | `accent @ 0.12` |
-| Focal stroke | `accent` |
+Every role takes its Mocha value from [`style-guide.md`](style-guide.md). A **role at an opacity**, such as `ink @ 0.32`, resolves against Mocha `ink`. §2 gives the zone, bar, and side-column values, and §4 gives the custom colors.
 
 ---
 
