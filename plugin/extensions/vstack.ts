@@ -184,6 +184,17 @@ function picksMessage(picked: string[], precedence = "") {
     content: `Addons selected for this task: ${picked.map(name => `skill://${name}`).join(", ")}. Ignore any that do not fit.${precedence}` } };
 }
 
+function undeliveredQuestions(catalog: AddonCatalog, entries: readonly any[]): Record<string, AddonQuestion> {
+  const seen = new Set<string>();
+  for (const entry of entries) {
+    if (entry.customType !== "vstack-addons" || (entry.type !== "custom_message" && entry.type !== "custom")) continue;
+    const saved = entry.type === "custom" ? entry.data : entry.content;
+    const content = typeof saved === "string" ? saved : JSON.stringify(saved ?? "");
+    for (const match of content.matchAll(/skill:\/\/([a-z0-9-]+)/g)) seen.add(match[1]!);
+  }
+  return Object.fromEntries(Object.entries(catalog.questions).filter(([name]) => !seen.has(name)));
+}
+
 /**
  * Runs a selection under a deadline that aborts it, and calls `onTimeout` when the deadline ends it.
  * The deadline holds even when fetch ignores the abort.
@@ -285,15 +296,7 @@ function registerAddonSelection(pi: ExtensionAPI): void {
     return withDeadline(startsRun ? RESTATED_START_CAP_MS : JEV_DEADLINE_MS, async signal => {
       const jev = await jevAccess(ctx);
       if (!jev || signal.aborted) return;
-      // omp saves a hook message only when it accepts the prompt. The saved messages on every branch
-      // of the session are the record of delivered pointers, so each pointer appears once per session.
-      const seen = new Set<string>();
-      for (const entry of ctx.sessionManager.getEntries()) {
-        if (entry.type !== "custom_message" || entry.customType !== "vstack-addons") continue;
-        const content = typeof entry.content === "string" ? entry.content : JSON.stringify(entry.content);
-        for (const match of content.matchAll(/skill:\/\/([a-z0-9-]+)/g)) seen.add(match[1]!);
-      }
-      const questions = Object.fromEntries(Object.entries(catalog.questions).filter(([name]) => !seen.has(name)));
+      const questions = undeliveredQuestions(catalog, ctx.sessionManager.getEntries());
       if (!Object.keys(questions).length) return;
       if (startsRun) {
         const restated = await restate(ctx, instruction, talk, userWords, signal);
@@ -311,6 +314,41 @@ function registerAddonSelection(pi: ExtensionAPI): void {
   });
   pi.on("session_shutdown", (_event, ctx) => unregister(ctx));
   pi.on("session_switch", (_event, ctx) => unregister(ctx));
+  registerClosingPicks(pi, catalog, mattSkills);
+}
+
+function registerClosingPicks(pi: ExtensionAPI, catalog: AddonCatalog | undefined, mattSkills: ReadonlySet<string>): void {
+  const type = pi.arktype;
+  const reply = (text: string) => ({ content: [{ type: "text" as const, text }] });
+  const noPicks = (reason: string) => reply(`No Addon picks (${reason}).`);
+  pi.registerTool({
+    name: "vstack_pick_addons",
+    label: "Pick Addons",
+    description:
+      "Ask the jev judge which Addons fit the next skill after the user picks it at a grill's closing ask. Returns skill:// pointers to read before that skill.",
+    loadMode: "essential",
+    approval: "read",
+    parameters: type({ request: type("string").describe("The grill's closing summary, as written on the Grilling page.") }),
+    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      if (ctx.agent.kind !== "main") return noPicks("only the main agent gets closing picks");
+      if (!catalog || !mattSkills.size) return noPicks("the Addon catalog or the Matt skill set is unreadable");
+      if (!holdsMattRun(ctx.sessionManager.getBranch(), mattSkills)) return noPicks("this branch holds no Matt run");
+      const request = String(params.request ?? "").trim().slice(0, RESTATEMENT_LIMIT);
+      if (!request) return { ...noPicks("the request is empty"), isError: true };
+      const questions = undeliveredQuestions(catalog, ctx.sessionManager.getEntries());
+      if (!Object.keys(questions).length) return noPicks("every Addon was delivered earlier in this session");
+      const picked = await withDeadline(JEV_DEADLINE_MS, async signal => {
+        const jev = await jevAccess(ctx).catch(() => undefined);
+        return jev ? pickAddons(jev, addonJudgeState(catalog, request), questions, signal) : "no native jev judge or no key for it";
+      });
+      if (picked === undefined) return noPicks("timed out");
+      if (typeof picked === "string") return noPicks(picked);
+      const picks = picksMessage(picked, PRECEDENCE);
+      if (!picks) return noPicks("jev picked none");
+      pi.appendEntry("vstack-addons", picks.message.content);
+      return reply(picks.message.content);
+    },
+  });
 }
 
 interface ScratchEntry {
