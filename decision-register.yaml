@@ -626,9 +626,9 @@ items:
     kind: skill
     path: pstack/skills/technical-writing
     tree: f35560fd015d95ae92eb3c7414d3a48065299dfa
-    disposition: merge
-    artifacts: [plugin/skills/vstack-prose]
-    reason: "Merges technical-writing, unslop, and simple-english into vstack-prose (ADR 0016)."
+    disposition: adopt
+    artifacts: [plugin/skills/technical-writing]
+    reason: "Ships as written and hidden; the vstack-writing rule loads it for docs, RFCs, READMEs, PR text, and commit text (ADR 0030)."
   - id: pstack/typescript-best-practices
     upstream: pstack
     kind: skill
@@ -642,9 +642,9 @@ items:
     kind: skill
     path: pstack/skills/unslop
     tree: 4e572dd70e5557f490e3991c52ea58f0dcee8936
-    disposition: merge
-    artifacts: [plugin/skills/vstack-prose]
-    reason: "Merges unslop, simple-english, and technical-writing into vstack-prose (ADR 0016)."
+    disposition: adopt
+    artifacts: [plugin/skills/unslop]
+    reason: "Ships as written and hidden; the vstack-writing rule loads it for every text (ADR 0030)."
   - id: pstack/why
     upstream: pstack
     kind: skill
@@ -877,14 +877,6 @@ items:
     disposition: adapt
     artifacts: [plugin/skills/good-css]
     reason: "removes Emil Kowalski's hand-offs and credit; vstack ships none of his skills"
-  - id: prose/simple-english
-    upstream: prose
-    kind: skill
-    path: skills/simple-english
-    tree: dc4493623b0648588e02a0062bed8bcaa535b1de
-    disposition: merge
-    artifacts: [plugin/skills/vstack-prose]
-    reason: "Merges simple-english, unslop, and technical-writing into vstack-prose (ADR 0016)."
   - id: matt/implement-spec
     upstream: matt
     kind: skill
@@ -994,7 +986,8 @@ originals:
   - plugin/agents/vstack-diagram-drawer.md
   - plugin/skills/vstack-figures
 utility:
-  - plugin/skills/vstack-prose
+  - plugin/skills/unslop
+  - plugin/skills/technical-writing
   - plugin/skills/diagram-design
   - plugin/skills/good-css
   - plugin/skills/skill-creator

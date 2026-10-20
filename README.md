@@ -1,12 +1,12 @@
 # vstack
 
-vstack is a personal omp plugin. Matt Pocock's skills are its core. Addons supplement those skills, and Utility skills provide shared tools and writing rules. It also takes selected items from poteto's pstack, diagram-design, good-css, and SimpleEnglish. `GLOSSARY.md` defines the terms, and `docs/adr/` records decisions.
+vstack is a personal omp plugin. Matt Pocock's skills are its core. Addons supplement those skills, and Utility skills provide shared tools and writing rules. It also takes selected items from poteto's pstack, diagram-design, and good-css. `GLOSSARY.md` defines the terms, and `docs/adr/` records decisions.
 
 ## Skill kinds and the Matt flow
 
 - A Matt skill has a non-reject Base upstream row in the Decision register and no key in the `questions` map of `addon-questions.json`. A Matt skill that you type hosts Addons.
 - An Addon is a hidden skill that supplies knowledge to a running Matt skill. Addons load only through the jev judge during that run, or through a `skill://<addon>` pointer. A key in the `questions` map of `addon-questions.json` makes a skill an Addon, even when it carries Base upstream text, as `session` does (ADR 0019). Addons do not own a separate workflow.
-- A Utility skill works outside a Matt run. The register's `utility:` list names these skills, including vstack-prose, explain, and hidden helpers such as vstack-tmp.
+- A Utility skill works outside a Matt run. The register's `utility:` list names these skills, including explain and hidden helpers such as vstack-tmp.
 - A Command runs in the extension without a model. `/vstack-clean` is the Scratch cleanup Command, not a skill.
 
 Every change starts with the grill (`/skill:grill-with-docs` or `/skill:grill-me`). After the grill closes, type the next skill. For a change that fits one session, type `/skill:implement`. For a bigger change, continue through `/skill:to-spec` and `/skill:to-tickets`, then type `/skill:implement-spec`. implement and implement-spec own the changes and the settled End state. Specs and tickets carry the `skill://` pointers that later sessions need.
@@ -117,14 +117,14 @@ await check(judge_batch)
 
 ### Pins and Upstream clones
 
-`pins.yaml` keys (`matt`, `pstack`, `diagram`, `css`, `prose`) are the register's `upstream` values and local clone names under `~/.cache/vstack/upstreams/<key>`. Set `VSTACK_UPSTREAMS` or pass `--upstreams` for another directory. Blobless clones are enough. check-register never fetches, checks out, or moves HEAD. vstack-maintain plan clones or fetches selected Upstreams without moving HEAD. Target checks and takes fetch only missing Pins and held refs. Keep the cache outside every checkout. To make a clone by hand:
+`pins.yaml` keys (`matt`, `pstack`, `diagram`, `css`) are the register's `upstream` values and local clone names under `~/.cache/vstack/upstreams/<key>`. Set `VSTACK_UPSTREAMS` or pass `--upstreams` for another directory. Blobless clones are enough. check-register never fetches, checks out, or moves HEAD. vstack-maintain plan clones or fetches selected Upstreams without moving HEAD. Target checks and takes fetch only missing Pins and held refs. Keep the cache outside every checkout. To make a clone by hand:
 
 ```sh
 git clone --filter=blob:none https://github.com/mattpocock/skills.git ~/.cache/vstack/upstreams/matt
 git -C ~/.cache/vstack/upstreams/matt fetch --tags origin   # when a Pin is missing from the clone
 ```
 
-`pin_kind` says how the Update finds the next Pin. `tag` (Base, Prose): the highest `v<major>.<minor>.<patch>` tag; pre-release tags such as `v1.3.0-beta.1` and other tags such as `mattpocock-skills@1.0.0` never count. `commit` (Enhancement, Diagram, CSS): the newest commit on the default branch that touches the entry's `path`. `pin` is the tag name or the full commit SHA.
+`pin_kind` says how the Update finds the next Pin. `tag` (Base): the highest `v<major>.<minor>.<patch>` tag; pre-release tags such as `v1.3.0-beta.1` and other tags such as `mattpocock-skills@1.0.0` never count. `commit` (Enhancement, Diagram, CSS): the newest commit on the default branch that touches the entry's `path`. `pin` is the tag name or the full commit SHA.
 
 Each entry's `items:` list says which tree entries at the Pin are Upstream items. `match` is a path glob from the repo root where `*` stays inside one path segment, `type` is `tree` or `blob`, and the first matching pattern sets the `kind`. For example, pstack's automations are one item each, so their nested skills get no rows.
 
@@ -136,7 +136,7 @@ Every row has `id`, `upstream`, `kind` (skill, principle, playbook, agent), `pat
 
 An artifact is one unit under `plugin/`: a skill directory (`plugin/skills/<name>`), an agent or rule file, or another child of a top-level plugin directory. Several rows can name one artifact. Artifacts with no Upstream item go under `originals:`. Every non-reject row names at least one artifact. Only reject rows have `artifacts: []`.
 
-The top-level `utility:` list names Utility skills as paths such as `plugin/skills/vstack-prose`. Each entry must name a shipped skill with no non-reject Base upstream row. A shipped skill with a key in the `questions` map of `addon-questions.json` is an Addon, whatever its rows (ADR 0019). Other shipped skills with a non-reject Base row are Matt skills. Every other shipped skill outside `utility:` is an Addon and needs a catalog key.
+The top-level `utility:` list names Utility skills as paths such as `plugin/skills/explain`. Each entry must name a shipped skill with no non-reject Base upstream row. A shipped skill with a key in the `questions` map of `addon-questions.json` is an Addon, whatever its rows (ADR 0019). Other shipped skills with a non-reject Base row are Matt skills. Every other shipped skill outside `utility:` is an Addon and needs a catalog key.
 
 An adopt artifact is the Upstream item copied byte for byte, minus `agents/openai.yaml`, under the Upstream name. To copy one from its Pin:
 
@@ -242,7 +242,7 @@ To write an adapt item, start from the Upstream text at the Pin with the rows ap
 
 ```sh
 bun -e 'import { applyRows, parseHouseStyle, selectRows } from "./scripts/lib/house-style.ts";
-const { houseStyle } = parseHouseStyle(Bun.YAML.parse(await Bun.file("house-style.yaml").text()), new Set(["matt", "pstack", "diagram", "css", "prose"]));
+const { houseStyle } = parseHouseStyle(Bun.YAML.parse(await Bun.file("house-style.yaml").text()), new Set(["matt", "pstack", "diagram", "css"]));
 const rows = selectRows(houseStyle.replacements, { use: "update", upstreams: ["matt"], disposition: "adapt" });
 process.stdout.write(applyRows(await Bun.stdin.text(), rows));' \
   < <(git -C ~/.cache/vstack/upstreams/matt show v1.2.3:skills/engineering/wizard/SKILL.md) > plugin/skills/wizard/SKILL.md

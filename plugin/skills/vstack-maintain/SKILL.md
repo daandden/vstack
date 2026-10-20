@@ -72,7 +72,7 @@ Run `bun install --frozen-lockfile` in your clone before the maintainer commands
 
 For an Update, rerun `plan` at each stated `<upstream>@<ref>`. Compare its row set and new-item paths with the confirmed hand-off. If they differ, stop with a report of the difference. Do not apply decisions to unseen rows. Write the decisions file yourself from the confirmed decisions. For a Hand edit, rerun `check` at the current Pins for the targets and their callers.
 
-Before drafting, read `plugin/rules/vstack-writing.md` and `skill://vstack-prose`. Read `skill://skill-creator` for skill changes. Write and merge each accepted row's Upstream text into the vstack text yourself. Keep each row's effective old baseline and reason in view, especially for shared artifacts. Keep clean hunks and resolve overlaps from the actual texts. No script composes row drafts. Leave held rows' text alone.
+Before drafting, read `plugin/rules/vstack-writing.md` and the skills that it names. Read `skill://skill-creator` for skill changes. Write and merge each accepted row's Upstream text into the vstack text yourself. Keep each row's effective old baseline and reason in view, especially for shared artifacts. Keep clean hunks and resolve overlaps from the actual texts. No script composes row drafts. Leave held rows' text alone.
 
 Apply the judgment-based House style rules to new adapt, merge, and original text: Fan-out lines, single-subagent forms, skill references, and ask-tool. Check against every contributing row's reason and the ADRs. A real trade-off can need an ADR. Ordinary reversible edits do not. Follow `skill://domain-modeling` for that decision.
 
