@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [4.0.1] - 2026-10-20
+
+- diagram-design ships no license text. Its SKILL.md drops the `license: MIT` frontmatter line, and its icon reference and icon page drop each MIT and CC0 tag and the "verify license before use" notes. The icon reference's License attribution section becomes a Sources list with the four icon libraries, their links, and the trademark sentence.
+
 ## [4.0.0] - 2026-10-20
 
 - SimpleEnglish (`AminBlg/SimpleEnglish`) is no longer an Upstream. Its `prose` Pin and its `prose/simple-english` row are gone, no SimpleEnglish text or MIT notice ships, and the Upstream key lists in the scripts, the tests, and setup-vstack's Migration script drop `prose` (ADR 0030, #191).
