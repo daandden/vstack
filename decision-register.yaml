@@ -52,7 +52,7 @@ items:
     tree: eedaf2562c83155115e9c649fa3ecaac2e10e81d
     disposition: adapt
     artifacts: [plugin/skills/grill-with-docs]
-    reason: "Names skill://grilling and skill://domain-modeling where Matt calls the Skill tool, adds a grill-with-docs Stage to the flow's Grilling page, and closes with to-spec and implement next-step options (#165, ADR 0030)."
+    reason: "Names skill://grilling and skill://domain-modeling where Matt calls the Skill tool, adds a grill-with-docs Stage to the flow's Grilling page, and closes with to-spec and implement next-step options (#165, ADR 0031)."
   - id: matt/implement
     upstream: matt
     kind: skill
@@ -156,7 +156,7 @@ items:
     tree: f0732035b8b1b60ae39454e4191caef32fa91903
     disposition: adapt
     artifacts: [plugin/skills/grilling]
-    reason: "Sub-agent spawn names a vstack agent; one round is one ask; the Grilling page lives in grilling-page; pushback reopens its decision; a session writes into its flow's page as a Stage, and ask options carry labels only; a caller can add next-step options to the closing ask (#42, #58, #145, #165, ADR 0030)."
+    reason: "Sub-agent spawn names a vstack agent; one round is one ask; the Grilling page lives in grilling-page; pushback reopens its decision; a session writes into its flow's page as a Stage, and ask options carry labels only; a caller can add next-step options to the closing ask (#42, #58, #145, #165, ADR 0031)."
   - id: matt/handoff
     upstream: matt
     kind: skill
