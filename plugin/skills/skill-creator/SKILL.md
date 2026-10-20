@@ -1,6 +1,6 @@
 ---
 name: skill-creator
-description: Create or update an agent skill with appropriately scoped instructions and any needed supporting resources. For wording-only rewrites that preserve skill behavior and structure, use vstack-prose instead.
+description: Create or update an agent skill with appropriately scoped instructions and any needed supporting resources.
 ---
 
 

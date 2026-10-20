@@ -2,7 +2,7 @@
 # Keys are the register's `upstream` values and the clone names under ~/.cache/vstack/upstreams/<key>.
 # repo: GitHub owner/name. path: the part of the repo vstack takes from ("" = whole repo).
 # pin_kind: how the Update finds the newest Pin. `tag`: the highest `v<semver>` tag with no pre-release
-# part (Base, Prose). `commit`: the newest commit on the default branch that touches `path` (Enhancement,
+# part (Base). `commit`: the newest commit on the default branch that touches `path` (Enhancement,
 # Diagram, CSS). pin: the tag name, or the full commit SHA.
 # items: which tree entries at the Pin are Upstream items, each needing a register row. `match` is a path
 # glob from the repo root (`*` stays inside one path segment); the first pattern that matches sets the kind.
@@ -47,11 +47,3 @@ upstreams:
     page_lint: scripts/check-css.mjs
     items:
       - { match: "skills/good-css", type: tree, kind: skill }
-  prose:
-    role: Prose
-    repo: AminBlg/SimpleEnglish
-    path: ""
-    pin_kind: tag
-    pin: v2.1.1
-    items:
-      - { match: "skills/*", type: tree, kind: skill }

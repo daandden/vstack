@@ -1,5 +1,7 @@
 # Every prose surface follows unslop and SimpleEnglish through one pointer rule
 
+> The SimpleEnglish provisions are superseded by [ADR 0030](0030-simpleenglish-leaves-and-vstack-prose-splits-into-unslop-and-technical-writing.md): SimpleEnglish is no longer an Upstream, and no text from it ships. The one always-apply rule, unslop for every text, and writing-for-agents for agent-facing text still stand.
+
 vstack ships one always-apply rule, `plugin/rules/vstack-prose.md`, that loads in every agent and points at `skill://unslop` and `skill://simple-english`. Every text that an agent writes follows both skills in SimpleEnglish's Plain mode. Agent-facing text also follows `skill://writing-for-agents`. Agent-facing text is AGENTS.md, skills, agents, rules, and subagent briefs and results. The rule is the only trigger for the three skills, so all three are hidden. SimpleEnglish, from `AminBlg/SimpleEnglish`, joins as the Prose upstream. Its Pin starts at the release tag `v2.1.1`, and the Update moves it to the latest `v<semver>` tag, as it does for Matt.
 
 ## Considered Options

@@ -4,6 +4,13 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-10-20
+
+- SimpleEnglish (`AminBlg/SimpleEnglish`) is no longer an Upstream. Its `prose` Pin and its `prose/simple-english` row are gone, no SimpleEnglish text or MIT notice ships, and the Upstream key lists in the scripts, the tests, and setup-vstack's Migration script drop `prose` (ADR 0030, #191).
+- The vstack-prose skill is removed, with its plain-English rules and its `word-swaps.md` and `use-cases.md` references. skill-creator's description no longer points at it (#191).
+- pstack's unslop and technical-writing ship again as hidden adopt Utility skills, byte-identical to the pstack Pin (#191).
+- The vstack-writing rule points every text at unslop. Docs, RFCs, READMEs, PR text, and commit text also follow technical-writing, and agent-facing text also follows writing-for-agents, which wins where it and unslop differ. vstack-maintain's drafting brief reads the rule and the skills that it names instead of vstack-prose (#191).
+
 ## [3.0.2] - 2026-10-20
 
 - Scratch is kept for 90 days instead of 14. The vstack-tmp clean script and the `/vstack-clean` Command with no age now list only entries older than 90 days, for every Scratch kind, so a paused flow keeps its Grilling page. A flow folder is one Scratch entry, so its page, state file, figures, and `flow.json` expire and go together (#164).

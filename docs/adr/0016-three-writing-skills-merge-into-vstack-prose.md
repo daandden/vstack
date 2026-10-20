@@ -1,5 +1,7 @@
 # Three writing skills merge into vstack-prose
 
+> The merge is superseded by [ADR 0030](0030-simpleenglish-leaves-and-vstack-prose-splits-into-unslop-and-technical-writing.md): vstack-prose is deleted, simple-english leaves, and unslop and technical-writing ship again as hidden adopt skills. The rule name `vstack-writing` and writing-for-agents as its own adapt skill still stand.
+
 unslop, simple-english, and technical-writing merge into one visible Utility skill, vstack-prose. writing-for-agents stays its own skill and stays adapt, because Matt skill text stays close to Upstream. The three skills repeated many rules from ASD-STE100 and conflicted on bold, parentheses, and contractions, and technical-writing had no trigger. The always-apply rule is renamed `vstack-writing` and holds only the text types and their skills: every text follows vstack-prose, and agent-facing text also follows writing-for-agents. This amends ADR 0012.
 
 ## Considered Options

@@ -42,7 +42,7 @@ const tracked = (root: string, path: string) => !relative(root, path).startsWith
 
 function rows(): Replacement[] {
   const doc = Bun.YAML.parse(text(join(import.meta.dir, "../references/house-style.yaml")));
-  const parsed = parseReplacements(doc, new Set(["matt", "pstack", "diagram", "css", "prose"]));
+  const parsed = parseReplacements(doc, new Set(["matt", "pstack", "diagram", "css"]));
   if (parsed.problems.length) throw new Error(parsed.problems.map(p => `${p.id}: ${p.message}`).join("; "));
   if (parsed.replacements.some(r => !r.uses.includes("migration"))) throw new Error("Migration copy holds a non-Migration row");
   return parsed.replacements;

@@ -24,7 +24,7 @@ export interface TreeEntry {
 }
 
 export interface UpstreamRef {
-  /** Pin key, also the clone directory name: matt, pstack, diagram, css, prose. */
+  /** Pin key, also the clone directory name: matt, pstack, diagram, css. */
   key: string;
   /** GitHub `owner/name`. */
   repo: string;
