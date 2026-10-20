@@ -253,6 +253,15 @@ describe("Closing picks through vstack_pick_addons", () => {
     expect(fetchSpy).toHaveBeenCalledTimes(3);
     for (const call of [1, 2]) expect(askedNames(call)).toEqual(Object.keys(questions).filter(name => name !== "open-pr" && name !== "principle-prove-it-works"));
   });
+  test("two concurrent calls run one at a time, so the second asks only about Addons that the first did not deliver", async () => {
+    fetchSpy = endpoint(Object.fromEntries(Object.keys(questions).map(name => [name, .9])));
+    const host = fakeHost(running);
+    const [first, second] = await Promise.all([text(host.callTool("vstack_pick_addons", { request: summary })), text(host.callTool("vstack_pick_addons", { request: summary }))]);
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    expect(askedNames(0)).toEqual(Object.keys(questions));
+    expect(first).toContain("skill://open-pr");
+    expect(second).toBe("No Addon picks (every Addon was delivered earlier in this session).");
+  });
   test("a session that received every Addon makes no request", async () => {
     fetchSpy = endpoint({ "open-pr": .9 });
     const delivered = { ...hookSaved, content: `Addons selected for this task: ${Object.keys(questions).map(name => `skill://${name}`).join(", ")}.` };

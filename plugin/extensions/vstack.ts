@@ -321,6 +321,8 @@ function registerClosingPicks(pi: ExtensionAPI, catalog: AddonCatalog | undefine
   const type = pi.arktype;
   const reply = (text: string) => ({ content: [{ type: "text" as const, text }] });
   const noPicks = (reason: string) => reply(`No Addon picks (${reason}).`);
+  // Calls run one at a time, so a call reads the session entries only after the call before it recorded its picks.
+  let previous: Promise<unknown> = Promise.resolve();
   pi.registerTool({
     name: "vstack_pick_addons",
     label: "Pick Addons",
@@ -329,26 +331,31 @@ function registerClosingPicks(pi: ExtensionAPI, catalog: AddonCatalog | undefine
     loadMode: "essential",
     approval: "read",
     parameters: type({ request: type("string").describe("The grill's closing summary, as written on the Grilling page.") }),
-    async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-      if (ctx.agent.kind !== "main") return noPicks("only the main agent gets closing picks");
-      if (!catalog || !mattSkills.size) return noPicks("the Addon catalog or the Matt skill set is unreadable");
-      if (!holdsMattRun(ctx.sessionManager.getBranch(), mattSkills)) return noPicks("this branch holds no Matt run");
-      const request = String(params.request ?? "").trim().slice(0, RESTATEMENT_LIMIT);
-      if (!request) return { ...noPicks("the request is empty"), isError: true };
-      const questions = undeliveredQuestions(catalog, ctx.sessionManager.getEntries());
-      if (!Object.keys(questions).length) return noPicks("every Addon was delivered earlier in this session");
-      const picked = await withDeadline(JEV_DEADLINE_MS, async signal => {
-        const jev = await jevAccess(ctx).catch(() => undefined);
-        return jev ? pickAddons(jev, addonJudgeState(catalog, request), questions, signal) : "no native jev judge or no key for it";
-      });
-      if (picked === undefined) return noPicks("timed out");
-      if (typeof picked === "string") return noPicks(picked);
-      const picks = picksMessage(picked, PRECEDENCE);
-      if (!picks) return noPicks("jev picked none");
-      pi.appendEntry("vstack-addons", picks.message.content);
-      return reply(picks.message.content);
+    execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      const call = previous.then(() => pick(String(params.request ?? ""), ctx));
+      previous = call.catch(() => undefined);
+      return call;
     },
   });
+  async function pick(rawRequest: string, ctx: ExtensionContext) {
+    if (ctx.agent.kind !== "main") return noPicks("only the main agent gets closing picks");
+    if (!catalog || !mattSkills.size) return noPicks("the Addon catalog or the Matt skill set is unreadable");
+    if (!holdsMattRun(ctx.sessionManager.getBranch(), mattSkills)) return noPicks("this branch holds no Matt run");
+    const request = rawRequest.trim().slice(0, RESTATEMENT_LIMIT);
+    if (!request) return { ...noPicks("the request is empty"), isError: true };
+    const questions = undeliveredQuestions(catalog, ctx.sessionManager.getEntries());
+    if (!Object.keys(questions).length) return noPicks("every Addon was delivered earlier in this session");
+    const picked = await withDeadline(JEV_DEADLINE_MS, async signal => {
+      const jev = await jevAccess(ctx).catch(() => undefined);
+      return jev ? pickAddons(jev, addonJudgeState(catalog, request), questions, signal) : "no native jev judge or no key for it";
+    });
+    if (picked === undefined) return noPicks("timed out");
+    if (typeof picked === "string") return noPicks(picked);
+    const picks = picksMessage(picked, PRECEDENCE);
+    if (!picks) return noPicks("jev picked none");
+    pi.appendEntry("vstack-addons", picks.message.content);
+    return reply(picks.message.content);
+  }
 }
 
 interface ScratchEntry {
