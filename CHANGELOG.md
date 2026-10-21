@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [4.0.4] - 2026-10-21
+
+- implement, implement-spec, hillclimb, and forensics open their todo list with one short item per step instead of a verbatim copy of each step and its paragraphs. An item holds the step's id, its heading, its status, with `skip: <reason>` for an unfinished step, and any blocker. In a list that mixes END-STATE's steps with the caller's own, each id carries its source, `shared` or `local`, so implement-spec's `shared 5` (Review the whole diff) and `local 5` (Merge each result) stay apart. END-STATE.md states this item rule once, implement and implement-spec point to it, and END-STATE.md stays the only full text of the shared steps (#184).
+
 ## [4.0.3] - 2026-10-21
 
 - grill-with-docs's closing ask offers `Shared understanding, then to-spec` (recommended) and `Shared understanding, then implement` before Shared understanding and Not yet. A next-step pick confirms the shared understanding, and the agent then runs that skill in the same session, inside the grill's Matt run. grilling's close lets a calling skill add these next-step options, and its other callers keep the two-option close. A headless close takes plain Shared understanding and runs no next skill. After a next-step pick, grilling calls the new extension tool `vstack_pick_addons` with the closing summary. jev judges only the Addons that the session did not receive yet, at 0.70 and with no smol call. The tool returns the `skill://` pointers and saves them as a `vstack-addons` session entry, so a later prompt or call does not send them again. The tool runs its calls one at a time, so each call sees the picks that the call before it saved (ADR 0031).
