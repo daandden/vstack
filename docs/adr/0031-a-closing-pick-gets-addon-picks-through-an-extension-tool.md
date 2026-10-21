@@ -1,5 +1,7 @@
 # A closing pick gets Addon picks through an extension tool
 
+> Superseded by [ADR 0032](0032-the-grill-closes-with-its-summary-and-no-ask.md): the grill closes with its summary and no ask, grill-with-docs offers no next-step options, and the `vstack_pick_addons` tool is gone. None of this ADR still stands.
+
 grill-with-docs closes with next-step options: Shared understanding, then to-spec (recommended), Shared understanding, then implement, plain Shared understanding, and Not yet. grilling owns the closing ask and lets a caller add next-step options. Each next-step option confirms the shared understanding, and the agent then runs that skill in the same session. The picked skill runs inside the grill's Matt run, so no hook sees a run start. An `ask` answer is a tool result, not a prompt, so the `before_agent_start` hook does not run either. After a next-step pick, grilling's close therefore calls the extension tool `vstack_pick_addons` with the closing summary as the request. jev judges only the Addons that no earlier `vstack-addons` entry in the session names, at the 0.70 threshold. The tool returns the `skill://` pointers and records them in a `vstack-addons` custom session entry. The agent reads the pointers before it runs the next skill.
 
 ## Considered Options

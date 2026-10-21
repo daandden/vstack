@@ -282,7 +282,7 @@ test("a page written by hand, with no state file, is not continued", () => {
 test("every keyboard stop has its link in the Q row, and a reopened summary is no longer a stop", () => {
   append(PAGE, ROUND, question("s1-r1-q1", 1));
   const close = (id: string) => ({ type: "close", id, session: 1, decisions: [{ question: "s1-r1-q1", text: "One is true." }] });
-  append({ ...close("c1"), answer: "Not yet" });
+  append(close("c1"));
   append(close("c2"));
   const html = readFileSync(page, "utf8");
   const stops = [...html.matchAll(/id="([^"]+)"[^>]*data-stop/g)].map((m) => m[1]);
@@ -292,31 +292,16 @@ test("every keyboard stop has its link in the Q row, and a reopened summary is n
 });
 
 const summary = (html: string) => html.match(/<section class="summary"[\s\S]*?<\/section>/)![0];
-const gateRow = (shown: string) => `<p class="answer"><span class="label">Closing gate</span><span>${shown}</span></p>`;
 
-test("a close with no gate shows its decisions and no Closing gate row", () => {
-  expect(append(PAGE, ROUND, question("s1-r1-q1", 1), { type: "close", id: "c1", session: 1, decisions: [{ question: "s1-r1-q1", text: "One is true." }] }).code).toBe(0);
+test("an older close with gate, answer, and note renders its decisions and no Closing gate row", () => {
+  const close = { type: "close", id: "c1", session: 1, decisions: [{ question: "s1-r1-q1", text: "One is true." }], gate: true, answer: "Shared understanding", note: "Go on." };
+  writeFileSync(state, `${lines(PAGE, ROUND, question("s1-r1-q1", 1), close)}\n`);
+  expect(run(["render", state]).code).toBe(0);
   const html = summary(readFileSync(page, "utf8"));
   expect(html).toContain("One is true.");
   expect(html).not.toContain("Closing gate");
-  expect(html).not.toContain("Waiting for your answer.");
-});
-
-test.each([
-  ["a pending gate", { gate: true }, "Waiting for your answer."],
-  ["an answered gate", { gate: true, answer: "Shared understanding", note: "Go on." }, "Shared understanding. Note: &quot;Go on.&quot;"],
-  ["a gate from before the gate field", { answer: "Shared understanding" }, "Shared understanding."],
-  ["a gate that stopped after two timeouts", { gate: true, note: "Two timeouts, no answer." }, "No answer. Note: &quot;Two timeouts, no answer.&quot;"],
-])("a close with %s shows its Closing gate row", (_, extra, shown) => {
-  expect(append(PAGE, ROUND, question("s1-r1-q1", 1), { type: "close", id: "c1", session: 1, decisions: [{ question: "s1-r1-q1", text: "One is true." }], ...extra }).code).toBe(0);
-  expect(summary(readFileSync(page, "utf8"))).toContain(gateRow(shown));
-});
-
-test("a close whose gate is not true or false is refused and writes nothing", () => {
-  const r = append(PAGE, ROUND, question("s1-r1-q1", 1), { type: "close", id: "c1", session: 1, decisions: [{ question: "s1-r1-q1", text: "One is true." }], gate: "yes" });
-  expect(r.code).toBe(1);
-  expect(r.stderr).toContain("close c1: gate must be true or false");
-  expect(existsSync(state)).toBe(false);
+  expect(html).not.toContain("Shared understanding");
+  expect(html).not.toContain("Go on.");
 });
 
 const FLOW = { type: "flow", id: "flow", slug: "page-per-flow", key: "page-per-flow", state: "open" };
@@ -596,7 +581,7 @@ test("the Overview shows each Stage's state, its decisions, and its open questio
   ).toBe(0);
   expect(run(["answer", state, "s1-r1-q1=A", "s1-r1-q2=B", "s2-r1-q1=A", "s2-r1-q3=unanswered"]).code).toBe(0);
   const decisions = [{ question: "s1-r1-q2", text: "Two is true." }, { question: "s1-r1-q1", text: "One is true." }];
-  expect(append({ type: "close", id: "c1", session: 1, decisions, answer: "Not yet" }, { type: "close", id: "c2", session: 1, decisions: [decisions[1], { ...decisions[0], text: "Two is now true." }], answer: "Yes" }).code).toBe(0);
+  expect(append({ type: "close", id: "c1", session: 1, decisions }, { type: "close", id: "c2", session: 1, decisions: [decisions[1], { ...decisions[0], text: "Two is now true." }] }).code).toBe(0);
   const html = readFileSync(page, "utf8");
 
   const ids = [...panel(html, "overview").matchAll(/<li class="stage"[\s\S]*?href="#stage-([^"]+)"/g)].map((m) => m[1]);
@@ -638,7 +623,7 @@ test("a later stage record with the same id replaces the earlier one", () => {
 });
 
 test("a state file from before Stages renders as one Stage, and a Stage added later gets its own tab", () => {
-  const close = { type: "close", id: "c1", session: 1, decisions: [{ question: "s1-r1-q1", text: "One is true." }], answer: "Yes" };
+  const close = { type: "close", id: "c1", session: 1, decisions: [{ question: "s1-r1-q1", text: "One is true." }] };
   writeFileSync(state, `${lines(PAGE, ROUND, question("s1-r1-q1", 1), close)}\n`);
   const r = run(["render", state]);
   expect(r.code).toBe(0);
