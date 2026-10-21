@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [4.0.3] - 2026-10-21
+
+- grill-with-docs's closing ask offers `Shared understanding, then to-spec` (recommended) and `Shared understanding, then implement` before Shared understanding and Not yet. A next-step pick confirms the shared understanding, and the agent then runs that skill in the same session, inside the grill's Matt run. grilling's close lets a calling skill add these next-step options, and its other callers keep the two-option close. A headless close takes plain Shared understanding and runs no next skill. After a next-step pick, grilling calls the new extension tool `vstack_pick_addons` with the closing summary. jev judges only the Addons that the session did not receive yet, at 0.70 and with no smol call. The tool returns the `skill://` pointers and saves them as a `vstack-addons` session entry, so a later prompt or call does not send them again. The tool runs its calls one at a time, so each call sees the picks that the call before it saved (ADR 0031).
+
 ## [4.0.2] - 2026-10-21
 
 - grilling-page's `rename` to the flow's current key now succeeds without changing anything. It exits 0, prints the page path, and writes nothing: no folder move, no state line, no new `old_keys` entry, and no fresh `page.html` or `flow.json`. It used to exit 1 with "already exists", so to-spec failed after it published a local-markdown spec whose slug was already the flow's key. A rename to a different key whose folder exists still refuses and writes nothing (#193).

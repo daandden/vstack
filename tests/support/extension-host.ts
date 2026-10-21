@@ -74,6 +74,8 @@ export interface FakeHost {
   callCommand(name: string, args?: string): Promise<void>;
   /** Messages the extension sent with pi.sendMessage. */
   sent: unknown[];
+  /** Entries the extension saved with pi.appendEntry, as omp stores them: `{ type: "custom", customType, data }` on the active branch. */
+  appended: unknown[];
   /** Session name and its source, as omp's session manager stores them. */
   session: { name?: string; source?: SessionNameSource; titles: { name: string; source: SessionNameSource }[] };
   /** Omp's auto title: refused once a user-sourced name is set (session-manager.ts). */
@@ -91,6 +93,7 @@ export function fakeHost(options: FakeHostOptions = {}): FakeHost {
   const execCalls: FakeHost["execCalls"] = [];
   const selections = [...(options.selections ?? [])];
   const sent: unknown[] = [];
+  const appended: unknown[] = [];
   const session: FakeHost["session"] = { titles: [] };
   const setName = (name: string, source: SessionNameSource): boolean => {
     if (source === "auto" && session.source === "user") return false;
@@ -110,6 +113,7 @@ export function fakeHost(options: FakeHostOptions = {}): FakeHost {
       return options.exec(command, args);
     },
     sendMessage: (message: unknown) => sent.push(message),
+    appendEntry: (customType: string, data?: unknown) => appended.push({ type: "custom", customType, data }),
     // Every omp mode wires this to sessionManager.setSessionName(name, "user").
     setSessionName: async (name: string) => {
       setName(name, "user");
@@ -145,8 +149,8 @@ export function fakeHost(options: FakeHostOptions = {}): FakeHost {
     sessionManager: {
       getSessionId: () => options.sessionId ?? "session-1",
       getSessionName: () => session.name,
-      getBranch: () => options.entries ?? [],
-      getEntries: () => options.sessionEntries ?? options.entries ?? [],
+      getBranch: () => [...(options.entries ?? []), ...appended],
+      getEntries: () => [...(options.sessionEntries ?? options.entries ?? []), ...appended],
     },
   };
   vstack(pi as any);
@@ -159,6 +163,7 @@ export function fakeHost(options: FakeHostOptions = {}): FakeHost {
     uiCalls,
     execCalls,
     sent,
+    appended,
     session,
     autoTitle: (name) => setName(name, "auto"),
     async callCommand(name, args = "") {
