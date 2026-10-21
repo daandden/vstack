@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [4.0.5] - 2026-10-21
+
+- ship accepts omp's clean isolation notice without a patch path and rejects tracked edits in root or nested-repository patches. It checks the plain JSON verdict separately from the runtime notice, reports capture errors or missing notices as unavailable, and no longer relies on the verifier's output schema, which hid the notice (#182).
+
 ## [4.0.4] - 2026-10-21
 
 - implement, implement-spec, hillclimb, and forensics open their todo list with one short item per step instead of a verbatim copy of each step and its paragraphs. An item holds the step's id, its heading, its status, with `skip: <reason>` for an unfinished step, and any blocker. In a list that mixes END-STATE's steps with the caller's own, each id carries its source, `shared` or `local`, so implement-spec's `shared 5` (Review the whole diff) and `local 5` (Merge each result) stay apart. END-STATE.md states this item rule once, implement and implement-spec point to it, and END-STATE.md stays the only full text of the shared steps (#184).
