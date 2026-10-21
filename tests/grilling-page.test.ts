@@ -406,6 +406,25 @@ test("rename refuses when the target folder exists, and writes nothing", () => {
   expect(readdirSync(target)).toEqual([]);
 });
 
+test("rename to the current key succeeds, prints the page path, and writes nothing", () => {
+  const folder = flowFolder();
+  append(PAGE, FLOW, ROUND, question("s1-r1-q1", 1));
+  expect(run(["rename", state, "151"]).code).toBe(0);
+  const moved = join(dir, "vstack-151");
+  const movedState = join(moved, "page.jsonl");
+  writeFileSync(join(moved, "page.html"), "<p>older template</p>\n");
+  writeFileSync(join(moved, "flow.json"), '{"older": "format"}\n');
+  const files = ["page.jsonl", "page.html", "flow.json"];
+  const before = files.map((f) => readFileSync(join(moved, f), "utf8"));
+  const r = run(["rename", movedState, "151"]);
+  expect(r.code).toBe(0);
+  expect(r.stdout.trim()).toBe(join(moved, "page.html"));
+  expect(files.map((f) => readFileSync(join(moved, f), "utf8"))).toEqual(before);
+  expect(existsSync(folder)).toBe(false);
+  expect(run(["render", movedState]).code).toBe(0);
+  expect(flowJson(moved)).toMatchObject({ key: "151", old_keys: ["page-per-flow"] });
+});
+
 test("rename refuses a page with no flow record, and a key that is not lowercase letters, digits, and hyphens", () => {
   flowFolder();
   append(PAGE);

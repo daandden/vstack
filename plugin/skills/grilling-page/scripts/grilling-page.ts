@@ -1,4 +1,4 @@
-// Keeps a Grilling page from a JSONL state file and renders the whole page on every command.
+// Keeps a Grilling page from a JSONL state file and renders the whole page on every command but a same-key rename.
 //
 //   bun grilling-page.ts append <state.jsonl> [<records.jsonl> | -]
 //   bun grilling-page.ts answer <state.jsonl> <question-id>=<spec> ...
@@ -10,6 +10,7 @@
 // renders the page from templates/grilling-page.html, and prints the page's absolute path.
 // With a flow record, the state file's folder is the flow folder <project>-<key>/: every command also
 // writes flow.json from that record and makes figures/. rename moves the folder to <project>-<new-key>/.
+// The exception: rename to the current key checks the records, writes nothing, and prints the page path.
 // An answer <spec> is A or A,B (picked options), with an optional :note; other:<text>; or unanswered[:<reason>].
 // Exit 0 prints the path; exit 1 is a record error and writes nothing; exit 2 is a usage error.
 
@@ -688,6 +689,10 @@ try {
   let target = folder;
   if (command === "rename") {
     if (!s.flow) fail("rename", "rename needs a flow record. Append one first");
+    if (rest[0] === s.flow!.key) {
+      process.stdout.write(`${page}\n`);
+      process.exit(0);
+    }
     target = join(dirname(folder), basename(folder).slice(0, -s.flow!.key.length) + rest[0]);
     if (existsSync(target)) fail("rename", `${target} already exists`);
     added = renameRecords(s, folder, target, rest[0]);
