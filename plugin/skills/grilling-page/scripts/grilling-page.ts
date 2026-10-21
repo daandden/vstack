@@ -259,9 +259,6 @@ function check(lines: Line[], folder: string): State {
       }
       case "close": {
         int(r, "session", where);
-        str(r, "answer", where, true);
-        str(r, "note", where, true);
-        if (r.gate !== undefined && typeof r.gate !== "boolean") fail(where, "gate must be true or false");
         if (!Array.isArray(r.decisions) || r.decisions.length === 0) fail(where, "decisions must list one { question, text } per decision");
         for (const dec of r.decisions) {
           if (typeof dec !== "object" || dec === null) fail(where, "each decision must be an object");
@@ -555,20 +552,18 @@ function render(s: State, baseDir: string): string {
         }
       } else {
         const bullets = [...decisionsOf(item), ...((item.extra as string[] | undefined) ?? []).map((e) => `<li>${text(e)}</li>`)].join("\n");
-        const shown = item.answer ? `${item.answer}.` : item.note ? "No answer." : "Waiting for your answer.";
-        const gate = item.gate || item.answer || item.note ? `\n<p class="answer"><span class="label">Closing gate</span><span>${text(item.note ? `${shown} Note: "${item.note}"` : shown)}</span></p>` : "";
         const latest = lastClose.get(item.session) === item.id;
         body.push(`<section class="summary" id="close-${item.id}" aria-labelledby="close-${item.id}-title"${latest ? " data-stop" : ""}>
 <h2 id="close-${item.id}-title">Summary of session ${item.session}</h2>
 <ul class="decisions">
 ${bullets}
-</ul>${gate}
+</ul>
 </section>`);
         if (latest) nav.push(`<span class="sep" aria-hidden="true"></span><a href="#close-${item.id}" data-for="close-${item.id}">Summary</a>`);
       }
     }
     const last = items.at(-1);
-    const state = st.state ?? (last?.type === "close" && last.answer ? "finished" : "in-progress");
+    const state = st.state ?? (last?.type === "close" ? "finished" : "in-progress");
     const dot = `<span class="dot" data-state="${state}"></span>`;
     const decisions = items.filter((i) => i.type === "close" && lastClose.get(i.session) === i.id).flatMap(decisionsOf);
     const sessions = new Set(items.filter((i) => i.type === "round").map((r) => r.session as number));
