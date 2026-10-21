@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 Read [END-STATE.md](END-STATE.md) before work. It owns the shared steps 0a–0c, 3b, and 4–7, also used by hillclimb. Run them at the points below, not as a separate invocation per ticket.
 
-Before task-specific items, open the todo list with the shared steps and steps 1–3 below copied verbatim, including their paragraphs, in execution order. Keep each unfinished step as `skip: <reason>`.
+Before task-specific items, open the todo list as END-STATE.md says, with the shared steps and steps 1–3 below as `local` steps.
 
 Run shared steps 0a–0c once.
 

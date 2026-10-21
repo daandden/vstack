@@ -20,7 +20,7 @@ Communication to and from subagents should be sparse. Communicate primarily thro
 
 Read skill://implement/END-STATE.md before work. It owns the shared steps 0a–0c, 3b, and 4–7, also used by implement and hillclimb. Run each shared step once for the whole spec, not once per ticket.
 
-Before task-specific items, open the todo list with the shared steps and the steps below copied verbatim, including their paragraphs, in execution order. Keep each unfinished step as `skip: <reason>`.
+Before task-specific items, open the todo list as END-STATE.md says, with the shared steps and the steps below as `local` steps. Steps 4–7 exist on both sides: `shared 5` is Review the whole diff and `local 5` is Merge each result.
 
 Every subagent uses the Session model unless the user set a model for that agent. Resolve the vstack root and the project Scratch dir once, as END-STATE.md says, and pass both to every subagent. This run keeps its notes and evidence under `<Scratch dir>/implement-spec/<run-id>/`.
 
