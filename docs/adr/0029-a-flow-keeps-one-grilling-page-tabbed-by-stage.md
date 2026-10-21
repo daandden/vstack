@@ -21,7 +21,7 @@ We chose the rename because it reuses the issue key that pages already had and k
 ## Consequences
 
 - This amends the page identity of [ADR 0013](0013-a-script-renders-the-grilling-page-from-a-jsonl-state-file.md): one page per flow in one Scratch folder, renamed at to-spec and tabbed by Stage, in place of one page per grilling session. ADR 0013's other decisions still stand. The script is the only writer of the page, the state file is JSONL, a later line with the same `id` replaces an earlier one, and the script checks every record. A state file with no Stage records renders as one Stage, so older pages stay readable.
-- The page script reads every SVG visual again on each render, so figures sit in the folder's `figures/` dir, and a visual stores its path relative to the folder. `rename` refuses, and writes nothing, when the target exists or when a visual does not resolve after the move.
+- The page script reads every SVG visual again on each render, so figures sit in the folder's `figures/` dir, and a visual stores its path relative to the folder. `rename` refuses, and writes nothing, when another folder already has the target name or when a visual does not resolve after the move. A `rename` to the flow's current key changes nothing and prints the page path (#193).
 - `/vstack-clean` removes a flow's folder as one entry.
 - grilling's rule that every `ask` option carries a one-line description no longer holds.
 - improve-codebase-architecture shows its candidates as a Report block on the flow's page, and its separate HTML report goes away.
