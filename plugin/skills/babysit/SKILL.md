@@ -43,7 +43,7 @@ Work in this order: conflicts, review threads, then CI. Batch all known fixes in
 
 ### Conflicts belong to the caller
 
-On a conflict, stop before threads or CI. Report the branch needing rebase and the drift sweep: reconcile callers added on the base for code this stack deletes or moves. Babysit itself never rebases or force-pushes. The caller owns the conflict through the Conflict owner in END-STATE step 7.
+On a conflict, stop before threads or CI. Report the branch that needs an update and the drift sweep: reconcile callers added on the base for code this stack deletes or moves. Babysit itself never merges a base into a branch, rebases, or force-pushes. The caller owns the conflict through the Conflict owner in END-STATE step 7.
 
 ### Review threads
 
@@ -58,7 +58,7 @@ Push the batched wave before replying so replies cite the fix commit and proof. 
 Read failing run and job logs through `ci-logs`. Classify the failure before retriggering:
 
 - Diff-owned failure: fix with a red-first proof and include it in the push wave.
-- Stale base: fetch the current base and check `git merge-base --is-ancestor <base-tip> <head>`. For failures outside the diff, inspect whether missing base changes explain them. Report a needed rebase to the caller's Conflict owner; do not spend a retry on it.
+- Stale base: fetch the current base and check `git merge-base --is-ancestor <base-tip> <head>`. For failures outside the diff, inspect whether missing base changes explain them. Report the needed update to the caller's Conflict owner; do not spend a retry on it.
 - Proven flake or infrastructure failure: one fresh full rerun through `rerun-ci` for that failure, not a failed-job-only retry. Record the retry so a new poll or worker does not reset the allowance. An identical second failure must be reclassified from child logs; never retry blindly. If `rerun-ci` is unsupported, report the flake for the human.
 
 After publishing fixes, watch required checks, then read merge state, review decision, and all threads again. Stop at merge-ready. Owner approval, permissions, a conflict, or a policy decision is the human's line: report it, finish independent actionable items where safe, then return. Never merge to make a blocked state disappear.
