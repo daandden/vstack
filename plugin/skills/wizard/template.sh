@@ -20,10 +20,10 @@ else
 fi
 
 # Author sets these at the top of the stages section. SECRET_CMD and VAR_CMD
-# come from the set-secret and set-variable rows of the repo's code-host.md.
-# Leave either empty when its row is an MCP tool or unsupported.
+# come from the set-secret and set-variable rows of the repo's ci.md.
+# Leave either empty when its row is an MCP tool, unsupported, or missing.
 TOTAL_STAGES=0
-CODE_HOST="the code host"
+CI_SERVICE="the CI service"
 SECRET_CMD=()
 VAR_CMD=()
 
@@ -31,7 +31,7 @@ _STAGE_INDEX=0
 ENV_FILE="${ENV_FILE:-.env}"
 WRITTEN_ENV=()    # KEYs written to ENV_FILE this run
 WRITTEN_SECRET=() # secret NAMEs set this run
-SKIPPED=()        # things we couldn't do (e.g. no CLI for the code host)
+SKIPPED=()        # things we couldn't do (e.g. no CLI for the CI service)
 
 # _clear wipes the terminal so only the current step is on screen. No-op when
 # output isn't a terminal, so piped logs stay readable.
@@ -145,26 +145,26 @@ write_env() {
 
 # _host_set KIND NAME VALUE CMD... runs CMD with NAME as its last argument and
 # VALUE on standard input. With no CMD, or when CMD fails, it records a hand
-# step in the code host's web page instead.
+# step in the CI service's web page instead.
 _host_set() {
   local kind="$1" name="$2" value="$3"; shift 3
   if (( $# )) && command -v "$1" >/dev/null 2>&1; then
     if printf '%s' "$value" | "$@" "$name" >/dev/null 2>&1; then
-      printf '  %s✓ set%s %s %s %s\n' "$GREEN" "$RESET" "$CODE_HOST" "$kind" "$name"
+      printf '  %s✓ set%s %s %s %s\n' "$GREEN" "$RESET" "$CI_SERVICE" "$kind" "$name"
       return 0
     fi
   fi
-  SKIPPED+=("$CODE_HOST $kind $name (set it in $CODE_HOST's web page)")
-  warn "skipped $CODE_HOST $kind $name; set it in $CODE_HOST's web page"
+  SKIPPED+=("$CI_SERVICE $kind $name (set it in $CI_SERVICE's web page)")
+  warn "skipped $CI_SERVICE $kind $name; set it in $CI_SERVICE's web page"
   return 1
 }
 
-# set_secret NAME VALUE sets a CI secret on the code host through SECRET_CMD.
+# set_secret NAME VALUE sets a secret in the CI service through SECRET_CMD.
 set_secret() {
   if _host_set secret "$1" "$2" ${SECRET_CMD[@]+"${SECRET_CMD[@]}"}; then WRITTEN_SECRET+=("$1"); fi
 }
 
-# set_var NAME VALUE sets a CI variable (non-secret) on the code host through VAR_CMD.
+# set_var NAME VALUE sets a variable (non-secret) in the CI service through VAR_CMD.
 set_var() {
   _host_set variable "$1" "$2" ${VAR_CMD[@]+"${VAR_CMD[@]}"} || true
 }
@@ -174,7 +174,7 @@ finish() {
   _clear
   printf '\n%s%s  ✓ Setup complete%s\n' "$BOLD" "$GREEN" "$RESET"
   (( ${#WRITTEN_ENV[@]} ))    && note "wrote ${#WRITTEN_ENV[@]} value(s) to $ENV_FILE: ${WRITTEN_ENV[*]}"
-  (( ${#WRITTEN_SECRET[@]} )) && note "set ${#WRITTEN_SECRET[@]} $CODE_HOST secret(s): ${WRITTEN_SECRET[*]}"
+  (( ${#WRITTEN_SECRET[@]} )) && note "set ${#WRITTEN_SECRET[@]} $CI_SERVICE secret(s): ${WRITTEN_SECRET[*]}"
   if (( ${#SKIPPED[@]} )); then
     printf '\n'; warn "still to do by hand:"
     for s in "${SKIPPED[@]}"; do note "  - $s"; done
@@ -188,7 +188,7 @@ finish() {
 # ──────────────────────────────────────────────────────────────────────────
 
 TOTAL_STAGES=1
-CODE_HOST="GitHub"            # from code-host.md
+CI_SERVICE="GitHub Actions"    # from ci.md
 SECRET_CMD=(gh secret set)    # set-secret row's command without <NAME>; () for an MCP row
 VAR_CMD=(gh variable set)     # set-variable row's command without <NAME>; () for an MCP row
 

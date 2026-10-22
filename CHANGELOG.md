@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [4.0.4] - 2026-10-22
+
+- Move PR-chain CI logs and reruns, and wizard secrets and variables, to ci.md. Missing CI config limits implement to commit (#201).
+
 ## [4.0.3] - 2026-10-22
 
 - Add setup's CI service section and GitHub Actions and GitLab CI templates; require ci.md for complete project setup while retaining the Code host CI rows until the reader cutover (#200).

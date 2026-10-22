@@ -10,7 +10,7 @@ PRs live on GitHub at `daandden/vstack`, through the `gh` CLI. Before PR operati
 
 ### CI service
 
-Builds and checks run on GitHub Actions through the `gh` CLI. See `docs/vstack/ci.md`. The Code host retains its CI rows until the reader cutover.
+Builds and checks run on GitHub Actions through the `gh` CLI. Before reading build logs, rerunning builds, or storing CI secrets and variables, read `docs/vstack/ci.md`. Required PR checks stay with the Code host.
 
 ### Triage labels
 

@@ -117,7 +117,7 @@ The GitHub and GitLab templates carry a "PRs as a request surface" flag, off by 
 
 Section B, Code host.
 
-> Explainer: The Code host is the service that holds this repo's remote and its PRs. implement's PR chain (open-pr, babysit, ship), code-review, blast-radius, why, session, and wizard run every PR operation through `code-host.md`. A repo without it can only commit, and code-review and blast-radius cannot review a PR. The Code host is a separate choice from the issue tracker. For example, a Bitbucket repo can track its issues in Jira.
+> Explainer: The Code host is the service that holds this repo's remote and its PRs. implement's PR chain (open-pr, babysit, ship), code-review, blast-radius, why, and session run every PR operation through `code-host.md`. A repo without it can only commit, and code-review and blast-radius cannot review a PR. The Code host is a separate choice from the issue tracker. For example, a Bitbucket repo can track its issues in Jira.
 
 Recommend GitHub when a remote points at `github.com`, GitLab when a remote points at GitLab (`gitlab.com` or a self-hosted host), and no option otherwise. The `ask` options:
 
@@ -158,7 +158,7 @@ Write the drafts from the seed templates in this skill's directory:
 - [domain.md](./domain.md): domain doc consumer rules and layout
 
 For an Other issue tracker, write `issue-tracker.md` from scratch from the user's description. For an Other Code host, write `code-host.md` in the shape of `code-host-github.md`, with the host, the repo, the tool, a read-only check, the review reference, and the drafted rows. In every `code-host.md`, fill in the repo from the remote and, for a self-hosted GitLab, the host.
-For an Other CI service with a CLI, write `ci.md` in the shape of `ci-github-actions.md`, with the CI service, repo, tool, read-only Check command, and drafted rows. Fill in the CI repo and, for self-hosted GitLab, its host. Keep the four CI operation rows in `code-host.md` as well; its readers still use them during this expand step.
+For an Other CI service with a CLI, write `ci.md` in the shape of `ci-github-actions.md`, with the CI service, repo, tool, read-only Check command, and drafted rows. Fill in the CI repo and, for self-hosted GitLab, its host. Keep CI logs, build reruns, secrets, and variables only in `ci.md`.
 
 In Private mode, change two drafts so that they point under the vstack root by absolute path:
 
@@ -218,8 +218,8 @@ Tell the user the setup is complete, in which mode, and where the config is. Rep
 List the skills that read the config:
 
 - `issue-tracker.md`: to-spec, to-tickets, triage, wayfinder, code-review, and why.
-- `code-host.md`: implement and its PR chain (open-pr, babysit, and ship), implement-spec, hillclimb, code-review, blast-radius, why, session, and wizard. Without it, implement offers only End state commit, and code-review and blast-radius cannot review a PR.
-- `ci.md`: implement, babysit, and wizard. During the reader cutover, these skills still use the retained CI rows in `code-host.md`.
+- `code-host.md`: implement and its PR chain (open-pr, babysit, and ship), implement-spec, hillclimb, code-review, blast-radius, why, and session. Without it, implement offers only End state commit, and code-review and blast-radius cannot review a PR.
+- `ci.md`: implement, babysit, and wizard. Without it, implement offers only End state commit. Logs, build reruns, secrets, and variables use this file.
 - `triage-labels.md`: triage, to-spec, and to-tickets.
 - `domain.md` and the domain docs: domain-modeling, grill-with-docs, improve-codebase-architecture, codebase-design, diagnosing-bugs, tdd, and wait-what.
 
