@@ -65,7 +65,7 @@ Do NOT propose interfaces yet. The pick question is the next question: which can
 
 ### 3. Grilling loop
 
-Once the user picks a candidate, run the `skill://grilling` skill to walk the decision tree with them: constraints, dependencies, the shape of the deepened module, what sits behind the seam, what tests survive. Its rounds continue in this skill's Stage on the same page. After grilling's closing gate gets Shared understanding, mark the Stage finished. If no candidate is picked, the Stage asks no more: close its session and mark it finished, as grilling-page's "Add a Stage" section says.
+Once the user picks a candidate, run the `skill://grilling` skill to walk the decision tree with them: constraints, dependencies, the shape of the deepened module, what sits behind the seam, what tests survive. Its rounds continue in this skill's Stage on the same page. When grilling closes with its summary, mark the Stage finished. If no candidate is picked, the Stage asks no more: close its session and mark it finished, as grilling-page's "Add a Stage" section says.
 
 Side effects happen inline as decisions crystallize. Run the `skill://domain-modeling` skill to keep the domain model current as you go:
 

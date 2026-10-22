@@ -5,8 +5,7 @@ import { loadRegister } from "./vstack-repo.ts";
 
 const DEFAULT_SMOKE = resolve(import.meta.dir, "../load-smoke.sh");
 
-/** Top-level tools the vstack extension registers; skill text calls them by name. */
-const EXTENSION_TOOLS = ["vstack_rename_session", "vstack_pick_addons"];
+const EXTENSION_TOOLS = ["vstack_rename_session"];
 
 /** The fields of the load-smoke.sh summary that the load gate reads. */
 export interface LoadSmoke {
