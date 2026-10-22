@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [5.0.1] - 2026-10-22
+
+- grilling-page drops the `decision-trail` Stage tab label, because no skill of that name can add a Stage.
+
 ## [5.0.0] - 2026-10-22
 
 - Remove decision-trail. hillclimb keeps its own attempt log at `<Scratch dir>/hillclimb/<run-id>/attempts.tsv` through `hillclimb/scripts/log.sh`, and only the parent writes it. No run audits a trail or ends with an Attention section.
