@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [5.0.6] - 2026-10-22
+
+- improve-codebase-architecture puts the comparison of the designs with the recommendation in the design report's summary, as the grill decided, and the design question no longer repeats it.
+
 ## [5.0.5] - 2026-10-22
 
 - improve-codebase-architecture runs Design It Twice after every pick. 3–4 vstack-explorer designs, screened against RED-FLAGS.md, show as a cards Report block with the recommendation in its summary line, and grilling's first question asks which design or hybrid to keep. DESIGN-IT-TWICE.md no longer waits for the user to ask for it.
