@@ -20,7 +20,7 @@ items:
     tree: d8e341cee7980127dddda05159bedf25dc853615
     disposition: adapt
     artifacts: [plugin/skills/code-review]
-    reason: "Reads vstack configuration. Standards, Spec, and conditional Safety use Fan-out. Safety runs blast-radius only in a run, without step 6. A supplied PR is reviewed at its exact base and head commits in a detached worktree made through vstack-worktree. It runs as its own Stage on the flow's Grilling page, shows Standards and Spec as cards and Safety as a ledger before any question, and asks only about findings it cannot decide (#84, #126, #139, #168)."
+    reason: "PR pinning accepts MCP Code hosts without operation rows, selects read-pr by descriptions and schemas, and fetches exact commits through project facts; retains CLI rows and review axes (#204, ADR 0035)."
   - id: matt/codebase-design
     upstream: matt
     kind: skill
@@ -60,7 +60,7 @@ items:
     tree: f07d230f645fc9ac390cf13a450bbff12ad791a3
     disposition: adapt
     artifacts: [plugin/skills/implement]
-    reason: "Settles the End state with one ask, then chains open-pr, babysit, ship; uses the verify skill. Keeps its asks and a run results table Report block in its own Stage on the flow's Grilling page, and closes the flow when the run ends with no ticket open (#34, #167)."
+    reason: "Settles End states through live MCP capability discovery and shares description-based Code host routing, with unsupported optional tools reported as gaps (ADR 0034, ADR 0035, #204)."
   - id: matt/improve-codebase-architecture
     upstream: matt
     kind: skill
@@ -92,7 +92,7 @@ items:
     tree: b1568cde855a189b16e5d7dd8a0fa4c3f156bc2e
     disposition: adapt
     artifacts: [plugin/skills/setup-vstack]
-    reason: "Renamed to setup-vstack for machine configuration and project setup. Its project section offers a repo-only Migration from Matt's config first (ADR 0006, ADR 0028)."
+    reason: "Other issue trackers and Code hosts use short MCP configs from current descriptions; re-setup preserves CI hand edits and confirms the CI and Code host drafts together (ADR 0035, #204, #205, #206)."
   - id: matt/tdd
     upstream: matt
     kind: skill
@@ -140,7 +140,7 @@ items:
     tree: 0a163daf092c6f361158ca9627e81f2cb5230574
     disposition: adapt
     artifacts: [plugin/skills/wizard]
-    reason: "Its user questions go through ask (ask-tool, #58)."
+    reason: "Its user questions go through ask (ask-tool, #58). Secrets and variables go to the CI service, with manual instructions when its commands are absent (ADR 0034)."
   - id: matt/grill-me
     upstream: matt
     kind: skill
@@ -652,7 +652,7 @@ items:
     tree: ba549f92c3a8dc1506b21674e8794eb980019bf3
     disposition: adapt
     artifacts: [plugin/skills/why]
-    reason: "Profiles git, the code host, tracker, and MCPs; fans out investigators and always uses fresh-context synthesis (#49)."
+    reason: "Profiles git, Code host, tracker and MCP evidence; resolves MCP review history from descriptions and facts, records gaps, and retains fresh-context synthesis (#49, #204, ADR 0035)."
   - id: pstack/playbook-authoring-a-skill
     upstream: pstack
     kind: playbook
@@ -692,7 +692,7 @@ items:
     tree: 51549ab2da11e5905342bbb3aadb93685c8ac348
     disposition: adapt
     artifacts: [plugin/skills/babysit]
-    reason: "Hidden drive-mode knowledge for implement's PR chain through the repo's code-host.md, without user-start background or check modes (ADR 0015, ADR 0020)."
+    reason: "Hidden drive-mode knowledge takes the failed build only from the check's link, selects MCP logs from current tool descriptions, and permits reruns only through the configured CLI command or MCP rerun pin (ADR 0015, ADR 0034, ADR 0035)."
   - id: pstack/playbook-bug-fix
     upstream: pstack
     kind: playbook

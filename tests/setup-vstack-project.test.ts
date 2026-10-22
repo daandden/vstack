@@ -8,7 +8,7 @@ import { dirname, join } from "node:path";
 import { ENV, git } from "./support/fixture.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "setup-vstack", "scripts", "project.ts");
-const CONFIG = ["docs/vstack/issue-tracker.md", "docs/vstack/triage-labels.md", "docs/vstack/domain.md", "docs/vstack/code-host.md"];
+const CONFIG = ["docs/vstack/issue-tracker.md", "docs/vstack/triage-labels.md", "docs/vstack/domain.md", "docs/vstack/code-host.md", "docs/vstack/ci.md"];
 const BLOCK = "## vstack\n\n### Issue tracker\n\nGitHub. See `docs/vstack/issue-tracker.md`.\n";
 
 let dir: string;
@@ -93,20 +93,45 @@ test("Standard mode is on when docs/vstack/ holds config", () => {
 });
 
 test("missing_config names each config file the mode's config directory lacks, so a re-run asks only those sections", () => {
-  expect(state(makeRepo()).missing_config).toEqual(["issue-tracker.md", "code-host.md", "triage-labels.md", "domain.md"]);
+  expect(state(makeRepo()).missing_config).toEqual(["issue-tracker.md", "code-host.md", "triage-labels.md", "domain.md", "ci.md"]);
 
-  // A repo set up before the Code host existed lacks only code-host.md.
   const older = makeRepo({
     "docs/vstack/issue-tracker.md": "# GitHub\n",
     "docs/vstack/triage-labels.md": "# Labels\n",
     "docs/vstack/domain.md": "# Domain\n",
   });
-  expect(state(older).missing_config).toEqual(["code-host.md"]);
+  expect(state(older).missing_config).toEqual(["code-host.md", "ci.md"]);
 
   // Private mode reads <vstack root>/config/, not docs/vstack/.
   const priv = makeRepo({ "docs/vstack/issue-tracker.md": "# tracked team config\n" });
   write(join(priv, ".git", "vstack"), { "config/code-host.md": "# GitHub\n", "config/domain.md": "# Domain\n" });
-  expect(state(priv).missing_config).toEqual(["issue-tracker.md", "triage-labels.md"]);
+  expect(state(priv).missing_config).toEqual(["issue-tracker.md", "triage-labels.md", "ci.md"]);
+});
+
+test("a re-run with the other four config files reports only ci.md in either mode", () => {
+  const files = Object.fromEntries(Object.entries(configFiles()).filter(([p]) => p !== "docs/vstack/ci.md"));
+  const standard = makeRepo(files);
+  expect(state(standard).missing_config).toEqual(["ci.md"]);
+
+  const privateRepo = makeRepo();
+  write(join(privateRepo, ".git", "vstack"), Object.fromEntries(
+    Object.entries(files).map(([p, content]) => [p.replace("docs/vstack/", "config/"), content]),
+  ));
+  expect(state(privateRepo).missing_config).toEqual(["ci.md"]);
+});
+
+test("Standard setup refuses to commit without ci.md and preserves the index and HEAD", () => {
+  const repo = makeRepo({ ...configFiles(), "CLAUDE.md": BLOCK, "src/a.ts": "original\n" });
+  const before = git(repo, "rev-parse", "HEAD");
+  rmSync(join(repo, "docs/vstack/ci.md"));
+  write(repo, { "src/a.ts": "staged\n" });
+  git(repo, "add", "src/a.ts");
+
+  const result = run(repo, "commit", "--title", "chore: set up vstack config");
+  expect(result.code).toBe(2);
+  expect(result.stderr).toContain("docs/vstack/ci.md is missing");
+  expect(git(repo, "rev-parse", "HEAD")).toBe(before);
+  expect(git(repo, "diff", "--cached", "--name-only")).toBe("src/a.ts");
 });
 
 test("outside a git repo, state exits 2", () => {
@@ -117,7 +142,7 @@ test("outside a git repo, state exits 2", () => {
   expect(r.stderr).toContain("git");
 });
 
-test("Standard commit holds only the four config files and the block file, with the given title", () => {
+test("Standard commit holds only the five config files and the block file, with the given title", () => {
   const repo = makeRepo({ "README.md": "# app\n", "CLAUDE.md": "# notes\n", "src/a.ts": "a\n" });
   // Unrelated work in progress: a staged change, an unstaged change, and an untracked file.
   write(repo, { "src/a.ts": "a staged\n" });
@@ -220,7 +245,7 @@ test("Private-mode config under the vstack root leaves the repo with nothing to 
 const MIGRATE = join(import.meta.dir, "..", "plugin", "skills", "setup-vstack", "scripts", "migrate.ts");
 const migrationPaths = (paths: string[]) => paths.flatMap((p) => ["--migration-path", p]);
 
-test("one commit holds a Migration that filled every config file, and the setup output, and nothing else", () => {
+test("Migration leaves ci.md to setup, then one commit holds both outputs and nothing else", () => {
   const repo = makeRepo({
     "AGENTS.md": "# a\n\n## Agent skills\n\nSee docs/agents/issue-tracker.md\n",
     "docs/agents/issue-tracker.md": "# GitHub\n",
@@ -241,8 +266,10 @@ test("one commit holds a Migration that filled every config file, and the setup 
   expect(applied.exitCode).toBe(0);
   const report = JSON.parse(applied.stdout.toString());
   const s = state(repo);
-  expect(s.missing_config).toEqual([]);
+  expect(s.missing_config).toEqual(["ci.md"]);
   expect(s.block_exists).toBe(true);
+  write(repo, { "docs/vstack/ci.md": "# CI service: GitHub Actions\n" });
+  expect(state(repo).missing_config).toEqual([]);
 
   const r = run(repo, "commit", "--title", "chore: set up vstack", ...migrationPaths(report.paths));
   expect(r.code).toBe(0);

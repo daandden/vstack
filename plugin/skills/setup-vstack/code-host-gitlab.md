@@ -21,8 +21,6 @@ Each skill looks up an operation by its id. A row that says `unsupported` means 
 - `mark-ready`: `glab mr update <iid> --ready --yes`
 - `required-checks`: `glab api projects/:id/merge_requests/<iid>/pipelines` for the newest pipeline, then `glab api projects/:id/pipelines/<pipeline-id>/jobs`. Every job with `allow_failure` false is required.
 - `watch-checks`: `glab ci status --branch <branch> --wait`
-- `ci-logs`: `glab ci trace <job-id>`
-- `rerun-ci`: `glab api --method POST projects/:id/merge_requests/<iid>/pipelines`, which starts a new pipeline for the MR.
 - `review-threads`: `glab api --paginate projects/:id/merge_requests/<iid>/discussions`. Read each discussion's `id` and each note's `id`, `body`, `author`, `resolvable`, `resolved`, and `position.new_path`.
 - `reply-thread`: `glab api --method POST projects/:id/merge_requests/<iid>/discussions/<discussion-id>/notes --input <payload.json>`, where the payload is `{"body": "..."}`.
 - `resolve-thread`: `glab api --method PUT projects/:id/merge_requests/<iid>/discussions/<discussion-id> -f resolved=true`
@@ -31,5 +29,3 @@ Each skill looks up an operation by its id. A row that says `unsupported` means 
 - `merge-methods`: `glab api projects/:id`, fields `merge_method` (`merge`, `rebase_merge`, or `ff`) and `squash_option`.
 - `merge-pr`: `glab mr merge <iid> --sha <head-sha> --auto-merge=false --yes`. Add `--squash` to squash.
 - `auto-merge`: arm with `glab mr merge <iid> --sha <head-sha> --auto-merge --yes`. Disarm with `glab api --method POST projects/:id/merge_requests/<iid>/cancel_merge_when_pipeline_succeeds`.
-- `set-secret`: `glab variable set <NAME> --masked`, with the value on standard input.
-- `set-variable`: `glab variable set <NAME>`, with the value on standard input.

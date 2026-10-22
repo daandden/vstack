@@ -128,6 +128,10 @@ _Avoid_: goal, target, finish line
 The service that holds a repo's remote and its PRs, such as GitHub, GitLab, or Bitbucket. It is a separate choice from the issue tracker: a repo on Bitbucket can track its issues in Jira.
 _Avoid_: git host, VCS host, forge
 
+**CI service**:
+The service that runs a repo's builds and checks, such as GitHub Actions, GitLab CI, or Jenkins. It is a separate choice from the Code host.
+_Avoid_: CI provider, CI server, build server, CI host
+
 **Migration**:
 Moving one project that is set up for the Base upstream onto vstack, before its vstack setup. It changes only that project and its shared private store. Machine state such as global skills, global rules, and diagram profiles is not part of it.
 _Avoid_: conversion, reinstall, machine Migration

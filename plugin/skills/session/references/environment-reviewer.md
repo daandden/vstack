@@ -12,7 +12,7 @@ Read the transcript at <ABSOLUTE_PATH> (or use the digest below if no path is gi
 
 ## Find the mistake classes
 
-Read the checkout's recent commits, reverts, and review comments. Use `git -C <CHECKOUT> log` for commits. Read PR review comments through the `read-pr` and `review-threads` operations in <CODE_HOST_FILE>. If <CODE_HOST_FILE> is `none`, read git history only and report the review comments as missing evidence. Also read its agent instruction files and the comments that explain workarounds. Group the mistakes from the history and from the session into classes. A mistake class counts once it happened twice, in the session, in the history, or across both. A class that happened once is a one-off: drop it.
+Read the checkout's recent commits, reverts, and review comments. Use `git -C <CHECKOUT> log` for commits. Read PR review comments through `read-pr` and `review-threads` in <CODE_HOST_FILE>. For a CLI config, use its command rows. For an MCP config, read the named server's current tool descriptions and parameter schemas and choose tools for those operation ids using the recorded project facts. No operation rows are needed. If <CODE_HOST_FILE> is `none`, read git history only and report the review comments as missing evidence. If the server is unreachable or an operation has no matching tool, name that server and record the missing review comments as a gap. Also read its agent instruction files and the comments that explain workarounds. Group the mistakes from the history and from the session into classes. A mistake class counts once it happened twice, in the session, in the history, or across both. A class that happened once is a one-off: drop it.
 
 ## Scan the session
 

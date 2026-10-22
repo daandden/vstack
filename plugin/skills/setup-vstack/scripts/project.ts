@@ -8,8 +8,7 @@
 import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 
-// One file per setup section, in section order (ADR 0006, ADR 0020).
-const CONFIG_FILES = ["issue-tracker.md", "code-host.md", "triage-labels.md", "domain.md"];
+const CONFIG_FILES = ["issue-tracker.md", "code-host.md", "triage-labels.md", "domain.md", "ci.md"];
 const CONFIG = CONFIG_FILES.map((f) => `docs/vstack/${f}`);
 const BLOCK_FILES = ["CLAUDE.md", "AGENTS.md"];
 const BLOCK_HEADING = "## vstack";
