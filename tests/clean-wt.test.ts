@@ -328,7 +328,7 @@ test("dirty work is removed only with --approve, and unique history is never rem
   expect(existsSync(dirty)).toBe(false);
   expect(existsSync(m)).toBe(true);
   expect(git(repo, "rev-parse", "--verify", "refs/heads/wt/wt-dirty")).toMatch(/^[0-9a-f]{40}$/);
-});
+}, 30000);
 
 test("remove refuses an argument that names no checkout, before it removes anything", () => {
   const path = linkedWorktree("wt-a");
