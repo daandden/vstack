@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [5.0.3] - 2026-10-22
+
+- improve-codebase-architecture runs Design It Twice after every pick. 3–4 vstack-explorer designs, screened against RED-FLAGS.md, show as a cards Report block with the recommendation in its summary line, and grilling's first question asks which design or hybrid to keep. DESIGN-IT-TWICE.md no longer waits for the user to ask for it.
+
 ## [5.0.2] - 2026-10-22
 
 - Remove decision-trail. hillclimb keeps its own attempt log at `<Scratch dir>/hillclimb/<run-id>/attempts.tsv` through `hillclimb/scripts/log.sh`, and only the parent writes it. No run audits a trail or ends with an Attention section.

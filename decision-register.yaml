@@ -28,7 +28,7 @@ items:
     tree: 07ba1cd60efc12d0d3a083005c1d9651cf15e39a
     disposition: adapt
     artifacts: [plugin/skills/codebase-design]
-    reason: "DESIGN-IT-TWICE runs a Fan-out of vstack agents (#36)."
+    reason: "DESIGN-IT-TWICE runs a Fan-out of vstack agents (#36), and improve-codebase-architecture runs it after every pick."
   - id: matt/diagnosing-bugs
     upstream: matt
     kind: skill
@@ -68,7 +68,7 @@ items:
     tree: 39bd9cc130f7dfcc4e3ea0b3613f6ebed0d0ad2b
     disposition: adapt
     artifacts: [plugin/skills/improve-codebase-architecture]
-    reason: "Its sub-agent spawn names a vstack agent (ADR 0004); its candidates go on the flow's Grilling page as a cards Report block, not an HTML report (#169)."
+    reason: "Its sub-agent spawn names a vstack agent (ADR 0004); its candidates go on the flow's Grilling page as a cards Report block, not an HTML report (#169); it runs Design It Twice after every pick and shows the designs as a cards Report block before grilling."
   - id: matt/prototype
     upstream: matt
     kind: skill
