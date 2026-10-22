@@ -78,9 +78,9 @@ Show the screened designs on the page, not one after another in chat. Write one 
 - `visual`: the usage example as a `{ "text" }` visual.
 - `question`: the id of the design question.
 
-Put the recommendation in the report's `summary` line: which design or hybrid to keep, and why.
+Write the report's `summary` as one short paragraph of a sentence or two. It compares the designs by depth, locality, and seam placement, then says which design or hybrid to keep, and why.
 
-The design question is the grilling loop's first question: which design, or which hybrid, to keep. Write it as that loop's first round, as grilling-page's "Add a round" section says. Its `description` compares the designs by depth, locality, and seam placement, and names each design that screening dropped with its red flag. Give it one option per card in card order, plus one hybrid option when you propose a hybrid, and make the recommendation the recommended option. Give it `report_entries` with every card. Append the report, the round, and the design question in one `append`, because they link to each other.
+The design question is the grilling loop's first question: which design, or which hybrid, to keep. Write it as that loop's first round, as grilling-page's "Add a round" section says. Its `description` says what the choice decides and names each design that screening dropped with its red flag. Give it one option per card in card order, plus one hybrid option when you propose a hybrid, and make the recommendation the recommended option. Give it `report_entries` with every card. Append the report, the round, and the design question in one `append`, because they link to each other.
 
 If Design It Twice stops at its Fan-out stop clause, or screening drops every design, write no design report. Say so, and name each dropped design with its red flag, in chat and in the description of the grilling loop's first question. Then grill the shape of the deepened module without designs.
 

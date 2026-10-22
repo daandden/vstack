@@ -4,10 +4,25 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
-## [5.0.6] - 2026-10-22
+## [5.0.8] - 2026-10-22
 
 - tdd is Matt's tdd plus the omp edits: the seam question goes through one `ask` on the flow's Grilling page, and the pointers name `skill://codebase-design` and `skill://code-review`. It drops pstack's regression-test trigger, its "Tests follow intended behavior" and "No red, no commit" rules, its "Fixing a bug" section, and `BUG-FIX.md`. `matt/tdd` is adapt and `pstack/tdd` is reject (#209).
 - implement, implement-spec, and the shared End state block drop stopped slices. Missing red evidence no longer caps the End state or keeps work out of a commit. implement-spec's merger commits the ticket's whole patch and writes no held deltas or `stopped.patch`, and ADR 0022 marks its held-patch consequence superseded (#209).
+
+## [5.0.7] - 2026-10-22
+
+- improve-codebase-architecture puts the comparison of the designs with the recommendation in the design report's summary, as the grill decided, and the design question no longer repeats it.
+
+## [5.0.6] - 2026-10-22
+
+- Preserve hand-edited CI settings when setup re-runs, confirm the CI and Code host drafts together, and reduce existing MCP Code hosts to server, facts, and Check.
+- Mark GitLab CI's `rerun-ci` unsupported, because GitLab cannot rerun a whole existing pipeline, so babysit reports a GitLab flake for a human. Setup's re-run drafts an old GitLab rerun row as unsupported, and setup defines MCP discovery once for the tracker, Code host, and CI sections.
+- Set up Other issue trackers such as Jira through the named MCP server's project facts and read-only Check pin, while keeping the no-tool prose workflow.
+- Draft Other MCP Code hosts as server, project facts, and a read-only Check pin; resolve Code host operations by live descriptions across PR review, history, and the PR chain while keeping CLI command rows (#204).
+- Set up Other CI services through MCP facts and check/rerun pins, discover End state capabilities live for MCP CI and Code hosts, and select CI log tools from server descriptions (#203).
+- Make babysit read logs and rerun only the exact build linked by a failed required check, including GitHub Actions. Report missing links without build lookup, log reads, or reruns, and constrain reruns to the CI command row or MCP pin (#202).
+- Move PR-chain CI logs and reruns, and wizard secrets and variables, to ci.md. Missing CI config limits implement to commit (#201).
+- Add setup's CI service section and GitHub Actions and GitLab CI templates, and require ci.md for complete project setup (#200).
 
 ## [5.0.5] - 2026-10-22
 
