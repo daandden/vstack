@@ -1,6 +1,6 @@
 ---
 name: setup-vstack
-description: Check this machine's omp settings for vstack, then configure this repo for the vstack skills (its issue tracker, Code host, triage label vocabulary, and domain doc layout) in Standard or Private mode. Offers to migrate a repo set up for Matt Pocock's skills first. Run once before first use of the other vstack skills, and again to add a config file that is missing.
+description: Check this machine's omp settings for vstack, then configure this repo's issue tracker, Code host, CI service, triage labels, and domain docs in Standard or Private mode. Offers to migrate a repo set up for Matt Pocock's skills first. Re-run to add missing config files.
 disable-model-invocation: true
 ---
 
@@ -10,6 +10,7 @@ Two parts, in this order. The machine section checks the omp settings vstack nee
 
 - Issue tracker: where issues live (GitHub by default; local markdown also works out of the box).
 - Code host: the service that holds the remote and its PRs, and the tool that runs each PR operation.
+- CI service: the service that runs the repo's builds and checks, independently of its Code host.
 - Triage labels: the strings used for the five canonical triage roles.
 - Domain docs: where `GLOSSARY.md` and ADRs live, and the rules for reading them.
 
@@ -56,7 +57,7 @@ Run `project.ts state`. It prints JSON:
 
 - `root`: this checkout. `common_dir`: the git common dir that every worktree of the repo shares. `vstack_root`: `<common_dir>/vstack`.
 - `mode`: `private` when `<vstack_root>/config/` exists, `standard` when `docs/vstack/` holds config, else null.
-- `missing_config`: the config files that the mode's config directory does not have yet, from `issue-tracker.md`, `code-host.md`, `triage-labels.md`, and `domain.md`.
+- `missing_config`: the config files that the mode's config directory does not have yet, from `issue-tracker.md`, `code-host.md`, `triage-labels.md`, `domain.md`, and `ci.md`.
 - `block_file`: `CLAUDE.md` when it exists, else `AGENTS.md` when it exists, else null. `block_exists`: that file already holds a `## vstack` block. `block_file_dirty`: that file has uncommitted changes.
 
 Keep `block_file_dirty` from this first read for step 7. Edits that this run's Migration makes to the block file do not count.
@@ -67,7 +68,7 @@ Read `skill://vstack-tmp` and resolve the project Scratch dir once. Every worktr
 
 - The user set up beside the Matt files, through the first question or Cancel. Keep the Matt files for step 8 and go on to step 3.
 - The Migration is incomplete. Stop the run after showing the failure.
-- The Migration applied. Run `project.ts state` again. Use its facts from here on, except `block_file_dirty`. Keep the Migration paths and the mode that Migration settled.
+- The Migration applied. Run `project.ts state` again. Use its facts from here on, except `block_file_dirty`. Keep the Migration paths and the mode that Migration settled. Migration does not seed `ci.md`; the missing file takes this run straight to the CI section in step 5 after exploration.
 
 ### 3. Mode
 
@@ -76,7 +77,7 @@ When `mode` is set, or Migration settled the mode, tell the user the mode and ke
 - `missing_config` is empty and this run's Migration changed nothing: tell the user that every config file exists and that they can edit any of them directly. Skip to step 8.
 - `missing_config` is empty and this run's Migration changed files, in Standard mode: skip steps 4 and 5. Draft only the `## vstack` block in step 6. Go on to the commit in step 7.
 - `missing_config` is empty and this run's Migration changed files, in Private mode: skip to step 8.
-- Otherwise: run only the sections for the missing files in step 5. Draft and write only those files in steps 6 and 7. A repo set up before the Code host existed misses only `code-host.md`, so it gets one section.
+- Otherwise: run only the sections for the missing files in step 5. Draft and write only those files in steps 6 and 7. When the other four config files exist and only `ci.md` is missing, ask only the CI section. Keep the existing config files, including every row of `code-host.md`, unchanged.
 
 When `mode` is null, call `ask` with two options:
 
@@ -88,6 +89,7 @@ When `mode` is null, call `ask` with two options:
 Look at the repo to understand its starting state. Read whatever exists; do not assume:
 
 - `git remote -v` and `.git/config`: does a remote point at GitHub, GitLab, Bitbucket, or another host, and at which repo?
+- `.github/workflows/`, `.gitlab-ci.yml`, and `Jenkinsfile` at the repo root: these CI signals guide the separate CI service recommendation.
 - The MCP servers this session reaches (tools named `mcp__<server>_<tool>`, top-level or under `xd://`), when the remote is not GitHub or GitLab. A server for the Code host is a likely tool for it.
 - `CLAUDE.md` and `AGENTS.md` at the repo root, and the `## vstack` block in one of them.
 - `GLOSSARY.md` and `GLOSSARY-MAP.md` at the repo root, and in Private mode also under `<vstack_root>/domain/`.
@@ -98,7 +100,7 @@ Look at the repo to understand its starting state. Read whatever exists; do not 
 
 ### 5. Present findings and settle each section
 
-Summarize what is present and what is missing. Then take the sections in order, one `ask` per section. Put the recommended answer first and mark it Recommended, so the user can accept it in one pick. Add a one-line explainer only when the choice really branches.
+Summarize what is present and what is missing. Then take the missing-file sections in order, one `ask` per section. When there is a recommendation, put it first and mark it Recommended. Otherwise keep the listed order with no recommendation. Add a one-line explainer only when the choice really branches.
 
 Section A, issue tracker.
 
@@ -125,9 +127,21 @@ Recommend GitHub when a remote points at `github.com`, GitLab when a remote poin
 
 For Other, draft the operation rows yourself. Read the named MCP server's tool list or the CLI's `--help` output for each command group. Write one row per operation id in [code-host-github.md](./code-host-github.md), in the same order, with the tool or command and the arguments it needs. Write `unsupported` for each id with no matching tool or command. Never write a tool or command that the list or the help does not show. The user checks the rows in step 6.
 
-Section C, triage labels. This section runs whenever `triage-labels.md` is missing, whatever the tracker, because triage always ships. Call `ask` with one question, whether to keep the default triage labels, and the options Keep the defaults (Recommended) and Use other names. The defaults are the five canonical roles, each label string equal to its name: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. Only on Use other names (usually because the tracker already uses other names, such as `bug:triage` for `needs-triage`), call `ask` once more with one question per role to collect the names, so triage applies the existing labels instead of creating duplicates.
+Section C, CI service.
 
-Section D, domain docs. Default to single-context: one `GLOSSARY.md` plus `docs/adr/` at the repo root. This fits almost every repo; write it without a question. Only when exploration found monorepo signals, call `ask` with single-context and multi-context (a root `GLOSSARY-MAP.md` that points to one `GLOSSARY.md` per context).
+> Explainer: The CI service runs this repo's builds and checks. It can differ from the Code host. Its logs, build reruns, secrets, and variables belong in `ci.md`.
+
+Recommend from the CI signals found in step 4, not from the remote or the Code host. Exactly one signal gives a recommendation: `.github/workflows/` means GitHub Actions, `.gitlab-ci.yml` means GitLab CI, and `Jenkinsfile` means Other. With none or several, recommend nothing. The `ask` options:
+
+- GitHub Actions: builds and checks run on GitHub Actions, using the `gh` CLI.
+- GitLab CI: builds and checks run on GitLab CI, using the `glab` CLI.
+- Other: the user names, through the Other answer of `ask`, the MCP server or CLI already set up for this project.
+
+For Other with a CLI, read its `--help` for each command group. Draft one row per operation id in [ci-github-actions.md](./ci-github-actions.md), in the same order, with the command and its arguments. Use `unsupported` where no command matches. Draft a read-only Check command from that help too. Never invent a command. For Other with an MCP server, report that this CI setup path supports CLI configs only. Leave `ci.md` missing and stop project setup before writing or committing; do not substitute Code host commands or draft MCP operation rows.
+
+Section D, triage labels. This section runs whenever `triage-labels.md` is missing, whatever the tracker, because triage always ships. Call `ask` with one question, whether to keep the default triage labels, and the options Keep the defaults (Recommended) and Use other names. The defaults are the five canonical roles, each label string equal to its name: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. Only on Use other names (usually because the tracker already uses other names, such as `bug:triage` for `needs-triage`), call `ask` once more with one question per role to collect the names, so triage applies the existing labels instead of creating duplicates.
+
+Section E, domain docs. Default to single-context: one `GLOSSARY.md` plus `docs/adr/` at the repo root. This fits almost every repo; write it without a question. Only when exploration found monorepo signals, call `ask` with single-context and multi-context (a root `GLOSSARY-MAP.md` that points to one `GLOSSARY.md` per context).
 
 ### 6. Draft and confirm
 
@@ -138,10 +152,13 @@ Write the drafts from the seed templates in this skill's directory:
 - [issue-tracker-local.md](./issue-tracker-local.md): local-markdown issue tracker
 - [code-host-github.md](./code-host-github.md): GitHub Code host
 - [code-host-gitlab.md](./code-host-gitlab.md): GitLab Code host
+- [ci-github-actions.md](./ci-github-actions.md): GitHub Actions CI service
+- [ci-gitlab.md](./ci-gitlab.md): GitLab CI service
 - [triage-labels.md](./triage-labels.md): label mapping
 - [domain.md](./domain.md): domain doc consumer rules and layout
 
 For an Other issue tracker, write `issue-tracker.md` from scratch from the user's description. For an Other Code host, write `code-host.md` in the shape of `code-host-github.md`, with the host, the repo, the tool, a read-only check, the review reference, and the drafted rows. In every `code-host.md`, fill in the repo from the remote and, for a self-hosted GitLab, the host.
+For an Other CI service with a CLI, write `ci.md` in the shape of `ci-github-actions.md`, with the CI service, repo, tool, read-only Check command, and drafted rows. Fill in the CI repo and, for self-hosted GitLab, its host. Keep the four CI operation rows in `code-host.md` as well; its readers still use them during this expand step.
 
 In Private mode, change two drafts so that they point under the vstack root by absolute path:
 
@@ -155,7 +172,7 @@ Show the user each draft and, in Standard mode, the `## vstack` block (see step 
 Standard mode:
 
 1. When `block_file_dirty` from step 1 is true, tell the user that `<block_file>` has uncommitted changes and that the setup commit is going to include them. Call `ask` with the options Go on and include them, and Stop so I can commit them first. On Stop, stop.
-2. Write each config file that this run drafted: `docs/vstack/issue-tracker.md`, `docs/vstack/code-host.md`, `docs/vstack/triage-labels.md`, and `docs/vstack/domain.md`, or only the missing ones on a re-run.
+2. Write each config file that this run drafted: `docs/vstack/issue-tracker.md`, `docs/vstack/code-host.md`, `docs/vstack/ci.md`, `docs/vstack/triage-labels.md`, and `docs/vstack/domain.md`, or only the missing ones on a re-run.
 3. Pick the file for the block. When `CLAUDE.md` exists, edit it. Else when `AGENTS.md` exists, edit it. When neither exists, call `ask` with the options `CLAUDE.md` and `AGENTS.md` and no recommended option, and create the one the user picks. Never create `AGENTS.md` when `CLAUDE.md` exists, or the other way round.
 4. When the file already has a `## vstack` block, update that block in place instead of adding a second one, and leave the other sections as they are. The block:
 
@@ -170,6 +187,10 @@ Standard mode:
 
    [one-line summary of the Code host and its tool]. See `docs/vstack/code-host.md`.
 
+   ### CI service
+
+   [one-line summary of the CI service and its tool]. See `docs/vstack/ci.md`.
+
    ### Triage labels
 
    [one-line summary of the label vocabulary]. See `docs/vstack/triage-labels.md`.
@@ -179,14 +200,16 @@ Standard mode:
    [one-line summary of the layout: "single-context" or "multi-context"]. See `docs/vstack/domain.md`.
    ```
 
-5. Commit. Take the title from the repo's convention: read `git log --format=%s -n 20` on the default branch (`git symbolic-ref --short refs/remotes/origin/HEAD`, else the current branch) and follow the pattern you see there. When no convention is visible, use Conventional Commits: `chore: set up vstack config`. Run `project.ts commit --title "<title>"`, with one `--migration-path <path>` per Migration path from step 2. It stages the four config files, the block file, and the Migration paths, deletions and both sides of a move included, never `-A` on the whole repo. It commits them alone on the current branch; anything else the user had staged stays staged. It prints `commit`, `title`, and `paths` as JSON, with `commit` null when nothing changed since the last setup commit. Exit 2 means it refused: show its message.
+5. Commit. Take the title from the repo's convention: read `git log --format=%s -n 20` on the default branch (`git symbolic-ref --short refs/remotes/origin/HEAD`, else the current branch) and follow the pattern you see there. When no convention is visible, use Conventional Commits: `chore: set up vstack config`. Run `project.ts commit --title "<title>"`, with one `--migration-path <path>` per Migration path from step 2. It stages the five config files, the block file, and the Migration paths, deletions and both sides of a move included, never `-A` on the whole repo. It commits them alone on the current branch; anything else the user had staged stays staged. It prints `commit`, `title`, and `paths` as JSON, with `commit` null when nothing changed since the last setup commit. Exit 2 means it refused: show its message.
 
 Private mode:
 
-1. Write each drafted config file to `<vstack_root>/config/`: `issue-tracker.md`, `code-host.md`, `triage-labels.md`, and `domain.md`, or only the missing ones on a re-run. Creating that directory turns Private mode on for every worktree of this repo.
+1. Write each drafted config file to `<vstack_root>/config/`: `issue-tracker.md`, `code-host.md`, `ci.md`, `triage-labels.md`, and `domain.md`, or only the missing ones on a re-run. Creating that directory turns Private mode on for every worktree of this repo.
 2. Write no `## vstack` block, change no tracked file and no ignore file, and commit nothing.
 
 In both modes, when this run or its Migration wrote `code-host.md`, check its tool once with a read-only call. Run the file's Check command for a CLI. For an MCP server, call one read-only tool from the drafted rows, such as `list-prs`. If the call fails, print `WARN code-host: <what failed>. Remedy: <log in to the CLI, or connect the MCP server>.` Keep the written file either way.
+
+When this run wrote `ci.md`, run its read-only Check command exactly once. On failure, print `WARN ci: <what failed>. Remedy: <log in to the CLI or fix the named service connection>.` Keep the written file.
 
 ### 8. Done
 
@@ -196,6 +219,7 @@ List the skills that read the config:
 
 - `issue-tracker.md`: to-spec, to-tickets, triage, wayfinder, code-review, and why.
 - `code-host.md`: implement and its PR chain (open-pr, babysit, and ship), implement-spec, hillclimb, code-review, blast-radius, why, session, and wizard. Without it, implement offers only End state commit, and code-review and blast-radius cannot review a PR.
+- `ci.md`: implement, babysit, and wizard. During the reader cutover, these skills still use the retained CI rows in `code-host.md`.
 - `triage-labels.md`: triage, to-spec, and to-tickets.
 - `domain.md` and the domain docs: domain-modeling, grill-with-docs, improve-codebase-architecture, codebase-design, diagnosing-bugs, tdd, and wait-what.
 
