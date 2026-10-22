@@ -13,6 +13,6 @@ This repo's builds and checks run on GitLab CI. Run the CI operations below thro
 Each skill looks up an operation by its id. A row that says `unsupported` means that the tool cannot do it.
 
 - `ci-logs`: `glab ci trace <job-id>`
-- `rerun-ci`: `glab api --method POST projects/:id/merge_requests/<iid>/pipelines`, which starts a new pipeline for the MR.
+- `rerun-ci`: unsupported. GitLab has no command that reruns a whole existing pipeline. `glab ci retry` reruns one job, the pipeline retry API reruns only failed or canceled jobs, and a new pipeline builds the current head of its branch or merge request.
 - `set-secret`: `glab variable set <NAME> --masked`, with the value on standard input.
 - `set-variable`: `glab variable set <NAME>`, with the value on standard input.

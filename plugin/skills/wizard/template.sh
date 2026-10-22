@@ -31,7 +31,7 @@ _STAGE_INDEX=0
 ENV_FILE="${ENV_FILE:-.env}"
 WRITTEN_ENV=()    # KEYs written to ENV_FILE this run
 WRITTEN_SECRET=() # secret NAMEs set this run
-SKIPPED=()        # things we couldn't do (e.g. no CLI for the CI service)
+SKIPPED=()
 
 # _clear wipes the terminal so only the current step is on screen. No-op when
 # output isn't a terminal, so piped logs stay readable.
@@ -143,9 +143,6 @@ write_env() {
   printf '  %s✓ wrote%s %s → %s\n' "$GREEN" "$RESET" "$key" "$ENV_FILE"
 }
 
-# _host_set KIND NAME VALUE CMD... runs CMD with NAME as its last argument and
-# VALUE on standard input. With no CMD, or when CMD fails, it records a hand
-# step in the CI service's web page instead.
 _host_set() {
   local kind="$1" name="$2" value="$3"; shift 3
   if (( $# )) && command -v "$1" >/dev/null 2>&1; then
@@ -188,7 +185,7 @@ finish() {
 # ──────────────────────────────────────────────────────────────────────────
 
 TOTAL_STAGES=1
-CI_SERVICE="GitHub Actions"    # from ci.md
+CI_SERVICE="GitHub Actions"
 SECRET_CMD=(gh secret set)    # set-secret row's command without <NAME>; () for an MCP row
 VAR_CMD=(gh variable set)     # set-variable row's command without <NAME>; () for an MCP row
 

@@ -95,7 +95,6 @@ test("Standard mode is on when docs/vstack/ holds config", () => {
 test("missing_config names each config file the mode's config directory lacks, so a re-run asks only those sections", () => {
   expect(state(makeRepo()).missing_config).toEqual(["issue-tracker.md", "code-host.md", "triage-labels.md", "domain.md", "ci.md"]);
 
-  // A repo set up before the Code host and CI service configs lacks both.
   const older = makeRepo({
     "docs/vstack/issue-tracker.md": "# GitHub\n",
     "docs/vstack/triage-labels.md": "# Labels\n",
@@ -269,7 +268,6 @@ test("Migration leaves ci.md to setup, then one commit holds both outputs and no
   const s = state(repo);
   expect(s.missing_config).toEqual(["ci.md"]);
   expect(s.block_exists).toBe(true);
-  // The CI section writes the user's confirmed choice, not Migration.
   write(repo, { "docs/vstack/ci.md": "# CI service: GitHub Actions\n" });
   expect(state(repo).missing_config).toEqual([]);
 
