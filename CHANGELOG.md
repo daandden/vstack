@@ -4,9 +4,13 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
-## [5.0.4] - 2026-10-22
+## [5.0.5] - 2026-10-22
 
 - improve-codebase-architecture runs Design It Twice after every pick. 3–4 vstack-explorer designs, screened against RED-FLAGS.md, show as a cards Report block with the recommendation in its summary line, and grilling's first question asks which design or hybrid to keep. DESIGN-IT-TWICE.md no longer waits for the user to ask for it.
+
+## [5.0.4] - 2026-10-22
+
+- clean-wt keeps a task sandbox that holds both an `m` and a `merged` checkout as uncertain. Removing either one deleted the whole sandbox after checking only the selected checkout, so a clean `m` could take unique commits in `merged` with it.
 
 ## [5.0.3] - 2026-10-22
 
