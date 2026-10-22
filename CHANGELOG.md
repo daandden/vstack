@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [4.0.7] - 2026-10-22
+
+- Draft Other MCP Code hosts as server, project facts, and a read-only Check pin; resolve Code host operations by live descriptions across PR review, history, and the PR chain while keeping CLI command rows (#204).
+
 ## [4.0.6] - 2026-10-22
 
 - Set up Other CI services through MCP facts and check/rerun pins, discover End state capabilities live for MCP CI and Code hosts, and select CI log tools from server descriptions (#203).

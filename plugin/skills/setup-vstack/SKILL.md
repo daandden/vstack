@@ -125,7 +125,11 @@ Recommend GitHub when a remote points at `github.com`, GitLab when a remote poin
 - GitLab: merge requests live on GitLab (uses the `glab` CLI).
 - Other (Bitbucket Cloud, Bitbucket Data Center, and so on): the user names, through the Other answer of `ask`, the MCP server or CLI that is already set up for this project.
 
-For Other, draft the operation rows yourself. Read the named MCP server's tool list or the CLI's `--help` output for each command group. Write one row per operation id in [code-host-github.md](./code-host-github.md), in the same order, with the tool or command and the arguments it needs. Write `unsupported` for each id with no matching tool or command. Never write a tool or command that the list or the help does not show. The user checks the rows in step 6.
+For Other with a CLI, read its `--help` output for each command group. Write one command row per operation id in [code-host-github.md](./code-host-github.md), in the same order, with the arguments it needs. Write `unsupported` when no command matches. Draft a read-only Check command from that help too. Never name a command that the help does not show.
+
+For Other with an MCP server, read the named server's current tool list, descriptions, and parameter schemas. If discovery fails or the server is unreachable, name the server and failure, tell the user to connect it, and stop before writing project config. Draft `code-host.md` with the host, the named MCP server, project facts, and one read-only Check pin with its documented arguments. Name a tool only when this server's list contains it. If no tool fits Check, mark Check `unsupported`.
+
+Project facts include the repo, the review reference in commit titles, and how to obtain and fetch the PR's exact base and head commits, including a fork's head. Collect facts the tool descriptions cannot supply through `ask`. Tell the config's reader to select the tool for each operation id from the named server's current descriptions and parameter schemas, using those facts. Keep only Check pinned and draft no operation rows. Show the draft for confirmation in step 6. Bitbucket uses Other; there is no Bitbucket template.
 
 Section C, CI service.
 
@@ -164,9 +168,10 @@ Write the drafts from the seed templates in this skill's directory:
 - [triage-labels.md](./triage-labels.md): label mapping
 - [domain.md](./domain.md): domain doc consumer rules and layout
 
-For an Other issue tracker, write `issue-tracker.md` from scratch from the user's description. For an Other Code host, write `code-host.md` in the shape of `code-host-github.md`, with the host, the repo, the tool, a read-only check, the review reference, and the drafted rows. In every `code-host.md`, fill in the repo from the remote and, for a self-hosted GitLab, the host.
+For an Other issue tracker, write `issue-tracker.md` from scratch from the user's description.
+For an Other Code host with a CLI, write `code-host.md` in the shape of `code-host-github.md`, with the host, repo, tool, read-only Check command, review reference, and drafted command rows. For an MCP Code host, use Section B's server, project facts, and Check pin, without operation rows. In every `code-host.md`, fill in the repo from the remote and, for self-hosted GitLab, the host.
 For an Other CI service with a CLI, write `ci.md` in the shape of `ci-github-actions.md`, with the CI service, repo, tool, read-only Check command, and drafted rows. Fill in the CI repo and, for self-hosted GitLab, its host. Keep CI logs, build reruns, secrets, and variables only in `ci.md`.
-For an Other CI service with an MCP server, use Section C's short shape, not the CLI operation rows. For an MCP Code host draft, also pin its read-only Check tool and arguments from the discovered list.
+For an Other CI service with an MCP server, use Section C's short shape, not the CLI operation rows.
 
 In Private mode, change two drafts so that they point under the vstack root by absolute path:
 

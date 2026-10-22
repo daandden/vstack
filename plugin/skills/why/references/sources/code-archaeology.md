@@ -37,7 +37,7 @@ git show <hash>
 git log <old>..<new> -p -- <file>
 ```
 
-For each substantive commit, find its review reference in the commit title, in the form that the profile's `code-host.md` names (for example `(#1234)` on GitHub or `!1234` on GitLab). Read its review context through the profile's `read-pr` and `review-threads` operations. Without a `code-host.md`, use git only and record review history as a gap.
+For each substantive commit, find its review reference in the commit title, in the form that the profile's `code-host.md` names. Read its review context through `read-pr` and `review-threads`. For a CLI config, run its command rows. For an MCP config, choose tools from the named server's current descriptions and parameter schemas, using the profile's project facts; operation rows are not required. Without a `code-host.md`, use git only and record review history as a gap. If the named server is unreachable or no tool supports an operation, record the server and missing review evidence as a gap.
 
 An unavailable or unauthenticated tool is a gap, not an empty search.
 
