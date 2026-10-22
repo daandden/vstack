@@ -13,7 +13,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 - Set up Other CI services through MCP facts and check/rerun pins, discover End state capabilities live for MCP CI and Code hosts, and select CI log tools from server descriptions (#203).
 - Make babysit read logs and rerun only the exact build linked by a failed required check, including GitHub Actions. Report missing links without build lookup, log reads, or reruns, and constrain reruns to the CI command row or MCP pin (#202).
 - Move PR-chain CI logs and reruns, and wizard secrets and variables, to ci.md. Missing CI config limits implement to commit (#201).
-- Add setup's CI service section and GitHub Actions and GitLab CI templates; require ci.md for complete project setup while retaining the Code host CI rows until the reader cutover (#200).
+- Add setup's CI service section and GitHub Actions and GitLab CI templates, and require ci.md for complete project setup (#200).
 
 ## [5.0.4] - 2026-10-22
 
