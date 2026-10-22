@@ -1,6 +1,6 @@
 # Design It Twice
 
-When the user wants to explore alternative interfaces for a chosen deepening candidate, use this pattern: 3–4 radically different designs, drafted at once by subagents. Based on "Design It Twice" (Ousterhout): your first idea is unlikely to be the best.
+improve-codebase-architecture runs this pattern for every picked deepening candidate, and a user can ask for it for any module: 3–4 radically different designs, drafted at once by subagents. Based on "Design It Twice" (Ousterhout): your first idea is unlikely to be the best.
 
 Uses the vocabulary in [SKILL.md](SKILL.md): **module**, **interface**, **seam**, **adapter**, **leverage**.
 
@@ -45,6 +45,6 @@ Fan-out (skill://vstack-fan-out): parts: one per design (3–4, each with its de
 
 Screen every design against [RED-FLAGS.md](RED-FLAGS.md) first. Revise a design that shows a red flag, or drop it, and say which flag it showed.
 
-Present designs sequentially so the user can absorb each one, then compare them in prose. Contrast by **depth** (leverage at the interface), **locality** (where change concentrates), and **seam placement**.
+Outside a flow, present designs sequentially in chat so the user can absorb each one, then compare them in prose. Inside a flow, the designs and the comparison go on the flow's Grilling page, as the calling skill says. Contrast by **depth** (leverage at the interface), **locality** (where change concentrates), and **seam placement**.
 
 After comparing, give your own recommendation: which design you think is strongest and why. If elements from different designs would combine well, propose a hybrid. Be opinionated: the user wants a strong read, not a menu.
