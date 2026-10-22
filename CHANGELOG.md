@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [4.0.8] - 2026-10-22
+
+- The vstack extension no longer registers `vstack_rename_session`, and wayfinder no longer renames the session after a claim. The load gate now proves the extension loaded through the `/vstack-clean` Command, which the load smoke reports in `extensionCommands`. setup-vstack's `machine.ts` no longer accepts `--extension-loaded`. Check 4 fails only when `disabledExtensions` lists vstack. Otherwise, check 4 prints a note to start a new session with `/new` after linking or pulling.
+
 ## [4.0.7] - 2026-10-22
 
 - The End state chain keeps every pushed commit as it is. The Conflict owner in END-STATE step 7 resolves a conflict, a stale base, or ship's step 2 move by merging the target branch into the reported branch, resolving each conflict once, and pushing a fast-forward. It can update any branch of the run's stack, not only the run's own branch, and records the merged target tip as the new base SHA of the run's branch. For a step 2 move it first retargets the PR to the default branch. Step 0b reads the remote tip before any history edit and before the first push. open-pr rebases only the commits after that tip, and a stack child with pushed commits merges its parent's tip. The Owned branch rule, its absent-ref lease and porcelain check, the force-push lease, and the Owned flag in the chain facts and hand-backs are gone. babysit and ship report a branch that needs an update instead of one that needs a rebase. ADR 0033 records the decision (#176).

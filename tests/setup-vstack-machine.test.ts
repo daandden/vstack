@@ -45,12 +45,13 @@ task:
 `;
 const KEY = { TYPESAFE_API_KEY: "fake-typesafe-key" };
 
-test.skipIf(!HAS_OMP)("a configured machine prints exactly one OK line and exits 0", () => {
-  const r = run(makeHome(CONFIGURED), ["--extension-loaded", "yes"], KEY);
+test.skipIf(!HAS_OMP)("a configured machine prints one OK line and the extension NOTE, and exits 0", () => {
+  const r = run(makeHome(CONFIGURED), [], KEY);
   expect(r.code).toBe(0);
   const out = lines(r.stdout);
-  expect(out).toHaveLength(1);
+  expect(out).toHaveLength(2);
   expect(out[0]).toStartWith("OK ");
+  expect(out[1]).toStartWith("NOTE 4 ");
   expect(r.stdout).not.toContain("fake-typesafe-key");
 });
 
@@ -59,10 +60,10 @@ test.skipIf(!HAS_OMP)("a vstack agent override is a NOTE that names the agent an
     vstack-explorer: smoke/smoke-model
     reviewer: smoke/other-model
 `);
-  const r = run(h, ["--extension-loaded", "yes"], KEY);
+  const r = run(h, [], KEY);
   expect(r.code).toBe(0);
   const out = lines(r.stdout);
-  expect(out).toHaveLength(2);
+  expect(out).toHaveLength(3);
   expect(out[0]).toStartWith("OK ");
   expect(out[1]).toStartWith("NOTE 3 ");
   expect(out[1]).toContain("vstack-explorer (smoke/smoke-model)");
@@ -84,7 +85,7 @@ eval:
 worktree:
   clone: false
 `);
-  const r = run(h, ["--extension-loaded", "no"]);
+  const r = run(h, []);
   expect(r.code).toBe(1);
   const out = lines(r.stdout);
   expect(out.map((l) => l.split(" ").slice(0, 2).join(" "))).toEqual([
@@ -104,26 +105,26 @@ worktree:
   // Listed in disabledExtensions: a new session alone does not fix it, so the remedy removes the entry first.
   expect(byId("4")).toContain("disabledExtensions");
   expect(byId("4")).toContain("extension-module:vstack");
+  expect(byId("4")).toContain("remove it first");
   expect(byId("5")).toContain("eval.py");
 });
 
-test.skipIf(!HAS_OMP)("an enabled extension that this session did not load needs a new session", () => {
-  const r = run(makeHome(CONFIGURED), ["--extension-loaded", "no"], KEY);
-  expect(r.code).toBe(1);
-  const out = lines(r.stdout);
-  expect(out).toHaveLength(1);
-  expect(out[0]).toStartWith("FAIL 4 ");
-  expect(out[0]).toContain("new session");
-  expect(out[0]).not.toContain("disabledExtensions");
+test.skipIf(!HAS_OMP)("an enabled extension is a NOTE to start a new session after linking or pulling, and the machine still passes", () => {
+  const r = run(makeHome(CONFIGURED), [], KEY);
+  expect(r.code).toBe(0);
+  const note = lines(r.stdout).find((l) => l.startsWith("NOTE 4 "))!;
+  expect(note).toContain("/new");
+  expect(note).toContain("session start");
+  expect(note).not.toContain("disabledExtensions");
+  expect(note).not.toContain("Remedy");
 });
 
 test.skipIf(!HAS_OMP)("a Python interpreter that omp cannot run warns and points at omp setup python", () => {
-  const r = run(makeHome(`${CONFIGURED}python:\n  interpreter: ${join(dir, "no-such-python")}\n`), ["--extension-loaded", "yes"], KEY);
+  const r = run(makeHome(`${CONFIGURED}python:\n  interpreter: ${join(dir, "no-such-python")}\n`), [], KEY);
   expect(r.code).toBe(0);
   const out = lines(r.stdout);
-  expect(out).toHaveLength(1);
-  expect(out[0]).toStartWith("WARN 5 ");
-  expect(out[0]).toContain("omp setup python");
+  expect(out.map((l) => l.slice(0, 6))).toEqual(["NOTE 4", "WARN 5"]);
+  expect(out[1]).toContain("omp setup python");
 });
 
 test.skipIf(!HAS_OMP)("--set writes the judge role, isolation, and clone to the user config and keeps the other roles", () => {
@@ -132,8 +133,8 @@ test.skipIf(!HAS_OMP)("--set writes the judge role, isolation, and clone to the 
 worktree:
   clone: false
 `);
-  const before = run(h, ["--extension-loaded", "yes"], KEY);
-  expect(lines(before.stdout).map((l) => l.slice(0, 6))).toEqual(["FAIL 2", "FAIL 6", "FAIL 7"]);
+  const before = run(h, [], KEY);
+  expect(lines(before.stdout).map((l) => l.slice(0, 6))).toEqual(["FAIL 2", "NOTE 4", "FAIL 6", "FAIL 7"]);
 
   const set = run(h, ["--set", "judge", "isolation", "clone"], KEY);
   expect(set.code).toBe(0);
@@ -142,29 +143,31 @@ worktree:
   expect(config.task.isolation.enabled).toBe(true);
   expect(config.worktree.clone).toBe(true);
 
-  const after = run(h, ["--extension-loaded", "yes"], KEY);
+  const after = run(h, [], KEY);
   expect(after.code).toBe(0);
-  expect(lines(after.stdout)).toHaveLength(1);
-  expect(after.stdout).toStartWith("OK ");
+  const out = lines(after.stdout);
+  expect(out).toHaveLength(2);
+  expect(out[0]).toStartWith("OK ");
+  expect(out[1]).toStartWith("NOTE 4 ");
 });
 
 test.skipIf(!HAS_OMP)("checking never changes the omp config", () => {
   const h = makeHome("worktree:\n  clone: false\n");
-  run(h, ["--extension-loaded", "yes"]);
+  run(h, []);
   expect(readFileSync(join(h.home, ".omp", "agent", "config.yml"), "utf8")).toBe("worktree:\n  clone: false\n");
 });
 
 test("usage errors and a missing omp exit 2 and say why", () => {
   const h = makeHome(CONFIGURED);
-  const noFlag = run(h, []);
-  expect(noFlag.code).toBe(2);
-  expect(noFlag.stderr).toContain("--extension-loaded");
+  const oldFlag = run(h, ["--extension-loaded", "yes"]);
+  expect(oldFlag.code).toBe(2);
+  expect(oldFlag.stderr).toContain("--extension-loaded");
 
   const badSet = run(h, ["--set", "everything"]);
   expect(badSet.code).toBe(2);
   expect(badSet.stderr).toContain("everything");
 
-  const noOmp = run(h, ["--extension-loaded", "yes"], { PATH: join(dir, "empty-path") });
+  const noOmp = run(h, [], { PATH: join(dir, "empty-path") });
   expect(noOmp.code).toBe(2);
   expect(noOmp.stderr).toContain("omp");
 });
