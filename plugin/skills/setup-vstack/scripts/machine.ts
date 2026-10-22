@@ -1,4 +1,4 @@
-//   bun machine.ts --extension-loaded yes|no     check; prints one OK line or one line per failing check, plus NOTE lines
+//   bun machine.ts                              check; prints one OK line or one line per failing check, plus NOTE lines
 //   bun machine.ts --set judge|isolation|clone…  write those settings to the user's omp config
 //
 // Every fact comes from the `omp` on PATH, so the checks see what omp itself resolves for this HOME and cwd.
@@ -23,7 +23,7 @@ type Problem = Extract<Result, { status: "fail" | "warn" }>;
 const isProblem = (r: Result): r is Problem => r.status === "fail" || r.status === "warn";
 
 function usage(message: string): never {
-  console.error(`${message}\nUsage: machine.ts --extension-loaded yes|no\n       machine.ts --set judge|isolation|clone...`);
+  console.error(`${message}\nUsage: machine.ts\n       machine.ts --set judge|isolation|clone...`);
   process.exit(2);
 }
 
@@ -52,7 +52,7 @@ async function settings(): Promise<Map<string, unknown>> {
   return map;
 }
 
-async function check(extensionLoaded: boolean): Promise<Result[]> {
+async function check(): Promise<Result[]> {
   const [token, cfg, python] = await Promise.all([
     omp("token", "typesafe"),
     settings(),
@@ -105,7 +105,6 @@ async function check(extensionLoaded: boolean): Promise<Result[]> {
         },
   );
 
-  // 4. The extension is enabled and loaded in this session.
   const disabled = (cfg.get("disabledExtensions") ?? []) as unknown[];
   if (disabled.includes(EXTENSION_ID)) {
     const rest = JSON.stringify(disabled.filter((id) => id !== EXTENSION_ID));
@@ -116,16 +115,13 @@ async function check(extensionLoaded: boolean): Promise<Result[]> {
       detail: `disabledExtensions lists ${EXTENSION_ID}, so the vstack extension never loads and a new session alone does not fix it`,
       remedy: `remove it first (omp config set disabledExtensions '${rest}'), then start a new session with /new and run /skill:setup-vstack again`,
     });
-  } else if (!extensionLoaded) {
+  } else {
     results.push({
       id: 4,
       name: "extension",
-      status: "fail",
-      detail: "the vstack extension is enabled but this session did not load it (it loads only at session start, so this happens right after linking or pulling)",
-      remedy: "start a new session with /new, then run /skill:setup-vstack again",
+      status: "note",
+      detail: "the vstack extension loads only at session start, so after linking or pulling vstack, start a new session with /new",
     });
-  } else {
-    results.push({ id: 4, name: "extension", status: "ok" });
   }
 
   // 5. eval Python (warn only: diagram-design runs its scripts through eval's interpreter).
@@ -211,12 +207,10 @@ async function main(argv: string[]) {
     return 0;
   }
 
-  if (argv.length !== 2 || argv[0] !== "--extension-loaded" || (argv[1] !== "yes" && argv[1] !== "no")) {
-    usage("pass --extension-loaded yes|no (yes when vstack_rename_session is among this session's tools)");
-  }
+  if (argv.length !== 0) usage(`unknown arguments: ${argv.join(" ")}`);
   if (!OMP) usage("omp is not on PATH; setup-vstack needs the omp CLI");
 
-  const results = await check(argv[1] === "yes");
+  const results = await check();
   const problems = results.filter(isProblem);
   if (problems.length === 0) {
     console.log(`OK vstack machine checks pass: ${results.map((r) => `${r.id} ${r.name}`).join(", ")}.`);

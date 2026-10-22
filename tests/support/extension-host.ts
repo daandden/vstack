@@ -1,6 +1,3 @@
-// It follows omp-tools' advisor-concern-wake harness: a partial ExtensionAPI that
-// captures handlers and tools, a partial ctx, and emit() to fire events.
-// Types are structural; the repo has no omp SDK dependency.
 import vstack from "../../plugin/extensions/vstack.ts";
 
 /** ctx.agent as omp sets it: kind "main" for the top session, "sub" for subagents. */
@@ -36,37 +33,11 @@ export interface FakeHostOptions {
   exec?: (command: string, args: string[]) => Promise<{ stdout: string; stderr: string; code: number; killed: boolean }>;
 }
 
-export type SessionNameSource = "user" | "auto";
-
-export interface FakeTool {
-  name: string;
-  label: string;
-  description: string;
-  parameters: unknown;
-  loadMode?: "essential" | "discoverable";
-  execute(toolCallId: string, params: any, signal?: AbortSignal, onUpdate?: unknown, ctx?: unknown): Promise<{
-    content: { type: string; text?: string }[];
-    details?: unknown;
-    isError?: boolean;
-  }>;
-}
-
 type Handler = (event: any, ctx: any) => unknown;
-
-/** Minimal stand-in for pi.arktype: records the definition and description. */
-function fakeArktype(def: unknown): { def: unknown; description?: string; describe(text: string): any } {
-  return {
-    def,
-    describe(text: string) {
-      return { ...this, description: text };
-    },
-  };
-}
 
 export interface FakeHost {
   pi: any;
   ctx: any;
-  tools: Map<string, FakeTool>;
   handlers: Map<string, Handler[]>;
   commands: Map<string, { description?: string; handler: (args: string, ctx: any) => Promise<void> }>;
   uiCalls: { method: string; args: any[] }[];
@@ -74,35 +45,19 @@ export interface FakeHost {
   callCommand(name: string, args?: string): Promise<void>;
   /** Messages the extension sent with pi.sendMessage. */
   sent: unknown[];
-  /** Session name and its source, as omp's session manager stores them. */
-  session: { name?: string; source?: SessionNameSource; titles: { name: string; source: SessionNameSource }[] };
-  /** Omp's auto title: refused once a user-sourced name is set (session-manager.ts). */
-  autoTitle(name: string): boolean;
   /** Fires an event; returns each handler's awaited result. */
   emit(name: string, event?: Record<string, unknown>): Promise<unknown[]>;
-  callTool(name: string, params: Record<string, unknown>): ReturnType<FakeTool["execute"]>;
 }
 
 export function fakeHost(options: FakeHostOptions = {}): FakeHost {
-  const tools = new Map<string, FakeTool>();
   const handlers = new Map<string, Handler[]>();
   const commands: FakeHost["commands"] = new Map();
   const uiCalls: FakeHost["uiCalls"] = [];
   const execCalls: FakeHost["execCalls"] = [];
   const selections = [...(options.selections ?? [])];
   const sent: unknown[] = [];
-  const session: FakeHost["session"] = { titles: [] };
-  const setName = (name: string, source: SessionNameSource): boolean => {
-    if (source === "auto" && session.source === "user") return false;
-    session.name = name;
-    session.source = source;
-    session.titles.push({ name, source });
-    return true;
-  };
   const pi = {
-    arktype: fakeArktype,
     on: (name: string, handler: Handler) => handlers.set(name, [...(handlers.get(name) ?? []), handler]),
-    registerTool: (tool: FakeTool) => tools.set(tool.name, tool),
     registerCommand: (name: string, command: any) => commands.set(name, command),
     exec: async (command: string, args: string[]) => {
       execCalls.push({ command, args });
@@ -110,11 +65,6 @@ export function fakeHost(options: FakeHostOptions = {}): FakeHost {
       return options.exec(command, args);
     },
     sendMessage: (message: unknown) => sent.push(message),
-    // Every omp mode wires this to sessionManager.setSessionName(name, "user").
-    setSessionName: async (name: string) => {
-      setName(name, "user");
-    },
-    getSessionName: () => session.name,
   };
   const models = options.models ?? [];
   const ctx = {
@@ -144,7 +94,6 @@ export function fakeHost(options: FakeHostOptions = {}): FakeHost {
     },
     sessionManager: {
       getSessionId: () => options.sessionId ?? "session-1",
-      getSessionName: () => session.name,
       getBranch: () => options.entries ?? [],
       getEntries: () => options.sessionEntries ?? options.entries ?? [],
     },
@@ -153,14 +102,11 @@ export function fakeHost(options: FakeHostOptions = {}): FakeHost {
   return {
     pi,
     ctx,
-    tools,
     handlers,
     commands,
     uiCalls,
     execCalls,
     sent,
-    session,
-    autoTitle: (name) => setName(name, "auto"),
     async callCommand(name, args = "") {
       const command = commands.get(name);
       if (!command) throw new Error(`${name} is not registered`);
@@ -170,11 +116,6 @@ export function fakeHost(options: FakeHostOptions = {}): FakeHost {
       const results: unknown[] = [];
       for (const handler of handlers.get(name) ?? []) results.push(await handler({ type: name, ...event }, ctx));
       return results;
-    },
-    callTool(name, params) {
-      const tool = tools.get(name);
-      if (!tool) throw new Error(`${name} is not registered`);
-      return tool.execute("call-1", params, undefined, undefined, ctx);
     },
   };
 }

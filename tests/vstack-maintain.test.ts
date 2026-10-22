@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
-import { existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { lifecycleFixture } from "./support/update-lifecycle-fixture.ts";
 import { fakeGitHub } from "./support/fake-github.ts";
@@ -283,7 +283,26 @@ test("gates --scratch retain failed smoke evidence under the supplied Scratch di
   expect(existsSync(join(retained, "home", ".omp", "natives"))).toBe(false);
   expect(existsSync(join(f.dir, "home", ".vstack", "tmp"))).toBe(false);
 }, 30000);
-
+test("gates' own load smoke requires the vstack-clean extension Command when the manifest lists extensions", async () => {
+  const f = fixture();
+  const injected = JSON.parse(commands(f).VSTACK_MAINTAIN_COMMANDS); delete injected.smoke;
+  const env = { VSTACK_MAINTAIN_COMMANDS: JSON.stringify(injected) };
+  const skills = register(f.root).items.flatMap((r: any) => r.artifacts).map((a: string) => a.split("/").at(-1));
+  writeFiles(f.root, { "plugin/package.json": `${JSON.stringify({ name: "vstack", version: "0.1.0", private: true, omp: { extensions: ["./extensions/vstack.ts"] } }, null, 2)}\n` });
+  const smoke = (extensionCommands: string[]) => {
+    writeFiles(f.root, { "scripts/load-smoke.sh": `#!/usr/bin/env bash\necho '${JSON.stringify({ skillCommands: skills, extensionCommands, tools: [], warnings: [] })}'\n` });
+    chmodSync(join(f.root, "scripts/load-smoke.sh"), 0o755);
+  };
+  smoke(["autoresearch"]);
+  const missing = await f.run(f.root, ["gates", "--scratch", join(f.dir, "scratch")], env);
+  const stage = (r: any) => JSON.parse(r.stdout).stages.find((s: any) => s.name === "smoke");
+  expect(missing.code).toBe(2);
+  expect(stage(missing).output).toContain("load smoke missing extension command vstack-clean: ./extensions/vstack.ts did not load");
+  smoke(["autoresearch", "vstack-clean"]);
+  const loaded = await f.run(f.root, ["gates", "--scratch", join(f.dir, "scratch")], env);
+  expect(stage(loaded).ok).toBe(true);
+  expect(loaded.code).toBe(0);
+}, 30000);
 
 
 test("prepare keeps an agent edit when the same Update adopt row flips to adapt", async () => {

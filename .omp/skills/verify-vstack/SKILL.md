@@ -1,6 +1,6 @@
 ---
 name: verify-vstack
-description: Drives the vstack omp plugin from a checkout as a user and captures proof. Covers the plugin as a new omp session loads it (skills, /skill:<name> commands, agents, rules, the vstack_rename_session tool), the Bun CLIs and Python scripts that skills run, the Grilling page in a browser, and the maintainer CLIs under scripts/. Use to prove a change under plugin/ or scripts/ works before you report it done.
+description: Drives the vstack omp plugin from a checkout as a user and captures proof. Covers the plugin as a new omp session loads it (skills, /skill:<name> commands, agents, rules, the /vstack-clean Command), the Bun CLIs and Python scripts that skills run, the Grilling page in a browser, and the maintainer CLIs under scripts/. Use to prove a change under plugin/ or scripts/ works before you report it done.
 ---
 
 # Verify vstack
@@ -9,7 +9,7 @@ vstack is an omp plugin. It has no build step and no server: omp loads `plugin/`
 
 The user-facing parts:
 
-- Primary: the plugin inside an omp session. That covers the skill list, `/skill:<name>` commands, the model-free `/vstack-clean` Command, the agents in `task`, the always-on rules, and the extension tool `vstack_rename_session`.
+- Primary: the plugin inside an omp session. That covers the skill list, `/skill:<name>` commands, the model-free `/vstack-clean` Command that the extension registers, the agents in `task`, and the always-on rules.
 - Bun CLIs that skills run through `bun "$(realpath skill://<skill>/scripts/<script>.ts)"`, such as the Scratch scripts under vstack-tmp and the grilling-page renderer.
 - Python scripts that skills run in omp's eval tool with `runpy`, such as the diagram-design scripts.
 - The HTML pages those scripts write, such as the Grilling page. You view them in a browser.
@@ -50,13 +50,13 @@ Readiness: the script waits for the response to each command, and for the `promp
 Teardown: the script stops its own omp process and stub server. If it was killed before that, `scripts/cleanup.sh` stops what it left (see Cleanup).
 `--no-ui` passes the same flag to `omp --mode rpc`. Extensions get `ctx.hasUI: false`. omp drops extension UI notifications, so a missing warning is a product finding when the feature requires an observable refusal.
 
-For a load check with no session turn, use the repo's own load gate. `scripts/load.sh` runs `loadGate` from the checkout's `scripts/lib/update-gates.ts`, which runs `scripts/load-smoke.sh` on a throwaway home. The gate fails when a registered skill, agent, rule, or the extension tool is missing, or when omp warns about a skill:
+For a load check with no session turn, use the repo's own load gate. `scripts/load.sh` runs `loadGate` from the checkout's `scripts/lib/update-gates.ts`, which runs `scripts/load-smoke.sh` on a throwaway home. The gate fails when a registered skill, agent, or rule is missing, when the extension's `vstack-clean` Command is missing, or when omp warns about a skill:
 
 ```sh
 bash "$SKILL_DIR/scripts/load.sh" "$CHECKOUT" "$VERIFY_RUN_DIR"
 ```
 
-Exit 0 prints `{"load_gate":"passed",...}`. It writes `$VERIFY_RUN_DIR/plugin-load-gate.json` and copies the smoke summary to `$VERIFY_RUN_DIR/plugin-load-summary.json`, also when the gate fails.
+Exit 0 prints `{"load_gate":"passed",...}` and writes it to `$VERIFY_RUN_DIR/plugin-load-gate.json`. A failed gate exits 1, prints its error on stderr, and writes no gate file. In both cases the script copies the smoke summary to `$VERIFY_RUN_DIR/plugin-load-summary.json`.
 
 ## Doctor
 
