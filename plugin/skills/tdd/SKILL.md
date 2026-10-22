@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: Test-driven development. Use when the user wants to build features or fix bugs test-first, mentions "red-green-refactor", wants a regression test, or wants integration tests.
+description: Test-driven development. Use when the user wants to build features or fix bugs test-first, mentions "red-green-refactor", or wants integration tests.
 ---
 
 # Test-Driven Development
@@ -23,7 +23,7 @@ A **seam** is the public boundary you test at: the interface where you observe b
 
 Put this question in the `ask`: "What's the public interface, and which seams should we test?" An answer that `ask` picks after a timeout is not the user's, so the seam stays unconfirmed.
 
-This `ask`, and the substitute-check `ask` in [BUG-FIX.md](BUG-FIX.md), are questions on the flow's Grilling page, as `skill://grilling-page` says. Inside another skill's Stage, such as implement's or implement-spec's, they join that Stage. Otherwise find or start the page and add a tdd Stage before the first one, and mark the Stage finished when the loop ends.
+This `ask` is a question on the flow's Grilling page, as `skill://grilling-page` says. Inside another skill's Stage, such as implement's or implement-spec's, it joins that Stage. Otherwise find or start the page and add a tdd Stage before it, and mark the Stage finished when the loop ends.
 
 When the shape of that interface is itself in question (how deep the module is, where the seam belongs, what the interface should expose), use `skill://codebase-design` for the vocabulary. It is the shared source of the module, interface, depth, seam, adapter, leverage and locality terms, and it is a reference to consult, not a session to run.
 
@@ -37,13 +37,4 @@ When the shape of that interface is itself in question (how deep the module is, 
 
 - **Red before green.** Write the failing test first, then only enough code to pass it. Don't anticipate future tests or add speculative features.
 - **One slice at a time.** One seam, one test, one minimal implementation per cycle.
-- Tests follow intended behavior. Never edit a test to match a wrong implementation. Never weaken an assertion unless the intended behavior changed, and then say why in the reply.
-- No red, no commit. When no failing test is possible at an agreed seam, the slice stops. Leave its changes uncommitted, and say in the reply that the red evidence is missing, why, and that the End state is capped at commit.
 - **Refactoring is not part of the loop.** It belongs to the review stage (see `skill://code-review`), not the red → green implementation cycle.
-
-## Fixing a bug
-
-Every fix starts red. Decide the route before you touch code:
-
-- The cause is known and a cheap repro exists: follow [BUG-FIX.md](BUG-FIX.md).
-- The cause is unknown: run `skill://diagnosing-bugs` instead. Its Phase 5 writes the regression test, so tdd does not run again after it.

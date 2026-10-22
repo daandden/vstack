@@ -20,8 +20,6 @@ Implement the work described by the user in the spec or tickets.
 
 Use skill://tdd where possible, at pre-agreed seams.
 
-When tdd stops a slice for missing red evidence, leave that slice's changes uncommitted in the working tree and continue independent slices. Track the stopped paths and hunks so accepted work can be staged separately. Cap the End state at commit: an unproven fix never reaches a PR. Report each stopped slice, the missing red evidence, and why it is missing. If stopped and accepted hunks cannot be separated safely, leave that dependent work uncommitted too.
-
 ## 3. Run checks
 
 Run typechecking regularly, single test files regularly, and the full test suite once at the end.
@@ -30,4 +28,4 @@ After all tickets and independent slices are finished, run shared step 3b, then 
 
 ## Reply
 
-Print the flow's page path first. Then report the requested and reached End state, commits, PR URLs and observed status, checks and live proof with evidence paths, Safety findings, open prune-comments work, stopped slices with missing red evidence, and every skipped step or blocker. Do not claim a PR, readiness, or merge that the chain did not observe.
+Print the flow's page path first. Then report the requested and reached End state, commits, PR URLs and observed status, checks and live proof with evidence paths, Safety findings, open prune-comments work, and every skipped step or blocker. Do not claim a PR, readiness, or merge that the chain did not observe.

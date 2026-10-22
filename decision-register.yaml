@@ -98,9 +98,9 @@ items:
     kind: skill
     path: skills/engineering/tdd
     tree: bf1bf5ffcd63aa8abce830f2955a853c121fb463
-    disposition: merge
+    disposition: adapt
     artifacts: [plugin/skills/tdd]
-    reason: "Merges with pstack tdd (#36)."
+    reason: "Asks the seam question through `ask` on the flow's Grilling page and points at `skill://codebase-design` and `skill://code-review` (#209)."
   - id: matt/to-spec
     upstream: matt
     kind: skill
@@ -610,9 +610,9 @@ items:
     kind: skill
     path: pstack/skills/tdd
     tree: 1064da72ceca07bf7f36bddebada585bb59da7bc
-    disposition: merge
-    artifacts: [plugin/skills/tdd]
-    reason: "Merges into Matt's tdd (#36)."
+    disposition: reject
+    artifacts: []
+    reason: "Matt's tdd covers the red → green loop. vstack keeps no pstack bug-fix rules or stopped slices (#209)."
   - id: pstack/teach
     upstream: pstack
     kind: skill

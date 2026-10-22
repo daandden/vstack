@@ -15,4 +15,5 @@ implement-spec follows Matt's nine steps, and its main agent only orchestrates. 
 - One merger runs at a time, and the orchestrator starts no implementer while a merger runs, because omp clones each isolated worker from the parent's working tree, uncommitted changes included.
 - On a conflict, the merger runs `git apply --3way`, resolves the conflict against the ticket and the spec, reruns the ticket's tests, and commits. If it cannot, the ticket goes back once for a fresh implementer from the current tip. A second failure leaves it open.
 - Each ticket is one commit on the integration branch before code-review runs. Accepted review fixes get a later commit at shared step 6, as in hillclimb. Stopped slices stay uncommitted in a held patch, so the integration branch tree stays clean for later merges and clones.
+- Superseded by #209: stopped slices and their held patches are removed.
 - The run has no cleanup step. omp parks and reclaims the implementer workspaces, and the reply cites the patch paths.
