@@ -4,6 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [5.0.5] - 2026-10-22
+
+- tdd is Matt's tdd plus the omp edits: the seam question goes through one `ask` on the flow's Grilling page, and the pointers name `skill://codebase-design` and `skill://code-review`. It drops pstack's regression-test trigger, its "Tests follow intended behavior" and "No red, no commit" rules, its "Fixing a bug" section, and `BUG-FIX.md`. `matt/tdd` is adapt and `pstack/tdd` is reject (#209).
+- implement, implement-spec, and the shared End state block drop stopped slices. Missing red evidence no longer caps the End state or keeps work out of a commit. implement-spec's merger commits the ticket's whole patch and writes no held deltas or `stopped.patch`, and ADR 0022 marks its held-patch consequence superseded (#209).
+
 ## [5.0.4] - 2026-10-22
 
 - clean-wt keeps a task sandbox that holds both an `m` and a `merged` checkout as uncertain. Removing either one deleted the whole sandbox after checking only the selected checkout, so a clean `m` could take unique commits in `merged` with it.

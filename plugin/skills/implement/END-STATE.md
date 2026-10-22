@@ -6,7 +6,7 @@ implement, implement-spec, and hillclimb read this file before work. Reuse these
 
 If the caller supplies a vstack root, reuse it. Otherwise, resolve the vstack root once through the Private-mode rule. If the caller supplies a Scratch dir, reuse it. Otherwise, resolve the absolute project Scratch dir once through skill://vstack-tmp with its path script and no kind argument. Run every Code host operation through the project's `code-host.md`: `<vstack root>/docs/vstack/code-host.md` in Standard mode, `<vstack root>/config/code-host.md` in Private mode. Look up each operation by its id there. Use git for local history and pushes. Chained skills use the paths that the run passes them. They never resolve these paths again.
 
-Keep one run record across every ticket. It holds the requested End state, stopped slices, and the chain facts. Retain each chained skill's hand-back in the record. The chain facts are what step 7 passes to each chained skill:
+Keep one run record across every ticket. It holds the requested End state and the chain facts. Retain each chained skill's hand-back in the record. The chain facts are what step 7 passes to each chained skill:
 
 - The effective End state
 - The `code-host.md` path
@@ -34,7 +34,7 @@ Every other operation is optional. A step whose optional operation is unsupporte
 
 An interactive timeout does not settle the End state. Re-ask the unanswered gate once. If it times out again, stop before work, branching, or committing. Only in a Headless run with no `ask` tool, take the recommended End state (commit) and say so. Tool absence is not a timed-out answer.
 
-The End state authorizes every step up to it: merge-ready authorizes babysit in drive mode; shipped authorizes ship to merge the verified run into the default branch. Deploys and releases are outside this flow. A stopped tdd slice caps the effective End state at commit even if a further state was requested.
+The End state authorizes every step up to it: merge-ready authorizes babysit in drive mode; shipped authorizes ship to merge the verified run into the default branch. Deploys and releases are outside this flow.
 
 ## 0b. Branch
 
@@ -50,7 +50,7 @@ Keep every pushed commit as it is. Rebase, amend, or reorder only commits after 
 
 ## 3b. Prune comments
 
-Run skill://prune-comments over the whole diff before live proof and review, at every End state. Make direct fixes only. Report any fix that needs a new shape as open. Keep accepted fixes for step 6, without staging unrelated or stopped-slice changes. If the critic is unavailable or its second report is rejected, keep accepted fixes, list prune-comments as open, and continue. Its failure never blocks the chain.
+Run skill://prune-comments over the whole diff before live proof and review, at every End state. Make direct fixes only. Report any fix that needs a new shape as open. Keep accepted fixes for step 6, without staging unrelated changes. If the critic is unavailable or its second report is rejected, keep accepted fixes, list prune-comments as open, and continue. Its failure never blocks the chain.
 
 Record "prune-comments already run" for open-pr even when the pass stopped, together with its open work; open-pr must not repeat this pass.
 
@@ -66,7 +66,7 @@ Run-only consumers (ship's verifier and forensics) may reuse this live-proof pro
 
 ## 5. Review the whole diff
 
-Run skill://code-review once over the whole completed diff at every End state, including commit. Pin the base SHA, diff command, and commit list. Include accepted cleanup and Standard-mode Verify edits, plus the proven uncommitted work that implement will commit. Exclude stopped slices from what can be committed or published and identify them in the review brief.
+Run skill://code-review once over the whole completed diff at every End state, including commit. Pin the base SHA, diff command, and commit list. Include accepted cleanup and Standard-mode Verify edits, plus the proven uncommitted work that implement will commit.
 
 implement reviews before its step 6 commit (Matt's order). implement-spec's merger commits each ticket as it lands, implement-spec reviews once after its last merge, and step 6 commits the review fixes. hillclimb commits each accepted win, reviews once after its last accepted win, and commits the review fixes in new commits. Keep Standards, Spec, and Safety findings separate. code-review owns the Safety trigger list.
 
@@ -76,13 +76,13 @@ Carry the Safety findings and the final-diff proof to open-pr: the proven or unp
 
 ## 6. Commit
 
-Commit the accepted, proven work to the current branch. For implement, this follows review. implement-spec keeps its per-ticket merger commits and commits the review fixes here, after review. hillclimb uses its accepted-win commits and new commits for the review fixes. Include the Standard-mode setup-app-verification and maintain-app-verification output that step 4 kept uncommitted in this commit. Stage only this run's accepted paths or hunks. Leave stopped slices and unrelated changes uncommitted. Keep Private config, artifacts, Verify maintenance, and Scratch out of git. Use the repo's commit convention. Write commit bodies.
+Commit the accepted, proven work to the current branch. For implement, this follows review. implement-spec keeps its per-ticket merger commits and commits the review fixes here, after review. hillclimb uses its accepted-win commits and new commits for the review fixes. Include the Standard-mode setup-app-verification and maintain-app-verification output that step 4 kept uncommitted in this commit. Stage only this run's accepted paths or hunks. Leave unrelated changes uncommitted. Keep Private config, artifacts, Verify maintenance, and Scratch out of git. Use the repo's commit convention. Write commit bodies.
 
 The approved environment fixes from skill://session get one commit per approved mistake class. Each of these commits carries proof that its new check fails on a real past mistake.
 
 ## 7. Chain to the End state
 
-Run the chain once, after all the work of the invocation, not once per ticket. At commit, stop. If a tdd slice stopped, keep its changes uncommitted, commit the independent proven work, report the cap at commit, and skip the whole chain.
+Run the chain once, after all the work of the invocation, not once per ticket. At commit, stop.
 
 For merge-ready or shipped, run skill://open-pr with the chain facts from step 0a. Retain the PR URL, observed status and head SHA, and last pushed SHA. Stop on an unavailable or mismatched published head rather than advancing on an assumed PR.
 
