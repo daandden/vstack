@@ -26,6 +26,7 @@ Preconditions:
 - Arguments. The same file ends with the line `User: where does Scratch go`.
 - Hidden skill. Repeat with a skill whose frontmatter has `disable-model-invocation: true`, for example `/skill:grill-me`, and `--name skill-command-hidden`. The model gets that body as well.
 - Your change. For an edited skill, run its command the same way and `grep -F` a line you added in the prompt file. That proves the session used the edited file.
+- Session-bound script. A skill whose script checks the running session, such as clean-wt, needs `--session`. Make a throwaway base `F="$VERIFY_RUN_DIR/data/fixture"` with one clean linked worktree at `$F/wt/wt-clean`. Write a replies file whose first item is `{"tool":"bash","args":{"command":"bun $CHECKOUT/plugin/skills/clean-wt/scripts/clean-wt.ts inventory --base $F/wt"}}` with the variables expanded. Drive `'{"type":"prompt","message":"/skill:clean-wt"}'` with `--session --replies <file> --name clean-wt-session`. The `tool_execution_end` text in `rpc.jsonl` holds the inventory: `evidence_gaps` is `[]` and wt-clean is `unused`. The same drive without `--session` reports the running session's lease as not held, and wt-clean is `uncertain`.
 
 ## Gotchas
 

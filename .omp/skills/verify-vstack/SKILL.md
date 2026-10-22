@@ -37,7 +37,7 @@ There is nothing to build. A launch is one drive: `scripts/drive.ts` links the p
 
 ```sh
 bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN_DIR" --name <drive> \
-  [--no-ui] [--replies <replies.json>] [--ui-replies <ui.json>] '<rpc command json>' ...
+  [--no-ui] [--session] [--replies <replies.json>] [--ui-replies <ui.json>] '<rpc command json>' ...
 ```
 
 - `<drive>` names the evidence dir `$VERIFY_RUN_DIR/<drive>/`. Use the feature ID. The dir must be new. If it exists, the script exits 2 and writes nothing, so the earlier proof stays as it was. To retry a drive, give a new name such as `<feature>-retry1`, or start a new run dir. Never delete the old dir to reuse its name.
@@ -49,6 +49,7 @@ Readiness: the script waits for the response to each command, and for the `promp
 
 Teardown: the script stops its own omp process and stub server. If it was killed before that, `scripts/cleanup.sh` stops what it left (see Cleanup).
 `--no-ui` passes the same flag to `omp --mode rpc`. Extensions get `ctx.hasUI: false`. omp drops extension UI notifications, so a missing warning is a product finding when the feature requires an observable refusal.
+`--session` drops the `--no-session` flag that a drive passes by default. omp then writes the session file under `$VERIFY_RUN_DIR/data/home/.omp/agent/sessions/` and holds its lease under `$VERIFY_RUN_DIR/data/home/.omp/run/session-owners/` while the drive runs. Tool calls get `PI_SESSION_ID` in both modes, but only with `--session` does a session file and a held lease back it. Use it for a skill whose script checks the running session, such as clean-wt.
 
 For a load check with no session turn, use the repo's own load gate. `scripts/load.sh` runs `loadGate` from the checkout's `scripts/lib/update-gates.ts`, which runs `scripts/load-smoke.sh` on a throwaway home. The gate fails when a registered skill, agent, or rule is missing, when the extension's `vstack-clean` Command is missing, or when omp warns about a skill:
 

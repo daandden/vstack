@@ -1,6 +1,6 @@
 // Drives one omp RPC session with a vstack plugin dir linked into a throwaway omp home, against a scripted stub model.
 //
-//   bun drive.ts --plugin <plugin dir> --run <run dir> --name <drive> [--no-ui] [--replies <replies.json>] [--ui-replies <ui.json>] <command-json>...
+//   bun drive.ts --plugin <plugin dir> --run <run dir> --name <drive> [--no-ui] [--session] [--replies <replies.json>] [--ui-replies <ui.json>] <command-json>...
 //
 // The home is <run>/data/home. The project cwd is <outside>/proj, where <outside> is a dir that mkdtemp makes once per
 // run as <os temp dir>/vstack-verify-XXXXXX and <run>/data/outside links to. load.sh reuses the same link. omp looks for
@@ -32,7 +32,7 @@ import { parseArgs } from "node:util";
 const STEP_TIMEOUT_MS = 90_000;
 
 function usage(message: string): never {
-  process.stderr.write(`drive.ts: ${message}\nusage: bun drive.ts --plugin <dir> --run <dir> --name <drive> [--no-ui] [--replies <file>] [--ui-replies <file>] <command-json>...\n`);
+  process.stderr.write(`drive.ts: ${message}\nusage: bun drive.ts --plugin <dir> --run <dir> --name <drive> [--no-ui] [--session] [--replies <file>] [--ui-replies <file>] <command-json>...\n`);
   process.exit(2);
 }
 
@@ -40,7 +40,7 @@ let parsed;
 try {
   parsed = parseArgs({
     args: Bun.argv.slice(2),
-    options: { plugin: { type: "string" }, run: { type: "string" }, name: { type: "string" }, replies: { type: "string" }, "ui-replies": { type: "string" }, "no-ui": { type: "boolean" } },
+    options: { plugin: { type: "string" }, run: { type: "string" }, name: { type: "string" }, replies: { type: "string" }, "ui-replies": { type: "string" }, "no-ui": { type: "boolean" }, session: { type: "boolean" } },
     allowPositionals: true,
   });
 } catch (e) {
@@ -173,7 +173,9 @@ function answerDialog(frame: Frame): void {
   child.stdin.write(JSON.stringify(response) + "\n");
   child.stdin.flush();
 }
-const child = Bun.spawn(["omp", "--mode", "rpc", ...(values["no-ui"] ? ["--no-ui"] : []), "--no-session", "--no-title", "--model", "stub/stub-model"], {
+// --session keeps omp's session: its file goes under <home>/.omp/agent/sessions and omp holds its lease under
+// <home>/.omp/run/session-owners while the drive runs. Without it omp runs with --no-session.
+const child = Bun.spawn(["omp", "--mode", "rpc", ...(values["no-ui"] ? ["--no-ui"] : []), ...(values.session ? [] : ["--no-session"]), "--no-title", "--model", "stub/stub-model"], {
   cwd: proj,
   env,
   stdin: "pipe",

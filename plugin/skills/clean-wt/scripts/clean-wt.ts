@@ -619,7 +619,9 @@ function classify(path: string, out: Checkout[]): boolean {
   const mounts = TASK_MOUNTS.filter((m) => lstat(join(path, m))?.isDirectory());
   if (lstat(join(path, TASK_MARKER)) || mounts.length > 0) {
     const { owner, gap } = taskOwner(path);
-    const gaps = [gap, retainedMountGap(path)].filter((g): g is string => !!g);
+    // Removal deletes the whole sandbox, so a sandbox is removable only when it holds a single checkout.
+    const multiMount = mounts.length > 1 ? `${path} holds both m and merged, and removing one would delete the other; check both before removing the sandbox by hand` : undefined;
+    const gaps = [gap, retainedMountGap(path), multiMount].filter((g): g is string => !!g);
     for (const m of mounts) out.push(inspect(join(path, m), path, "task-isolation", owner ? [owner] : [], gaps));
     return true;
   }
