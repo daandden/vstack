@@ -13,6 +13,7 @@ Not covered here:
 - A parallel worker's tree is an isolated agent (ADR 0007), not a worktree.
 - omp task isolation and the `github` tool's `pr_checkout` already go through omp.
 - When the user wants their own session moved into a new worktree, tell them to type `/wt`.
+- Checkouts that runs left behind under the base, task sandboxes included: the user removes them with `/skill:clean-wt`.
 
 ## Steps
 

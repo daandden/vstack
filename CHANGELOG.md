@@ -4,6 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [5.0.3] - 2026-10-22
+
+- Add `/skill:clean-wt`, a Utility skill that removes leftover omp checkouts under the worktree base: linked worktrees, standalone clones, and task-isolation sandboxes. Its script `clean-wt.ts` inspects only the entries that `omp worktree list --json` reports. It keeps every checkout that a live session lease, a live task (pid and start time from omp's owner marker), or a running process's working directory points to. It keeps a checkout as uncertain when evidence is missing: no omp listing, no visible lease for the running session, a held lease with no readable session file, or a sandbox with no owner marker. An ignored or excluded file counts as clean only when the source checkout holds the same bytes or link target. Commits and stashes that only a checkout holds count as unique history, and the script never removes such a checkout. The script removes unused clean checkouts at once and keeps each branch. The skill investigates each unused checkout with work against its sessions and the default branch, and removes one only after the user picks it through `ask`. `remove` rechecks owners and a state fingerprint right before each removal (#210).
+- vstack-worktree points at `/skill:clean-wt` for checkouts that runs left behind.
+
 ## [5.0.2] - 2026-10-22
 
 - Remove decision-trail. hillclimb keeps its own attempt log at `<Scratch dir>/hillclimb/<run-id>/attempts.tsv` through `hillclimb/scripts/log.sh`, and only the parent writes it. No run audits a trail or ends with an Attention section.
