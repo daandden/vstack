@@ -18,7 +18,7 @@ Accept the caller's chain facts. Follow these rules in skill://implement/END-STA
 
 Take the PR or bottom-to-top stack from the caller. Resolve the default branch through `default-branch`. Read each PR's base, head, state, checks, review state, and merge state through `read-pr`. Freeze the bottom-to-top PR numbers for this pass. Confirm that each descendant depends on the previous PR. Keep independent work outside this chain.
 
-If the frontier is not merge-ready, run skill://babysit in drive mode first with the chain facts. Continue only after its blockers clear. ship never rebases or force-pushes. The caller owns each conflict and each needed rebase through the Conflict owner in END-STATE step 7.
+If the frontier is not merge-ready, run skill://babysit in drive mode first with the chain facts. Continue only after its blockers clear. ship changes a branch only through `update-branch` in step 4, and never rebases or force-pushes. The caller owns each conflict and each step 2 move through the Conflict owner in END-STATE step 7.
 
 ## 1. Verify every PR independently
 
@@ -52,11 +52,11 @@ Walk upward from the lowest unmerged PR. PASS and PASS+NOTES pass. Stop at the f
 
 ## 3. Recheck the patch before landing
 
-A verdict covers a patch, not its commits, and a chain rebase moves every PR above it to a new SHA without failing any check. Fetch current base and head and recompute the stable patch id with the same three-dot diff. Compare it to the accepted verdict's patch id. If it differs, run a fresh isolated verifier for this PR through step 1. Do not explain away tests, docs, lint changes, or build differences as noise. A fresh FAIL, DRIFT, or unavailable result caps the run here. A matching patch id preserves the verdict across rewritten SHAs; record the current SHAs as well as the verified SHAs.
+A verdict covers a patch, not its commits, and a merge of a base into a branch moves that PR to a new head SHA without failing any check. Fetch current base and head and recompute the stable patch id with the same three-dot diff. Compare it to the accepted verdict's patch id. If it differs, run a fresh isolated verifier for this PR through step 1. Do not explain away tests, docs, lint changes, or build differences as noise. A fresh FAIL, DRIFT, or unavailable result caps the run here. A matching patch id preserves the verdict across new SHAs; record the current SHAs as well as the verified SHAs.
 
 ## 4. Prepare only the bottom PR
 
-Fetch the exact current default-branch tip. Prepare only the lowest PR in the verified run. If it is behind, use `update-branch`, which never rebases or force-pushes. If the branch needs a rebase, or the Code host cannot update the branch, stop and report the branch to the caller's Conflict owner in END-STATE step 7. If `update-branch` is unsupported, report the gap and continue only when `read-pr` says that the PR can merge.
+Fetch the exact current default-branch tip. Prepare only the lowest PR in the verified run. If it is behind, use `update-branch`, which merges the base into the branch. If `update-branch` reports a conflict, or the Code host cannot update the branch, stop and report the branch to the caller's Conflict owner in END-STATE step 7. If `update-branch` is unsupported, report the gap and continue only when `read-pr` says that the PR can merge.
 
 If this PR's base is not the default branch, retarget only this PR to the default branch through `retarget-pr`, because a PR whose base is still its parent's branch merges into that branch, not the default branch. Re-read its SHAs, checks, and merge state. Repeat step 3 after every update or retarget. Leave descendants untouched until this PR merges.
 
