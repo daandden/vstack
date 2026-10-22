@@ -448,3 +448,21 @@ test.skipIf(process.platform === "linux")("a held lease's session file outside t
   await holdLease("far-session-1", file);
   expect(inventory()[path]).toMatchObject({ verdict: "owned", reasons: [], owners: [{ type: "session", id: "far-session-1", file }] });
 });
+
+test("a sandbox with both an m and a merged checkout is uncertain, so removing one never deletes the other", () => {
+  const dead = Bun.spawnSync(["true"]).pid;
+  const sandbox = taskSandbox("t-two", { pid: dead, id: "Two1" });
+  const m = join(sandbox, "m");
+  const merged = join(sandbox, "merged");
+  git(dir, "clone", "-q", "--shared", repo, merged);
+  git(merged, "checkout", "-q", "-b", "task/only-here");
+  git(merged, "commit", "-q", "--allow-empty", "-m", "only in merged");
+  const inv = inventory();
+  for (const path of [m, merged]) {
+    expect(inv[path].verdict).toBe("uncertain");
+    expect(inv[path].reasons.join(" ")).toContain("both m and merged");
+  }
+  const r = remove(`${m}=${inv[m].fingerprint || "0".repeat(64)}`);
+  expect(r.removed).toEqual([]);
+  expect(existsSync(merged)).toBe(true);
+});
