@@ -57,7 +57,7 @@ A hidden vstack skill that the jev judge selects during a Matt run, or that a sk
 _Avoid_: extension, plugin
 
 **Utility skill**:
-A vstack skill that is not a Matt skill and that the user can use whatever the work is. unslop, technical-writing, diagram-design, good-css, and skill-creator set how text, figures, styles, and skills are made. explain, how, why, and forensics answer questions about existing work. in-your-own-words and ketchup check that the user and the agent agree. The first restates the user's goal, and the second catches the user up. The hidden helpers are vstack-tmp, vstack-fan-out, vstack-figures, grilling-page, and vstack-worktree. Other skills name these helpers by `skill://`. Utility skills can start from their descriptions, from a rule, or by name, subject to each skill's invocation settings.
+A vstack skill that is not a Matt skill and that the user can use whatever the work is. unslop, technical-writing, diagram-design, good-css, and skill-creator set how text, figures, styles, and skills are made. explain, how, why, and forensics answer questions about existing work. in-your-own-words and ketchup check that the user and the agent agree. The first restates the user's goal, and the second catches the user up. clean-wt removes omp checkouts that nothing uses anymore. The hidden helpers are vstack-tmp, vstack-fan-out, vstack-figures, grilling-page, and vstack-worktree. Other skills name these helpers by `skill://`. Utility skills can start from their descriptions, from a rule, or by name, subject to each skill's invocation settings.
 _Avoid_: standalone skill, helper skill
 
 **Command**:
