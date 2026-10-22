@@ -60,7 +60,7 @@ items:
     tree: f07d230f645fc9ac390cf13a450bbff12ad791a3
     disposition: adapt
     artifacts: [plugin/skills/implement]
-    reason: "Settles the End state with one ask, then chains open-pr, babysit, ship; uses the verify skill. Keeps its asks and a run results table Report block in its own Stage on the flow's Grilling page, and closes the flow when the run ends with no ticket open (#34, #167). Requires both Code host and CI service configs and reads CI logs only from ci.md (ADR 0031)."
+    reason: "Settles one End state and chains open-pr, babysit, and ship with Verify proof and the flow's Grilling page; checks every needed operation against each configured MCP server's current descriptions, including the Code host, and caps failed discovery at commit (ADR 0031, ADR 0032, #34, #167)."
   - id: matt/improve-codebase-architecture
     upstream: matt
     kind: skill
@@ -92,7 +92,7 @@ items:
     tree: b1568cde855a189b16e5d7dd8a0fa4c3f156bc2e
     disposition: adapt
     artifacts: [plugin/skills/setup-vstack]
-    reason: "Renamed setup owns machine checks, repo-only Migration, and separate Code host and CI service configs without duplicate CI rows (ADR 0006, ADR 0028, ADR 0031)."
+    reason: "Renamed setup owns machine checks, repo-only Migration, and separate Code host and CI service configs; Other CI drafts MCP facts and check/rerun pins from the named server's current descriptions (ADR 0006, ADR 0028, ADR 0031, ADR 0032)."
   - id: matt/tdd
     upstream: matt
     kind: skill
@@ -692,7 +692,7 @@ items:
     tree: 51549ab2da11e5905342bbb3aadb93685c8ac348
     disposition: adapt
     artifacts: [plugin/skills/babysit]
-    reason: "Hidden drive-mode knowledge takes the exact failed build only from the required check's link and routes logs and the single permitted rerun through the CI service (ADR 0015, ADR 0031, ADR 0032)."
+    reason: "Hidden drive-mode knowledge takes the failed build only from the check's link, selects MCP logs from current tool descriptions, and permits reruns only through the configured CLI command or MCP rerun pin (ADR 0015, ADR 0031, ADR 0032)."
   - id: pstack/playbook-bug-fix
     upstream: pstack
     kind: playbook

@@ -137,7 +137,14 @@ Recommend from the CI signals found in step 4, not from the remote or the Code h
 - GitLab CI: builds and checks run on GitLab CI, using the `glab` CLI.
 - Other: the user names, through the Other answer of `ask`, the MCP server or CLI already set up for this project.
 
-For Other with a CLI, read its `--help` for each command group. Draft one row per operation id in [ci-github-actions.md](./ci-github-actions.md), in the same order, with the command and its arguments. Use `unsupported` where no command matches. Draft a read-only Check command from that help too. Never invent a command. For Other with an MCP server, report that this CI setup path supports CLI configs only. Leave `ci.md` missing and stop project setup before writing or committing; do not substitute Code host commands or draft MCP operation rows.
+For Other with a CLI, read its `--help` for each command group. Draft one row per operation id in [ci-github-actions.md](./ci-github-actions.md), in the same order, with the command and its arguments. Use `unsupported` where no command matches. Draft a read-only Check command from that help too. Never invent a command.
+
+For Other with an MCP server, read the named server's current tool list, descriptions, and parameter schemas. If discovery fails or the server is unreachable, name the server and failure, tell the user to connect it, and stop before writing or committing project config. Draft `ci.md` with the CI service, the named MCP server, project facts, and these pins:
+
+- Check: one tool whose description establishes a read-only connection check, with its documented arguments.
+- `rerun-ci`: one tool that starts a fresh full rerun of the exact existing build with the same parameters and script. Record how its arguments come from the failed check's link. A changed-script replay, a new build using defaults, and a failed-stage-only retry do not fit.
+
+Name a tool only when this server's list contains it, and derive its arguments from that tool's schema. If no tool fits a pin, mark that capability `unsupported`; invent no pin or replacement. Keep only Check and `rerun-ci` pinned. Tell the config's reader to select every other operation, including `ci-logs`, from the named server's tool descriptions. Project facts hold values the descriptions cannot supply, such as the Jenkins URL and job folder. Collect missing facts through `ask`. A folder is not a substitute for the failed check's build link. Show this draft for the user's confirmation in step 6. Jenkins uses Other; there is no Jenkins template.
 
 Section D, triage labels. This section runs whenever `triage-labels.md` is missing, whatever the tracker, because triage always ships. Call `ask` with one question, whether to keep the default triage labels, and the options Keep the defaults (Recommended) and Use other names. The defaults are the five canonical roles, each label string equal to its name: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. Only on Use other names (usually because the tracker already uses other names, such as `bug:triage` for `needs-triage`), call `ask` once more with one question per role to collect the names, so triage applies the existing labels instead of creating duplicates.
 
@@ -159,6 +166,7 @@ Write the drafts from the seed templates in this skill's directory:
 
 For an Other issue tracker, write `issue-tracker.md` from scratch from the user's description. For an Other Code host, write `code-host.md` in the shape of `code-host-github.md`, with the host, the repo, the tool, a read-only check, the review reference, and the drafted rows. In every `code-host.md`, fill in the repo from the remote and, for a self-hosted GitLab, the host.
 For an Other CI service with a CLI, write `ci.md` in the shape of `ci-github-actions.md`, with the CI service, repo, tool, read-only Check command, and drafted rows. Fill in the CI repo and, for self-hosted GitLab, its host. Keep CI logs, build reruns, secrets, and variables only in `ci.md`.
+For an Other CI service with an MCP server, use Section C's short shape, not the CLI operation rows. For an MCP Code host draft, also pin its read-only Check tool and arguments from the discovered list.
 
 In Private mode, change two drafts so that they point under the vstack root by absolute path:
 
@@ -207,9 +215,9 @@ Private mode:
 1. Write each drafted config file to `<vstack_root>/config/`: `issue-tracker.md`, `code-host.md`, `ci.md`, `triage-labels.md`, and `domain.md`, or only the missing ones on a re-run. Creating that directory turns Private mode on for every worktree of this repo.
 2. Write no `## vstack` block, change no tracked file and no ignore file, and commit nothing.
 
-In both modes, when this run or its Migration wrote `code-host.md`, check its tool once with a read-only call. Run the file's Check command for a CLI. For an MCP server, call one read-only tool from the drafted rows, such as `list-prs`. If the call fails, print `WARN code-host: <what failed>. Remedy: <log in to the CLI, or connect the MCP server>.` Keep the written file either way.
+In both modes, check each config that this run or its Migration wrote. For a CLI config, run its read-only Check command once. For an MCP config, call its pinned read-only Check tool exactly once with the recorded arguments. A config with no tool or an unsupported Check gets a reported gap, not an invented call.
 
-When this run wrote `ci.md`, run its read-only Check command exactly once. On failure, print `WARN ci: <what failed>. Remedy: <log in to the CLI or fix the named service connection>.` Keep the written file.
+On failure, print `WARN <config name>: <named tool or command and observed failure>. Remedy: <log in to the CLI, or connect the named MCP server>.` Keep the written file. An MCP connection check is one tool call, not a fallback sequence.
 
 ### 8. Done
 

@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [4.0.6] - 2026-10-22
+
+- Set up Other CI services through MCP facts and check/rerun pins, discover End state capabilities live for MCP CI and Code hosts, and select CI log tools from server descriptions (#203).
+
 ## [4.0.5] - 2026-10-22
 
 - Make babysit read logs and rerun only the exact build linked by a failed required check, including GitHub Actions. Report missing links without build lookup, log reads, or reruns, and constrain reruns to the CI command row or MCP pin (#202).

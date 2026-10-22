@@ -59,7 +59,7 @@ Read required checks and their status from `code-host.md` through `required-chec
 
 If the failed check has no link, report the missing link and read no log and start no rerun for that check. Never find a substitute build by commit, the job's last build, or another lookup.
 
-For a linked failure, read that exact build's logs through `ci.md`'s `ci-logs`. Classify the failure before retriggering:
+For a linked failure, read that exact build's logs through `ci.md`'s `ci-logs`. For a CLI config, use its command row. For an MCP config, read the named server's current tool descriptions and parameter schemas, select a read-only log tool, and bind the job and build or run from the failed check's link to its arguments. Follow its pagination to obtain the logs needed to classify the failure. The log tool is unpinned; only Check and `rerun-ci` are pinned. If no matching log tool is available, report the server and gap instead of guessing a tool or another build. Classify the failure before retriggering:
 
 - Diff-owned failure: fix with a red-first proof and include it in the push wave.
 - Stale base: fetch the current base and check `git merge-base --is-ancestor <base-tip> <head>`. For failures outside the diff, inspect whether missing base changes explain them. Report a needed rebase to the caller's Conflict owner; do not spend a retry on it.
