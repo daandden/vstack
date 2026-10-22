@@ -4,9 +4,15 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
-## [4.0.8] - 2026-10-22
+## [4.0.9] - 2026-10-22
 
 - The vstack extension no longer registers `vstack_rename_session`, and wayfinder no longer renames the session after a claim. The load gate now proves the extension loaded through the `/vstack-clean` Command, which the load smoke reports in `extensionCommands`. setup-vstack's `machine.ts` no longer accepts `--extension-loaded`. Check 4 fails only when `disabledExtensions` lists vstack. Otherwise, check 4 prints a note to start a new session with `/new` after linking or pulling.
+
+## [4.0.8] - 2026-10-22
+
+- Grilling pages use Iosevka Term Slab headings, Iosevka Term content with JetBrains Mono fallback, and a 100rem content column. Cards, ledger claims, and Term notes put labels above full-width text. Stage tabs use fixed short labels, repeated labels get numbers, option headings retain their letters, and the tab bar drops its key hint.
+- Overview lists the latest ask of each Q number with picked labels, Other text, or Open instead of summary prose. Press n to reach the first open question across all Stages and stay there until it is answered. Append assigns record ids, Stage order, session and round numbers, timestamps, and Q numbers. Replacements preserve their assigned values, and again keeps an earlier decision's Q number. Wayfinder uses its skill name for charting and ticket Stages.
+- Grilling-page commands serialize each state transaction, so concurrent appends keep unique assigned ids and Q numbers. Rename reserves both paths, and process termination releases the advisory lock. Successful append prints a compact metadata array to stderr with assigned ids and numbers, while stdout remains only the absolute page path. Report Question labels now sit above their navigation links.
 
 ## [4.0.7] - 2026-10-22
 
