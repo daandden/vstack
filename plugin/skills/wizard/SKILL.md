@@ -5,9 +5,9 @@ description: Generate an interactive bash wizard that walks a human through step
 
 # Wizard
 
-A **wizard** is a bash script that walks a human, step by step, through a manual procedure that's tedious to do by hand and tedious to re-explain to an AI every time. It opens each URL, says exactly what to click and copy, captures the values, writes them where they belong (`.env`, CI secrets on the Code host), confirms at every stage, and shows how many stages are left. It might configure third-party services, run a one-off migration, or move the project from one state to another.
+A **wizard** is a bash script that walks a human, step by step, through a manual procedure that's tedious to do by hand and tedious to re-explain to an AI every time. It opens each URL, says exactly what to click and copy, captures the values, writes them where they belong (`.env`, secrets in the CI service), confirms at every stage, and shows how many stages are left. It might configure third-party services, run a one-off migration, or move the project from one state to another.
 
-The delightful UX is already solved by [template.sh](template.sh): stage-by-stage progress, confirmation gates, cross-platform URL opening (including WSL), hidden secret entry, idempotent `.env` upserts, CI secret and variable writes through the Code host's CLI, and a closing summary. **Your job is only to scope the procedure and author its stages.** The library above the `STAGES` marker is identical in every wizard; that consistency is the point: never hand-edit it.
+The delightful UX is already solved by [template.sh](template.sh): stage-by-stage progress, confirmation gates, cross-platform URL opening (including WSL), hidden secret entry, idempotent `.env` upserts, CI secret and variable writes through the CI service's CLI, and a closing summary. **Your job is only to scope the procedure and author its stages.** The library above the `STAGES` marker is identical in every wizard; that consistency is the point: never hand-edit it.
 
 A wizard is ephemeral by default: built for one run, saved to a scratch or `scripts/` path, deleted when the job's done. Commit it only when the user wants a repeatable setup path that should live in the repo.
 
@@ -22,7 +22,7 @@ Work out every manual step the human must take and every value that gets capture
 
 Then show the user the ordered list of stages and the values each produces, and confirm it with one `ask`. The user may add, drop, or reorder stages through Other. An answer `ask` picks after a timeout is not the user's: ask once more, and if that times out too, stop without writing the wizard and say why.
 
-**Done when:** every stage is named in order, and for each captured value you know (a) where the human gets it, (b) where it's written (`.env`, a Code host secret or variable, both, or nowhere; some stages are pure actions), and (c) whether it's secret (hidden entry) or public.
+**Done when:** every stage is named in order, and for each captured value you know (a) where the human gets it, (b) where it's written (`.env`, a CI service secret or variable, both, or nowhere; some stages are pure actions), and (c) whether it's secret (hidden entry) or public.
 
 ### 2. Map each stage's journey
 
@@ -32,7 +32,7 @@ For each stage, write the precise path a human follows: which URL to open, what 
 
 ### 3. Author the wizard
 
-Copy `template.sh` to the target path. At the top of the stages section, set `TOTAL_STAGES` to the number of stages you wrote, and set `CODE_HOST`, `SECRET_CMD`, and `VAR_CMD` from the repo's `code-host.md` (`<vstack root>/docs/vstack/code-host.md` in Standard mode, `<vstack root>/config/code-host.md` in Private mode). Each command is the CLI command of its `set-secret` or `set-variable` row without `<NAME>`. The library appends the name and passes the value on standard input. Leave a command as `()` when its row is an MCP tool, is unsupported, or `code-host.md` is missing. The wizard then lists that value as a hand step in the Code host's web page. Replace the example stage with one `stage` per step, in dependency order. Use the library helpers: `stage`, `say`/`step`, `open_url`, `ask`/`ask_secret`, `write_env`, `set_secret`/`set_var`, `pause`/`confirm`.
+Copy `template.sh` to the target path. At the top of the stages section, set `TOTAL_STAGES` to the number of stages you wrote, and set `CI_SERVICE`, `SECRET_CMD`, and `VAR_CMD` from the repo's `ci.md` (`<vstack root>/docs/vstack/ci.md` in Standard mode, `<vstack root>/config/ci.md` in Private mode). Each command is the CLI command of its `set-secret` or `set-variable` row without `<NAME>`. The library appends the name and passes the value on standard input. Leave a command as `()` when its row is an MCP tool, is unsupported, or `ci.md` is missing. Tell the human to add that value by hand in the named CI service, such as Jenkins credentials, and put its URL and instructions in the stage. The wizard lists the value as a hand step in that service's web page. Replace the example stage with one `stage` per step, in dependency order. Use the library helpers: `stage`, `say`, `step`, `open_url`, `ask`, `ask_secret`, `write_env`, `set_secret`, `set_var`, `pause`, and `confirm`.
 
 Hold the bar the template sets: open the URL before asking for its value, use `ask_secret` for anything secret, `write_env` every persisted value, `set_secret` only the values CI actually needs, and `confirm` before any irreversible action. Each `stage` clears the screen so only the current step is visible: keep a stage to one focused task so nothing the human needs scrolls away. Don't touch the library above the marker.
 
