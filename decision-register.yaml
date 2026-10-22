@@ -985,6 +985,7 @@ originals:
   - plugin/skills/vstack-maintain
   - plugin/agents/vstack-diagram-drawer.md
   - plugin/skills/vstack-figures
+  - plugin/skills/clean-wt
 utility:
   - plugin/skills/unslop
   - plugin/skills/technical-writing
@@ -1002,3 +1003,4 @@ utility:
   - plugin/skills/vstack-worktree
   - plugin/skills/in-your-own-words
   - plugin/skills/ketchup
+  - plugin/skills/clean-wt
