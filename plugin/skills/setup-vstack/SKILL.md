@@ -77,7 +77,7 @@ When `mode` is set, or Migration settled the mode, tell the user the mode and ke
 - `missing_config` is empty and this run's Migration changed nothing: tell the user that every config file exists and that they can edit any of them directly. Skip to step 8.
 - `missing_config` is empty and this run's Migration changed files, in Standard mode: skip steps 4 and 5. Draft only the `## vstack` block in step 6. Go on to the commit in step 7.
 - `missing_config` is empty and this run's Migration changed files, in Private mode: skip to step 8.
-- Otherwise: run only the sections for the missing files in step 5. Draft and write only those files in steps 6 and 7. When the other four config files exist and only `ci.md` is missing, ask only the CI section. Keep the existing config files, including every row of `code-host.md`, unchanged.
+- Otherwise: run only the sections for the missing files in step 5. Draft and write only those files, except for the CI cutover below. When `ci.md` is missing and `code-host.md` exists, follow Section C's re-setup branch and include its revised `code-host.md` in the same confirmation. Leave every other existing config file unchanged.
 
 When `mode` is null, call `ask` with two options:
 
@@ -141,6 +141,15 @@ Section C, CI service.
 
 > Explainer: The CI service runs this repo's builds and checks. It can differ from the Code host. Its logs, build reruns, secrets, and variables belong in `ci.md`.
 
+When `ci.md` is missing and `code-host.md` exists, read that file before presenting a service-choice question. If it holds any of `ci-logs`, `rerun-ci`, `set-secret`, or `set-variable`, draft `ci.md` from those rows and their recorded service, tool, repo, and Check. Keep unsupported operations and their reasons. Reuse the recorded CI choice and facts.
+
+- For a CLI source, copy the four rows that exist verbatim, including hand-edited arguments, input handling, and policy notes. Draft `code-host.md` with only those rows removed. Keep every other row and note unchanged, including `required-checks` and `watch-checks`.
+- For an MCP source, carry the rows' user-specific values, arguments, and policies into `ci.md`'s project facts. Use Section C's short MCP shape and current tool discovery below, with only Check and a supported same-parameter, same-script full-build `rerun-ci` pinned. Select `ci-logs`, `set-secret`, and `set-variable` from current tool descriptions, not copied pins. Draft `code-host.md` in Section B's short shape, keeping its server, project facts, and read-only Check pin, with no operation rows. Preserve Code host facts embedded in the old rows, such as exact-commit fetching and the review reference.
+
+Show both complete drafts together in step 6 and call `ask` once for their write confirmation. Write neither file before that confirmation. The agent drafts this cutover; `project.ts` has no row-move command. Skip the service-choice question below when the old rows already supply that choice. Collect only a missing fact needed for these drafts through `ask`, not unrelated setup sections.
+
+If the existing `code-host.md` has no CI rows, use the normal CI choices below. Still include an MCP Code host's short-shape draft in the same confirmation. A CLI Code host with no CI rows stays unchanged.
+
 Recommend from the CI signals found in step 4, not from the remote or the Code host. Exactly one signal gives a recommendation: `.github/workflows/` means GitHub Actions, `.gitlab-ci.yml` means GitLab CI, and `Jenkinsfile` means Other. With none or several, recommend nothing. The `ask` options:
 
 - GitHub Actions: builds and checks run on GitHub Actions, using the `gh` CLI.
@@ -179,21 +188,23 @@ For an Other Code host with a CLI, write `code-host.md` in the shape of `code-ho
 For an Other CI service with a CLI, write `ci.md` in the shape of `ci-github-actions.md`, with the CI service, repo, tool, read-only Check command, and drafted rows. Fill in the CI repo and, for self-hosted GitLab, its host. Keep CI logs, build reruns, secrets, and variables only in `ci.md`.
 For an Other CI service with an MCP server, use Section C's short shape, not the CLI operation rows.
 
+For Section C's re-setup branch, use the existing rows and facts as directed there instead of replacing hand edits with seed-template text. The two drafts are the new `ci.md` and the revised existing `code-host.md`. Leave every other existing config file out of the draft and write set.
+
 In Private mode, change two drafts so that they point under the vstack root by absolute path:
 
 - `issue-tracker.md` for local markdown: replace every `.scratch/` path, the Wayfinding map, ticket, and frontier paths included, with `<vstack_root>/artifacts/`.
 - `domain.md`: the domain docs live in `<vstack_root>/domain/`, as `GLOSSARY.md` (or `GLOSSARY-MAP.md`) and `adr/`, in place of the repo-root files. Add one line saying that the repo's own tracked `GLOSSARY.md` and `docs/adr/` are read as well when they exist.
 
-Show the user each draft and, in Standard mode, the `## vstack` block (see step 7). Then call `ask` with the options Write it (Recommended) and Change something. On Change something, make the user's edits, show the new drafts, and call `ask` again.
+Show the user each complete draft and, in Standard mode, the `## vstack` block changes (see step 7). Then call `ask` once for the whole write set, with the options Write it (Recommended) and Change something. On Change something, make the user's edits, show the new drafts, and call `ask` again. A section choice is not write approval. Until this confirmation, keep the project files unchanged.
 
 ### 7. Write
 
 Standard mode:
 
 1. When `block_file_dirty` from step 1 is true, tell the user that `<block_file>` has uncommitted changes and that the setup commit is going to include them. Call `ask` with the options Go on and include them, and Stop so I can commit them first. On Stop, stop.
-2. Write each config file that this run drafted: `docs/vstack/issue-tracker.md`, `docs/vstack/code-host.md`, `docs/vstack/ci.md`, `docs/vstack/triage-labels.md`, and `docs/vstack/domain.md`, or only the missing ones on a re-run.
+2. Write each config file that this run drafted: `docs/vstack/issue-tracker.md`, `docs/vstack/code-host.md`, `docs/vstack/ci.md`, `docs/vstack/triage-labels.md`, and `docs/vstack/domain.md`, or only the missing ones on a re-run plus Section C's confirmed `code-host.md` cutover.
 3. Pick the file for the block. When `CLAUDE.md` exists, edit it. Else when `AGENTS.md` exists, edit it. When neither exists, call `ask` with the options `CLAUDE.md` and `AGENTS.md` and no recommended option, and create the one the user picks. Never create `AGENTS.md` when `CLAUDE.md` exists, or the other way round.
-4. When the file already has a `## vstack` block, update that block in place instead of adding a second one, and leave the other sections as they are. The block:
+4. When the file already has a `## vstack` block, update it in place instead of adding a second one, and leave the other sections as they are. On a CI-only re-run, preserve its existing subsections and add only a missing CI service subsection. The block:
 
    ```markdown
    ## vstack
@@ -223,7 +234,7 @@ Standard mode:
 
 Private mode:
 
-1. Write each drafted config file to `<vstack_root>/config/`: `issue-tracker.md`, `code-host.md`, `ci.md`, `triage-labels.md`, and `domain.md`, or only the missing ones on a re-run. Creating that directory turns Private mode on for every worktree of this repo.
+1. Write each drafted config file to `<vstack_root>/config/`: `issue-tracker.md`, `code-host.md`, `ci.md`, `triage-labels.md`, and `domain.md`, or only the missing ones on a re-run plus Section C's confirmed `code-host.md` cutover. Creating that directory turns Private mode on for every worktree of this repo.
 2. Write no `## vstack` block, change no tracked file and no ignore file, and commit nothing.
 
 In both modes, check each config that this run or its Migration wrote. For a CLI config, run its read-only Check command once. For an MCP config, call its pinned read-only Check tool exactly once with the recorded arguments. A config with no tool or an unsupported Check gets a reported gap, not an invented call.
@@ -242,6 +253,6 @@ List the skills that read the config:
 - `triage-labels.md`: triage, to-spec, and to-tickets.
 - `domain.md` and the domain docs: domain-modeling, grill-with-docs, improve-codebase-architecture, codebase-design, diagnosing-bugs, tdd, and wait-what.
 
-Say that the user can edit these files directly later. Re-running this skill adds only the config files that are missing. To switch a choice, edit its file, or delete the file and run this skill again.
+Say that the user can edit these files directly later. Re-running this skill adds only missing config files, with one cutover when `ci.md` is missing: it also removes the moved CI rows from `code-host.md` and reduces an MCP Code host to its short shape after confirmation. Every other existing config stays unchanged. To switch a choice, edit its file, or delete the file and run this skill again.
 
 Then name the next step. setup-app-verification creates this project's Verify skill, which gives live proof to implement, forensics, hillclimb, and ship's verifiers. Tell the user to start a new session (`/new`) and run `/skill:grill-with-docs` to plan live proof. implement uses `skill://setup-app-verification` to create the Verify skill in that run.
