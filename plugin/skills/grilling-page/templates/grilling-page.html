@@ -46,9 +46,8 @@
     [data-state="in-progress"] { --state: var(--peach); }
     [data-state="not-started"] { --state: var(--overlay0); }
     [hidden] { display: none !important; }
-    /* Same font and metrics as the Tern terminal: the font's own line height and letter width, no extra spacing. */
-    body { margin: 0; min-block-size: 100svh; background: var(--base); color: var(--text); font: var(--fs-body)/normal "JetBrainsMono Nerd Font Mono", "JetBrainsMono Nerd Font", "JetBrains Mono", ui-monospace, monospace; letter-spacing: 0; }
-    h1, h2, h3, h4 { margin-block: 0; color: var(--text); text-wrap: balance; font-size: var(--fs-body); line-height: normal; }
+    body { margin: 0; min-block-size: 100svh; background: var(--base); color: var(--text); font: var(--fs-body)/normal "IosevkaTerm Nerd Font Mono", "Iosevka Term", "JetBrains Mono", ui-monospace, monospace; letter-spacing: 0; }
+    h1, h2, h3, h4 { margin-block: 0; color: var(--text); text-wrap: balance; font-family: "IosevkaTermSlab Nerd Font Mono", "Iosevka Term Slab", "JetBrains Mono", ui-monospace, monospace; font-size: var(--fs-body); line-height: normal; }
     p, ul, ol, dl, dd, figure { margin: 0; }
     a { color: var(--blue); text-underline-offset: 0.2em; touch-action: manipulation; }
     a:active { color: var(--lavender); }
@@ -65,10 +64,12 @@
     .tabs a, .qnav a { display: inline-flex; gap: 0.375rem; align-items: center; padding-inline: 0.25rem; border-radius: 0.25rem; color: var(--subtext1); text-decoration: none; font-weight: 600; font-variant-numeric: tabular-nums; }
     .tabs a[aria-selected="true"], .qnav a[aria-current="true"] { background: var(--surface1); color: var(--mauve); }
     .qnav .sep { inline-size: 1px; block-size: 1rem; background: var(--surface1); }
-    .tabs .keys { margin-inline-start: auto; color: var(--overlay0); }
     .dot { flex: none; inline-size: 0.4375rem; block-size: 0.4375rem; border-radius: 50%; background: var(--state, var(--overlay0)); }
 
-    main { display: grid; gap: 1.5rem; max-inline-size: 60rem; margin-inline: auto; padding-block: 1rem; padding-inline: 1.25rem; }
+    main { --content: 100rem; --gutter: 1.25rem; display: grid; grid-template-columns: [full-start] minmax(var(--gutter), 1fr) [content-start] min(calc(100% - var(--gutter) * 2), var(--content)) [content-end] minmax(var(--gutter), 1fr) [full-end]; gap: 1.5rem 0; padding-block: 1rem; }
+    main > * { grid-column: content; }
+    .stage .pick { color: var(--yellow); }
+    .stage .open { color: var(--overlay0); }
     .sr-only { position: absolute; inline-size: 1px; block-size: 1px; overflow: clip; clip-path: inset(50%); white-space: nowrap; }
     .page-head { display: grid; gap: 0.25rem; }
     .crumb, time, .label { color: var(--subtext0); }
@@ -118,9 +119,9 @@
     .example .label, .today .label, .terms .label, .report-links .label { font-weight: 600; }
     /* Today lists how things work now, each fact followed by its file and line. */
     .source { color: var(--subtext0); font-size: var(--fs-small); }
-    /* Term notes put each name beside its one-line definition. */
-    .terms dl { display: grid; grid-template-columns: fit-content(14rem) 1fr; gap: 0.125rem 0.75rem; }
-    .terms dt { font-weight: 600; color: var(--lavender); }
+    .terms dl, .fields { display: grid; gap: 0.125rem; }
+    .terms dt, .fields dt { font-size: var(--fs-small); font-weight: 600; color: var(--subtext1); }
+    :is(.terms dl, .fields) > dd + dt { margin-block-start: 0.5rem; }
     /* An example can be a list or a screen, so it keeps its line breaks and leading spaces. */
     .example p:not(.label) { white-space: pre-wrap; }
 
@@ -162,9 +163,7 @@
     [data-status="cleared"] { --state: var(--green); }
     [data-status="unproven"] { --state: var(--peach); }
     .claim .tag { color: var(--state); }
-    .fields { display: grid; grid-template-columns: fit-content(8rem) 1fr; gap: 0.125rem 0.75rem; }
-    .fields dt { font-weight: 600; color: var(--subtext1); }
-    .report .ask { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; align-items: baseline; }
+    .report .ask { display: grid; gap: 0.125rem; }
     .report .ask .label { font-weight: 600; }
     .report .ask a, .report td a { font-weight: 600; text-decoration: none; }
     .report .table { overflow-x: auto; }
@@ -184,7 +183,6 @@
     const tabs = [...document.querySelectorAll('[role="tab"]')];
     const panels = tabs.map((t) => document.getElementById(t.getAttribute("aria-controls")));
     const pad = () => (bar ? bar.offsetHeight : 0) + 8;
-    document.querySelector(".tabs")?.insertAdjacentHTML("beforeend", '<span class="keys">h/l or ←/→ tabs, j/k or ↓/↑ questions</span>');
     const setClearance = () => document.documentElement.style.setProperty("--nav-clearance", `${pad()}px`);
     if (bar) new ResizeObserver(setClearance).observe(bar);
     setClearance();
@@ -253,6 +251,16 @@
     addEventListener("scroll", markFromScroll, { passive: true });
     addEventListener("keydown", (e) => {
       if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+      if (e.key === "n") {
+        const first = document.querySelector(".question[data-open]");
+        if (first) {
+          e.preventDefault();
+          reveal(first.id);
+          history.replaceState(null, "", `#${first.id}`);
+          jump(stops.indexOf(first));
+        }
+        return;
+      }
       if ((e.key === "h" || e.key === "ArrowLeft") && open > 0) { e.preventDefault(); openTab(open - 1); }
       else if ((e.key === "l" || e.key === "ArrowRight") && open < tabs.length - 1) { e.preventDefault(); openTab(open + 1); }
       else if (!stops.length) return;

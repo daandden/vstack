@@ -11,6 +11,12 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 - prune-comments never asks. It deletes constraint comments with no encoding and no report, and END-STATE step 3b runs it at every End state, commit included.
 - vstack-worker loses its decision-trail log permission, and the `decision-trail` Scratch kind is gone.
 
+## [4.0.8] - 2026-10-22
+
+- Grilling pages use Iosevka Term Slab headings, Iosevka Term content with JetBrains Mono fallback, and a 100rem content column. Cards, ledger claims, and Term notes put labels above full-width text. Stage tabs use fixed short labels, repeated labels get numbers, option headings retain their letters, and the tab bar drops its key hint.
+- Overview lists the latest ask of each Q number with picked labels, Other text, or Open instead of summary prose. Press n to reach the first open question across all Stages and stay there until it is answered. Append assigns record ids, Stage order, session and round numbers, timestamps, and Q numbers. Replacements preserve their assigned values, and again keeps an earlier decision's Q number. Wayfinder uses its skill name for charting and ticket Stages.
+- Grilling-page commands serialize each state transaction, so concurrent appends keep unique assigned ids and Q numbers. Rename reserves both paths, and process termination releases the advisory lock. Successful append prints a compact metadata array to stderr with assigned ids and numbers, while stdout remains only the absolute page path. Report Question labels now sit above their navigation links.
+
 ## [4.0.7] - 2026-10-22
 
 - The End state chain keeps every pushed commit as it is. The Conflict owner in END-STATE step 7 resolves a conflict, a stale base, or ship's step 2 move by merging the target branch into the reported branch, resolving each conflict once, and pushing a fast-forward. It can update any branch of the run's stack, not only the run's own branch, and records the merged target tip as the new base SHA of the run's branch. For a step 2 move it first retargets the PR to the default branch. Step 0b reads the remote tip before any history edit and before the first push. open-pr rebases only the commits after that tip, and a stack child with pushed commits merges its parent's tip. The Owned branch rule, its absent-ref lease and porcelain check, the force-push lease, and the Owned flag in the chain facts and hand-backs are gone. babysit and ship report a branch that needs an update instead of one that needs a rebase. ADR 0033 records the decision (#176).
