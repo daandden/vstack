@@ -72,9 +72,9 @@ The answer isn't part of the body; it's recorded on resolution (see [Work throug
 
 ## The Grilling page
 
-A map keeps one Grilling page for all its sessions, and every `ask` of a wayfinder session goes on it. Read skill://grilling-page before the first `ask`. Charting adds one charting Stage and marks it finished when charting stops. Once the map exists, rename the page's flow folder after the map with the page script's `rename` command. The new key is the map's issue number, or its effort name on the local-markdown tracker. If the flow's key is already that key, skip the rename. A later session finds the page in the flow folder whose `flow.json` names the map.
+A map keeps one Grilling page for all its sessions, and every `ask` of a wayfinder session goes on it. Read skill://grilling-page before the first `ask`. Charting adds one Stage with `skill: "wayfinder"` and marks it finished when charting stops. Once the map exists, rename the page's flow folder after the map with the page script's `rename` command. The new key is the map's issue number, or its effort name on the local-markdown tracker. If the flow's key is already that key, skip the rename. A later session finds the page in the flow folder whose `flow.json` names the map.
 
-Each ticket is one Stage. A session adds the ticket's Stage when it claims the ticket. The Stage's `title` is the ticket's name, and the ticket's id joins the `flow` record's `tickets`. The skills that resolve the ticket, such as grilling, prototype, or domain-modeling, ask inside that Stage. When the session closes the ticket, mark its Stage finished. Parallel sessions append to the same page, so read the latest `flow` record just before you append it again.
+Each ticket is one Stage with `skill: "wayfinder"`. A session adds it when it claims the ticket. Put the ticket's name in its Background, and add its id to the flow record's `tickets`. The script assigns the short tab label. The skills that resolve the ticket, such as grilling, prototype, or domain-modeling, ask inside that Stage. When the session closes the ticket, mark its Stage finished. Parallel sessions append to the same page, so read the latest flow record just before appending it again.
 
 ## Ticket Types
 
