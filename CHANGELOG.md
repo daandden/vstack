@@ -4,7 +4,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
-## [5.0.5] - 2026-10-22
+## [5.0.6] - 2026-10-22
 
 - Preserve hand-edited CI settings when setup re-runs, confirm the CI and Code host drafts together, and reduce existing MCP Code hosts to server, facts, and Check.
 - Mark GitLab CI's `rerun-ci` unsupported, because GitLab cannot rerun a whole existing pipeline, so babysit reports a GitLab flake for a human. Setup's re-run drafts an old GitLab rerun row as unsupported, and setup defines MCP discovery once for the tracker, Code host, and CI sections.
@@ -14,6 +14,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 - Make babysit read logs and rerun only the exact build linked by a failed required check, including GitHub Actions. Report missing links without build lookup, log reads, or reruns, and constrain reruns to the CI command row or MCP pin (#202).
 - Move PR-chain CI logs and reruns, and wizard secrets and variables, to ci.md. Missing CI config limits implement to commit (#201).
 - Add setup's CI service section and GitHub Actions and GitLab CI templates, and require ci.md for complete project setup (#200).
+
+## [5.0.5] - 2026-10-22
+
+- improve-codebase-architecture runs Design It Twice after every pick. 3–4 vstack-explorer designs, screened against RED-FLAGS.md, show as a cards Report block with the recommendation in its summary line, and grilling's first question asks which design or hybrid to keep. DESIGN-IT-TWICE.md no longer waits for the user to ask for it.
 
 ## [5.0.4] - 2026-10-22
 
