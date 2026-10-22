@@ -692,7 +692,7 @@ items:
     tree: 51549ab2da11e5905342bbb3aadb93685c8ac348
     disposition: adapt
     artifacts: [plugin/skills/babysit]
-    reason: "Hidden drive-mode knowledge routes PR checks to the Code host and logs and build reruns to the CI service (ADR 0015, ADR 0031)."
+    reason: "Hidden drive-mode knowledge takes the exact failed build only from the required check's link and routes logs and the single permitted rerun through the CI service (ADR 0015, ADR 0031, ADR 0032)."
   - id: pstack/playbook-bug-fix
     upstream: pstack
     kind: playbook

@@ -55,11 +55,15 @@ Push the batched wave before replying so replies cite the fix commit and proof. 
 
 ### CI
 
-Read failing run and job logs through `ci.md`'s `ci-logs`. Required checks and their status still come from `code-host.md` through `required-checks` and `watch-checks`. Classify the failure before retriggering:
+Read required checks and their status from `code-host.md` through `required-checks` and `watch-checks`. For each failed check, take the exact job and build or run only from that check's link. This rule applies to every CI service, including GitHub Actions.
+
+If the failed check has no link, report the missing link and read no log and start no rerun for that check. Never find a substitute build by commit, the job's last build, or another lookup.
+
+For a linked failure, read that exact build's logs through `ci.md`'s `ci-logs`. Classify the failure before retriggering:
 
 - Diff-owned failure: fix with a red-first proof and include it in the push wave.
 - Stale base: fetch the current base and check `git merge-base --is-ancestor <base-tip> <head>`. For failures outside the diff, inspect whether missing base changes explain them. Report a needed rebase to the caller's Conflict owner; do not spend a retry on it.
-- Proven flake or infrastructure failure: one fresh full rerun through `ci.md`'s `rerun-ci` for that failure, not a failed-job-only retry. Record the retry so a new poll or worker does not reset the allowance. An identical second failure must be reclassified from child logs; never retry blindly. If `rerun-ci` is unsupported, report the flake for the human.
+- Proven flake or infrastructure failure: one fresh full rerun of that exact failed build, not a failed-job-only retry. Use only `ci.md`'s `rerun-ci` command row for a CLI config or its pinned rerun tool for an MCP config. Record the job, failed build or run, and consumed retry so a new poll or worker does not reset the allowance for that failure. An identical second failure must be reclassified from child logs; never retry blindly. If the command row or rerun pin is absent, report the flake for the human and rerun nothing. Never substitute another rerun tool.
 
 After publishing fixes, watch required checks, then read merge state, review decision, and all threads again. Stop at merge-ready. Owner approval, permissions, a conflict, or a policy decision is the human's line: report it, finish independent actionable items where safe, then return. Never merge to make a blocked state disappear.
 
