@@ -21,3 +21,4 @@ A skill step with two or more parts always starts one subagent per part, all in 
 - A single subagent, such as research's background agent, is not Fan-out. It never does its work in its caller either. If it cannot be spawned, the step stops. compare-attempts' cross-judge is the one single spawn that the run skips instead. The parent keeps its own scores and records `cross-judge: not run`.
 - A step with one part is not Fan-out. A skill that does that one part itself by design keeps doing so, such as why with one reachable category, or explain with one selected skill.
 - A Headless run is not a subagent, so it is not Fan-out (ADR 0010).
+- Amended by the Hand edit remove-decision-trail. decision-trail and its fresh-context review are removed, so the sentence that decision-trail's review counts on the override model no longer applies.

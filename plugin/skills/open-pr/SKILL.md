@@ -12,7 +12,6 @@ Accept the chain facts and any closing references: the issues or tickets the PR 
 
 - Step 0a: the chain facts, Code host routing, and the reuse of the vstack root and Scratch dir.
 - Step 0b: the remote branch name, the remote tip, the push, and the rule that keeps pushed commits as they are.
-- Step 0c: logging to the decision-trail log.
 - Step 4: Verify discovery and link repair.
 - Step 5: the Safety hand-off.
 

@@ -141,7 +141,7 @@ The absolute directory where a run writes the project's vstack config and workfl
 _Avoid_: artifact dir, private root
 
 **Scratch**:
-A vstack output that nothing reads after its run, such as an explanation page, proof evidence, an eval workspace, or a decision-trail log. It is kept under `~/.vstack/tmp/`, grouped by project, until vstack-clean deletes it after a retention period. Temporary files a script creates and deletes itself are not Scratch. A later Stage of the same flow can continue a Grilling page.
+A vstack output that nothing reads after its run, such as an explanation page, proof evidence, an eval workspace, or a hillclimb attempt log. It is kept under `~/.vstack/tmp/`, grouped by project, until vstack-clean deletes it after a retention period. Temporary files a script creates and deletes itself are not Scratch. A later Stage of the same flow can continue a Grilling page.
 _Avoid_: temp files, artifacts, tmp output
 
 **Grilling page**:

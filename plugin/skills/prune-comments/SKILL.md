@@ -1,6 +1,6 @@
 ---
 name: prune-comments
-description: "Comment critique and direct fixes for implement's END-STATE step 3b, with encoding offers for claimed constraints."
+description: "Comment critique and direct fixes for implement's END-STATE step 3b."
 disable-model-invocation: true
 ---
 
@@ -32,14 +32,12 @@ Revert a rejected report's edits and request one corrected run from the same cri
 
 If a fix needs a new shape, report it open. Make direct fixes only, such as deleting a dead path, dropping a parameter, or using the real API. Implement the smallest root-cause fix in scope. Remove every named workaround that a direct fix resolves. If the root cause is out of scope, make the smallest direct in-scope fix and report the rest open. Read `skill://principle-redesign-from-first-principles` for intent only. It does not authorize a new shape, wider scope, or fixes outside the scope. Never add symptom guards.
 
-### 4. Offer constraint encodings
+### 4. Delete constraint comments
 
-Constraint comments say `do not remove`, `do not change wording`, or `talk to X before changing`. Leave keeps about things we cannot change. Offer the cheapest in-scope type, runtime, test, or CI lint that needs no new shape. Batch every offer into one question through `ask` and wait for approval. Add each approved encoding before deleting its comment. Otherwise delete the comment and report the constraint and any out-of-scope work open.
-
-When decision-trail is running, the run is unattended. Delete the comment, report the constraint open, and append a row to the named trail log through `skill://decision-trail`. No End state pre-approves an encoding.
+Constraint comments say `do not remove`, `do not change wording`, or `talk to X before changing`. Leave keeps about things we cannot change. Delete each other constraint comment, with no encoding, no question, and no report.
 
 ### 5. Report
 
-Report the deletion count, restored comments, reruns, direct fixes, fixes that need a new shape and remain open, encoding offers, encodings, unenforced constraints, and other open work.
+Report the deletion count, restored comments, reruns, direct fixes, fixes that need a new shape and remain open, and other open work.
 
 Never commit in this skill. The caller commits. On stop or failure, the caller keeps and commits accepted fixes, continues, and lists prune-comments as open.

@@ -4,6 +4,14 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [5.0.2] - 2026-10-22
+
+- Remove decision-trail. hillclimb keeps its own attempt log at `<Scratch dir>/hillclimb/<run-id>/attempts.tsv` through `hillclimb/scripts/log.sh`, and only the parent writes it. No run audits a trail or ends with an Attention section.
+- implement's END-STATE drops step 0c. merge-ready and shipped no longer start a log or a trail reviewer.
+- prune-comments never asks. It deletes constraint comments with no encoding and no report, and END-STATE step 3b runs it at every End state, commit included.
+- vstack-worker loses its decision-trail log permission, and the `decision-trail` Scratch kind is gone.
+- grilling-page drops the `decision-trail` Stage tab label, because no skill of that name can add a Stage.
+
 ## [4.0.9] - 2026-10-22
 
 - The vstack extension no longer registers `vstack_rename_session`, and wayfinder no longer renames the session after a claim. The load gate now proves the extension loaded through the `/vstack-clean` Command, which the load smoke reports in `extensionCommands`. setup-vstack's `machine.ts` no longer accepts `--extension-loaded`. Check 4 fails only when `disabledExtensions` lists vstack. Otherwise, check 4 prints a note to start a new session with `/new` after linking or pulling.

@@ -11,7 +11,6 @@ You own what lands. Verify each PR independently, land only the verified run fro
 Accept the caller's chain facts. Follow these rules in skill://implement/END-STATE.md:
 
 - Step 0a: the chain facts, Code host routing, and the reuse of the vstack root and Scratch dir.
-- Step 0c: logging to the decision-trail log.
 - Step 4: Verify discovery and link repair.
 
 ## 0. Establish the frontier

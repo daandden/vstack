@@ -152,7 +152,6 @@ const STAGE_LABELS: Record<string, string> = {
   "implement-spec": "Implement",
   tdd: "TDD",
   "code-review": "Review",
-  "decision-trail": "Trail",
   session: "Retro",
 };
 const CLAIM_LABELS: Record<string, string> = { confirmed: "Confirmed", cleared: "Cleared", unproven: "Unproven" };

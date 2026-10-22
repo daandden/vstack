@@ -1,6 +1,6 @@
 # Shared End state block
 
-implement, implement-spec, and hillclimb read this file before work. Reuse these steps by reference. Do not maintain a second copy in a caller. The caller inserts its work steps between 0c and 3b. Before task-specific todo items, add one todo item per step to its todo list in execution order, for the steps below and the caller's own steps. An item holds the step's id with its source, `shared` for a step in this file and `local` for a step in the caller's file, then the step's heading, such as `shared 0a. Settle the End state` or `local 5. Merge each result`. The source keeps apart a shared and a local step with the same number. Keep the ids as each file numbers them. The item also carries its status, as `skip: <reason>` for a step the run does not finish, and any blocker. The full text of a `shared` step stays in this file and the text of a `local` step stays in the caller's file. Do not copy step paragraphs into the todo list.
+implement, implement-spec, and hillclimb read this file before work. Reuse these steps by reference. Do not maintain a second copy in a caller. The caller inserts its work steps between 0b and 3b. Before task-specific todo items, add one todo item per step to its todo list in execution order, for the steps below and the caller's own steps. An item holds the step's id with its source, `shared` for a step in this file and `local` for a step in the caller's file, then the step's heading, such as `shared 0a. Settle the End state` or `local 5. Merge each result`. The source keeps apart a shared and a local step with the same number. Keep the ids as each file numbers them. The item also carries its status, as `skip: <reason>` for a step the run does not finish, and any blocker. The full text of a `shared` step stays in this file and the text of a `local` step stays in the caller's file. Do not copy step paragraphs into the todo list.
 
 ## 0a. Settle the End state
 
@@ -19,7 +19,6 @@ Keep one run record across every ticket. It holds the requested End state, stopp
 - The prune-comments outcome with its open work
 - The final-diff Safety findings (step 5)
 - The Verify evidence paths
-- Any open decision-trail log path
 
 The run keeps its asks and its results on the flow's Grilling page (`skill://grilling-page`). Before the End state below, find the page as grilling-page's "Find or start the page" says, and add the caller's Stage, an implement or implement-spec Stage, as its "Add a Stage" says. The spec that the run works from counts as the caller's spec, and each ticket counts as its ticket, also through the ticket's parent spec. So implement-spec in a new omp session finds the page that to-spec renamed after the spec issue. With no spec and no ticket, continue only a page whose path this session already printed, such as the page of a grill-with-docs that ran before. Otherwise start a new page. Record the page path in the run record. Every `ask` of these shared steps is a question in the caller's Stage, including the End state below and the Verify skill choice in step 4.
 
@@ -49,17 +48,11 @@ Push with `git push -u <remote> <local branch>:<remote branch>`, which creates t
 
 Keep every pushed commit as it is. Rebase, amend, or reorder only commits after the remote tip, and push only fast-forwards, never with `--force` or `--force-with-lease`. Bring a pushed branch up to date by merging its target into it.
 
-## 0c. Decision trail
-
-Start skill://decision-trail when the End state is merge-ready or shipped, or when the user says they will not watch the run ("going to bed", "I'll check later", "run until done", "don't stop", "be autonomous"). Otherwise start it only when the user asks. hillclimb always starts decision-trail. Reuse an already-open log instead of starting another one.
-
-Fix its absolute `<Scratch dir>/decision-trail/<task-slug>-<session-uuid8>.tsv` path through decision-trail's current-session rules. Pass that path to chained skills and children. They append through its log helper, never start a log. Complete decision-trail's final review and Attention hand-back when the run ends.
-
 ## 3b. Prune comments
 
-If the effective End state is merge-ready or shipped, run skill://prune-comments over the whole diff before live proof and review. Make direct fixes only. Report any fix that needs a new shape as open. Keep accepted fixes for step 6, without staging unrelated or stopped-slice changes. If the critic is unavailable or its second report is rejected, keep accepted fixes, list prune-comments as open, and continue. Its failure never blocks the chain.
+Run skill://prune-comments over the whole diff before live proof and review, at every End state. Make direct fixes only. Report any fix that needs a new shape as open. Keep accepted fixes for step 6, without staging unrelated or stopped-slice changes. If the critic is unavailable or its second report is rejected, keep accepted fixes, list prune-comments as open, and continue. Its failure never blocks the chain.
 
-Record "prune-comments already run" for open-pr even when the pass stopped, together with its open work; open-pr must not repeat this pass. At End state commit, keep this step as `skip: End state commit`.
+Record "prune-comments already run" for open-pr even when the pass stopped, together with its open work; open-pr must not repeat this pass.
 
 ## 4. Live proof
 

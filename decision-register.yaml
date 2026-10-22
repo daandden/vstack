@@ -372,7 +372,7 @@ items:
     tree: 3a09487f06a3fcf9e313d397a29f5d2efde9283f
     disposition: adapt
     artifacts: [plugin/skills/prune-comments]
-    reason: "Renamed for implement, with one fresh comment critic, direct fixes only, and explicit approval for constraint encodings (ADR 0015, #52)."
+    reason: "Renamed for implement, with one fresh comment critic, direct fixes only, and no questions: constraint comments are deleted with no encoding (ADR 0015, #52)."
   - id: pstack/poteto-mode
     upstream: pstack
     kind: skill
@@ -516,7 +516,7 @@ items:
     tree: 41e2142b6479db1dfdb9c2a3b856a895af61089d
     disposition: adapt
     artifacts: [plugin/skills/principle-prove-it-works]
-    reason: "Names decision-trail (renamed show-me-your-work)."
+    reason: "Drops the show-me-your-work pointer, which vstack rejects."
   - id: pstack/principle-redesign-from-first-principles
     upstream: pstack
     kind: principle
@@ -594,9 +594,9 @@ items:
     kind: skill
     path: pstack/skills/show-me-your-work
     tree: 118c0642360ab53de52b3f8dd044102567dbcaa9
-    disposition: adapt
-    artifacts: [plugin/skills/decision-trail]
-    reason: "Renamed; final review is one fresh-context vstack subagent on the Session model or the user's override. Its publish approval is a question on the flow's Grilling page (#51, #167)."
+    disposition: reject
+    artifacts: []
+    reason: "vstack keeps no decision log; hillclimb owns its own attempt log, and code review and live proof cover the End states."
   - id: pstack/swarm
     upstream: pstack
     kind: skill
