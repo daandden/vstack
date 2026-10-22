@@ -7,7 +7,7 @@ import { basename, dirname, join } from "node:path";
 /** The key for Scratch made outside any git repo. */
 export const GLOBAL_KEY = "_global";
 
-/** A kind is one lowercase path segment, such as `explain` or `decision-trail`. */
+/** A kind is one lowercase path segment, such as `explain` or `blast-radius`. */
 export const KIND = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 /** `<home>/.vstack/tmp`, the only directory clean.ts deletes in. */

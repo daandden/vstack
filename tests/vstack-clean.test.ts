@@ -72,14 +72,14 @@ test("lists entries at depth 3 older than the TTL, with their size, and leaves n
 });
 
 test("one recent file anywhere inside an entry keeps the whole entry", () => {
-  file("shop-aaaaaa/decision-trail/log/old.tsv", "a", 40);
-  file("shop-aaaaaa/decision-trail/log/deep/er/still-written.tsv", "b", 1);
-  for (const d of ["log/deep/er", "log/deep", "log"]) age(`shop-aaaaaa/decision-trail/${d}`, 40);
+  file("shop-aaaaaa/hillclimb/log/old.tsv", "a", 40);
+  file("shop-aaaaaa/hillclimb/log/deep/er/still-written.tsv", "b", 1);
+  for (const d of ["log/deep/er", "log/deep", "log"]) age(`shop-aaaaaa/hillclimb/${d}`, 40);
   expect(listedPaths()).toEqual([]);
   // Once that file is old too, the entry expires.
-  utimesSync(join(root, "shop-aaaaaa/decision-trail/log/deep/er/still-written.tsv"), daysAgo(40), daysAgo(40));
-  age("shop-aaaaaa/decision-trail/log/deep/er", 40);
-  expect(listedPaths()).toEqual([join(root, "shop-aaaaaa/decision-trail/log")]);
+  utimesSync(join(root, "shop-aaaaaa/hillclimb/log/deep/er/still-written.tsv"), daysAgo(40), daysAgo(40));
+  age("shop-aaaaaa/hillclimb/log/deep/er", 40);
+  expect(listedPaths()).toEqual([join(root, "shop-aaaaaa/hillclimb/log")]);
 });
 
 test("--older-than overrides the 90-day TTL, and the default is 90 days", () => {

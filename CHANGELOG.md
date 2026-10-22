@@ -4,6 +4,13 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [5.0.0] - 2026-10-22
+
+- Remove decision-trail. hillclimb keeps its own attempt log at `<Scratch dir>/hillclimb/<run-id>/attempts.tsv` through `hillclimb/scripts/log.sh`, and only the parent writes it. No run audits a trail or ends with an Attention section.
+- implement's END-STATE drops step 0c. merge-ready and shipped no longer start a log or a trail reviewer.
+- prune-comments never asks. It deletes constraint comments with no encoding and no report, and END-STATE step 3b runs it at every End state, commit included.
+- vstack-worker loses its decision-trail log permission, and the `decision-trail` Scratch kind is gone.
+
 ## [4.0.7] - 2026-10-22
 
 - The End state chain keeps every pushed commit as it is. The Conflict owner in END-STATE step 7 resolves a conflict, a stale base, or ship's step 2 move by merging the target branch into the reported branch, resolving each conflict once, and pushing a fast-forward. It can update any branch of the run's stack, not only the run's own branch, and records the merged target tip as the new base SHA of the run's branch. For a step 2 move it first retargets the PR to the default branch. Step 0b reads the remote tip before any history edit and before the first push. open-pr rebases only the commits after that tip, and a stack child with pushed commits merges its parent's tip. The Owned branch rule, its absent-ref lease and porcelain check, the force-push lease, and the Owned flag in the chain facts and hand-backs are gone. babysit and ship report a branch that needs an update instead of one that needs a rebase. ADR 0033 records the decision (#176).

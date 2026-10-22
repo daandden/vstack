@@ -106,13 +106,6 @@ replacements:
     upstream: pstack
     scope: required
     uses: [update]
-  - id: decision-trail
-    from: show-me-your-work
-    to: decision-trail
-    match: name
-    upstream: pstack
-    scope: required
-    uses: [update]
   - id: maintain-app-verification
     from: maintain-verification-skill
     to: maintain-app-verification

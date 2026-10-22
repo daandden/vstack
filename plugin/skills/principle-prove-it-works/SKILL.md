@@ -13,4 +13,4 @@ Check process liveness directly. Read the actual value rather than a derived val
 
 ## Script the check
 
-Write a deterministic script when it can repeat the same comparison. Run it and keep its output so a reviewer can repeat the proof. Keep evidence visible to the human. Commit proof artifacts for large or complex work that needs a lasting audit trail; use skill://decision-trail for that trail.
+Write a deterministic script when it can repeat the same comparison. Run it and keep its output so a reviewer can repeat the proof. Keep evidence visible to the human. Commit proof artifacts for large or complex work that needs a lasting audit trail.

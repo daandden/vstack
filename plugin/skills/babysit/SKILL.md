@@ -12,7 +12,6 @@ Follow these rules in skill://implement/END-STATE.md:
 
 - Step 0a: the chain facts, Code host routing, and the reuse of the vstack root and Scratch dir.
 - Step 0b: the push to the remote branch, and the last SHA this run pushed. Fix waves are fast-forward pushes.
-- Step 0c: logging to the decision-trail log.
 
 ## Establish the frontier
 

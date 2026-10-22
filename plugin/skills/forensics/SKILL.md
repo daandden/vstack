@@ -7,7 +7,7 @@ description: "Diagnose a runtime symptom (leak, CPU spin, glitch) through live i
 
 Own the diagnosis. Capture and query evidence before attributing a cause to source. Leave every tracked file in the checkout unchanged. In the live branch, one isolated worker runs the app and every probe in its own clone.
 
-Open the todo list with one item per step 1–7 before task-specific items. Each item holds the step's id and heading, such as `3. Identify, shape, and reduce the artifact`, its status, as `skip: <reason>` for an undone step, and any blocker. The full step text stays below. Do not copy it into the todo list. There is no End state, fix, commit, decision-trail, or throughput checkpoint in this skill. A request for a fix goes to the hand-back in step 7.
+Open the todo list with one item per step 1–7 before task-specific items. Each item holds the step's id and heading, such as `3. Identify, shape, and reduce the artifact`, its status, as `skip: <reason>` for an undone step, and any blocker. The full step text stays below. Do not copy it into the todo list. There is no End state, fix, commit, or throughput checkpoint in this skill. A request for a fix goes to the hand-back in step 7.
 
 ## 1. Choose the branch and evidence directory
 

@@ -6,11 +6,11 @@ disable-model-invocation: true
 
 # Implement
 
-Read [END-STATE.md](END-STATE.md) before work. It owns the shared steps 0a–0c, 3b, and 4–7, also used by hillclimb. Run them at the points below, not as a separate invocation per ticket.
+Read [END-STATE.md](END-STATE.md) before work. It owns the shared steps 0a–0b, 3b, and 4–7, also used by hillclimb. Run them at the points below, not as a separate invocation per ticket.
 
 Before task-specific items, open the todo list as END-STATE.md says, with the shared steps and steps 1–3 below as `local` steps.
 
-Run shared steps 0a–0c once.
+Run shared steps 0a–0b once.
 
 ## 1. Implement
 
@@ -30,4 +30,4 @@ After all tickets and independent slices are finished, run shared step 3b, then 
 
 ## Reply
 
-Print the flow's page path first. Then report the requested and reached End state, commits, PR URLs and observed status, checks and live proof with evidence paths, Safety findings, open prune-comments work, stopped slices with missing red evidence, and every skipped step or blocker. If a decision-trail is open, include its log and Attention result. Do not claim a PR, readiness, or merge that the chain did not observe.
+Print the flow's page path first. Then report the requested and reached End state, commits, PR URLs and observed status, checks and live proof with evidence paths, Safety findings, open prune-comments work, stopped slices with missing red evidence, and every skipped step or blocker. Do not claim a PR, readiness, or merge that the chain did not observe.

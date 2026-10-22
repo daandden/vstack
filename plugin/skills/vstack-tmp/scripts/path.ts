@@ -26,7 +26,7 @@ try {
 const { values, positionals } = parsed;
 if (positionals.length > 1) usage("give at most one kind");
 const kind = positionals[0];
-if (kind !== undefined && !KIND.test(kind)) usage(`kind must be one lowercase path segment such as explain or decision-trail, got ${JSON.stringify(kind)}`);
+if (kind !== undefined && !KIND.test(kind)) usage(`kind must be one lowercase path segment such as explain or blast-radius, got ${JSON.stringify(kind)}`);
 
 const scratchDir = join(scratchRoot(resolve(values.home ?? homedir())), repoKey(process.cwd()));
 const dir = kind === undefined ? scratchDir : join(scratchDir, kind);

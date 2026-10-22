@@ -12,7 +12,7 @@ Own the metric and the experiment's integrity. One hypothesis, one measurement, 
 
 The grill settles one metric, its unit, the direction that counts as better, the target, and a checkable stop predicate. The predicate pairs the target with a minimum attempt count. Use supplied numbers and ask about each missing decision before the grill closes. Pass this contract to implement. implement runs the loop without more questions about these decisions.
 
-implement owns the branch, commits, and End state. Reuse its run record, absolute vstack root, and project Scratch dir. hillclimb always starts skill://decision-trail through END-STATE step 0c, including at End state commit. Retain the canonical trail path throughout the loop. Every worker uses the Session model unless the user overrides it.
+implement owns the branch, commits, and End state. Reuse its run record, absolute vstack root, and project Scratch dir. Fix the absolute attempt log path `<Scratch dir>/hillclimb/<run-id>/attempts.tsv` once, beside the run's evidence, and keep it for the whole loop. Every worker uses the Session model unless the user overrides it.
 
 Before any hypothesis, require `omp config get task.isolation.enabled` to print `true`. If isolation is off, stop and point at `/skill:setup-vstack`.
 
@@ -26,11 +26,26 @@ Follow skill://principle-build-the-lever. Run contrasting realistic workloads: t
 
 Record the baseline and a green regression gate before changing product code. The gate is the agreed set of checks that must keep passing. For a user-facing metric, use the project's Verify skill as the measurement surface, discovering and maintaining it through shared step 4. Changes to the harness invalidate comparisons; restart measurement with a new declared baseline rather than calling it a product win.
 
-## 3. Fix the attempt trail
+## 3. Keep the attempt log
 
-Read skill://decision-trail and reuse the log opened in 0c. It owns the format, helper, current-session scope, interleaving protocol, final audit, and Attention section. Keep no separate decision.tsv or alternate column schema. Read the trail before each wave.
+hillclimb owns its attempt log. It is a TSV file with six columns, and every cell is one line:
 
-Log every attempt through its log helper, including rejects, failures, missing patches, deferred winners, and parent-validation failures. Put the hypothesis in `decision`; put before → after, unit, delta, noise threshold, frozen-harness identity, gate command and outcome, and evidence paths in `evidence`/`result`. Cite raw measurements, patch paths, and accepted commit SHAs. Use one attempt row for each tested hypothesis and append a superseding outcome when selection or parent validation changes its verdict. Deferred wins are not kept wins.
+- `ts`: ISO8601 timestamp.
+- `phase`: the wave or phase.
+- `decision`: the hypothesis or choice, in one line.
+- `why`: the reason in plain words.
+- `evidence`: pointers that prove the claim, such as raw measurement paths, patch paths, and commit SHAs.
+- `result`: the outcome, such as `kept`, `rejected`, `deferred`, or `INCONCLUSIVE`.
+
+Only the parent appends, and only through the helper:
+
+```sh
+bash "$(realpath skill://hillclimb/scripts/log.sh)" "$logfile" "$phase" "$decision" "$why" "$evidence" "$result"
+```
+
+The helper takes the absolute log path, creates its parent dir, and writes the header on first use. It stamps `ts`, strips tabs, newlines, and carriage returns, and quotes spreadsheet formula prefixes `=`, `+`, `-`, and `@`. The log is append-only. Supersede a wrong row with a new row. Read the log before each wave.
+
+Log every attempt from the workers' returned results, including rejects, failed workers, missing or empty patches, deferred winners, and parent-validation failures. Put the hypothesis in `decision`; put before → after, unit, delta, noise threshold, frozen-harness identity, gate command and outcome, and evidence paths in `evidence`/`result`. Cite raw measurements, patch paths, and accepted commit SHAs. Use one attempt row for each tested hypothesis and append a superseding outcome when selection or parent validation changes its verdict. Deferred wins are not kept wins.
 
 ## 4. Ground the hypotheses
 
@@ -44,13 +59,13 @@ For two or more independent live hypotheses, use the Fan-out line below.
 
 Before this step, read skill://vstack-fan-out.
 
-Fan-out (skill://vstack-fan-out): parts: one per independent hypothesis. One eval cell: per part, `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`; `wait()` on all handles. Each prompt: one hypothesis, its baseline and real target paths, the frozen harness and fixtures, noise threshold, regression gate, evidence return contract below, the canonical decision-trail path, the vstack root, the Scratch dir. Recover each `patchPath` from its completion notice and apply only the best measured win after all results are read. If they cannot start or isolation is off, stop: hillclimb needs isolated attempts, so run `/skill:setup-vstack`.
+Fan-out (skill://vstack-fan-out): parts: one per independent hypothesis. One eval cell: per part, `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`; `wait()` on all handles. Each prompt: one hypothesis, its baseline and real target paths, the frozen harness and fixtures, noise threshold, regression gate, evidence return contract below, the vstack root, the Scratch dir. Recover each `patchPath` from its completion notice and apply only the best measured win after all results are read. If they cannot start or isolation is off, stop: hillclimb needs isolated attempts, so run `/skill:setup-vstack`.
 
 For one live hypothesis, use one isolated worker:
 
-Spawn one `vstack-worker` via eval `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`: one hypothesis with the same baseline, target paths, frozen harness, noise threshold, regression gate, evidence return contract, the canonical decision-trail path, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: hillclimb needs isolated attempts, so run `/skill:setup-vstack`.
+Spawn one `vstack-worker` via eval `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`: one hypothesis with the same baseline, target paths, frozen harness, noise threshold, regression gate, evidence return contract, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: hillclimb needs isolated attempts, so run `/skill:setup-vstack`.
 
-Worker return contract: hypothesis and changed paths; baseline identity; exact measurement and gate commands; before and after samples, median, unit, delta, noise decision, error and work counts, and gate outcome; absolute evidence paths; rationale and open questions. Write product changes inside the supplied clone at real target paths so they enter its patch. Use a distinct `<Scratch dir>/hillclimb/<run-id>/<wave>/<attempt>/` for evidence. Reuse supplied root and Scratch paths without resolving them again. Append only to the named trail through decision-trail's helper, following its run-start protocol. Workers never commit, push, or change the harness. Every rejection leaves its patch unapplied.
+Worker return contract: hypothesis and changed paths; baseline identity; exact measurement and gate commands; before and after samples, median, unit, delta, noise decision, error and work counts, and gate outcome; absolute evidence paths; rationale and open questions. Write product changes inside the supplied clone at real target paths so they enter its patch. Use a distinct `<Scratch dir>/hillclimb/<run-id>/<wave>/<attempt>/` for evidence. Reuse supplied root and Scratch paths without resolving them again. Workers never write the attempt log, commit, push, or change the harness. Every rejection leaves its patch unapplied.
 
 Pair handles and results in input order. A handle has no `patchPath` field. Recover that path from omp's completion notice: `Isolation: changes captured at <absolute patch path> (apply=false). Not applied.` Read the patch before selecting it. If structured output hides the notice, read the full completion through the handle's `output()` or `agent://<id>`. An unavailable notice, empty patch, failed worker, or missing measurement is a logged rejection, not a guessed patch path.
 
@@ -68,8 +83,8 @@ Stop when the target and attempt floor are both met, or when remaining ideas are
 
 ## 8. Return to implement
 
-After the loop, implement resumes its End state chain. Keep accepted wins in separate commits and in landing order. Run code-review once after the last work commit. Put the review fixes in new commits. Live proof covers the final diff, including cleanup and Verify maintenance. Finish decision-trail's audit and fresh-context review in that same pass.
+After the loop, implement resumes its End state chain. Keep accepted wins in separate commits and in landing order. Run code-review once after the last work commit. Put the review fixes in new commits. Live proof covers the final diff, including cleanup and Verify maintenance.
 
 ## Reply
 
-Report metric, unit and target; initial baseline → final with percent delta; attempts run, kept, rejected, and deferred; each accepted fix on one line with its commit; raw measurement and live-proof paths; losing patch paths; the absolute trail path; the best next idea; and requested versus reached End state. Include open cleanup, verification, target, or isolation gaps. End with decision-trail's Attention section. Claim only checks and outcomes that were observed.
+Report metric, unit and target; initial baseline → final with percent delta; attempts run, kept, rejected, and deferred; each accepted fix on one line with its commit; raw measurement and live-proof paths; losing patch paths; the absolute `attempts.tsv` path; the best next idea; and requested versus reached End state. Include open cleanup, verification, target, or isolation gaps. Claim only checks and outcomes that were observed.
