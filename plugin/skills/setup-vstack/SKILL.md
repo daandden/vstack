@@ -111,9 +111,15 @@ Recommend GitHub when a remote points at GitHub, GitLab when a remote points at 
 - GitHub: issues live in the repo's GitHub Issues (uses the `gh` CLI).
 - GitLab: issues live in the repo's GitLab Issues (uses the [`glab`](https://gitlab.com/gitlab-org/cli) CLI).
 - Local markdown: issues live as files under `.scratch/<feature>/` in Standard mode, or `<vstack_root>/artifacts/<feature>/` in Private mode. Good for solo projects or repos without a remote.
-- Other (Jira, Linear, and so on): the user describes the workflow in one paragraph through the Other answer of `ask`, and that goes into the file as prose.
+- Other, such as Jira or Linear: the user names, through the Other answer of `ask`, the MCP server or CLI already set up for this project, or says that there is no tool.
 
 The GitHub and GitLab templates carry a "PRs as a request surface" flag, off by default. Leave it off and do not raise it. A user who wants external PRs in the triage queue can change the flag in the file later.
+
+For Other with an MCP server, read the named server's current tool list, descriptions, and parameter schemas. If discovery fails or the server is unreachable, name the server and failure, tell the user to connect it, and stop before writing project config. Draft `issue-tracker.md` with the tracker, the named MCP server, project facts, and only one pin, Check. Choose a tool whose description establishes a read-only connection check, with arguments from its schema. Name a tool only when this server's list contains it. If no tool fits Check, mark Check `unsupported` rather than inventing a call.
+
+Project facts hold values that tool descriptions cannot supply. For Jira, collect the project key, the issue type for tickets, the transition that closes an issue, the blocking link type, and the mapping from the five canonical triage roles to Jira labels. Use the settled Section D names or the existing `triage-labels.md` for that mapping. Collect missing facts through `ask`, without guessing defaults. Tell the config's reader to select every operation other than Check from the named server's current descriptions and schemas, using these facts. Keep create, comment, label, close, and blocking tools out of the config. Show the draft for confirmation in step 6. Jira uses Other; there is no Jira template.
+
+For Other with a CLI, read its `--help` for the relevant command groups. Draft the tracker workflow, project facts, and a read-only Check command from that help. Invent no command. For Other with no MCP server or CLI, collect the user's workflow in one paragraph through `ask` and keep it as prose, with no invented tool or Check call.
 
 Section B, Code host.
 
@@ -168,7 +174,7 @@ Write the drafts from the seed templates in this skill's directory:
 - [triage-labels.md](./triage-labels.md): label mapping
 - [domain.md](./domain.md): domain doc consumer rules and layout
 
-For an Other issue tracker, write `issue-tracker.md` from scratch from the user's description.
+For an Other issue tracker with an MCP server, use Section A's server, facts, and Check pin, without per-operation tool rows. For a CLI, use Section A's workflow and Check command. With no tool, write `issue-tracker.md` from the user's prose paragraph.
 For an Other Code host with a CLI, write `code-host.md` in the shape of `code-host-github.md`, with the host, repo, tool, read-only Check command, review reference, and drafted command rows. For an MCP Code host, use Section B's server, project facts, and Check pin, without operation rows. In every `code-host.md`, fill in the repo from the remote and, for self-hosted GitLab, the host.
 For an Other CI service with a CLI, write `ci.md` in the shape of `ci-github-actions.md`, with the CI service, repo, tool, read-only Check command, and drafted rows. Fill in the CI repo and, for self-hosted GitLab, its host. Keep CI logs, build reruns, secrets, and variables only in `ci.md`.
 For an Other CI service with an MCP server, use Section C's short shape, not the CLI operation rows.

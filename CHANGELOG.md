@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [4.0.8] - 2026-10-22
+
+- Set up Other issue trackers such as Jira through the named MCP server's project facts and read-only Check pin, while keeping the no-tool prose workflow.
+
 ## [4.0.7] - 2026-10-22
 
 - Draft Other MCP Code hosts as server, project facts, and a read-only Check pin; resolve Code host operations by live descriptions across PR review, history, and the PR chain while keeping CLI command rows (#204).

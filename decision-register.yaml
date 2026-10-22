@@ -92,7 +92,7 @@ items:
     tree: b1568cde855a189b16e5d7dd8a0fa4c3f156bc2e
     disposition: adapt
     artifacts: [plugin/skills/setup-vstack]
-    reason: "Other Code hosts draft MCP server, project facts and Check-only configs from current descriptions; CLI configs retain command rows (ADR 0032, #204)."
+    reason: "Renamed setup owns machine checks, repo-only Migration, separate Code host and CI service configs, and Other tracker MCP facts with only a read-only Check pin; CLI and no-tool tracker paths remain (ADR 0006, ADR 0028, ADR 0031, ADR 0032). Other Code hosts draft MCP server, project facts and Check-only configs from current descriptions; CLI configs retain command rows (ADR 0032, #204)."
   - id: matt/tdd
     upstream: matt
     kind: skill
