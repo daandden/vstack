@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [5.0.7] - 2026-10-22
+
+- improve-codebase-architecture puts the comparison of the designs with the recommendation in the design report's summary, as the grill decided, and the design question no longer repeats it.
+
 ## [5.0.6] - 2026-10-22
 
 - Preserve hand-edited CI settings when setup re-runs, confirm the CI and Code host drafts together, and reduce existing MCP Code hosts to server, facts, and Check.
