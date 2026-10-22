@@ -7,6 +7,7 @@
 #   listedSkills   - skills in the system prompt <skills> list (model-invocable)
 #   skillCommands  - every /skill:<name> command (includes hidden skills)
 #   hiddenSkills   - skillCommands minus listedSkills
+#   extensionCommands - names of Commands with source "extension": vstack's and omp's builtin ones such as autoresearch
 #   skillList      - `omp skill list --json` (name, source, hide, filePath, ...)
 #   genericRules   - text of <generic-rules> (always-apply rules, full bodies)
 #   agents         - names under "# Available Agents" in the task tool description
@@ -55,6 +56,7 @@ jq -s --slurpfile sl "$OUT/skills.json" '
       listedSkills: $listed,
       skillCommands: $skc,
       hiddenSkills: ($skc - $listed),
+      extensionCommands: [$cmds[] | select(.source=="extension") | .name],
       skillList: $sl[0].skills,
       genericRules: ($sp | capture("<generic-rules>\n(?<b>[\\s\\S]*?)</generic-rules>").b // ""),
       agents: [$task | split("# Available Agents")[1] // "" | split("\n")[] | capture("^- `(?<n>[^`]+)`").n],

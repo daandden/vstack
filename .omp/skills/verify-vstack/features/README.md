@@ -41,9 +41,8 @@ Keep implementation details out of the map. Name only user paths, stable handles
 
 ## Features
 
-- [Plugin load](./plugin-load.md): a new omp session loads every skill, agent, rule, and the extension tool from the checkout.
+- [Plugin load](./plugin-load.md): a new omp session loads every skill, agent, and rule from the checkout, and the extension's `/vstack-clean` Command.
 - [Skill commands](./skill-command.md): `/skill:<name>` puts that skill's text from the checkout into the prompt the model gets.
-- [Rename session](./rename-session.md): the `vstack_rename_session` tool sets the session name.
 - [Scratch dir](./scratch-dir.md): the vstack-tmp scripts make and list Scratch entries. The `/vstack-clean` Command previews expired entries and deletes only confirmed choices.
 - [Grilling page](./grilling-page.md): the grilling-page script renders a flow's Grilling page from the state file in its flow folder and renames the folder. The page opens on an Overview tab, has one tab per Stage with its Background, Report blocks, questions, and answers, and links between tabs.
 - [Diagram scripts](./diagram-scripts.md): the diagram-design Python scripts extract Mermaid, draw.io, and Excalidraw files, self-check a diagram page, check its connector geometry and its colors and fonts, and export it to SVG.

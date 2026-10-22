@@ -5,14 +5,14 @@ import { loadRegister } from "./vstack-repo.ts";
 
 const DEFAULT_SMOKE = resolve(import.meta.dir, "../load-smoke.sh");
 
-const EXTENSION_TOOLS = ["vstack_rename_session"];
+const EXTENSION_COMMANDS = ["vstack-clean"];
 
 /** The fields of the load-smoke.sh summary that the load gate reads. */
 export interface LoadSmoke {
   skillCommands?: string[];
   agents?: string[];
   genericRules?: string;
-  tools?: string[];
+  extensionCommands?: string[];
   warnings?: string[];
 }
 
@@ -29,7 +29,7 @@ export function run(cmd: string[], cwd: string): string {
 /**
  * Runs the load smoke on `<root>/plugin` with its output in `out`, and returns the summary.
  * Throws unless every registered skill, agent, and rule loads, the smoke reports no warnings,
- * and, when the manifest lists extensions, every extension tool is present.
+ * and, when the manifest lists extensions, every extension Command is present.
  */
 export function loadGate(root: string, out: string, smokeScript = DEFAULT_SMOKE): LoadSmoke {
   const smoke: LoadSmoke = JSON.parse(run([smokeScript, join(root, "plugin"), out], root));
@@ -41,10 +41,9 @@ export function loadGate(root: string, out: string, smokeScript = DEFAULT_SMOKE)
     if (a.startsWith("plugin/rules/") && !smoke.genericRules?.includes(readFileSync(join(root, a), "utf8").replace(/^---[\s\S]*?---\s*/, "").trim())) throw new Error(`load smoke missing rule ${a}`);
   }
   if (smoke.warnings?.length) throw new Error(`load smoke warnings: ${smoke.warnings.join("; ")}`);
-  // omp logs an extension load failure and keeps going, so a missing top-level tool is the only sign in the smoke.
   const extensions: string[] = readJson(join(root, "plugin/package.json")).omp?.extensions ?? [];
-  if (extensions.length) for (const tool of EXTENSION_TOOLS) {
-    if (!smoke.tools?.includes(tool)) throw new Error(`load smoke missing extension tool ${tool}: ${extensions.join(", ")} did not load`);
+  if (extensions.length) for (const command of EXTENSION_COMMANDS) {
+    if (!smoke.extensionCommands?.includes(command)) throw new Error(`load smoke missing extension command ${command}: ${extensions.join(", ")} did not load`);
   }
   return smoke;
 }
