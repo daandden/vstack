@@ -194,14 +194,6 @@
         "false": "Deploying an app, publishing a release, opening a PR, pushing commits, or making a PR merge-ready without asking to merge it."
       }
     },
-    "decision-trail": {
-      "type": "noul",
-      "instructions": "Does the task require a durable log of decisions and their reasons for unattended work, or an audit of such a log?",
-      "criteria": {
-        "true": "E.g. 'keep a decision log while I am away', 'audit the decisions from this unattended run', or delegated work where the user steps away and leaves choices to the agent.",
-        "false": "Ordinary work with the user present, a short factual answer, a commit message, or a summary of changes with no unattended decisions or decision-log request."
-      }
-    },
     "blast-radius": {
       "type": "noul",
       "instructions": "Does the user ask what a change could break outside its diff, or to prove the safety of a change they do not trust?",
@@ -220,9 +212,9 @@
     },
     "prune-comments": {
       "type": "noul",
-      "instructions": "Does the user ask to critique or remove needless, stale, misleading, or workaround comments in code, or replace claimed comment constraints with enforceable checks?",
+      "instructions": "Does the user ask to critique or remove needless, stale, misleading, or workaround comments in code?",
       "criteria": {
-        "true": "E.g. 'prune the comments in this diff', 'remove comments that restate the code', or 'audit these do-not-remove comments and enforce real constraints'.",
+        "true": "E.g. 'prune the comments in this diff', 'remove comments that restate the code', or 'audit these do-not-remove comments'.",
         "false": "Adding a docstring, addressing pull-request review comments, deleting dead code without a comment critique, or ordinary feature work."
       }
     },
@@ -271,7 +263,7 @@
       "instructions": "Does the user ask to review a coding session or the repo's recent history for durable lessons, environment fixes such as missing checks or steering-file changes, or repeat agent mistakes to make impossible?",
       "criteria": {
         "true": "E.g. 'extract lessons from this session', 'run a retro on this session', or 'agents keep making the same mistake in this repo; make it impossible'.",
-        "false": "Fixing one product bug without a session or history review, auditing a decision trail against its transcript, summarizing commits, writing a decision log, or explaining an existing skill."
+        "false": "Fixing one product bug without a session or history review, summarizing commits, writing a decision log, or explaining an existing skill."
       }
     },
     "vstack-maintain": {

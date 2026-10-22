@@ -1,6 +1,6 @@
 # Shared End state block
 
-implement, implement-spec, and hillclimb read this file before work. Reuse these steps by reference. Do not maintain a second copy in a caller. The caller inserts its work steps between 0c and 3b. Before task-specific todo items, copy the steps below verbatim, including their paragraphs, into its todo list in execution order. Keep an unfinished step as `skip: <reason>`.
+implement, implement-spec, and hillclimb read this file before work. Reuse these steps by reference. Do not maintain a second copy in a caller. The caller inserts its work steps between 0b and 3b. Before task-specific todo items, add one todo item per step to its todo list in execution order, for the steps below and the caller's own steps. An item holds the step's id with its source, `shared` for a step in this file and `local` for a step in the caller's file, then the step's heading, such as `shared 0a. Settle the End state` or `local 5. Merge each result`. The source keeps apart a shared and a local step with the same number. Keep the ids as each file numbers them. The item also carries its status, as `skip: <reason>` for a step the run does not finish, and any blocker. The full text of a `shared` step stays in this file and the text of a `local` step stays in the caller's file. Do not copy step paragraphs into the todo list.
 
 ## 0a. Settle the End state
 
@@ -13,13 +13,12 @@ Keep one run record across every ticket. It holds the requested End state, stopp
 - The vstack root
 - The Scratch dir
 - The current branch
-- The remote branch name and whether the branch is an Owned branch (step 0b)
+- The remote branch name (step 0b)
 - The base SHA and the whole-diff command
 - The last SHA this run pushed
 - The prune-comments outcome with its open work
 - The final-diff Safety findings (step 5)
 - The Verify evidence paths
-- Any open decision-trail log path
 
 The run keeps its asks and its results on the flow's Grilling page (`skill://grilling-page`). Before the End state below, find the page as grilling-page's "Find or start the page" says, and add the caller's Stage, an implement or implement-spec Stage, as its "Add a Stage" says. The spec that the run works from counts as the caller's spec, and each ticket counts as its ticket, also through the ticket's parent spec. So implement-spec in a new omp session finds the page that to-spec renamed after the spec issue. With no spec and no ticket, continue only a page whose path this session already printed, such as the page of a grill-with-docs that ran before. Otherwise start a new page. Record the page path in the run record. Every `ask` of these shared steps is a question in the caller's Stage, including the End state below and the Verify skill choice in step 4.
 
@@ -45,26 +44,17 @@ With End state commit, stay on the current branch. Otherwise read the default br
 
 Record the remote branch name. If the local branch is `wt/*`, the remote branch name is a new `<type>/<slug>` that describes the work. Otherwise it is the local branch's name. Never rename the local branch. Append the page's `flow` record again with `branch` set to the remote branch name, or to the current branch at End state commit.
 
-The first push decides whether the branch is Owned. Before it, read the remote ref with `git ls-remote --exit-code <remote> refs/heads/<remote branch>`. Exit code 2 means that the ref is absent. Then push by the state of the ref:
+Read the remote tip before any history edit and before the first push. Run `git ls-remote --exit-code <remote> refs/heads/<remote branch>`. Exit code 2 means that the remote branch does not exist yet, and every commit after the base is unpushed. Otherwise fetch it with `git fetch <remote> refs/heads/<remote branch>` and record the fetched SHA as the remote tip. Every commit that the remote tip contains is pushed.
 
-- Absent ref: create it with `git push --porcelain --force-with-lease=<remote branch>: -u <remote> <local branch>:<remote branch>`. The empty lease value requires the ref to be absent. With `--porcelain`, git prints one status line per ref on standard output. Read the status line whose destination is `refs/heads/<remote branch>`. Only a `*` status (a new ref) proves that this push created the ref. If that line starts with `*`, record the branch as Owned. In every other case, stop and report the push output. The branch stays unowned. An `=` status means that another pusher created the ref at the same SHA. A `!` status means that the lease rejected the push because the ref appeared.
-- Existing ref: push with `git push -u <remote> <local branch>:<remote branch>`, a fast-forward push. The branch stays unowned.
+Push with `git push -u <remote> <local branch>:<remote branch>`, which creates the remote branch or fast-forwards it. Push every later update the same way. If git rejects a push, stop and report its output. After every push that updates the remote branch, record its SHA as the last SHA this run pushed. Return that SHA to the caller.
 
-Push every later fast-forward with `git push <remote> <local branch>:<remote branch>`. After every push that updates the remote branch, record its SHA as the last SHA this run pushed. Return that SHA to the caller.
-
-A rewrite of pushed commits is a rebase or a force-push. Before a rewrite, confirm that the branch is Owned. Then confirm that a fresh read of the remote tip still equals the last SHA this run pushed. Push each rewrite with `git push --force-with-lease=<remote branch>:<last pushed SHA> <remote> <local branch>:<remote branch>`. Record the new pushed SHA. Never adopt another pusher's remote tip as this run's last push. If the branch is not Owned, the tip moved, or the lease fails, stop and report which branch needs the rebase. Ordering commits that were never pushed needs no ownership.
-
-## 0c. Decision trail
-
-Start skill://decision-trail when the End state is merge-ready or shipped, or when the user says they will not watch the run ("going to bed", "I'll check later", "run until done", "don't stop", "be autonomous"). Otherwise start it only when the user asks. hillclimb always starts decision-trail. Reuse an already-open log instead of starting another one.
-
-Fix its absolute `<Scratch dir>/decision-trail/<task-slug>-<session-uuid8>.tsv` path through decision-trail's current-session rules. Pass that path to chained skills and children. They append through its log helper, never start a log. Complete decision-trail's final review and Attention hand-back when the run ends.
+Keep every pushed commit as it is. Rebase, amend, or reorder only commits after the remote tip, and push only fast-forwards, never with `--force` or `--force-with-lease`. Bring a pushed branch up to date by merging its target into it.
 
 ## 3b. Prune comments
 
-If the effective End state is merge-ready or shipped, run skill://prune-comments over the whole diff before live proof and review. Make direct fixes only. Report any fix that needs a new shape as open. Keep accepted fixes for step 6, without staging unrelated or stopped-slice changes. If the critic is unavailable or its second report is rejected, keep accepted fixes, list prune-comments as open, and continue. Its failure never blocks the chain.
+Run skill://prune-comments over the whole diff before live proof and review, at every End state. Make direct fixes only. Report any fix that needs a new shape as open. Keep accepted fixes for step 6, without staging unrelated or stopped-slice changes. If the critic is unavailable or its second report is rejected, keep accepted fixes, list prune-comments as open, and continue. Its failure never blocks the chain.
 
-Record "prune-comments already run" for open-pr even when the pass stopped, together with its open work; open-pr must not repeat this pass. At End state commit, keep this step as `skip: End state commit`.
+Record "prune-comments already run" for open-pr even when the pass stopped, together with its open work; open-pr must not repeat this pass.
 
 ## 4. Live proof
 
@@ -100,7 +90,7 @@ For merge-ready or shipped, run skill://open-pr with the chain facts from step 0
 
 Then run skill://babysit in drive mode with the chain facts and PR frontier. For shipped, after merge-ready is observed, run skill://ship with those facts. open-pr and babysit return to this caller; neither starts the next link. Stop at the effective End state or a reported blocker and report what was actually reached.
 
-Conflict owner: babysit reports each conflict here, and ship reports each branch that needs a rebase. The step 0b facts cover only the remote branch in the chain facts. If the reported branch is another branch, stop and report which branch needs the rebase. Otherwise, rebase only under the step 0b rewrite rule. Fetch the default branch. Reconcile the reported caller drift. Run `git rebase --onto <remote>/<default branch> <base SHA>`. Push the rebase with the step 0b lease. Record the new pushed SHA and the new base SHA. Then run babysit again. If the diff changed, re-establish the affected proof and Safety findings.
+Conflict owner: babysit reports each conflict and each stale base here. ship reports each branch that `update-branch` cannot update and each step 2 move. The reported branch can be any branch of the run's stack. Fetch it and check it out, and fetch its target: the PR's base branch from `read-pr`, or the default branch for a step 2 move. For a step 2 move, first retarget the PR to the default branch through `retarget-pr`. Run `git merge <remote>/<target>`, resolve each conflict once, reconcile the reported caller drift, and commit the merge. Push it as a fast-forward to the PR's head branch with the step 0b push. Then check out the current branch again. If the reported branch is the run's remote branch, record the new last pushed SHA, and record the merged target tip as the new base SHA. Then run babysit again, or return a moved PR to ship for its fresh verdict. If the diff changed, re-establish the affected proof and Safety findings.
 
 When the run stops, at the effective End state, at commit, or at a blocker, show the run results on the caller's Stage. Append a table Report block, as grilling-page says, with the columns Ticket, Status, Commit, and Proof. Write one row per ticket, or one row for the work when the run has no ticket. When step 6 committed review fixes, add one row for them:
 

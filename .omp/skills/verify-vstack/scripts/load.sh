@@ -5,7 +5,7 @@
 # links to. The first drive.ts or load.sh of the run makes it with mktemp as <os temp dir>/vstack-verify-XXXXXX.
 # It is outside the run dir because omp loads project skills from every parent of the cwd, and the run dir is under
 # the real home.
-# Writes <run>/plugin-load-gate.json and <run>/plugin-load-summary.json. Exit 0 when the gate passed, else 1.
+# Writes <run>/plugin-load-gate.json when the gate passes, and <run>/plugin-load-summary.json in both cases. Exit 0 when the gate passed, else 1.
 set -euo pipefail
 if [ $# -ne 2 ]; then echo "usage: load.sh <checkout> <run dir>" >&2; exit 2; fi
 CHECKOUT=$(builtin cd "$1" && pwd -P)
@@ -24,7 +24,7 @@ bun -e '
 const [root, out, gateFile] = process.argv.slice(-3);
 const { loadGate } = await import(`${root}/scripts/lib/update-gates.ts`);
 const s = loadGate(root, out);
-const gate = { load_gate: "passed", checkout: root, skill_commands: s.skillCommands.length, agents: s.agents, tools: s.tools, warnings: s.warnings };
+const gate = { load_gate: "passed", checkout: root, skill_commands: s.skillCommands.length, agents: s.agents, extension_commands: s.extensionCommands, warnings: s.warnings };
 await Bun.write(gateFile, JSON.stringify(gate, null, 2) + "\n");
 console.log(JSON.stringify(gate));
 ' "$CHECKOUT" "$OUTSIDE/load" "$RUN/plugin-load-gate.json" || status=$?

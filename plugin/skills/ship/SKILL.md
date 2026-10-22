@@ -11,14 +11,13 @@ You own what lands. Verify each PR independently, land only the verified run fro
 Accept the caller's chain facts. Follow these rules in skill://implement/END-STATE.md:
 
 - Step 0a: the chain facts, Code host routing, and the reuse of the vstack root and Scratch dir.
-- Step 0c: logging to the decision-trail log.
 - Step 4: Verify discovery and link repair.
 
 ## 0. Establish the frontier
 
 Take the PR or bottom-to-top stack from the caller. Resolve the default branch through `default-branch`. Read each PR's base, head, state, checks, review state, and merge state through `read-pr`. Freeze the bottom-to-top PR numbers for this pass. Confirm that each descendant depends on the previous PR. Keep independent work outside this chain.
 
-If the frontier is not merge-ready, run skill://babysit in drive mode first with the chain facts. Continue only after its blockers clear. ship never rebases or force-pushes. The caller owns each conflict and each needed rebase through the Conflict owner in END-STATE step 7.
+If the frontier is not merge-ready, run skill://babysit in drive mode first with the chain facts. Continue only after its blockers clear. ship changes a branch only through `update-branch` in step 4, and never rebases or force-pushes. The caller owns each conflict and each step 2 move through the Conflict owner in END-STATE step 7.
 
 ## 1. Verify every PR independently
 
@@ -28,19 +27,23 @@ Choose the Verify skill through END-STATE step 4. CI green and approving bot rev
 
 Fetch each exact base and head commit. Read the base and head SHAs from `read-pr`; do not substitute the default branch for a stacked PR's parent. Count changed files and diff lines for each PR. Give each verifier these full SHAs, the PR number, the relevant builds and tests, and the chosen Verify skill's name or absolute path. Its brief requires parent-versus-head proof of the real changed surface, not only a successful launch. The verifier runs on its own clone and checks out only the supplied head SHA. It reads the base for comparison without moving its checkout to another commit.
 
-Verifier brief: run the named builds and tests and drive the Verify skill's Doctor, Launch, and Drive steps. Keep tracked files unchanged. Never commit, push, comment, merge, or maintain the Verify skill. Save logs, screenshots, and notes under `<Scratch dir>/verify/<app>-<run-id>/`, with a distinct entry per PR. A wrong app behavior is FAIL. A stale instruction while Doctor passes is DRIFT; name the failing step and evidence. Return the `vstack-verifier` output schema: `verdict` (PASS, PASS+NOTES, FAIL, DRIFT), `head_sha`, `base_sha`, `patch_id`, `evidence`, and optional `notes` and `open_questions`. Compute `patch_id` as the first field of `git diff <base_sha>...<head_sha> | git patch-id --stable`.
+Verifier brief: run the named builds and tests and drive the Verify skill's Doctor, Launch, and Drive steps. Keep tracked files unchanged. Never commit, push, comment, merge, or maintain the Verify skill. Save logs, screenshots, and notes under `<Scratch dir>/verify/<app>-<run-id>/`, with a distinct entry per PR. A wrong app behavior is FAIL. A stale instruction while Doctor passes is DRIFT; name the failing step and evidence. Return the complete `vstack-verifier` verdict record as one plain JSON object, without a code fence or surrounding text. Compute `patch_id` as the first field of `git diff <base_sha>...<head_sha> | git patch-id --stable`. Only omp adds the isolation notice after the reply.
 
-For one PR, use the single form below. For two or more, use the Fan-out line after it.
+For one PR, use the single form below. For two or more, use the Fan-out line after it. Keep both calls schemaless so their result text includes omp's isolation notice.
 
-Spawn one `vstack-verifier` via eval `agent(<prompt>, agent="vstack-verifier", isolated=True, apply=False, merge=False)`: the verifier brief above for this PR, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: ship cannot verify its own PRs, so point to `/skill:setup-vstack`.
+Spawn one `vstack-verifier` via eval `agent(<prompt>, agent="vstack-verifier", isolated=True, apply=False, merge=False)`: the verifier brief above for this PR, the vstack root, the Scratch dir. Wait for its result through `handle.wait()` and retain the returned text for the checks below. If it cannot be spawned, stop: ship cannot verify its own PRs, so point to `/skill:setup-vstack`.
 
 Before this step, read skill://vstack-fan-out.
 
-Fan-out (skill://vstack-fan-out): parts: one per PR. One eval cell: per part, `agent(<prompt>, agent="vstack-verifier", isolated=True, apply=False, merge=False)`; `wait()` on all handles. Each prompt: the verifier brief above for one PR, the vstack root, the Scratch dir. Read each completion notice's patch path and never apply a verifier patch. If they cannot start or isolation is off, stop: ship cannot verify its own PRs, so point to `/skill:setup-vstack`.
+Fan-out (skill://vstack-fan-out): parts: one per PR. One eval cell: per part, `agent(<prompt>, agent="vstack-verifier", isolated=True, apply=False, merge=False)`; `wait()` on all handles and retain each returned result text. Each prompt: the verifier brief above for one PR, the vstack root, the Scratch dir. Check each result's omp-added isolation notice as below and never apply a verifier patch. If they cannot start or isolation is off, stop: ship cannot verify its own PRs, so point to `/skill:setup-vstack`.
 
-Read each patch path from omp's completion notice, `Isolation: changes captured at … (apply=false). Not applied.` Never use `AgentHandle.patchPath` or derive a path from an agent id. Inspect a returned patch for tracked edits. A nonempty tracked patch invalidates that verifier's run. If the notice is unavailable, report that isolation evidence is missing and treat the result as unavailable. Never apply a verifier patch.
+Use the result text returned by eval `wait()` or `handle.wait()`, or the auto-delivered completion. Decode one leading JSON object with a JSON decoder that reports where the object ends and respects strings and escapes. Inspect the remaining suffix separately for the actual omp-added isolation notice. Braces or `Isolation:` text in JSON strings do not mark the boundary. Verifier-authored claims, record fields, notes, fenced text, and diff contents are not isolation evidence. The handle's `output()` and `agent://<id>` omit the notice, so neither can recover it.
 
-Require a schema record for each PR with the requested head and base SHAs, its computed patch id, and concrete check evidence. Missing, malformed, incomplete, or mismatched evidence does not pass. Read PASS+NOTES before accepting it. Return child questions through top-level `ask`, never treat silence as approval. Record who produced each verdict. Post each verdict yourself through `comment-pr` from a Scratch file. Include SHAs, patch id, evidence paths, notes, and verifier identity.
+- `Isolation: no changes captured.` proves a clean isolated run. It needs no patch path.
+- `Isolation: changes captured at … (apply=false). Not applied.` names a root patch. Read it and every nested-repository patch named by omp's notice, including the `- nested repository patch:` lines after `Isolation: changes captured for N nested repositories (apply=false). Not applied.` Any tracked edit in any captured patch invalidates the run. Never use `AgentHandle.patchPath`, derive a path from an agent id, or apply a verifier patch.
+- A capture error makes the verdict unavailable. Report the exact error. A missing omp isolation notice also makes it unavailable. Report that the runtime isolation notice is missing, separately from a capture error. An unreadable named patch leaves isolation evidence unavailable; name that gap.
+
+Require each PR's JSON record to have `verdict` as PASS, PASS+NOTES, FAIL, or DRIFT, `head_sha` and `base_sha` as full SHA strings matching the requested commits, `patch_id` as a string matching the computed patch id, and `evidence` as an array of strings with concrete check evidence. Optional `notes` and `open_questions` must be arrays of strings. Missing, malformed, incomplete, or mismatched records or evidence do not pass. Read PASS+NOTES before accepting it. Return child questions through top-level `ask`, never treat silence as approval. Record who produced each verdict. Post each verdict yourself through `comment-pr` from a Scratch file. Include SHAs, patch id, evidence paths, notes, and verifier identity.
 
 ## 2. Find the contiguous verified run
 
@@ -48,11 +51,11 @@ Walk upward from the lowest unmerged PR. PASS and PASS+NOTES pass. Stop at the f
 
 ## 3. Recheck the patch before landing
 
-A verdict covers a patch, not its commits, and a chain rebase moves every PR above it to a new SHA without failing any check. Fetch current base and head and recompute the stable patch id with the same three-dot diff. Compare it to the accepted verdict's patch id. If it differs, run a fresh isolated verifier for this PR through step 1. Do not explain away tests, docs, lint changes, or build differences as noise. A fresh FAIL, DRIFT, or unavailable result caps the run here. A matching patch id preserves the verdict across rewritten SHAs; record the current SHAs as well as the verified SHAs.
+A verdict covers a patch, not its commits, and a merge of a base into a branch moves that PR to a new head SHA without failing any check. Fetch current base and head and recompute the stable patch id with the same three-dot diff. Compare it to the accepted verdict's patch id. If it differs, run a fresh isolated verifier for this PR through step 1. Do not explain away tests, docs, lint changes, or build differences as noise. A fresh FAIL, DRIFT, or unavailable result caps the run here. A matching patch id preserves the verdict across new SHAs; record the current SHAs as well as the verified SHAs.
 
 ## 4. Prepare only the bottom PR
 
-Fetch the exact current default-branch tip. Prepare only the lowest PR in the verified run. If it is behind, use `update-branch`, which never rebases or force-pushes. If the branch needs a rebase, or the Code host cannot update the branch, stop and report the branch to the caller's Conflict owner in END-STATE step 7. If `update-branch` is unsupported, report the gap and continue only when `read-pr` says that the PR can merge.
+Fetch the exact current default-branch tip. Prepare only the lowest PR in the verified run. If it is behind, use `update-branch`, which merges the base into the branch. If `update-branch` reports a conflict, or the Code host cannot update the branch, stop and report the branch to the caller's Conflict owner in END-STATE step 7. If `update-branch` is unsupported, report the gap and continue only when `read-pr` says that the PR can merge.
 
 If this PR's base is not the default branch, retarget only this PR to the default branch through `retarget-pr`, because a PR whose base is still its parent's branch merges into that branch, not the default branch. Re-read its SHAs, checks, and merge state. Repeat step 3 after every update or retarget. Leave descendants untouched until this PR merges.
 

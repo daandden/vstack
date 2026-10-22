@@ -12,7 +12,6 @@ Follow these rules in skill://implement/END-STATE.md:
 
 - Step 0a: the chain facts, Code host and CI service routing, and the reuse of the vstack root and Scratch dir.
 - Step 0b: the push to the remote branch, and the last SHA this run pushed. Fix waves are fast-forward pushes.
-- Step 0c: logging to the decision-trail log.
 
 ## Establish the frontier
 
@@ -43,7 +42,7 @@ Work in this order: conflicts, review threads, then CI. Batch all known fixes in
 
 ### Conflicts belong to the caller
 
-On a conflict, stop before threads or CI. Report the branch needing rebase and the drift sweep: reconcile callers added on the base for code this stack deletes or moves. Babysit itself never rebases or force-pushes. The caller owns the conflict through the Conflict owner in END-STATE step 7.
+On a conflict, stop before threads or CI. Report the branch that needs an update and the drift sweep: reconcile callers added on the base for code this stack deletes or moves. Babysit itself never merges a base into a branch, rebases, or force-pushes. The caller owns the conflict through the Conflict owner in END-STATE step 7.
 
 ### Review threads
 
@@ -62,7 +61,7 @@ If the failed check has no link, report the missing link and read no log and sta
 For a linked failure, read that exact build's logs through `ci.md`'s `ci-logs`. For a CLI config, use its command row. For an MCP config, read the named server's current tool descriptions and parameter schemas, select a read-only log tool, and bind the job and build or run from the failed check's link to its arguments. Follow its pagination to obtain the logs needed to classify the failure. The log tool is unpinned; only Check and `rerun-ci` are pinned. If no matching log tool is available, report the server and gap instead of guessing a tool or another build. Classify the failure before retriggering:
 
 - Diff-owned failure: fix with a red-first proof and include it in the push wave.
-- Stale base: fetch the current base and check `git merge-base --is-ancestor <base-tip> <head>`. For failures outside the diff, inspect whether missing base changes explain them. Report a needed rebase to the caller's Conflict owner; do not spend a retry on it.
+- Stale base: fetch the current base and check `git merge-base --is-ancestor <base-tip> <head>`. For failures outside the diff, inspect whether missing base changes explain them. Report the needed update to the caller's Conflict owner; do not spend a retry on it.
 - Proven flake or infrastructure failure: one fresh full rerun of that exact failed build, not a failed-job-only retry. Use only `ci.md`'s `rerun-ci` command row for a CLI config or its pinned rerun tool for an MCP config. Record the job, failed build or run, and consumed retry so a new poll or worker does not reset the allowance for that failure. An identical second failure must be reclassified from child logs; never retry blindly. If the command row or rerun pin is absent or `unsupported`, report the flake for the human and rerun nothing. Never substitute another rerun tool.
 
 After publishing fixes, watch required checks, then read merge state, review decision, and all threads again. Stop at merge-ready. Owner approval, permissions, a conflict, or a policy decision is the human's line: report it, finish independent actionable items where safe, then return. Never merge to make a blocked state disappear.

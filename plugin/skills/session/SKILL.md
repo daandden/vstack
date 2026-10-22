@@ -135,7 +135,7 @@ Before changing any target file, copy it to Scratch through `skill://vstack-tmp`
 
 In implement's one code-review pass, review `git diff --no-index <copy> <target>` for each in-place target. Review these diffs in the same pass as any repo diff. A no-index diff's exit code 1 means that they differ. Do not treat it as a failed review. The snapshot makes the approved lesson's edit distinct from the earlier changes.
 
-When no approved row is tracked by the session's checkout, implement skips END-STATE steps 0a–0c, 3b, 4, 6, and 7. Validation, skill-creator's evals when warranted, and the one review pass are the proof. Make no branch, commit, or publication for the in-place edits. Say that nothing was committed.
+When no approved row is tracked by the session's checkout, implement skips END-STATE steps 0a–0b, 3b, 4, 6, and 7. Validation, skill-creator's evals when warranted, and the one review pass are the proof. Make no branch, commit, or publication for the in-place edits. Say that nothing was committed.
 
 Backlog is only listed, never filed or posted. The user files what they want from it. Approving a class 4 or class 5 row authorizes filing its vstack issue, or commenting on its matching open issue, and no other tracker mutation. No other approval authorizes a tracker mutation.
 

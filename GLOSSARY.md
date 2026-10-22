@@ -57,7 +57,7 @@ A hidden vstack skill that the jev judge selects during a Matt run, or that a sk
 _Avoid_: extension, plugin
 
 **Utility skill**:
-A vstack skill that is not a Matt skill and that the user can use whatever the work is. unslop, technical-writing, diagram-design, good-css, and skill-creator set how text, figures, styles, and skills are made. explain, how, why, and forensics answer questions about existing work. in-your-own-words and ketchup check that the user and the agent agree. The first restates the user's goal, and the second catches the user up. The hidden helpers are vstack-tmp, vstack-fan-out, vstack-figures, grilling-page, and vstack-worktree. Other skills name these helpers by `skill://`. Utility skills can start from their descriptions, from a rule, or by name, subject to each skill's invocation settings.
+A vstack skill that is not a Matt skill and that the user can use whatever the work is. unslop, technical-writing, diagram-design, good-css, and skill-creator set how text, figures, styles, and skills are made. explain, how, why, and forensics answer questions about existing work. in-your-own-words and ketchup check that the user and the agent agree. The first restates the user's goal, and the second catches the user up. clean-wt removes omp checkouts that nothing uses anymore. The hidden helpers are vstack-tmp, vstack-fan-out, vstack-figures, grilling-page, and vstack-worktree. Other skills name these helpers by `skill://`. Utility skills can start from their descriptions, from a rule, or by name, subject to each skill's invocation settings.
 _Avoid_: standalone skill, helper skill
 
 **Command**:
@@ -124,10 +124,6 @@ _Avoid_: update (for this), manual edit, patch
 How far a flow that produces a commit goes before it stops: commit, merge-ready, or shipped. Commit stays on the current branch. Merge-ready opens a PR and drives it until it can merge. Shipped means every PR in the run is merged into the default branch; deploys and releases are not part of it. The flow settles it once, before it starts.
 _Avoid_: goal, target, finish line
 
-**Owned branch**:
-A branch whose remote branch did not exist until the run's first push created it. The remote decides it, not the local branch name: a new `<type>/<slug>` branch or an omp worktree's `wt/<time>` branch is usually one, but a branch that someone already pushed is not. Only the run that owns a branch rewrites its pushed commits, by rebasing them or force-pushing. Reordering commits that were never pushed needs no ownership.
-_Avoid_: run branch, created branch
-
 **Code host**:
 The service that holds a repo's remote and its PRs, such as GitHub, GitLab, or Bitbucket. It is a separate choice from the issue tracker: a repo on Bitbucket can track its issues in Jira.
 _Avoid_: git host, VCS host, forge
@@ -149,7 +145,7 @@ The absolute directory where a run writes the project's vstack config and workfl
 _Avoid_: artifact dir, private root
 
 **Scratch**:
-A vstack output that nothing reads after its run, such as an explanation page, proof evidence, an eval workspace, or a decision-trail log. It is kept under `~/.vstack/tmp/`, grouped by project, until vstack-clean deletes it after a retention period. Temporary files a script creates and deletes itself are not Scratch. A later Stage of the same flow can continue a Grilling page.
+A vstack output that nothing reads after its run, such as an explanation page, proof evidence, an eval workspace, or a hillclimb attempt log. It is kept under `~/.vstack/tmp/`, grouped by project, until vstack-clean deletes it after a retention period. Temporary files a script creates and deletes itself are not Scratch. A later Stage of the same flow can continue a Grilling page.
 _Avoid_: temp files, artifacts, tmp output
 
 **Grilling page**:

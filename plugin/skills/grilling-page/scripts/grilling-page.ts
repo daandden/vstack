@@ -8,14 +8,18 @@
 // The page is the state path with .html in place of .jsonl. Each state line is one JSON record.
 // A later line with the same id replaces an earlier one. Every command checks all records,
 // renders the page from templates/grilling-page.html, and prints the page's absolute path.
+// Successful append also prints a compact JSON metadata array to stderr after writing.
 // With a flow record, the state file's folder is the flow folder <project>-<key>/: every command also
 // writes flow.json from that record and makes figures/. rename moves the folder to <project>-<new-key>/.
 // The exception: rename to the current key checks the records, writes nothing, and prints the page path.
 // An answer <spec> is A or A,B (picked options), with an optional :note; other:<text>; or unanswered[:<reason>].
 // Exit 0 prints the path; exit 1 is a record error and writes nothing; exit 2 is a usage error.
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync, realpathSync, renameSync, writeFileSync } from "node:fs";
+import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, realpathSync, renameSync, statSync, writeFileSync } from "node:fs";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { createHash } from "node:crypto";
+import { constants, tmpdir } from "node:os";
+import { dlopen, read } from "bun:ffi";
 
 type Visual = { text?: string; html?: string; css?: string; svg?: string };
 type Option = { label: string; does: string; gains: string[]; costs: string[]; recommended?: string; preview?: Visual };
@@ -62,7 +66,7 @@ function usage(message: string): never {
   process.exit(2);
 }
 
-function parseLines(text: string, firstLine: number, source: string): Line[] {
+function parseLines(text: string, firstLine: number, source: string, assignIds = false): Line[] {
   const out: Line[] = [];
   text.split("\n").forEach((raw, i) => {
     if (raw.trim() === "") return;
@@ -76,7 +80,7 @@ function parseLines(text: string, firstLine: number, source: string): Line[] {
     if (typeof rec !== "object" || rec === null || Array.isArray(rec)) fail(where, "a record must be a JSON object");
     const r = rec as Rec;
     if (r.type === "answer" && r.id === undefined && typeof r.question === "string") r.id = `answer-${r.question}`;
-    if (typeof r.id !== "string" || !ID.test(r.id)) fail(where, `id must be lowercase letters, digits, and hyphens, got ${JSON.stringify(r.id)}`);
+    if (!(assignIds && r.id === undefined) && (typeof r.id !== "string" || !ID.test(r.id))) fail(where, `id must be lowercase letters, digits, and hyphens, got ${JSON.stringify(r.id)}`);
     out.push({ rec: r, line: firstLine + i });
   });
   return out;
@@ -130,6 +134,26 @@ const visualsOf = (v: Visual | Visual[] | undefined): Visual[] => (v === undefin
 
 const STATE_LABELS: Record<string, string> = { "not-started": "Not started", "in-progress": "In progress", finished: "Finished" };
 const STAGE_STATES = Object.keys(STATE_LABELS);
+const STAGE_LABELS: Record<string, string> = {
+  grilling: "Grill",
+  "grill-me": "Grill",
+  "grill-with-docs": "Grill",
+  "domain-modeling": "Domain",
+  "diagram-design": "Diagram",
+  triage: "Triage",
+  "to-spec": "Spec",
+  "to-tickets": "Tickets",
+  "to-questionnaire": "Questionnaire",
+  "improve-codebase-architecture": "Architecture",
+  prototype: "Prototype",
+  wayfinder: "Map",
+  teach: "Teach",
+  implement: "Implement",
+  "implement-spec": "Implement",
+  tdd: "TDD",
+  "code-review": "Review",
+  session: "Retro",
+};
 const CLAIM_LABELS: Record<string, string> = { confirmed: "Confirmed", cleared: "Cleared", unproven: "Unproven" };
 const CLAIM_STATES = Object.keys(CLAIM_LABELS);
 const SHAPES = ["cards", "ledger", "table"];
@@ -202,7 +226,7 @@ function check(lines: Line[], folder: string): State {
         break;
       case "stage":
         str(r, "skill", where);
-        str(r, "title", where);
+        if (!STAGE_LABELS[r.skill]) fail(where, `skill ${r.skill} has no tab label. Add it to STAGE_LABELS in grilling-page.ts`);
         if (!STAGE_STATES.includes(r.state)) fail(where, `state must be ${listed(STAGE_STATES)}`);
         int(r, "order", where);
         stages.set(r.id, r);
@@ -221,6 +245,7 @@ function check(lines: Line[], folder: string): State {
         if (["plain", "why", "settled"].some((k) => r[k] !== undefined)) fail(where, "has plain, why, and settled from an older page; write one description instead and start a new page");
         for (const k of ["title", "description"]) str(r, k, where);
         str(r, "example", where, true);
+        str(r, "again", where, true);
         entryList(r, "today", ["text", "source"], where);
         entryList(r, "terms", ["term", "text"], where);
         if (r.visual !== undefined) checkVisuals(r.visual, where);
@@ -259,9 +284,7 @@ function check(lines: Line[], folder: string): State {
       }
       case "close": {
         int(r, "session", where);
-        str(r, "answer", where, true);
-        str(r, "note", where, true);
-        if (r.gate !== undefined && typeof r.gate !== "boolean") fail(where, "gate must be true or false");
+        str(r, "stage", where, true);
         if (!Array.isArray(r.decisions) || r.decisions.length === 0) fail(where, "decisions must list one { question, text } per decision");
         for (const dec of r.decisions) {
           if (typeof dec !== "object" || dec === null) fail(where, "each decision must be an object");
@@ -395,6 +418,11 @@ function formatTime(iso: string): string {
 
 const stateOf = (a: Rec | undefined) => (!a ? "open" : a.unanswered !== undefined ? "unanswered" : "answered");
 
+function answerLabel(q: Rec, a: Rec | undefined): string | undefined {
+  if (a?.picks) return (a.picks as string[]).map((p) => (q.options as Option[])[letterIndex(p)].label).join(", ");
+  return a?.other;
+}
+
 /** The line under the options, only when it says more than the picked label: [label, html]. */
 function answerLine(a: Rec | undefined): [string, string] | undefined {
   if (!a) return undefined;
@@ -419,7 +447,7 @@ function description(s: string): string {
 const entryAnchor = (report: string, entry: string) => `report-${report}_${entry}`;
 const entryName = (r: Rec, e: Rec): string => (r.shape === "cards" ? e.title : r.shape === "ledger" ? e.claim : e.cells[0] || e.id);
 
-function questionHtml(q: Rec, a: Rec | undefined, baseDir: string, reports: Map<string, Rec>, topics: Map<string, Rec>): string {
+function questionHtml(q: Rec, a: Rec | undefined, baseDir: string, reports: Map<string, Rec>, topics: Map<string, Rec>, open: boolean): string {
   const qid = `q-${q.id}`;
   const facts = ((q.today ?? []) as Rec[]).map((f) => `<li>${text(f.text)} <span class="source">${text(f.source)}</span></li>`).join("");
   const today = facts ? `\n<div class="today"><p class="label">Today</p><ul class="bullets">${facts}</ul></div>` : "";
@@ -444,13 +472,13 @@ function questionHtml(q: Rec, a: Rec | undefined, baseDir: string, reports: Map<
       const preview = o.preview ? visualHtml(o.preview, `${qid}-${L.toLowerCase()}`, "preview", baseDir) : "";
       const trade = [...o.gains.map((g) => `<li class="gain">${text(g)}</li>`), ...o.costs.map((c) => `<li class="cost">${text(c)}</li>`)].join("");
       const why = o.recommended ? `<p class="why">Recommended: ${text(o.recommended)}</p>` : "";
-      return `<li class="option"${attrs}><h4>${text(o.label.slice(3))}${star}${mark}</h4>${preview}<p>${text(o.does)}</p><ul class="trade">${trade}</ul>${why}</li>`;
+      return `<li class="option"${attrs}><h4>${text(o.label)}${star}${mark}</h4>${preview}<p>${text(o.does)}</p><ul class="trade">${trade}</ul>${why}</li>`;
     })
     .join("\n");
   const state = stateOf(a);
   const line = answerLine(a);
   const visual = visualsOf(q.visual).map((v, i) => visualHtml(v, `${qid}-visual${i ? `-${i + 1}` : ""}`, "visual", baseDir)).join("\n");
-  return `<article class="question" id="${qid}" data-state="${state}" data-stop>
+  return `<article class="question" id="${qid}" data-state="${state}"${open ? " data-open" : ""} data-stop>
 <h3><span class="qnum">Q${q.q}</span>${text(q.title)}</h3>
 <div class="description">${description(q.description)}</div>${reportLinks}${today}${terms}${topicNotes}${example}
 ${visual}<ol class="options">
@@ -525,7 +553,18 @@ function render(s: State, baseDir: string): string {
     stageOf.set(item, sessionStage.get(item.session)!);
   }
   const stages = [...s.stages].sort((a, b) => a.order - b.order);
-  if (s.order.some((r) => r.type === "round" && r.stage === undefined)) stages.unshift({ type: "stage", id: IMPLICIT_STAGE, title: "Grilling" });
+  const seen = new Map<string, number>();
+  const labelOf = new Map<string, string>();
+  for (const st of stages) {
+    const base = STAGE_LABELS[st.skill];
+    const n = (seen.get(base) ?? 0) + 1;
+    seen.set(base, n);
+    labelOf.set(st.id, n === 1 ? base : `${base} ${n}`);
+  }
+  if (s.order.some((r) => r.type === "round" && r.stage === undefined)) {
+    stages.unshift({ type: "stage", id: IMPLICIT_STAGE });
+    labelOf.set(IMPLICIT_STAGE, "Grilling");
+  }
   const questionsOf = (roundId: string) => [...s.questions.values()].filter((q) => q.round === roundId);
   const lastClose = new Map<number, string>();
   for (const r of s.order) if (r.type === "close") lastClose.set(r.session, r.id);
@@ -538,48 +577,49 @@ function render(s: State, baseDir: string): string {
   const panels: string[] = [];
   for (const st of stages) {
     const pid = `stage-${st.id}`;
+    const label = text(labelOf.get(st.id)!);
     const nav: string[] = [];
     const body: string[] = [];
     const bg = s.backgrounds.get(st.id);
     if (bg) body.push(backgroundHtml(bg, baseDir));
     for (const r of s.reports.values()) if (r.stage === st.id) body.push(reportHtml(r, s.questions, baseDir));
     const items = s.order.filter((i) => stageOf.get(i) === st.id);
+    const sessions = new Set(items.filter((i) => i.type === "round").map((r) => r.session as number));
+    const asked = [...sessions].flatMap((n) => [...latestBySession(items, s.questions, n).values()]);
+    const openIds = new Set(asked.filter((q) => stateOf(s.answers.get(q.id)) !== "answered").map((q) => q.id));
     for (const item of items) {
       if (item.type === "round") {
         const qs = questionsOf(item.id);
         const head = `<header><h2 id="round-${item.id}">Session ${item.session}, round ${item.round}<time datetime="${esc(item.time)}">${formatTime(item.time)}</time></h2></header>`;
-        body.push(`<section class="round" aria-labelledby="round-${item.id}">\n${head}\n${qs.map((q) => questionHtml(q, s.answers.get(q.id), baseDir, s.reports, s.topics)).join("\n")}\n</section>`);
+        body.push(`<section class="round" aria-labelledby="round-${item.id}">\n${head}\n${qs.map((q) => questionHtml(q, s.answers.get(q.id), baseDir, s.reports, s.topics, openIds.has(q.id))).join("\n")}\n</section>`);
         if (qs.length) {
           if (nav.length) nav.push(`<span class="sep" aria-hidden="true"></span>`);
           for (const q of qs) nav.push(`<a href="#q-${q.id}" data-for="q-${q.id}"><span class="dot" data-state="${stateOf(s.answers.get(q.id))}"></span>Q${q.q}</a>`);
         }
       } else {
         const bullets = [...decisionsOf(item), ...((item.extra as string[] | undefined) ?? []).map((e) => `<li>${text(e)}</li>`)].join("\n");
-        const shown = item.answer ? `${item.answer}.` : item.note ? "No answer." : "Waiting for your answer.";
-        const gate = item.gate || item.answer || item.note ? `\n<p class="answer"><span class="label">Closing gate</span><span>${text(item.note ? `${shown} Note: "${item.note}"` : shown)}</span></p>` : "";
         const latest = lastClose.get(item.session) === item.id;
         body.push(`<section class="summary" id="close-${item.id}" aria-labelledby="close-${item.id}-title"${latest ? " data-stop" : ""}>
 <h2 id="close-${item.id}-title">Summary of session ${item.session}</h2>
 <ul class="decisions">
 ${bullets}
-</ul>${gate}
+</ul>
 </section>`);
         if (latest) nav.push(`<span class="sep" aria-hidden="true"></span><a href="#close-${item.id}" data-for="close-${item.id}">Summary</a>`);
       }
     }
     const last = items.at(-1);
-    const state = st.state ?? (last?.type === "close" && last.answer ? "finished" : "in-progress");
+    const state = st.state ?? (last?.type === "close" ? "finished" : "in-progress");
     const dot = `<span class="dot" data-state="${state}"></span>`;
-    const decisions = items.filter((i) => i.type === "close" && lastClose.get(i.session) === i.id).flatMap(decisionsOf);
-    const sessions = new Set(items.filter((i) => i.type === "round").map((r) => r.session as number));
-    const open = [...sessions].flatMap((n) => [...latestBySession(items, s.questions, n).values()]).filter((q) => stateOf(s.answers.get(q.id)) !== "answered");
-    const openItems = open.map((q) => `<li><a href="#q-${q.id}">Q${q.q}</a>: ${text(q.title)}</li>`);
-    tabs.push(`<a role="tab" id="tab-${pid}" aria-selected="false" aria-controls="${pid}" href="#${pid}">${dot}${text(st.title)}</a>`);
-    if (nav.length) qrows.push(`<nav class="qnav" aria-label="Questions in ${esc(st.title)}" data-tab="${pid}" hidden>${nav.join("")}</nav>`);
+    const askedItems = asked.map((q) => {
+      const shown = answerLabel(q, s.answers.get(q.id));
+      return `<li><a href="#q-${q.id}">Q${q.q}</a> ${text(q.title)} <span class="${shown === undefined ? "open" : "pick"}">${shown === undefined ? "Open" : text(shown)}</span></li>`;
+    });
+    tabs.push(`<a role="tab" id="tab-${pid}" aria-selected="false" aria-controls="${pid}" href="#${pid}">${dot}${label}</a>`);
+    if (nav.length) qrows.push(`<nav class="qnav" aria-label="Questions in ${label}" data-tab="${pid}" hidden>${nav.join("")}</nav>`);
     overview.push(`<li class="stage" data-state="${state}">
-<h3><a href="#${pid}">${dot}${text(st.title)}</a><span class="meta"><span class="state">${STATE_LABELS[state]}</span>${st.skill ? `<span>${text(st.skill)}</span>` : ""}</span></h3>
-<p class="label">Decisions</p>${decisions.length ? `<ul>${decisions.join("")}</ul>` : `<p class="empty">No decisions yet.</p>`}
-<p class="label">Open questions</p>${openItems.length ? `<ul>${openItems.join("")}</ul>` : `<p class="empty">No open questions.</p>`}
+<h3><a href="#${pid}">${dot}${label}</a><span class="meta"><span class="state">${STATE_LABELS[state]}</span>${st.skill ? `<span>${text(st.skill)}</span>` : ""}</span></h3>
+${askedItems.length ? `<ul>${askedItems.join("")}</ul>` : `<p class="empty">No questions yet.</p>`}
 </li>`);
     panels.push(`<section class="tab" id="${pid}" role="tabpanel" aria-labelledby="tab-${pid}" hidden>\n${body.join("\n") || `<p class="empty">No rounds yet.</p>`}\n</section>`);
   }
@@ -628,6 +668,77 @@ function answerRecords(specs: string[]): string {
     .join("\n");
 }
 
+function nowIso(): string {
+  const d = new Date();
+  const off = -d.getTimezoneOffset();
+  const pad = (n: number) => String(Math.floor(Math.abs(n))).padStart(2, "0");
+  const local = new Date(d.getTime() + off * 60_000).toISOString().slice(0, 19);
+  return `${local}${off >= 0 ? "+" : "-"}${pad(off / 60)}:${pad(off % 60)}`;
+}
+
+function assignRecordMetadata(old: Line[], added: Line[]): Line[] {
+  const known = new Map<string, Rec>();
+  const sessionOfStage = new Map<string, number>();
+  const sessionOfRound = new Map<string, number>();
+  const maxQ = new Map<number, number>();
+  let maxOrder = 0;
+  let maxSession = 0;
+  let maxRound = 0;
+  let lastRound: string | undefined;
+  const reserved = new Set([...old, ...added].map((l) => l.rec.id).filter(Boolean));
+  const counters = new Map<string, number>();
+  const num = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : 0);
+  const scan = (r: Rec) => {
+    known.set(r.id, r);
+    if (r.type === "stage") maxOrder = Math.max(maxOrder, num(r.order));
+    else if (r.type === "round") {
+      maxSession = Math.max(maxSession, num(r.session));
+      maxRound = Math.max(maxRound, num(r.round));
+      sessionOfStage.set(r.stage ?? IMPLICIT_STAGE, r.session);
+      sessionOfRound.set(r.id, r.session);
+      lastRound = r.id;
+    } else if (r.type === "question") {
+      const session = sessionOfRound.get(r.round);
+      if (session !== undefined) maxQ.set(session, Math.max(maxQ.get(session) ?? 0, num(r.q)));
+    }
+  };
+  for (const { rec } of old) known.set(rec.id, rec);
+  for (const r of known.values()) if (r.type !== "question") scan(r);
+  for (const r of known.values()) if (r.type === "question") scan(r);
+  for (const { rec: r } of added) {
+    if (r.id === undefined) {
+      let n = counters.get(r.type) ?? 0;
+      do { r.id = `${r.type}-${++n}`; } while (reserved.has(r.id));
+      counters.set(r.type, n);
+      reserved.add(r.id);
+    }
+    const prev = known.get(r.id);
+    const same = prev?.type === r.type ? prev : undefined;
+    if (r.type === "stage") r.order = same?.order ?? ++maxOrder;
+    else if (r.type === "round") {
+      if (same) Object.assign(r, { session: same.session, round: same.round, time: same.time });
+      else Object.assign(r, { session: sessionOfStage.get(r.stage ?? IMPLICIT_STAGE) ?? ++maxSession, round: ++maxRound, time: nowIso() });
+    } else if (r.type === "question") {
+      if (r.round === undefined) r.round = same?.round ?? lastRound;
+      const session = sessionOfRound.get(r.round);
+      if (session === undefined) fail(`question ${r.id}`, `round ${r.round} does not exist`);
+      if (same) r.q = same.q;
+      else if (r.again !== undefined) {
+        const earlier = known.get(r.again);
+        if (earlier?.type !== "question") fail(`question ${r.id}`, `again names ${r.again}, which is not a question`);
+        if (sessionOfRound.get(earlier!.round) !== session) fail(`question ${r.id}`, `again names ${r.again}, which is not in the same session`);
+        r.q = earlier!.q;
+      } else r.q = (maxQ.get(session!) ?? 0) + 1;
+    } else if (r.type === "close") {
+      const session = same?.session ?? sessionOfStage.get(r.stage ?? IMPLICIT_STAGE);
+      if (session === undefined) fail(`close ${r.id}`, r.stage === undefined ? "the page has no rounds" : `stage ${r.stage} has no rounds`);
+      r.session = session;
+    }
+    scan(r);
+  }
+  return added;
+}
+
 function mapSvgs(v: unknown, fix: (path: string) => string): any {
   if (Array.isArray(v)) return v.map((x) => mapSvgs(x, fix));
   if (typeof v !== "object" || v === null) return v;
@@ -660,15 +771,51 @@ function renameRecords(s: State, folder: string, target: string, newKey: string)
   return out.map((r) => JSON.stringify(r)).join("\n");
 }
 
+const errnoName = process.platform === "darwin" ? "__error" : "__errno_location";
+const symbols = {
+  flock: { args: ["i32", "i32"], returns: "i32" },
+  [errnoName]: { args: [], returns: "ptr" },
+} as const;
+const libraryNames = process.platform === "darwin" ? ["/usr/lib/libSystem.B.dylib"] : ["libc.so.6", "libc.so"];
+let libc!: ReturnType<typeof dlopen<typeof symbols>>;
+for (const name of libraryNames) {
+  try { libc = dlopen(name, symbols); break; }
+  catch (e) { if (name === libraryNames.at(-1)) throw e; }
+}
+const LOCK_EX = 2;
+const LOCK_NB = 4;
+const locks = new Set<number>();
+const releaseLocks = () => {
+  for (const fd of locks) {
+    closeSync(fd);
+    locks.delete(fd);
+  }
+};
+process.once("exit", releaseLocks);
+
+function canonicalPath(path: string): string {
+  return existsSync(path) ? realpathSync(path) : join(canonicalPath(dirname(path)), basename(path));
+}
+
+async function lockState(state: string, wait = true): Promise<void> {
+  // Keep the inode stable for waiters. Closing the descriptor releases the lock, even after SIGKILL.
+  const lock = join(tmpdir(), `grilling-page-${createHash("sha256").update(canonicalPath(state)).digest("hex")}.flock`);
+  const fd = openSync(lock, "a", 0o600);
+  locks.add(fd);
+  while (libc.symbols.flock(fd, LOCK_EX | LOCK_NB) !== 0) {
+    const errno = read.i32(libc.symbols[errnoName]()!, 0);
+    if (errno !== constants.errno.EWOULDBLOCK && errno !== constants.errno.EINTR) fail("lock", `${state}: flock failed with errno ${errno}`);
+    if (!wait) fail("rename", `${state} is in use`);
+    await Bun.sleep(10);
+  }
+}
+
 const [command, statePath, ...rest] = Bun.argv.slice(2);
 if (!["append", "answer", "render", "rename"].includes(command ?? "")) usage("give a command: append, answer, render, or rename");
 if (!statePath || !statePath.endsWith(".jsonl")) usage("give the state file, ending in .jsonl");
 const state = resolve(statePath);
 const page = state.replace(/\.jsonl$/, ".html");
-if (!existsSync(state) && existsSync(page)) {
-  process.stderr.write(`grilling-page.ts: ${page} exists but was not made by grilling-page.ts. Start a new page with a new name.\n`);
-  process.exit(1);
-}
+const originalFolder = existsSync(dirname(state)) ? statSync(dirname(state)) : undefined;
 
 let added = "";
 if (command === "append") {
@@ -681,9 +828,21 @@ else if (command === "rename") {
 } else if (rest.length) usage("render takes no more arguments");
 
 try {
+  await lockState(state);
+  if (originalFolder) {
+    const folder = existsSync(dirname(state)) ? statSync(dirname(state)) : undefined;
+    if (!folder || folder.dev !== originalFolder.dev || folder.ino !== originalFolder.ino) fail(command, "the flow folder moved while waiting. Use its new page path");
+  }
+  if (!existsSync(state) && existsSync(page)) fail(command, `${page} exists but was not made by grilling-page.ts. Start a new page with a new name`);
   const old = existsSync(state) ? readFileSync(state, "utf8") : "";
   const oldLines = old === "" ? 0 : old.replace(/\n$/, "").split("\n").length;
-  let lines = [...parseLines(old, 1, "state"), ...parseLines(added, oldLines + 1, command === "append" && rest[0] && rest[0] !== "-" ? rest[0] : "input")];
+  const before = parseLines(old, 1, "state");
+  let after = parseLines(added, oldLines + 1, command === "append" && rest[0] && rest[0] !== "-" ? rest[0] : "input", command === "append");
+  if (command === "append") {
+    after = assignRecordMetadata(before, after);
+    added = after.map((l) => JSON.stringify(l.rec)).join("\n");
+  }
+  let lines = [...before, ...after];
   const folder = dirname(state);
   let s = check(lines, basename(folder));
   let target = folder;
@@ -694,6 +853,7 @@ try {
       process.exit(0);
     }
     target = join(dirname(folder), basename(folder).slice(0, -s.flow!.key.length) + rest[0]);
+    await lockState(join(target, basename(state)), false);
     if (existsSync(target)) fail("rename", `${target} already exists`);
     added = renameRecords(s, folder, target, rest[0]);
     lines = [...lines, ...parseLines(added, oldLines + 1, "rename")];
@@ -722,8 +882,11 @@ try {
     }
   }
   process.stdout.write(`${newPage}\n`);
+  if (command === "append") process.stderr.write(`${JSON.stringify(after.map(({ rec: { type, id, stage, question, again, order, session, round, q, time } }) => ({ type, id, stage, question, again, order, session, round, q, time })))}\n`);
 } catch (e) {
   if (!(e instanceof RecordError)) throw e;
   process.stderr.write(`grilling-page.ts: ${e.message}\nNothing was written.\n`);
   process.exit(1);
+} finally {
+  releaseLocks();
 }

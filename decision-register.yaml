@@ -20,7 +20,7 @@ items:
     tree: d8e341cee7980127dddda05159bedf25dc853615
     disposition: adapt
     artifacts: [plugin/skills/code-review]
-    reason: "PR pinning accepts MCP Code hosts without operation rows, selects read-pr by descriptions and schemas, and fetches exact commits through project facts; retains CLI rows and review axes (#204, ADR 0032)."
+    reason: "PR pinning accepts MCP Code hosts without operation rows, selects read-pr by descriptions and schemas, and fetches exact commits through project facts; retains CLI rows and review axes (#204, ADR 0035)."
   - id: matt/codebase-design
     upstream: matt
     kind: skill
@@ -52,7 +52,7 @@ items:
     tree: eedaf2562c83155115e9c649fa3ecaac2e10e81d
     disposition: adapt
     artifacts: [plugin/skills/grill-with-docs]
-    reason: "Names skill://grilling and skill://domain-modeling where Matt calls the Skill tool, and adds a grill-with-docs Stage to the flow's Grilling page (#165)."
+    reason: "Names skill://grilling and skill://domain-modeling where Matt calls the Skill tool, adds a grill-with-docs Stage to the flow's Grilling page, and names the next skill after the summary (#165, ADR 0032)."
   - id: matt/implement
     upstream: matt
     kind: skill
@@ -60,7 +60,7 @@ items:
     tree: f07d230f645fc9ac390cf13a450bbff12ad791a3
     disposition: adapt
     artifacts: [plugin/skills/implement]
-    reason: "Settles End states through live MCP capability discovery and shares description-based Code host routing, with unsupported optional tools reported as gaps (ADR 0031, ADR 0032, #204)."
+    reason: "Settles End states through live MCP capability discovery and shares description-based Code host routing, with unsupported optional tools reported as gaps (ADR 0034, ADR 0035, #204)."
   - id: matt/improve-codebase-architecture
     upstream: matt
     kind: skill
@@ -92,7 +92,7 @@ items:
     tree: b1568cde855a189b16e5d7dd8a0fa4c3f156bc2e
     disposition: adapt
     artifacts: [plugin/skills/setup-vstack]
-    reason: "Other issue trackers and Code hosts use short MCP configs from current descriptions; re-setup preserves CI hand edits and confirms the CI and Code host drafts together (ADR 0032, #204, #205, #206)."
+    reason: "Other issue trackers and Code hosts use short MCP configs from current descriptions; re-setup preserves CI hand edits and confirms the CI and Code host drafts together (ADR 0035, #204, #205, #206)."
   - id: matt/tdd
     upstream: matt
     kind: skill
@@ -140,7 +140,7 @@ items:
     tree: 0a163daf092c6f361158ca9627e81f2cb5230574
     disposition: adapt
     artifacts: [plugin/skills/wizard]
-    reason: "Its user questions go through ask (ask-tool, #58). Secrets and variables go to the CI service, with manual instructions when its commands are absent (ADR 0031)."
+    reason: "Its user questions go through ask (ask-tool, #58). Secrets and variables go to the CI service, with manual instructions when its commands are absent (ADR 0034)."
   - id: matt/grill-me
     upstream: matt
     kind: skill
@@ -156,7 +156,7 @@ items:
     tree: f0732035b8b1b60ae39454e4191caef32fa91903
     disposition: adapt
     artifacts: [plugin/skills/grilling]
-    reason: "Sub-agent spawn names a vstack agent; one round is one ask; the Grilling page lives in grilling-page; pushback reopens its decision; a session writes into its flow's page as a Stage, and ask options carry labels only (#42, #58, #145, #165)."
+    reason: "Sub-agent spawn names a vstack agent; one round is one ask; the Grilling page lives in grilling-page; pushback reopens its decision; a session writes into its flow's page as a Stage, and ask options carry labels only; the grill closes with its summary and no ask, and the caller waits for the user's next prompt (#42, #58, #145, #165, ADR 0032)."
   - id: matt/handoff
     upstream: matt
     kind: skill
@@ -372,7 +372,7 @@ items:
     tree: 3a09487f06a3fcf9e313d397a29f5d2efde9283f
     disposition: adapt
     artifacts: [plugin/skills/prune-comments]
-    reason: "Renamed for implement, with one fresh comment critic, direct fixes only, and explicit approval for constraint encodings (ADR 0015, #52)."
+    reason: "Renamed for implement, with one fresh comment critic, direct fixes only, and no questions: constraint comments are deleted with no encoding (ADR 0015, #52)."
   - id: pstack/poteto-mode
     upstream: pstack
     kind: skill
@@ -516,7 +516,7 @@ items:
     tree: 41e2142b6479db1dfdb9c2a3b856a895af61089d
     disposition: adapt
     artifacts: [plugin/skills/principle-prove-it-works]
-    reason: "Names decision-trail (renamed show-me-your-work)."
+    reason: "Drops the show-me-your-work pointer, which vstack rejects."
   - id: pstack/principle-redesign-from-first-principles
     upstream: pstack
     kind: principle
@@ -594,9 +594,9 @@ items:
     kind: skill
     path: pstack/skills/show-me-your-work
     tree: 118c0642360ab53de52b3f8dd044102567dbcaa9
-    disposition: adapt
-    artifacts: [plugin/skills/decision-trail]
-    reason: "Renamed; final review is one fresh-context vstack subagent on the Session model or the user's override. Its publish approval is a question on the flow's Grilling page (#51, #167)."
+    disposition: reject
+    artifacts: []
+    reason: "vstack keeps no decision log; hillclimb owns its own attempt log, and code review and live proof cover the End states."
   - id: pstack/swarm
     upstream: pstack
     kind: skill
@@ -652,7 +652,7 @@ items:
     tree: ba549f92c3a8dc1506b21674e8794eb980019bf3
     disposition: adapt
     artifacts: [plugin/skills/why]
-    reason: "Profiles git, Code host, tracker and MCP evidence; resolves MCP review history from descriptions and facts, records gaps, and retains fresh-context synthesis (#49, #204, ADR 0032)."
+    reason: "Profiles git, Code host, tracker and MCP evidence; resolves MCP review history from descriptions and facts, records gaps, and retains fresh-context synthesis (#49, #204, ADR 0035)."
   - id: pstack/playbook-authoring-a-skill
     upstream: pstack
     kind: playbook
@@ -692,7 +692,7 @@ items:
     tree: 51549ab2da11e5905342bbb3aadb93685c8ac348
     disposition: adapt
     artifacts: [plugin/skills/babysit]
-    reason: "Hidden drive-mode knowledge takes the failed build only from the check's link, selects MCP logs from current tool descriptions, and permits reruns only through the configured CLI command or MCP rerun pin (ADR 0015, ADR 0031, ADR 0032)."
+    reason: "Hidden drive-mode knowledge takes the failed build only from the check's link, selects MCP logs from current tool descriptions, and permits reruns only through the configured CLI command or MCP rerun pin (ADR 0015, ADR 0034, ADR 0035)."
   - id: pstack/playbook-bug-fix
     upstream: pstack
     kind: playbook
@@ -985,6 +985,7 @@ originals:
   - plugin/skills/vstack-maintain
   - plugin/agents/vstack-diagram-drawer.md
   - plugin/skills/vstack-figures
+  - plugin/skills/clean-wt
 utility:
   - plugin/skills/unslop
   - plugin/skills/technical-writing
@@ -1002,3 +1003,4 @@ utility:
   - plugin/skills/vstack-worktree
   - plugin/skills/in-your-own-words
   - plugin/skills/ketchup
+  - plugin/skills/clean-wt

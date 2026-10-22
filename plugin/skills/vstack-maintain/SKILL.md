@@ -58,7 +58,7 @@ A timed-out answer is not confirmation. The grill uses its own question and clos
 
 Draft every Update and Hand edit in one isolated `vstack-worker`. The installed plugin can load from this checkout, so the main checkout never holds an ungated draft. implement still owns the branch choice, and its review, commit, and PR continue in the main checkout.
 
-Spawn one `vstack-worker` via eval `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`: the drafting brief below, the confirmed hand-off, and any open decision-trail log path, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: report the Update or Hand edit as not done, and point at `/skill:setup-vstack` when `task.isolation.enabled` is off.
+Spawn one `vstack-worker` via eval `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`: the drafting brief below, the confirmed hand-off, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: report the Update or Hand edit as not done, and point at `/skill:setup-vstack` when `task.isolation.enabled` is off.
 
 Read the worker's patch path from omp's completion notice, `Isolation: changes captured at … (apply=false). Not applied.`, as skill://ship does. If structured output hides the notice, read the full completion through the handle's `output()` or `agent://<id>`. Never derive a path from an agent id. Read the patch. Apply it on implement's branch in the main checkout with `git apply -- "<patchPath>"`. A worker that returns without passing `gates` lands nothing. Report its failing stage and evidence path.
 

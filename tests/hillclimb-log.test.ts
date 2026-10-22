@@ -1,12 +1,11 @@
-// The log helper is tested as a process over disposable Scratch fixtures.
 import { afterAll, expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-const dir = mkdtempSync(join(tmpdir(), "vstack-decision-trail-"));
+const dir = mkdtempSync(join(tmpdir(), "vstack-hillclimb-log-"));
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
-const script = join(import.meta.dir, "../plugin/skills/decision-trail/scripts/log.sh");
-const log = join(dir, "scratch/decision-trail/task-12345678.tsv");
+const script = join(import.meta.dir, "../plugin/skills/hillclimb/scripts/log.sh");
+const log = join(dir, "scratch/hillclimb/run/attempts.tsv");
 function run(...args: string[]) {
   return Bun.spawnSync(["bash", script, ...args], { stdout: "pipe", stderr: "pipe" });
 }

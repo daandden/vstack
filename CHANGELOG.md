@@ -4,34 +4,63 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
-## [4.0.9] - 2026-10-22
+## [5.0.5] - 2026-10-22
 
 - Preserve hand-edited CI settings when setup re-runs, confirm the CI and Code host drafts together, and reduce existing MCP Code hosts to server, facts, and Check.
 - Mark GitLab CI's `rerun-ci` unsupported, because GitLab cannot rerun a whole existing pipeline, so babysit reports a GitLab flake for a human. Setup's re-run drafts an old GitLab rerun row as unsupported, and setup defines MCP discovery once for the tracker, Code host, and CI sections.
+- Set up Other issue trackers such as Jira through the named MCP server's project facts and read-only Check pin, while keeping the no-tool prose workflow.
+- Draft Other MCP Code hosts as server, project facts, and a read-only Check pin; resolve Code host operations by live descriptions across PR review, history, and the PR chain while keeping CLI command rows (#204).
+- Set up Other CI services through MCP facts and check/rerun pins, discover End state capabilities live for MCP CI and Code hosts, and select CI log tools from server descriptions (#203).
+- Make babysit read logs and rerun only the exact build linked by a failed required check, including GitHub Actions. Report missing links without build lookup, log reads, or reruns, and constrain reruns to the CI command row or MCP pin (#202).
+- Move PR-chain CI logs and reruns, and wizard secrets and variables, to ci.md. Missing CI config limits implement to commit (#201).
+- Add setup's CI service section and GitHub Actions and GitLab CI templates; require ci.md for complete project setup while retaining the Code host CI rows until the reader cutover (#200).
+
+## [5.0.4] - 2026-10-22
+
+- clean-wt keeps a task sandbox that holds both an `m` and a `merged` checkout as uncertain. Removing either one deleted the whole sandbox after checking only the selected checkout, so a clean `m` could take unique commits in `merged` with it.
+
+## [5.0.3] - 2026-10-22
+
+- Add `/skill:clean-wt`, a Utility skill that removes leftover omp checkouts under the worktree base: linked worktrees, standalone clones, and task-isolation sandboxes. Its script `clean-wt.ts` inspects only the entries that `omp worktree list --json` reports. It keeps every checkout that a live session lease, a live task (pid and start time from omp's owner marker), or a running process's working directory points to. It keeps a checkout as uncertain when evidence is missing: no omp listing, no visible lease for the running session, a held lease with no readable session file, or a sandbox with no owner marker. An ignored or excluded file counts as clean only when the source checkout holds the same bytes or link target. Commits and stashes that only a checkout holds count as unique history, and the script never removes such a checkout. The script removes unused clean checkouts at once and keeps each branch. The skill investigates each unused checkout with work against its sessions and the default branch, and removes one only after the user picks it through `ask`. `remove` rechecks owners and a state fingerprint right before each removal (#210).
+- vstack-worktree points at `/skill:clean-wt` for checkouts that runs left behind.
+
+## [5.0.2] - 2026-10-22
+
+- Remove decision-trail. hillclimb keeps its own attempt log at `<Scratch dir>/hillclimb/<run-id>/attempts.tsv` through `hillclimb/scripts/log.sh`, and only the parent writes it. No run audits a trail or ends with an Attention section.
+- implement's END-STATE drops step 0c. merge-ready and shipped no longer start a log or a trail reviewer.
+- prune-comments never asks. It deletes constraint comments with no encoding and no report, and END-STATE step 3b runs it at every End state, commit included.
+- vstack-worker loses its decision-trail log permission, and the `decision-trail` Scratch kind is gone.
+- grilling-page drops the `decision-trail` Stage tab label, because no skill of that name can add a Stage.
+
+## [4.0.9] - 2026-10-22
+
+- The vstack extension no longer registers `vstack_rename_session`, and wayfinder no longer renames the session after a claim. The load gate now proves the extension loaded through the `/vstack-clean` Command, which the load smoke reports in `extensionCommands`. setup-vstack's `machine.ts` no longer accepts `--extension-loaded`. Check 4 fails only when `disabledExtensions` lists vstack. Otherwise, check 4 prints a note to start a new session with `/new` after linking or pulling.
 
 ## [4.0.8] - 2026-10-22
 
-- Set up Other issue trackers such as Jira through the named MCP server's project facts and read-only Check pin, while keeping the no-tool prose workflow.
+- Grilling pages use Iosevka Term Slab headings, Iosevka Term content with JetBrains Mono fallback, and a 100rem content column. Cards, ledger claims, and Term notes put labels above full-width text. Stage tabs use fixed short labels, repeated labels get numbers, option headings retain their letters, and the tab bar drops its key hint.
+- Overview lists the latest ask of each Q number with picked labels, Other text, or Open instead of summary prose. Press n to reach the first open question across all Stages and stay there until it is answered. Append assigns record ids, Stage order, session and round numbers, timestamps, and Q numbers. Replacements preserve their assigned values, and again keeps an earlier decision's Q number. Wayfinder uses its skill name for charting and ticket Stages.
+- Grilling-page commands serialize each state transaction, so concurrent appends keep unique assigned ids and Q numbers. Rename reserves both paths, and process termination releases the advisory lock. Successful append prints a compact metadata array to stderr with assigned ids and numbers, while stdout remains only the absolute page path. Report Question labels now sit above their navigation links.
 
 ## [4.0.7] - 2026-10-22
 
-- Draft Other MCP Code hosts as server, project facts, and a read-only Check pin; resolve Code host operations by live descriptions across PR review, history, and the PR chain while keeping CLI command rows (#204).
+- The End state chain keeps every pushed commit as it is. The Conflict owner in END-STATE step 7 resolves a conflict, a stale base, or ship's step 2 move by merging the target branch into the reported branch, resolving each conflict once, and pushing a fast-forward. It can update any branch of the run's stack, not only the run's own branch, and records the merged target tip as the new base SHA of the run's branch. For a step 2 move it first retargets the PR to the default branch. Step 0b reads the remote tip before any history edit and before the first push. open-pr rebases only the commits after that tip, and a stack child with pushed commits merges its parent's tip. The Owned branch rule, its absent-ref lease and porcelain check, the force-push lease, and the Owned flag in the chain facts and hand-backs are gone. babysit and ship report a branch that needs an update instead of one that needs a rebase. ADR 0033 records the decision (#176).
 
-## [4.0.6] - 2026-10-22
+## [4.0.6] - 2026-10-21
 
-- Set up Other CI services through MCP facts and check/rerun pins, discover End state capabilities live for MCP CI and Code hosts, and select CI log tools from server descriptions (#203).
+- grilling closes with its summary and no `ask` (ADR 0032). It adds the summary to the Grilling page, prints the page path, marks its Stage finished, and ends the turn. The user's next prompt confirms the summary or pushes back, and a pushback reopens the decisions it names. A caller that acts after the grill, such as triage or wayfinder with a tracker write, acts only after that prompt confirms. A headless close adds the `extra` bullet "Headless, not user-confirmed", and its caller takes no action that needs the user's confirmation and reports the summary and the actions it did not take. grill-with-docs offers no next-step options and ends with one line that names `/skill:to-spec` or `/skill:implement`. grill-me and improve-codebase-architecture mark their Stage finished when grilling closes. The extension no longer registers `vstack_pick_addons`, so every Matt run start is typed again and the `before_agent_start` hook picks its Addons. The Grilling page's `close` record drops `gate`, `answer`, and `note`, and the summary drops its Closing gate row. Older state files with these fields still render, without the row.
 
-## [4.0.5] - 2026-10-22
+## [4.0.5] - 2026-10-21
 
-- Make babysit read logs and rerun only the exact build linked by a failed required check, including GitHub Actions. Report missing links without build lookup, log reads, or reruns, and constrain reruns to the CI command row or MCP pin (#202).
+- ship accepts omp's clean isolation notice without a patch path and rejects tracked edits in root or nested-repository patches. It checks the plain JSON verdict separately from the runtime notice, reports capture errors or missing notices as unavailable, and no longer relies on the verifier's output schema, which hid the notice (#182).
 
-## [4.0.4] - 2026-10-22
+## [4.0.4] - 2026-10-21
 
-- Move PR-chain CI logs and reruns, and wizard secrets and variables, to ci.md. Missing CI config limits implement to commit (#201).
+- implement, implement-spec, hillclimb, and forensics open their todo list with one short item per step instead of a verbatim copy of each step and its paragraphs. An item holds the step's id, its heading, its status, with `skip: <reason>` for an unfinished step, and any blocker. In a list that mixes END-STATE's steps with the caller's own, each id carries its source, `shared` or `local`, so implement-spec's `shared 5` (Review the whole diff) and `local 5` (Merge each result) stay apart. END-STATE.md states this item rule once, implement and implement-spec point to it, and END-STATE.md stays the only full text of the shared steps (#184).
 
-## [4.0.3] - 2026-10-22
+## [4.0.3] - 2026-10-21
 
-- Add setup's CI service section and GitHub Actions and GitLab CI templates; require ci.md for complete project setup while retaining the Code host CI rows until the reader cutover (#200).
+- grill-with-docs's closing ask offers `Shared understanding, then to-spec` (recommended) and `Shared understanding, then implement` before Shared understanding and Not yet. A next-step pick confirms the shared understanding, and the agent then runs that skill in the same session, inside the grill's Matt run. grilling's close lets a calling skill add these next-step options, and its other callers keep the two-option close. A headless close takes plain Shared understanding and runs no next skill. After a next-step pick, grilling calls the new extension tool `vstack_pick_addons` with the closing summary. jev judges only the Addons that the session did not receive yet, at 0.70 and with no smol call. The tool returns the `skill://` pointers and saves them as a `vstack-addons` session entry, so a later prompt or call does not send them again. The tool runs its calls one at a time, so each call sees the picks that the call before it saved (ADR 0031).
 
 ## [4.0.2] - 2026-10-21
 

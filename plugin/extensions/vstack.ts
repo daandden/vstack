@@ -14,30 +14,8 @@ import { homedir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 export default function vstack(pi: ExtensionAPI): void {
-  registerRenameSession(pi);
   registerAddonSelection(pi);
   registerCleanCommand(pi);
-}
-
-/** vstack_rename_session(name): a user-sourced session name, so omp's auto title never replaces it. */
-function registerRenameSession(pi: ExtensionAPI): void {
-  const type = pi.arktype;
-  pi.registerTool({
-    name: "vstack_rename_session",
-    label: "Rename session",
-    description:
-      "Set this session's name, as shown in the session list. omp's automatic title never replaces a name set here.",
-    // Skill text calls this tool by name, so it stays a top-level tool, not an xd:// device.
-    loadMode: "essential",
-    approval: "read",
-    parameters: type({ name: type("string").describe("New session name, e.g. the ticket this session works.") }),
-    async execute(_toolCallId, params) {
-      const name = String(params.name ?? "").trim();
-      if (!name) return { content: [{ type: "text", text: "The session name is empty; nothing changed." }], isError: true };
-      await pi.setSessionName(name);
-      return { content: [{ type: "text", text: `Session renamed to "${name}".` }] };
-    },
-  });
 }
 
 function readAddonCatalog(): AddonCatalog | undefined {
@@ -184,6 +162,17 @@ function picksMessage(picked: string[], precedence = "") {
     content: `Addons selected for this task: ${picked.map(name => `skill://${name}`).join(", ")}. Ignore any that do not fit.${precedence}` } };
 }
 
+function undeliveredQuestions(catalog: AddonCatalog, entries: readonly any[]): Record<string, AddonQuestion> {
+  const seen = new Set<string>();
+  for (const entry of entries) {
+    if (entry.customType !== "vstack-addons" || (entry.type !== "custom_message" && entry.type !== "custom")) continue;
+    const saved = entry.type === "custom" ? entry.data : entry.content;
+    const content = typeof saved === "string" ? saved : JSON.stringify(saved ?? "");
+    for (const match of content.matchAll(/skill:\/\/([a-z0-9-]+)/g)) seen.add(match[1]!);
+  }
+  return Object.fromEntries(Object.entries(catalog.questions).filter(([name]) => !seen.has(name)));
+}
+
 /**
  * Runs a selection under a deadline that aborts it, and calls `onTimeout` when the deadline ends it.
  * The deadline holds even when fetch ignores the abort.
@@ -285,15 +274,7 @@ function registerAddonSelection(pi: ExtensionAPI): void {
     return withDeadline(startsRun ? RESTATED_START_CAP_MS : JEV_DEADLINE_MS, async signal => {
       const jev = await jevAccess(ctx);
       if (!jev || signal.aborted) return;
-      // omp saves a hook message only when it accepts the prompt. The saved messages on every branch
-      // of the session are the record of delivered pointers, so each pointer appears once per session.
-      const seen = new Set<string>();
-      for (const entry of ctx.sessionManager.getEntries()) {
-        if (entry.type !== "custom_message" || entry.customType !== "vstack-addons") continue;
-        const content = typeof entry.content === "string" ? entry.content : JSON.stringify(entry.content);
-        for (const match of content.matchAll(/skill:\/\/([a-z0-9-]+)/g)) seen.add(match[1]!);
-      }
-      const questions = Object.fromEntries(Object.entries(catalog.questions).filter(([name]) => !seen.has(name)));
+      const questions = undeliveredQuestions(catalog, ctx.sessionManager.getEntries());
       if (!Object.keys(questions).length) return;
       if (startsRun) {
         const restated = await restate(ctx, instruction, talk, userWords, signal);

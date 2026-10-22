@@ -64,7 +64,7 @@ Each ticket is a child issue of the map; the tracker's issue id is its identity.
 
 Each ticket carries a `wayfinder:<type>` label, one of `research`, `prototype`, `grilling`, `task` (see [Ticket Types](#ticket-types)).
 
-A session claims a ticket by assigning it to the dev driving the map, first, before any work, so concurrent sessions skip it. After every claim, call `vstack_rename_session` with the ticket title and id before doing work. That assignee _is_ the claim: an open, unassigned ticket is unclaimed.
+A session claims a ticket by assigning it to the dev driving the map, first, before any work, so concurrent sessions skip it. That assignee _is_ the claim: an open, unassigned ticket is unclaimed.
 
 Blocking uses the tracker's native dependency relationship: essential because it renders the frontier _visually_ in the tracker's own UI, so the human sees what's takeable without opening the map. Only a tracker that lacks native blocking falls back to a body convention. A ticket is unblocked when every ticket blocking it is closed; the frontier is the open, unblocked, unclaimed children, the edge of the known.
 
@@ -72,9 +72,9 @@ The answer isn't part of the body; it's recorded on resolution (see [Work throug
 
 ## The Grilling page
 
-A map keeps one Grilling page for all its sessions, and every `ask` of a wayfinder session goes on it. Read skill://grilling-page before the first `ask`. Charting adds one charting Stage and marks it finished when charting stops. Once the map exists, rename the page's flow folder after the map with the page script's `rename` command. The new key is the map's issue number, or its effort name on the local-markdown tracker. If the flow's key is already that key, skip the rename. A later session finds the page in the flow folder whose `flow.json` names the map.
+A map keeps one Grilling page for all its sessions, and every `ask` of a wayfinder session goes on it. Read skill://grilling-page before the first `ask`. Charting adds one Stage with `skill: "wayfinder"` and marks it finished when charting stops. Once the map exists, rename the page's flow folder after the map with the page script's `rename` command. The new key is the map's issue number, or its effort name on the local-markdown tracker. If the flow's key is already that key, skip the rename. A later session finds the page in the flow folder whose `flow.json` names the map.
 
-Each ticket is one Stage. A session adds the ticket's Stage when it claims the ticket. The Stage's `title` is the ticket's name, and the ticket's id joins the `flow` record's `tickets`. The skills that resolve the ticket, such as grilling, prototype, or domain-modeling, ask inside that Stage. When the session closes the ticket, mark its Stage finished. Parallel sessions append to the same page, so read the latest `flow` record just before you append it again.
+Each ticket is one Stage with `skill: "wayfinder"`. A session adds it when it claims the ticket. Put the ticket's name in its Background, and add its id to the flow record's `tickets`. The script assigns the short tab label. The skills that resolve the ticket, such as grilling, prototype, or domain-modeling, ask inside that Stage. When the session closes the ticket, mark its Stage finished. Parallel sessions append to the same page, so read the latest flow record just before appending it again.
 
 ## Ticket Types
 
@@ -126,7 +126,7 @@ User invokes with a loose idea.
 User invokes with a map (URL or number). A ticket is optional: without one, you pick the next decision, not the user.
 
 1. Load the map: the low-res view, not every ticket body.
-2. Choose the ticket. If the user named one, use it. Otherwise take the first frontier ticket in order. Claim it: assign it to the dev driving the map before any work. Rename the session immediately through `vstack_rename_session`, using the ticket title and id. Repeat after every claim, including each research ticket claimed during charting. Add the ticket's Stage to the map's Grilling page.
+2. Choose the ticket. If the user named one, use it. Otherwise take the first frontier ticket in order. Claim it: assign it to the dev driving the map before any work. Add the ticket's Stage to the map's Grilling page.
 3. Resolve it. For a research ticket, use Research runners below instead of invoking research's background agent. For other tickets, zoom as needed: fetch the full body of any related or closed ticket on demand; use the skills the `## Notes` block names, each as a `skill://<name>` reference. If in doubt, use skill://grilling and skill://domain-modeling.
 4. Record the resolution: post the answer as a resolution comment, close the issue, append a context pointer to the map's Decisions-so-far, and mark the ticket's Stage finished.
 5. Add newly-surfaced tickets (create-then-wire); graduate any fog the answer has made specifiable, clearing each graduated patch from Not yet specified so it lives only as its new ticket. If the answer reveals that a ticket (this one or another) sits beyond the destination, rule it out of scope rather than resolving it on the route. If the decision invalidates other parts of the map, update or delete those tickets.

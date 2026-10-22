@@ -703,12 +703,10 @@
       "allowed": [
         "principle-outcome-oriented-execution",
         "principle-prove-it-works",
-        "principle-sequence-verifiable-units",
-        "decision-trail"
+        "principle-sequence-verifiable-units"
       ],
       "baseline_selected": {
-        "principle-never-block-on-the-human": 0.98,
-        "decision-trail": 0.857
+        "principle-never-block-on-the-human": 0.98
       },
       "baseline_borderline": {}
     },
@@ -721,8 +719,7 @@
       ],
       "allowed": [
         "principle-build-the-lever",
-        "principle-sequence-verifiable-units",
-        "decision-trail"
+        "principle-sequence-verifiable-units"
       ],
       "baseline_selected": {
         "principle-build-the-lever": 0.89,
@@ -1048,21 +1045,18 @@
       "allowed": [
         "principle-build-the-lever",
         "principle-prove-it-works",
-        "principle-sequence-verifiable-units",
-        "decision-trail"
+        "principle-sequence-verifiable-units"
       ],
       "baseline_selected": {
         "principle-build-the-lever": 0.833,
         "principle-never-block-on-the-human": 0.957,
         "principle-prove-it-works": 0.773,
-        "principle-sequence-verifiable-units": 0.773,
-        "decision-trail": 0.753
+        "principle-sequence-verifiable-units": 0.773
       },
       "baseline_borderline": {
         "principle-build-the-lever": 0.833,
         "principle-prove-it-works": 0.773,
-        "principle-sequence-verifiable-units": 0.773,
-        "decision-trail": 0.753
+        "principle-sequence-verifiable-units": 0.773
       }
     },
     {
@@ -1399,53 +1393,6 @@
       "baseline_borderline": {
         "principle-sequence-verifiable-units": 0.813
       }
-    },
-    {
-      "id": "decision-trail-1",
-      "split": "tune",
-      "prompt": "Keep a decision log with reasons and evidence while you work unattended tonight.",
-      "expected": [
-        "decision-trail"
-      ],
-      "allowed": [
-        "principle-never-block-on-the-human"
-      ],
-      "baseline_selected": {
-        "principle-never-block-on-the-human": 0.773,
-        "decision-trail": 0.977
-      },
-      "baseline_borderline": {
-        "principle-never-block-on-the-human": 0.773
-      }
-    },
-    {
-      "id": "decision-trail-2",
-      "split": "tune",
-      "prompt": "Audit the decision trail from this unattended run against its transcript.",
-      "expected": [
-        "decision-trail"
-      ],
-      "allowed": [],
-      "baseline_selected": {
-        "decision-trail": 0.977
-      },
-      "baseline_borderline": {}
-    },
-    {
-      "id": "h-decision-trail-3",
-      "split": "holdout1",
-      "prompt": "I am stepping away. make the reversible calls yourself and record each decision and its reason.",
-      "expected": [
-        "decision-trail"
-      ],
-      "allowed": [
-        "principle-never-block-on-the-human"
-      ],
-      "baseline_selected": {
-        "principle-never-block-on-the-human": 0.97,
-        "decision-trail": 0.97
-      },
-      "baseline_borderline": {}
     },
     {
       "id": "blast-radius-1",
@@ -2155,7 +2102,6 @@
       ],
       "allowed": [
         "ship",
-        "decision-trail",
         "principle-never-block-on-the-human"
       ],
       "baseline_selected": {
@@ -2970,12 +2916,10 @@
       "allowed": [
         "principle-outcome-oriented-execution",
         "principle-prove-it-works",
-        "principle-sequence-verifiable-units",
-        "decision-trail"
+        "principle-sequence-verifiable-units"
       ],
       "baseline_selected": {
-        "principle-never-block-on-the-human": 0.98,
-        "decision-trail": 0.903
+        "principle-never-block-on-the-human": 0.98
       },
       "baseline_borderline": {}
     },
@@ -2989,8 +2933,7 @@
       ],
       "allowed": [
         "principle-build-the-lever",
-        "principle-sequence-verifiable-units",
-        "decision-trail"
+        "principle-sequence-verifiable-units"
       ],
       "baseline_selected": {
         "principle-build-the-lever": 0.87,
@@ -3347,22 +3290,19 @@
       "allowed": [
         "principle-build-the-lever",
         "principle-prove-it-works",
-        "principle-sequence-verifiable-units",
-        "decision-trail"
+        "principle-sequence-verifiable-units"
       ],
       "baseline_selected": {
         "principle-build-the-lever": 0.817,
         "principle-never-block-on-the-human": 0.93,
         "principle-prove-it-works": 0.763,
-        "principle-sequence-verifiable-units": 0.82,
-        "decision-trail": 0.797
+        "principle-sequence-verifiable-units": 0.82
       },
       "baseline_borderline": {
         "principle-build-the-lever": 0.817,
         "principle-guard-the-context-window": 0.66,
         "principle-prove-it-works": 0.763,
-        "principle-sequence-verifiable-units": 0.82,
-        "decision-trail": 0.797
+        "principle-sequence-verifiable-units": 0.82
       }
     },
     {
@@ -3732,57 +3672,6 @@
       "baseline_borderline": {
         "principle-sequence-verifiable-units": 0.84
       }
-    },
-    {
-      "id": "fresh-decision-trail-1",
-      "split": "restated",
-      "restated": true,
-      "prompt": "You want a running decision log of tonight’s unattended work, recording each significant decision, the reasons behind it, and the supporting evidence so you can review what was done and why afterward.",
-      "expected": [
-        "decision-trail"
-      ],
-      "allowed": [
-        "principle-never-block-on-the-human"
-      ],
-      "baseline_selected": {
-        "decision-trail": 0.97
-      },
-      "baseline_borderline": {
-        "principle-never-block-on-the-human": 0.693
-      }
-    },
-    {
-      "id": "fresh-decision-trail-2",
-      "split": "restated",
-      "restated": true,
-      "prompt": "You want me to compare the unattended run’s decision trail with its transcript, verify that the recorded decisions are supported by what actually happened, and flag discrepancies, missing steps, or unsupported reasoning. The goal is to assess whether the decision trail accurately and completely accounts for the run.",
-      "expected": [
-        "decision-trail"
-      ],
-      "allowed": [],
-      "baseline_selected": {
-        "decision-trail": 0.967
-      },
-      "baseline_borderline": {
-        "principle-guard-the-context-window": 0.697
-      }
-    },
-    {
-      "id": "fresh-h-decision-trail-3",
-      "split": "restated",
-      "restated": true,
-      "prompt": "You want me to keep the work moving while you’re away, make reversible decisions without waiting for your input, and record each decision with its rationale. Anything irreversible should wait for your approval.",
-      "expected": [
-        "decision-trail"
-      ],
-      "allowed": [
-        "principle-never-block-on-the-human"
-      ],
-      "baseline_selected": {
-        "principle-never-block-on-the-human": 0.97,
-        "decision-trail": 0.98
-      },
-      "baseline_borderline": {}
     },
     {
       "id": "fresh-blast-radius-1",

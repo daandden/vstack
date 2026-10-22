@@ -18,13 +18,13 @@ Communication to and from subagents should be sparse. Communicate primarily thro
 
 ## Shared steps
 
-Read skill://implement/END-STATE.md before work. It owns the shared steps 0a–0c, 3b, and 4–7, also used by implement and hillclimb. Run each shared step once for the whole spec, not once per ticket.
+Read skill://implement/END-STATE.md before work. It owns the shared steps 0a–0b, 3b, and 4–7, also used by implement and hillclimb. Run each shared step once for the whole spec, not once per ticket.
 
-Before task-specific items, open the todo list with the shared steps and the steps below copied verbatim, including their paragraphs, in execution order. Keep each unfinished step as `skip: <reason>`.
+Before task-specific items, open the todo list as END-STATE.md says, with the shared steps and the steps below as `local` steps. Steps 4–7 exist on both sides: `shared 5` is Review the whole diff and `local 5` is Merge each result.
 
 Every subagent uses the Session model unless the user set a model for that agent. Resolve the vstack root and the project Scratch dir once, as END-STATE.md says, and pass both to every subagent. This run keeps its notes and evidence under `<Scratch dir>/implement-spec/<run-id>/`.
 
-Run shared steps 0a–0c once, before step 1. 0a finds the flow's Grilling page from the spec issue and adds an implement-spec Stage. Then append the page's `flow` record again with this run's id in `runs`. Every `ask` of this run is a question in that Stage: the End state, each seam confirmation in steps 1 and 6, each implementer question that step 5 relays, each seam question from the fixer in step 7, and the Verify skill choice. 0a settles one End state for the whole spec. If the issue tracker closes work through PRs and 0a asks, say in the End state question's description that End state commit leaves those tickets open.
+Run shared steps 0a–0b once, before step 1. 0a finds the flow's Grilling page from the spec issue and adds an implement-spec Stage. Then append the page's `flow` record again with this run's id in `runs`. Every `ask` of this run is a question in that Stage: the End state, each seam confirmation in steps 1 and 6, each implementer question that step 5 relays, each seam question from the fixer in step 7, and the Verify skill choice. 0a settles one End state for the whole spec. If the issue tracker closes work through PRs and 0a asks, say in the End state question's description that End state commit leaves those tickets open.
 
 ## Steps
 
@@ -114,4 +114,4 @@ Add no cleanup step. omp parks and reclaims the implementer workspaces. Leave th
 
 ## Reply
 
-Print the flow's page path first. Then report the requested and reached End state, the integration branch, commits (one per ticket, then the review-fix commit), PR URLs and observed status, each ticket's outcome (resolved, open with its reason, or closing through the PR), the spec's outcome (resolved, closing through the PR, or open with the tickets that keep it open), checks and live proof with evidence paths, Safety findings, open prune-comments work, stopped slices with missing red evidence and their held patch paths, failed merges, unanswered questions with their held patch paths, worker patch paths, and every skipped step or blocker. If a decision-trail is open, include its log and Attention result. Do not claim a PR, readiness, merge, or closed ticket that the chain did not observe.
+Print the flow's page path first. Then report the requested and reached End state, the integration branch, commits (one per ticket, then the review-fix commit), PR URLs and observed status, each ticket's outcome (resolved, open with its reason, or closing through the PR), the spec's outcome (resolved, closing through the PR, or open with the tickets that keep it open), checks and live proof with evidence paths, Safety findings, open prune-comments work, stopped slices with missing red evidence and their held patch paths, failed merges, unanswered questions with their held patch paths, worker patch paths, and every skipped step or blocker. Do not claim a PR, readiness, merge, or closed ticket that the chain did not observe.
