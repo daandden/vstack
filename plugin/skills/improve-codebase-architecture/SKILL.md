@@ -1,6 +1,6 @@
 ---
 name: improve-codebase-architecture
-description: Scan a codebase for deepening opportunities, show them as candidate cards on the flow's Grilling page, then grill through whichever one you pick.
+description: Scan a codebase for deepening opportunities, show them as candidate cards on the flow's Grilling page, then draft several interfaces for the one you pick and grill through them.
 disable-model-invocation: true
 ---
 
@@ -63,15 +63,35 @@ ADR conflicts: if a candidate contradicts an existing ADR, only surface it when 
 
 Do NOT propose interfaces yet. The pick question is the next question: which candidate to explore. Write it as the first round of the Stage, as grilling-page's "Add a round" section says, with one option per candidate in card order and the top recommendation as the recommended option. Give it `report_entries` with every card. Collect the figures, then append the report, the round, and the pick question in one `append`, because they link to each other. Print the page path, then `ask` the pick question.
 
-### 3. Grilling loop
+### 3. Design It Twice
 
-Once the user picks a candidate, run the `skill://grilling` skill to walk the decision tree with them: constraints, dependencies, the shape of the deepened module, what sits behind the seam, what tests survive. Its rounds continue in this skill's Stage on the same page. When grilling closes with its summary, mark the Stage finished. If no candidate is picked, the Stage asks no more: close its session and mark it finished, as grilling-page's "Add a Stage" section says.
+Once the user picks a candidate, read `skill://codebase-design` and run its DESIGN-IT-TWICE.md for that candidate before any other question. Show its step 1 problem-space explanation in chat while the designs are drafted.
+
+Show the screened designs on the page, not one after another in chat. Write one `report` record with shape `cards` in this Stage, titled after the candidate. Give each design that survived screening one card, in design order:
+
+- `title`: the design, named by its design constraint in the `skill://codebase-design` and GLOSSARY.md vocabulary.
+- `label`: `recommended` for the design you recommend, otherwise `design`.
+- `blocking`: `false`.
+- `evidence`: the interface: types, methods, params, invariants, ordering, and error modes.
+- `action`: what the implementation hides behind the seam, and the dependency strategy and adapters.
+- `impact`: the trade-offs, where leverage is high and where it is thin.
+- `visual`: the usage example as a `{ "text" }` visual.
+- `question`: the id of the design question.
+
+Put the recommendation in the report's `summary` line: which design or hybrid to keep, and why.
+
+The design question is the grilling loop's first question: which design, or which hybrid, to keep. Write it as that loop's first round, as grilling-page's "Add a round" section says. Its `description` compares the designs by depth, locality, and seam placement, and names each design that screening dropped with its red flag. Give it one option per card in card order, plus one hybrid option when you propose a hybrid, and make the recommendation the recommended option. Give it `report_entries` with every card. Append the report, the round, and the design question in one `append`, because they link to each other.
+
+If Design It Twice stops at its Fan-out stop clause, or screening drops every design, write no design report. Say so, and name each dropped design with its red flag, in chat and in the description of the grilling loop's first question. Then grill the shape of the deepened module without designs.
+
+### 4. Grilling loop
+
+Run the `skill://grilling` skill to walk the decision tree with the user. It starts from the design question, then walks the rest of the tree: constraints, dependencies, what sits behind the seam, what tests survive. Its rounds continue in this skill's Stage on the same page. When grilling closes with its summary, mark the Stage finished. If no candidate is picked, the Stage asks no more: close its session and mark it finished, as grilling-page's "Add a Stage" section says.
 
 Side effects happen inline as decisions crystallize. Run the `skill://domain-modeling` skill to keep the domain model current as you go:
 
 - Naming a deepened module after a concept not in `GLOSSARY.md`? Add the term to `GLOSSARY.md`. Create the file lazily if it doesn't exist.
 - Sharpening a fuzzy term during the conversation? Update `GLOSSARY.md` right there.
 - User rejects the candidate with a load-bearing reason? Use `ask` to offer recording an ADR so future architecture reviews do not re-suggest it. Only offer when the reason would actually be needed by a future explorer to avoid re-suggesting the same thing. Skip ephemeral reasons ("not worth it right now") and self-evident ones.
-- Want to explore alternative interfaces for the deepened module? Run the `skill://codebase-design` skill and use its DESIGN-IT-TWICE Fan-out line.
 
 Every in-session question, the pick and the ADR offer included, is a question on the flow's Grilling page, as grilling-page's "Every ask in a flow" section says. A timed-out choice remains unanswered. For approval gates, re-ask once, then stop without acting if it times out again. A headless run takes the recommended answer and records it, as grilling-page's "Record answers" section says.
