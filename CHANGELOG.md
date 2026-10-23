@@ -4,7 +4,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
-## [5.0.12] - 2026-10-23
+## [5.0.13] - 2026-10-23
 
 - code-review's third review axis is now called Blast radius, so it no longer reads as a security review. Its chat lines say `Blast radius: not triggered`, `Blast radius: skipped by request`, and `Blast radius: triggered, no proof (not in a run)`, and its ledger is titled Blast radius. implement's and implement-spec's closing summaries, open-pr, and blast-radius use the same name. The trigger list does not change. code-review accepts "check blast radius" and "skip blast radius", and still accepts "check safety" and "skip safety". GLOSSARY.md defines Blast radius (#229).
 - When a change spans more than one module, to-spec drafts a capability map in codebase-design's vocabulary before it writes the spec, and shows it on its Stage as a table Report block with the columns Module, Responsibility, Depends on, and Build order. A real fork between two module splits joins the seams `ask`, so to-spec still asks one round. A change inside one module gets no map (#230).
@@ -13,6 +13,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 - to-spec and to-tickets check their draft against what the user decided before they publish. A fresh `vstack-explorer` compares the draft with every `close` decision on the flow's Grilling page and with the source issue (for to-tickets, the spec). The agent fixes each miss or contradiction, shows the coverage table as a table Report block on its Stage, and asks a conflict between decisions on the page. If the checker cannot start, nothing is published (#226).
 - grilling settles a decision itself only when a later edit can undo it with no migration or change to published text, it is not a matter of the user's taste (names, wording, looks), and a cited repo fact, ADR, or convention gives its pick. It asks every other decision. Settled decisions appear before the round's `ask` in an Assumed table Report block with the columns Decision, Pick, and Why. A note or pushback that names one reopens it as a question, and the close lists each Assumed pick that still stands. ADR 0036 records the rule (#225).
 - A Stage that settles every decision as Assumed now closes on the Grilling page: its close has an empty `decisions` list and its Assumed picks as `extra` bullets, and needs no round. Overview links a finished Stage with no questions to its summary and shows its Assumed decision count. The drift check of to-spec and to-tickets also covers each close's Assumed picks, and both skills follow one shared drift-check reference, to-spec's DRIFT-CHECK.md. A card's Evidence label shows a pressed color when clicked (#223).
+
+## [5.0.12] - 2026-10-23
+
+- vstack-fan-out now says what goes in a Fan-out's Shared context and what goes in each Brief, and that an isolated eval spawn carries both in its prompt.
 
 ## [5.0.11] - 2026-10-23
 
