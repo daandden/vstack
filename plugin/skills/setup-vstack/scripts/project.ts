@@ -1,4 +1,5 @@
-//   bun project.ts state                 JSON facts the project section starts from, with the config files still missing
+//   bun project.ts state                 JSON facts the project section starts from: the config files still missing, and
+//                                        whether code-host.md lacks its default End state line
 //   bun project.ts commit --title <t> [--migration-path <repo path>...]
 //                                        Standard mode: commit the setup output and this run's Migration paths, and only
 //                                        them, on the current branch
@@ -12,6 +13,7 @@ const CONFIG_FILES = ["issue-tracker.md", "code-host.md", "triage-labels.md", "d
 const CONFIG = CONFIG_FILES.map((f) => `docs/vstack/${f}`);
 const BLOCK_FILES = ["CLAUDE.md", "AGENTS.md"];
 const BLOCK_HEADING = "## vstack";
+const DEFAULT_END_STATE = /^- Default End state: (commit|merge-ready|shipped)$/;
 
 function fail(message: string): never {
   console.error(message);
@@ -52,6 +54,8 @@ function repoState(cwd: string) {
 
   const configDir = mode === "private" ? join(vstackRoot, "config") : join(root, "docs", "vstack");
   const missingConfig = CONFIG_FILES.filter((f) => !existsSync(join(configDir, f)));
+  const codeHost = join(configDir, "code-host.md");
+  const missingDefaultEndState = existsSync(codeHost) && !hasDefaultEndState(readFileSync(codeHost, "utf8"));
 
   return {
     root,
@@ -59,6 +63,7 @@ function repoState(cwd: string) {
     vstack_root: vstackRoot,
     mode,
     missing_config: missingConfig,
+    missing_default_end_state: missingDefaultEndState,
     block_file: blockFile,
     block_exists: blockExists,
     block_file_dirty: blockFileDirty,
@@ -67,6 +72,10 @@ function repoState(cwd: string) {
 
 function hasBlock(text: string): boolean {
   return text.split("\n").some((line) => line.trimEnd() === BLOCK_HEADING);
+}
+
+function hasDefaultEndState(text: string): boolean {
+  return text.split("\n").some((line) => DEFAULT_END_STATE.test(line.trimEnd()));
 }
 
 function commit(cwd: string, title: string | undefined, migrationPaths: string[]) {

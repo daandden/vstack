@@ -120,6 +120,24 @@ test("a re-run with the other four config files reports only ci.md in either mod
   expect(state(privateRepo).missing_config).toEqual(["ci.md"]);
 });
 
+test("missing_default_end_state is true only when code-host.md lacks a valid default End state line, in either mode", () => {
+  const codeHost = (facts: string) => `# Code host: GitHub\n\n- Host: GitHub (\`github.com\`)\n- Repo: \`o/r\`\n${facts}\n## Operations\n`;
+  const cases: [string, Record<string, string>, boolean][] = [
+    ["no line", { "code-host.md": codeHost("") }, true],
+    ["a valid line", { "code-host.md": codeHost("- Default End state: merge-ready\n") }, false],
+    ["an invalid value", { "code-host.md": codeHost("- Default End state: deploy\n") }, true],
+    ["no code-host.md", { "domain.md": "# Domain\n" }, false],
+  ];
+  for (const [name, files, expected] of cases) {
+    const standard = makeRepo(Object.fromEntries(Object.entries(files).map(([f, c]) => [`docs/vstack/${f}`, c])));
+    expect([name, "standard", state(standard).missing_default_end_state]).toEqual([name, "standard", expected]);
+
+    const privateRepo = makeRepo();
+    write(join(privateRepo, ".git", "vstack"), Object.fromEntries(Object.entries(files).map(([f, c]) => [`config/${f}`, c])));
+    expect([name, "private", state(privateRepo).missing_default_end_state]).toEqual([name, "private", expected]);
+  }
+});
+
 test("Standard setup refuses to commit without ci.md and preserves the index and HEAD", () => {
   const repo = makeRepo({ ...configFiles(), "CLAUDE.md": BLOCK, "src/a.ts": "original\n" });
   const before = git(repo, "rev-parse", "HEAD");

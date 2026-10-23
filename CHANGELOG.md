@@ -4,6 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [5.0.15] - 2026-10-24
+
+- implement, implement-spec, and the shared End state block take the project's default End state from the `- Default End state:` line in `code-host.md` when the user's words and the ticket name none, with no question. The configs still cap it, and the run says which End state it took and where it came from. A project without the line still gets the End state question with commit recommended, and a Headless run with no `ask` still takes commit unless its prompt names an End state (ADR 0038).
+- setup-vstack's Code host section asks the project's default End state, with shipped recommended in Standard mode and commit in Private mode, and writes it as one line in `code-host.md`. `project.ts state` reports `missing_default_end_state`, so a re-run asks only that question and adds the line to the existing `code-host.md` after confirmation (ADR 0038).
+
 ## [5.0.14] - 2026-10-24
 
 - code-review's third review axis is now called Blast radius, so it no longer reads as a security review. Its chat lines say `Blast radius: not triggered`, `Blast radius: skipped by request`, and `Blast radius: triggered, no proof (not in a run)`, and its ledger is titled Blast radius. implement's and implement-spec's closing summaries, open-pr, and blast-radius use the same name. The trigger list does not change. code-review accepts "check blast radius" and "skip blast radius", and still accepts "check safety" and "skip safety". GLOSSARY.md defines Blast radius (#229).
