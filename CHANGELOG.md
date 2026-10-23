@@ -4,6 +4,12 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [5.0.9] - 2026-10-23
+
+- A Grilling page round lists its questions in Q-number order, and grilling-page tells the agent to append and ask each round in that order, so the page and the `ask` agree. A decision asked again no longer shows after newer Q numbers.
+- The row of links under the Stage tabs is now the Jump row (GLOSSARY.md). It links the Background and each Report block before the questions, and j/k stop at them. Their link text is the record's optional `jump` field, or else Background, Report, Report 2.
+- Opening a tab measures the bar again before it scrolls, so a link like `page.html#q-q13b` or an Overview link no longer hides its heading under the bar.
+
 ## [5.0.8] - 2026-10-22
 
 - tdd is Matt's tdd plus the omp edits: the seam question goes through one `ask` on the flow's Grilling page, and the pointers name `skill://codebase-design` and `skill://code-review`. It drops pstack's regression-test trigger, its "Tests follow intended behavior" and "No red, no commit" rules, its "Fixing a bug" section, and `BUG-FIX.md`. `matt/tdd` is adapt and `pstack/tdd` is reject (#209).

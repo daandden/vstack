@@ -165,6 +165,7 @@ function checkReport(r: Rec, where: string): void {
   str(r, "stage", where);
   str(r, "title", where);
   str(r, "summary", where, true);
+  str(r, "jump", where, true);
   if (!SHAPES.includes(r.shape)) fail(where, `shape must be ${listed(SHAPES)}`);
   const [key, other] = r.shape === "table" ? ["rows", "entries"] : ["entries", "rows"];
   if (r[other] !== undefined) fail(where, `a ${r.shape} report has ${key}, not ${other}`);
@@ -297,6 +298,7 @@ function check(lines: Line[], folder: string): State {
       }
       case "background":
         for (const k of ["stage", "title", "summary"]) str(r, k, where);
+        str(r, "jump", where, true);
         entryList(r, "sections", ["heading", "body"], where, true);
         strList(r.sources, "sources", where);
         if (r.visual !== undefined) checkVisuals(r.visual, where);
@@ -523,7 +525,7 @@ ${fields([["Impact", e.impact], ["Evidence", e.evidence], ["Action", e.action]])
     entries = `<ol class="entries">\n${cards.join("\n")}\n</ol>`;
   }
   const summary = r.summary ? `<p class="report-summary">${text(r.summary)}</p>` : "";
-  return `<section class="report" id="${rid}" data-shape="${r.shape}" aria-labelledby="${rid}-title">
+  return `<section class="report" id="${rid}" data-shape="${r.shape}" aria-labelledby="${rid}-title" data-stop>
 <header><h2 id="${rid}-title">${text(r.title)}</h2>${summary}</header>
 ${entries}
 </section>`;
@@ -535,7 +537,7 @@ function backgroundHtml(b: Rec, baseDir: string): string {
   const id = `background-${b.id}`;
   const visual = visualsOf(b.visual).map((v, i) => visualHtml(v, `${id}-visual${i ? `-${i + 1}` : ""}`, "visual", baseDir)).join("\n");
   const sections = (b.sections as Rec[]).map((sec) => `<section><h3>${text(sec.heading)}</h3><div class="description">${description(sec.body)}</div></section>`).join("\n");
-  return `<section class="background" id="${id}" aria-labelledby="${id}-title">
+  return `<section class="background" id="${id}" aria-labelledby="${id}-title" data-stop>
 <header><p class="label">Background</p><h2 id="${id}-title">${text(b.title)}</h2></header>
 <p class="summary-line">${text(b.summary)}</p>
 ${visual}${sections}
@@ -565,14 +567,14 @@ function render(s: State, baseDir: string): string {
     stages.unshift({ type: "stage", id: IMPLICIT_STAGE });
     labelOf.set(IMPLICIT_STAGE, "Grilling");
   }
-  const questionsOf = (roundId: string) => [...s.questions.values()].filter((q) => q.round === roundId);
+  const questionsOf = (roundId: string) => [...s.questions.values()].filter((q) => q.round === roundId).sort((a, b) => a.q - b.q);
   const lastClose = new Map<number, string>();
   for (const r of s.order) if (r.type === "close") lastClose.set(r.session, r.id);
   const qnum = (id: string) => s.questions.get(id)!.q;
   const decisionsOf = (close: Rec) => [...(close.decisions as Rec[])].sort((a, b) => qnum(a.question) - qnum(b.question)).map((dec) => `<li><a href="#q-${dec.question}">Q${qnum(dec.question)}</a>: ${text(dec.text)}</li>`);
 
   const tabs = [`<a role="tab" id="tab-overview" aria-selected="true" aria-controls="overview" href="#overview">Overview</a>`];
-  const qrows: string[] = [];
+  const jumpRows: string[] = [];
   const overview: string[] = [];
   const panels: string[] = [];
   for (const st of stages) {
@@ -581,8 +583,17 @@ function render(s: State, baseDir: string): string {
     const nav: string[] = [];
     const body: string[] = [];
     const bg = s.backgrounds.get(st.id);
-    if (bg) body.push(backgroundHtml(bg, baseDir));
-    for (const r of s.reports.values()) if (r.stage === st.id) body.push(reportHtml(r, s.questions, baseDir));
+    const link = (id: string, label: string) => `<a href="#${id}" data-for="${id}">${esc(label)}</a>`;
+    if (bg) {
+      body.push(backgroundHtml(bg, baseDir));
+      nav.push(link(`background-${bg.id}`, bg.jump ?? "Background"));
+    }
+    let unlabelled = 0;
+    for (const r of s.reports.values()) {
+      if (r.stage !== st.id) continue;
+      body.push(reportHtml(r, s.questions, baseDir));
+      nav.push(link(`report-${r.id}`, r.jump ?? (++unlabelled === 1 ? "Report" : `Report ${unlabelled}`)));
+    }
     const items = s.order.filter((i) => stageOf.get(i) === st.id);
     const sessions = new Set(items.filter((i) => i.type === "round").map((r) => r.session as number));
     const asked = [...sessions].flatMap((n) => [...latestBySession(items, s.questions, n).values()]);
@@ -616,7 +627,7 @@ ${bullets}
       return `<li><a href="#q-${q.id}">Q${q.q}</a> ${text(q.title)} <span class="${shown === undefined ? "open" : "pick"}">${shown === undefined ? "Open" : text(shown)}</span></li>`;
     });
     tabs.push(`<a role="tab" id="tab-${pid}" aria-selected="false" aria-controls="${pid}" href="#${pid}">${dot}${label}</a>`);
-    if (nav.length) qrows.push(`<nav class="qnav" aria-label="Questions in ${label}" data-tab="${pid}" hidden>${nav.join("")}</nav>`);
+    if (nav.length) jumpRows.push(`<nav class="jump-row" aria-label="Jump row of ${label}" data-tab="${pid}" hidden>${nav.join("")}</nav>`);
     overview.push(`<li class="stage" data-state="${state}">
 <h3><a href="#${pid}">${dot}${label}</a><span class="meta"><span class="state">${STATE_LABELS[state]}</span>${st.skill ? `<span>${text(st.skill)}</span>` : ""}</span></h3>
 ${askedItems.length ? `<ul>${askedItems.join("")}</ul>` : `<p class="empty">No questions yet.</p>`}
@@ -626,7 +637,7 @@ ${askedItems.length ? `<ul>${askedItems.join("")}</ul>` : `<p class="empty">No q
   if (s.topics.size) {
     const topics = [...s.topics.values()];
     tabs.push(`<a role="tab" id="tab-topics" aria-selected="false" aria-controls="topics" href="#topics">Topics</a>`);
-    qrows.push(`<nav class="qnav" aria-label="Topic notes" data-tab="topics" hidden>${topics.map((t) => `<a href="#topic-${t.id}" data-for="topic-${t.id}">${text(t.title)}</a>`).join("")}</nav>`);
+    jumpRows.push(`<nav class="jump-row" aria-label="Topic notes" data-tab="topics" hidden>${topics.map((t) => `<a href="#topic-${t.id}" data-for="topic-${t.id}">${text(t.title)}</a>`).join("")}</nav>`);
     const notes = topics.map((t) => `<article class="topic" id="topic-${t.id}" data-stop>
 <h3>${text(t.title)}</h3>
 <p class="summary-line">${text(t.summary)}</p>
@@ -637,7 +648,7 @@ ${sourcesHtml(t.sources)}
   }
   const head = `<header class="page-head">${s.page.crumb ? `<p class="crumb">${text(s.page.crumb)}</p>` : ""}<h1>${text(s.page.title)}</h1></header>`;
   const overviewPanel = `<section class="tab" id="overview" role="tabpanel" aria-labelledby="tab-overview">\n${overview.length ? `<ol class="stages">\n${overview.join("\n")}\n</ol>` : `<p class="empty">No Stage yet.</p>`}\n</section>`;
-  const bar = `<header class="bar">\n<div class="tabs" role="tablist" aria-label="Stages">${tabs.join("")}</div>\n${qrows.join("\n")}\n</header>`;
+  const bar = `<header class="bar">\n<div class="tabs" role="tablist" aria-label="Stages">${tabs.join("")}</div>\n${jumpRows.join("\n")}\n</header>`;
   return readFileSync(TEMPLATE, "utf8").replace("{{title}}", esc(s.page.title)).replace("<!-- NAV -->", bar).replace("<!-- BODY -->", [head, overviewPanel, ...panels].join("\n"));
 }
 

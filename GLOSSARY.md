@@ -168,6 +168,10 @@ _Avoid_: intro, explain block, context section
 An explanation of one concept that the Grilling page shows once, in a shared area, and that questions in any Stage link to. It differs from a Term note, which defines one name in one line on one question.
 _Avoid_: explain block, glossary entry
 
+**Jump row**:
+The row of links under a Grilling page's Stage tabs. It has one link for each part of the open tab, in page order: its Background, each Report block, each question, and the latest summary.
+_Avoid_: Q row, question nav, navigation
+
 **flow.json**:
 The file beside a flow's Grilling page that names the flow's original topic slug, its spec issue, tickets, branch, and run ids. A later Stage, even one in another omp session, finds the flow's page by any of them.
 _Avoid_: flow manifest, flow index
