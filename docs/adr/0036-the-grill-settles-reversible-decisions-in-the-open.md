@@ -12,7 +12,8 @@ grilling settles a frontier decision itself only when all three hold: a later ed
 
 ## Consequences
 
-- The close's `decisions` keep one entry per asked Q number. The Grilling page has no new record kind: the Assumed list is a table Report block, and each standing Assumed pick is an `extra` bullet of the close record.
+- The close's `decisions` keep one entry per asked Q number. The Grilling page has no new record kind: the Assumed list is a table Report block, and each standing Assumed pick is an `extra` bullet of the close record. A Stage that settles every decision asks nothing: its close has an empty `decisions` list, and it needs no round.
+- to-spec's and to-tickets' drift check covers each standing Assumed pick from the close's `extra` bullets, as it covers each asked decision.
 - A reopened decision's row stays in the Assumed block and links to the question that asks it again.
 - ADR 0032 still holds: the user's next prompt confirms the summary, Assumed picks included, or pushes back, and a pushback can name an Assumed pick.
 - A headless grill applies the same test. Its asked decisions take the recommended answer, as before.
