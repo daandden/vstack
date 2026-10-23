@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [5.0.10] - 2026-10-23
+
+- Grilling page Term notes make each term stand out: the term name is teal, bold, and body size, still on its own line above its explanation. Every block label under a question (Today, Term notes, Topic notes, Example, and From the report) is pink, so the labels read apart from blue option headings. Report card and ledger field labels keep their gray. GLOSSARY.md now defines Term note.
+
 ## [5.0.9] - 2026-10-23
 
 - A Grilling page round lists its questions in Q-number order, and grilling-page tells the agent to append and ask each round in that order, so the page and the `ask` agree. A decision asked again no longer shows after newer Q numbers.
