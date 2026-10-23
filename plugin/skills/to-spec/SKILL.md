@@ -16,6 +16,10 @@ The issue tracker and triage label vocabulary should have been provided to you. 
 
 Confirm with one `ask` that these seams match the user's expectations. This `ask` is a question on the flow's Grilling page, as `skill://grilling-page` says. Before it, find the page as grilling-page's "Find or start the page" says. The issue that this run starts from counts as this skill's issue. So if an earlier Stage, such as triage, keyed the page by that issue, continue that page. Then add a to-spec Stage.
 
+When the change spans more than one module, draft a capability map before that `ask`, so that you weigh the module split before the spec fixes it. Use `skill://codebase-design`'s vocabulary. Append the map to the to-spec Stage as a table Report block, as grilling-page says, with the columns Module, Responsibility, Depends on, and Build order, one row per module. Depends on gives the dependency direction: the modules that this module uses. A change inside one module gets no map.
+
+Ask about the map only at a real fork: two module splits that differ in a way the user would care about. Add each fork as a question in the same `ask` as the seams, and link it with its map rows both ways, so that to-spec still asks one round. A map with no fork adds no question.
+
 3. Write the spec using the template below, then publish it to the project issue tracker. Apply the `ready-for-agent` triage label - no need for additional triage.
 
 Write a `skill://<addon>` pointer in the spec for each Addon that the session loaded, from the hidden Addon message or a `skill://` read by a running skill.

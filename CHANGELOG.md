@@ -7,6 +7,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 ## [5.0.10] - 2026-10-23
 
 - code-review's third review axis is now called Blast radius, so it no longer reads as a security review. Its chat lines say `Blast radius: not triggered`, `Blast radius: skipped by request`, and `Blast radius: triggered, no proof (not in a run)`, and its ledger is titled Blast radius. implement's and implement-spec's closing summaries, open-pr, and blast-radius use the same name. The trigger list does not change. code-review accepts "check blast radius" and "skip blast radius", and still accepts "check safety" and "skip safety". GLOSSARY.md defines Blast radius (#229).
+- When a change spans more than one module, to-spec drafts a capability map in codebase-design's vocabulary before it writes the spec, and shows it on its Stage as a table Report block with the columns Module, Responsibility, Depends on, and Build order. A real fork between two module splits joins the seams `ask`, so to-spec still asks one round. A change inside one module gets no map (#230).
 
 ## [5.0.9] - 2026-10-23
 
