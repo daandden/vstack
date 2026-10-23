@@ -28,6 +28,19 @@ If a subagent cannot start, follow the line's stop clause: stop the step, and na
 
 ## What every subagent prompt carries
 
-- The role brief from the skill step.
+omp's `task` tool takes two kinds of text. Its `context` field is the Shared context, which omp renders into every child's system prompt. Each item's `task` field is that child's Brief, sent as its first message.
+
+The Shared context holds what every part needs:
+
+- The goal.
 - The vstack root, as an absolute path. The top-level agent resolves it once: `<git common dir>/vstack` when `<git common dir>/vstack/config/` exists (Private mode), else the main checkout's root, the path on the first `worktree` line of `git worktree list --porcelain`. A subagent uses the path from its prompt and never resolves the git common dir itself.
-- The Scratch dir, when the subagent writes Scratch. The top-level agent runs `bun "$(realpath skill://vstack-tmp/scripts/path.ts)"` once from the repo and passes the dir it prints. A subagent adds its own kind (`<Scratch dir>/<kind>/`) and never runs the script.
+- The Scratch dir, when a subagent writes Scratch. The top-level agent runs `bun "$(realpath skill://vstack-tmp/scripts/path.ts)"` once from the repo and passes the dir it prints. A subagent adds its own kind (`<Scratch dir>/<kind>/`) and never runs the script.
+- The fixed point or the diff command.
+- The decisions already settled, and what is out of scope.
+- Environment facts the parent already hit, such as a shell quirk or a missing script.
+
+When a FORMS.md line names the vstack root and the Scratch dir, putting them once in the Shared context meets the line.
+
+Each Brief holds its part: the role brief from the skill step, the part's target, its inputs, its acceptance, and every value the part would otherwise guess, such as a figure's size preset or an exact status code. The Brief states the part's role, because the jev judge reads only the Brief (ADR 0025). Before the subagents start, read each Brief for a value its child would have to guess, and add that value.
+
+A subagent started from an eval cell, the isolated form in FORMS.md, has no Shared context. Each eval prompt carries its Brief, the vstack root, the Scratch dir, and every shared fact itself.

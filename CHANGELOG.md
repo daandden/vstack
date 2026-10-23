@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [5.0.12] - 2026-10-23
+
+- vstack-fan-out now says what goes in a Fan-out's Shared context and what goes in each Brief, and that an isolated eval spawn carries both in its prompt.
+
 ## [5.0.11] - 2026-10-23
 
 - A Term note name written as inline code or a link is teal too, like a plain term name. A linked term keeps its underline and its hover color.
