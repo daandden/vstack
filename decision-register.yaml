@@ -108,7 +108,7 @@ items:
     tree: 136b9651747cfccbfbb7c50a6b0dfb757e7547d2
     disposition: adapt
     artifacts: [plugin/skills/to-spec]
-    reason: "Names setup-vstack, puts its seam confirmation in a to-spec Stage on the flow's Grilling page, shows a capability map for a change that spans modules, and renames the page after the spec issue (#166, #230)."
+    reason: "Names setup-vstack, puts its seam confirmation in a to-spec Stage on the flow's Grilling page, shows a capability map for a change that spans modules, renames the page after the spec issue, and has a fresh vstack-explorer check the draft against the close decisions and the source issue before it publishes (#166, #230, #226)."
   - id: matt/to-tickets
     upstream: matt
     kind: skill
@@ -116,7 +116,7 @@ items:
     tree: b32c94e5a51c24ee9c41fcb7fe9ea9fff9af6369
     disposition: adapt
     artifacts: [plugin/skills/to-tickets]
-    reason: "Names setup-vstack, finds the flow's Grilling page from the spec issue, and shows the breakdown as a table Report block before one approval question (#166)."
+    reason: "Names setup-vstack, finds the flow's Grilling page from the spec issue, shows the breakdown as a table Report block before one approval question (#166), and has a fresh vstack-explorer check the draft tickets against the close decisions and the spec before the user sees them (#226)."
   - id: matt/triage
     upstream: matt
     kind: skill

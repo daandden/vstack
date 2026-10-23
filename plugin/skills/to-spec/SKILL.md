@@ -20,9 +20,17 @@ When the change spans more than one module, draft a capability map before that `
 
 Ask about the map only at a real fork: two module splits that differ in a way the user would care about. Add each fork as a question in the same `ask` as the seams, and link it with its map rows both ways, so that to-spec still asks one round. A map with no fork adds no question.
 
-3. Write the spec using the template below, then publish it to the project issue tracker. Apply the `ready-for-agent` triage label - no need for additional triage.
+3. Write the spec draft using the template below.
 
 Write a `skill://<addon>` pointer in the spec for each Addon that the session loaded, from the hidden Addon message or a `skill://` read by a running skill.
+
+Before you publish, have a fresh reader check the draft against what the user decided. Collect the `decisions` of every `close` record on the flow's page, and the source issue: the issue that this run starts from, with its comments, or none.
+
+Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the close decisions, the source issue, and the draft; compare the draft with each close decision and each requirement of the source issue, and return a coverage table with one row per decision or requirement that names the draft section covering it or the miss or contradiction, plus each conflict between two decisions as an open question that it never asks the user itself, the vstack root. Wait for its result. If it cannot be spawned, stop: report the spec draft as not published.
+
+Fix every miss and contradiction in the draft. If the checker returns a conflict between two decisions, put it to the user through `ask` as a question on the page, as grilling-page's "Every ask in a flow" says, and fix the draft to the answer. Then append the coverage table as a table Report block on the to-spec Stage. Its columns are Decision, Covered in, and Found, with one row per checker row. Covered in names the draft section that covers the decision after your fixes. Found names the miss or contradiction that you fixed, or "None".
+
+Then publish the spec to the project issue tracker. Apply the `ready-for-agent` triage label - no need for additional triage.
 
 After you publish, key the flow's page by the spec. Append the page's `flow` record again with `spec` set to the spec issue number, or to the feature slug of a local-markdown spec. Then run the page script's `rename` with that value as the new key, and print the page path that it prints. Later Stages find the page from the spec issue. End the to-spec Stage as grilling-page's "Add a Stage" says.
 

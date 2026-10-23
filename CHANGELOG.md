@@ -10,6 +10,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 - When a change spans more than one module, to-spec drafts a capability map in codebase-design's vocabulary before it writes the spec, and shows it on its Stage as a table Report block with the columns Module, Responsibility, Depends on, and Build order. A real fork between two module splits joins the seams `ask`, so to-spec still asks one round. A change inside one module gets no map (#230).
 - to-tickets drops the vertical-slice rule that sized each slice to one fresh context window, and the breakdown's Size column says small, medium, or large with no context-window comparison. The ticket body template is unchanged (#227).
 - A code-review finding's impact opens with what a user or caller sees, then the decision you face, and names no file path. The Grilling page shows each card's Impact and Action first and folds its Evidence, the file and line for whoever fixes it, into a block that one click opens (#228).
+- to-spec and to-tickets check their draft against what the user decided before they publish. A fresh `vstack-explorer` compares the draft with every `close` decision on the flow's Grilling page and with the source issue (for to-tickets, the spec). The agent fixes each miss or contradiction, shows the coverage table as a table Report block on its Stage, and asks a conflict between decisions on the page. If the checker cannot start, nothing is published (#226).
 
 ## [5.0.9] - 2026-10-23
 

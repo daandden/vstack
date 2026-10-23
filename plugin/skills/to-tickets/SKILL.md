@@ -42,6 +42,12 @@ Copy from the spec into each ticket the Addon pointers that its work needs.
 
 **Wide refactors are the exception to vertical slicing.** A **wide refactor** is one mechanical change (rename a column, retype a shared symbol) whose **blast radius** fans across the whole codebase, so a single edit breaks thousands of call sites at once and no vertical slice can land green. Don't force it into a tracer bullet; sequence it as **expand–contract**. First expand: add the new form beside the old so nothing breaks. Then migrate the call sites over in batches sized by blast radius (per package, per directory), each batch its own ticket blocked by the expand, keeping CI green batch to batch because the old form still exists. Finally contract: delete the old form once no caller remains, in a ticket blocked by every migrate batch. When even the batches can't stay green alone, keep the sequence but let them share an integration branch that all block a final integrate-and-verify ticket; green is promised only there.
 
+Before you show the breakdown, have a fresh reader check the draft against what the user decided. Collect the `decisions` of every `close` record on the flow's page, and the spec that this run breaks down, with its comments.
+
+Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the close decisions, the spec, and the draft tickets with their blocking edges; compare the tickets with each close decision and each requirement of the spec, and return a coverage table with one row per decision or requirement that names the ticket covering it or the miss or contradiction, plus each conflict between two decisions as an open question that it never asks the user itself, the vstack root. Wait for its result. If it cannot be spawned, stop: report the tickets as not published.
+
+Fix every miss and contradiction in the draft, by changing a ticket or adding one. If the checker returns a conflict between two decisions, put it to the user through `ask` as a question on the page, as grilling-page's "Every ask in a flow" says, and fix the draft to the answer. Then append the coverage table as a table Report block on the to-tickets Stage. Its columns are Decision, Covered in, and Found, with one row per checker row. Covered in names the ticket that covers the decision after your fixes. Found names the miss or contradiction that you fixed, or "None".
+
 ### 4. Quiz the user
 
 Write the proposed breakdown on the to-tickets Stage as a table Report block, as grilling-page says. Its columns are Ticket, Blocked by, and Size, with one row per ticket:
@@ -56,7 +62,7 @@ After the Report block, ask one approval question on the page through `ask`, wit
 - Are the blocking edges correct: does each ticket only depend on tickets that genuinely gate it?
 - Should any tickets be merged or split further?
 
-Iterate until the user approves the breakdown. For each revision, append the Report block again with the revised rows, and ask the approval again in a new question record with the same Q number.
+Iterate until the user approves the breakdown. For each revision, check the revised draft as step 3 says, append the Report block again with the revised rows, and ask the approval again in a new question record with the same Q number.
 
 ### 5. Publish the tickets to the configured tracker
 
