@@ -519,7 +519,8 @@ ${fields([["Evidence", e.evidence], ["Missing proof", e.missing_proof], ["Conseq
       return `<li class="card" id="${id}"${e.blocking ? " data-blocking" : ""}>
 <h3><span class="entry-id">${e.id}</span>${text(e.title)}</h3>
 <p class="tag">${text(e.label)} (${e.blocking ? "blocking" : "non-blocking"})</p>
-${fields([["Impact", e.impact], ["Evidence", e.evidence], ["Action", e.action]])}${visual ? `\n${visual}` : ""}${askLine(e)}
+${fields([["Impact", e.impact], ["Action", e.action]])}
+<details class="evidence"><summary>Evidence</summary><p>${text(e.evidence)}</p></details>${visual ? `\n${visual}` : ""}${askLine(e)}
 </li>`;
     });
     entries = `<ol class="entries">\n${cards.join("\n")}\n</ol>`;

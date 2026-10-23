@@ -699,7 +699,7 @@ const entry = (html: string, id: string) => {
   return html.slice(start, Math.min(...ends));
 };
 
-test("a cards Report block renders each card's id, title, label, blocking flag, impact, evidence, action, and visual", () => {
+test("a cards Report block renders each card's id, title, label, blocking flag, impact, action, evidence, and visual", () => {
   const cards = [card("s1", { blocking: true, visual: { text: "before -> after" } }), card("s2", { label: "suggestion" })];
   const r = append(PAGE, stage("review", { skill: "code-review" }), report("standards", "cards", { summary: "Two findings on `grilling-page.ts`.", entries: cards }));
   expect(r.code).toBe(0);
@@ -712,6 +712,23 @@ test("a cards Report block renders each card's id, title, label, blocking flag, 
   const s2 = entry(tab, "report-standards_s2");
   for (const t of ["Finding s2", "suggestion (non-blocking)", "Impact s2", "Evidence s2", "Action s2"]) expect(s2).toContain(t);
   expect(tab).not.toContain("No rounds yet.");
+});
+
+test("a card reads Impact, then Action, then its Evidence folded in a closed details block labelled Evidence", () => {
+  expect(append(PAGE, stage("review", { skill: "code-review" }), report("standards", "cards", { entries: [card("s1")] })).code).toBe(0);
+  const s1 = entry(panel(readFileSync(page, "utf8"), "stage-review"), "report-standards_s1");
+  const fold = s1.match(/<details([^>]*)>([\s\S]*?)<\/details>/);
+  expect(fold).not.toBeNull();
+  const [whole, attrs, inside] = fold!;
+  expect(attrs).not.toMatch(/\bopen\b/);
+  expect(inside).toMatch(/^\s*<summary[^>]*>Evidence<\/summary>/);
+  expect(inside).toContain("Evidence s1");
+  expect(inside).not.toContain("Impact s1");
+  expect(inside).not.toContain("Action s1");
+  const at = (t: string) => s1.indexOf(t);
+  expect(at("Impact s1")).toBeGreaterThan(0);
+  expect(at("Impact s1")).toBeLessThan(at("Action s1"));
+  expect(at("Action s1")).toBeLessThan(at(whole));
 });
 
 test("a ledger Report block renders each claim with its status, evidence, missing proof, and consequence", () => {
