@@ -89,7 +89,6 @@ worktree:
   expect(r.code).toBe(1);
   const out = lines(r.stdout);
   expect(out.map((l) => l.split(" ").slice(0, 2).join(" "))).toEqual([
-    "FAIL 1",
     "FAIL 2",
     "NOTE 3",
     "FAIL 4",
@@ -99,7 +98,6 @@ worktree:
   ]);
   for (const l of out) if (!l.startsWith("NOTE ")) expect(l).toContain("Remedy: ");
   const byId = (id: string) => out.find((l) => l.split(" ")[1] === id)!;
-  expect(byId("1")).toContain("/login typesafe");
   expect(byId("3")).toContain("vstack-explorer");
   expect(byId("3")).not.toContain("reviewer");
   // Listed in disabledExtensions: a new session alone does not fix it, so the remedy removes the entry first.
@@ -149,6 +147,49 @@ worktree:
   expect(out).toHaveLength(2);
   expect(out[0]).toStartWith("OK ");
   expect(out[1]).toStartWith("NOTE 4 ");
+});
+
+test.skipIf(!HAS_OMP)("another judge provider passes with a NOTE that vstack calibrates against jev, without TypeSafe credentials", () => {
+  const other = run(makeHome(CONFIGURED.replace("typesafe/jev-latest", "openrouter/typesafe-ai/jev-1.13")), []);
+  expect(lines(other.stdout).map((l) => l.slice(0, 6))).toEqual(["OK vst", "NOTE 2", "NOTE 4"]);
+  expect(other.stdout).not.toContain("FAIL 1");
+  expect(other.code).toBe(0);
+
+  const r = run(makeHome(CONFIGURED.replace("typesafe/jev-latest", "openrouter/decisions-model")), []);
+  expect(r.code).toBe(0);
+  const out = lines(r.stdout);
+  expect(out.map((l) => l.slice(0, 6))).toEqual(["OK vst", "NOTE 2", "NOTE 4"]);
+  expect(out[0]).toContain("1 TypeSafe credentials");
+  expect(out[1]).toContain("openrouter/decisions-model");
+  expect(out[1]).toContain("jev");
+  expect(out[1]).not.toContain("Remedy");
+});
+
+test.skipIf(!HAS_OMP).each([
+  [" openrouter/typesafe-ai/jev-1.13 , typesafe/jev-1.13.0 ", 0],
+  [" typesafe/jev-1.13.0 , openrouter/decisions-model ", 1],
+])("the first candidate's provider controls the credential check for %s", (judge, code) => {
+  const r = run(makeHome(CONFIGURED.replace("typesafe/jev-latest", JSON.stringify(judge))), []);
+  expect(r.code).toBe(code);
+  const out = lines(r.stdout);
+  expect(out.map((l) => l.slice(0, 6))).toEqual([code === 0 ? "OK vst" : "FAIL 1", "NOTE 2", "NOTE 4"]);
+});
+
+test.skipIf(!HAS_OMP)("a pinned TypeSafe judge without credentials fails check 1", () => {
+  const r = run(makeHome(CONFIGURED.replace("typesafe/jev-latest", "typesafe/jev-1.13.0")), []);
+  expect(r.code).toBe(1);
+  const out = lines(r.stdout);
+  expect(out.map((l) => l.slice(0, 6))).toEqual(["FAIL 1", "NOTE 2", "NOTE 4"]);
+  expect(out[0]).toContain("/login typesafe");
+});
+
+test.skipIf(!HAS_OMP)("an unset judge role fails only check 2, and its remedy offers typesafe/jev-latest through --set judge", () => {
+  const r = run(makeHome("task:\n  isolation:\n    enabled: true\n"), []);
+  expect(r.code).toBe(1);
+  const out = lines(r.stdout);
+  expect(out.map((l) => l.slice(0, 6))).toEqual(["FAIL 2", "NOTE 4"]);
+  expect(out[0]).toContain("not set");
+  expect(out[0]).toContain("typesafe/jev-latest");
 });
 
 test.skipIf(!HAS_OMP)("checking never changes the omp config", () => {

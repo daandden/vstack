@@ -4,10 +4,28 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [5.0.15] - 2026-10-24
+
+- implement, implement-spec, and the shared End state block take the project's default End state from the `- Default End state:` line in `code-host.md` when the user's words and the ticket name none, with no question. The configs still cap it, and the run says which End state it took and where it came from. A project without the line still gets the End state question with commit recommended, and a Headless run with no `ask` still takes commit unless its prompt names an End state (ADR 0038).
+- setup-vstack's Code host section asks the project's default End state, with shipped recommended in Standard mode and commit in Private mode, and writes it as one line in `code-host.md`. `project.ts state` reports `missing_default_end_state`, so a re-run asks only that question and adds the line to the existing `code-host.md` after confirmation (ADR 0038).
+
+## [5.0.14] - 2026-10-24
+
+- code-review's third review axis is now called Blast radius, so it no longer reads as a security review. Its chat lines say `Blast radius: not triggered`, `Blast radius: skipped by request`, and `Blast radius: triggered, no proof (not in a run)`, and its ledger is titled Blast radius. implement's and implement-spec's closing summaries, open-pr, and blast-radius use the same name. The trigger list does not change. code-review accepts "check blast radius" and "skip blast radius", and still accepts "check safety" and "skip safety". GLOSSARY.md defines Blast radius (#229).
+- When a change spans more than one module, to-spec drafts a capability map in codebase-design's vocabulary before it writes the spec, and shows it on its Stage as a table Report block with the columns Module, Responsibility, Depends on, and Build order. A real fork between two module splits joins the seams `ask`, so to-spec still asks one round. A change inside one module gets no map (#230).
+- to-tickets drops the vertical-slice rule that sized each slice to one fresh context window, and the breakdown's Size column says small, medium, or large with no context-window comparison. The ticket body template is unchanged (#227).
+- A code-review finding's impact opens with what a user or caller sees, then the decision you face, and names no file path. The Grilling page shows each card's Impact and Action first and folds its Evidence, the file and line for whoever fixes it, into a block that one click opens (#228).
+- to-spec and to-tickets check their draft against what the user decided before they publish. A fresh `vstack-explorer` compares the draft with every `close` decision on the flow's Grilling page and with the source issue (for to-tickets, the spec). The agent fixes each miss or contradiction, shows the coverage table as a table Report block on its Stage, and asks a conflict between decisions on the page. If the checker cannot start, nothing is published (#226).
+- grilling settles a decision itself only when a later edit can undo it with no migration or change to published text, it is not a matter of the user's taste (names, wording, looks), and a cited repo fact, ADR, or convention gives its pick. It asks every other decision. Settled decisions appear before the round's `ask` in an Assumed table Report block with the columns Decision, Pick, and Why. A note or pushback that names one reopens it as a question, and the close lists each Assumed pick that still stands. ADR 0037 records the rule (#225).
+- A Stage that settles every decision as Assumed now closes on the Grilling page: its close has an empty `decisions` list and its Assumed picks as `extra` bullets, and needs no round. Overview links a finished Stage with no questions to its summary and shows its Assumed decision count. The drift check of to-spec and to-tickets also covers each close's Assumed picks, and both skills follow one shared drift-check reference, to-spec's DRIFT-CHECK.md. A card's Evidence label shows a pressed color when clicked (#223).
+
+## [5.0.13] - 2026-10-23
+
+- The extension picks Addons through omp's `judge` role with `resolveJudge`, not its own TypeSafe `/v1/systemone` call, and only when the role's first candidate is native. Each pick goes into the session's cost ledger as `vstack-addons` and through omp's shared judgment cache, and vstack's own retry is gone. setup-vstack fails the judge role check only when no role is set, prints a note for another role, and checks TypeSafe credentials only when the role's provider is `typesafe`. `sample-briefs.json` is re-recorded on jev-1.14.0 with no flags. `sample-prompts.json` keeps its jev-1.13.0 baselines, because jev-1.14.0 gives 5 flags there (#235) (ADR 0036).
+
 ## [5.0.12] - 2026-10-23
 
-- implement, implement-spec, and the shared End state block take the project's default End state from the `- Default End state:` line in `code-host.md` when the user's words and the ticket name none, with no question. The configs still cap it, and the run says which End state it took and where it came from. A project without the line still gets the End state question with commit recommended, and a Headless run with no `ask` still takes commit unless its prompt names an End state (ADR 0036).
-- setup-vstack's Code host section asks the project's default End state, with shipped recommended in Standard mode and commit in Private mode, and writes it as one line in `code-host.md`. `project.ts state` reports `missing_default_end_state`, so a re-run asks only that question and adds the line to the existing `code-host.md` after confirmation (ADR 0036).
+- vstack-fan-out now says what goes in a Fan-out's Shared context and what goes in each Brief, and that an isolated eval spawn carries both in its prompt.
 
 ## [5.0.11] - 2026-10-23
 

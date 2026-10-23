@@ -607,6 +607,36 @@ test("the Overview lists each Stage's state and every question with your answer 
   expect(html).toMatch(/<a role="tab"[^>]*href="#stage-grill"><span class="dot" data-state="finished"><\/span>Grill<\/a>/);
 });
 
+test.each([
+  ["without a round", false, ["Assumed: Keep local files.", "A note about Assumed: picks."], "1 decision"],
+  ["with an empty round", true, ["Assumed: Keep local files.", "assumed: Not a standing pick.", "Assumed: Keep the existing format."], "2 decisions"],
+])("the Overview links a finished Stage's Assumed count to its summary %s", (_, withRound, extra, count) => {
+  expect(append(
+    PAGE,
+    stage("grill", { state: "finished" }),
+    ...(withRound ? [{ ...ROUND, stage: "grill" }] : []),
+    { type: "close", id: "assumed-close", stage: "grill", decisions: [], extra },
+  ).code).toBe(0);
+  const html = readFileSync(page, "utf8");
+  const item = overviewItem(html, "grill");
+  expect(item).toContain(`<a href="#close-assumed-close">No questions; ${count} assumed</a>`);
+  expect(item).not.toContain("No questions yet.");
+  expect(item).not.toContain("Keep local files.");
+  expect(panel(html, "stage-grill")).toContain('id="close-assumed-close"');
+  expect(panel(html, "stage-grill")).toContain("Assumed: Keep local files.");
+});
+
+test.each([
+  ["not-started", ["Assumed: Keep local files."]],
+  ["in-progress", ["Assumed: Keep local files."]],
+  ["finished", ["A note about Assumed: picks."]],
+])("the Overview keeps its empty text for a %s Stage without finished Assumed picks", (status, extra) => {
+  expect(append(PAGE, stage("grill", { state: status }), { type: "close", id: "c1", stage: "grill", decisions: [], extra }).code).toBe(0);
+  const item = overviewItem(readFileSync(page, "utf8"), "grill");
+  expect(item).toContain("No questions yet.");
+  expect(item).not.toContain("assumed</a>");
+});
+
 test("a later stage record with the same id replaces the earlier one", () => {
   expect(append(PAGE, stage("grill"), { ...ROUND, stage: "grill" }, question("s1-r1-q1", 1)).code).toBe(0);
   expect(overviewItem(readFileSync(page, "utf8"), "grill")).toContain('data-state="in-progress"');
@@ -699,7 +729,7 @@ const entry = (html: string, id: string) => {
   return html.slice(start, Math.min(...ends));
 };
 
-test("a cards Report block renders each card's id, title, label, blocking flag, impact, evidence, action, and visual", () => {
+test("a cards Report block renders each card's id, title, label, blocking flag, impact, action, evidence, and visual", () => {
   const cards = [card("s1", { blocking: true, visual: { text: "before -> after" } }), card("s2", { label: "suggestion" })];
   const r = append(PAGE, stage("review", { skill: "code-review" }), report("standards", "cards", { summary: "Two findings on `grilling-page.ts`.", entries: cards }));
   expect(r.code).toBe(0);
@@ -712,6 +742,23 @@ test("a cards Report block renders each card's id, title, label, blocking flag, 
   const s2 = entry(tab, "report-standards_s2");
   for (const t of ["Finding s2", "suggestion (non-blocking)", "Impact s2", "Evidence s2", "Action s2"]) expect(s2).toContain(t);
   expect(tab).not.toContain("No rounds yet.");
+});
+
+test("a card reads Impact, then Action, then its Evidence folded in a closed details block labelled Evidence", () => {
+  expect(append(PAGE, stage("review", { skill: "code-review" }), report("standards", "cards", { entries: [card("s1")] })).code).toBe(0);
+  const s1 = entry(panel(readFileSync(page, "utf8"), "stage-review"), "report-standards_s1");
+  const fold = s1.match(/<details([^>]*)>([\s\S]*?)<\/details>/);
+  expect(fold).not.toBeNull();
+  const [whole, attrs, inside] = fold!;
+  expect(attrs).not.toMatch(/\bopen\b/);
+  expect(inside).toMatch(/^\s*<summary[^>]*>Evidence<\/summary>/);
+  expect(inside).toContain("Evidence s1");
+  expect(inside).not.toContain("Impact s1");
+  expect(inside).not.toContain("Action s1");
+  const at = (t: string) => s1.indexOf(t);
+  expect(at("Impact s1")).toBeGreaterThan(0);
+  expect(at("Impact s1")).toBeLessThan(at("Action s1"));
+  expect(at("Action s1")).toBeLessThan(at(whole));
 });
 
 test("a ledger Report block renders each claim with its status, evidence, missing proof, and consequence", () => {
@@ -987,7 +1034,7 @@ test("append numbers Stages, rounds, questions, and closes, and a question asked
   expect(r.grill.state).toBe("finished");
 });
 
-test("append refuses a question asked again from another session, and a close for a Stage with no rounds", () => {
+test("append refuses a question asked again from another session, and a close for a Stage that names another Stage's question", () => {
   expect(append(PAGE, { type: "stage", id: "grill", skill: "grill-with-docs", state: "in-progress" }, { type: "stage", id: "spec", skill: "to-spec", state: "in-progress" }, { ...ROUND, stage: "grill" }, question("s1-r1-q1", 1)).code).toBe(0);
   const before = readFileSync(state, "utf8");
   const again = append({ type: "round", id: "s2-r1", stage: "spec" }, { ...question("s2-r1-q1", 1), round: "s2-r1", again: "s1-r1-q1" });
@@ -995,7 +1042,41 @@ test("append refuses a question asked again from another session, and a close fo
   expect(again.stderr).toContain("question s2-r1-q1: again names s1-r1-q1, which is not in the same session");
   const close = append({ type: "close", id: "c1", stage: "spec", decisions: [{ question: "s1-r1-q1", text: "One." }] });
   expect(close.code).toBe(1);
-  expect(close.stderr).toContain("close c1: stage spec has no rounds");
+  expect(close.stderr).toContain("close c1: s1-r1-q1 is not the latest ask of Q1 in session 2");
+  expect(readFileSync(state, "utf8")).toBe(before);
+});
+
+const ASSUMED = { type: "report", id: "assumed", stage: "grill", title: "Assumed", shape: "table", columns: ["Decision", "Pick", "Why"], rows: [{ id: "test-command", cells: ["Test command", "Use the repo's", "package.json:10"] }] };
+const ALL_ASSUMED = { type: "close", id: "c1", stage: "grill", decisions: [], extra: ["Assumed: Tests run with bun test (package.json:10)"] };
+
+test.each([
+  ["no round", []],
+  ["a round with no questions", [{ type: "round", id: "r1", stage: "grill" }]],
+])("a Stage that settled every decision as Assumed closes with %s and no decisions, and its summary lists the Assumed picks", (_, round) => {
+  expect(append(PAGE, stage("grill"), ASSUMED, ...round).code).toBe(0);
+  const r = append(ALL_ASSUMED, { type: "stage", id: "grill", skill: "grill-with-docs", state: "finished" });
+  expect(r.stderr).not.toContain("Nothing was written");
+  expect(r.code).toBe(0);
+  expect(stored().c1.session).toBe(1);
+  const html = readFileSync(page, "utf8");
+  expect(summary(panel(html, "stage-grill"))).toContain("<li>Assumed: Tests run with bun test (package.json:10)</li>");
+  expect(jumpRow(html, "stage-grill").map(([target]) => target)).toEqual(["report-assumed", "close-c1"]);
+  expect(append(stage("spec", { skill: "to-spec" }), { type: "round", id: "s2", stage: "spec" }).code).toBe(0);
+  expect(stored().s2.session).toBe(2);
+});
+
+test.each([
+  ["no decisions while a question is open", [{ ...ROUND, stage: "grill" }, question("s1-r1-q1", 1)], ALL_ASSUMED, "close c1: Q1 has no decision"],
+  ["no decisions and no extra bullets", [], { ...ALL_ASSUMED, extra: undefined }, "close c1: a close lists one or more decisions or extra bullets"],
+  ["decisions that are not a list", [], { ...ALL_ASSUMED, decisions: undefined }, "decisions must be a list of { question, text }, empty when the Stage asked nothing"],
+  ["no Stage and no rounds", [], { ...ALL_ASSUMED, stage: undefined }, "close c1: the page has no rounds"],
+  ["a Stage that does not exist", [], { ...ALL_ASSUMED, stage: "spec" }, "close c1: stage spec does not exist"],
+])("append refuses a close with %s and writes nothing", (_, setup, close, problem) => {
+  expect(append(PAGE, stage("grill"), ...setup).code).toBe(0);
+  const before = readFileSync(state, "utf8");
+  const r = append(close);
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain(problem);
   expect(readFileSync(state, "utf8")).toBe(before);
 });
 

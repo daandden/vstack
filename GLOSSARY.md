@@ -53,8 +53,12 @@ The part of the active conversation branch that follows the prompt where the use
 _Avoid_: skill run, Matt session
 
 **Addon**:
-A hidden vstack skill that the jev judge selects during a Matt run, or that a skill reads through a `skill://` pointer. It holds the knowledge that one or more Matt skills need for one kind of work, such as a vstack Update. It can carry text from any Upstream, the Base upstream included, and stays an Addon. Matt skills do the work, and an Addon has no flow of its own. The user never starts one by name.
+A hidden vstack skill that the Addon judge selects during a Matt run, or that a skill reads through a `skill://` pointer. It holds the knowledge that one or more Matt skills need for one kind of work, such as a vstack Update. It can carry text from any Upstream, the Base upstream included, and stays an Addon. Matt skills do the work, and an Addon has no flow of its own. The user never starts one by name.
 _Avoid_: extension, plugin
+
+**Addon judge**:
+The native judge model that omp's judge role names, which selects Addons during a Matt run. Any native judge can be it, but vstack calibrates its selection against jev.
+_Avoid_: jev judge, principle judge
 
 **Utility skill**:
 A vstack skill that is not a Matt skill and that the user can use whatever the work is. unslop, technical-writing, diagram-design, good-css, and skill-creator set how text, figures, styles, and skills are made. explain, how, why, and forensics answer questions about existing work. in-your-own-words and ketchup check that the user and the agent agree. The first restates the user's goal, and the second catches the user up. clean-wt removes omp checkouts that nothing uses anymore. The hidden helpers are vstack-tmp, vstack-fan-out, vstack-figures, grilling-page, and vstack-worktree. Other skills name these helpers by `skill://`. Utility skills can start from their descriptions, from a rule, or by name, subject to each skill's invocation settings.
@@ -108,6 +112,14 @@ _Avoid_: parent's model, run's model
 One skill step running two or more subagents at the same time. A step with two or more parts always fans out: no judgment of the job's size decides it, the agent at that step never does the parts itself, and the user's words, such as "sequential" or "no fan-out", do not turn it off. If the subagents cannot start, the step stops and says why. A step that draws figures gives each figure its own subagent. Every subagent uses the Session model of the step's session unless the user has set a model for its agent.
 _Avoid_: swarm, parallelism (unqualified)
 
+**Brief**:
+The instruction that a parent writes for one subagent, sent as that subagent's first message. It names the subagent's part, its inputs, and how the part is accepted. The Addon judge reads only the brief.
+_Avoid_: prompt (for this), assignment
+
+**Shared context**:
+The one block of background that a parent gives to every subagent it starts in one call, a single subagent included, placed in each subagent's system prompt. It holds only what every part needs. A subagent started from an eval cell gets none.
+_Avoid_: brief (for this), shared brief
+
 **Headless run**:
 A run of a skill under test, or of its blind judge, in its own omp process that sees only what the test gives it. It is not a subagent, so it is never Fan-out, but it uses the Session model.
 _Avoid_: eval subagent, runner (unqualified)
@@ -159,6 +171,10 @@ _Avoid_: step, phase, section
 **Report block**:
 A report that a Stage shows on the Grilling page before the questions it leads to, such as code-review's findings or to-tickets' proposed breakdown. It has one of three shapes. Cards show one finding or candidate each, with its impact, evidence, and suggested action. A ledger lists claims, each confirmed, cleared, or unproven, with its evidence and the proof that is missing. A table lists rows under named columns, such as tickets or run results.
 _Avoid_: result block, stage result, report section
+
+**Blast radius**:
+The review axis that lists what code outside a diff depends on and may break. code-review runs it through the blast-radius skill, and a PR body reports it under its Blast Radius heading. It is not a security review.
+_Avoid_: Safety (for this axis), safety review
 
 **Background**:
 An explanation at the top of a Stage tab that gives the context that all of the Stage's questions share. A question's own rationale stays in its description.

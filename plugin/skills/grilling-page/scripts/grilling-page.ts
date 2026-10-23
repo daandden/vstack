@@ -286,13 +286,14 @@ function check(lines: Line[], folder: string): State {
       case "close": {
         int(r, "session", where);
         str(r, "stage", where, true);
-        if (!Array.isArray(r.decisions) || r.decisions.length === 0) fail(where, "decisions must list one { question, text } per decision");
+        if (!Array.isArray(r.decisions)) fail(where, "decisions must be a list of { question, text }, empty when the Stage asked nothing");
         for (const dec of r.decisions) {
           if (typeof dec !== "object" || dec === null) fail(where, "each decision must be an object");
           str(dec, "question", `${where}: decision`);
           str(dec, "text", `${where}: decision ${dec.question}`);
         }
         if (r.extra !== undefined) strList(r.extra, "extra", where);
+        if (r.decisions.length === 0 && r.extra === undefined) fail(where, "a close lists one or more decisions or extra bullets");
         order.push(r);
         break;
       }
@@ -356,8 +357,9 @@ function check(lines: Line[], folder: string): State {
   }
   for (const c of order) {
     if (c.type !== "close") continue;
+    if (c.stage !== undefined && !stages.has(c.stage)) fail(`close ${c.id}`, `stage ${c.stage} does not exist`);
+    if (c.stage === undefined && ![...rounds.values()].some((r) => r.session === c.session)) fail(`close ${c.id}`, `session ${c.session} has no rounds, so the close needs its stage`);
     const latest = latestBySession(order.slice(0, order.indexOf(c)), questions, c.session);
-    if (latest.size === 0) fail(`close ${c.id}`, `session ${c.session} has no questions`);
     const named = new Map<number, string>();
     for (const dec of c.decisions as Rec[]) {
       const q = questions.get(dec.question);
@@ -519,7 +521,8 @@ ${fields([["Evidence", e.evidence], ["Missing proof", e.missing_proof], ["Conseq
       return `<li class="card" id="${id}"${e.blocking ? " data-blocking" : ""}>
 <h3><span class="entry-id">${e.id}</span>${text(e.title)}</h3>
 <p class="tag">${text(e.label)} (${e.blocking ? "blocking" : "non-blocking"})</p>
-${fields([["Impact", e.impact], ["Evidence", e.evidence], ["Action", e.action]])}${visual ? `\n${visual}` : ""}${askLine(e)}
+${fields([["Impact", e.impact], ["Action", e.action]])}
+<details class="evidence"><summary>Evidence</summary><p>${text(e.evidence)}</p></details>${visual ? `\n${visual}` : ""}${askLine(e)}
 </li>`;
     });
     entries = `<ol class="entries">\n${cards.join("\n")}\n</ol>`;
@@ -552,7 +555,7 @@ function render(s: State, baseDir: string): string {
   const sessionStage = new Map<number, string>();
   for (const item of s.order) {
     if (item.type === "round") sessionStage.set(item.session, item.stage ?? IMPLICIT_STAGE);
-    stageOf.set(item, sessionStage.get(item.session)!);
+    stageOf.set(item, sessionStage.get(item.session) ?? item.stage);
   }
   const stages = [...s.stages].sort((a, b) => a.order - b.order);
   const seen = new Map<string, number>();
@@ -626,11 +629,17 @@ ${bullets}
       const shown = answerLabel(q, s.answers.get(q.id));
       return `<li><a href="#q-${q.id}">Q${q.q}</a> ${text(q.title)} <span class="${shown === undefined ? "open" : "pick"}">${shown === undefined ? "Open" : text(shown)}</span></li>`;
     });
+    let empty = `<p class="empty">No questions yet.</p>`;
+    if (!askedItems.length && state === "finished") {
+      const close = items.findLast((item) => item.type === "close");
+      const assumed = (close?.extra as string[] | undefined)?.filter((bullet) => bullet.startsWith("Assumed:")).length ?? 0;
+      if (assumed) empty = `<p class="empty"><a href="#close-${close!.id}">No questions; ${assumed} ${assumed === 1 ? "decision" : "decisions"} assumed</a></p>`;
+    }
     tabs.push(`<a role="tab" id="tab-${pid}" aria-selected="false" aria-controls="${pid}" href="#${pid}">${dot}${label}</a>`);
     if (nav.length) jumpRows.push(`<nav class="jump-row" aria-label="Jump row of ${label}" data-tab="${pid}" hidden>${nav.join("")}</nav>`);
     overview.push(`<li class="stage" data-state="${state}">
 <h3><a href="#${pid}">${dot}${label}</a><span class="meta"><span class="state">${STATE_LABELS[state]}</span>${st.skill ? `<span>${text(st.skill)}</span>` : ""}</span></h3>
-${askedItems.length ? `<ul>${askedItems.join("")}</ul>` : `<p class="empty">No questions yet.</p>`}
+${askedItems.length ? `<ul>${askedItems.join("")}</ul>` : empty}
 </li>`);
     panels.push(`<section class="tab" id="${pid}" role="tabpanel" aria-labelledby="tab-${pid}" hidden>\n${body.join("\n") || `<p class="empty">No rounds yet.</p>`}\n</section>`);
   }
@@ -702,8 +711,12 @@ function assignRecordMetadata(old: Line[], added: Line[]): Line[] {
   const scan = (r: Rec) => {
     known.set(r.id, r);
     if (r.type === "stage") maxOrder = Math.max(maxOrder, num(r.order));
-    else if (r.type === "round") {
+    else if (r.type === "round" || r.type === "close") {
       maxSession = Math.max(maxSession, num(r.session));
+      if (r.type === "close") {
+        if (r.stage !== undefined && !sessionOfStage.has(r.stage)) sessionOfStage.set(r.stage, r.session);
+        return;
+      }
       maxRound = Math.max(maxRound, num(r.round));
       sessionOfStage.set(r.stage ?? IMPLICIT_STAGE, r.session);
       sessionOfRound.set(r.id, r.session);
@@ -742,8 +755,8 @@ function assignRecordMetadata(old: Line[], added: Line[]): Line[] {
       } else r.q = (maxQ.get(session!) ?? 0) + 1;
     } else if (r.type === "close") {
       const session = same?.session ?? sessionOfStage.get(r.stage ?? IMPLICIT_STAGE);
-      if (session === undefined) fail(`close ${r.id}`, r.stage === undefined ? "the page has no rounds" : `stage ${r.stage} has no rounds`);
-      r.session = session;
+      if (session === undefined && r.stage === undefined) fail(`close ${r.id}`, "the page has no rounds");
+      r.session = session ?? ++maxSession;
     }
     scan(r);
   }

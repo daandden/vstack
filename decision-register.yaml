@@ -60,7 +60,7 @@ items:
     tree: f07d230f645fc9ac390cf13a450bbff12ad791a3
     disposition: adapt
     artifacts: [plugin/skills/implement]
-    reason: "Settles End states from the user's words or the ticket, then the project's default End state in code-host.md, then an ask, through live MCP capability discovery, and shares description-based Code host routing, with unsupported optional tools reported as gaps (ADR 0034, ADR 0035, ADR 0036, #204)."
+    reason: "Settles End states from the user's words or the ticket, then the project's default End state in code-host.md, then an ask, through live MCP capability discovery, and shares description-based Code host routing, with unsupported optional tools reported as gaps (ADR 0034, ADR 0035, ADR 0038, #204)."
   - id: matt/improve-codebase-architecture
     upstream: matt
     kind: skill
@@ -92,7 +92,7 @@ items:
     tree: b1568cde855a189b16e5d7dd8a0fa4c3f156bc2e
     disposition: adapt
     artifacts: [plugin/skills/setup-vstack]
-    reason: "Other issue trackers and Code hosts use short MCP configs from current descriptions; re-setup preserves CI hand edits, confirms the CI and Code host drafts together, and adds a missing default End state line to code-host.md (ADR 0035, ADR 0036, #204, #205, #206)."
+    reason: "Other issue trackers and Code hosts use short MCP configs from current descriptions; re-setup preserves CI hand edits, confirms the CI and Code host drafts together, and adds a missing default End state line to code-host.md (ADR 0035, ADR 0038, #204, #205, #206)."
   - id: matt/tdd
     upstream: matt
     kind: skill
@@ -108,7 +108,7 @@ items:
     tree: 136b9651747cfccbfbb7c50a6b0dfb757e7547d2
     disposition: adapt
     artifacts: [plugin/skills/to-spec]
-    reason: "Names setup-vstack, puts its seam confirmation in a to-spec Stage on the flow's Grilling page, and renames the page after the spec issue (#166)."
+    reason: "Names setup-vstack, puts its seam confirmation in a to-spec Stage on the flow's Grilling page, shows a capability map for a change that spans modules, renames the page after the spec issue, and has a fresh vstack-explorer check the draft against the close decisions and the source issue before it publishes (#166, #230, #226). The check also covers each close's Assumed picks, and its shared steps live in DRIFT-CHECK.md, which to-tickets also follows (#223)."
   - id: matt/to-tickets
     upstream: matt
     kind: skill
@@ -116,7 +116,7 @@ items:
     tree: b32c94e5a51c24ee9c41fcb7fe9ea9fff9af6369
     disposition: adapt
     artifacts: [plugin/skills/to-tickets]
-    reason: "Names setup-vstack, finds the flow's Grilling page from the spec issue, and shows the breakdown as a table Report block before one approval question (#166)."
+    reason: "Names setup-vstack, finds the flow's Grilling page from the spec issue, shows the breakdown as a table Report block before one approval question (#166), and has a fresh vstack-explorer check the draft tickets against the close decisions and the spec before the user sees them (#226). The check also covers each close's Assumed picks and follows to-spec's DRIFT-CHECK.md (#223)."
   - id: matt/triage
     upstream: matt
     kind: skill
@@ -156,7 +156,7 @@ items:
     tree: f0732035b8b1b60ae39454e4191caef32fa91903
     disposition: adapt
     artifacts: [plugin/skills/grilling]
-    reason: "Sub-agent spawn names a vstack agent; one round is one ask; the Grilling page lives in grilling-page; pushback reopens its decision; a session writes into its flow's page as a Stage, and ask options carry labels only; the grill closes with its summary and no ask, and the caller waits for the user's next prompt (#42, #58, #145, #165, ADR 0032)."
+    reason: "Sub-agent spawn names a vstack agent; one round is one ask; the Grilling page lives in grilling-page; pushback reopens its decision; a session writes into its flow's page as a Stage, and ask options carry labels only; the grill closes with its summary and no ask, and the caller waits for the user's next prompt; reversible, non-taste, cited decisions are settled in an Assumed table that a note can reopen (#42, #58, #145, #165, #225, ADR 0032, ADR 0037)."
   - id: matt/handoff
     upstream: matt
     kind: skill
@@ -308,7 +308,7 @@ items:
     tree: 9437b18aef01b61d24b57d0fd3de24386398b643
     disposition: adapt
     artifacts: [plugin/skills/blast-radius]
-    reason: "Hidden Safety knowledge for code-review, with proof in Scratch and reply attempts only on explicit request. A supplied PR is reviewed at its exact base and head commits in a detached worktree made through vstack-worktree (ADR 0015, #84, #139)."
+    reason: "Hidden Blast radius knowledge for code-review, with proof in Scratch and reply attempts only on explicit request. A supplied PR is reviewed at its exact base and head commits in a detached worktree made through vstack-worktree (ADR 0015, #84, #139)."
   - id: pstack/bro
     upstream: pstack
     kind: skill
@@ -748,7 +748,7 @@ items:
     tree: d729a7a06c5b67e406b081e1777114bc03b66f4a
     disposition: adapt
     artifacts: [plugin/skills/open-pr]
-    reason: "Opens a ready PR through the repo's code-host.md (ADR 0020); the body follows skill://pr with Safety-backed Blast Radius and Verify proof; /deslop and interrogate dropped."
+    reason: "Opens a ready PR through the repo's code-host.md (ADR 0020); the body follows skill://pr with a Blast Radius backed by code-review's Blast radius findings and Verify proof; /deslop and interrogate dropped."
   - id: pstack/playbook-orchestrate
     upstream: pstack
     kind: playbook
@@ -884,7 +884,7 @@ items:
     tree: 0cfefc751d0cb64f0c948ffcb17e13b94e778f08
     disposition: adapt
     artifacts: [plugin/skills/implement-spec]
-    reason: "Runs Matt's steps with an orchestrator-only main agent: isolated vstack-worker implementers start as tickets become ready, a merger vstack-worker commits each ticket, and implement's END-STATE steps finish the run, asking the End state only when no project default settles it. It finds the flow's Grilling page from the spec issue and puts its seam confirmations and relayed implementer questions in its own Stage (ADR 0019, ADR 0022, ADR 0036, #167)."
+    reason: "Runs Matt's steps with an orchestrator-only main agent: isolated vstack-worker implementers start as tickets become ready, a merger vstack-worker commits each ticket, and implement's END-STATE steps finish the run, asking the End state only when no project default settles it. It finds the flow's Grilling page from the spec issue and puts its seam confirmations and relayed implementer questions in its own Stage (ADR 0019, ADR 0022, ADR 0038, #167)."
   - id: matt/pr
     upstream: matt
     kind: skill
