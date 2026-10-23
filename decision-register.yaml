@@ -156,7 +156,7 @@ items:
     tree: f0732035b8b1b60ae39454e4191caef32fa91903
     disposition: adapt
     artifacts: [plugin/skills/grilling]
-    reason: "Sub-agent spawn names a vstack agent; one round is one ask; the Grilling page lives in grilling-page; pushback reopens its decision; a session writes into its flow's page as a Stage, and ask options carry labels only; the grill closes with its summary and no ask, and the caller waits for the user's next prompt; reversible, non-taste, cited decisions are settled in an Assumed table that a note can reopen (#42, #58, #145, #165, #225, ADR 0032, ADR 0036)."
+    reason: "Sub-agent spawn names a vstack agent; one round is one ask; the Grilling page lives in grilling-page; pushback reopens its decision; a session writes into its flow's page as a Stage, and ask options carry labels only; the grill closes with its summary and no ask, and the caller waits for the user's next prompt; reversible, non-taste, cited decisions are settled in an Assumed table that a note can reopen (#42, #58, #145, #165, #225, ADR 0032, ADR 0037)."
   - id: matt/handoff
     upstream: matt
     kind: skill

@@ -27,9 +27,9 @@ export function preprocessTinyMessage(message: string, limit = 2000): string {
 }
 
 /**
- * jev's input for a subagent brief (ADR 0025): the first prompt without the line that omp's
+ * The Addon judge's input for a subagent brief (ADR 0025): the first prompt without the line that omp's
  * subagent-user-prompt template puts before the assignment, squeezed to 10,000 characters, so the
- * task data after a long role template reaches jev.
+ * task data after a long role template reaches the Addon judge.
  */
 export function cleanBrief(prompt: string): string {
   return preprocessTinyMessage(prompt.replace(/^Complete assignment thoroughly:\s*/, ""), 10_000);

@@ -1,4 +1,4 @@
-# The grill settles reversible decisions in the open
+# ADR 0037: The grill settles reversible decisions in the open
 
 > This refines how grilling treats decisions. It does not reopen [ADR 0032](0032-the-grill-closes-with-its-summary-and-no-ask.md): the grill still closes with its summary and no `ask`.
 

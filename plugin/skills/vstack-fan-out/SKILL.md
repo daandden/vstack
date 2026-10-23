@@ -41,6 +41,6 @@ The Shared context holds what every part needs:
 
 When a FORMS.md line names the vstack root and the Scratch dir, putting them once in the Shared context meets the line.
 
-Each Brief holds its part: the role brief from the skill step, the part's target, its inputs, its acceptance, and every value the part would otherwise guess, such as a figure's size preset or an exact status code. The Brief states the part's role, because the jev judge reads only the Brief (ADR 0025). Before the subagents start, read each Brief for a value its child would have to guess, and add that value.
+Each Brief holds its part: the role brief from the skill step, the part's target, its inputs, its acceptance, and every value the part would otherwise guess, such as a figure's size preset or an exact status code. The Brief states the part's role, because the Addon judge reads only the Brief (ADR 0025). Before the subagents start, read each Brief for a value its child would have to guess, and add that value.
 
 A subagent started from an eval cell, the isolated form in FORMS.md, has no Shared context. Each eval prompt carries its Brief, the vstack root, the Scratch dir, and every shared fact itself.
