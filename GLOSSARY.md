@@ -160,6 +160,10 @@ _Avoid_: step, phase, section
 A report that a Stage shows on the Grilling page before the questions it leads to, such as code-review's findings or to-tickets' proposed breakdown. It has one of three shapes. Cards show one finding or candidate each, with its impact, evidence, and suggested action. A ledger lists claims, each confirmed, cleared, or unproven, with its evidence and the proof that is missing. A table lists rows under named columns, such as tickets or run results.
 _Avoid_: result block, stage result, report section
 
+**Blast radius**:
+The review axis that lists what code outside a diff depends on and may break. code-review runs it through the blast-radius skill, and a PR body reports it under its Blast Radius heading. It is not a security review.
+_Avoid_: Safety (for this axis), safety review
+
 **Background**:
 An explanation at the top of a Stage tab that gives the context that all of the Stage's questions share. A question's own rationale stays in its description.
 _Avoid_: intro, explain block, context section

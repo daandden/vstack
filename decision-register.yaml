@@ -308,7 +308,7 @@ items:
     tree: 9437b18aef01b61d24b57d0fd3de24386398b643
     disposition: adapt
     artifacts: [plugin/skills/blast-radius]
-    reason: "Hidden Safety knowledge for code-review, with proof in Scratch and reply attempts only on explicit request. A supplied PR is reviewed at its exact base and head commits in a detached worktree made through vstack-worktree (ADR 0015, #84, #139)."
+    reason: "Hidden Blast radius knowledge for code-review, with proof in Scratch and reply attempts only on explicit request. A supplied PR is reviewed at its exact base and head commits in a detached worktree made through vstack-worktree (ADR 0015, #84, #139)."
   - id: pstack/bro
     upstream: pstack
     kind: skill
@@ -748,7 +748,7 @@ items:
     tree: d729a7a06c5b67e406b081e1777114bc03b66f4a
     disposition: adapt
     artifacts: [plugin/skills/open-pr]
-    reason: "Opens a ready PR through the repo's code-host.md (ADR 0020); the body follows skill://pr with Safety-backed Blast Radius and Verify proof; /deslop and interrogate dropped."
+    reason: "Opens a ready PR through the repo's code-host.md (ADR 0020); the body follows skill://pr with a Blast Radius backed by code-review's Blast radius findings and Verify proof; /deslop and interrogate dropped."
   - id: pstack/playbook-orchestrate
     upstream: pstack
     kind: playbook

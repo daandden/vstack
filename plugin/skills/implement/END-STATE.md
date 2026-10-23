@@ -17,7 +17,7 @@ Keep one run record across every ticket. It holds the requested End state and th
 - The base SHA and the whole-diff command
 - The last SHA this run pushed
 - The prune-comments outcome with its open work
-- The final-diff Safety findings (step 5)
+- The final-diff Blast radius findings (step 5)
 - The Verify evidence paths
 
 The run keeps its asks and its results on the flow's Grilling page (`skill://grilling-page`). Before the End state below, find the page as grilling-page's "Find or start the page" says, and add the caller's Stage, an implement or implement-spec Stage, as its "Add a Stage" says. The spec that the run works from counts as the caller's spec, and each ticket counts as its ticket, also through the ticket's parent spec. So implement-spec in a new omp session finds the page that to-spec renamed after the spec issue. With no spec and no ticket, continue only a page whose path this session already printed, such as the page of a grill-with-docs that ran before. Otherwise start a new page. Record the page path in the run record. Every `ask` of these shared steps is a question in the caller's Stage, including the End state below and the Verify skill choice in step 4.
@@ -70,11 +70,11 @@ Run-only consumers (ship's verifier and forensics) may reuse this live-proof pro
 
 Run skill://code-review once over the whole completed diff at every End state, including commit. Pin the base SHA, diff command, and commit list. Include accepted cleanup and Standard-mode Verify edits, plus the proven uncommitted work that implement will commit.
 
-implement reviews before its step 6 commit (Matt's order). implement-spec's merger commits each ticket as it lands, implement-spec reviews once after its last merge, and step 6 commits the review fixes. hillclimb commits each accepted win, reviews once after its last accepted win, and commits the review fixes in new commits. Keep Standards, Spec, and Safety findings separate. code-review owns the Safety trigger list.
+implement reviews before its step 6 commit (Matt's order). implement-spec's merger commits each ticket as it lands, implement-spec reviews once after its last merge, and step 6 commits the review fixes. hillclimb commits each accepted win, reviews once after its last accepted win, and commits the review fixes in new commits. Keep Standards, Spec, and Blast radius findings separate. code-review owns the Blast radius trigger list.
 
-code-review's result is each finding that it decided, plus the user's answer to each question that it asked about a finding. The review fixes are the changes that this result calls for: the suggested action of each decided card that asks for a change, a fix for each confirmed Safety risk, and the fix that the answer picks for each asked finding. Make the review fixes and update the affected proof before advancing.
+code-review's result is each finding that it decided, plus the user's answer to each question that it asked about a finding. The review fixes are the changes that this result calls for: the suggested action of each decided card that asks for a change, a fix for each confirmed Blast radius risk, and the fix that the answer picks for each asked finding. Make the review fixes and update the affected proof before advancing.
 
-Carry the Safety findings and the final-diff proof to open-pr: the proven or unproven safety fact, confirmed risks, cleared items, proof paths, and the base and diff that they cover. open-pr reuses the Safety findings only when they cover its final diff and base.
+Carry the Blast radius findings and the final-diff proof to open-pr: the proven or unproven safety fact, confirmed risks, cleared items, proof paths, and the base and diff that they cover. open-pr reuses the Blast radius findings only when they cover its final diff and base.
 
 ## 6. Commit
 
@@ -90,7 +90,7 @@ For merge-ready or shipped, run skill://open-pr with the chain facts from step 0
 
 Then run skill://babysit in drive mode with the chain facts and PR frontier. For shipped, after merge-ready is observed, run skill://ship with those facts. open-pr and babysit return to this caller; neither starts the next link. Stop at the effective End state or a reported blocker and report what was actually reached.
 
-Conflict owner: babysit reports each conflict and each stale base here. ship reports each branch that `update-branch` cannot update and each step 2 move. The reported branch can be any branch of the run's stack. Fetch it and check it out, and fetch its target: the PR's base branch from `read-pr`, or the default branch for a step 2 move. For a step 2 move, first retarget the PR to the default branch through `retarget-pr`. Run `git merge <remote>/<target>`, resolve each conflict once, reconcile the reported caller drift, and commit the merge. Push it as a fast-forward to the PR's head branch with the step 0b push. Then check out the current branch again. If the reported branch is the run's remote branch, record the new last pushed SHA, and record the merged target tip as the new base SHA. Then run babysit again, or return a moved PR to ship for its fresh verdict. If the diff changed, re-establish the affected proof and Safety findings.
+Conflict owner: babysit reports each conflict and each stale base here. ship reports each branch that `update-branch` cannot update and each step 2 move. The reported branch can be any branch of the run's stack. Fetch it and check it out, and fetch its target: the PR's base branch from `read-pr`, or the default branch for a step 2 move. For a step 2 move, first retarget the PR to the default branch through `retarget-pr`. Run `git merge <remote>/<target>`, resolve each conflict once, reconcile the reported caller drift, and commit the merge. Push it as a fast-forward to the PR's head branch with the step 0b push. Then check out the current branch again. If the reported branch is the run's remote branch, record the new last pushed SHA, and record the merged target tip as the new base SHA. Then run babysit again, or return a moved PR to ship for its fresh verdict. If the diff changed, re-establish the affected proof and Blast radius findings.
 
 When the run stops, at the effective End state, at commit, or at a blocker, show the run results on the caller's Stage. Append a table Report block, as grilling-page says, with the columns Ticket, Status, Commit, and Proof. Write one row per ticket, or one row for the work when the run has no ticket. When step 6 committed review fixes, add one row for them:
 

@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [5.0.10] - 2026-10-23
+
+- code-review's third review axis is now called Blast radius, so it no longer reads as a security review. Its chat lines say `Blast radius: not triggered`, `Blast radius: skipped by request`, and `Blast radius: triggered, no proof (not in a run)`, and its ledger is titled Blast radius. implement's and implement-spec's closing summaries, open-pr, and blast-radius use the same name. The trigger list does not change. code-review accepts "check blast radius" and "skip blast radius", and still accepts "check safety" and "skip safety". GLOSSARY.md defines Blast radius (#229).
+
 ## [5.0.9] - 2026-10-23
 
 - A Grilling page round lists its questions in Q-number order, and grilling-page tells the agent to append and ask each round in that order, so the page and the `ask` agree. A decision asked again no longer shows after newer Q numbers.
