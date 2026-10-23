@@ -116,4 +116,4 @@ When grilling reopens a decision, write its reply in the existing records, where
 
 ## Close the page
 
-Append a `close` record. Write each decision as "what is now true" in one or two plain sentences, not as the option label. Add `extra` bullets only when they apply: "Unchanged from earlier: ..." for earlier decisions that still hold, "Glossary: ..." for added terms and ADR or no ADR, with the reason, and "Headless, not user-confirmed" for a close in a headless run.
+Append a `close` record. Write each decision as "what is now true" in one or two plain sentences, not as the option label. List each Assumed pick that was not reopened as its own `extra` bullet, "Assumed: <what is now true> (<its Why>)". Add other `extra` bullets only when they apply: "Unchanged from earlier: ..." for earlier decisions that still hold, "Glossary: ..." for added terms and ADR or no ADR, with the reason, and "Headless, not user-confirmed" for a close in a headless run.
