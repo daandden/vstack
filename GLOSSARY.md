@@ -53,8 +53,12 @@ The part of the active conversation branch that follows the prompt where the use
 _Avoid_: skill run, Matt session
 
 **Addon**:
-A hidden vstack skill that the jev judge selects during a Matt run, or that a skill reads through a `skill://` pointer. It holds the knowledge that one or more Matt skills need for one kind of work, such as a vstack Update. It can carry text from any Upstream, the Base upstream included, and stays an Addon. Matt skills do the work, and an Addon has no flow of its own. The user never starts one by name.
+A hidden vstack skill that the Addon judge selects during a Matt run, or that a skill reads through a `skill://` pointer. It holds the knowledge that one or more Matt skills need for one kind of work, such as a vstack Update. It can carry text from any Upstream, the Base upstream included, and stays an Addon. Matt skills do the work, and an Addon has no flow of its own. The user never starts one by name.
 _Avoid_: extension, plugin
+
+**Addon judge**:
+The native judge model that omp's judge role names, which selects Addons during a Matt run. Any native judge can be it, but vstack calibrates its selection against jev.
+_Avoid_: jev judge, principle judge
 
 **Utility skill**:
 A vstack skill that is not a Matt skill and that the user can use whatever the work is. unslop, technical-writing, diagram-design, good-css, and skill-creator set how text, figures, styles, and skills are made. explain, how, why, and forensics answer questions about existing work. in-your-own-words and ketchup check that the user and the agent agree. The first restates the user's goal, and the second catches the user up. clean-wt removes omp checkouts that nothing uses anymore. The hidden helpers are vstack-tmp, vstack-fan-out, vstack-figures, grilling-page, and vstack-worktree. Other skills name these helpers by `skill://`. Utility skills can start from their descriptions, from a rule, or by name, subject to each skill's invocation settings.

@@ -6,6 +6,8 @@
 
 > [ADR 0031](0031-a-closing-pick-gets-addon-picks-through-an-extension-tool.md) added an agent-called jev tool for a pick at a grill's closing ask. [ADR 0032](0032-the-grill-closes-with-its-summary-and-no-ask.md) removed the closing ask and the tool, so the objection below to an agent-called tool stands again.
 
+> [ADR 0036](0036-the-addon-judge-runs-through-omps-judge-role.md) amends this decision. The extension checks that omp's judge role starts with a native judge, not that TypeSafe credentials exist, before it calls smol. The judge call also goes through `@oh-my-pi/pi-coding-agent/judgment`.
+
 A Matt run that starts mid-session gets its Addon picks from a restatement, not from the user's words after `User:`. A run starts mid-session when the active branch already holds user or assistant messages, a visible skill start, or a compaction before the prompt that starts the run. The common case is that the user talks with the agent first and types the Matt skill afterward. The words after `User:` then miss most of the goal. Before jev runs, the extension asks the `smol` role model to restate the user's goal. The instruction is the body of the in-your-own-words skill, and the extension adds a short frame. The model reads all user and assistant text since the last compaction, the compaction summary, and the new words. An earlier skill-start prompt gives only its user words. The model gets no tool calls, tool output, thinking, or hidden messages. jev reads the restatement as it is, cut to 10,000 characters. A fresh run start and every later prompt in a run still send the cleaned words of ADR 0018.
 
 ## Considered Options

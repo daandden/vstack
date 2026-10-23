@@ -53,17 +53,18 @@ async function settings(): Promise<Map<string, unknown>> {
 }
 
 async function check(): Promise<Result[]> {
-  const [token, cfg, python] = await Promise.all([
-    omp("token", "typesafe"),
-    settings(),
-    omp("setup", "python", "--check", "--json"),
-  ]);
+  const [cfg, python] = await Promise.all([settings(), omp("setup", "python", "--check", "--json")]);
   const results: Result[] = [];
+  const roles = (cfg.get("modelRoles") ?? {}) as Record<string, unknown>;
+  const judge = roles.judge;
+  const judgeText = typeof judge === "string" ? judge : JSON.stringify(judge);
+  const judgeProvider = typeof judge === "string" ? judge.split(",", 1)[0].trim().split("/", 1)[0] : undefined;
 
-  // 1. TypeSafe credentials. `omp token` walks omp's credential cascade (login store, then env). Its stdout
-  // holds the key, so it is never printed.
+  // 1. TypeSafe credentials. `omp token` walks omp's credential cascade (login store, then env). Its stdout holds the
+  // key, so it is never printed.
+  const tokenOk = judgeProvider !== "typesafe" || (await omp("token", "typesafe")).code === 0;
   results.push(
-    token.code === 0
+    tokenOk
       ? { id: 1, name: "TypeSafe credentials", status: "ok" }
       : {
           id: 1,
@@ -74,19 +75,24 @@ async function check(): Promise<Result[]> {
         },
   );
 
-  // 2. The judge role.
-  const roles = (cfg.get("modelRoles") ?? {}) as Record<string, unknown>;
-  const judge = roles.judge;
+  // 2. The judge role (ADR 0036).
   results.push(
-    judge === JUDGE
-      ? { id: 2, name: "judge role", status: "ok" }
-      : {
+    judge === undefined
+      ? {
           id: 2,
           name: "judge role",
           status: "fail",
-          detail: `modelRoles.judge is ${judge === undefined ? "not set" : JSON.stringify(judge)}; principle selection needs ${JUDGE}`,
+          detail: "modelRoles.judge is not set, so the vstack extension skips principle selection",
           remedy: `setup-vstack sets modelRoles.judge to ${JUDGE} once you approve`,
-        },
+        }
+      : judge === JUDGE
+        ? { id: 2, name: "judge role", status: "ok" }
+        : {
+            id: 2,
+            name: "judge role",
+            status: "note",
+            detail: `modelRoles.judge is ${judgeText}, but vstack calibrates the Addon judge against jev (${JUDGE}), so principle picks from another model are not calibrated`,
+          },
   );
 
   // 3. Model overrides on vstack agents. vstack agents use the Session model unless the user sets a key (ADR 0004).
