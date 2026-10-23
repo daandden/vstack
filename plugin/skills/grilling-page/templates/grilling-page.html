@@ -26,6 +26,8 @@
       --peach: oklch(82.4% 0.101 52.6);
       --green: oklch(85.8% 0.109 142.7);
       --red: oklch(75.6% 0.130 2.8);
+      --teal: oklch(85.8% 0.079 182.7);
+      --pink: oklch(87.0% 0.075 336.3);
       --line: color-mix(in oklch, var(--surface1) 60%, transparent);
       scrollbar-gutter: stable;
       --nav-clearance: 5rem;
@@ -50,9 +52,9 @@
     h1, h2, h3, h4 { margin-block: 0; color: var(--text); text-wrap: balance; font-family: "IosevkaTermSlab Nerd Font Mono", "Iosevka Term Slab", "JetBrains Mono", ui-monospace, monospace; font-size: var(--fs-body); line-height: normal; }
     p, ul, ol, dl, dd, figure { margin: 0; }
     a { color: var(--blue); text-underline-offset: 0.2em; touch-action: manipulation; }
-    a:active { color: var(--lavender); }
+    a:active, .terms dt a:active { color: var(--lavender); }
     :focus-visible { outline: 2px solid var(--blue); outline-offset: 0.2em; }
-    @media (hover: hover) and (pointer: fine) { a:hover { color: var(--lavender); } }
+    @media (hover: hover) and (pointer: fine) { a:hover, .terms dt a:hover { color: var(--lavender); } }
     code, pre { font: inherit; }
     code { padding-inline: 0.25em; border-radius: 0.2rem; background: var(--surface0); color: var(--text); }
     pre { white-space: pre-wrap; font-size: var(--fs-small); }
@@ -102,7 +104,6 @@
 
     .topic { display: grid; gap: 0.5rem; padding-block-end: 0.75rem; border-block-end: 1px solid var(--line); }
     .topics { display: grid; gap: 0.125rem; }
-    .topics .label { font-weight: 600; }
     .topics a { font-weight: 600; text-decoration: none; }
 
     .round > header { display: grid; gap: 0.125rem; padding-block-start: 0.5rem; border-block-start: 1px solid var(--surface1); }
@@ -116,11 +117,13 @@
     .bullets { display: grid; gap: 0.125rem; padding-inline-start: 1.25rem; }
     .bullets > li::marker { color: var(--overlay0); }
     .example, .today, .terms, .report-links { display: grid; gap: 0.125rem; }
-    .example .label, .today .label, .terms .label, .report-links .label { font-weight: 600; }
+    :is(.example, .today, .terms, .topics, .report-links) > .label { font-weight: 600; color: var(--pink); }
     /* Today lists how things work now, each fact followed by its file and line. */
     .source { color: var(--subtext0); font-size: var(--fs-small); }
     .terms dl, .fields { display: grid; gap: 0.125rem; }
-    .terms dt, .fields dt { font-size: var(--fs-small); font-weight: 600; color: var(--subtext1); }
+    .terms dt { font-weight: 600; color: var(--teal); }
+    .terms dt :is(code, a) { color: inherit; }
+    .fields dt { font-size: var(--fs-small); font-weight: 600; color: var(--subtext1); }
     :is(.terms dl, .fields) > dd + dt { margin-block-start: 0.5rem; }
     /* An example can be a list or a screen, so it keeps its line breaks and leading spaces. */
     .example p:not(.label) { white-space: pre-wrap; }
