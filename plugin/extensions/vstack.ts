@@ -4,7 +4,7 @@ import { completeSimple } from "@oh-my-pi/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@oh-my-pi/pi-coding-agent";
 import { settings } from "@oh-my-pi/pi-coding-agent";
 import { getModelMatchPreferences, resolveModelRoleValue } from "@oh-my-pi/pi-coding-agent/config/model-resolver";
-import { hasNativeJudge } from "@oh-my-pi/pi-coding-agent/judgment";
+import { hasNativeJudge, journalJudgmentUsage, resolveJudge, sharedJudgmentCache } from "@oh-my-pi/pi-coding-agent/judgment";
 import catalogFile from "../../addon-questions.json";
 import { addonJudgeState, briefJudgeState, briefQuestions, parseAddonCatalog, type AddonCatalog, type AddonQuestion } from "./addon-catalog.ts";
 import { mattSkillNames, type MattSkillRow } from "./matt-skills.ts";
@@ -30,9 +30,9 @@ function readMattSkills(addons: Iterable<string>): Set<string> {
   } catch { return new Set(); }
 }
 
-// One cap covers smol and jev together on a restated run start, under omp's 30-second hook cap (ADR 0026).
+// One cap covers smol and the Addon judge together on a restated run start, under omp's 30-second hook cap (ADR 0026).
 const RESTATED_START_CAP_MS = 25_000;
-const JEV_DEADLINE_MS = 4000;
+const JUDGE_DEADLINE_MS = 4000;
 const RESTATEMENT_LIMIT = 10_000;
 const PRECEDENCE = " When a principle conflicts with the steps of the running Matt skill or its Addons, those steps win.";
 // The subagents whose first prompt, the brief, gets principle picks during a Matt run (ADR 0025).
@@ -122,38 +122,23 @@ async function restate(ctx: ExtensionContext, instruction: string | undefined, t
   }
 }
 
-interface Jev {
-  model: { id: string; baseUrl: string };
-  key: string;
-}
-
-/** Native TypeSafe jev and its key, or undefined when the judge is not native jev or has no credentials. */
-async function jevAccess(ctx: ExtensionContext): Promise<Jev | undefined> {
-  if (!hasNativeJudge(settings, ctx.modelRegistry)) return;
-  const model = ctx.modelRegistry.find("typesafe", "jev-latest");
-  if (!model || model.api !== "typesafe") return;
-  const key = await ctx.modelRegistry.getApiKey(model);
-  return key ? { model, key } : undefined;
-}
-
-/** Asks jev every question about one state and retries once inside the same signal. Returns each Addon that scores 0.70 or more. */
-async function pickAddons(jev: Jev, state: object, questions: Record<string, AddonQuestion>, signal: AbortSignal): Promise<string[]> {
-  const body = JSON.stringify({ model: jev.model.id, state, questions });
-  for (let attempt = 0; attempt < 2 && !signal.aborted; attempt++) {
-    try {
-      const response = await fetch(`${jev.model.baseUrl.replace(/\/+$/, "")}/v1/systemone`, {
-        method: "POST", headers: { Authorization: `Bearer ${jev.key}`, "Content-Type": "application/json" }, body, signal,
-      });
-      if (!response.ok) throw new Error("Judge request failed");
-      const result = await response.json();
-      if (signal.aborted) return [];
-      return Object.keys(questions).filter(name => {
-        const answer = result.answers?.[name];
-        return answer?.type === "noul" && typeof answer.noul === "number" && answer.noul >= .7;
-      });
-    } catch { /* Retry once inside the same deadline. */ }
+/** Asks the native judge of omp's judge role every question about one state (ADR 0036). Returns each Addon that scores 0.70 or more. */
+async function pickAddons(ctx: ExtensionContext, state: object, questions: Record<string, AddonQuestion>, signal: AbortSignal): Promise<string[]> {
+  try {
+    const judge = resolveJudge({
+      settings, registry: ctx.modelRegistry, sessionId: ctx.sessionManager.getSessionId(), purpose: "vstack-addons",
+      onUsage: journalJudgmentUsage(ctx.sessionManager), cache: sharedJudgmentCache(),
+    });
+    const result = await judge.withCandidate((candidate, kind) =>
+      kind === "native" ? candidate.judge({ state, questions }, { signal }) : undefined, { signal });
+    if (!result || signal.aborted) return [];
+    return Object.keys(questions).filter(name => {
+      const answer: any = result.answers?.[name];
+      return answer?.type === "noul" && typeof answer.noul === "number" && answer.noul >= .7;
+    });
+  } catch {
+    return [];
   }
-  return [];
 }
 
 function picksMessage(picked: string[], precedence = "") {
@@ -175,7 +160,7 @@ function undeliveredQuestions(catalog: AddonCatalog, entries: readonly any[]): R
 
 /**
  * Runs a selection under a deadline that aborts it, and calls `onTimeout` when the deadline ends it.
- * The deadline holds even when fetch ignores the abort.
+ * The deadline holds even when the judge ignores the abort.
  */
 async function withDeadline<T>(ms: number, select: (signal: AbortSignal) => Promise<T | undefined>, onTimeout?: () => void): Promise<T | undefined> {
   const controller = new AbortController();
@@ -253,10 +238,9 @@ function registerAddonSelection(pi: ExtensionAPI): void {
       if (!top || !holdsMattRun(top, mattSkills)) return;
       const request = cleanBrief(event.prompt);
       if (!request) return;
-      return withDeadline(JEV_DEADLINE_MS, async signal => {
-        const jev = await jevAccess(ctx);
-        if (!jev || signal.aborted) return;
-        return picksMessage(await pickAddons(jev, briefJudgeState(catalog, request), briefQuestions(catalog), signal));
+      return withDeadline(JUDGE_DEADLINE_MS, async signal => {
+        if (!hasNativeJudge(settings, ctx.modelRegistry)) return;
+        return picksMessage(await pickAddons(ctx, briefJudgeState(catalog, request), briefQuestions(catalog), signal));
       });
     }
     const header = /^\[IMPORTANT: User invoked the "([^"]+)" skill/.exec(event.prompt);
@@ -271,23 +255,22 @@ function registerAddonSelection(pi: ExtensionAPI): void {
     // smol reads the raw words, so words that clean to nothing still start a restatement.
     if (startsRun && !userWords.trim() && !talk) return;
     const timedOut = () => { if (ctx.hasUI) ctx.ui.notify("vstack: no Addon picks for this run start (timed out)", "warning"); };
-    return withDeadline(startsRun ? RESTATED_START_CAP_MS : JEV_DEADLINE_MS, async signal => {
-      const jev = await jevAccess(ctx);
-      if (!jev || signal.aborted) return;
+    return withDeadline(startsRun ? RESTATED_START_CAP_MS : JUDGE_DEADLINE_MS, async signal => {
+      if (!hasNativeJudge(settings, ctx.modelRegistry)) return;
       const questions = undeliveredQuestions(catalog, ctx.sessionManager.getEntries());
       if (!Object.keys(questions).length) return;
       if (startsRun) {
         const restated = await restate(ctx, instruction, talk, userWords, signal);
         if (!restated || signal.aborted) return;
         if ("warning" in restated) {
-          // A fresh start's cleaned words are its whole goal, so jev reads them when smol fails. A mid-session start's words can miss it.
+          // A fresh start's cleaned words are its whole goal, so the Addon judge reads them when smol fails. A mid-session start's words can miss it.
           const fallback = !midSession && request;
           const warning = fallback ? `Addon picks from your words, restatement failed (${restated.warning})` : `no Addon picks for this run start (${restated.warning})`;
           if (ctx.hasUI) ctx.ui.notify(`vstack: ${warning}`, "warning");
           if (!fallback) return;
         } else request = restated.text.slice(0, RESTATEMENT_LIMIT);
       }
-      return picksMessage(await pickAddons(jev, addonJudgeState(catalog, request), questions, signal), PRECEDENCE);
+      return picksMessage(await pickAddons(ctx, addonJudgeState(catalog, request), questions, signal), PRECEDENCE);
     }, startsRun ? timedOut : undefined);
   });
   pi.on("session_shutdown", (_event, ctx) => unregister(ctx));

@@ -4,6 +4,7 @@ import catalogFile from "../addon-questions.json";
 import { parseAddonCatalog } from "../plugin/extensions/addon-catalog.ts";
 import { mattSkillNames } from "../plugin/extensions/matt-skills.ts";
 import { fakeHost } from "./support/extension-host.ts";
+import { judge, judgeAnswers } from "./support/extension-mocks.ts";
 
 describe("Addon catalog", () => {
   test("a brief_preamble for subagent briefs sits beside the preamble", () => {
@@ -32,15 +33,13 @@ describe("Matt skill class", () => {
 
   describe("the extension", () => {
     const addon = Object.keys(parseAddonCatalog(catalogFile).questions)[0]!;
-    const model = { provider: "typesafe", id: "jev-latest", api: "typesafe", baseUrl: "https://judge.test/" };
-    const options = { models: [model], apiKeys: { "typesafe/jev-latest": "test-key" } };
+    const options = {};
     const start = (name: string) => `[IMPORTANT: User invoked the "${name}" skill. Follow this skill.]\nSkill text.\n---\n[Skill directory: /skills/${name}]\nUser: Open a PR`;
-    let fetchSpy: ReturnType<typeof spyOn>;
     let readSpy: ReturnType<typeof spyOn>;
-    afterEach(() => { fetchSpy?.mockRestore(); readSpy?.mockRestore(); });
+    afterEach(() => { readSpy?.mockRestore(); });
 
     test("typing a catalog skill with a Base row starts no Matt run", async () => {
-      fetchSpy = spyOn(globalThis, "fetch").mockImplementation((async () => Response.json({ answers: { [addon]: { type: "noul", noul: 1 } } })) as unknown as typeof fetch);
+      judgeAnswers({ [addon]: 1 });
       const read = fs.readFileSync;
       readSpy = spyOn(fs, "readFileSync").mockImplementation(((path: any, ...args: any[]) => {
         if (String(path).endsWith("pins.yaml")) return "upstreams: {custom: {role: Base}}";
@@ -52,9 +51,9 @@ describe("Matt skill class", () => {
       const saved = { type: "custom_message", customType: "skill-prompt", details: { name: addon } };
       expect(await fakeHost(options).emit("before_agent_start", { prompt: start(addon) })).toEqual([undefined]);
       expect(await fakeHost({ ...options, entries: [saved] }).emit("before_agent_start", { prompt: "Continue" })).toEqual([undefined]);
-      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(judge.calls).toHaveLength(0);
       expect((await fakeHost(options).emit("before_agent_start", { prompt: start("custom-matt") }))[0]).toBeDefined();
-      expect(fetchSpy).toHaveBeenCalledTimes(1);
+      expect(judge.calls).toHaveLength(1);
     });
   });
 });

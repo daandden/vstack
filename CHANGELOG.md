@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [5.0.13] - 2026-10-23
+
+- The extension picks Addons through omp's `judge` role with `resolveJudge`, not its own TypeSafe `/v1/systemone` call, and only when the role's first candidate is native. Each pick goes into the session's cost ledger as `vstack-addons` and through omp's shared judgment cache, and vstack's own retry is gone. setup-vstack fails the judge role check only when no role is set, prints a note for another role, and checks TypeSafe credentials only when the role's provider is `typesafe`. `sample-briefs.json` is re-recorded on jev-1.14.0 with no flags. `sample-prompts.json` keeps its jev-1.13.0 baselines, because jev-1.14.0 gives 5 flags there (#235) (ADR 0036).
+
 ## [5.0.12] - 2026-10-23
 
 - vstack-fan-out now says what goes in a Fan-out's Shared context and what goes in each Brief, and that an isolated eval spawn carries both in its prompt.

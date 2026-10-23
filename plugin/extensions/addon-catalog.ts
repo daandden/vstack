@@ -1,4 +1,4 @@
-/** One jev `noul` question: the situation in which the judge picks the Addon. */
+/** One `noul` question for the Addon judge: the situation in which the judge picks the Addon. */
 export interface AddonQuestion {
   type: "noul";
   instructions: string;
@@ -6,7 +6,7 @@ export interface AddonQuestion {
 }
 
 /**
- * The parsed catalog. jev reads `preamble` once in the state of a main-session request, and `brief_preamble`
+ * The parsed catalog. The Addon judge reads `preamble` once in the state of a main-session request, and `brief_preamble`
  * once in the state of a subagent-brief request (ADR 0025). `questions` holds one question per Addon, keyed by its skill name.
  */
 export interface AddonCatalog {
