@@ -1,6 +1,6 @@
 ---
 name: blast-radius
-description: "Safety knowledge for code-review: find breakage outside the diff and prove the facts that make a change safe."
+description: "Blast radius knowledge for code-review: find breakage outside the diff and prove the facts that make a change safe."
 disable-model-invocation: true
 ---
 
@@ -52,7 +52,7 @@ For step 6, declare kind `reply`. Give each runner the pinned diff command, comm
 
 Keep the rubric with the parent. It covers the safety fact, depth on the proof ladder, risks with real `file:line` citations, and cleared items. Pick the strongest hand-back as the draft. Graft confirmed risks from the others and drop unproven duplicates. Re-run every retained proof script in `<Scratch dir>/blast-radius/<run-id>/` and record its output. Apply no patch for kind `reply`. Retain the compare-attempts synthesis note and evidence paths.
 
-The Safety reviewer in `skill://code-review` always skips step 6. That skill owns the Safety trigger list. Do not add a second trigger list here.
+The Blast radius reviewer in `skill://code-review` always skips step 6. That skill owns the Blast radius trigger list. Do not add a second trigger list here.
 
 ## What to hand back
 

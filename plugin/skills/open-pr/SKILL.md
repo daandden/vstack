@@ -13,7 +13,7 @@ Accept the chain facts and any closing references: the issues or tickets the PR 
 - Step 0a: the chain facts, Code host routing, and the reuse of the vstack root and Scratch dir.
 - Step 0b: the remote branch name, the remote tip, the push, and the rule that keeps pushed commits as they are.
 - Step 4: Verify discovery and link repair.
-- Step 5: the Safety hand-off.
+- Step 5: the Blast radius hand-off.
 
 Keep PR body files under `<Scratch dir>/verify/<app>-<run-id>/`, beside the proof they describe.
 
@@ -43,9 +43,9 @@ Push the final tip to the remote branch with the push command in END-STATE step 
 
 ## 5. Gather Blast Radius
 
-Reuse code-review's Safety findings under the hand-off in END-STATE step 5.
+Reuse code-review's Blast radius findings under the hand-off in END-STATE step 5.
 
-Otherwise read the Safety trigger list in skill://code-review. It owns the only trigger list. Apply the user's Safety override. If Safety is requested or triggered, run skill://blast-radius on the pinned final diff. Keep tracked files unchanged. If Safety does not run, record the reason for step 6. Never turn a source citation or an unavailable proof into an executed safety claim.
+Otherwise read the Blast radius trigger list in skill://code-review. It owns the only trigger list. Apply the user's Blast radius override. If Blast radius is requested or triggered, run skill://blast-radius on the pinned final diff. Keep tracked files unchanged. If Blast radius does not run, record the reason for step 6. Never turn a source citation or an unavailable proof into an executed safety claim.
 
 ## 6. Write the title and body
 
@@ -55,7 +55,7 @@ Follow the title convention visible in recent `git log` on the default branch. I
 
 Write the body with skill://pr: its Summary, Evidence, and Merge Danger sections, in its order. The body is a one-minute briefing for a reviewer who has the diff, not a lab notebook. Write short, simple sentences with few identifiers. The body becomes the squash commit body, so keep it to about 40 lines. Put this run's facts in pr's sections:
 
-- Merge Danger: the door call (one-way or two-way) and the Blast Radius from step 5. Back the Blast Radius with the reused code-review Safety findings or the new blast-radius proof, and cite that report. State affected callers or data, the safety fact and its proof status, and confirmed risks. Name the continuing cost if the default branch stays red without the fix. If Safety did not run, the Blast Radius says so and gives the reason, with no safety claim.
+- Merge Danger: the door call (one-way or two-way) and the Blast Radius from step 5. Back the Blast Radius with the reused code-review Blast radius findings or the new blast-radius proof, and cite that report. State affected callers or data, the safety fact and its proof status, and confirmed risks. Name the continuing cost if the default branch stays red without the fix. If Blast radius did not run, the Blast Radius says so and gives the reason, with no safety claim.
 - Evidence: the before and after of every real run path, with its command, observed outcome, and evidence path. Cite the chosen Verify skill and absolute Scratch `verify/` paths. For performance, report one primary number with its unit in `before -> after` form, and link the rest of the evidence. State failures, skipped checks, missing live proof, and limits. Report only proof that ran on the final diff.
 - Closing references: end the Summary with one `Closes <reference>` line per caller-supplied reference, in the form the issue tracker closes work through PRs. Add none the caller did not supply.
 
@@ -75,4 +75,4 @@ Read the PR through `read-pr`: its URL, title, draft state, state, base branch, 
 
 ## Reply
 
-Return each PR URL, its title, observed status, and whether Blast Radius reused Safety findings, ran blast-radius, or reports that Safety did not run. Include proof paths, limits, every stopped or skipped step, and any open prune-comments work. Pass the chain facts back to the caller with the new last pushed SHA. Stop here. The caller owns the next End-state link.
+Return each PR URL, its title, observed status, and whether Blast Radius reused code-review's Blast radius findings, ran blast-radius, or reports that Blast radius did not run. Include proof paths, limits, every stopped or skipped step, and any open prune-comments work. Pass the chain facts back to the caller with the new last pushed SHA. Stop here. The caller owns the next End-state link.

@@ -32,7 +32,6 @@ Break the work into **tracer bullet** tickets.
 
 - Each slice cuts a narrow but COMPLETE path through every layer (schema, API, UI, tests): vertical, NOT a horizontal slice of one layer
 - A completed slice is demoable or verifiable on its own
-- Each slice is sized to fit in a single fresh context window
 - Any prefactoring should be done first
 
 </vertical-slice-rules>
@@ -43,13 +42,19 @@ Copy from the spec into each ticket the Addon pointers that its work needs.
 
 **Wide refactors are the exception to vertical slicing.** A **wide refactor** is one mechanical change (rename a column, retype a shared symbol) whose **blast radius** fans across the whole codebase, so a single edit breaks thousands of call sites at once and no vertical slice can land green. Don't force it into a tracer bullet; sequence it as **expand–contract**. First expand: add the new form beside the old so nothing breaks. Then migrate the call sites over in batches sized by blast radius (per package, per directory), each batch its own ticket blocked by the expand, keeping CI green batch to batch because the old form still exists. Finally contract: delete the old form once no caller remains, in a ticket blocked by every migrate batch. When even the batches can't stay green alone, keep the sequence but let them share an integration branch that all block a final integrate-and-verify ticket; green is promised only there.
 
+Before you show the breakdown, check the draft against what the user decided, as skill://to-spec/DRIFT-CHECK.md says. Its source is the spec that this run breaks down, with its comments. Covered in names a ticket, and the Report block goes on the to-tickets Stage. Fix a miss by changing a ticket or adding one.
+
+Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the close decisions and Assumed picks, the spec, the draft tickets with their blocking edges, and the Checker brief from DRIFT-CHECK.md, the vstack root. Wait for its result. If it cannot be spawned, stop: report the tickets as not published.
+
+Fix the draft and show the coverage table as DRIFT-CHECK.md's "Fix and show" says.
+
 ### 4. Quiz the user
 
 Write the proposed breakdown on the to-tickets Stage as a table Report block, as grilling-page says. Its columns are Ticket, Blocked by, and Size, with one row per ticket:
 
 - Ticket: the ticket's number and short title, then one sentence on the end-to-end behavior that it delivers.
 - Blocked by: the numbers of the tickets that must complete first, or "None".
-- Size: small, medium, or large, compared with one fresh context window.
+- Size: small, medium, or large.
 
 After the Report block, ask one approval question on the page through `ask`, with the options Approve and Change something. Link the question and every row both ways. Its description asks these questions:
 
@@ -57,7 +62,7 @@ After the Report block, ask one approval question on the page through `ask`, wit
 - Are the blocking edges correct: does each ticket only depend on tickets that genuinely gate it?
 - Should any tickets be merged or split further?
 
-Iterate until the user approves the breakdown. For each revision, append the Report block again with the revised rows, and ask the approval again in a new question record with the same Q number.
+Iterate until the user approves the breakdown. For each revision, check the revised draft as step 3 says, append the Report block again with the revised rows, and ask the approval again in a new question record with the same Q number.
 
 ### 5. Publish the tickets to the configured tracker
 

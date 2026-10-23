@@ -28,4 +28,4 @@ After all tickets and independent slices are finished, run shared step 3b, then 
 
 ## Reply
 
-Print the flow's page path first. Then report the requested and reached End state, commits, PR URLs and observed status, checks and live proof with evidence paths, Safety findings, open prune-comments work, and every skipped step or blocker. Do not claim a PR, readiness, or merge that the chain did not observe.
+Print the flow's page path first. Then report the requested and reached End state, commits, PR URLs and observed status, checks and live proof with evidence paths, Blast radius findings, open prune-comments work, and every skipped step or blocker. Do not claim a PR, readiness, or merge that the chain did not observe.

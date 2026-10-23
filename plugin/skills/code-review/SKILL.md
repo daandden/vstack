@@ -1,13 +1,13 @@
 ---
 name: code-review
-description: Review changes since a fixed point on three axes, Standards, Spec, and conditional Safety. Runs each axis as its own reviewer in parallel, shows their reports on the flow's Grilling page, and asks only about findings it cannot decide. Use to review a branch, PR, work-in-progress changes, or changes since a commit, branch, tag, or merge-base.
+description: Review changes since a fixed point on three axes, Standards, Spec, and conditional Blast radius. Runs each axis as its own reviewer in parallel, shows their reports on the flow's Grilling page, and asks only about findings it cannot decide. Use to review a branch, PR, work-in-progress changes, or changes since a commit, branch, tag, or merge-base.
 ---
 
 Review the supplied change scope against the fixed point on separate axes:
 
 - Standards checks the documented coding standards and smell baseline.
 - Spec checks the originating issue or spec.
-- Safety runs blast-radius only in a run when the diff touches what outside code depends on, or the user requests it.
+- Blast radius runs blast-radius only in a run when the diff touches what outside code depends on, or the user requests it.
 
 Each axis runs as its own reviewer so that findings from one do not mask another.
 
@@ -35,11 +35,11 @@ Make sure that the ref resolves with `git rev-parse <fixed-point>`.
 
 Capture the review scope once. For committed work, use `git diff <fixed-point>...HEAD`; three-dot compares against the merge-base. When the caller passes uncommitted work, use `git diff <fixed-point>` against the working tree, including staged and unstaged changes, plus the contents of every untracked file the caller names. Capture those untracked paths explicitly; git diff does not include them. Stop for a bad ref or only when this complete scope is empty, not when `...HEAD` alone is empty.
 
-Capture the commit list with `git log <fixed-point>..HEAD --oneline`; it may be empty for uncommitted work. For a PR, use `git diff <base-sha>...<head-sha>` and `git log <base-sha>..<head-sha> --oneline`. The head SHA replaces `HEAD`, and the uncommitted-work case does not apply. Give every reviewer the same diff command, untracked paths and contents, and commit list, and for a PR the worktree's absolute path. Use this complete scope for Safety triggers and every axis.
+Capture the commit list with `git log <fixed-point>..HEAD --oneline`; it may be empty for uncommitted work. For a PR, use `git diff <base-sha>...<head-sha>` and `git log <base-sha>..<head-sha> --oneline`. The head SHA replaces `HEAD`, and the uncommitted-work case does not apply. Give every reviewer the same diff command, untracked paths and contents, and commit list, and for a PR the worktree's absolute path. Use this complete scope for Blast radius triggers and every axis.
 
-For Safety, a run exists when the user typed `/skill:code-review` or a user-typed Matt skill runs code-review (for example, implement's review step). The prompt header `[IMPORTANT: User invoked the "code-review" skill` marks a direct user invocation. A child reviewer uses the run fact in its parent's brief. A model-started code-review is not a run.
+For Blast radius, a run exists when the user typed `/skill:code-review` or a user-typed Matt skill runs code-review (for example, implement's review step). The prompt header `[IMPORTANT: User invoked the "code-review" skill` marks a direct user invocation. A child reviewer uses the run fact in its parent's brief. A model-started code-review is not a run.
 
-Check Safety after pinning the diff. The user's words override the trigger list, including "check safety" and "skip safety". A Safety trigger fires when requested or when the diff changes something that code outside it depends on:
+Check Blast radius after pinning the diff. The user's words override the trigger list, including "check blast radius" and "skip blast radius", and the older "check safety" and "skip safety". A Blast radius trigger fires when requested or when the diff changes something that code outside it depends on:
 
 - Public interface: an exported symbol, endpoint, CLI command or flag, or event changes or disappears.
 - Persisted or wire data: a schema, migration, serialized format, stored key, or API payload.
@@ -47,9 +47,9 @@ Check Safety after pinning the diff. The user's words override the trigger list,
 - Dependencies: an added, removed, or bumped dependency, a lockfile change, or a local patch change.
 - Lifecycle or ordering: initialization, teardown, async timing, concurrency, or cache invalidation.
 
-Record every trigger that fired, or `Safety: not triggered`. Record an explicit skip as `Safety: skipped by request`.
+Record every trigger that fired, or `Blast radius: not triggered`. Record an explicit skip as `Blast radius: skipped by request`.
 
-If a trigger fires outside a run, do not read `skill://blast-radius` or run the Safety reviewer. In the Safety report, name each trigger that fired. State that no safety proof ran, and recommend `/skill:code-review` for the proof. Standards and Spec run as before.
+If a trigger fires outside a run, do not read `skill://blast-radius` or run the Blast radius reviewer. In the Blast radius report, name each trigger that fired. State that no blast-radius proof ran, and recommend `/skill:code-review` for the proof. Standards and Spec run as before.
 
 ### 2. Identify the spec source
 
@@ -86,9 +86,9 @@ Each smell reads *what it is* → *how to fix*; match it against the diff:
 
 ### 4. Run the reviewers
 
-The axes that run are Standards, Spec unless step 2 found no spec, and Safety only when a step-1 trigger fired within a run. An explicit "skip safety" skips Safety even within a run.
+The axes that run are Standards, Spec unless step 2 found no spec, and Blast radius only when a step-1 trigger fired within a run. An explicit "skip blast radius" or "skip safety" skips Blast radius even within a run.
 
-When Safety runs, read `skill://vstack-tmp` and resolve the project Scratch dir once with its path script and no argument. Pass that absolute project dir, never the `blast-radius/` kind dir. A child uses the supplied dir without running the script. If this reviewer is itself a child, reuse the Scratch dir from its prompt.
+When Blast radius runs, read `skill://vstack-tmp` and resolve the project Scratch dir once with its path script and no argument. Pass that absolute project dir, never the `blast-radius/` kind dir. A child uses the supplied dir without running the script. If this reviewer is itself a child, reuse the Scratch dir from its prompt.
 
 With two or three axes, use this Fan-out line. With only Standards, use the single-subagent line below.
 
@@ -103,23 +103,23 @@ The Standards reviewer prompt must include:
 - The full diff command, named untracked paths and contents, and commit list.
 - For a PR, the worktree's absolute path from step 1: "Read changed files from this worktree at the head SHA, not from the current checkout."
 - The list of standards-source files you found in step 3, plus the smell baseline from step 3 pasted in full (the reviewer has no other access to it).
-- The brief: "Report, per file/hunk where relevant, (a) every place the diff violates a documented standard: cite the standard (file + the rule); and (b) any baseline smell you spot: name it and quote the hunk. Distinguish hard violations from judgement calls: documented-standard breaches can be hard, but baseline smells are always judgement calls, and a documented repo standard overrides the baseline. Skip anything tooling enforces. Give each finding a short title, a label (`issue` for a hard violation, `suggestion` for a judgement call), whether it blocks the merge, its impact, its evidence, and the suggested change. Say whether the cited sources settle the change, or why it needs the user's judgement. Under 400 words."
+- The brief: "Report, per file/hunk where relevant, (a) every place the diff violates a documented standard: cite the standard (file + the rule); and (b) any baseline smell you spot: name it and quote the hunk. Distinguish hard violations from judgement calls: documented-standard breaches can be hard, but baseline smells are always judgement calls, and a documented repo standard overrides the baseline. Skip anything tooling enforces. Give each finding a short title, a label (`issue` for a hard violation, `suggestion` for a judgement call), whether it blocks the merge, its impact, the suggested change, and its evidence, in that order. Open the impact with what a user or caller sees, such as 'When you run X, Y happens instead of Z', then state the decision the user faces. The impact describes behavior only and names no file path; the file and line go in the evidence, for whoever fixes it. Say whether the cited sources settle the change, or why it needs the user's judgement. Under 400 words."
 
 The Spec reviewer prompt must include:
 
 - The full diff command, named untracked paths and contents, and commit list.
 - For a PR, the worktree's absolute path from step 1: "Read changed files from this worktree at the head SHA, not from the current checkout."
 - The path or fetched contents of the spec.
-- The brief: "Report: (a) requirements the spec asked for that are missing or partial; (b) behaviour in the diff that wasn't asked for (scope creep); (c) requirements that look implemented but where the implementation looks wrong. Quote the spec line for each finding. Give each finding a short title, a label such as `issue` or `suggestion`, whether it blocks the merge, its impact, its evidence, and the suggested change. Say whether the spec settles the change, or why it needs the user's judgement, such as a spec line that reads two ways. Under 400 words."
+- The brief: "Report: (a) requirements the spec asked for that are missing or partial; (b) behaviour in the diff that wasn't asked for (scope creep); (c) requirements that look implemented but where the implementation looks wrong. Quote the spec line for each finding. Give each finding a short title, a label such as `issue` or `suggestion`, whether it blocks the merge, its impact, the suggested change, and its evidence, in that order. Open the impact with what a user or caller sees, such as 'When you run X, Y happens instead of Z', then state the decision the user faces. The impact describes behavior only and names no file path; the file and line go in the evidence, for whoever fixes it. Say whether the spec settles the change, or why it needs the user's judgement, such as a spec line that reads two ways. Under 400 words."
 
 If the spec is missing, skip the Spec reviewer and say so in the chat line of step 5.
 
-The Safety reviewer prompt must include:
+The Blast radius reviewer prompt must include:
 
 - The pinned diff command, named untracked paths and contents, and commit list.
 - For a PR, the worktree's absolute path from step 1: "blast-radius reuses this worktree, runs its step 5 proof against the head SHA in it, and creates no second worktree."
 - Every trigger that fired.
-- The run fact from step 1: "A user-started Matt run exists." A child runs Safety only when its parent's brief states this fact.
+- The run fact from step 1: "A user-started Matt run exists." A child runs Blast radius only when its parent's brief states this fact.
 - The brief: "Run `skill://blast-radius` on this diff and skip its step 6. Return its hand-back in under 400 words, plus the proof script and its output."
 - The supplied Scratch dir, with a distinct run entry under `blast-radius/`.
 
@@ -127,15 +127,15 @@ The Safety reviewer prompt must include:
 
 Show the reports on the page before any question about them, so that the user reads the evidence first. Append one Report block per axis that has findings to the code-review Stage, as `skill://grilling-page` says. Keep the axes separate. Never merge or re-rank findings, and keep each reviewer's order.
 
-- Standards and Spec are each a `cards` block. Each finding is one card with its id (such as `std-1` or `spec-1`), title, label, blocking flag, impact, evidence, and suggested action.
-- Safety is a `ledger` block. The safety fact is one claim, `confirmed` when executed proof established it and `unproven` otherwise. Each risk is one claim, `confirmed` when the proof showed it and `unproven` otherwise. Each cleared item is a `cleared` claim. The evidence names the proof script, command, and observed output in the run's `blast-radius/` entry. The missing proof names the check that settles the claim, or `none`. The consequence says what follows if the claim holds.
-- When a trigger fired outside a run, the Safety ledger has one `unproven` claim per trigger. Its missing proof is the blast-radius proof that `/skill:code-review` runs.
+- Standards and Spec are each a `cards` block. Each finding is one card with its id (such as `std-1` or `spec-1`), title, label, blocking flag, impact, suggested action, and evidence, as the reviewer reported them.
+- Blast radius is a `ledger` block titled "Blast radius". The safety fact is one claim, `confirmed` when executed proof established it and `unproven` otherwise. Each risk is one claim, `confirmed` when the proof showed it and `unproven` otherwise. Each cleared item is a `cleared` claim. The evidence names the proof script, command, and observed output in the run's `blast-radius/` entry. The missing proof names the check that settles the claim, or `none`. The consequence says what follows if the claim holds.
+- When a trigger fired outside a run, the Blast radius ledger has one `unproven` claim per trigger. Its missing proof is the blast-radius proof that `/skill:code-review` runs.
 
-Give each block a summary line with the axis's finding count and worst issue. For Safety, add its trigger and whether the safety fact is proven or unproven. An axis with no findings, or one that did not run, gets no Report block, because the page script refuses an empty one. The chat line below says why.
+Give each block a summary line with the axis's finding count and worst issue. For Blast radius, add its trigger and whether the safety fact is proven or unproven. An axis with no findings, or one that did not run, gets no Report block, because the page script refuses an empty one. The chat line below says why.
 
 Decide each finding that its evidence settles: a breach of a documented standard, a spec requirement that the diff misses or gets wrong, a confirmed risk, or a cleared claim. A card holds the decision in its blocking flag and suggested action, and a claim in its status and consequence. Ask about every other finding, one question per finding. Examples are a baseline smell that the sources do not settle, behavior that the spec neither asks for nor rules out, a spec line that reads two ways, and an unproven claim. If every finding is decided, ask nothing. Otherwise add the questions as one round, as grilling-page says, and put them in one `ask`. Each question title names the finding's id and ends with "?". Its options are the likely actions, such as Fix as suggested and Keep as is. Link each asked finding and its question both ways. Record the answers. If the Stage asked any question, close its session as grilling-page says. Then mark the Stage finished.
 
-In chat, print the page path and one line per axis instead of the findings. Give the axis's finding count and worst issue, or say why it did not run. For Safety include its trigger or skip reason. When the proof ran, state whether the safety fact is proven or unproven. When a trigger fired outside a run, use `Safety: triggered, no proof (not in a run)`. Never select a worst issue across axes. The review's result for the caller is each finding that code-review decided, plus the answer to each question. For a PR, remove the worktree as step 1 says.
+In chat, print the page path and one line per axis instead of the findings. Give the axis's finding count and worst issue, or say why it did not run. For Blast radius include its trigger or skip reason. When the proof ran, state whether the safety fact is proven or unproven. When a trigger fired outside a run, use `Blast radius: triggered, no proof (not in a run)`. Never select a worst issue across axes. The review's result for the caller is each finding that code-review decided, plus the answer to each question. For a PR, remove the worktree as step 1 says.
 
 ## Why three axes
 

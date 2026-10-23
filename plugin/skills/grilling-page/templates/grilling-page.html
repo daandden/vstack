@@ -162,6 +162,9 @@
     .report-links .entry-id { margin-inline-end: 0; }
     .tag { color: var(--subtext0); font-size: var(--fs-small); font-weight: 600; }
     .card[data-blocking] .tag { color: var(--red); }
+    .card .evidence > summary { inline-size: fit-content; font-size: var(--fs-small); font-weight: 600; color: var(--subtext1); cursor: pointer; touch-action: manipulation; }
+    .card .evidence > summary:active { color: var(--lavender); }
+    .card .evidence[open] > summary { margin-block-end: 0.125rem; }
     [data-status="confirmed"] { --state: var(--red); }
     [data-status="cleared"] { --state: var(--green); }
     [data-status="unproven"] { --state: var(--peach); }
