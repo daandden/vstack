@@ -273,7 +273,7 @@ test("a page written by hand, with no state file, is not continued", () => {
   expect(existsSync(state)).toBe(false);
 });
 
-test("every keyboard stop has its link in the Q row, and a reopened summary is no longer a stop", () => {
+test("every keyboard stop has its link in the Jump row, and a reopened summary is no longer a stop", () => {
   append(PAGE, ROUND, question("s1-r1-q1", 1));
   const close = (id: string) => ({ type: "close", id, session: 1, decisions: [{ question: "s1-r1-q1", text: "One is true." }] });
   append(close("c1"));
@@ -636,22 +636,57 @@ test("a state file from before Stages renders as one Stage, and a Stage added la
   expect(panel(html, "stage-spec")).toContain('id="q-s2-r1-q1"');
 });
 
-test("each tab's keyboard stops have their links in that tab's Q row, and every link on the page has its target", () => {
+test("each tab's keyboard stops have their links in that tab's Jump row, and every link on the page has its target", () => {
   const close = { type: "close", id: "c1", stage: "grill", decisions: [{ question: "s1-r1-q1", text: "One is true." }] };
   const crossLink = { description: "Builds on [the grill's Q1](#q-s1-r1-q1)." };
   expect(append(PAGE, stage("grill"), stage("spec"), { ...ROUND, stage: "grill" }, question("s1-r1-q1", 1), close, SPEC_ROUND, { ...question("s2-r1-q1", 1, crossLink), round: "s2-r1" }).code).toBe(0);
   const html = readFileSync(page, "utf8");
   const stopsIn = (id: string) => [...panel(html, id).matchAll(/id="([^"]+)"[^>]*data-stop/g)].map((m) => m[1]);
-  const qrow = (id: string) => [...(html.match(new RegExp(`<nav class="qnav"[^>]*data-tab="${id}"[\\s\\S]*?</nav>`))?.[0] ?? "").matchAll(/data-for="([^"]+)"/g)].map((m) => m[1]);
   expect(stopsIn("overview")).toEqual([]);
   expect(stopsIn("stage-grill")).toEqual(["q-s1-r1-q1", "close-c1"]);
-  expect(qrow("stage-grill")).toEqual(["q-s1-r1-q1", "close-c1"]);
+  expect(jumpRow(html, "stage-grill").map(([target]) => target)).toEqual(["q-s1-r1-q1", "close-c1"]);
   expect(stopsIn("stage-spec")).toEqual(["q-s2-r1-q1"]);
-  expect(qrow("stage-spec")).toEqual(["q-s2-r1-q1"]);
+  expect(jumpRow(html, "stage-spec").map(([target]) => target)).toEqual(["q-s2-r1-q1"]);
   expect(panel(html, "stage-spec")).toContain('<a href="#q-s1-r1-q1">the grill\'s Q1</a>');
   const ids = new Set([...html.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]));
   const targets = [...html.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]);
   expect(targets.filter((t) => !ids.has(t))).toEqual([]);
+});
+
+const jumpRow = (html: string, id: string) => [...(html.match(new RegExp(`<nav class="jump-row"[^>]*data-tab="${id}"[\\s\\S]*?</nav>`))?.[0] ?? "").matchAll(/data-for="([^"]+)"[^>]*>([\s\S]*?)<\/a>/g)].map((m) => [m[1], m[2].replace(/<[^>]+>/g, "")]);
+
+test("a round lists its questions in Q-number order in its tab and its Jump row, whatever the append order", () => {
+  const R2 = { type: "round", id: "s1-r2", stage: "grill" };
+  expect(append(PAGE, stage("grill"), { ...ROUND, stage: "grill" }, question("q1", 1), question("q2", 2), question("q3", 3)).code).toBe(0);
+  expect(append(R2, { ...question("q4", 0), round: "s1-r2", title: "New?" }, { ...question("q3b", 0), round: "s1-r2", again: "q3" }, { ...question("q1b", 0), round: "s1-r2", again: "q1" }).code).toBe(0);
+  const html = readFileSync(page, "utf8");
+  const round2 = html.slice(html.indexOf('aria-labelledby="round-s1-r2"'));
+  expect([...round2.matchAll(/<span class="qnum">(Q\d+)<\/span>/g)].map((m) => m[1])).toEqual(["Q1", "Q3", "Q4"]);
+  expect(jumpRow(html, "stage-grill").map(([, t]) => t)).toEqual(["Q1", "Q2", "Q3", "Q1", "Q3", "Q4"]);
+});
+
+test("the Jump row links the Background and each Report block before the questions, by jump label or by kind", () => {
+  expect(append(PAGE, stage("review"), REVIEW_ROUND, { ...question("s2-r1-q1", 1), round: "s2-r1" }).code).toBe(0);
+  expect(append(report("benchmark", "cards", { entries: [card("b1")], jump: "Benchmark" }), report("standards", "cards", { entries: [card("s1")] }), report("safety", "cards", { entries: [card("f1")] }), background("context", "review")).code).toBe(0);
+  const html = readFileSync(page, "utf8");
+  const row = jumpRow(html, "stage-review");
+  expect(row).toEqual([["background-context", "Background"], ["report-benchmark", "Benchmark"], ["report-standards", "Report"], ["report-safety", "Report 2"], ["q-s2-r1-q1", "Q1"]]);
+  const stops = [...panel(html, "stage-review").matchAll(/id="([^"]+)"[^>]*data-stop/g)].map((m) => m[1]);
+  expect(stops).toEqual(row.map(([id]) => id));
+  expect(html).toMatch(/data-for="report-safety"[^>]*>Report 2<\/a><span class="sep"[^>]*><\/span><a href="#q-s2-r1-q1"/);
+});
+
+test("a jump label shaped like a link stays plain text inside its Jump row link", () => {
+  expect(append(PAGE, stage("review"), background("context", "review", { jump: "[Context](#q-q2) `code`" })).code).toBe(0);
+  expect(readFileSync(page, "utf8")).toContain('<a href="#background-context" data-for="background-context">[Context](#q-q2) `code`</a>');
+});
+
+test.each([["background", () => background("context", "review", { jump: 3 })], ["report", () => report("standards", "cards", { entries: [card("s1")], jump: "" })]])("a %s whose jump label is not text is refused", (kind, rec) => {
+  expect(append(PAGE, stage("review")).code).toBe(0);
+  const r = append(rec());
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain(`${kind} `);
+  expect(r.stderr).toContain("jump");
 });
 
 const REVIEW_ROUND = { ...SPEC_ROUND, id: "s2-r1", stage: "review" };
@@ -900,10 +935,10 @@ test("each Topic note renders once in the Topics tab, and each question that nam
   expect(questionBody(html, "s1-r1-q1")).toMatch(/<a href="#topic-scratch">Topic scratch<\/a>: What scratch is, in one line\.[\s\S]*<a href="#topic-stage">Stage, again<\/a>/);
   expect(questionBody(html, "s2-r1-q1")).toContain('<a href="#topic-scratch">Topic scratch</a>');
   expect(questionBody(html, "s1-r1-q2")).not.toContain("#topic-");
-  const qrow = [...(html.match(/<nav class="qnav"[^>]*data-tab="topics"[\s\S]*?<\/nav>/)?.[0] ?? "").matchAll(/data-for="([^"]+)"/g)].map((m) => m[1]);
+  const row = jumpRow(html, "topics").map(([target]) => target);
   const stops = [...topicsTab.matchAll(/id="([^"]+)"[^>]*data-stop/g)].map((m) => m[1]);
   expect(stops).toEqual(["topic-scratch", "topic-stage"]);
-  expect(qrow).toEqual(stops);
+  expect(row).toEqual(stops);
   const ids = new Set([...html.matchAll(/ id="([^"]+)"/g)].map((m) => m[1]));
   expect([...html.matchAll(/href="#([^"]+)"/g)].map((m) => m[1]).filter((t) => !ids.has(t))).toEqual([]);
 });

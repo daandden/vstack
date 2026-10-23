@@ -4,9 +4,27 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [5.0.13] - 2026-10-23
+
+- The extension picks Addons through omp's `judge` role with `resolveJudge`, not its own TypeSafe `/v1/systemone` call, and only when the role's first candidate is native. Each pick goes into the session's cost ledger as `vstack-addons` and through omp's shared judgment cache, and vstack's own retry is gone. setup-vstack fails the judge role check only when no role is set, prints a note for another role, and checks TypeSafe credentials only when the role's provider is `typesafe`. `sample-briefs.json` is re-recorded on jev-1.14.0 with no flags. `sample-prompts.json` keeps its jev-1.13.0 baselines, because jev-1.14.0 gives 5 flags there (#235) (ADR 0036).
+
+## [5.0.12] - 2026-10-23
+
+- vstack-fan-out now says what goes in a Fan-out's Shared context and what goes in each Brief, and that an isolated eval spawn carries both in its prompt.
+
+## [5.0.11] - 2026-10-23
+
+- A Term note name written as inline code or a link is teal too, like a plain term name. A linked term keeps its underline and its hover color.
+
+## [5.0.10] - 2026-10-23
+
+- Grilling page Term notes make each term stand out: the term name is teal, bold, and body size, still on its own line above its explanation. Every block label under a question (Today, Term notes, Topic notes, Example, and From the report) is pink, so the labels read apart from blue option headings. Report card and ledger field labels keep their gray. GLOSSARY.md now defines Term note.
+
 ## [5.0.9] - 2026-10-23
 
-- The extension picks Addons through omp's `judge` role with `resolveJudge`, not its own TypeSafe `/v1/systemone` call, and only when the role's first candidate is native. Each pick goes into the session's cost ledger as `vstack-addons` and through omp's shared judgment cache, and vstack's own retry is gone. setup-vstack fails the judge role check only when no role is set, prints a note for another role, and checks TypeSafe credentials only when the role names `typesafe`. `sample-briefs.json` is re-recorded on jev-1.14.0 with no flags. `sample-prompts.json` keeps its jev-1.13.0 baselines, because jev-1.14.0 gives 5 flags there (#235) (ADR 0036).
+- A Grilling page round lists its questions in Q-number order, and grilling-page tells the agent to append and ask each round in that order, so the page and the `ask` agree. A decision asked again no longer shows after newer Q numbers.
+- The row of links under the Stage tabs is now the Jump row (GLOSSARY.md). It links the Background and each Report block before the questions, and j/k stop at them. Their link text is the record's optional `jump` field, or else Background, Report, Report 2.
+- Opening a tab measures the bar again before it scrolls, so a link like `page.html#q-q13b` or an Overview link no longer hides its heading under the bar.
 
 ## [5.0.8] - 2026-10-22
 

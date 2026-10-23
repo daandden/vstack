@@ -112,6 +112,14 @@ _Avoid_: parent's model, run's model
 One skill step running two or more subagents at the same time. A step with two or more parts always fans out: no judgment of the job's size decides it, the agent at that step never does the parts itself, and the user's words, such as "sequential" or "no fan-out", do not turn it off. If the subagents cannot start, the step stops and says why. A step that draws figures gives each figure its own subagent. Every subagent uses the Session model of the step's session unless the user has set a model for its agent.
 _Avoid_: swarm, parallelism (unqualified)
 
+**Brief**:
+The instruction that a parent writes for one subagent, sent as that subagent's first message. It names the subagent's part, its inputs, and how the part is accepted. The Addon judge reads only the brief.
+_Avoid_: prompt (for this), assignment
+
+**Shared context**:
+The one block of background that a parent gives to every subagent it starts in one call, a single subagent included, placed in each subagent's system prompt. It holds only what every part needs. A subagent started from an eval cell gets none.
+_Avoid_: brief (for this), shared brief
+
 **Headless run**:
 A run of a skill under test, or of its blind judge, in its own omp process that sees only what the test gives it. It is not a subagent, so it is never Fan-out, but it uses the Session model.
 _Avoid_: eval subagent, runner (unqualified)
@@ -171,6 +179,14 @@ _Avoid_: intro, explain block, context section
 **Topic note**:
 An explanation of one concept that the Grilling page shows once, in a shared area, and that questions in any Stage link to. It differs from a Term note, which defines one name in one line on one question.
 _Avoid_: explain block, glossary entry
+
+**Jump row**:
+The row of links under a Grilling page's Stage tabs. It has one link for each part of the open tab, in page order: its Background, each Report block, each question, and the latest summary.
+_Avoid_: Q row, question nav, navigation
+
+**Term note**:
+A one-line definition on one question of the Grilling page, for a name that a newcomer may not know, such as a glossary term, a skill or file name, or an ADR number. A concept that several questions need is a Topic note instead.
+_Avoid_: glossary note, definition block
 
 **flow.json**:
 The file beside a flow's Grilling page that names the flow's original topic slug, its spec issue, tickets, branch, and run ids. A later Stage, even one in another omp session, finds the flow's page by any of them.
