@@ -52,9 +52,9 @@
     h1, h2, h3, h4 { margin-block: 0; color: var(--text); text-wrap: balance; font-family: "IosevkaTermSlab Nerd Font Mono", "Iosevka Term Slab", "JetBrains Mono", ui-monospace, monospace; font-size: var(--fs-body); line-height: normal; }
     p, ul, ol, dl, dd, figure { margin: 0; }
     a { color: var(--blue); text-underline-offset: 0.2em; touch-action: manipulation; }
-    a:active { color: var(--lavender); }
+    a:active, .terms dt a:active { color: var(--lavender); }
     :focus-visible { outline: 2px solid var(--blue); outline-offset: 0.2em; }
-    @media (hover: hover) and (pointer: fine) { a:hover { color: var(--lavender); } }
+    @media (hover: hover) and (pointer: fine) { a:hover, .terms dt a:hover { color: var(--lavender); } }
     code, pre { font: inherit; }
     code { padding-inline: 0.25em; border-radius: 0.2rem; background: var(--surface0); color: var(--text); }
     pre { white-space: pre-wrap; font-size: var(--fs-small); }
@@ -122,6 +122,7 @@
     .source { color: var(--subtext0); font-size: var(--fs-small); }
     .terms dl, .fields { display: grid; gap: 0.125rem; }
     .terms dt { font-weight: 600; color: var(--teal); }
+    .terms dt :is(code, a) { color: inherit; }
     .fields dt { font-size: var(--fs-small); font-weight: 600; color: var(--subtext1); }
     :is(.terms dl, .fields) > dd + dt { margin-block-start: 0.5rem; }
     /* An example can be a list or a screen, so it keeps its line breaks and leading spaces. */
