@@ -32,7 +32,6 @@ Break the work into **tracer bullet** tickets.
 
 - Each slice cuts a narrow but COMPLETE path through every layer (schema, API, UI, tests): vertical, NOT a horizontal slice of one layer
 - A completed slice is demoable or verifiable on its own
-- Each slice is sized to fit in a single fresh context window
 - Any prefactoring should be done first
 
 </vertical-slice-rules>
@@ -49,7 +48,7 @@ Write the proposed breakdown on the to-tickets Stage as a table Report block, as
 
 - Ticket: the ticket's number and short title, then one sentence on the end-to-end behavior that it delivers.
 - Blocked by: the numbers of the tickets that must complete first, or "None".
-- Size: small, medium, or large, compared with one fresh context window.
+- Size: small, medium, or large.
 
 After the Report block, ask one approval question on the page through `ask`, with the options Approve and Change something. Link the question and every row both ways. Its description asks these questions:
 
