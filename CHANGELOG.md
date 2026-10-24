@@ -4,6 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [5.0.16] - 2026-10-24
+
+- Every Figure brief has a layout field: the figure's direction and where each part sits. A figure with zones, lanes, or rows also gets a groups field, with each group's name and nodes. `vstack-figures` is the one list of the brief's fields, and explain, how, grilling-page, improve-codebase-architecture, teach, and ketchup write briefs with them. GLOSSARY.md defines Figure brief (#239).
+- `plugin/skills/vstack-figures/evals/` holds 18 real Figure briefs (3 simple, 5 normal, 10 complex), the judge rubric, and the run procedure for comparing two versions of the drawer text. Drawers run on `openai-codex/gpt-6.1-sol:high`, and Opus 5.5 (high) judges each pair blind twice, once in each A/B order. A pair counts as a win only when both verdicts agree, and a change is kept when it wins at least 11 of 18 pairs. Runs write under the new `vstack-figures` Scratch kind. The first comparison tested removing diagram-design's complexity budget together with a shorter drawer reading list. It lost every run, ending at 5 candidate wins, 10 baseline wins, and 3 splits, so diagram-design keeps its budget (#242, #245).
+
 ## [5.0.15] - 2026-10-24
 
 - implement, implement-spec, and the shared End state block take the project's default End state from the `- Default End state:` line in `code-host.md` when the user's words and the ticket name none, with no question. The configs still cap it, and the run says which End state it took and where it came from. A project without the line still gets the End state question with commit recommended, and a Headless run with no `ask` still takes commit unless its prompt names an End state (ADR 0038).
