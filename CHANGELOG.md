@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [5.0.18] - 2026-10-24
+
+- implement reuses a seam from the flow's Grilling page only when the user picked it through `ask`. A headless answer, an unanswered or timed-out question, and a no-test pick leave the seam open, so the run asks again or builds the slice without a test (#183).
+
 ## [5.0.17] - 2026-10-24
 
 - implement settles the test seams before the first code change. Its steps are now 1. Settle the seams, 2. Red then green per slice, and 3. Run checks, so the todo list no longer puts code before tdd. It reuses a seam that the spec's testing decisions, the ticket's text, or an answered seam question on the flow's Grilling page names, and asks one seam question for every other slice. tdd does not change (#183).
