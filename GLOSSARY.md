@@ -204,6 +204,10 @@ _Avoid_: background figure
 A figure on a Grilling page question that shows how its options differ in shape.
 _Avoid_: comparison figure
 
+**Figure brief**:
+The text a skill writes for one diagram drawer that fixes one figure's type, size, layout, and content: every node, edge, and label, any zones, lanes, or rows, and the focal elements.
+_Avoid_: prompt, figure spec, diagram request
+
 **Verify skill**:
 A project-local skill named `verify-<app>` that drives the project's app the way a user does and captures proof that a change works. setup-app-verification creates it, and maintain-app-verification keeps it accurate.
 _Avoid_: control skill, verification skill

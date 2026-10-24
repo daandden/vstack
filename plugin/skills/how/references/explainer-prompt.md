@@ -37,7 +37,7 @@ The core of the explanation, and the longest section. Walk through the flow: wha
 
 Use prose, not pseudocode. Reference specific files and functions so the reader knows where to look, but don't dump large code blocks unless a snippet is essential to a point.
 
-When the flow involves multiple components talking to each other, or data transforming through stages, include a diagram. Return one figure brief per diagram with the explanation, with the fields that `skill://vstack-figures` lists. The how agent draws, exports, and inlines each figure on its Scratch page. A diagram should clarify, not decorate. If prose covers the flow, skip the diagram.
+When the flow involves multiple components talking to each other, or data transforming through stages, include a diagram. Return one Figure brief per diagram with the explanation, with the fields that `skill://vstack-figures` lists, layout included. The how agent draws, exports, and inlines each figure on its Scratch page. A diagram should clarify, not decorate. If prose covers the flow, skip the diagram.
 
 ### Where Things Live
 A brief file/directory map. Just the ones someone would need to start working here.
