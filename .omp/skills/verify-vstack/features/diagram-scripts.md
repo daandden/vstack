@@ -9,7 +9,7 @@ The diagram-design skill bundles Python scripts that need only the standard libr
 - `diagram-excalidraw` `excalidraw_extract.py <file>` prints the same digest for an Excalidraw scene. A file without `"type": "excalidraw"` exits 2 and names the problem.
 - `diagram-check` `self_check.py <file>...` prints `OK <file>` for a good diagram. For a bad one, it prints `FAIL <file>` and one `  - <error>` line per problem, and exits 1.
 - `diagram-geometry` `verify-geometry.py <file>...` prints one `<file name>:<line>: ...` line per connector or label-mask problem, then a `Summary:` line, and exits 1 when it finds any. A clean file prints only the summary and exits 0.
-- `diagram-style` `lint-skin.py <file>...` prints one `<path>:<line>: <category>: ...` line per off-palette color, font family outside the Iosevka faces and their generic fallbacks, or remote resource, then a `Summary:` line, and exits 1 when it finds any. It skips HTML comments. A clean file prints only the summary and exits 0.
+- `diagram-style` `lint-skin.py <file>...` prints one `<path>:<line>: <category>: ...` line per off-palette color, font family outside the Iosevka faces, the approved CJK system faces (such as `PingFang SC` and `Hiragino Sans`), and their generic fallbacks, or remote resource, then a `Summary:` line, and exits 1 when it finds any. It skips HTML comments. A clean file prints only the summary and exits 0.
 - `diagram-export` `export_svg.py <html> [<out.svg>]` writes a well-formed SVG and prints its path. A missing source exits 2.
 
 ## How to get to it (user POV)

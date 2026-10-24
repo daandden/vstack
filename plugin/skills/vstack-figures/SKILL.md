@@ -10,14 +10,16 @@ A caller is a skill step that shows figures to a person. The caller writes one b
 
 ## 1. Settle the plan
 
-A drawer has no `ask`, so settle each figure's plan before any drawer starts. Fix each figure's type, size, and content from the caller's rules and evidence. Choose the type with diagram-design's visual-type guide. Draw without the plan pause.
+A drawer has no `ask`, so settle each figure's plan before any drawer starts. Fix each figure's type, size, layout, and content from the caller's rules and evidence. Choose the type with diagram-design's visual-type guide. Draw without the plan pause.
 
-## 2. Write one brief per figure
+## 2. Write one Figure brief per figure
 
-Each brief has these fields:
+This list is the one list of a Figure brief's fields, and every caller writes them:
 
 - Slug: a basename that is unique on the page, so that SVG IDs stay unique.
 - Type and size preset.
+- Layout: the figure's direction, such as left to right or top to bottom, and where each part sits, such as "the three stores in one column on the right".
+- Groups, when the figure has zones, lanes, or rows: each group's name, in its order, and the nodes in it.
 - Content: every node, edge, and label, and the one or two focal elements.
 - Out dir: the caller's Scratch entry, `<Scratch dir>/<kind>/<entry>/`.
 - The caller's extra rules for the figure, such as one step of a build-up series.
@@ -49,6 +51,6 @@ If no figure can be drawn (no eval tool for the export script), report that miss
 Only a drawer follows these steps. It runs them for each brief, in order.
 
 1. Read `skill://diagram-design`, its `references/style-guide.md`, the type reference for the brief's type, and `references/export.md`.
-2. Draw the figure with the brief's type, size, and content. Add no node, edge, or label that the brief does not give.
+2. Draw the figure with the brief's type, size, layout, groups, and content. Add no node, edge, or label that the brief does not give.
 3. Save the source as `<out dir>/<slug>.html`. Run diagram-design's taste gate and the eval cells for `scripts/verify-geometry.py`, `scripts/lint-skin.py`, and `scripts/self_check.py` on that file, and fix what fails.
 4. Export `<out dir>/<slug>.svg` with the eval cell for `scripts/export_svg.py`.

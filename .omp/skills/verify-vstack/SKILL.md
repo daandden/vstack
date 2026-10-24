@@ -127,4 +127,4 @@ All paths are relative to `SKILL_DIR`.
 - `omp plugin link` in the run's home replaces the link each drive. To compare two checkouts, use two run dirs.
 - The stub model does not think. It answers with `--replies` in order, one per model request. A tool call needs a second reply for the turn after the tool result.
 - `get_state` holds the whole system prompt (about 40 KB). The summary shows only its size. Read fields from `rpc.jsonl` with `jq`.
-- The run-gated Addon judge needs a typed Matt skill in the main session and a native `typesafe/jev-latest` model with a key. The stub home has no key, so a drive never shows a pick. Report it as skipped.
+- The run-gated Addon judge needs a typed Matt skill in the main session and a native judge model that omp's `judge` role resolves to, with its provider credentials. The stub home has only the stub model, so a drive never shows a pick. Report it as skipped.

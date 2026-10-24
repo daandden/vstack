@@ -36,7 +36,7 @@ No quizzes, pacing labels, or requests to repeat the explanation. Stop at a natu
 
 Use `templates/explain.html` for one HTML page in `explain/<run-id>/`. Keep that same page across the conversation. Add each new explanation section and figure below the last. Print the plain absolute path of the page with the explanation, with no `file://` prefix.
 
-Draw every figure through `skill://vstack-figures`. Fix each figure's type, size, and content from the explanation. For three or more moving parts, plan a short build-up series: each figure redraws the last one and adds one part. The out dir is this run's Scratch entry, with a unique figure slug. Write the explanation while the drawers run. Collect the figures before you write them into the page, inlined under the last figure. Use no external image files or diagram renderer. There is no generated-image or mermaid fallback.
+Draw every figure through `skill://vstack-figures`. Write each Figure brief with that skill's fields, layout included, fixed from the explanation. For three or more moving parts, plan a short build-up series: each figure redraws the last one and adds one part. The out dir is this run's Scratch entry, with a unique figure slug. Write the explanation while the drawers run. Collect the figures before you write them into the page, inlined under the last figure. Use no external image files or diagram renderer. There is no generated-image or mermaid fallback.
 
 Open the page in the browser on its first figure. Keep appending without reopening it on later turns. The page contains the explanation and cited evidence, not just the figures. All figures appear in reading order and the HTML is self-contained.
 

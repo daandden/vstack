@@ -60,7 +60,7 @@ items:
     tree: f07d230f645fc9ac390cf13a450bbff12ad791a3
     disposition: adapt
     artifacts: [plugin/skills/implement]
-    reason: "Settles End states from the user's words or the ticket, then the project's default End state in code-host.md, then an ask, through live MCP capability discovery, and shares description-based Code host routing, with unsupported optional tools reported as gaps (ADR 0034, ADR 0035, ADR 0038, #204)."
+    reason: "Settles End states from the user's words or the ticket, then the project's default End state in code-host.md, then an ask, through live MCP capability discovery, and shares description-based Code host routing, with unsupported optional tools reported as gaps (ADR 0034, ADR 0035, ADR 0038, #204). Numbers its steps so the seams are settled before the first code change and each slice goes red before its code, and reuses a Grilling-page seam only when the user picked it (#183)."
   - id: matt/improve-codebase-architecture
     upstream: matt
     kind: skill

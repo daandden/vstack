@@ -8,6 +8,19 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 - `scripts/addon-judge-check.ts` flags an unexpected pick above 0.95, not 0.85. The runtime selection threshold remains 0.70. Both sample corpora are re-recorded on jev-1.14.0. Three expected-pick flags remain among 250 prompts, and one among 16 briefs. Follow-up question rewordings did not clear the eval gate and were reverted (#235).
 - `scripts/addon-judge-ratchet.ts` scores a catalog edit on a case file of tasks, each with its raw and restated forms, for omp's eval `ratchet` flows (#235).
 
+## [5.0.18] - 2026-10-24
+
+- implement reuses a seam from the flow's Grilling page only when the user picked it through `ask`. A headless answer, an unanswered or timed-out question, and a no-test pick leave the seam open, so the run asks again or builds the slice without a test (#183).
+
+## [5.0.17] - 2026-10-24
+
+- implement settles the test seams before the first code change. Its steps are now 1. Settle the seams, 2. Red then green per slice, and 3. Run checks, so the todo list no longer puts code before tdd. It reuses a seam that the spec's testing decisions, the ticket's text, or an answered seam question on the flow's Grilling page names, and asks one seam question for every other slice. tdd does not change (#183).
+
+## [5.0.16] - 2026-10-24
+
+- Every Figure brief has a layout field: the figure's direction and where each part sits. A figure with zones, lanes, or rows also gets a groups field, with each group's name and nodes. `vstack-figures` is the one list of the brief's fields, and explain, how, grilling-page, improve-codebase-architecture, teach, and ketchup write briefs with them. GLOSSARY.md defines Figure brief (#239).
+- `plugin/skills/vstack-figures/evals/` holds 18 real Figure briefs (3 simple, 5 normal, 10 complex), the judge rubric, and the run procedure for comparing two versions of the drawer text. Drawers run on `openai-codex/gpt-6.1-sol:high`, and Opus 5.5 (high) judges each pair blind twice, once in each A/B order. A pair counts as a win only when both verdicts agree, and a change is kept when it wins at least 11 of 18 pairs. Runs write under the new `vstack-figures` Scratch kind. The first comparison tested removing diagram-design's complexity budget together with a shorter drawer reading list. It lost every run, ending at 5 candidate wins, 10 baseline wins, and 3 splits, so diagram-design keeps its budget (#242, #245).
+
 ## [5.0.15] - 2026-10-24
 
 - implement, implement-spec, and the shared End state block take the project's default End state from the `- Default End state:` line in `code-host.md` when the user's words and the ticket name none, with no question. The configs still cap it, and the run says which End state it took and where it came from. A project without the line still gets the End state question with commit recommended, and a Headless run with no `ask` still takes commit unless its prompt names an End state (ADR 0038).

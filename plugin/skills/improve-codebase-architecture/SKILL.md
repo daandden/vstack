@@ -42,7 +42,7 @@ Apply the deletion test to anything you suspect is shallow: would deleting it co
 
 Read `skill://grilling-page`. Find or start the flow's page, as its "Find or start the page" section says. Add an improve-codebase-architecture Stage, as its "Add a Stage" section says. The candidates, the pick, and the grilling that follows all go in this Stage.
 
-Draw a before figure and an after figure for each candidate through `skill://vstack-figures`, with type, size, labels, and content fixed from the evidence. The before figure shows the shallowness, and the after figure shows the deepening. Give both figures of a candidate the same type and layout, so that the reader compares them part by part. Label leakage and seams in words as well as in color. The out dir is the flow folder's `figures/`, and each figure gets a unique basename. Do not hand-draw replacement figures or fall back to Mermaid. If drawing cannot run, stop and report the missing prerequisite.
+Draw a before figure and an after figure for each candidate through `skill://vstack-figures`. Write each Figure brief with that skill's fields, layout included, fixed from the evidence. The before figure shows the shallowness, and the after figure shows the deepening. Give both figures of a candidate the same type and layout, so that the reader compares them part by part. Label leakage and seams in words as well as in color. The out dir is the flow folder's `figures/`, and each figure gets a unique basename. Do not hand-draw replacement figures or fall back to Mermaid. If drawing cannot run, stop and report the missing prerequisite.
 
 Write the candidates as one `report` record with shape `cards` while the drawers run. Give each candidate one card:
 

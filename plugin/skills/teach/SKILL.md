@@ -146,7 +146,7 @@ Read `skill://vstack-tmp` and resolve the `teach/` kind for every lesson or refe
 
 The delivered page is one file, usable offline: inline reusable workspace CSS and quiz scripts, with no CDN, external fonts, or linked assets. Keep the existing workspace mission, resources, learning records, notes, reference materials, and reusable asset sources as durable teaching state. Do not treat Scratch as learning history: use `learning-records/` to track progress across sessions. Use `ask` before keeping a generated page in `./lessons/` or `./reference/`; copy it only after approval, and keep workspace links pointed at durable copies. Links to earlier durable lessons and references use absolute file URLs from a Scratch page.
 
-Draw lesson and reference figures through `skill://vstack-figures`, with type, size, labels, and content fixed from the lesson plan. The out dir is the page's Scratch entry, with unique filenames for distinct figures so IDs do not collide. Write the lesson while the drawers run, then collect the figures and inline each exported `<svg>` in the page. Never substitute hand-drawn figures or Mermaid. If drawing cannot run, stop and report the missing prerequisite.
+Draw lesson and reference figures through `skill://vstack-figures`. Write each Figure brief with that skill's fields, layout included, fixed from the lesson plan. The out dir is the page's Scratch entry, with unique filenames for distinct figures so IDs do not collide. Write the lesson while the drawers run, then collect the figures and inline each exported `<svg>` in the page. Never substitute hand-drawn figures or Mermaid. If drawing cannot run, stop and report the missing prerequisite.
 
 ## In-session questions
 
