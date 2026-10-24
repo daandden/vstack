@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [5.0.17] - 2026-10-24
+
+- implement settles the test seams before the first code change. Its steps are now 1. Settle the seams, 2. Red then green per slice, and 3. Run checks, so the todo list no longer puts code before tdd. It reuses a seam that the spec's testing decisions, the ticket's text, or an answered seam question on the flow's Grilling page names, and asks one seam question for every other slice. tdd does not change (#183).
+
 ## [5.0.16] - 2026-10-24
 
 - Every Figure brief has a layout field: the figure's direction and where each part sits. A figure with zones, lanes, or rows also gets a groups field, with each group's name and nodes. `vstack-figures` is the one list of the brief's fields, and explain, how, grilling-page, improve-codebase-architecture, teach, and ketchup write briefs with them. GLOSSARY.md defines Figure brief (#239).
