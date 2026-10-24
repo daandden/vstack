@@ -12,10 +12,10 @@
     },
     "principle-boundary-discipline": {
       "type": "noul",
-      "instructions": "Does this task involve validation, error handling, or adapters at a system boundary?",
+      "instructions": "Does this task write or restructure code that parses, validates, or handles errors for input crossing a system boundary, or that wraps an outside service, or decide where that code belongs?",
       "criteria": {
-        "true": "E.g. parsing or validating external input (HTTP requests, webhooks, config, CLI args, files, third-party APIs), or deciding where validation and error handling belong.",
-        "false": "Internal refactors, UI work, test runs, or verification with no external input handling."
+        "true": "E.g. validating HTTP or webhook payloads, adding CLI commands, flags, filters, or config fields and their checks, building or extending a client for a backend or third-party API, or moving scattered checks to the entry point.",
+        "false": "Diagnosing a crash or error message, analyzing logs or data, designing types alone, running or installing a script, research, review, or verification briefs, auditing an existing skill or doc, internal refactors, or UI work."
       }
     },
     "principle-build-the-lever": {
@@ -68,10 +68,10 @@
     },
     "principle-guard-the-context-window": {
       "type": "noul",
-      "instructions": "Will this task require reading large outputs or many long files?",
+      "instructions": "Must the agent take in more material than it can read directly (very large logs, dumps, or datasets, or dozens of files read to compile a report), or does the request plan fanning research out to several subagents?",
       "criteria": {
-        "true": "The task clearly is this situation.",
-        "false": "The task is not this situation, or only loosely resembles it."
+        "true": "E.g. digesting very large logs, dumps, or datasets; reading through dozens of files to compile findings; sending several subagents to research and report back.",
+        "false": "Editing many files or call sites in a rename, codemod, or library migration; inspecting one profile, trace, or diff; a long request or brief that points to many files as context for one bounded job such as a ticket, a review, or a verification."
       }
     },
     "principle-laziness-protocol": {
@@ -100,10 +100,10 @@
     },
     "principle-minimize-reader-load": {
       "type": "noul",
-      "instructions": "Is this task about code that is hard to trace, or reviewing/reshaping code for readability?",
+      "instructions": "Does the user want code reshaped so a reader can trace it (untangling call chains, inlining one-caller wrappers), or reviewed for readability?",
       "criteria": {
         "true": "E.g. tangled call chains, wrappers or adapters with one caller, or a request to make code easier to follow or to review it for readability.",
-        "false": "A cosmetic rename, a docstring, a typo, explaining how code works, or a bug or feature where readability is not the goal."
+        "false": "Deleting comments, dead code, unused imports, or old flags; running a formatter; a refactor, migration, or validation cleanup that does not name readability as its goal; a cosmetic rename, a docstring, a typo; explaining how code works; or a bug or feature."
       }
     },
     "principle-never-block-on-the-human": {

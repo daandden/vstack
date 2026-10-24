@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+- Tune three Addon questions for jev-1.14.0. `principle-guard-the-context-window` distinguishes bulk reading from editing many files. `principle-minimize-reader-load` distinguishes readability work from routine cleanup. `principle-boundary-discipline` distinguishes boundary implementation from diagnosis and research. The gated catalog improved test exact-pick rate from 69.7% to 80.8% on 87 task families. The eval includes 75 real-session prompts and labels from Opus 5.5 high, GPT-6.1 sol high, and GPT-6.1 sol xhigh (#235).
+- `scripts/addon-judge-check.ts` flags an unexpected pick above 0.95, not 0.85. The runtime selection threshold remains 0.70. Both sample corpora are re-recorded on jev-1.14.0. Three expected-pick flags remain among 250 prompts, and one among 16 briefs. Follow-up question rewordings did not clear the eval gate and were reverted (#235).
+- `scripts/addon-judge-ratchet.ts` scores a catalog edit on a case file of tasks, each with its raw and restated forms, for omp's eval `ratchet` flows (#235).
+
 ## [5.0.15] - 2026-10-24
 
 - implement, implement-spec, and the shared End state block take the project's default End state from the `- Default End state:` line in `code-host.md` when the user's words and the ticket name none, with no question. The configs still cap it, and the run says which End state it took and where it came from. A project without the line still gets the End state question with commit recommended, and a Headless run with no `ask` still takes commit unless its prompt names an End state (ADR 0038).

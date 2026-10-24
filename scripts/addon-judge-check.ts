@@ -17,7 +17,7 @@ if (!key) {
 }
 
 const MISS_BELOW = 0.65;
-const WRONG_ABOVE = 0.85;
+const WRONG_ABOVE = 0.95;
 const isBorderline = (score: number) => score >= MISS_BELOW && score <= WRONG_ABOVE;
 
 try {
