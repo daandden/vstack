@@ -27,4 +27,4 @@ We chose the rename because it reuses the issue key that pages already had and k
 - improve-codebase-architecture shows its candidates as a Report block on the flow's page, and its separate HTML report goes away.
 - The triage pick of which item to work on stays a plain `ask` and is on no page. Subagents still never ask. They return their questions, and the top-level agent puts them on the page.
 - A flow with no spec splits into two pages when implement runs in a new session.
-- implement reads one thing from the page: an answered seam question counts as an agreed test seam, so a grill that settled the seams does not ask them again. A page that has expired, or a seam it never answered, gets the seam question again (#183).
+- implement reads one thing from the page: a seam that the user picked through `ask` counts as an agreed test seam, so a grill that settled the seams does not ask them again. A headless answer, an unanswered or timed-out question, a no-test pick, and an expired page leave the seam open, and implement asks again (#183).
