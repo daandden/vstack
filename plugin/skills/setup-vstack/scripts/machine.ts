@@ -1,5 +1,5 @@
 //   bun machine.ts                              check; prints one OK line or one line per failing check, plus NOTE lines
-//   bun machine.ts --set judge|isolation|clone…  write those settings to the user's omp config
+//   bun machine.ts --set judge|isolation|clone|ratchet…  write those settings to the user's omp config
 //
 // Every fact comes from the `omp` on PATH, so the checks see what omp itself resolves for this HOME and cwd.
 // Checking never writes. `--set` runs only after the user approved the change through `ask`.
@@ -23,7 +23,7 @@ type Problem = Extract<Result, { status: "fail" | "warn" }>;
 const isProblem = (r: Result): r is Problem => r.status === "fail" || r.status === "warn";
 
 function usage(message: string): never {
-  console.error(`${message}\nUsage: machine.ts\n       machine.ts --set judge|isolation|clone...`);
+  console.error(`${message}\nUsage: machine.ts\n       machine.ts --set judge|isolation|clone|ratchet...`);
   process.exit(2);
 }
 
@@ -180,6 +180,18 @@ async function check(): Promise<Result[]> {
         },
   );
 
+  results.push(
+    cfg.get("ratchet.enabled") === true
+      ? { id: 8, name: "ratchet.enabled", status: "ok" }
+      : {
+          id: 8,
+          name: "ratchet.enabled",
+          status: "fail",
+          detail: "ratchet.enabled is off, so Ratchet cannot improve an LLM flow",
+          remedy: "setup-vstack sets ratchet.enabled to true once you approve",
+        },
+  );
+
   return results;
 }
 
@@ -197,12 +209,13 @@ const SETTERS: Record<string, () => Promise<[key: string, value: string]>> = {
   },
   isolation: async () => ["task.isolation.enabled", "true"],
   clone: async () => ["worktree.clone", "true"],
+  ratchet: async () => ["ratchet.enabled", "true"],
 };
 
 async function main(argv: string[]) {
   if (argv[0] === "--set") {
     const names = argv.slice(1);
-    if (names.length === 0) usage("--set needs at least one of: judge, isolation, clone");
+    if (names.length === 0) usage("--set needs at least one of: judge, isolation, clone, ratchet");
     for (const name of names) if (!(name in SETTERS)) usage(`unknown setting for --set: ${name}`);
     if (!OMP) usage("omp is not on PATH; setup-vstack needs the omp CLI");
     for (const name of new Set(names)) {
