@@ -98,7 +98,19 @@ A ticket that already failed in this run is not ready again: a failed worker, a 
 
 Once no ticket is ready and no implementer or merger runs, run shared step 3b, then shared step 4. Run shared step 5 once, before shared step 6 (Matt's order). It runs skill://code-review over the whole integration-branch diff from the base SHA, the ticket commits included. Make every review fix that shared step 5 names in a single subagent. With no review fix, skip the fixer below.
 
-Spawn one `vstack-worker` via `task` (`agent: "vstack-worker"`): make every review fix in the parent checkout from code-review's result and the integration branch tip, with skill://tdd at the seams the spec confirms where a fix changes behavior, and return changed paths, checks with their outcomes, and any new seam as an open question, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: the main agent only orchestrates, so report each review fix as open. Put each returned seam question to the user through `ask` before the commit. A timed-out answer leaves that fix open. Report it.
+When skill://vstack-maintain is loaded, include its drafting brief and review-fix-wave rule under "Knowledge for implement" in the fixer brief. State whether the branch was pushed. That rule owns the `prepare` and `gates` conditions for each wave.
+
+Spawn one `vstack-worker` via eval `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`: make every review fix in your own clone from code-review's result and the integration branch tip, with skill://tdd at the seams the spec confirms where a fix changes behavior. Commit nothing, merge nothing, and push nothing. Return changed paths, checks with their outcomes, and any new seam as an open question, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: the main agent only orchestrates, so report each review fix as open and point at `/skill:setup-vstack` when isolation is off.
+
+Take the fixer's patch path from its completion notice as step 5 says, never from an inferred path. Reuse step 5's worker-failure, held-patch, seam-question, and once-only retry handling for the review-fix wave instead of a ticket. Put each returned seam question to the user through `ask` before landing the patch. A timed-out answer leaves that fix open and its patch unapplied. Report it.
+
+With no open question, choose the landing rule by whether skill://vstack-maintain is loaded.
+
+When it is not loaded, use step 5's merger to inspect and land the patch on the integration branch. Reuse its patch application, conflict resolution, checks, and rollback behavior against the spec and code-review's result. The merger leaves the accepted review-fix hunks staged and uncommitted for shared step 6 instead of making a ticket commit.
+
+When skill://vstack-maintain is loaded, follow its landing rule after `gates` passes. Read the patch, then apply it atomically with `git apply -- "<patchPath>"`. A conflict lands nothing. Use the once-only retry above to send the wave to a fresh isolated fixer from the current integration branch tip. Resolve the conflict there and run the required `gates` after the final edit before landing the new patch. A second failed apply leaves the fixes open. Never resolve a conflict by editing plugin text in the parent checkout.
+
+Draft review fixes only in the isolated worker, never directly in the parent checkout.
 
 ### 8. Commit and close
 
