@@ -24,6 +24,20 @@ The CI section writes `ci.md` independently of the Code host. For GitHub Actions
 
 To refresh, run `git pull` in the clone and start a new omp session. The link points at the working tree, so there is nothing else to update.
 
+## Improve an LLM flow
+
+Start with the grill and ask for sustained improvement of your app's LLM-flow answer quality, cost, or latency. The hidden tune-llm-flow Addon settles the entry point, case source, goal and direction, editable and off-limits paths, and stop rule once. Continue through implement as usual. hillclimb remains the Addon for measured improvement in code that calls no model.
+
+Ratchet requires omp 18.4.3 or later and `ratchet.enabled` on. If it is off, tune-llm-flow stops and points to `/skill:setup-vstack`; the Addon never changes that setting. The loop runs in your interactive session's checkout, not an isolated worker.
+
+Review every eval case, five graded pilot cases with their reasoning, and the plan on the flow's Grilling page. Ratchet's host dialog shows only a Q-numbered question and the page pointer. Approve continues, Revise returns your feedback for another review, and Abort or dismissal stops tuning. Only Ratchet records approval and checks whether the reviewed material is still current.
+
+Ratchet keeps a candidate only when the target improves beyond noise on both train and test cases without regressing held metrics. Cost and latency goals hold graded answer quality. Each kept round becomes its own commit with measurement evidence. Rejected edits are removed without discarding unrelated work or earlier wins. The page shows each gate's result and the final comparison with baseline and other attempts.
+
+The reusable eval in `.omp/ratchet/<flow>/` gets a separate commit, including cases, runner, grader, baseline, state, and results, but no `traces/` directories. Cases enter git history, including any production data they contain. implement then resumes its shared review and End state chain.
+
+The optional [omp-tools Flexible Ask companion](https://github.com/daandden/omp-tools/issues/26) is separate. Without it, the stock omp dialog uses the same short approval content. The combined picker experience remains unproven until the companion's live Ratchet approval probe passes. [ADR 0039](docs/adr/0039-llm-flows-improve-through-a-tune-llm-flow-addon.md) records the design.
+
 ## /vstack-clean Command
 
 Type `/vstack-clean [age]` to preview expired Scratch entries across repos. The default age is `90d`. The extension runs `plugin/skills/vstack-tmp/scripts/clean.ts` without a model.
