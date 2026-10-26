@@ -1,5 +1,5 @@
 {
-  "model": "typesafe/jev-latest (resolved to jev-1.14.0 on 2026-10-23)",
+  "model": "typesafe/jev-latest (resolved to jev-1.14.0 on 2026-10-24)",
   "threshold": 0.7,
   "state_shape": {
     "request": "cleanBrief(prompt): the brief without omp's `Complete assignment thoroughly:` line, through the cleaner's stages, squeezed to 10,000 characters",
@@ -13,9 +13,9 @@
     "spawn_line": "The skill step that started the agent.",
     "expected": "A required principle pick. The check flags mean P(yes) < 0.65. The runtime selects at 0.70.",
     "allowed": "A pick is acceptable either way. It is not an unexpected pick.",
-    "other": "A principle outside expected and allowed is flagged when mean P(yes) > 0.85.",
-    "baseline_selected": "Mean P(yes) over 3 fresh direct POST runs with the catalog and the state shape above (2026-10-23), >= 0.70. Stored values round to 3 decimals.",
-    "baseline_borderline": "Mean P(yes) in [0.65, 0.85], including scores that are also selected. Stored values round to 3 decimals."
+    "other": "A principle outside expected and allowed is flagged when mean P(yes) > 0.95.",
+    "baseline_selected": "Mean P(yes) over 3 fresh direct POST runs with the catalog and the state shape above (2026-10-24), >= 0.70. Stored values round to 3 decimals.",
+    "baseline_borderline": "Mean P(yes) in [0.65, 0.95], including scores that are also selected. Stored values round to 3 decimals."
   },
   "prompts": [
     {
@@ -30,12 +30,10 @@
         "principle-boundary-discipline"
       ],
       "baseline_selected": {
-        "principle-boundary-discipline": 0.73,
-        "principle-prove-it-works": 0.823
+        "principle-prove-it-works": 0.83
       },
       "baseline_borderline": {
-        "principle-boundary-discipline": 0.73,
-        "principle-prove-it-works": 0.823
+        "principle-prove-it-works": 0.83
       }
     },
     {
@@ -47,9 +45,7 @@
       "expected": [],
       "allowed": [],
       "baseline_selected": {},
-      "baseline_borderline": {
-        "principle-boundary-discipline": 0.663
-      }
+      "baseline_borderline": {}
     },
     {
       "id": "explorer-grill-facts-docs",
@@ -62,7 +58,9 @@
         "principle-guard-the-context-window"
       ],
       "baseline_selected": {},
-      "baseline_borderline": {}
+      "baseline_borderline": {
+        "principle-guard-the-context-window": 0.65
+      }
     },
     {
       "id": "explorer-grill-flow-compare",
@@ -74,12 +72,8 @@
         "principle-guard-the-context-window"
       ],
       "allowed": [],
-      "baseline_selected": {
-        "principle-guard-the-context-window": 0.767
-      },
-      "baseline_borderline": {
-        "principle-guard-the-context-window": 0.767
-      }
+      "baseline_selected": {},
+      "baseline_borderline": {}
     },
     {
       "id": "explorer-review-safety",
@@ -96,7 +90,7 @@
       ],
       "baseline_selected": {},
       "baseline_borderline": {
-        "principle-prove-it-works": 0.697
+        "principle-prove-it-works": 0.7
       }
     },
     {
@@ -125,8 +119,7 @@
       ],
       "baseline_selected": {},
       "baseline_borderline": {
-        "principle-build-the-lever": 0.657,
-        "principle-guard-the-context-window": 0.673
+        "principle-build-the-lever": 0.663
       }
     },
     {
@@ -141,10 +134,7 @@
         "principle-guard-the-context-window"
       ],
       "baseline_selected": {},
-      "baseline_borderline": {
-        "principle-boundary-discipline": 0.68,
-        "principle-guard-the-context-window": 0.693
-      }
+      "baseline_borderline": {}
     },
     {
       "id": "worker-maintain-draft-hand-edit",
@@ -162,15 +152,14 @@
         "principle-experience-first"
       ],
       "baseline_selected": {
-        "principle-boundary-discipline": 0.79,
-        "principle-guard-the-context-window": 0.84,
-        "principle-prove-it-works": 0.913,
-        "principle-type-system-discipline": 0.75
+        "principle-boundary-discipline": 0.72,
+        "principle-prove-it-works": 0.9,
+        "principle-type-system-discipline": 0.743
       },
       "baseline_borderline": {
-        "principle-boundary-discipline": 0.79,
-        "principle-guard-the-context-window": 0.84,
-        "principle-type-system-discipline": 0.75
+        "principle-boundary-discipline": 0.72,
+        "principle-prove-it-works": 0.9,
+        "principle-type-system-discipline": 0.743
       }
     },
     {
@@ -185,11 +174,12 @@
         "principle-prove-it-works"
       ],
       "baseline_selected": {
-        "principle-boundary-discipline": 0.94,
-        "principle-prove-it-works": 0.81
+        "principle-boundary-discipline": 0.93,
+        "principle-prove-it-works": 0.797
       },
       "baseline_borderline": {
-        "principle-prove-it-works": 0.81
+        "principle-boundary-discipline": 0.93,
+        "principle-prove-it-works": 0.797
       }
     },
     {
@@ -203,11 +193,11 @@
       ],
       "allowed": [],
       "baseline_selected": {
-        "principle-boundary-discipline": 0.71,
-        "principle-prove-it-works": 0.903
+        "principle-prove-it-works": 0.917
       },
       "baseline_borderline": {
-        "principle-boundary-discipline": 0.71
+        "principle-boundary-discipline": 0.673,
+        "principle-prove-it-works": 0.917
       }
     },
     {
@@ -223,9 +213,11 @@
         "principle-experience-first"
       ],
       "baseline_selected": {
-        "principle-prove-it-works": 0.93
+        "principle-prove-it-works": 0.94
       },
-      "baseline_borderline": {}
+      "baseline_borderline": {
+        "principle-prove-it-works": 0.94
+      }
     },
     {
       "id": "worker-merger",
@@ -241,12 +233,10 @@
         "principle-sequence-verifiable-units"
       ],
       "baseline_selected": {
-        "principle-boundary-discipline": 0.8,
-        "principle-prove-it-works": 0.727
+        "principle-prove-it-works": 0.72
       },
       "baseline_borderline": {
-        "principle-boundary-discipline": 0.8,
-        "principle-prove-it-works": 0.727
+        "principle-prove-it-works": 0.72
       }
     },
     {
@@ -276,17 +266,15 @@
         "principle-guard-the-context-window"
       ],
       "baseline_selected": {
-        "principle-boundary-discipline": 0.76,
-        "principle-encode-the-domain": 0.773,
-        "principle-explain-the-number": 0.85,
-        "principle-guard-the-context-window": 0.77,
-        "principle-prove-it-works": 0.863
+        "principle-encode-the-domain": 0.77,
+        "principle-explain-the-number": 0.833,
+        "principle-prove-it-works": 0.86
       },
       "baseline_borderline": {
-        "principle-boundary-discipline": 0.76,
-        "principle-encode-the-domain": 0.773,
-        "principle-explain-the-number": 0.85,
-        "principle-guard-the-context-window": 0.77
+        "principle-encode-the-domain": 0.77,
+        "principle-explain-the-number": 0.833,
+        "principle-prove-it-works": 0.86,
+        "principle-type-system-discipline": 0.67
       }
     },
     {
@@ -302,11 +290,9 @@
         "principle-guard-the-context-window"
       ],
       "baseline_selected": {
-        "principle-prove-it-works": 0.963
+        "principle-prove-it-works": 0.957
       },
-      "baseline_borderline": {
-        "principle-guard-the-context-window": 0.677
-      }
+      "baseline_borderline": {}
     }
   ]
 }

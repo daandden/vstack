@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+- Tune three Addon questions for jev-1.14.0. `principle-guard-the-context-window` distinguishes bulk reading from editing many files. `principle-minimize-reader-load` distinguishes readability work from routine cleanup. `principle-boundary-discipline` distinguishes boundary implementation from diagnosis and research. The gated catalog improved test exact-pick rate from 69.7% to 80.8% on 87 task families. The eval includes 75 real-session prompts and labels from Opus 5.5 high, GPT-6.1 sol high, and GPT-6.1 sol xhigh (#235).
+- `scripts/addon-judge-check.ts` flags an unexpected pick above 0.95, not 0.85. The runtime selection threshold remains 0.70. Both sample corpora are re-recorded on jev-1.14.0. Three expected-pick flags remain among 250 prompts, and one among 16 briefs. Follow-up question rewordings did not clear the eval gate and were reverted (#235).
+- `scripts/addon-judge-ratchet.ts` scores a catalog edit on a case file of tasks, each with its raw and restated forms, for omp's eval `ratchet` flows (#235).
+
 ## [5.0.18] - 2026-10-24
 
 - implement reuses a seam from the flow's Grilling page only when the user picked it through `ask`. A headless answer, an unanswered or timed-out question, and a no-test pick leave the seam open, so the run asks again or builds the slice without a test (#183).
