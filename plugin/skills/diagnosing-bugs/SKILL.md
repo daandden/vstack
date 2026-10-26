@@ -127,6 +127,8 @@ If a correct seam exists:
 4. Watch it pass.
 5. Re-run the Phase 1 feedback loop against the original (un-minimised) scenario.
 
+For a race or ordering bug, add regression coverage of the counterpart ordering that the guard must preserve, and pass both orderings before publication.
+
 ## Phase 6: Cleanup
 
 Required before declaring done:
