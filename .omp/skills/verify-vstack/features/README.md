@@ -43,6 +43,7 @@ Keep implementation details out of the map. Name only user paths, stable handles
 
 - [Plugin load](./plugin-load.md): a new omp session loads every skill, agent, and rule from the checkout, and the extension's `/vstack-clean` Command.
 - [Skill commands](./skill-command.md): `/skill:<name>` puts that skill's text from the checkout into the prompt the model gets.
+- [Addon tools](./addon-tools.md): typed Matt runs display intent-gathering instructions, and agent-called tools select Addons. The stub proves tool completion without a native judge, not native selection.
 - [Scratch dir](./scratch-dir.md): the vstack-tmp scripts make and list Scratch entries. The `/vstack-clean` Command previews expired entries and deletes only confirmed choices.
 - [Grilling page](./grilling-page.md): the grilling-page script renders a flow's Grilling page from the state file in its flow folder and renames the folder. The page opens on an Overview tab, has one tab per Stage with its Background, Report blocks, questions, answers, and summary, and links between tabs. A Stage that settled every decision as Assumed shows its count on Overview.
 - [Diagram scripts](./diagram-scripts.md): the diagram-design Python scripts extract Mermaid, draw.io, and Excalidraw files, self-check a diagram page, check its connector geometry and its colors and fonts, and export it to SVG.
@@ -50,7 +51,6 @@ Keep implementation details out of the map. Name only user paths, stable handles
 
 ## Not mapped yet
 
-- The run-gated Addon judge needs a typed Matt skill and a native judge model that omp's `judge` role resolves to, with its credentials. The stub home has only the stub model, so a drive cannot reach a pick.
 - The maintainer CLIs `scripts/check-register.ts`, `scripts/vstack-maintain.ts`, and the by-hand jev check `scripts/addon-judge-check.ts`. `README.md` documents their commands and exit codes.
 - The by-hand visual judge check `scripts/visual_judge_check.py`. It runs in omp's Python eval, calls the judge through the `judge_batch` global, and refuses an answer from any model but `typesafe/jev`. The stub home has no judge model, so a drive cannot grade a case.
 - The grilling-page visual judge (`plugin/skills/grilling-page/scripts/visual_judge.py`). It runs in omp's Python eval and calls the configured judge through the `judge_batch` global. The stub home has no judge model, so a drive cannot reach a pick.

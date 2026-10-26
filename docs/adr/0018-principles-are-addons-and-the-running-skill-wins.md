@@ -1,5 +1,7 @@
 # Principles are Addons, and the running skill wins over them
 
+> [ADR 0039](0039-main-agent-tools-pick-addons-from-gathered-intent.md) supersedes main-session prompt selection and smol restatements with agent-called tools over gathered source intent. Principles remain Addons, and the running Matt skill's steps and its Addons still win over a conflicting principle. ADR 0025's subagent Brief picks are unchanged.
+
 > [ADR 0021](0021-a-mid-session-matt-run-start-sends-a-smol-restatement-to-jev.md) amends this decision. When a Matt run starts mid-session, the judge reads a `smol` restatement of the earlier talk and the new words, not only the words after `User:`. This includes a bare skill start.
 
 > [ADR 0024](0024-shared-judge-text-goes-in-the-jev-state-once.md) amends this decision. jev reads the user's words as `request`, beside the catalog's `preamble`, in one state object. The selection threshold is 0.70, not 0.75.

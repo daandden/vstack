@@ -1,5 +1,7 @@
 # The Addon judge runs through omp's judge role
 
+> [ADR 0039](0039-main-agent-tools-pick-addons-from-gathered-intent.md) replaces main-session prompt selection and smol restatements with agent-called tools over gathered source intent. Each tool selection uses a four-second judge deadline and abort, not the 25-second restatement cap. The native judge role, 0.70 threshold, usage ledger, shared cache, and ADR 0025's subagent Brief behavior remain unchanged.
+
 The extension picks Addons through omp's judge chain, `resolveJudge` from `@oh-my-pi/pi-coding-agent/judgment`, and no longer sends its own `POST /v1/systemone` to `typesafe/jev-latest`. The Addon judge is whatever native judge model the omp `judge` role names: TypeSafe, OpenRouter Decisions, Workers AI, or OpenAI Decisions. Before, the extension checked `hasNativeJudge` and then ignored the role. A role that pinned a jev version or routed jev through OpenRouter passed that check and still got `jev-latest` or no picks. The user keeps `typesafe/jev-latest` as the judge role, and vstack does not force that choice. The selection still runs only when the role's first candidate is native, because a chat model answers only 0 or 1 and the 0.70 threshold means nothing for it.
 
 ## Considered Options

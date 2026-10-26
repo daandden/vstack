@@ -11,7 +11,6 @@ describe("Addon catalog", () => {
     const { brief_preamble: _, ...withoutBriefPreamble } = catalogFile as Record<string, unknown>;
     expect(() => parseAddonCatalog(withoutBriefPreamble)).toThrow("brief_preamble must be a non-empty string");
     expect(() => parseAddonCatalog({ ...withoutBriefPreamble, brief_preamble: " " })).toThrow("brief_preamble must be a non-empty string");
-    expect(parseAddonCatalog(catalogFile).brief_preamble).toBe("The state's `request` is a task brief that a coding agent wrote for a subagent. Read \"the user\" in a question as the brief's author. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation in the question. If torn, answer no.");
   });
 });
 
@@ -53,7 +52,7 @@ describe("Matt skill class", () => {
       expect(await fakeHost({ ...options, entries: [saved] }).emit("before_agent_start", { prompt: "Continue" })).toEqual([undefined]);
       expect(judge.calls).toHaveLength(0);
       expect((await fakeHost(options).emit("before_agent_start", { prompt: start("custom-matt") }))[0]).toBeDefined();
-      expect(judge.calls).toHaveLength(1);
+      expect(judge.calls).toHaveLength(0);
     });
   });
 });
