@@ -4,13 +4,17 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+- Main sessions select Addons through `inject_addons` and `inject_principles` after the agent gathers intent from real task context. Typed Matt runs display the shared tool instruction, and no main prompt calls `smol` or the Addon judge automatically. Tool picks remain session-wide, use the native judge role and 0.70 threshold, and keep the four-second deadline. Subagent Brief picks stay automatic (ADR 0039).
+- to-spec and to-tickets preserve only non-principle Addon pointers in specs and tickets, including inherited context. Build sessions select principles fresh. The Verify feature map covers the displayed instructions and executable unavailable-native-judge tool path.
+
 ## [5.0.19] - 2026-10-26
 
 - Tune three Addon questions for jev-1.14.0. `principle-guard-the-context-window` distinguishes bulk reading from editing many files. `principle-minimize-reader-load` distinguishes readability work from routine cleanup. `principle-boundary-discipline` distinguishes boundary implementation from diagnosis and research. The gated catalog improved test exact-pick rate from 69.7% to 80.8% on 87 task families. The eval includes 75 real-session prompts and labels from Opus 5.5 high, GPT-6.1 sol high, and GPT-6.1 sol xhigh (#235).
 - `scripts/addon-judge-check.ts` flags an unexpected pick above 0.95, not 0.85. The runtime selection threshold remains 0.70. Both sample corpora are re-recorded on jev-1.14.0. Three expected-pick flags remain among 250 prompts, and one among 16 briefs. Follow-up question rewordings did not clear the eval gate and were reverted (#235).
 - `scripts/addon-judge-ratchet.ts` scores a catalog edit on a case file of tasks, each with its raw and restated forms, for omp's eval `ratchet` flows (#235).
-- Main sessions select Addons through `inject_addons` and `inject_principles` after the agent gathers intent from real task context. Typed Matt runs display the shared tool instruction, and no main prompt calls `smol` or the Addon judge automatically. Tool picks remain session-wide, use the native judge role and 0.70 threshold, and keep the four-second deadline. Subagent Brief picks stay automatic (ADR 0039).
-- to-spec and to-tickets preserve only non-principle Addon pointers in specs and tickets, including inherited context. Build sessions select principles fresh. The Verify feature map covers the displayed instructions and executable unavailable-native-judge tool path.
+- Draft implement-spec review fixes in isolated workers. Land their patches through the merger for ordinary work. When vstack-maintain is loaded, follow its review-fix-wave rule and apply gated patches atomically. Resolve conflicts in a fresh isolated worker before rerunning the gates.
+- Require regression coverage of the counterpart ordering that a race or ordering fix must preserve before publication.
+- Allow the same session's advisor transcript for advisor notes, model calls, tokens, or cost findings across session's four reviewers and synthesizer.
 
 ## [5.0.18] - 2026-10-24
 

@@ -33,7 +33,7 @@ Read the absolute JSONL path of that one session, including pre-compaction entri
 jq -c 'select(.type == "message") | .message' "$session_file"
 ```
 
-Read only that file, plus the session's subagent transcripts when a finding points there. For the current session, read a child through `history://<id>`. For a named session, read `<session file without .jsonl>/<id>.jsonl`. Never use `history://Main`. Never read another session's file, or use omp session list or resume. The `archive` search for a named session is the only lookup outside that file. omp does not enforce this scope. These instructions are the guard.
+Read only that file, plus the session's subagent transcripts when a finding points there. For the current session, read a child through `history://<id>`. For a named session, read `<session file without .jsonl>/<id>.jsonl`. When findings concern advisor notes, model calls, tokens, or cost, also allow that same session's `<session file without .jsonl>/__advisor.jsonl`. Never use `history://Main`. Never read another session's file, or use omp session list or resume. The `archive` search for a named session is the only lookup outside that scope. omp does not enforce this scope. These instructions are the guard.
 
 If eval or the current session's path is unavailable, write a tight digest from this run's current context and pass it instead. Label its missing pre-compaction or transcript evidence. A named session has no digest fallback. Do not guess a session.
 
