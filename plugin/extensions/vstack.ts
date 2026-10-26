@@ -1,9 +1,6 @@
-// vstack's omp extension. It uses the extension API and omp's exported packages, not omp internals.
-// omp loads this file with its TS loader, so there is no build step.
-import { completeSimple } from "@oh-my-pi/pi-ai";
+import type { TSchema } from "@oh-my-pi/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@oh-my-pi/pi-coding-agent";
 import { settings } from "@oh-my-pi/pi-coding-agent";
-import { getModelMatchPreferences, resolveModelRoleValue } from "@oh-my-pi/pi-coding-agent/config/model-resolver";
 import { hasNativeJudge, journalJudgmentUsage, resolveJudge, sharedJudgmentCache } from "@oh-my-pi/pi-coding-agent/judgment";
 import catalogFile from "../../addon-questions.json";
 import { addonJudgeState, briefJudgeState, briefQuestions, parseAddonCatalog, type AddonCatalog, type AddonQuestion } from "./addon-catalog.ts";
@@ -30,99 +27,20 @@ function readMattSkills(addons: Iterable<string>): Set<string> {
   } catch { return new Set(); }
 }
 
-// One cap covers smol and the Addon judge together on a restated run start, under omp's 30-second hook cap (ADR 0026).
-const RESTATED_START_CAP_MS = 25_000;
 const JUDGE_DEADLINE_MS = 4000;
-const RESTATEMENT_LIMIT = 10_000;
+const INTENT_LIMIT = 10_000;
 const PRECEDENCE = " When a principle conflicts with the steps of the running Matt skill or its Addons, those steps win.";
-// The subagents whose first prompt, the brief, gets principle picks during a Matt run (ADR 0025).
 const JUDGED_AGENTS = new Set(["vstack-explorer", "vstack-worker", "vstack-verifier"]);
-const RESTATE_FRAME = "The input is the conversation so far, then the user's new words that start a task, if any. Reply with plain text only.";
-const EFFORTS = new Set(["minimal", "low", "medium", "high", "xhigh", "max"]);
-
-function readRestateInstruction(): string | undefined {
-  try {
-    const skill = fs.readFileSync(new URL("../skills/in-your-own-words/SKILL.md", import.meta.url), "utf8");
-    return skill.replace(/^---\n[\s\S]*?\n---\n/, "").trim() || undefined;
-  } catch { return undefined; }
-}
-
-/** The user's words after `User:` on a skill-start prompt, never the skill text. */
-function skillUserWords(prompt: string): string {
-  const skillDirectory = prompt.lastIndexOf("\n[Skill directory: ");
-  return skillDirectory < 0 ? "" : /^User:[ \t]*([\s\S]*)$/m.exec(prompt.slice(skillDirectory))?.[1] ?? "";
-}
-
-function textOf(content: unknown): string {
-  if (typeof content === "string") return content;
-  if (!Array.isArray(content)) return "";
-  return content.filter(part => part?.type === "text" && typeof part.text === "string").map(part => part.text).join("\n");
-}
 
 function isVisibleSkillStart(entry: any): boolean {
   return entry.type === "custom_message" && entry.customType === "skill-prompt" && entry.display !== false;
 }
 
-/** A start is mid-session when the branch already holds user or assistant messages, a visible skill start, or a compaction. */
 function startsMidSession(branch: readonly any[]): boolean {
   return branch.some(entry => entry.type === "compaction" || isVisibleSkillStart(entry) ||
     (entry.type === "message" && (entry.message?.role === "user" || entry.message?.role === "assistant")));
 }
 
-function talkLine(entry: any): string | undefined {
-  if (entry.type === "message" && (entry.message?.role === "user" || entry.message?.role === "assistant")) {
-    const text = textOf(entry.message.content).trim();
-    return text ? `${entry.message.role === "user" ? "User" : "Assistant"}: ${text}` : undefined;
-  }
-  if (isVisibleSkillStart(entry)) {
-    const words = skillUserWords(textOf(entry.content)).trim();
-    return words ? `User: ${words}` : undefined;
-  }
-}
-
-/** User and assistant text since the last compaction, plus its summary. Tool, thinking, and hidden entries stay out. */
-function earlierTalk(branch: readonly any[]): string {
-  const compaction = branch.findLastIndex(entry => entry.type === "compaction");
-  const parts: string[] = [];
-  let from = 0;
-  if (compaction >= 0) {
-    parts.push(`Summary of the earlier conversation: ${branch[compaction].summary}`);
-    const kept = branch.findIndex(entry => entry.id === branch[compaction].firstKeptEntryId);
-    from = kept >= 0 && kept < compaction ? kept : compaction + 1;
-  }
-  for (let index = from; index < branch.length; index++) {
-    const line = index === compaction ? undefined : talkLine(branch[index]);
-    if (line) parts.push(line);
-  }
-  return parts.join("\n\n");
-}
-
-/** Asks the smol role to restate the user's goal. Returns the text, a warning reason, or undefined when the deadline aborted it. */
-async function restate(ctx: ExtensionContext, instruction: string | undefined, talk: string, words: string, signal: AbortSignal): Promise<{ text: string } | { warning: string } | undefined> {
-  if (!instruction) return { warning: "in-your-own-words is unreadable" };
-  try {
-    const role = resolveModelRoleValue("@smol", ctx.modelRegistry.getAvailable(), { settings, matchPreferences: getModelMatchPreferences(settings) });
-    if (!role.model) return { warning: "no smol model" };
-    const apiKey = await ctx.modelRegistry.getApiKey(role.model, undefined, { signal });
-    if (signal.aborted) return undefined;
-    if (!apiKey) return { warning: "no key for the smol model" };
-    // As omp's own role calls do, pass a configured effort and leave auto, inherit, and off to the provider default.
-    const reasoning = role.thinkingLevel && EFFORTS.has(role.thinkingLevel) ? role.thinkingLevel : undefined;
-    const content = [talk, words.trim() && `New words: ${words.trim()}`].filter(Boolean).join("\n\n");
-    const reply = await completeSimple(role.model, {
-      systemPrompt: [instruction, RESTATE_FRAME],
-      messages: [{ role: "user", content, timestamp: Date.now() }],
-    }, { apiKey, signal, reasoning: reasoning as any });
-    if (signal.aborted) return undefined;
-    if (reply.stopReason === "error" || reply.stopReason === "aborted") return { warning: `smol failed${reply.errorMessage ? `: ${reply.errorMessage}` : ""}` };
-    const text = textOf(reply.content).trim();
-    return text ? { text } : { warning: "smol returned no text" };
-  } catch (error) {
-    return signal.aborted ? undefined : { warning: `smol failed: ${error instanceof Error ? error.message : String(error)}` };
-  }
-}
-
-/** Asks the native judge of omp's judge role every question about one state (ADR 0036). Returns each Addon that scores 0.70 or more. */
 async function pickAddons(ctx: ExtensionContext, state: object, questions: Record<string, AddonQuestion>, signal: AbortSignal): Promise<string[]> {
   try {
     const judge = resolveJudge({
@@ -158,48 +76,42 @@ function undeliveredQuestions(catalog: AddonCatalog, entries: readonly any[]): R
   return Object.fromEntries(Object.entries(catalog.questions).filter(([name]) => !seen.has(name)));
 }
 
-/**
- * Runs a selection under a deadline that aborts it, and calls `onTimeout` when the deadline ends it.
- * The deadline holds even when the judge ignores the abort.
- */
-async function withDeadline<T>(ms: number, select: (signal: AbortSignal) => Promise<T | undefined>, onTimeout?: () => void): Promise<T | undefined> {
-  const controller = new AbortController();
-  let timer: ReturnType<typeof setTimeout>;
-  const deadline = new Promise<undefined>(resolve => {
-    timer = setTimeout(() => { controller.abort(); onTimeout?.(); resolve(undefined); }, ms);
+async function unlessAborted<T>(signal: AbortSignal | undefined, run: () => Promise<T>): Promise<T | undefined> {
+  if (signal?.aborted) return;
+  if (!signal) return run();
+  let abort!: () => void;
+  const cancelled = new Promise<undefined>(resolve => {
+    abort = () => resolve(undefined);
+    signal.addEventListener("abort", abort, { once: true });
   });
-  try { return await Promise.race([select(controller.signal), deadline]); }
-  catch { return undefined; }
-  finally { clearTimeout(timer!); controller.abort(); }
+  try { return await Promise.race([run(), cancelled]); }
+  finally { signal.removeEventListener("abort", abort); }
 }
 
-/** True when the branch holds the saved `skill-prompt` entry of a Matt skill, so it is in a Matt run. */
+async function withDeadline<T>(ms: number, select: (signal: AbortSignal) => Promise<T | undefined>, parent?: AbortSignal): Promise<T | undefined> {
+  const controller = new AbortController();
+  const signal = parent ? AbortSignal.any([parent, controller.signal]) : controller.signal;
+  const timer = setTimeout(() => controller.abort(), ms);
+  try { return await unlessAborted(signal, () => select(signal)); }
+  catch { return undefined; }
+  finally { clearTimeout(timer); controller.abort(); }
+}
+
 function holdsMattRun(branch: readonly any[], mattSkills: ReadonlySet<string>): boolean {
   return branch.some(entry => entry.type === "custom_message" && entry.customType === "skill-prompt" &&
     typeof entry.details === "object" && entry.details !== null && "name" in entry.details &&
     typeof entry.details.name === "string" && mattSkills.has(entry.details.name));
 }
 
-/**
- * A session that this module served. A top-level session reads its active branch. A subagent links to the record of
- * the session that started it, so a later session with the same agent id does not take over its descendants.
- * Only a top-level session reads `ended`. An ended top-level session serves no branch.
- */
 type SessionRecord = { manager: object; ended: boolean } & ({ branch: () => readonly any[] } | { parent: SessionRecord | undefined });
 
-/**
- * The live sessions, keyed by agent id. omp imports the extension once and rebinds it to every subagent session,
- * so a subagent finds the record of the session that started it here, through its `parentId`.
- */
 const sessions = new Map<string, SessionRecord>();
 
-/** The active branch of the top-level session above a record, or undefined when that session ended or is unknown. */
 function topBranch(record: SessionRecord | undefined): readonly any[] | undefined {
   while (record && "parent" in record) record = record.parent;
   return record && !record.ended ? record.branch() : undefined;
 }
 
-/** Returns the session's record, and makes one on its first prompt. A new session with the same agent id ends the old record. */
 function register(ctx: ExtensionContext): SessionRecord {
   const manager = ctx.sessionManager;
   const known = sessions.get(ctx.agent.id);
@@ -214,7 +126,6 @@ function register(ctx: ExtensionContext): SessionRecord {
   return record;
 }
 
-/** Ends the session's record when omp shuts the session down or replaces it with another session file. */
 function unregister(ctx: ExtensionContext): void {
   const record = sessions.get(ctx.agent.id);
   if (!record || record.manager !== ctx.sessionManager) return;
@@ -225,14 +136,44 @@ function unregister(ctx: ExtensionContext): void {
 function registerAddonSelection(pi: ExtensionAPI): void {
   const catalog = readAddonCatalog();
   const mattSkills = catalog ? readMattSkills(Object.keys(catalog.questions)) : new Set<string>();
-  const instruction = readRestateInstruction();
+  let selectionQueue: Promise<unknown> = Promise.resolve();
+  for (const name of ["inject_principles", "inject_addons"] as const) pi.registerTool({
+    name,
+    label: name === "inject_principles" ? "Inject principles" : "Inject Addons",
+    description: `Select ${name === "inject_principles" ? "principle Addons" : "Addons, including principles"} from intent you have gathered from the task's real context.`,
+    defaultInactive: true,
+    loadMode: "essential",
+    parameters: { type: "object", properties: { intent: { type: "string" } }, required: ["intent"] } as TSchema,
+    async execute(_id, { intent }: { intent: string }, signal, _onUpdate, ctx) {
+      const selection = selectionQueue.then(async () => {
+        if (signal?.aborted) return;
+        const request = preprocessTinyMessage(intent, INTENT_LIMIT);
+        const selected = request && catalog && ctx.agent.kind === "main"
+          ? await withDeadline(JUDGE_DEADLINE_MS, async judgeSignal => {
+            if (!hasNativeJudge(settings, ctx.modelRegistry)) return;
+            const questions = undeliveredQuestions(catalog, ctx.sessionManager.getEntries());
+            const scoped = name === "inject_principles"
+              ? Object.fromEntries(Object.entries(questions).filter(([key]) => key.startsWith("principle-"))) : questions;
+            if (!Object.keys(scoped).length) return;
+            return picksMessage(await pickAddons(ctx, addonJudgeState(catalog, request), scoped, judgeSignal), PRECEDENCE);
+          }, signal) : undefined;
+        if (signal?.aborted) return;
+        const text = selected?.message.content ?? "No Addons selected.";
+        if (selected) pi.appendEntry("vstack-addons", text);
+        return { content: [{ type: "text" as const, text }], details: {} };
+      });
+      selectionQueue = selection.catch(() => {});
+      return await unlessAborted(signal, () => selection) ?? {
+        content: [{ type: "text" as const, text: "No Addons selected." }], details: {},
+      };
+    },
+  });
   pi.on("before_agent_start", async (event, ctx) => {
     const session = register(ctx);
     const manager = ctx.sessionManager;
     if (!catalog || !mattSkills.size) return;
     if (ctx.agent.kind !== "main") {
       if (!JUDGED_AGENTS.has(ctx.agent.name)) return;
-      // Only the brief is judged. A later prompt, or a revived subagent, finds earlier talk on its own branch.
       if (startsMidSession(manager.getBranch())) return;
       const top = topBranch(session);
       if (!top || !holdsMattRun(top, mattSkills)) return;
@@ -245,33 +186,17 @@ function registerAddonSelection(pi: ExtensionAPI): void {
     }
     const header = /^\[IMPORTANT: User invoked the "([^"]+)" skill/.exec(event.prompt);
     const startsRun = header && mattSkills.has(header[1]!);
-    const branch = manager.getBranch();
-    if (!startsRun && !holdsMattRun(branch, mattSkills)) return;
-    const userWords = startsRun ? skillUserWords(event.prompt) : event.prompt;
-    // Every Matt run start gets a smol restatement (ADR 0026). A mid-session start adds the earlier talk (ADR 0021).
-    const midSession = startsRun && startsMidSession(branch);
-    const talk = midSession ? earlierTalk(branch) : "";
-    let request = preprocessTinyMessage(userWords);
-    // smol reads the raw words, so words that clean to nothing still start a restatement.
-    if (startsRun && !userWords.trim() && !talk) return;
-    const timedOut = () => { if (ctx.hasUI) ctx.ui.notify("vstack: no Addon picks for this run start (timed out)", "warning"); };
-    return withDeadline(startsRun ? RESTATED_START_CAP_MS : JUDGE_DEADLINE_MS, async signal => {
-      if (!hasNativeJudge(settings, ctx.modelRegistry)) return;
-      const questions = undeliveredQuestions(catalog, ctx.sessionManager.getEntries());
-      if (!Object.keys(questions).length) return;
-      if (startsRun) {
-        const restated = await restate(ctx, instruction, talk, userWords, signal);
-        if (!restated || signal.aborted) return;
-        if ("warning" in restated) {
-          // A fresh start's cleaned words are its whole goal, so the Addon judge reads them when smol fails. A mid-session start's words can miss it.
-          const fallback = !midSession && request;
-          const warning = fallback ? `Addon picks from your words, restatement failed (${restated.warning})` : `no Addon picks for this run start (${restated.warning})`;
-          if (ctx.hasUI) ctx.ui.notify(`vstack: ${warning}`, "warning");
-          if (!fallback) return;
-        } else request = restated.text.slice(0, RESTATEMENT_LIMIT);
-      }
-      return picksMessage(await pickAddons(ctx, addonJudgeState(catalog, request), questions, signal), PRECEDENCE);
-    }, startsRun ? timedOut : undefined);
+    const active = pi.getActiveTools().filter(name => name !== "inject_principles" && name !== "inject_addons");
+    if (startsRun || holdsMattRun(manager.getBranch(), mattSkills)) active.push("inject_principles", "inject_addons");
+    await pi.setActiveTools(active);
+    if (!startsRun) return;
+    const choice = header[1] === "implement" || header[1] === "implement-spec"
+      ? "If the source has non-principle Addon pointers, call inject_principles. Otherwise call inject_addons."
+      : "Call inject_addons.";
+    return { message: {
+      customType: "vstack-addon-instruction", display: true, attribution: "agent" as const,
+      content: `Before starting the work, gather the intent from the real context, such as the issue title and body, map Notes, selected ticket, and prior conversation. Read relevant skill:// pointers from the source. ${choice} Pass the gathered intent as intent. Call again if the work changes kind.`,
+    } };
   });
   pi.on("session_shutdown", (_event, ctx) => unregister(ctx));
   pi.on("session_switch", (_event, ctx) => unregister(ctx));
