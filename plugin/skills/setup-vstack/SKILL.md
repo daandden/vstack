@@ -14,7 +14,7 @@ Two parts, in this order. The machine section checks the omp settings vstack nee
 - Triage labels: the strings used for the five canonical triage roles.
 - Domain docs: where `GLOSSARY.md` and ADRs live, and the rules for reading them.
 
-The project section first checks this repo for Matt Pocock's config. When it finds some, it offers a Migration before setup, in the same run. Migration changes only this repo and its shared private store. It never changes machine state such as global skills, global rules, or diagram profiles.
+The project section first checks this repo for Matt Pocock's config. When it finds some, it offers a Migration before setup, in the same run. Migration changes only this repo and its shared private store. It never changes machine state such as global skills or global rules.
 
 This is a prompt-driven skill with helper scripts. Explore, present what you found, settle each choice through `ask`, then write.
 

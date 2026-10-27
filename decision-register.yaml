@@ -861,14 +861,6 @@ items:
     disposition: reject
     artifacts: []
     reason: "A Cursor automation."
-  - id: diagram/diagram-design
-    upstream: diagram
-    kind: skill
-    path: skills/diagram-design
-    tree: d7d66b45810294ae98e8a2c1de72d4ce9af80616
-    disposition: adapt
-    artifacts: [plugin/skills/diagram-design]
-    reason: "put the style into the skill instead of making the user choose it"
   - id: css/good-css
     upstream: css
     kind: skill
@@ -932,7 +924,7 @@ items:
     tree: 8fe35aa03276614edc51829bdf0fc4361fee4cf4
     disposition: adapt
     artifacts: [plugin/skills/ketchup]
-    reason: "Utility skill without bro; its figures go to a Scratch page through diagram-design and its calls go through ask."
+    reason: "Utility skill without bro; its figures render through vstack-figures and its calls go through ask."
   - id: pstack/poteto-help
     upstream: pstack
     kind: skill
@@ -949,24 +941,6 @@ items:
     disposition: adopt
     artifacts: [plugin/skills/principle-explain-the-number]
     reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
-  - id: diagram/verify-geometry
-    upstream: diagram
-    kind: skill
-    path: scripts/verify-geometry.py
-    tree: 20e6550f1744cd4b9fcc2c637eb5bf556d3ff577
-    disposition: adapt
-    artifacts:
-      - plugin/skills/diagram-design
-    reason: "static SVG checks only: geometry, style, bounds, and export validity"
-  - id: diagram/lint-skin
-    upstream: diagram
-    kind: skill
-    path: scripts/lint-skin.py
-    tree: c999e08af1b9fe758d162dde8daaf65f32332eb5
-    disposition: adapt
-    artifacts:
-      - plugin/skills/diagram-design
-    reason: "static SVG checks only: geometry, style, bounds, and export validity"
 originals:
   - plugin/agents/vstack-explorer.md
   - plugin/agents/vstack-verifier.md
@@ -983,13 +957,11 @@ originals:
   - plugin/skills/vstack-worktree
   - plugin/skills/skill-creator
   - plugin/skills/vstack-maintain
-  - plugin/agents/vstack-diagram-drawer.md
   - plugin/skills/vstack-figures
   - plugin/skills/clean-wt
 utility:
   - plugin/skills/unslop
   - plugin/skills/technical-writing
-  - plugin/skills/diagram-design
   - plugin/skills/good-css
   - plugin/skills/skill-creator
   - plugin/skills/explain

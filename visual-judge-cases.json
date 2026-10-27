@@ -2,7 +2,7 @@
   "rubric": "plugin/skills/grilling-page/references/visual-judge.json",
   "semantics": {
     "diagram_cases": "Real Grilling page questions from vstack and Tern pages. context and option are the labels gpt-6.1-sol gave at high thinking. Each case's probabilities sat at least 0.1 from the thresholds when chosen, so judge noise does not flip it. A case passes when each kind's probability is at or over its threshold exactly when its label is true.",
-    "type_cases": "One hand-written question per type in diagram-design's visual-type guide. A case passes when expected, or a type in allowed, is among the top types of context_type or option_type, in the request that grilling-page's helper sends through judge_batch. scripts/visual_judge_check.py runs every case in omp's Python eval."
+    "type_cases": "One hand-written question per figure kind. expected names the Pele Mermaid type that draws it best, and allowed names other types that draw it well. A case passes when expected, or a type in allowed, is among the top types of context_type or option_type, in the request that grilling-page's helper sends through judge_batch. scripts/visual_judge_check.py runs every case in omp's Python eval."
   },
   "diagram_cases": [
     {
@@ -339,7 +339,7 @@
       "option": false,
       "state": {
         "title": "What makes a skill standalone rather than an Addon?",
-        "description": "Your correction: not every non-Matt skill is an Addon. unslop, simple-english, and diagram-design can be standalone skills. Session 1 defined an Addon as every skill that is not a Matt skill, so the glossary, ADR 0015, and the settled ticket need a third kind and a test for it.\n\nWhat the three have in common: each applies to the output of any task (text or a figure), not to one kind of work such as an Update. Each comes from its own Upstream or from pstack, not from a vstack workflow. Today diagram-design is model-invoked, unslop and simple-english are manual-only, and the always-on vstack-prose rule loads unslop and simple-english for every text.",
+        "description": "Your correction: not every non-Matt skill is an Addon. unslop, simple-english, and good-css can be standalone skills. Session 1 defined an Addon as every skill that is not a Matt skill, so the glossary, ADR 0015, and the settled ticket need a third kind and a test for it.\n\nWhat the three have in common: each applies to the output of any task (text or a figure), not to one kind of work such as an Update. Each comes from its own Upstream or from pstack, not from a vstack workflow. Today good-css is model-invoked, unslop and simple-english are manual-only, and the always-on vstack-prose rule loads unslop and simple-english for every text.",
         "options": [
           {
             "label": "Applies to any output",
@@ -675,8 +675,8 @@
   "type_cases": [
     {
       "id": "architecture",
-      "expected": "Architecture",
-      "allowed": [],
+      "expected": "architecture-beta",
+      "allowed": ["flowchart", "C4Context"],
       "state": {
         "title": "Where will we enforce the boundary between customer traffic and operator access?",
         "description": "Customers reach the web app through the public gateway. The app calls billing and search inside a private network, while operators use a separate management network. We need to compare which services each network can reach.",
@@ -694,8 +694,8 @@
     },
     {
       "id": "architecture-delta",
-      "expected": "Architecture delta",
-      "allowed": [],
+      "expected": "flowchart",
+      "allowed": ["architecture-beta"],
       "state": {
         "title": "What connections will change when we remove the shared backend?",
         "description": "Today the web app and mobile app both call one backend, which calls billing and search. After the change, each app calls a dedicated backend and both backends use the same billing service. We need to account for each connection added, removed, or retained.",
@@ -713,8 +713,8 @@
     },
     {
       "id": "it-current-state",
-      "expected": "IT current-state",
-      "allowed": [],
+      "expected": "flowchart",
+      "allowed": ["architecture-beta", "C4Context", "block-beta"],
       "state": {
         "title": "Which old systems must we replace first?",
         "description": "Sales keeps leads in a desktop database and copies orders into spreadsheets. Finance rekeys those orders into an aging accounting package, while support uses a separate ticket tool. We need a record of the systems each department uses today before choosing a replacement.",
@@ -732,7 +732,7 @@
     },
     {
       "id": "flowchart",
-      "expected": "Flowchart",
+      "expected": "flowchart",
       "allowed": [],
       "state": {
         "title": "When can a refund be approved without a person?",
@@ -751,7 +751,7 @@
     },
     {
       "id": "sequence",
-      "expected": "Sequence",
+      "expected": "sequenceDiagram",
       "allowed": [],
       "state": {
         "title": "When must checkout confirm payment to the customer?",
@@ -770,7 +770,7 @@
     },
     {
       "id": "state-machine",
-      "expected": "State machine",
+      "expected": "stateDiagram-v2",
       "allowed": [],
       "state": {
         "title": "Can a paused export resume after its credentials expire?",
@@ -789,8 +789,8 @@
     },
     {
       "id": "er-data-model",
-      "expected": "ER / data model",
-      "allowed": [],
+      "expected": "erDiagram",
+      "allowed": ["classDiagram"],
       "state": {
         "title": "Can one project belong to more than one workspace?",
         "description": "A workspace has a name and an owner, and a project has a name and a creation date. Users join workspaces through memberships that carry a role. We need to decide whether a project belongs to one workspace or can belong to several, without choosing storage details.",
@@ -808,8 +808,8 @@
     },
     {
       "id": "timeline",
-      "expected": "Timeline",
-      "allowed": [],
+      "expected": "timeline",
+      "allowed": ["gantt"],
       "state": {
         "title": "When will we announce the shutdown to customers?",
         "description": "The contract ends on June 30, the export tool becomes available on May 1, and the last renewal occurs on May 15. The announcement can happen on April 1 or May 1. We need to compare the order and spacing of these dated events.",
@@ -827,8 +827,8 @@
     },
     {
       "id": "swimlane",
-      "expected": "Swimlane",
-      "allowed": [],
+      "expected": "swimlane-beta",
+      "allowed": ["flowchart"],
       "state": {
         "title": "Who must hand off an enterprise order to finance?",
         "description": "Sales negotiates the order, legal reviews the contract, finance checks credit, and operations provisions the account. A rejected credit check sends the order back to sales. We need to see which team owns each task and where responsibility changes hands.",
@@ -846,7 +846,7 @@
     },
     {
       "id": "quadrant",
-      "expected": "Quadrant",
+      "expected": "quadrantChart",
       "allowed": [],
       "state": {
         "title": "Which product fixes belong in the next sprint?",
@@ -865,7 +865,7 @@
     },
     {
       "id": "radar-spider",
-      "expected": "Radar / Spider",
+      "expected": "radar-beta",
       "allowed": [],
       "state": {
         "title": "Which vendor has the most balanced fit for our team?",
@@ -884,8 +884,8 @@
     },
     {
       "id": "polar-chart",
-      "expected": "Polar chart",
-      "allowed": [],
+      "expected": "radar-beta",
+      "allowed": ["xychart"],
       "state": {
         "title": "Which daily support hours need extra staff?",
         "description": "We have one average ticket count for each hour of the day, from midnight through the next midnight. Demand peaks near 23:00 and 01:00, so the first and last hours are adjacent in the daily cycle. We need to compare the magnitude of demand around that repeating cycle.",
@@ -903,8 +903,8 @@
     },
     {
       "id": "loop",
-      "expected": "Loop",
-      "allowed": [],
+      "expected": "flowchart",
+      "allowed": ["stateDiagram-v2"],
       "state": {
         "title": "Will community answers reduce support work over time?",
         "description": "A solved ticket adds an answer to a shared knowledge base. More answers help customers solve problems themselves, and their feedback improves the stored answers. Better answers attract more readers, whose new questions lead to more solved tickets and added knowledge.",
@@ -922,8 +922,8 @@
     },
     {
       "id": "nested",
-      "expected": "Nested",
-      "allowed": [],
+      "expected": "flowchart",
+      "allowed": ["block-beta", "mindmap", "treemap-beta", "architecture-beta"],
       "state": {
         "title": "Where must a workspace setting apply?",
         "description": "The company account contains regions, each region contains workspaces, and each workspace contains projects. A restriction at any scope applies to everything inside it. We need to compare a company-wide restriction with one that applies only inside a single workspace.",
@@ -941,8 +941,8 @@
     },
     {
       "id": "tree",
-      "expected": "Tree",
-      "allowed": [],
+      "expected": "mindmap",
+      "allowed": ["flowchart", "treeView-beta"],
       "state": {
         "title": "How far must we break down the import work?",
         "description": "The import feature divides into parsing, validation, and saving. Parsing divides into CSV and JSON readers, while validation divides into required fields and duplicate checks. Every smaller item belongs to exactly one larger item.",
@@ -960,8 +960,8 @@
     },
     {
       "id": "org-chart",
-      "expected": "Org chart",
-      "allowed": [],
+      "expected": "flowchart",
+      "allowed": ["mindmap"],
       "state": {
         "title": "Who can escalate an incident to the executive team?",
         "description": "Two on-call engineers report to the platform lead, who reports to the engineering director. The customer support lead reports to the operations director. We need to decide who receives escalations and which reporting relationships carry them upward.",
@@ -979,8 +979,8 @@
     },
     {
       "id": "layer-stack",
-      "expected": "Layer stack",
-      "allowed": [],
+      "expected": "block-beta",
+      "allowed": ["flowchart", "architecture-beta"],
       "state": {
         "title": "At which level must we enforce tenant isolation?",
         "description": "The product has user-facing screens above business rules, data access, and storage. Each level uses the services below it and hides those details from the level above. We need to compare enforcing isolation in business rules with enforcing it in storage.",
@@ -998,8 +998,8 @@
     },
     {
       "id": "exploded-axonometric",
-      "expected": "Exploded axonometric",
-      "allowed": [],
+      "expected": "block-beta",
+      "allowed": ["flowchart"],
       "state": {
         "title": "Can a technician replace the sensor without removing the circuit board?",
         "description": "Our field device contains a lid, a seal, a circuit board, a sensor, and a base. These parts sit one above another along the assembly direction, and the sensor connector sits below the board. We need to inspect how the parts fit together and which parts must come off first.",
@@ -1017,8 +1017,8 @@
     },
     {
       "id": "axonometric-plan",
-      "expected": "Axonometric plan",
-      "allowed": [],
+      "expected": "block-beta",
+      "allowed": ["architecture-beta", "flowchart"],
       "state": {
         "title": "Where will the new testing benches fit in the office?",
         "description": "The lab shares one floor with a meeting room, a storage room, and the engineering desks. The lab needs two benches, clear walking space, and access to the door and power outlets. We need to inspect the room arrangement and furniture positions on that floor.",
@@ -1036,7 +1036,7 @@
     },
     {
       "id": "venn",
-      "expected": "Venn",
+      "expected": "venn-beta",
       "allowed": [],
       "state": {
         "title": "Which customers qualify for the beta?",
@@ -1055,8 +1055,8 @@
     },
     {
       "id": "pyramid-funnel",
-      "expected": "Pyramid / funnel",
-      "allowed": [],
+      "expected": "xychart",
+      "allowed": ["sankey", "block-beta"],
       "state": {
         "title": "At which signup step are we losing most prospects?",
         "description": "Last month 10,000 people visited signup, 4,000 started an account, 1,200 verified email, and 300 invited a teammate. Each later group is a subset of the previous group. We need to compare the drop in people at each step before choosing an intervention.",
@@ -1074,8 +1074,8 @@
     },
     {
       "id": "bar-chart",
-      "expected": "Bar chart",
-      "allowed": [],
+      "expected": "xychart",
+      "allowed": ["pie"],
       "state": {
         "title": "Which support category needs another specialist?",
         "description": "Last week billing received 240 tickets, login received 160, exports received 90, and integrations received 310. We need to compare totals across these four categories. The choice is whether to staff the largest category or the one with the longest average handling time.",
@@ -1093,8 +1093,8 @@
     },
     {
       "id": "waterfall",
-      "expected": "Waterfall",
-      "allowed": [],
+      "expected": "xychart",
+      "allowed": ["sankey"],
       "state": {
         "title": "How will next quarter’s cloud bill reach the target?",
         "description": "The current monthly bill is $80,000. New customers add $15,000, storage cleanup removes $8,000, reserved capacity removes $12,000, and a new region adds $5,000. We need to account for each increase and decrease between the starting bill and the proposed final bill.",
@@ -1112,8 +1112,8 @@
     },
     {
       "id": "treemap",
-      "expected": "Treemap",
-      "allowed": [],
+      "expected": "treemap-beta",
+      "allowed": ["pie", "mindmap"],
       "state": {
         "title": "Which parts of storage consume most of our budget?",
         "description": "The $100,000 storage budget divides into customer data, backups, and logs. Customer data divides further into images, videos, and documents, with videos consuming $55,000 of the total. We need to compare the relative sizes of these nested spending shares.",
@@ -1131,8 +1131,8 @@
     },
     {
       "id": "heatmap",
-      "expected": "Heatmap",
-      "allowed": [],
+      "expected": "block-beta",
+      "allowed": ["xychart", "quadrantChart"],
       "state": {
         "title": "Which region and service combinations need attention?",
         "description": "We measured error rates for four services in each of five regions. Payments in Europe has an 8% error rate, while most other service and region pairs are below 1%. We need to compare every pair and spot clusters of high values.",
@@ -1150,7 +1150,7 @@
     },
     {
       "id": "line-chart",
-      "expected": "Line chart",
+      "expected": "xychart",
       "allowed": [],
       "state": {
         "title": "When did the new cache start reducing latency?",
@@ -1169,8 +1169,8 @@
     },
     {
       "id": "gantt",
-      "expected": "Gantt",
-      "allowed": [],
+      "expected": "gantt",
+      "allowed": ["timeline"],
       "state": {
         "title": "Can the migration finish before the launch date?",
         "description": "Data cleanup runs July 1 through July 10, backfill runs July 8 through July 20, and validation runs July 21 through July 25. The launch is July 26, and validation cannot start until backfill ends. We need to compare task durations, overlap, and the dependency on finishing backfill.",
@@ -1188,8 +1188,8 @@
     },
     {
       "id": "scatter-plot",
-      "expected": "Scatter plot",
-      "allowed": [],
+      "expected": "quadrantChart",
+      "allowed": ["xychart"],
       "state": {
         "title": "Does a larger account take longer to onboard?",
         "description": "For each of 80 customer accounts, we recorded employee count and days needed to finish onboarding. Some small accounts took weeks, while some large accounts finished in days. We need to inspect whether these two measured variables move together and which accounts are unusual.",
@@ -1207,8 +1207,8 @@
     },
     {
       "id": "high-level",
-      "expected": "High-Level",
-      "allowed": [],
+      "expected": "architecture-beta",
+      "allowed": ["flowchart", "C4Context", "block-beta"],
       "state": {
         "title": "Will the analytics platform fit in one shared cluster?",
         "description": "Events enter collectors, pass through stream processing, land in object storage, and reach a query engine and dashboards. All of these services run as containers in a Kubernetes cluster with shared monitoring and scheduling. We need to see the whole path and the cluster services that support it.",
@@ -1226,8 +1226,8 @@
     },
     {
       "id": "process",
-      "expected": "Process",
-      "allowed": [],
+      "expected": "flowchart",
+      "allowed": ["swimlane-beta", "sequenceDiagram"],
       "state": {
         "title": "When must a reviewer approve a research summary?",
         "description": "A researcher collects interview notes, an analyst turns them into findings, a reviewer checks the evidence, and a product manager publishes the summary. Each person passes a specific document to the next person. We need to compare approval before the findings become a draft with approval just before publication.",
@@ -1245,8 +1245,8 @@
     },
     {
       "id": "medallion",
-      "expected": "Medallion",
-      "allowed": [],
+      "expected": "flowchart",
+      "allowed": ["block-beta", "architecture-beta"],
       "state": {
         "title": "Which data can analysts use without an engineer’s approval?",
         "description": "We keep untouched source records, cleaned records with validated fields, and curated totals that are ready for reports. Each storage tier has a different quality guarantee and access rule. We need to decide whether analysts can read cleaned records or only curated totals.",
@@ -1264,8 +1264,8 @@
     },
     {
       "id": "data-flow",
-      "expected": "Data flow",
-      "allowed": [],
+      "expected": "swimlane-beta",
+      "allowed": ["flowchart"],
       "state": {
         "title": "Who owns each step that turns customer feedback into training data?",
         "description": "Support supplies raw feedback, analysts remove personal details, reviewers approve labels, and machine learning engineers publish a training set. The data changes form at every step. We need to show the data entering and leaving each step alongside the role allowed to perform it.",
@@ -1283,8 +1283,8 @@
     },
     {
       "id": "dp-integration",
-      "expected": "DP integration",
-      "allowed": [],
+      "expected": "flowchart",
+      "allowed": ["architecture-beta", "C4Context"],
       "state": {
         "title": "Which systems can connect directly to the reporting platform?",
         "description": "The CRM, billing service, and product events feed one central data platform. That platform serves dashboards, a finance export, and a partner API. We need to compare the source and consumer connections, including whether the partner can bypass the central platform.",
@@ -1302,8 +1302,8 @@
     },
     {
       "id": "dp-security-matrix",
-      "expected": "DP security matrix",
-      "allowed": [],
+      "expected": "block-beta",
+      "allowed": ["quadrantChart", "erDiagram"],
       "state": {
         "title": "Which access rights will contractors receive?",
         "description": "We have engineers, analysts, contractors, and administrators, plus ingestion, storage, query, and export components. Each role can have no access, read access, or write access to each component. We need to compare these permissions for every role and component pair.",
@@ -1321,7 +1321,7 @@
     },
     {
       "id": "sankey",
-      "expected": "Sankey",
+      "expected": "sankey",
       "allowed": [],
       "state": {
         "title": "Where do paid trial users go after the trial ends?",
@@ -1340,7 +1340,7 @@
     },
     {
       "id": "fishbone",
-      "expected": "Fishbone",
+      "expected": "ishikawa-beta",
       "allowed": [],
       "state": {
         "title": "Which causes of failed releases must we address first?",
@@ -1359,7 +1359,7 @@
     },
     {
       "id": "wardley-map",
-      "expected": "Wardley map",
+      "expected": "wardley-beta",
       "allowed": [],
       "state": {
         "title": "Which parts of our search product must we build rather than buy?",
@@ -1378,7 +1378,7 @@
     },
     {
       "id": "kanban",
-      "expected": "Kanban",
+      "expected": "kanban",
       "allowed": [],
       "state": {
         "title": "Can we start another feature while reviews are blocked?",
@@ -1397,8 +1397,8 @@
     },
     {
       "id": "user-journey",
-      "expected": "User journey",
-      "allowed": [],
+      "expected": "journey",
+      "allowed": ["swimlane-beta"],
       "state": {
         "title": "Where does a first-time administrator need more help?",
         "description": "A new administrator discovers the product, signs up, invites staff, and runs the first report. Interviews show curiosity at discovery, confidence after signup, frustration during invitations, and relief after the report. We need to follow this person’s actions and feelings through the experience.",
@@ -1416,8 +1416,8 @@
     },
     {
       "id": "service-blueprint",
-      "expected": "Service blueprint",
-      "allowed": [],
+      "expected": "swimlane-beta",
+      "allowed": ["sequenceDiagram", "flowchart"],
       "state": {
         "title": "Must the customer see the identity check before delivery?",
         "description": "The customer places an order, sees a confirmation, tracks shipment, and accepts delivery. Behind those visible steps, staff check identity, reserve stock, and arrange transport with a partner. We need to compare what the customer sees with the hidden work that supports each stage.",
@@ -1435,8 +1435,8 @@
     },
     {
       "id": "deployment",
-      "expected": "Deployment",
-      "allowed": [],
+      "expected": "architecture-beta",
+      "allowed": ["C4Deployment", "flowchart", "block-beta"],
       "state": {
         "title": "Where will the production workers run?",
         "description": "The web artifact runs on two hosts in the public zone on port 443. Three worker replicas run on private hosts and reach a database host on port 5432. We need to compare the exact zones, machines, artifacts, and ports when workers move to a second region.",
@@ -1454,8 +1454,8 @@
     },
     {
       "id": "dependency-graph",
-      "expected": "Dependency graph",
-      "allowed": [],
+      "expected": "flowchart",
+      "allowed": ["classDiagram", "architecture-beta"],
       "state": {
         "title": "What must change before we can remove the shared package?",
         "description": "Checkout and billing both depend on the pricing package, which depends on currency utilities. Currency utilities also depend on pricing for formatting rules, so those packages require each other. We need to inspect shared prerequisites and this circular requirement before removing pricing.",
@@ -1473,7 +1473,7 @@
     },
     {
       "id": "uml-class",
-      "expected": "UML class",
+      "expected": "classDiagram",
       "allowed": [],
       "state": {
         "title": "How must the new payment handlers share behavior?",
@@ -1492,8 +1492,8 @@
     },
     {
       "id": "story-map",
-      "expected": "Story map",
-      "allowed": [],
+      "expected": "kanban",
+      "allowed": ["block-beta", "mindmap", "flowchart"],
       "state": {
         "title": "What belongs in the first release of team onboarding?",
         "description": "An administrator creates a workspace, invites members, assigns roles, and checks activity. Under each activity we have small user tasks, such as bulk invitations and custom roles. We need to separate tasks needed for a complete first experience from tasks reserved for later releases.",
@@ -1511,8 +1511,8 @@
     },
     {
       "id": "database-schema",
-      "expected": "Database schema",
-      "allowed": [],
+      "expected": "erDiagram",
+      "allowed": ["classDiagram"],
       "state": {
         "title": "Which constraints must the orders database enforce?",
         "description": "The orders table has a UUID primary key, a non-null customer_id, and a NUMERIC(12,2) total with a nonnegative check. customer_id references customers.id, and an index covers customer_id plus created_at. We need to decide whether deleting a customer rejects the deletion or cascades to its orders.",

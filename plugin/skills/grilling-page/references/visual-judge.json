@@ -17,8 +17,35 @@
     }
   },
   "types": {
-    "instructions": "The state's `question` is one question from a grilling session, a decision the user must make. A diagram will be drawn for it. The state's `visual_types` maps each diagram-design visual type to what it shows. Pick the visual type that best fits what the diagram must show.",
-    "guide": "../diagram-design/SKILL.md",
+    "instructions": "The state's `question` is one question from a grilling session, a decision the user must make. A diagram will be drawn for it in Mermaid and rendered with Pele. The state's `visual_types` maps each Mermaid diagram type to when to use it. Pick the type that best fits what the diagram must show.",
+    "guide": {
+      "flowchart": "Decision logic with branches: steps, decisions, and loops, or parts and how they connect, grouped by subgraph. A large architecture is a flowchart with one subgraph per zone.",
+      "sequenceDiagram": "Messages between parts in time order: requests, replies, and who waits for whom.",
+      "stateDiagram-v2": "The states of one thing and the events that move it between them. Group states with composite states.",
+      "swimlane-beta": "Steps in lanes, one lane per team or role, and the handoffs between lanes.",
+      "erDiagram": "Entities, their fields, and the relationships and cardinality between them. Keep it under about 15 entities; split a larger schema by zone.",
+      "classDiagram": "Classes or types with fields and methods, and inheritance, ownership, and use between them.",
+      "architecture-beta": "Services in groups and the connections between them. Use it only up to about 10 services; above that use flowchart.",
+      "C4Context": "One system, the people who use it, and the external systems around it.",
+      "C4Deployment": "Deployment nodes such as zones, hosts, and containers, with what runs on each.",
+      "block-beta": "Blocks in rows and columns: stacked layers, a grid or a matrix of items against items, or a floor plan.",
+      "mindmap": "A hierarchy that breaks one root topic into smaller parts.",
+      "treeView-beta": "A file or folder tree.",
+      "timeline": "Dated events in order, grouped by period.",
+      "gantt": "Tasks with start dates and durations, their overlap, and the dependencies between them.",
+      "journey": "One person's steps through a task, grouped by stage, with a satisfaction score per step.",
+      "kanban": "Work items in status columns.",
+      "quadrantChart": "Items placed by two measures on two axes, split into four quadrants.",
+      "xychart": "Bars or lines of values over categories or time.",
+      "pie": "Shares of one whole.",
+      "sankey": "Quantities that flow from stage to stage and split or merge on the way.",
+      "radar-beta": "Several items scored on the same set of axes.",
+      "treemap-beta": "Nested shares of a whole, each sized by its value.",
+      "venn-beta": "Sets that overlap, and the members in each overlap.",
+      "ishikawa-beta": "Possible causes of one effect, grouped by category.",
+      "wardley-beta": "Components by how visible they are to the user and how evolved they are, from novel to commodity.",
+      "gitGraph": "Branches, commits, and merges in a git history."
+    },
     "top": 3
   }
 }

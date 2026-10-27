@@ -1,6 +1,6 @@
 # Migration
 
-Read this file when step 2 of the project section finds Matt work in this repo. Migration moves this repo's Matt Pocock config, instruction block, rule files, domain files, and private store onto vstack. It changes only this repo and its shared private store under the git common dir. Global skills, global rules, and diagram profiles stay where they are.
+Read this file when step 2 of the project section finds Matt work in this repo. Migration moves this repo's Matt Pocock config, instruction block, rule files, domain files, and private store onto vstack. It changes only this repo and its shared private store under the git common dir. Global skills and global rules stay where they are.
 
 `migrate.ts` stands for `bun "$(realpath skill://setup-vstack/scripts/migrate.ts)"`. Run it from inside the repo. It uses the shipped [House style rows](house-style.yaml) for path and reference changes. Keep that file as replacement data.
 

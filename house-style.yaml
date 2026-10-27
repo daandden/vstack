@@ -210,11 +210,6 @@ rules:
     text: |
       Scratch lives at `~/.vstack/tmp/<repo-key>/<kind>/<entry>`, resolved by skill://vstack-tmp and passed to spawns as an absolute dir. An output location is never `$TMPDIR/`, `/tmp/`, or the OS temp directory. A temp file a script makes with `mktemp` and deletes itself is fine.
     lint: '`$TMPDIR/`, `/tmp/`, or "the OS temp directory" fails in any text file, except on a line that runs `mktemp` (adapt, merge, and original text).'
-  - id: python-eval
-    scope: adapted
-    text: |
-      diagram-design's `python3 scripts/<x>.py <args>` calls and export.md's Playwright probe run as eval cells that run the script with `runpy` under eval's interpreter (venv, then `~/.omp/python-env`, then PATH). Playwright is installed with `%pip` only after the user approves it through `ask`.
-    lint: None; the Update's agent review applies it.
   - id: ask-tool
     scope: required
     text: |

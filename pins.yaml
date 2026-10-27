@@ -3,7 +3,7 @@
 # repo: GitHub owner/name. path: the part of the repo vstack takes from ("" = whole repo).
 # pin_kind: how the Update finds the newest Pin. `tag`: the highest `v<semver>` tag with no pre-release
 # part (Base). `commit`: the newest commit on the default branch that touches `path` (Enhancement,
-# Diagram, CSS). pin: the tag name, or the full commit SHA.
+# CSS). pin: the tag name, or the full commit SHA.
 # items: which tree entries at the Pin are Upstream items, each needing a register row. `match` is a path
 # glob from the repo root (`*` stays inside one path segment); the first pattern that matches sets the kind.
 upstreams:
@@ -27,16 +27,6 @@ upstreams:
       - { match: "pstack/skills/poteto-mode/playbooks/*.md", type: blob, kind: playbook }
       - { match: "pstack/agents/*.md", type: blob, kind: agent }
       - { match: "pstack/automations/*", type: tree, kind: agent }
-  diagram:
-    role: Diagram
-    repo: cathrynlavery/diagram-design
-    path: ""
-    pin_kind: commit
-    pin: 0482b93fc796b950417f264879997f8f1686e5e6
-    items:
-      - { match: "skills/diagram-design", type: tree, kind: skill }
-      - { match: "scripts/verify-geometry.py", type: blob, kind: skill }
-      - { match: "scripts/lint-skin.py", type: blob, kind: skill }
   css:
     role: CSS
     repo: vojtaholik/good-css

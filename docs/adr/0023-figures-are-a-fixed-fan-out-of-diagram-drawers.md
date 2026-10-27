@@ -1,5 +1,7 @@
 # Figures are a fixed Fan-out of diagram drawers
 
+> Superseded by [ADR 0040](0040-figures-are-mermaid-rendered-by-pele.md): a figure step is not a Fan-out. The caller writes each figure's Mermaid and renders it with Pele, and `vstack-diagram-drawer` is gone. This ADR stays as history.
+
 > The skin-selection provisions are superseded by [ADR 0027](0027-diagram-design-ships-one-fixed-catppuccin-style.md): diagram-design has one fixed style, so the caller settles no skin, and a figure brief names no variant. The rest of this ADR still stands.
 
 A skill step that draws figures starts one `vstack-diagram-drawer` agent per figure, all at once. The hidden helper `vstack-figures` holds this procedure and its one Fan-out line. explain, how, grilling-page, improve-codebase-architecture, teach, and ketchup call that helper and do not draw figures themselves. The caller settles every diagram-design question first: the skin and each figure's type, size, and content. It keeps working while the drawers run and waits only at the step that places the figures. Each drawer draws the source, exports the SVG under the caller's Scratch kind, and returns the SVG path. The drawer has no `model` field, so the user picks the drawing model through its own `task.agentModelOverrides` key. We chose this so that the user can run all figures on a model chosen for drawing, and so that figures are drawn in parallel with each other and with the caller's own writing.

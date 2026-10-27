@@ -455,6 +455,25 @@ test("a rename that would leave an SVG unresolved exits 1 and leaves the old fol
   for (const [f, text] of Object.entries(files)) expect(readFileSync(join(old, f), "utf8")).toBe(text);
 });
 
+const RENDER = join(import.meta.dir, "..", "plugin", "skills", "vstack-figures", "scripts", "render.ts");
+test.each([
+  ["flowchart", "flowchart TD\n  Cart([Cart]) --> Stock{In stock?}\n  Stock -- Yes --> Pay[Pay]\n  Stock -- No --> Split[Split]\n", "Stock"],
+  ["sequence", "sequenceDiagram\n  participant Shop\n  participant Bank\n  Shop->>Bank: Authorize order #35;12\n  Bank--)Shop: Approved\n", "Bank"],
+  ["er", "erDiagram\n  Order ||--o{ OrderLine : holds\n  Order {\n    string id\n  }\n", "Order"],
+])("a %s figure from the render script goes on the page through { svg: figures/<file> }", (type, mermaid, focus) => {
+  const folder = flowFolder();
+  const rendered = Bun.spawnSync(["bun", RENDER, "-", join(folder, "figures", `${type}.svg`), "--focus", focus], { stdin: new TextEncoder().encode(mermaid), stdout: "pipe", stderr: "pipe" });
+  expect(rendered.stderr.toString()).toBe("");
+  expect(rendered.exitCode).toBe(0);
+  const r = append(PAGE, FLOW, ROUND, question("s1-r1-q1", 1, { visual: { svg: `figures/${type}.svg` } }));
+  expect(r.code).toBe(0);
+  const html = readFileSync(page, "utf8");
+  const scope = new RegExp(`class="pele pele-${type} (pele-f[0-9a-f]{8})"`).exec(html)?.[1];
+  expect(scope).toBeDefined();
+  expect(html).toContain("--pele-bg: #1e1e2e;");
+  expect(html).toContain(`.${scope} [data-id="${focus}"] text { fill: #cba6f7; }`);
+});
+
 /** Every file and symlink under `folder`, with its bytes or link target. */
 const tree = (folder: string) => readdirSync(folder, { recursive: true }).map(String).sort().map((f) => {
   const path = join(folder, f);
