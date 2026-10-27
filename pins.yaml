@@ -20,13 +20,14 @@ upstreams:
     repo: cursor/plugins
     path: pstack
     pin_kind: commit
-    pin: ce649c03ac3b75b6ae80cbd15b7e2c536caedb5a
+    pin: e73df471cd4bd918367e99f3dd9c51bd53ddf5f0
     items:
       - { match: "pstack/skills/principle-*", type: tree, kind: principle }
       - { match: "pstack/skills/*", type: tree, kind: skill }
       - { match: "pstack/skills/poteto-mode/playbooks/*.md", type: blob, kind: playbook }
       - { match: "pstack/agents/*.md", type: blob, kind: agent }
       - { match: "pstack/automations/*", type: tree, kind: agent }
+
   css:
     role: CSS
     repo: vojtaholik/good-css

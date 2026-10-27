@@ -35,7 +35,7 @@ describe("Principle picks in subagent sessions", () => {
     const body = judge.calls[0]!.request;
     expect(body.state).toEqual({ request: "Fix the parser now abcdef1", preamble: catalog.brief_preamble });
     const asked = Object.keys(body.questions);
-    expect(asked).toHaveLength(20);
+    expect(asked).toHaveLength(21);
     expect(asked.every(name => name.startsWith("principle-"))).toBe(true);
     expect(asked).not.toContain("principle-never-block-on-the-human");
   });

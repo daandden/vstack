@@ -33,7 +33,7 @@ Fix each mistake class at the highest level that works:
 1. Architecture: eliminate the mistake. Give each piece of state one owner and each task one supported way. Hide internals so the wrong import fails. Replace hand-synced lists with one source of truth. Delete old ways and the dead code that an agent can copy.
 2. Types: make the bad state impossible to write.
 3. A lint or CI check: if bad code still compiles, add a check whose error names the file, type, or function to use instead. If the pattern is already common, fail only when a change adds more.
-4. A test of the behavior. Fix or delete any test that still passes when every function it calls returns nothing.
+4. A test of the behavior. Fix or delete any test that still passes when the behavior it checks breaks, or that fails when only the internals change.
 5. Docs or agent rules, last, only for judgment calls. Nothing fails when an agent skips them.
 
 Name a real past mistake, from the history or the session, that each new check must fail on.

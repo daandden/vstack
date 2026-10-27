@@ -11,7 +11,7 @@ vstack-figures' render script turns one Mermaid source into a Catppuccin Mocha S
 
 ## How to get to it (user POV)
 
-- A skill that shows figures (explain, how, improve-codebase-architecture, ketchup, teach, or the Grilling page) writes Mermaid and runs `bun "$(realpath skill://vstack-figures/scripts/render.ts)" ...`, as skill://vstack-figures says.
+- A skill that shows figures (explain, how, improve-codebase-architecture, teach, or the Grilling page) writes Mermaid and runs `bun "$(realpath skill://vstack-figures/scripts/render.ts)" ...`, as skill://vstack-figures says.
 - The user sees the SVG inline on that skill's page, or as a question visual on the flow's Grilling page.
 
 ## Driving it with bash and the omp browser

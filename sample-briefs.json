@@ -5,7 +5,7 @@
     "request": "cleanBrief(prompt): the brief without omp's `Complete assignment thoroughly:` line, through the cleaner's stages, squeezed to 10,000 characters",
     "preamble": "brief_preamble from addon-questions.json, after request"
   },
-  "questions": "The 20 principle questions in addon-questions.json: every principle except principle-never-block-on-the-human.",
+  "questions": "One question per principle in addon-questions.json: every principle except principle-never-block-on-the-human.",
   "semantics": {
     "prompt": "A real brief that a parent agent sent to vstack-explorer, vstack-worker, or vstack-verifier during a Matt run, copied from a saved omp session. Private paths and private project names are replaced.",
     "brief": "The check judges the sample as the extension judges a subagent's first prompt (ADR 0025).",
