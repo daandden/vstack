@@ -4,7 +4,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
-## [7.0.1] - 2026-10-27
+## [7.0.2] - 2026-10-27
 
 - Add the hidden tune-llm-flow Addon for sustained LLM-flow quality, cost, or latency improvement inside implement. The grill settles setup once; Ratchet owns measured gates and host approvals, with review material and each gate on the Grilling page. Kept rounds and the reusable eval get separate commits, excluding traces. Narrow hillclimb's catalog question to code that calls no model and add four routing samples. Require an identified LLM flow for the new catalog route. The optional Flexible Ask host-dialog wrapper is completed in omp-tools#26; installation and combined live behavior must still be observed (#254, ADR 0041).
 - Stop tuning before UI-only Ratchet operations in subagent, isolated, or headless contexts. Retry an unanswered approval at most once while the host session remains active; Abort or dismissal stops immediately. Record ambiguous abort-or-dismissal outcomes as unanswered. Document Ratchet's native `approve()` dialog exception to the `ask` policy and distinguish Ratchet eval names from the vstack run (#252, ADR 0041).
