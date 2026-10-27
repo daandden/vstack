@@ -20,6 +20,8 @@ Read the app's real entry point before the grill closes. Record these five decis
 
 Keep one contract with the page's question ids, exact paths, metric, guardrails, and stop rule. Pass it through the spec or ticket to implement. Reuse supplied answers instead of asking them again. If implement receives an incomplete contract, report the missing decision and stop tuning rather than inventing setup or starting Ratchet's kickoff.
 
+The contract carries the agreed task facts, not an Addon pointer or pick list. implement reads this Addon when its gathered source intent calls for sustained LLM-flow improvement, while its run-start tool still selects principles.
+
 ## Enter implement's existing run
 
 implement owns the branch, run record, shared steps in `skill://implement/END-STATE.md`, and End state. Reuse its absolute vstack root, Scratch dir, Grilling page, and in-progress Stage id. Every question and Report block below joins that Stage. No new Stage or label belongs to this Addon.

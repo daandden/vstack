@@ -9,7 +9,7 @@ vstack is a personal omp plugin. Matt Pocock's skills are its core. Addons suppl
 - A Utility skill works outside a Matt run. The register's `utility:` list names these skills, including explain and hidden helpers such as vstack-tmp.
 - A Command runs in the extension without a model. `/vstack-clean` is the Scratch cleanup Command, not a skill.
 
-Every change starts with the grill (`/skill:grill-with-docs` or `/skill:grill-me`). The grill closes with its summary and asks nothing. Your next prompt confirms the summary or pushes back, and a pushback reopens the grill. grill-with-docs ends with a line that names the skill to type next. For a change that fits one session, type `/skill:implement`. For a bigger change, continue through `/skill:to-spec` and `/skill:to-tickets`, then type `/skill:implement-spec`. implement and implement-spec own the changes and the settled End state. Specs and tickets carry the non-principle Addon `skill://` pointers that later sessions need. Build sessions pick principles fresh.
+Every change starts with the grill (`/skill:grill-with-docs` or `/skill:grill-me`). The grill closes with its summary and asks nothing. Your next prompt confirms the summary or pushes back, and a pushback reopens the grill. grill-with-docs ends with a line that names the skill to type next. For a change that fits one session, type `/skill:implement`. For a bigger change, continue through `/skill:to-spec` and `/skill:to-tickets`, then type `/skill:implement-spec`. implement and implement-spec own the changes and the settled End state. Specs and tickets carry no Addon `skill://` pointers. Build sessions pick principles fresh.
 
 ## Install
 
@@ -88,9 +88,9 @@ At every typed Matt run start, including a bare start, the extension displays an
 Both tools take `intent: string`:
 
 - `inject_addons` asks the whole catalog, including principles. Every Matt skill other than implement and implement-spec uses it.
-- `inject_principles` asks all principle questions only. implement and implement-spec use it when their source contains non-principle Addon pointers. When the source has none, they use `inject_addons`.
+- `inject_principles` asks all principle questions only. implement and implement-spec use it.
 
-The agent loads matching returned `skill://` pointers and the source's non-principle Addon pointers before the work that needs them. When the kind of work changes, the agent calls the appropriate tool again. Specs and tickets contain no principle pointers. Non-principle pointers still follow ADR 0015. There is no enforcement gate or automatic fallback if the agent skips a call.
+The agent loads matching returned `skill://` pointers before the work that needs them. When the kind of work changes, the agent calls the tool again. Specs and tickets contain no Addon pointers. There is no enforcement gate or automatic fallback if the agent skips a call.
 
 The tools clean the supplied intent and limit it to 10,000 characters with the subagent Brief cleaner. The judge state holds the cleaned intent as `request`, followed by the catalog's `preamble`. The tools return matching `skill://` pointers and save the picks as `vstack-addons` session entries. Delivered-Addon dedup stays session-wide, including after a resume and across branches. Each call leaves out Addons named in saved `vstack-addons` messages or entries. When no undelivered question remains in the tool's scope, it makes no judge request. The running Matt skill's steps and its Addons still win over a conflicting principle.
 
