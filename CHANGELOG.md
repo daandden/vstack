@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [6.0.1] - 2026-10-27
+
+- diagram-design's doctor runs the Playwright browser probe as an owned subprocess from eval, with its output in temporary files instead of pipes. It bounds browser startup to 5 seconds and the probe to 10 seconds, and on POSIX records the probe's descendants every 0.2 seconds while it runs. On a POSIX timeout, the doctor lists the descendants again, kills the process group, the recorded descendants, and any process that holds the output files, and waits for them to exit, all within one 2-second deadline. On Windows, `taskkill` gets 2 seconds. Reaping the probe gets its own 2 seconds. If the probe exits and leaves processes running, the doctor kills them within 2 seconds and names them in a cleanup warning. If the probe cannot start, the doctor warns and skips cleanup. The 6.0.0 text only stopped waiting for a worker thread that kept running.
+
 ## [6.0.0] - 2026-10-27
 
 - Update: pstack ce649c0 to e73df47, diagram-design 0482b93 to 97d7951. matt stays at v1.3.1 and good-css at 92d436b. The principles make-operations-idempotent, migrate-callers-then-delete-legacy-apis, and type-system-discipline take their new pstack text, and the changed reject rows keep their reasons.

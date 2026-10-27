@@ -40,7 +40,126 @@ Run all checks in this order and report each as `pass`, `warn`, or `fail`.
 
 2. Playwright availability for PNG export
 - Check in an eval cell whether `importlib.util.find_spec("playwright")` finds Playwright in eval's interpreter; an optional package version attribute is not required.
-- In the same eval cell, verify that Playwright's default headless Chromium launches and closes. Launch it on a worker thread, as the PNG export does, with a 5-second launch timeout, and bound the whole probe to 10 seconds. If the worker thread has not finished by then, mark `warn` and report the reason. Report a failure to close the browser as a warning. A headless-shell-only installation counts; default PNG export does not need the full Chromium executable path.
+- When Playwright is found, verify that Playwright's default headless Chromium launches and closes. Run this eval cell exactly. It starts the probe as an owned child process that writes its output to temporary files, bounds browser startup to 5 seconds and the probe to 10 seconds, and on POSIX records the child's descendants every 0.2 seconds while the child runs. On a POSIX timeout, the cell lists the child's descendants again and, with `lsof`, the processes that hold the output files. It kills the child's process group and every process it recorded or found, then waits for them to exit. The listing, the kills, and that wait share one 2-second deadline, and every `pgrep` and `lsof` call gets only the time left. On Windows, `taskkill` gets 2 seconds. Reaping the child gets its own 2 seconds. If the child exits by itself while recorded descendants or output-file holders still run, the cell kills them within one 2-second deadline and names them in a cleanup warning. Without `lsof`, the cell skips the output-file check. If the child cannot start, the cell reports that and skips cleanup. The cell prints one line. Report it as the check result, and keep a cleanup failure in it as a warning. A headless-shell-only installation counts; default PNG export does not need the full Chromium executable path.
+
+```python
+import os, signal, subprocess, sys, tempfile, time
+
+PROBE = """
+from playwright.sync_api import sync_playwright
+with sync_playwright() as p:
+    p.chromium.launch(timeout=5000).close()
+"""
+
+def descendants(pid, deadline):
+    left = deadline - time.monotonic()
+    if left <= 0:
+        raise subprocess.TimeoutExpired("pgrep", 0)
+    out = subprocess.run(["pgrep", "-P", str(pid)], capture_output=True, text=True, timeout=left).stdout
+    pids = {int(line) for line in out.split()}
+    for child in list(pids):
+        pids |= descendants(child, deadline)
+    return pids
+
+def alive(pid):
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        pass
+    return True
+
+def kill_tree(group, pids, deadline, cleanup):
+    for kill, target in [(os.killpg, group)] + [(os.kill, pid) for pid in sorted(pids)]:
+        try:
+            kill(target, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        except OSError as exc:
+            cleanup.append(f"could not kill {target}: {exc}")
+    while any(alive(pid) for pid in pids) and time.monotonic() < deadline:
+        time.sleep(0.1)
+    survivors = sorted(pid for pid in pids if alive(pid))
+    if survivors:
+        cleanup.append(f"probe processes still running: {survivors}")
+
+def holders(paths, deadline, cleanup):
+    # A detached descendant of a departed child still holds the probe's output files open.
+    left = deadline - time.monotonic()
+    try:
+        if left <= 0:
+            raise subprocess.TimeoutExpired("lsof", 0)
+        out = subprocess.run(["lsof", "-t", *paths], capture_output=True, text=True, timeout=left).stdout
+    except FileNotFoundError:
+        return set()
+    except (OSError, subprocess.SubprocessError) as exc:
+        cleanup.append(f"could not list processes holding the probe output: {exc}")
+        return set()
+    return {int(pid) for pid in out.split()} - {os.getpid()}
+
+def run_probe():
+    posix = os.name == "posix"
+    cleanup = []
+    seen = set()
+    # Files instead of pipes: a lingering Chromium that holds the output open cannot block the wait.
+    with tempfile.NamedTemporaryFile() as out, tempfile.NamedTemporaryFile() as err:
+        try:
+            proc = subprocess.Popen([sys.executable, "-c", PROBE], stdout=out, stderr=err, start_new_session=posix)
+        except OSError as exc:
+            return f"warn: could not start the browser probe: {exc}"
+        deadline = time.monotonic() + 10
+        while proc.poll() is None and time.monotonic() < deadline:
+            if posix:
+                # Record the tree while the child runs: descendants of a departed child lose their parent link.
+                try:
+                    seen |= descendants(proc.pid, deadline)
+                except (OSError, subprocess.SubprocessError):
+                    pass
+            time.sleep(0.2)
+        if proc.poll() is None:
+            result = "warn: the browser probe did not finish in 10 seconds"
+            stop = time.monotonic() + 2
+            if posix:
+                try:
+                    seen |= descendants(proc.pid, stop)
+                except (OSError, subprocess.SubprocessError) as exc:
+                    cleanup.append(f"could not list the probe's descendants: {exc}")
+                seen |= holders([out.name, err.name], stop, cleanup) - {proc.pid}
+                kill_tree(proc.pid, seen, stop, cleanup)
+            else:
+                try:
+                    subprocess.run(["taskkill", "/T", "/F", "/PID", str(proc.pid)], capture_output=True, timeout=2, check=True)
+                except (OSError, subprocess.SubprocessError) as exc:
+                    cleanup.append(f"taskkill failed: {exc}")
+                    try:
+                        proc.kill()
+                    except OSError:
+                        pass
+            try:
+                proc.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                cleanup.append(f"probe process {proc.pid} was not reaped in 2 seconds")
+        else:
+            if proc.returncode == 0:
+                result = "pass: headless Chromium launched and closed"
+            else:
+                err.seek(0)
+                lines = err.read().decode(errors="replace").strip().splitlines()
+                result = "warn: the browser probe failed: " + (lines[-1] if lines else f"exit code {proc.returncode}")
+            if posix:
+                stop = time.monotonic() + 2
+                lingering = {pid for pid in seen if alive(pid)} | holders([out.name, err.name], stop, cleanup)
+                if lingering:
+                    cleanup.append(f"the probe exited and left processes running: {sorted(lingering)}")
+                    kill_tree(proc.pid, lingering, stop, cleanup)
+    if cleanup:
+        result += "; cleanup warning: " + "; ".join(cleanup)
+    return result
+
+print(run_probe())
+```
+
 - If missing, mark `warn` and report that PNG export offers to install
   Playwright with `%pip` after the user approves it through `ask`.
 - Never auto-install dependencies.
