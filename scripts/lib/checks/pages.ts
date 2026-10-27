@@ -1,7 +1,6 @@
 // vstack page templates follow good-css (#61): every `*.html` and `*.css` file under a skill's `templates/`
 // directory is linted with the script the CSS upstream names as `page_lint:` in pins.yaml (its
-// `scripts/check-css.mjs`), read at that Upstream's Pin and run with Bun. Figures never sit in a template,
-// so diagram-design's own `assets/` pages are not templates. With no template the lint is not fetched.
+// `scripts/check-css.mjs`), read at that Upstream's Pin and run with Bun. With no template the lint is not fetched.
 
 import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";

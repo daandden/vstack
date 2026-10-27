@@ -7,6 +7,7 @@
     "check-register": "bun scripts/check-register.ts"
   },
   "dependencies": {
+    "pele": "1.12.0",
     "yaml": "^2.9.1"
   }
 }

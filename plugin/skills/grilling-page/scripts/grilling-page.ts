@@ -33,7 +33,7 @@ const BLOCKED_TAGS = new Set(["script", "iframe", "frame", "frameset", "object",
 const NAMED_ENTITIES: Record<string, string> = { colon: ":", tab: "\t", newline: "\n", nbsp: " " };
 
 /** Problems in a piece of HTML or SVG, found by parsing it the way a browser does. Empty when it is safe to inline.
- *  `allowStyle` keeps <style>, which diagram-design's SVG exports carry; its text still cannot import or run anything. */
+ *  `allowStyle` keeps <style>, which vstack-figures' Pele SVGs carry; its text still cannot import or run anything. */
 function unsafeMarkup(markup: string, allowStyle = false): string[] {
   const problems: string[] = [];
   new HTMLRewriter()
@@ -139,7 +139,6 @@ const STAGE_LABELS: Record<string, string> = {
   "grill-me": "Grill",
   "grill-with-docs": "Grill",
   "domain-modeling": "Domain",
-  "diagram-design": "Diagram",
   triage: "Triage",
   "to-spec": "Spec",
   "to-tickets": "Tickets",

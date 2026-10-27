@@ -1,6 +1,6 @@
 # vstack
 
-vstack is a personal omp plugin. Matt Pocock's skills are its core. Addons supplement those skills, and Utility skills provide shared tools and writing rules. It also takes selected items from poteto's pstack, diagram-design, and good-css. `GLOSSARY.md` defines the terms, and `docs/adr/` records decisions.
+vstack is a personal omp plugin. Matt Pocock's skills are its core. Addons supplement those skills, and Utility skills provide shared tools and writing rules. It also takes selected items from poteto's pstack and good-css, and draws figures with Pele. `GLOSSARY.md` defines the terms, and `docs/adr/` records decisions.
 
 ## Skill kinds and the Matt flow
 
@@ -13,16 +13,17 @@ Every change starts with the grill (`/skill:grill-with-docs` or `/skill:grill-me
 
 ## Install
 
-You need omp and git with working HTTPS credentials for github.com (the repo is private).
+You need omp, Bun, and git with working HTTPS credentials for github.com (the repo is private).
 
 1. Clone the repo: `git clone https://github.com/daandden/vstack.git`
-2. Link its plugin directory: `omp plugin link <clone>/plugin`
-3. Start a new omp session.
-4. Run `/skill:setup-vstack` to configure the machine and project. When the repo is set up for Matt Pocock's skills, its project section offers a Migration of that repo first and then goes on with setup in the same run. Migration changes only this repo and its shared private store, never machine state such as global skills or diagram profiles. The Code host section writes `code-host.md`, which implement needs for End states past commit. For GitHub and GitLab it uses a `gh` or `glab` template. For any other host, such as Bitbucket, it maps the MCP server or CLI that you already set up for the project. The same section asks for the project's default End state, which implement, implement-spec, and hillclimb take when your prompt and the ticket name none, and writes it as one line in `code-host.md`. A re-run asks only the sections whose config files are missing, plus the default End state question when `code-host.md` has none.
+2. Install its dependencies in the clone: `bun install --frozen-lockfile`. vstack-figures' render script loads `pele` from the clone's `node_modules`.
+3. Link its plugin directory: `omp plugin link <clone>/plugin`
+4. Start a new omp session.
+5. Run `/skill:setup-vstack` to configure the machine and project. When the repo is set up for Matt Pocock's skills, its project section offers a Migration of that repo first and then goes on with setup in the same run. Migration changes only this repo and its shared private store, never machine state such as global skills. The Code host section writes `code-host.md`, which implement needs for End states past commit. For GitHub and GitLab it uses a `gh` or `glab` template. For any other host, such as Bitbucket, it maps the MCP server or CLI that you already set up for the project. The same section asks for the project's default End state, which implement, implement-spec, and hillclimb take when your prompt and the ticket name none, and writes it as one line in `code-host.md`. A re-run asks only the sections whose config files are missing, plus the default End state question when `code-host.md` has none.
 
 The CI section writes `ci.md` independently of the Code host. For GitHub Actions and GitLab CI it uses a `gh` or `glab` template. For any other CI service, such as Jenkins, it maps the MCP server or CLI that you already set up for the project. For a CLI, it drafts command rows from the CLI's help. For an MCP server, it records the server, project facts such as the Jenkins URL, and two pinned tools: a read-only check and a full rerun of a failed build. Setup recommends a service from the repo's CI files, shows the draft for confirmation, then runs its read-only check once. The GitLab CI template marks build reruns unsupported, because GitLab cannot rerun a whole existing pipeline, so babysit reports a flaky build to you instead of rerunning it. Migration leaves `ci.md` for setup's CI section in the same run. implement requires both `code-host.md` and `ci.md` for End states past commit. CI logs, build reruns, secrets, and variables use `ci.md`. Required PR checks stay in `code-host.md`. Existing projects without `ci.md` get only commit and a prompt to run `/skill:setup-vstack`. That re-run moves the CI log, rerun, secret, and variable rows from `code-host.md` into a new `ci.md`, reduces an MCP Code host to its server, facts, and check, and shows both files for one confirmation before it writes them.
 
-To refresh, run `git pull` in the clone and start a new omp session. The link points at the working tree, so there is nothing else to update.
+To refresh, run `git pull` and then `bun install --frozen-lockfile` in the clone, and start a new omp session. The link points at the working tree, so there is nothing else to update.
 
 ## /vstack-clean Command
 
@@ -83,7 +84,7 @@ Each main-session tool selection has a four-second judge deadline and aborts at 
 
 #### Subagent briefs
 
-During a Matt run, the extension also judges the brief of a `vstack-explorer`, `vstack-worker`, or `vstack-verifier` subagent (ADR 0025). A constant in `plugin/extensions/vstack.ts` lists these three agents, matched against the session's agent name. Every other subagent gets no picks: `vstack-diagram-drawer`, `vstack-comment-critic`, omp's own agents such as `task` and `scout`, and `/tan` clones.
+During a Matt run, the extension also judges the brief of a `vstack-explorer`, `vstack-worker`, or `vstack-verifier` subagent (ADR 0025). A constant in `plugin/extensions/vstack.ts` lists these three agents, matched against the session's agent name. Every other subagent gets no picks: `vstack-comment-critic`, omp's own agents such as `task` and `scout`, and `/tan` clones.
 
 omp loads the extension module once and rebinds it to every subagent session. When a session's `before_agent_start` fires for the first time, the extension records the session under its agent id. For a top-level session, the record keeps a way to read the active branch. For a subagent, the record links to the record of its parent, which the extension finds through `parentId`. A subagent follows these links to the top-level session that started it, also through a nested subagent. It gets a request only when that session's active branch holds a Matt run.
 
@@ -116,7 +117,7 @@ The runner appends completed slots to `results.jsonl` and unscorable API, model,
 
 ### Visual judge calibration
 
-`visual-judge-cases.json` at the repo root is the calibration set for grilling-page's visual judge. Each judge request asks four questions about one page question. Two are the yes-or-no diagram questions, with their thresholds from `plugin/skills/grilling-page/references/visual-judge.json`. The other two rank the diagram type for each kind and name the types only. The state holds the page question as `question` and the visual-type guide in diagram-design's `SKILL.md` as `visual_types`, a map from each type name to what it shows. jev reads the guide once per request this way, not once per type question (ADR 0024). Diagram cases are real Grilling page questions from vstack and Tern pages, labeled by gpt-6.1-sol at high thinking. A diagram case passes when each kind's yes probability reaches its threshold exactly when the case labels that kind true. Type cases are one hand-written question per guide type. A type case passes when its expected type, or an allowed one, is among the top three types of either type question.
+`visual-judge-cases.json` at the repo root is the calibration set for grilling-page's visual judge. Each judge request asks four questions about one page question. Two are the yes-or-no diagram questions, with their thresholds from `plugin/skills/grilling-page/references/visual-judge.json`. The other two rank the diagram type for each kind and name the types only. The state holds the page question as `question` and the Mermaid type guide from that file's `types.guide` as `visual_types`, a map from each Pele Mermaid type to when to use it. jev reads the guide once per request this way, not once per type question (ADR 0024). Diagram cases are real Grilling page questions from vstack and Tern pages, labeled by gpt-6.1-sol at high thinking. A diagram case passes when each kind's yes probability reaches its threshold exactly when the case labels that kind true. Type cases are one hand-written question per figure kind, each with the Mermaid type that draws it best and others that draw it well. A type case passes when its expected type, or an allowed one, is among the top three types of either type question.
 
 After a change to the rubric or to the guide, run the check in one omp Python eval cell, with the checkout root as the working directory:
 
@@ -131,14 +132,14 @@ await check(judge_batch)
 
 ### Pins and Upstream clones
 
-`pins.yaml` keys (`matt`, `pstack`, `diagram`, `css`) are the register's `upstream` values and local clone names under `~/.cache/vstack/upstreams/<key>`. Set `VSTACK_UPSTREAMS` or pass `--upstreams` for another directory. Blobless clones are enough. check-register never fetches, checks out, or moves HEAD. vstack-maintain plan clones or fetches selected Upstreams without moving HEAD. Target checks and takes fetch only missing Pins and held refs. Keep the cache outside every checkout. To make a clone by hand:
+`pins.yaml` keys (`matt`, `pstack`, `css`) are the register's `upstream` values and local clone names under `~/.cache/vstack/upstreams/<key>`. Set `VSTACK_UPSTREAMS` or pass `--upstreams` for another directory. Blobless clones are enough. check-register never fetches, checks out, or moves HEAD. vstack-maintain plan clones or fetches selected Upstreams without moving HEAD. Target checks and takes fetch only missing Pins and held refs. Keep the cache outside every checkout. To make a clone by hand:
 
 ```sh
 git clone --filter=blob:none https://github.com/mattpocock/skills.git ~/.cache/vstack/upstreams/matt
 git -C ~/.cache/vstack/upstreams/matt fetch --tags origin   # when a Pin is missing from the clone
 ```
 
-`pin_kind` says how the Update finds the next Pin. `tag` (Base): the highest `v<major>.<minor>.<patch>` tag; pre-release tags such as `v1.3.0-beta.1` and other tags such as `mattpocock-skills@1.0.0` never count. `commit` (Enhancement, Diagram, CSS): the newest commit on the default branch that touches the entry's `path`. `pin` is the tag name or the full commit SHA.
+`pin_kind` says how the Update finds the next Pin. `tag` (Base): the highest `v<major>.<minor>.<patch>` tag; pre-release tags such as `v1.3.0-beta.1` and other tags such as `mattpocock-skills@1.0.0` never count. `commit` (Enhancement, CSS): the newest commit on the default branch that touches the entry's `path`. `pin` is the tag name or the full commit SHA.
 
 Each entry's `items:` list says which tree entries at the Pin are Upstream items. `match` is a path glob from the repo root where `*` stays inside one path segment, `type` is `tree` or `blob`, and the first matching pattern sets the `kind`. For example, pstack's automations are one item each, so their nested skills get no rows.
 
@@ -240,14 +241,14 @@ A lint over shipped text starts from `lintTargets(ctx)` in `scripts/lib/checks/s
 
 #### Page templates
 
-Every page vstack writes for the user (the Grilling page, explain's pages, and the how and teach pages) starts from a page template. Every template follows good-css (#61). A page template is any `*.html` or `*.css` file under `plugin/skills/<name>/templates/`. `scripts/lib/checks/pages.ts` finds these files and runs the CSS Upstream's `page_lint:` script at its Pin over them. Each flagged template reports one `page-css` failure. With no template, the check prints `page templates: none` and reads nothing. Templates hold no figure. The skill draws its figure through diagram-design, exports it, and inlines the export in the rendered page.
+Every page vstack writes for the user (the Grilling page, explain's pages, and the how and teach pages) starts from a page template. Every template follows good-css (#61). A page template is any `*.html` or `*.css` file under `plugin/skills/<name>/templates/`. `scripts/lib/checks/pages.ts` finds these files and runs the CSS Upstream's `page_lint:` script at its Pin over them. Each flagged template reports one `page-css` failure. With no template, the check prints `page templates: none` and reads nothing. Templates hold no figure. The skill writes its figure as Mermaid, renders it through vstack-figures, and inlines the SVG in the rendered page.
 
 ### House style
 
 `house-style.yaml` (ADR 0008) has two lists. Its header comment documents every field.
 
 - `replacements:` are blind substitutions, applied in list order. `match` is `literal` (an exact substring), `name` (no `[\w-]` character on either side), or `ref` (only `/x`, `` `x` ``, `**x**`, and `skill://x`). The `glossary` row rewrites `CONTEXT.md` and leaves `CONTEXT-FORMAT.md` alone. `upstream` picks the artifacts a row applies to. `scope: required` binds every artifact, adopt included. `scope: adapted` binds adapt, merge, and original text. `uses` selects the Update (`update`), setup-vstack's Migration (`migration`), or both. A row that an earlier row rewrites fails `invalid-house-style`, so put the longer phrase first.
-- `rules:` are what the agent applies by hand: the fixed spawn and Fan-out wording, skill references, worktrees, Scratch paths, eval for Python, and asking through `ask`. Each has `text`, a `scope`, and a `lint` line that says what `check-register` enforces. `allowlist` names the skills where a rule's form is allowed, and `check-register` skips that rule's lint in them. It limits `headless-run` to skill-creator and lets writing-for-agents describe a subagent dispatch under `spawn-vocab`. `ask-tool` holds `phrases`, the list its lint matches as whole words in any case. Add a phrase when an asking sentence slipped past the list, and run `bun scripts/check-register.ts` to see which adopt items it would flip.
+- `rules:` are what the agent applies by hand: the fixed spawn and Fan-out wording, skill references, worktrees, Scratch paths, and asking through `ask`. Each has `text`, a `scope`, and a `lint` line that says what `check-register` enforces. `allowlist` names the skills where a rule's form is allowed, and `check-register` skips that rule's lint in them. It limits `headless-run` to skill-creator and lets writing-for-agents describe a subagent dispatch under `spawn-vocab`. `ask-tool` holds `phrases`, the list its lint matches as whole words in any case. Add a phrase when an asking sentence slipped past the list, and run `bun scripts/check-register.ts` to see which adopt items it would flip.
 - The spawn and Fan-out lines themselves live in one place, `plugin/skills/vstack-fan-out/FORMS.md`: the Fan-out line (the `task` batch or the isolated eval batch) and the single-subagent lines. Copy a form from there, fill its slots, and keep it on one line. A vstack agent is an agent the plugin ships under `plugin/agents/`. The spawn lints read markdown outside frontmatter and code fences, so quoting a form in a fence is safe.
 
 `scripts/lib/house-style.ts` is the one module that reads both lists and applies rows. It has no file access: `parseHouseStyle(doc, upstreamKeys)` validates a parsed file, `selectRows(rows, { use, upstreams, disposition, shippedNames })` picks the rows for one text, `applyRows(text, rows)` rewrites it, and `findRow(text, row)` finds leftovers. `loadHouseStyle(root, upstreamKeys)` in `scripts/lib/vstack-repo.ts` reads the file from a checkout.
@@ -256,7 +257,7 @@ To write an adapt item, start from the Upstream text at the Pin with the rows ap
 
 ```sh
 bun -e 'import { applyRows, parseHouseStyle, selectRows } from "./scripts/lib/house-style.ts";
-const { houseStyle } = parseHouseStyle(Bun.YAML.parse(await Bun.file("house-style.yaml").text()), new Set(["matt", "pstack", "diagram", "css"]));
+const { houseStyle } = parseHouseStyle(Bun.YAML.parse(await Bun.file("house-style.yaml").text()), new Set(["matt", "pstack", "css"]));
 const rows = selectRows(houseStyle.replacements, { use: "update", upstreams: ["matt"], disposition: "adapt" });
 process.stdout.write(applyRows(await Bun.stdin.text(), rows));' \
   < <(git -C ~/.cache/vstack/upstreams/matt show v1.2.3:skills/engineering/wizard/SKILL.md) > plugin/skills/wizard/SKILL.md
@@ -270,7 +271,7 @@ setup-vstack's project section runs `migrate.ts plan [--mode move|private]` afte
 
 The old private store moves to `<common dir>/vstack/` as one mandatory item for every registered worktree of this repo. The move rewrites old paths, removes old-store symlinks and their exclude line, keeps unknown directories, and rolls back the store, text, directory name, links, and exclude content when a step fails. A destination conflict never merges files. The existing vstack copy wins, and an optional deletion item resolves the old copy. Old private storage keeps Migration incomplete until it is moved or deleted against an existing winning config. The runtime reads the shipped row copy and reuses `scripts/lib/house-style.ts`, which requires the full clone of ADR 0005. Relative private rows run only for an ordinary `.git` common dir. Remaining bare words need proposed manual diffs in the same `ask`.
 
-`migrate.ts apply --plan <file> [--skip <id>...]` rejects stale state and skipped mandatory items before writing. It moves tracked files with git and untracked files with filesystem rename, copies Private config with private artifact and domain paths, rewrites rule and store hits, and renames old domain files and their map links. It leaves a `.diagram-design` marker in place. Failures stop later actions. Exit codes are 0 applied, 1 incomplete, and 2 refusal or inability to run. The report lists `paths`: every repo-relative path that it moved from, wrote, or deleted, and none under the git common dir. setup-vstack passes them to `project.ts commit --migration-path <path>...`, which stages them with the config files and the block file, deletions and both sides of a move included, and commits only those paths. In Standard mode one setup commit holds the whole Migration. Private mode commits nothing. Migration never touches machine state: Matt's global skills, global rules, the old private rule, and diagram profiles stay where they are.
+`migrate.ts apply --plan <file> [--skip <id>...]` rejects stale state and skipped mandatory items before writing. It moves tracked files with git and untracked files with filesystem rename, copies Private config with private artifact and domain paths, rewrites rule and store hits, and renames old domain files and their map links. Failures stop later actions. Exit codes are 0 applied, 1 incomplete, and 2 refusal or inability to run. The report lists `paths`: every repo-relative path that it moved from, wrote, or deleted, and none under the git common dir. setup-vstack passes them to `project.ts commit --migration-path <path>...`, which stages them with the config files and the block file, deletions and both sides of a move included, and commits only those paths. In Standard mode one setup commit holds the whole Migration. Private mode commits nothing. Migration never touches machine state: Matt's global skills, global rules, and the old private rule stay where they are.
 
 Each setup run keeps its plan JSON in its own Scratch entry, `setup-vstack/run-XXXXXX/` from `mktemp -d`, because every worktree of a repo shares the Scratch dir. `migrate.ts apply` also refuses a plan whose `root` is not the checkout it runs in, so a plan from another worktree never applies there.
 
@@ -316,13 +317,15 @@ Exit codes: 0 for success, including a plan with no moved Pin. Exit 2 means refu
 
 #### Decisions JSON
 
-One file holds Update rows and Hand edit targets together: `{ "decisions": [...], "targets": [...], "changelog": [...] }`. At least one row or target and one nonempty, one-line CHANGELOG entry are required. The file does not carry a commit message. implement owns the commit.
+One file holds Update rows, Hand edit targets, and Upstream drops together: `{ "decisions": [...], "targets": [...], "upstreams": [...], "changelog": [...] }`. At least one row, target, or drop and one nonempty, one-line CHANGELOG entry are required. The file does not carry a commit message. implement owns the commit.
 
 Each Update decision has a unique `id` and an `action` (`accept`, `hold`, or `defer`). Optional `disposition`, `artifacts`, and `reason` change the register row. A Disposition change needs a one-line reason. A deferred item needs `gist` and becomes reject with `Deferred at <pin>: <gist>`. Each changed row and new item needs a decision. New items also need `upstream` and `path`, and cannot Hold. Removed rows need `removal`: `drop` or `original` for an unshared artifact, `remove-contribution` or `keep-contribution` for a shared artifact. A renamed adopt item needs `rename: follow|keep`. Keeping its old name requires adapt and a reason.
 
 Each Hand edit target has `action` (`add`, `edit`, `take`, `rename`, or `remove`), `kind` (`skill`, `agent`, or `rule`), and `artifact`. Artifact paths use `plugin/skills/<name>`, `plugin/agents/<name>.md`, or `plugin/rules/<name>.md`. A take adds `upstream`, `path`, and `reason`. A rename adds `to`. An adopt edit or rename needs `flip: { "confirmed": true, "reason": "..." }`. A removal that leaves a register row with no artifacts needs a reason. Each target appears once.
 
 An `edit` target can also carry an optional, nonempty, one-line `reason`. `prepare` applies it to every adapt row that lists the artifact. Other Dispositions keep their reasons, and an adopt flip still uses `flip.reason`.
+
+An `upstreams` entry drops a whole Upstream: `{ "action": "drop", "upstream": "<key>", "house_style": ["<id>", ...] }`. `prepare` removes the key's Pin from `pins.yaml` and every register row of that Upstream, whatever its Disposition. It removes every House style row whose `upstream` is the key, plus each row or rule that `house_style` names, for text that applies only to that Upstream. An unknown id is refused. An artifact that only the dropped rows name must be deleted first, as for a `drop` removal, and it leaves the `utility:` list. An artifact that another row or `originals:` also names stays. An Update cannot move a dropped Upstream in the same `prepare`. Run check-register on the result.
 
 `prepare` validates decisions before its first checkout write. It reads bookkeeping from HEAD, not from earlier uncommitted bookkeeping. Its version exceeds HEAD's version, with at most one major bump per branch. Hold preserves the old contribution while current Pins and item identities move. The grill records moved refs and confirmed decisions. implement reruns `plan` at those refs and stops with a report if the row set differs.
 
@@ -361,7 +364,7 @@ Each `rows[]` entry has `id`, `upstream`, `kind`, `disposition`, and `artifacts`
 
 how, why, and explain are Utility skills adapted from pstack. how and why stay hidden and callers read them through `skill://`. explain can start from its description. how traces mechanisms and writes its cited page under Scratch `how/`. why profiles git, the remote code host, the configured tracker, and reachable MCP tools before investigation. Its synthesizer always gets a fresh context. Both return their output unedited to callers.
 
-explain combines how and why through a Fan-out line. It keeps one conversation page under Scratch `explain/`, with a series of exported, inlined SVG figures from diagram-design. Templates live in each page-producing skill's `templates/` directory, where `check-register` runs the pinned CSS lint. Matt's teach stays a separate skill. The pstack `teach` reference row applies only to pstack items.
+explain combines how and why through a Fan-out line. It keeps one conversation page under Scratch `explain/`, with a series of inlined SVG figures that it renders through vstack-figures. Templates live in each page-producing skill's `templates/` directory, where `check-register` runs the pinned CSS lint. Matt's teach stays a separate skill. The pstack `teach` reference row applies only to pstack items.
 
 ### Session
 
@@ -377,7 +380,9 @@ Inside a vstack clone, approved vstack lessons use `skill://vstack-maintain` for
 
 `bun run test` runs `tests/` only (`bunfig.toml`) with a 30 s test timeout, because the suites start real `git`, `omp`, and `bun` processes. Bun applies a `setDefaultTimeout` from a preload to one test file only, so the timeout is the `--timeout` flag in the `test` script. The check-register tests build fixture Upstream git repos with tags, a moved item, and a removed item, then a vstack checkout committed as the version base. They run the script as a process and assert its exit code and its failures by class and item. One case serves a local stand-in for the GitHub API, so the `github` source is tested too.
 
-`tests/vstack-maintain.test.ts` runs the maintainer CLI over fixture repos and Upstreams. It covers read-only planning, overlap previews and target checks, combined Update and Hand edit preparation, version bookkeeping, and gates. Injected commands replace external validation and load boundaries. The tests inspect process output, exit codes, and resulting files.
+`tests/vstack-maintain.test.ts` runs the maintainer CLI over fixture repos and Upstreams. It covers read-only planning, overlap previews and target checks, combined Update and Hand edit preparation, Upstream drops, version bookkeeping, and gates. Injected commands replace external validation and load boundaries. The tests inspect process output, exit codes, and resulting files.
+
+`tests/figure-render.test.ts` runs vstack-figures' `render.ts` as a process. It checks the Mocha `--pele-*` variables, a mauve rule per `--focus` id, stdin input, and that bad Mermaid exits 1 with Pele's parse error and writes no file. `tests/grilling-page.test.ts` places rendered SVGs on a Grilling page.
 
 `tests/addon-tools.test.ts` exercises the main-session tools and run-start instruction through the registered extension handlers with a controlled judge. It covers gathered intent, question scope, the selection threshold, saved-entry dedup, concurrent calls, cancellation, and the four-second deadline. `tests/addon-selection.test.ts` covers the preserved subagent Brief selection and session ancestry.
 
@@ -389,7 +394,7 @@ Inside a vstack clone, approved vstack lessons use `skill://vstack-maintain` for
 
 `tests/setup-app-verification-commit.test.ts` runs setup-app-verification's `commit.ts` as a process over temp repos. It asserts that the Standard commit holds only `.omp/skills/verify-<app>/`, deletions included, and leaves other staged and unstaged work in place. It also covers the refusals (Private mode, a missing title, directory, or SKILL.md, a symlinked directory, and a `--target` that is not `.omp/skills/verify-<app>/`) and the `dirty` fact from `state`.
 
-`tests/setup-vstack-migration.test.ts` runs `migrate.ts` over throwaway repos. It covers Move, Private copies, domain files, old markers that get no config line, conflicts, approval snapshots, the `code-host.md` seed from a GitHub or GitLab remote, the private move and store rewrites from a linked worktree with machine state ignored, the store rewrite, a declined manual hit that comes back in moved config, and the report's repo paths. `tests/setup-vstack-project.test.ts` checks that Migration leaves `ci.md` missing until setup writes it, then commits both outputs with the Migration's `git mv` deletions. It also checks CI-only re-run state in both modes, refusal to commit without `ci.md`, refusal of a Migration path outside the repo, and that a bracketed path commits no other staged file.
+`tests/setup-vstack-migration.test.ts` runs `migrate.ts` over throwaway repos. It covers Move, Private copies, domain files, conflicts, approval snapshots, the `code-host.md` seed from a GitHub or GitLab remote, the private move and store rewrites from a linked worktree with machine state ignored, the store rewrite, a declined manual hit that comes back in moved config, and the report's repo paths. `tests/setup-vstack-project.test.ts` checks that Migration leaves `ci.md` missing until setup writes it, then commits both outputs with the Migration's `git mv` deletions. It also checks CI-only re-run state in both modes, refusal to commit without `ci.md`, refusal of a Migration path outside the repo, and that a bracketed path commits no other staged file.
 
 
 ### Versions and CHANGELOG
