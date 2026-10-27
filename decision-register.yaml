@@ -345,7 +345,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/interrogate
-    tree: 38a603e90550030aa50b0c3f91a5e578dc4071a3
+    tree: 9768af06553215b2381710d5813796c4ddefe91f
     disposition: reject
     artifacts: []
     reason: "Its signal is model diversity; its merged verdict contradicts code-review's separate axes."
@@ -361,7 +361,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/make-bot-ui
-    tree: 4fb9b8cdd991f08b1c3d7516a886af210bd312cd
+    tree: 1645159d827f9adea7a9270082368eb1599927b8
     disposition: reject
     artifacts: []
     reason: "Depends on Cursor's update_state routines."
@@ -377,7 +377,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/poteto-mode
-    tree: 2402525eddae7229ad3cd4989a956af9c8172133
+    tree: 9015b70a220b67bb808a06ff5bcbcffc8ebf57eb
     disposition: reject
     artifacts: []
     reason: "Sticky Cursor mode; its Playbooks are registered separately and its principle index goes to jev delivery."
@@ -385,10 +385,10 @@ items:
     upstream: pstack
     kind: principle
     path: pstack/skills/principle-attack-the-premise
-    tree: ea77149f38bdfa5002591fa35af87ed45dd5574c
-    disposition: adapt
+    tree: 0b0de55b1f1e7a989a10dd8680f01a67ef378ebc
+    disposition: adopt
     artifacts: [plugin/skills/principle-attack-the-premise]
-    reason: "Drops the relative link to the removed fix-root-causes principle (ADR 0018)."
+    reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
   - id: pstack/principle-boundary-discipline
     upstream: pstack
     kind: principle
@@ -433,10 +433,10 @@ items:
     upstream: pstack
     kind: principle
     path: pstack/skills/principle-fix-root-causes
-    tree: 5e98e3bef166d84f4a19e69feb7d1587f420557f
-    disposition: reject
-    artifacts: []
-    reason: "tdd, diagnosing-bugs, prototype, and DESIGN-IT-TWICE cover this ground (ADR 0018)."
+    tree: f1075eead43f95cd9896381345ff28f0da7e1aea
+    disposition: adopt
+    artifacts: [plugin/skills/principle-fix-root-causes]
+    reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
   - id: pstack/principle-foundational-thinking
     upstream: pstack
     kind: principle
@@ -465,7 +465,7 @@ items:
     upstream: pstack
     kind: principle
     path: pstack/skills/principle-make-operations-idempotent
-    tree: c69d590d8da3af63e34954aa21254e1ec9a2996c
+    tree: 5111ac1acc6584dad178af96174140ee5b29bca4
     disposition: adopt
     artifacts: [plugin/skills/principle-make-operations-idempotent]
     reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
@@ -473,7 +473,7 @@ items:
     upstream: pstack
     kind: principle
     path: pstack/skills/principle-migrate-callers-then-delete-legacy-apis
-    tree: 7b49b9000c86ea1ae142af47d0ff5f9f95199c34
+    tree: cf45195158110569ac6a97d0e8dbed04531373ed
     disposition: adopt
     artifacts: [plugin/skills/principle-migrate-callers-then-delete-legacy-apis]
     reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
@@ -553,7 +553,7 @@ items:
     upstream: pstack
     kind: principle
     path: pstack/skills/principle-test-behavior-not-implementation
-    tree: be91871238f0938e79ec666131010d8829e29251
+    tree: 7fa3d5dba8496dcd08278a99903a2dfb58a2e179
     disposition: reject
     artifacts: []
     reason: "tdd, diagnosing-bugs, prototype, and DESIGN-IT-TWICE cover this ground (ADR 0018)."
@@ -561,7 +561,7 @@ items:
     upstream: pstack
     kind: principle
     path: pstack/skills/principle-type-system-discipline
-    tree: d7369475f3516094c0a3509cb9e37c6ad5200d07
+    tree: 32850aaddd70478a6dacb153bbcef8532bf7d626
     disposition: adopt
     artifacts: [plugin/skills/principle-type-system-discipline]
     reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
@@ -577,7 +577,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/reflect
-    tree: e44a51da42eb95e3ab2d13231fe942e218424f66
+    tree: fbc98c056509e9ee3dfceebbc0acfa4591491cc2
     disposition: merge
     artifacts: [plugin/skills/session]
     reason: "Merges with Matt's retro and pstack's correct into the session Addon: four lenses, one ask per finding, implement-owned edits (ADR 0019)."
@@ -585,7 +585,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/setup-pstack
-    tree: 79a953b4d60fdd19392a39d7e11e612d372c6910
+    tree: d533da1671e44234a9f72d1d4db8043cedd25eb2
     disposition: reject
     artifacts: []
     reason: "Per-role model configuration is out of scope."
@@ -601,7 +601,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/swarm
-    tree: aca63561c4be67b7b1ec7282c343a5f655e7b85d
+    tree: 4a1abb26cce3450f9b14056109f974edaeff4ec1
     disposition: reject
     artifacts: []
     reason: "omp task already runs subagent batches; swarm only adds Cursor cloud agents."
@@ -633,7 +633,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/typescript-best-practices
-    tree: 319e39dfd8c0da0602db8d50ce6e48b0945bbf3a
+    tree: 1ccca3c7c0d358c0cd5edd313cd03a31fc75ee5f
     disposition: reject
     artifacts: []
     reason: "The user doesn't want it (#33)."
@@ -673,7 +673,7 @@ items:
     upstream: pstack
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/autopilot-full.md
-    tree: b9797cd8a8d983a2f50898a398a5bd2c40671084
+    tree: 068882379d9bdc2298052e7762d67ac795715baf
     disposition: reject
     artifacts: []
     reason: "Without fleets, implement already drives open-pr, babysit, and ship to its settled End state (ADR 0015)."
@@ -681,7 +681,7 @@ items:
     upstream: pstack
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/autopilot-stack.md
-    tree: 8f9c28a1da1a0cdefc99504882bb4351b83d0181
+    tree: d7bdc289e045e8bc7da97b4ddfccc8d6c9ed0800
     disposition: reject
     artifacts: []
     reason: "Same reason as autopilot-full."
@@ -865,7 +865,7 @@ items:
     upstream: diagram
     kind: skill
     path: skills/diagram-design
-    tree: d7d66b45810294ae98e8a2c1de72d4ce9af80616
+    tree: c08bd09cdf53ddd0475e91cb17114be8e38dc640
     disposition: adapt
     artifacts: [plugin/skills/diagram-design]
     reason: "put the style into the skill instead of making the user choose it"
@@ -913,7 +913,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/correct
-    tree: 2396c1bb5426e7344846a524342d120b2f29f8da
+    tree: 5ebee6f7fe9cd7f97b1c698dbbf4f19ed8c4c5f4
     disposition: merge
     artifacts: [plugin/skills/session]
     reason: "Its history mining and enforcement ladder rank the session Addon's environment findings (ADR 0019)."
@@ -929,18 +929,18 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/ketchup
-    tree: 8fe35aa03276614edc51829bdf0fc4361fee4cf4
-    disposition: adapt
-    artifacts: [plugin/skills/ketchup]
-    reason: "Utility skill without bro; its figures go to a Scratch page through diagram-design and its calls go through ask."
+    tree: 01c36585506764e9b40b2bfb165a9943b403b158
+    disposition: reject
+    artifacts: []
+    reason: "vstack runs report their own state; a separate catch-up recap is not needed."
   - id: pstack/poteto-help
     upstream: pstack
     kind: skill
     path: pstack/skills/poteto-help
-    tree: 3f1b6a229ae1f68fdf8347d9d858444d9bf7349c
+    tree: f0f51d567a4c1e57465470f7b3a4c8a24c38e97c
     disposition: reject
     artifacts: []
-    reason: "Deferred at ce649c03ac3b75b6ae80cbd15b7e2c536caedb5a: pstack setup and routing help for Cursor."
+    reason: "pstack's own help; vstack routes through ask-vstack."
   - id: pstack/principle-explain-the-number
     upstream: pstack
     kind: principle
@@ -967,6 +967,46 @@ items:
     artifacts:
       - plugin/skills/diagram-design
     reason: "static SVG checks only: geometry, style, bounds, and export validity"
+  - id: pstack/create-formal-verification-skill
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/create-formal-verification-skill
+    tree: d0dde8b2a927266f7783e4e06bc9e1a395a09b11
+    disposition: reject
+    artifacts: []
+    reason: "Deferred at e73df471cd4bd918367e99f3dd9c51bd53ddf5f0: formal verification needs a toolchain and figure decision."
+  - id: pstack/ketchup-video
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/ketchup-video
+    tree: 88d708fb6f91555d8216d018d3e81b8fb093045d
+    disposition: reject
+    artifacts: []
+    reason: "Deferred at e73df471cd4bd918367e99f3dd9c51bd53ddf5f0: video recap over ketchup; no renderer ships."
+  - id: pstack/maintain-formal-verification-skill
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/maintain-formal-verification-skill
+    tree: 0b843c90b8b04a639dbd86fec9795610374715f2
+    disposition: reject
+    artifacts: []
+    reason: "Deferred at e73df471cd4bd918367e99f3dd9c51bd53ddf5f0: formal verification needs a toolchain and figure decision."
+  - id: pstack/sharpen
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/sharpen
+    tree: 726fcb216692c5a2ad78b5c2ae19c2e6ac66cb67
+    disposition: reject
+    artifacts: []
+    reason: "Deferred at e73df471cd4bd918367e99f3dd9c51bd53ddf5f0: prompt rewriter, not needed yet."
+  - id: pstack/statechart
+    upstream: pstack
+    kind: skill
+    path: pstack/skills/statechart
+    tree: b6373798ceb3e9caf951241f152512cce5de6721
+    disposition: reject
+    artifacts: []
+    reason: "Deferred at e73df471cd4bd918367e99f3dd9c51bd53ddf5f0: formal verification needs a toolchain and figure decision."
 originals:
   - plugin/agents/vstack-explorer.md
   - plugin/agents/vstack-verifier.md
@@ -1002,5 +1042,4 @@ utility:
   - plugin/skills/grilling-page
   - plugin/skills/vstack-worktree
   - plugin/skills/in-your-own-words
-  - plugin/skills/ketchup
   - plugin/skills/clean-wt

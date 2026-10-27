@@ -40,7 +40,7 @@ Run all checks in this order and report each as `pass`, `warn`, or `fail`.
 
 2. Playwright availability for PNG export
 - Check in an eval cell whether `importlib.util.find_spec("playwright")` finds Playwright in eval's interpreter; an optional package version attribute is not required.
-- Check whether Chromium is installed for Playwright (`playwright install --help` availability is sufficient for command presence; prefer also checking browser cache when practical).
+- In the same eval cell, verify that Playwright's default headless Chromium launches and closes. Launch it on a worker thread, as the PNG export does, with a 5-second launch timeout, and bound the whole probe to 10 seconds. If the worker thread has not finished by then, mark `warn` and report the reason. Report a failure to close the browser as a warning. A headless-shell-only installation counts; default PNG export does not need the full Chromium executable path.
 - If missing, mark `warn` and report that PNG export offers to install
   Playwright with `%pip` after the user approves it through `ask`.
 - Never auto-install dependencies.

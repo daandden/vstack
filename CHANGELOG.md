@@ -4,10 +4,21 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
-## [5.0.21] - 2026-10-27
+## [6.0.1] - 2026-10-27
 
 - Specs and tickets carry no Addon pointers. to-spec and to-tickets drop inherited pointers too (ADR 0039).
 - The run-start instruction is shorter. implement and implement-spec call `inject_principles`; every other Matt skill calls `inject_addons`.
+
+## [6.0.0] - 2026-10-27
+
+- Update: pstack ce649c0 to e73df47, diagram-design 0482b93 to 97d7951. matt stays at v1.3.1 and good-css at 92d436b. The principles make-operations-idempotent, migrate-callers-then-delete-legacy-apis, and type-system-discipline take their new pstack text, and the changed reject rows keep their reasons.
+- The ketchup Utility skill is removed. vstack runs report their own state, so a separate catch-up recap is not needed. The pstack row is reject, and vstack-tmp and GLOSSARY.md no longer name ketchup.
+- principle-fix-root-causes returns as an adopt principle Addon with its own question in addon-questions.json. principle-attack-the-premise is adopt again and keeps its link to fix-root-causes (ADR 0018 note).
+- session's environment lens ranks a test by behavior: fix or delete a test that still passes when the checked behavior breaks, or that fails when only the internals change (pstack correct). reflect's Cursor install and no-PR rules stay out, because session keeps its own ownership routing.
+- poteto-help is rejected, no longer deferred: it is pstack's own help, and vstack routes through ask-vstack.
+- Deferred at the new pstack Pin: sharpen, statechart, create-formal-verification-skill, maintain-formal-verification-skill, and ketchup-video.
+- diagram-design takes the Upstream exporter, importer, and self-check fixes. `export_svg.py` keeps `@media`, `@supports`, `@layer`, and `@container` groups, namespaces keyframes and their `animation` bindings, keeps comment-like text in CSS strings, decodes CSS-escaped `url(#…)` references, and still drops every `@font-face`. The draw.io importer skips cells hidden with `visible="0"` and keeps angle brackets in plain labels. The Excalidraw importer reports outer groups. The Mermaid importer accepts edge IDs, invisible `~~~` links, a space before a pipe label, statements after the header semicolon, and single-line state notes, and keeps `autonumber` and config-directive counts. `self_check.py` rejects a truncated, mojibake, or unbalanced document. The doctor probes that headless Chromium launches, bounds the whole probe to 10 seconds, and warns on a stuck probe or a failed close. Upstream's `export_png.py` stays out, and PNG export keeps its Playwright snippet on an eval worker thread (ADR 0027).
+- ADR 0023 notes that ketchup no longer calls vstack-figures. The README and `sample-briefs.json` describe the brief questions as one per principle except never-block-on-the-human, and the debugging samples in `sample-prompts.json` allow principle-fix-root-causes.
 
 ## [5.0.20] - 2026-10-26
 
