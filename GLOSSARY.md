@@ -128,6 +128,14 @@ _Avoid_: sync, upgrade
 A change to a vstack skill, agent, or rule made outside an Update: adding one, editing one, taking an Upstream item at its current Pin, or renaming or removing one.
 _Avoid_: update (for this), manual edit, patch
 
+**LLM flow**:
+The code in an app that sends prompts to a model and returns an answer that a grader can score. Ratchet improves one LLM flow at a time.
+_Avoid_: flow (unqualified), pipeline
+
+**Ratchet**:
+omp's built-in loop that improves one LLM flow against cases the user approved. It keeps a change only when the target metric improves on both its train and test cases.
+_Avoid_: rachet, ratchet tool, native tool
+
 **End state**:
 How far a flow that produces a commit goes before it stops: commit, merge-ready, or shipped. Commit stays on the current branch. Merge-ready opens a PR and drives it until it can merge. Shipped means every PR in the run is merged into the default branch; deploys and releases are not part of it. The flow settles it once, before it starts: from the user's words or the ticket, else from the project's default End state, which the user chose once for the project.
 _Avoid_: goal, target, finish line

@@ -39,6 +39,8 @@ const lines = (s: string) => s.split("\n").filter((l) => l.trim() !== "");
 
 const CONFIGURED = `modelRoles:
   judge: typesafe/jev-latest
+ratchet:
+  enabled: true
 task:
   isolation:
     enabled: true
@@ -51,6 +53,7 @@ test.skipIf(!HAS_OMP)("a configured machine prints one OK line and the extension
   const out = lines(r.stdout);
   expect(out).toHaveLength(2);
   expect(out[0]).toStartWith("OK ");
+  expect(out[0]).toContain("8 ratchet.enabled");
   expect(out[1]).toStartWith("NOTE 4 ");
   expect(r.stdout).not.toContain("fake-typesafe-key");
 });
@@ -95,6 +98,7 @@ worktree:
     "WARN 5",
     "FAIL 6",
     "FAIL 7",
+    "WARN 8",
   ]);
   for (const l of out) if (!l.startsWith("NOTE ")) expect(l).toContain("Remedy: ");
   const byId = (id: string) => out.find((l) => l.split(" ")[1] === id)!;
@@ -105,6 +109,19 @@ worktree:
   expect(byId("4")).toContain("extension-module:vstack");
   expect(byId("4")).toContain("remove it first");
   expect(byId("5")).toContain("eval.py");
+});
+
+test.skipIf(!HAS_OMP)("disabled optional Ratchet warns with Set it or Leave it, passes, and checking leaves it disabled", () => {
+  const configYml = CONFIGURED.replace("ratchet:\n  enabled: true", "ratchet:\n  enabled: false");
+  const h = makeHome(configYml);
+  const r = run(h, [], KEY);
+  expect(r.code).toBe(0);
+  const out = lines(r.stdout);
+  expect(out.map((l) => l.slice(0, 6))).toEqual(["NOTE 4", "WARN 8"]);
+  expect(out[1]).toContain("ratchet.enabled is off");
+  expect(out[1]).toContain("Remedy: setup-vstack sets ratchet.enabled to true once you approve");
+  expect(out[1]).toContain("Leave it");
+  expect(readFileSync(join(h.home, ".omp", "agent", "config.yml"), "utf8")).toBe(configYml);
 });
 
 test.skipIf(!HAS_OMP)("an enabled extension is a NOTE to start a new session after linking or pulling, and the machine still passes", () => {
@@ -125,21 +142,31 @@ test.skipIf(!HAS_OMP)("a Python interpreter that omp cannot run warns and points
   expect(out[1]).toContain("omp setup python");
 });
 
-test.skipIf(!HAS_OMP)("--set writes the judge role, isolation, and clone to the user config and keeps the other roles", () => {
+test.skipIf(!HAS_OMP)("--set writes the judge role, isolation, clone, and Ratchet globally and keeps unrelated settings", () => {
   const h = makeHome(`modelRoles:
   default: smoke/smoke-model
 worktree:
   clone: false
+ratchet:
+  enabled: false
+task:
+  agentModelOverrides:
+    reviewer: smoke/reviewer-model
+theme:
+  dark: catppuccin-mocha
 `);
   const before = run(h, [], KEY);
-  expect(lines(before.stdout).map((l) => l.slice(0, 6))).toEqual(["FAIL 2", "NOTE 4", "FAIL 6", "FAIL 7"]);
+  expect(lines(before.stdout).map((l) => l.slice(0, 6))).toEqual(["FAIL 2", "NOTE 4", "FAIL 6", "FAIL 7", "WARN 8"]);
 
-  const set = run(h, ["--set", "judge", "isolation", "clone"], KEY);
+  const set = run(h, ["--set", "judge", "isolation", "clone", "ratchet"], KEY);
   expect(set.code).toBe(0);
   const config = Bun.YAML.parse(readFileSync(join(h.home, ".omp", "agent", "config.yml"), "utf8")) as any;
   expect(config.modelRoles).toEqual({ default: "smoke/smoke-model", judge: "typesafe/jev-latest" });
   expect(config.task.isolation.enabled).toBe(true);
   expect(config.worktree.clone).toBe(true);
+  expect(config.ratchet.enabled).toBe(true);
+  expect(config.task.agentModelOverrides).toEqual({ reviewer: "smoke/reviewer-model" });
+  expect(config.theme).toEqual({ dark: "catppuccin-mocha" });
 
   const after = run(h, [], KEY);
   expect(after.code).toBe(0);
@@ -184,7 +211,7 @@ test.skipIf(!HAS_OMP)("a pinned TypeSafe judge without credentials fails check 1
 });
 
 test.skipIf(!HAS_OMP)("an unset judge role fails only check 2, and its remedy offers typesafe/jev-latest through --set judge", () => {
-  const r = run(makeHome("task:\n  isolation:\n    enabled: true\n"), []);
+  const r = run(makeHome("ratchet:\n  enabled: true\ntask:\n  isolation:\n    enabled: true\n"), []);
   expect(r.code).toBe(1);
   const out = lines(r.stdout);
   expect(out.map((l) => l.slice(0, 6))).toEqual(["FAIL 2", "NOTE 4"]);
