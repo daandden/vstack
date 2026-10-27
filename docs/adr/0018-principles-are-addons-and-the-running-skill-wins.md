@@ -1,5 +1,7 @@
 # Principles are Addons, and the running skill wins over them
 
+> The Update to pstack `e73df47` amends this decision. fix-root-causes returns as an adopt principle Addon, because attack-the-premise mentions it and the user wants pstack principles adopt. attack-the-premise is adopt again and keeps its link to fix-root-causes. test-behavior-not-implementation and exhaust-the-design-space stay rejected.
+
 > [ADR 0039](0039-main-agent-tools-pick-addons-from-gathered-intent.md) supersedes main-session prompt selection and smol restatements with agent-called tools over gathered source intent. Principles remain Addons, and the running Matt skill's steps and its Addons still win over a conflicting principle. ADR 0025's subagent Brief picks are unchanged.
 
 > [ADR 0021](0021-a-mid-session-matt-run-start-sends-a-smol-restatement-to-jev.md) amends this decision. When a Matt run starts mid-session, the judge reads a `smol` restatement of the earlier talk and the new words, not only the words after `User:`. This includes a bare skill start.

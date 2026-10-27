@@ -58,7 +58,7 @@ Use for any of the 45 visual types (§3) when a reader will learn more from a vi
 
 **Don't use for:**
 
-- Quick unicode diagrams → use **wiretext**.
+- Quick unicode diagrams → a separate plain-text tool such as wiretext. This skill doesn't ship one.
 - Lists of things → table or bullets.
 - Attribute-only before/after → table; topology changes → Architecture delta.
 - One-shape "diagrams" → just write the sentence.
@@ -305,7 +305,7 @@ Run before producing any diagram.
 - [ ] Node origins, dimensions, gaps, padding on the 4px grid; type sizes on the role ramp?
 - [ ] Did the eval cell for `<skill-dir>/scripts/verify-geometry.py <file>` pass? (§6 rules 1, 3, 4, and 6.)
 - [ ] Did the eval cell for `<skill-dir>/scripts/lint-skin.py <file>` pass? (Every color from the figure's flavor in `style-guide.md`, only the Iosevka faces and their generic fallbacks, and no remote resource.)
-- [ ] Did the eval cell for `<skill-dir>/scripts/self_check.py <file>` pass? (No remote asset or font, no executable attribute or URL, no script other than the controller in `assets/template-motion.html`, and content inside the viewBox.)
+- [ ] Did the eval cell for `<skill-dir>/scripts/self_check.py <file>` pass? (No remote asset or font, no executable attribute or URL, no script other than the controller in `assets/template-motion.html`, a whole document that ends with `</html>` and has no mojibake or unbalanced tags, and content inside the viewBox.)
 
 **Typography:**
 
@@ -325,7 +325,7 @@ Every diagram starts from a template in `assets/`. Every template and every vari
 |---|---|---|
 | **Minimal** (default) | `assets/template.html` | Every figure unless another variant fits better. Diagram + title on the 960×600 `doc-inline` canvas of [output-spec.md](references/output-spec.md). |
 | **Full editorial** | `assets/template-full.html` | Long-form posts where the diagram is the hero. |
-| **Consultant special** (quadrant only) | `assets/template.html` | BCG/McKinsey-style 2×2 scenario matrix. See [type-quadrant.md](references/type-quadrant.md#consultant-special-2x2-scenario-matrix). |
+| **Consultant special** (quadrant only) | `assets/template.html` | BCG/McKinsey-style 2×2 scenario matrix. See [type-quadrant.md](references/type-quadrant.md#consultant-special-22-scenario-matrix). |
 
 **Sketchy variant** (optional, applied to any of the above): a hand-drawn stroke filter for essays, not technical docs. See [primitive-sketchy.md](references/primitive-sketchy.md).
 
