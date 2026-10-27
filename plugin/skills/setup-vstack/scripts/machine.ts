@@ -53,7 +53,10 @@ async function settings(): Promise<Map<string, unknown>> {
 }
 
 async function check(): Promise<Result[]> {
-  const [cfg, python] = await Promise.all([settings(), omp("setup", "python", "--check", "--json")]);
+  // `config list` runs first and alone: on a HOME with no agent.db yet, two omp processes that start together
+  // can both create its tables, and the loser fails with "table settings already exists".
+  const cfg = await settings();
+  const python = await omp("setup", "python", "--check", "--json");
   const results: Result[] = [];
   const roles = (cfg.get("modelRoles") ?? {}) as Record<string, unknown>;
   const judge = roles.judge;
