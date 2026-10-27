@@ -4,8 +4,8 @@ This file is the single source of the lines vstack skill text uses to start suba
 
 Slots:
 
-- `<unit>`: what one part is (a file, a review axis, a design, a PR, a hypothesis, a figure).
-- `vstack-<role>`: an agent the plugin ships. `vstack-explorer` reads, `vstack-worker` writes, `vstack-verifier` runs checks, `vstack-diagram-drawer` draws figures.
+- `<unit>`: what one part is (a file, a review axis, a design, a PR, a hypothesis).
+- `vstack-<role>`: an agent the plugin ships. `vstack-explorer` reads, `vstack-worker` writes, `vstack-verifier` runs checks.
 - `<role brief>`: what the subagent does and returns, from the skill's text.
 - `<reason>`: what the stop reports, beyond the undone parts and why the subagents did not start.
 - When the subagent writes Scratch, add `, the Scratch dir` after `the vstack root`.

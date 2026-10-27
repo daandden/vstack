@@ -1,5 +1,7 @@
 # Principles are hidden skills selected per prompt by jev
 
+> [ADR 0039](0039-main-agent-tools-pick-addons-from-gathered-intent.md) supersedes automatic main-session prompt selection and smol restatements. The agent gathers source intent and calls `inject_addons` or `inject_principles` after a displayed run-start instruction. Session-wide dedup remains, and ADR 0025's subagent Brief picks are unchanged.
+
 > The scope is superseded by [ADR 0018](0018-principles-are-addons-and-the-running-skill-wins.md): the judge picks principles only while a Matt skill runs, it reads only the user's words on a skill-start prompt, and the running skill wins over a principle. The rest of this ADR, the judge design, still stands.
 
 > [ADR 0017](0017-an-agent-merges-update-text-and-vstack-maintain-keeps-the-books.md) removed the Update sample rerun. The corpus check now runs by hand through `scripts/addon-judge-check.ts`.

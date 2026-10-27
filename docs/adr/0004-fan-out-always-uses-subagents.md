@@ -1,5 +1,7 @@
 # Fan-out always uses subagents
 
+> [ADR 0040](0040-figures-are-mermaid-rendered-by-pele.md) amends this decision. A figure step is not a Fan-out: the caller renders each figure itself with Pele, in milliseconds and with no model. Every other step with two or more parts still fans out.
+
 A skill step with two or more parts always starts one subagent per part, all in one batch. No judge weighs the size of the job, and the step has no inline branch, so the agent at that step never does a part itself. The user's words do not turn Fan-out off. When the user says "sequential", "no fan-out", or "inline", the agent says in one line that vstack always fans out, and then it runs the step as written. If the subagents cannot start, the step stops and names the parts that were not done and the reason. When omp's depth limit blocks a spawn, the stop names `task.maxRecursionDepth`, which the user can raise. A step with one part is not Fan-out. We chose this because the user wanted no inline mode. One rule for every step is easier to write, lint, and predict than a judgment per step, and work meant for separate contexts never lands in the caller's context.
 
 ## Considered Options

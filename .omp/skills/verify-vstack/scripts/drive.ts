@@ -72,7 +72,6 @@ const run = resolve(values.run);
 const home = join(run, "data", "home");
 if (values.name === "data") usage("--name data is the run's throwaway data dir, so pick another name");
 const out = join(run, values.name);
-// Each drive owns a new evidence dir. A reused dir mixes an earlier drive's model requests with this drive's frames.
 mkdirSync(run, { recursive: true });
 try {
   mkdirSync(out);
@@ -82,16 +81,14 @@ try {
 }
 mkdirSync(join(home, ".omp", "agent"), { recursive: true });
 
-/** The run's own temp dir: the target of <run>/data/outside, made with mkdtemp by the first drive or load.sh of the run. */
 function outsideDir(): string {
   const link = join(run, "data", "outside");
-  try { return readlinkSync(link); } catch { /* no link yet */ }
+  try { return readlinkSync(link); } catch {}
   const made = mkdtempSync(join(realpathSync(tmpdir()), "vstack-verify-"));
   try {
     symlinkSync(made, link);
     return made;
   } catch {
-    // Another drive of this run linked its dir first. Use that one.
     rmdirSync(made);
     return readlinkSync(link);
   }
@@ -100,7 +97,6 @@ const proj = join(outsideDir(), "proj");
 mkdirSync(proj, { recursive: true });
 const env = { PATH: process.env.PATH ?? "", HOME: home, TERM: "dumb" };
 
-// Link the plugin into the throwaway home. omp plugin link replaces an earlier link of the same plugin.
 const link = Bun.spawnSync(["omp", "plugin", "link", plugin], { cwd: proj, env, stdout: "pipe", stderr: "pipe" });
 writeFileSync(join(out, "link.txt"), link.stdout.toString() + link.stderr.toString());
 if (link.exitCode !== 0) {
@@ -108,7 +104,6 @@ if (link.exitCode !== 0) {
   process.exit(1);
 }
 
-// The stub model: OpenAI chat completions, streamed or not.
 const requestLog = join(out, "model-requests.jsonl");
 let next = 0;
 const chunk = (delta: object, finish: string | null) =>
@@ -120,10 +115,14 @@ const server = Bun.serve({
     const url = new URL(req.url);
     const text = req.method === "POST" ? await req.text() : "";
     let body: any = text;
-    try { body = text ? JSON.parse(text) : null; } catch { /* keep the raw text */ }
+    try { body = text ? JSON.parse(text) : null; } catch {}
     appendFileSync(requestLog, JSON.stringify({ method: req.method, path: url.pathname, body }) + "\n");
     if (req.method !== "POST" || !url.pathname.endsWith("/chat/completions")) return new Response("not found", { status: 404 });
-    const reply: Reply = replies[next++] ?? { text: "stub: no reply left" };
+    const lastUser = Array.isArray(body?.messages) ? body.messages.findLast((message: any) => message.role === "user") : undefined;
+    const routingHint = (body?.tools === undefined || (Array.isArray(body.tools) && body.tools.length === 0)) &&
+      typeof lastUser?.content === "string" && lastUser.content.startsWith("Compress into one routing hint");
+    const reply: Reply = routingHint ? { text: "Use this tool when its description matches the task." }
+      : replies[next++] ?? { text: "stub: no reply left" };
     const message = "tool" in reply
       ? { role: "assistant", content: null, tool_calls: [{ index: 0, id: `call_${next}`, type: "function", function: { name: reply.tool, arguments: JSON.stringify(reply.args ?? {}) } }] }
       : { role: "assistant", content: reply.text };
@@ -159,7 +158,6 @@ const uiLog = join(out, "ui-responses.jsonl");
 const DIALOGS = new Set(["select", "confirm", "input", "editor"]);
 let uiNext = 0;
 let uiFailed = false;
-/** Answers one dialog frame with the next --ui-replies item, or cancels it when none is left. */
 function answerDialog(frame: Frame): void {
   const reply: UiReply = uiReplies[uiNext++] ?? { cancelled: true };
   let answer: object = reply;
@@ -173,8 +171,6 @@ function answerDialog(frame: Frame): void {
   child.stdin.write(JSON.stringify(response) + "\n");
   child.stdin.flush();
 }
-// --session keeps omp's session: its file goes under <home>/.omp/agent/sessions and omp holds its lease under
-// <home>/.omp/run/session-owners while the drive runs. Without it omp runs with --no-session.
 const child = Bun.spawn(["omp", "--mode", "rpc", ...(values["no-ui"] ? ["--no-ui"] : []), ...(values.session ? [] : ["--no-session"]), "--no-title", "--model", "stub/stub-model"], {
   cwd: proj,
   env,
@@ -184,7 +180,6 @@ const child = Bun.spawn(["omp", "--mode", "rpc", ...(values["no-ui"] ? ["--no-ui
 });
 appendFileSync(join(run, "data", "pids"), `${child.pid} omp rpc for drive ${values.name}\n`);
 
-// Read stdout frames and hand each one to whoever waits for it.
 type Frame = { type?: string; id?: string; [k: string]: any };
 const waiters: Array<{ match: (f: Frame) => boolean; resolve: (f: Frame) => void }> = [];
 const frames: Frame[] = [];

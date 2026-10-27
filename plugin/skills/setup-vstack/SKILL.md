@@ -14,7 +14,7 @@ Two parts, in this order. The machine section checks the omp settings vstack nee
 - Triage labels: the strings used for the five canonical triage roles.
 - Domain docs: where `GLOSSARY.md` and ADRs live, and the rules for reading them.
 
-The project section first checks this repo for Matt Pocock's config. When it finds some, it offers a Migration before setup, in the same run. Migration changes only this repo and its shared private store. It never changes machine state such as global skills, global rules, or diagram profiles.
+The project section first checks this repo for Matt Pocock's config. When it finds some, it offers a Migration before setup, in the same run. Migration changes only this repo and its shared private store. It never changes machine state such as global skills or global rules.
 
 This is a prompt-driven skill with helper scripts. Explore, present what you found, settle each choice through `ask`, then write.
 
@@ -40,7 +40,7 @@ Below, `machine.ts`, `project.ts`, and `migrate.ts` stand for these commands.
    - 5, eval Python is ready: `eval.py` is on and `omp setup python --check` passes. This one only warns.
    - 6, `task.isolation.enabled` is on (ADR 0007). Skills that need an isolated subagent stop without it.
    - 7, `worktree.clone` is on. In Private mode, prototype mounts app-bound prototypes in an `omp wt add` clone and stops on a plain checkout.
-   - 8, `ratchet.enabled` is on (ADR 0039). Ratchet optionally improves an LLM flow against approved cases. Disabled Ratchet only warns, so Leave it still passes a machine with no other failures. An unavailable setting also warns with an omp 18.4.5-or-later upgrade remedy, not a setting change.
+   - 8, `ratchet.enabled` is on (ADR 0041). Ratchet optionally improves an LLM flow against approved cases. Disabled Ratchet only warns, so Leave it still passes a machine with no other failures. An unavailable setting also warns with an omp 18.4.5-or-later upgrade remedy, not a setting change.
 
    When every check passes, it prints one `OK` line. Otherwise it prints one line per check that does not pass: `FAIL <n> <name>: <what is wrong>. Remedy: <what fixes it>.`, or `WARN` in place of `FAIL` for checks 5 and 8. Check 2 prints `NOTE 2 <name>: <the role and the jev note>.` when the role names a model other than `typesafe/jev-latest`. Check 3 prints `NOTE 3 <name>: <the overrides>.` when a key exists. Check 4 prints `NOTE 4 <name>: <the new-session note>.` when the extension is enabled. A `NOTE` line has no remedy. Exit 0 means no `FAIL` line, 1 means at least one, and 2 means the script did not run: show its message and go on to the project section.
 2. Show the output to the user as it is.

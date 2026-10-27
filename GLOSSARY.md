@@ -18,10 +18,6 @@ _Avoid_: matt-install, core
 The Upstream that vstack adds selectively from: poteto's pstack at `cursor/plugins`, directory `pstack/`.
 _Avoid_: pstack fork, plugin
 
-**Diagram upstream**:
-The Upstream whose single skill draws every figure vstack shows a person: `cathrynlavery/diagram-design`.
-_Avoid_: diagram dependency, diagram plugin
-
 **CSS upstream**:
 The Upstream that vstack takes its CSS rules from: `vojtaholik/good-css`.
 _Avoid_: good-css upstream, style upstream
@@ -35,7 +31,7 @@ A pstack recipe for one type of task, such as Shipping or Perf issue: an ordered
 _Avoid_: workflow (when a pstack playbook is meant), recipe
 
 **Pin**:
-The exact Upstream version vstack was last reconciled with: a release tag for the Base upstream, a full commit SHA for the Enhancement upstream, the Diagram upstream, and the CSS upstream.
+The exact Upstream version vstack was last reconciled with: a release tag for the Base upstream, a full commit SHA for the Enhancement upstream and the CSS upstream.
 _Avoid_: lock, version (unqualified)
 
 ### Skills
@@ -61,7 +57,7 @@ The native judge model that omp's judge role names, which selects Addons during 
 _Avoid_: jev judge, principle judge
 
 **Utility skill**:
-A vstack skill that is not a Matt skill and that the user can use whatever the work is. unslop, technical-writing, diagram-design, good-css, and skill-creator set how text, figures, styles, and skills are made. explain, how, why, and forensics answer questions about existing work. in-your-own-words and ketchup check that the user and the agent agree. The first restates the user's goal, and the second catches the user up. clean-wt removes omp checkouts that nothing uses anymore. The hidden helpers are vstack-tmp, vstack-fan-out, vstack-figures, grilling-page, and vstack-worktree. Other skills name these helpers by `skill://`. Utility skills can start from their descriptions, from a rule, or by name, subject to each skill's invocation settings.
+A vstack skill that is not a Matt skill and that the user can use whatever the work is. unslop, technical-writing, good-css, and skill-creator set how text, styles, and skills are made. explain, how, why, and forensics answer questions about existing work. in-your-own-words restates the user's goal so that the user and the agent agree. clean-wt removes omp checkouts that nothing uses anymore. The hidden helpers are vstack-tmp, vstack-fan-out, vstack-figures, grilling-page, and vstack-worktree. Other skills name these helpers by `skill://`. Utility skills can start from their descriptions, from a rule, or by name, subject to each skill's invocation settings.
 _Avoid_: standalone skill, helper skill
 
 **Command**:
@@ -109,7 +105,7 @@ The model of the session that starts a subagent or a Headless run. For the user'
 _Avoid_: parent's model, run's model
 
 **Fan-out**:
-One skill step running two or more subagents at the same time. A step with two or more parts always fans out: no judgment of the job's size decides it, the agent at that step never does the parts itself, and the user's words, such as "sequential" or "no fan-out", do not turn it off. If the subagents cannot start, the step stops and says why. A step that draws figures gives each figure its own subagent. Every subagent uses the Session model of the step's session unless the user has set a model for its agent.
+One skill step running two or more subagents at the same time. A step with two or more parts always fans out: no judgment of the job's size decides it, the agent at that step never does the parts itself, and the user's words, such as "sequential" or "no fan-out", do not turn it off. If the subagents cannot start, the step stops and says why. Every subagent uses the Session model of the step's session unless the user has set a model for its agent.
 _Avoid_: swarm, parallelism (unqualified)
 
 **Brief**:
@@ -153,7 +149,7 @@ The service that runs a repo's builds and checks, such as GitHub Actions, GitLab
 _Avoid_: CI provider, CI server, build server, CI host
 
 **Migration**:
-Moving one project that is set up for the Base upstream onto vstack, before its vstack setup. It changes only that project and its shared private store. Machine state such as global skills, global rules, and diagram profiles is not part of it.
+Moving one project that is set up for the Base upstream onto vstack, before its vstack setup. It changes only that project and its shared private store. Machine state such as global skills and global rules is not part of it.
 _Avoid_: conversion, reinstall, machine Migration
 
 **Private mode**:
@@ -211,10 +207,6 @@ _Avoid_: background figure
 **Option diagram**:
 A figure on a Grilling page question that shows how its options differ in shape.
 _Avoid_: comparison figure
-
-**Figure brief**:
-The text a skill writes for one diagram drawer that fixes one figure's type, size, layout, and content: every node, edge, and label, any zones, lanes, or rows, and the focal elements.
-_Avoid_: prompt, figure spec, diagram request
 
 **Verify skill**:
 A project-local skill named `verify-<app>` that drives the project's app the way a user does and captures proof that a change works. setup-app-verification creates it, and maintain-app-verification keeps it accurate.

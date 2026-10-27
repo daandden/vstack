@@ -1,5 +1,7 @@
 # A mid-session Matt run start sends a smol restatement to jev
 
+> [ADR 0039](0039-main-agent-tools-pick-addons-from-gathered-intent.md) supersedes main-session smol restatements and automatic prompt selection. The agent gathers source intent and calls a tool after a displayed run-start instruction, including on a bare start. This accepts the dependence on the agent that this ADR rejected. Stored corpus restatements remain offline samples.
+
 > [ADR 0024](0024-shared-judge-text-goes-in-the-jev-state-once.md) amends this decision. jev reads the restatement as `request`, beside the catalog's `preamble`. When every Addon was delivered earlier in the session, the extension calls no smol and sends no request.
 
 > [ADR 0026](0026-every-matt-run-start-sends-a-smol-restatement-to-jev.md) amends this decision. Every Matt run start gets a restatement, also the first prompt of a session. One 25-second vstack cap covers smol and jev together on every restated start, in place of omp's 30-second cap. At the cap the start gets no picks and a `timed out` warning. When smol fails with an error on a fresh start whose cleaned words are not empty, jev reads those words instead.

@@ -108,6 +108,7 @@
       "expected": [],
       "allowed": [
         "principle-boundary-discipline",
+        "principle-fix-root-causes",
         "principle-make-operations-idempotent",
         "principle-prove-it-works"
       ],
@@ -143,6 +144,7 @@
       ],
       "allowed": [
         "principle-encode-lessons-in-structure",
+        "principle-fix-root-causes",
         "principle-prove-it-works",
         "principle-separate-before-serializing-shared-state"
       ],
@@ -162,6 +164,7 @@
       "allowed": [
         "principle-boundary-discipline",
         "principle-encode-the-domain",
+        "principle-fix-root-causes",
         "principle-prove-it-works",
         "principle-type-system-discipline"
       ],
@@ -1091,6 +1094,7 @@
       "prompt": "The Node server's memory climbs steadily until it gets OOM-killed every few hours. Track it down.",
       "expected": [],
       "allowed": [
+        "principle-fix-root-causes",
         "principle-guard-the-context-window",
         "principle-prove-it-works"
       ],
@@ -2349,6 +2353,7 @@
       "expected": [],
       "allowed": [
         "principle-boundary-discipline",
+        "principle-fix-root-causes",
         "principle-make-operations-idempotent",
         "principle-prove-it-works"
       ],
@@ -2390,6 +2395,7 @@
       ],
       "allowed": [
         "principle-encode-lessons-in-structure",
+        "principle-fix-root-causes",
         "principle-prove-it-works",
         "principle-separate-before-serializing-shared-state"
       ],
@@ -2410,6 +2416,7 @@
         "principle-boundary-discipline",
         "principle-encode-lessons-in-structure",
         "principle-encode-the-domain",
+        "principle-fix-root-causes",
         "principle-prove-it-works",
         "principle-type-system-discipline"
       ],
@@ -3114,6 +3121,7 @@
       "expected": [],
       "allowed": [
         "principle-boundary-discipline",
+        "principle-fix-root-causes",
         "principle-prove-it-works"
       ],
       "baseline_selected": {
@@ -3133,6 +3141,7 @@
         "principle-attack-the-premise"
       ],
       "allowed": [
+        "principle-fix-root-causes",
         "principle-prove-it-works"
       ],
       "baseline_selected": {
@@ -4321,6 +4330,7 @@
       "prompt": "You want to diagnose why the local slugify test is failing and make the necessary fix so it passes. There’s no existing pull request to review; this is a local debugging and repair task.",
       "expected": [],
       "allowed": [
+        "principle-fix-root-causes",
         "principle-prove-it-works"
       ],
       "baseline_selected": {},
