@@ -22,7 +22,7 @@ Ask about the map only at a real fork: two module splits that differ in a way th
 
 3. Write the spec draft using the template below.
 
-Write a `skill://<addon>` pointer in the spec for each non-principle Addon that the session loaded through a tool result, an Addon message, or a running skill's `skill://` read. Omit all `principle-*` pointers, including any inherited from source context. Build sessions pick principles fresh.
+Write no `skill://<addon>` pointers in the spec, and drop any inherited from source context. Build sessions pick Addons fresh.
 
 Before you publish, check the draft against what the user decided, as skill://to-spec/DRIFT-CHECK.md says. Its source is the issue that this run starts from, with its comments, or none. Covered in names a spec section, and the Report block goes on the to-spec Stage.
 
