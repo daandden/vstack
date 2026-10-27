@@ -1,5 +1,7 @@
 # Figures are a fixed Fan-out of diagram drawers
 
+> Superseded by [ADR 0040](0040-figures-are-mermaid-rendered-by-pele.md): a figure step is not a Fan-out. The caller writes each figure's Mermaid and renders it with Pele, and `vstack-diagram-drawer` is gone. This ADR stays as history.
+
 > The Update to pstack `e73df47` removed ketchup, so it no longer calls `vstack-figures`. The rest of this ADR still stands.
 
 > The skin-selection provisions are superseded by [ADR 0027](0027-diagram-design-ships-one-fixed-catppuccin-style.md): diagram-design has one fixed style, so the caller settles no skin, and a figure brief names no variant. The rest of this ADR still stands.

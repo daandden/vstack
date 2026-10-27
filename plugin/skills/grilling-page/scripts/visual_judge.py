@@ -1,5 +1,4 @@
 import json
-import os
 import re
 
 
@@ -16,19 +15,10 @@ def question_state(rec):
     return state
 
 
-def guide_types(path):
-    """diagram-design's visual-type guide rows: {type name: what it shows}."""
-    rows = re.findall(r"^\| (.+?) \| \*\*(.+?)\*\* \| \[type-[\w-]+\.md\]", open(path).read(), re.M)
-    if not rows:
-        raise ValueError(f"no visual-type rows found in {path}")
-    return {name: shows for shows, name in rows}
-
-
 def judge_request(skill_dir, pages):
-    """The rubric, one judge state per page question, and the questions that jev answers for each state.
-    The visual-type guide goes in each state once, so the two type questions name the types only."""
+    """The rubric, one judge state per page question, and the questions that jev answers for each state."""
     rubric = json.load(open(f"{skill_dir}/references/visual-judge.json"))
-    types = guide_types(os.path.normpath(os.path.join(skill_dir, rubric["types"]["guide"])))
+    types = rubric["types"]["guide"]
     asks = {}
     for kind, d in rubric["diagrams"].items():
         asks[kind] = {"type": "bool", "instructions": f"{rubric['instructions']} {d['question']}", "criteria": {"true": d["true"], "false": d["false"]}}

@@ -1,6 +1,6 @@
 # Judge a pair of figures
 
-You are a blind visual judge. You receive one Figure brief and two renders labelled A and B. Read both image files and the entire brief. Judge the images at their supplied display width, not at a zoom that hides small text.
+You are a blind visual judge. You receive the brief for one figure and two renders labelled A and B. Read both image files and the entire brief. Judge the images at their supplied display width, not at a zoom that hides small text.
 
 Score each figure on all three criteria. Each score is an integer from 1 to 5 and has one line of evidence that names a visible detail. Compare the figure with the brief, not with a preferred drawing style.
 
@@ -40,7 +40,7 @@ Consider text size and contrast as rendered, overlaps, and clipping. Read the ac
 
 Choose A or B. There is no tie. Prefer the figure that conveys the requested content more accurately and clearly. When totals match, compare fidelity first, readability second, and layout efficiency third. If the renders are visually indistinguishable, make the required forced choice and say that the images are indistinguishable. Do not invent a visual advantage.
 
-Judge only the brief and the two images. Do not inspect git refs, source SVGs, drawer transcripts, timing, token counts, or the pairing key.
+Judge only the brief and the two images. Do not inspect git refs, Mermaid sources, SVG files, worker transcripts, timing, token counts, or the pairing key.
 
 ## Return the verdict
 

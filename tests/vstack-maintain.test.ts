@@ -3,7 +3,7 @@ import { chmodSync, existsSync, readFileSync, readdirSync, rmSync, writeFileSync
 import { join } from "node:path";
 import { lifecycleFixture } from "./support/update-lifecycle-fixture.ts";
 import { fakeGitHub } from "./support/fake-github.ts";
-import { git, writeFiles } from "./support/fixture.ts";
+import { checkout, git, makeUpstreams, passingSpec, writeFiles } from "./support/fixture.ts";
 
 const fixtures: ReturnType<typeof lifecycleFixture>[] = [];
 const fixture = () => { const f = lifecycleFixture(); fixtures.push(f); return f; };
@@ -354,4 +354,30 @@ test("prepare copies both a newly adopted reject and a new adopt from the select
   const r = await f.run(f.root, ["prepare", "--plan", path, "--decisions", file]); expect(r.code).toBe(0);
   expect(read(f.root, "plugin/skills/rej/SKILL.md")).toBe(git(f.mattRepo, "show", "v1.2.0:skills/misc/rej/SKILL.md") + "\n");
   expect(read(f.root, "plugin/skills/fresh/SKILL.md")).toContain("brand new skill");
+}, 30000);
+
+test("prepare drops a whole Upstream with its Pin, rows, and House style rows, and refuses while an artifact only it names exists", async () => {
+  const f = fixture(); const up = makeUpstreams(); const spec = passingSpec(up);
+  const beta = spec.register.items.find((row: any) => row.id === "beta/adapted")!;
+  spec.register.items.push({ ...beta, id: "beta/solo", artifacts: ["plugin/skills/solo"], reason: "Only beta names it." }, { ...beta, id: "beta/dropped", disposition: "reject", artifacts: [], reason: "Not wanted." });
+  spec.houseStyle.replacements.push({ id: "fx-beta", from: "pack", to: "vstack", match: "name", upstream: "beta", scope: "adapted", uses: ["update"] });
+  spec.houseStyle.rules.push({ id: "fx-beta-rule", scope: "adapted", text: "Applies to beta text only.\n", lint: "None." });
+  Object.assign(spec.files, { "plugin/skills/solo/SKILL.md": "---\nname: solo\ndescription: solo\n---\nsolo\n", "CHANGELOG.md": "# Changelog\n\n## [Unreleased]\n" });
+  const c = checkout(up, spec);
+  try {
+    const file = join(f.dir, "drop.json");
+    writeFileSync(file, JSON.stringify({ upstreams: [{ action: "drop", upstream: "beta", house_style: ["fx-beta-rule"] }], changelog: ["Drop the beta Upstream."] }));
+    const before = state(c.root);
+    const refused = await f.run(c.root, ["prepare", "--decisions", file]);
+    expect(refused.code).toBe(2); expect(JSON.parse(refused.stdout).reason).toContain("delete plugin/skills/solo before prepare"); expect(state(c.root)).toEqual(before);
+    rmSync(join(c.root, "plugin/skills/solo"), { recursive: true });
+    const r = await f.run(c.root, ["prepare", "--decisions", file]); expect(r.code).toBe(0); expect(r.plan.version).toBe("1.0.0");
+    expect(Object.keys((Bun.YAML.parse(read(c.root, "pins.yaml")) as any).upstreams)).toEqual(["alpha"]);
+    expect(register(c.root).items.filter((row: any) => row.upstream === "beta")).toEqual([]);
+    expect(register(c.root).items.find((row: any) => row.id === "alpha/shared-a").artifacts).toEqual(["plugin/skills/shared"]);
+    const style = Bun.YAML.parse(read(c.root, "house-style.yaml")) as any;
+    expect(style.replacements.map((row: any) => row.id)).not.toContain("fx-beta"); expect(style.rules.map((rule: any) => rule.id)).not.toContain("fx-beta-rule");
+    expect(read(c.root, "CHANGELOG.md")).toContain("- Drop the beta Upstream.");
+    const checked = await c.run(); expect(checked.json!.failures).toEqual([]); expect(checked.code).toBe(0);
+  } finally { rmSync(up.dir, { recursive: true, force: true }); rmSync(c.root, { recursive: true, force: true }); }
 }, 30000);

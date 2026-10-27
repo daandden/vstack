@@ -85,12 +85,12 @@ exec(open(f"{skill}/scripts/visual_judge.py").read())
 await judge_round(skill, "<state.jsonl>", "<round id>")
 ```
 
-The helper sends jev one request per question. The request's judge state holds the question and diagram-design's visual-type guide, so jev reads the guide once. Its four questions are one yes-or-no question and one type ranking for each diagram kind in `references/visual-judge.json`. For each question, it prints one line per diagram kind:
+The helper sends jev one request per question. The request's judge state holds the question and the Mermaid type guide in `references/visual-judge.json`, so jev reads the guide once. Its four questions are one yes-or-no question and one type ranking for each diagram kind in that file. For each question, it prints one line per diagram kind:
 
 - A context diagram shows the logic that the description and Today explain: steps, branches, states, parts, or time.
 - An option diagram shows how the options differ in shape, in one figure.
 
-A kind under its threshold, or a judge error, prints `none`. A kind at or over it prints `draw it` and the three diagram-design types that fit best. Draw each such diagram as a type from those three. Choose it with diagram-design's visual-type guide and its semantic-pattern table.
+A kind under its threshold, or a judge error, prints `none`. A kind at or over it prints `draw it` and the three Mermaid types that fit best. Draw each such diagram as a type from those three.
 
 Add other visuals when they help:
 
@@ -100,7 +100,7 @@ Add other visuals when they help:
 
 Append the question record again with its visuals. Put a context diagram first and an option diagram second. Then cut from the description and from Today the logic that a diagram now shows. Keep what is being decided and why it matters. Keep each Today fact with its source. Shorten the text of each fact to what the diagram does not show.
 
-Use diagram-design for every diagram: any figure with boxes, arrows, trees, timelines, or states, including one that is small. HTML is for mockups and tables, and `text` is for code, command output, and messages. Draw the round's diagrams through `skill://vstack-figures`, one Figure brief per diagram, as soon as the judge has printed. Write each Figure brief with that skill's fields, fixing layout for every figure and groups for figures with zones, lanes, or rows. The out dir is the flow folder's `figures/`, and each figure gets a unique basename. Write the previews, tables, and descriptions while the drawers run. Collect the figures before you append the question records again, and pass each exported file as `{ "svg": "figures/<file>" }`. Never use Mermaid as a fallback.
+Draw every diagram through `skill://vstack-figures`: any figure with boxes, arrows, trees, timelines, or states, including one that is small. HTML is for mockups and tables, and `text` is for code, command output, and messages. As soon as the judge has printed, write each diagram's Mermaid and render it into the flow folder's `figures/`, with a unique basename per figure. Pass each SVG as `{ "svg": "figures/<file>" }` when you append the question records again.
 
 A preview shows the real result, so it keeps the colors of that result.
 

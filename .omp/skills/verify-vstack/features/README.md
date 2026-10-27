@@ -46,7 +46,7 @@ Keep implementation details out of the map. Name only user paths, stable handles
 - [Addon tools](./addon-tools.md): typed Matt runs display intent-gathering instructions, and agent-called tools select Addons. The stub proves tool completion without a native judge, not native selection.
 - [Scratch dir](./scratch-dir.md): the vstack-tmp scripts make and list Scratch entries. The `/vstack-clean` Command previews expired entries and deletes only confirmed choices.
 - [Grilling page](./grilling-page.md): the grilling-page script renders a flow's Grilling page from the state file in its flow folder and renames the folder. The page opens on an Overview tab, has one tab per Stage with its Background, Report blocks, questions, answers, and summary, and links between tabs. A Stage that settled every decision as Assumed shows its count on Overview.
-- [Diagram scripts](./diagram-scripts.md): the diagram-design Python scripts extract Mermaid, draw.io, and Excalidraw files, self-check a diagram page, check its connector geometry and its colors and fonts, and export it to SVG.
+- [Figure render](./figure-render.md): the vstack-figures render script turns Mermaid into a Catppuccin Mocha SVG with Pele, marks focal ids in mauve, refuses bad Mermaid with Pele's parse error, and the Grilling page accepts the SVG.
 - [Clean worktrees](./clean-wt.md): `/skill:clean-wt` inventories the omp worktree base from a session with a held lease, removes unused clean checkouts, keeps their branches, and skips stale, unique, or unapproved dirty checkouts.
 
 ## Not mapped yet
@@ -55,4 +55,3 @@ Keep implementation details out of the map. Name only user paths, stable handles
 - The by-hand visual judge check `scripts/visual_judge_check.py`. It runs in omp's Python eval, calls the judge through the `judge_batch` global, and refuses an answer from any model but `typesafe/jev`. The stub home has no judge model, so a drive cannot grade a case.
 - The grilling-page visual judge (`plugin/skills/grilling-page/scripts/visual_judge.py`). It runs in omp's Python eval and calls the configured judge through the `judge_batch` global. The stub home has no judge model, so a drive cannot reach a pick.
 - The setup-vstack scripts (`machine.ts`, `project.ts`, and the Migration helper `migrate.ts`). They change omp configuration and git state, so a recipe needs a throwaway `HOME` and a throwaway repo.
-- The diagram-design PNG export. It needs Playwright and its Chromium in eval's Python, and the skill installs them only after the user approves through `ask`.

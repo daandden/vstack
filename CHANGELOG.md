@@ -4,6 +4,14 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [7.0.0] - 2026-10-27
+
+- Figures are Mermaid that the caller renders with Pele through `plugin/skills/vstack-figures/scripts/render.ts`, a Bun script that writes a Catppuccin Mocha SVG and marks each `--focus` id in mauve, scoped to that figure so other figures on the page stay plain. Bad Mermaid exits 1 with Pele's parse error. A figure step starts no subagent (ADR 0040).
+- Remove the diagram-design skill, the vstack-diagram-drawer agent, and the `diagram` Upstream with its Pin, its three register rows, and the `python-eval` House style rule. Run `bun install --frozen-lockfile` in the clone, because the render script loads the pinned `pele` 1.12.0 from its `node_modules`.
+- explain, how, improve-codebase-architecture, teach, and the Grilling page write Mermaid and render it through vstack-figures. The Grilling page visual judge ranks Pele's Mermaid diagram types from its own guide in `references/visual-judge.json`.
+- `vstack-maintain prepare` drops a whole Upstream through an `upstreams` entry in the decisions file: its Pin, every register row of every Disposition, and the House style rows that apply only to it.
+- setup-vstack's eval Python check names the Grilling page visual judge. The vstack-figures evals compare two refs of the skill, each drawn by a `vstack-worker` that writes Mermaid and renders it.
+
 ## [6.0.0] - 2026-10-27
 
 - Update: pstack ce649c0 to e73df47, diagram-design 0482b93 to 97d7951. matt stays at v1.3.1 and good-css at 92d436b. The principles make-operations-idempotent, migrate-callers-then-delete-legacy-apis, and type-system-discipline take their new pstack text, and the changed reject rows keep their reasons.

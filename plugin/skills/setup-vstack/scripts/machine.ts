@@ -130,13 +130,13 @@ async function check(): Promise<Result[]> {
     });
   }
 
-  // 5. eval Python (warn only: diagram-design runs its scripts through eval's interpreter).
+  // 5. eval Python.
   if (cfg.get("eval.py") === false) {
     results.push({
       id: 5,
       name: "eval Python",
       status: "warn",
-      detail: "eval.py is off, so eval cannot run Python cells and diagram-design cannot export figures",
+      detail: "eval.py is off, so eval cannot run Python cells and the Grilling page visual judge cannot run",
       remedy: "turn it on with omp config set eval.py true, then run omp setup python --check",
     });
   } else if (python.code !== 0) {
@@ -149,7 +149,7 @@ async function check(): Promise<Result[]> {
       id: 5,
       name: "eval Python",
       status: "warn",
-      detail: `omp setup python --check fails${found}, so eval cannot run Python cells and diagram-design cannot export figures`,
+      detail: `omp setup python --check fails${found}, so eval cannot run Python cells and the Grilling page visual judge cannot run`,
       remedy: "run omp setup python and fix what it reports",
     });
   } else {

@@ -347,11 +347,12 @@ interface HandTarget {
   action: "add" | "edit" | "take" | "rename" | "remove"; kind: string; artifact: string; to?: string;
   upstream?: string; path?: string; reason?: string; flip?: { confirmed: boolean; reason: string };
 }
+interface UpstreamDrop { action: "drop"; upstream: string; house_style?: string[] }
 const oneLine = (s: unknown): s is string => typeof s === "string" && s.trim() !== "" && !s.includes("\n");
 function decisionsAt(file: string) {
-  const d = readJson(file) as { decisions?: RowDecision[]; targets?: HandTarget[]; changelog: string[] };
-  const rows = d.decisions ?? [], targets = d.targets ?? [];
-  if (!Array.isArray(rows) || !Array.isArray(targets) || !rows.length && !targets.length) throw new Error("decisions need Update rows or Hand edit targets");
+  const d = readJson(file) as { decisions?: RowDecision[]; targets?: HandTarget[]; upstreams?: UpstreamDrop[]; changelog: string[] };
+  const rows = d.decisions ?? [], targets = d.targets ?? [], drops = d.upstreams ?? [];
+  if (!Array.isArray(rows) || !Array.isArray(targets) || !Array.isArray(drops) || !rows.length && !targets.length && !drops.length) throw new Error("decisions need Update rows, Hand edit targets, or Upstream drops");
   if (!Array.isArray(d.changelog) || !d.changelog.length || !d.changelog.every(oneLine)) throw new Error("changelog needs one-line entries");
   if (new Set(rows.map(r => r.id)).size !== rows.length) throw new Error("Update row ids must be unique");
   for (const row of rows) {
@@ -361,9 +362,14 @@ function decisionsAt(file: string) {
     if (row.action === "defer" && !oneLine(row.gist)) throw new Error(`defer needs a gist: ${row.id}`);
     for (const artifact of row.artifacts ?? []) target(artifact);
   }
+  for (const drop of drops) {
+    if (drop.action !== "drop" || typeof drop.upstream !== "string" || !drop.upstream) throw new Error(`an Upstream entry needs action drop and an upstream key: ${JSON.stringify(drop)}`);
+    if (drop.house_style !== undefined && (!Array.isArray(drop.house_style) || !drop.house_style.every(id => typeof id === "string" && id))) throw new Error(`${drop.upstream}: house_style lists House style ids`);
+  }
+  if (new Set(drops.map(x => x.upstream)).size !== drops.length) throw new Error("each Upstream may be dropped once");
   const names = targets.flatMap(t => t.action === "rename" ? [t.artifact, t.to] : [t.artifact]);
   if (new Set(names).size !== names.length) throw new Error("each target may appear once");
-  return { rows, targets, changelog: d.changelog };
+  return { rows, targets, drops, changelog: d.changelog };
 }
 
 async function validateTargets(root: string, targets: HandTarget[], opts: UpstreamOptions) {
@@ -535,6 +541,21 @@ async function prepare(root: string, file: string, p: Plan | undefined, opts: Up
     if (t.action === "rename") doc.originals = doc.originals.map((a: string) => a === t.artifact ? t.to : a);
     if (t.action === "remove") doc.originals = doc.originals.filter((a: string) => a !== t.artifact);
     if (Array.isArray(doc.utility)) { if (t.action === "rename") doc.utility = doc.utility.map((a: string) => a === t.artifact ? t.to : a); if (t.action === "remove") doc.utility = doc.utility.filter((a: string) => a !== t.artifact); }
+  }
+  for (const drop of d.drops) {
+    if (!pins.upstreams?.[drop.upstream]) throw new Error(`${drop.upstream} is not an Upstream in pins.yaml`);
+    if (p?.upstreams.some(u => u.key === drop.upstream)) throw new Error(`${drop.upstream}: an Update cannot move a dropped Upstream`);
+    const dropped = doc.items.filter((row: any) => row.upstream === drop.upstream);
+    doc.items = doc.items.filter((row: any) => row.upstream !== drop.upstream);
+    const kept = new Set([...doc.items.flatMap((row: any) => row.artifacts), ...doc.originals]);
+    const owned = [...new Set(dropped.flatMap((row: any) => row.artifacts as string[]))].filter(a => !kept.has(a));
+    for (const a of owned) if (existsSync(join(root, a))) throw new Error(`delete ${a} before prepare`);
+    if (Array.isArray(doc.utility)) doc.utility = doc.utility.filter((a: string) => !owned.includes(a));
+    delete pins.upstreams[drop.upstream];
+    const ids = new Set(drop.house_style ?? []);
+    for (const id of ids) if (![...style.replacements, ...(style.rules ?? [])].some((x: any) => x.id === id)) throw new Error(`${drop.upstream}: no House style row or rule ${id}`);
+    style.replacements = style.replacements.filter((row: any) => row.upstream !== drop.upstream && !ids.has(row.id));
+    if (Array.isArray(style.rules)) style.rules = style.rules.filter((rule: any) => !ids.has(rule.id));
   }
   for (const t of taken) {
     const values = { upstream: t.upstream, kind: t.itemKind, path: t.path, tree: t.tree, disposition: t.disposition, artifacts: [t.artifact], reason: t.reason };
