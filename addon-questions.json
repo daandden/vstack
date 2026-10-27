@@ -58,6 +58,14 @@
         "false": "The task is not this situation, or only loosely resembles it."
       }
     },
+    "principle-fix-root-causes": {
+      "type": "noul",
+      "instructions": "Is this task debugging a failure, such as a crash, an error, wrong output, or a failing test, where the agent must find why it happens before it fixes it?",
+      "criteria": {
+        "true": "E.g. 'the import crashes on empty rows, fix it', 'the dashboard shows yesterday's totals', or 'this test started failing after the upgrade'.",
+        "false": "Building a feature, a refactor, a performance change with no wrong behavior, explaining how code works, or a change whose cause the user already named."
+      }
+    },
     "principle-foundational-thinking": {
       "type": "noul",
       "instructions": "Does this task require choosing core data types, data structures, or state ownership before writing logic, or setting up scaffold (CI, lint, test infrastructure, shared types) that later work builds on?",
