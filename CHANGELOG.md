@@ -4,10 +4,13 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [5.0.21] - 2026-10-27
+
+- Specs and tickets carry no Addon pointers. to-spec and to-tickets drop inherited pointers too (ADR 0039).
+- The run-start instruction is shorter. implement and implement-spec call `inject_principles`; every other Matt skill calls `inject_addons`.
+
 ## [5.0.20] - 2026-10-26
 
-- Main sessions select Addons through `inject_addons` and `inject_principles` after the agent gathers intent from real task context. Typed Matt runs display the shared tool instruction, and no main prompt calls `smol` or the Addon judge automatically. Tool picks remain session-wide, use the native judge role and 0.70 threshold, and keep the four-second deadline. Subagent Brief picks stay automatic (ADR 0039).
-- to-spec and to-tickets preserve only non-principle Addon pointers in specs and tickets, including inherited context. Build sessions select principles fresh. The Verify feature map covers the displayed instructions and executable unavailable-native-judge tool path.
 - Main sessions select Addons through `inject_addons` and `inject_principles` after the agent gathers intent from real task context. Typed Matt runs display the shared tool instruction, and no main prompt calls `smol` or the Addon judge automatically. Tool picks remain session-wide, use the native judge role and 0.70 threshold, and keep the four-second deadline. Subagent Brief picks stay automatic (ADR 0039).
 - to-spec and to-tickets preserve only non-principle Addon pointers in specs and tickets, including inherited context. Build sessions select principles fresh. The Verify feature map covers the displayed instructions and executable unavailable-native-judge tool path.
 
