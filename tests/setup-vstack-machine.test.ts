@@ -98,7 +98,7 @@ worktree:
     "WARN 5",
     "FAIL 6",
     "FAIL 7",
-    "FAIL 8",
+    "WARN 8",
   ]);
   for (const l of out) if (!l.startsWith("NOTE ")) expect(l).toContain("Remedy: ");
   const byId = (id: string) => out.find((l) => l.split(" ")[1] === id)!;
@@ -111,15 +111,16 @@ worktree:
   expect(byId("5")).toContain("eval.py");
 });
 
-test.skipIf(!HAS_OMP)("disabled Ratchet fails check 8 with an approved global-setting remedy and checking leaves it disabled", () => {
+test.skipIf(!HAS_OMP)("disabled optional Ratchet warns with Set it or Leave it, passes, and checking leaves it disabled", () => {
   const configYml = CONFIGURED.replace("ratchet:\n  enabled: true", "ratchet:\n  enabled: false");
   const h = makeHome(configYml);
   const r = run(h, [], KEY);
-  expect(r.code).toBe(1);
+  expect(r.code).toBe(0);
   const out = lines(r.stdout);
-  expect(out.map((l) => l.slice(0, 6))).toEqual(["NOTE 4", "FAIL 8"]);
+  expect(out.map((l) => l.slice(0, 6))).toEqual(["NOTE 4", "WARN 8"]);
   expect(out[1]).toContain("ratchet.enabled is off");
   expect(out[1]).toContain("Remedy: setup-vstack sets ratchet.enabled to true once you approve");
+  expect(out[1]).toContain("Leave it");
   expect(readFileSync(join(h.home, ".omp", "agent", "config.yml"), "utf8")).toBe(configYml);
 });
 
@@ -155,7 +156,7 @@ theme:
   dark: catppuccin-mocha
 `);
   const before = run(h, [], KEY);
-  expect(lines(before.stdout).map((l) => l.slice(0, 6))).toEqual(["FAIL 2", "NOTE 4", "FAIL 6", "FAIL 7", "FAIL 8"]);
+  expect(lines(before.stdout).map((l) => l.slice(0, 6))).toEqual(["FAIL 2", "NOTE 4", "FAIL 6", "FAIL 7", "WARN 8"]);
 
   const set = run(h, ["--set", "judge", "isolation", "clone", "ratchet"], KEY);
   expect(set.code).toBe(0);

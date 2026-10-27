@@ -183,13 +183,21 @@ async function check(): Promise<Result[]> {
   results.push(
     cfg.get("ratchet.enabled") === true
       ? { id: 8, name: "ratchet.enabled", status: "ok" }
-      : {
-          id: 8,
-          name: "ratchet.enabled",
-          status: "fail",
-          detail: "ratchet.enabled is off, so Ratchet cannot improve an LLM flow",
-          remedy: "setup-vstack sets ratchet.enabled to true once you approve",
-        },
+      : cfg.has("ratchet.enabled")
+        ? {
+            id: 8,
+            name: "ratchet.enabled",
+            status: "warn",
+            detail: "ratchet.enabled is off, so optional Ratchet tuning is unavailable",
+            remedy: "setup-vstack sets ratchet.enabled to true once you approve, or choose Leave it to keep Ratchet disabled",
+          }
+        : {
+            id: 8,
+            name: "ratchet.enabled",
+            status: "warn",
+            detail: "this omp has no ratchet.enabled setting, so optional Ratchet tuning is unavailable",
+            remedy: "upgrade omp to 18.4.5 or later, then run /skill:setup-vstack again",
+          },
   );
 
   return results;
@@ -218,6 +226,10 @@ async function main(argv: string[]) {
     if (names.length === 0) usage("--set needs at least one of: judge, isolation, clone, ratchet");
     for (const name of names) if (!(name in SETTERS)) usage(`unknown setting for --set: ${name}`);
     if (!OMP) usage("omp is not on PATH; setup-vstack needs the omp CLI");
+    if (names.includes("ratchet") && !(await settings()).has("ratchet.enabled")) {
+      console.error("Ratchet requires omp 18.4.5 or later. Upgrade omp, then run /skill:setup-vstack again; no settings were written.");
+      return 2;
+    }
     for (const name of new Set(names)) {
       const [key, value] = await SETTERS[name]!();
       await ompOrDie("config", "set", key, value);

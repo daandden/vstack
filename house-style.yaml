@@ -218,7 +218,7 @@ rules:
   - id: ask-tool
     scope: required
     text: |
-      Every question the agent puts to the user during a session goes through omp's `ask` tool: confirmations, approvals, picks, and open questions. An open question is an `ask` whose options are the likely answers; the user types anything else through Other. Not covered: shell prompts in generated scripts, documents and comments written for other people, lesson quizzes, and `argument-hint` frontmatter.
+      Every question the agent puts to the user during a session goes through omp's `ask` tool: confirmations, approvals, picks, and open questions. An open question is an `ask` whose options are the likely answers; the user types anything else through Other. Not covered: Ratchet's `approve()` host dialog (ADR 0039), shell prompts in generated scripts, documents and comments written for other people, lesson quizzes, and `argument-hint` frontmatter.
       A subagent never asks: it returns each open question in its result, and the top-level agent asks it with `ask`. A Headless run has no `ask`: it takes the recommended answer and says so in its output.
       An answer omp picks itself when `ask.timeout` fires (marked `timedOut: true`) is never the user's answer. A gate (any confirmation or approval) asks once more; if that times out too, it stops without acting and says why. A grilling question stays open for the next round.
     lint: In markdown outside frontmatter and code fences, a sentence that holds one of `phrases` (whole words, any case) fails unless it names `ask` in backticks or the phrase follows don't, do not, never, or not. It runs over every artifact, adopt included. The Update's agent review catches asking wording the list misses.

@@ -2,7 +2,7 @@
 
 Use this reference when building or adapting the reusable eval. The host's `xd://eval/ratchet` documentation is authoritative for the installed release.
 
-The runner calls the app's actual entry point. Its command accepts `{variant}` and writes beneath `{flow_dir}/{variant}/`. `check()` resolves those placeholders before execution. The agreed cases, runner, and grader belong in `.omp/ratchet/<flow>/` or at their existing reusable paths, with those dependencies included in the final eval commit.
+The runner calls the app's actual entry point. Its command accepts `{variant}` and writes beneath `{flow_dir}/{variant}/`. `check()` resolves those host-defined placeholders before execution. The agreed cases, runner, and grader belong in `.omp/ratchet/<eval>/` or at their existing reusable paths, with those dependencies included in the final eval commit.
 
 ## Result rows
 

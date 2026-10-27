@@ -252,10 +252,10 @@
     },
     "tune-llm-flow": {
       "type": "noul",
-      "instructions": "Does the user ask for sustained, repeated improvement of any measured metric of an LLM flow, code that calls a model and returns an answer, including answer quality, cost, or latency?",
+      "instructions": "Does the user ask for sustained, repeated measured improvement of an explicitly identified LLM flow that calls a language model, targeting its answer quality, cost, or latency?",
       "criteria": {
-        "true": "E.g. 'keep improving answer quality of our LLM support replies', 'keep cutting cost per answer while holding quality', or 'keep cutting p95 latency of /summarize, which calls the model'.",
-        "false": "Metrics in code that calls no model, a one-off fix, diagnosis without a sustained improvement goal, or building an LLM feature without repeated measured optimization."
+        "true": "The request identifies model calls, prompts, generated answers, or an LLM flow AND asks to keep improving a measured metric through repeated experiments. E.g. 'keep improving answer quality of our LLM support replies', 'keep cutting cost per answer of this LLM flow while holding graded quality', or 'keep cutting p95 latency of /summarize, which calls the model'.",
+        "false": "No if the request does not identify a language-model call or LLM flow. Rendering latency, parser benchmarks, frozen inputs, repeated experiments, and measured wins alone are not evidence of an LLM flow. Also no for code that calls no model, a one-off fix, diagnosis without sustained improvement, or building an LLM feature without repeated measured optimization."
       }
     },
     "perf-issue": {
