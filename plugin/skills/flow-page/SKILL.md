@@ -21,7 +21,7 @@ Every command prints one JSON receipt on stdout. Exit 1 prints the refusal on st
 A result-producing run is one Stage. Open it once, before its first contribution:
 
 - `open --skill <name> --title <title>` starts a new Flow with its first Stage. `--title` is the Flow page's heading. A `--slug` of 3 to 5 words is optional; the script derives one from the title.
-- `open --skill <name> --flow <id>` adds a Stage to an existing Flow. A return to finished work opens a new Stage.
+- `open --skill <name> --flow <id>` adds a Stage to an existing Flow. A return to finished work opens a new Stage with `--parent <stage>`, the Stage it continues; the finished Stage stays as it was.
 - Add `--ticket <id>` when the Stage works on one ticket, such as one wayfinder ticket. Its tab label then names the ticket.
 
 Any skill name works; the tab label comes from it. `open` binds this session's agent to the new Stage. Later commands from the same session write there without naming it. `bind --flow <id> --stage <id>` joins an existing Stage instead, for example when a nested skill continues its caller's Stage. A binding belongs to one session and one agent. `--agent <id>` names a second agent in the same session; it defaults to `main`.
@@ -50,16 +50,18 @@ Item kinds and their fields:
   - `cards` has `entries`, each with optional `ref`, `title`, `label` (such as `issue`), `blocking` (`true` or `false`), `impact`, `action`, and `evidence`. In a review finding, `impact` opens with what a user or caller sees, and `evidence` gives the file and line.
   - `ledger` has `entries`, each with optional `ref`, `claim`, `status` (`confirmed`, `cleared`, or `unproven`), `evidence`, `missing_proof`, and `consequence`.
   - `table` has `columns` and `rows`, each row with optional `ref` and `cells`, one string per column.
+- `assumed`: optional `ref`, `decision`, `pick`, and `why`, one decision settled without asking. `why` cites its repo fact with file and line, its ADR, or its convention. The page lists each Assumed pick before the rounds, and the close lists every one no question reopened.
 - `round`: `questions`, in `ask` order. One contribution holds at most one round, because one round is one `ask`. Each question has optional `ref`, `title` (one question that ends with "?"), `description`, and `options`. Each option has `label` (the label alone; the script adds `A. `, `B. `), `does`, `gains`, `costs`, and an optional `recommended` reason on at most one option. A question can add:
-  - `again`: the earlier question it asks again, from an earlier round of the same Stage. It keeps that Q number.
+  - `again`: the earlier question it asks again. In the same Stage it names a question of an earlier round and keeps that Q number. From a finished Stage it names that Stage's latest ask of the Q number and takes a new Q number here; both questions link to each other.
+  - `reopens`: the Assumed pick it reopens, of this Stage or a finished one. That pick leaves the close; this question's decision replaces it.
   - `today`: `{ text, source }` facts about how things work now, each with its file-and-line source. Use it when the decision changes something that exists.
   - `terms`: `{ term, text }` Term notes, one line each, for names a newcomer does not know.
   - `topics`: Topic notes it builds on.
   - `results`: the Result entries it comes from. The page links them both ways.
   - `example`: text that makes the question concrete.
-- `answer`: `question` and exactly one of `picks` (letters, with an optional `note`), `other` (text), or `unanswered` (the reason, or an empty string).
-- `close`: `decisions`, one `{ question, text }` for the latest ask of each Q number of the Stage, and optional `extra` bullets. A close with no decisions needs `extra`.
-- `stage`: `{ "kind": "stage", "state": "finished" }` finishes the bound Stage. A finished Stage takes no more content.
+- `answer`: `question`, `response`, and, for words with no pick, `reading`. A question takes one answer. To reopen it, ask it again with `again`, which keeps the earlier answer beside the new one.
+- `close`: `decisions`, one `{ question, text }` for the latest ask of each Q number of the Stage, and optional `extra` bullets. The close adds every Assumed pick of the Stage that no question reopened, and marks each decision as the user's pick, read from the user's words, or not the user's answer. A close with no decisions and no Assumed picks needs `extra`.
+- `stage`: `{ "kind": "stage", "state": "finished" }` finishes the bound Stage. A finished Stage takes no more content. Add `retire`, one `{ question, reason }` for each latest ask that has no pick and no settled reading, saying why the Stage leaves it unresolved. Retired questions leave current work and keep their answer and reason.
 
 Put each explanation in one place, so the page explains nothing twice. A question's own rationale goes in its `description`. Context that every question of the Stage needs goes in the Background. A concept that questions in several rounds or Stages build on goes in a Topic note. A name that one line defines is a Term note. The script stores each source string once, however many records cite it.
 
@@ -75,11 +77,24 @@ A submit receipt holds the Flow and Stage ids, the committed `revision`, the abs
 
 Every `ask` in a Flow is a question on its page, whichever skill asks it. Submit the round first, then ask with the receipt's `ask` payload and print the page path. The page question carries the description, trade-offs, and context; the `ask` carries only the numbered title and labels. A subagent never asks. It returns its open questions, and the top-level agent puts them on the page and asks them.
 
-When `ask` returns, submit an `answer` for each question. A picked option is `picks`, with any custom note as `note`. Text with no pick is `other`. An empty, cancelled, or timed-out answer is `unanswered`, because it is not the user's answer. In a headless run, record the recommended pick with the note `headless: recommended answer, not the user's`.
+When `ask` returns, submit an `answer` for each question. `response` is what `ask` returned, unchanged: `status`, then `picks` (letters), `text` (the custom or Other text, or a note), and `note_on` (the letter of an option a note was written on without picking it), each only when present.
+
+- `answered`: the user picked or wrote something. A pick is the answer, whatever its note says; it takes no `reading`.
+- `empty`, `cancelled`, `timed-out`: the user gave no answer. Keep any automatic selection in `picks`; it stays out of the decision.
+- `headless`: no user was asked. `picks` is the recommended option you substituted.
+
+Words with no pick need a `reading`, your interpretation, kept apart from the words:
+
+- `{ "outcome": "resolved", "decision", "basis", "maps_to"? }` when the words plainly settle the decision. `decision` is what is now true, `basis` is why the words settle it, and `maps_to` is the letter of the option they match. The page shows the user's words, your reading, and its basis, and records no pick.
+- `{ "outcome": "question" | "concern" | "ambiguous", "unresolved" }` when they ask for information, raise a concern, or leave the choice open. `unresolved` is the part still to decide. Ask that part in the next round with `again`, and reply to the rest on the page.
+
+Only a pick or a resolved reading is the user's answer. Everything else keeps the question open until it is asked again or its Stage retires it.
 
 ## Close the Stage
 
-Submit a `close`. Write each decision as what is now true, in one or two plain sentences, not as the option label. List each Assumed pick that was not reopened as its own `extra` bullet, "Assumed: <what is now true> (<its Why>)". Add other `extra` bullets only when they apply: "Unchanged from earlier: ...", "Glossary: ...", and "Headless, not user-confirmed" for a close in a headless run. Then submit `{ "kind": "stage", "state": "finished" }` when the Stage's skill finishes.
+Submit a `close`. Write each decision as what is now true, in one or two plain sentences, not as the option label. Add `extra` bullets only when they apply: "Unchanged from earlier: ...", "Glossary: ...", and "Headless, not user-confirmed" for a close in a headless run. Then submit `{ "kind": "stage", "state": "finished" }` with its `retire` reasons when the Stage's skill finishes. If a retired question still matters later, ask it in the current Stage with `again`.
+
+Finishing a Stage authorizes nothing. An action that needs the user's confirmation of the summary, such as a tracker write, still waits for the user's next prompt, as the calling skill says.
 
 ## Print the path
 

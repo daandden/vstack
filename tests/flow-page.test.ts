@@ -224,27 +224,204 @@ test("a source cited in several places is stored once and knows each place that 
   expect(sources.find((x: any) => x.cited_by.length === 3).cited_by).toContain(r.json.refs.fix);
 });
 
-test("answers, the close, and the Overview summary record only what was answered", () => {
-  openFlow("s-1");
-  const { refs } = submit("s-1", round(question("picked"), question("timed-out"), question("other"))).json;
-  const r = submit(
-    "s-1",
-    { kind: "answer", question: refs.picked, picks: ["B"] },
-    { kind: "answer", question: refs["timed-out"], unanswered: "" },
-    { kind: "answer", question: refs.other, other: "Neither; keep both." },
-    { kind: "close", decisions: [{ question: refs.picked, text: "Second holds." }, { question: refs["timed-out"], text: "Still open." }, { question: refs.other, text: "Both stay." }] },
-    { kind: "stage", state: "finished" },
-  );
+const answer = (question: string, response: object, reading?: object) => ({ kind: "answer", question, response, ...(reading ? { reading } : {}) });
+const picked = (question: string, ...picks: string[]) => answer(question, { status: "answered", picks });
+const decide = (...questions: string[]) => ({ kind: "close", decisions: questions.map((question) => ({ question, text: `${question} holds.` })) });
+const finish = (...retire: [string, string][]) => ({ kind: "stage", state: "finished", ...(retire.length ? { retire: retire.map(([question, reason]) => ({ question, reason })) } : {}) });
+const stageOfQuestion = (snap: any, id: string) => snap.stages.find((st: any) => st.questions.some((q: any) => q.id === id));
+const questionOf = (snap: any, id: string) => stageOfQuestion(snap, id).questions.find((q: any) => q.id === id);
+
+test("the user's raw response is stored apart from the agent's reading, and an explicit pick stays a pick", () => {
+  const opened = openFlow("s-1");
+  const { refs } = submit("s-1", round(question("pick"), question("words"))).json;
+  const pickResponse = { status: "answered", picks: ["B"], text: "B, but keep the old limit for admins." };
+  const wordsResponse = { status: "answered", text: "Whatever keeps checkout fast; I don't mind which.", note_on: "A" };
+  const reading = { outcome: "resolved", decision: "Checkout speed decides it, so the first option holds.", basis: "The user names speed as the only criterion, and only the first option keeps checkout fast.", maps_to: "A" };
+  const r = submit("s-1", answer(refs.pick, pickResponse), answer(refs.words, wordsResponse, reading));
   expect(r.stderr).toBe("");
-  const st = show(r.json.flow).stages[0];
-  const q = (id: string) => st.questions.find((x: any) => x.id === id);
-  expect(st.state).toBe("finished");
-  expect(q(refs.picked).answer).toEqual({ state: "answered", picks: ["B. Second"] });
-  expect(q(refs["timed-out"]).answer.state).toBe("unanswered");
-  expect(q(refs["timed-out"]).answer.picks).toBeUndefined();
-  expect(q(refs["timed-out"]).open).toBe(true);
-  expect(q(refs.other).answer.picks).toBeUndefined();
-  for (const id of Object.values(refs)) expect(q(id as string).decided_in).toBe(st.closes[0].id);
+  const snap = show(opened.flow);
+  const pick = questionOf(snap, refs.pick).answer;
+  expect(pick.state).toBe("picked");
+  expect(pick.picks).toEqual(["B. Second"]);
+  expect(pick.response).toEqual(pickResponse);
+  expect(pick.reading).toBeUndefined();
+  const words = questionOf(snap, refs.words);
+  expect(words.answer.state).toBe("resolved");
+  expect(words.answer.response).toEqual(wordsResponse);
+  expect(words.answer.reading).toEqual(reading);
+  expect(words.answer.picks).toBeUndefined();
+  expect(words.open).toBe(false);
+  expect(questionOf(snap, refs.pick).open).toBe(false);
+});
+
+test.each([
+  ["a reading that overrides an explicit pick", (q: string) => answer(q, { status: "answered", picks: ["A"], text: "Hmm." }, { outcome: "resolved", decision: "B holds.", basis: "The note.", maps_to: "B" })],
+  ["words with no reading", (q: string) => answer(q, { status: "answered", text: "Maybe the second?" })],
+  ["a timeout read as a decision", (q: string) => answer(q, { status: "timed-out", picks: ["A"] }, { outcome: "resolved", decision: "A holds.", basis: "It was recommended." })],
+  ["a cancellation read as a decision", (q: string) => answer(q, { status: "cancelled" }, { outcome: "resolved", decision: "A holds.", basis: "Silence." })],
+  ["a headless substitution read as a decision", (q: string) => answer(q, { status: "headless", picks: ["A"] }, { outcome: "resolved", decision: "A holds.", basis: "Recommended." })],
+  ["a reading that maps to a missing option", (q: string) => answer(q, { status: "answered", text: "The third." }, { outcome: "resolved", decision: "C holds.", basis: "Named.", maps_to: "C" })],
+  ["an empty answered response", (q: string) => answer(q, { status: "answered" })],
+])("%s is refused with no write", (_, item) => {
+  openFlow("s-1");
+  const { refs } = submit("s-1", round(question("a"))).json;
+  const before = tree();
+  const r = submit("s-1", item(refs.a));
+  expect(r.code).toBe(1);
+  expect(r.stderr).toMatch(/response|reading/);
+  expect(tree()).toEqual(before);
+});
+
+test.each([
+  ["a note that only asks a question", { status: "answered", text: "What does the second one cost us?" }, { outcome: "question", unresolved: "Which option, once the cost of the second is known." }, "question"],
+  ["a concern", { status: "answered", text: "I worry the first breaks admins.", note_on: "A" }, { outcome: "concern", unresolved: "Whether the first option is acceptable for admins." }, "concern"],
+  ["an ambiguous note", { status: "answered", text: "Either, really, or neither." }, { outcome: "ambiguous", unresolved: "Which option." }, "ambiguous"],
+  ["a timeout with an automatic selection", { status: "timed-out", picks: ["A"] }, undefined, "timed-out"],
+  ["a cancellation", { status: "cancelled" }, undefined, "cancelled"],
+  ["an empty response", { status: "empty" }, undefined, "empty"],
+  ["a headless substitution", { status: "headless", picks: ["A"] }, undefined, "headless"],
+])("%s is recorded as non-consent, keeps the raw response, and stays open to ask again", (_, response, reading, why) => {
+  const opened = openFlow("s-1");
+  const { refs } = submit("s-1", round(question("a"))).json;
+  expect(submit("s-1", answer(refs.a, response, reading)).stderr).toBe("");
+  const a = questionOf(show(opened.flow), refs.a);
+  expect(a.answer.state).toBe("unresolved");
+  expect(a.answer.why).toBe(why);
+  expect(a.answer.picks).toBeUndefined();
+  expect(a.answer.response).toEqual(response);
+  if (reading) expect(a.answer.reading).toEqual(reading);
+  expect(a.open).toBe(true);
+  const again = submit("s-1", round(question("a2", { again: refs.a }))).json;
+  const snap = show(opened.flow);
+  expect(questionOf(snap, again.refs.a2).q).toBe(a.q);
+  expect(questionOf(snap, refs.a).answer.response).toEqual(response);
+  expect(questionOf(snap, refs.a).open).toBe(false);
+});
+
+test("finishing a Stage needs a reason for each unresolved question and retires it from current work", () => {
+  const opened = openFlow("s-1");
+  const { refs } = submit("s-1", round(question("done"), question("left"), question("skipped"))).json;
+  submit("s-1", picked(refs.done, "A"), answer(refs.left, { status: "timed-out" }), decide(refs.done, refs.left, refs.skipped));
+  const before = tree();
+  for (const r of [submit("s-1", finish()), submit("s-1", finish([refs.left, "Out of scope now."])), submit("s-1", finish([refs.left, "x"], [refs.skipped, "y"], [refs.done, "z"]))]) {
+    expect(r.code).toBe(1);
+    expect(r.stderr).toMatch(new RegExp(`${refs.skipped}|${refs.done}`));
+  }
+  expect(tree()).toEqual(before);
+  expect(submit("s-1", finish([refs.left, "The ticket breakdown made it moot."], [refs.skipped, "Never asked; the spec settles it."])).stderr).toBe("");
+  const snap = show(opened.flow);
+  const q = (id: string) => questionOf(snap, id);
+  expect(q(refs.left).retired.reason).toBe("The ticket breakdown made it moot.");
+  expect(q(refs.left).answer.state).toBe("unresolved");
+  expect(q(refs.skipped).answer.state).toBe("open");
+  for (const id of [refs.left, refs.skipped, refs.done]) expect(q(id).open).toBe(false);
+  expect(q(refs.done).retired).toBeUndefined();
+  expect(q(refs.done).answer.state).toBe("picked");
+});
+
+test("a still-relevant retired question is asked again in the current Stage, linked to its predecessor", () => {
+  const opened = openFlow("s-1");
+  const { refs } = submit("s-1", round(question("first"), question("left"))).json;
+  submit("s-1", picked(refs.first, "A"), decide(refs.first, refs.left), finish([refs.left, "Deferred to the spec."]));
+  const later = run(["open", "--flow", opened.flow, "--skill", "to-spec", "--parent", opened.stage], { session: "s-2" }).json;
+  const r = submit("s-2", round(question("left-again", { again: refs.left })));
+  expect(r.stderr).toBe("");
+  expect(r.json.ask.questions[0].question).toStartWith("Q1. ");
+  const snap = show(opened.flow);
+  const fresh = questionOf(snap, r.json.refs["left-again"]);
+  expect(stageOfQuestion(snap, fresh.id).id).toBe(later.stage);
+  expect(fresh.again).toBe(refs.left);
+  expect(fresh.open).toBe(true);
+  const old = questionOf(snap, refs.left);
+  expect(old.asked_again_by).toEqual([fresh.id]);
+  expect(old.retired.reason).toBe("Deferred to the spec.");
+  expect(old.open).toBe(false);
+});
+
+test("a question of another in-progress Stage cannot be asked again across Stages", () => {
+  const opened = openFlow("s-1", "wayfinder");
+  const { refs } = submit("s-1", round(question("mine"))).json;
+  run(["open", "--flow", opened.flow, "--skill", "wayfinder", "--ticket", "272"], { session: "s-2" });
+  const before = tree();
+  const r = submit("s-2", round(question("stolen", { again: refs.mine })));
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain(refs.mine);
+  expect(tree()).toEqual(before);
+});
+
+test("reopening a decision keeps its earlier answer, and returning to finished work opens a child Stage without rewriting the old one", () => {
+  const opened = openFlow("s-1");
+  const { refs } = submit("s-1", round(question("limit"))).json;
+  submit("s-1", picked(refs.limit, "A"));
+  const before = tree();
+  const twice = submit("s-1", picked(refs.limit, "B"));
+  expect(twice.code).toBe(1);
+  expect(twice.stderr).toContain(refs.limit);
+  expect(tree()).toEqual(before);
+  const reopened = submit("s-1", round(question("limit-again", { again: refs.limit }))).json.refs["limit-again"];
+  submit("s-1", picked(reopened, "B"), decide(reopened), finish());
+  const snap = show(opened.flow);
+  expect(questionOf(snap, refs.limit).answer.picks).toEqual(["A. First"]);
+  expect(questionOf(snap, reopened).answer.picks).toEqual(["B. Second"]);
+  const oldStage = snap.stages[0];
+
+  const child = run(["open", "--flow", opened.flow, "--skill", "grill-me", "--parent", opened.stage], { session: "s-2" });
+  expect(child.code).toBe(0);
+  const back = submit("s-2", round(question("limit-third", { again: reopened })));
+  expect(back.stderr).toBe("");
+  const after = show(opened.flow);
+  const childStage = after.stages.find((st: any) => st.id === child.json.stage);
+  expect(childStage.parent).toBe(opened.stage);
+  expect(after.stages[0].children).toEqual([child.json.stage]);
+  const { children: _c, questions: oldQs, ...oldRest } = after.stages[0];
+  const { children: _b, questions: beforeQs, ...beforeRest } = oldStage;
+  expect(oldRest).toEqual(beforeRest);
+  expect(oldQs.map((q: any) => [q.id, q.answer])).toEqual(beforeQs.map((q: any) => [q.id, q.answer]));
+  expect(submit("s-2", { kind: "answer", question: refs.limit, response: { status: "answered", picks: ["B"] } }).code).toBe(1);
+  expect(run(["open", "--flow", opened.flow, "--skill", "grill-me", "--parent", "stage-99"], { session: "s-3" }).code).toBe(1);
+});
+
+const assumed = (ref: string) => ({ kind: "assumed", ref, decision: `Decision ${ref}`, pick: `Pick ${ref}`, why: "README.md:12 says so." });
+
+test("a close covers every recorded decision and every visible Assumed pick, with each decision's provenance", () => {
+  const opened = openFlow("s-1");
+  const first = submit("s-1", assumed("naming"), assumed("storage"), round(question("user"), question("note"), question("auto"))).json;
+  const { refs } = first;
+  const reopen = submit(
+    "s-1",
+    picked(refs.user, "B"),
+    answer(refs.note, { status: "answered", text: "Second, obviously." }, { outcome: "resolved", decision: "Second holds.", basis: "The user named it." }),
+    answer(refs.auto, { status: "headless", picks: ["A"] }),
+    round(question("storage-reopened", { reopens: refs.storage })),
+  ).json;
+  const storageQ = reopen.refs["storage-reopened"];
+  const missing = submit("s-1", decide(refs.user, refs.note, refs.auto));
+  expect(missing.code).toBe(1);
+  expect(missing.stderr).toContain(storageQ);
+  const closed = submit("s-1", picked(storageQ, "A"), decide(refs.user, refs.note, refs.auto, storageQ), finish([refs.auto, "Headless run; not the user's."]));
+  expect(closed.stderr).toBe("");
+  const st = show(opened.flow).stages[0];
+  const close = st.closes.at(-1);
+  const from = Object.fromEntries(close.decisions.map((d: any) => [d.question, d.answer]));
+  expect(from).toEqual({ [refs.user]: "picked", [refs.note]: "resolved", [refs.auto]: "unresolved", [storageQ]: "picked" });
+  expect(close.assumed).toEqual([refs.naming]);
+  expect(st.assumed.find((a: any) => a.id === refs.storage).reopened_by).toBe(storageQ);
+  expect(st.assumed.find((a: any) => a.id === refs.naming).reopened_by).toBeUndefined();
+});
+
+test("finishing a Stage confirms nothing: a headless or timed-out answer is still not the user's after the close", () => {
+  const opened = openFlow("s-1");
+  const { refs } = submit("s-1", round(question("h"), question("t"))).json;
+  const r = submit("s-1", answer(refs.h, { status: "headless", picks: ["A"] }), answer(refs.t, { status: "timed-out", picks: ["A"] }), decide(refs.h, refs.t), finish([refs.h, "Headless run."], [refs.t, "No reply."]));
+  expect(r.stderr).toBe("");
+  expect(JSON.stringify(r.json)).not.toMatch(/confirm|authori[sz]/i);
+  const snap = show(opened.flow);
+  for (const id of [refs.h, refs.t]) {
+    const q = questionOf(snap, id);
+    expect(q.answer.state).toBe("unresolved");
+    expect(q.answer.picks).toBeUndefined();
+  }
+  expect(snap.stages[0].closes[0].decisions.map((d: any) => d.answer)).toEqual(["unresolved", "unresolved"]);
 });
 
 test.each([
@@ -258,7 +435,7 @@ test.each([
   ["a missing Result entry", contribution(cards("r", card("e")), round(question("a", { results: ["r/missing"] }))), "r/missing"],
   ["a ref used twice", contribution(topic("t"), topic("t")), "item 2"],
   ["questions that ask each other again", contribution(round(question("a", { again: "b" }), question("b", { again: "a" }))), "cycle"],
-  ["an answer to a missing question", contribution({ kind: "answer", question: "question-99", picks: ["A"] }), "question-99"],
+  ["an answer to a missing question", contribution({ kind: "answer", question: "question-99", response: { status: "answered", picks: ["A"] } }), "question-99"],
   ["a second Background", contribution(background(), background()), "item 2"],
   ["a backwards Stage transition", contribution({ kind: "stage", state: "not-started" }), "item 1"],
   ["a table row with the wrong cell count", contribution({ kind: "result", shape: "table", title: "T", columns: ["a", "b"], rows: [{ cells: ["1"] }] }), "row 1"],
@@ -286,14 +463,14 @@ test("a close must decide every latest ask of its Stage", () => {
 test("a finished Stage takes no more content and cannot reopen, and an answer cannot reach into another Stage", () => {
   const opened = openFlow("s-1");
   const { refs } = submit("s-1", round(question("a"))).json;
-  expect(submit("s-1", { kind: "answer", question: refs.a, picks: ["A"] }, { kind: "close", decisions: [{ question: refs.a, text: "A." }] }, { kind: "stage", state: "finished" }).code).toBe(0);
+  expect(submit("s-1", picked(refs.a, "A"), decide(refs.a), finish()).code).toBe(0);
   const later = run(["open", "--flow", opened.flow, "--skill", "to-spec"], { session: "s-2" }).json;
   const before = tree();
   for (const r of [
     submit("s-1", round(question("late"))),
     submit("s-1", { kind: "stage", state: "in-progress" }),
     run(["bind", "--flow", opened.flow, "--stage", opened.stage], { session: "s-3" }),
-    submit("s-2", { kind: "answer", question: refs.a, picks: ["A"] }),
+    submit("s-2", picked(refs.a, "A")),
   ]) {
     expect(r.code).toBe(1);
     expect(r.stderr).toMatch(new RegExp(`${opened.stage}|${refs.a}`));

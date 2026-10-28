@@ -41,10 +41,11 @@
       overflow-wrap: break-word;
       font-synthesis: none;
     }
-    /* Yellow is your answer everywhere: the picked label, the answered dot, and the answer line. */
-    [data-state="answered"] { --state: var(--yellow); }
-    [data-state="unanswered"] { --state: var(--red); }
-    [data-state="open"] { --state: var(--overlay0); }
+    /* Yellow is your pick everywhere: the picked label, the picked dot, and the answer line. Teal is a decision read from your words. */
+    [data-state="picked"] { --state: var(--yellow); }
+    [data-state="resolved"] { --state: var(--teal); }
+    [data-state="unresolved"] { --state: var(--red); }
+    [data-state="open"], [data-state="retired"] { --state: var(--overlay0); }
     [data-state="finished"] { --state: var(--green); }
     [data-state="in-progress"] { --state: var(--peach); }
     [data-state="not-started"] { --state: var(--overlay0); }
@@ -72,6 +73,7 @@
     main { --content: 100rem; --gutter: 1.25rem; display: grid; grid-template-columns: [full-start] minmax(var(--gutter), 1fr) [content-start] min(calc(100% - var(--gutter) * 2), var(--content)) [content-end] minmax(var(--gutter), 1fr) [full-end]; gap: 1.5rem 0; padding-block: 1rem; }
     main > * { grid-column: content; }
     .stage .pick { color: var(--yellow); }
+    .stage .read { color: var(--teal); }
     .stage .open { color: var(--overlay0); }
     .sr-only { position: absolute; inline-size: 1px; block-size: 1px; overflow: clip; clip-path: inset(50%); white-space: nowrap; }
     .page-head { display: grid; gap: 0.25rem; }
@@ -81,6 +83,9 @@
 
     .tab, .round { display: grid; gap: 1.5rem; }
     .empty { color: var(--subtext0); }
+    .lineage { display: flex; flex-wrap: wrap; gap: 0.25rem 1.5rem; padding-inline-start: 0; list-style: none; }
+    .lineage a { font-weight: 600; text-decoration: none; }
+    .lineage .label { margin-inline-end: 0.5rem; font-weight: 600; }
 
     .stages { display: grid; gap: 1rem; padding-inline-start: 0; list-style: none; }
     .stage { display: grid; gap: 0.375rem; padding-block-end: 0.75rem; border-block-end: 1px solid var(--line); }

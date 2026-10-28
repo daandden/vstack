@@ -9,6 +9,8 @@ The flow-page script takes typed contributions for one bound Stage, assigns ids,
 - `flow-submit`: a contribution returns assigned refs, the numbered label-only `ask` payload, the revision, and the page path, with no content echoed.
 - `flow-refuse`: an unsupported version, unknown kind or field, missing link, `again` cycle, or invalid transition is refused, naming the item, and changes no file.
 - `flow-links`: questions link to Result entries and Topic notes, and the page shows the backlinks. A re-ask links to its earlier ask, and a decided question links to its summary.
+- `flow-answers`: an answer keeps the raw `ask` response apart from the agent's reading. Only an explicit pick or a resolved reading counts as the user's answer, and the page shows a resolved reading's basis with no option marked picked. Question-notes, concerns, ambiguous notes, timeouts, cancellations, empty and headless responses stay open as non-consent.
+- `flow-lifecycle`: finishing a Stage retires each unresolved question with a reason. A later Stage opened with `--parent` asks a retired question again with `again`, and the two questions link to each other. A second answer to one question is refused. The close lists every decision with its provenance and every Assumed pick no question reopened.
 - `flow-view`: tabs carry skill-derived labels with ticket ids, a card's Evidence opens with one click, and a 360px pane has no horizontal overflow.
 
 ## How to get to it (user POV)
@@ -26,11 +28,14 @@ Preconditions:
 Steps:
 
 - `bun "$SCRIPT" open --skill grill-with-docs --title "Verify flow page" --home "$H" --session verify-1`. The receipt has `flow`, `stage`, `revision`, `page`, and `bound: true`.
-- Pipe a contribution with a `background`, a `topic` with `ref`, and a `round` of two questions to `submit -`. The receipt's `ask.questions` read `Q1. ...` and `Q2. ...`, with options `A. ...` and `B. ...`. Submit answers (one `picks`, one `unanswered`), a second round whose question has `again` set to the unanswered question's id, an `other` answer, a `close`, and `{"kind":"stage","state":"finished"}`.
+- Pipe a contribution with a `background`, a `topic` with `ref`, and a `round` of two questions to `submit -`. The receipt's `ask.questions` read `Q1. ...` and `Q2. ...`, with options `A. ...` and `B. ...`. Submit answers: one `{"status":"answered","picks":["A"]}` and one `{"status":"timed-out","picks":["A"]}`. Then submit a second round whose question has `again` set to the timed-out question's id, its answer `{"status":"answered","text":"..."}` with reading `{"outcome":"resolved","decision":"...","basis":"...","maps_to":"B"}`, a `close`, and `{"kind":"stage","state":"finished"}`.
+- For `flow-lifecycle`, start a second Flow, add an `assumed` item and a round of two questions, answer one with a pick, close, and finish with `retire` for the other. `open --flow <id> --skill grill-me --parent <first stage>` and submit a round with `again` naming the retired question.
 - `open --flow <id> --skill code-review`, then submit `cards`, `ledger`, and `table` Results with refs and a round whose question lists `results: ["<result ref>/<entry ref>"]`. Open two `wayfinder` Stages with `--ticket 270` and `--ticket 271`.
 - Submit with `--session verify-2` and no target: exit 1, and a hash of every file under `$H` is unchanged. Submit an item with an `html` field, then a round whose questions name each other in `again`: each exits 1 naming the item, and the hashes are unchanged.
 - Open `file://` plus the page path with a named tab, `app: { tern: false, relay: false }`, and a 1280 by 900 viewport.
-  - Overview lists every Stage with its state. Grill's Q1 shows the picked label, Q2 shows the Other text, and Code review's Q1 shows Open. Tabs read `Grill with docs`, `Code review`, `Wayfinder #270`, `Wayfinder #271`, and `Topics`.
+  - Overview lists every Stage with its state. Grill's Q1 shows the picked label, Q2 shows the reading's decision marked as read from the user's words, and Code review's Q1 shows Open. Tabs read `Grill with docs`, `Code review`, `Wayfinder #270`, `Wayfinder #271`, and `Topics`.
+  - In Grill, the first Q2 ask shows the timeout as not the user's answer and no option picked. The second shows the user's words, the reading, and its basis apart from each other, with option B unmarked. The summary marks each decision's provenance.
+  - In the `flow-lifecycle` Flow, the finished Stage shows the retired question with its reason, the Assumed pick, and a link to the child Stage. The child Stage shows its parent link, and its question links back to the retired one. `n` skips the retired question.
   - In Code review, the card's Evidence is closed. One click on its summary opens it.
   - Click the question's link to the card entry, the card's and the table row's links back to the question, and the question's Topic note link and the Topic note's link back. Each opens the target's tab and puts the target below the bar.
   - Press `n` from Topics: it opens Code review's Q1, not the superseded Grill ask.

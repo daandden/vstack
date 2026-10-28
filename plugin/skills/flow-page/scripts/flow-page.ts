@@ -1,7 +1,7 @@
 // The Flow page authoring interface. A caller opens or joins a Stage once, then submits typed contributions to it;
 // the script assigns ids, numbers, timestamps, labels, and links, and publishes the whole static page.
 //
-//   bun flow-page.ts open --skill <name> (--title <text> [--slug <slug>] | --flow <id>) [--ticket <id>]
+//   bun flow-page.ts open --skill <name> (--title <text> [--slug <slug>] | --flow <id> [--parent <stage>]) [--ticket <id>]
 //   bun flow-page.ts bind --flow <id> --stage <id>
 //   bun flow-page.ts submit [--flow <id> --stage <id>] [<contribution.json> | -]
 //   bun flow-page.ts show [--flow <id>]
@@ -24,7 +24,7 @@ const COMMANDS = ["open", "bind", "submit", "show", "render"];
 
 function usage(message: string): never {
   process.stderr.write(`flow-page.ts: ${message}
-usage: bun flow-page.ts open --skill <name> (--title <text> [--slug <slug>] | --flow <id>) [--ticket <id>]
+usage: bun flow-page.ts open --skill <name> (--title <text> [--slug <slug>] | --flow <id> [--parent <stage>]) [--ticket <id>]
        bun flow-page.ts bind --flow <id> --stage <id>
        bun flow-page.ts submit [--flow <id> --stage <id>] [<contribution.json> | -]
        bun flow-page.ts show [--flow <id>]
@@ -42,7 +42,7 @@ try {
   parsed = parseArgs({
     args: Bun.argv.slice(2),
     allowPositionals: true,
-    options: Object.fromEntries(["skill", "title", "slug", "flow", "stage", "ticket", "session", "agent", "home"].map((k) => [k, { type: "string" as const }])),
+    options: Object.fromEntries(["skill", "title", "slug", "flow", "stage", "parent", "ticket", "session", "agent", "home"].map((k) => [k, { type: "string" as const }])),
   });
 } catch (e) {
   usage((e as Error).message);
@@ -50,7 +50,7 @@ try {
 const { values: opt, positionals } = parsed;
 const [command, ...rest] = positionals;
 if (!COMMANDS.includes(command ?? "")) usage(`give a command: ${COMMANDS.join(", ")}`);
-const allowed: Record<string, string[]> = { open: ["skill", "title", "slug", "flow", "ticket"], bind: ["flow", "stage"], submit: ["flow", "stage"], show: ["flow"], render: ["flow"] };
+const allowed: Record<string, string[]> = { open: ["skill", "title", "slug", "flow", "parent", "ticket"], bind: ["flow", "stage"], submit: ["flow", "stage"], show: ["flow"], render: ["flow"] };
 for (const k of Object.keys(opt)) if (!["session", "agent", "home", ...allowed[command]].includes(k)) usage(`${command} takes no --${k}`);
 if (rest.length > (command === "submit" ? 1 : 0)) usage(`${command} takes no ${command === "submit" ? "more than one contribution file" : "positional arguments"}`);
 
@@ -100,12 +100,13 @@ async function main(): Promise<object> {
         const folder = folderOf(opt.flow as string);
         return withLock(folder, () => {
           const s = load(folder);
-          const stage = openStage(s, opt.skill as string, opt.ticket as string | undefined, time);
+          const stage = openStage(s, opt.skill as string, opt.ticket as string | undefined, time, opt.parent as string | undefined);
           const page = publish(folder, s);
           return { flow: s.flow.id, stage: stage.id, revision: s.revision, page, bound: bind(s.flow.id, stage.id) };
         });
       }
       if (opt.title === undefined) usage("open needs --title for a new Flow, or --flow to add a Stage to an existing one");
+      if (opt.parent !== undefined) usage("--parent names a Stage of an existing Flow; give it with --flow");
       const slug = (opt.slug as string | undefined) ?? slugOf(opt.title as string);
       if (!SLUG.test(slug)) refuse(`--slug must be lowercase words joined by hyphens, got ${JSON.stringify(slug)}`);
       // Check the input before a folder exists, so a refusal leaves nothing behind.

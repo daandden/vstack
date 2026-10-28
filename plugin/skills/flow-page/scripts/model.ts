@@ -5,18 +5,27 @@ export const SCHEMA = 1;
 export const CONTRIBUTION_VERSION = 1;
 
 export type StageState = "in-progress" | "finished";
-export type Stage = { id: string; skill: string; ticket?: string; state: StageState; order: number; opened: string; finished?: string };
+export type Stage = { id: string; skill: string; ticket?: string; parent?: string; state: StageState; order: number; opened: string; finished?: string };
 export type Round = { id: string; stage: string; n: number; seq: number; time: string };
 export type Option = { label: string; does: string; gains: string[]; costs: string[]; recommended?: string };
 export type Fact = { text: string; source: string };
 export type Term = { term: string; text: string };
 export type Question = {
   id: string; stage: string; round: string; q: number; title: string; description: string; options: Option[];
-  again?: string; today?: Fact[]; terms?: Term[]; topics?: string[]; entries?: string[]; example?: string;
+  again?: string; reopens?: string; today?: Fact[]; terms?: Term[]; topics?: string[]; entries?: string[]; example?: string;
 };
-export type Answer = { question: string; time: string } & ({ picks: string[]; note?: string } | { other: string } | { unanswered: string });
-export type Decision = { question: string; text: string };
-export type Close = { id: string; stage: string; seq: number; time: string; decisions: Decision[]; extra?: string[] };
+/** What `ask` returned, as it returned it. `picks` of a timed-out, cancelled, or headless response are not the user's. */
+export type ResponseStatus = "answered" | "empty" | "cancelled" | "timed-out" | "headless";
+export type AskResponse = { status: ResponseStatus; picks?: string[]; text?: string; note_on?: string };
+/** The agent's reading of words with no pick: they settle the decision, or they leave a part of it unresolved. */
+export type NonConsent = "question" | "concern" | "ambiguous";
+export type Reading = { outcome: "resolved"; decision: string; basis: string; maps_to?: string } | { outcome: NonConsent; unresolved: string };
+export type Answer = { question: string; time: string; response: AskResponse; reading?: Reading };
+export type AnswerState = "open" | "picked" | "resolved" | "unresolved";
+export type Decision = { question: string; text: string; answer: AnswerState };
+export type Close = { id: string; stage: string; seq: number; time: string; decisions: Decision[]; assumed: string[]; extra?: string[] };
+export type Assumed = { id: string; stage: string; decision: string; pick: string; why: string };
+export type Retirement = { question: string; reason: string; time: string };
 export type Section = { heading: string; body: string };
 export type Background = { id: string; stage: string; title: string; summary: string; sections: Section[]; sources: string[] };
 export type Topic = { id: string; title: string; summary: string; body: string; sources: string[] };
@@ -39,6 +48,8 @@ export type State = {
   backgrounds: Background[];
   topics: Topic[];
   results: Result[];
+  assumed: Assumed[];
+  retirements: Retirement[];
   sources: Source[];
 };
 
@@ -49,13 +60,18 @@ const refuse = (where: string, message: string): never => {
 
 export const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const REF = /^[a-z0-9][a-z0-9-]*$/;
-const CODE_ID = /^(stage|round|question|close|background|topic|result|source)-\d+$/;
+const CODE_ID = /^(stage|round|question|close|background|topic|result|source|assumed)-\d+$/;
 const TICKET = /^#?[A-Za-z0-9][A-Za-z0-9._/-]*$/;
 const SHAPES: Shape[] = ["cards", "ledger", "table"];
 const CLAIM_STATES = ["confirmed", "cleared", "unproven"];
 const listed = (xs: string[]) => (xs.length === 1 ? xs[0] : `${xs.slice(0, -1).join(", ")}, or ${xs.at(-1)}`);
+const all = (xs: string[]) => (xs.length === 1 ? xs[0] : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`);
 export const letter = (i: number) => String.fromCharCode(65 + i);
 const letterIndex = (s: string) => (/^[A-Z]$/.test(s) ? s.charCodeAt(0) - 65 : -1);
+/** The full label, such as "B. Second", of the option a letter names. */
+export const optionLabel = (q: Question, l: string) => q.options[letterIndex(l)].label;
+const STATUSES: ResponseStatus[] = ["answered", "empty", "cancelled", "timed-out", "headless"];
+const NON_CONSENT: NonConsent[] = ["question", "concern", "ambiguous"];
 
 export function nowIso(d = new Date()): string {
   const off = -d.getTimezoneOffset();
@@ -78,15 +94,17 @@ export function newFlow(id: string, slug: string, title: string, time: string): 
   if (title.trim() === "") refuse("open", "--title must be non-empty");
   return {
     schema: SCHEMA, flow: { id, slug, title, created: time }, revision: 0, next: {}, seq: 0,
-    stages: [], rounds: [], questions: [], answers: [], closes: [], backgrounds: [], topics: [], results: [], sources: [],
+    stages: [], rounds: [], questions: [], answers: [], closes: [], backgrounds: [], topics: [], results: [], assumed: [], retirements: [], sources: [],
   };
 }
 
-export function openStage(s: State, skill: string, ticket: string | undefined, time: string): Stage {
+export function openStage(s: State, skill: string, ticket: string | undefined, time: string, parent?: string): Stage {
   if (!SLUG.test(skill)) refuse("open", `--skill must be a skill name of lowercase letters, digits, and hyphens, got ${JSON.stringify(skill)}`);
   if (ticket !== undefined && !TICKET.test(ticket)) refuse("open", `--ticket must be a ticket id such as 269 or #269, got ${JSON.stringify(ticket)}`);
-  const stage: Stage = { id: newId(s, "stage"), skill, ticket, state: "in-progress", order: s.stages.length + 1, opened: time };
+  if (parent !== undefined) stageOf(s, parent, "open: --parent");
+  const stage: Stage = { id: newId(s, "stage"), skill, ticket, parent, state: "in-progress", order: s.stages.length + 1, opened: time };
   if (ticket === undefined) delete stage.ticket;
+  if (parent === undefined) delete stage.parent;
   s.stages.push(stage);
   s.revision++;
   return stage;
@@ -139,7 +157,7 @@ function ref(o: Obj, where: string): string | undefined {
 
 export type Receipt = { refs: Record<string, string>; ask?: { questions: { id: string; question: string; options: { label: string }[]; recommended?: number }[] } };
 
-const KINDS = ["background", "topic", "result", "round", "answer", "close", "stage"];
+const KINDS = ["background", "topic", "result", "assumed", "round", "answer", "close", "stage"];
 
 /** Applies `input` to Stage `stageId` of `s` in place, or throws a Refusal and leaves the caller to discard `s`. */
 export function contribute(s: State, stageId: string, input: unknown, time: string): Receipt {
@@ -176,6 +194,7 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
     const o = raw as Obj;
     const ids: { id?: string; entries?: string[]; questions?: string[] } = {};
     if (kind === "topic") claim(ref(o, where), (ids.id = newId(s, "topic")), "topic", where);
+    if (kind === "assumed") claim(ref(o, where), (ids.id = newId(s, "assumed")), "assumed pick", where);
     if (kind === "result") {
       claim(ref(o, where), (ids.id = newId(s, "result")), "result", where);
       const rows = Array.isArray(o.entries) ? o.entries : Array.isArray(o.rows) ? o.rows : [];
@@ -220,6 +239,10 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
       case "result":
         s.results.push(parseResult(o, where, stage.id, ids.id!, ids.entries!));
         break;
+      case "assumed":
+        fields(o, where, ["kind", "decision", "pick", "why"], ["ref"]);
+        s.assumed.push({ id: ids.id!, stage: stage.id, decision: text(o, "decision", where), pick: text(o, "pick", where), why: text(o, "why", where) });
+        break;
       case "round": {
         fields(o, where, ["kind", "questions"]);
         if (++rounds > 1) refuse(where, "a contribution asks at most one round, because one round is one ask");
@@ -239,27 +262,14 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
         break;
       }
       case "answer": {
-        const forms = ["picks", "other", "unanswered"].filter((k) => o[k] !== undefined);
-        fields(o, where, ["kind", "question"], ["picks", "note", "other", "unanswered"]);
-        if (forms.length !== 1) refuse(where, "needs exactly one of picks, other, or unanswered");
+        fields(o, where, ["kind", "question", "response"], ["reading"]);
         const qid = resolve(o.question, "question", `${where}: question`);
         const q = s.questions.find((x) => x.id === qid) ?? refuse(where, `question ${qid} does not exist`);
         if (q.stage !== stage.id) refuse(where, `question ${qid} belongs to Stage ${q.stage}, not the bound Stage ${stage.id}`);
-        let answer: Answer;
-        if (o.picks !== undefined) {
-          const picks = texts(o, "picks", where);
-          for (const p of picks) if (letterIndex(p) < 0 || letterIndex(p) >= q.options.length) refuse(where, `question ${qid} has no option ${p}; its options are ${listed(q.options.map((_, i) => letter(i)))}`);
-          answer = { question: qid, time, picks, ...(o.note !== undefined ? { note: text(o, "note", where) } : {}) };
-        } else {
-          if (o.note !== undefined) refuse(where, "note goes with picks; put the text of an Other answer in other");
-          if (o.other !== undefined) answer = { question: qid, time, other: text(o, "other", where) };
-          else {
-            if (typeof o.unanswered !== "string") refuse(where, "unanswered must be a string, empty when there is no reason");
-            answer = { question: qid, time, unanswered: o.unanswered as string };
-          }
-        }
-        s.answers = s.answers.filter((a) => a.question !== qid);
-        s.answers.push(answer);
+        if (s.answers.some((a) => a.question === qid)) refuse(where, `question ${qid} already has an answer; to reopen the decision, ask it again in a later round with again: ${qid}, which keeps this answer`);
+        const response = parseResponse(o.response, `${where}: response`, q);
+        const reading = parseReading(o.reading, `${where}: reading`, q, response);
+        s.answers.push({ question: qid, time, response, ...(reading ? { reading } : {}) });
         break;
       }
       case "close": {
@@ -268,7 +278,7 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
         const extra = optTexts(o, "extra", where);
         const latest = latestAsks(s, stage.id);
         const named = new Map<number, string>();
-        const decisions = (o.decisions as unknown[]).map((d, j) => {
+        const decisions = (o.decisions as unknown[]).map((d, j): Decision => {
           const dw = `${where}: decision ${j + 1}`;
           const dobj = fields(d, dw, ["question", "text"]);
           const qid = resolve(dobj.question, "question", dw);
@@ -277,16 +287,32 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
           if (latest.get(q.q)?.id !== q.id) refuse(dw, `${qid} is not the latest ask of Q${q.q}; decide ${latest.get(q.q)!.id}`);
           if (named.has(q.q)) refuse(dw, `Q${q.q} already has a decision`);
           named.set(q.q, qid);
-          return { question: qid, text: text(dobj, "text", dw) };
+          return { question: qid, text: text(dobj, "text", dw), answer: answerState(s, qid) };
         });
-        for (const [n, q] of latest) if (!named.has(n)) refuse(where, `Q${n} (${q.id}) has no decision`);
-        if (decisions.length === 0 && extra === undefined) refuse(where, "a close with no decisions needs extra bullets, such as its Assumed picks");
-        s.closes.push({ id: newId(s, "close"), stage: stage.id, seq: ++s.seq, time, decisions, ...(extra ? { extra } : {}) });
+        const missing = [...latest].filter(([n]) => !named.has(n)).map(([n, q]) => `Q${n} (${q.id})`);
+        if (missing.length) refuse(where, `a close decides every latest ask of its Stage; ${all(missing)} ${missing.length === 1 ? "has" : "have"} no decision`);
+        // The close lists every Assumed pick still standing; code takes them from their records, so none is left out.
+        const assumed = visibleAssumed(s, stage.id).map((a) => a.id);
+        if (decisions.length === 0 && assumed.length === 0 && extra === undefined) refuse(where, "a close with no decisions and no Assumed picks needs extra bullets");
+        s.closes.push({ id: newId(s, "close"), stage: stage.id, seq: ++s.seq, time, decisions, assumed, ...(extra ? { extra } : {}) });
         break;
       }
       case "stage": {
-        fields(o, where, ["kind", "state"]);
+        fields(o, where, ["kind", "state"], ["retire"]);
         if (o.state !== "finished") refuse(where, `a Stage moves only from in-progress to finished; ${JSON.stringify(o.state)} is not a transition from in-progress`);
+        const unresolved = [...latestAsks(s, stage.id).values()].filter((q) => !settled(answerState(s, q.id)));
+        const given = o.retire === undefined ? [] : list(o, "retire", where).map((x, j) => {
+          const rw = `${where}: retire ${j + 1}`;
+          const r = fields(x, rw, ["question", "reason"]);
+          return { question: resolve(r.question, "question", rw), reason: text(r, "reason", rw), rw };
+        });
+        given.forEach((g, j) => {
+          if (!unresolved.some((q) => q.id === g.question)) refuse(g.rw, `${g.question} is not an unresolved latest ask of Stage ${stage.id}; retire lists only the questions the Stage leaves unresolved`);
+          if (given.findIndex((x) => x.question === g.question) !== j) refuse(g.rw, `${g.question} is already retired in this item`);
+        });
+        const missing = unresolved.filter((q) => !given.some((g) => g.question === q.id)).map((q) => `Q${q.q} (${q.id})`);
+        if (missing.length) refuse(where, `finishing Stage ${stage.id} retires its unresolved questions; give retire a reason for ${all(missing)}`);
+        for (const g of given) s.retirements.push({ question: g.question, reason: g.reason, time });
         stage.state = "finished";
         stage.finished = time;
         break;
@@ -332,8 +358,64 @@ function parseResult(o: Obj, where: string, stage: string, id: string, entryIds:
   return { id, stage, shape, title: text(o, "title", where), ...(o.summary !== undefined ? { summary: text(o, "summary", where) } : {}), ...(columns ? { columns } : {}), entries };
 }
 
+function optionLetter(q: Question, p: string, where: string): string {
+  if (letterIndex(p) < 0 || letterIndex(p) >= q.options.length) refuse(where, `question ${q.id} has no option ${JSON.stringify(p)}; its options are ${listed(q.options.map((_, i) => letter(i)))}`);
+  return p;
+}
+
+/** The ask response as `ask` returned it, checked but never reworded. */
+function parseResponse(raw: unknown, where: string, q: Question): AskResponse {
+  const o = fields(raw, where, ["status"], ["picks", "text", "note_on"]);
+  if (!STATUSES.includes(o.status as ResponseStatus)) refuse(where, `status must be ${listed(STATUSES)}, got ${JSON.stringify(o.status)}`);
+  const status = o.status as ResponseStatus;
+  const picks = optTexts(o, "picks", where)?.map((p) => optionLetter(q, p, `${where}: picks`));
+  const words = optText(o, "text", where);
+  const noteOn = o.note_on === undefined ? undefined : optionLetter(q, text(o, "note_on", where), `${where}: note_on`);
+  if (noteOn !== undefined && words === undefined) refuse(where, "note_on names the option a note was written on, so it needs the note as text");
+  if (noteOn !== undefined && picks?.includes(noteOn)) refuse(where, `note_on names an option the user did not pick, but ${noteOn} is in picks`);
+  if (status === "answered" && picks === undefined && words === undefined) refuse(where, "an answered response has picks or text; a response with neither is empty");
+  if (status === "empty" && (picks !== undefined || words !== undefined)) refuse(where, "an empty response has no picks and no text");
+  if (status === "headless" && (picks === undefined || words !== undefined)) refuse(where, "a headless response holds the substituted picks and no text, because no user answered");
+  return { status, ...(picks ? { picks } : {}), ...(words !== undefined ? { text: words } : {}), ...(noteOn !== undefined ? { note_on: noteOn } : {}) };
+}
+
+/** Words with no pick need the agent's reading; a pick, and anything that is not the user's response, take none. */
+function parseReading(raw: unknown, where: string, q: Question, response: AskResponse): Reading | undefined {
+  const needed = response.status === "answered" && response.picks === undefined;
+  if (raw === undefined) {
+    if (needed) refuse(where, `words with no pick need a reading: outcome resolved with the decision and its basis when they settle it, else outcome ${listed(NON_CONSENT)} with the unresolved part`);
+    return undefined;
+  }
+  if (!needed) refuse(where, response.status === "answered" ? "an explicit pick is the user's answer, so it takes no reading" : `a ${response.status} response is not the user's answer, so no reading can settle it`);
+  if (!isObj(raw)) refuse(where, "must be an object with outcome");
+  const o = raw as Obj;
+  if (o.outcome === "resolved") {
+    fields(o, where, ["outcome", "decision", "basis"], ["maps_to"]);
+    const mapsTo = o.maps_to === undefined ? undefined : optionLetter(q, text(o, "maps_to", where), `${where}: maps_to`);
+    return { outcome: "resolved", decision: text(o, "decision", where), basis: text(o, "basis", where), ...(mapsTo !== undefined ? { maps_to: mapsTo } : {}) };
+  }
+  if (!NON_CONSENT.includes(o.outcome as NonConsent)) refuse(where, `outcome must be resolved, ${listed(NON_CONSENT)}, got ${JSON.stringify(o.outcome)}`);
+  fields(o, where, ["outcome", "unresolved"]);
+  return { outcome: o.outcome as NonConsent, unresolved: text(o, "unresolved", where) };
+}
+
+/** Only an explicit pick or words read as settling the decision are the user's answer; everything else is not consent. */
+export function answerState(s: State, question: string): AnswerState {
+  const a = s.answers.find((x) => x.question === question);
+  if (!a) return "open";
+  if (a.response.status !== "answered") return "unresolved";
+  if (a.response.picks) return "picked";
+  return a.reading?.outcome === "resolved" ? "resolved" : "unresolved";
+}
+const settled = (state: AnswerState) => state === "picked" || state === "resolved";
+
+/** The Assumed picks of a Stage that no question has reopened. */
+function visibleAssumed(s: State, stage: string): Assumed[] {
+  return s.assumed.filter((a) => a.stage === stage && !s.questions.some((q) => q.reopens === a.id));
+}
+
 function parseQuestion(raw: unknown, where: string, id: string, stage: string, round: string, resolve: (v: unknown, kind: string, where: string) => string): Question {
-  const o = fields(raw, where, ["title", "description", "options"], ["ref", "again", "today", "terms", "topics", "results", "example"]);
+  const o = fields(raw, where, ["title", "description", "options"], ["ref", "again", "reopens", "today", "terms", "topics", "results", "example"]);
   const options = list(o, "options", where).map((op, i) => {
     const ow = `${where}: option ${i + 1}`;
     const oo = fields(op, ow, ["label", "does", "gains", "costs"], ["recommended"]);
@@ -351,6 +433,7 @@ function parseQuestion(raw: unknown, where: string, id: string, stage: string, r
     });
   const q: Question = { id, stage, round, q: 0, title: text(o, "title", where), description: text(o, "description", where), options };
   if (o.again !== undefined) q.again = resolve(o.again, "question", `${where}: again`);
+  if (o.reopens !== undefined) q.reopens = resolve(o.reopens, "assumed pick", `${where}: reopens`);
   const today = pairs("today", "text", "source") as Fact[] | undefined;
   if (today) q.today = today;
   const terms = pairs("terms", "term", "text") as Term[] | undefined;
@@ -362,7 +445,10 @@ function parseQuestion(raw: unknown, where: string, id: string, stage: string, r
   return q;
 }
 
-/** Q numbers count up within a Stage. A question asked again takes the Q number of the earlier question it names. */
+/**
+ * Q numbers count up within a Stage. A question asked again in its own Stage takes the Q number of the earlier question.
+ * A question of a finished Stage that is still relevant is asked again in the current Stage under a new Q number.
+ */
 function assignQNumbers(s: State, qs: Question[], stage: string, where: string): void {
   const fresh = new Map(qs.map((q) => [q.id, q]));
   for (const q of qs) {
@@ -381,8 +467,15 @@ function assignQNumbers(s: State, qs: Question[], stage: string, where: string):
       continue;
     }
     const earlier = s.questions.find((x) => x.id === q.again) ?? refuse(where, `${q.id} asks ${q.again} again, which does not exist`);
-    if (earlier.stage !== stage) refuse(where, `${q.id} asks ${earlier.id} again, which belongs to Stage ${earlier.stage}; again names a question of the same Stage`);
-    q.q = earlier.q;
+    if (earlier.stage === stage) {
+      q.q = earlier.q;
+      continue;
+    }
+    const from = stageOf(s, earlier.stage, where);
+    if (from.state !== "finished") refuse(where, `${q.id} asks ${earlier.id} again, but its Stage ${from.id} is still in progress; across Stages, again names a question of a finished Stage`);
+    const latest = latestAsks(s, from.id).get(earlier.q)!;
+    if (latest.id !== earlier.id) refuse(where, `${q.id} asks ${earlier.id} again, but ${latest.id} is the latest ask of Q${earlier.q} in Stage ${from.id}; ask that one again`);
+    q.q = ++max;
   }
 }
 
@@ -400,19 +493,28 @@ function checkLinks(s: State): void {
   for (const q of s.questions) {
     for (const t of q.topics ?? []) if (!topics.has(t)) refuse(`question ${q.id}`, `topic ${t} does not exist`);
     for (const e of q.entries ?? []) if (!entries.has(e)) refuse(`question ${q.id}`, `result entry ${e} does not exist; name it <result ref or id>/<entry ref or id>`);
+    if (q.reopens === undefined) continue;
+    const a = s.assumed.find((x) => x.id === q.reopens) ?? refuse(`question ${q.id}`, `Assumed pick ${q.reopens} does not exist`);
+    if (a.stage !== q.stage && stageOf(s, a.stage, `question ${q.id}`).state !== "finished") refuse(`question ${q.id}`, `Assumed pick ${a.id} belongs to Stage ${a.stage}, which is still in progress; reopen it from that Stage`);
+    const other = s.questions.find((x) => x.reopens === a.id && x.id !== q.id);
+    if (other) refuse(`question ${q.id}`, `Assumed pick ${a.id} is already reopened by ${other.id}; ask that question again instead`);
   }
 }
 
 // ---------------------------------------------------------------------------------------------------------------
 // The derived view: labels, open questions, answers, and every backlink, computed from the single stored records.
 
-export type AnswerView = { state: "open" | "answered" | "unanswered"; picks?: string[]; other?: string; note?: string; reason?: string };
-export type QuestionView = Question & { answer: AnswerView; open: boolean; latest: boolean; decided_in?: string; asked_again_by: string[] };
+/** `picks` holds option labels only for an explicit pick; `why` says why an unresolved answer is not consent. */
+export type AnswerView = { state: AnswerState; why?: ResponseStatus | NonConsent; response?: AskResponse; reading?: Reading; picks?: string[] };
+export type QuestionView = Question & { answer: AnswerView; open: boolean; latest: boolean; retired?: { reason: string; time: string }; decided_in?: string; asked_again_by: string[] };
 export type ResultView = Omit<Result, "entries"> & { entries: (Entry & { anchor: string; questions: string[] })[] };
+export type AssumedView = Assumed & { reopened_by?: string };
 export type StageView = Stage & {
   label: string;
+  children: string[];
   background?: Background & { sourceTexts: string[] };
   results: ResultView[];
+  assumed: AssumedView[];
   items: ({ type: "round"; round: Round; questions: QuestionView[] } | { type: "close"; close: Close; latest: boolean })[];
   asked: QuestionView[];
 };
@@ -439,11 +541,14 @@ function stageLabels(stages: Stage[]): Map<string, string> {
   }));
 }
 
-function answerView(q: Question, a: Answer | undefined): AnswerView {
-  if (!a) return { state: "open" };
-  if ("picks" in a) return { state: "answered", picks: a.picks.map((p) => q.options[letterIndex(p)].label), ...(a.note ? { note: a.note } : {}) };
-  if ("other" in a) return { state: "answered", other: a.other };
-  return { state: "unanswered", reason: a.unanswered };
+function answerView(s: State, q: Question): AnswerView {
+  const a = s.answers.find((x) => x.question === q.id);
+  const state = answerState(s, q.id);
+  if (!a) return { state };
+  const recorded = { response: a.response, ...(a.reading ? { reading: a.reading } : {}) };
+  if (state === "picked") return { state, ...recorded, picks: a.response.picks!.map((p) => optionLabel(q, p)) };
+  if (state === "resolved") return { state, ...recorded };
+  return { state, why: a.reading && a.reading.outcome !== "resolved" ? a.reading.outcome : a.response.status, ...recorded };
 }
 
 export function view(s: State): View {
@@ -454,9 +559,11 @@ export function view(s: State): View {
   const latestIds = new Set(s.stages.flatMap((st) => [...latestAsks(s, st.id).values()].map((q) => q.id)));
   const questions = new Map<string, QuestionView>();
   for (const q of s.questions) {
-    const answer = answerView(q, s.answers.find((a) => a.question === q.id));
+    const answer = answerView(s, q);
     const latest = latestIds.has(q.id);
-    const qv: QuestionView = { ...q, answer, latest, open: latest && answer.state !== "answered", asked_again_by: s.questions.filter((x) => x.again === q.id).map((x) => x.id) };
+    const retired = s.retirements.find((r) => r.question === q.id);
+    const qv: QuestionView = { ...q, answer, latest, open: latest && !retired && !settled(answer.state), asked_again_by: s.questions.filter((x) => x.again === q.id).map((x) => x.id) };
+    if (retired) qv.retired = { reason: retired.reason, time: retired.time };
     if (decidedIn.has(q.id)) qv.decided_in = decidedIn.get(q.id);
     questions.set(q.id, qv);
   }
@@ -472,7 +579,11 @@ export function view(s: State): View {
       ...closes.map((close) => ({ type: "close" as const, seq: close.seq, close, latest: close.id === lastClose })),
     ].sort((a, b) => a.seq - b.seq).map(({ seq: _, ...item }) => item);
     return {
-      ...st, label: labels.get(st.id)!, results, items,
+      ...st, label: labels.get(st.id)!, children: s.stages.filter((x) => x.parent === st.id).map((x) => x.id), results, items,
+      assumed: s.assumed.filter((a) => a.stage === st.id).map((a) => {
+        const by = s.questions.find((q) => q.reopens === a.id)?.id;
+        return by ? { ...a, reopened_by: by } : a;
+      }),
       asked: [...latestAsks(s, st.id).values()].map((q) => questions.get(q.id)!),
       ...(bg ? { background: { ...bg, sourceTexts: bg.sources.map((x) => sourceText.get(x)!) } } : {}),
     };
@@ -494,15 +605,20 @@ export function snapshot(v: View, page: string, renderer: number) {
   return {
     flow: v.flow, revision: v.revision, renderer, page,
     stages: v.stages.map((st) => ({
-      id: st.id, label: st.label, skill: st.skill, ...(st.ticket ? { ticket: st.ticket } : {}), state: st.state, order: st.order, opened: st.opened, ...(st.finished ? { finished: st.finished } : {}),
+      id: st.id, label: st.label, skill: st.skill, ...(st.ticket ? { ticket: st.ticket } : {}), ...(st.parent ? { parent: st.parent } : {}), children: st.children,
+      state: st.state, order: st.order, opened: st.opened, ...(st.finished ? { finished: st.finished } : {}),
       background: st.background?.id,
       results: st.results.map((r) => ({ id: r.id, shape: r.shape, entries: r.entries.map((e) => ({ id: `${r.id}/${e.id}`, questions: e.questions })) })),
+      assumed: st.assumed.map((a) => ({ id: a.id, ...(a.reopened_by ? { reopened_by: a.reopened_by } : {}) })),
       rounds: st.items.filter((i) => i.type === "round").map((i) => ({ id: i.round.id, n: i.round.n, time: i.round.time, questions: i.questions.map((q) => q.id) })),
       questions: st.items.flatMap((i) => (i.type === "round" ? i.questions : [])).map((q) => ({
-        id: q.id, q: q.q, latest: q.latest, open: q.open, answer: q.answer, ...(q.again ? { again: q.again } : {}), asked_again_by: q.asked_again_by,
+        id: q.id, q: q.q, latest: q.latest, open: q.open, answer: q.answer, ...(q.retired ? { retired: q.retired } : {}),
+        ...(q.again ? { again: q.again } : {}), asked_again_by: q.asked_again_by, ...(q.reopens ? { reopens: q.reopens } : {}),
         results: q.entries ?? [], topics: q.topics ?? [], ...(q.decided_in ? { decided_in: q.decided_in } : {}),
       })),
-      closes: st.items.filter((i) => i.type === "close").map((i) => ({ id: i.close.id, time: i.close.time, decisions: i.close.decisions.map((d) => d.question) })),
+      closes: st.items.filter((i) => i.type === "close").map((i) => ({
+        id: i.close.id, time: i.close.time, decisions: i.close.decisions.map((d) => ({ question: d.question, answer: d.answer })), assumed: i.close.assumed,
+      })),
     })),
     topics: v.topics.map((t) => ({ id: t.id, questions: t.questions })),
     sources: v.sources.map((x) => ({ id: x.id, cited_by: x.cited_by })),
