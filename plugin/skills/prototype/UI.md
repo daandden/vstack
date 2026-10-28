@@ -93,7 +93,7 @@ Put the switcher in a single shared component so both sub-shapes can reuse it. L
 
 ### 5. Hand it over
 
-Surface the URL (and the `?variant=` keys). The user will flip through whenever they get to it. The interesting feedback is usually **"I want the header from B with the sidebar from C"**, which is the actual design they want.
+Publish the actual route as a `runtime: "local-app"` artifact on a prototype Result, with its launch command, source revision, and `?variant=` keys. Keep the app and backend real. If the runtime is absent or iframe embedding is blocked, state that limitation and keep the external launch path. For a standalone HTML variant, capture its complete bundle for the isolated viewer instead. Present the Flow URL and the app URL without opening either automatically.
 
 ### 6. Capture the answer and clean up
 

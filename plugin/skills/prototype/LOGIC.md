@@ -1,8 +1,10 @@
 # Logic Prototype
 
-A single, self-contained HTML file (a **shareable demo**) that lets anyone drive a state model by clicking buttons. Use this when the question is about **business logic, state transitions, or data shape**: the kind of thing that looks reasonable on paper but only feels wrong once you push it through real cases.
+A logic prototype lets a reader drive a state model with buttons. Use it for business logic, state transitions, or data shape that is hard to judge without trying cases. State and action labels use domain language so a non-developer can explore the question.
 
-Because it's one file with nothing to install, you can hand it to a non-developer (a designer, a PM, a domain expert) and let them feel the model for themselves. So it speaks their language, not the code's.
+Prefer a declarative `prototype` Result when flow-page's states, typed values, actions, and bounded conditions express the actual model. It provides visible state, action availability, Reset, and browser-local resume in both the live page and static export. Put the question and guided action sequences in its companion Document Result. This branch needs no handwritten HTML or scripts.
+
+If the actual logic cannot be expressed by that contract, keep the real implementation in a self-contained HTML artifact and follow steps 2 and 3 below. Publish the captured bundle in the isolated viewer. Do not replace code-dependent behavior with a simpler demo that answers a different question.
 
 ## When this is the right shape
 
@@ -18,6 +20,8 @@ If the question is "what should this look like," this is the wrong branch. Use [
 ### 1. State the question
 
 Before writing code, write down what state model and what question you're prototyping. One paragraph, at the top of the demo (in a visible intro, not just a comment). A logic prototype that answers the wrong question is pure waste, so make the question explicit so it can be checked later, whether the user is watching now or returning to it AFK.
+
+For a declarative demo, submit the real states, initial values, and transitions through flow-page, then proceed to handover. Exercise every walkthrough on the rendered Flow page before handing it over.
 
 ### 2. Isolate the logic in a portable module
 
@@ -51,7 +55,7 @@ Keep it beautiful but restrained: clean typography, generous spacing, one accent
 
 ### 4. Hand it over
 
-Send them the file, or open it for them. They'll click through the walkthroughs and free-play whenever they get to it; the interesting moments are when they say "wait, that shouldn't be possible" or "huh, I assumed X would be different"; those are the bugs in the _idea_, which is the whole point. If they want new actions or a new scenario, add them. Prototypes evolve.
+Present the Flow URL, not an automatically opened file. For a runnable HTML artifact, retain its file and launch instructions as well. The reader can try guided action sequences or free play, and request new actions or scenarios. Publish changes as a new Result revision rather than rewriting earlier evidence.
 
 ### 5. Capture the answer and the prototype
 
