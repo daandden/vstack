@@ -28,6 +28,7 @@ The flow-page script takes typed contributions for one bound Stage, assigns ids,
 - `flow-migrate`: a structured historical Grilling page becomes a Flow without changing its old folder. Record ids, questions, answers, Q numbers, round times, figures, Topics, sources, and fragment anchors survive. Reports become Results. A handwritten page stays untouched.
 - `flow-code`: Code/diff Results show syntax-highlighted excerpts and unified diffs, preserve significant whitespace, and show file, revision, and known source lines. A diff has separate old and new line numbers and linked hunks.
 - `flow-timeline`: Timeline Results preserve the supplied event order, known times, explicit outcomes, and evidence attached to the event it proves. Missing times stay unknown.
+- `flow-artifact`: a prototype Result names an HTML bundle, local app route, or terminal artifact. Captured bundles execute on a separate read-only viewer origin, local routes stay on their own origin, and missing runtimes show launch instructions with an unavailable state. Static exports never pretend a runtime is running.
 
 ## How to get to it (user POV)
 
@@ -101,6 +102,13 @@ Steps:
   - Bind to the migrated in-progress Stage and submit a round. Its next Q number follows the old ones, and old ids and figures are unchanged. Repeating migration returns the same Flow. A changed source is refused rather than replacing the new Flow.
   - Try a folder with only a handwritten `page.html`. Migration exits 1 and leaves its bytes and the Flow store unchanged.
   - Attach the screenshots, ARIA snapshots, commands, and migration comparisons to a Document Result on a proof Flow made by the new flow-page code.
+- Runnable artifacts (`flow-artifact`):
+  - Write `index.html` and `app.js` under `$S/verify-assets/`. The HTML has a button; the script changes its visible count when clicked and reports whether reading `parent.document` fails. Submit an `artifact` attachment with `runtime: "html"`, `launch`, `revision`, and `bundle: { entry: "index.html", files: [{ path: "index.html", source: "<S>/verify-assets/index.html" }, { path: "app.js", source: "<S>/verify-assets/app.js" }] }`, plus a `prototype` Result with `artifact` naming that attachment.
+  - Open the live Flow in the real browser and select its Stage. Click the button inside its iframe and observe the count change. Observe the refused parent access. Confirm the frame's origin differs from the Flow origin. Save the iframe's lossless WebP screenshot and ARIA snapshot.
+  - In that frame, try a POST to its own URL and a fetch of the Flow URL. The viewer refuses the write and the browser refuses cross-origin Flow access. `show` has no new revision, answer, task, or progress after interaction. Edit the source script and reload: the captured behavior remains unchanged.
+  - Start a real local HTML app route with a button. Submit a second artifact with `runtime: "local-app"`, its loopback HTTP `url`, `launch`, and `revision`, plus a prototype Result. The real route works inside a sandboxed iframe and its origin differs from the Flow origin. Stop only that app, reload the page, and observe no iframe for that Result and an unavailable status with launch steps. A route with a redirect, a non-HTML response, or no listener must not be reported available.
+  - Submit a terminal artifact with `runtime: "terminal"`, real `launch` steps, `revision`, and `unavailable` naming its missing interactive runtime. Read the steps and reason in the live Flow. Stop the Flow host, open its `file://` export, and observe unavailable statuses and real launch steps for all runnable artifacts with no embedded runtimes.
+  - Save full-page lossless WebP and ARIA evidence, then attach the evidence to a proof Flow made through the new flow-page CLI. Record the commands, observed isolation and availability outcomes, and any runtime case not exercised.
 
 ## Gotchas
 

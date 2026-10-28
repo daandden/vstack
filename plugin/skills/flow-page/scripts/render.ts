@@ -8,8 +8,9 @@ import { optionLabel, type AnswerState, type Attachment, type ComparisonView, ty
 import type { ProgressView } from "./progress.ts";
 
 /** Raise this when the page a given state renders to changes, so a page names the renderer that made it. */
-export const RENDERER = 10;
+export const RENDERER = 11;
 const TEMPLATE = join(import.meta.dir, "..", "templates", "flow-page.html");
+export type Runtimes = Record<string, { url?: string; reason?: string }>;
 
 const STATE_LABELS: Record<string, string> = { "not-started": "Not started", "in-progress": "In progress", finished: "Finished" };
 const CLAIM_LABELS: Record<string, string> = { confirmed: "Confirmed", cleared: "Cleared", unproven: "Unproven" };
@@ -229,6 +230,7 @@ const size = (n: number) => (n < 1024 ? `${n} B` : n < 1024 * 1024 ? `${(n / 102
 function attachmentHtml(a: Attachment, id: string): string {
   let body: string;
   let state: string;
+  if (a.type === "artifact") return artifactHtml(a);
   if (a.availability === "unavailable") {
     state = "Unavailable";
     body = `<p class="unavailable"><span class="label">Not captured</span><span>${text(a.reason!)}</span></p>`;
@@ -250,6 +252,15 @@ function attachmentHtml(a: Attachment, id: string): string {
 ${body}
 <figcaption><p>${text(a.caption)}</p><p class="attachment-meta"><span class="kind">${TYPE_LABELS[a.type]}</span><span>${state}</span>${revision}${from}<time datetime="${esc(a.time)}">${formatTime(a.time)}</time></p><p class="source">Origin: ${text(a.origin)}</p></figcaption>
 </figure>`;
+}
+
+function artifactHtml(a: Attachment, runtime?: Runtimes[string], id = a.id): string {
+  const reason = a.reason ?? runtime?.reason ?? "Start the runtime with the launch steps below.";
+  const viewer = runtime?.url && a.availability !== "unavailable"
+    ? `<p role="status" data-availability="available">Available in an isolated viewer</p><iframe id="${esc(id)}-viewer" class="prototype-viewer" title="${esc(a.caption)}" src="${esc(runtime.url)}" sandbox="allow-scripts allow-same-origin" referrerpolicy="no-referrer"></iframe>`
+    : `<p role="status" data-availability="unavailable">Unavailable: ${text(reason)}</p>`;
+  const reference = !a.runtime && a.url ? `<p><a href="${esc(a.url)}" target="_blank" rel="noopener noreferrer">${esc(a.url)}</a></p>` : "";
+  return `<div class="runnable" data-artifact="${a.id}">${viewer}<p>${text(a.caption)}</p><p class="label">How to run it</p><div class="description">${prose(a.launch!)}</div>${reference}<p class="source">Origin: ${text(a.origin)}. Revision <code>${esc(a.revision!)}</code></p></div>`;
 }
 
 function documentHtml(r: ResultView, d: DocView, historical: boolean): string {
@@ -421,7 +432,7 @@ function provenance(r: ResultView): string {
   return `<p class="provenance">Revision ${r.revision}${when}${link}</p>`;
 }
 
-function resultHtml(r: ResultView, v: View, historical = false): string {
+function resultHtml(r: ResultView, v: View, historical = false, runtimes: Runtimes = {}): string {
   const asks = (qs: string[]) => qs.map((id) => `<a href="#${id}">Q${v.questions.get(id)!.q}</a>: ${text(v.questions.get(id)!.title)}`);
   const askLine = (qs: string[]) => (qs.length ? `\n<p class="ask"><span class="label">Asked in</span><span>${asks(qs).join("; ")}</span></p>` : "");
   const fields = (pairs: [string, string][]) => `<dl class="fields">${pairs.map(([k, val]) => `<dt>${k}</dt><dd>${text(val)}</dd>`).join("")}</dl>`;
@@ -430,6 +441,8 @@ function resultHtml(r: ResultView, v: View, historical = false): string {
     body = documentHtml(r, r.doc, historical);
   } else if (r.demo) {
     body = demoHtml(r, r.demo);
+  } else if (r.artifact) {
+    body = artifactHtml(r.shown.find((a) => a.id === r.artifact)!, runtimes[r.artifact], r.anchor);
   } else if (r.comparison) {
     body = comparisonHtml(r.comparison, new Map(r.shown.map((a) => [a.id, a])));
   } else if (r.metrics) {
@@ -472,10 +485,10 @@ ${fields([["Impact", e.impact as string], ["Action", e.action as string]])}
       .join("\n")}\n</ol>`;
   }
   const figures = new Set([...(r.doc?.figures ?? []), ...(r.comparison?.alternatives.flatMap((a) => a.attachments ?? []) ?? [])]);
-  const listed = r.shown.filter((a) => r.attachments?.includes(a.id) && !figures.has(a.id));
+  const listed = r.shown.filter((a) => r.attachments?.includes(a.id) && !figures.has(a.id) && a.id !== r.artifact);
   const attachments = listed.length ? `\n<div class="attachments"><p class="label">Attachments</p>${listed.map((a) => attachmentHtml(a, `${r.anchor}-${a.id}`)).join("\n")}</div>` : "";
   const history = r.history.length
-    ? `\n<details class="revisions"><summary>Earlier revisions (${r.history.length})</summary>\n${[...r.history].reverse().map((h) => resultHtml(h, v, true)).join("\n")}\n</details>`
+    ? `\n<details class="revisions"><summary>Earlier revisions (${r.history.length})</summary>\n${[...r.history].reverse().map((h) => resultHtml(h, v, true, runtimes)).join("\n")}\n</details>`
     : "";
   const tag = historical ? "article" : "section";
   return `<${tag} class="result" id="${r.anchor}" data-shape="${r.shape}" aria-labelledby="${r.anchor}-title"${historical ? "" : " data-stop"}>
@@ -484,7 +497,7 @@ ${body}${attachments}${history}
 </${tag}>`;
 }
 
-function stageHtml(st: StageView, v: View, entryTitle: (ref: string) => string, sourceText: (id: string) => string) {
+function stageHtml(st: StageView, v: View, entryTitle: (ref: string) => string, sourceText: (id: string) => string, runtimes: Runtimes) {
   const nav: string[] = [];
   const body: string[] = [];
   const link = (id: string, label: string) => `<a href="#${id}" data-for="${id}">${esc(label)}</a>`;
@@ -504,7 +517,7 @@ ${sourcesHtml(bg.sourceTexts)}
     nav.push(link(bg.id, bg.jump ?? "Background"));
   }
   st.results.forEach((r, i) => {
-    body.push(resultHtml(r, v));
+    body.push(resultHtml(r, v, false, runtimes));
     nav.push(link(r.id, r.jump ?? (i === 0 ? "Result" : `Result ${i + 1}`)));
   });
   if (st.assumed.length) {
@@ -608,7 +621,7 @@ function progressHtml(p: ProgressView, v: View): string {
 </section>`;
 }
 
-export function render(v: View): string {
+export function render(v: View, runtimes: Runtimes = {}): string {
   const sourceText = (id: string) => v.sources.find((x) => x.id === id)!.text;
   const entryTitle = (ref: string) => {
     const [rid, eid] = ref.split("/");
@@ -622,7 +635,7 @@ export function render(v: View): string {
   const overview: string[] = [];
   const panels: string[] = [];
   for (const st of v.stages) {
-    const { nav, body } = stageHtml(st, v, entryTitle, sourceText);
+    const { nav, body } = stageHtml(st, v, entryTitle, sourceText, runtimes);
     const label = esc(st.label);
     const dot = `<span class="dot" data-state="${st.state}"></span>`;
     const asked = st.asked.map((q) => {

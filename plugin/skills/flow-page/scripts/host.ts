@@ -5,8 +5,8 @@ import { extname, join, sep } from "node:path";
 import { parseArgs } from "node:util";
 import { scratchRoot } from "../../vstack-tmp/scripts/scratch.ts";
 import { attest, capability, originOf, record, recordPath, same, secrets, version, type HostRecord } from "./live.ts";
-import { SLUG, view } from "./model.ts";
-import { render } from "./render.ts";
+import { SLUG, view, type State } from "./model.ts";
+import { render, type Runtimes } from "./render.ts";
 import { assetsDir, folderOfId, readState, writeAtomic } from "./store.ts";
 
 const { values } = parseArgs({ args: Bun.argv.slice(2), options: { home: { type: "string" }, port: { type: "string" }, idle: { type: "string" } }, strict: true });
@@ -32,6 +32,63 @@ const response = (body: BodyInit | null, status = 200, extra: Record<string, str
 const missing = () => response("Flow or captured asset is missing or expired.", 404);
 const controlled = (req: Request) => same(req.headers.get("authorization") ?? "", `Bearer ${secret.control}`);
 const mime: Record<string, string> = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif", ".webp": "image/webp", ".svg": "image/svg+xml", ".mp4": "video/mp4", ".webm": "video/webm", ".pdf": "application/pdf" };
+const executableMime: Record<string, string> = { ...mime, ".html": "text/html; charset=utf-8", ".htm": "text/html; charset=utf-8", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css", ".json": "application/json", ".wasm": "application/wasm", ".woff": "font/woff", ".woff2": "font/woff2", ".txt": "text/plain" };
+
+function flowFolder(key: string, id: string): string | undefined {
+  if (!/^[^./\\\x00][^/\\\x00]*$/.test(key) || !SLUG.test(id)) return undefined;
+  const dir = join(scratchRoot(home), key, "flow");
+  if (!realpathSync(dir).startsWith(realpathSync(scratchRoot(home)) + sep)) return undefined;
+  const folder = folderOfId(dir, id);
+  return folder && realpathSync(folder).startsWith(realpathSync(dir) + sep) ? folder : undefined;
+}
+
+async function runtimes(s: State, key: string): Promise<Runtimes> {
+  const out: Runtimes = {};
+  await Promise.all(s.attachments.map(async (a) => {
+    if (a.availability === "unavailable") return;
+    if (a.runtime === "html" && a.bundle) {
+      const cap = capability(secret.read, key, `${s.flow.id}\nartifact\n${a.id}`);
+      out[a.id] = { url: `${viewer.url.origin}/p/${encodeURIComponent(key)}/${s.flow.id}/${a.id}/${cap}/${a.bundle.entry}` };
+    } else if (a.runtime === "local-app" && a.url) {
+      if ([origin, viewer.url.origin].includes(new URL(a.url).origin)) {
+        out[a.id] = { reason: "A Flow host address is not an application runtime." };
+        return;
+      }
+      try {
+        const r = await fetch(a.url, { method: "HEAD", redirect: "manual", signal: AbortSignal.timeout(1000) });
+        out[a.id] = r.ok && r.headers.get("content-type")?.includes("text/html")
+          ? { url: a.url } : { reason: `The local route is unavailable as HTML (HTTP ${r.status}).` };
+      } catch {
+        out[a.id] = { reason: "The local runtime is not reachable. Start it with the launch steps below." };
+      }
+    }
+  }));
+  return out;
+}
+
+function prototype(req: Request): Response {
+  if (req.headers.get("host") !== viewer.url.host || (req.headers.has("origin") && req.headers.get("origin") !== viewer.url.origin)) return response("Invalid host or origin.", 403);
+  if (req.method !== "GET" && req.method !== "HEAD") return response("Read-only viewer.", 405, { Allow: "GET, HEAD" });
+  const m = new URL(req.url).pathname.match(/^\/p\/([^/]+)\/([^/]+)\/([^/]+)\/([a-f0-9]{64})\/(.+)$/);
+  if (!m) return missing();
+  let key: string;
+  let path: string;
+  try { key = decodeURIComponent(m[1]); path = decodeURIComponent(m[5]); } catch { return missing(); }
+  if (!same(m[4], capability(secret.read, key, `${m[2]}\nartifact\n${m[3]}`))) return missing();
+  const folder = flowFolder(key, m[2]);
+  if (!folder) return missing();
+  const s = readState(folder);
+  const a = s?.flow.id === m[2] ? s.attachments.find((a) => a.id === m[3] && a.runtime === "html" && a.availability === "captured") : undefined;
+  const f = a?.bundle?.files.find((f) => f.path === path);
+  if (!f) return missing();
+  const base = realpathSync(assetsDir(folder));
+  const file = join(base, f.file);
+  if (!/^[a-f0-9]{64}\/[A-Za-z0-9._-]+$/.test(f.file) || !base.startsWith(realpathSync(folder) + sep) || !lstatSync(file).isFile() || realpathSync(file) !== file) return missing();
+  return response(req.method === "HEAD" ? null : Bun.file(file), 200, {
+    "Content-Type": executableMime[extname(path).toLowerCase()] ?? "application/octet-stream",
+    "Content-Security-Policy": `default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; font-src 'self'; connect-src 'self'; frame-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'; frame-ancestors ${origin}; sandbox allow-scripts allow-same-origin`,
+  });
+}
 
 /** A held response is a reader, publication, or future progress sync. Disconnect releases it even after SIGKILL. */
 function held(req: Request): Response {
@@ -55,7 +112,7 @@ function held(req: Request): Response {
   }), 200, { "Content-Type": "text/event-stream", "X-Accel-Buffering": "no" });
 }
 
-function route(req: Request): Response {
+async function route(req: Request): Promise<Response> {
   last = Date.now();
   if (req.headers.get("host") !== `127.0.0.1:${port}` || (req.headers.has("origin") && req.headers.get("origin") !== origin) || req.headers.get("sec-fetch-site") === "cross-site") return response("Invalid host or origin.", 403);
   const url = new URL(req.url);
@@ -89,7 +146,7 @@ function route(req: Request): Response {
   if (!folder || !realpathSync(folder).startsWith(realpathSync(dir) + sep)) return missing();
   const s = readState(folder);
   if (!s || s.flow.id !== id) return missing();
-  if (m[4] === "/") return response(req.method === "HEAD" ? null : render(view(s)), 200, { "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": csp });
+  if (m[4] === "/") return response(req.method === "HEAD" ? null : render(view(s), await runtimes(s, key)), 200, { "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": csp });
   if (m[4] === "/events" && req.method === "GET") return held(req);
   if (!m[4].startsWith("/assets/")) return missing();
   let file: string;
@@ -114,21 +171,33 @@ function shutdown() {
   // Remove only our discovery record, before releasing the port; a new host cannot bind until this one has stopped.
   if (record(home)?.instance === instance) rmSync(recordPath(home), { force: true });
   server.stop(true);
+  viewer.stop(true);
   clearInterval(idleTimer);
   process.exit(0);
 }
 let server: ReturnType<typeof Bun.serve>;
+let viewer: ReturnType<typeof Bun.serve>;
 try {
   server = Bun.serve({
     hostname: "127.0.0.1", port, idleTimeout: 0,
-    fetch(req) {
+    async fetch(req) {
       active++;
-      try { return route(req); }
+      try { return await route(req); }
       catch (e) { return (e as NodeJS.ErrnoException).code === "ENOENT" ? missing() : response("Flow presentation is unavailable; use the static page.", 500); }
       finally { active--; last = Date.now(); }
     },
   });
+  viewer = Bun.serve({
+    hostname: "127.0.0.1", port: 0,
+    fetch(req) {
+      active++;
+      try { return prototype(req); }
+      catch { return missing(); }
+      finally { active--; last = Date.now(); }
+    },
+  });
 } catch (e) {
+  server?.stop(true);
   process.stderr.write(`Flow host cannot bind loopback port ${port}: ${(e as Error).message}. No other process was stopped.\n`);
   process.exit(1);
 }

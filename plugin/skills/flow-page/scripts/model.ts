@@ -78,7 +78,7 @@ export type Demo = {
 /** `revision` counts whole republications of the Result with `revises`; `captured` is when this one was submitted. */
 export type Result = {
   id: string; stage: string; shape: Shape; title: string; summary?: string; columns?: string[]; entries: Entry[]; changed: number;
-  document?: DocumentBody; demo?: Demo; comparison?: ComparisonBody; metrics?: MetricsBody; attachments?: string[]; canonical?: Canonical; revision?: number; captured?: string; jump?: string;
+  document?: DocumentBody; demo?: Demo; artifact?: string; comparison?: ComparisonBody; metrics?: MetricsBody; attachments?: string[]; canonical?: Canonical; revision?: number; captured?: string; jump?: string;
 };
 export type Source = { id: string; text: string };
 export const ATTACHMENT_TYPES = ["image", "video", "svg", "file", "trace", "evidence", "artifact"] as const;
@@ -90,6 +90,8 @@ export type Attachment = {
   availability: "captured" | "unavailable" | "external";
   revision?: string; file?: string; size?: number; name?: string; from?: { root: string; path: string };
   reason?: string; launch?: string; url?: string;
+  runtime?: "html" | "local-app" | "terminal";
+  bundle?: { entry: string; files: { path: string; file: string; size: number }[] };
 };
 /** File reads a contribution needs. flow-page.ts supplies them, so this module stays free of the filesystem. */
 export type Io = {
@@ -585,8 +587,9 @@ function parseResult(o: Obj, where: string, stage: string, id: string, entryIds:
     return head({ document: parseDocument(o, where, attachment, source) });
   }
   if (shape === "prototype") {
-    fields(o, where, ["kind", "shape", "title", "demo"], shared);
-    return head({ demo: parseDemo(o.demo, `${where}: demo`) });
+    fields(o, where, ["kind", "shape", "title"], [...shared, "demo", "artifact"]);
+    if ((o.demo === undefined) === (o.artifact === undefined)) refuse(where, "a prototype needs exactly one of demo or artifact");
+    return head(o.demo !== undefined ? { demo: parseDemo(o.demo, `${where}: demo`) } : { artifact: attachment(o.artifact, `${where}: artifact`) });
   }
   if (shape === "comparison") {
     fields(o, where, ["kind", "shape", "title", "alternatives", "criteria", "assessments", "verdict"], shared);
@@ -1070,11 +1073,40 @@ function parseAttachment(o: Obj, where: string, stage: string, id: string, time:
   if (!ATTACHMENT_TYPES.includes(type)) refuse(where, `type must be ${listed([...ATTACHMENT_TYPES])}, got ${JSON.stringify(o.type)}`);
   const base = { id, stage, type, time };
   if (type === "artifact") {
-    fields(o, where, ["kind", "type", "caption", "origin", "launch", "revision"], ["ref", "url"]);
+    fields(o, where, ["kind", "type", "caption", "origin", "launch", "revision"], ["ref", "url", "runtime", "bundle", "unavailable"]);
+    const revision = text(o, "revision", where);
+    const runtime = o.runtime as Attachment["runtime"];
+    if (runtime !== undefined && !["html", "local-app", "terminal"].includes(runtime)) refuse(where, "runtime must be html, local-app, or terminal");
     if (o.url !== undefined && (typeof o.url !== "string" || !/^https?:\/\/[^\s]+$/i.test(o.url))) refuse(where, "url must be an http:// or https:// URL");
+    if (runtime === "local-app") {
+      let url: URL;
+      try { url = new URL(text(o, "url", where)); } catch { return refuse(where, "a local-app needs a loopback http URL"); }
+      if (url.protocol !== "http:" || url.hostname !== "127.0.0.1" || url.username || url.password || !url.port) refuse(where, "a local-app URL must use http://127.0.0.1:<port> with no credentials");
+    }
+    let bundle: Attachment["bundle"];
+    if (runtime === "html") {
+      const b = fields(o.bundle, `${where}: bundle`, ["entry", "files"]);
+      const path = (v: string) => {
+        if (!/^[A-Za-z0-9_-][A-Za-z0-9._/-]*$/.test(v) || v.split("/").some((part) => !part || part === "." || part === "..")) refuse(where, "bundle paths must be relative paths with no traversal");
+        return v;
+      };
+      const files = list(b, "files", where).map((raw, i) => {
+        const w = `${where}: bundle file ${i + 1}`;
+        const f = fields(raw, w, ["path", "source"]);
+        const c = io.capture(text(f, "source", w), "artifact", w);
+        return { path: path(text(f, "path", w)), file: c.file, size: c.size };
+      });
+      const entry = path(text(b, "entry", where));
+      if (!/\.html?$/i.test(entry) || !files.some((f) => f.path === entry)) refuse(where, "bundle entry must name a registered HTML file");
+      if (new Set(files.map((f) => f.path)).size !== files.length) refuse(where, "bundle file paths must be unique");
+      bundle = { entry, files };
+    } else if (o.bundle !== undefined) refuse(where, "bundle belongs only to runtime html");
     return {
-      ...base, caption: safeLinks(text(o, "caption", where), where), origin: safeLinks(text(o, "origin", where), where), availability: "external",
-      launch: safeLinks(text(o, "launch", where), where), revision: text(o, "revision", where), ...(o.url !== undefined ? { url: o.url as string } : {}),
+      ...base, caption: safeLinks(text(o, "caption", where), where), origin: safeLinks(text(o, "origin", where), where),
+      availability: o.unavailable !== undefined ? "unavailable" : bundle ? "captured" : "external",
+      launch: safeLinks(text(o, "launch", where), where), revision: bundle ? createHash("sha256").update(canonical(bundle)).digest("hex") : revision,
+      ...(runtime ? { runtime } : {}), ...(bundle ? { bundle } : {}), ...(o.url !== undefined ? { url: o.url as string } : {}),
+      ...(o.unavailable !== undefined ? { reason: text(o, "unavailable", where) } : {}),
     };
   }
   fields(o, where, ["kind", "type", "caption", "origin"], ["ref", "path", "unavailable"]);
@@ -1177,6 +1209,7 @@ function checkLinks(s: State): void {
     if (!attachments.has(f.attachment)) refuse(id, `attachment ${f.attachment} does not exist`);
     used.add(f.attachment);
   }
+  for (const r of [...s.results, ...s.history]) if (r.artifact && s.attachments.find((a) => a.id === r.artifact)?.type !== "artifact") refuse(`result ${r.id}`, "artifact must name a runnable artifact attachment");
   for (const r of [...s.results, ...s.history])
     for (const a of attachmentsOf(r)) {
       if (!attachments.has(a)) refuse(`result ${r.id}`, `attachment ${a} does not exist`);
@@ -1189,7 +1222,7 @@ function checkLinks(s: State): void {
 export function attachmentsOf(r: Result): string[] {
   const figures = (r.document?.sections ?? []).flatMap((sec) => sec.blocks.flatMap((b) => ("figure" in b ? [b.figure] : [])));
   const sides = (r.comparison?.alternatives ?? []).flatMap((a) => a.attachments ?? []);
-  return [...new Set([...figures, ...sides, ...(r.attachments ?? []), ...r.entries.flatMap((e) => (e.attachments as string[] | undefined) ?? [])])];
+  return [...new Set([...figures, ...sides, ...(r.artifact ? [r.artifact] : []), ...(r.attachments ?? []), ...r.entries.flatMap((e) => (e.attachments as string[] | undefined) ?? [])])];
 }
 /** Figure owners also count as attachment uses, so migrated evidence is not lost on the next contribution. */
 export function figureOwners(s: Pick<State, "questions" | "backgrounds" | "results" | "history">): [string, Figure[]][] {
@@ -1440,6 +1473,7 @@ export function snapshot(v: View, page: string, renderer: number) {
       results: st.results.map((r) => ({
         id: r.id, shape: r.shape, revision: r.revision, ...(r.captured ? { captured: r.captured } : {}), ...(r.canonical ? { canonical: r.canonical } : {}), changed: r.changed,
         ...(r.demo ? { demo: { start: r.demo.start, states: r.demo.states.map((x) => x.name), actions: r.demo.actions.map((x) => x.name), values: r.demo.values.map((x) => x.name) } } : {}),
+        ...(r.artifact ? { artifact: r.artifact } : {}),
         revisions: [...r.history, r].map((x) => ({ revision: x.revision, ...(x.captured ? { captured: x.captured } : {}), ...(x.canonical ? { canonical: x.canonical } : {}), attachments: x.shown.map((a) => a.id) })),
         attachments: r.shown.map((a) => a.id),
         entries: r.entries.map(({ anchor: _, ...e }) => ({ ...e, id: `${r.id}/${e.id}`, questions: e.questions })),
@@ -1485,6 +1519,7 @@ export function snapshot(v: View, page: string, renderer: number) {
     attachments: v.attachments.map((a) => ({
       id: a.id, stage: a.stage, type: a.type, availability: a.availability, time: a.time, used_by: a.used_by,
       ...(a.revision ? { revision: a.revision } : {}), ...(a.file ? { file: `assets/${a.file}`, size: a.size } : {}), ...(a.from ? { from: a.from } : {}),
+      ...(a.type === "artifact" ? { launch: a.launch, ...(a.runtime ? { runtime: a.runtime } : {}), ...(a.url ? { url: a.url } : {}), ...(a.reason ? { reason: a.reason } : {}), ...(a.bundle ? { bundle: a.bundle } : {}) } : {}),
     })),
     progress: progressSnapshot(v.progress),
   };
