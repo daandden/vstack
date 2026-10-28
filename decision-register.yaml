@@ -1020,6 +1020,7 @@ originals:
   - plugin/skills/vstack-tmp
   - plugin/skills/vstack-fan-out
   - plugin/skills/grilling-page
+  - plugin/skills/flow-page
   - plugin/skills/vstack-worktree
   - plugin/skills/skill-creator
   - plugin/skills/vstack-maintain
@@ -1040,6 +1041,7 @@ utility:
   - plugin/skills/vstack-fan-out
   - plugin/skills/vstack-figures
   - plugin/skills/grilling-page
+  - plugin/skills/flow-page
   - plugin/skills/vstack-worktree
   - plugin/skills/in-your-own-words
   - plugin/skills/clean-wt

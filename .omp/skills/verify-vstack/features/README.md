@@ -46,6 +46,7 @@ Keep implementation details out of the map. Name only user paths, stable handles
 - [Addon tools](./addon-tools.md): typed Matt runs display intent-gathering instructions, and agent-called tools select Addons. The stub proves tool completion without a native judge, not native selection.
 - [Scratch dir](./scratch-dir.md): the vstack-tmp scripts make and list Scratch entries. The `/vstack-clean` Command previews expired entries and deletes only confirmed choices.
 - [Grilling page](./grilling-page.md): the grilling-page script renders a flow's Grilling page from the state file in its flow folder and renames the folder. The page opens on an Overview tab, has one tab per Stage with its Background, Report blocks, questions, answers, and summary, and links between tabs. A Stage that settled every decision as Assumed shows its count on Overview.
+- [Flow page](./flow-page.md): the flow-page script takes typed contributions for a bound Stage, numbers and links them, refuses bad input without writing, and publishes the static Flow page with Overview, Stage tabs, Results, and Topics.
 - [Diagram scripts](./diagram-scripts.md): the diagram-design Python scripts extract Mermaid, draw.io, and Excalidraw files, self-check a diagram page, check its connector geometry and its colors and fonts, and export it to SVG.
 - [Clean worktrees](./clean-wt.md): `/skill:clean-wt` inventories the omp worktree base from a session with a held lease, removes unused clean checkouts, keeps their branches, and skips stale, unique, or unapproved dirty checkouts.
 

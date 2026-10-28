@@ -20,8 +20,9 @@ bun "$(realpath skill://vstack-tmp/scripts/path.ts)" <kind>   # one kind dir in 
 `bun` is an external program and never sees `skill://` paths, so `realpath` turns the URL into the file path first. The script creates the dir and prints its absolute path with a trailing slash, such as `/Users/me/.vstack/tmp/shop-3f9a1c/` or `/Users/me/.vstack/tmp/shop-3f9a1c/explain/`.
 
 - `<repo-key>` is the dir name of the main checkout plus the first 6 hex chars of a SHA-256 hash of the absolute git common dir. All worktrees of a repo get the same key. Outside a git repo the key is `_global`.
-- `<kind>` is one lowercase path segment. Use the kind your skill names: explain, verify, skill-creator, blast-radius, explorer, hillclimb, handoff, grilling, how, teach, session, implement-spec, or vstack-figures.
+- `<kind>` is one lowercase path segment. Use the kind your skill names: explain, verify, skill-creator, blast-radius, explorer, hillclimb, handoff, grilling, flow, how, teach, session, implement-spec, or vstack-figures.
 - Put each run's output in its own entry in the kind dir: one file, or one dir when the run writes several files. The `/vstack-clean` Command deletes whole entries older than 90 days by default, and it judges an entry's age by the newest file in it. A flow folder (`grilling/<project>-<key>/`) is one entry, so its page, state file, figures, and `flow.json` expire together.
+- flow-page's script writes the `flow` kind itself, with no path script run: one entry per Flow, named by the Flow's id, and `.bindings/` for the session bindings. Each Flow entry expires as a whole.
 
 ## Subagents
 
