@@ -14,6 +14,8 @@ The grill settles one metric, its unit, the direction that counts as better, the
 
 implement owns the branch, commits, and End state. Reuse its run record, absolute vstack root, and project Scratch dir. Fix the absolute attempt log path `<Scratch dir>/hillclimb/<run-id>/attempts.tsv` once, beside the run's evidence, and keep it for the whole loop. Every worker uses the Session model unless the user overrides it.
 
+Read `skill://flow-page`, discover this session and agent's `bound` Flow, and open a `hillclimb` Stage there with the implement Stage as `--parent`. An unbound result-producing run starts a Flow. A reference read adds no Stage. Record any asks through this Stage. Only the parent publishes the workers' returned measurements and outcomes.
+
 Before any hypothesis, require `omp config get task.isolation.enabled` to print `true`. If isolation is off, stop and point at `/skill:setup-vstack`.
 
 ## 1. Ground the workload and architecture
@@ -46,6 +48,8 @@ bash "$(realpath skill://hillclimb/scripts/log.sh)" "$logfile" "$phase" "$decisi
 The helper takes the absolute log path, creates its parent dir, and writes the header on first use. It stamps `ts`, strips tabs, newlines, and carriage returns, and quotes spreadsheet formula prefixes `=`, `+`, `-`, and `@`. The log is append-only. Supersede a wrong row with a new row. Read the log before each wave.
 
 Log every attempt from the workers' returned results, including rejects, failed workers, missing or empty patches, deferred winners, and parent-validation failures. Put the hypothesis in `decision`; put before → after, unit, delta, noise threshold, frozen-harness identity, gate command and outcome, and evidence paths in `evidence`/`result`. Cite raw measurements, patch paths, and accepted commit SHAs. Use one attempt row for each tested hypothesis and append a superseding outcome when selection or parent validation changes its verdict. Deferred wins are not kept wins.
+
+Keep `attempts.tsv` as the canonical append-only export. Capture it as a file attachment on the Flow Result after each wave, preserving earlier snapshots. The Flow page does not replace the log or add another writer to it. Redact secrets before writing the log or capturing any evidence.
 
 ## 4. Ground the hypotheses
 
@@ -88,3 +92,5 @@ After the loop, implement resumes its End state chain. Keep accepted wins in sep
 ## Reply
 
 Report metric, unit and target; initial baseline → final with percent delta; attempts run, kept, rejected, and deferred; each accepted fix on one line with its commit; raw measurement and live-proof paths; losing patch paths; the absolute `attempts.tsv` path; the best next idea; and requested versus reached End state. Include open cleanup, verification, target, or isolation gaps. Claim only checks and outcomes that were observed.
+
+Publish that report as a Document Result. Use Metrics for the initial baseline and final accepted measurement, with workload, environment, units, samples, uncertainty, target, and frozen-harness identity. Use Comparison for each wave's alternatives and evidence-backed verdict, Code/diff for accepted changes, and Timeline for every attempt including rejects, deferrals, failed gates, and superseding outcomes. Keep unmeasured hypotheses and missing proof distinct from measured wins. Attach raw samples, gate outputs, live proof, losing patches, and the latest log snapshot. Record requested and actually reached End state through the common progress items without treating a measured win as delivery. Finish this Stage and restore implement's binding before returning. The reply summarizes Results on the Flow page, not a separate report page.

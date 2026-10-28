@@ -12,6 +12,8 @@ Run independent attempts at the same task. Read every candidate, pick a base, gr
 
 The grill uses kind `reply` for fact-finding. implement uses kind `tree` for changes at real target paths. Run only when the user's words ask for several attempts. A caller's preference alone does not authorize attempts. implement owns the End state.
 
+For an actual comparison run, read `skill://flow-page` and discover the session and agent's `bound` Flow. Open a `compare-attempts` Stage there with the caller's Stage as `--parent`, or start a Flow if unbound. A reference read adds nothing. The parent publishes candidates' returned evidence; runners do not change the parent's binding. Record asks through this Stage.
+
 ## Phase A: Frame
 
 The runners receive one shared prompt. The rubric stays with the parent.
@@ -90,6 +92,6 @@ Verify the synthesized artifact per `skill://principle-prove-it-works`, using th
 
 ## Outputs
 
-Return one synthesized artifact and a short synthesis note in the reply. Add the same note to the driving ticket when there is one. Write no separate synthesis file.
+Publish the synthesized artifact and synthesis note as Results on this Flow page. Use a Comparison Result with the candidates, rubric criteria, evidence-backed assessments, and chosen, tied, or inconclusive verdict. Preserve dropouts and unavailable candidates with their reasons rather than inventing assessments. A Document Result carries the full synthesis note and a `reply` artifact. Code/diff carries a `tree` artifact's relevant changes, with source paths and revisions. Attach redacted candidate evidence and verification outputs, keeping the real target files and losing patches unchanged. Add the synthesis note to the driving ticket when there is one. Write no separate synthesis file or report page. Finish the Stage and restore the caller's binding. Return a short summary of the artifact and note in the reply.
 
 The note names the base and why it won, each graft with its source, each rejection and why, the dropouts, the cross-judge's verdict or `cross-judge: not run`, every losing patch path, and the verification commands and observed results. State the artifact kind and any convergence or re-run. Never claim a check that did not run.

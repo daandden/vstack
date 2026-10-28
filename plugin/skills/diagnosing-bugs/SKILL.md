@@ -9,6 +9,14 @@ A discipline for hard bugs. Skip phases only when explicitly justified.
 
 When exploring the codebase, read `GLOSSARY.md` (if it exists) to get a clear mental model of the relevant modules, and check ADRs in the area you're touching.
 
+## Record the investigation
+
+Read `skill://flow-page` before the first probe or ask. Use `bound` with the supplied session and agent identity. Open a `diagnosing-bugs` Stage on that Flow, with the bound Stage as `--parent`, or start a Flow when unbound. Reading this skill as reference alone creates no Stage. Put every ask and answer on this Stage through the common authoring contract.
+
+Publish the repro command and redacted observed output as Code Results with source paths. Keep the ranked hypotheses and their falsifiable predictions in a Document Result, and the probes and their outcomes in a Timeline. A ledger distinguishes confirmed, cleared, and unproven claims and names missing proof. A hypothesis becomes confirmed only when the executed evidence establishes it. Add Metrics for timing or reproduction rates, with workload, environment, numeric values, units, samples, and uncertainty.
+
+Attach redacted repros, captures, raw outputs, and regression evidence before publishing their Results. Redact the files themselves because attachments retain their bytes. Update focused findings or publish a new captured Result revision as evidence changes. At hand-back, publish the cause, red and green evidence, cleanup, and remaining gaps in the Document. Finish this Stage and restore the caller's binding when nested. The reply summarizes the Results. Keep canonical regression tests and scripts at their required paths, and use the Flow page rather than a separate report page.
+
 ## Redact
 
 This skill has you show commands, outputs and captured artifacts. **Redact every secret first**: write `<REDACTED>` in its place. Build loops against env vars, so the credential stays in the environment rather than in what you show. Captured artifacts carry auth headers: quote only the lines that carry the signal.
