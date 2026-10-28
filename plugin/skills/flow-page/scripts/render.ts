@@ -8,7 +8,7 @@ import { optionLabel, type AnswerState, type Attachment, type ComparisonView, ty
 import type { ProgressView } from "./progress.ts";
 
 /** Raise this when the page a given state renders to changes, so a page names the renderer that made it. */
-export const RENDERER = 13;
+export const RENDERER = 14;
 const TEMPLATE = join(import.meta.dir, "..", "templates", "flow-page.html");
 export type Runtimes = Record<string, { url?: string; reason?: string }>;
 
@@ -426,6 +426,17 @@ ${measurements.join("\n")}
 </div>`;
 }
 
+function quizHtml(r: ResultView): string {
+  const questions = r.quiz!.questions.map((q, i) => {
+    const id = `${r.anchor}-quiz-${i + 1}`;
+    const input = q.choices
+      ? q.choices.map((c) => `<label><input type="radio" name="${id}" value="${esc(c.ref)}"> ${esc(c.label)}</label>`).join("")
+      : `<label>Answer <input name="${id}" type="${"number" in q.answer ? "number" : "text"}"${"number" in q.answer ? ' step="any"' : ""} required></label>`;
+    return `<form data-question="${esc(q.ref)}"><fieldset><legend>${text(q.prompt)}</legend>${input}</fieldset><button type="submit">Check answer</button><div class="quiz-feedback" role="status"></div></form>`;
+  });
+  return `<div class="quiz" data-key="${esc(`${r.id}:r${r.revision}`)}" data-quiz="${esc(JSON.stringify(r.quiz))}">${questions.join("")}<p class="quiz-completion" role="status"></p><p class="quiz-sync" role="status"></p><p class="source">Learning progress only. These answers do not settle real asks or authorize work.</p></div>`;
+}
+
 function provenance(r: ResultView): string {
   const c = r.canonical;
   const link = !c ? "" : "file" in c ? ` from <code>${esc(c.file)}</code> at sha256 <code>${c.sha256.slice(0, 12)}</code>` : "commit" in c ? ` from commit <code>${esc(c.commit.slice(0, 12))}</code>` : ` from ${text(c.tracker)} at <code>${esc(c.revision)}</code>`;
@@ -448,6 +459,8 @@ function resultHtml(r: ResultView, v: View, historical = false, runtimes: Runtim
     body = comparisonHtml(r.comparison, new Map(r.shown.map((a) => [a.id, a])));
   } else if (r.metrics) {
     body = metricsHtml(r.metrics);
+  } else if (r.quiz) {
+    body = quizHtml(r);
   } else if (r.shape === "table") {
     const linked = r.entries.some((e) => e.questions.length);
     const head = `<tr>${r.columns!.map((c) => `<th scope="col">${text(c)}</th>`).join("")}${linked ? `<th scope="col">Asked in</th>` : ""}</tr>`;

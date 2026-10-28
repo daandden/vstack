@@ -1,11 +1,12 @@
-// The detached, read-only Local Flow host. Authoring remains a local Stage-bound CLI operation, never an HTTP route.
-import { randomBytes } from "node:crypto";
+// The detached Local Flow host serves pages and scoped learning progress. Authoring stays in the Stage-bound CLI.
+import { createHmac, randomBytes } from "node:crypto";
 import { lstatSync, realpathSync, rmSync } from "node:fs";
 import { extname, join, sep } from "node:path";
 import { parseArgs } from "node:util";
 import { scratchRoot } from "../../vstack-tmp/scripts/scratch.ts";
 import { attest, capability, originOf, record, recordPath, same, secrets, version, type HostRecord } from "./live.ts";
 import { SLUG, view, type State } from "./model.ts";
+import { learning } from "./learning.ts";
 import { render, type Runtimes } from "./render.ts";
 import { assetsDir, folderOfId, readState, writeAtomic } from "./store.ts";
 
@@ -151,7 +152,7 @@ async function route(req: Request): Promise<Response> {
     }
     return missing();
   }
-  if (req.method !== "GET" && req.method !== "HEAD") return response("Read-only host.", 405, { Allow: "GET, HEAD" });
+  if (!["GET", "HEAD", "POST"].includes(req.method)) return response("Unsupported method.", 405);
   const m = url.pathname.match(/^\/f\/([^/]+)\/([^/]+)\/([a-f0-9]{64})(\/.*)?$/);
   if (!m) return missing();
   let key: string;
@@ -167,7 +168,20 @@ async function route(req: Request): Promise<Response> {
   if (!folder || !realpathSync(folder).startsWith(realpathSync(dir) + sep)) return missing();
   const s = readState(folder);
   if (!s || s.flow.id !== id) return missing();
-  if (m[4] === "/") return response(req.method === "HEAD" ? null : render(view(s), await runtimes(s, key)), 200, { "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": csp });
+  const progressToken = createHmac("sha256", secret.control).update(`flow-learning-v1\n${key}\n${id}`).digest("hex");
+  if (m[4] === "/learning") {
+    const token = req.headers.get("cookie")?.split(";").map((x) => x.trim()).find((x) => x.startsWith("flow_learning="))?.slice(14) ?? "";
+    if (!same(token, progressToken)) return response("Learning permission required.", 401);
+    if (req.method === "POST" && req.headers.get("origin") !== origin) return response("Invalid progress origin.", 403);
+    if (req.method === "POST" && req.headers.get("content-type") !== "application/json") return response("Use application/json.", 415);
+    const result = await learning(folder, req);
+    return response(JSON.stringify(result.body), result.status, { "Content-Type": "application/json" });
+  }
+  if (req.method !== "GET" && req.method !== "HEAD") return response("Read-only host.", 405, { Allow: "GET, HEAD" });
+  if (m[4] === "/") return response(req.method === "HEAD" ? null : render(view(s), await runtimes(s, key)), 200, {
+    "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": csp,
+    "Set-Cookie": `flow_learning=${progressToken}; Path=${url.pathname}; HttpOnly; SameSite=Strict; Max-Age=31536000`,
+  });
   if (m[4] === "/events" && req.method === "GET") return held(req, () => {
     const current = folderOfId(dir, id);
     return current ? readState(current)?.revision : undefined;

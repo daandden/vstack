@@ -35,7 +35,7 @@ export type Retirement = { question: string; reason: string; time?: string };
 export type Section = { heading: string; body: string };
 export type Background = { id: string; stage: string; title: string; summary: string; sections: Section[]; sources: string[]; figures?: Figure[]; jump?: string };
 export type Topic = { id: string; title: string; summary: string; body: string; sources: string[] };
-export type Shape = "cards" | "ledger" | "table" | "document" | "prototype" | "comparison" | "metrics" | "code" | "timeline";
+export type Shape = "cards" | "ledger" | "table" | "document" | "prototype" | "comparison" | "metrics" | "code" | "timeline" | "quiz";
 /** `changed` is the Flow revision that last changed a Result's header or an entry, which a focused revision checks. */
 export type Entry = Record<string, unknown> & { id: string; changed: number };
 /** One block of a Document section. Prose and list items can cite with `[@<citation ref>]`. */
@@ -75,10 +75,12 @@ export type Demo = {
   start: string;
   actions: { name: string; label: string; transitions: Transition[] }[];
 };
+export type QuizRule = { choice: string } | { text: string[]; case_sensitive: boolean } | { number: number; tolerance: number };
+export type Quiz = { questions: { ref: string; prompt: string; explanation: string; choices?: { ref: string; label: string }[]; answer: QuizRule }[] };
 /** `revision` counts whole republications of the Result with `revises`; `captured` is when this one was submitted. */
 export type Result = {
   id: string; stage: string; shape: Shape; title: string; summary?: string; columns?: string[]; entries: Entry[]; changed: number;
-  document?: DocumentBody; demo?: Demo; artifact?: string; comparison?: ComparisonBody; metrics?: MetricsBody; attachments?: string[]; canonical?: Canonical; revision?: number; captured?: string; jump?: string;
+  document?: DocumentBody; demo?: Demo; artifact?: string; quiz?: Quiz; comparison?: ComparisonBody; metrics?: MetricsBody; attachments?: string[]; canonical?: Canonical; revision?: number; captured?: string; jump?: string;
 };
 export type Source = { id: string; text: string };
 export const ATTACHMENT_TYPES = ["image", "video", "svg", "file", "trace", "evidence", "artifact"] as const;
@@ -149,9 +151,9 @@ export const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const REF = /^[a-z0-9][a-z0-9-]*$/;
 const CODE_ID = /^(stage|round|question|close|background|topic|result|source|assumed|attachment|task|blocker|pr|check)-\d+$/;
 const TICKET = /^#?[A-Za-z0-9][A-Za-z0-9._/-]*$/;
-const SHAPES: Shape[] = ["cards", "ledger", "table", "document", "prototype", "comparison", "metrics", "code", "timeline"];
+const SHAPES: Shape[] = ["cards", "ledger", "table", "document", "prototype", "comparison", "metrics", "code", "timeline", "quiz"];
 /** Shapes whose content is one whole body rather than entries, so a focused `add` cannot extend them. */
-const WHOLE: Record<string, string> = { document: "a Document", prototype: "a demo", comparison: "a Comparison", metrics: "a Metrics Result" };
+const WHOLE: Record<string, string> = { document: "a Document", prototype: "a demo", comparison: "a Comparison", metrics: "a Metrics Result", quiz: "a Quiz" };
 const OUTCOMES = ["succeeded", "failed", "blocked", "skipped", "unknown", "noted"];
 const TIME = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2}))?$/;
 function realTime(t: string): boolean {
@@ -599,10 +601,55 @@ function parseResult(o: Obj, where: string, stage: string, id: string, entryIds:
     fields(o, where, ["kind", "shape", "title", "workload", "outcome", "series", "measurements"], [...shared, "environment"]);
     return head({ metrics: parseMetrics(o, where) });
   }
+  if (shape === "quiz") {
+    fields(o, where, ["kind", "shape", "title", "questions"], shared);
+    return head({ quiz: parseQuiz(o, where) });
+  }
   fields(o, where, ["kind", "shape", "title", table ? "columns" : "entries", ...(table ? ["rows"] : [])], shared);
   const columns = table ? texts(o, "columns", where) : undefined;
   const entries = list(o, table ? "rows" : "entries", where).map((e, j) => parseEntry(shape, columns, e, `${where}: ${table ? "row" : "entry"} ${j + 1}`, entryIds[j].split("/")[1], rev, attachment));
   return head({ ...(columns ? { columns } : {}), entries });
+}
+
+function parseQuiz(o: Obj, where: string): Quiz {
+  const seen = new Set<string>();
+  const questions = list(o, "questions", where).map((raw, i) => {
+    const w = `${where}: quiz question ${i + 1}`;
+    const q = fields(raw, w, ["ref", "prompt", "answer", "explanation"], ["choices"]);
+    const name = text(q, "ref", w);
+    if (!REF.test(name) || seen.has(name)) refuse(w, "ref must be unique lowercase letters, digits, and hyphens");
+    seen.add(name);
+    const a = fields(q.answer, `${w}: answer`, [], ["choice", "text", "case_sensitive", "number", "tolerance"]);
+    if (["choice", "text", "number"].filter((k) => a[k] !== undefined).length !== 1) refuse(w, "answer needs exactly one of choice, text, or number");
+    let answer: QuizRule;
+    let choices: { ref: string; label: string }[] | undefined;
+    if (a.choice !== undefined) {
+      fields(a, w, ["choice"]);
+      const names = new Set<string>();
+      choices = list(q, "choices", w).map((raw) => {
+        const c = fields(raw, w, ["ref", "label"]);
+        const name = text(c, "ref", w);
+        if (!REF.test(name) || names.has(name)) refuse(w, "choice refs must be unique lowercase letters, digits, and hyphens");
+        names.add(name);
+        return { ref: name, label: safeLinks(text(c, "label", w), w) };
+      });
+      if (choices.length < 2 || !names.has(text(a, "choice", w))) refuse(w, "answer must name one of at least two choices");
+      answer = { choice: a.choice as string };
+    } else {
+      if (q.choices !== undefined) refuse(w, "choices require a choice answer");
+      if (a.text !== undefined) {
+        fields(a, w, ["text"], ["case_sensitive"]);
+        if (a.case_sensitive !== undefined && typeof a.case_sensitive !== "boolean") refuse(w, "case_sensitive must be true or false");
+        answer = { text: texts(a, "text", w), case_sensitive: a.case_sensitive === true };
+      } else {
+        fields(a, w, ["number"], ["tolerance"]);
+        if (typeof a.number !== "number" || !Number.isFinite(a.number) || (a.tolerance !== undefined && (typeof a.tolerance !== "number" || !Number.isFinite(a.tolerance) || a.tolerance < 0))) refuse(w, "number must be finite and tolerance must be finite and nonnegative");
+        answer = { number: a.number as number, tolerance: (a.tolerance as number | undefined) ?? 0 };
+      }
+    }
+    return { ref: name, prompt: safeLinks(text(q, "prompt", w), w), explanation: safeLinks(text(q, "explanation", w), w), ...(choices ? { choices } : {}), answer };
+  });
+  return { questions };
 }
 
 /** One Result entry or table row, checked against its shape. */

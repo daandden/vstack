@@ -350,6 +350,18 @@
     .bar-cell meter::-webkit-meter-bar { border: none; border-radius: 0.25rem; background: var(--surface0); block-size: 0.5rem; }
     .bar-cell meter::-webkit-meter-optimum-value { border-radius: 0.25rem; background: var(--blue); }
     .bar-cell meter::-moz-meter-bar { border-radius: 0.25rem; background: var(--blue); }
+    .quiz, .quiz form, .quiz fieldset { display: grid; gap: 0.75rem; }
+    .quiz form { padding-block: 1rem; border-block-end: 1px solid var(--surface1); }
+    .quiz fieldset { border: 0; padding: 0; min-inline-size: 0; }
+    .quiz legend { font-weight: 600; margin-block-end: 0.75rem; }
+    .quiz label { display: flex; align-items: center; gap: 0.5rem; min-block-size: 2.75rem; flex-wrap: wrap; }
+    .quiz input:not([type="radio"]) { font: inherit; color: var(--text); background: var(--surface0); border: 1px solid var(--overlay0); border-radius: 0.25rem; padding: 0.5rem; inline-size: min(100%, 20rem); }
+    .quiz button { font: inherit; justify-self: start; min-block-size: 2.75rem; padding-inline: 1rem; border: 1px solid var(--lavender); border-radius: 0.25rem; color: var(--text); background: var(--surface0); cursor: pointer; }
+    .quiz button:active { background: var(--surface1); }
+    .quiz :is(input, button):focus-visible { outline: 2px solid var(--lavender); outline-offset: 3px; }
+    .quiz-feedback[data-correct="true"], .quiz-completion { color: var(--green); }
+    .quiz-feedback[data-correct="false"] { color: var(--peach); }
+    .quiz-sync { color: var(--subtext0); }
   </style>
 </head>
 <body>
@@ -672,6 +684,105 @@
       }
     }
     window.flowHostEvents?.addEventListener("revision", receiveRevision);
+    const quizStorage = `flow-page:learning:${flowId}`;
+    let learningState = { attempts: [], accepted: [] };
+    try {
+      const saved = JSON.parse(local.get(quizStorage));
+      if (Array.isArray(saved?.attempts) && Array.isArray(saved?.accepted)) learningState = saved;
+    } catch {}
+    let durableLocal = true;
+    const saveLearning = () => {
+      try { localStorage.setItem(quizStorage, JSON.stringify(learningState)); durableLocal = true; }
+      catch { durableLocal = false; }
+    };
+    const grade = (q, answer) => {
+      const rule = q.answer;
+      if ("choice" in rule) return answer === rule.choice;
+      if ("number" in rule) return answer.trim() !== "" && Number.isFinite(Number(answer)) && Math.abs(Number(answer) - rule.number) <= rule.tolerance;
+      const normalize = (s) => rule.case_sensitive ? s.trim() : s.trim().toLowerCase();
+      return rule.text.some((s) => normalize(s) === normalize(answer));
+    };
+    const quizReady = new WeakSet();
+    let syncing = false;
+    let syncError = false;
+    function paintQuizzes() {
+      for (const el of document.querySelectorAll(".quiz[data-quiz]")) {
+        const def = JSON.parse(el.dataset.quiz);
+        const [result, rev] = el.dataset.key.split(":r");
+        const attempts = learningState.attempts.filter((a) => a.result === result && a.revision === Number(rev));
+        for (const form of el.querySelectorAll("form[data-question]")) {
+          const q = def.questions.find((q) => q.ref === form.dataset.question);
+          const latest = attempts.filter((a) => a.question === q.ref).at(-1);
+          const feedback = form.querySelector(".quiz-feedback");
+          if (latest) {
+            const right = grade(q, latest.answer);
+            feedback.dataset.correct = String(right);
+            feedback.textContent = `${right ? "Correct." : "Not yet."} ${q.explanation} Attempts: ${attempts.filter((a) => a.question === q.ref).length}.`;
+          }
+        }
+        const complete = def.questions.every((q) => attempts.some((a) => a.question === q.ref && grade(q, a.answer)));
+        el.querySelector(".quiz-completion").textContent = complete ? "Lesson complete." : "Lesson in progress.";
+        const pending = attempts.filter((a) => !learningState.accepted.includes(a.id)).length;
+        el.querySelector(".quiz-sync").textContent = !durableLocal ? "Browser storage is unavailable. Unsynced attempts may be lost when this page closes." : location.protocol === "file:" ? "Saved in this browser. Offline export." : pending ? `${pending} attempt(s) saved in this browser, waiting to sync.` : syncError ? "Server unavailable. Saved progress remains in this browser." : "Progress saved with the Flow.";
+      }
+    }
+    async function syncLearning() {
+      if (syncing || location.protocol !== "http:" || !document.querySelector(".quiz")) return;
+      syncing = true;
+      try {
+        const pending = learningState.attempts.filter((a) => !learningState.accepted.includes(a.id)).slice(0, 100);
+        const r = await fetch(new URL("learning", location.href), pending.length ? { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ version: 1, attempts: pending }) } : { credentials: "same-origin" });
+        if (!r.ok) throw new Error(`Learning sync ${r.status}`);
+        const progress = await r.json();
+        const all = new Map(learningState.attempts.map((a) => [a.id, a]));
+        for (const a of progress.attempts) all.set(a.id, { id: a.id, result: a.result, revision: a.revision, question: a.question, answer: a.answer });
+        learningState.attempts = [...all.values()];
+        learningState.accepted = [...new Set([...learningState.accepted, ...progress.attempts.map((a) => a.id)])];
+        syncError = false;
+        saveLearning();
+      } catch { syncError = true; }
+      finally { syncing = false; paintQuizzes(); }
+    }
+    function hydrateQuizzes() {
+      for (const el of document.querySelectorAll(".quiz[data-quiz]")) {
+        if (quizReady.has(el)) continue;
+        quizReady.add(el);
+        // Native answer editing, including radio arrows, does not navigate the Flow.
+        el.addEventListener("keydown", (e) => e.stopPropagation());
+        el.addEventListener("submit", (e) => {
+          e.preventDefault();
+          const form = e.target;
+          const def = JSON.parse(el.dataset.quiz);
+          const q = def.questions.find((q) => q.ref === form.dataset.question);
+          const answer = q.choices ? form.querySelector("input:checked")?.value : form.querySelector("input").value;
+          if (!answer?.trim()) { form.querySelector(".quiz-feedback").textContent = "Enter or choose an answer first."; return; }
+          const [result, rev] = el.dataset.key.split(":r");
+          learningState.attempts.push({ id: crypto.randomUUID(), result, revision: Number(rev), question: q.ref, answer });
+          saveLearning();
+          paintQuizzes();
+          void syncLearning();
+        });
+      }
+      paintQuizzes();
+      void syncLearning();
+    }
+    document.addEventListener("flow-page-updated", hydrateQuizzes);
+    addEventListener("online", syncLearning);
+    addEventListener("focus", syncLearning);
+    addEventListener("storage", (e) => {
+      if (e.key !== quizStorage || !e.newValue) return;
+      try {
+        const incoming = JSON.parse(e.newValue);
+        const all = new Map(learningState.attempts.map((a) => [a.id, a]));
+        for (const a of incoming.attempts) all.set(a.id, a);
+        learningState.attempts = [...all.values()];
+        learningState.accepted = [...new Set([...learningState.accepted, ...incoming.accepted])];
+        paintQuizzes();
+        void syncLearning();
+      } catch {}
+    });
+    setInterval(syncLearning, 15000);
+    hydrateQuizzes();
     show(0);
     goToHash(false);
   </script>

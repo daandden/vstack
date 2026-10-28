@@ -32,6 +32,7 @@ The flow-page script takes typed contributions for one bound Stage, assigns ids,
 - `flow-artifact`: a prototype Result names an HTML bundle, local app route, or terminal artifact. Captured bundles execute on a separate read-only viewer origin, local routes stay on their own origin, and missing runtimes show launch instructions with an unavailable state. Static exports never pretend a runtime is running.
 - `flow-nav`: `n` cycles through actionable questions newest in-progress Stage first; `t` opens a clickable Stage-only tree with states and open-question counts; `j` and `k` set fragments and focus; tab navigation moves focus; editable targets ignore shortcuts.
 - `flow-session`: each session and agent restores its own binding. A terminal main-agent reply presents the bound URL without another model request or a browser launch. A blocker and a follow-up with no model-written link still get the extension message. A live failure presents the static path and observed error.
+- `flow-quiz`: structured choice, text, and numeric quizzes give immediate feedback and explanations. Attempts and completion persist separately from authored work, resume across host restarts, and synchronize browser-local offline attempts idempotently. Static exports remain interactive offline.
 
 ## How to get to it (user POV)
 
@@ -84,6 +85,12 @@ Steps:
   - Reload: the demo comes back where it was. Click Reset: it returns to the start, and its `localStorage` key is gone. Play the video for a few seconds, pause, and reload: `currentTime` comes back.
   - `show --flow <id>` gives the same `revision` before and after all of these steps. `tab.requests()` lists only the page and its captured assets.
   - At 360px, the demo has no horizontal overflow.
+- Quiz (`flow-quiz`): publish a `quiz` Result through `submit` with choice, numeric-tolerance, and text rules and explanations. Submit an invalid choice reference and confirm refusal without a domain change.
+  - Open its live page in Chromium. Submit a wrong choice and then a correct retry. Use Enter for numeric and text answers. Observe immediate feedback, attempt counts, explanations, and lesson completion.
+  - Clear browser-local learning state, reopen the live page, and observe progress restored from the Flow. Stop and restart the actual host and repeat.
+  - Keep the live page open while the host is stopped. Submit an attempt, observe the pending state, restart the host, and focus the page to sync. Replay the same batch and observe no duplicate attempt ids.
+  - With the host stopped, open the static export, submit an answer, and reload. Feedback and local progress remain usable offline. At 360px the page has no horizontal overflow.
+  - Compare authored state before and after learning: the revision, ask answers, and workflow tasks are unchanged. Capture commands, outcomes, ARIA snapshots, and lossless WebP screenshots, and attach them to Results on this proof Flow.
 - Concurrency and identity (`flow-concurrent`, `flow-identity`):
   - Bind `--session verify-a` and `--session verify-b` to the two wayfinder Stages with `bind`. Start six `submit -` rounds and six `alias run:<n>` per session at once as background jobs, and wait for all of them. Every exit is 0, every receipt `revision` differs, and `show` lists six questions per Stage and all twelve `run:` aliases.
   - `alias spec:9270`, then `move --to verify-9270`. `find spec:9270`, `find folder:verify-9270`, and `find folder:<old folder key>` print the same `flow`. A `submit` through `verify-a`'s binding lands in the moved Flow, and its receipt `page` is the moved path.
