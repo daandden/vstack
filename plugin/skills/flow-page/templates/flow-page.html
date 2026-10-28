@@ -198,6 +198,42 @@
     /* Code keeps every space and line break; a long line scrolls inside its block. */
     .code pre { margin: 0; padding-block: 0.5rem; padding-inline: 0.75rem; border-radius: 0.375rem; background: var(--mantle); white-space: pre; overflow-x: auto; tab-size: 4; }
     .code code { padding-inline: 0; background: none; }
+    .code-entry { display: grid; gap: 0.5rem; }
+    .code-location { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.25rem 0.75rem; color: var(--subtext0); font-size: var(--fs-small); }
+    .code-location .kind { color: var(--teal); font-weight: 600; }
+    .code-location .entry-id { margin-inline-end: 0; }
+    .code[data-kind] pre { padding-inline: 0; }
+    .code[data-kind] code { display: block; inline-size: max-content; min-inline-size: 100%; }
+    .code .line { display: block; position: relative; padding-inline: 4.5rem 0.75rem; min-block-size: 1lh; }
+    .code .line::before { content: attr(data-old); position: absolute; inset-block-start: 0; inset-inline-start: 0; inline-size: 3.5rem; padding-inline-end: 0.75rem; color: var(--subtext0); text-align: end; user-select: none; font-variant-numeric: tabular-nums; }
+    .code[data-kind="diff"] .line { padding-inline-start: 8rem; }
+    .code[data-kind="diff"] .line::after { content: attr(data-new); position: absolute; inset-block-start: 0; inset-inline-start: 3.5rem; inline-size: 3.5rem; padding-inline-end: 0.75rem; color: var(--subtext0); text-align: end; user-select: none; font-variant-numeric: tabular-nums; }
+    .code .add { background: color-mix(in oklch, var(--green) 10%, var(--mantle)); }
+    .code .del { background: color-mix(in oklch, var(--red) 10%, var(--mantle)); }
+    .code .add .mark { color: var(--green); }
+    .code .del .mark { color: var(--red); }
+    .code :is(.meta, .note) { color: var(--subtext0); }
+    .code .hunk { color: var(--lavender); background: var(--surface0); }
+    .code .line:target, .code .line:has(:target) { outline: 1px solid var(--yellow); outline-offset: -1px; }
+    .tok-kw { color: var(--mauve); }
+    .tok-str { color: var(--green); }
+    .tok-com { color: var(--subtext0); font-style: italic; }
+    .tok-num { color: var(--peach); }
+    .code .tok-ws { background: color-mix(in oklch, var(--peach) 25%, transparent); }
+
+    .timeline { display: grid; padding-inline-start: 1rem; list-style: decimal; }
+    .event { padding-block: 0 1rem; padding-inline-start: 0.75rem; border-inline-start: 1px solid var(--line); }
+    .event > * + * { margin-block-start: 0.375rem; }
+    .event-meta { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; color: var(--subtext0); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
+    .event .outcome { color: var(--outcome); font-weight: 600; }
+    .event::marker { color: var(--outcome); font-variant-numeric: tabular-nums; }
+    .event[data-outcome="succeeded"] { --outcome: var(--green); }
+    .event[data-outcome="failed"] { --outcome: var(--red); }
+    .event[data-outcome="blocked"] { --outcome: var(--peach); }
+    .event[data-outcome="skipped"], .event[data-outcome="unknown"] { --outcome: var(--subtext0); }
+    .event[data-outcome="noted"] { --outcome: var(--blue); }
+    .event:target { background: var(--surface0); }
+
     .cite { font-size: var(--fs-small); font-weight: 600; text-decoration: none; font-variant-numeric: tabular-nums; }
     .backlink { font-size: var(--fs-small); }
     :is(.limitations, .citations) { display: grid; gap: 0.125rem; }

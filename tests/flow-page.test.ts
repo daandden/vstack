@@ -1299,3 +1299,172 @@ test("Metrics subtracts decimal measurements without displaying floating-point n
   expect(r.code).toBe(0);
   expect(show(r.json.flow).stages[0].results[0].metrics.measurements[0].values[1].delta).toBe(-1.6);
 });
+
+const DIFF = [
+  "diff --git a/src/cart.ts b/src/cart.ts",
+  "--- a/src/cart.ts",
+  "+++ b/src/cart.ts",
+  "@@ -10,4 +10,5 @@ export function check(cart) {",
+  " if (cart.size > limit) {",
+  "-\treturn refuse();",
+  "+\treturn  refuse();  ",
+  "+\tlog(cart);",
+  " }",
+  " ",
+  "@@ -20 +21 @@",
+  "-const limit = 3;",
+  "+const limit = 5;",
+  "\\ No newline at end of file",
+].join("\n") + "\n";
+const codeResult = (ref: string, ...entries: object[]) => ({ kind: "result", ref, shape: "code", title: "The change", entries });
+const lineAnchor = (entry: string, side: "L" | "R", n: number) => `${entry.replace("/", "-")}-${side}${n}`;
+
+test("a Code/diff Result shows code and a diff at their source lines, keeping every space and line break", async () => {
+  openFlow("s-1");
+  const r = submit(
+    "s-1",
+    codeResult(
+      "change",
+      { ref: "now", file: "src/cart.ts", line: 10, language: "ts", code: CODE },
+      { ref: "fix", file: "src/cart.ts", revision: "abc1234", language: "ts", diff: DIFF },
+      { ref: "sketch", file: "notes/sketch.txt", code: "a\n  b\n" },
+    ),
+  );
+  expect(r.stderr).toBe("");
+  expect(r.code).toBe(0);
+  const { refs, page, flow } = r.json;
+  const [now, fix, sketch] = ["change/now", "change/fix", "change/sketch"].map((k) => refs[k]);
+  const entries = show(flow).stages[0].results[0].entries;
+  expect(entries.map((e: any) => e.id)).toEqual([now, fix, sketch]);
+  expect(entries[0].location).toEqual({ file: "src/cart.ts", lines: { first: 10, last: 12 } });
+  expect(entries[1].location).toMatchObject({ file: "src/cart.ts", revision: "abc1234", hunks: [{ old: { start: 10, count: 4 }, new: { start: 10, count: 5 } }, { old: { start: 20, count: 1 }, new: { start: 21, count: 1 } }] });
+  expect(entries[2].location).toEqual({ file: "notes/sketch.txt" });
+  const els = await elements(page);
+  const text = (id: string) => els.find((e) => e.attrs.id === id)?.text;
+  const pre = (entry: string) => within(els, entry.replace("/", "-")).filter((e) => e.tag === "pre").map((e) => e.text);
+  expect(pre(now)).toEqual([CODE]);
+  expect(pre(fix)).toEqual([DIFF]);
+  expect(pre(sketch)).toEqual(["a\n  b\n"]);
+  expect([10, 11, 12].map((n) => text(lineAnchor(now, "L", n)))).toEqual(CODE.split("\n").slice(0, 3).map((l) => `${l}\n`));
+  expect(text(lineAnchor(fix, "L", 11))).toBe("-\treturn refuse();\n");
+  expect(text(lineAnchor(fix, "R", 11))).toBe("+\treturn  refuse();  \n");
+  expect(text(lineAnchor(fix, "R", 14))).toBe(" \n");
+  expect(text(lineAnchor(fix, "L", 20))).toBe("-const limit = 3;\n");
+  expect(text(lineAnchor(fix, "R", 21))).toBe("+const limit = 5;\n");
+  for (const h of entries[1].location.hunks) expect(text(h.anchor)).toStartWith("@@ ");
+  expect(within(els, sketch.replace("/", "-")).filter((e) => /-[LR]\d+$/.test(e.attrs.id ?? ""))).toEqual([]);
+  const l = await links(page);
+  for (const targets of l.within.values()) for (const t of targets) expect(l.ids.has(t)).toBe(true);
+});
+
+test("highlighting never turns submitted code into page markup", async () => {
+  openFlow("s-1");
+  const hostile = `</code></pre><script>alert(1)</script><img src=x onerror=alert(1)> "q" 'r' &amp; /* x */ // y\n`;
+  const hostileDiff = `@@ -1 +1 @@\n-${hostile}+${hostile}`;
+  const r = submit("s-1", codeResult("c", { ref: "a", file: "a.js", line: 1, language: "js", code: hostile }, { ref: "b", file: "a.js", language: "js", diff: hostileDiff }));
+  expect(r.stderr).toBe("");
+  const { page, refs } = r.json;
+  const els = await elements(page);
+  expect(within(els, refs["c/a"].replace("/", "-")).filter((e) => e.tag === "pre").map((e) => e.text)).toEqual([hostile]);
+  expect(within(els, refs["c/b"].replace("/", "-")).filter((e) => e.tag === "pre").map((e) => e.text)).toEqual([hostileDiff]);
+  const l = await links(page);
+  const template = await links(join(import.meta.dir, "..", "plugin", "skills", "flow-page", "templates", "flow-page.html"));
+  expect(l.scripts).toBe(template.scripts);
+  expect(l.handlers).toBe(0);
+  expect(l.outbound).toEqual([]);
+});
+
+const event = (ref: string, extra: object = {}) => ({ ref, title: `Event ${ref}`, outcome: "succeeded", ...extra });
+const timeline = (ref: string, ...entries: object[]) => ({ kind: "result", ref, shape: "timeline", title: "The run", entries });
+
+test("a Timeline keeps its events in the given order, with times only where known, outcomes, and evidence", async () => {
+  openFlow("s-1");
+  put("out/run.log", "1 failed\n");
+  const events = [
+    event("start", { time: "2026-10-28T10:05:00+07:00", outcome: "noted", detail: "Started the suite." }),
+    event("red", { time: "2026-10-28T10:01:30+07:00", outcome: "failed", evidence: "tests/cart.test.ts:12", attachments: ["log"] }),
+    event("later", { outcome: "unknown" }),
+  ];
+  const r = submit("s-1", attachment("log", "evidence", { path: "out/run.log" }), timeline("run", ...events), round(question("why", { results: ["run/red"] })));
+  expect(r.stderr).toBe("");
+  expect(r.code).toBe(0);
+  const { refs, page, flow } = r.json;
+  const ids = ["run/start", "run/red", "run/later"].map((k) => refs[k]);
+  const snap = show(flow);
+  const res = snap.stages[0].results[0];
+  expect(res.shape).toBe("timeline");
+  expect(res.entries.map((e: any) => [e.id, e.title, e.outcome, e.time])).toEqual([
+    [ids[0], "Event start", "noted", "2026-10-28T10:05:00+07:00"],
+    [ids[1], "Event red", "failed", "2026-10-28T10:01:30+07:00"],
+    [ids[2], "Event later", "unknown", undefined],
+  ]);
+  expect(res.entries[1].evidence).toBe("tests/cart.test.ts:12");
+  expect(res.attachments).toEqual([refs.log]);
+  expect(snap.attachments[0].used_by).toEqual([res.id]);
+  const els = await elements(page);
+  const anchors = ids.map((id) => id.replace("/", "-"));
+  expect(els.map((e) => e.attrs.id).filter((id) => anchors.includes(id))).toEqual(anchors);
+  expect(within(els, anchors[0]).filter((e) => e.tag === "time").map((e) => e.attrs.datetime)).toEqual(["2026-10-28T10:05:00+07:00"]);
+  expect(within(els, anchors[2]).filter((e) => e.tag === "time")).toEqual([]);
+  const file = snap.attachments[0].file;
+  expect(within(els, anchors[1]).some((e) => e.attrs.href === file)).toBe(true);
+  expect(readFileSync(join(dirname(page), file), "utf8")).toBe("1 failed\n");
+  expect(within(els, refs.why).some((e) => e.attrs.href === `#${anchors[1]}`)).toBe(true);
+  expect(within(els, anchors[1]).some((e) => e.attrs.href === `#${refs.why}`)).toBe(true);
+});
+
+test("a Timeline grows by focused revisions: add appends later events, and set records a known outcome against its base", () => {
+  openFlow("s-1");
+  const first = submit("s-1", timeline("run", event("build", { outcome: "unknown" }))).json;
+  const id = first.refs.run;
+  const added = submit("s-1", { kind: "revise", result: id, add: [event("test", { time: "2026-10-28T11:00:00Z", outcome: "failed" }), event("retry", { outcome: "succeeded" })] });
+  expect(added.stderr).toBe("");
+  const set = submit("s-1", { kind: "revise", result: `${id}/e1`, base: first.revision, set: { outcome: "succeeded", time: "2026-10-28T10:59:00Z" } });
+  expect(set.stderr).toBe("");
+  const before = tree();
+  const stale = submit("s-1", { kind: "revise", result: `${id}/e1`, base: first.revision, set: { outcome: "failed" } });
+  expect(stale.code).toBe(1);
+  expect(stale.stderr).toContain("conflict");
+  expect(tree()).toEqual(before);
+  const entries = show(first.flow).stages[0].results[0].entries;
+  expect(entries.map((e: any) => [e.title, e.outcome, e.time])).toEqual([
+    ["Event build", "succeeded", "2026-10-28T10:59:00Z"],
+    ["Event test", "failed", "2026-10-28T11:00:00Z"],
+    ["Event retry", "succeeded", undefined],
+  ]);
+});
+
+test.each([
+  ["a diff hunk that ends before the lines it counts", { diff: "@@ -1,3 +1,3 @@\n a\n-b\n+c\n" }, "hunk 1"],
+  ["a diff hunk with more lines than it counts", { diff: "@@ -1 +1 @@\n-a\n+b\n c\n" }, "hunk 1"],
+  ["two files in one entry", { diff: `${DIFF}diff --git a/x b/x\n--- a/x\n+++ b/x\n@@ -1 +1 @@\n-a\n+b\n` }, "one file"],
+  ["text that is not a diff", { diff: "just words\n" }, "unified diff"],
+  ["both code and a diff", { code: "a\n", diff: "@@ -1 +1 @@\n-a\n+b\n" }, "code or diff"],
+  ["a start line that is not a positive whole number", { code: "a\n", line: 0 }, "line"],
+  ["a file with a line break", { file: "a.ts\nb.ts", code: "a\n" }, "file"],
+])("a Code/diff entry with %s is refused precisely with no partial write", (_, extra, names) => {
+  openFlow("s-1");
+  const before = tree();
+  const r = submit("s-1", codeResult("c", { file: "src/a.ts", ...extra }));
+  expect(r.code).toBe(1);
+  expect(r.stdout).toBe("");
+  expect(r.stderr).toContain("entry 1");
+  expect(r.stderr).toContain(names);
+  expect(tree()).toEqual(before);
+});
+
+test.each([
+  ["a time that is not a date", { time: "yesterday" }, "time must"],
+  ["an impossible date", { time: "2026-02-30T10:00:00Z" }, "time must"],
+  ["an impossible offset", { time: "2026-10-28T10:00:00+30:90" }, "time must"],
+  ["an unknown outcome", { outcome: "mostly" }, "outcome"],
+  ["evidence that names no attachment", { attachments: ["attachment-9"] }, "attachment-9"],
+])("a Timeline event with %s is refused precisely with no partial write", (_, extra, names) => {
+  openFlow("s-1");
+  const before = tree();
+  const r = submit("s-1", timeline("t", event("e", extra)));
+  expect(r.code).toBe(1);
+  expect(r.stdout).toBe("");
+  expect(r.stderr).toContain(names);
+  expect(tree()).toEqual(before);
+});

@@ -2,6 +2,7 @@
 // both `show` and the renderer read. Everything here is pure; flow-page.ts does the reading, locking, and writing.
 
 import { createHash } from "node:crypto";
+import { linesOf, parseDiff, type Hunk } from "./code.ts";
 import { applyProgress, type Progress, PROGRESS_KINDS, type ProgressView, progressSnapshot, progressView, UPDATE_FIELD } from "./progress.ts";
 
 export const SCHEMA = 1;
@@ -34,7 +35,7 @@ export type Retirement = { question: string; reason: string; time?: string };
 export type Section = { heading: string; body: string };
 export type Background = { id: string; stage: string; title: string; summary: string; sections: Section[]; sources: string[]; figures?: Figure[]; jump?: string };
 export type Topic = { id: string; title: string; summary: string; body: string; sources: string[] };
-export type Shape = "cards" | "ledger" | "table" | "document" | "prototype" | "comparison" | "metrics";
+export type Shape = "cards" | "ledger" | "table" | "document" | "prototype" | "comparison" | "metrics" | "code" | "timeline";
 /** `changed` is the Flow revision that last changed a Result's header or an entry, which a focused revision checks. */
 export type Entry = Record<string, unknown> & { id: string; changed: number };
 /** One block of a Document section. Prose and list items can cite with `[@<citation ref>]`. */
@@ -146,9 +147,21 @@ export const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const REF = /^[a-z0-9][a-z0-9-]*$/;
 const CODE_ID = /^(stage|round|question|close|background|topic|result|source|assumed|attachment|task|blocker|pr|check)-\d+$/;
 const TICKET = /^#?[A-Za-z0-9][A-Za-z0-9._/-]*$/;
-const SHAPES: Shape[] = ["cards", "ledger", "table", "document", "prototype", "comparison", "metrics"];
+const SHAPES: Shape[] = ["cards", "ledger", "table", "document", "prototype", "comparison", "metrics", "code", "timeline"];
 /** Shapes whose content is one whole body rather than entries, so a focused `add` cannot extend them. */
 const WHOLE: Record<string, string> = { document: "a Document", prototype: "a demo", comparison: "a Comparison", metrics: "a Metrics Result" };
+const OUTCOMES = ["succeeded", "failed", "blocked", "skipped", "unknown", "noted"];
+const TIME = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2}))?$/;
+function realTime(t: string): boolean {
+  const m = t.match(TIME);
+  if (!m) return false;
+  const [y, mo, d, h, mi, sec] = m.slice(1).map((x) => Number(x ?? 0));
+  const days = new Date(`${m[1]}-${m[2]}-01T00:00:00Z`);
+  days.setUTCMonth(days.getUTCMonth() + 1, 0);
+  const offset = t.match(/[+-](\d{2}):(\d{2})$/);
+  return mo >= 1 && mo <= 12 && d >= 1 && d <= days.getUTCDate() && h < 24 && mi < 60 && sec < 60 && (!offset || (Number(offset[1]) <= 23 && Number(offset[2]) < 60));
+}
+const LANGUAGE = /^[a-z0-9][a-z0-9+#.-]*$/i;
 const CLAIM_STATES = ["confirmed", "cleared", "unproven"];
 /** A citation marker in Document prose or a list item. */
 export const CITE = /\[@([a-z0-9][a-z0-9-]*)\]/g;
@@ -585,12 +598,12 @@ function parseResult(o: Obj, where: string, stage: string, id: string, entryIds:
   }
   fields(o, where, ["kind", "shape", "title", table ? "columns" : "entries", ...(table ? ["rows"] : [])], shared);
   const columns = table ? texts(o, "columns", where) : undefined;
-  const entries = list(o, table ? "rows" : "entries", where).map((e, j) => parseEntry(shape, columns, e, `${where}: ${table ? "row" : "entry"} ${j + 1}`, entryIds[j].split("/")[1], rev));
+  const entries = list(o, table ? "rows" : "entries", where).map((e, j) => parseEntry(shape, columns, e, `${where}: ${table ? "row" : "entry"} ${j + 1}`, entryIds[j].split("/")[1], rev, attachment));
   return head({ ...(columns ? { columns } : {}), entries });
 }
 
-/** One cards entry, ledger entry, or table row, checked against its shape. */
-function parseEntry(shape: Shape, columns: string[] | undefined, e: unknown, ew: string, id: string, changed: number): Entry {
+/** One Result entry or table row, checked against its shape. */
+function parseEntry(shape: Shape, columns: string[] | undefined, e: unknown, ew: string, id: string, changed: number, attachment: (v: unknown, where: string) => string): Entry {
   if (shape === "cards") {
     const c = fields(e, ew, ["title", "label", "blocking", "impact", "action", "evidence"], ["ref"]);
     if (typeof c.blocking !== "boolean") refuse(ew, "blocking must be true or false");
@@ -600,6 +613,41 @@ function parseEntry(shape: Shape, columns: string[] | undefined, e: unknown, ew:
     const c = fields(e, ew, ["claim", "status", "evidence", "missing_proof", "consequence"], ["ref"]);
     if (!CLAIM_STATES.includes(c.status as string)) refuse(ew, `status must be ${listed(CLAIM_STATES)}`);
     return { id, ...(c.ref ? { ref: c.ref } : {}), claim: text(c, "claim", ew), status: c.status, evidence: text(c, "evidence", ew), missing_proof: text(c, "missing_proof", ew), consequence: text(c, "consequence", ew), changed };
+  }
+  if (shape === "code") {
+    const c = fields(e, ew, ["file"], ["ref", "line", "revision", "language", "code", "diff", "note"]);
+    const file = text(c, "file", ew);
+    if (/[\r\n]/.test(file)) refuse(ew, "file must be one line, the path of the source file");
+    if ((c.code === undefined) === (c.diff === undefined)) refuse(ew, "needs exactly one of code or diff");
+    if (c.language !== undefined && (typeof c.language !== "string" || !LANGUAGE.test(c.language))) refuse(ew, "language must be a language name such as ts or python");
+    const revision = optText(c, "revision", ew);
+    if (revision !== undefined && /[\r\n]/.test(revision)) refuse(ew, "revision must be one line, such as a commit hash");
+    const body: Record<string, unknown> = {};
+    if (c.code !== undefined) {
+      body.code = text(c, "code", ew);
+      if (c.line !== undefined && (!Number.isInteger(c.line) || (c.line as number) < 1)) refuse(ew, "line must be a positive whole number, the source line of the first line of code");
+      if (c.line !== undefined) body.line = c.line;
+    } else {
+      if (c.line !== undefined) refuse(ew, "line goes with code; a diff's hunk headers give its lines");
+      const parsed = parseDiff(text(c, "diff", ew));
+      if (typeof parsed === "string") refuse(ew, `diff: ${parsed}`);
+      body.diff = c.diff;
+    }
+    return {
+      id, ...(c.ref ? { ref: c.ref } : {}), file, ...(revision !== undefined ? { revision } : {}), ...(c.language !== undefined ? { language: c.language } : {}), ...body,
+      ...(c.note !== undefined ? { note: safeLinks(text(c, "note", ew), ew) } : {}), changed,
+    };
+  }
+  if (shape === "timeline") {
+    const c = fields(e, ew, ["title", "outcome"], ["ref", "time", "detail", "evidence", "attachments"]);
+    if (!OUTCOMES.includes(c.outcome as string)) refuse(ew, `outcome must be ${listed(OUTCOMES)}, got ${JSON.stringify(c.outcome)}`);
+    const time = optText(c, "time", ew);
+    if (time !== undefined && !realTime(time)) refuse(ew, `time must be a real ISO 8601 date such as 2026-10-28, or a date-time with its offset such as 2026-10-28T10:05:00+07:00, got ${JSON.stringify(time)}; leave time out when it is not known`);
+    const opt = (k: string) => (c[k] !== undefined ? { [k]: safeLinks(text(c, k, ew), ew) } : {});
+    return {
+      id, ...(c.ref ? { ref: c.ref } : {}), title: safeLinks(text(c, "title", ew), ew), outcome: c.outcome, ...(time !== undefined ? { time } : {}), ...opt("detail"), ...opt("evidence"),
+      ...(c.attachments !== undefined ? { attachments: texts(c, "attachments", ew).map((a) => attachment(a, `${ew}: attachments`)) } : {}), changed,
+    };
   }
   const c = fields(e, ew, ["cells"], ["ref"]);
   if (!Array.isArray(c.cells) || c.cells.length !== columns!.length || c.cells.some((x) => typeof x !== "string")) refuse(ew, `cells must list ${columns!.length} strings, one per column`);
@@ -627,7 +675,7 @@ function revise(s: State, o: Obj, where: string, stage: string, entryIds: string
       if (set.ref !== undefined) refuse(`${where}: set`, "ref is not a field here; an entry keeps its ref");
       const { id, changed: _, figures, ...content } = entry;
       const at = r.entries.indexOf(entry);
-      r.entries[at] = { ...parseEntry(r.shape, r.columns, { ...content, ...set }, `${where}: set`, id, rev), ...(figures ? { figures } : {}) };
+      r.entries[at] = { ...parseEntry(r.shape, r.columns, { ...content, ...set }, `${where}: set`, id, rev, (v, w) => resolve(v, "attachment", w)), ...(figures ? { figures } : {}) };
     } else {
       fields(set, `${where}: set`, [], ["title", "summary"]);
       if (set.title !== undefined) r.title = text(set, "title", `${where}: set`);
@@ -640,7 +688,7 @@ function revise(s: State, o: Obj, where: string, stage: string, entryIds: string
     if (WHOLE[r.shape]) refuse(where, `${rid} is ${WHOLE[r.shape]}, which has no entries; publish its next revision with revises`);
     if (entryIds === undefined) refuse(where, `add appends to a Result from an earlier contribution; put new entries of ${o.result} in its result item`);
     const adds = list(o, "add", where);
-    r.entries.push(...adds.map((e, j) => parseEntry(r.shape, r.columns, e, `${where}: add ${j + 1}`, entryIds![j].split("/")[1], rev)));
+    r.entries.push(...adds.map((e, j) => parseEntry(r.shape, r.columns, e, `${where}: add ${j + 1}`, entryIds![j].split("/")[1], rev, (v, w) => resolve(v, "attachment", w))));
   }
 }
 
@@ -754,7 +802,7 @@ function parseDocument(o: Obj, where: string, attachment: (v: unknown, where: st
         case "code": {
           const bo = fields(b, bw, ["code"], ["language", "source"]);
           const code = text(bo, "code", bw);
-          if (bo.language !== undefined && (typeof bo.language !== "string" || !/^[a-z0-9][a-z0-9+#.-]*$/i.test(bo.language))) refuse(bw, "language must be a language name such as ts or python");
+          if (bo.language !== undefined && (typeof bo.language !== "string" || !LANGUAGE.test(bo.language))) refuse(bw, "language must be a language name such as ts or python");
           return { code, ...(bo.language !== undefined ? { language: bo.language as string } : {}), ...(bo.source !== undefined ? { source: text(bo, "source", bw) } : {}) };
         }
         default: {
@@ -1134,14 +1182,14 @@ function checkLinks(s: State): void {
       if (!attachments.has(a)) refuse(`result ${r.id}`, `attachment ${a} does not exist`);
       used.add(a);
     }
-  for (const a of s.attachments) if (!used.has(a.id)) refuse(`attachment ${a.id}`, "is attached to no Result; name it in a Result's attachments or a Document figure");
+  for (const a of s.attachments) if (!used.has(a.id)) refuse(`attachment ${a.id}`, "is attached to no Result; name it in a Result's or Timeline event's attachments or a Document figure");
 }
 
-/** Every attachment a Result shows: its figures, its alternatives' evidence, then its attachments list. */
+/** Every attachment a Result shows, including figures, alternatives' evidence, and event evidence. */
 export function attachmentsOf(r: Result): string[] {
   const figures = (r.document?.sections ?? []).flatMap((sec) => sec.blocks.flatMap((b) => ("figure" in b ? [b.figure] : [])));
   const sides = (r.comparison?.alternatives ?? []).flatMap((a) => a.attachments ?? []);
-  return [...new Set([...figures, ...sides, ...(r.attachments ?? [])])];
+  return [...new Set([...figures, ...sides, ...(r.attachments ?? []), ...r.entries.flatMap((e) => (e.attachments as string[] | undefined) ?? [])])];
 }
 /** Figure owners also count as attachment uses, so migrated evidence is not lost on the next contribution. */
 export function figureOwners(s: Pick<State, "questions" | "backgrounds" | "results" | "history">): [string, Figure[]][] {
@@ -1150,6 +1198,15 @@ export function figureOwners(s: Pick<State, "questions" | "backgrounds" | "resul
     ...s.backgrounds.map((b): [string, Figure[]] => [b.id, b.figures ?? []]),
     ...[...s.results, ...s.history].flatMap((r) => r.entries.map((e): [string, Figure[]] => [`${r.id}/${e.id}`, (e.figures as Figure[] | undefined) ?? []])),
   ];
+}
+
+/** The source file, revision, and known lines of one Code/diff entry. */
+export type CodeLocation = { file: string; revision?: string; lines?: { first: number; last: number }; hunks?: (Hunk & { anchor: string })[] };
+function codeLocation(e: Entry, anchor: string): CodeLocation {
+  const loc: CodeLocation = { file: e.file as string, ...(e.revision !== undefined ? { revision: e.revision as string } : {}) };
+  if (typeof e.line === "number") loc.lines = { first: e.line, last: e.line + linesOf(e.code as string).length - 1 };
+  if (typeof e.diff === "string") loc.hunks = (parseDiff(e.diff) as { hunks: Hunk[] }).hunks.map((h, i) => ({ anchor: `${anchor}-h${i + 1}`, ...h }));
+  return loc;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -1188,7 +1245,7 @@ export type ResultView = Omit<Result, "entries" | "document" | "comparison" | "m
   /** The id this rendering of the Result anchors at: the Result id, or `<id>-r<n>` for an earlier revision. */
   anchor: string;
   revision: number;
-  entries: (Entry & { anchor: string; questions: string[] })[];
+  entries: (Entry & { anchor: string; questions: string[]; location?: CodeLocation })[];
   doc?: DocView;
   comparison?: ComparisonView;
   metrics?: MetricsView;
@@ -1311,7 +1368,10 @@ export function view(s: State): View {
     const { document: d, comparison: c, metrics: m, ...rest } = r;
     const rv: ResultView = {
       ...rest, anchor, revision: r.revision ?? 1, shown: attachmentsOf(r).map((a) => attachment.get(a)!), history: [],
-      entries: r.entries.map((e) => ({ ...e, anchor: `${anchor}-${e.id}`, questions: current ? linking(`${r.id}/${e.id}`) : [] })),
+      entries: r.entries.map((e) => {
+        const ea = `${anchor}-${e.id}`;
+        return { ...e, anchor: ea, questions: current ? linking(`${r.id}/${e.id}`) : [], ...(r.shape === "code" ? { location: codeLocation(e, ea) } : {}) };
+      }),
     };
     if (d) {
       const sections = d.sections.map((sec, i) => ({ ...sec, anchor: `${anchor}-s${i + 1}` }));

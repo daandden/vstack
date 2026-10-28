@@ -3,11 +3,12 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { highlighter, linesOf, markTrailing, parseDiff, type DiffLine, type Token } from "./code.ts";
 import { optionLabel, type AnswerState, type Attachment, type ComparisonView, type Condition, type Demo, type DemoLiteral, type DocView, type Effect, type Figure, type MetricsView, type QuestionView, type ResultView, type StageView, type Transition, type View } from "./model.ts";
 import type { ProgressView } from "./progress.ts";
 
 /** Raise this when the page a given state renders to changes, so a page names the renderer that made it. */
-export const RENDERER = 9;
+export const RENDERER = 10;
 const TEMPLATE = join(import.meta.dir, "..", "templates", "flow-page.html");
 
 const STATE_LABELS: Record<string, string> = { "not-started": "Not started", "in-progress": "In progress", finished: "Finished" };
@@ -17,6 +18,76 @@ const TASK_LABELS: Record<string, string> = { pending: "To do", active: "Active"
 const END_LABELS: Record<string, string> = { commit: "Commit", "merge-ready": "Merge-ready", shipped: "Shipped" };
 const PR_LABELS: Record<string, string> = { open: "Open", merged: "Merged", closed: "Closed" };
 const CHECK_LABELS: Record<string, string> = { passed: "Passed", failed: "Failed", pending: "Pending" };
+const OUTCOME_LABELS: Record<string, string> = { succeeded: "Succeeded", failed: "Failed", blocked: "Blocked", skipped: "Skipped", unknown: "Outcome unknown", noted: "Noted" };
+
+/** Timeline times retain their recorded offset instead of adopting the viewer's timezone. */
+function eventTime(iso: string): string {
+  const [, y, mo, d, rest] = iso.match(/^(\d{4})-(\d{2})-(\d{2})(.*)$/)!;
+  const month = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][Number(mo) - 1];
+  const t = rest.match(/^T(\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?(Z|[+-]\d{2}:\d{2})$/);
+  if (!t) return `${d} ${month} ${y}`;
+  return `${d} ${month} ${y}, ${t[1]}:${t[2]}${t[3] && t[3] !== "00" ? `:${t[3]}` : ""} ${t[4] === "Z" ? "UTC" : t[4]}`;
+}
+
+const tokensHtml = (tokens: Token[]) => markTrailing(tokens).map((t) => (t.kind ? `<span class="tok-${t.kind}">${esc(t.text)}</span>` : esc(t.text))).join("");
+
+type CodeEntry = ResultView["entries"][number];
+/** Known source lines have `-L<n>` and `-R<n>` anchors. The preformatted text stays byte-for-byte as submitted. */
+function codeEntryHtml(e: CodeEntry, askLine: string): string {
+  const loc = e.location!;
+  const hl = highlighter(e.language as string | undefined);
+  const lineSpan = (ids: string[], cls: string, nums: { old?: number; new?: number }, inner: string, nl: string) => {
+    const data = `${nums.old !== undefined ? ` data-old="${nums.old}"` : ""}${nums.new !== undefined ? ` data-new="${nums.new}"` : ""}`;
+    const [outer, ...rest] = ids;
+    const open = rest.map((id) => `<span id="${id}">`).join("");
+    return `<span class="line ${cls}"${outer ? ` id="${outer}"` : ""}${data}>${open}${inner}${nl}${rest.map(() => "</span>").join("")}</span>`;
+  };
+  let pre: string;
+  let where: string;
+  if (typeof e.code === "string") {
+    const code = e.code;
+    const ls = linesOf(code);
+    const first = loc.lines?.first;
+    pre = ls
+      .map((l, i) => {
+        const nl = i < ls.length - 1 || code.endsWith("\n") ? "\n" : "";
+        const n = first === undefined ? undefined : first + i;
+        return lineSpan(n === undefined ? [] : [`${e.anchor}-L${n}`], "plain", { old: n }, tokensHtml(hl.line(l)), nl);
+      })
+      .join("");
+    where = loc.lines ? (loc.lines.first === loc.lines.last ? `line ${loc.lines.first}` : `lines ${loc.lines.first}–${loc.lines.last}`) : "";
+  } else {
+    const diff = e.diff as string;
+    const { lines } = parseDiff(diff) as { lines: DiffLine[] };
+    const oldHl = highlighter(e.language as string | undefined);
+    const newHl = hl;
+    const total = lines.length;
+    pre = lines
+      .map((l, i) => {
+        const nl = i < total - 1 || diff.endsWith("\n") ? "\n" : "";
+        if (l.kind === "hunk") {
+          oldHl.reset();
+          newHl.reset();
+          return lineSpan([loc.hunks![l.hunk! - 1].anchor], "hunk", {}, esc(l.text), nl);
+        }
+        if (l.kind === "meta" || l.kind === "note") return lineSpan([], l.kind, {}, esc(l.text), nl);
+        const body = l.text.slice(1);
+        const mark = `<span class="mark">${esc(l.text[0] ?? "")}</span>`;
+        if (l.kind === "del") return lineSpan([`${e.anchor}-L${l.old}`], "del", { old: l.old }, mark + tokensHtml(oldHl.line(body)), nl);
+        if (l.kind === "add") return lineSpan([`${e.anchor}-R${l.new}`], "add", { new: l.new }, mark + tokensHtml(newHl.line(body)), nl);
+        oldHl.line(body);
+        return lineSpan([`${e.anchor}-L${l.old}`, `${e.anchor}-R${l.new}`], "ctx", { old: l.old, new: l.new }, mark + tokensHtml(newHl.line(body)), nl);
+      })
+      .join("");
+    where = loc.hunks!.map((h) => `<a href="#${h.anchor}">${h.new.count === 0 ? `removed at line ${h.old.start}` : h.new.count === 1 ? `line ${h.new.start}` : `lines ${h.new.start}–${h.new.start + h.new.count - 1}`}</a>`).join(", ");
+  }
+  const kind = typeof e.code === "string" ? "Code" : "Diff";
+  const meta = [`<span class="kind">${kind}</span>`, `<code>${esc(loc.file)}</code>${where ? ` <span>${where}</span>` : ""}`, ...(loc.revision ? [`<span>at <code>${esc(loc.revision)}</code></span>`] : []), ...(e.language ? [`<span>${esc(e.language as string)}</span>`] : [])];
+  return `<li class="code-entry" id="${e.anchor}">
+<p class="code-location"><span class="entry-id">${e.id}</span>${meta.join("")}</p>${e.note ? `\n<div class="description">${prose(e.note as string)}</div>` : ""}
+<figure class="code" data-kind="${kind.toLowerCase()}"${e.language ? ` data-language="${esc(e.language as string)}"` : ""}><pre><code>${pre}</code></pre></figure>${askLine}
+</li>`;
+}
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 /** Citation markers of one Document: `[@ref]` becomes a numbered link to the citation. */
@@ -195,7 +266,8 @@ function documentHtml(r: ResultView, d: DocView, historical: boolean): string {
       if ("code" in b) {
         const lang = b.language ? ` data-language="${esc(b.language)}"` : "";
         const label = [b.language, b.source].filter(Boolean).map((x) => esc(x!)).join(" · ");
-        return `<figure class="code"><pre${lang}><code>${esc(b.code)}</code></pre>${label ? `<figcaption class="source">${label}</figcaption>` : ""}</figure>`;
+        const hl = highlighter(b.language);
+        return `<figure class="code"><pre${lang}><code>${b.code.split("\n").map((l) => tokensHtml(hl.line(l))).join("\n")}</code></pre>${label ? `<figcaption class="source">${label}</figcaption>` : ""}</figure>`;
       }
       return attachmentHtml(att.get(b.figure)!, `${sec.anchor}-f${i + 1}`);
     });
@@ -375,6 +447,20 @@ ${aliases(v, e.anchor)}<h3><span class="entry-id">${e.id}</span>${text(e.claim a
 ${fields([["Evidence", e.evidence as string], ["Missing proof", e.missing_proof as string], ["Consequence", e.consequence as string]])}${askLine(e.questions)}
 </li>`)
       .join("\n")}\n</ol>`;
+  } else if (r.shape === "code") {
+    body = `<ol class="entries">\n${r.entries.map((e) => codeEntryHtml(e, askLine(e.questions))).join("\n")}\n</ol>`;
+  } else if (r.shape === "timeline") {
+    const byId = new Map(r.shown.map((a) => [a.id, a]));
+    body = `<ol class="timeline">\n${r.entries
+      .map((e) => {
+        const t = e.time as string | undefined;
+        const shown = ((e.attachments as string[] | undefined) ?? []).map((id) => attachmentHtml(byId.get(id)!, `${e.anchor}-${id}`));
+        return `<li class="event" id="${e.anchor}" data-outcome="${e.outcome}">
+<p class="event-meta">${t ? `<time datetime="${esc(t)}">${eventTime(t)}</time>` : `<span class="no-time">Time not recorded</span>`}<span class="outcome">${OUTCOME_LABELS[e.outcome as string]}</span></p>
+<h3><span class="entry-id">${e.id}</span>${text(e.title as string)}</h3>${e.detail ? `\n<div class="description">${prose(e.detail as string)}</div>` : ""}${e.evidence ? `\n${fields([["Evidence", e.evidence as string]])}` : ""}${shown.length ? `\n<div class="attachments">${shown.join("\n")}</div>` : ""}${askLine(e.questions)}
+</li>`;
+      })
+      .join("\n")}\n</ol>`;
   } else {
     body = `<ol class="entries">\n${r.entries
       .map((e) => `<li class="card" id="${e.anchor}"${e.blocking ? " data-blocking" : ""}>
@@ -386,7 +472,7 @@ ${fields([["Impact", e.impact as string], ["Action", e.action as string]])}
       .join("\n")}\n</ol>`;
   }
   const figures = new Set([...(r.doc?.figures ?? []), ...(r.comparison?.alternatives.flatMap((a) => a.attachments ?? []) ?? [])]);
-  const listed = r.shown.filter((a) => !figures.has(a.id));
+  const listed = r.shown.filter((a) => r.attachments?.includes(a.id) && !figures.has(a.id));
   const attachments = listed.length ? `\n<div class="attachments"><p class="label">Attachments</p>${listed.map((a) => attachmentHtml(a, `${r.anchor}-${a.id}`)).join("\n")}</div>` : "";
   const history = r.history.length
     ? `\n<details class="revisions"><summary>Earlier revisions (${r.history.length})</summary>\n${[...r.history].reverse().map((h) => resultHtml(h, v, true)).join("\n")}\n</details>`
@@ -528,7 +614,7 @@ export function render(v: View): string {
     const [rid, eid] = ref.split("/");
     const r = v.stages.flatMap((st) => st.results).find((x) => x.id === rid)!;
     const e = r.entries.find((x) => x.id === eid)!;
-    const name = r.shape === "cards" ? (e.title as string) : r.shape === "ledger" ? (e.claim as string) : (e.cells as string[])[0] || e.id;
+    const name = r.shape === "cards" || r.shape === "timeline" ? (e.title as string) : r.shape === "code" ? (e.file as string) : r.shape === "ledger" ? (e.claim as string) : (e.cells as string[])[0] || e.id;
     return `${text(r.title)} <span class="entry-id">${e.id}</span>: ${text(name)}`;
   };
   const tabs = [`<a role="tab" id="tab-overview" aria-selected="true" aria-controls="overview" href="#overview">Overview</a>`];
