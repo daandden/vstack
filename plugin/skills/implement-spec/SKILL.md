@@ -8,6 +8,8 @@ You have been provided a spec. This spec should have tickets associated with it,
 
 The issue tracker should have been provided to you. If not, tell the user to run `/skill:setup-vstack`. Read it from `docs/vstack/issue-tracker.md` under the vstack root in Standard mode, or from `<vstack root>/config/issue-tracker.md` in Private mode.
 
+For an MCP tracker such as Jira, read the named server's current tool list, descriptions, and parameter schemas. Select tools for searching and reading the spec, tickets, comments, parent-child relationships, blocking links, and status, and for closing work, using the recorded project facts. No per-operation config rows or assumed tool names are needed. Interpret blockers using the recorded blocking link type and its direction, and use the recorded close transition when step 8 calls for resolution. Keep already-closed blockers distinct from tickets completed in this run. If discovery or a needed capability is unavailable, name the server and gap and leave the affected work open. CLI, local-markdown, and no-tool prose configs keep their configured graph and closure rules.
+
 The goal is the entire spec implemented on a single **integration branch**, with every ticket resolved the way the issue tracker closes work.
 
 The tickets are not a list of steps. They are a **task graph** with blocking relationships between them. This means there is always a **frontier** of tickets which are ready to be grabbed.

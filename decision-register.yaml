@@ -20,7 +20,7 @@ items:
     tree: d8e341cee7980127dddda05159bedf25dc853615
     disposition: adapt
     artifacts: [plugin/skills/code-review]
-    reason: "PR pinning accepts MCP Code hosts without operation rows, selects read-pr by descriptions and schemas, and fetches exact commits through project facts; retains CLI rows and review axes (#204, ADR 0035)."
+    reason: "PR pinning accepts MCP Code hosts without operation rows, selects read-pr by descriptions and schemas, and fetches exact commits through project facts; retains CLI rows and review axes (#204, ADR 0035). Fetches originating Jira keys and comments through current tracker descriptions, schemas, and facts (#207, ADR 0035)."
   - id: matt/codebase-design
     upstream: matt
     kind: skill
@@ -92,7 +92,7 @@ items:
     tree: b1568cde855a189b16e5d7dd8a0fa4c3f156bc2e
     disposition: adapt
     artifacts: [plugin/skills/setup-vstack]
-    reason: "Other issue trackers and Code hosts use short MCP configs from current descriptions; re-setup preserves CI hand edits, confirms the CI and Code host drafts together, and adds a missing default End state line to code-host.md; its eval Python check no longer names the removed Grilling page visual judge (ADR 0035, ADR 0038, #204, #205, #206)."
+    reason: "Other issue trackers and Code hosts use short MCP configs from current descriptions; re-setup preserves CI hand edits, confirms the CI and Code host drafts together, and adds a missing default End state line to code-host.md; its eval Python check no longer names the removed Grilling page visual judge (ADR 0035, ADR 0038, #204, #205, #206). Lists implement-spec and session among tracker readers (#207)."
   - id: matt/tdd
     upstream: matt
     kind: skill
@@ -108,7 +108,7 @@ items:
     tree: 136b9651747cfccbfbb7c50a6b0dfb757e7547d2
     disposition: adapt
     artifacts: [plugin/skills/to-spec]
-    reason: "Names setup-vstack, puts its seam confirmation in a to-spec Stage on the flow's Grilling page, shows a capability map for a change that spans modules, renames the page after the spec issue, and has a fresh vstack-explorer check the draft against the close decisions and the source issue before it publishes (#166, #230, #226). The check also covers each close's Assumed picks, and its shared steps live in DRIFT-CHECK.md, which to-tickets also follows (#223)."
+    reason: "Names setup-vstack, puts its seam confirmation in a to-spec Stage on the flow's Grilling page, shows a capability map for a change that spans modules, renames the page after the spec issue, and has a fresh vstack-explorer check the draft against the close decisions and the source issue before it publishes (#166, #230, #226). The check also covers each close's Assumed picks, and its shared steps live in DRIFT-CHECK.md, which to-tickets also follows (#223). Publishes through MCP tracker descriptions, schemas, and recorded project, issue type, and mapped label (#207, ADR 0035)."
   - id: matt/to-tickets
     upstream: matt
     kind: skill
@@ -116,7 +116,7 @@ items:
     tree: b32c94e5a51c24ee9c41fcb7fe9ea9fff9af6369
     disposition: adapt
     artifacts: [plugin/skills/to-tickets]
-    reason: "Names setup-vstack, finds the flow's Grilling page from the spec issue, shows the breakdown as a table Report block before one approval question (#166), and has a fresh vstack-explorer check the draft tickets against the close decisions and the spec before the user sees them (#226). The check also covers each close's Assumed picks and follows to-spec's DRIFT-CHECK.md (#223)."
+    reason: "Names setup-vstack, finds the flow's Grilling page from the spec issue, shows the breakdown as a table Report block before one approval question (#166), and has a fresh vstack-explorer check the draft tickets against the close decisions and the spec before the user sees them (#226). The check also covers each close's Assumed picks and follows to-spec's DRIFT-CHECK.md (#223). Publishes through MCP tracker descriptions, schemas, recorded creation facts, mapped labels, and directional blocking links (#207, ADR 0035)."
   - id: matt/triage
     upstream: matt
     kind: skill
@@ -124,7 +124,7 @@ items:
     tree: 4cb951d62ecccaed601cdc5f9a1b7b3d8a799635
     disposition: adapt
     artifacts: [plugin/skills/triage]
-    reason: "Names setup-vstack. Its questions to the maintainer go through ask, and every ask after the item pick goes on the item's Grilling page (ask-tool, #58, #170)."
+    reason: "Names setup-vstack. Its questions to the maintainer go through ask, and every ask after the item pick goes on the item's Grilling page (ask-tool, #58, #170). Uses MCP tracker discovery, recorded creation facts, canonical-role labels, and close transition (#207, ADR 0035)."
   - id: matt/wayfinder
     upstream: matt
     kind: skill
@@ -132,7 +132,7 @@ items:
     tree: 8ec0462658381bd1606d3f9db14ffc67df6a2a43
     disposition: adapt
     artifacts: [plugin/skills/wayfinder]
-    reason: "Names setup-vstack; charting research is Fan-out; its user questions go through ask and on the map's Grilling page, with one Stage per ticket (#171)."
+    reason: "Names setup-vstack; charting research is Fan-out; its user questions go through ask and on the map's Grilling page, with one Stage per ticket (#171). Uses MCP tracker discovery, recorded directional blocking links and close transition, and shared page-key normalization (#207, ADR 0035)."
   - id: matt/wizard
     upstream: matt
     kind: skill
@@ -652,7 +652,7 @@ items:
     tree: ba549f92c3a8dc1506b21674e8794eb980019bf3
     disposition: adapt
     artifacts: [plugin/skills/why]
-    reason: "Profiles git, Code host, tracker and MCP evidence; resolves MCP review history from descriptions and facts, records gaps, and retains fresh-context synthesis (#49, #204, ADR 0035)."
+    reason: "Profiles git, Code host, tracker and MCP evidence; resolves MCP review history from descriptions and facts, records gaps, and retains fresh-context synthesis (#49, #204, ADR 0035). Resolves configured MCP tracker evidence from current descriptions, schemas, and recorded facts (#207, ADR 0035)."
   - id: pstack/playbook-authoring-a-skill
     upstream: pstack
     kind: playbook
@@ -877,7 +877,7 @@ items:
     tree: 0cfefc751d0cb64f0c948ffcb17e13b94e778f08
     disposition: adapt
     artifacts: [plugin/skills/implement-spec]
-    reason: "Runs Matt's steps with an orchestrator-only main agent: isolated vstack-worker implementers start as tickets become ready, a merger vstack-worker commits each ticket, and implement's END-STATE steps finish the run, asking the End state only when no project default settles it. It finds the flow's Grilling page from the spec issue and puts its seam confirmations and relayed implementer questions in its own Stage (ADR 0019, ADR 0022, ADR 0038, #167)."
+    reason: "Runs Matt's steps with an orchestrator-only main agent: isolated vstack-worker implementers start as tickets become ready, a merger vstack-worker commits each ticket, and implement's END-STATE steps finish the run, asking the End state only when no project default settles it. It finds the flow's Grilling page from the spec issue and puts its seam confirmations and relayed implementer questions in its own Stage (ADR 0019, ADR 0022, ADR 0038, #167). Reads the MCP task graph and resolves completed work with recorded directional blocking links and close transition (#207, ADR 0035)."
   - id: matt/pr
     upstream: matt
     kind: skill

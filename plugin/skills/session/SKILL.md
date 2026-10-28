@@ -43,7 +43,7 @@ Pass the scope guard, the session file path or labeled digest, and only the sess
 
 ## 2. Review through four lenses
 
-Read [references/judgment-reviewer.md](references/judgment-reviewer.md), [references/tooling-reviewer.md](references/tooling-reviewer.md), [references/divergent-reviewer.md](references/divergent-reviewer.md), and [references/environment-reviewer.md](references/environment-reviewer.md). Substitute the session file path or digest in each template. In the environment template, also substitute the session's checkout and the absolute path of that checkout's `code-host.md` (under its vstack root, per the Private-mode rule), or `none` when the file is missing.
+Read [references/judgment-reviewer.md](references/judgment-reviewer.md), [references/tooling-reviewer.md](references/tooling-reviewer.md), [references/divergent-reviewer.md](references/divergent-reviewer.md), and [references/environment-reviewer.md](references/environment-reviewer.md). Substitute the session file path or digest in each template. In the environment template, also substitute the session's checkout and the absolute paths of that checkout's `code-host.md` and `issue-tracker.md` (under its vstack root, per the Private-mode rule), each `none` when missing.
 
 Before this step, read skill://vstack-fan-out.
 
@@ -84,18 +84,20 @@ Classify each environment target before approval:
 
 ### vstack issues
 
-A class 4 or class 5 row goes to the tracker of the vstack repo that the linked clone belongs to. The clone root is the directory above `plugin/` in the real path of any linked vstack skill. Read the clone's tracker config through the vstack root rules: the tracked `docs/vstack/issue-tracker.md`, or `config/issue-tracker.md` under the clone's vstack root in Private mode. Run every `gh` command from the clone root.
+A class 4 or class 5 row goes to the tracker of the vstack repo that the linked clone belongs to. The clone root is the directory above `plugin/` in the real path of any linked vstack skill. Read the clone's tracker config through the vstack root rules: the tracked `docs/vstack/issue-tracker.md`, or `config/issue-tracker.md` under the clone's vstack root in Private mode. GitHub uses `gh` from the clone root, GitLab uses `glab`, and local-markdown and no-tool prose configs keep their stated workflows.
+
+For an MCP tracker such as Jira, read the named server's current tool list, descriptions, and parameter schemas. Select search, full issue and comment reads, creation, comment, and label tools using the recorded project facts, without per-operation config rows or assumed tool names. Create with the recorded project key and ticket issue type. Use the configured canonical-role label mapping for `needs-triage`. If discovery or a needed capability is unavailable, name the server and gap and keep the affected row in Backlog. Discovery and duplicate searches remain read-only; only implement files or comments after that finding's approval.
 
 During the grill, search the vstack repo's open issues for the target skill. If an open issue already covers the lesson, the row's Grilling page question names that issue. Approval then adds a comment to that issue, not a new issue.
 
-After approval, implement files one issue for each approved row, the same way that it makes the other approved changes. A new issue gets only the `needs-triage` label. Its title is `<skill>: <lesson in a few words>`. The issue body and a comment on a matching issue have the same two sections:
+After approval, implement files one issue for each approved row, the same way that it makes the other approved changes. A new issue gets only the configured label for `needs-triage`. Its title is `<skill>: <lesson in a few words>`. The issue body and a comment on a matching issue have the same two sections:
 
 - Problem: the session evidence, summarized in plain words.
 - Proposal: the proposed text. For an adopt item, add the flip to adapt. For a new skill, add its draft and confirmed home.
 
 Never put transcript excerpts, session file paths, or code or paths from the other project in an issue or a comment.
 
-If filing or commenting fails, move the row to Backlog with its proposed text and the `gh` error. Continue with the other rows.
+If filing or commenting fails, move the row to Backlog with its proposed text and the named tracker tool or file error. Continue with the other rows.
 
 ### Ask on the Grilling page
 
@@ -148,7 +150,7 @@ Return a short list:
 - Review: each Scratch copy, its target, and the no-index diff reviewed in the shared pass.
 - Filed vstack issues: one URL for each class 4 or class 5 row, marked filed or commented.
 - New skills: absolute paths and confirmed homes.
-- Backlog: proposed text and the suggested mechanism or ownership restriction. For a row whose vstack issue failed, add its `gh` error and any needed adopt flip. List items without filing them.
+- Backlog: proposed text and the suggested mechanism or ownership restriction. For a row whose vstack issue failed, add the named tracker error and any needed adopt flip. List items without filing them.
 - Dropped: each Rejected finding and its reason, plus unapproved rows.
 - Review limits: digest gaps, missing evidence, or failed subagents, when present.
 
