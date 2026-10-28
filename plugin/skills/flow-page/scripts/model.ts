@@ -1294,9 +1294,11 @@ export type StageView = Stage & {
   assumed: AssumedView[];
   items: ({ type: "round"; round: Round; questions: QuestionView[] } | { type: "close"; close: Close; latest: boolean })[];
   asked: QuestionView[];
+  open_questions: number;
 };
 export type View = {
   flow: State["flow"]; revision: number; stages: StageView[]; lifecycle: Lifecycle[];
+  next: string[];
   topics: (Topic & { sourceTexts: string[]; questions: string[] })[];
   sources: (Source & { cited_by: string[] })[];
   questions: Map<string, QuestionView>;
@@ -1432,13 +1434,15 @@ export function view(s: State): View {
       ...s.rounds.filter((r) => r.stage === st.id).map((round) => ({ type: "round" as const, seq: seqOfRound(round), round, questions: s.questions.filter((q) => q.round === round.id).sort((a, b) => a.q - b.q).map((q) => questions.get(q.id)!) })),
       ...closes.map((close) => ({ type: "close" as const, seq: close.seq, close, latest: close.id === lastClose })),
     ].sort((a, b) => a.seq - b.seq).map(({ seq: _, ...item }) => item);
+    const asked = [...latestAsks(s, st.id).values()].map((q) => questions.get(q.id)!);
     return {
       ...st, label: labels.get(st.id)!, children: s.stages.filter((x) => x.parent === st.id).map((x) => x.id), results, items,
       assumed: s.assumed.filter((a) => a.stage === st.id).map((a) => {
         const by = s.questions.find((q) => q.reopens === a.id)?.id;
         return by ? { ...a, reopened_by: by } : a;
       }),
-      asked: [...latestAsks(s, st.id).values()].map((q) => questions.get(q.id)!),
+      asked,
+      open_questions: st.state === "in-progress" ? asked.filter((q) => q.open).length : 0,
       ...(bg ? { background: { ...bg, sourceTexts: bg.sources.map((x) => sourceText.get(x)!) } } : {}),
     };
   });
@@ -1450,6 +1454,7 @@ export function view(s: State): View {
   ];
   return {
     flow: s.flow, revision: s.revision, stages, questions, progress: progressView(s), lifecycle: s.lifecycle, ...(s.migrated ? { migrated: s.migrated } : {}),
+    next: stages.filter((st) => st.state === "in-progress").reverse().flatMap((st) => st.asked.filter((q) => q.open).map((q) => q.id)),
     topics: s.topics.map((t) => ({ ...t, sourceTexts: t.sources.map((x) => sourceText.get(x)!), questions: s.questions.filter((q) => q.topics?.includes(t.id)).map((q) => q.id) })),
     sources: s.sources.map((x) => ({ ...x, cited_by: citers(x.id) })),
     attachments: s.attachments.map((a) => ({
@@ -1466,9 +1471,11 @@ export function view(s: State): View {
 export function snapshot(v: View, page: string, renderer: number) {
   return {
     flow: v.flow, revision: v.revision, renderer, page, open: v.lifecycle.at(-1)?.event !== "closed", lifecycle: v.lifecycle, ...(v.migrated ? { migrated: { from: v.migrated.from, sha256: v.migrated.sha256, time: v.migrated.time, anchors: v.migrated.anchors } } : {}),
+    next: v.next,
     stages: v.stages.map((st) => ({
       id: st.id, label: st.label, skill: st.skill, ...(st.ticket ? { ticket: st.ticket } : {}), ...(st.parent ? { parent: st.parent } : {}), children: st.children,
       state: st.state, order: st.order, opened: st.opened, ...(st.finished ? { finished: st.finished } : {}),
+      open_questions: st.open_questions,
       background: st.background?.id,
       results: st.results.map((r) => ({
         id: r.id, shape: r.shape, revision: r.revision, ...(r.captured ? { captured: r.captured } : {}), ...(r.canonical ? { canonical: r.canonical } : {}), changed: r.changed,

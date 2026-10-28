@@ -44,7 +44,7 @@ Loading this skill, reading a page, `show`, and `bind` open no Stage. A run that
 
 Parallel callers, and callers outside an omp session, name the target on each write: `submit --flow <flow> --stage <id>`. There is no other default. A session with no binding and no named target is refused. Callers bound to different Stages of one Flow, such as two wayfinder tickets, write at the same time safely: each contribution commits whole against the latest state.
 
-`show [--flow <flow>]` prints the Flow's structure: Stages with their labels and states, rounds, Q numbers, answer states, Results with each entry and the revision that last `changed` it, every link and backlink, its aliases, and its `presentation`.
+`show [--flow <flow>]` prints the Flow's structure: Stages with their labels, states, and open-question counts, rounds, Q numbers, answer states, Results with each entry and the revision that last `changed` it, every link and backlink, its aliases, and its `presentation`. Its `next` lists actionable questions in navigation order, newest in-progress Stage first.
 
 ## Find a Flow
 
@@ -146,6 +146,13 @@ A prototype Result names the attachment with `artifact: "<ref or id>"`. The live
 
 The static export always shows launch instructions and an explicit unavailable state for runnable artifacts, even if a local app happened to be running when the Result was submitted. It embeds no live runtime or viewer URL. Declarative demos remain usable offline.
 
+## Read the page
+
+`n` cycles through actionable questions, newest in-progress Stage first, then older in-progress Stages. Finished Stages, retired questions, settled answers, and superseded asks are excluded. Repeated Stage tabs include ticket ids when known; unticketed repeats get distinct labels.
+
+`t` or the Stages button opens a clickable Stage-only tree with each Stage's state and open-question count. A continued Stage sits under its parent. This tree does not describe ticket dependencies. The Topics tab keeps shared notes.
+
+`h` and `l`, or the left and right arrows, select and focus tabs. `j` and `k`, or the down and up arrows, select reading stops, update the URL fragment, and move focus to the target. Cross-Stage links open the target's tab. Shortcuts do nothing while typing in an input, textarea, select, or editable content.
 
 ## The receipt
 

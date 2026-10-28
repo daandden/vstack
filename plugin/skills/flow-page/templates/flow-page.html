@@ -66,12 +66,30 @@
     .prototype-viewer { display: block; inline-size: 100%; block-size: auto; aspect-ratio: 16 / 9; border: 1px solid var(--line); background: var(--mantle); }
 
     .bar { position: sticky; inset-block-start: 0; z-index: 1; background: var(--mantle); border-block-end: 1px solid var(--line); font-size: var(--fs-small); }
-    .tabs, .jump-row { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; align-items: center; padding-block: 0.375rem; padding-inline: 1.25rem; }
+    .tabs, .jump-row { display: flex; gap: 0.25rem 0.75rem; align-items: center; padding-block: 0.375rem; padding-inline: 1.25rem; }
+    .tablist, .jump-row { flex-wrap: wrap; }
+    .tablist { display: flex; flex: 1; gap: 0.25rem 0.75rem; align-items: center; }
     .jump-row { border-block-start: 1px solid var(--line); }
     .tabs a, .jump-row a { display: inline-flex; gap: 0.375rem; align-items: center; padding-inline: 0.25rem; border-radius: 0.25rem; color: var(--subtext1); text-decoration: none; font-weight: 600; font-variant-numeric: tabular-nums; }
     .tabs a[aria-selected="true"], .jump-row a[aria-current="true"] { background: var(--surface1); color: var(--mauve); }
     .jump-row .sep { inline-size: 1px; block-size: 1rem; background: var(--surface1); }
     .dot { flex: none; inline-size: 0.4375rem; block-size: 0.4375rem; border-radius: 50%; background: var(--state, var(--overlay0)); }
+    .tree-open, .stage-tree form button { display: inline-flex; flex: none; gap: 0.375rem; align-items: center; padding-block: 0.125rem; padding-inline: 0.5rem; border: 1px solid var(--surface1); border-radius: 0.25rem; background: var(--surface0); color: var(--subtext1); font: inherit; font-weight: 600; touch-action: manipulation; cursor: pointer; }
+    .tree-open:active, .stage-tree form button:active, .tree a:active { background: var(--surface1); color: var(--lavender); }
+    @media (hover: hover) and (pointer: fine) { :is(.tree-open, .stage-tree form button, .tree a):hover { color: var(--lavender); } }
+    kbd { padding-inline: 0.25em; border-radius: 0.2rem; background: var(--mantle); color: var(--subtext0); font: inherit; }
+    .stage-tree { inline-size: min(40rem, 100% - 2rem); max-block-size: min(40rem, 100% - 2rem); padding: 0; border: 1px solid var(--surface1); border-radius: 0.5rem; background: var(--mantle); color: var(--text); }
+    .stage-tree::backdrop { background: color-mix(in oklch, var(--base) 70%, transparent); }
+    .stage-tree > header { display: flex; gap: 0.75rem; align-items: center; justify-content: space-between; padding-block: 0.5rem; padding-inline: 1rem; border-block-end: 1px solid var(--line); }
+    .stage-tree h2 { color: var(--text); }
+    .tree, .tree ul { display: grid; gap: 0.25rem; margin: 0; padding-inline-start: 0; list-style: none; }
+    .tree { padding-block: 0.75rem; padding-inline: 1rem; }
+    .tree ul { margin-block-start: 0.25rem; margin-inline-start: 0.25rem; padding-inline-start: 1rem; border-inline-start: 1px solid var(--surface1); }
+    .tree li { display: grid; grid-template-columns: auto 1fr; gap: 0 0.75rem; align-items: baseline; }
+    .tree li > ul { grid-column: 1 / -1; }
+    .tree a { display: inline-flex; gap: 0.5rem; align-items: center; color: var(--mauve); font-weight: 600; text-decoration: none; }
+    .tree .meta { display: inline-flex; flex-wrap: wrap; gap: 0 0.75rem; color: var(--subtext0); font-size: var(--fs-small); }
+    .tree .state { color: var(--state); font-weight: 600; }
 
     main { --content: 100rem; --gutter: 1.25rem; display: grid; grid-template-columns: [full-start] minmax(var(--gutter), 1fr) [content-start] min(calc(100% - var(--gutter) * 2), var(--content)) [content-end] minmax(var(--gutter), 1fr) [full-end]; gap: 1.5rem 0; padding-block: 1rem; }
     main > * { grid-column: content; }
@@ -354,21 +372,31 @@
     function mark(i) {
       current = i;
       const id = stops[i]?.id;
+      document.querySelectorAll("[data-selected]").forEach((s) => s.removeAttribute("data-selected"));
+      if (stops[i]) stops[i].setAttribute("data-selected", "");
       document.querySelectorAll(".jump-row a[data-for]").forEach((a) => a.setAttribute("aria-current", String(a.dataset.for === id)));
     }
     function show(t) {
       open = t;
-      tabs.forEach((tab, n) => tab.setAttribute("aria-selected", String(n === t)));
+      tabs.forEach((tab, n) => {
+        tab.setAttribute("aria-selected", String(n === t));
+        tab.tabIndex = n === t ? 0 : -1;
+      });
       panels.forEach((p, n) => { p.hidden = n !== t; });
       document.querySelectorAll(".jump-row[data-tab]").forEach((row) => { row.hidden = row.dataset.tab !== panels[t].id; });
       setClearance();
       stops = [...panels[t].querySelectorAll("[data-stop]")];
       mark(-1);
     }
+    function focusOn(el) {
+      if (!el.matches("a[href], button, [tabindex]")) el.tabIndex = -1;
+      el.focus({ preventScroll: true });
+    }
     function openTab(t) {
       show(t);
       history.replaceState(null, "", `#${panels[t].id}`);
       scrollTo({ top: 0, behavior: "instant" });
+      tabs[t].focus({ preventScroll: true });
     }
     function reveal(id) {
       let el = id ? document.getElementById(id) : null;
@@ -390,39 +418,68 @@
       if (i < 0 || i >= stops.length) return;
       stops[i].scrollIntoView({ block: "start", behavior: "instant" });
       mark(i);
+      history.replaceState(null, "", `#${stops[i].id}`);
+      focusOn(stops[i]);
+    }
+    function openTree() {
+      const tree = document.getElementById("stage-tree");
+      tree.showModal();
+      (tree.querySelector(`a[href="#${CSS.escape(panels[open].id)}"]`) ?? tree.querySelector("a")).focus();
     }
     addEventListener("click", (e) => {
+      const tree = document.getElementById("stage-tree");
+      if (e.target.closest?.(".tree-open")) {
+        if (tree.open) tree.close();
+        else openTree();
+        return;
+      }
+      if (e.target === tree) { tree.close(); return; }
       const a = e.target.closest?.('a[href^="#"]');
       if (!a) return;
-      const t = tabs.indexOf(a);
+      const id = decodeURIComponent(a.getAttribute("href").slice(1));
+      const t = panels.findIndex((p) => p.id === id);
       if (t >= 0) {
         e.preventDefault();
+        if (tree?.open) tree.close();
         openTab(t);
         return;
       }
-      const id = decodeURIComponent(a.getAttribute("href").slice(1));
-      reveal(id);
-      const i = stops.findIndex((s) => s.id === id);
+      const el = reveal(id);
+      const i = stops.findIndex((s) => s.id === el?.id);
       if (i >= 0) mark(i);
+      if (el && location.hash === a.getAttribute("href")) {
+        e.preventDefault();
+        el.scrollIntoView({ block: "start", behavior: "instant" });
+        focusOn(el);
+      }
     });
-    function goToHash() {
+    function goToHash(focus) {
       const el = reveal(decodeURIComponent(location.hash.slice(1)));
       if (!el) return;
       el.scrollIntoView({ block: "start", behavior: "instant" });
       if (stops.includes(el)) mark(stops.indexOf(el));
+      if (focus) focusOn(el);
     }
-    addEventListener("hashchange", goToHash);
+    addEventListener("hashchange", () => goToHash(true));
     addEventListener("scroll", markFromScroll, { passive: true });
+    const editable = (el) => el instanceof Element && (el.isContentEditable || el.closest("input, textarea, select") !== null);
     addEventListener("keydown", (e) => {
-      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+      if (e.defaultPrevented || e.isComposing || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey || editable(e.target)) return;
+      const tree = document.getElementById("stage-tree");
+      if (e.key === "t" && tree) {
+        e.preventDefault();
+        if (tree.open) tree.close();
+        else openTree();
+        return;
+      }
+      if (tree?.open) return;
       if (e.key === "n") {
-        const first = document.querySelector(".question[data-open]");
-        if (first) {
-          e.preventDefault();
-          reveal(first.id);
-          history.replaceState(null, "", `#${first.id}`);
-          jump(stops.indexOf(first));
-        }
+        const queue = [...document.querySelectorAll(".question[data-next]")].sort((a, b) => Number(a.dataset.next) - Number(b.dataset.next));
+        if (!queue.length) return;
+        e.preventDefault();
+        const next = queue[(queue.indexOf(stops[current]) + 1) % queue.length];
+        reveal(next.id);
+        jump(stops.indexOf(next));
         return;
       }
       if ((e.key === "h" || e.key === "ArrowLeft") && open > 0) { e.preventDefault(); openTab(open - 1); }
@@ -516,7 +573,7 @@
       video.addEventListener("ended", () => local.drop(key));
     }
     show(0);
-    goToHash();
+    goToHash(false);
   </script>
 </body>
 </html>

@@ -964,15 +964,13 @@ test("a demo beside a real decision neither answers it nor adds executable page 
   expect(r.code).toBe(0);
   const { refs, page, flow, revision } = r.json;
   expect(questionOf(show(flow), refs.real).answer.state).toBe("open");
-  const els = await elements(page);
 
-  // The demo runs from the page's own script; it adds no script, handler, form, or outbound request to the page.
+  // The demo runs from the page's own script; it adds no script, handler, or outbound request to the page.
   const l = await links(page);
   const template = await links(join(import.meta.dir, "..", "plugin", "skills", "flow-page", "templates", "flow-page.html"));
   expect(l.scripts).toBe(template.scripts);
   expect(l.handlers).toBe(0);
   expect(l.outbound).toEqual([]);
-  expect(els.some((e) => e.tag === "form")).toBe(false);
   expect(run(["render", "--flow", flow]).json.revision).toBe(revision);
   expect(show(opened.flow).revision).toBe(revision);
 });
@@ -1467,4 +1465,48 @@ test.each([
   expect(r.stdout).toBe("");
   expect(r.stderr).toContain(names);
   expect(tree()).toEqual(before);
+});
+
+/** Concurrent ticket work beside historical asks and an older active Stage. */
+function busyFlow() {
+  const grill = openFlow("s-1", "grill-me");
+  const flow = grill.flow;
+  const g = submit("s-1", round(question("old"), question("answered"), question("stale"))).json.refs;
+  const g2 = submit("s-1", picked(g.answered, "A"), round(question("stale-again", { again: g.stale }))).json.refs;
+  const done = run(["open", "--flow", flow, "--skill", "grill-me"], { session: "s-2" }).json;
+  const d = submit("s-2", round(question("left"))).json.refs;
+  expect(submit("s-2", decide(d.left), finish([d.left, "The spec settles it."])).code).toBe(0);
+  const w1 = run(["open", "--flow", flow, "--skill", "wayfinder", "--ticket", "277"], { session: "s-3" }).json;
+  const a = submit("s-3", round(question("route"))).json.refs;
+  const w2 = run(["open", "--flow", flow, "--skill", "wayfinder", "--ticket", "278"], { session: "s-4" }).json;
+  const b = submit("s-4", round(question("store"), question("cache"))).json.refs;
+  expect(submit("s-4", picked(b.store, "B")).code).toBe(0);
+  return { flow, stages: { grill: grill.stage, done: done.stage, w1: w1.stage, w2: w2.stage }, q: { ...g, ...g2, left: d.left, route: a.route, ...b } };
+}
+
+test("next visits actionable questions newest in-progress Stage first, excluding historical asks", () => {
+  const { flow, q } = busyFlow();
+  expect(show(flow).next).toEqual([q.cache, q.route, q.old, q["stale-again"]]);
+});
+
+test("the Stage tree links only to Stages, with their actionable question counts, and keeps Topics", async () => {
+  const { flow, stages, q } = busyFlow();
+  const child = run(["open", "--flow", flow, "--skill", "to-spec", "--parent", stages.done], { session: "s-5" }).json;
+  const r = submit("s-5", topic("money"), round(question("left-again", { again: q.left, topics: ["money"] })));
+  expect(r.code).toBe(0);
+  const snap = show(flow);
+  expect(Object.fromEntries(snap.stages.map((st: any) => [st.id, st.open_questions]))).toEqual({
+    [stages.grill]: 2, [stages.done]: 0, [stages.w1]: 1, [stages.w2]: 1, [child.stage]: 1,
+  });
+  const targets = new Set<string>();
+  await new HTMLRewriter().on("#stage-tree a[href]", {
+    element(el) { targets.add(el.getAttribute("href")!.slice(1)); },
+  }).transform(new Response(readFileSync(r.json.page, "utf8"))).text();
+  expect(targets).toEqual(new Set(snap.stages.map((st: any) => st.id)));
+  const l = await links(r.json.page);
+  expect(l.ids.has("topics")).toBe(true);
+  expect(l.contains.get(child.stage)!.has(r.json.refs["left-again"])).toBe(true);
+  expect(l.contains.get(stages.done)!.has(q.left)).toBe(true);
+  expect(l.within.get(r.json.refs["left-again"])!.has(q.left)).toBe(true);
+  expect(l.within.get(q.left)!.has(r.json.refs["left-again"])).toBe(true);
 });

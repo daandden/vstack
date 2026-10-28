@@ -8,7 +8,7 @@ import { optionLabel, type AnswerState, type Attachment, type ComparisonView, ty
 import type { ProgressView } from "./progress.ts";
 
 /** Raise this when the page a given state renders to changes, so a page names the renderer that made it. */
-export const RENDERER = 11;
+export const RENDERER = 12;
 const TEMPLATE = join(import.meta.dir, "..", "templates", "flow-page.html");
 export type Runtimes = Record<string, { url?: string; reason?: string }>;
 
@@ -215,7 +215,8 @@ function questionHtml(q: QuestionView, v: View, entryTitle: (ref: string) => str
       return `<li class="option"${attrs}><h4>${text(o.label)}${star}${mark}</h4>${o.preview ? figuresHtml([o.preview], v) : ""}<p>${text(o.does)}</p><ul class="trade">${trade}</ul>${why}</li>`;
     })
     .join("\n");
-  return `<article class="question" id="${q.id}" data-state="${q.answer.state}"${q.open ? " data-open" : ""}${q.retired ? " data-retired" : ""} data-stop>
+  const rank = v.next.indexOf(q.id);
+  return `<article class="question" id="${q.id}" data-state="${q.answer.state}"${rank >= 0 ? ` data-next="${rank}"` : ""}${q.retired ? " data-retired" : ""} data-stop>
 ${aliases(v, q.id)}<h3><span class="qnum">Q${q.q}</span>${text(q.title)}</h3>
 <div class="description">${prose(q.description)}</div>${labelled("From the results", entries, "result-links")}${labelled("Related asks", [...earlier, ...later, ...reopened, ...decided], "result-links")}${labelled("Today", facts, "today")}${notes ? `\n<div class="terms"><p class="label">Term notes</p><dl>${notes}</dl></div>` : ""}${labelled("Topic notes", topics, "topics")}${q.example ? `\n<div class="example"><p class="label">Example</p><p>${text(q.example)}</p></div>` : ""}
 ${figuresHtml(q.figures, v)}<ol class="options">
@@ -621,6 +622,17 @@ function progressHtml(p: ProgressView, v: View): string {
 </section>`;
 }
 
+function stageTree(v: View): string {
+  const node = (st: StageView): string => {
+    const children = v.stages.filter((s) => s.parent === st.id);
+    return `<li data-state="${st.state}"><a href="#${st.id}"><span class="dot"></span>${esc(st.label)}</a><span class="meta"><span class="state">${STATE_LABELS[st.state]}</span><span>${st.open_questions} open</span></span>${children.length ? `<ul>${children.map(node).join("")}</ul>` : ""}</li>`;
+  };
+  return `<dialog class="stage-tree" id="stage-tree" aria-labelledby="stage-tree-title">
+<header><h2 id="stage-tree-title">Stages</h2><form method="dialog"><button type="submit">Close</button></form></header>
+<ul class="tree">${v.stages.filter((st) => !st.parent).map(node).join("")}</ul>
+</dialog>`;
+}
+
 export function render(v: View, runtimes: Runtimes = {}): string {
   const sourceText = (id: string) => v.sources.find((x) => x.id === id)!.text;
   const entryTitle = (ref: string) => {
@@ -669,7 +681,8 @@ ${sourcesHtml(t.sourceTexts)}
   const lifecycle = last ? `<p class="lifecycle" data-state="${last.event}">${last.event === "closed" ? "Closed" : "Reopened"} <time datetime="${esc(last.time)}">${formatTime(last.time)}</time></p>` : "";
   const head = `<header class="page-head">${v.flow.crumb ? `<p class="crumb">${text(v.flow.crumb)}</p>` : ""}<h1>${text(v.flow.title)}</h1>${lifecycle}</header>`;
   const overviewPanel = `<section class="tab" id="overview" role="tabpanel" aria-labelledby="tab-overview">\n${progressHtml(v.progress, v)}\n${overview.length ? `<ol class="stages">\n${overview.join("\n")}\n</ol>` : `<p class="empty">No Stage yet.</p>`}\n</section>`;
-  const bar = `<header class="bar">\n<div class="tabs" role="tablist" aria-label="Stages">${tabs.join("")}</div>\n${jumpRows.join("\n")}\n</header>`;
+  const treeButton = v.stages.length ? `<button type="button" class="tree-open" aria-haspopup="dialog" aria-controls="stage-tree" aria-keyshortcuts="t">Stages<kbd>t</kbd></button>` : "";
+  const bar = `<header class="bar">\n<div class="tabs"><div class="tablist" role="tablist" aria-label="Stages">${tabs.join("")}</div>${treeButton}</div>\n${jumpRows.join("\n")}\n${v.stages.length ? stageTree(v) : ""}\n</header>`;
   const meta = `<meta name="flow-page-flow" content="${esc(v.flow.id)}">\n  <meta name="flow-page-revision" content="${v.revision}">\n  <meta name="flow-page-renderer" content="${RENDERER}">`;
   return readFileSync(TEMPLATE, "utf8")
     .replace("{{title}}", () => esc(v.flow.title))
