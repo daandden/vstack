@@ -4,7 +4,7 @@ to-spec and to-tickets check their draft against what the user decided before th
 
 ## Collect the decisions
 
-On the flow's Grilling page, read every `close` record. Collect each entry of its `decisions` and each `extra` bullet that starts with "Assumed:". An Assumed bullet is a pick that the grill settled in the open without asking, and the draft must cover it like an asked decision. A close of a Stage that asked nothing has an empty `decisions` list and only Assumed bullets.
+Read the Flow through `flow-page show`. Collect the latest close decisions and unreopened Assumed picks, keeping each decision's provenance and earlier versions available. A pick or resolved reading is a user's decision; a timeout, cancellation, empty or headless response is not. A close does not make its unresolved decisions confirmed. Carry unresolved requirements as open questions or explicit publication limits, never as consent. Cover Assumed picks as visible assumptions, not user answers.
 
 ## Checker brief
 
@@ -15,7 +15,7 @@ Compare the draft with each close decision, each Assumed pick, and each requirem
 ## Fix and show
 
 1. Fix every miss and contradiction in the draft.
-2. If the checker returns a conflict between two decisions, put it to the user through `ask` as a question on the page, as grilling-page's "Every ask in a flow" says. Fix the draft to the answer.
-3. Append the coverage table as a table Report block on the caller's Stage, with the columns Decision, Covered in, and Found and one row per checker row. Decision names the close decision, the Assumed pick, or the source requirement. Covered in names the part of the draft that covers it after your fixes. Found names the miss or contradiction that you fixed, or "None".
+2. If the checker returns a conflict between two decisions, put it to the user through flow-page's "Every ask in a Flow", preserving the raw answer and separate reading. Fix the draft only to an explicit pick or resolved reading.
+3. Submit the coverage table as a table Result on the caller's Stage, with the columns Decision, Covered in, and Found and one row per checker row. Decision names the close decision, Assumed pick, or source requirement, preserving its provenance. Covered in names the part of the draft that covers it after your fixes. Found names the miss or contradiction that you fixed, or "None".
 
 If the checker does not start, the caller stops as its SKILL.md says, and nothing is published. After step 3, the caller goes on to publish or show the draft.

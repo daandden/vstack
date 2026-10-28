@@ -70,11 +70,13 @@ Blocking uses the tracker's native dependency relationship: essential because it
 
 The answer isn't part of the body; it's recorded on resolution (see [Work through the map](#work-through-the-map)). Assets created while resolving a ticket are linked from the issue, not pasted in.
 
-## The Grilling page
+## The Flow page
 
-A map keeps one Grilling page for all its sessions, and every `ask` of a wayfinder session goes on it. Read skill://grilling-page before the first `ask`. Charting adds one Stage with `skill: "wayfinder"` and marks it finished when charting stops. Once the map exists, rename the page's flow folder after the map with the page script's `rename` command. The new key is the map's issue number, or its effort name on the local-markdown tracker. If the flow's key is already that key, skip the rename. A later session finds the page in the flow folder whose `flow.json` names the map.
+A map keeps one Flow page across sessions. Read `skill://flow-page` before authoring. Use `bound` with the extension's session and agent identity, or `find ticket:<map id>` in a later session. Charting opens a wayfinder Stage, starting a Flow when needed. After creating the canonical map, add its `ticket:<map id>` alias; identity and URLs stay stable without renaming a folder.
 
-Each ticket is one Stage with `skill: "wayfinder"`. A session adds it when it claims the ticket. Put the ticket's name in its Background, and add its id to the flow record's `tickets`. The script assigns the short tab label. The skills that resolve the ticket, such as grilling, prototype, or domain-modeling, ask inside that Stage. When the session closes the ticket, mark its Stage finished. Parallel sessions append to the same page, so read the latest flow record just before appending it again.
+Each claimed ticket opens its own Stage with `open --flow <flow> --skill wayfinder --ticket <ticket id>`. Put the ticket's name in its Background. The script assigns a tab label containing its id and adds its alias. Nested grilling, prototype, and domain-modeling contributions join that Stage. Parallel sessions and research runners name both `--flow` and `--stage` on every write, using their own session and agent identity. Never rewrite shared Flow records.
+
+Publish the map's destination, notes, frontier, decisions, fog, and out-of-scope boundaries as Document and table Results, with named tracker links and observed canonical revisions. Preserve the dependency graph as separate Result content: a table lists every ticket and its blockers, and a captured dependency figure shows the graph when produced. The Stage tree describes continuation, never blocking order. Before finishing charting or a ticket Stage, publish its actual resolution, evidence, outstanding questions, and canonical tracker or findings links. Record raw ask responses and separate readings; a headless recommendation, timeout, or cancellation cannot resolve a HITL ticket or authorize tracker writes.
 
 ## Ticket Types
 
@@ -116,27 +118,28 @@ User invokes with a loose idea.
 
 1. Name the destination. Use skill://grilling and skill://domain-modeling to pin down what this map is finding its way to: the spec, decision, or change. The destination fixes the scope, so it's settled first.
 2. Map the frontier. Grill again, breadth-first this time: range across the whole space rather than deep on any one thread, surfacing the open decisions and the first steps takeable now. If this surfaces no fog (the way to the destination is already clear, the whole journey small enough for one session), you don't need a map. Stop and use `ask` to choose how to proceed.
-3. Create the map (label `wayfinder:map`): Destination and Notes filled in, Decisions-so-far empty, the fog sketched into Not yet specified. Rename the page's flow folder after the map, as [The Grilling page](#the-grilling-page) says.
+3. Create the map (label `wayfinder:map`): Destination and Notes filled in, Decisions-so-far empty, the fog sketched into Not yet specified. Add the map's alias and publish its Result as [The Flow page](#the-flow-page) says.
 4. Create the tickets you can specify now as child issues of the map, then wire blocking edges in a second pass (issues need ids before they can reference each other). Wiring sorts them into the frontier and the blocked; everything you can't yet specify stays in the fog: the Not yet specified section.
 5. Fire the research runners. Claim each research ticket before work, then use Research runners below to resolve the claimed tickets.
-6. Stop: charting is one session's work; it hand-resolves nothing.
+6. Publish the charted map and dependency Results, then finish the charting Stage. Charting is one session's work; it hand-resolves nothing.
 
 ### Work through the map
 
 User invokes with a map (URL or number). A ticket is optional: without one, you pick the next decision, not the user.
 
 1. Load the map: the low-res view, not every ticket body.
-2. Choose the ticket. If the user named one, use it. Otherwise take the first frontier ticket in order. Claim it: assign it to the dev driving the map before any work. Add the ticket's Stage to the map's Grilling page.
+2. Choose the ticket. If the user named one, use it. Otherwise take the first frontier ticket in order. Claim it: assign it to the dev driving the map before any work. Open its ticket-specific Stage on the map's Flow page.
 3. Resolve it. For a research ticket, use Research runners below instead of invoking research's background agent. For other tickets, zoom as needed: fetch the full body of any related or closed ticket on demand; use the skills the `## Notes` block names, each as a `skill://<name>` reference. If in doubt, use skill://grilling and skill://domain-modeling.
-4. Record the resolution: post the answer as a resolution comment, close the issue, append a context pointer to the map's Decisions-so-far, and mark the ticket's Stage finished.
+4. After any required next-prompt confirmation of a grill summary, post the answer as a resolution comment, close the issue, and append a context pointer to the map's Decisions-so-far. Publish the resolution and evidence on the ticket's Stage with its canonical links. Preserve unanswered questions with explicit retirement reasons rather than claiming a decision.
 5. Add newly-surfaced tickets (create-then-wire); graduate any fog the answer has made specifiable, clearing each graduated patch from Not yet specified so it lives only as its new ticket. If the answer reveals that a ticket (this one or another) sits beyond the destination, rule it out of scope rather than resolving it on the route. If the decision invalidates other parts of the map, update or delete those tickets.
+6. Publish the refreshed map and dependency Results in this active ticket Stage, preserving the earlier charting snapshot, then finish the ticket Stage.
 
 The user may run unblocked tickets in parallel, so expect other sessions to be editing the tracker concurrently.
 
 
 ## Research runners
 
-Only the parent writes to the tracker: it claims tickets, posts resolutions, closes tickets, and updates the map. Runners never write tracker issues or comments and never ask the user; they return open questions for the parent to put on the map's Grilling page and ask. An unanswered question that prevents a cited answer leaves the ticket open.
+Only the parent writes to the tracker: it claims tickets, posts resolutions, closes tickets, and updates the map. Runners never write tracker issues or comments and never ask the user; they return open questions for the parent to put on the map's Flow page and ask. An unanswered question that prevents a cited answer leaves the ticket open. The parent records each runner's result on that ticket's Stage, not the parent's last active Stage.
 
 Resolve the mode and absolute vstack root once using the project's vstack config. Read its tracker and domain docs. Pass that root unchanged to every child; children never resolve the git common dir again. If a child writes Scratch, also resolve and pass the project's Scratch dir through skill://vstack-tmp. Use distinct names for each ticket's findings.
 

@@ -186,9 +186,9 @@ items:
     kind: skill
     path: skills/productivity/wait-what
     tree: c8b050e6b8c711be1a9008ceacb2126914f0763e
-    disposition: adopt
+    disposition: adapt
     artifacts: [plugin/skills/wait-what]
-    reason: "Kept unchanged; Matt names GLOSSARY.md from v1.3.0."
+    reason: "Re-pitched explanations are Document Results on the bound or standalone Flow page (#267, #287)."
   - id: matt/writing-for-agents
     upstream: matt
     kind: skill
@@ -922,9 +922,9 @@ items:
     kind: skill
     path: pstack/skills/in-your-own-words
     tree: e5ff93020dd4ed33b80d9df9a235d1945c676a0d
-    disposition: adopt
+    disposition: adapt
     artifacts: [plugin/skills/in-your-own-words]
-    reason: "Kept unchanged as a Utility skill the user types."
+    reason: "Goal restatements are Document Results on the bound or standalone Flow page (#267, #287)."
   - id: pstack/ketchup
     upstream: pstack
     kind: skill

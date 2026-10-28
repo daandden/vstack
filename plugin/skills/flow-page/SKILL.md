@@ -173,7 +173,16 @@ A submit receipt holds the Flow and Stage ids, the committed `revision`, the abs
 
 Every `ask` in a Flow is a question on its page, whichever skill asks it. Submit the round first, then ask with the receipt's `ask` payload and print the page path. The page question carries the description, trade-offs, and context; the `ask` carries only the numbered title and labels. A subagent never asks. It returns its open questions, and the top-level agent puts them on the page and asks them.
 
-When `ask` returns, submit an `answer` for each question. `response` is what `ask` returned, unchanged: `status`, then `picks` (letters), `text` (the custom or Other text, or a note), and `note_on` (the letter of an option a note was written on without picking it), each only when present.
+When `ask` returns, normalize its native output into one `answer` per question. The Flow's `response` has `status`, optional `picks` as letters, `text` for the user's verbatim custom words or note, and `note_on` for the letter of an unpicked option the note concerns. These are Flow fields, not a claim that the native tool returns those field names.
+
+Observed native omp forms:
+
+- A multi-question result has `details.results[]` entries with question ids. Match each entry to the receipt by id. A single-question result can instead have `details.question` and no id; it belongs to the one question just asked.
+- `selectedOptions` contains labels, such as `"A. Keep local"`. Match them to the receipt's options and record their letters in `picks`. Set `status: "answered"` only for an explicit user selection, not a default supplied after timeout, cancellation, or a headless run.
+- `customInput` becomes `text` unchanged. When the user supplied it with an empty `selectedOptions`, it is words without a pick, so record `status: "answered"` and a separate reading.
+- A whole-call cancellation can return a tool error saying the ask was cancelled, with no per-question results. Record `cancelled` for each unanswered question in that call. Preserve earlier recorded answers, but never reconstruct a partial answer that the tool did not return.
+
+Keep any other observed note text, note target, timeout, cancellation, and automatic-selection evidence honest. Use `note_on`, `timed-out`, or `cancelled` only when the tool reports that meaning. An empty selection alone proves neither timeout nor cancellation. An unrelated tool failure is not a cancelled answer: report the failure on the Stage and leave its questions unanswered. Never invent native fields or interpret a supplied default as the user's choice.
 
 - `answered`: the user picked or wrote something. A pick is the answer, whatever its note says; it takes no `reading`.
 - `empty`, `cancelled`, `timed-out`: the user gave no answer. Keep any automatic selection in `picks`; it stays out of the decision.
