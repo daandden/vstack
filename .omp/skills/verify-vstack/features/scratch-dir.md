@@ -13,6 +13,7 @@ vstack skills write throwaway output to Scratch, `~/.vstack/tmp/<repo-key>/<kind
 - `clean-command-choose` Choose items opens a checklist. Done deletes only marked entries.
 - `clean-command-cancel` Cancel at either selection deletes nothing.
 - `clean-command-no-ui` the Command refuses without a UI and deletes nothing.
+- `clean-command-flow` a bound Command publishes its outcome and raw diagnostics in its own finished Stage, then restores an in-progress caller's binding. An unbound Command creates no Flow.
 
 ## How to get to it (user POV)
 
@@ -57,6 +58,13 @@ Preconditions:
 2. Run Doctor for this fresh session. Then run `bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN_DIR" --name clean-command-no-ui --no-ui '{"type":"prompt","message":"/vstack-clean 14d"}'`. Capture stdout, stderr, and the exit code. The helper starts `omp --mode rpc --no-ui --no-session --no-title --model stub/stub-model`, so the extension context has no UI.
 3. Save `find "$C" -type f | sort` as `$VERIFY_RUN_DIR/clean-command-no-ui-after.txt`. Compare it with the before listing using `diff -u`. Both fixture files must remain. Read `clean-command-no-ui/summary.json` and `clean-command-no-ui/rpc.jsonl`: the Command must complete with `agentInvoked: false`, zero model requests, and `ui_requests` of `0`, so no deletion dialog was shown.
 4. The refusal is a displayed custom message, because `--no-ui` drops extension notifications. Run `jq -r 'select(.type=="message_end" and .message.customType=="vstack-clean") | .message.content' "$VERIFY_RUN_DIR/clean-command-no-ui/rpc.jsonl"`. It must print `/vstack-clean requires an interactive UI to confirm deletion. Nothing deleted.` Record the exact text. If it prints nothing, record a product finding: the no-UI refusal has no observable message. Unchanged files or a completed Command are not proof of the message. `--mode json --no-ui` is invalid and must not be used.
+
+### Bound Flow outcome
+
+Use the session-enabled drive with the stub's bash reply to run the checkout's `flow-page.ts open --skill implement --title "Cleanup proof" --agent main` before `/vstack-clean`. Keep both prompts in one drive so they share the session identity. Seed expired Scratch as above, then confirm Apply all. Observe `agentInvoked: false` for the Command and no extra model request for publication. Use `show --flow <receipt flow>` from that drive's project with its isolated `--home` to inspect a finished `vstack-clean` Stage and its Result. `bound --session <session id> --agent main` must still name the caller's Stage.
+
+Open the live Flow URL in the browser. Select the cleanup Stage and read its outcome, preview JSON, deletion JSON, and exit codes. Capture the page and ARIA snapshot. Repeat with Cancel and without a UI; the Result must report no deletion and the files must remain. Run an unbound Command in another session and confirm `bound` is null and no Flow folder appeared. Keep the existing confirmation UI proof above.
+
 
 ## Gotchas
 
