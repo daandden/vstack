@@ -4,6 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [7.0.5] - 2026-10-28
+
+- The agent executing each Grilling page step, including a subagent in its own session, decides separately whether a Context diagram and an Option diagram help and chooses each Mermaid type. Remove the Grilling page visual judge, its rubric, its calibration checker and cases, and its setup claims. The Addon judge is unchanged (ADR 0040).
+- `vstack-figures` documents all 32 visualization families in pinned Pele 1.12.0, which targets Mermaid 12.1.0 built-ins, including all five C4 views, four railroad notations, aliases, and the `info` utility. Every documented keyword has a minimal Mermaid source example rendered through `render.ts` by `tests/figure-types.test.ts`.
+
 ## [7.0.4] - 2026-10-27
 
 - Make all eight tracker-consuming skills use the configured MCP server's current tool descriptions, schemas, and recorded project facts for Jira creation, labels, directional blocking links, and closing. Preserve CLI, local Markdown, and prose workflows; list implement-spec and session as tracker readers in setup (#207).
