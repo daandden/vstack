@@ -116,10 +116,9 @@
     .description { display: grid; gap: 0.5rem; }
     .bullets { display: grid; gap: 0.125rem; padding-inline-start: 1.25rem; }
     .bullets > li::marker { color: var(--overlay0); }
-    .example, .today, .terms, .report-links { display: grid; gap: 0.125rem; }
-    :is(.example, .today, .terms, .topics, .report-links) > .label { font-weight: 600; color: var(--pink); }
-    /* Today lists how things work now, each fact followed by its file and line. */
-    .source { color: var(--subtext0); font-size: var(--fs-small); }
+    .example, .needs, .today, .terms, .report-links { display: grid; gap: 0.125rem; }
+    :is(.example, .needs, .today, .terms, .topics, .report-links) > .label { font-weight: 600; color: var(--pink); }
+    .source, .needs .kind { color: var(--subtext0); font-size: var(--fs-small); }
     .terms dl, .fields { display: grid; gap: 0.125rem; }
     .terms dt { font-weight: 600; color: var(--teal); }
     .terms dt :is(code, a) { color: inherit; }

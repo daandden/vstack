@@ -200,17 +200,33 @@ _Avoid_: glossary note, definition block
 The file beside a flow's Grilling page that names the flow's original topic slug, its spec issue, tickets, branch, and run ids. A later Stage, even one in another omp session, finds the flow's page by any of them.
 _Avoid_: flow manifest, flow index
 
-**Diagram kind**:
-The purpose a figure serves on a Grilling page, either a Context diagram or an Option diagram.
-_Avoid_: diagram type (when the figure's purpose is meant)
+**Visual kind**:
+The job a visual does for the reader of a Grilling page question, chosen from what the reader needs to answer it: a Source view, a source excerpt, a Context diagram, an Option diagram, an option preview, a Before and after, a comparison table, a Data chart, or a Scenario walkthrough.
+_Avoid_: Diagram kind, diagram type (when the visual's job is meant)
 
 **Context diagram**:
-A figure on a Grilling page question that shows the logic its description and Today facts explain: steps, branches, states, parts, or time.
+A Visual kind: a figure on a Grilling page question that shows the logic its description and Today facts explain: steps, branches, states, parts, or time.
 _Avoid_: background figure
 
 **Option diagram**:
-A figure on a Grilling page question that shows how its options differ in shape.
+A Visual kind: a figure on a Grilling page question that shows how its options differ in shape.
 _Avoid_: comparison figure
+
+**Source view**:
+A Visual kind: a crop or screenshot of the real artifact a question is about, with the subject marked and enough of its surroundings kept to locate it.
+_Avoid_: reference image, locator (when a crop of the source is meant)
+
+**Before and after**:
+A Visual kind: for one option, the current state shown next to the state that option would produce.
+_Avoid_: diff view (when it is not a text diff)
+
+**Data chart**:
+A Visual kind: a bar or line chart of the measured numbers a decision turns on, such as cost per use, time, or counts.
+_Avoid_: graph (unqualified)
+
+**Scenario walkthrough**:
+A Visual kind: one concrete case run through each option, step by step, to show where the options part.
+_Avoid_: example (when a run through the options is meant)
 
 **Verify skill**:
 A project-local skill named `verify-<app>` that drives the project's app the way a user does and captures proof that a change works. setup-app-verification creates it, and maintain-app-verification keeps it accurate.

@@ -30,8 +30,13 @@ const append = (...recs: object[]) => run(["append", state, "-"], lines(...recs)
 const PAGE = { type: "page", id: "page", title: "Topic" };
 const ROUND = { type: "round", id: "s1-r1", session: 1, round: 1, time: "2026-10-09T15:00:00+07:00" };
 const option = (label: string, extra: object = {}) => ({ label, does: `${label} does`, gains: [`${label} gain`], costs: [`${label} cost`], ...extra });
-const question = (id: string, q: number, extra: object = {}) => ({
-  type: "question", id, round: "s1-r1", q, title: `Title ${q}?`, description: `Description ${q}`,
+const needsFor = (extra: Record<string, any>) => {
+  const visuals = [...[extra.visual ?? []].flat(), ...(extra.options ?? []).map((o: any) => o.preview).filter(Boolean)];
+  const kinds = [...new Set(visuals.map((v: any) => v.kind).filter(Boolean))];
+  return [{ need: "Why the decision matters", kind: "prose" }, ...kinds.map((kind) => ({ need: `What the ${kind} shows`, kind }))];
+};
+const question = (id: string, q: number, extra: Record<string, any> = {}) => ({
+  type: "question", id, round: "s1-r1", q, title: `Title ${q}?`, description: `Description ${q}`, needs: needsFor(extra),
   options: [option("A. First", { recommended: "it is first" }), option("B. Second")], ...extra,
 });
 const STAR = '<span class="star" aria-hidden="true">*</span><span class="sr-only"> (recommended)</span>';
@@ -147,6 +152,85 @@ test("a question with no options is refused and writes nothing", () => {
   expect(readFileSync(state, "utf8")).toBe(before);
 });
 
+const refusedNeeds = (q2: object, missing: string) => {
+  expect(append(PAGE, ROUND, question("s1-r1-q1", 1)).code).toBe(0);
+  const before = readFileSync(state, "utf8");
+  const pageBefore = readFileSync(page, "utf8");
+  const r = append(q2);
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain("question s1-r1-q2: ");
+  expect(r.stderr).toContain(missing);
+  expect(readFileSync(state, "utf8")).toBe(before);
+  expect(readFileSync(page, "utf8")).toBe(pageBefore);
+};
+
+test("a new question with no reader needs is refused and writes nothing", () => {
+  const { needs: _, ...bare } = question("s1-r1-q2", 2);
+  refusedNeeds(bare, "needs");
+});
+
+test("a need whose Visual kind no visual on the question shows is refused", () => {
+  const needs = [{ need: "Where the door sits on the floor plan", kind: "source-view" }, { need: "How the flow runs today", kind: "context-diagram" }];
+  refusedNeeds(question("s1-r1-q2", 2, { needs, visual: { text: "flow", kind: "context-diagram" } }), "source-view");
+});
+
+test.each([
+  ["no reader needs", { needs: undefined }, "needs"],
+  ["a source-view need with no visual", { needs: [{ need: "Where the door sits on the floor plan", kind: "source-view" }] }, "source-view"],
+])("append refuses a question with %s before a valid same-id replacement and leaves all flow artifacts unchanged", (_, extra, problem) => {
+  const folder = flowFolder();
+  expect(append(PAGE, FLOW, ROUND, question("s1-r1-q1", 1)).code).toBe(0);
+  const figure = join(folder, "figures", "existing.svg");
+  writeFileSync(figure, '<svg xmlns="http://www.w3.org/2000/svg"><text>Existing figure</text></svg>\n');
+  const files = [state, page, join(folder, "flow.json"), figure];
+  const before = files.map((file) => readFileSync(file, "utf8"));
+  const entriesBefore = readdirSync(folder);
+  const figuresBefore = readdirSync(join(folder, "figures"));
+  const r = append(
+    { ...FLOW, tickets: ["new-ticket"] },
+    question("s1-r1-q2", 2, extra),
+    question("s1-r1-q2", 2),
+  );
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain("question s1-r1-q2: ");
+  expect(r.stderr).toContain(problem);
+  expect(files.map((file) => readFileSync(file, "utf8"))).toEqual(before);
+  expect(readdirSync(folder)).toEqual(entriesBefore);
+  expect(readdirSync(join(folder, "figures"))).toEqual(figuresBefore);
+});
+
+test("a visual or preview whose Visual kind no need names is refused", () => {
+  const needs = [{ need: "Why the decision matters", kind: "prose" }];
+  refusedNeeds(question("s1-r1-q2", 2, { needs, visual: { text: "flow", kind: "context-diagram" } }), "context-diagram");
+  refusedNeeds(question("s1-r1-q2", 2, { needs, options: [option("A. One", { preview: { text: "screen", kind: "option-preview" } }), option("B. Two")] }), "option-preview");
+});
+
+test("a question whose only needs are prose is accepted with no visual", () => {
+  const needs = [{ need: "Which trade-off the team accepts", kind: "prose" }];
+  expect(append(PAGE, ROUND, question("s1-r1-q1", 1, { needs })).code).toBe(0);
+  expect(readFileSync(page, "utf8")).toContain('id="q-s1-r1-q1"');
+});
+
+test("a stored question with no needs still renders after a later append and after answer", () => {
+  const { needs: _, ...stored } = question("s1-r1-q1", 1, { visual: { text: "old figure" } });
+  writeFileSync(state, `${lines(PAGE, ROUND, stored)}\n`);
+  expect(append(question("s1-r1-q2", 2)).code).toBe(0);
+  expect(run(["answer", state, "s1-r1-q1=A"]).code).toBe(0);
+  const html = readFileSync(page, "utf8");
+  expect(questionBody(html, "s1-r1-q1")).toContain("old figure");
+  expect(block(questionBody(html, "s1-r1-q1"), "needs")).toBeUndefined();
+  expect(html).toContain('id="q-s1-r1-q2"');
+});
+
+test("the page shows each need with its Visual kind after the description", () => {
+  const needs = [{ need: "Where the door sits on the floor plan", kind: "source-view" }, { need: "Which trade-off the team accepts", kind: "prose" }];
+  expect(append(PAGE, ROUND, question("s1-r1-q1", 1, { needs, visual: { text: "floor plan", kind: "source-view" } })).code).toBe(0);
+  const body = questionBody(readFileSync(page, "utf8"), "s1-r1-q1");
+  const shown = block(body, "needs")!;
+  expect(shown).toMatch(/Where the door sits on the floor plan[\s\S]*Source view[\s\S]*Which trade-off the team accepts[\s\S]*Prose/);
+  expect(body.indexOf('class="needs"')).toBeGreaterThan(body.indexOf("Description 1"));
+});
+
 test("answer marks the picked option and shows a line only for a note", () => {
   append(PAGE, ROUND, question("s1-r1-q1", 1), question("s1-r1-q2", 2));
   expect(run(["answer", state, "s1-r1-q1=B", "s1-r1-q2=A:only on wifi"]).code).toBe(0);
@@ -185,9 +269,9 @@ test("an answer for an option that does not exist is refused", () => {
 
 test("preview HTML with a script is refused, and preview CSS is scoped to the preview", () => {
   append(PAGE, ROUND);
-  const bad = append(question("s1-r1-q1", 1, { options: [option("A. One", { preview: { html: "<script>x()</script>" } }), option("B. Two")] }));
+  const bad = append(question("s1-r1-q1", 1, { options: [option("A. One", { preview: { html: "<script>x()</script>", kind: "option-preview" } }), option("B. Two")] }));
   expect(bad.code).toBe(1);
-  const ok = append(question("s1-r1-q1", 1, { options: [option("A. One", { preview: { html: '<p class="x">hi</p>', css: ".x, p { color: red; }" } }), option("B. Two")] }));
+  const ok = append(question("s1-r1-q1", 1, { options: [option("A. One", { preview: { html: '<p class="x">hi</p>', css: ".x, p { color: red; }", kind: "option-preview" } }), option("B. Two")] }));
   expect(ok.code).toBe(0);
   expect(readFileSync(page, "utf8")).toContain("#q-s1-r1-q1-a .x, #q-s1-r1-q1-a p { color: red; }");
 });
@@ -201,7 +285,7 @@ test.each([
   ["a script hidden after a closing tag", "</div></li></ol><script>alert(1)</script>"],
 ])("preview HTML with %s is refused", (_, html) => {
   append(PAGE, ROUND);
-  const r = append(question("s1-r1-q1", 1, { options: [option("A. One", { preview: { html } }), option("B. Two")] }));
+  const r = append(question("s1-r1-q1", 1, { options: [option("A. One", { preview: { html, kind: "option-preview" } }), option("B. Two")] }));
   expect(r.code).toBe(1);
   expect(r.stderr).toContain("html is not safe");
   expect(existsSync(page) ? readFileSync(page, "utf8") : "").not.toContain("alert(1)");
@@ -211,12 +295,12 @@ test("an SVG file with an event handler is refused, and one with only styles is 
   append(PAGE, ROUND);
   const evil = join(dir, "evil.svg");
   writeFileSync(evil, '<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"><rect width="1" height="1"/></svg>');
-  const bad = append(question("s1-r1-q1", 1, { visual: { svg: evil } }));
+  const bad = append(question("s1-r1-q1", 1, { visual: { svg: evil, kind: "context-diagram" } }));
   expect(bad.code).toBe(1);
   expect(bad.stderr).toContain("the onload attribute on <svg> is not allowed");
   const good = join(dir, "good.svg");
   writeFileSync(good, '<svg xmlns="http://www.w3.org/2000/svg"><style>.n { fill: red; }</style><rect class="n" width="1" height="1"/></svg>');
-  expect(append(question("s1-r1-q1", 1, { visual: { svg: good } })).code).toBe(0);
+  expect(append(question("s1-r1-q1", 1, { visual: { svg: good, kind: "context-diagram" } })).code).toBe(0);
   expect(readFileSync(page, "utf8")).toContain('<rect class="n"');
 });
 
@@ -227,7 +311,7 @@ test.each([
   append(PAGE, ROUND);
   const svg = join(dir, "import.svg");
   writeFileSync(svg, `<svg xmlns="http://www.w3.org/2000/svg"><style>@import url('${url}');</style><rect width="1" height="1"/></svg>`);
-  const r = append(question("s1-r1-q1", 1, { visual: { svg } }));
+  const r = append(question("s1-r1-q1", 1, { visual: { svg, kind: "context-diagram" } }));
   expect(r.code).toBe(1);
   expect(r.stderr).toContain(`${svg} is not safe: its styles import a file`);
   expect(existsSync(page) ? readFileSync(page, "utf8") : "").not.toContain(url);
@@ -237,10 +321,10 @@ test("a question with a list of visuals renders each one in order, and a bad ent
   append(PAGE, ROUND);
   const context = join(dir, "context.svg");
   writeFileSync(context, '<svg xmlns="http://www.w3.org/2000/svg"><rect id="context-figure" width="1" height="1"/></svg>');
-  const bad = append(question("s1-r1-q1", 1, { visual: [{ svg: context }, { html: "<script>x()</script>" }] }));
+  const bad = append(question("s1-r1-q1", 1, { visual: [{ svg: context, kind: "context-diagram" }, { html: "<script>x()</script>", kind: "comparison-table" }] }));
   expect(bad.code).toBe(1);
   expect(bad.stderr).toContain("visual 2: html is not safe");
-  expect(append(question("s1-r1-q1", 1, { visual: [{ svg: context }, { text: "options figure" }] })).code).toBe(0);
+  expect(append(question("s1-r1-q1", 1, { visual: [{ svg: context, kind: "context-diagram" }, { text: "options figure", kind: "option-diagram" }] })).code).toBe(0);
   const html = readFileSync(page, "utf8");
   const first = html.indexOf('id="context-figure"');
   const second = html.indexOf("options figure");
@@ -443,8 +527,8 @@ test("rename keeps an SVG stored relative and one stored as an absolute path int
   Bun.spawnSync(["mkdir", "-p", join(old, "figures")]);
   writeFileSync(join(old, "figures", "context.svg"), figure("relative-figure"));
   writeFileSync(join(old, "figures", "options.svg"), figure("absolute-figure"));
-  const q2 = question("s1-r1-q2", 2, { options: [option("A. First", { preview: { svg: join(old, "figures", "options.svg") } }), option("B. Second")] });
-  expect(append(PAGE, FLOW, ROUND, question("s1-r1-q1", 1, { visual: { svg: "figures/context.svg" } }), q2).code).toBe(0);
+  const q2 = question("s1-r1-q2", 2, { options: [option("A. First", { preview: { svg: join(old, "figures", "options.svg"), kind: "option-preview" } }), option("B. Second")] });
+  expect(append(PAGE, FLOW, ROUND, question("s1-r1-q1", 1, { visual: { svg: "figures/context.svg", kind: "context-diagram" } }), q2).code).toBe(0);
 
   const r = run(["rename", state, "151"]);
   expect(r.code).toBe(0);
@@ -467,7 +551,7 @@ test("a rename that would leave an SVG unresolved exits 1 and leaves the old fol
   Bun.spawnSync(["mkdir", "-p", join(old, "figures")]);
   writeFileSync(join(old, "figures", "context.svg"), figure("context-figure"));
   const roundabout = "../vstack-page-per-flow/figures/context.svg";
-  expect(append(PAGE, FLOW, ROUND, question("s1-r1-q1", 1, { visual: { svg: roundabout } })).code).toBe(0);
+  expect(append(PAGE, FLOW, ROUND, question("s1-r1-q1", 1, { visual: { svg: roundabout, kind: "context-diagram" } })).code).toBe(0);
   const files = Object.fromEntries(["page.jsonl", "page.html", "flow.json"].map((f) => [f, readFileSync(join(old, f), "utf8")]));
 
   const r = run(["rename", state, "151"]);
@@ -487,7 +571,7 @@ test.each([
   const rendered = Bun.spawnSync(["bun", RENDER, "-", join(folder, "figures", `${type}.svg`), "--focus", focus], { stdin: new TextEncoder().encode(mermaid), stdout: "pipe", stderr: "pipe" });
   expect(rendered.stderr.toString()).toBe("");
   expect(rendered.exitCode).toBe(0);
-  const r = append(PAGE, FLOW, ROUND, question("s1-r1-q1", 1, { visual: { svg: `figures/${type}.svg` } }));
+  const r = append(PAGE, FLOW, ROUND, question("s1-r1-q1", 1, { visual: { svg: `figures/${type}.svg`, kind: "context-diagram" } }));
   expect(r.code).toBe(0);
   const html = readFileSync(page, "utf8");
   const scope = new RegExp(`class="pele pele-${type} (pele-f[0-9a-f]{8})"`).exec(html)?.[1];
@@ -513,7 +597,7 @@ test.each([
   writeFileSync(external, figure("external-figure"));
   const link = join(old, "figures", "link.svg");
   symlinkSync(kind === "absolute" ? external : join(old, "figures", "real.svg"), link);
-  expect(append(PAGE, FLOW, ROUND, question("s1-r1-q1", 1, { visual: { svg: kind === "absolute" ? link : "figures/link.svg" } })).code).toBe(0);
+  expect(append(PAGE, FLOW, ROUND, question("s1-r1-q1", 1, { visual: { svg: kind === "absolute" ? link : "figures/link.svg", kind: "context-diagram" } })).code).toBe(0);
   const before = tree(old);
 
   const r = run(["rename", state, "151"]);
@@ -944,6 +1028,20 @@ test("a Stage has at most one background", () => {
   expect(readFileSync(state, "utf8")).toBe(before);
 });
 
+test("a Background visual does not meet a question's need, and the same figure on the question does", () => {
+  const floor = join(dir, "floor.svg");
+  writeFileSync(floor, '<svg xmlns="http://www.w3.org/2000/svg"><rect id="floor-plan" width="1" height="1"/></svg>');
+  expect(append(PAGE, stage("grill"), { ...ROUND, stage: "grill" }, background("context", "grill", { visual: { svg: floor } })).code).toBe(0);
+  const before = readFileSync(state, "utf8");
+  const needs = [{ need: "Where the door sits on the floor plan", kind: "source-view" }];
+  const r = append(question("s1-r1-q1", 1, { needs }));
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain("question s1-r1-q1: ");
+  expect(r.stderr).toContain("source-view");
+  expect(readFileSync(state, "utf8")).toBe(before);
+  expect(append(question("s1-r1-q1", 1, { needs, visual: { svg: floor, kind: "source-view" } })).code).toBe(0);
+});
+
 test("a Background renders at the top of its Stage tab, before the rounds, even when appended after them", () => {
   const sections = [{ heading: "One folder per flow", body: "The folder holds the state file.\n\n- `page.jsonl`\n- `page.html`" }, { heading: "Renamed at to-spec", body: "The key becomes the spec issue." }];
   const visual = { text: "grilling/vstack-151/" };
@@ -1164,7 +1262,7 @@ test("append preserves replacement numbers and continues the current stored roun
   expect(run(["answer", state, "current=B"]).code).toBe(0);
   const before = readFileSync(state, "utf8");
   const { round: _, ...replacement } = earlier;
-  expect(append({ ...replacement, q: 99, title: "Updated?" }, { type: "question", title: "Next?", description: "Next decision.", options: current.options }).code).toBe(0);
+  expect(append({ ...replacement, q: 99, title: "Updated?" }, { type: "question", title: "Next?", description: "Next decision.", needs: current.needs, options: current.options }).code).toBe(0);
   const r = stored();
   expect(r.grill.order).toBe(3);
   expect([r[first.id].session, r[first.id].round, r[first.id].time]).toEqual([4, 7, "2026-10-09T16:00:00+07:00"]);
@@ -1231,7 +1329,7 @@ test("successful append reports assigned metadata on stderr so callers can answe
   ]);
   const replacement = append({ type: "round", id: "round-2", stage: "grill", session: 99, round: 99, time: "1999-01-01T00:00:00Z" });
   expect(JSON.parse(replacement.stderr)).toEqual([continuation[0]]);
-  const bad = append({ ...content, visual: { svg: "missing.svg" } });
+  const bad = append({ ...content, needs: [{ need: "How it works today", kind: "context-diagram" }], visual: { svg: "missing.svg", kind: "context-diagram" } });
   expect(bad.code).toBe(1);
   expect(bad.stdout).toBe("");
   expect(bad.stderr).toStartWith("grilling-page.ts:");
@@ -1244,7 +1342,7 @@ test("a SIGKILL during CLI rendering releases the state lock for the next append
   const fifo = join(dir, "waiting.svg");
   expect(Bun.spawnSync(["mkfifo", fifo]).exitCode).toBe(0);
   const blocked = Bun.spawn(["bun", SCRIPT, "append", state, "-"], {
-    stdin: Buffer.from(lines(question("interrupted", 1, { visual: { svg: fifo } }))), stdout: "pipe", stderr: "pipe",
+    stdin: Buffer.from(lines(question("interrupted", 1, { visual: { svg: fifo, kind: "context-diagram" } }))), stdout: "pipe", stderr: "pipe",
   });
   let writer: number | undefined;
   try {
