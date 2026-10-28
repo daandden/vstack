@@ -1,24 +1,30 @@
 // Lists and deletes expired Scratch entries under <home>/.vstack/tmp/<repo-key>/<kind>/<entry>.
 //
-//   bun clean.ts --home <dir> [--older-than <age>]                     list (dry run)
-//   bun clean.ts --home <dir> [--older-than <age>] --delete <path>...  delete those entries
+//   bun clean.ts --home <dir> [--older-than <age>] [--now <time>]                     list (dry run)
+//   bun clean.ts --home <dir> [--older-than <age>] [--now <time>] --delete <path>...  delete those entries
 //
 // <age> is <n>d, <n>h, <n>w, or a bare <n> for days (default 90d). An entry's age comes from the newest mtime of the entry and
 // everything inside it. Symlinks are never followed: a link counts by its own mtime and is deleted as a link.
-// The listing prints JSON {root, older_than, entries: [{path, repo_key, kind, entry, newest_mtime, age_days, size}], kept}.
+// A Flow in the `flow` kind is the exception: its age comes from its lifecycle, never from file times or page reads. An
+// open Flow is never listed or deleted, and a closed one is listed once it has been closed longer than <age> and at least
+// 90 days. The kind's dot entries, the Flow id registry and the session bindings, are never entries; deleting a Flow
+// deletes its bindings and keeps its id registered, so the id reports the loss instead of starting again empty.
+// <time> is an ISO date and time to measure ages from (default: now).
+// The listing prints JSON {root, older_than, entries: [{path, repo_key, kind, entry, newest_mtime, age_days, size, closed?}], kept}.
 // A delete re-checks each entry, deletes the ones still older than <age>, removes kind and key dirs it leaves
 // empty, and prints JSON {root, deleted, skipped: [{path, reason}], pruned}. Exit 2 on a usage error, and on a
 // delete path that is not an entry under the root, before anything is deleted.
 
 import { lstatSync, readdirSync, rmdirSync, unlinkSync, type Stats } from "node:fs";
-import { isAbsolute, join, relative, resolve, sep } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
+import { CLOSED_RETENTION, dropBindings, FLOW_KIND, retentionOf, withLock } from "../../flow-page/scripts/store.ts";
 import { scratchRoot } from "./scratch.ts";
 
 const UNITS: Record<string, number> = { h: 3_600_000, d: 86_400_000, w: 604_800_000 };
 
 function usage(message: string): never {
-  process.stderr.write(`clean.ts: ${message}\nusage: bun clean.ts --home <dir> [--older-than <n>|<n>d|<n>h|<n>w] [--delete <path>...]\n`);
+  process.stderr.write(`clean.ts: ${message}\nusage: bun clean.ts --home <dir> [--older-than <n>|<n>d|<n>h|<n>w] [--now <time>] [--delete <path>...]\n`);
   process.exit(2);
 }
 
@@ -26,7 +32,7 @@ let parsed;
 try {
   parsed = parseArgs({
     args: Bun.argv.slice(2),
-    options: { home: { type: "string" }, "older-than": { type: "string" }, delete: { type: "boolean" } },
+    options: { home: { type: "string" }, "older-than": { type: "string" }, now: { type: "string" }, delete: { type: "boolean" } },
     allowPositionals: true,
   });
 } catch (e) {
@@ -41,7 +47,8 @@ if (!m) usage(`--older-than must look like 90d, 90, 36h, or 2w, got ${JSON.strin
 const ttl = Number(m[1]) * UNITS[m[2] || "d"];
 const home = resolve(values.home);
 const root = scratchRoot(home);
-const now = Date.now();
+const now = values.now === undefined ? Date.now() : Date.parse(values.now);
+if (Number.isNaN(now)) usage(`--now must be an ISO date and time, got ${JSON.stringify(values.now)}`);
 
 const lstat = (p: string): Stats | undefined => {
   try {
@@ -87,6 +94,22 @@ function remove(p: string) {
   }
 }
 
+type Verdict = { registry: true } | { registry?: false; due: boolean; age: number; newest: number; size: number; flow?: string; closed?: string; reason: string };
+
+/** Whether an entry is due for deletion, and its age: by its newest mtime, or by its lifecycle when it is a Flow. */
+function judge(kind: string, entry: string, path: string, st: Stats): Verdict {
+  if (kind === FLOW_KIND && entry.startsWith(".")) return { registry: true };
+  const { newest, size } = measure(path, st);
+  const flow = kind === FLOW_KIND ? retentionOf(path) : undefined;
+  if (flow === "unreadable") return { due: false, age: now - newest, newest, size, reason: "Flow state unreadable" };
+  if (flow && flow.closed === undefined) return { due: false, age: now - newest, newest, size, flow: flow.flow, reason: "open Flow" };
+  if (flow) {
+    const age = now - Date.parse(flow.closed!);
+    return { due: age > Math.max(ttl, CLOSED_RETENTION), age, newest, size, flow: flow.flow, closed: flow.closed, reason: "newer than the TTL" };
+  }
+  return { due: now - newest > ttl, age: now - newest, newest, size, reason: "newer than the TTL" };
+}
+
 const print = (v: unknown) => process.stdout.write(`${JSON.stringify(v, null, 2)}\n`);
 
 if (!values.delete) {
@@ -99,13 +122,14 @@ if (!values.delete) {
           const path = join(root, repoKey, kind, entry);
           const st = lstat(path);
           if (!st) continue;
-          const { newest, size } = measure(path, st);
-          if (now - newest <= ttl) {
+          const v = judge(kind, entry, path, st);
+          if (v.registry) continue;
+          if (!v.due) {
             kept++;
             continue;
           }
-          const age_days = Math.floor((now - newest) / UNITS.d);
-          entries.push({ path, repo_key: repoKey, kind, entry, newest_mtime: new Date(newest).toISOString(), age_days, size });
+          const age_days = Math.floor(v.age / UNITS.d);
+          entries.push({ path, repo_key: repoKey, kind, entry, newest_mtime: new Date(v.newest).toISOString(), age_days, size: v.size, ...(v.closed ? { closed: v.closed } : {}) });
         }
       }
     }
@@ -128,23 +152,43 @@ const targets = positionals.map((p) => {
     const st = lstat(dir);
     if (st && !st.isDirectory()) usage(`${dir} is not a directory`);
   }
-  return abs;
+  return { path: abs, kind: parts[1], entry: parts[2] };
 });
 
 const deleted: string[] = [];
 const skipped: { path: string; reason: string }[] = [];
 const pruned: string[] = [];
-for (const path of targets) {
+for (const { path, kind, entry } of targets) {
   const st = lstat(path);
   if (!st) {
     skipped.push({ path, reason: "missing" });
     continue;
   }
-  if (now - measure(path, st).newest <= ttl) {
-    skipped.push({ path, reason: "newer than the TTL" });
+  const v = judge(kind, entry, path, st);
+  if (v.registry) {
+    skipped.push({ path, reason: "Flow registry" });
     continue;
   }
-  remove(path);
+  if (!v.due) {
+    skipped.push({ path, reason: v.reason });
+    continue;
+  }
+  if (v.flow) {
+    // Under the Flow's own lock, so a reopen that lands first keeps it, and a command that waited finds it gone.
+    const flow = v.flow;
+    const reason = await withLock(path, () => {
+      const again = judge(kind, entry, path, lstatSync(path)) as Exclude<Verdict, { registry: true }>;
+      if (!again.due) return again.reason;
+      remove(path);
+      dropBindings(dirname(path), flow);
+    });
+    if (reason) {
+      skipped.push({ path, reason });
+      continue;
+    }
+  } else {
+    remove(path);
+  }
   deleted.push(path);
   const kindDir = join(path, "..");
   for (const dir of [kindDir, join(kindDir, "..")]) {

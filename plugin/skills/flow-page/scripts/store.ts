@@ -1,15 +1,17 @@
 // Where a project's Flows live, how one Flow's commands serialize, and how files are replaced atomically.
 // Callers of flow-page.ts never see these paths; they name Flows and Stages by id.
 
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, lstatSync, mkdirSync, openSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { createHash, randomBytes } from "node:crypto";
 import { constants } from "node:os";
 import { join } from "node:path";
 import { dlopen, read } from "bun:ffi";
 import { repoKey, scratchRoot } from "../../vstack-tmp/scripts/scratch.ts";
+import { closedAt, upgrade, type State } from "./model.ts";
 
+export const FLOW_KIND = "flow";
 /** `<home>/.vstack/tmp/<repo-key>/flow`: one folder per Flow. All worktrees of a project share it; other projects never see it. */
-export const flowsDir = (home: string, cwd: string): string => join(scratchRoot(home), repoKey(cwd), "flow");
+export const flowsDir = (home: string, cwd: string): string => join(scratchRoot(home), repoKey(cwd), FLOW_KIND);
 
 // A Flow folder holds its committed domain state under `data/` and the last page published from it at `index.html`.
 // The page is a projection: a failed publish leaves the state committed and the older page in place.
@@ -81,6 +83,47 @@ export function readBinding(dir: string, session: string, agent: string): Bindin
 export function writeBinding(dir: string, b: Binding): void {
   mkdirSync(join(dir, ".bindings"), { recursive: true });
   writeAtomic(bindingPath(dir, b.session, b.agent), `${JSON.stringify(b)}\n`);
+}
+
+/** Deletes every session binding to the Flow `id`. Called when the Flow itself is deleted, so no session stays bound to it. */
+export function dropBindings(dir: string, id: string): void {
+  const at = join(dir, ".bindings");
+  if (!existsSync(at)) return;
+  for (const name of readdirSync(at)) {
+    const path = join(at, name);
+    try {
+      if ((JSON.parse(readFileSync(path, "utf8")) as Binding).flow === id) rmSync(path, { force: true });
+    } catch {
+      // A binding being replaced right now, or not one at all: leave it.
+    }
+  }
+}
+
+// Scratch cleanup judges a Flow by its lifecycle, never by file times or page reads: an open Flow is never removed,
+// and a closed one becomes eligible CLOSED_RETENTION after its latest close. The `.ids/` and `.bindings/` dot entries
+// of the flow dir are the project's Flow registry: `.ids/` keeps every id ever given, so an expired id is reported
+// and never handed out again, and bindings go when their Flow goes.
+export const CLOSED_RETENTION = 90 * 86_400_000;
+export type Retention = { flow: string; closed?: string } | "unreadable";
+
+/** The lifecycle of the Flow in `folder` without following links, "unreadable" when its state cannot be read, or undefined when `folder` holds no Flow state. */
+export function retentionOf(folder: string): Retention | undefined {
+  const kind = (p: string) => {
+    try {
+      const st = lstatSync(p);
+      return st.isDirectory() ? "dir" : st.isFile() ? "file" : "other";
+    } catch {
+      return undefined;
+    }
+  };
+  if (kind(folder) !== "dir" || kind(join(folder, "data")) !== "dir" || kind(statePath(folder)) !== "file") return undefined;
+  try {
+    const s = upgrade(JSON.parse(readFileSync(statePath(folder), "utf8")) as State);
+    const closed = closedAt(s);
+    return { flow: s.flow.id, ...(closed !== undefined ? { closed } : {}) };
+  } catch {
+    return "unreadable";
+  }
 }
 
 // One Flow's commands take an exclusive advisory flock on `<folder>/.lock`. Closing the descriptor, or the

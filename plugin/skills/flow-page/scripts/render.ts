@@ -7,7 +7,7 @@ import { optionLabel, type AnswerState, type Attachment, type DocView, type Ques
 import type { ProgressView } from "./progress.ts";
 
 /** Raise this when the page a given state renders to changes, so a page names the renderer that made it. */
-export const RENDERER = 4;
+export const RENDERER = 5;
 const TEMPLATE = join(import.meta.dir, "..", "templates", "flow-page.html");
 
 const STATE_LABELS: Record<string, string> = { "in-progress": "In progress", finished: "Finished" };
@@ -412,7 +412,10 @@ ${sourcesHtml(t.sourceTexts)}
 </article>`);
     panels.push(`<section class="tab" id="topics" role="tabpanel" aria-labelledby="tab-topics" hidden>\n${notes.join("\n")}\n</section>`);
   }
-  const head = `<header class="page-head"><h1>${text(v.flow.title)}</h1></header>`;
+  // A closed or reopened Flow says so under its heading; a Flow that was never closed needs no line.
+  const last = v.lifecycle.at(-1);
+  const lifecycle = last ? `<p class="lifecycle" data-state="${last.event}">${last.event === "closed" ? "Closed" : "Reopened"} <time datetime="${esc(last.time)}">${formatTime(last.time)}</time></p>` : "";
+  const head = `<header class="page-head"><h1>${text(v.flow.title)}</h1>${lifecycle}</header>`;
   const overviewPanel = `<section class="tab" id="overview" role="tabpanel" aria-labelledby="tab-overview">\n${progressHtml(v.progress, v)}\n${overview.length ? `<ol class="stages">\n${overview.join("\n")}\n</ol>` : `<p class="empty">No Stage yet.</p>`}\n</section>`;
   const bar = `<header class="bar">\n<div class="tabs" role="tablist" aria-label="Stages">${tabs.join("")}</div>\n${jumpRows.join("\n")}\n</header>`;
   const meta = `<meta name="flow-page-flow" content="${esc(v.flow.id)}">\n  <meta name="flow-page-revision" content="${v.revision}">\n  <meta name="flow-page-renderer" content="${RENDERER}">`;

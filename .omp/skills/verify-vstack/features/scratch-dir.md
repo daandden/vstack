@@ -7,7 +7,7 @@ vstack skills write throwaway output to Scratch, `~/.vstack/tmp/<repo-key>/<kind
 - `scratch-path` the path script prints and creates `<home>/.vstack/tmp/<repo-key>/` or a kind directory, with a trailing slash.
 - `scratch-key` worktrees of one repo share its key: the main checkout's name plus 6 hex chars.
 - `scratch-bad-kind` a kind that is not one lowercase path segment exits 2 and creates nothing.
-- `clean-list` list mode prints expired entries and the `kept` count as JSON, without deletion.
+- `clean-list` list mode prints expired entries and the `kept` count as JSON, without deletion. A Flow in the `flow` kind is judged by its lifecycle; the Flow page recipe's `flow-retention` covers it.
 - `clean-delete` `--delete <path>...` deletes named expired entries and prints `deleted`, `skipped`, and `pruned`.
 - `clean-command-table` `/vstack-clean [age]` shows repo key, kind, entry, age, size, and totals before confirmation.
 - `clean-command-choose` Choose items opens a checklist. Done deletes only marked entries.
@@ -61,7 +61,7 @@ Preconditions:
 ## Gotchas
 
 - The direct CLIs use the cwd's git repo key, or `_global` outside a repo. The Command scans all keys in its isolated home.
-- An entry's age is its newest mtime, including descendants. Touch files first and the entry directory last.
+- An entry's age is its newest mtime, including descendants. Touch files first and the entry directory last. A Flow in the `flow` kind is the exception: its close time decides, and an open Flow is never listed.
 - Never change your own session's `HOME`. Direct CLIs use `--home`. Only the isolated omp process gets a throwaway `HOME`.
 - `--delete` needs absolute entry paths at `<repo-key>/<kind>/<entry>` depth. Other paths exit 2 before deletion.
 - RPC proof must come from the linked checkout. The fake extension host and cleanup CLI prove different entry points.

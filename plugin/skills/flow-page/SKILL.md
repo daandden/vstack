@@ -1,6 +1,6 @@
 ---
 name: flow-page
-description: How a Flow keeps its Flow page through Stage-bound authoring. Covers opening or joining a Stage, finding a Flow by alias, moving its folder, the typed contribution format, Document Results, typed attachments and captured revisions, focused Result revisions, the receipt and its ask payload, answers, closes, and refusals.
+description: How a Flow keeps its Flow page through Stage-bound authoring. Covers opening or joining a Stage, finding a Flow by alias, moving its folder, closing and reopening the Flow, the typed contribution format, Document Results, typed attachments and captured revisions, focused Result revisions, the receipt and its ask payload, answers, closes, and refusals.
 disable-model-invocation: true
 ---
 
@@ -43,6 +43,17 @@ Parallel callers, and callers outside an omp session, name the target on each wr
 - `move [--flow <flow>] --to <key>` moves the Flow's folder to the folder key `<key>`. Bindings, ids, anchors, and the old folder key keep working; only the `page` path changes. A key in use is refused, and a failed move leaves the Flow where it was.
 
 Flows belong to the project of the current repo. Every worktree of the project sees the same Flows, and no other project can find or write them, even by id.
+
+## Close or reopen the Flow
+
+A Flow is open until it is closed. The skill that runs its last Stage says when the Flow's work is done.
+
+- `close [--flow <flow>]` closes the Flow. Every Stage has to be finished first. A closed Flow takes no new Stage and no content, and its page stays readable. The receipt's `closed` is the close time.
+- `reopen --skill <name> [--flow <flow>] [--parent <stage>] [--ticket <id>]` continues a closed Flow. It records the reopen and opens the new Stage in one step, and binds this session's agent to that Stage, as `open` does. The finished Stages stay as they were. `open --flow` refuses a closed Flow.
+
+`show` prints `open` and the `lifecycle` records, oldest first. The page heading says when the Flow was closed or reopened.
+
+Scratch cleanup never deletes an open Flow. It offers a closed Flow for deletion only after the Flow has been closed for 90 days, and the user still confirms the deletion. Reading the page, `show`, `find`, and `render` never move that date. The Flow's data, page, and captured files go together. Its id is never used again, so a later command that names it is refused with the report that its content is gone.
 
 ## Submit a contribution
 

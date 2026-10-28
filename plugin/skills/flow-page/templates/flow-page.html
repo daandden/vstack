@@ -49,6 +49,8 @@
     [data-state="finished"] { --state: var(--green); }
     [data-state="in-progress"] { --state: var(--peach); }
     [data-state="not-started"] { --state: var(--overlay0); }
+    [data-state="closed"] { --state: var(--green); }
+    [data-state="reopened"] { --state: var(--peach); }
     [hidden] { display: none !important; }
     body { margin: 0; min-block-size: 100svh; background: var(--base); color: var(--text); font: var(--fs-body)/normal "IosevkaTerm Nerd Font Mono", "Iosevka Term", "JetBrains Mono", ui-monospace, monospace; letter-spacing: 0; }
     h1, h2, h3, h4 { margin-block: 0; color: var(--text); text-wrap: balance; font-family: "IosevkaTermSlab Nerd Font Mono", "Iosevka Term Slab", "JetBrains Mono", ui-monospace, monospace; font-size: var(--fs-body); line-height: normal; }
@@ -77,6 +79,7 @@
     .stage .open { color: var(--overlay0); }
     .sr-only { position: absolute; inline-size: 1px; block-size: 1px; overflow: clip; clip-path: inset(50%); white-space: nowrap; }
     .page-head { display: grid; gap: 0.25rem; }
+    .lifecycle { color: var(--state); font-size: var(--fs-small); font-weight: 600; }
     .crumb, time, .label { color: var(--subtext0); }
     .crumb, time, .label, .why { font-size: var(--fs-small); }
     h1 { font-size: var(--fs-title); font-weight: 700; }

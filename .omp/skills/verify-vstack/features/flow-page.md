@@ -19,10 +19,11 @@ The flow-page script takes typed contributions for one bound Stage, assigns ids,
 - `flow-attach`: `attachment` items of every type keep their caption, origin, captured revision, and availability. Captured files are stored in the Flow by sha256 and shown from there. A path outside the project and its Scratch dir, a symlink out of them, an image that is not an image, an unsafe SVG, and a link with an unsafe scheme are refused.
 - `flow-revision`: a Result keeps the content and assets it captured after its sources change. `revises` publishes the next revision, with the canonical file's new sha256, and the earlier revision stays readable.
 - `flow-progress`: `task`, `blocker`, `end-state`, `pr`, and `check` items put progress on the Overview's strip. A task changes state through a focused update with no resend. Skipped and inapplicable tasks are not left work. The Flow reads complete only when no task or blocker is open and a delivery reached its requested End state. A finished Stage, a merged PR, and a passed check are each their own line and complete nothing.
+- `flow-retention`: `close` closes a Flow whose Stages are all finished, and `reopen` continues it with a new Stage. The cleanup script never lists or deletes an open Flow, lists a closed one only after 90 days from its close whatever its file times or page reads, and an expired Flow's id is refused with a report rather than started again.
 
 ## How to get to it (user POV)
 
-- A skill runs `bun "$(realpath skill://flow-page/scripts/flow-page.ts)" open|bind|submit|alias|find|move|show|render ...` and prints the receipt's page path.
+- A skill runs `bun "$(realpath skill://flow-page/scripts/flow-page.ts)" open|bind|submit|alias|close|reopen|find|move|show|render ...` and prints the receipt's page path.
 - The user opens that path in a browser.
 
 ## Driving it with bash and the omp browser
@@ -59,10 +60,12 @@ Steps:
   - `alias spec:9270`, then `move --to verify-9270`. `find spec:9270`, `find folder:verify-9270`, and `find folder:<old folder key>` print the same `flow`. A `submit` through `verify-a`'s binding lands in the moved Flow, and its receipt `page` is the moved path.
   - Go to `file://` plus the moved page path in the same tab: both wayfinder tabs, their questions, and cross-tab links work as before the move.
 - Stale page (`flow-stale`): `chmod 555` the Flow folder, submit a round, then `chmod 755`. The submit exits 0 with a stderr note, its receipt says `stale`, and reloading the page in the tab shows the older revision without the new question. `render --flow <id>` publishes it; reload shows the question and the page meta revision equals the receipt's.
+- Retention (`flow-retention`): set `CLEAN="$CHECKOUT/plugin/skills/vstack-tmp/scripts/clean.ts"`. In a new Flow, finish its Stage and run `close --flow <id>`. `show` prints `open: false` and a `closed` lifecycle record; reload the page: its heading says Closed with the time. With `T` the record's time, run `bun "$CLEAN" --home "$H" --now <T + 89 days>` and `--now <T + 91 days>`: the Flow folder is absent from `entries` at 89 and listed at 91 with `closed` and `age_days` 91, even after `touch`ing every file in the folder. `reopen --flow <id> --skill grill-me --parent <stage>`: the page heading says Reopened, and the 91-day listing and a `--delete` of the folder leave it in place with the reason `open Flow`. Close a second Flow and delete it with `--now <T + 91 days> --delete <folder>`: the folder is gone, `.ids/` and the other Flows remain, and `find`, `show`, and `open --flow` on its id exit 1 naming it.
 
 ## Gotchas
 
 - Without `--session` and outside an omp session, `open` still creates the Flow but binds nothing, and later `submit` needs `--flow` and `--stage`.
+- The cleanup script reads the real time unless given `--now`. Use `--now` for retention proof; never set the system clock.
 - The Flow lands under the repo key of the current directory. Run from the checkout, or the Flow goes under `_global`.
 - After a CLI write, go to `about:blank` or call `tab.reload()` before reading the page again.
 - Full-page screenshots after scrolling can show the sticky bar midway down. Take them right after a tab click.

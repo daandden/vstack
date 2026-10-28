@@ -5,6 +5,8 @@
 //   bun flow-page.ts bind --flow <flow> --stage <id>
 //   bun flow-page.ts submit [--flow <flow> --stage <id>] [<contribution.json> | -]
 //   bun flow-page.ts alias [--flow <flow>] <kind>:<value>...
+//   bun flow-page.ts close [--flow <flow>]
+//   bun flow-page.ts reopen --skill <name> [--flow <flow>] [--parent <stage>] [--ticket <id>]
 //   bun flow-page.ts find <kind>:<value>
 //   bun flow-page.ts move [--flow <flow>] --to <folder-key>
 //   bun flow-page.ts show [--flow <flow>]
@@ -21,11 +23,11 @@ import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { canonicalFile, capture, type Root } from "./assets.ts";
-import { addAliases, aliasesOf, contribute, newFlow, nowIso, openStage, parseAlias, Refusal, SLUG, slugOf, snapshot, stageOf, upgrade, view, type Io, type State } from "./model.ts";
+import { addAliases, aliasesOf, closeFlow, contribute, newFlow, nowIso, openStage, parseAlias, Refusal, reopenFlow, SLUG, slugOf, snapshot, stageOf, upgrade, view, type Io, type State } from "./model.ts";
 import { RENDERER, render } from "./render.ts";
 import { assetsDir, createFlowFolder, flowFolders, flowsDir, pagePath, pageRevision, readBinding, registerFolder, registeredFolder, statePath, withLock, writeAtomic, writeBinding } from "./store.ts";
 
-const COMMANDS = ["open", "bind", "submit", "alias", "find", "move", "show", "render"];
+const COMMANDS = ["open", "bind", "submit", "alias", "close", "reopen", "find", "move", "show", "render"];
 
 function usage(message: string): never {
   process.stderr.write(`flow-page.ts: ${message}
@@ -33,6 +35,8 @@ usage: bun flow-page.ts open --skill <name> (--title <text> [--slug <slug>] | --
        bun flow-page.ts bind --flow <flow> --stage <id>
        bun flow-page.ts submit [--flow <flow> --stage <id>] [<contribution.json> | -]
        bun flow-page.ts alias [--flow <flow>] <kind>:<value>...
+       bun flow-page.ts close [--flow <flow>]
+       bun flow-page.ts reopen --skill <name> [--flow <flow>] [--parent <stage>] [--ticket <id>]
        bun flow-page.ts find <kind>:<value>
        bun flow-page.ts move [--flow <flow>] --to <folder-key>
        bun flow-page.ts show [--flow <flow>]
@@ -60,7 +64,8 @@ const { values: opt, positionals } = parsed;
 const [command, ...rest] = positionals;
 if (!COMMANDS.includes(command ?? "")) usage(`give a command: ${COMMANDS.join(", ")}`);
 const allowed: Record<string, string[]> = {
-  open: ["skill", "title", "slug", "flow", "parent", "ticket"], bind: ["flow", "stage"], submit: ["flow", "stage"], alias: ["flow"], find: [], move: ["flow", "to"], show: ["flow"], render: ["flow"],
+  open: ["skill", "title", "slug", "flow", "parent", "ticket"], bind: ["flow", "stage"], submit: ["flow", "stage"], alias: ["flow"], close: ["flow"], reopen: ["skill", "flow", "parent", "ticket"],
+  find: [], move: ["flow", "to"], show: ["flow"], render: ["flow"],
 };
 for (const k of Object.keys(opt)) if (!["session", "agent", "home", ...allowed[command]].includes(k)) usage(`${command} takes no --${k}`);
 const positional: Record<string, [number, number, string]> = {
@@ -99,9 +104,13 @@ function locate(key: string): { id: string; folder: string } {
   if (!SLUG.test(key)) refuse(`--flow must be a Flow id of lowercase letters, digits, and hyphens, or a qualified alias such as spec:267, got ${JSON.stringify(key)}`);
   const name = registeredFolder(dir, key);
   if (name !== undefined && readState(join(dir, name))?.flow.id === key) return { id: key, folder: join(dir, name) };
-  // A registry entry can be gone (Scratch cleanup removes `.ids/` on its own age), so look for the exact id.
+  // A Flow caught mid-move is not where the registry says yet, so look for the exact id.
   const found = flowFolders(dir).find((n) => readState(join(dir, n))?.flow.id === key);
-  return found !== undefined ? { id: key, folder: join(dir, found) } : refuse(`this project has no Flow ${key}`);
+  if (found !== undefined) return { id: key, folder: join(dir, found) };
+  // The registry keeps every id ever given, so an id with no Flow left lost its content; it is never started again empty.
+  return refuse(name !== undefined
+    ? `Flow ${key} has no content any more: it expired after it was closed, or its folder was deleted. Nothing can be read or added under this id; open a new Flow`
+    : `this project has no Flow ${key}`);
 }
 
 /** Runs `fn` on the Flow's latest state under its lock. A Flow that moved while this waited is found again by id. */
@@ -261,6 +270,20 @@ async function main(): Promise<object> {
         const added = addAliases(s, aliases);
         const presentation = added.length ? publish(folder, s) : presentationOf(folder, s);
         return { flow: s.flow.id, revision: s.revision, added, aliases: aliasesOf(s), page: pagePath(folder), presentation };
+      });
+    }
+    case "close": {
+      return locked(flowKey(), (folder, s) => {
+        closeFlow(s, time);
+        return { flow: s.flow.id, revision: s.revision, closed: time, page: pagePath(folder), presentation: publish(folder, s) };
+      });
+    }
+    case "reopen": {
+      if (opt.skill === undefined) usage("reopen needs --skill, the skill whose run the new Stage is");
+      return locked(flowKey(), (folder, s) => {
+        const stage = reopenFlow(s, opt.skill as string, opt.ticket as string | undefined, time, opt.parent as string | undefined);
+        const presentation = publish(folder, s);
+        return { flow: s.flow.id, stage: stage.id, revision: s.revision, page: pagePath(folder), presentation, bound: bind(s.flow.id, stage.id) };
       });
     }
     case "find": {

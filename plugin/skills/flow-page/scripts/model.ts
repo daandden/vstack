@@ -63,6 +63,8 @@ export type Io = {
   /** The canonical file `path` names, resolved from the working directory, or from the named `root` when given. */
   canonical(path: string, where: string, root?: string): { file: string; root: string; sha256: string };
 };
+/** One explicit lifecycle change of the whole Flow. Retention counts from the latest close; nothing else moves it. */
+export type Lifecycle = { event: "closed" | "reopened"; time: string };
 
 export type State = {
   schema: number;
@@ -89,12 +91,15 @@ export type State = {
   /** Earlier revisions of republished Results, oldest first. */
   history: Result[];
   progress?: Progress;
+  /** Closes and reopens, oldest first. A Flow with none, or whose latest is a reopen, is open. */
+  lifecycle: Lifecycle[];
 };
 
-/** Fills the fields that states written before attachments existed lack. */
+/** Fills fields absent from earlier structured states. */
 export function upgrade(s: State): State {
   s.attachments ??= [];
   s.history ??= [];
+  s.lifecycle ??= [];
   return s;
 }
 
@@ -148,13 +153,14 @@ export function newFlow(id: string, slug: string, title: string, time: string): 
   return {
     schema: SCHEMA, flow: { id, slug, title, created: time }, revision: 0, next: {}, seq: 0,
     stages: [], rounds: [], questions: [], answers: [], closes: [], backgrounds: [], topics: [], results: [], assumed: [], retirements: [], sources: [],
-    aliases: [`folder:${id}`], submissions: {}, attachments: [], history: [],
+    aliases: [`folder:${id}`], submissions: {}, attachments: [], history: [], lifecycle: [],
   };
 }
 
 export function openStage(s: State, skill: string, ticket: string | undefined, time: string, parent?: string): Stage {
   if (!SLUG.test(skill)) refuse("open", `--skill must be a skill name of lowercase letters, digits, and hyphens, got ${JSON.stringify(skill)}`);
   if (ticket !== undefined && !TICKET.test(ticket)) refuse("open", `--ticket must be a ticket id such as 269 or #269, got ${JSON.stringify(ticket)}`);
+  if (closedAt(s) !== undefined) refuse("open", `Flow ${s.flow.id} is closed; continue it with reopen, which opens the new Stage`);
   if (parent !== undefined) stageOf(s, parent, "open: --parent");
   const stage: Stage = { id: newId(s, "stage"), skill, ticket, parent, state: "in-progress", order: s.stages.length + 1, opened: time };
   if (ticket === undefined) delete stage.ticket;
@@ -166,6 +172,29 @@ export function openStage(s: State, skill: string, ticket: string | undefined, t
 
 export function stageOf(s: State, id: string, where: string): Stage {
   return s.stages.find((st) => st.id === id) ?? refuse(where, `Flow ${s.flow.id} has no Stage ${id}`);
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Lifecycle. A Flow stays open until someone closes it; Scratch cleanup never removes an open Flow and removes a
+// closed one only after its retention period, counted from the close. Reading or rendering the page changes neither.
+
+/** When the Flow was closed, or undefined while it is open. */
+export const closedAt = (s: State): string | undefined => (s.lifecycle.at(-1)?.event === "closed" ? s.lifecycle.at(-1)!.time : undefined);
+
+/** Closes an open Flow whose Stages are all finished. */
+export function closeFlow(s: State, time: string): void {
+  if (closedAt(s) !== undefined) refuse("close", `Flow ${s.flow.id} is already closed, since ${closedAt(s)}`);
+  const busy = s.stages.filter((st) => st.state !== "finished").map((st) => st.id);
+  if (busy.length) refuse("close", `Flow ${s.flow.id} still has work in progress: finish Stage ${all(busy)} first`);
+  s.lifecycle.push({ event: "closed", time });
+  s.revision++;
+}
+
+/** Reopens a closed Flow with the new Stage that continues it, in one revision. Earlier Stages stay as they were. */
+export function reopenFlow(s: State, skill: string, ticket: string | undefined, time: string, parent?: string): Stage {
+  if (closedAt(s) === undefined) refuse("reopen", `Flow ${s.flow.id} is open; add a Stage to it with open --flow`);
+  s.lifecycle.push({ event: "reopened", time });
+  return openStage(s, skill, ticket, time, parent);
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -847,7 +876,7 @@ export type StageView = Stage & {
   asked: QuestionView[];
 };
 export type View = {
-  flow: State["flow"]; revision: number; stages: StageView[];
+  flow: State["flow"]; revision: number; stages: StageView[]; lifecycle: Lifecycle[];
   topics: (Topic & { sourceTexts: string[]; questions: string[] })[];
   sources: (Source & { cited_by: string[] })[];
   questions: Map<string, QuestionView>;
@@ -946,7 +975,7 @@ export function view(s: State): View {
     ...s.results.filter((r) => r.document && (r.document.sources.includes(id) || r.document.citations.some((c) => c.source === id))).map((r) => r.id),
   ];
   return {
-    flow: s.flow, revision: s.revision, stages, questions, progress: progressView(s),
+    flow: s.flow, revision: s.revision, stages, questions, progress: progressView(s), lifecycle: s.lifecycle,
     topics: s.topics.map((t) => ({ ...t, sourceTexts: t.sources.map((x) => sourceText.get(x)!), questions: s.questions.filter((q) => q.topics?.includes(t.id)).map((q) => q.id) })),
     sources: s.sources.map((x) => ({ ...x, cited_by: citers(x.id) })),
     attachments: s.attachments.map((a) => ({ ...a, used_by: [...new Set([...s.results, ...s.history].filter((r) => attachmentsOf(r).includes(a.id)).map((r) => r.id))] })),
@@ -956,7 +985,7 @@ export function view(s: State): View {
 /** The `show` snapshot: ids, numbers, states, labels, and links, with no page markup. */
 export function snapshot(v: View, page: string, renderer: number) {
   return {
-    flow: v.flow, revision: v.revision, renderer, page,
+    flow: v.flow, revision: v.revision, renderer, page, open: v.lifecycle.at(-1)?.event !== "closed", lifecycle: v.lifecycle,
     stages: v.stages.map((st) => ({
       id: st.id, label: st.label, skill: st.skill, ...(st.ticket ? { ticket: st.ticket } : {}), ...(st.parent ? { parent: st.parent } : {}), children: st.children,
       state: st.state, order: st.order, opened: st.opened, ...(st.finished ? { finished: st.finished } : {}),
