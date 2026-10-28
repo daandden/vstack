@@ -8,6 +8,8 @@ disable-model-invocation: true
 
 Cover features from source and exercise them live. The feature is the unit of coverage, not every sentence.
 
+Follow skill://implement/END-STATE.md's "Publish delivery progress". Open a `maintain-app-verification` Stage on the caller's Flow, saving its binding, or start a Flow when unbound. Record scoped feature tasks and blockers. Preserve the caller's requested End state; a standalone uncommitted maintenance pass uses `none`.
+
 ## Entries and outcomes
 
 A feature-scoped caller names one feature whose live proof encountered Drift. Run step 0, step 2 for that feature file only, then steps 3–6 for that feature. Skip index hygiene and the source-wave Fan-out. If the caller names no feature, run the full pass over every feature.
@@ -79,3 +81,5 @@ Fix wrong or missing user-POV instructions and harness gaps that prevent driving
 For `changed`, re-read every changed file. Then, on a committing run, commit as skill://setup-app-verification step 5 says, with the same `--target`. If no title convention is visible, use `fix(verify-<app>): <feature>`, where `<feature>` names each fixed feature. If `commit.ts` refused in step 0 or refuses here, report the corrections as uncommitted.
 
 Return the outcome, coverage, changed files, the commit or the caller that commits the output, evidence and run-note paths, and product findings. Private-mode output stays untracked. For `clean`, there is nothing to commit. For `blocked`, leave any edits uncommitted. Report the outcome and coverage honestly.
+
+Publish a delivery table with each scoped feature's coverage, clean, changed, blocked, or verified-unreachable outcome, corrected files, commit ownership, and proof. Keep product findings separate in a Document or ledger. Append Doctor, drive, correction, retry, cleanup, and commit outcomes to a Timeline and attach the captured evidence. Incomplete coverage never becomes clean. For a standalone committing correction, record requested commit before committing and reached commit only after success. Finish this Stage and restore the caller's binding on every return.

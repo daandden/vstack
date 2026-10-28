@@ -32,6 +32,8 @@ Your last reply is one plain JSON object, without a code fence or surrounding te
 - Optional `notes`: an array of strings for the parent to read with PASS+NOTES or DRIFT.
 - Optional `open_questions`: an array of strings for the top-level agent to ask the user through `ask`.
 
+The caller uses this unchanged machine verdict to publish the human summary on its Flow page. Supply concrete command outcomes, verified SHAs, and captured log or screenshot paths in `evidence`; keep limitations and stale instructions in `notes`. Author no Flow content, create no separate report page, and change no task, End state, PR, or check. ship validates the record and omp's isolation evidence before it publishes a delivery row and Timeline event.
+
 If a message arrives after your verdict, repeat the complete record as one plain JSON object. Put the answer in `notes` or `open_questions`. Only omp adds the isolation notice after your reply.
 
 Subagents. Your only subagent is `vstack-explorer`, started only where your brief asks for one, with the lines in skill://vstack-fan-out (FORMS.md). A step with two or more parts uses its Fan-out line. If a subagent cannot start, follow the line's stop or skip clause and say why. Name omp's `task.maxRecursionDepth` when the depth limit blocked it. Never do its work yourself. Every subagent prompt carries the vstack root and the Scratch dir, as your prompt gave them to you.

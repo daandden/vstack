@@ -20,7 +20,7 @@ Keep one run record across every ticket. It holds the requested End state and th
 - The final-diff Blast radius findings (step 5)
 - The Verify evidence paths
 
-The run keeps its asks and its results on the flow's Grilling page (`skill://grilling-page`). Before the End state below, find the page as grilling-page's "Find or start the page" says, and add the caller's Stage, an implement or implement-spec Stage, as its "Add a Stage" says. The spec that the run works from counts as the caller's spec, and each ticket counts as its ticket, also through the ticket's parent spec. So implement-spec in a new omp session finds the page that to-spec renamed after the spec issue. With no spec and no ticket, continue only a page whose path this session already printed, such as the page of a grill-with-docs that ran before. Otherwise start a new page. Record the page path in the run record. Every `ask` of these shared steps is a question in the caller's Stage, including the End state below when this step asks it, and the Verify skill choice in step 4.
+Read `skill://flow-page`. Find the Flow by the caller's supplied identity, then its `spec:` or `ticket:` alias, including a ticket's parent spec. Otherwise use this session and agent's `bound` Flow. Migrate a supplied historical structured page before continuing it. A missing alias can start a Flow; ambiguous lookup or failed migration needs resolution, not a second page. Open the caller's `implement` or `implement-spec` Stage, with `--ticket` when known and `--parent` when continuing finished work. Use `reopen` for a closed Flow. Record the Flow id, Stage id, URL, and static path in the run record and chain facts. Every shared-step `ask` belongs to this Stage. Follow [Publish delivery progress](#publish-delivery-progress) throughout the run.
 
 Settle the End state once, before any work: commit, merge-ready, or shipped. Commit stays on the current branch. Merge-ready opens a PR and drives it until it can merge. Shipped merges it into the default branch. Reuse an already settled caller End state rather than settling it again. Otherwise settle it in this order:
 
@@ -29,6 +29,8 @@ Settle the End state once, before any work: commit, merge-ready, or shipped. Com
 3. Otherwise use `ask` with the End states on offer and commit recommended.
 
 Before work, say which End state the run took and where it came from: the words, the ticket, the project default, or the answer.
+
+Submit `{ "kind": "end-state", "requested": "<requested End state>" }` once the choice is settled. Keep that requested value even when unsupported operations cap the effective chain. Record the ceiling and its reason in the run record and a Document Result. A ceiling is not a reached End state. Record the source of a choice as an answer or cited Assumed pick; a default or Headless choice is not user consent.
 
 Offer only the End states whose needed operations the two config files support:
 
@@ -48,7 +50,7 @@ The End state authorizes every step up to it: merge-ready authorizes babysit in 
 
 With End state commit, stay on the current branch. Otherwise read the default branch through the `default-branch` operation and the current branch through git. If HEAD is on the default branch, create and switch to `<type>/<slug>` from HEAD, with a type and slug that describe the work. Otherwise stay on the current branch, an omp worktree's `wt/<time>` branch included. Use no worktree. Detached HEAD cannot start a PR chain.
 
-Record the remote branch name. If the local branch is `wt/*`, the remote branch name is a new `<type>/<slug>` that describes the work. Otherwise it is the local branch's name. Never rename the local branch. Append the page's `flow` record again with `branch` set to the remote branch name, or to the current branch at End state commit.
+Record the remote branch name. If the local branch is `wt/*`, the remote branch name is a new `<type>/<slug>` that describes the work. Otherwise it is the local branch's name. Never rename the local branch. Add `alias branch:<remote branch>` to the Flow, or the current branch at End state commit, so read-only observations follow the intended branch.
 
 Read the remote tip before any history edit and before the first push. Run `git ls-remote --exit-code <remote> refs/heads/<remote branch>`. Exit code 2 means that the remote branch does not exist yet, and every commit after the base is unpushed. Otherwise fetch it with `git fetch <remote> refs/heads/<remote branch>` and record the fetched SHA as the remote tip. Every commit that the remote tip contains is pushed.
 
@@ -86,6 +88,8 @@ Carry the Blast radius findings and the final-diff proof to open-pr: the proven 
 
 Commit the accepted, proven work to the current branch. For implement, this follows review. implement-spec keeps its per-ticket merger commits and commits the review fixes here, after review. hillclimb uses its accepted-win commits and new commits for the review fixes. Include the Standard-mode setup-app-verification and maintain-app-verification output that step 4 kept uncommitted in this commit. Stage only this run's accepted paths or hunks. Leave unrelated changes uncommitted. Keep Private config, artifacts, Verify maintenance, and Scratch out of git. Use the repo's commit convention. Write commit bodies.
 
+After the commit succeeds, submit `end-state` with `reached: "commit"` and its SHA as evidence. A held patch or uncommitted working tree does not reach commit.
+
 The approved environment fixes from skill://session get one commit per approved mistake class. Each of these commits carries proof that its new check fails on a real past mistake.
 
 ## 7. Chain to the End state
@@ -98,11 +102,29 @@ Then run skill://babysit in drive mode with the chain facts and PR frontier. For
 
 Conflict owner: babysit reports each conflict and each stale base here. ship reports each branch that `update-branch` cannot update and each step 2 move. The reported branch can be any branch of the run's stack. Fetch it and check it out, and fetch its target: the PR's base branch from `read-pr`, or the default branch for a step 2 move. For a step 2 move, first retarget the PR to the default branch through `retarget-pr`. Run `git merge <remote>/<target>`, resolve each conflict once, reconcile the reported caller drift, and commit the merge. Push it as a fast-forward to the PR's head branch with the step 0b push. Then check out the current branch again. If the reported branch is the run's remote branch, record the new last pushed SHA, and record the merged target tip as the new base SHA. Then run babysit again, or return a moved PR to ship for its fresh verdict. If the diff changed, re-establish the affected proof and Blast radius findings.
 
-When the run stops, at the effective End state, at commit, or at a blocker, show the run results on the caller's Stage. Append a table Report block, as grilling-page says, with the columns Ticket, Status, Commit, and Proof. Write one row per ticket, or one row for the work when the run has no ticket. When step 6 committed review fixes, add one row for them:
+When the run stops, at the effective End state, at commit, or at a blocker, publish a table Result on the caller's Stage with the columns Ticket, Status, Commit, and Proof. Write one row per ticket, or one row for unticketed work. When step 6 committed review fixes, add one row for them:
 
 - Ticket: the ticket's number and short title, a short name for the work, or "Review fixes".
 - Status: the outcome that the caller's reply gives, such as resolved, closing through the PR, committed, or open with its reason.
 - Commit: the short SHA of its commit, or `none` with where its changes wait, such as a held patch path or the working tree.
 - Proof: the paths of its red and green evidence and its live proof, or the reason that proof is missing.
 
-Then end the caller's Stage as grilling-page's "Add a Stage" says. If the run reached its End state and left no ticket open, append the page's `flow` record again with state `closed`. Otherwise the flow stays open, so that a later run continues its page.
+Finish the caller's Stage through flow-page after publishing its Results and retiring unresolved questions with reasons. Close the Flow with `close` only when the requested End state was reached, every task is settled, no blocker or ticket remains open, and every Stage is finished. Otherwise leave it open. A completed Stage or a green observation does not close it.
+
+## Publish delivery progress
+
+This is the common publication contract for implement, implement-spec, tdd, pr, open-pr, babysit, ship, and Verify setup and maintenance. Read `skill://flow-page` for the typed fields and receipts. Keep canonical run records, PR body files, Verify skills, and machine verdicts as real deliverables. Publish their human-facing Results on the same Flow, never a separate report page.
+
+A result-producing skill opens its own Stage on the caller's Flow, with the caller's Stage as `--parent`. An unbound standalone run opens a Flow. Reference reads and nested tdd cycles use the caller's Stage. Save the caller's binding before a nested run and restore it with `bind` on return, including a blocked return. Pass the Flow and Stage ids to workers; only the coordinator publishes returned results. A run-only verifier returns its machine record without authoring. ship publishes its validated human summary.
+
+Record shared and local execution steps as `task` items before work. Reuse existing ticket and chain task ids from `show` instead of duplicating them. Update only changed fields. Activate a task when work starts; mark it done with concrete evidence only when its completion criterion holds. Use `skipped` or `inapplicable` with a reason for omitted work. A task waiting for a missing prerequisite stays pending or active with a linked `blocker`; resolve that blocker only when the prerequisite clears.
+
+Keep one Timeline Result per run and append events with `revise.add` as outcomes occur. Include red and green checks, live proof, commits, held patches, failed pushes, PR reads, review dispositions, exact CI build links and consumed reruns, verifier verdicts, queued or armed requests, and confirmed merges when they occur. Give commands, outcomes, source SHAs, evidence, and known times. Unknown, blocked, failed, and skipped are outcomes, not success. Capture redacted logs, screenshots, patches, and verdict files as typed attachments and link them to the relevant Results or Timeline events. Missing proof gets an unavailable attachment with its reason.
+
+Publish a delivery table with named rows and evidence links plus a Document for chain facts, limitations, review risks, and blockers that do not fit the table. Use Code/diff when source or change excerpts explain a result. Revise the existing Result or append new events rather than copying the whole run. Keep each fact in its own record.
+
+Record observed PR URLs and states with `pr` items, then update those ids after later reads. Record checks with `check` items and evidence tied to the queried head and exact build. A pending check stays pending. Unknown, cancelled, skipped, unsupported, or unavailable provider states belong in the Timeline and Document, not a fabricated passed or failed check. Authored facts remain reported facts; the strip's read-only observations from the separate Code host and CI configurations remain separate. Never execute observation configuration or infer authorization, readiness, or End state from the strip.
+
+Only the owning chain updates `end-state.reached`: commit after the actual commit, merge-ready after babysit's four current-head conditions, and shipped after ship confirms every requested PR merged into the default branch. Attach the establishing evidence. Nested verification and PR drafting preserve the caller's requested End state. A standalone non-delivery draft or Verify-maintenance run uses `requested: "none"` only when it delivers no commit or PR.
+
+Publish Results before finishing the Stage, including when blocked. Return all original hand-back fields and concrete evidence paths to the caller. Publication supplements the hand-back and grants no execution, tracker, PR, or merge permission.

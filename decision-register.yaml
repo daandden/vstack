@@ -890,9 +890,9 @@ items:
     kind: skill
     path: skills/engineering/pr
     tree: 00b896d811adffad747c7ca30078d909d60c7f93
-    disposition: adopt
+    disposition: adapt
     artifacts: [plugin/skills/pr]
-    reason: "Kept unchanged; open-pr writes its PR body with it."
+    reason: "Keeps the PR body export and publishes its draft, evidence, and delivery status on the Flow page; Mermaid examples use the house palette (ADR 0040, #292)."
   - id: matt/retro
     upstream: matt
     kind: skill

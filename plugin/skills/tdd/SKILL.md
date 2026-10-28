@@ -19,11 +19,11 @@ See [tests.md](tests.md) for examples and [mocking.md](mocking.md) for mocking g
 
 A **seam** is the public boundary you test at: the interface where you observe behavior without reaching inside. Tests live at seams, never against internals.
 
-**Test only at pre-agreed seams.** Before writing any test, write down the seams under test and confirm them with the user through one `ask`. No test is written at an unconfirmed seam. You can't test everything, so agreeing the seams up front is how testing effort lands on the critical paths and complex logic instead of every edge case.
+**Test only at pre-agreed seams.** Reuse a seam confirmed by the spec, ticket, or the user's own answer. For missing seams, write down the proposed boundaries and confirm them through one `ask` before writing any test there. No test is written at an unconfirmed seam. Agreeing the seams up front puts testing effort on the critical paths and complex logic instead of every edge case.
 
 Put this question in the `ask`: "What's the public interface, and which seams should we test?" An answer that `ask` picks after a timeout is not the user's, so the seam stays unconfirmed.
 
-This `ask` is a question on the flow's Grilling page, as `skill://grilling-page` says. Inside another skill's Stage, such as implement's or implement-spec's, it joins that Stage. Otherwise find or start the page and add a tdd Stage before it, and mark the Stage finished when the loop ends.
+Read `skill://flow-page`. Put this `ask` in the caller's bound Stage, such as implement's or implement-spec's. A standalone result-producing tdd run opens its own Stage on the existing Flow, or starts a Flow when unbound. Loading this reference or starting another red-green cycle opens no Stage. Reuse seams the spec, ticket, or user already confirmed; ask only about a missing seam.
 
 When the shape of that interface is itself in question (how deep the module is, where the seam belongs, what the interface should expose), use `skill://codebase-design` for the vocabulary. It is the shared source of the module, interface, depth, seam, adapter, leverage and locality terms, and it is a reference to consult, not a session to run.
 
@@ -38,3 +38,7 @@ When the shape of that interface is itself in question (how deep the module is, 
 - **Red before green.** Write the failing test first, then only enough code to pass it. Don't anticipate future tests or add speculative features.
 - **One slice at a time.** One seam, one test, one minimal implementation per cycle.
 - **Refactoring is not part of the loop.** It belongs to the review stage (see `skill://code-review`), not the red → green implementation cycle.
+
+## Record the loop
+
+Follow skill://implement/END-STATE.md's "Publish delivery progress" in the caller's Stage, or the standalone tdd Stage. Append red then green commands and observed outcomes to its Timeline, attach the captured outputs, and record checks against the tested revision. State a missing red, unconfirmed seam, skipped check, or unavailable live proof explicitly. A green test reaches no delivery End state. Finish only a standalone Stage that this run opened, and restore the caller's binding on return.

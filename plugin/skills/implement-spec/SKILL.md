@@ -14,7 +14,7 @@ The tickets are not a list of steps. They are a **task graph** with blocking rel
 
 Communication to and from subagents should be sparse. Communicate primarily through **context pointers**: to the spec, tickets, research notes, and previous commits. Don't duplicate information already available via pointers.
 
-**Implementer subagents** run in the background for maximum concurrency. You are the orchestrator. You read the task graph, start subagents, act on their results, and put questions to the user on the flow's Grilling page through `ask`. You never build or merge a ticket yourself.
+**Implementer subagents** run in the background for maximum concurrency. You are the orchestrator. You read the task graph, start subagents, act on their results, and put questions to the user on the Flow page through `ask`. You never build or merge a ticket yourself.
 
 ## Shared steps
 
@@ -24,13 +24,15 @@ Before task-specific items, open the todo list as END-STATE.md says, with the sh
 
 Every subagent uses the Session model unless the user set a model for that agent. Resolve the vstack root and the project Scratch dir once, as END-STATE.md says, and pass both to every subagent. This run keeps its notes and evidence under `<Scratch dir>/implement-spec/<run-id>/`.
 
-Run shared steps 0a–0b once, before step 1. 0a finds the flow's Grilling page from the spec issue and adds an implement-spec Stage. Then append the page's `flow` record again with this run's id in `runs`. Every `ask` of this run is a question in that Stage: the End state when 0a asks it, each seam confirmation in steps 1 and 6, each implementer question that step 5 relays, each seam question from the fixer in step 7, and the Verify skill choice. 0a settles one End state for the whole spec. If the issue tracker closes work through PRs and 0a asks, say in the End state question's description that End state commit leaves those tickets open.
+Run shared steps 0a–0b once, before step 1. 0a finds the Flow by the spec alias and opens an implement-spec Stage. Add `alias run:<run-id>` and retain the Flow and Stage ids in the run record. Every `ask` of this run belongs to that Stage: the End state when 0a asks it, each seam confirmation in steps 1 and 6, each implementer question that step 5 relays, each seam question from the fixer in step 7, and the Verify skill choice. 0a settles one End state for the whole spec. If the issue tracker closes work through PRs and 0a asks, say in the End state question's description that End state commit leaves those tickets open.
 
 ## Steps
 
 ### 1. Read the task graph
 
 Read the spec and tickets to understand the task graph. List the ready frontier: the open tickets whose blockers were all closed before this run, by the tracker's blocking rules.
+
+Reuse the Flow's existing ticket tasks or create one per ticket. Publish the frontier and blocking relationships as a table Result, separate from the Stage tree. Keep ticket completion, spec completion, tracker closure, and delivery End state distinct.
 
 Read the spec's testing decisions. to-spec confirmed those seams with the user through `ask`, so they are the pre-agreed seams for skill://tdd. If a ready ticket needs a seam that the spec does not confirm, settle it with one `ask` before you assign the ticket. An answer `ask` picks after a timeout is not the user's, so that ticket stays off the frontier and stays open.
 
@@ -85,6 +87,8 @@ Merger brief: land one ticket's patch on the integration branch in the parent ch
 If the merger returns a failure, put its ticket back on the frontier once, for a fresh implementer from the current tip.
 
 A ticket is complete when its commit is on the integration branch and no question about it is unanswered. Only a complete ticket satisfies a blocker, counts toward the spec, and becomes a closing reference. Record each ticket's handle, changed paths, open questions, patch path, and commit SHA or held patch in the run record.
+
+Update the ticket's task only after its integration commit lands with no open question. Append a Timeline event with that SHA and the worker's captured red, green, and live proof. A held patch, failed worker, or failed merge stays visible with its blocker and evidence; none completes the ticket. Update the delivery table as each result arrives, not only at the final reply.
 
 ### 6. Start newly ready tickets
 

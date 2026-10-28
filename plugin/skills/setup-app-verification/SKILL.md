@@ -10,6 +10,8 @@ A Verify skill drives the app as a user and captures proof. Write it for an agen
 
 Use the vstack root and mode from the Private-mode rule. A subagent uses the root from its prompt. Resolve Scratch through `skill://vstack-tmp` at the top level, or use the Scratch dir from the parent.
 
+Follow skill://implement/END-STATE.md's "Publish delivery progress". Open a `setup-app-verification` Stage on the caller's Flow, saving its binding, or start a Flow when unbound. Track the steps below as tasks. A caller-owned implementation retains its requested End state; standalone uncommitted setup uses `none`. Keep the generated Verify skill and feature map as the real deliverables.
+
 In Standard mode, this run commits its output in step 5. If the caller states that it commits the output, as implement does, hand the output back uncommitted. Private mode commits nothing. A committing run is a Standard-mode run whose caller does not commit the output. It runs the commit script with the bash tool, from inside the repo:
 
 ```sh
@@ -85,3 +87,5 @@ On a committing run, take the title from the repo's convention. Read `git log --
 ## 6. Report
 
 Report the skill path, changed files, the commit or the caller that commits the output, surfaces, feature map, proof paths, and any stand-in setup steps that stay unverified. Private-mode output stays untracked, including the link and exclude file. Upkeep uses `skill://maintain-app-verification`. State a cadence only when the user requests one.
+
+Publish a delivery table of surfaces, feature coverage, changed files, commit ownership, and proof. Append the actual launch, Doctor, drive, correction, cleanup, and commit outcomes to a Timeline; attach the logs and browser evidence. Use a Document for stand-in setup and unavailable target proof. A generated skill alone does not complete live-proof coverage. A standalone committing run records requested commit before committing and reached commit only after success. Finish this Stage and restore the caller's binding on return, including failure.
