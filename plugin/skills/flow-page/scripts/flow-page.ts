@@ -379,6 +379,15 @@ try {
   const result = await main() as { flow?: string | { id: string }; page?: string };
   if (live && result.page && result.flow) {
     const id = typeof result.flow === "string" ? result.flow : result.flow.id;
+    if (live.state === "serving") {
+      const path = join(dirname(result.page), "observation-project.json");
+      try {
+        if (!existsSync(path)) writeAtomic(path, JSON.stringify({ cwd: realpathSync(process.cwd()) }));
+      } catch {
+        Object.assign(result, { observation_setup: { state: "unavailable", error: "The checkout could not be registered for read-only observation." } });
+        process.stderr.write("flow-page.ts: content is committed, but read-only observation setup is unavailable. Do not resubmit.\n");
+      }
+    }
     const presentation = live.state === "serving"
       ? { state: "serving", url: flowUrl(live.port, live.secret.read, basename(dirname(dir)), id) }
       : live;

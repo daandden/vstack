@@ -9,6 +9,7 @@ import { SLUG, view, type State } from "./model.ts";
 import { learning } from "./learning.ts";
 import { render, type Runtimes } from "./render.ts";
 import { assetsDir, folderOfId, readState, writeAtomic } from "./store.ts";
+import { observations, observationVersion, observing, type Observations } from "./observations.ts";
 
 const { values } = parseArgs({ args: Bun.argv.slice(2), options: { home: { type: "string" }, port: { type: "string" }, idle: { type: "string" } }, strict: true });
 const home = values.home!;
@@ -92,7 +93,7 @@ function prototype(req: Request): Response {
 }
 
 /** A held response is a reader, publication, or future progress sync. Disconnect releases it even after SIGKILL. */
-function held(req: Request, revision?: () => number | undefined): Response {
+function held(req: Request, revision?: () => { revision: number; observations: Observations } | undefined): Response {
   active++;
   let done = false;
   let timer: ReturnType<typeof setInterval>;
@@ -109,13 +110,18 @@ function held(req: Request, revision?: () => number | undefined): Response {
       const encode = (s: string) => new TextEncoder().encode(s);
       controller.enqueue(encode(": connected\n\n"));
       let sent: number | undefined;
+      let observed: string | undefined;
       let heartbeat = Date.now();
       const publish = () => {
         try {
           const next = revision?.();
-          if (next !== undefined && next !== sent) {
-            controller.enqueue(encode(`event: revision\ndata: ${JSON.stringify({ revision: next })}\n\n`));
-            sent = next;
+          if (next !== undefined && next.revision !== sent) {
+            controller.enqueue(encode(`event: revision\ndata: ${JSON.stringify({ revision: next.revision })}\n\n`));
+            sent = next.revision;
+          }
+          if (next !== undefined && observationVersion(next.observations) !== observed) {
+            observed = observationVersion(next.observations);
+            controller.enqueue(encode(`event: observations\ndata: ${JSON.stringify({ version: observed })}\n\n`));
           }
           if (Date.now() - heartbeat >= 15000) {
             controller.enqueue(encode(": alive\n\n"));
@@ -178,13 +184,15 @@ async function route(req: Request): Promise<Response> {
     return response(JSON.stringify(result.body), result.status, { "Content-Type": "application/json" });
   }
   if (req.method !== "GET" && req.method !== "HEAD") return response("Read-only host.", 405, { Allow: "GET, HEAD" });
-  if (m[4] === "/") return response(req.method === "HEAD" ? null : render(view(s), await runtimes(s, key)), 200, {
+  if (m[4] === "/") return response(req.method === "HEAD" ? null : render(view(s), await runtimes(s, key), observations(folder, key, s)), 200, {
     "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": csp,
     "Set-Cookie": `flow_learning=${progressToken}; Path=${url.pathname}; HttpOnly; SameSite=Strict; Max-Age=31536000`,
   });
+  if (m[4] === "/observations") return response(req.method === "HEAD" ? null : JSON.stringify(observations(folder, key, s)), 200, { "Content-Type": "application/json" });
   if (m[4] === "/events" && req.method === "GET") return held(req, () => {
     const current = folderOfId(dir, id);
-    return current ? readState(current)?.revision : undefined;
+    const state = current ? readState(current) : undefined;
+    return state ? { revision: state.revision, observations: observations(current!, key, state) } : undefined;
   });
   if (!m[4].startsWith("/assets/")) return missing();
   let file: string;
@@ -241,6 +249,6 @@ try {
 }
 const metadata: HostRecord = { pid: process.pid, port, version: code, started: new Date().toISOString(), instance, bun: Bun.version };
 writeAtomic(recordPath(home), JSON.stringify(metadata));
-const idleTimer = setInterval(() => { if (active === 0 && Date.now() - last >= idle) shutdown(); }, Math.min(1000, idle / 4));
+const idleTimer = setInterval(() => { if (active === 0 && !observing() && Date.now() - last >= idle) shutdown(); }, Math.min(1000, idle / 4));
 process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);

@@ -6,9 +6,10 @@ import { join } from "node:path";
 import { highlighter, linesOf, markTrailing, parseDiff, type DiffLine, type Token } from "./code.ts";
 import { optionLabel, type AnswerState, type Attachment, type ComparisonView, type Condition, type Demo, type DemoLiteral, type DocView, type Effect, type Figure, type MetricsView, type QuestionView, type ResultView, type StageView, type Transition, type View } from "./model.ts";
 import type { ProgressView } from "./progress.ts";
+import { observationVersion, unknownObservations, type Observations } from "./observations.ts";
 
 /** Raise this when the page a given state renders to changes, so a page names the renderer that made it. */
-export const RENDERER = 15;
+export const RENDERER = 16;
 const TEMPLATE = join(import.meta.dir, "..", "templates", "flow-page.html");
 export type Runtimes = Record<string, { url?: string; reason?: string }>;
 
@@ -591,9 +592,8 @@ ${bullets.join("\n")}
   return { nav, body };
 }
 
-/** The progress strip that opens the Overview. Each fact keeps its own line: a finished Stage, the task count, a PR,
- * a check, and the End state never stand in for one another, and nothing shown here was observed by the page. */
-function progressHtml(p: ProgressView, v: View): string {
+/** Authored progress and read-only observations stay separate facts. */
+function progressHtml(p: ProgressView, v: View, observations: Observations): string {
   const stageLabel = (id: string) => esc(v.stages.find((st) => st.id === id)!.label);
   const when = (s: { time: string; stage: string }) => `<span class="source">${formatTime(s.time)}, <a href="#${s.stage}">${stageLabel(s.stage)}</a></span>`;
   const evidence = (items: string[]) => (items.length ? `<details class="evidence"><summary>Evidence</summary><ul class="bullets">${items.map((e) => `<li>${text(e)}</li>`).join("")}</ul></details>` : "");
@@ -628,6 +628,7 @@ function progressHtml(p: ProgressView, v: View): string {
   ];
   if (p.prs.length) facts.push(["PRs", `<ul class="bullets">${p.prs.map((x) => `<li id="${x.id}"><a href="${esc(x.url)}">${esc(x.title ?? x.url)}</a> <span class="tag" data-pr="${x.state}">${PR_LABELS[x.state]}</span> <span class="source">reported</span> ${when(x.reported)}</li>`).join("")}</ul>`]);
   if (p.checks.length) facts.push(["Checks", `<ul class="bullets">${p.checks.map((x) => `<li id="${x.id}">${text(x.name)} <span class="tag" data-check="${x.outcome}">${CHECK_LABELS[x.outcome]}</span> <span class="source">reported</span> ${when(x.reported)}${evidence(x.evidence)}</li>`).join("")}</ul>`]);
+  facts.push(["Read-only observations", `<ul class="bullets">${Object.entries(observations).map(([kind, o]) => `<li id="observation-${kind}" data-observation="${o.status}"><strong>${kind === "git" ? "Git" : kind === "ci" ? "CI" : "Code host"}</strong> <span class="tag">${o.status}</span><p class="source">${esc(o.provenance.adapter)} · ${esc(o.provenance.source)}${o.observed_at ? ` · observed <time datetime="${esc(o.observed_at)}">${esc(o.observed_at)}</time>` : ""}${o.attempted_at ? ` · attempted ${esc(o.attempted_at)}` : ""}</p>${o.reason ? `<p>${esc(o.reason)}</p>` : ""}${o.records.length ? `<ul class="bullets">${o.records.map((r) => `<li>${r.url ? `<a href="${esc(r.url)}">${esc(r.name)}</a>` : esc(r.name)} <span>${esc(r.state)}</span></li>`).join("")}</ul>` : ""}</li>`).join("")}</ul>`]);
 
   const openBlockers = p.blockers.filter((b) => !b.resolved);
   const blockers = openBlockers.length
@@ -657,7 +658,7 @@ function stageTree(v: View): string {
 </dialog>`;
 }
 
-export function render(v: View, runtimes: Runtimes = {}): string {
+export function render(v: View, runtimes: Runtimes = {}, observations: Observations = unknownObservations()): string {
   const sourceText = (id: string) => v.sources.find((x) => x.id === id)!.text;
   const entryTitle = (ref: string) => {
     const [rid, eid] = ref.split("/");
@@ -704,10 +705,10 @@ ${sourcesHtml(t.sourceTexts)}
   const last = v.lifecycle.at(-1);
   const lifecycle = last ? `<p class="lifecycle" data-state="${last.event}">${last.event === "closed" ? "Closed" : "Reopened"} <time datetime="${esc(last.time)}">${formatTime(last.time)}</time></p>` : "";
   const head = `<header class="page-head">${v.flow.crumb ? `<p class="crumb">${text(v.flow.crumb)}</p>` : ""}<h1>${text(v.flow.title)}</h1>${lifecycle}</header>`;
-  const overviewPanel = `<section class="tab" id="overview" role="tabpanel" aria-labelledby="tab-overview">\n${progressHtml(v.progress, v)}\n${overview.length ? `<ol class="stages">\n${overview.join("\n")}\n</ol>` : `<p class="empty">No Stage yet.</p>`}\n</section>`;
+  const overviewPanel = `<section class="tab" id="overview" role="tabpanel" aria-labelledby="tab-overview">\n${progressHtml(v.progress, v, observations)}\n${overview.length ? `<ol class="stages">\n${overview.join("\n")}\n</ol>` : `<p class="empty">No Stage yet.</p>`}\n</section>`;
   const treeButton = v.stages.length ? `<button type="button" class="tree-open" aria-haspopup="dialog" aria-controls="stage-tree" aria-keyshortcuts="t">Stages<kbd>t</kbd></button>` : "";
   const bar = `<header class="bar">\n<div class="tabs"><div class="tablist" role="tablist" aria-label="Stages">${tabs.join("")}</div>${treeButton}</div>\n${jumpRows.join("\n")}\n${v.stages.length ? stageTree(v) : ""}\n</header>`;
-  const meta = `<meta name="flow-page-flow" content="${esc(v.flow.id)}">\n  <meta name="flow-page-revision" content="${v.revision}">\n  <meta name="flow-page-renderer" content="${RENDERER}">`;
+  const meta = `<meta name="flow-page-flow" content="${esc(v.flow.id)}">\n  <meta name="flow-page-revision" content="${v.revision}">\n  <meta name="flow-page-observations" content="${observationVersion(observations)}">\n  <meta name="flow-page-renderer" content="${RENDERER}">`;
   return readFileSync(TEMPLATE, "utf8")
     .replace("{{title}}", () => esc(v.flow.title))
     .replace("<!-- META -->", () => meta)

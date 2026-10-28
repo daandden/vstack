@@ -658,32 +658,43 @@
     }
     const revisionMeta = document.querySelector('meta[name="flow-page-revision"]');
     let wantedRevision = Number(revisionMeta.content);
+    const observationsMeta = document.querySelector('meta[name="flow-page-observations"]');
+    let wantedObservations = observationsMeta.content;
     let refreshing = false;
     let retry;
     async function receiveRevision(e) {
-      wantedRevision = Math.max(wantedRevision, JSON.parse(e.data).revision);
-      if (refreshing || wantedRevision <= Number(revisionMeta.content)) return;
+      const update = JSON.parse(e.data);
+      if (update.revision !== undefined) wantedRevision = Math.max(wantedRevision, update.revision);
+      if (update.version !== undefined) wantedObservations = update.version;
+      const pending = () => wantedRevision > Number(revisionMeta.content) || wantedObservations !== observationsMeta.content;
+      if (refreshing || !pending()) return;
       refreshing = true;
       clearTimeout(retry);
       try {
-        while (wantedRevision > Number(revisionMeta.content)) {
+        while (pending()) {
+          const requestedObservations = wantedObservations;
           const response = await fetch(location.href, { cache: "no-store" });
           if (!response.ok) throw new Error(`Flow refresh failed (${response.status})`);
           const next = new DOMParser().parseFromString(await response.text(), "text/html");
           const revision = Number(next.querySelector('meta[name="flow-page-revision"]')?.content);
-          if (!(revision > Number(revisionMeta.content))) throw new Error("Flow refresh is not current");
+          const observations = next.querySelector('meta[name="flow-page-observations"]')?.content;
+          if (!(revision >= Number(revisionMeta.content)) || !observations) throw new Error("Flow refresh is not current");
           refreshReadingView(next);
           revisionMeta.content = String(revision);
+          observationsMeta.content = observations;
+          // Keep an event that arrived while this read was in flight.
+          if (wantedObservations === requestedObservations) wantedObservations = observations;
           document.dispatchEvent(new CustomEvent("flow-page-updated", { detail: { revision } }));
         }
       } catch {
         // A failed read leaves the last good view intact. Retry without reloading or changing the reader's location.
-        retry = setTimeout(() => receiveRevision({ data: JSON.stringify({ revision: wantedRevision }) }), 2000);
+        retry = setTimeout(() => receiveRevision({ data: JSON.stringify({ revision: wantedRevision, version: wantedObservations }) }), 2000);
       } finally {
         refreshing = false;
       }
     }
     window.flowHostEvents?.addEventListener("revision", receiveRevision);
+    window.flowHostEvents?.addEventListener("observations", receiveRevision);
     const quizStorage = `flow-page:learning:${flowId}`;
     let learningState = { attempts: [], accepted: [] };
     try {

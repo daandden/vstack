@@ -14,7 +14,7 @@ const SKILLS = join(import.meta.dir, "..", "plugin", "skills");
 const SCRIPT = join(SKILLS, "flow-page", "scripts", "flow-page.ts");
 const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-page-host-")));
 
-type World = { home: string; cwd: string; port: number; idle?: number };
+type World = { home: string; cwd: string; port: number; idle?: number; path?: string };
 const worlds: World[] = [];
 afterAll(() => {
   for (const w of worlds) run(["host", "stop"], w);
@@ -46,6 +46,7 @@ const argv = (args: string[], w: World, o: Opts) => ["bun", o.script ?? SCRIPT, 
 const envOf = (w: World, o: Opts) => ({
   ...ENV,
   HOME: w.home,
+  PATH: w.path ?? ENV.PATH,
   VSTACK_FLOW_PORT: String(w.port),
   ...(w.idle !== undefined ? { VSTACK_FLOW_IDLE_SECONDS: String(w.idle) } : {}),
   ...(o.session ? { PI_SESSION_ID: o.session } : {}),
@@ -211,6 +212,124 @@ test("an open reader receives answers, Results, task changes, and new Stages at 
     clearTimeout(timeout);
     abort.abort();
   }
+});
+
+test("live read-only observations respect separate providers without replacing authored delivery facts", async () => {
+  const w = world();
+  git(w.cwd, "init", "-q");
+  git(w.cwd, "commit", "-q", "--allow-empty", "-m", "seed");
+  let prState = "open", checkState = "pending", failing = false;
+  const observed = new Date().toISOString();
+  const requests: string[] = [];
+  const provider = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch(req) {
+    requests.push(`${req.method} ${new URL(req.url).pathname}`);
+    if (failing) return new Response("private provider error secret=never-publish", { status: 503 });
+    return Response.json({ observed_at: observed, records: [{ name: new URL(req.url).pathname === "/prs" ? "PR 42" : "Build", state: new URL(req.url).pathname === "/prs" ? prState : checkState }] });
+  } });
+  const config = join(w.cwd, "docs", "vstack");
+  mkdirSync(config, { recursive: true });
+  const configure = (file: string, path: string, maxAge = 300) => writeFileSync(join(config, file),
+    `- Flow observation: ${JSON.stringify({ adapter: "http-json", url: `${provider.url.origin}${path}`, poll_seconds: 0.1, stale_after_seconds: maxAge })}\n`);
+  configure("code-host.md", "/prs");
+  configure("ci.md", "/checks");
+  try {
+    const opened = ok(open(w));
+    const authored = ok(run(["submit"], w, { session: "s-1", stdin: contribution(
+      { kind: "end-state", requested: "shipped" },
+      { kind: "pr", ref: "pr", url: "https://example.test/pull/42", state: "open" },
+      { kind: "check", ref: "check", name: "Authored build", outcome: "pending" },
+    ) }));
+    async function observations() {
+      const r = await fetch(new URL("observations", opened.live.url));
+      expect(r.status).toBe(200);
+      return await r.json() as any;
+    }
+    let latest: any;
+    async function eventually(condition: (o: any) => boolean) {
+      for (const end = Date.now() + 8000; Date.now() < end; await Bun.sleep(50)) {
+        latest = await observations();
+        if (condition(latest)) return;
+      }
+      expect(condition(latest)).toBe(true);
+    }
+    await eventually((o) => o["code-host"]?.records[0]?.state === "open" && o.ci?.records[0]?.state === "pending");
+    expect(latest.git.status).toBe("current");
+    expect(latest["code-host"].status).toBe("current");
+    expect(latest.ci.observed_at).toBe(observed);
+    expect(latest["code-host"].provenance.adapter).toBe("http-json");
+    prState = "merged"; checkState = "passed";
+    await eventually((o) => o["code-host"].records[0]?.state === "merged" && o.ci.records[0]?.state === "passed");
+    let live = (await page(opened.live.url)).html;
+    expect(await attribute(live, "observation-code-host", "data-observation")).toBe("current");
+    configure("ci.md", "/checks", 0.001);
+    await eventually((o) => o.ci.status === "stale");
+    failing = true;
+    await eventually((o) => o["code-host"].status === "stale" && o.ci.status === "stale");
+    live = (await page(opened.live.url)).html;
+    expect(live).not.toContain("never-publish");
+    // Changing provider configuration drops any cached success from the earlier source.
+    configure("code-host.md", "/different-provider");
+    await eventually((o) => o["code-host"].status === "unavailable");
+    writeFileSync(join(config, "ci.md"), "- CI service: Unsupported service\n");
+    await eventually((o) => o.ci.status === "unknown");
+    const state = ok(run(["show", "--flow", opened.flow], w));
+    expect(state.open).toBe(true);
+    expect(state.progress.end_state).toEqual({ requested: "shipped", delivery: true, met: false });
+    expect(state.progress.prs).toEqual([{ id: authored.refs.pr, state: "open" }]);
+    expect(state.progress.checks).toEqual([{ id: authored.refs.check, outcome: "pending" }]);
+    expect(state.progress.complete).toBe(false);
+    expect(state.revision).toBe(authored.revision);
+    expect(requests.every((r) => r.startsWith("GET "))).toBe(true);
+    expect(new Set(requests.map((r) => r.slice(4)))).toEqual(new Set(["/prs", "/checks", "/different-provider"]));
+    expect((await fetch(new URL("observations", opened.live.url), { method: "POST" })).status).toBe(405);
+  } finally { provider.stop(true); }
+});
+
+test("existing GitHub and GitHub Actions project choices observe their own repositories without new setup", async () => {
+  const w = world();
+  git(w.cwd, "init", "-q", "-b", "feature");
+  git(w.cwd, "commit", "-q", "--allow-empty", "-m", "seed");
+  const config = join(w.cwd, "docs", "vstack"), bin = join(w.home, "bin");
+  mkdirSync(config, { recursive: true }); mkdirSync(bin, { recursive: true });
+  writeFileSync(join(config, "code-host.md"), "- Host: GitHub (`github.com`)\n- Repo: `code/project`\n- Tool: the `gh` CLI\n");
+  writeFileSync(join(config, "ci.md"), "- CI service: GitHub Actions\n- Repo: `build/project`\n- Tool: the `gh` CLI\n");
+  writeFileSync(join(bin, "gh"), `#!/usr/bin/env bun
+const a = Bun.argv.slice(2);
+const repo = a[a.indexOf("--repo") + 1];
+if (a[0] === "pr" && repo === "code/project") console.log(JSON.stringify([{ number: 42, url: "https://github.com/code/project/pull/42", state: "OPEN" }]));
+else if (a[0] === "run" && repo === "build/project") console.log(JSON.stringify([{ databaseId: 9, name: "Build", status: "completed", conclusion: "failure", url: "https://github.com/build/project/actions/runs/9" }]));
+else process.exit(1);
+`, { mode: 0o755 });
+  w.path = `${bin}:${ENV.PATH}`;
+  const opened = ok(open(w));
+  let latest: any;
+  for (const end = Date.now() + 3000; Date.now() < end; await Bun.sleep(50)) {
+    latest = await (await fetch(new URL("observations", opened.live.url))).json();
+    if (latest["code-host"]?.records[0]?.state === "open" && latest.ci?.records[0]?.state === "failed") break;
+  }
+  expect(latest["code-host"].status).toBe("current");
+  expect(latest["code-host"].records[0].state).toBe("open");
+  expect(latest["code-host"].provenance.source).toBe("https://github.com/code/project");
+  expect(latest.ci.status).toBe("current");
+  expect(latest.ci.records[0].state).toBe("failed");
+  expect(latest.ci.provenance.source).toBe("https://github.com/build/project");
+});
+
+test("reading git observations does not execute a repository's fsmonitor hook", async () => {
+  const w = world();
+  git(w.cwd, "init", "-q");
+  git(w.cwd, "commit", "-q", "--allow-empty", "-m", "seed");
+  const marker = join(w.cwd, "executed"), hook = join(w.cwd, "monitor");
+  writeFileSync(hook, `#!/bin/sh\nprintf executed > '${marker}'\nprintf 'token\\000'\n`, { mode: 0o755 });
+  git(w.cwd, "config", "core.fsmonitor", hook);
+  const opened = ok(open(w));
+  let latest: any;
+  for (const end = Date.now() + 3000; Date.now() < end; await Bun.sleep(50)) {
+    latest = await (await fetch(new URL("observations", opened.live.url))).json();
+    if (latest.git.status === "current") break;
+  }
+  expect(latest.git.status).toBe("current");
+  expect(() => readFileSync(marker)).toThrow();
 });
 
 test("close and reopen keep the same live URL and publish their lifecycle revisions", async () => {
