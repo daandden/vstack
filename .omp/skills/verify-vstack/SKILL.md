@@ -11,7 +11,6 @@ The user-facing parts:
 
 - Primary: the plugin inside an omp session. That covers the skill list, `/skill:<name>` commands, the model-free `/vstack-clean` Command that the extension registers, the agents in `task`, and the always-on rules.
 - Bun CLIs that skills run through `bun "$(realpath skill://<skill>/scripts/<script>.ts)"`, such as the Scratch scripts under vstack-tmp, the grilling-page renderer, and the vstack-figures render script.
-- Python scripts that skills run in omp's eval tool, such as the Grilling page visual judge.
 - The HTML pages those scripts write, such as the Grilling page. You view them in a browser.
 - The maintainer CLIs in `scripts/` (`check-register.ts`, `vstack-maintain.ts`, `addon-judge-check.ts`, `load-smoke.sh`), documented in the repo `README.md`.
 

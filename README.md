@@ -65,7 +65,7 @@ The repo scripts need Bun. Run `bun run test` and `bun scripts/check-register.ts
 | `pins.yaml` | no | One entry per Upstream: repo, Pin, how the next Pin is found, and which tree entries count as Upstream items. |
 | `decision-register.yaml` | no | One row per Upstream item, `originals:` for vstack-only artifacts, and `utility:` for Utility skills. |
 | `house-style.yaml` | no | The House style: replacement rows and rules that turn Upstream text into vstack text. |
-| `scripts/` | no | Bun CLIs: `check-register.ts`, `vstack-maintain.ts`, and `addon-judge-check.ts`. `visual_judge_check.py` runs in omp's Python eval. `lib/` holds shared modules. `load-smoke.sh` checks a fresh omp load. |
+| `scripts/` | no | Bun CLIs: `check-register.ts`, `vstack-maintain.ts`, and `addon-judge-check.ts`. `lib/` holds shared modules. `load-smoke.sh` checks a fresh omp load. |
 | `addon-questions.json`, `sample-prompts.json`, `sample-briefs.json` | no | The Addon judge catalog and its two sample corpora, read from the linked clone. |
 | `.omp/skills/verify-vstack/` | no | The Verify skill, feature recipes, and omp driver. |
 | `tests/` | no | Test suites, run with `bun run test`. Each script is run as a process over temp-dir fixtures (`tests/support/`). |
@@ -131,19 +131,9 @@ For each form, the runner sends the same request as the check. A form passes whe
 
 The runner appends completed slots to `results.jsonl` and unscorable API, model, or response failures to `errors.jsonl`. Failures exit nonzero. With `--state`, it writes transcripts only for explicitly listed training ids. Without it, it writes no transcripts. Reusing an output directory resumes completed `(case id, repetition)` slots. Use a fresh output directory whenever the catalog, case file, model, or scoring rules change. `TYPESAFE_ENDPOINT` overrides the API URL for local boundary checks.
 
-### Visual judge calibration
+### Figure type reference
 
-`visual-judge-cases.json` at the repo root is the calibration set for grilling-page's visual judge. Each judge request asks four questions about one page question. Two are the yes-or-no diagram questions, with their thresholds from `plugin/skills/grilling-page/references/visual-judge.json`. The other two rank the diagram type for each kind and name the types only. The state holds the page question as `question` and the Mermaid type guide from that file's `types.guide` as `visual_types`, a map from each Pele Mermaid type to when to use it. jev reads the guide once per request this way, not once per type question (ADR 0024). Diagram cases are real Grilling page questions from vstack and Tern pages, labeled by gpt-6.1-sol at high thinking. A diagram case passes when each kind's yes probability reaches its threshold exactly when the case labels that kind true. Type cases are one hand-written question per figure kind, each with the Mermaid type that draws it best and others that draw it well. A type case passes when its expected type, or an allowed one, is among the top three types of either type question.
-
-After a change to the rubric or to the guide, run the check in one omp Python eval cell, with the checkout root as the working directory:
-
-```python
-import runpy
-check = runpy.run_path("scripts/visual_judge_check.py")["check"]
-await check(judge_batch)
-```
-
-`scripts/visual_judge_check.py` builds each request with `judge_request()` from `plugin/skills/grilling-page/scripts/visual_judge.py`. It sends every case through eval's `judge_batch` global, as the helper does. It prints one `MISS` line per missed case, then the pass count and the judge model. It returns `True` when every case passes and `False` when a case misses. If `judge_batch` did not use a TypeSafe jev model, the check raises `RuntimeError` and grades nothing, because `judge_batch` falls back to a chat model without TypeSafe credentials. It also raises when a case gets no answer.
+The agent executing a Grilling page step decides separately whether a Context diagram and an Option diagram help, and chooses each Mermaid type. `plugin/skills/vstack-figures/references/mermaid-types.md` documents every visualization family in pinned Pele 1.12.0, including C4 views, railroad notations, and aliases. `bun test tests/figure-types.test.ts` renders every example through the figure CLI and checks the documented keywords against an independent list.
 
 
 ### Pins and Upstream clones

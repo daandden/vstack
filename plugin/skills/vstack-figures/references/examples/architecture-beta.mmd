@@ -1,0 +1,4 @@
+architecture-beta
+  service api(server)[API]
+  service db(database)[Store]
+  api:R -- L:db

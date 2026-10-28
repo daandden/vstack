@@ -10,7 +10,7 @@ A caller is a skill step that shows figures to a person. The caller writes each 
 
 ## Draw one figure
 
-1. Pick the diagram type from [Pick the type](#pick-the-type).
+1. Choose the Mermaid type from the [Mermaid type reference](references/mermaid-types.md). Read it when choosing a type or writing its syntax.
 2. Write the Mermaid to `<slug>.mmd` in the caller's Scratch entry. The slug is a basename that is unique on the page. Follow every rule in [Make Pele figures look good](#make-pele-figures-look-good).
 3. Render it, with one `--focus` per focal Mermaid id, one or two in all:
 
@@ -25,20 +25,9 @@ A caller is a skill step that shows figures to a person. The caller writes each 
 
 Place figures in the order the caller drew them. To inline a figure, read the SVG and paste its `<svg>` element as written, with its `<style>`. A caller that takes a file gets the path instead: the Grilling page takes `{ "svg": "figures/<file>" }`, with the SVG written to the flow folder's `figures/`.
 
-## Pick the type
+## Supported Mermaid types
 
-Pele renders every Mermaid diagram type. These fit vstack figures:
-
-- `flowchart`: steps, decisions, branches, and loops, or parts and how they connect, grouped by `subgraph`.
-- `sequenceDiagram`: messages between parts in time order.
-- `stateDiagram-v2`: the states of one thing and the events that move it.
-- `swimlane-beta`: steps in one lane per team or role, with the handoffs between lanes.
-- `erDiagram` and `classDiagram`: entities or types, their fields, and the relationships between them.
-- `architecture-beta`: up to about 10 services in groups. `block-beta`: blocks in rows and columns, such as stacked layers or a matrix.
-- `timeline`, `gantt`, and `journey`: dated events, tasks with durations and dependencies, and one person's steps with a score per step.
-- `mindmap`: one root broken into parts. `kanban`: work items in status columns.
-- `quadrantChart`, `xychart`, `pie`, `sankey`, `radar-beta`, `treemap-beta`, and `venn-beta`: data charts.
-- `ishikawa-beta`: causes of one effect by category. `wardley-beta`: components by visibility and evolution.
+The [Mermaid type reference](references/mermaid-types.md) covers all 32 visualization families rendered by pinned Pele 1.12.0, which targets Mermaid 12.1.0 built-ins. It gives when-to-use lines and minimal examples, including all five C4 views and four railroad notations. Aliases are separate spellings of existing families. `info` is a utility, not a figure.
 
 ## Make Pele figures look good
 

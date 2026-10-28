@@ -1,6 +1,6 @@
 ---
 name: grilling-page
-description: How a flow keeps its Grilling page. Covers the every-ask rule, the flow folder, the render script, its records, Stages, Report blocks, the visual judge, visuals and previews, and the printed path. Each skill that asks in a flow loads it.
+description: How a flow keeps its Grilling page. Covers the every-ask rule, the flow folder, the render script, its records, Stages, Report blocks, diagram choices, visuals and previews, and the printed path. Each skill that asks in a flow loads it.
 disable-model-invocation: true
 ---
 
@@ -77,20 +77,12 @@ Each Stage is one session. The script assigns the next session to its first roun
 
 Append one `round` record and one `question` record per question of the next `ask`, with no `visual` or `preview` yet. Append the questions in Q-number order: a question asked again, with its earlier Q number, comes before new ones.
 
-Then let the jev judge decide each question's diagrams. Run this in one Python eval cell, with `skill` set to this skill's directory:
+For each question, the agent executing this skill step decides separately whether each Diagram kind helps. This includes a subagent executing the step in its own session:
 
-```python
-skill = "<grilling-page skill dir>"
-exec(open(f"{skill}/scripts/visual_judge.py").read())
-await judge_round(skill, "<state.jsonl>", "<round id>")
-```
+- A Context diagram shows the logic that the description and Today explain: steps, branches, states, parts, or time.
+- An Option diagram shows how the options differ in shape, in one figure.
 
-The helper sends jev one request per question. The request's judge state holds the question and the Mermaid type guide in `references/visual-judge.json`, so jev reads the guide once. Its four questions are one yes-or-no question and one type ranking for each diagram kind in that file. For each question, it prints one line per diagram kind:
-
-- A context diagram shows the logic that the description and Today explain: steps, branches, states, parts, or time.
-- An option diagram shows how the options differ in shape, in one figure.
-
-A kind under its threshold, or a judge error, prints `none`. A kind at or over it prints `draw it` and the three Mermaid types that fit best. Draw each such diagram as a type from those three.
+Draw either, both, or neither according to what the question needs. For each diagram, choose the Mermaid type from vstack-figures' [Mermaid type reference](../vstack-figures/references/mermaid-types.md). The executing agent makes both choices itself, without a model judge.
 
 Add other visuals when they help:
 
@@ -98,9 +90,9 @@ Add other visuals when they help:
 - If three or more options differ on the same attributes, add an HTML table with one row per option.
 - If code, config, a diff, or output makes the question concrete, add it as a `text` visual or an `example`.
 
-Append the question record again with its visuals. Put a context diagram first and an option diagram second. Then cut from the description and from Today the logic that a diagram now shows. Keep what is being decided and why it matters. Keep each Today fact with its source. Shorten the text of each fact to what the diagram does not show.
+Append the question record again with its visuals. Put a Context diagram first and an Option diagram second. Then cut from the description and from Today the logic that a diagram now shows. Keep what is being decided and why it matters. Keep each Today fact with its source. Shorten the text of each fact to what the diagram does not show.
 
-Draw every diagram through `skill://vstack-figures`: any figure with boxes, arrows, trees, timelines, or states, including one that is small. HTML is for mockups and tables, and `text` is for code, command output, and messages. As soon as the judge has printed, write each diagram's Mermaid and render it into the flow folder's `figures/`, with a unique basename per figure. Pass each SVG as `{ "svg": "figures/<file>" }` when you append the question records again.
+Draw every diagram through `skill://vstack-figures`: any figure with boxes, arrows, trees, timelines, or states, including one that is small. HTML is for mockups and tables, and `text` is for code, command output, and messages. Write each diagram's Mermaid and render it into the flow folder's `figures/`, with a unique basename per figure. Pass each SVG as `{ "svg": "figures/<file>" }` when you append the question records again.
 
 A preview shows the real result, so it keeps the colors of that result.
 

@@ -4,6 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [7.0.4] - 2026-10-27
+
+- The agent executing each Grilling page step, including a subagent in its own session, decides separately whether a Context diagram and an Option diagram help and chooses each Mermaid type. Remove the Grilling page visual judge, its rubric, its calibration checker and cases, and its setup claims. The Addon judge is unchanged (ADR 0040).
+- `vstack-figures` documents all 32 visualization families in pinned Pele 1.12.0, which targets Mermaid 12.1.0 built-ins, including all five C4 views, four railroad notations, aliases, and the `info` utility. Every documented keyword has a minimal Mermaid source example rendered through `render.ts` by `tests/figure-types.test.ts`.
+
 ## [7.0.3] - 2026-10-27
 
 - Add the hidden tune-llm-flow Addon for sustained LLM-flow quality, cost, or latency improvement inside implement. The grill settles setup once; Ratchet owns measured gates and host approvals, with review material and each gate on the Grilling page. Kept rounds and the reusable eval get separate commits, excluding traces. Narrow hillclimb's catalog question to code that calls no model and add four routing samples. Require an identified LLM flow for the new catalog route. The optional Flexible Ask host-dialog wrapper is completed in omp-tools#26; installation and combined live behavior must still be observed (#254, ADR 0041).

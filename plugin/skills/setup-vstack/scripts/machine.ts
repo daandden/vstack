@@ -139,7 +139,7 @@ async function check(): Promise<Result[]> {
       id: 5,
       name: "eval Python",
       status: "warn",
-      detail: "eval.py is off, so eval cannot run Python cells and the Grilling page visual judge cannot run",
+      detail: "eval.py is off, so eval cannot run Python cells",
       remedy: "turn it on with omp config set eval.py true, then run omp setup python --check",
     });
   } else if (python.code !== 0) {
@@ -152,7 +152,7 @@ async function check(): Promise<Result[]> {
       id: 5,
       name: "eval Python",
       status: "warn",
-      detail: `omp setup python --check fails${found}, so eval cannot run Python cells and the Grilling page visual judge cannot run`,
+      detail: `omp setup python --check fails${found}, so eval cannot run Python cells`,
       remedy: "run omp setup python and fix what it reports",
     });
   } else {

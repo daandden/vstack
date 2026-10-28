@@ -200,6 +200,10 @@ _Avoid_: glossary note, definition block
 The file beside a flow's Grilling page that names the flow's original topic slug, its spec issue, tickets, branch, and run ids. A later Stage, even one in another omp session, finds the flow's page by any of them.
 _Avoid_: flow manifest, flow index
 
+**Diagram kind**:
+The purpose a figure serves on a Grilling page, either a Context diagram or an Option diagram.
+_Avoid_: diagram type (when the figure's purpose is meant)
+
 **Context diagram**:
 A figure on a Grilling page question that shows the logic its description and Today facts explain: steps, branches, states, parts, or time.
 _Avoid_: background figure
