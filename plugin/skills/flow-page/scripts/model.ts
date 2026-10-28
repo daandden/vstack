@@ -35,7 +35,11 @@ export type Retirement = { question: string; reason: string; time?: string };
 export type Section = { heading: string; body: string };
 export type Background = { id: string; stage: string; title: string; summary: string; sections: Section[]; sources: string[]; figures?: Figure[]; jump?: string };
 export type Topic = { id: string; title: string; summary: string; body: string; sources: string[] };
-export type Shape = "cards" | "ledger" | "table" | "document" | "prototype" | "comparison" | "metrics" | "code" | "timeline" | "quiz";
+export type Shape = "cards" | "ledger" | "table" | "document" | "prototype" | "comparison" | "metrics" | "code" | "timeline" | "quiz" | "review";
+const REVIEW_AXES = ["standards", "spec", "blast-radius"] as const;
+const REVIEW_STATES = ["findings", "clean", "skipped", "unavailable", "blocked"] as const;
+type ReviewAxis = { axis: (typeof REVIEW_AXES)[number]; status: (typeof REVIEW_STATES)[number]; reason?: string };
+type ReviewRow = ReviewAxis & { finding?: string; impact?: string; location?: string; blocking?: boolean; target?: string };
 /** `changed` is the Flow revision that last changed a Result's header or an entry, which a focused revision checks. */
 export type Entry = Record<string, unknown> & { id: string; changed: number };
 /** One block of a Document section. Prose and list items can cite with `[@<citation ref>]`. */
@@ -80,6 +84,7 @@ export type Quiz = { questions: { ref: string; prompt: string; explanation: stri
 /** `revision` counts whole republications of the Result with `revises`; `captured` is when this one was submitted. */
 export type Result = {
   id: string; stage: string; shape: Shape; title: string; summary?: string; columns?: string[]; entries: Entry[]; changed: number;
+  axes?: ReviewAxis[];
   document?: DocumentBody; demo?: Demo; artifact?: string; quiz?: Quiz; comparison?: ComparisonBody; metrics?: MetricsBody; attachments?: string[]; canonical?: Canonical; revision?: number; captured?: string; jump?: string;
 };
 export type Source = { id: string; text: string };
@@ -151,7 +156,7 @@ export const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const REF = /^[a-z0-9][a-z0-9-]*$/;
 const CODE_ID = /^(stage|round|question|close|background|topic|result|source|assumed|attachment|task|blocker|pr|check)-\d+$/;
 const TICKET = /^#?[A-Za-z0-9][A-Za-z0-9._/-]*$/;
-const SHAPES: Shape[] = ["cards", "ledger", "table", "document", "prototype", "comparison", "metrics", "code", "timeline", "quiz"];
+const SHAPES: Shape[] = ["cards", "ledger", "table", "document", "prototype", "comparison", "metrics", "code", "timeline", "quiz", "review"];
 /** Shapes whose content is one whole body rather than entries, so a focused `add` cannot extend them. */
 const WHOLE: Record<string, string> = { document: "a Document", prototype: "a demo", comparison: "a Comparison", metrics: "a Metrics Result", quiz: "a Quiz" };
 const OUTCOMES = ["succeeded", "failed", "blocked", "skipped", "unknown", "noted"];
@@ -464,6 +469,7 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
         break;
       case "result": {
         const r = parseResult(o, where, stage.id, ids.id!, ids.entries!, rev, (v, w) => resolve(v, "attachment", w), (t) => sourceId(s, t), io);
+        if (r.shape === "review" && s.results.some((other) => other.stage === stage.id && other.shape === "review" && other.id !== r.id)) refuse(where, "a Stage has one authoritative review Result; revise the existing review instead");
         r.captured = time;
         const i = s.results.findIndex((x) => x.id === r.id);
         if (i < 0) {
@@ -605,6 +611,14 @@ function parseResult(o: Obj, where: string, stage: string, id: string, entryIds:
     fields(o, where, ["kind", "shape", "title", "questions"], shared);
     return head({ quiz: parseQuiz(o, where) });
   }
+  if (shape === "review") {
+    fields(o, where, ["kind", "shape", "title", "axes", "entries"], shared);
+    if (!Array.isArray(o.entries)) refuse(where, "entries must be an array, empty when the review has no findings");
+    const entries = (o.entries as unknown[]).map((e, j) => parseEntry(shape, undefined, e, `${where}: entry ${j + 1}`, entryIds[j].split("/")[1], rev, attachment));
+    const axes = parseReviewAxes(o.axes, `${where}: axes`);
+    checkReview(axes, entries, where);
+    return head({ axes, entries });
+  }
   fields(o, where, ["kind", "shape", "title", table ? "columns" : "entries", ...(table ? ["rows"] : [])], shared);
   const columns = table ? texts(o, "columns", where) : undefined;
   const entries = list(o, table ? "rows" : "entries", where).map((e, j) => parseEntry(shape, columns, e, `${where}: ${table ? "row" : "entry"} ${j + 1}`, entryIds[j].split("/")[1], rev, attachment));
@@ -654,10 +668,11 @@ function parseQuiz(o: Obj, where: string): Quiz {
 
 /** One Result entry or table row, checked against its shape. */
 function parseEntry(shape: Shape, columns: string[] | undefined, e: unknown, ew: string, id: string, changed: number, attachment: (v: unknown, where: string) => string): Entry {
-  if (shape === "cards") {
-    const c = fields(e, ew, ["title", "label", "blocking", "impact", "action", "evidence"], ["ref"]);
+  if (shape === "cards" || shape === "review") {
+    const c = fields(e, ew, ["title", "label", "blocking", "impact", "action", "evidence", ...(shape === "review" ? ["axis", "location"] : [])], ["ref"]);
     if (typeof c.blocking !== "boolean") refuse(ew, "blocking must be true or false");
-    return { id, ...(c.ref ? { ref: c.ref } : {}), title: text(c, "title", ew), label: text(c, "label", ew), blocking: c.blocking, impact: text(c, "impact", ew), action: text(c, "action", ew), evidence: text(c, "evidence", ew), changed };
+    if (shape === "review" && !REVIEW_AXES.includes(c.axis as never)) refuse(ew, `axis must be ${listed([...REVIEW_AXES])}`);
+    return { id, ...(c.ref ? { ref: c.ref } : {}), title: text(c, "title", ew), label: text(c, "label", ew), blocking: c.blocking, impact: text(c, "impact", ew), action: text(c, "action", ew), evidence: text(c, "evidence", ew), ...(shape === "review" ? { axis: c.axis, location: text(c, "location", ew) } : {}), changed };
   }
   if (shape === "ledger") {
     const c = fields(e, ew, ["claim", "status", "evidence", "missing_proof", "consequence"], ["ref"]);
@@ -704,6 +719,27 @@ function parseEntry(shape: Shape, columns: string[] | undefined, e: unknown, ew:
   return { id, ...(c.ref ? { ref: c.ref } : {}), cells: c.cells as string[], changed };
 }
 
+function parseReviewAxes(raw: unknown, where: string): ReviewAxis[] {
+  if (!Array.isArray(raw) || raw.length !== REVIEW_AXES.length) refuse(where, "must state Standards, Spec, and Blast radius exactly once");
+  const axes = (raw as unknown[]).map((x, i): ReviewAxis => {
+    const w = `${where}: axis ${i + 1}`;
+    const a = fields(x, w, ["axis", "status"], ["reason"]);
+    if (!REVIEW_AXES.includes(a.axis as never)) refuse(w, `axis must be ${listed([...REVIEW_AXES])}`);
+    if (!REVIEW_STATES.includes(a.status as never)) refuse(w, `status must be ${listed([...REVIEW_STATES])}`);
+    return { axis: a.axis as ReviewAxis["axis"], status: a.status as ReviewAxis["status"], ...(a.status !== "findings" ? { reason: text(a, "reason", w) } : a.reason !== undefined ? { reason: text(a, "reason", w) } : {}) };
+  });
+  if (new Set(axes.map((a) => a.axis)).size !== REVIEW_AXES.length) refuse(where, "must state each review axis exactly once");
+  return REVIEW_AXES.map((axis) => axes.find((a) => a.axis === axis)!);
+}
+
+function checkReview(axes: ReviewAxis[], entries: Entry[], where: string): void {
+  for (const a of axes) {
+    const count = entries.filter((e) => e.axis === a.axis).length;
+    if (a.status === "findings" && count === 0) refuse(where, `${a.axis} has findings status but no findings`);
+    if (!["findings", "blocked"].includes(a.status) && count > 0) refuse(where, `${a.axis} is ${a.status}, so it cannot carry findings`);
+  }
+}
+
 /** A focused revision: `set` replaces named fields of one entry or of a Result's header, `add` appends entries. */
 function revise(s: State, o: Obj, where: string, stage: string, entryIds: string[] | undefined, rev: number, resolve: (v: unknown, kind: string, where: string) => string): void {
   fields(o, where, ["kind", "result"], ["base", "set", "add"]);
@@ -727,9 +763,10 @@ function revise(s: State, o: Obj, where: string, stage: string, entryIds: string
       const at = r.entries.indexOf(entry);
       r.entries[at] = { ...parseEntry(r.shape, r.columns, { ...content, ...set }, `${where}: set`, id, rev, (v, w) => resolve(v, "attachment", w)), ...(figures ? { figures } : {}) };
     } else {
-      fields(set, `${where}: set`, [], ["title", "summary"]);
+      fields(set, `${where}: set`, [], ["title", "summary", ...(r.shape === "review" ? ["axes"] : [])]);
       if (set.title !== undefined) r.title = text(set, "title", `${where}: set`);
       if (set.summary !== undefined) r.summary = text(set, "summary", `${where}: set`);
+      if (set.axes !== undefined) r.axes = parseReviewAxes(set.axes, `${where}: set: axes`);
       r.changed = rev;
     }
   } else if (o.base !== undefined) refuse(where, "base goes with set; add appends entries without one");
@@ -740,6 +777,7 @@ function revise(s: State, o: Obj, where: string, stage: string, entryIds: string
     const adds = list(o, "add", where);
     r.entries.push(...adds.map((e, j) => parseEntry(r.shape, r.columns, e, `${where}: add ${j + 1}`, entryIds![j].split("/")[1], rev, (v, w) => resolve(v, "attachment", w))));
   }
+  if (r.shape === "review") checkReview(r.axes!, r.entries, where);
 }
 
 function optionLetter(q: Question, p: string, where: string): string {
@@ -1329,6 +1367,7 @@ export type ResultView = Omit<Result, "entries" | "document" | "comparison" | "m
   doc?: DocView;
   comparison?: ComparisonView;
   metrics?: MetricsView;
+  review?: ReviewRow[];
   shown: Attachment[];
   history: ResultView[];
 };
@@ -1455,6 +1494,12 @@ export function view(s: State): View {
         return { ...e, anchor: ea, questions: current ? linking(`${r.id}/${e.id}`) : [], ...(r.shape === "code" ? { location: codeLocation(e, ea) } : {}) };
       }),
     };
+    if (r.axes) rv.review = r.axes.flatMap((axis): ReviewRow[] => {
+      const findings = rv.entries.filter((e) => e.axis === axis.axis);
+      return findings.length ? findings.map((e) => ({
+        ...axis, finding: e.title as string, impact: e.impact as string, location: e.location as string, blocking: e.blocking as boolean, target: e.anchor,
+      })) : [{ ...axis }];
+    });
     if (d) {
       const sections = d.sections.map((sec, i) => ({ ...sec, anchor: `${anchor}-s${i + 1}` }));
       const citesIn = (ref: string) => sections.filter((sec) => sec.blocks.some((b) => ("prose" in b ? [b.prose] : "list" in b ? b.list : []).some((t) => [...t.matchAll(CITE)].some((m) => m[1] === ref)))).map((sec) => sec.anchor);
@@ -1528,6 +1573,7 @@ export function snapshot(v: View, page: string, renderer: number) {
         id: r.id, shape: r.shape, revision: r.revision, ...(r.captured ? { captured: r.captured } : {}), ...(r.canonical ? { canonical: r.canonical } : {}), changed: r.changed,
         ...(r.demo ? { demo: { start: r.demo.start, states: r.demo.states.map((x) => x.name), actions: r.demo.actions.map((x) => x.name), values: r.demo.values.map((x) => x.name) } } : {}),
         ...(r.artifact ? { artifact: r.artifact } : {}),
+        ...(r.review ? { review: r.review } : {}),
         revisions: [...r.history, r].map((x) => ({ revision: x.revision, ...(x.captured ? { captured: x.captured } : {}), ...(x.canonical ? { canonical: x.canonical } : {}), attachments: x.shown.map((a) => a.id) })),
         attachments: r.shown.map((a) => a.id),
         entries: r.entries.map(({ anchor: _, ...e }) => ({ ...e, id: `${r.id}/${e.id}`, questions: e.questions })),

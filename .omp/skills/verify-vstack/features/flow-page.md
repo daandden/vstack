@@ -33,6 +33,7 @@ The flow-page script takes typed contributions for one bound Stage, assigns ids,
 - `flow-nav`: `n` cycles through actionable questions newest in-progress Stage first; `t` opens a clickable Stage-only tree with states and open-question counts; `j` and `k` set fragments and focus; tab navigation moves focus; editable targets ignore shortcuts.
 - `flow-session`: each session and agent restores its own binding. A terminal main-agent reply presents the bound URL without another model request or a browser launch. A blocker and a follow-up with no model-written link still get the extension message. A live failure presents the static path and observed error.
 - `flow-quiz`: structured choice, text, and numeric quizzes give immediate feedback and explanations. Attempts and completion persist separately from authored work, resume across host restarts, and synchronize browser-local offline attempts idempotently. Static exports remain interactive offline.
+- `flow-review`: one summary table opens a review Stage and links each authoritative finding to its impact, action, and evidence card. All three axes retain their explicit findings, clean, skipped, unavailable, or blocked outcomes, and focused corrections update the table.
 
 ## How to get to it (user POV)
 
@@ -128,6 +129,15 @@ Steps:
   - Start a real local HTML app route with a button. Submit a second artifact with `runtime: "local-app"`, its loopback HTTP `url`, `launch`, and `revision`, plus a prototype Result. The real route works inside a sandboxed iframe and its origin differs from the Flow origin. Stop only that app, reload the page, and observe no iframe for that Result and an unavailable status with launch steps. A route with a redirect, a non-HTML response, or no listener must not be reported available.
   - Submit a terminal artifact with `runtime: "terminal"`, real `launch` steps, `revision`, and `unavailable` naming its missing interactive runtime. Read the steps and reason in the live Flow. Stop the Flow host, open its `file://` export, and observe unavailable statuses and real launch steps for all runnable artifacts with no embedded runtimes.
   - Save full-page lossless WebP and ARIA evidence, then attach the evidence to a proof Flow made through the new flow-page CLI. Record the commands, observed isolation and availability outcomes, and any runtime case not exercised.
+
+### Review summary (`flow-review`)
+
+1. Run the checkout's `code-review` skill on a pinned real diff, retaining the independent reviewer outputs. Through an isolated native omp drive, publish its `review` Result with `axes` for Standards, Spec, and Blast radius. An untriggered or deliberately skipped axis is `skipped`; a missing provider is `unavailable`; incomplete work is `blocked`. Record the actual reasons and no invented findings.
+2. For the interactive example, add a separate code-review Stage explicitly labelled as a fixture. Submit a `background`, then a `review` with one blocking Standards finding, one suggested Spec finding, and an unavailable Blast radius axis. Each finding needs `axis`, `location`, and the cards fields. Do not author a summary table. Include a round naming one finding with `results`.
+3. Open the live URL at 1280 by 900 and select that Stage. Its first reading block is one summary table across all axes, before the Background and full cards. Follow each finding link and open Evidence. Observe the correct impact, action, location, and evidence, then follow the card's question backlink and the question's return link.
+4. While the page stays open, use a focused `revise` of a finding's impact, location, and blocking flag. Observe the new table values and matching card without a reload. Record the page revision and unchanged `performance.timeOrigin`.
+5. In another fixture Stage, submit a review with no entries and clean, skipped, and blocked axes, each with its fixture reason. Read the three outcomes with no finding cards. Revise blocked to unavailable and observe that state live.
+6. Repeat the table and evidence-link interaction at 360px. The page has no horizontal overflow; the table may scroll inside its container. Stop the owned host and read the static export. Save lossless WebP screenshots, ARIA snapshots, CLI outcomes, native RPC proof, and the reviewer results. Attach them through the common authoring interface to a Document Result on the proof Flow made by the new flow-page code.
 
 
 ### Native omp sessions (`flow-session`)

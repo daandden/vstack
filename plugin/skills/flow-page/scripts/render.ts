@@ -8,7 +8,7 @@ import { optionLabel, type AnswerState, type Attachment, type ComparisonView, ty
 import type { ProgressView } from "./progress.ts";
 
 /** Raise this when the page a given state renders to changes, so a page names the renderer that made it. */
-export const RENDERER = 14;
+export const RENDERER = 15;
 const TEMPLATE = join(import.meta.dir, "..", "templates", "flow-page.html");
 export type Runtimes = Record<string, { url?: string; reason?: string }>;
 
@@ -20,6 +20,8 @@ const END_LABELS: Record<string, string> = { commit: "Commit", "merge-ready": "M
 const PR_LABELS: Record<string, string> = { open: "Open", merged: "Merged", closed: "Closed" };
 const CHECK_LABELS: Record<string, string> = { passed: "Passed", failed: "Failed", pending: "Pending" };
 const OUTCOME_LABELS: Record<string, string> = { succeeded: "Succeeded", failed: "Failed", blocked: "Blocked", skipped: "Skipped", unknown: "Outcome unknown", noted: "Noted" };
+const AXIS_LABELS: Record<string, string> = { standards: "Standards", spec: "Spec", "blast-radius": "Blast radius" };
+const REVIEW_LABELS: Record<string, string> = { findings: "Findings", clean: "Clean", skipped: "Skipped", unavailable: "Unavailable", blocked: "Blocked" };
 
 /** Timeline times retain their recorded offset instead of adopting the viewer's timezone. */
 function eventTime(iso: string): string {
@@ -444,6 +446,11 @@ function provenance(r: ResultView): string {
   return `<p class="provenance">Revision ${r.revision}${when}${link}</p>`;
 }
 
+function reviewSummary(r: ResultView): string {
+  const rows = r.review!.map((row) => `<tr><th scope="row">${AXIS_LABELS[row.axis]}</th><td>${REVIEW_LABELS[row.status]}${row.reason ? `<p>${text(row.reason)}</p>` : ""}</td><td>${row.target ? `<a href="#${row.target}">${text(row.finding!)}</a>` : "No finding recorded"}</td><td>${row.impact ? text(row.impact) : "Not applicable"}</td><td>${row.location ? text(row.location) : "Not applicable"}</td><td>${row.blocking === undefined ? "Not applicable" : row.blocking ? "Blocking" : "Suggested"}</td></tr>`);
+  return `<div class="table"><table aria-label="Review summary"><thead><tr><th scope="col">Axis</th><th scope="col">Status</th><th scope="col">Finding</th><th scope="col">User-visible impact</th><th scope="col">Location</th><th scope="col">Outcome</th></tr></thead><tbody>${rows.join("\n")}</tbody></table></div>`;
+}
+
 function resultHtml(r: ResultView, v: View, historical = false, runtimes: Runtimes = {}): string {
   const asks = (qs: string[]) => qs.map((id) => `<a href="#${id}">Q${v.questions.get(id)!.q}</a>: ${text(v.questions.get(id)!.title)}`);
   const askLine = (qs: string[]) => (qs.length ? `\n<p class="ask"><span class="label">Asked in</span><span>${asks(qs).join("; ")}</span></p>` : "");
@@ -494,10 +501,12 @@ ${fields([["Evidence", e.evidence as string], ["Missing proof", e.missing_proof 
 ${aliases(v, e.anchor)}<h3><span class="entry-id">${e.id}</span>${text(e.title as string)}</h3>
 <p class="tag">${text(e.label as string)} (${e.blocking ? "blocking" : "non-blocking"})</p>
 ${fields([["Impact", e.impact as string], ["Action", e.action as string]])}
+${r.shape === "review" ? fields([["Axis", AXIS_LABELS[e.axis as string]], ["Location", e.location as unknown as string]]) : ""}
 <details class="evidence"><summary>Evidence</summary><p>${text(e.evidence as string)}</p></details>${figuresHtml(e.figures as Figure[] | undefined, v)}${askLine(e.questions)}
 </li>`)
       .join("\n")}\n</ol>`;
   }
+  if (r.review && historical) body = `${reviewSummary(r)}\n${body}`;
   const figures = new Set([...(r.doc?.figures ?? []), ...(r.comparison?.alternatives.flatMap((a) => a.attachments ?? []) ?? [])]);
   const listed = r.shown.filter((a) => r.attachments?.includes(a.id) && !figures.has(a.id) && a.id !== r.artifact);
   const attachments = listed.length ? `\n<div class="attachments"><p class="label">Attachments</p>${listed.map((a) => attachmentHtml(a, `${r.anchor}-${a.id}`)).join("\n")}</div>` : "";
@@ -515,6 +524,8 @@ function stageHtml(st: StageView, v: View, entryTitle: (ref: string) => string, 
   const nav: string[] = [];
   const body: string[] = [];
   const link = (id: string, label: string) => `<a href="#${id}" data-for="${id}">${esc(label)}</a>`;
+  const review = st.results.find((r) => r.review);
+  if (review) body.push(`<section class="result" id="${st.id}-review" aria-labelledby="${st.id}-review-title" data-stop><header><h2 id="${st.id}-review-title">Review summary</h2></header>${reviewSummary(review)}</section>`);
   const bg = st.background;
   const lineage = [
     ...(st.parent ? [`<li><span class="label">Continues</span> <a href="#${st.parent}">${esc(stageLabel(v, st.parent))}</a></li>`] : []),
@@ -652,7 +663,7 @@ export function render(v: View, runtimes: Runtimes = {}): string {
     const [rid, eid] = ref.split("/");
     const r = v.stages.flatMap((st) => st.results).find((x) => x.id === rid)!;
     const e = r.entries.find((x) => x.id === eid)!;
-    const name = r.shape === "cards" || r.shape === "timeline" ? (e.title as string) : r.shape === "code" ? (e.file as string) : r.shape === "ledger" ? (e.claim as string) : (e.cells as string[])[0] || e.id;
+    const name = r.shape === "cards" || r.shape === "review" || r.shape === "timeline" ? (e.title as string) : r.shape === "code" ? (e.file as string) : r.shape === "ledger" ? (e.claim as string) : (e.cells as string[])[0] || e.id;
     return `${text(r.title)} <span class="entry-id">${e.id}</span>: ${text(name)}`;
   };
   const tabs = [`<a role="tab" id="tab-overview" aria-selected="true" aria-controls="overview" href="#overview">Overview</a>`];

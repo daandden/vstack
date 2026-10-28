@@ -58,6 +58,90 @@ function openFlow(session = "s-1", skill = "grill-me"): any {
 const submit = (session: string | undefined, ...items: object[]) => run(["submit"], { session, stdin: contribution(...items) });
 const show = (flow: string) => run(["show", "--flow", flow]).json;
 
+
+const finding = (axis = "standards", extra: object = {}) => ({
+  ref: "lost-answer", axis, title: "An answer disappears", label: "issue", blocking: true,
+  impact: "A returning reader loses the recorded answer.", location: "answers.ts:42",
+  action: "Keep the answer when reconnecting.", evidence: "Reconnect reproduces the missing answer at answers.ts:42.", ...extra,
+});
+const review = (extra: object = {}) => ({
+  kind: "result", ref: "review", shape: "review", title: "Review findings",
+  axes: [
+    { axis: "standards", status: "findings" },
+    { axis: "spec", status: "clean", reason: "Every reviewed requirement is covered." },
+    { axis: "blast-radius", status: "unavailable", reason: "The external caller could not be reached." },
+  ],
+  entries: [finding()], ...extra,
+});
+
+test("a review summary links authoritative findings and stays current after a focused correction", () => {
+  const opened = openFlow("s-1", "code-review");
+  const submitted = submit("s-1", review(), round(question("fix", { results: ["review/lost-answer"] })));
+  expect(submitted.code).toBe(0);
+  const result = show(opened.flow).stages[0].results[0];
+  expect(result.review).toEqual([
+    { axis: "standards", status: "findings", finding: "An answer disappears", impact: "A returning reader loses the recorded answer.", location: "answers.ts:42", blocking: true, target: `${result.id}-e1` },
+    { axis: "spec", status: "clean", reason: "Every reviewed requirement is covered." },
+    { axis: "blast-radius", status: "unavailable", reason: "The external caller could not be reached." },
+  ]);
+  const page = readFileSync(submitted.json.page, "utf8");
+  expect(page.match(new RegExp(`href="#${result.review[0].target}"`, "g"))?.length).toBeGreaterThanOrEqual(1);
+  expect(page).toContain(`id="${result.review[0].target}"`);
+  const revised = submit("s-1", { kind: "revise", result: submitted.json.refs["review/lost-answer"], base: submitted.json.revision,
+    set: { impact: "Only the stale browser loses an answer.", location: "answers.ts:51", blocking: false } });
+  expect(revised.code).toBe(0);
+  const current = show(opened.flow).stages[0].results[0];
+  expect(current.review[0]).toMatchObject({ impact: "Only the stale browser loses an answer.", location: "answers.ts:51", blocking: false, target: result.review[0].target });
+  expect(current.entries[0].questions).toEqual([submitted.json.refs.fix]);
+});
+
+test("a Stage has one authoritative review, and a second review cannot replace or duplicate it", () => {
+  openFlow("s-1", "code-review");
+  expect(submit("s-1", review()).code).toBe(0);
+  const before = tree();
+  const duplicate = submit("s-1", review({ ref: "another", title: "Another review" }));
+  expect(duplicate.code).toBe(1);
+  expect(duplicate.stderr).not.toBe("");
+  expect(tree()).toEqual(before);
+});
+
+test("a review with no findings states clean, skipped, unavailable, and blocked axes without invented cards", () => {
+  const opened = openFlow("s-1", "code-review");
+  const axes = [
+    { axis: "standards", status: "clean", reason: "No standards breach found." },
+    { axis: "spec", status: "skipped", reason: "There is no originating spec." },
+    { axis: "blast-radius", status: "blocked", reason: "The required runtime is missing." },
+  ];
+  const first = submit("s-1", review({ axes, entries: [] }));
+  expect(first.code).toBe(0);
+  let result = show(opened.flow).stages[0].results[0];
+  expect(result.review).toEqual(axes);
+  expect(result.entries).toEqual([]);
+  axes[2] = { axis: "blast-radius", status: "unavailable", reason: "The provider is unreachable." };
+  const next = submit("s-1", { kind: "revise", result: first.json.refs.review, base: first.json.revision, set: { axes } });
+  expect(next.code).toBe(0);
+  result = show(opened.flow).stages[0].results[0];
+  expect(result.review).toEqual(axes);
+  expect(result.entries).toEqual([]);
+});
+
+test.each([
+  ["a missing axis", { axes: [{ axis: "standards", status: "findings" }] }],
+  ["a repeated axis", { axes: [{ axis: "standards", status: "findings" }, { axis: "standards", status: "clean", reason: "No breach." }, { axis: "spec", status: "clean", reason: "No gap." }] }],
+  ["a clean axis carrying an issue", { axes: [{ axis: "standards", status: "clean", reason: "No breach." }, { axis: "spec", status: "clean", reason: "No gap." }, { axis: "blast-radius", status: "skipped", reason: "Not triggered." }] }],
+  ["findings status with no finding", { entries: [] }],
+  ["an unavailable axis with no reason", { axes: [{ axis: "standards", status: "findings" }, { axis: "spec", status: "clean", reason: "No gap." }, { axis: "blast-radius", status: "unavailable" }] }],
+  ["a finding with no location", { entries: [finding("standards", { location: "" })] }],
+  ["a finding on an unknown axis", { entries: [finding("other")] }],
+] as const)("a review refuses %s without losing previously published work", (_name, extra) => {
+  openFlow("s-1", "code-review");
+  const before = tree();
+  const refused = submit("s-1", { kind: "topic", title: "Earlier item", summary: "Must not land", body: "No partial write.", sources: ["#285"] }, review(extra));
+  expect(refused.code).toBe(1);
+  expect(refused.stderr).not.toBe("");
+  expect(tree()).toEqual(before);
+});
+
 test("a bound caller submits a round and gets assigned references, a numbered label-only ask, and the revision", () => {
   const opened = openFlow();
   const r = submit("s-1", round(question("scope"), question("limit")));
