@@ -4,6 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [7.0.6] - 2026-10-28
+
+- Every new Grilling page question lists its reader needs, each with the Visual kind that shows it: a Source view, a source excerpt, a Context diagram, an Option diagram, an option preview, a Before and after, a comparison table, a Data chart, a Scenario walkthrough, or prose. The agent prepares the complete question and appends it once. `grilling-page.ts` refuses an appended question with no needs, a need with no visual of its kind on the question or its options, or a visual that no need names. Stored questions still render. The page lists each question's needs under its description. improve-codebase-architecture repeats its card figures and usage examples on the pick and design questions (ADR 0042).
+- Clarify Grilling page authoring: name concrete decision distinctions, share concise visuals across needs of the same kind, preserve qualifications and evidence limits, label authored examples hypothetical, state chart measurement scope, and use supported link targets for local artifacts.
+
 ## [7.0.5] - 2026-10-28
 
 - The agent executing each Grilling page step, including a subagent in its own session, decides separately whether a Context diagram and an Option diagram help and chooses each Mermaid type. Remove the Grilling page visual judge, its rubric, its calibration checker and cases, and its setup claims. The Addon judge is unchanged (ADR 0040).

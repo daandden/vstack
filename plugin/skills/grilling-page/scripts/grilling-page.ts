@@ -21,7 +21,7 @@ import { createHash } from "node:crypto";
 import { constants, tmpdir } from "node:os";
 import { dlopen, read } from "bun:ffi";
 
-type Visual = { text?: string; html?: string; css?: string; svg?: string };
+type Visual = { text?: string; html?: string; css?: string; svg?: string; kind?: string };
 type Option = { label: string; does: string; gains: string[]; costs: string[]; recommended?: string; preview?: Visual };
 type Rec = Record<string, any> & { type: string; id: string };
 type Line = { rec: Rec; line: number };
@@ -132,6 +132,77 @@ function checkVisuals(v: unknown, where: string): Visual[] {
 }
 const visualsOf = (v: Visual | Visual[] | undefined): Visual[] => (v === undefined ? [] : Array.isArray(v) ? v : [v]);
 
+const VISUAL_KINDS: Record<string, string> = {
+  "source-view": "Source view",
+  "source-excerpt": "Source excerpt",
+  "context-diagram": "Context diagram",
+  "option-diagram": "Option diagram",
+  "option-preview": "Option preview",
+  "before-after": "Before and after",
+  "comparison-table": "Comparison table",
+  "data-chart": "Data chart",
+  scenario: "Scenario walkthrough",
+  prose: "Prose",
+};
+
+const SHOWN_KINDS = Object.keys(VISUAL_KINDS).filter((k) => k !== "prose");
+
+function checkNeeds(r: Rec, where: string, fresh: boolean): void {
+  if (r.needs === undefined && fresh) fail(where, "needs must list what the reader must recognize, know, or compare to choose, as one or more { need, kind }");
+  entryList(r, "needs", ["need", "kind"], where);
+  const needs = (r.needs ?? []) as Rec[];
+  needs.forEach((n, i) => {
+    if (!VISUAL_KINDS[n.kind]) fail(`${where}: needs ${i + 1}`, `kind must be ${listed(Object.keys(VISUAL_KINDS))}`);
+  });
+  const visuals = visualsOf(r.visual);
+  const shown: [string, string | undefined][] = [
+    ...visuals.map((v, i): [string, string | undefined] => [Array.isArray(r.visual) ? `visual ${i + 1}` : "visual", v.kind]),
+    ...(r.options as Option[]).flatMap((o, i): [string, string | undefined][] => (o.preview ? [[`option ${letter(i)}: preview`, o.preview.kind]] : [])),
+  ];
+  for (const [what, kind] of shown) {
+    if (kind === undefined && !fresh) continue;
+    if (kind === undefined || !SHOWN_KINDS.includes(kind)) fail(`${where}: ${what}`, `kind must name the Visual kind it shows: ${listed(SHOWN_KINDS)}`);
+    if (kind === "option-preview" && !what.endsWith("preview")) fail(`${where}: ${what}`, "kind option-preview goes only on an option preview");
+  }
+  if (!fresh) return;
+  needs.forEach((n, i) => {
+    if (n.kind !== "prose" && !shown.some(([, k]) => k === n.kind)) fail(`${where}: needs ${i + 1}`, `no visual or option preview on this question is a ${n.kind}. Add one, or change the need's kind`);
+  });
+  for (const [what, kind] of shown) if (!needs.some((n) => n.kind === kind)) fail(`${where}: ${what}`, `no need names kind ${kind}. Add the need it meets, or drop the visual`);
+}
+
+function checkQuestion(r: Rec, where: string, fresh: boolean): void {
+  str(r, "round", where);
+  int(r, "q", where);
+  if (["plain", "why", "settled"].some((k) => r[k] !== undefined)) fail(where, "has plain, why, and settled from an older page; write one description instead and start a new page");
+  for (const k of ["title", "description"]) str(r, k, where);
+  str(r, "example", where, true);
+  str(r, "again", where, true);
+  entryList(r, "today", ["text", "source"], where);
+  entryList(r, "terms", ["term", "text"], where);
+  if (r.visual !== undefined) checkVisuals(r.visual, where);
+  if (r.report_entries !== undefined && strList(r.report_entries, "report_entries", where).some((e) => !/^[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9-]*$/.test(e))) fail(where, "report_entries must list <report id>/<entry id> strings");
+  if (r.topics !== undefined) strList(r.topics, "topics", where);
+  if (!Array.isArray(r.options) || r.options.length === 0) fail(where, "options must list one or more options");
+  let recommended = 0;
+  (r.options as Option[]).forEach((o, i) => {
+    const ow = `${where}: option ${letter(i)}`;
+    if (typeof o !== "object" || o === null) fail(ow, "must be an object");
+    const label = str(o as unknown as Rec, "label", ow)!;
+    if (!label.startsWith(`${letter(i)}. `) || label.slice(3).trim() === "") fail(ow, `label must start with "${letter(i)}. ", the same text as the ask label`);
+    str(o as unknown as Rec, "does", ow);
+    strList(o.gains, "gains", ow);
+    strList(o.costs, "costs", ow);
+    if (o.recommended !== undefined) {
+      str(o as unknown as Rec, "recommended", ow);
+      recommended++;
+    }
+    if (o.preview !== undefined) checkVisual(o.preview, `${ow}: preview`);
+  });
+  if (recommended > 1) fail(where, "at most one option can be recommended");
+  checkNeeds(r, where, fresh);
+}
+
 const STATE_LABELS: Record<string, string> = { "not-started": "Not started", "in-progress": "In progress", finished: "Finished" };
 const STAGE_STATES = Object.keys(STATE_LABELS);
 const STAGE_LABELS: Record<string, string> = {
@@ -196,10 +267,11 @@ function checkReport(r: Rec, where: string): void {
 
 type State = { page: Rec; order: Rec[]; questions: Map<string, Rec>; answers: Map<string, Rec>; rounds: Map<string, Rec>; stages: Rec[]; reports: Map<string, Rec>; backgrounds: Map<string, Rec>; topics: Map<string, Rec>; flow?: Rec; records: Rec[] };
 
-function check(lines: Line[], folder: string): State {
+function check(lines: Line[], folder: string, batch?: Set<Line>): State {
   const latest = new Map<string, Line>();
   const first: string[] = [];
   for (const l of lines) {
+    if (l.rec.type === "question" && batch?.has(l)) checkQuestion(l.rec, `line ${l.line}: question ${l.rec.id}`, true);
     const prev = latest.get(l.rec.id);
     if (prev && prev.rec.type !== l.rec.type) fail(`line ${l.line}`, `id ${l.rec.id} is a ${prev.rec.type} on line ${prev.line}, so it cannot become a ${l.rec.type}`);
     if (!prev) first.push(l.rec.id);
@@ -216,7 +288,8 @@ function check(lines: Line[], folder: string): State {
   let page: Rec | undefined;
   let flow: Rec | undefined;
   const order: Rec[] = [];
-  for (const { rec: r, line } of all) {
+  for (const l of all) {
+    const { rec: r, line } = l;
     const where = `line ${line}: ${r.type} ${r.id}`;
     switch (r.type) {
       case "page":
@@ -240,34 +313,7 @@ function check(lines: Line[], folder: string): State {
         order.push(r);
         break;
       case "question": {
-        str(r, "round", where);
-        int(r, "q", where);
-        if (["plain", "why", "settled"].some((k) => r[k] !== undefined)) fail(where, "has plain, why, and settled from an older page; write one description instead and start a new page");
-        for (const k of ["title", "description"]) str(r, k, where);
-        str(r, "example", where, true);
-        str(r, "again", where, true);
-        entryList(r, "today", ["text", "source"], where);
-        entryList(r, "terms", ["term", "text"], where);
-        if (r.visual !== undefined) checkVisuals(r.visual, where);
-        if (r.report_entries !== undefined && strList(r.report_entries, "report_entries", where).some((e) => !/^[a-z0-9][a-z0-9-]*\/[a-z0-9][a-z0-9-]*$/.test(e))) fail(where, "report_entries must list <report id>/<entry id> strings");
-        if (r.topics !== undefined) strList(r.topics, "topics", where);
-        if (!Array.isArray(r.options) || r.options.length === 0) fail(where, "options must list one or more options");
-        let recommended = 0;
-        (r.options as Option[]).forEach((o, i) => {
-          const ow = `${where}: option ${letter(i)}`;
-          if (typeof o !== "object" || o === null) fail(ow, "must be an object");
-          const label = str(o as unknown as Rec, "label", ow)!;
-          if (!label.startsWith(`${letter(i)}. `) || label.slice(3).trim() === "") fail(ow, `label must start with "${letter(i)}. ", the same text as the ask label`);
-          str(o as unknown as Rec, "does", ow);
-          strList(o.gains, "gains", ow);
-          strList(o.costs, "costs", ow);
-          if (o.recommended !== undefined) {
-            str(o as unknown as Rec, "recommended", ow);
-            recommended++;
-          }
-          if (o.preview !== undefined) checkVisual(o.preview, `${ow}: preview`);
-        });
-        if (recommended > 1) fail(where, "at most one option can be recommended");
+        if (!batch?.has(l)) checkQuestion(r, where, false);
         questions.set(r.id, r);
         break;
       }
@@ -452,6 +498,8 @@ const entryName = (r: Rec, e: Rec): string => (r.shape === "cards" ? e.title : r
 
 function questionHtml(q: Rec, a: Rec | undefined, baseDir: string, reports: Map<string, Rec>, topics: Map<string, Rec>, open: boolean): string {
   const qid = `q-${q.id}`;
+  const wanted = ((q.needs ?? []) as Rec[]).map((n) => `<li>${text(n.need)} <span class="kind">${VISUAL_KINDS[n.kind]}</span></li>`).join("");
+  const needs = wanted ? `\n<div class="needs"><p class="label">Reader needs</p><ul class="bullets">${wanted}</ul></div>` : "";
   const facts = ((q.today ?? []) as Rec[]).map((f) => `<li>${text(f.text)} <span class="source">${text(f.source)}</span></li>`).join("");
   const today = facts ? `\n<div class="today"><p class="label">Today</p><ul class="bullets">${facts}</ul></div>` : "";
   const notes = ((q.terms ?? []) as Rec[]).map((t) => `<dt>${text(t.term)}</dt><dd>${text(t.text)}</dd>`).join("");
@@ -483,7 +531,7 @@ function questionHtml(q: Rec, a: Rec | undefined, baseDir: string, reports: Map<
   const visual = visualsOf(q.visual).map((v, i) => visualHtml(v, `${qid}-visual${i ? `-${i + 1}` : ""}`, "visual", baseDir)).join("\n");
   return `<article class="question" id="${qid}" data-state="${state}"${open ? " data-open" : ""} data-stop>
 <h3><span class="qnum">Q${q.q}</span>${text(q.title)}</h3>
-<div class="description">${description(q.description)}</div>${reportLinks}${today}${terms}${topicNotes}${example}
+<div class="description">${description(q.description)}</div>${needs}${reportLinks}${today}${terms}${topicNotes}${example}
 ${visual}<ol class="options">
 ${options}
 </ol>${line ? `\n<p class="answer" data-state="${state}"><span class="label">${line[0]}</span><span>${line[1]}</span></p>` : ""}
@@ -868,7 +916,7 @@ try {
   }
   let lines = [...before, ...after];
   const folder = dirname(state);
-  let s = check(lines, basename(folder));
+  let s = check(lines, basename(folder), command === "append" ? new Set(after) : undefined);
   let target = folder;
   if (command === "rename") {
     if (!s.flow) fail("rename", "rename needs a flow record. Append one first");

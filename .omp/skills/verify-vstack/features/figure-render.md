@@ -1,6 +1,6 @@
 # Figure render
 
-vstack-figures' render script turns one Mermaid source into a Catppuccin Mocha SVG with Pele, under Bun alone. The SVG holds one `<style>` that sets every `--pele-*` variable and a mauve rule for each focal id. Bad Mermaid exits 1 with Pele's parse error and writes no file. The Grilling page takes the SVG as a `{ "svg": "figures/<file>" }` visual.
+vstack-figures' render script turns one Mermaid source into a Catppuccin Mocha SVG with Pele, under Bun alone. The SVG holds one `<style>` that sets every `--pele-*` variable and a mauve rule for each focal id. Bad Mermaid exits 1 with Pele's parse error and writes no file. A Grilling page question declares the figure's reader need and takes the SVG as a `{ "svg": "figures/<file>", "kind": "<kind>" }` visual.
 
 ## Sub-features
 
@@ -44,7 +44,7 @@ Preconditions:
    {"type":"flow","id":"flow","slug":"verify-figure","key":"verify-figure","state":"open"}
    {"type":"stage","id":"docs","skill":"grill-with-docs","state":"in-progress"}
    {"type":"round","id":"s1-r1","stage":"docs"}
-   {"type":"question","id":"s1-r1-q1","title":"Where does a split order wait?","description":"The figure shows the stock check.","visual":{"svg":"figures/order.svg"},"options":[{"label":"A. Wait","does":"Hold the order.","gains":["One shipment"],"costs":["Slower"]},{"label":"B. Split","does":"Ship what is in stock.","gains":["Faster"],"costs":["Two shipments"]}]}
+   {"type":"question","id":"s1-r1-q1","title":"Where does a split order wait?","description":"The figure shows the stock check.","needs":[{"need":"Follow the stock check and the split-shipment path.","kind":"context-diagram"}],"visual":{"svg":"figures/order.svg","kind":"context-diagram"},"options":[{"label":"A. Wait","does":"Hold the order.","gains":["One shipment"],"costs":["Slower"]},{"label":"B. Split","does":"Ship what is in stock.","gains":["Faster"],"costs":["Two shipments"]}]}
    ```
 
    Run `bun "$PAGE" append "$F/page.jsonl" "$R/records.jsonl"`. Expect exit 0 and only `$F/page.html` on stdout. The page holds `class="pele pele-flowchart pele-f` and `--pele-bg: #1e1e2e;`.

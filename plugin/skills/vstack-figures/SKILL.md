@@ -23,7 +23,7 @@ A caller is a skill step that shows figures to a person. The caller writes each 
 
 ## Place the figure
 
-Place figures in the order the caller drew them. To inline a figure, read the SVG and paste its `<svg>` element as written, with its `<style>`. A caller that takes a file gets the path instead: the Grilling page takes `{ "svg": "figures/<file>" }`, with the SVG written to the flow folder's `figures/`.
+Place figures in the order the caller drew them. To inline a figure, read the SVG and paste its `<svg>` element as written, with its `<style>`. A caller that takes a file gets the path instead: a Grilling page question takes `{ "svg": "figures/<file>", "kind": "<Visual kind id>" }`, with the SVG written to the flow folder's `figures/`.
 
 ## Supported Mermaid types
 
