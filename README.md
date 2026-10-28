@@ -24,6 +24,12 @@ The CI section writes `ci.md` independently of the Code host. For GitHub Actions
 
 To refresh, run `git pull` in the clone and start a new omp session. The link points at the working tree, so there is nothing else to update.
 
+## Flow page
+
+A Flow is related work on one change, tracker item, or topic, across skill runs and omp sessions. Its Flow page is one document with an Overview, one tab per Stage, and a Topics tab. Skills publish typed content to it through the `flow-page` helper: questions and answers, Results (cards, ledger, table, review, Document, Comparison, Metrics, Code/diff, Timeline, Quiz, and Interactive prototype), attachments, and workflow progress. Code owns the ids, numbering, links, layout, and rendering, so no skill writes page HTML.
+
+The helper writes a static page under Scratch `flow/` and starts the Local Flow host on demand: one loopback server per user that serves the live page, refreshes it as work arrives without moving the reader, runs captured prototypes on a separate origin, and observes git, the Code host, and CI read-only. The static page stays readable when the host is stopped. `n` jumps to the newest open question, `t` opens the Stage tree, and `j` and `k` move through a tab. A structured Grilling page from vstack 6 or earlier continues as a Flow with `flow-page`'s `migrate` command; a handwritten one stays as it was.
+
 ## Flow links in omp
 
 When a session has a bound Flow, the extension displays its URL after every main-agent reply, including blocker replies and follow-up explanations. The extension does not open a browser or start another model turn. If the local host fails, the message gives the static page path and the observed error instead.
@@ -57,7 +63,7 @@ The repo scripts need Bun. Run `bun run test` and `bun scripts/check-register.ts
 | `pins.yaml` | no | One entry per Upstream: repo, Pin, how the next Pin is found, and which tree entries count as Upstream items. |
 | `decision-register.yaml` | no | One row per Upstream item, `originals:` for vstack-only artifacts, and `utility:` for Utility skills. |
 | `house-style.yaml` | no | The House style: replacement rows and rules that turn Upstream text into vstack text. |
-| `scripts/` | no | Bun CLIs: `check-register.ts`, `vstack-maintain.ts`, and `addon-judge-check.ts`. `visual_judge_check.py` runs in omp's Python eval. `lib/` holds shared modules. `load-smoke.sh` checks a fresh omp load. |
+| `scripts/` | no | Bun CLIs: `check-register.ts`, `vstack-maintain.ts`, and `addon-judge-check.ts`. `lib/` holds shared modules. `load-smoke.sh` checks a fresh omp load. |
 | `addon-questions.json`, `sample-prompts.json`, `sample-briefs.json` | no | The Addon judge catalog and its two sample corpora, read from the linked clone. |
 | `.omp/skills/verify-vstack/` | no | The Verify skill, feature recipes, and omp driver. |
 | `tests/` | no | Test suites, run with `bun run test`. Each script is run as a process over temp-dir fixtures (`tests/support/`). |
@@ -122,21 +128,6 @@ The case file has a `cases` array. Each case has a unique filename-safe `id`, a 
 For each form, the runner sends the same request as the check. A form passes when jev selects every expected Addon at 0.70 or more and nothing outside `expected` and `allowed`. The case grade is the mean of its form grades. A request that succeeds after an API retry scores zero on `pass`.
 
 The runner appends completed slots to `results.jsonl` and unscorable API, model, or response failures to `errors.jsonl`. Failures exit nonzero. With `--state`, it writes transcripts only for explicitly listed training ids. Without it, it writes no transcripts. Reusing an output directory resumes completed `(case id, repetition)` slots. Use a fresh output directory whenever the catalog, case file, model, or scoring rules change. `TYPESAFE_ENDPOINT` overrides the API URL for local boundary checks.
-
-### Visual judge calibration
-
-`visual-judge-cases.json` at the repo root is the calibration set for grilling-page's visual judge. Each judge request asks four questions about one page question. Two are the yes-or-no diagram questions, with their thresholds from `plugin/skills/grilling-page/references/visual-judge.json`. The other two rank the diagram type for each kind and name the types only. The state holds the page question as `question` and the visual-type guide in diagram-design's `SKILL.md` as `visual_types`, a map from each type name to what it shows. jev reads the guide once per request this way, not once per type question (ADR 0024). Diagram cases are real Grilling page questions from vstack and Tern pages, labeled by gpt-6.1-sol at high thinking. A diagram case passes when each kind's yes probability reaches its threshold exactly when the case labels that kind true. Type cases are one hand-written question per guide type. A type case passes when its expected type, or an allowed one, is among the top three types of either type question.
-
-After a change to the rubric or to the guide, run the check in one omp Python eval cell, with the checkout root as the working directory:
-
-```python
-import runpy
-check = runpy.run_path("scripts/visual_judge_check.py")["check"]
-await check(judge_batch)
-```
-
-`scripts/visual_judge_check.py` builds each request with `judge_request()` from `plugin/skills/grilling-page/scripts/visual_judge.py`. It sends every case through eval's `judge_batch` global, as the helper does. It prints one `MISS` line per missed case, then the pass count and the judge model. It returns `True` when every case passes and `False` when a case misses. If `judge_batch` did not use a TypeSafe jev model, the check raises `RuntimeError` and grades nothing, because `judge_batch` falls back to a chat model without TypeSafe credentials. It also raises when a case gets no answer.
-
 
 ### Pins and Upstream clones
 
@@ -249,7 +240,7 @@ A lint over shipped text starts from `lintTargets(ctx)` in `scripts/lib/checks/s
 
 #### Page templates
 
-Every page vstack writes for the user (the Grilling page, explain's pages, and the how and teach pages) starts from a page template. Every template follows good-css (#61). A page template is any `*.html` or `*.css` file under `plugin/skills/<name>/templates/`. `scripts/lib/checks/pages.ts` finds these files and runs the CSS Upstream's `page_lint:` script at its Pin over them. Each flagged template reports one `page-css` failure. With no template, the check prints `page templates: none` and reads nothing. Templates hold no figure. The skill draws its figure through diagram-design, exports it, and inlines the export in the rendered page.
+Every page vstack writes for the user (the Flow page and teach's lessons) starts from a page template. Every template follows good-css (#61). A page template is any `*.html` or `*.css` file under `plugin/skills/<name>/templates/`. `scripts/lib/checks/pages.ts` finds these files and runs the CSS Upstream's `page_lint:` script at its Pin over them. Each flagged template reports one `page-css` failure. With no template, the check prints `page templates: none` and reads nothing. Templates hold no figure. The skill draws its figure through diagram-design, exports it, and inlines the export in the rendered page.
 
 ### House style
 
@@ -368,15 +359,15 @@ Each `rows[]` entry has `id`, `upstream`, `kind`, `disposition`, and `artifacts`
 | `staged` | `{path, files, dropped}` for changed or moved adopt rows, else `null`. `files` records each path and verified blob SHA. `dropped` lists `agents/openai.yaml` when present Upstream. |
 ### Existing-code explanations
 
-how, why, and explain are Utility skills adapted from pstack. how and why stay hidden and callers read them through `skill://`. explain can start from its description. how traces mechanisms and writes its cited page under Scratch `how/`. why profiles git, the remote code host, the configured tracker, and reachable MCP tools before investigation. Its synthesizer always gets a fresh context. Both return their output unedited to callers.
+how, why, and explain are Utility skills adapted from pstack. how and why stay hidden and callers read them through `skill://`. explain can start from its description. how traces mechanisms and, on a direct run, publishes its cited explanation as a Document Result on the Flow page. why profiles git, the remote code host, the configured tracker, and reachable MCP tools before investigation. Its synthesizer always gets a fresh context. Both return their output unedited to callers.
 
-explain combines how and why through a Fan-out line. It keeps one conversation page under Scratch `explain/`, with a series of exported, inlined SVG figures from diagram-design. Templates live in each page-producing skill's `templates/` directory, where `check-register` runs the pinned CSS lint. Matt's teach stays a separate skill. The pstack `teach` reference row applies only to pstack items.
+explain combines how and why through a Fan-out line. It publishes one Document Result per answer on the bound Flow page, or starts a Flow, with figures from vstack-figures captured as attachments. Its figure sources stay under Scratch `explain/`. Page templates live in `flow-page/templates/` and `teach/templates/`, where `check-register` runs the pinned CSS lint. Matt's teach stays a separate skill. The pstack `teach` reference row applies only to pstack items.
 
 ### Session
 
 `skill://session` is the Addon that merges Matt's retro with pstack's reflect and correct. It reads one session: the current JSONL from `PI_SESSION_FILE`, or a session that the user names, found through `archive`, plus the children that the session references. Four lenses (judgment, tooling, divergent, and environment) run as one Fan-out. The synthesizer gets a fresh context. A missing current transcript uses a labeled digest. A named session has no digest, and the skill never guesses a session.
 
-The grill resolves skill targets with `omp skill list --json` and asks one question per finding on the Grilling page. implement edits only approved lessons. Own skills tracked by the session's checkout use its normal branch, commit, and End state. Other own skills get in-place, uncommitted edits with a Scratch snapshot and a no-index diff in the shared code-review pass. An approved environment finding is fixed at the highest level that works (architecture, types, a lint or CI check, a test, then docs), with one commit per mistake class.
+The grill resolves skill targets with `omp skill list --json` and asks one question per finding on the Flow page. implement edits only approved lessons. Own skills tracked by the session's checkout use its normal branch, commit, and End state. Other own skills get in-place, uncommitted edits with a Scratch snapshot and a no-index diff in the shared code-review pass. An approved environment finding is fixed at the highest level that works (architecture, types, a lint or CI check, a test, then docs), with one commit per mistake class.
 
 Inside a vstack clone, approved vstack lessons use `skill://vstack-maintain` for a normal Hand edit. From another project, implement files one issue in the vstack repo's tracker for each approved vstack lesson, or comments on a matching open issue, and leaves the linked clone unchanged. An adopt item's issue names the flip to adapt, and a new skill's issue carries its draft and confirmed home. Others' installs stay Backlog, which the reply only lists. Substantive edits, descriptions, and new skills use skill-creator. When no row is tracked, the reply states that nothing was committed. The reviewer references belong to the session artifact and its Upstream rows, not `originals:`.
 
@@ -387,6 +378,8 @@ Inside a vstack clone, approved vstack lessons use `skill://vstack-maintain` for
 `bun run test` runs `tests/` only (`bunfig.toml`) with a 30 s test timeout, because the suites start real `git`, `omp`, and `bun` processes. Bun applies a `setDefaultTimeout` from a preload to one test file only, so the timeout is the `--timeout` flag in the `test` script. The check-register tests build fixture Upstream git repos with tags, a moved item, and a removed item, then a vstack checkout committed as the version base. They run the script as a process and assert its exit code and its failures by class and item. One case serves a local stand-in for the GitHub API, so the `github` source is tested too.
 
 `tests/vstack-maintain.test.ts` runs the maintainer CLI over fixture repos and Upstreams. It covers read-only planning, overlap previews and target checks, combined Update and Hand edit preparation, version bookkeeping, and gates. Injected commands replace external validation and load boundaries. The tests inspect process output, exit codes, and resulting files.
+
+`tests/flow-page*.test.ts` run the flow-page script, its Local Flow host, and the extension as processes or through the extension host. They submit contributions through the same CLI that skills use and read receipts, refusals, `show` snapshots, stored bytes, and page element ids, never page wording or markup. `tests/flow-page-migrate.test.ts` migrates `page.jsonl` states in `tests/fixtures/flow-page-migrate/` that the retired grilling-page writer produced. The browser and native omp behavior is proved live through the Verify recipe, not by a browser test harness.
 
 `tests/addon-tools.test.ts` exercises the main-session tools and run-start instruction through the registered extension handlers with a controlled judge. It covers gathered intent, question scope, the selection threshold, saved-entry dedup, concurrent calls, cancellation, and the four-second deadline. `tests/addon-selection.test.ts` covers the preserved subagent Brief selection and session ancestry.
 

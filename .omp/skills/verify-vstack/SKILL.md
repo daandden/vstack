@@ -1,18 +1,18 @@
 ---
 name: verify-vstack
-description: Drives the vstack omp plugin from a checkout as a user and captures proof. Covers the plugin as a new omp session loads it (skills, /skill:<name> commands, agents, rules, the /vstack-clean Command), the Bun CLIs and Python scripts that skills run, the Grilling page in a browser, and the maintainer CLIs under scripts/. Use to prove a change under plugin/ or scripts/ works before you report it done.
+description: Drives the vstack omp plugin from a checkout as a user and captures proof. Covers the plugin as a new omp session loads it (skills, /skill:<name> commands, agents, rules, the /vstack-clean Command), the Bun CLIs and Python scripts that skills run, the Flow page and its Local Flow host in a browser, and the maintainer CLIs under scripts/. Use to prove a change under plugin/ or scripts/ works before you report it done.
 ---
 
 # Verify vstack
 
-vstack is an omp plugin. It has no build step and no server: omp loads `plugin/` (skills, agents, rules, and the TypeScript extension `plugin/extensions/vstack.ts`) when a session starts. To verify it, you start a fresh omp session on a throwaway home with the plugin linked, and you act through that session the way a user does.
+vstack is an omp plugin. It has no build step: omp loads `plugin/` (skills, agents, rules, and the TypeScript extension `plugin/extensions/vstack.ts`) when a session starts. The one server is the Local Flow host, which the flow-page script starts on demand. To verify the plugin, you start a fresh omp session on a throwaway home with the plugin linked, and you act through that session the way a user does.
 
 The user-facing parts:
 
 - Primary: the plugin inside an omp session. That covers the skill list, `/skill:<name>` commands, the model-free `/vstack-clean` Command that the extension registers, the agents in `task`, and the always-on rules.
-- Bun CLIs that skills run through `bun "$(realpath skill://<skill>/scripts/<script>.ts)"`, such as the Scratch scripts under vstack-tmp and the grilling-page renderer.
+- Bun CLIs that skills run through `bun "$(realpath skill://<skill>/scripts/<script>.ts)"`, such as the Scratch scripts under vstack-tmp and the flow-page script.
 - Python scripts that skills run in omp's eval tool with `runpy`, such as the diagram-design scripts.
-- The HTML pages those scripts write, such as the Grilling page. You view them in a browser.
+- The HTML pages those scripts write or serve, such as the Flow page from a `file://` path or its live `http://127.0.0.1` URL. You view them in a browser.
 - The maintainer CLIs in `scripts/` (`check-register.ts`, `vstack-maintain.ts`, `addon-judge-check.ts`, `load-smoke.sh`), documented in the repo `README.md`.
 
 `features/README.md` indexes the feature map. Read it, then the feature file for the change, before you drive anything.
@@ -33,11 +33,11 @@ The shared instance is your own omp session and the real `~/.omp`. Never use it 
 
 ## Launch
 
-There is nothing to build. A launch is one drive: `scripts/drive.ts` links the plugin into the run's home, starts a stub model, starts `omp --mode rpc`, sends the RPC commands you give it, and stops both processes before it exits.
+There is nothing to build. A launch is one drive: `scripts/drive.ts` links the plugin into the run's home, starts a stub model, starts `omp --mode rpc` (or `--mode rpc-ui` with `--rpc-ui`), sends the RPC commands you give it, and stops both processes before it exits.
 
 ```sh
 bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN_DIR" --name <drive> \
-  [--no-ui] [--session] [--replies <replies.json>] [--ui-replies <ui.json>] '<rpc command json>' ...
+  [--rpc-ui] [--no-ui] [--session] [--replies <replies.json>] [--ui-replies <ui.json>] '<rpc command json>' ...
 ```
 
 - `<drive>` names the evidence dir `$VERIFY_RUN_DIR/<drive>/`. Use the feature ID. The dir must be new. If it exists, the script exits 2 and writes nothing, so the earlier proof stays as it was. To retry a drive, give a new name such as `<feature>-retry1`, or start a new run dir. Never delete the old dir to reuse its name.
@@ -49,6 +49,7 @@ Readiness: the script waits for the response to each command, and for the `promp
 
 Teardown: the script stops its own omp process and stub server. If it was killed before that, `scripts/cleanup.sh` stops what it left (see Cleanup).
 `--no-ui` passes the same flag to `omp --mode rpc`. Extensions get `ctx.hasUI: false`. omp drops extension UI notifications, so a missing warning is a product finding when the feature requires an observable refusal.
+`--rpc-ui` starts `omp --mode rpc-ui`. omp 18.13 registers the `ask` tool only in that mode; in `--mode rpc`, a stub `ask` call fails with `Tool ask not found`. Each `ask` question reaches the drive as an `extension_ui_request` `select` frame whose options end with `Other (type your own)`. Picking that option opens an `editor` frame for the custom words. `--ui-replies` answers both like any other dialog. Use it for every drive whose model calls `ask`.
 `--session` drops the `--no-session` flag that a drive passes by default. omp then writes the session file under `$VERIFY_RUN_DIR/data/home/.omp/agent/sessions/` and holds its lease under `$VERIFY_RUN_DIR/data/home/.omp/run/session-owners/` while the drive runs. Tool calls get `PI_SESSION_ID` in both modes, but only with `--session` does a session file and a held lease back it. Use it for a skill whose script checks the running session, such as clean-wt.
 
 For a load check with no session turn, use the repo's own load gate. `scripts/load.sh` runs `loadGate` from the checkout's `scripts/lib/update-gates.ts`, which runs `scripts/load-smoke.sh` on a throwaway home. The gate fails when a registered skill, agent, or rule is missing, when the extension's `vstack-clean` Command is missing, or when omp warns about a skill:

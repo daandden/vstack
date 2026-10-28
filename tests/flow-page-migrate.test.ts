@@ -1,7 +1,7 @@
-// flow-page's migrate command run as a process: a structured Grilling page, written by grilling-page.ts itself, becomes
-// a Flow in the Flow page store with its records intact, and a page without structured state is left alone (spec #267
-// D13). Tests read receipts, refusals, the `show` snapshot, stored bytes, and the page's element ids, never page
-// wording or markup.
+// flow-page's migrate command run as a process: a structured Grilling page becomes a Flow in the Flow page store with
+// its records intact, and a page without structured state is left alone (spec #267 D13). The historical states under
+// fixtures/flow-page-migrate are page.jsonl files that the retired grilling-page writer produced. Tests read
+// receipts, refusals, the `show` snapshot, stored bytes, and the page's element ids, never page wording or markup.
 
 import { afterAll, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
@@ -11,9 +11,8 @@ import { join } from "node:path";
 import { repoKey, scratchRoot } from "../plugin/skills/vstack-tmp/scripts/scratch.ts";
 import { ENV, git } from "./support/fixture.ts";
 
-const SCRIPTS = join(import.meta.dir, "..", "plugin", "skills");
-const FLOW_PAGE = join(SCRIPTS, "flow-page", "scripts", "flow-page.ts");
-const GRILLING_PAGE = join(SCRIPTS, "grilling-page", "scripts", "grilling-page.ts");
+const FLOW_PAGE = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
+const FIXTURES = join(import.meta.dir, "fixtures", "flow-page-migrate");
 const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-page-migrate-")));
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 
@@ -50,13 +49,10 @@ const ok = (r: Run): any => {
   return r.json;
 };
 
-/** Writes records to a Grilling page with the old page script, as producers did before flow-page. */
-function grill(folder: string, ...records: object[]) {
+/** Puts a captured historical page.jsonl state into a Grilling folder, as the retired writer left it. */
+function historical(folder: string, fixture: string) {
   mkdirSync(folder, { recursive: true });
-  const r = Bun.spawnSync(["bun", GRILLING_PAGE, "append", join(folder, "page.jsonl"), "-"], {
-    stdin: new TextEncoder().encode(records.map((x) => JSON.stringify(x)).join("\n")), stdout: "pipe", stderr: "pipe",
-  });
-  expect(r.exitCode).toBe(0);
+  writeFileSync(join(folder, "page.jsonl"), readFileSync(join(FIXTURES, fixture)));
 }
 
 /** Every file under `dir` with its bytes. */
@@ -74,46 +70,14 @@ function tree(dir: string): Record<string, string> {
 }
 
 const option = (label: string, extra: object = {}) => ({ label, does: `${label} does`, gains: [`${label} gain`], costs: [`${label} cost`], ...extra });
-const question = (id: string, round: string, extra: object = {}) => ({
-  type: "question", id, round, title: `Which ${id}?`, description: `Why ${id} matters.`, options: [option("A. First", { recommended: "it is first" }), option("B. Second")], ...extra,
-});
-const SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><title>Scope</title><rect width="10" height="10" fill="#cba6f7"/></svg>`;
+const SVG = readFileSync(join(FIXTURES, "scope.svg"), "utf8");
 
-/** A structured Grilling page with a finished Stage and an in-progress one, made the way producers made it. */
-function legacyPage(w: World) {
+/** A structured Grilling page with a finished Stage and an in-progress one, its SVG figure beside it. */
+function legacyPage(w: World, fixture = "legacy.jsonl") {
   const folder = join(w.scratch, "grilling", "project-41");
   mkdirSync(join(folder, "figures"), { recursive: true });
   writeFileSync(join(folder, "figures", "scope.svg"), SVG);
-  grill(
-    folder,
-    { type: "page", id: "page", title: "Checkout limits", crumb: "[SHOP-41](https://example.com/SHOP-41)" },
-    { type: "flow", id: "flow", slug: "checkout-limits", key: "41", state: "open", spec: "41", tickets: ["42", "43"], branch: "feat/limits", runs: ["41-run"] },
-    { type: "stage", id: "grill", skill: "grill-with-docs", state: "in-progress" },
-    { type: "background", id: "bg", stage: "grill", title: "How limits work", summary: "Limits apply per cart.", sections: [{ heading: "Now", body: "One cap." }], sources: ["src/limits.ts:10"] },
-    { type: "topic", id: "caps", title: "Caps", summary: "What a cap is.", body: "A cap bounds a cart.", sources: ["docs/caps.md"] },
-    {
-      type: "report", id: "findings", stage: "grill", title: "Findings", shape: "cards",
-      entries: [{ id: "f1", title: "Cap ignored", label: "issue", blocking: true, impact: "Users exceed the cap.", action: "Check the cap.", evidence: "src/limits.ts:12", question: "q-scope" }],
-    },
-    { type: "round", id: "r1", stage: "grill", time: "2026-10-01T10:00:00+07:00" },
-    question("q-scope", "r1", { today: [{ text: "The cap is global.", source: "src/limits.ts:10" }], terms: [{ term: "Cap", text: "An upper bound." }], topics: ["caps"], visual: { svg: "figures/scope.svg" } }),
-    question("q-limit", "r1", { visual: { text: "cart -> cap" }, options: [option("A. First", { preview: { html: "<b>first</b>", css: "b { color: #a6e3a1; }" } }), option("B. Second")] }),
-    { type: "answer", question: "q-scope", picks: ["A"], note: "keep it simple" },
-    { type: "answer", question: "q-limit", other: "Use the store's own limit" },
-    { type: "round", id: "r2", stage: "grill", time: "2026-10-01T11:00:00+07:00" },
-    question("q-scope-again", "r2", { again: "q-scope" }),
-    { type: "answer", question: "q-scope-again", unanswered: "superseded by the review" },
-    { type: "close", id: "c1", stage: "grill", decisions: [{ question: "q-scope-again", text: "Scope stays per cart." }, { question: "q-limit", text: "The store sets the limit." }], extra: ["Assumed: no new config"] },
-    { type: "stage", id: "grill", skill: "grill-with-docs", state: "finished" },
-    { type: "stage", id: "impl", skill: "implement-spec", state: "in-progress" },
-    {
-      type: "report", id: "checks", stage: "impl", title: "Checks", shape: "ledger",
-      entries: [{ id: "l1", claim: "Tests pass", status: "confirmed", evidence: "bun test", missing_proof: "none", consequence: "ship" }],
-    },
-    { type: "report", id: "tickets", stage: "impl", title: "Tickets", shape: "table", columns: ["Ticket", "State"], rows: [{ id: "t42", cells: ["#42", "done"] }] },
-    { type: "round", id: "r3", stage: "impl", time: "2026-10-02T09:30:00+07:00" },
-    question("q-open", "r3"),
-  );
+  historical(folder, fixture);
   return folder;
 }
 
@@ -220,11 +184,7 @@ test("a handwritten page stays readable and untouched instead of gaining fabrica
 
 test("a historically closed Flow starts retention at migration without inventing historical timestamps", () => {
   const w = world();
-  const folder = legacyPage(w);
-  grill(folder,
-    { type: "stage", id: "impl", skill: "implement-spec", state: "finished" },
-    { type: "flow", id: "flow", slug: "checkout-limits", key: "41", state: "closed", spec: "41" },
-  );
+  const folder = legacyPage(w, "legacy-closed.jsonl");
   const before = tree(folder);
   const migrated = ok(run(w, ["migrate", folder]));
   const snap = ok(run(w, ["show", "--flow", migrated.flow]));
@@ -253,7 +213,7 @@ test("repeating migration finds the same Flow, but changed source or invalid his
   expect(repeated.flow).toBe(migrated.flow);
   expect(repeated.repeated).toBe(true);
   expect(tree(w.home)).toEqual(before);
-  grill(folder, { type: "flow", id: "flow", slug: "checkout-limits", key: "41", state: "open", spec: "41", tickets: ["42", "43", "44"] });
+  historical(folder, "legacy-changed.jsonl");
   const changed = tree(w.home);
   const refused = run(w, ["migrate", folder]);
   expect(refused.code).toBe(1);
@@ -270,15 +230,7 @@ test("repeating migration finds the same Flow, but changed source or invalid his
 test("stageless historical questions keep session-scoped Q numbers and missing figures stay honestly unavailable", () => {
   const w = world();
   const folder = join(w.scratch, "grilling", "project-stageless");
-  grill(folder,
-    { type: "page", id: "page", title: "Before Stages" },
-    { type: "round", id: "round-1" },
-    question("question-1", "round-1"),
-    { type: "answer", question: "question-1", other: "Use a cap" },
-    { type: "close", id: "close-1", decisions: [{ question: "question-1", text: "Use a cap." }] },
-    { type: "round", id: "round-2" },
-    question("question-2", "round-2"),
-  );
+  historical(folder, "stageless.jsonl");
   const raw = readFileSync(join(folder, "page.jsonl"), "utf8");
   writeFileSync(join(folder, "page.jsonl"), raw.split("\n").map((line) => {
     if (!line) return line;

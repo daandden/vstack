@@ -97,6 +97,9 @@
     .stage .read { color: var(--teal); }
     .stage .open { color: var(--overlay0); }
     .sr-only { position: absolute; inline-size: 1px; block-size: 1px; overflow: clip; clip-path: inset(50%); white-space: nowrap; }
+    /* A box that scrolls sideways is the containing block of its screen-reader text, so that text stays inside the
+       box and cannot widen the page on a narrow pane. */
+    .visual, .preview, .result .table, .code pre { position: relative; }
     .page-head { display: grid; gap: 0.25rem; }
     .lifecycle { color: var(--state); font-size: var(--fs-small); font-weight: 600; }
     .crumb, time, .label { color: var(--subtext0); }
@@ -640,9 +643,13 @@
       const selected = panels[open]?.id;
       const focused = document.activeElement;
       const x = scrollX, y = scrollY;
+      const visible = (el) => { const box = el?.getBoundingClientRect(); return !!box && box.top < innerHeight && box.bottom > pad(); };
+      // The fragment target the reader followed comes first: at the end of a short page, the stop under the bar can
+      // sit above it, and content inserted between the two would push the target down.
+      const target = location.hash.length > 1 ? document.getElementById(decodeURIComponent(location.hash.slice(1))) : null;
       const picked = stops[current];
-      const box = picked?.getBoundingClientRect();
-      const reading = box && box.top < innerHeight && box.bottom > pad() ? picked
+      const reading = target && panels[open]?.contains(target) && visible(target) ? target
+        : visible(picked) ? picked
         : [...(panels[open]?.querySelectorAll("[data-stop]") ?? [])].reverse()
           .find((el) => el.getBoundingClientRect().top <= pad());
       const offset = reading?.getBoundingClientRect().top;

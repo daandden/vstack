@@ -4,7 +4,7 @@ description: How a Flow keeps its Flow page through Stage-bound authoring. Cover
 disable-model-invocation: true
 ---
 
-The skill that runs a Stage says when each page step happens. This skill says how to do it. The Flow page replaces the Grilling page. Until a skill moves to this one, it keeps using `skill://grilling-page`.
+The skill that runs a Stage says when each page step happens. This skill says how to do it. The Flow page replaced the Grilling page, and this script is the only page writer.
 
 You send meaning: questions, answers, decisions, notes, and Results. The script owns everything else: ids, Stage order and tab labels, round and Q numbers, option letters, timestamps, the links between records, storage, and the page itself. It renders the page from its own template and escapes every string you send. You never write HTML, CSS, or scripts, and a contribution that carries them is refused.
 

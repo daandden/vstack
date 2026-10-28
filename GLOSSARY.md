@@ -61,7 +61,7 @@ The native judge model that omp's judge role names, which selects Addons during 
 _Avoid_: jev judge, principle judge
 
 **Utility skill**:
-A vstack skill that is not a Matt skill and that the user can use whatever the work is. unslop, technical-writing, diagram-design, good-css, and skill-creator set how text, figures, styles, and skills are made. explain, how, why, and forensics answer questions about existing work. in-your-own-words restates the user's goal so that the user and the agent agree. clean-wt removes omp checkouts that nothing uses anymore. The hidden helpers are vstack-tmp, vstack-fan-out, vstack-figures, grilling-page, and vstack-worktree. Other skills name these helpers by `skill://`. Utility skills can start from their descriptions, from a rule, or by name, subject to each skill's invocation settings.
+A vstack skill that is not a Matt skill and that the user can use whatever the work is. unslop, technical-writing, diagram-design, good-css, and skill-creator set how text, figures, styles, and skills are made. explain, how, why, and forensics answer questions about existing work. in-your-own-words restates the user's goal so that the user and the agent agree. clean-wt removes omp checkouts that nothing uses anymore. The hidden helpers are vstack-tmp, vstack-fan-out, vstack-figures, flow-page, and vstack-worktree. Other skills name these helpers by `skill://`. Utility skills can start from their descriptions, from a rule, or by name, subject to each skill's invocation settings.
 _Avoid_: standalone skill, helper skill
 
 **Command**:
@@ -157,20 +157,32 @@ The absolute directory where a run writes the project's vstack config and workfl
 _Avoid_: artifact dir, private root
 
 **Scratch**:
-A vstack output that nothing reads after its run, such as an explanation page, proof evidence, an eval workspace, or a hillclimb attempt log. It is kept under `~/.vstack/tmp/`, grouped by project, until vstack-clean deletes it after a retention period. Temporary files a script creates and deletes itself are not Scratch. A later Stage of the same flow can continue a Grilling page.
+A vstack output kept under `~/.vstack/tmp/`, grouped by project, until vstack-clean deletes it after a retention period. Temporary files a script creates and deletes itself are not Scratch. A later Stage of the same flow can continue a Flow page.
 _Avoid_: temp files, artifacts, tmp output
 
-**Grilling page**:
-The page that one flow keeps for the user across all its Stages. A flow is the run of skills on one change, such as grill-with-docs through implement-spec, or on one tracker item, such as the triage of one issue. The page shows every `ask` of the flow as a question in full, with its context, options, trade-offs, and the answer given, while the `ask` call carries only the question and its option labels. It is Scratch.
-_Avoid_: Grilling HTML, question page, round page
+**Flow**:
+Related vstack work on one change, tracker item, or topic across one or more skill runs. A standalone explanation can start a flow without a grill or a tracker item.
+_Avoid_: session, Matt run
+
+**Flow page**:
+The document one Flow keeps across all its Stages, including questions, answers, results, shared explanations, and workflow progress. Skills publish to it through flow-page's Stage-bound authoring script, which renders the static page; the Local Flow host serves the same page live. It is Scratch.
+_Avoid_: Grilling page, Grilling HTML, question page, round page
+
+**Local Flow host**:
+The one detached local server per operating-system user that serves live Flow pages, runs captured prototypes on a separate origin, and observes git, the Code host, and the CI service read-only. The flow-page script starts it on demand. It never runs skills, shell commands, tracker writes, or merges.
+_Avoid_: Flow server, page server, daemon
+
+**Flow alias**:
+A qualified name that finds one Flow: `spec:`, `ticket:`, `branch:`, `run:`, `folder:`, or `slug:` and a value. The Flow's id never changes, and an alias only finds it. A lookup that matches no Flow or several is refused. Historical Grilling folders kept these names in `flow.json`.
+_Avoid_: flow key, flow.json
 
 **Stage**:
-One skill's part of a flow on the flow's Grilling page, such as the to-spec part or one wayfinder ticket. Each Stage has its own tab and a state: not started, in progress, or finished.
+One skill's part of a Flow on its Flow page, such as a research run, the to-spec part, or one wayfinder ticket. Each Stage has its own tab and a state: not started, in progress, or finished.
 _Avoid_: step, phase, section
 
-**Report block**:
-A report that a Stage shows on the Grilling page before the questions it leads to, such as code-review's findings or to-tickets' proposed breakdown. It has one of three shapes. Cards show one finding or candidate each, with its impact, evidence, and suggested action. A ledger lists claims, each confirmed, cleared, or unproven, with its evidence and the proof that is missing. A table lists rows under named columns, such as tickets or run results.
-_Avoid_: result block, stage result, report section
+**Result block**:
+A Stage's output on the Flow page, such as a research document, a prototype comparison, review findings, or run results. It can stand alone or lead to questions.
+_Avoid_: Report block, stage result, report section
 
 **Blast radius**:
 The review axis that lists what code outside a diff depends on and may break. code-review runs it through the blast-radius skill, and a PR body reports it under its Blast Radius heading. It is not a security review.
@@ -181,28 +193,16 @@ An explanation at the top of a Stage tab that gives the context that all of the 
 _Avoid_: intro, explain block, context section
 
 **Topic note**:
-An explanation of one concept that the Grilling page shows once, in a shared area, and that questions in any Stage link to. It differs from a Term note, which defines one name in one line on one question.
+An explanation of one concept that the Flow page shows once in its Topics tab and that questions in any Stage link to. It differs from a Term note, which defines one name in one line on one question.
 _Avoid_: explain block, glossary entry
 
 **Jump row**:
-The row of links under a Grilling page's Stage tabs. It has one link for each part of the open tab, in page order: its Background, each Report block, each question, and the latest summary.
+The row of links under a Flow page's Stage tabs. It has one link for each part of the open tab, in page order: its Background, each Result block, each question, and the latest summary.
 _Avoid_: Q row, question nav, navigation
 
 **Term note**:
-A one-line definition on one question of the Grilling page, for a name that a newcomer may not know, such as a glossary term, a skill or file name, or an ADR number. A concept that several questions need is a Topic note instead.
+A one-line definition on one question of the Flow page, for a name that a newcomer may not know, such as a glossary term, a skill or file name, or an ADR number. A concept that several questions need is a Topic note instead.
 _Avoid_: glossary note, definition block
-
-**flow.json**:
-The file beside a flow's Grilling page that names the flow's original topic slug, its spec issue, tickets, branch, and run ids. A later Stage, even one in another omp session, finds the flow's page by any of them.
-_Avoid_: flow manifest, flow index
-
-**Context diagram**:
-A figure on a Grilling page question that shows the logic its description and Today facts explain: steps, branches, states, parts, or time.
-_Avoid_: background figure
-
-**Option diagram**:
-A figure on a Grilling page question that shows how its options differ in shape.
-_Avoid_: comparison figure
 
 **Figure brief**:
 The text a skill writes for one diagram drawer that fixes one figure's type, size, layout, and content: every node, edge, and label, any zones, lanes, or rows, and the focal elements.

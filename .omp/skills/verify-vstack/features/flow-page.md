@@ -31,10 +31,11 @@ The flow-page script takes typed contributions for one bound Stage, assigns ids,
 - `flow-timeline`: Timeline Results preserve the supplied event order, known times, explicit outcomes, and evidence attached to the event it proves. Missing times stay unknown.
 - `flow-artifact`: a prototype Result names an HTML bundle, local app route, or terminal artifact. Captured bundles execute on a separate read-only viewer origin, local routes stay on their own origin, and missing runtimes show launch instructions with an unavailable state. Static exports never pretend a runtime is running.
 - `flow-nav`: `n` cycles through actionable questions newest in-progress Stage first; `t` opens a clickable Stage-only tree with states and open-question counts; `j` and `k` set fragments and focus; tab navigation moves focus; editable targets ignore shortcuts.
-- `flow-session`: each session and agent restores its own binding. A terminal main-agent reply presents the bound URL without another model request or a browser launch. A blocker and a follow-up with no model-written link still get the extension message. A live failure presents the static path and observed error.
+- `flow-session`: each session and agent restores its own binding. A terminal main-agent reply presents the bound URL without another model request or a browser launch. A blocker and a follow-up with no model-written link still get the extension message. A live failure presents the static path and observed error. A native `ask` through `--rpc-ui` returns labels and custom words that normalize into Flow answers.
 - `flow-quiz`: structured choice, text, and numeric quizzes give immediate feedback and explanations. Attempts and completion persist separately from authored work, resume across host restarts, and synchronize browser-local offline attempts idempotently. Static exports remain interactive offline.
 - `flow-review`: one summary table opens a review Stage and links each authoritative finding to its impact, action, and evidence card. All three axes retain their explicit findings, clean, skipped, unavailable, or blocked outcomes, and focused corrections update the table.
 - `flow-observations`: read-only git, Code host, and CI adapters update the open strip with source and time, without changing authored PRs, checks, End state, or Flow closure. Separate project configuration selects Code host and CI independently.
+- `flow-t4`: the combined-product proof of spec #267 T4 on one Flow: live updates and reading state, every navigation key, every static Result kind at 1280 and 360 px, review outcomes, Quiz persistence and offline sync, demos, isolated artifacts and absent runtimes, observations, and the static export with the host stopped.
 
 ## How to get to it (user POV)
 
@@ -123,7 +124,7 @@ Steps:
 
 
 - Migration (`flow-migrate`):
-  - Copy a structured Grilling folder into the project's Scratch dir under the throwaway `H`. Preserve its `page.jsonl` and `figures/`. Keep the original untouched, especially an in-flight Flow. Capture hashes of the copy before migration.
+  - Copy a structured Grilling folder into the project's Scratch dir under the throwaway `H`: a real historical one, or one of the captured writer outputs in `tests/fixtures/flow-page-migrate/` as `page.jsonl` (put `scope.svg` in its `figures/` for `legacy.jsonl`). The grilling-page writer no longer exists, so never make a new historical page. Preserve its `page.jsonl` and `figures/`. Keep the original untouched, especially an in-flight Flow. Capture hashes of the copy before migration.
   - `bun "$SCRIPT" migrate <copy> --home "$H"`. `show --flow <receipt flow>` preserves its Stage states, question ids and Q numbers, round times, answer states, Results, Topics, and sources. The copy's hashes are unchanged.
   - Open its receipt's page. Follow old `#q-<id>`, `#stage-<id>`, `#report-<id>_<entry>`, and `#topic-<id>` fragments. Each selects the right Stage and reveals the target below the bar. Open card Evidence and follow its question backlink.
   - Inspect a picked answer, an Other answer, an unanswered ask, text figures, HTML previews, and captured SVGs. Other words have no invented pick or agent reading. Finished Stages keep unresolved questions historical.
@@ -177,6 +178,35 @@ The RPC `prompt_result` can arrive before the asynchronous `agent_end` presentat
 
 The drive's env contains only `PATH`, `HOME`, and `TERM`. A custom `VSTACK_FLOW_PORT` on an earlier CLI does not become the extension's environment. After host shutdown removes discovery, use the native default port, `42000 + (uid % 10000)`, for the conflict proof. Never stop an unrelated listener to reserve it.
 
+### Native ask (`flow-session`)
+
+1. Open a Stage with the CLI in the drive's project dir. Write replies for one drive: a `bash` call that binds that Stage and submits a round of two questions, an `ask` call whose `questions` are the receipt's `ask.questions` (predict the ids from the Flow's question count), a `bash` call that submits the normalized answers, and a closing text.
+2. Write `--ui-replies` that pick an option for the first question and `Other (type your own)` for the second, then `{"value":"<words>"}` for the `editor` dialog that follows.
+3. Run the drive once without `--rpc-ui` and keep it: the `ask` tool result is `Tool ask not found` and no dialog is sent. Then run it with `--rpc-ui` and a new name. Read the `ask` `tool_execution_end`: `details.results[]` has each id, `selectedOptions` labels, and, for the second, `selectedOptions: []` with `customInput`. `ui-responses.jsonl` has two `select` answers and one `editor` answer.
+4. `show --flow <id>`: the first question is `picked` with the selected label; the second keeps the user's words with the reading and no pick. Record that the stub, not a model, wrote the normalization, and that timeout, note, and cancellation forms were not driven unless you drove them.
+
+### Combined-product proof (`flow-t4`)
+
+Run this on the final tree before shipped-status docs change. It proves the cases together, so an integration between two features cannot hide between per-feature runs. Earlier runs' evidence is context, not proof of this tree.
+
+Preconditions:
+
+- Pin one Bun on `PATH` with a directory whose `bun` links to the wanted binary, put it first, and run `hash -r` in a persistent shell. A shell that hashed a version-manager shim runs that shim, and a shim with a throwaway `HOME` can install a different runtime. Check `host status` reports the pinned version.
+- Use a throwaway git project with a branch, separate `code-host.md` and `ci.md` `http-json` overrides, and captured assets: a WebP or PNG, a WebM or MP4, an SVG, a CSV, a JSON trace, a redacted log, a canonical note, and a two-file HTML bundle whose script counts clicks, reports whether `parent.document` throws, and POSTs to its own URL. Run one owned process that serves the GET-only provider routes from an editable JSON file and a local HTML app route.
+
+Steps:
+
+1. Build one Flow through `submit` only: a grill Stage that finishes with one retired question, a review Stage with findings and an unavailable axis plus a question naming a finding, a second review Stage with clean, skipped, and blocked axes, two wayfinder ticket Stages submitted and aliased at once from two sessions, a research Stage with every attachment type, a Document, cards, ledger, and table, a prototype Stage with a Comparison, Metrics (baseline, zero, missing, uncertainty), and a demo, an implement Stage with Code/diff, a Timeline, an HTML bundle, a running local app, a local app whose backend is absent, a terminal artifact, and progress items, and a teach Stage with a Quiz.
+2. Open `live.url` at 1280 by 900. Press `n` from Overview through a wrap, `t` and click a node, the Stages button and `Escape`, `j j j k` with a reload, `l`, `h`, and `Enter`. Type `njkthl` into the Quiz's text answer, then into injected editors.
+3. Follow review summary links into cards, open Evidence with one click, and follow question, Topic, Overview, and re-ask links both ways.
+4. Select every Stage at 1280 and 360 px and record `scrollWidth - clientWidth` for the page and which boxes scroll inside. Inspect Metrics values, units, deltas, and bars, Code/diff colors, line numbers, hunk links, and a reloaded line deep link, and Document citations, media, and downloads against their source sha256.
+5. Drive the demo with click, Enter, and Space, reload, and Reset. Answer the Quiz, clear browser storage, reload, restart the host, and reload again. Stop the host, answer, restart it, and replay the pending batch to the learning endpoint. `show` keeps the same revision across all of these.
+6. In the bundle frame click the button and read its parent and POST results; compare frame and Flow origins and fetch the Flow URL from the frame. Click the local app.
+7. With the live page open, answer a question, add a Result, finish a task, open a ticket Stage with `--parent` that re-asks the retired question, then follow a link to a question at the end of a short page and add a Result above it. Record timeOrigin, selected Stage, fragment, focus, disclosures, and the question's viewport top before and after. Repeat `n` and `t`.
+8. Change the provider file to merged and passed, then an old `observed_at` and a failure, then recover. Then resolve the blocker, finish the tasks, and record the reached End state. The strip updates live and never completes from observations alone.
+9. Stop the owned services and reload: the local app is unavailable with launch steps and observations are stale. Stop the host and open the static file: no iframe or live URL, artifacts unavailable with launch steps, observations unknown, demo and Quiz usable and kept across reload, `n` works, and 360 px has no page overflow.
+10. Run the Native omp sessions and Native ask steps above in one run dir. Attach the outcomes, observations, and key screenshots to a Document Result on the proof Flow, stop every owned host and service, close the tabs, and name every unexercised provider or runtime case.
+
 ## Gotchas
 
 - Without `--session` and outside an omp session, `open` still creates the Flow but binds nothing, and later `submit` needs `--flow` and `--stage`.
@@ -184,3 +214,7 @@ The drive's env contains only `PATH`, `HOME`, and `TERM`. A custom `VSTACK_FLOW_
 - The Flow lands under the repo key of the current directory. Run from the checkout, or the Flow goes under `_global`.
 - A static file needs a reload after a CLI write. A live `http://127.0.0.1` page receives committed updates itself. Do not reload during `flow-live`, or the proof no longer exercises live reading.
 - Full-page screenshots after scrolling can show the sticky bar midway down. Take them right after a tab click.
+- A persistent shell that hashed `bun` keeps running that path after `PATH` changes. Run `hash -r` after pinning Bun.
+- `innerText` of an element in a hidden tab panel returns its raw text, hidden parts included. Read state from the selected panel.
+- `tab.goto` to the same URL with a different fragment does not reload the page, so it keeps the old page script. Use `tab.reload()` after a template change.
+- Repeating a Stage's latest contribution returns its first receipt with `repeated: true` and changes nothing. Change the content for each live update.

@@ -1,5 +1,7 @@
 # Shared judge text goes in the jev state once
 
+> [ADR 0040](0040-structured-flow-data-drives-server-rendered-pages.md) removed the Grilling page visual judge in vstack 7.0.0, with grilling-page, `visual-judge-cases.json`, and `scripts/visual_judge_check.py`. The rule below still holds for the Addon judge.
+
 > [ADR 0039](0039-main-agent-tools-pick-addons-from-gathered-intent.md) replaces main-session prompt selection and smol restatements with tools that receive gathered source intent. The shared state, 0.70 threshold, and session-wide dedup remain. Subagent Brief selection stays under ADR 0025.
 
 > [ADR 0025](0025-subagents-get-principle-picks-from-their-own-brief.md) amends this decision. The check flags an unexpected, non-allowed pick over 0.85, not 0.80, in `sample-prompts.json` and `sample-briefs.json`. Scores from 0.65 through 0.85 are borderline.

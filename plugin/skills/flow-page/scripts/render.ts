@@ -9,7 +9,7 @@ import type { ProgressView } from "./progress.ts";
 import { observationVersion, unknownObservations, type Observations } from "./observations.ts";
 
 /** Raise this when the page a given state renders to changes, so a page names the renderer that made it. */
-export const RENDERER = 16;
+export const RENDERER = 17;
 const TEMPLATE = join(import.meta.dir, "..", "templates", "flow-page.html");
 export type Runtimes = Record<string, { url?: string; reason?: string }>;
 
