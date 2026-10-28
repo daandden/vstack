@@ -1,6 +1,6 @@
 ---
 name: flow-page
-description: How a Flow keeps its Flow page through Stage-bound authoring. Covers opening or joining a Stage, the typed contribution format, the receipt and its ask payload, answers, closes, and refusals.
+description: How a Flow keeps its Flow page through Stage-bound authoring. Covers opening or joining a Stage, finding a Flow by alias, moving its folder, the typed contribution format, focused Result revisions, the receipt and its ask payload, answers, closes, and refusals.
 disable-model-invocation: true
 ---
 
@@ -16,21 +16,33 @@ bun "$(realpath skill://flow-page/scripts/flow-page.ts)" <command> ...
 
 Every command prints one JSON receipt on stdout. Exit 1 prints the refusal on stderr and writes nothing: fix what it names and run the command again. Exit 2 is a usage error.
 
+A receipt always means the content is committed. Its `presentation` says what the page shows: `current`, or `stale` with the older `revision` the page still shows and the `error` that stopped the new page. A stale page keeps its last good content. Run `render --flow <flow>` to publish it again, and never resubmit committed content.
+
 ## Open or join a Stage
 
 A result-producing run is one Stage. Open it once, before its first contribution:
 
 - `open --skill <name> --title <title>` starts a new Flow with its first Stage. `--title` is the Flow page's heading. A `--slug` of 3 to 5 words is optional; the script derives one from the title.
-- `open --skill <name> --flow <id>` adds a Stage to an existing Flow. A return to finished work opens a new Stage with `--parent <stage>`, the Stage it continues; the finished Stage stays as it was.
+- `open --skill <name> --flow <flow>` adds a Stage to an existing Flow. A return to finished work opens a new Stage with `--parent <stage>`, the Stage it continues; the finished Stage stays as it was.
 - Add `--ticket <id>` when the Stage works on one ticket, such as one wayfinder ticket. Its tab label then names the ticket.
 
-Any skill name works; the tab label comes from it. `open` binds this session's agent to the new Stage. Later commands from the same session write there without naming it. `bind --flow <id> --stage <id>` joins an existing Stage instead, for example when a nested skill continues its caller's Stage. A binding belongs to one session and one agent. `--agent <id>` names a second agent in the same session; it defaults to `main`.
+Any skill name works; the tab label comes from it. `open` binds this session's agent to the new Stage. Later commands from the same session write there without naming it. `bind --flow <flow> --stage <id>` joins an existing Stage instead, for example when a nested skill continues its caller's Stage. A binding belongs to one session and one agent. `--agent <id>` names a second agent in the same session; it defaults to `main`.
 
 Loading this skill, reading a page, `show`, and `bind` open no Stage. A run that only reads a reference skill or helper adds nothing to the page.
 
-Parallel callers, and callers outside an omp session, name the target on each write: `submit --flow <id> --stage <id>`. There is no other default. A session with no binding and no named target is refused.
+Parallel callers, and callers outside an omp session, name the target on each write: `submit --flow <flow> --stage <id>`. There is no other default. A session with no binding and no named target is refused. Callers bound to different Stages of one Flow, such as two wayfinder tickets, write at the same time safely: each contribution commits whole against the latest state.
 
-Find a Flow by the id that an earlier receipt printed. `show [--flow <id>]` prints the Flow's structure: Stages with their labels and states, rounds, Q numbers, answer states, Results, and every link and backlink.
+`show [--flow <flow>]` prints the Flow's structure: Stages with their labels and states, rounds, Q numbers, answer states, Results with each entry and the revision that last `changed` it, every link and backlink, its aliases, and its `presentation`.
+
+## Find a Flow
+
+`<flow>` is the Flow id that a receipt printed, or a qualified alias: `spec:<n>`, `ticket:<n>`, `branch:<name>`, `run:<id>`, `folder:<key>`, or `slug:<slug>`. The id never changes. Aliases only find it.
+
+- `find <kind>:<value>` prints the one Flow that has the alias. No match, or several, is refused with the Flows it found; name one by id. Lookup never guesses.
+- `alias [--flow <flow>] <kind>:<value>...` adds aliases, such as `spec:267` when a spec is published. Each Stage's ticket, the slug, and every folder the Flow has had are aliases already. Adding one again changes nothing.
+- `move [--flow <flow>] --to <key>` moves the Flow's folder to the folder key `<key>`. Bindings, ids, anchors, and the old folder key keep working; only the `page` path changes. A key in use is refused, and a failed move leaves the Flow where it was.
+
+Flows belong to the project of the current repo. Every worktree of the project sees the same Flows, and no other project can find or write them, even by id.
 
 ## Submit a contribution
 
@@ -42,6 +54,8 @@ Find a Flow by the id that an earlier receipt printed. `show [--flow <id>]` prin
 
 The script applies all items to the bound Stage, or refuses all of them. Give a new question, Topic note, Result, or Result entry a `ref` (lowercase letters, digits, and hyphens) when another item names it. An item can name a ref from the same contribution, or an id from an earlier receipt. Name a Result entry as `<result ref or id>/<entry ref or id>`.
 
+Submitting the Stage's latest contribution again, for example after a lost receipt, applies nothing and prints its first receipt with `repeated: true`.
+
 Item kinds and their fields:
 
 - `background`: `title`, `summary` (one line), `sections` (one or more `{ heading, body }`), and `sources` (one or more strings, such as `GLOSSARY.md` or `[text](url)`). A Stage has one Background. Submit it before the Stage's first round.
@@ -50,6 +64,9 @@ Item kinds and their fields:
   - `cards` has `entries`, each with optional `ref`, `title`, `label` (such as `issue`), `blocking` (`true` or `false`), `impact`, `action`, and `evidence`. In a review finding, `impact` opens with what a user or caller sees, and `evidence` gives the file and line.
   - `ledger` has `entries`, each with optional `ref`, `claim`, `status` (`confirmed`, `cleared`, or `unproven`), `evidence`, `missing_proof`, and `consequence`.
   - `table` has `columns` and `rows`, each row with optional `ref` and `cells`, one string per column.
+- `revise`: changes one Result of the bound Stage without resending it. `result` names the Result, or one entry as `<result>/<entry>`.
+  - `set` replaces only the fields it names: an entry's fields, or a Result's `title` and `summary`. It needs `base`, the revision that `show` printed as that entry's or Result's `changed`. When someone changed it after `base`, the edit is refused as a conflict: run `show` and decide again.
+  - `add` appends new entries or rows to a Result, in its shape. It needs no `base`.
 - `assumed`: optional `ref`, `decision`, `pick`, and `why`, one decision settled without asking. `why` cites its repo fact with file and line, its ADR, or its convention. The page lists each Assumed pick before the rounds, and the close lists every one no question reopened.
 - `round`: `questions`, in `ask` order. One contribution holds at most one round, because one round is one `ask`. Each question has optional `ref`, `title` (one question that ends with "?"), `description`, and `options`. Each option has `label` (the label alone; the script adds `A. `, `B. `), `does`, `gains`, `costs`, and an optional `recommended` reason on at most one option. A question can add:
   - `again`: the earlier question it asks again. In the same Stage it names a question of an earlier round and keeps that Q number. From a finished Stage it names that Stage's latest ask of the Q number and takes a new Q number here; both questions link to each other.
@@ -69,7 +86,7 @@ Text fields are plain text. A blank line starts a paragraph, a block of `- ` lin
 
 ## The receipt
 
-A submit receipt holds the Flow and Stage ids, the committed `revision`, the absolute `page` path, `refs` (each ref you gave, mapped to its assigned id), and, when the contribution has a round, `ask`. It does not repeat your content.
+A submit receipt holds the Flow and Stage ids, the committed `revision`, the absolute `page` path, its `presentation`, `refs` (each ref you gave, mapped to its assigned id), and, when the contribution has a round, `ask`. It does not repeat your content.
 
 `ask` is the payload for the `ask` tool, in Q-number order: each question's id, its one-line `question` that starts with its Q number (`Q3. ...`), its option labels with their letters, and the index of the recommended option. Pass it to `ask` as it is.
 

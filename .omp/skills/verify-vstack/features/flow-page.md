@@ -12,10 +12,13 @@ The flow-page script takes typed contributions for one bound Stage, assigns ids,
 - `flow-answers`: an answer keeps the raw `ask` response apart from the agent's reading. Only an explicit pick or a resolved reading counts as the user's answer, and the page shows a resolved reading's basis with no option marked picked. Question-notes, concerns, ambiguous notes, timeouts, cancellations, empty and headless responses stay open as non-consent.
 - `flow-lifecycle`: finishing a Stage retires each unresolved question with a reason. A later Stage opened with `--parent` asks a retired question again with `again`, and the two questions link to each other. A second answer to one question is refused. The close lists every decision with its provenance and every Assumed pick no question reopened.
 - `flow-view`: tabs carry skill-derived labels with ticket ids, a card's Evidence opens with one click, and a 360px pane has no horizontal overflow.
+- `flow-concurrent`: callers bound to two ticket Stages of one Flow submit and add aliases at the same time, and every contribution and alias lands once. A repeat of a Stage's latest contribution prints its first receipt with `repeated: true`. A `revise` of one entry with an old `base` after another revise of it is refused as a conflict.
+- `flow-identity`: `find` and `--flow` take qualified aliases (`spec:`, `ticket:`, `branch:`, `run:`, `folder:`, `slug:`) and refuse a missing or ambiguous one. `move --to <key>` keeps the id, bindings, anchors, and the old folder key, and a taken key or a failed rename leaves the Flow where it was. Another project cannot find or write the Flow; a worktree of the same project can.
+- `flow-stale`: when the page cannot be written, the receipt has the new `revision` and `presentation.state: "stale"` with the older revision the page shows, and the page keeps its last good content until `render` publishes again.
 
 ## How to get to it (user POV)
 
-- A skill runs `bun "$(realpath skill://flow-page/scripts/flow-page.ts)" open|bind|submit|show|render ...` and prints the receipt's page path.
+- A skill runs `bun "$(realpath skill://flow-page/scripts/flow-page.ts)" open|bind|submit|alias|find|move|show|render ...` and prints the receipt's page path.
 - The user opens that path in a browser.
 
 ## Driving it with bash and the omp browser
@@ -40,6 +43,11 @@ Steps:
   - Click the question's link to the card entry, the card's and the table row's links back to the question, and the question's Topic note link and the Topic note's link back. Each opens the target's tab and puts the target below the bar.
   - Press `n` from Topics: it opens Code review's Q1, not the superseded Grill ask.
   - At 360px wide, `scrollWidth - clientWidth` is 0.
+- Concurrency and identity (`flow-concurrent`, `flow-identity`):
+  - Bind `--session verify-a` and `--session verify-b` to the two wayfinder Stages with `bind`. Start six `submit -` rounds and six `alias run:<n>` per session at once as background jobs, and wait for all of them. Every exit is 0, every receipt `revision` differs, and `show` lists six questions per Stage and all twelve `run:` aliases.
+  - `alias spec:9270`, then `move --to verify-9270`. `find spec:9270`, `find folder:verify-9270`, and `find folder:<old folder key>` print the same `flow`. A `submit` through `verify-a`'s binding lands in the moved Flow, and its receipt `page` is the moved path.
+  - Go to `file://` plus the moved page path in the same tab: both wayfinder tabs, their questions, and cross-tab links work as before the move.
+- Stale page (`flow-stale`): `chmod 555` the Flow folder, submit a round, then `chmod 755`. The submit exits 0 with a stderr note, its receipt says `stale`, and reloading the page in the tab shows the older revision without the new question. `render --flow <id>` publishes it; reload shows the question and the page meta revision equals the receipt's.
 
 ## Gotchas
 

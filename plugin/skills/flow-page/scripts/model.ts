@@ -1,6 +1,8 @@
 // The Flow page domain: a Flow's stored state, the typed contributions that change it, and the derived view that
 // both `show` and the renderer read. Everything here is pure; flow-page.ts does the reading, locking, and writing.
 
+import { createHash } from "node:crypto";
+
 export const SCHEMA = 1;
 export const CONTRIBUTION_VERSION = 1;
 
@@ -30,8 +32,9 @@ export type Section = { heading: string; body: string };
 export type Background = { id: string; stage: string; title: string; summary: string; sections: Section[]; sources: string[] };
 export type Topic = { id: string; title: string; summary: string; body: string; sources: string[] };
 export type Shape = "cards" | "ledger" | "table";
-export type Entry = Record<string, unknown> & { id: string };
-export type Result = { id: string; stage: string; shape: Shape; title: string; summary?: string; columns?: string[]; entries: Entry[] };
+/** `changed` is the Flow revision that last changed a Result's header or an entry, which a focused revision checks. */
+export type Entry = Record<string, unknown> & { id: string; changed: number };
+export type Result = { id: string; stage: string; shape: Shape; title: string; summary?: string; columns?: string[]; entries: Entry[]; changed: number };
 export type Source = { id: string; text: string };
 
 export type State = {
@@ -51,6 +54,10 @@ export type State = {
   assumed: Assumed[];
   retirements: Retirement[];
   sources: Source[];
+  /** Qualified lookup aliases such as `spec:267`, added and never removed. */
+  aliases: string[];
+  /** The latest contribution to each Stage, by Stage id, so a repeat of it returns its receipt instead of applying twice. */
+  submissions: Record<string, { digest: string; revision: number; receipt: Receipt }>;
 };
 
 export class Refusal extends Error {}
@@ -95,6 +102,7 @@ export function newFlow(id: string, slug: string, title: string, time: string): 
   return {
     schema: SCHEMA, flow: { id, slug, title, created: time }, revision: 0, next: {}, seq: 0,
     stages: [], rounds: [], questions: [], answers: [], closes: [], backgrounds: [], topics: [], results: [], assumed: [], retirements: [], sources: [],
+    aliases: [`folder:${id}`], submissions: {},
   };
 }
 
@@ -112,6 +120,47 @@ export function openStage(s: State, skill: string, ticket: string | undefined, t
 
 export function stageOf(s: State, id: string, where: string): Stage {
   return s.stages.find((st) => st.id === id) ?? refuse(where, `Flow ${s.flow.id} has no Stage ${id}`);
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Lookup aliases. A Flow keeps its immutable id; these qualified keys only find it. Lookup is the caller's job.
+
+export const ALIAS_KINDS = ["spec", "ticket", "branch", "run", "folder", "slug"];
+const ALIAS_VALUE: Record<string, RegExp> = {
+  spec: /^[A-Za-z0-9][A-Za-z0-9._/-]*$/,
+  ticket: /^[A-Za-z0-9][A-Za-z0-9._/-]*$/,
+  branch: /^[A-Za-z0-9._][A-Za-z0-9._/+@-]*$/,
+  run: /^[A-Za-z0-9][A-Za-z0-9._-]*$/,
+  folder: SLUG,
+  slug: SLUG,
+};
+
+/** `kind:value` in its stored form: a spec or ticket loses a leading `#`. Anything else is refused. */
+export function parseAlias(raw: string): string {
+  const at = raw.indexOf(":");
+  const kind = at < 0 ? "" : raw.slice(0, at);
+  if (!ALIAS_KINDS.includes(kind)) refuse("alias", `${JSON.stringify(raw)} is not a qualified alias; write <kind>:<value> with kind ${listed(ALIAS_KINDS)}, such as spec:267`);
+  let value = raw.slice(at + 1);
+  if (kind === "spec" || kind === "ticket") value = value.replace(/^#/, "");
+  if (!ALIAS_VALUE[kind].test(value)) refuse("alias", `${JSON.stringify(raw)} has no valid ${kind} value`);
+  return `${kind}:${value}`;
+}
+
+/** Every alias that finds `s`: the stored ones, its slug, and the ticket of each Stage. */
+export function aliasesOf(s: State): string[] {
+  const derived = [`slug:${s.flow.slug}`, ...s.stages.filter((st) => st.ticket).map((st) => `ticket:${st.ticket!.replace(/^#/, "")}`)];
+  return [...new Set([...s.aliases, ...derived])];
+}
+
+/** Adds the aliases `s` does not have yet and returns them. A new alias is one revision; no new alias is none. */
+export function addAliases(s: State, aliases: string[]): string[] {
+  const have = new Set(aliasesOf(s));
+  const added = [...new Set(aliases)].filter((a) => !have.has(a));
+  if (added.length) {
+    s.aliases.push(...added);
+    s.revision++;
+  }
+  return added;
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -157,15 +206,26 @@ function ref(o: Obj, where: string): string | undefined {
 
 export type Receipt = { refs: Record<string, string>; ask?: { questions: { id: string; question: string; options: { label: string }[]; recommended?: number }[] } };
 
-const KINDS = ["background", "topic", "result", "assumed", "round", "answer", "close", "stage"];
+const KINDS = ["background", "topic", "result", "revise", "assumed", "round", "answer", "close", "stage"];
 
-/** Applies `input` to Stage `stageId` of `s` in place, or throws a Refusal and leaves the caller to discard `s`. */
-export function contribute(s: State, stageId: string, input: unknown, time: string): Receipt {
+/** The same JSON value in one spelling, whatever its key order. */
+const canonical = (v: unknown): string =>
+  Array.isArray(v) ? `[${v.map(canonical).join(",")}]` : isObj(v) ? `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canonical(v[k])}`).join(",")}}` : JSON.stringify(v);
+
+/**
+ * Applies `input` to Stage `stageId` of `s` in place, or throws a Refusal and leaves the caller to discard `s`.
+ * A repeat of the Stage's latest contribution changes nothing and returns that contribution's receipt and revision.
+ */
+export function contribute(s: State, stageId: string, input: unknown, time: string): Receipt & { revision: number; repeated?: true } {
   const env = fields(input, "contribution", ["version", "items"]);
   if (env.version !== CONTRIBUTION_VERSION) refuse("contribution", `version ${JSON.stringify(env.version)} is not supported; flow-page reads contribution version ${CONTRIBUTION_VERSION}`);
   const items = list(env, "items", "contribution");
   const stage = stageOf(s, stageId, "contribution");
+  const digest = createHash("sha256").update(canonical(input)).digest("hex");
+  const last = s.submissions[stage.id];
+  if (last?.digest === digest) return { ...last.receipt, revision: last.revision, repeated: true };
   if (stage.state === "finished") refuse("contribution", `Stage ${stage.id} is finished, so it takes no more content; open a new Stage to continue the Flow`);
+  const rev = s.revision + 1;
 
   const refs: Record<string, string> = {};
   const kinds: Record<string, string> = {};
@@ -187,12 +247,29 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
   };
 
   // Pass 1: give every new referable thing its id, so later items and forward references can name it.
+  const nextEntry = new Map<string, number>();
   const planned = items.map((raw, i) => {
     const kind = isObj(raw) ? raw.kind : undefined;
     const where = `item ${i + 1}${typeof kind === "string" ? ` (${kind})` : ""}`;
     if (typeof kind !== "string" || !KINDS.includes(kind)) refuse(where, `kind must be ${listed(KINDS)}, got ${JSON.stringify(kind)}`);
     const o = raw as Obj;
     const ids: { id?: string; entries?: string[]; questions?: string[] } = {};
+    if (kind === "revise" && Array.isArray(o.add) && typeof o.result === "string" && !o.result.includes("/")) {
+      const rid = kinds[o.result] === "result" ? refs[o.result] : o.result;
+      const r = s.results.find((x) => x.id === rid);
+      if (r) {
+        const next = nextEntry.get(rid) ?? Math.max(0, ...r.entries.map((e) => Number(e.id.slice(1)))) + 1;
+        ids.entries = o.add.map((e, j) => {
+          const eid = `${rid}/e${next + j}`;
+          if (isObj(e)) {
+            const er = ref(e, `${where}: entry ${j + 1}`);
+            if (er !== undefined) claim(`${o.result}/${er}`, eid, "result entry", where);
+          }
+          return eid;
+        });
+        nextEntry.set(rid, next + o.add.length);
+      }
+    }
     if (kind === "topic") claim(ref(o, where), (ids.id = newId(s, "topic")), "topic", where);
     if (kind === "assumed") claim(ref(o, where), (ids.id = newId(s, "assumed")), "assumed pick", where);
     if (kind === "result") {
@@ -237,7 +314,10 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
         s.topics.push({ id: ids.id!, title: text(o, "title", where), summary: text(o, "summary", where), body: text(o, "body", where), sources: texts(o, "sources", where).map((t) => sourceId(s, t)) });
         break;
       case "result":
-        s.results.push(parseResult(o, where, stage.id, ids.id!, ids.entries!));
+        s.results.push(parseResult(o, where, stage.id, ids.id!, ids.entries!, rev));
+        break;
+      case "revise":
+        revise(s, o, where, stage.id, ids.entries, rev, resolve);
         break;
       case "assumed":
         fields(o, where, ["kind", "decision", "pick", "why"], ["ref"]);
@@ -320,8 +400,9 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
     }
   }
   checkLinks(s);
-  s.revision++;
-  return receipt;
+  s.revision = rev;
+  s.submissions[stage.id] = { digest, revision: rev, receipt };
+  return { ...receipt, revision: rev };
 }
 
 function sourceId(s: State, t: string): string {
@@ -332,30 +413,68 @@ function sourceId(s: State, t: string): string {
   return src.id;
 }
 
-function parseResult(o: Obj, where: string, stage: string, id: string, entryIds: string[]): Result {
+function parseResult(o: Obj, where: string, stage: string, id: string, entryIds: string[], rev: number): Result {
   if (!SHAPES.includes(o.shape as Shape)) refuse(where, `shape must be ${listed(SHAPES)}, got ${JSON.stringify(o.shape)}`);
   const shape = o.shape as Shape;
   const table = shape === "table";
   fields(o, where, ["kind", "shape", "title", table ? "columns" : "entries", ...(table ? ["rows"] : [])], ["ref", "summary"]);
   const columns = table ? texts(o, "columns", where) : undefined;
-  const entries = list(o, table ? "rows" : "entries", where).map((e, j) => {
-    const ew = `${where}: ${table ? "row" : "entry"} ${j + 1}`;
-    const eid = entryIds[j].split("/")[1];
-    if (shape === "cards") {
-      const c = fields(e, ew, ["title", "label", "blocking", "impact", "action", "evidence"], ["ref"]);
-      if (typeof c.blocking !== "boolean") refuse(ew, "blocking must be true or false");
-      return { id: eid, ...(c.ref ? { ref: c.ref } : {}), title: text(c, "title", ew), label: text(c, "label", ew), blocking: c.blocking, impact: text(c, "impact", ew), action: text(c, "action", ew), evidence: text(c, "evidence", ew) };
+  const entries = list(o, table ? "rows" : "entries", where).map((e, j) => parseEntry(shape, columns, e, `${where}: ${table ? "row" : "entry"} ${j + 1}`, entryIds[j].split("/")[1], rev));
+  return { id, stage, shape, title: text(o, "title", where), ...(o.summary !== undefined ? { summary: text(o, "summary", where) } : {}), ...(columns ? { columns } : {}), entries, changed: rev };
+}
+
+/** One cards entry, ledger entry, or table row, checked against its shape. */
+function parseEntry(shape: Shape, columns: string[] | undefined, e: unknown, ew: string, id: string, changed: number): Entry {
+  if (shape === "cards") {
+    const c = fields(e, ew, ["title", "label", "blocking", "impact", "action", "evidence"], ["ref"]);
+    if (typeof c.blocking !== "boolean") refuse(ew, "blocking must be true or false");
+    return { id, ...(c.ref ? { ref: c.ref } : {}), title: text(c, "title", ew), label: text(c, "label", ew), blocking: c.blocking, impact: text(c, "impact", ew), action: text(c, "action", ew), evidence: text(c, "evidence", ew), changed };
+  }
+  if (shape === "ledger") {
+    const c = fields(e, ew, ["claim", "status", "evidence", "missing_proof", "consequence"], ["ref"]);
+    if (!CLAIM_STATES.includes(c.status as string)) refuse(ew, `status must be ${listed(CLAIM_STATES)}`);
+    return { id, ...(c.ref ? { ref: c.ref } : {}), claim: text(c, "claim", ew), status: c.status, evidence: text(c, "evidence", ew), missing_proof: text(c, "missing_proof", ew), consequence: text(c, "consequence", ew), changed };
+  }
+  const c = fields(e, ew, ["cells"], ["ref"]);
+  if (!Array.isArray(c.cells) || c.cells.length !== columns!.length || c.cells.some((x) => typeof x !== "string")) refuse(ew, `cells must list ${columns!.length} strings, one per column`);
+  return { id, ...(c.ref ? { ref: c.ref } : {}), cells: c.cells as string[], changed };
+}
+
+/** A focused revision: `set` replaces named fields of one entry or of a Result's header, `add` appends entries. */
+function revise(s: State, o: Obj, where: string, stage: string, entryIds: string[] | undefined, rev: number, resolve: (v: unknown, kind: string, where: string) => string): void {
+  fields(o, where, ["kind", "result"], ["base", "set", "add"]);
+  if (o.set === undefined && o.add === undefined) refuse(where, "needs set, add, or both");
+  if (typeof o.result !== "string") refuse(where, "result must name a Result as <result ref or id>, or an entry as <result ref or id>/<entry ref or id>");
+  const [rname, ename] = (o.result as string).split("/", 2);
+  const rid = resolve(rname, "result", `${where}: result`);
+  const r = s.results.find((x) => x.id === rid) ?? refuse(where, `Result ${rid} does not exist`);
+  if (r.stage !== stage) refuse(where, `Result ${rid} belongs to Stage ${r.stage}, not the bound Stage ${stage}`);
+  const entry = ename === undefined ? undefined : (r.entries.find((e) => e.id === ename || e.ref === ename) ?? refuse(where, `Result ${rid} has no entry ${ename}`));
+  if (o.set !== undefined) {
+    if (!Number.isInteger(o.base) || (o.base as number) < 1 || (o.base as number) > s.revision) refuse(where, `set needs base, the Flow revision you read ${o.result} at (1 to ${s.revision}); show prints it as changed`);
+    const base = o.base as number;
+    const changed = entry ? entry.changed : r.changed;
+    if (changed > base) refuse(where, `conflict: ${o.result} changed in revision ${changed}, after your base ${base}; read it again with show and resubmit your edit`);
+    if (!isObj(o.set)) refuse(`${where}: set`, "must be an object of the fields to replace");
+    const set = o.set as Obj;
+    if (entry) {
+      if (set.ref !== undefined) refuse(`${where}: set`, "ref is not a field here; an entry keeps its ref");
+      const { id, changed: _, ...content } = entry;
+      const at = r.entries.indexOf(entry);
+      r.entries[at] = parseEntry(r.shape, r.columns, { ...content, ...set }, `${where}: set`, id, rev);
+    } else {
+      fields(set, `${where}: set`, [], ["title", "summary"]);
+      if (set.title !== undefined) r.title = text(set, "title", `${where}: set`);
+      if (set.summary !== undefined) r.summary = text(set, "summary", `${where}: set`);
+      r.changed = rev;
     }
-    if (shape === "ledger") {
-      const c = fields(e, ew, ["claim", "status", "evidence", "missing_proof", "consequence"], ["ref"]);
-      if (!CLAIM_STATES.includes(c.status as string)) refuse(ew, `status must be ${listed(CLAIM_STATES)}`);
-      return { id: eid, ...(c.ref ? { ref: c.ref } : {}), claim: text(c, "claim", ew), status: c.status, evidence: text(c, "evidence", ew), missing_proof: text(c, "missing_proof", ew), consequence: text(c, "consequence", ew) };
-    }
-    const c = fields(e, ew, ["cells"], ["ref"]);
-    if (!Array.isArray(c.cells) || c.cells.length !== columns!.length || c.cells.some((x) => typeof x !== "string")) refuse(ew, `cells must list ${columns!.length} strings, one per column`);
-    return { id: eid, ...(c.ref ? { ref: c.ref } : {}), cells: c.cells as string[] };
-  });
-  return { id, stage, shape, title: text(o, "title", where), ...(o.summary !== undefined ? { summary: text(o, "summary", where) } : {}), ...(columns ? { columns } : {}), entries };
+  } else if (o.base !== undefined) refuse(where, "base goes with set; add appends entries without one");
+  if (o.add !== undefined) {
+    if (entry) refuse(where, "add appends entries to a Result; name the Result, not an entry");
+    if (entryIds === undefined) refuse(where, `add appends to a Result from an earlier contribution; put new entries of ${o.result} in its result item`);
+    const adds = list(o, "add", where);
+    r.entries.push(...adds.map((e, j) => parseEntry(r.shape, r.columns, e, `${where}: add ${j + 1}`, entryIds![j].split("/")[1], rev)));
+  }
 }
 
 function optionLetter(q: Question, p: string, where: string): string {
@@ -608,7 +727,10 @@ export function snapshot(v: View, page: string, renderer: number) {
       id: st.id, label: st.label, skill: st.skill, ...(st.ticket ? { ticket: st.ticket } : {}), ...(st.parent ? { parent: st.parent } : {}), children: st.children,
       state: st.state, order: st.order, opened: st.opened, ...(st.finished ? { finished: st.finished } : {}),
       background: st.background?.id,
-      results: st.results.map((r) => ({ id: r.id, shape: r.shape, entries: r.entries.map((e) => ({ id: `${r.id}/${e.id}`, questions: e.questions })) })),
+      results: st.results.map((r) => ({
+        id: r.id, shape: r.shape, changed: r.changed,
+        entries: r.entries.map(({ anchor: _, ...e }) => ({ ...e, id: `${r.id}/${e.id}`, questions: e.questions })),
+      })),
       assumed: st.assumed.map((a) => ({ id: a.id, ...(a.reopened_by ? { reopened_by: a.reopened_by } : {}) })),
       rounds: st.items.filter((i) => i.type === "round").map((i) => ({ id: i.round.id, n: i.round.n, time: i.round.time, questions: i.questions.map((q) => q.id) })),
       questions: st.items.flatMap((i) => (i.type === "round" ? i.questions : [])).map((q) => ({
