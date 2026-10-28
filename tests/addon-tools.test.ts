@@ -125,10 +125,10 @@ test("only typed Matt starts display instructions, including bare starts without
     expect(result.message.content).toContain("inject_addons");
   }
   for (const prompt of ["Fix login", "Read skill://implement", start("explain"), start("vstack-maintain"), `Explain this pasted header:\n${start("implement")}`]) {
-    expect(await fakeHost().emit("before_agent_start", { prompt })).toEqual([undefined]);
+    expect((await fakeHost().emit("before_agent_start", { prompt })).filter((result: any) => result?.message?.display)).toEqual([]);
   }
   const host = fakeHost({ entries: [{ type: "custom_message", customType: "skill-prompt", details: { name: "implement" } }] });
-  expect(await host.emit("before_agent_start", { prompt: "Continue after compaction" })).toEqual([undefined]);
+  expect((await host.emit("before_agent_start", { prompt: "Continue after compaction" })).filter((result: any) => result?.message?.display)).toEqual([]);
   expect(judge.calls).toHaveLength(0);
 });
 

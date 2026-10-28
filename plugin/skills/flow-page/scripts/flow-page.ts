@@ -10,6 +10,7 @@
 //   bun flow-page.ts find <kind>:<value>
 //   bun flow-page.ts move [--flow <flow>] --to <folder-key>
 //   bun flow-page.ts show [--flow <flow>]
+//   bun flow-page.ts bound
 //   bun flow-page.ts render --flow <flow>
 //
 // <flow> is a Flow id or a qualified alias such as spec:267. Every command also takes --session <id> (default:
@@ -29,7 +30,7 @@ import { assetsDir, createFlowFolder, flowFolders, flowsDir, folderOfId, pagePat
 import { connect, flowUrl, hostCommand } from "./live.ts";
 import { migrateHistorical, parseHistorical } from "./migrate.ts";
 
-const COMMANDS = ["open", "bind", "submit", "alias", "close", "reopen", "find", "move", "show", "render", "host", "migrate"];
+const COMMANDS = ["open", "bind", "submit", "alias", "close", "reopen", "find", "move", "show", "bound", "render", "host", "migrate"];
 
 function usage(message: string): never {
   process.stderr.write(`flow-page.ts: ${message}
@@ -43,6 +44,7 @@ usage: bun flow-page.ts open --skill <name> (--title <text> [--slug <slug>] | --
        bun flow-page.ts move [--flow <flow>] --to <folder-key>
        bun flow-page.ts show [--flow <flow>]
        bun flow-page.ts render --flow <flow>
+       bun flow-page.ts bound
        bun flow-page.ts host status|stop
        bun flow-page.ts migrate <grilling-folder>
 <flow> is a Flow id or a qualified alias such as spec:267
@@ -69,7 +71,7 @@ const [command, ...rest] = positionals;
 if (!COMMANDS.includes(command ?? "")) usage(`give a command: ${COMMANDS.join(", ")}`);
 const allowed: Record<string, string[]> = {
   open: ["skill", "title", "slug", "flow", "parent", "ticket"], bind: ["flow", "stage"], submit: ["flow", "stage"], alias: ["flow"], close: ["flow"], reopen: ["skill", "flow", "parent", "ticket"],
-  find: [], move: ["flow", "to"], show: ["flow"], render: ["flow"], host: [], migrate: [],
+  find: [], move: ["flow", "to"], show: ["flow"], bound: [], render: ["flow"], host: [], migrate: [],
 };
 for (const k of Object.keys(opt)) if (!["session", "agent", "home", ...allowed[command]].includes(k)) usage(`${command} takes no --${k}`);
 const positional: Record<string, [number, number, string]> = {
@@ -351,6 +353,14 @@ async function main(): Promise<object> {
         return { flow: s.flow.id, revision: s.revision, moved_from: from, page: pagePath(dest), presentation: project(dest, s) };
       });
     }
+    case "bound": {
+      const b = session ? readBinding(dir, session, agent) : undefined;
+      if (!b) return { binding: null };
+      const { folder } = locate(b.flow);
+      const s = readState(folder)!;
+      stageOf(s, b.stage, "bound");
+      return { binding: b, flow: s.flow.id, stage: b.stage, revision: s.revision, page: pagePath(folder), presentation: presentationOf(folder, s) };
+    }
     case "show": {
       const { folder } = locate(flowKey());
       const s = readState(folder)!;
@@ -363,7 +373,8 @@ async function main(): Promise<object> {
   }
 }
 
-const live = command === "host" ? undefined : await connect(home);
+const unbound = command === "bound" && (!session || !readBinding(dir, session, agent));
+const live = command === "host" || unbound ? undefined : await connect(home);
 try {
   const result = await main() as { flow?: string | { id: string }; page?: string };
   if (live && result.page && result.flow) {

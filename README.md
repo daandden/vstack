@@ -24,6 +24,13 @@ The CI section writes `ci.md` independently of the Code host. For GitHub Actions
 
 To refresh, run `git pull` in the clone and start a new omp session. The link points at the working tree, so there is nothing else to update.
 
+## Flow links in omp
+
+When a session has a bound Flow, the extension displays its URL after every main-agent reply, including blocker replies and follow-up explanations. The extension does not open a browser or start another model turn. If the local host fails, the message gives the static page path and the observed error instead.
+
+Bindings belong to a project, session, and agent. Continuing a session restores its binding from disk. Switching sessions does not inherit the previous session's Flow. The extension gives each agent its authoring identity before a turn because bash supplies only `PI_SESSION_ID`. The `flow-page` helper documents the authoring commands and the `bound` lookup.
+
+
 ## /vstack-clean Command
 
 Type `/vstack-clean [age]` to preview expired Scratch entries across repos. The default age is `90d`. The extension runs `plugin/skills/vstack-tmp/scripts/clean.ts` without a model.

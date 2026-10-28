@@ -48,8 +48,8 @@ describe("Matt skill class", () => {
         return (read as any)(path, ...args);
       }) as any);
       const saved = { type: "custom_message", customType: "skill-prompt", details: { name: addon } };
-      expect(await fakeHost(options).emit("before_agent_start", { prompt: start(addon) })).toEqual([undefined]);
-      expect(await fakeHost({ ...options, entries: [saved] }).emit("before_agent_start", { prompt: "Continue" })).toEqual([undefined]);
+      expect((await fakeHost(options).emit("before_agent_start", { prompt: start(addon) })).filter((result: any) => result?.message?.display)).toEqual([]);
+      expect((await fakeHost({ ...options, entries: [saved] }).emit("before_agent_start", { prompt: "Continue" })).filter((result: any) => result?.message?.display)).toEqual([]);
       expect(judge.calls).toHaveLength(0);
       expect((await fakeHost(options).emit("before_agent_start", { prompt: start("custom-matt") }))[0]).toBeDefined();
       expect(judge.calls).toHaveLength(0);

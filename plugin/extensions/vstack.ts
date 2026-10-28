@@ -13,6 +13,55 @@ import { fileURLToPath } from "node:url";
 export default function vstack(pi: ExtensionAPI): void {
   registerAddonSelection(pi);
   registerCleanCommand(pi);
+  registerFlowPresentation(pi);
+}
+
+function registerFlowPresentation(pi: ExtensionAPI): void {
+  const script = fileURLToPath(new URL("../skills/flow-page/scripts/flow-page.ts", import.meta.url));
+  type Bound = {
+    binding: { flow: string; stage: string } | null;
+    page?: string;
+    live?: { state: "serving"; url: string } | { state: "unavailable"; error: string } | { state: "off" };
+    presentation?: { state: "current" | "stale"; error?: string };
+  };
+  const identity = (ctx: ExtensionContext) => [
+    "--session", ctx.sessionManager.getSessionId(),
+    "--agent", ctx.agent.kind === "main" ? "main" : ctx.agent.id,
+  ];
+  async function bound(ctx: ExtensionContext): Promise<Bound> {
+    const result = await pi.exec("bun", [script, "bound", ...identity(ctx)], { cwd: ctx.cwd });
+    if (result.code !== 0) throw new Error(result.stderr.trim() || `Flow lookup exited ${result.code}`);
+    return JSON.parse(result.stdout);
+  }
+  pi.on("before_agent_start", async (_event, ctx) => {
+    const args = identity(ctx).map(value => JSON.stringify(value)).join(" ");
+    let target = "";
+    try {
+      const current = await bound(ctx);
+      if (current.binding) target = ` Your bound Flow is ${current.binding.flow}, Stage ${current.binding.stage}.`;
+    } catch (error) {
+      target = ` Flow binding lookup failed: ${error instanceof Error ? error.message : String(error)}.`;
+    }
+    return { message: {
+      customType: "vstack-flow-context", display: false, attribution: "agent" as const,
+      content: `For flow-page authoring commands, pass ${args}. Bash supplies PI_SESSION_ID but no agent id. Never use another agent's binding.${target}`,
+    } };
+  });
+  pi.on("agent_end", async (event, ctx) => {
+    if (ctx.agent.kind !== "main" || event.isTerminal === false) return;
+    let content: string;
+    try {
+      const current = await bound(ctx);
+      if (!current.binding) return;
+      content = current.live?.state === "serving"
+        ? `Flow page: ${current.live.url}`
+        : `Flow page (static): ${current.page}\nLive serving ${current.live?.state === "unavailable" ? `failed: ${current.live.error}` : "is disabled"}.`;
+      if (current.presentation?.state === "stale") content += `\nStatic projection is stale${current.presentation.error ? `: ${current.presentation.error}` : "."}`;
+    } catch (error) {
+      content = `Flow page unavailable: ${error instanceof Error ? error.message : String(error)}`;
+    }
+    pi.sendMessage({ customType: "vstack-flow", content, display: true }, { triggerTurn: false });
+  });
 }
 
 function readAddonCatalog(): AddonCatalog | undefined {

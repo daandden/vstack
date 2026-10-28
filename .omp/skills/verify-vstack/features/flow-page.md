@@ -30,11 +30,12 @@ The flow-page script takes typed contributions for one bound Stage, assigns ids,
 - `flow-timeline`: Timeline Results preserve the supplied event order, known times, explicit outcomes, and evidence attached to the event it proves. Missing times stay unknown.
 - `flow-artifact`: a prototype Result names an HTML bundle, local app route, or terminal artifact. Captured bundles execute on a separate read-only viewer origin, local routes stay on their own origin, and missing runtimes show launch instructions with an unavailable state. Static exports never pretend a runtime is running.
 - `flow-nav`: `n` cycles through actionable questions newest in-progress Stage first; `t` opens a clickable Stage-only tree with states and open-question counts; `j` and `k` set fragments and focus; tab navigation moves focus; editable targets ignore shortcuts.
+- `flow-session`: each session and agent restores its own binding. A terminal main-agent reply presents the bound URL without another model request or a browser launch. A blocker and a follow-up with no model-written link still get the extension message. A live failure presents the static path and observed error.
 
 ## How to get to it (user POV)
 
-- A skill runs `bun "$(realpath skill://flow-page/scripts/flow-page.ts)" open|bind|submit|alias|close|reopen|find|move|show|render|migrate ...` and prints `live.url` from the receipt.
-- If `live.state` is `unavailable`, it prints the static `page` path and `live.error` instead.
+- A skill runs `bun "$(realpath skill://flow-page/scripts/flow-page.ts)" open|bind|submit|alias|close|reopen|find|move|show|render|migrate ...`. `bound` looks up only the current session and agent, without creating a Flow.
+- The extension displays the bound Flow URL after each main-agent reply, or the static `page` path and observed failure when live serving is unavailable.
 
 ## Driving it with bash and the omp browser
 
@@ -114,6 +115,35 @@ Steps:
   - Start a real local HTML app route with a button. Submit a second artifact with `runtime: "local-app"`, its loopback HTTP `url`, `launch`, and `revision`, plus a prototype Result. The real route works inside a sandboxed iframe and its origin differs from the Flow origin. Stop only that app, reload the page, and observe no iframe for that Result and an unavailable status with launch steps. A route with a redirect, a non-HTML response, or no listener must not be reported available.
   - Submit a terminal artifact with `runtime: "terminal"`, real `launch` steps, `revision`, and `unavailable` naming its missing interactive runtime. Read the steps and reason in the live Flow. Stop the Flow host, open its `file://` export, and observe unavailable statuses and real launch steps for all runnable artifacts with no embedded runtimes.
   - Save full-page lossless WebP and ARIA evidence, then attach the evidence to a proof Flow made through the new flow-page CLI. Record the commands, observed isolation and availability outcomes, and any runtime case not exercised.
+
+
+### Native omp sessions (`flow-session`)
+
+Use the same run dir for these sequential drives. Its isolated home is `$VERIFY_RUN_DIR/data/home`, not the direct CLI home `$H`. Pin one Bun executable on `PATH` for both the CLI and drives so a runtime mismatch does not invalidate the proof.
+
+1. Initialize the home with `drive.ts --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN_DIR" --name flow-session-setup '{"type":"get_state"}'`.
+2. Start a proof Flow in that home through the real authoring script. Use `--skill implement --ticket 284` and no session. Add a second Stage with `open --flow <id> --skill implement --ticket 285`. The CLI cwd must be the drive's `data/outside/proj`, so both use the same project key. Keep the Flow and Stage ids.
+3. Write `a-replies.json` with three stub replies: a `bash` tool call that binds ticket 284 and submits a Document Result, a blocker text with no URL, and a follow-up explanation with no URL. The tool uses the real script path and the session's `PI_SESSION_ID`, not a manually chosen session id. Run:
+
+   ```sh
+   bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN_DIR" --name flow-session-a --session --replies "$VERIFY_RUN_DIR/a-replies.json" \
+     '{"type":"prompt","message":"Record ticket 284 and report its blocker."}' \
+     '{"type":"bash","command":"sleep 1"}' \
+     '{"type":"prompt","message":"Explain the blocker without writing a link."}' \
+     '{"type":"bash","command":"sleep 1"}' \
+     '{"type":"get_messages"}' '{"type":"get_state"}'
+   ```
+
+   Observe two displayed `message_end` frames whose `message.customType` is `vstack-flow`. Each follows its model reply and contains the bound URL. The summary has three model requests, not extra requests caused by presentation. The hidden `vstack-flow-context` gives this session's id and agent `main`.
+4. Run `flow-session-b` with a new omp process in the same run dir. Its stub binds ticket 285 and submits a different Document Result, then answers with text only. Include the settling `bash` command, `get_messages`, and `get_state`. `show --flow <id>` and the real browser show one Result in each ticket Stage. Attempt to revise ticket 284's Result through B's implicit binding. The tool refuses and the Flow revision stays unchanged.
+5. Save A's `data.sessionFile` from the `get_state` response. In another drive, send `{"type":"switch_session","sessionPath":"<saved path>"}` before a text-only prompt. Its automatic URL still names A's Flow. Bind a separate session to another Flow and continue A again. Each session presents its own URL, with one model request for each text-only prompt.
+6. Stop the proof host. Occupy the endpoint the native extension will use with a listener owned by this proof. Continue A with a text-only reply. Its `vstack-flow` message gives the static path and the actual port-conflict failure, not an earlier live URL. The competing listener still responds afterward. Stop only that owned listener.
+7. Open both ticket tabs in the real browser. Capture lossless WebP and ARIA evidence of their distinct Results. Open the static file while the host is stopped. Attach the images, RPC observations, commands, and test outcomes to a Document Result on this proof Flow, not an old Grilling page.
+8. Close the browser tab, stop the owned Flow host, and preserve the static Flow and captured assets with the evidence before Cleanup removes the throwaway home.
+
+The RPC `prompt_result` can arrive before the asynchronous `agent_end` presentation finishes. The non-model `bash` pause above lets the message arrive before the drive starts another prompt or exits. It is not a new browser test harness. A drive that exits at `prompt_result` alone does not establish that presentation is missing.
+
+The drive's env contains only `PATH`, `HOME`, and `TERM`. A custom `VSTACK_FLOW_PORT` on an earlier CLI does not become the extension's environment. After host shutdown removes discovery, use the native default port, `42000 + (uid % 10000)`, for the conflict proof. Never stop an unrelated listener to reserve it.
 
 ## Gotchas
 

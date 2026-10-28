@@ -8,7 +8,7 @@ The skill that runs a Stage says when each page step happens. This skill says ho
 
 You send meaning: questions, answers, decisions, notes, and Results. The script owns everything else: ids, Stage order and tab labels, round and Q numbers, option letters, timestamps, the links between records, storage, and the page itself. It renders the page from its own template and escapes every string you send. You never write HTML, CSS, or scripts, and a contribution that carries them is refused.
 
-Run the script with the bash tool of this omp session, which sets `PI_SESSION_ID`, from inside the repo the work is about:
+Run the script from inside the repo the work is about. The extension supplies your `--session` and `--agent` arguments before each turn. Use them on authoring commands, especially in subagents: bash sets `PI_SESSION_ID` but supplies no agent id.
 
 ```sh
 bun "$(realpath skill://flow-page/scripts/flow-page.ts)" <command> ...
@@ -45,6 +45,10 @@ Loading this skill, reading a page, `show`, and `bind` open no Stage. A run that
 Parallel callers, and callers outside an omp session, name the target on each write: `submit --flow <flow> --stage <id>`. There is no other default. A session with no binding and no named target is refused. Callers bound to different Stages of one Flow, such as two wayfinder tickets, write at the same time safely: each contribution commits whole against the latest state.
 
 `show [--flow <flow>]` prints the Flow's structure: Stages with their labels, states, and open-question counts, rounds, Q numbers, answer states, Results with each entry and the revision that last `changed` it, every link and backlink, its aliases, and its `presentation`. Its `next` lists actionable questions in navigation order, newest in-progress Stage first.
+
+`bound` returns this session and agent's binding with its `page`, projection status, and `live` status. When none exists, it returns `{"binding":null}` without starting a host or creating a Flow. Bindings persist across session continuation. A different session or agent gets only its own binding, never the last active Stage.
+
+The extension presents the bound Flow URL after every main-agent reply, including blockers and follow-up explanations with no new Result. It starts no model turn and opens no browser. When live serving fails, it presents the static path and the observed error. Your reply still summarizes the work; it need not repeat the link.
 
 ## Find a Flow
 
