@@ -16,13 +16,14 @@
 // is a refusal, printed to stderr, after which nothing was written; exit 2 is a usage error. A receipt whose
 // `presentation` is stale means the content is committed but the page still shows an older revision.
 
-import { existsSync, mkdirSync, readFileSync, renameSync, rmdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmdirSync } from "node:fs";
 import { homedir } from "node:os";
-import { basename, join, resolve } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
-import { addAliases, aliasesOf, contribute, newFlow, nowIso, openStage, parseAlias, Refusal, SLUG, slugOf, snapshot, stageOf, view, type State } from "./model.ts";
+import { canonicalFile, capture, type Root } from "./assets.ts";
+import { addAliases, aliasesOf, contribute, newFlow, nowIso, openStage, parseAlias, Refusal, SLUG, slugOf, snapshot, stageOf, upgrade, view, type Io, type State } from "./model.ts";
 import { RENDERER, render } from "./render.ts";
-import { createFlowFolder, flowFolders, flowsDir, pagePath, pageRevision, readBinding, registerFolder, registeredFolder, statePath, withLock, writeAtomic, writeBinding } from "./store.ts";
+import { assetsDir, createFlowFolder, flowFolders, flowsDir, pagePath, pageRevision, readBinding, registerFolder, registeredFolder, statePath, withLock, writeAtomic, writeBinding } from "./store.ts";
 
 const COMMANDS = ["open", "bind", "submit", "alias", "find", "move", "show", "render"];
 
@@ -76,7 +77,7 @@ const time = nowIso();
 const errno = (e: unknown) => (e as NodeJS.ErrnoException).code;
 function readState(folder: string): State | undefined {
   try {
-    return JSON.parse(readFileSync(statePath(folder), "utf8"));
+    return upgrade(JSON.parse(readFileSync(statePath(folder), "utf8")));
   } catch (e) {
     if (errno(e) === "ENOENT") return undefined;
     throw e;
@@ -143,8 +144,40 @@ function project(folder: string, s: State): Presentation {
   }
 }
 
-/** Commits `s` in one atomic replace, then publishes its page. */
+/** The directories a contribution may read files from: the project (its git work tree, else the working directory)
+ *  and the project's Scratch dir, each resolved through symlinks. */
+function roots(): Root[] {
+  const top = Bun.spawnSync(["git", "rev-parse", "--show-toplevel"], { cwd: process.cwd(), stdout: "pipe", stderr: "ignore" });
+  const project = top.exitCode === 0 ? top.stdout.toString().trim() : process.cwd();
+  const out: Root[] = [{ name: "project", dir: realpathSync(project) }];
+  if (existsSync(dirname(dir))) out.push({ name: "scratch", dir: realpathSync(dirname(dir)) });
+  return out;
+}
+
+/** Captured bytes waiting for publish, by their stored file name. */
+const captured = new Map<string, Uint8Array>();
+const io: Io = {
+  capture(path, type, where) {
+    const { bytes, ...c } = capture(path, type, roots(), process.cwd(), where);
+    captured.set(c.file, bytes);
+    return c;
+  },
+  canonical(path, where, root) {
+    const rs = roots();
+    const base = root === undefined ? process.cwd() : (rs.find((r) => r.name === root)?.dir ?? refuse(`${where}: this project has no ${root} directory to find ${path} in`));
+    return canonicalFile(path, rs, base, where);
+  },
+};
+
+/** Stores captured assets, then commits `s` in one atomic replace, then publishes its page. Assets land first, so
+ *  committed state never names a missing file. An asset's directory is its sha256, so one that exists is already right. */
 function publish(folder: string, s: State): Presentation {
+  for (const [file, bytes] of captured) {
+    const path = join(assetsDir(folder), file);
+    if (existsSync(path)) continue;
+    mkdirSync(dirname(path), { recursive: true });
+    writeAtomic(path, bytes);
+  }
   writeAtomic(statePath(folder), `${JSON.stringify(s)}\n`);
   return project(folder, s);
 }
@@ -217,7 +250,7 @@ async function main(): Promise<object> {
         refuse(`the contribution is not valid JSON (${(e as Error).message})`);
       }
       return locked(t.flow, (folder, s) => {
-        const { revision, repeated, ...receipt } = contribute(s, t.stage, input, time);
+        const { revision, repeated, ...receipt } = contribute(s, t.stage, input, time, io);
         const presentation = repeated ? presentationOf(folder, s) : publish(folder, s);
         return { flow: s.flow.id, stage: t.stage, revision, page: pagePath(folder), presentation, ...(repeated ? { repeated } : {}), ...receipt };
       });

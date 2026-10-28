@@ -1,6 +1,6 @@
 ---
 name: flow-page
-description: How a Flow keeps its Flow page through Stage-bound authoring. Covers opening or joining a Stage, finding a Flow by alias, moving its folder, the typed contribution format, focused Result revisions, the receipt and its ask payload, answers, closes, and refusals.
+description: How a Flow keeps its Flow page through Stage-bound authoring. Covers opening or joining a Stage, finding a Flow by alias, moving its folder, the typed contribution format, Document Results, typed attachments and captured revisions, focused Result revisions, the receipt and its ask payload, answers, closes, and refusals.
 disable-model-invocation: true
 ---
 
@@ -60,13 +60,17 @@ Item kinds and their fields:
 
 - `background`: `title`, `summary` (one line), `sections` (one or more `{ heading, body }`), and `sources` (one or more strings, such as `GLOSSARY.md` or `[text](url)`). A Stage has one Background. Submit it before the Stage's first round.
 - `topic`: optional `ref`, `title`, `summary`, `body`, and `sources`. The Topics tab shows each Topic note once and lists the questions that cite it.
-- `result`: optional `ref`, `shape`, `title`, and an optional `summary` line. A Result shows a Stage's output before the questions it leads to, such as review findings, candidates, a ticket breakdown, or run results.
+- `result`: optional `ref`, `shape`, `title`, and an optional `summary` line. A Result shows a Stage's output before the questions it leads to, such as review findings, candidates, a ticket breakdown, run results, or a report.
   - `cards` has `entries`, each with optional `ref`, `title`, `label` (such as `issue`), `blocking` (`true` or `false`), `impact`, `action`, and `evidence`. In a review finding, `impact` opens with what a user or caller sees, and `evidence` gives the file and line.
   - `ledger` has `entries`, each with optional `ref`, `claim`, `status` (`confirmed`, `cleared`, or `unproven`), `evidence`, `missing_proof`, and `consequence`.
   - `table` has `columns` and `rows`, each row with optional `ref` and `cells`, one string per column.
+  - `document` is long-form content, such as an explanation, research findings, or an investigation report. It has `sections`, in reading order, each with a `heading` and `blocks`. A block is one of `{ prose }`, `{ list, ordered }` (`ordered` is optional), `{ code, language, source }` (`language` and `source` are optional; `source` is the file and line), or `{ figure }`, naming an attachment. Optional `citations` are `{ ref, source }`; cite one in prose or a list item as `[@<ref>]`, and the script numbers it and links both ways. Optional `limitations` lists what the Document does not show, and optional `sources` lists what it was built from.
+  - Any shape takes optional `attachments`, the attachments it shows, and `canonical`, the canonical record it was made from: `{ file }` (a path in the project), `{ commit }` (a hash), or `{ tracker, revision }` (such as `daandden/vstack#267` and the issue's updated time).
+  - `revises` publishes a new revision of an earlier Result of the bound Stage, named by its id. Send the whole Result again. The page shows the new revision and keeps the earlier ones readable, and `show` gives the committing revision as the Result's and each entry's `changed`. A `{ file }` canonical link carries over with the file's current revision. A `{ commit }` or `{ tracker }` link must be given again with its new revision.
 - `revise`: changes one Result of the bound Stage without resending it. `result` names the Result, or one entry as `<result>/<entry>`.
   - `set` replaces only the fields it names: an entry's fields, or a Result's `title` and `summary`. It needs `base`, the revision that `show` printed as that entry's or Result's `changed`. When someone changed it after `base`, the edit is refused as a conflict: run `show` and decide again.
   - `add` appends new entries or rows to a Result, in its shape. It needs no `base`.
+- `attachment`: optional `ref`, `type`, `caption`, and `origin` (what produced it, such as the command or the browser step). `type` is `image` (PNG, JPEG, GIF, or WebP), `video` (MP4 or WebM), `svg`, `file`, `trace`, `evidence`, or `artifact`. Give `path`, the file to capture, or `unavailable`, the reason there is none. An `artifact` is a runnable thing that runs outside the page: give `launch` (how to run it) and `revision` (such as a commit) instead, and an optional `http(s)` `url`. Name each attachment in a Result's `attachments` or a Document `figure` in the same contribution.
 - `assumed`: optional `ref`, `decision`, `pick`, and `why`, one decision settled without asking. `why` cites its repo fact with file and line, its ADR, or its convention. The page lists each Assumed pick before the rounds, and the close lists every one no question reopened.
 - `round`: `questions`, in `ask` order. One contribution holds at most one round, because one round is one `ask`. Each question has optional `ref`, `title` (one question that ends with "?"), `description`, and `options`. Each option has `label` (the label alone; the script adds `A. `, `B. `), `does`, `gains`, `costs`, and an optional `recommended` reason on at most one option. A question can add:
   - `again`: the earlier question it asks again. In the same Stage it names a question of an earlier round and keeps that Q number. From a finished Stage it names that Stage's latest ask of the Q number and takes a new Q number here; both questions link to each other.
@@ -82,7 +86,15 @@ Item kinds and their fields:
 
 Put each explanation in one place, so the page explains nothing twice. A question's own rationale goes in its `description`. Context that every question of the Stage needs goes in the Background. A concept that questions in several rounds or Stages build on goes in a Topic note. A name that one line defines is a Term note. The script stores each source string once, however many records cite it.
 
-Text fields are plain text. A blank line starts a paragraph, a block of `- ` lines is a bullet list, and `` `code` `` and `[text](https://url)` links are kept.
+Text fields are plain text. A blank line starts a paragraph, a block of `- ` lines is a bullet list, and `` `code` `` and `[text](https://url)` links are kept. In Document and attachment text, a link to anything but `https://`, `http://`, or a `#` anchor is refused.
+
+## Captured revisions
+
+The script reads an attachment's file once, when you submit it, and stores its bytes in the Flow under their sha256. A `{ file }` canonical link records the file's sha256 at that time. Editing a source file later changes nothing on the page. To show the new content, submit the Result again with `revises`.
+
+A `path` is relative to the working directory, or absolute, and must be a regular file inside the project or its Scratch dir. A path that leaves both, directly or through a symlink, is refused. An image or video must be one of the formats above, and an SVG with scripts, event handlers, embedded HTML, or script URLs is refused.
+
+The script stores evidence byte for byte. Redact it as the producing skill's contract requires before you attach it, for example with every secret replaced by `<REDACTED>`.
 
 ## The receipt
 

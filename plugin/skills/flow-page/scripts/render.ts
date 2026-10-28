@@ -3,32 +3,40 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { optionLabel, type AnswerState, type QuestionView, type ResultView, type StageView, type View } from "./model.ts";
+import { optionLabel, type AnswerState, type Attachment, type DocView, type QuestionView, type ResultView, type StageView, type View } from "./model.ts";
 
 /** Raise this when the page a given state renders to changes, so a page names the renderer that made it. */
-export const RENDERER = 2;
+export const RENDERER = 3;
 const TEMPLATE = join(import.meta.dir, "..", "templates", "flow-page.html");
 
 const STATE_LABELS: Record<string, string> = { "in-progress": "In progress", finished: "Finished" };
 const CLAIM_LABELS: Record<string, string> = { confirmed: "Confirmed", cleared: "Cleared", unproven: "Unproven" };
+const TYPE_LABELS: Record<string, string> = { image: "Image", video: "Video", svg: "SVG figure", file: "File", trace: "Trace", evidence: "Captured evidence", artifact: "Runnable artifact" };
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-/** Escaped text with `code` and [text](https://url) kept. */
-function text(s: string): string {
-  return esc(s)
+/** Citation markers of one Document: `[@ref]` becomes a numbered link to the citation. */
+type Cites = Map<string, { anchor: string; n: number }>;
+/** Escaped text with `code` and [text](https://url) kept, and citation markers numbered when `cites` is given. */
+function text(s: string, cites?: Cites): string {
+  const out = esc(s)
     .replace(/`([^`]+)`/g, "<code>$1</code>")
     .replace(/\[([^\]]+)\]\(((?:https?:\/\/|#)[^)\s]+)\)/g, (_, t, u) => `<a href="${u}">${t}</a>`);
+  if (!cites) return out;
+  return out.replace(/\[@([a-z0-9][a-z0-9-]*)\]/g, (m, ref) => {
+    const c = cites.get(ref);
+    return c ? `<a class="cite" href="#${c.anchor}" aria-label="Citation ${c.n}">[${c.n}]</a>` : m;
+  });
 }
 /** Paragraphs split on blank lines; a block whose lines all start with "- " is a bullet list. */
-function prose(s: string): string {
+function prose(s: string, cites?: Cites): string {
   return s
     .split(/\n\s*\n/)
     .map((b) => b.trim())
     .filter(Boolean)
     .map((block) => {
       const lines = block.split("\n").map((l) => l.trim());
-      if (lines.every((l) => l.startsWith("- "))) return `<ul class="bullets">${lines.map((l) => `<li>${text(l.slice(2))}</li>`).join("")}</ul>`;
-      return `<p>${text(lines.join(" "))}</p>`;
+      if (lines.every((l) => l.startsWith("- "))) return `<ul class="bullets">${lines.map((l) => `<li>${text(l.slice(2), cites)}</li>`).join("")}</ul>`;
+      return `<p>${text(lines.join(" "), cites)}</p>`;
     })
     .join("");
 }
@@ -119,12 +127,84 @@ ${options}
 </article>`;
 }
 
-function resultHtml(r: ResultView, v: View): string {
+const size = (n: number) => (n < 1024 ? `${n} B` : n < 1024 * 1024 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
+
+/** One typed attachment where a Result shows it. `id` is unique per place, because one attachment can appear twice. */
+function attachmentHtml(a: Attachment, id: string): string {
+  let body: string;
+  let state: string;
+  if (a.availability === "unavailable") {
+    state = "Unavailable";
+    body = `<p class="unavailable"><span class="label">Not captured</span><span>${text(a.reason!)}</span></p>`;
+  } else if (a.availability === "external") {
+    state = "Runs outside this page";
+    body = `<div class="launch"><p class="label">How to run it</p><div class="description">${prose(a.launch!)}</div>${a.url ? `<p><a href="${esc(a.url)}" rel="noreferrer">${esc(a.url)}</a></p>` : ""}</div>`;
+  } else {
+    state = "Captured";
+    const src = `assets/${esc(a.file!)}`;
+    if (a.type === "image" || a.type === "svg") body = `<img src="${src}" alt="${esc(a.caption)}" loading="lazy">`;
+    else if (a.type === "video") body = `<video src="${src}" controls preload="metadata" aria-label="${esc(a.caption)}"></video>`;
+    // A file:// page ignores `download`, and a browser shows text files itself, so the link opens a new tab and the
+    // reader keeps the Flow page.
+    else body = `<p class="download"><a href="${src}" download="${esc(a.name!)}" target="_blank" rel="noopener">${esc(a.name!)}</a> <span class="source">${size(a.size!)}</span></p>`;
+  }
+  const revision = a.revision ? `<span>Revision <code>${esc(a.availability === "captured" ? a.revision.slice(0, 12) : a.revision)}</code></span>` : "";
+  const from = a.from ? `<span>From <code>${esc(a.from.path)}</code></span>` : "";
+  return `<figure class="attachment" id="${id}" data-type="${a.type}" data-availability="${a.availability}">
+${body}
+<figcaption><p>${text(a.caption)}</p><p class="attachment-meta"><span class="kind">${TYPE_LABELS[a.type]}</span><span>${state}</span>${revision}${from}<time datetime="${esc(a.time)}">${formatTime(a.time)}</time></p><p class="source">Origin: ${text(a.origin)}</p></figcaption>
+</figure>`;
+}
+
+function documentHtml(r: ResultView, d: DocView, historical: boolean): string {
+  const cites: Cites = new Map(d.citations.map((c) => [c.ref, { anchor: c.anchor, n: c.n }]));
+  const att = new Map(r.shown.map((a) => [a.id, a]));
+  const stop = historical ? "" : " data-stop";
+  const sections = d.sections.map((sec) => {
+    const blocks = sec.blocks.map((b, i) => {
+      if ("prose" in b) return `<div class="description">${prose(b.prose, cites)}</div>`;
+      if ("list" in b) {
+        const tag = b.ordered ? "ol" : "ul";
+        return `<${tag} class="bullets">${b.list.map((t) => `<li>${text(t, cites)}</li>`).join("")}</${tag}>`;
+      }
+      if ("code" in b) {
+        const lang = b.language ? ` data-language="${esc(b.language)}"` : "";
+        const label = [b.language, b.source].filter(Boolean).map((x) => esc(x!)).join(" · ");
+        return `<figure class="code"><pre${lang}><code>${esc(b.code)}</code></pre>${label ? `<figcaption class="source">${label}</figcaption>` : ""}</figure>`;
+      }
+      return attachmentHtml(att.get(b.figure)!, `${sec.anchor}-f${i + 1}`);
+    });
+    return `<section class="doc-section" id="${sec.anchor}" aria-labelledby="${sec.anchor}-title"${stop}>
+<h3 id="${sec.anchor}-title">${text(sec.heading)}</h3>
+${blocks.join("\n")}
+</section>`;
+  });
+  const heading = (id: string) => d.sections.find((sec) => sec.anchor === id)!.heading;
+  const parts = [...sections];
+  if (d.limitations.length) parts.push(`<section class="limitations" id="${d.limitationsAnchor}"${stop}><p class="label">Limitations</p><ul class="bullets">${d.limitations.map((l) => `<li>${text(l)}</li>`).join("")}</ul></section>`);
+  if (d.citations.length)
+    parts.push(`<section class="citations" id="${d.citationsAnchor}" aria-label="Citations"${stop}><p class="label">Citations</p><ol class="bullets">${d.citations
+      .map((c) => `<li id="${c.anchor}">${text(c.text)}${c.cited_in.map((s) => ` <a class="backlink" href="#${s}">Cited in ${text(heading(s))}</a>`).join("")}</li>`)
+      .join("")}</ol></section>`);
+  if (d.sources.length) parts.push(`<section class="sources" id="${d.sourcesAnchor}"><p class="label">Sources</p><ul class="bullets">${d.sourceTexts.map((x) => `<li>${text(x)}</li>`).join("")}</ul></section>`);
+  return `<div class="document">\n${parts.join("\n")}\n</div>`;
+}
+
+function provenance(r: ResultView): string {
+  const c = r.canonical;
+  const link = !c ? "" : "file" in c ? ` from <code>${esc(c.file)}</code> at sha256 <code>${c.sha256.slice(0, 12)}</code>` : "commit" in c ? ` from commit <code>${esc(c.commit.slice(0, 12))}</code>` : ` from ${text(c.tracker)} at <code>${esc(c.revision)}</code>`;
+  const when = r.captured ? `, <time datetime="${esc(r.captured)}">${formatTime(r.captured)}</time>` : "";
+  return `<p class="provenance">Revision ${r.revision}${when}${link}</p>`;
+}
+
+function resultHtml(r: ResultView, v: View, historical = false): string {
   const asks = (qs: string[]) => qs.map((id) => `<a href="#${id}">Q${v.questions.get(id)!.q}</a>: ${text(v.questions.get(id)!.title)}`);
   const askLine = (qs: string[]) => (qs.length ? `\n<p class="ask"><span class="label">Asked in</span><span>${asks(qs).join("; ")}</span></p>` : "");
   const fields = (pairs: [string, string][]) => `<dl class="fields">${pairs.map(([k, val]) => `<dt>${k}</dt><dd>${text(val)}</dd>`).join("")}</dl>`;
   let body: string;
-  if (r.shape === "table") {
+  if (r.doc) {
+    body = documentHtml(r, r.doc, historical);
+  } else if (r.shape === "table") {
     const linked = r.entries.some((e) => e.questions.length);
     const head = `<tr>${r.columns!.map((c) => `<th scope="col">${text(c)}</th>`).join("")}${linked ? `<th scope="col">Asked in</th>` : ""}</tr>`;
     const rows = r.entries.map((e) => `<tr id="${e.anchor}">${(e.cells as string[]).map((c) => `<td>${text(c)}</td>`).join("")}${linked ? `<td>${asks(e.questions).join("; ")}</td>` : ""}</tr>`);
@@ -147,10 +227,17 @@ ${fields([["Impact", e.impact as string], ["Action", e.action as string]])}
 </li>`)
       .join("\n")}\n</ol>`;
   }
-  return `<section class="result" id="${r.id}" data-shape="${r.shape}" aria-labelledby="${r.id}-title" data-stop>
-<header><h2 id="${r.id}-title">${text(r.title)}</h2>${r.summary ? `<p class="result-summary">${text(r.summary)}</p>` : ""}</header>
-${body}
-</section>`;
+  const figures = new Set(r.doc?.figures ?? []);
+  const listed = r.shown.filter((a) => !figures.has(a.id));
+  const attachments = listed.length ? `\n<div class="attachments"><p class="label">Attachments</p>${listed.map((a) => attachmentHtml(a, `${r.anchor}-${a.id}`)).join("\n")}</div>` : "";
+  const history = r.history.length
+    ? `\n<details class="revisions"><summary>Earlier revisions (${r.history.length})</summary>\n${[...r.history].reverse().map((h) => resultHtml(h, v, true)).join("\n")}\n</details>`
+    : "";
+  const tag = historical ? "article" : "section";
+  return `<${tag} class="result" id="${r.anchor}" data-shape="${r.shape}" aria-labelledby="${r.anchor}-title"${historical ? "" : " data-stop"}>
+<header><h2 id="${r.anchor}-title">${text(r.title)}</h2>${r.summary ? `<p class="result-summary">${text(r.summary)}</p>` : ""}${provenance(r)}</header>
+${body}${attachments}${history}
+</${tag}>`;
 }
 
 function stageHtml(st: StageView, v: View, entryTitle: (ref: string) => string, sourceText: (id: string) => string) {

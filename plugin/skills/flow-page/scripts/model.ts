@@ -31,11 +31,37 @@ export type Retirement = { question: string; reason: string; time: string };
 export type Section = { heading: string; body: string };
 export type Background = { id: string; stage: string; title: string; summary: string; sections: Section[]; sources: string[] };
 export type Topic = { id: string; title: string; summary: string; body: string; sources: string[] };
-export type Shape = "cards" | "ledger" | "table";
+export type Shape = "cards" | "ledger" | "table" | "document";
 /** `changed` is the Flow revision that last changed a Result's header or an entry, which a focused revision checks. */
 export type Entry = Record<string, unknown> & { id: string; changed: number };
-export type Result = { id: string; stage: string; shape: Shape; title: string; summary?: string; columns?: string[]; entries: Entry[]; changed: number };
+/** One block of a Document section. Prose and list items can cite with `[@<citation ref>]`. */
+export type Block = { prose: string } | { list: string[]; ordered: boolean } | { code: string; language?: string; source?: string } | { figure: string };
+export type DocSection = { heading: string; blocks: Block[] };
+export type DocumentBody = { sections: DocSection[]; citations: { ref: string; source: string }[]; limitations: string[]; sources: string[] };
+/** Where a Result's content is canonically kept, and which revision of it the Result captured. */
+export type Canonical = { file: string; root: string; sha256: string } | { commit: string } | { tracker: string; revision: string };
+/** `revision` counts whole republications of the Result with `revises`; `captured` is when this one was submitted. */
+export type Result = {
+  id: string; stage: string; shape: Shape; title: string; summary?: string; columns?: string[]; entries: Entry[]; changed: number;
+  document?: DocumentBody; attachments?: string[]; canonical?: Canonical; revision?: number; captured?: string;
+};
 export type Source = { id: string; text: string };
+export const ATTACHMENT_TYPES = ["image", "video", "svg", "file", "trace", "evidence", "artifact"] as const;
+export type AttachmentType = (typeof ATTACHMENT_TYPES)[number];
+/** A typed attachment. `captured` ones hold stored bytes named by their sha256 `revision`; `unavailable` ones say why
+ *  there are none; an `artifact` is a runnable thing that runs outside the page, at the `revision` its producer names. */
+export type Attachment = {
+  id: string; stage: string; type: AttachmentType; caption: string; origin: string; time: string;
+  availability: "captured" | "unavailable" | "external";
+  revision?: string; file?: string; size?: number; name?: string; from?: { root: string; path: string };
+  reason?: string; launch?: string; url?: string;
+};
+/** File reads a contribution needs. flow-page.ts supplies them, so this module stays free of the filesystem. */
+export type Io = {
+  capture(path: string, type: AttachmentType, where: string): { revision: string; file: string; size: number; name: string; from: { root: string; path: string } };
+  /** The canonical file `path` names, resolved from the working directory, or from the named `root` when given. */
+  canonical(path: string, where: string, root?: string): { file: string; root: string; sha256: string };
+};
 
 export type State = {
   schema: number;
@@ -58,7 +84,17 @@ export type State = {
   aliases: string[];
   /** The latest contribution to each Stage, by Stage id, so a repeat of it returns its receipt instead of applying twice. */
   submissions: Record<string, { digest: string; revision: number; receipt: Receipt }>;
+  attachments: Attachment[];
+  /** Earlier revisions of republished Results, oldest first. */
+  history: Result[];
 };
+
+/** Fills the fields that states written before attachments existed lack. */
+export function upgrade(s: State): State {
+  s.attachments ??= [];
+  s.history ??= [];
+  return s;
+}
 
 export class Refusal extends Error {}
 const refuse = (where: string, message: string): never => {
@@ -67,10 +103,18 @@ const refuse = (where: string, message: string): never => {
 
 export const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const REF = /^[a-z0-9][a-z0-9-]*$/;
-const CODE_ID = /^(stage|round|question|close|background|topic|result|source|assumed)-\d+$/;
+const CODE_ID = /^(stage|round|question|close|background|topic|result|source|assumed|attachment)-\d+$/;
 const TICKET = /^#?[A-Za-z0-9][A-Za-z0-9._/-]*$/;
-const SHAPES: Shape[] = ["cards", "ledger", "table"];
+const SHAPES: Shape[] = ["cards", "ledger", "table", "document"];
 const CLAIM_STATES = ["confirmed", "cleared", "unproven"];
+/** A citation marker in Document prose or a list item. */
+export const CITE = /\[@([a-z0-9][a-z0-9-]*)\]/g;
+const LINK = /\[[^\]]*\]\(([^)\s]*)\)/g;
+/** Links in Document and attachment text may only go to the web or to an anchor on the page. */
+function safeLinks(t: string, where: string): string {
+  for (const m of t.matchAll(LINK)) if (!/^(https?:\/\/|#)/i.test(m[1])) refuse(where, `the link ${JSON.stringify(m[1])} uses an unsafe or unsupported scheme; links must start with https://, http://, or #`);
+  return t;
+}
 const listed = (xs: string[]) => (xs.length === 1 ? xs[0] : `${xs.slice(0, -1).join(", ")}, or ${xs.at(-1)}`);
 const all = (xs: string[]) => (xs.length === 1 ? xs[0] : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`);
 export const letter = (i: number) => String.fromCharCode(65 + i);
@@ -102,7 +146,7 @@ export function newFlow(id: string, slug: string, title: string, time: string): 
   return {
     schema: SCHEMA, flow: { id, slug, title, created: time }, revision: 0, next: {}, seq: 0,
     stages: [], rounds: [], questions: [], answers: [], closes: [], backgrounds: [], topics: [], results: [], assumed: [], retirements: [], sources: [],
-    aliases: [`folder:${id}`], submissions: {},
+    aliases: [`folder:${id}`], submissions: {}, attachments: [], history: [],
   };
 }
 
@@ -206,7 +250,7 @@ function ref(o: Obj, where: string): string | undefined {
 
 export type Receipt = { refs: Record<string, string>; ask?: { questions: { id: string; question: string; options: { label: string }[]; recommended?: number }[] } };
 
-const KINDS = ["background", "topic", "result", "revise", "assumed", "round", "answer", "close", "stage"];
+const KINDS = ["background", "topic", "attachment", "result", "revise", "assumed", "round", "answer", "close", "stage"];
 
 /** The same JSON value in one spelling, whatever its key order. */
 const canonical = (v: unknown): string =>
@@ -216,7 +260,7 @@ const canonical = (v: unknown): string =>
  * Applies `input` to Stage `stageId` of `s` in place, or throws a Refusal and leaves the caller to discard `s`.
  * A repeat of the Stage's latest contribution changes nothing and returns that contribution's receipt and revision.
  */
-export function contribute(s: State, stageId: string, input: unknown, time: string): Receipt & { revision: number; repeated?: true } {
+export function contribute(s: State, stageId: string, input: unknown, time: string, io: Io): Receipt & { revision: number; repeated?: true } {
   const env = fields(input, "contribution", ["version", "items"]);
   if (env.version !== CONTRIBUTION_VERSION) refuse("contribution", `version ${JSON.stringify(env.version)} is not supported; flow-page reads contribution version ${CONTRIBUTION_VERSION}`);
   const items = list(env, "items", "contribution");
@@ -246,6 +290,7 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
     return key;
   };
 
+  const revised = new Set<string>();
   // Pass 1: give every new referable thing its id, so later items and forward references can name it.
   const nextEntry = new Map<string, number>();
   const planned = items.map((raw, i) => {
@@ -272,8 +317,17 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
     }
     if (kind === "topic") claim(ref(o, where), (ids.id = newId(s, "topic")), "topic", where);
     if (kind === "assumed") claim(ref(o, where), (ids.id = newId(s, "assumed")), "assumed pick", where);
+    if (kind === "attachment") claim(ref(o, where), (ids.id = newId(s, "attachment")), "attachment", where);
     if (kind === "result") {
-      claim(ref(o, where), (ids.id = newId(s, "result")), "result", where);
+      let id: string;
+      if (o.revises !== undefined) {
+        const old = s.results.find((r) => r.id === o.revises) ?? refuse(where, `revises must name a Result published earlier by its id, got ${JSON.stringify(o.revises)}`);
+        if (old.stage !== stage.id) refuse(where, `${old.id} belongs to Stage ${old.stage}; revise a Result from its own Stage, or publish a new Result here`);
+        if (revised.has(old.id)) refuse(where, `${old.id} is already revised in this contribution`);
+        revised.add(old.id);
+        id = old.id;
+      } else id = newId(s, "result");
+      claim(ref(o, where), (ids.id = id), "result", where);
       const rows = Array.isArray(o.entries) ? o.entries : Array.isArray(o.rows) ? o.rows : [];
       ids.entries = rows.map((e, j) => {
         const eid = `${ids.id}/e${j + 1}`;
@@ -313,8 +367,8 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
         fields(o, where, ["kind", "title", "summary", "body", "sources"], ["ref"]);
         s.topics.push({ id: ids.id!, title: text(o, "title", where), summary: text(o, "summary", where), body: text(o, "body", where), sources: texts(o, "sources", where).map((t) => sourceId(s, t)) });
         break;
-      case "result":
-        s.results.push(parseResult(o, where, stage.id, ids.id!, ids.entries!, rev));
+      case "attachment":
+        s.attachments.push(parseAttachment(o, where, stage.id, ids.id!, time, io));
         break;
       case "revise":
         revise(s, o, where, stage.id, ids.entries, rev, resolve);
@@ -323,6 +377,26 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
         fields(o, where, ["kind", "decision", "pick", "why"], ["ref"]);
         s.assumed.push({ id: ids.id!, stage: stage.id, decision: text(o, "decision", where), pick: text(o, "pick", where), why: text(o, "why", where) });
         break;
+      case "result": {
+        const r = parseResult(o, where, stage.id, ids.id!, ids.entries!, rev, (v, w) => resolve(v, "attachment", w), (t) => sourceId(s, t), io);
+        r.captured = time;
+        const i = s.results.findIndex((x) => x.id === r.id);
+        if (i < 0) {
+          r.revision = 1;
+          s.results.push(r);
+          break;
+        }
+        // A republished Result: the old revision stays in history, and the canonical link carries over.
+        const old = s.results[i];
+        if (r.canonical === undefined && old.canonical !== undefined) {
+          if (!("file" in old.canonical)) refuse(where, `${old.id} was captured from ${"commit" in old.canonical ? `commit ${old.canonical.commit}` : `${old.canonical.tracker} at ${old.canonical.revision}`}; give canonical again with the revision this one captures`);
+          r.canonical = io.canonical(old.canonical.file, where, old.canonical.root);
+        }
+        r.revision = (old.revision ?? 1) + 1;
+        s.history.push(old);
+        s.results[i] = r;
+        break;
+      }
       case "round": {
         fields(o, where, ["kind", "questions"]);
         if (++rounds > 1) refuse(where, "a contribution asks at most one round, because one round is one ask");
@@ -413,14 +487,24 @@ function sourceId(s: State, t: string): string {
   return src.id;
 }
 
-function parseResult(o: Obj, where: string, stage: string, id: string, entryIds: string[], rev: number): Result {
+function parseResult(o: Obj, where: string, stage: string, id: string, entryIds: string[], rev: number, attachment: (v: unknown, where: string) => string, source: (t: string) => string, io: Io): Result {
   if (!SHAPES.includes(o.shape as Shape)) refuse(where, `shape must be ${listed(SHAPES)}, got ${JSON.stringify(o.shape)}`);
   const shape = o.shape as Shape;
   const table = shape === "table";
-  fields(o, where, ["kind", "shape", "title", table ? "columns" : "entries", ...(table ? ["rows"] : [])], ["ref", "summary"]);
+  const shared = ["ref", "summary", "attachments", "canonical", "revises"];
+  const head = (body: Partial<Result>): Result => ({
+    id, stage, shape, title: text(o, "title", where), ...(o.summary !== undefined ? { summary: text(o, "summary", where) } : {}), entries: [], changed: rev, ...body,
+    ...(o.attachments !== undefined ? { attachments: texts(o, "attachments", where).map((a) => attachment(a, `${where}: attachments`)) } : {}),
+    ...(o.canonical !== undefined ? { canonical: parseCanonical(o.canonical, `${where}: canonical`, io) } : {}),
+  });
+  if (shape === "document") {
+    fields(o, where, ["kind", "shape", "title", "sections"], [...shared, "citations", "limitations", "sources"]);
+    return head({ document: parseDocument(o, where, attachment, source) });
+  }
+  fields(o, where, ["kind", "shape", "title", table ? "columns" : "entries", ...(table ? ["rows"] : [])], shared);
   const columns = table ? texts(o, "columns", where) : undefined;
   const entries = list(o, table ? "rows" : "entries", where).map((e, j) => parseEntry(shape, columns, e, `${where}: ${table ? "row" : "entry"} ${j + 1}`, entryIds[j].split("/")[1], rev));
-  return { id, stage, shape, title: text(o, "title", where), ...(o.summary !== undefined ? { summary: text(o, "summary", where) } : {}), ...(columns ? { columns } : {}), entries, changed: rev };
+  return head({ ...(columns ? { columns } : {}), entries });
 }
 
 /** One cards entry, ledger entry, or table row, checked against its shape. */
@@ -471,6 +555,7 @@ function revise(s: State, o: Obj, where: string, stage: string, entryIds: string
   } else if (o.base !== undefined) refuse(where, "base goes with set; add appends entries without one");
   if (o.add !== undefined) {
     if (entry) refuse(where, "add appends entries to a Result; name the Result, not an entry");
+    if (r.shape === "document") refuse(where, `${rid} is a Document, which has no entries; publish its next revision with revises`);
     if (entryIds === undefined) refuse(where, `add appends to a Result from an earlier contribution; put new entries of ${o.result} in its result item`);
     const adds = list(o, "add", where);
     r.entries.push(...adds.map((e, j) => parseEntry(r.shape, r.columns, e, `${where}: add ${j + 1}`, entryIds![j].split("/")[1], rev)));
@@ -531,6 +616,96 @@ const settled = (state: AnswerState) => state === "picked" || state === "resolve
 /** The Assumed picks of a Stage that no question has reopened. */
 function visibleAssumed(s: State, stage: string): Assumed[] {
   return s.assumed.filter((a) => a.stage === stage && !s.questions.some((q) => q.reopens === a.id));
+}
+
+function parseCanonical(v: unknown, where: string, io: Io): Canonical {
+  const forms = isObj(v) ? ["file", "commit", "tracker"].filter((k) => v[k] !== undefined) : [];
+  if (forms.length !== 1) refuse(where, "must be one of { file }, { commit }, or { tracker, revision }");
+  if (forms[0] === "file") {
+    const o = fields(v, where, ["file"]);
+    return io.canonical(text(o, "file", where), where);
+  }
+  if (forms[0] === "commit") {
+    const o = fields(v, where, ["commit"]);
+    if (typeof o.commit !== "string" || !/^[0-9a-f]{7,64}$/.test(o.commit)) refuse(where, "commit must be a commit hash of 7 to 64 lowercase hex digits");
+    return { commit: o.commit as string };
+  }
+  const o = fields(v, where, ["tracker", "revision"]);
+  return { tracker: text(o, "tracker", where), revision: text(o, "revision", where) };
+}
+
+function parseDocument(o: Obj, where: string, attachment: (v: unknown, where: string) => string, source: (t: string) => string): DocumentBody {
+  const citations = o.citations === undefined ? [] : list(o, "citations", where).map((c, j) => {
+    const cw = `${where}: citation ${j + 1}`;
+    const co = fields(c, cw, ["ref", "source"]);
+    if (typeof co.ref !== "string" || !REF.test(co.ref)) refuse(cw, "ref must be lowercase letters, digits, and hyphens");
+    return { ref: co.ref as string, source: safeLinks(text(co, "source", cw), cw) };
+  });
+  const seen = new Set<string>();
+  for (const [j, c] of citations.entries()) {
+    if (seen.has(c.ref)) refuse(`${where}: citation ${j + 1}`, `ref ${c.ref} is already a citation of this Document`);
+    seen.add(c.ref);
+  }
+  /** Text that a reader sees with its links and citation markers, each checked here. */
+  const cited = (t: string, w: string) => {
+    for (const m of t.matchAll(CITE)) if (!seen.has(m[1])) refuse(w, `[@${m[1]}] names no citation of this Document; add { ref: "${m[1]}", source } to citations`);
+    return safeLinks(t, w);
+  };
+  const sections = list(o, "sections", where).map((sec, j) => {
+    const sw = `${where}: section ${j + 1}`;
+    const so = fields(sec, sw, ["heading", "blocks"]);
+    const blocks = list(so, "blocks", sw).map((b, k): Block => {
+      const bw = `${sw}: block ${k + 1}`;
+      const forms = isObj(b) ? ["prose", "list", "code", "figure"].filter((x) => b[x] !== undefined) : [];
+      if (forms.length !== 1) refuse(bw, "must have exactly one of prose, list, code, or figure");
+      switch (forms[0]) {
+        case "prose": {
+          const bo = fields(b, bw, ["prose"]);
+          return { prose: cited(text(bo, "prose", bw), bw) };
+        }
+        case "list": {
+          const bo = fields(b, bw, ["list"], ["ordered"]);
+          if (bo.ordered !== undefined && typeof bo.ordered !== "boolean") refuse(bw, "ordered must be true or false");
+          return { list: texts(bo, "list", bw).map((t) => cited(t, bw)), ordered: bo.ordered === true };
+        }
+        case "code": {
+          const bo = fields(b, bw, ["code"], ["language", "source"]);
+          const code = text(bo, "code", bw);
+          if (bo.language !== undefined && (typeof bo.language !== "string" || !/^[a-z0-9][a-z0-9+#.-]*$/i.test(bo.language))) refuse(bw, "language must be a language name such as ts or python");
+          return { code, ...(bo.language !== undefined ? { language: bo.language as string } : {}), ...(bo.source !== undefined ? { source: text(bo, "source", bw) } : {}) };
+        }
+        default: {
+          const bo = fields(b, bw, ["figure"]);
+          return { figure: attachment(bo.figure, `${bw}: figure`) };
+        }
+      }
+    });
+    return { heading: text(so, "heading", sw), blocks };
+  });
+  const limitations = o.limitations === undefined ? [] : texts(o, "limitations", where).map((t) => safeLinks(t, `${where}: limitations`));
+  const sources = o.sources === undefined ? [] : texts(o, "sources", where).map((t) => source(safeLinks(t, `${where}: sources`)));
+  return { sections, citations: citations.map((c) => ({ ref: c.ref, source: source(c.source) })), limitations, sources };
+}
+
+function parseAttachment(o: Obj, where: string, stage: string, id: string, time: string, io: Io): Attachment {
+  const type = o.type as AttachmentType;
+  if (!ATTACHMENT_TYPES.includes(type)) refuse(where, `type must be ${listed([...ATTACHMENT_TYPES])}, got ${JSON.stringify(o.type)}`);
+  const base = { id, stage, type, time };
+  if (type === "artifact") {
+    fields(o, where, ["kind", "type", "caption", "origin", "launch", "revision"], ["ref", "url"]);
+    if (o.url !== undefined && (typeof o.url !== "string" || !/^https?:\/\/[^\s]+$/i.test(o.url))) refuse(where, "url must be an http:// or https:// URL");
+    return {
+      ...base, caption: safeLinks(text(o, "caption", where), where), origin: safeLinks(text(o, "origin", where), where), availability: "external",
+      launch: safeLinks(text(o, "launch", where), where), revision: text(o, "revision", where), ...(o.url !== undefined ? { url: o.url as string } : {}),
+    };
+  }
+  fields(o, where, ["kind", "type", "caption", "origin"], ["ref", "path", "unavailable"]);
+  const caption = safeLinks(text(o, "caption", where), where);
+  const origin = safeLinks(text(o, "origin", where), where);
+  if ((o.path === undefined) === (o.unavailable === undefined)) refuse(where, "needs exactly one of path, the file to capture, or unavailable, the reason there is none");
+  if (o.unavailable !== undefined) return { ...base, caption, origin, availability: "unavailable", reason: text(o, "unavailable", where) };
+  const c = io.capture(text(o, "path", where), type, where);
+  return { ...base, caption, origin, availability: "captured", revision: c.revision, file: c.file, size: c.size, name: c.name, from: c.from };
 }
 
 function parseQuestion(raw: unknown, where: string, id: string, stage: string, round: string, resolve: (v: unknown, kind: string, where: string) => string): Question {
@@ -618,6 +793,20 @@ function checkLinks(s: State): void {
     const other = s.questions.find((x) => x.reopens === a.id && x.id !== q.id);
     if (other) refuse(`question ${q.id}`, `Assumed pick ${a.id} is already reopened by ${other.id}; ask that question again instead`);
   }
+  const attachments = new Set(s.attachments.map((a) => a.id));
+  const used = new Set<string>();
+  for (const r of [...s.results, ...s.history])
+    for (const a of attachmentsOf(r)) {
+      if (!attachments.has(a)) refuse(`result ${r.id}`, `attachment ${a} does not exist`);
+      used.add(a);
+    }
+  for (const a of s.attachments) if (!used.has(a.id)) refuse(`attachment ${a.id}`, "is attached to no Result; name it in a Result's attachments or a Document figure");
+}
+
+/** Every attachment a Result shows: its figures, then its attachments list. */
+export function attachmentsOf(r: Result): string[] {
+  const figures = (r.document?.sections ?? []).flatMap((sec) => sec.blocks.flatMap((b) => ("figure" in b ? [b.figure] : [])));
+  return [...new Set([...figures, ...(r.attachments ?? [])])];
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -626,7 +815,22 @@ function checkLinks(s: State): void {
 /** `picks` holds option labels only for an explicit pick; `why` says why an unresolved answer is not consent. */
 export type AnswerView = { state: AnswerState; why?: ResponseStatus | NonConsent; response?: AskResponse; reading?: Reading; picks?: string[] };
 export type QuestionView = Question & { answer: AnswerView; open: boolean; latest: boolean; retired?: { reason: string; time: string }; decided_in?: string; asked_again_by: string[] };
-export type ResultView = Omit<Result, "entries"> & { entries: (Entry & { anchor: string; questions: string[] })[] };
+export type DocView = {
+  sections: { anchor: string; heading: string; blocks: Block[] }[];
+  citations: { anchor: string; n: number; ref: string; source: string; text: string; cited_in: string[] }[]; citationsAnchor: string;
+  limitations: string[]; limitationsAnchor: string;
+  sources: string[]; sourceTexts: string[]; sourcesAnchor: string;
+  figures: string[];
+};
+export type ResultView = Omit<Result, "entries" | "document"> & {
+  /** The id this rendering of the Result anchors at: the Result id, or `<id>-r<n>` for an earlier revision. */
+  anchor: string;
+  revision: number;
+  entries: (Entry & { anchor: string; questions: string[] })[];
+  doc?: DocView;
+  shown: Attachment[];
+  history: ResultView[];
+};
 export type AssumedView = Assumed & { reopened_by?: string };
 export type StageView = Stage & {
   label: string;
@@ -642,6 +846,7 @@ export type View = {
   topics: (Topic & { sourceTexts: string[]; questions: string[] })[];
   sources: (Source & { cited_by: string[] })[];
   questions: Map<string, QuestionView>;
+  attachments: (Attachment & { used_by: string[] })[];
 };
 
 const words = (skill: string) => skill.replace(/-/g, " ").replace(/^./, (c) => c.toUpperCase());
@@ -687,9 +892,30 @@ export function view(s: State): View {
     questions.set(q.id, qv);
   }
   const linking = (entry: string) => s.questions.filter((q) => q.entries?.includes(entry)).map((q) => q.id);
+  const attachment = new Map(s.attachments.map((a) => [a.id, a]));
+  const resultView = (r: Result, anchor: string, current: boolean): ResultView => {
+    const { document: d, ...rest } = r;
+    const rv: ResultView = {
+      ...rest, anchor, revision: r.revision ?? 1, shown: attachmentsOf(r).map((a) => attachment.get(a)!), history: [],
+      entries: r.entries.map((e) => ({ ...e, anchor: `${anchor}-${e.id}`, questions: current ? linking(`${r.id}/${e.id}`) : [] })),
+    };
+    if (d) {
+      const sections = d.sections.map((sec, i) => ({ ...sec, anchor: `${anchor}-s${i + 1}` }));
+      const citesIn = (ref: string) => sections.filter((sec) => sec.blocks.some((b) => ("prose" in b ? [b.prose] : "list" in b ? b.list : []).some((t) => [...t.matchAll(CITE)].some((m) => m[1] === ref)))).map((sec) => sec.anchor);
+      rv.doc = {
+        sections,
+        citations: d.citations.map((c, i) => ({ anchor: `${anchor}-c${i + 1}`, n: i + 1, ref: c.ref, source: c.source, text: sourceText.get(c.source)!, cited_in: citesIn(c.ref) })), citationsAnchor: `${anchor}-citations`,
+        limitations: d.limitations, limitationsAnchor: `${anchor}-limitations`,
+        sources: d.sources, sourceTexts: d.sources.map((x) => sourceText.get(x)!), sourcesAnchor: `${anchor}-sources`,
+        figures: d.sections.flatMap((sec) => sec.blocks.flatMap((b) => ("figure" in b ? [b.figure] : []))),
+      };
+    }
+    if (current) rv.history = s.history.filter((h) => h.id === r.id).map((h) => resultView(h, `${r.id}-r${h.revision ?? 1}`, false));
+    return rv;
+  };
   const stages = [...s.stages].sort((a, b) => a.order - b.order).map((st): StageView => {
     const bg = s.backgrounds.find((b) => b.stage === st.id);
-    const results = s.results.filter((r) => r.stage === st.id).map((r) => ({ ...r, entries: r.entries.map((e) => ({ ...e, anchor: `${r.id}-${e.id}`, questions: linking(`${r.id}/${e.id}`) })) }));
+    const results = s.results.filter((r) => r.stage === st.id).map((r) => resultView(r, r.id, true));
     const closes = s.closes.filter((c) => c.stage === st.id);
     const lastClose = closes.at(-1)?.id;
     const seqOfRound = (r: Round) => r.seq;
@@ -711,11 +937,13 @@ export function view(s: State): View {
     ...s.backgrounds.filter((b) => b.sources.includes(id)).map((b) => b.id),
     ...s.topics.filter((t) => t.sources.includes(id)).map((t) => t.id),
     ...s.questions.filter((q) => q.today?.some((f) => f.source === id)).map((q) => q.id),
+    ...s.results.filter((r) => r.document && (r.document.sources.includes(id) || r.document.citations.some((c) => c.source === id))).map((r) => r.id),
   ];
   return {
     flow: s.flow, revision: s.revision, stages, questions,
     topics: s.topics.map((t) => ({ ...t, sourceTexts: t.sources.map((x) => sourceText.get(x)!), questions: s.questions.filter((q) => q.topics?.includes(t.id)).map((q) => q.id) })),
     sources: s.sources.map((x) => ({ ...x, cited_by: citers(x.id) })),
+    attachments: s.attachments.map((a) => ({ ...a, used_by: [...new Set([...s.results, ...s.history].filter((r) => attachmentsOf(r).includes(a.id)).map((r) => r.id))] })),
   };
 }
 
@@ -728,8 +956,17 @@ export function snapshot(v: View, page: string, renderer: number) {
       state: st.state, order: st.order, opened: st.opened, ...(st.finished ? { finished: st.finished } : {}),
       background: st.background?.id,
       results: st.results.map((r) => ({
-        id: r.id, shape: r.shape, changed: r.changed,
+        id: r.id, shape: r.shape, revision: r.revision, ...(r.captured ? { captured: r.captured } : {}), ...(r.canonical ? { canonical: r.canonical } : {}), changed: r.changed,
+        revisions: [...r.history, r].map((x) => ({ revision: x.revision, ...(x.captured ? { captured: x.captured } : {}), ...(x.canonical ? { canonical: x.canonical } : {}), attachments: x.shown.map((a) => a.id) })),
+        attachments: r.shown.map((a) => a.id),
         entries: r.entries.map(({ anchor: _, ...e }) => ({ ...e, id: `${r.id}/${e.id}`, questions: e.questions })),
+        ...(r.doc ? {
+          document: {
+            sections: r.doc.sections.map((sec) => sec.anchor),
+            citations: r.doc.citations.map((c) => ({ anchor: c.anchor, n: c.n, source: c.source, cited_in: c.cited_in })),
+            figures: r.doc.figures, limitations: r.doc.limitations.length, limitations_anchor: r.doc.limitationsAnchor, sources: r.doc.sources,
+          },
+        } : {}),
       })),
       assumed: st.assumed.map((a) => ({ id: a.id, ...(a.reopened_by ? { reopened_by: a.reopened_by } : {}) })),
       rounds: st.items.filter((i) => i.type === "round").map((i) => ({ id: i.round.id, n: i.round.n, time: i.round.time, questions: i.questions.map((q) => q.id) })),
@@ -744,5 +981,9 @@ export function snapshot(v: View, page: string, renderer: number) {
     })),
     topics: v.topics.map((t) => ({ id: t.id, questions: t.questions })),
     sources: v.sources.map((x) => ({ id: x.id, cited_by: x.cited_by })),
+    attachments: v.attachments.map((a) => ({
+      id: a.id, stage: a.stage, type: a.type, availability: a.availability, time: a.time, used_by: a.used_by,
+      ...(a.revision ? { revision: a.revision } : {}), ...(a.file ? { file: `assets/${a.file}`, size: a.size } : {}), ...(a.from ? { from: a.from } : {}),
+    })),
   };
 }

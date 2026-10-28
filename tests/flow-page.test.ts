@@ -3,9 +3,10 @@
 // page structure (ids and the links between them), never page wording or markup.
 
 import { afterAll, beforeEach, expect, test } from "bun:test";
-import { mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
 const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-page-test-")));
@@ -493,4 +494,258 @@ test("the published page carries no content markup or script and names its revis
   expect(l.meta["flow-page-revision"]).toBe(String(r.json.revision));
   expect(l.meta["flow-page-renderer"]).toBe(String(show(r.json.flow).renderer));
   expect(readdirSync(join(page, "..")).filter((f) => f.endsWith(".tmp"))).toEqual([]);
+});
+
+// ---------------------------------------------------------------------------------------------------------------
+// Document Results, typed attachments, and captured revisions (#272).
+
+const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
+const sha = (b: Uint8Array | string) => createHash("sha256").update(b).digest("hex");
+/** Writes `bytes` to `rel` under the working directory, the project the script runs in. */
+const put = (rel: string, bytes: Uint8Array | string) => {
+  mkdirSync(dirname(join(cwd, rel)), { recursive: true });
+  writeFileSync(join(cwd, rel), bytes);
+};
+const attachment = (ref: string, type: string, extra: object = {}) => ({ kind: "attachment", ref, type, caption: `Caption of ${ref}`, origin: `Origin of ${ref}`, ...extra });
+const CODE = "if (cart.size > limit) {\n\treturn  refuse();\n}\n";
+const doc = (ref: string, extra: object = {}) => ({
+  kind: "result",
+  ref,
+  shape: "document",
+  title: "How checkout limits work",
+  sections: [
+    { heading: "Today", blocks: [{ prose: "Limits apply per cart [@adr].\n\n- one\n- two" }, { code: CODE, language: "ts", source: "src/cart.ts:10" }] },
+    { heading: "Proof", blocks: [{ figure: "shot" }, { list: ["Measured once [@web].", "Checked by hand."], ordered: true }] },
+  ],
+  citations: [{ ref: "adr", source: "docs/adr/0040.md" }, { ref: "web", source: "[Spec](https://example.com/spec)" }],
+  limitations: ["Measured on one machine."],
+  sources: ["GLOSSARY.md"],
+  ...extra,
+});
+
+type El = { tag: string; attrs: Record<string, string>; text: string; inside: string[] };
+/** Every element of the page in document order, with its attributes, its own text, and the ids of the elements around it. */
+async function elements(page: string): Promise<El[]> {
+  const out: El[] = [];
+  const stack: El[] = [];
+  await new HTMLRewriter()
+    .on("*", {
+      element(e) {
+        const el: El = { tag: e.tagName, attrs: Object.fromEntries(e.attributes), text: "", inside: stack.map((x) => x.attrs.id).filter(Boolean) };
+        out.push(el);
+        if (e.selfClosing || ["img", "meta", "br", "hr", "input", "link", "source"].includes(e.tagName)) return;
+        stack.push(el);
+        e.onEndTag(() => void stack.splice(stack.lastIndexOf(el), 1));
+      },
+      text(t) {
+        for (const el of stack) el.text += t.text;
+      },
+    })
+    .transform(new Response(readFileSync(page, "utf8")))
+    .text();
+  for (const el of out) el.text = el.text.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+  return out;
+}
+const within = (els: El[], id: string) => els.filter((e) => e.inside.includes(id));
+
+test("a Document Result keeps ordered sections, citations, code, figures, limitations, and sources", async () => {
+  openFlow("s-1");
+  put("shot.png", PNG);
+  const r = submit("s-1", attachment("shot", "image", { path: "shot.png" }), doc("doc"));
+  expect(r.stderr).toBe("");
+  expect(r.code).toBe(0);
+  const { refs, page, flow } = r.json;
+  const res = show(flow).stages[0].results.find((x: any) => x.id === refs.doc);
+  expect(res.shape).toBe("document");
+  const d = res.document;
+  expect(d.sections.length).toBe(2);
+  expect(d.figures).toEqual([refs.shot]);
+  expect(d.limitations).toBe(1);
+  const els = await elements(page);
+  const ids = els.map((e) => e.attrs.id).filter(Boolean);
+  expect(ids.indexOf(d.sections[0])).toBeLessThan(ids.indexOf(d.sections[1]));
+  expect(ids).toContain(d.limitations_anchor);
+  // Each citation is numbered by code, links from the section that cites it, and links back.
+  expect(d.citations.map((c: any) => c.cited_in)).toEqual([[d.sections[0]], [d.sections[1]]]);
+  for (const c of d.citations) {
+    expect(within(els, c.cited_in[0]).some((e) => e.attrs.href === `#${c.anchor}`)).toBe(true);
+    expect(within(els, c.anchor).some((e) => e.attrs.href === `#${c.cited_in[0]}`)).toBe(true);
+  }
+  const l = await links(page);
+  for (const targets of l.within.values()) for (const t of targets) expect(l.ids.has(t)).toBe(true);
+  // Every j/k stop is an anchor a link or URL can name.
+  expect(els.filter((e) => "data-stop" in e.attrs && !e.attrs.id)).toEqual([]);
+  // Code keeps its significant whitespace.
+  expect(within(els, d.sections[0]).filter((e) => e.tag === "pre").map((e) => e.text)).toEqual([CODE]);
+  // The figure shows the captured bytes, named by its caption.
+  const img = within(els, d.sections[1]).find((e) => e.tag === "img")!;
+  expect(img.attrs.alt).toBe("Caption of shot");
+  expect(readFileSync(join(dirname(page), img.attrs.src))).toEqual(PNG);
+  const sources = show(flow).sources;
+  for (const src of res.document.sources) expect(sources.find((x: any) => x.id === src).cited_by).toContain(refs.doc);
+});
+
+const MP4 = Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from("ftypisom"), Buffer.alloc(12)]);
+const SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><style>rect{fill:#a6e3a1}</style><rect width="40" height="20"/></svg>`;
+
+test("every attachment type keeps its caption, origin, captured revision, and availability, and survives moving the Flow", async () => {
+  openFlow("s-1");
+  const files: Record<string, [string, string, Uint8Array | string]> = {
+    shot: ["image", "media/shot.png", PNG],
+    clip: ["video", "media/clip.mp4", MP4],
+    fig: ["svg", "media/fig.svg", SVG],
+    table: ["file", "out/report.csv", "a,b\n1,2\n"],
+    spans: ["trace", "out/trace.json", '{"spans":[]}\n'],
+    log: ["evidence", "out/run.log", "token <REDACTED> accepted\n"],
+  };
+  for (const [, rel, bytes] of Object.values(files)) put(rel, bytes);
+  const items = [
+    ...Object.entries(files).map(([ref, [type, path]]) => attachment(ref, type, { path })),
+    attachment("app", "artifact", { launch: "Run `bun run dev`, then open the URL.", revision: "abc1234", url: "http://127.0.0.1:3000/" }),
+    attachment("gone", "video", { unavailable: "No screen recorder in a headless run." }),
+  ];
+  const refsOf = [...Object.keys(files), "app", "gone"];
+  const r = submit("s-1", ...items, { kind: "result", ref: "proof", shape: "table", title: "Proof", columns: ["Check"], rows: [{ cells: ["ok"] }], attachments: refsOf });
+  expect(r.stderr).toBe("");
+  const { refs, flow } = r.json;
+
+  const check = async () => {
+    const snap = show(flow);
+    const page = snap.page;
+    const byId = new Map(snap.attachments.map((a: any) => [a.id, a]));
+    expect(snap.stages[0].results[0].attachments).toEqual(refsOf.map((x) => refs[x]));
+    const els = await elements(page);
+    for (const [ref, [type, , bytes]] of Object.entries(files)) {
+      const a: any = byId.get(refs[ref]);
+      expect([a.type, a.availability, a.revision]).toEqual([type, "captured", sha(bytes)]);
+      expect(readFileSync(join(dirname(page), a.file))).toEqual(Buffer.from(bytes));
+      const shown = within(els, `${refs.proof}-${refs[ref]}`);
+      expect(shown.some((e) => (e.attrs.src ?? e.attrs.href) === a.file)).toBe(true);
+      const figure = els.find((e) => e.attrs.id === `${refs.proof}-${refs[ref]}`)!;
+      expect(figure.text).toContain(`Caption of ${ref}`);
+      expect(figure.text).toContain(`Origin of ${ref}`);
+    }
+    const app: any = byId.get(refs.app);
+    expect([app.availability, app.revision, app.file]).toEqual(["external", "abc1234", undefined]);
+    const gone: any = byId.get(refs.gone);
+    expect([gone.availability, gone.file]).toEqual(["unavailable", undefined]);
+    expect(within(els, `${refs.proof}-${refs.gone}`).some((e) => e.attrs.src || e.attrs.href)).toBe(false);
+    return snap;
+  };
+  const before = await check();
+  // Move the whole Flow store; a rendered page and its attachments keep working from the new place.
+  const moved = join(dirname(home), "moved-home");
+  renameSync(home, moved);
+  home = moved;
+  expect(run(["render", "--flow", flow]).code).toBe(0);
+  const after = await check();
+  expect(after.page).not.toBe(before.page);
+  expect(after.attachments).toEqual(before.attachments);
+});
+
+const GIF = Buffer.from("R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==", "base64");
+
+test("a Result keeps what it captured when its sources change, until a new revision is published from the same canonical file", async () => {
+  openFlow("s-1");
+  put("docs/research.md", "first findings\n");
+  put("shot.png", PNG);
+  const first = submit("s-1", attachment("shot", "image", { path: "shot.png" }), doc("doc", { canonical: { file: "docs/research.md" } }));
+  expect(first.stderr).toBe("");
+  const { refs, flow } = first.json;
+  const figureBytes = async (page: string, section: string) => {
+    const img = within(await elements(page), section).find((e) => e.tag === "img")!;
+    return readFileSync(join(dirname(page), img.attrs.src));
+  };
+  const captured = show(flow).stages[0].results[0];
+  expect(captured.canonical).toEqual({ file: "docs/research.md", root: "project", sha256: sha("first findings\n") });
+
+  // Editing every source and rendering again changes nothing the Result shows.
+  put("docs/research.md", "second findings\n");
+  put("shot.png", GIF);
+  expect(run(["render", "--flow", flow]).code).toBe(0);
+  const unchanged = show(flow);
+  expect(unchanged.stages[0].results[0]).toEqual(captured);
+  expect(await figureBytes(unchanged.page, captured.document.sections[1])).toEqual(PNG);
+
+  // Publishing again captures the new revision, keeps the canonical file, and keeps the old revision readable.
+  const sections = doc("doc").sections.map((sec: any, i: number) => (i === 1 ? { ...sec, blocks: [{ figure: "shot-2" }, ...sec.blocks.slice(1)] } : sec));
+  const second = submit("s-1", attachment("shot-2", "image", { path: "shot.png" }), { ...doc("doc"), sections, revises: refs.doc });
+  expect(second.stderr).toBe("");
+  expect(second.json.refs.doc).toBe(refs.doc);
+  const snap = show(flow);
+  const res = snap.stages[0].results[0];
+  expect(snap.stages[0].results.length).toBe(1);
+  expect(res.revision).toBe(2);
+  expect(res.canonical).toEqual({ file: "docs/research.md", root: "project", sha256: sha("second findings\n") });
+  expect(res.revisions.map((x: any) => [x.revision, x.canonical.sha256, x.attachments])).toEqual([
+    [1, sha("first findings\n"), [refs.shot]],
+    [2, sha("second findings\n"), [second.json.refs["shot-2"]]],
+  ]);
+  expect(await figureBytes(snap.page, res.document.sections[1])).toEqual(GIF);
+  const old = (await elements(snap.page)).find((e) => e.attrs.id === `${refs.doc}-r1`);
+  expect(old).toBeDefined();
+  expect(await figureBytes(snap.page, `${refs.doc}-r1`)).toEqual(PNG);
+});
+
+const shown = (...items: object[]) => [...items, { kind: "result", shape: "table", title: "Proof", columns: ["Check"], rows: [{ cells: ["ok"] }], attachments: items.map((i: any) => i.ref) }];
+const prose = (p: string, extra: object = {}) => ({ ...doc("doc", { sections: [{ heading: "Only", blocks: [{ prose: p }] }], ...extra }) });
+const unsafeSvg = (body: string) => `<svg xmlns="http://www.w3.org/2000/svg">${body}</svg>`;
+
+test.each([
+  ["a path that climbs out of the project", () => shown(attachment("a", "image", { path: "../outside.png" })), "outside"],
+  ["an absolute path outside the project and Scratch", () => shown(attachment("a", "image", { path: join(dirname(cwd), "outside.png") })), "outside"],
+  ["a symlink that leads out of the project", () => shown(attachment("a", "image", { path: "link.png" })), "symlink"],
+  ["a directory", () => shown(attachment("a", "file", { path: "media" })), "regular file"],
+  ["a missing file", () => shown(attachment("a", "file", { path: "nope.txt" })), "nope.txt"],
+  ["HTML posing as an image", () => shown(attachment("a", "image", { path: "media/page.png" })), "media/page.png"],
+  ["an SVG with a script", () => shown(attachment("a", "svg", { path: "media/script.svg" })), "<script>"],
+  ["an SVG with an event handler", () => shown(attachment("a", "svg", { path: "media/onload.svg" })), "onload"],
+  ["an SVG with an entity-encoded javascript: link", () => shown(attachment("a", "svg", { path: "media/href.svg" })), "javascript"],
+  ["an SVG that embeds HTML", () => shown(attachment("a", "svg", { path: "media/foreign.svg" })), "foreignobject"],
+  ["a javascript: link in Document prose", () => [prose("See [this](javascript:alert(1)).")], "javascript:"],
+  ["a data: link in a citation", () => [prose("Fact [@x].", { citations: [{ ref: "x", source: "[x](data:text/html,hi)" }] })], "citation 1"],
+  ["a file: URL on a runnable artifact", () => shown(attachment("a", "artifact", { launch: "Open it.", revision: "1", url: "file:///etc/passwd" })), "url"],
+  ["a citation marker with no citation", () => [prose("Fact [@missing].")], "@missing"],
+  ["a figure that names no attachment", () => [doc("doc", { sections: [{ heading: "Only", blocks: [{ figure: "attachment-9" }] }] })], "attachment-9"],
+  ["an attachment no Result shows", () => [attachment("a", "file", { unavailable: "none" })], "attached to no Result"],
+  ["an attachment with both a path and a reason", () => shown(attachment("a", "file", { path: "media/page.png", unavailable: "none" })), "unavailable"],
+  ["an unknown attachment type", () => shown(attachment("a", "hologram", { unavailable: "none" })), "hologram"],
+  ["a revision of a Result that does not exist", () => [prose("Fact.", { revises: "result-9" })], "result-9"],
+])("%s is refused precisely with no partial write", (_, items, names) => {
+  openFlow("s-1");
+  writeFileSync(join(dirname(cwd), "outside.png"), PNG);
+  Bun.spawnSync(["ln", "-s", "../outside.png", join(cwd, "link.png")]);
+  put("media/page.png", "<!doctype html><script>alert(1)</script>");
+  put("media/script.svg", unsafeSvg("<script>alert(1)</script>"));
+  put("media/onload.svg", unsafeSvg(`<rect onload="alert(1)"/>`));
+  put("media/href.svg", unsafeSvg(`<a href="java&#x73;cript:alert(1)"><rect/></a>`));
+  put("media/foreign.svg", unsafeSvg(`<foreignObject><div>x</div></foreignObject>`));
+  const before = tree();
+  const r = run(["submit"], { session: "s-1", stdin: contribution(...items()) });
+  expect(r.stderr).toContain(names);
+  expect(r.code).toBe(1);
+  expect(r.stdout).toBe("");
+  expect(tree()).toEqual(before);
+});
+
+test("a symlink that stays inside the project is captured as the file it points to", () => {
+  openFlow("s-1");
+  put("media/shot.png", PNG);
+  Bun.spawnSync(["ln", "-s", "media/shot.png", join(cwd, "inside.png")]);
+  const r = submit("s-1", ...shown(attachment("a", "image", { path: "inside.png" })));
+  expect(r.stderr).toBe("");
+  expect(show(r.json.flow).attachments[0].revision).toBe(sha(PNG));
+});
+
+test("a Result captured from a tracker or commit revision must name its new revision when it is published again", () => {
+  openFlow("s-1");
+  const first = submit("s-1", prose("Fact.", { canonical: { tracker: "daandden/vstack#267", revision: "2026-10-28T08:00:00Z" } })).json;
+  const before = tree();
+  const r = submit("s-1", prose("Fact, revised.", { revises: first.refs.doc }));
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain("daandden/vstack#267");
+  expect(tree()).toEqual(before);
+  const ok = submit("s-1", prose("Fact, revised.", { revises: first.refs.doc, canonical: { tracker: "daandden/vstack#267", revision: "2026-10-29T08:00:00Z" } }));
+  expect(ok.stderr).toBe("");
+  expect(show(first.flow).stages[0].results[0].revisions.map((x: any) => x.canonical.revision)).toEqual(["2026-10-28T08:00:00Z", "2026-10-29T08:00:00Z"]);
 });

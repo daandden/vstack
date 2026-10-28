@@ -15,6 +15,8 @@ export const flowsDir = (home: string, cwd: string): string => join(scratchRoot(
 // The page is a projection: a failed publish leaves the state committed and the older page in place.
 export const statePath = (folder: string) => join(folder, "data", "state.json");
 export const pagePath = (folder: string) => join(folder, "index.html");
+/** Captured attachment bytes, as `<sha256>/<name>`, linked from the page by a path relative to it. */
+export const assetsDir = (folder: string) => join(folder, "assets");
 
 /** The revision the published page shows, read from the meta tag the renderer writes, or undefined with no page. */
 export function pageRevision(folder: string): number | undefined {
@@ -24,7 +26,7 @@ export function pageRevision(folder: string): number | undefined {
 }
 
 /** Replaces `path` in one rename, so a reader sees the old file or the new one and never a partial write. */
-export function writeAtomic(path: string, text: string): void {
+export function writeAtomic(path: string, text: string | Uint8Array): void {
   const tmp = `${path}.${process.pid}.${randomBytes(4).toString("hex")}.tmp`;
   try {
     writeFileSync(tmp, text);
