@@ -254,7 +254,7 @@ Tell the user the setup is complete, in which mode, and where the config is. Rep
 
 List the skills that read the config:
 
-- `issue-tracker.md`: to-spec, to-tickets, triage, wayfinder, code-review, and why.
+- `issue-tracker.md`: to-spec, to-tickets, triage, wayfinder, code-review, why, implement-spec, and session.
 - `code-host.md`: implement and its PR chain (open-pr, babysit, and ship), implement-spec, hillclimb, code-review, blast-radius, why, and session. Without it, implement offers only End state commit, and code-review and blast-radius cannot review a PR. Its default End state is the End state that implement, implement-spec, and hillclimb take when the user's words and the ticket name none.
 - `ci.md`: implement, babysit, and wizard. Without it, implement offers only End state commit. Logs, build reruns, secrets, and variables use this file.
 - `triage-labels.md`: triage, to-spec, and to-tickets.

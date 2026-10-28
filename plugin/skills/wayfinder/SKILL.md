@@ -22,7 +22,11 @@ The map is a single issue on this repo's issue tracker, labelled `wayfinder:map`
 
 The map is an index, not a store. It lists the decisions made and points at the tickets that hold their detail; a decision lives in exactly one place, its ticket, so the map never restates it, only gists it and links.
 
-Where the map, its child tickets, blocking, and frontier queries physically live is tracker-specific. The issue tracker should have been provided to you. If not, tell the user to run `/skill:setup-vstack`. Consult the tracker doc's "Wayfinding operations" section for how _this_ repo expresses them. If no tracker has been provided, default to the local-markdown tracker.
+Where the map, its child tickets, blocking, and frontier queries physically live is tracker-specific. Read `issue-tracker.md` under `<vstack root>/docs/vstack/` in Standard mode or `<vstack root>/config/` in Private mode. If no tracker has been provided, tell the user to run `/skill:setup-vstack` and default to the local-markdown tracker. CLI, local-markdown, and no-tool prose configs keep their configured workflows, including the "Wayfinding operations" section where present.
+
+For an MCP tracker such as Jira, read the named server's current tool list, descriptions, and parameter schemas. Select tools for map and child-ticket creation, search, full issue and comment reads, assignment, blocking links, comments, updates, and closing using the recorded project facts. No "Wayfinding operations" section, per-operation config rows, or assumed tool names are needed. Create maps and tickets with the recorded project key and ticket issue type; use the server's supported parent-child relationship to group and query the map's tickets. If discovery or a needed capability is unavailable, name the server and gap and leave that operation undone rather than inventing a relationship or issue type.
+
+Use the recorded blocking link type and its direction to find each ticket's blockers. The frontier contains only open, unclaimed children whose blockers are all closed. Resolve through the recorded close transition, after posting the answer as the resolution steps say. These tool choices preserve the parent-only tracker writes below.
 
 ### The map body
 
@@ -72,7 +76,7 @@ The answer isn't part of the body; it's recorded on resolution (see [Work throug
 
 ## The Grilling page
 
-A map keeps one Grilling page for all its sessions, and every `ask` of a wayfinder session goes on it. Read skill://grilling-page before the first `ask`. Charting adds one Stage with `skill: "wayfinder"` and marks it finished when charting stops. Once the map exists, rename the page's flow folder after the map with the page script's `rename` command. The new key is the map's issue number, or its effort name on the local-markdown tracker. If the flow's key is already that key, skip the rename. A later session finds the page in the flow folder whose `flow.json` names the map.
+A map keeps one Grilling page for all its sessions, and every `ask` of a wayfinder session goes on it. Read skill://grilling-page before the first `ask`. Charting adds one Stage with `skill: "wayfinder"` and marks it finished when charting stops. Once the map exists, append its original issue number or tracker key in the flow record's `spec`, or its effort name on the local-markdown tracker. Rename the page's flow folder with that value through the page script's `rename` command. grilling-page owns the page-key normalization and no-op rename behavior; the flow's `spec` retains the original identity. A later session finds the page in the flow folder whose `flow.json` names the map.
 
 Each ticket is one Stage with `skill: "wayfinder"`. A session adds it when it claims the ticket. Put the ticket's name in its Background, and add its id to the flow record's `tickets`. The script assigns the short tab label. The skills that resolve the ticket, such as grilling, prototype, or domain-modeling, ask inside that Stage. When the session closes the ticket, mark its Stage finished. Parallel sessions append to the same page, so read the latest flow record just before appending it again.
 

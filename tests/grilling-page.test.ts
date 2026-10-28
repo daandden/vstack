@@ -371,6 +371,28 @@ test("rename moves the flow folder, keeps the old key in flow.json, and prints t
   expect(flowJson(join(dir, "vstack-151-b")).old_keys).toEqual(["page-per-flow", "151"]);
 });
 
+test("rename normalizes tracker keys while retaining original issue identities", () => {
+  const old = flowFolder();
+  const flow = { ...FLOW, spec: "MY_PROJ-12", tickets: ["MY_PROJ-13"] };
+  expect(append(PAGE, flow, ROUND, question("s1-r1-q1", 1)).code).toBe(0);
+  const before = readFileSync(state, "utf8");
+  const moved = join(dir, "vstack-my-proj-12");
+  const r = run(["rename", state, "MY_PROJ-12"]);
+  expect(r.code).toBe(0);
+  expect(r.stdout.trim()).toBe(join(moved, "page.html"));
+  expect(existsSync(old)).toBe(false);
+  expect(flowJson(moved)).toMatchObject({
+    slug: "page-per-flow", key: "my-proj-12", old_keys: ["page-per-flow"],
+    spec: "MY_PROJ-12", tickets: ["MY_PROJ-13"],
+  });
+  const movedState = join(moved, "page.jsonl");
+  expect(readFileSync(movedState, "utf8").startsWith(before)).toBe(true);
+  const files = ["page.jsonl", "page.html", "flow.json"];
+  const unchanged = files.map((f) => readFileSync(join(moved, f), "utf8"));
+  expect(run(["rename", movedState, "My_Proj-12"]).code).toBe(0);
+  expect(files.map((f) => readFileSync(join(moved, f), "utf8"))).toEqual(unchanged);
+});
+
 test("rename refuses when the target folder exists, and writes nothing", () => {
   const old = flowFolder();
   append(PAGE, FLOW, ROUND, question("s1-r1-q1", 1));

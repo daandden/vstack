@@ -6,7 +6,9 @@ disable-model-invocation: true
 
 This skill takes the current conversation context and codebase understanding and produces a spec. Do NOT interview the user; just synthesize what you already know.
 
-The issue tracker and triage label vocabulary should have been provided to you. If not, tell the user to run `/skill:setup-vstack`.
+Read the project's `issue-tracker.md` and `triage-labels.md` under `<vstack root>/docs/vstack/` in Standard mode or `<vstack root>/config/` in Private mode. If they have not been provided and are missing, tell the user to run `/skill:setup-vstack`.
+
+For an MCP tracker such as Jira, read the named server's current tool list, descriptions, and parameter schemas. Select search, full issue and comment reads, creation, and labeling tools using the recorded project facts, without per-operation config rows or assumed tool names. Create the spec with the recorded project key and ticket issue type. Map the canonical `ready-for-agent` role to its configured label. If discovery or a needed capability is unavailable, name the server and gap and leave publication undone. CLI, local-markdown, and no-tool prose configs keep their configured workflows.
 
 ## Process
 
@@ -32,7 +34,7 @@ Fix the draft and show the coverage table as DRIFT-CHECK.md's "Fix and show" say
 
 Then publish the spec to the project issue tracker. Apply the `ready-for-agent` triage label - no need for additional triage.
 
-After you publish, key the flow's page by the spec. Append the page's `flow` record again with `spec` set to the spec issue number, or to the feature slug of a local-markdown spec. Then run the page script's `rename` with that value as the new key, and print the page path that it prints. Later Stages find the page from the spec issue. End the to-spec Stage as grilling-page's "Add a Stage" says.
+After you publish, key the flow's page by the spec. Append the page's `flow` record again with `spec` set to the original spec issue number or tracker key, or to the feature slug of a local-markdown spec. Then run the page script's `rename` with that value as the new key, and print the page path that it prints. grilling-page owns the page-key normalization, while `spec` retains the tracker identity. Later Stages find the page from the spec issue. End the to-spec Stage as grilling-page's "Add a Stage" says.
 
 <spec-template>
 

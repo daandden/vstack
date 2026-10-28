@@ -847,7 +847,8 @@ if (command === "append") {
   if (added.trim() === "") usage("append got no records");
 } else if (command === "answer") added = answerRecords(rest);
 else if (command === "rename") {
-  if (rest.length !== 1 || !ID.test(rest[0])) usage("rename takes one new key of lowercase letters, digits, and hyphens");
+  if (rest.length === 1) rest[0] = rest[0].toLowerCase().replaceAll("_", "-");
+  if (rest.length !== 1 || !ID.test(rest[0])) usage("rename takes one new key: an issue number, a tracker issue key such as MY_PROJ-12, or a slug of lowercase letters, digits, and hyphens");
 } else if (rest.length) usage("render takes no more arguments");
 
 try {
