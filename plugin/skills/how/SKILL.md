@@ -14,6 +14,8 @@ If the scope is ambiguous, state your interpretation and explore. The user can r
 
 The top-level agent resolves the vstack root per the Private-mode rule. Read `skill://vstack-tmp` and obtain the project Scratch dir once. Under a caller, use its supplied absolute root and Scratch dir. Create a distinct `how/<run-id>/` entry. Pass both paths to each brief. Read `references/explainer-prompt.md` for the explanation structure.
 
+Read `skill://flow-page` and run `bound` with the supplied session and agent identity. A direct run adds a how Stage to that Flow, or starts one with `open --skill how --title <topic>` when unbound. Reopen a closed Flow explicitly. Under a caller that owns publication, return the explanation, citations, and Figure briefs for its Stage without creating a separate page or Stage.
+
 Split the question into 1–4 exploration angles. Two to four angles go to step 2. When in doubt, take the simple path.
 
 One angle needs no explorers. Build the explainer's brief from `references/explainer-prompt.md` without the explorer-findings section. It explores and explains in one pass.
@@ -38,10 +40,10 @@ Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): write the e
 
 ## 4. Present
 
-Write the explanation into `templates/how.html` under the run's Scratch entry. Draw the figures as described below. Print the plain absolute path of the page with the explanation, with no `file://` prefix. For a direct invocation, open the completed page once in the browser. Under a caller, return the output unedited, including citations, Figure briefs, and the page path. The caller can blend it into its own page. Light edits for clarity are allowed only for a direct invocation.
+For a direct run, submit a Document Result in the how Stage. Keep the explanation's headed sections, code with source locations, and citations. Capture figures as typed attachments and place their `figure` blocks in reading order. Finish the Stage only after publication, and present the live URL or static fallback from the receipt. Under a caller, return the output unedited, including citations and Figure briefs, for publication in its Stage. Light edits for clarity are allowed only for a direct invocation.
 
 ## Figures and page
 
 Use Overview, Key concepts, How it works, Where things live, and Gotchas. Drop sections that do not apply. Cite files and symbols beside claims. Include figures that explain component relationships or data flow.
 
-Draw every figure through `skill://vstack-figures`, from the Figure briefs in the explanation, with every field that skill lists, layout included. The out dir is this run's `how/<run-id>/` entry, with a unique figure slug. Write the page text while the drawers run, then collect the figures and inline them in the page. Keep the page self-contained, without external image files or diagram renderers. Do not substitute mermaid or generated images.
+Draw every figure through `skill://vstack-figures`, from the Figure briefs in the explanation, with every field that skill lists, layout included. Use this run's `how/<run-id>/` entry and a unique figure slug. Write the Document while the drawers run, then collect the SVG paths for capture. Keep figure sources and exports as deliverables, not a separate explanation page.

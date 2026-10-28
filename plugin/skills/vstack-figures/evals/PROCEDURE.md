@@ -99,29 +99,25 @@ For failed or unstarted drawers, set `status` to `failed` or `not_started`, reco
 
 ## 4. Render at the measured display width
 
-Use **1376 CSS pixels** as the SVG display width. This is the rendered width of a question visual on a Grilling page at a 1440 by 900 viewport, not the SVG's viewBox width.
+Use one measured SVG display width for both sides at a 1440 by 900 viewport. Record it separately from the SVG's viewBox width.
 
-The measurement used the installed Grilling page builder on 2026-10-24. A throwaway page held one question with `{ "svg": "<existing figure>" }`, using `grilling/vstack-234/figures/t234-tickets-deps.svg`. The builder command was:
+The historical measurement used the installed Grilling page builder on 2026-10-24. A throwaway page held one question with an SVG visual from `grilling/vstack-234/figures/t234-tickets-deps.svg`. This is historical measurement evidence, not the current publication interface.
 
-```sh
-bun "$(realpath ~/.omp/plugins/node_modules/vstack/skills/grilling-page/scripts/grilling-page.ts)" append <measurement>/page.jsonl <measurement>/records.jsonl
-```
+The browser opened `page.html#q-measure` in Chromium at 1440 by 900. `document.querySelector('#q-measure svg').getBoundingClientRect().width` returned `1376`. The SVG parent measured `1400`, the viewBox was `0 0 960 600`, and the rendered SVG height was `860`. The device scale factor was `1.25`. Historical evidence lives under `/Users/vanguyen/.vstack/tmp/vstack-a7925b/vstack-figures/display-width-measurement/`, including `records.jsonl`, the built page, and `page.webp`. Scratch evidence expires. Preserve these observations without treating them as a measurement of the current renderer.
 
-The browser opened `page.html#q-measure` in Chromium at 1440 by 900. `document.querySelector('#q-measure svg').getBoundingClientRect().width` returned `1376`. The SVG parent measured `1400`, the viewBox was `0 0 960 600`, and the rendered SVG height was `860`. The device scale factor was `1.25`. Measurement evidence lives under `/Users/vanguyen/.vstack/tmp/vstack-a7925b/vstack-figures/display-width-measurement/`, including `records.jsonl`, the built page, and `page.webp`. Scratch evidence expires. The dimensions and measurement method here remain the run contract.
+Read `skill://flow-page` and `xd://eval/browser` before rendering. For each export, open a throwaway Flow with a vstack-figures Stage and submit a typed SVG attachment plus a Document Result with a `figure` block naming it. Keep the receipt and show snapshot under `<run>/<side>/renders/<id>/`. Open the Document's Stage. The renderer is only the display, never the drawer's chain.
 
-Read `xd://eval/browser` before browser use. For each export, build a throwaway Grilling page under `<run>/<side>/renders/<id>/` with the same append command. Include a page record, a `grill-with-docs` Stage, a round, and one question with the export as its SVG visual. Open its question hash so that the Stage is visible. This uses the installed page builder only for display, never as the drawer's chain.
-
-Use Chromium, a 1440 by 900 viewport, and device scale factor `1.25` for both sides. In eval, pass `app={"tern": false, "relay": false}` to `browser.open` to avoid Tern's WebView and the user's browser. Wait for `document.fonts.ready`, and record the SVG's bounding rectangle and font availability. Confirm its width is 1376 before capture. A changed page template or environment that produces a different width needs a new documented measurement, not silent scaling.
+Use Chromium, a 1440 by 900 viewport, and device scale factor `1.25` for both sides. In eval, pass `app={"tern": false, "relay": false}` to `browser.open`. Wait for `document.fonts.ready`, and record the SVG's bounding rectangle and font availability. The Flow renderer can differ from the historical Grilling page: measure and document its width before a comparison, use the same width for both sides, and update the run contract rather than silently scaling to 1376.
 
 Capture the complete SVG element, including content below the viewport. Preserve its aspect ratio and height. Do not crop, shrink, edit, or relayout an export to improve a side's score. A selector screenshot avoids page text around the visual:
 
 ```javascript
-const pngPath = await tab.screenshot({selector: "#q-export svg", format: "png", silent: true});
+const pngPath = await tab.screenshot({selector: "<Document figure SVG selector>", format: "png", silent: true});
 const out = "<run>/<side>/renders/<id>/figure.webp";
 await Bun.write(out, await new Bun.Image(await Bun.file(pngPath).bytes()).webp({lossless: true}).bytes());
 ```
 
-Retain the PNG in the same render directory as `figure.png`. Read the WebP to confirm it contains the complete export. At scale factor 1.25, the 1376 CSS-pixel width produces a 1720-pixel image. Keep that scale for every image. Record missing SVGs, browser failures, unavailable fonts, and clipped captures in a render log. A bad export stays bad for judging. A failed capture is a measurement failure, not a low-quality drawing.
+Retain the PNG in the same render directory as `figure.png`. Read the WebP to confirm it contains the complete export. At scale factor 1.25, the historical 1376 CSS-pixel width produced a 1720-pixel image. Keep the current run's measured width and scale for every image. Record missing SVGs, browser failures, unavailable fonts, and clipped captures in a render log. A bad export stays bad for judging. A failed capture is a measurement failure, not a low-quality drawing.
 
 ## 5. Pair and blind
 

@@ -42,9 +42,11 @@ Write the caller's own text while the drawers run. Wait for the drawers only at 
 
 ## 5. Place the figures
 
-Place the figures in the order of their briefs. To inline a figure, read its exported SVG and remove only the `<?xml …?>` line. Then paste the `<svg>` element with its carried `<style>` exactly as exported. A caller that takes a file, such as grilling-page's `{ "svg": "<path>" }`, gets the SVG path instead.
+Place the figures in the order of their briefs. A Flow page publisher submits each SVG path as a typed `attachment` with `type: "svg"`, its caption, and the command or brief that produced it as `origin`. Its Document Result names those attachments in `figure` blocks. The script captures and safety-checks the bytes. Return paths and captions to a caller that owns publication, not handwritten page markup.
 
 If no figure can be drawn (no eval tool for the export script), report that missing prerequisite. Show no Mermaid, generated image, or hand-built figure in its place.
+
+A direct result-producing run reads `skill://flow-page`, discovers `bound`, and opens a vstack-figures Stage on that Flow or starts one when unbound. Reopen a closed Flow explicitly. Publish a Document with the figures, their explanations, and any unavailable exports as typed attachments with reasons. Finish the owned Stage after publication and present the receipt's live URL or static fallback. Reading this helper or drawing for a caller adds no empty Stage. Preserve exported SVGs and editable HTML sources as deliverables.
 
 ## Draw one figure
 

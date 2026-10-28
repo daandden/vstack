@@ -10,7 +10,9 @@ Explain what the thing is, how it works, and why it has that shape. The goal is 
 ## Step 1. Orient
 
 Read the conversation to learn why the person asks and what they already know. Skip familiar material and put depth where their question is. Read just enough code to identify the target.
-Use the caller's vstack root and project Scratch dir if supplied. Otherwise resolve the root per the Private-mode rule, read `skill://vstack-tmp`, and obtain the project Scratch dir once. Create one distinct `explain/<run-id>/` entry for the explanation page and figure sources.
+Use the caller's vstack root and project Scratch dir if supplied. Otherwise resolve the root per the Private-mode rule, read `skill://vstack-tmp`, and obtain the project Scratch dir once. Keep figure sources in a distinct `explain/<run-id>/` entry.
+
+Read `skill://flow-page` and run `bound` with the supplied session and agent identity. Continue the bound Flow with an explain Stage, or start a Flow with `open --skill explain --title <topic>` when unbound. Reopen a closed Flow explicitly. A caller that already owns this run's Stage supplies its binding or explicit Flow and Stage ids. Read-only investigators return findings to that caller without opening Stages.
 
 ## Step 2. Let how and why investigate
 
@@ -34,12 +36,12 @@ No quizzes, pacing labels, or requests to repeat the explanation. Stop at a natu
 
 ## Step 5. Build the picture on one page
 
-Use `templates/explain.html` for one HTML page in `explain/<run-id>/`. Keep that same page across the conversation. Add each new explanation section and figure below the last. Print the plain absolute path of the page with the explanation, with no `file://` prefix.
+Publish the explanation as a Document Result through `flow-page submit`. Use headed `sections` with prose, lists, code with source locations, and numbered citations. Keep evidence and why's confidence language beside the claims. Follow-up ad-hoc answers in this Flow are Documents too, not separate report pages. Revise the same explanation with `revises` when correcting or extending it during this run.
 
-Draw every figure through `skill://vstack-figures`. Write each Figure brief with that skill's fields, layout included, fixed from the explanation. For three or more moving parts, plan a short build-up series: each figure redraws the last one and adds one part. The out dir is this run's Scratch entry, with a unique figure slug. Write the explanation while the drawers run. Collect the figures before you write them into the page, inlined under the last figure. Use no external image files or diagram renderer. There is no generated-image or mermaid fallback.
+Draw every figure through `skill://vstack-figures`. Write each Figure brief with that skill's fields, layout included, fixed from the explanation. For three or more moving parts, plan a short build-up series: each figure redraws the last one and adds one part. Use this run's Scratch entry and a unique figure slug. Write the Document while the drawers run, then capture the exported SVGs as typed attachments and place `figure` blocks in reading order. Keep an unavailable figure's reason visible instead of substituting a drawing.
 
-Open the page in the browser on its first figure. Keep appending without reopening it on later turns. The page contains the explanation and cited evidence, not just the figures. All figures appear in reading order and the HTML is self-contained.
+Finish an owned Stage after the Document is committed. A caller that owns the Stage keeps it open for its remaining work. Present the receipt's live URL or static fallback as flow-page says. Never open the page automatically.
 
 ## Reply
 
-Return the explanation itself, never a report about the steps. Lead with the main point, then explain what it is, how it works, and why. Include the page path and keep evidence and uncertainty visible.
+Lead with the main point and summarize what it is, how it works, and why. The complete explanation and its evidence live on the Flow page.

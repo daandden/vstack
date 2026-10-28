@@ -1,6 +1,6 @@
 # Export to PNG / SVG
 
-Convert a generated diagram HTML file into a portable `.svg` and/or `.png` next to it. **Manual only — never run unprompted.** A calling vstack skill whose step says to export a figure counts as the request: it exports the SVG with `scripts/export_svg.py` and inlines the `<svg>` in its one-file page.
+Convert a generated diagram HTML file into a portable SVG or PNG next to it. A calling skill's figure step and diagram-design's Flow publication step count as export requests. Both use `scripts/export_svg.py` to produce the SVG attachment.
 
 ## Trigger
 
@@ -40,7 +40,7 @@ except SystemExit as e:
         raise
 ```
 
-To put the figure in a one-file page, read the exported `.svg`, drop its `<?xml …?>` line, and paste the `<svg …>…</svg>` element into the page body. Its carried `<style>` is scoped to `#<slug>-root` and its `<defs>` IDs are prefixed, so several figures share a page safely. Keep the SVG and its `<style>` exactly as exported.
+For a Flow page, give the exported SVG path to a typed `svg` attachment and name it in a Document `figure` block. The renderer captures the exported bytes and owns embedding them. Keep the SVG's scoped styles and namespaced ids intact. Other external embedding consumers can remove only the XML declaration before inlining the SVG.
 
 The export imports no font and makes no network request. Text renders in the installed Iosevka faces that the carried CSS and the presentation attributes name.
 

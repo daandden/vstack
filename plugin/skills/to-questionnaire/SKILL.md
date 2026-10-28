@@ -8,13 +8,13 @@ Turn something the user can't answer alone into a **questionnaire**: a Markdown 
 
 **Grill the send, not the subject.** Interview the user through `ask` only about the _send_, which they can always answer: who it goes to, and what they need back. The questions in the document then target the **gap** between what the recipient knows and what the user needs. An answer `ask` picks after a timeout is not the user's: ask once more, and if that times out too, stop without writing the questionnaire and say why.
 
-Add a to-questionnaire Stage to the flow's Grilling page before step 1, as `skill://grilling-page` says. Write each `ask` of steps 1 and 2 as a question in that Stage. After step 3 writes the file, mark the Stage finished.
+Read `skill://flow-page` and discover the session and agent's Flow with `bound`. Add a to-questionnaire Stage to that Flow, or start a Flow when unbound. Reopen a closed Flow explicitly. Write each `ask` of steps 1 and 2 through that Stage's common authoring interface and record its response. Use the caller's Stage when it owns this run.
 
 1. **Who is it going to?** Ask, in one `ask` call with one question each, the recipient's role, expertise, and relationship to the user. This fixes the questionnaire's tone and how much context it must carry. Done when you know who the recipient is and what they know that the user doesn't.
 
 2. **What do you need back?** Ask, in one `ask` call, the specific decisions or facts the user can't resolve alone and needs from this person; offer the likely ones as options, and the user types the rest through Other. Done when you have a concrete list of what the user must walk away able to do or decide.
 
-3. **Write the questionnaire.** Draft questions aimed at the gap from steps 1–2, following the Document structure below. Write it to `to-questionnaire-<slug>.md` in the current directory (slug from the topic) and report the path. Done when the file exists and every item the user named in step 2 is covered by a question.
+3. **Write and publish the questionnaire.** Draft questions aimed at the gap from steps 1–2, following the Document structure below. Keep the canonical export at `to-questionnaire-<slug>.md` in the current directory. Submit its headed content as a Document Result with `canonical: { "file": "to-questionnaire-<slug>.md" }` and a captured `file` attachment of the export. Finish the owned Stage after publication. Report the canonical path and the receipt's live URL or static fallback. Done when the file exists, every item from step 2 has a question, and the Flow page contains the captured questionnaire.
 
 ## Document structure
 
