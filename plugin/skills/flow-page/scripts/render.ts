@@ -3,11 +3,11 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { optionLabel, type AnswerState, type Attachment, type Condition, type Demo, type DemoLiteral, type DocView, type Effect, type QuestionView, type ResultView, type StageView, type Transition, type View } from "./model.ts";
+import { optionLabel, type AnswerState, type Attachment, type ComparisonView, type Condition, type Demo, type DemoLiteral, type DocView, type Effect, type MetricsView, type QuestionView, type ResultView, type StageView, type Transition, type View } from "./model.ts";
 import type { ProgressView } from "./progress.ts";
 
 /** Raise this when the page a given state renders to changes, so a page names the renderer that made it. */
-export const RENDERER = 6;
+export const RENDERER = 7;
 const TEMPLATE = join(import.meta.dir, "..", "templates", "flow-page.html");
 
 const STATE_LABELS: Record<string, string> = { "in-progress": "In progress", finished: "Finished" };
@@ -243,6 +243,85 @@ ${demoRules(d)}
 </div>`;
 }
 
+const VERDICT_LABELS: Record<string, string> = { chosen: "Chosen", tie: "Tie", inconclusive: "Inconclusive" };
+
+function comparisonHtml(c: ComparisonView, shown: Map<string, Attachment>): string {
+  const chosen = c.alternatives.find((a) => a.ref === c.verdict.alternative);
+  const verdict = `<section class="verdict" id="${c.verdict.anchor}" data-outcome="${c.verdict.outcome}">
+<p class="label">Verdict</p>
+<p class="verdict-line"><span class="tag">${VERDICT_LABELS[c.verdict.outcome]}</span>${chosen ? `<a href="#${chosen.anchor}">${text(chosen.name)}</a>` : ""}</p>
+<div class="description">${prose(c.verdict.reason)}</div>
+</section>`;
+  const head = `<tr><th scope="col">Criterion</th>${c.alternatives
+    .map((a) => `<th scope="col" id="${a.anchor}"${a.ref === c.verdict.alternative ? " data-chosen" : ""}>${text(a.name)}${a.ref === c.verdict.alternative ? `<span class="sr-only"> (chosen)</span>` : ""}${a.summary ? `<p class="source">${text(a.summary)}</p>` : ""}</th>`)
+    .join("")}</tr>`;
+  const rows = c.criteria.map((k) => {
+    const cells = c.cells.filter((x) => x.criterion === k.ref).map((x) => {
+      const a = x.assessment;
+      if (!a) return `<td id="${x.anchor}" data-gap><span class="gap">Not assessed</span></td>`;
+      return `<td id="${x.anchor}"><div class="description">${prose(a.finding)}</div>${a.evidence ? `<p class="source"><span class="label">Evidence</span> ${text(a.evidence)}</p>` : ""}</td>`;
+    });
+    return `<tr id="${k.anchor}"><th scope="row">${text(k.name)}${k.description ? `<p class="source">${text(k.description)}</p>` : ""}</th>${cells.join("")}</tr>`;
+  });
+  const sides = c.alternatives
+    .filter((a) => a.attachments?.length)
+    .map((a) => `<div class="attachments side"><p class="label">Evidence for <a href="#${a.anchor}">${text(a.name)}</a></p>${a.attachments!.map((id) => attachmentHtml(shown.get(id)!, `${a.anchor}-${id}`)).join("\n")}</div>`);
+  return `<div class="comparison">
+${verdict}
+<div class="table"><table class="compare">
+<thead>${head}</thead>
+<tbody>
+${rows.join("\n")}
+</tbody>
+</table></div>${sides.length ? `\n${sides.join("\n")}` : ""}
+</div>`;
+}
+
+const MEASURE_LABELS: Record<string, string> = { better: "Reported better", worse: "Reported worse", "no-difference": "Reported no measurable difference", inconclusive: "Reported inconclusive" };
+/** A number as the producer wrote it, with an explicit sign when it is a change. */
+const signed = (n: number) => (n > 0 ? `+${n}` : String(n));
+
+function metricsHtml(m: MetricsView): string {
+  const facts = [["Workload", m.workload], ...(m.environment ? [["Environment", m.environment]] : []), ["Outcome", m.outcome]];
+  const measurements = m.measurements.map((me) => {
+    const changeUnit = me.unit === "%" ? "pp" : me.unit;
+    const hasBaseline = m.baseline !== undefined;
+    const rows = me.values.map((v) => {
+      const series = `<th scope="row">${text(v.label)}${v.baseline ? ` <span class="label">(baseline)</span>` : ""}</th>`;
+      if (v.missing) {
+        const reason = v.missing.reason ? ` <span class="source">${text(v.missing.reason)}</span>` : ` <span class="source">Not reported</span>`;
+        return `<tr id="${v.anchor}" data-missing>${series}<td class="value"><span class="gap">Missing</span>${reason}</td><td></td><td></td>${hasBaseline ? "<td></td>" : ""}</tr>`;
+      }
+      const bar = me.chart ? `<meter min="0" max="${me.chart.max}" value="${v.value}" aria-hidden="true"></meter>` : "";
+      const u = v.uncertainty;
+      const uncertainty = !u ? `<span class="gap">Not reported</span>` : "low" in u ? `${u.low} to ${u.high} <span class="source">(${text(u.of)})</span>` : `±${u.plusminus} <span class="source">(${text(u.of)})</span>`;
+      let change = "";
+      if (hasBaseline) {
+        if (v.baseline) change = `<span class="source">Baseline</span>`;
+        else if (v.delta_unavailable) change = `<span class="gap">Outside numeric range</span>`;
+        else if (v.delta === undefined) change = `<span class="gap">No baseline value</span>`;
+        else change = `${signed(v.delta)} ${text(changeUnit)}${v.relative !== undefined ? ` <span class="source">(${signed(Number(v.relative.toFixed(1)))}%)</span>` : ""}`;
+      }
+      return `<tr id="${v.anchor}">${series}<td class="value"><span class="bar-cell"><span class="num">${v.value} ${text(me.unit)}</span>${bar}</span></td><td>${v.samples ?? `<span class="gap">Not reported</span>`}</td><td>${uncertainty}</td>${hasBaseline ? `<td>${change}</td>` : ""}</tr>`;
+    });
+    const better = me.better ? `<span class="label">${me.better === "lower" ? "Lower is better" : "Higher is better"}</span>` : "";
+    const reported = me.verdict ? `<span class="tag" data-verdict="${me.verdict}">${MEASURE_LABELS[me.verdict]}</span>` : "";
+    return `<section class="measurement" id="${me.anchor}" aria-labelledby="${me.anchor}-title">
+<h3 id="${me.anchor}-title">${text(me.name)} <span class="label">(${text(me.unit)})</span>${better}${reported}</h3>
+<div class="table"><table>
+<thead><tr><th scope="col">Series</th><th scope="col">Value</th><th scope="col">Samples</th><th scope="col">Uncertainty</th>${hasBaseline ? `<th scope="col">Change from baseline</th>` : ""}</tr></thead>
+<tbody>
+${rows.join("\n")}
+</tbody>
+</table></div>
+</section>`;
+  });
+  return `<div class="metrics">
+<dl class="fields">${facts.map(([k, val]) => `<dt>${k}</dt><dd>${text(val)}</dd>`).join("")}</dl>
+${measurements.join("\n")}
+</div>`;
+}
+
 function provenance(r: ResultView): string {
   const c = r.canonical;
   const link = !c ? "" : "file" in c ? ` from <code>${esc(c.file)}</code> at sha256 <code>${c.sha256.slice(0, 12)}</code>` : "commit" in c ? ` from commit <code>${esc(c.commit.slice(0, 12))}</code>` : ` from ${text(c.tracker)} at <code>${esc(c.revision)}</code>`;
@@ -259,6 +338,10 @@ function resultHtml(r: ResultView, v: View, historical = false): string {
     body = documentHtml(r, r.doc, historical);
   } else if (r.demo) {
     body = demoHtml(r, r.demo);
+  } else if (r.comparison) {
+    body = comparisonHtml(r.comparison, new Map(r.shown.map((a) => [a.id, a])));
+  } else if (r.metrics) {
+    body = metricsHtml(r.metrics);
   } else if (r.shape === "table") {
     const linked = r.entries.some((e) => e.questions.length);
     const head = `<tr>${r.columns!.map((c) => `<th scope="col">${text(c)}</th>`).join("")}${linked ? `<th scope="col">Asked in</th>` : ""}</tr>`;
@@ -282,7 +365,7 @@ ${fields([["Impact", e.impact as string], ["Action", e.action as string]])}
 </li>`)
       .join("\n")}\n</ol>`;
   }
-  const figures = new Set(r.doc?.figures ?? []);
+  const figures = new Set([...(r.doc?.figures ?? []), ...(r.comparison?.alternatives.flatMap((a) => a.attachments ?? []) ?? [])]);
   const listed = r.shown.filter((a) => !figures.has(a.id));
   const attachments = listed.length ? `\n<div class="attachments"><p class="label">Attachments</p>${listed.map((a) => attachmentHtml(a, `${r.anchor}-${a.id}`)).join("\n")}</div>` : "";
   const history = r.history.length

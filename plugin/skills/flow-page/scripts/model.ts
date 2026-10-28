@@ -32,13 +32,28 @@ export type Retirement = { question: string; reason: string; time: string };
 export type Section = { heading: string; body: string };
 export type Background = { id: string; stage: string; title: string; summary: string; sections: Section[]; sources: string[] };
 export type Topic = { id: string; title: string; summary: string; body: string; sources: string[] };
-export type Shape = "cards" | "ledger" | "table" | "document" | "prototype";
+export type Shape = "cards" | "ledger" | "table" | "document" | "prototype" | "comparison" | "metrics";
 /** `changed` is the Flow revision that last changed a Result's header or an entry, which a focused revision checks. */
 export type Entry = Record<string, unknown> & { id: string; changed: number };
 /** One block of a Document section. Prose and list items can cite with `[@<citation ref>]`. */
 export type Block = { prose: string } | { list: string[]; ordered: boolean } | { code: string; language?: string; source?: string } | { figure: string };
 export type DocSection = { heading: string; blocks: Block[] };
 export type DocumentBody = { sections: DocSection[]; citations: { ref: string; source: string }[]; limitations: string[]; sources: string[] };
+/** Alternatives side by side on shared criteria. A pair with no assessment stays a gap. Refs are local to the Result. */
+export type Alternative = { ref: string; name: string; summary?: string; attachments?: string[] };
+export type Criterion = { ref: string; name: string; description?: string };
+export type Assessment = { alternative: string; criterion: string; finding: string; evidence?: string };
+export const VERDICTS = ["chosen", "tie", "inconclusive"] as const;
+export type ComparisonBody = {
+  alternatives: Alternative[]; criteria: Criterion[]; assessments: Assessment[];
+  verdict: { outcome: (typeof VERDICTS)[number]; alternative?: string; reason: string };
+};
+/** Measured numbers. A value is a number, or `missing` with its reason; code never fills one in or rates it. */
+export type Uncertainty = { low: number; high: number; of: string } | { plusminus: number; of: string };
+export type Measured = { series: string; value: number; samples?: number; uncertainty?: Uncertainty } | { series: string; missing: string };
+export const MEASURE_VERDICTS = ["better", "worse", "no-difference", "inconclusive"] as const;
+export type Measurement = { ref: string; name: string; unit: string; better?: "lower" | "higher"; verdict?: (typeof MEASURE_VERDICTS)[number]; values: Measured[] };
+export type MetricsBody = { workload: string; environment?: string; outcome: string; series: { ref: string; label: string; baseline?: true }[]; measurements: Measurement[] };
 /** Where a Result's content is canonically kept, and which revision of it the Result captured. */
 export type Canonical = { file: string; root: string; sha256: string } | { commit: string } | { tracker: string; revision: string };
 /** A demo value: a number, a yes/no flag, or a line of text, fixed in type by its initial value. */
@@ -60,7 +75,7 @@ export type Demo = {
 /** `revision` counts whole republications of the Result with `revises`; `captured` is when this one was submitted. */
 export type Result = {
   id: string; stage: string; shape: Shape; title: string; summary?: string; columns?: string[]; entries: Entry[]; changed: number;
-  document?: DocumentBody; demo?: Demo; attachments?: string[]; canonical?: Canonical; revision?: number; captured?: string;
+  document?: DocumentBody; demo?: Demo; comparison?: ComparisonBody; metrics?: MetricsBody; attachments?: string[]; canonical?: Canonical; revision?: number; captured?: string;
 };
 export type Source = { id: string; text: string };
 export const ATTACHMENT_TYPES = ["image", "video", "svg", "file", "trace", "evidence", "artifact"] as const;
@@ -128,7 +143,9 @@ export const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const REF = /^[a-z0-9][a-z0-9-]*$/;
 const CODE_ID = /^(stage|round|question|close|background|topic|result|source|assumed|attachment|task|blocker|pr|check)-\d+$/;
 const TICKET = /^#?[A-Za-z0-9][A-Za-z0-9._/-]*$/;
-const SHAPES: Shape[] = ["cards", "ledger", "table", "document", "prototype"];
+const SHAPES: Shape[] = ["cards", "ledger", "table", "document", "prototype", "comparison", "metrics"];
+/** Shapes whose content is one whole body rather than entries, so a focused `add` cannot extend them. */
+const WHOLE: Record<string, string> = { document: "a Document", prototype: "a demo", comparison: "a Comparison", metrics: "a Metrics Result" };
 const CLAIM_STATES = ["confirmed", "cleared", "unproven"];
 /** A citation marker in Document prose or a list item. */
 export const CITE = /\[@([a-z0-9][a-z0-9-]*)\]/g;
@@ -555,6 +572,14 @@ function parseResult(o: Obj, where: string, stage: string, id: string, entryIds:
     fields(o, where, ["kind", "shape", "title", "demo"], shared);
     return head({ demo: parseDemo(o.demo, `${where}: demo`) });
   }
+  if (shape === "comparison") {
+    fields(o, where, ["kind", "shape", "title", "alternatives", "criteria", "assessments", "verdict"], shared);
+    return head({ comparison: parseComparison(o, where, attachment) });
+  }
+  if (shape === "metrics") {
+    fields(o, where, ["kind", "shape", "title", "workload", "outcome", "series", "measurements"], [...shared, "environment"]);
+    return head({ metrics: parseMetrics(o, where) });
+  }
   fields(o, where, ["kind", "shape", "title", table ? "columns" : "entries", ...(table ? ["rows"] : [])], shared);
   const columns = table ? texts(o, "columns", where) : undefined;
   const entries = list(o, table ? "rows" : "entries", where).map((e, j) => parseEntry(shape, columns, e, `${where}: ${table ? "row" : "entry"} ${j + 1}`, entryIds[j].split("/")[1], rev));
@@ -609,7 +634,7 @@ function revise(s: State, o: Obj, where: string, stage: string, entryIds: string
   } else if (o.base !== undefined) refuse(where, "base goes with set; add appends entries without one");
   if (o.add !== undefined) {
     if (entry) refuse(where, "add appends entries to a Result; name the Result, not an entry");
-    if (r.shape === "document" || r.shape === "prototype") refuse(where, `${rid} is a ${r.shape === "document" ? "Document" : "demo"}, which has no entries; publish its next revision with revises`);
+    if (WHOLE[r.shape]) refuse(where, `${rid} is ${WHOLE[r.shape]}, which has no entries; publish its next revision with revises`);
     if (entryIds === undefined) refuse(where, `add appends to a Result from an earlier contribution; put new entries of ${o.result} in its result item`);
     const adds = list(o, "add", where);
     r.entries.push(...adds.map((e, j) => parseEntry(r.shape, r.columns, e, `${where}: add ${j + 1}`, entryIds![j].split("/")[1], rev)));
@@ -865,6 +890,129 @@ function parseDemo(raw: unknown, where: string): Demo {
   return { values, states, start, actions };
 }
 
+/** Local refs of one list, such as a Comparison's alternatives, each unique within it. */
+function localRefs<T extends { ref: string }>(xs: T[], where: string, what: string): T[] {
+  const seen = new Set<string>();
+  xs.forEach((x, j) => {
+    if (seen.has(x.ref)) refuse(`${where}: ${what} ${j + 1}`, `ref ${x.ref} is already a ${what} of this Result`);
+    seen.add(x.ref);
+  });
+  return xs;
+}
+function localRef(o: Obj, where: string): string {
+  if (typeof o.ref !== "string" || !REF.test(o.ref)) refuse(where, "ref must be lowercase letters, digits, and hyphens");
+  return o.ref as string;
+}
+/** A name in `refs`, the local refs of `what`s in this Result. */
+function oneOf(v: unknown, refs: string[], where: string, what: string): string {
+  if (typeof v !== "string" || !refs.includes(v)) refuse(where, `${JSON.stringify(v)} names no ${what} of this Result; the ${what}s are ${listed(refs)}`);
+  return v as string;
+}
+const safeText = (o: Obj, k: string, where: string) => safeLinks(text(o, k, where), where);
+const optSafeText = (o: Obj, k: string, where: string) => (o[k] === undefined ? undefined : safeText(o, k, where));
+function num(o: Obj, k: string, where: string): number {
+  const v = o[k];
+  if (typeof v !== "number" || !Number.isFinite(v)) refuse(where, `${k} must be a number, got ${JSON.stringify(v)}; give the unit in the measurement's unit`);
+  return v as number;
+}
+
+function parseComparison(o: Obj, where: string, attachment: (v: unknown, where: string) => string): ComparisonBody {
+  const alternatives = localRefs(list(o, "alternatives", where).map((a, j): Alternative => {
+    const aw = `${where}: alternative ${j + 1}`;
+    const ao = fields(a, aw, ["ref", "name"], ["summary", "attachments"]);
+    const summary = optSafeText(ao, "summary", aw);
+    return {
+      ref: localRef(ao, aw), name: safeText(ao, "name", aw), ...(summary !== undefined ? { summary } : {}),
+      ...(ao.attachments !== undefined ? { attachments: texts(ao, "attachments", aw).map((x) => attachment(x, `${aw}: attachments`)) } : {}),
+    };
+  }), where, "alternative");
+  if (alternatives.length < 2) refuse(where, "alternatives must list two or more alternatives to compare");
+  const criteria = localRefs(list(o, "criteria", where).map((c, j): Criterion => {
+    const cw = `${where}: criterion ${j + 1}`;
+    const co = fields(c, cw, ["ref", "name"], ["description"]);
+    const description = optSafeText(co, "description", cw);
+    return { ref: localRef(co, cw), name: safeText(co, "name", cw), ...(description !== undefined ? { description } : {}) };
+  }), where, "criterion");
+  const altRefs = alternatives.map((a) => a.ref);
+  const critRefs = criteria.map((c) => c.ref);
+  const pairs = new Set<string>();
+  const assessments = list(o, "assessments", where).map((x, j): Assessment => {
+    const xw = `${where}: assessment ${j + 1}`;
+    const xo = fields(x, xw, ["alternative", "criterion", "finding"], ["evidence"]);
+    const alternative = oneOf(xo.alternative, altRefs, `${xw}: alternative`, "alternative");
+    const criterion = oneOf(xo.criterion, critRefs, `${xw}: criterion`, "criterion");
+    if (pairs.has(`${alternative}/${criterion}`)) refuse(xw, `${alternative} is already assessed on ${criterion}; give each alternative one assessment per criterion`);
+    pairs.add(`${alternative}/${criterion}`);
+    const evidence = optSafeText(xo, "evidence", xw);
+    return { alternative, criterion, finding: safeText(xo, "finding", xw), ...(evidence !== undefined ? { evidence } : {}) };
+  });
+  const vw = `${where}: verdict`;
+  const vo = fields(o.verdict, vw, ["outcome", "reason"], ["alternative"]);
+  if (!VERDICTS.includes(vo.outcome as never)) refuse(vw, `outcome must be ${listed([...VERDICTS])}, got ${JSON.stringify(vo.outcome)}`);
+  const outcome = vo.outcome as ComparisonBody["verdict"]["outcome"];
+  if (outcome === "chosen" && vo.alternative === undefined) refuse(vw, "a chosen verdict names the alternative it chose");
+  if (outcome !== "chosen" && vo.alternative !== undefined) refuse(vw, `a ${outcome} verdict chooses no alternative; use outcome chosen to name one`);
+  const chosen = vo.alternative === undefined ? undefined : oneOf(vo.alternative, altRefs, `${vw}: alternative`, "alternative");
+  return { alternatives, criteria, assessments, verdict: { outcome, ...(chosen !== undefined ? { alternative: chosen } : {}), reason: safeText(vo, "reason", vw) } };
+}
+
+function parseMetrics(o: Obj, where: string): MetricsBody {
+  const series = localRefs(list(o, "series", where).map((x, j) => {
+    const sw = `${where}: series ${j + 1}`;
+    const so = fields(x, sw, ["ref", "label"], ["baseline"]);
+    if (so.baseline !== undefined && so.baseline !== true) refuse(sw, "baseline must be true, or left out");
+    return { ref: localRef(so, sw), label: safeText(so, "label", sw), ...(so.baseline === true ? { baseline: true as const } : {}) };
+  }), where, "series");
+  if (series.filter((x) => x.baseline).length > 1) refuse(where, "at most one series is the baseline that deltas are measured from");
+  const refs = series.map((x) => x.ref);
+  const measurements = localRefs(list(o, "measurements", where).map((m, j): Measurement => {
+    const mw = `${where}: measurement ${j + 1}`;
+    const mo = fields(m, mw, ["ref", "name", "unit", "values"], ["better", "verdict"]);
+    if (mo.better !== undefined && mo.better !== "lower" && mo.better !== "higher") refuse(mw, `better must be lower or higher, got ${JSON.stringify(mo.better)}`);
+    if (mo.verdict !== undefined && !MEASURE_VERDICTS.includes(mo.verdict as never)) refuse(mw, `verdict must be ${listed([...MEASURE_VERDICTS])}, got ${JSON.stringify(mo.verdict)}`);
+    const seen = new Set<string>();
+    const values = list(mo, "values", mw).map((v, k): Measured => {
+      const vw = `${mw}: value ${k + 1}`;
+      const forms = isObj(v) ? ["value", "missing"].filter((x) => v[x] !== undefined) : [];
+      if (forms.length !== 1) refuse(vw, "needs exactly one of value, the measured number, or missing, the reason there is none");
+      const vo = v as Obj;
+      const s = oneOf(vo.series, refs, `${vw}: series`, "series");
+      if (seen.has(s)) refuse(vw, `series ${s} already has a value in this measurement`);
+      seen.add(s);
+      if (forms[0] === "missing") {
+        fields(vo, vw, ["series", "missing"]);
+        return { series: s, missing: safeText(vo, "missing", vw) };
+      }
+      fields(vo, vw, ["series", "value"], ["samples", "uncertainty"]);
+      const value = num(vo, "value", vw);
+      if (vo.samples !== undefined && (!Number.isInteger(vo.samples) || (vo.samples as number) < 1)) refuse(vw, `samples must be a whole number of 1 or more, got ${JSON.stringify(vo.samples)}`);
+      let uncertainty: Uncertainty | undefined;
+      if (vo.uncertainty !== undefined) {
+        const uw = `${vw}: uncertainty`;
+        const range = isObj(vo.uncertainty) && vo.uncertainty.plusminus === undefined;
+        const uo = fields(vo.uncertainty, uw, range ? ["low", "high", "of"] : ["plusminus", "of"]);
+        const of = safeText(uo, "of", uw);
+        if (range) {
+          const [low, high] = [num(uo, "low", uw), num(uo, "high", uw)];
+          if (low > high) refuse(uw, `low ${low} is above high ${high}`);
+          uncertainty = { low, high, of };
+        } else {
+          const plusminus = num(uo, "plusminus", uw);
+          if (plusminus < 0) refuse(uw, "plusminus must be 0 or more");
+          uncertainty = { plusminus, of };
+        }
+      }
+      return { series: s, value, ...(vo.samples !== undefined ? { samples: vo.samples as number } : {}), ...(uncertainty ? { uncertainty } : {}) };
+    });
+    return {
+      ref: localRef(mo, mw), name: safeText(mo, "name", mw), unit: safeText(mo, "unit", mw), values,
+      ...(mo.better !== undefined ? { better: mo.better as "lower" | "higher" } : {}), ...(mo.verdict !== undefined ? { verdict: mo.verdict as Measurement["verdict"] } : {}),
+    };
+  }), where, "measurement");
+  const environment = optSafeText(o, "environment", where);
+  return { workload: safeText(o, "workload", where), ...(environment !== undefined ? { environment } : {}), outcome: safeText(o, "outcome", where), series, measurements };
+}
+
 function parseAttachment(o: Obj, where: string, stage: string, id: string, time: string, io: Io): Attachment {
   const type = o.type as AttachmentType;
   if (!ATTACHMENT_TYPES.includes(type)) refuse(where, `type must be ${listed([...ATTACHMENT_TYPES])}, got ${JSON.stringify(o.type)}`);
@@ -981,10 +1129,11 @@ function checkLinks(s: State): void {
   for (const a of s.attachments) if (!used.has(a.id)) refuse(`attachment ${a.id}`, "is attached to no Result; name it in a Result's attachments or a Document figure");
 }
 
-/** Every attachment a Result shows: its figures, then its attachments list. */
+/** Every attachment a Result shows: its figures, its alternatives' evidence, then its attachments list. */
 export function attachmentsOf(r: Result): string[] {
   const figures = (r.document?.sections ?? []).flatMap((sec) => sec.blocks.flatMap((b) => ("figure" in b ? [b.figure] : [])));
-  return [...new Set([...figures, ...(r.attachments ?? [])])];
+  const sides = (r.comparison?.alternatives ?? []).flatMap((a) => a.attachments ?? []);
+  return [...new Set([...figures, ...sides, ...(r.attachments ?? [])])];
 }
 
 // ---------------------------------------------------------------------------------------------------------------
@@ -1000,12 +1149,33 @@ export type DocView = {
   sources: string[]; sourceTexts: string[]; sourcesAnchor: string;
   figures: string[];
 };
-export type ResultView = Omit<Result, "entries" | "document"> & {
+export type ComparisonView = {
+  alternatives: (Alternative & { anchor: string })[];
+  criteria: (Criterion & { anchor: string })[];
+  /** One cell per alternative and criterion, in criteria order; a cell with no assessment is a gap. */
+  cells: { alternative: string; criterion: string; anchor: string; assessment?: Assessment }[];
+  verdict: ComparisonBody["verdict"] & { anchor: string };
+};
+/** One series' value of one measurement. `missing` holds the producer's reason, or no reason when it gave no value. */
+export type ValueView = {
+  series: string; label: string; baseline: boolean; anchor: string;
+  value?: number; samples?: number; uncertainty?: Uncertainty; missing?: { reason?: string };
+  /** Difference from the baseline series' value, and that difference as a percentage of it, when both were measured. */
+  delta?: number; relative?: number; delta_unavailable?: true;
+};
+export type MetricsView = Omit<MetricsBody, "measurements"> & {
+  baseline?: string;
+  /** `chart` holds the shared scale of the bars, absent when the values cannot be drawn as bars from zero. */
+  measurements: (Omit<Measurement, "values"> & { anchor: string; chart?: { max: number }; values: ValueView[] })[];
+};
+export type ResultView = Omit<Result, "entries" | "document" | "comparison" | "metrics"> & {
   /** The id this rendering of the Result anchors at: the Result id, or `<id>-r<n>` for an earlier revision. */
   anchor: string;
   revision: number;
   entries: (Entry & { anchor: string; questions: string[] })[];
   doc?: DocView;
+  comparison?: ComparisonView;
+  metrics?: MetricsView;
   shown: Attachment[];
   history: ResultView[];
 };
@@ -1054,6 +1224,54 @@ function answerView(s: State, q: Question): AnswerView {
   return { state, why: a.reading && a.reading.outcome !== "resolved" ? a.reading.outcome : a.response.status, ...recorded };
 }
 
+function comparisonView(c: ComparisonBody, anchor: string): ComparisonView {
+  const alternatives = c.alternatives.map((a, j) => ({ ...a, anchor: `${anchor}-a${j + 1}` }));
+  const criteria = c.criteria.map((k, i) => ({ ...k, anchor: `${anchor}-k${i + 1}` }));
+  const cells = criteria.flatMap((k, i) => alternatives.map((a, j) => {
+    const assessment = c.assessments.find((x) => x.alternative === a.ref && x.criterion === k.ref);
+    return { alternative: a.ref, criterion: k.ref, anchor: `${anchor}-k${i + 1}-a${j + 1}`, ...(assessment ? { assessment } : {}) };
+  }));
+  return { alternatives, criteria, cells, verdict: { ...c.verdict, anchor: `${anchor}-verdict` } };
+}
+
+/** Decimal precision including scientific notation, for rounding subtraction noise without erasing tiny values. */
+function decimalPlaces(n: number): number {
+  const [mantissa, exponent = "0"] = String(n).split(/e/i);
+  return Math.max(0, (mantissa.split(".")[1]?.length ?? 0) - Number(exponent));
+}
+
+function metricsView(m: MetricsBody, anchor: string): MetricsView {
+  const baseline = m.series.find((x) => x.baseline)?.ref;
+  const measurements = m.measurements.map((me, i) => {
+    const at = `${anchor}-m${i + 1}`;
+    const of = (series: string) => me.values.find((v) => v.series === series);
+    const base = baseline === undefined ? undefined : of(baseline);
+    const b = base && "value" in base ? base.value : undefined;
+    const values = m.series.map((sr, j): ValueView => {
+      const row = { series: sr.ref, label: sr.label, baseline: sr.baseline === true, anchor: `${at}-s${j + 1}` };
+      const v = of(sr.ref);
+      if (!v || "missing" in v) return { ...row, missing: v ? { reason: v.missing } : {} };
+      const out: ValueView = { ...row, value: v.value, ...(v.samples !== undefined ? { samples: v.samples } : {}), ...(v.uncertainty ? { uncertainty: v.uncertainty } : {}) };
+      if (b !== undefined && !row.baseline) {
+        const difference = v.value - b;
+        const precision = Math.max(decimalPlaces(v.value), decimalPlaces(b));
+        const delta = Number(precision <= 100 ? difference.toFixed(precision) : difference.toPrecision(14));
+        if (Number.isFinite(delta)) {
+          out.delta = delta;
+          const relative = (delta / Math.abs(b)) * 100;
+          if (b !== 0 && Number.isFinite(relative)) out.relative = relative;
+        } else out.delta_unavailable = true;
+      }
+      return out;
+    });
+    const measured = values.flatMap((v) => (v.value === undefined ? [] : [v.value]));
+    const drawable = measured.length > 0 && measured.every((x) => x >= 0);
+    const { values: _, ...rest } = me;
+    return { ...rest, anchor: at, values, ...(drawable ? { chart: { max: Math.max(...measured) || 1 } } : {}) };
+  });
+  return { ...m, ...(baseline ? { baseline } : {}), measurements };
+}
+
 export function view(s: State): View {
   const sourceText = new Map(s.sources.map((x) => [x.id, x.text]));
   const labels = stageLabels([...s.stages].sort((a, b) => a.order - b.order));
@@ -1073,7 +1291,7 @@ export function view(s: State): View {
   const linking = (entry: string) => s.questions.filter((q) => q.entries?.includes(entry)).map((q) => q.id);
   const attachment = new Map(s.attachments.map((a) => [a.id, a]));
   const resultView = (r: Result, anchor: string, current: boolean): ResultView => {
-    const { document: d, ...rest } = r;
+    const { document: d, comparison: c, metrics: m, ...rest } = r;
     const rv: ResultView = {
       ...rest, anchor, revision: r.revision ?? 1, shown: attachmentsOf(r).map((a) => attachment.get(a)!), history: [],
       entries: r.entries.map((e) => ({ ...e, anchor: `${anchor}-${e.id}`, questions: current ? linking(`${r.id}/${e.id}`) : [] })),
@@ -1089,6 +1307,8 @@ export function view(s: State): View {
         figures: d.sections.flatMap((sec) => sec.blocks.flatMap((b) => ("figure" in b ? [b.figure] : []))),
       };
     }
+    if (c) rv.comparison = comparisonView(c, anchor);
+    if (m) rv.metrics = metricsView(m, anchor);
     if (current) rv.history = s.history.filter((h) => h.id === r.id).map((h) => resultView(h, `${r.id}-r${h.revision ?? 1}`, false));
     return rv;
   };
@@ -1145,6 +1365,23 @@ export function snapshot(v: View, page: string, renderer: number) {
             sections: r.doc.sections.map((sec) => sec.anchor),
             citations: r.doc.citations.map((c) => ({ anchor: c.anchor, n: c.n, source: c.source, cited_in: c.cited_in })),
             figures: r.doc.figures, limitations: r.doc.limitations.length, limitations_anchor: r.doc.limitationsAnchor, sources: r.doc.sources,
+          },
+        } : {}),
+        ...(r.comparison ? {
+          comparison: {
+            alternatives: r.comparison.alternatives.map((a) => ({ ref: a.ref, anchor: a.anchor, attachments: a.attachments ?? [] })),
+            criteria: r.comparison.criteria.map((k) => ({ ref: k.ref, anchor: k.anchor })),
+            cells: r.comparison.cells.map((x) => ({ alternative: x.alternative, criterion: x.criterion, anchor: x.anchor, assessed: x.assessment !== undefined })),
+            verdict: { outcome: r.comparison.verdict.outcome, ...(r.comparison.verdict.alternative ? { alternative: r.comparison.verdict.alternative } : {}), anchor: r.comparison.verdict.anchor },
+          },
+        } : {}),
+        ...(r.metrics ? {
+          metrics: {
+            ...(r.metrics.baseline ? { baseline: r.metrics.baseline } : {}),
+            measurements: r.metrics.measurements.map((me) => ({
+              ref: me.ref, anchor: me.anchor, unit: me.unit, ...(me.better ? { better: me.better } : {}), ...(me.verdict ? { verdict: me.verdict } : {}), chart: me.chart !== undefined,
+              values: me.values.map(({ label: _, missing, ...x }) => ({ ...x, ...(missing ? { missing: true } : {}) })),
+            })),
           },
         } : {}),
       })),

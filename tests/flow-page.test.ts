@@ -1026,3 +1026,276 @@ test("a demo Result is revised like any Result: its header changes, it takes no 
   expect(page.ids.has(id)).toBe(true);
   expect(page.ids.has(`${id}-r1`)).toBe(true);
 });
+
+// ---------------------------------------------------------------------------------------------------------------
+// Comparison and Metrics Results (#274).
+
+const comparison = (ref: string, extra: object = {}) => ({
+  kind: "result",
+  ref,
+  shape: "comparison",
+  title: "Cache or queue",
+  alternatives: [
+    { ref: "cache", name: "Redis cache", summary: "Keep counts in Redis.", attachments: ["cache-shot"] },
+    { ref: "queue", name: "Write queue" },
+  ],
+  criteria: [
+    { ref: "latency", name: "Checkout latency", description: "p50 of the checkout call." },
+    { ref: "ops", name: "Operations cost" },
+  ],
+  assessments: [
+    { alternative: "cache", criterion: "latency", finding: "Cache adds 1 ms.", evidence: "bench/cache.txt:4" },
+    { alternative: "queue", criterion: "latency", finding: "Queue adds 9 ms.", evidence: "bench/queue.txt:7" },
+    { alternative: "cache", criterion: "ops", finding: "One more service to run." },
+  ],
+  verdict: { outcome: "chosen", alternative: "cache", reason: "Latency decides it, and the cache wins there." },
+  ...extra,
+});
+
+test("a Comparison keeps named alternatives, shared criteria, per-side evidence, gaps, and the recorded verdict", async () => {
+  openFlow("s-1");
+  put("cache.png", PNG);
+  const r = submit("s-1", attachment("cache-shot", "image", { path: "cache.png" }), comparison("cmp"));
+  expect(r.stderr).toBe("");
+  expect(r.code).toBe(0);
+  const { refs, page, flow } = r.json;
+  const res = show(flow).stages[0].results.find((x: any) => x.id === refs.cmp);
+  expect(res.shape).toBe("comparison");
+  const c = res.comparison;
+  expect(c.alternatives.map((a: any) => a.ref)).toEqual(["cache", "queue"]);
+  expect(c.criteria.map((k: any) => k.ref)).toEqual(["latency", "ops"]);
+  expect(c.alternatives[0].attachments).toEqual([refs["cache-shot"]]);
+  expect(c.verdict.outcome).toBe("chosen");
+  expect(c.verdict.alternative).toBe("cache");
+  // The one pair nobody assessed stays a gap; code fills nothing in.
+  expect(c.cells.filter((x: any) => !x.assessed).map((x: any) => [x.alternative, x.criterion])).toEqual([["queue", "ops"]]);
+
+  const els = await elements(page);
+  const l = await links(page);
+  for (const targets of l.within.values()) for (const t of targets) expect(l.ids.has(t)).toBe(true);
+  const text = (id: string) => els.find((e) => e.attrs.id === id)!.text;
+  // Every side shows its own finding and evidence, in the cell for its alternative and criterion.
+  const cell = (alt: string, crit: string) => c.cells.find((x: any) => x.alternative === alt && x.criterion === crit).anchor;
+  expect(text(cell("cache", "latency"))).toContain("Cache adds 1 ms.");
+  expect(text(cell("cache", "latency"))).toContain("bench/cache.txt:4");
+  expect(text(cell("queue", "latency"))).toContain("Queue adds 9 ms.");
+  expect(text(cell("queue", "latency"))).toContain("bench/queue.txt:7");
+  for (const finding of ["Cache adds 1 ms.", "Queue adds 9 ms.", "One more service to run."]) expect(text(cell("queue", "ops"))).not.toContain(finding);
+  // Alternatives and criteria are named where the reader meets them.
+  expect(text(c.alternatives[0].anchor)).toContain("Redis cache");
+  expect(text(c.alternatives[1].anchor)).toContain("Write queue");
+  expect(text(c.criteria[0].anchor)).toContain("Checkout latency");
+  // The verdict shows its reason and links to the alternative it chose.
+  expect(text(c.verdict.anchor)).toContain("Latency decides it");
+  expect(within(els, c.verdict.anchor).some((e) => e.attrs.href === `#${c.alternatives[0].anchor}`)).toBe(true);
+  // The chosen side's own evidence is shown with it.
+  const img = els.find((e) => e.tag === "img" && e.inside.includes(refs.cmp))!;
+  expect(readFileSync(join(dirname(page), img.attrs.src))).toEqual(PNG);
+});
+
+test("a Comparison with no single winner records that verdict and links to no alternative", async () => {
+  openFlow("s-1");
+  const r = submit("s-1", comparison("cmp", { alternatives: comparison("cmp").alternatives.map(({ attachments: _, ...a }: any) => a), verdict: { outcome: "inconclusive", reason: "Neither was measured under load." } }));
+  expect(r.stderr).toBe("");
+  const c = show(r.json.flow).stages[0].results[0].comparison;
+  expect(c.verdict.outcome).toBe("inconclusive");
+  expect(c.verdict.alternative).toBeUndefined();
+  const els = await elements(r.json.page);
+  expect(within(els, c.verdict.anchor).some((e) => c.alternatives.some((a: any) => e.attrs.href === `#${a.anchor}`))).toBe(false);
+});
+
+// Labels carry no digits, so a missing row can be checked for showing no number.
+const series = [
+  { ref: "main", label: "main branch", baseline: true },
+  { ref: "branch", label: "feature branch" },
+  { ref: "fork", label: "contributor fork" },
+];
+const metrics = (ref: string, extra: object = {}) => ({
+  kind: "result",
+  ref,
+  shape: "metrics",
+  title: "Checkout under load",
+  workload: "500 checkouts of 3 items, 8 workers",
+  environment: "M3 laptop, Bun 1.3",
+  outcome: "The branch is slower; the fork did not finish.",
+  series,
+  measurements: [
+    {
+      ref: "p50",
+      name: "p50 latency",
+      unit: "ms",
+      better: "lower",
+      verdict: "worse",
+      values: [
+        { series: "main", value: 10.1, samples: 30, uncertainty: { low: 9.8, high: 10.6, of: "min to max" } },
+        { series: "branch", value: 12.6, samples: 30, uncertainty: { plusminus: 0.4, of: "95% CI" } },
+        { series: "fork", missing: "The run crashed before measuring." },
+      ],
+    },
+    { ref: "errors", name: "Errors", unit: "count", values: [{ series: "main", value: 0 }, { series: "branch", value: 3 }] },
+    { ref: "rss", name: "Peak memory", unit: "MB", values: [{ series: "main", missing: "Not captured on main." }, { series: "branch", value: 210 }] },
+  ],
+  ...extra,
+});
+
+test("Metrics keeps numeric values with units, samples, workload, baselines, uncertainty, and outcome, and computes deltas only from what was measured", async () => {
+  openFlow("s-1");
+  const r = submit("s-1", metrics("m"));
+  expect(r.stderr).toBe("");
+  expect(r.code).toBe(0);
+  const { refs, page, flow } = r.json;
+  const res = show(flow).stages[0].results.find((x: any) => x.id === refs.m);
+  expect(res.shape).toBe("metrics");
+  const m = res.metrics;
+  expect(m.baseline).toBe("main");
+  const at = (ref: string) => m.measurements.find((x: any) => x.ref === ref);
+  const val = (ref: string, s: string) => at(ref).values.find((x: any) => x.series === s);
+  expect(at("p50").unit).toBe("ms");
+  expect(val("p50", "main")).toMatchObject({ value: 10.1, samples: 30, uncertainty: { low: 9.8, high: 10.6, of: "min to max" } });
+  // A delta is the difference from the baseline, and its share of it.
+  expect(val("p50", "branch").delta).toBeCloseTo(2.5, 10);
+  expect(val("p50", "branch").relative).toBeCloseTo(24.75, 1);
+  expect(val("p50", "main").delta).toBeUndefined();
+  // Missing is not zero: a missing value has no value and no delta, and a measured zero keeps both.
+  expect(val("p50", "fork").value).toBeUndefined();
+  expect(val("p50", "fork").missing).toBe(true);
+  expect(val("p50", "fork").delta).toBeUndefined();
+  expect(val("errors", "main").value).toBe(0);
+  expect(val("errors", "main").missing).toBeUndefined();
+  expect(val("errors", "branch").delta).toBe(3);
+  expect(val("errors", "branch").relative).toBeUndefined();
+  // A series the producer did not list is missing too, never zero.
+  expect(val("errors", "fork").missing).toBe(true);
+  // With no baseline value there is no delta to compute.
+  expect(val("rss", "branch").delta).toBeUndefined();
+  // Nothing the producer did not report is invented.
+  expect(val("errors", "branch").samples).toBeUndefined();
+  expect(val("errors", "branch").uncertainty).toBeUndefined();
+  expect(at("errors").verdict).toBeUndefined();
+  expect(at("p50").verdict).toBe("worse");
+
+  const els = await elements(page);
+  const text = (id: string) => els.find((e) => e.attrs.id === id)!.text;
+  const resultText = text(refs.m);
+  for (const s of ["500 checkouts of 3 items, 8 workers", "M3 laptop, Bun 1.3", "The branch is slower; the fork did not finish.", "main branch", "p50 latency"]) expect(resultText).toContain(s);
+  // Numeric data remains readable in an accessible table, independent of the chart implementation.
+  const row = (ref: string, s: string) => val(ref, s).anchor;
+  expect(els.find((e) => e.attrs.id === row("p50", "branch"))!.tag).toBe("tr");
+  expect(within(els, at("p50").anchor).some((e) => e.tag === "table")).toBe(true);
+  for (const [ref, s, n] of [["p50", "main", "10.1"], ["p50", "branch", "12.6"], ["errors", "main", "0"], ["errors", "branch", "3"], ["rss", "branch", "210"]] as const) {
+    expect(text(row(ref, s))).toContain(n);
+  }
+  expect(text(row("p50", "branch"))).toContain("+2.5");
+  expect(text(row("p50", "main"))).toContain("9.8");
+  expect(text(row("p50", "main"))).toContain("10.6");
+  expect(text(row("p50", "branch"))).toContain("0.4");
+  for (const [ref, s] of [["p50", "fork"], ["errors", "fork"], ["rss", "main"]] as const) {
+    expect(text(row(ref, s))).not.toMatch(/\d/);
+  }
+  expect(text(row("p50", "fork"))).toContain("The run crashed before measuring.");
+});
+
+test("negative measured values keep their numeric data and signed baseline change", async () => {
+  openFlow("s-1");
+  const r = submit("s-1", metrics("m", { measurements: [{ ref: "drift", name: "Clock drift", unit: "ms", values: [{ series: "main", value: -2 }, { series: "branch", value: 3 }] }] }));
+  expect(r.stderr).toBe("");
+  const m = show(r.json.flow).stages[0].results[0].metrics.measurements[0];
+  expect(m.values.find((x: any) => x.series === "branch").delta).toBe(5);
+  const els = await elements(r.json.page);
+  expect(els.find((e) => e.attrs.id === m.values[0].anchor)!.text).toContain("-2");
+});
+
+const cmpWith = (patch: (c: any) => void) => () => {
+  const c: any = comparison("cmp");
+  c.alternatives = c.alternatives.map(({ attachments: _, ...a }: any) => a);
+  patch(c);
+  return [c];
+};
+const metWith = (patch: (m: any) => void) => () => {
+  const m: any = structuredClone(metrics("m"));
+  patch(m);
+  return [m];
+};
+
+test.each([
+  ["a Comparison with one alternative", cmpWith((c) => { c.alternatives = c.alternatives.slice(0, 1); c.assessments = c.assessments.filter((a: any) => a.alternative === "cache"); }), "alternatives"],
+  ["an assessment of an alternative that does not exist", cmpWith((c) => c.assessments.push({ alternative: "kafka", criterion: "ops", finding: "x" })), "kafka"],
+  ["an assessment of a criterion that does not exist", cmpWith((c) => c.assessments.push({ alternative: "queue", criterion: "cost", finding: "x" })), "cost"],
+  ["two assessments of one pair", cmpWith((c) => c.assessments.push({ alternative: "cache", criterion: "latency", finding: "again" })), "latency"],
+  ["a chosen verdict that names no alternative", cmpWith((c) => (c.verdict = { outcome: "chosen", reason: "x" })), "verdict"],
+  ["a verdict that chooses an unknown alternative", cmpWith((c) => (c.verdict = { outcome: "chosen", alternative: "kafka", reason: "x" })), "kafka"],
+  ["a tie that names a winner", cmpWith((c) => (c.verdict = { outcome: "tie", alternative: "cache", reason: "x" })), "verdict"],
+  ["a Comparison with no verdict", cmpWith((c) => delete c.verdict), "verdict"],
+  ["a value written as a string", metWith((m) => (m.measurements[0].values[0].value = "10.1ms")), "value"],
+  ["a value with a missing reason as well", metWith((m) => (m.measurements[0].values[0].missing = "no")), "missing"],
+  ["a value of a series that does not exist", metWith((m) => m.measurements[1].values.push({ series: "nightly", value: 1 })), "nightly"],
+  ["two values of one series", metWith((m) => m.measurements[1].values.push({ series: "main", value: 1 })), "main"],
+  ["two baselines", metWith((m) => (m.series[1].baseline = true)), "baseline"],
+  ["a sample count that is not a positive whole number", metWith((m) => (m.measurements[0].values[0].samples = 2.5)), "samples"],
+  ["an uncertainty range whose low is above its high", metWith((m) => (m.measurements[0].values[0].uncertainty = { low: 11, high: 9, of: "min to max" })), "uncertainty"],
+  ["an uncertainty that does not say what it is", metWith((m) => delete m.measurements[0].values[0].uncertainty.of), "of"],
+  ["a measurement with no unit", metWith((m) => delete m.measurements[0].unit), "unit"],
+  ["Metrics with no workload", metWith((m) => delete m.workload), "workload"],
+  ["Metrics with no outcome", metWith((m) => delete m.outcome), "outcome"],
+  ["a verdict outside the reported verdicts", metWith((m) => (m.measurements[0].verdict = "amazing")), "verdict"],
+])("%s is refused precisely with no partial write", (_, items, names) => {
+  openFlow("s-1");
+  const before = tree();
+  const r = run(["submit"], { session: "s-1", stdin: contribution(...items()) });
+  expect(r.stderr).toContain(names);
+  expect(r.code).toBe(1);
+  expect(r.stdout).toBe("");
+  expect(tree()).toEqual(before);
+});
+
+test("a Comparison or Metrics Result takes a new revision with revises, and earlier revisions stay readable", async () => {
+  openFlow("s-1");
+  const first = submit("s-1", metrics("m"), cmpWith(() => {})()[0]).json;
+  const before = tree();
+  expect(submit("s-1", { kind: "revise", result: first.refs.m, add: [{ cells: ["x"] }] }).code).toBe(1);
+  expect(tree()).toEqual(before);
+  const next = metrics("m", { revises: first.refs.m, outcome: "Rerun: no measurable difference." });
+  const r = submit("s-1", next);
+  expect(r.stderr).toBe("");
+  const res = show(first.flow).stages[0].results.find((x: any) => x.id === first.refs.m);
+  expect(res.revision).toBe(2);
+  const els = await elements(r.json.page);
+  expect(els.find((e) => e.attrs.id === `${first.refs.m}-r1`)!.text).toContain("The branch is slower");
+  const l = await links(r.json.page);
+  for (const targets of l.within.values()) for (const t of targets) expect(l.ids.has(t)).toBe(true);
+});
+
+test("Metrics retains sub-microsecond deltas instead of rounding a measured change to zero", () => {
+  openFlow("s-1");
+  const r = submit("s-1", metrics("m", {
+    measurements: [{ ref: "tiny", name: "Timer overhead", unit: "s", values: [{ series: "main", value: 1e-7 }, { series: "branch", value: 2e-7 }] }],
+  }));
+  expect(r.code).toBe(0);
+  const m = show(r.json.flow).stages[0].results[0].metrics.measurements[0];
+  expect(m.values[1].delta).toBe(1e-7);
+  expect(m.values[1].relative).toBe(100);
+});
+
+test("Metrics does not publish non-finite deltas as numeric data", async () => {
+  openFlow("s-1");
+  const r = submit("s-1", metrics("m", {
+    measurements: [{ ref: "extreme", name: "Signed magnitude", unit: "units", values: [{ series: "main", value: -1e308 }, { series: "branch", value: 1e308 }] }],
+  }));
+  expect(r.code).toBe(0);
+  const me = show(r.json.flow).stages[0].results[0].metrics.measurements[0];
+  expect(me.values[1].value).toBe(1e308);
+  expect(me.values[1].delta).toBeUndefined();
+  expect(me.values[1].relative).toBeUndefined();
+  expect(me.values[1].delta_unavailable).toBe(true);
+  const els = await elements(r.json.page);
+  expect(els.find((e) => e.attrs.id === me.values[1].anchor)!.text).not.toContain("Infinity");
+});
+
+test("Metrics subtracts decimal measurements without displaying floating-point noise", () => {
+  openFlow("s-1");
+  const r = submit("s-1", metrics("m", {
+    measurements: [{ ref: "time", name: "Wall time", unit: "ms", values: [{ series: "main", value: 50.8 }, { series: "branch", value: 49.2 }] }],
+  }));
+  expect(r.code).toBe(0);
+  expect(show(r.json.flow).stages[0].results[0].metrics.measurements[0].values[1].delta).toBe(-1.6);
+});
