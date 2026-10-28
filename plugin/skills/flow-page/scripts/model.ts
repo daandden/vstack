@@ -32,7 +32,7 @@ export type Retirement = { question: string; reason: string; time: string };
 export type Section = { heading: string; body: string };
 export type Background = { id: string; stage: string; title: string; summary: string; sections: Section[]; sources: string[] };
 export type Topic = { id: string; title: string; summary: string; body: string; sources: string[] };
-export type Shape = "cards" | "ledger" | "table" | "document";
+export type Shape = "cards" | "ledger" | "table" | "document" | "prototype";
 /** `changed` is the Flow revision that last changed a Result's header or an entry, which a focused revision checks. */
 export type Entry = Record<string, unknown> & { id: string; changed: number };
 /** One block of a Document section. Prose and list items can cite with `[@<citation ref>]`. */
@@ -41,10 +41,26 @@ export type DocSection = { heading: string; blocks: Block[] };
 export type DocumentBody = { sections: DocSection[]; citations: { ref: string; source: string }[]; limitations: string[]; sources: string[] };
 /** Where a Result's content is canonically kept, and which revision of it the Result captured. */
 export type Canonical = { file: string; root: string; sha256: string } | { commit: string } | { tracker: string; revision: string };
+/** A demo value: a number, a yes/no flag, or a line of text, fixed in type by its initial value. */
+export type DemoLiteral = number | boolean | string;
+export const DEMO_OPS = ["eq", "ne", "lt", "le", "gt", "ge"] as const;
+export type DemoOp = (typeof DEMO_OPS)[number];
+/** A bounded condition over demo values. There is no other expression: nothing in a demo is evaluated as source code. */
+export type Condition = { value: string; op: DemoOp; to: DemoLiteral } | { all: Condition[] } | { any: Condition[] } | { not: Condition };
+export type Effect = { set: DemoLiteral } | { add: number } | { toggle: true };
+export type Transition = { from?: string[]; when?: Condition; to?: string; set?: Record<string, Effect> };
+/** A declarative state demo. An action takes its first transition that leaves the current state and whose condition
+ *  holds; reset returns to `start` and every value's `initial`. The page keeps the demo's state in the browser only. */
+export type Demo = {
+  values: { name: string; label: string; initial: DemoLiteral }[];
+  states: { name: string; label: string; description?: string }[];
+  start: string;
+  actions: { name: string; label: string; transitions: Transition[] }[];
+};
 /** `revision` counts whole republications of the Result with `revises`; `captured` is when this one was submitted. */
 export type Result = {
   id: string; stage: string; shape: Shape; title: string; summary?: string; columns?: string[]; entries: Entry[]; changed: number;
-  document?: DocumentBody; attachments?: string[]; canonical?: Canonical; revision?: number; captured?: string;
+  document?: DocumentBody; demo?: Demo; attachments?: string[]; canonical?: Canonical; revision?: number; captured?: string;
 };
 export type Source = { id: string; text: string };
 export const ATTACHMENT_TYPES = ["image", "video", "svg", "file", "trace", "evidence", "artifact"] as const;
@@ -112,7 +128,7 @@ export const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const REF = /^[a-z0-9][a-z0-9-]*$/;
 const CODE_ID = /^(stage|round|question|close|background|topic|result|source|assumed|attachment|task|blocker|pr|check)-\d+$/;
 const TICKET = /^#?[A-Za-z0-9][A-Za-z0-9._/-]*$/;
-const SHAPES: Shape[] = ["cards", "ledger", "table", "document"];
+const SHAPES: Shape[] = ["cards", "ledger", "table", "document", "prototype"];
 const CLAIM_STATES = ["confirmed", "cleared", "unproven"];
 /** A citation marker in Document prose or a list item. */
 export const CITE = /\[@([a-z0-9][a-z0-9-]*)\]/g;
@@ -535,6 +551,10 @@ function parseResult(o: Obj, where: string, stage: string, id: string, entryIds:
     fields(o, where, ["kind", "shape", "title", "sections"], [...shared, "citations", "limitations", "sources"]);
     return head({ document: parseDocument(o, where, attachment, source) });
   }
+  if (shape === "prototype") {
+    fields(o, where, ["kind", "shape", "title", "demo"], shared);
+    return head({ demo: parseDemo(o.demo, `${where}: demo`) });
+  }
   fields(o, where, ["kind", "shape", "title", table ? "columns" : "entries", ...(table ? ["rows"] : [])], shared);
   const columns = table ? texts(o, "columns", where) : undefined;
   const entries = list(o, table ? "rows" : "entries", where).map((e, j) => parseEntry(shape, columns, e, `${where}: ${table ? "row" : "entry"} ${j + 1}`, entryIds[j].split("/")[1], rev));
@@ -589,7 +609,7 @@ function revise(s: State, o: Obj, where: string, stage: string, entryIds: string
   } else if (o.base !== undefined) refuse(where, "base goes with set; add appends entries without one");
   if (o.add !== undefined) {
     if (entry) refuse(where, "add appends entries to a Result; name the Result, not an entry");
-    if (r.shape === "document") refuse(where, `${rid} is a Document, which has no entries; publish its next revision with revises`);
+    if (r.shape === "document" || r.shape === "prototype") refuse(where, `${rid} is a ${r.shape === "document" ? "Document" : "demo"}, which has no entries; publish its next revision with revises`);
     if (entryIds === undefined) refuse(where, `add appends to a Result from an earlier contribution; put new entries of ${o.result} in its result item`);
     const adds = list(o, "add", where);
     r.entries.push(...adds.map((e, j) => parseEntry(r.shape, r.columns, e, `${where}: add ${j + 1}`, entryIds![j].split("/")[1], rev)));
@@ -719,6 +739,130 @@ function parseDocument(o: Obj, where: string, attachment: (v: unknown, where: st
   const limitations = o.limitations === undefined ? [] : texts(o, "limitations", where).map((t) => safeLinks(t, `${where}: limitations`));
   const sources = o.sources === undefined ? [] : texts(o, "sources", where).map((t) => source(safeLinks(t, `${where}: sources`)));
   return { sections, citations: citations.map((c) => ({ ref: c.ref, source: source(c.source) })), limitations, sources };
+}
+
+/** Bounds that keep a demo small enough to read and its conditions shallow enough to follow. */
+const DEMO_LIMITS = { values: 16, states: 32, actions: 32, transitions: 16, depth: 4 };
+const TYPE_WORD: Record<string, string> = { number: "a number", boolean: "true or false", string: "text" };
+
+/** A declarative state demo, checked whole: names, types, bounds, and that every state is reachable from `start`. */
+function parseDemo(raw: unknown, where: string): Demo {
+  const o = fields(raw, where, ["states", "start", "actions"], ["values"]);
+  /** The items of `k`, each with a unique `name`, at most `max` of them. */
+  const named = (k: string, what: string, max: number, required: string[], optional: string[] = []) => {
+    const xs = list(o, k, where);
+    if (xs.length > max) refuse(`${where}: ${k}`, `a demo has at most ${max} ${k}`);
+    const seen = new Set<string>();
+    return xs.map((x, j) => {
+      const w = `${where}: ${what} ${j + 1}`;
+      const xo = fields(x, w, ["name", ...required], optional);
+      if (typeof xo.name !== "string" || !REF.test(xo.name)) refuse(w, "name must be lowercase letters, digits, and hyphens");
+      const name = xo.name as string;
+      if (seen.has(name)) refuse(w, `${what} ${name} is already a ${what} of this demo`);
+      seen.add(name);
+      return { xo, name, w: `${where}: ${what} ${name}` };
+    });
+  };
+
+  const values = o.values === undefined ? [] : named("values", "value", DEMO_LIMITS.values, ["label", "initial"]).map(({ xo, name, w }) => {
+    const initial = xo.initial;
+    if (!(typeof initial === "boolean" || typeof initial === "string" || (typeof initial === "number" && Number.isFinite(initial)))) refuse(w, "initial must be a number, true or false, or a string");
+    return { name, label: text(xo, "label", w), initial: initial as DemoLiteral };
+  });
+  const typeOfValue = new Map(values.map((v) => [v.name, typeof v.initial]));
+  const valueType = (name: unknown, w: string): string => {
+    if (typeof name !== "string" || !typeOfValue.has(name)) refuse(w, `${JSON.stringify(name)} names no value of this demo`);
+    return typeOfValue.get(name as string)!;
+  };
+  const states = named("states", "state", DEMO_LIMITS.states, ["label"], ["description"]).map(({ xo, name, w }) => ({
+    name, label: text(xo, "label", w), ...(xo.description !== undefined ? { description: safeLinks(text(xo, "description", w), w) } : {}),
+  }));
+  const stateNames = new Set(states.map((st) => st.name));
+  const state = (v: unknown, w: string): string => {
+    if (typeof v !== "string" || !stateNames.has(v)) refuse(w, `${JSON.stringify(v)} is not a state of this demo`);
+    return v as string;
+  };
+  const start = state(o.start, `${where}: start`);
+
+  const condition = (raw: unknown, w: string, depth: number): Condition => {
+    if (depth > DEMO_LIMITS.depth) refuse(w, `conditions nest at most ${DEMO_LIMITS.depth} deep`);
+    if (!isObj(raw)) refuse(w, `must be a condition: { "value": "<name>", <op>: <literal> }, { "all": [...] }, { "any": [...] }, or { "not": {...} }; a demo evaluates no source code`);
+    const c = raw as Obj;
+    for (const k of ["all", "any"] as const)
+      if (c[k] !== undefined) {
+        fields(c, w, [k]);
+        return { [k]: list(c, k, w).map((x, j) => condition(x, `${w}: ${k} ${j + 1}`, depth + 1)) } as Condition;
+      }
+    if (c.not !== undefined) {
+      fields(c, w, ["not"]);
+      return { not: condition(c.not, `${w}: not`, depth + 1) };
+    }
+    const ops = Object.keys(c).filter((k) => k !== "value");
+    if (c.value === undefined || ops.length !== 1 || !(DEMO_OPS as readonly string[]).includes(ops[0])) refuse(w, `a comparison is { "value": "<name>", <op>: <literal> } with one op of ${listed([...DEMO_OPS])}, got ${ops.length ? ops.join(", ") : "none"}`);
+    const op = ops[0] as DemoOp;
+    const type = valueType(c.value, w);
+    const to = c[op];
+    if (op !== "eq" && op !== "ne" && type !== "number") refuse(w, `${c.value} holds ${TYPE_WORD[type]}; ${op} compares numbers only`);
+    if (typeof to !== type || (type === "number" && !Number.isFinite(to))) refuse(w, `${c.value} holds ${TYPE_WORD[type]}, so ${op} compares it with ${TYPE_WORD[type]}, got ${JSON.stringify(to)}`);
+    return { value: c.value as string, op, to: to as DemoLiteral };
+  };
+
+  const effect = (e: unknown, name: string, w: string): Effect => {
+    const type = valueType(name, w);
+    if (isObj(e) && e.add !== undefined) {
+      fields(e, w, ["add"]);
+      if (type !== "number") refuse(w, `${name} holds ${TYPE_WORD[type]}, so add cannot change it`);
+      if (typeof e.add !== "number" || !Number.isFinite(e.add)) refuse(w, "add must be a number");
+      return { add: e.add as number };
+    }
+    if (isObj(e) && e.toggle !== undefined) {
+      fields(e, w, ["toggle"]);
+      if (type !== "boolean") refuse(w, `${name} holds ${TYPE_WORD[type]}, so toggle cannot change it`);
+      if (e.toggle !== true) refuse(w, "toggle must be true");
+      return { toggle: true };
+    }
+    if (isObj(e) || Array.isArray(e)) refuse(w, `an effect is a literal, { "add": <number> }, or { "toggle": true }`);
+    if (typeof e !== type || (type === "number" && !Number.isFinite(e))) refuse(w, `${name} holds ${TYPE_WORD[type]}, got ${JSON.stringify(e)}; a demo evaluates no expressions`);
+    return { set: e as DemoLiteral };
+  };
+
+  const actions = named("actions", "action", DEMO_LIMITS.actions, ["label", "transitions"]).map(({ xo, name, w }) => {
+    const ts = list(xo, "transitions", w);
+    if (ts.length > DEMO_LIMITS.transitions) refuse(w, `an action has at most ${DEMO_LIMITS.transitions} transitions`);
+    const transitions = ts.map((t, j): Transition => {
+      const tw = `${w}: transition ${j + 1}`;
+      const to = fields(t, tw, [], ["from", "when", "to", "set"]);
+      const out: Transition = {};
+      if (to.from !== undefined) out.from = texts(to, "from", tw).map((x) => state(x, `${tw}: from`));
+      if (to.when !== undefined) out.when = condition(to.when, `${tw}: when`, 1);
+      if (to.to !== undefined) out.to = state(to.to, `${tw}: to`);
+      if (to.set !== undefined) {
+        if (!isObj(to.set) || Object.keys(to.set).length === 0) refuse(`${tw}: set`, "must be an object that names one or more values");
+        out.set = Object.fromEntries(Object.entries(to.set as Obj).map(([k, e]) => [k, effect(e, k, `${tw}: set ${k}`)]));
+      }
+      return out;
+    });
+    return { name, label: text(xo, "label", w), transitions };
+  });
+
+  // Reachability ignores conditions, so a state it misses can never be shown.
+  const reached = new Set([start]);
+  const queue = [start];
+  while (queue.length) {
+    const at = queue.shift()!;
+    for (const a of actions)
+      for (const t of a.transitions)
+        if (!t.from || t.from.includes(at)) {
+          const next = t.to ?? at;
+          if (!reached.has(next)) {
+            reached.add(next);
+            queue.push(next);
+          }
+        }
+  }
+  const unreached = states.filter((st) => !reached.has(st.name)).map((st) => st.name);
+  if (unreached.length) refuse(where, `no transition from ${start} reaches ${all(unreached)}; add a transition to ${unreached.length === 1 ? "it" : "them"} or remove ${unreached.length === 1 ? "it" : "them"}`);
+  return { values, states, start, actions };
 }
 
 function parseAttachment(o: Obj, where: string, stage: string, id: string, time: string, io: Io): Attachment {
@@ -992,6 +1136,7 @@ export function snapshot(v: View, page: string, renderer: number) {
       background: st.background?.id,
       results: st.results.map((r) => ({
         id: r.id, shape: r.shape, revision: r.revision, ...(r.captured ? { captured: r.captured } : {}), ...(r.canonical ? { canonical: r.canonical } : {}), changed: r.changed,
+        ...(r.demo ? { demo: { start: r.demo.start, states: r.demo.states.map((x) => x.name), actions: r.demo.actions.map((x) => x.name), values: r.demo.values.map((x) => x.name) } } : {}),
         revisions: [...r.history, r].map((x) => ({ revision: x.revision, ...(x.captured ? { captured: x.captured } : {}), ...(x.canonical ? { canonical: x.canonical } : {}), attachments: x.shown.map((a) => a.id) })),
         attachments: r.shown.map((a) => a.id),
         entries: r.entries.map(({ anchor: _, ...e }) => ({ ...e, id: `${r.id}/${e.id}`, questions: e.questions })),

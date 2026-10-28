@@ -922,3 +922,107 @@ test("resolving a blocker twice is refused with no write", () => {
   expect(again.stderr).toContain(refs.b);
   expect(tree()).toEqual(before);
 });
+
+// ---------------------------------------------------------------------------------------------------------------
+// Declarative state demos (#278). The page runs them in the browser; these tests cover what authoring accepts and
+// what the static page carries. Clicking through a demo is proven in a real browser by the verify recipe.
+
+const demo = (body: object = {}, extra: object = {}) => ({
+  kind: "result",
+  ref: "demo",
+  shape: "prototype",
+  title: "Cart limit",
+  demo: {
+    values: [
+      { name: "items", label: "Items in cart", initial: 0 },
+      { name: "coupon", label: "Coupon applied", initial: false },
+      { name: "notice", label: "Notice", initial: "none" },
+    ],
+    states: [{ name: "browsing", label: "Browsing", description: "Add items up to the limit." }, { name: "full", label: "Cart full" }, { name: "paid", label: "Paid" }],
+    start: "browsing",
+    actions: [
+      {
+        name: "add",
+        label: "Add item",
+        transitions: [
+          { from: ["browsing"], when: { value: "items", lt: 2 }, set: { items: { add: 1 } } },
+          { from: ["browsing"], when: { value: "items", eq: 2 }, to: "full", set: { items: { add: 1 }, notice: "limit reached" } },
+        ],
+      },
+      { name: "coupon", label: "Toggle coupon", transitions: [{ from: ["browsing", "full"], set: { coupon: { toggle: true } } }] },
+      { name: "pay", label: "Pay", transitions: [{ from: ["browsing", "full"], when: { all: [{ value: "items", gt: 0 }, { not: { value: "notice", eq: "blocked" } }] }, to: "paid" }] },
+    ],
+    ...body,
+  },
+  ...extra,
+});
+
+test("a demo beside a real decision neither answers it nor adds executable page code", async () => {
+  const opened = openFlow("s-1", "prototype");
+  const r = submit("s-1", demo(), round(question("real")));
+  expect(r.stderr).toBe("");
+  expect(r.code).toBe(0);
+  const { refs, page, flow, revision } = r.json;
+  expect(questionOf(show(flow), refs.real).answer.state).toBe("open");
+  const els = await elements(page);
+
+  // The demo runs from the page's own script; it adds no script, handler, form, or outbound request to the page.
+  const l = await links(page);
+  const template = await links(join(import.meta.dir, "..", "plugin", "skills", "flow-page", "templates", "flow-page.html"));
+  expect(l.scripts).toBe(template.scripts);
+  expect(l.handlers).toBe(0);
+  expect(l.outbound).toEqual([]);
+  expect(els.some((e) => e.tag === "form")).toBe(false);
+  expect(run(["render", "--flow", flow]).json.revision).toBe(revision);
+  expect(show(opened.flow).revision).toBe(revision);
+});
+
+const transitions = (...ts: object[]) => ({ actions: [{ name: "go", label: "Go", transitions: ts }] });
+const states2 = { states: [{ name: "browsing", label: "Browsing" }, { name: "paid", label: "Paid" }] };
+
+test.each([
+  ["a condition written as source code", () => demo(transitions({ when: "items < 3 && fetch('/x')", to: "paid" }, { to: "browsing" })), "when"],
+  ["an effect written as an expression", () => demo(transitions({ set: { items: "items + 1" } })), "items"],
+  ["a script field on an action", () => demo({ actions: [{ name: "go", label: "Go", onclick: "alert(1)", transitions: [{ to: "browsing" }] }] }), "onclick"],
+  ["an unsupported operator", () => demo(transitions({ when: { value: "items", matches: "^1" } })), "matches"],
+  ["a numeric comparison on a boolean", () => demo(transitions({ when: { value: "coupon", lt: 1 } })), "coupon"],
+  ["a literal of the wrong type", () => demo(transitions({ set: { coupon: "yes" } })), "coupon"],
+  ["adding to a text value", () => demo(transitions({ set: { notice: { add: 1 } } })), "notice"],
+  ["a condition on an unknown value", () => demo(transitions({ when: { value: "total", gt: 0 } })), "total"],
+  ["a transition to an unknown state", () => demo(transitions({ to: "shipped" })), "shipped"],
+  ["a transition from an unknown state", () => demo(transitions({ from: ["lost"], to: "browsing" })), "lost"],
+  ["a start that is not a state", () => demo({ start: "checkout" }), "checkout"],
+  ["a state no action can reach", () => demo({ ...states2, actions: [{ name: "stay", label: "Stay", transitions: [{ from: ["browsing"] }] }] }), "paid"],
+  ["two states with one name", () => demo({ states: [{ name: "browsing", label: "A" }, { name: "browsing", label: "B" }] }), "browsing"],
+  ["a condition nested past the bound", () => demo(transitions({ when: { not: { not: { not: { not: { not: { value: "items", gt: 0 } } } } } } })), "deep"],
+  ["an action with no transition", () => demo({ actions: [{ name: "go", label: "Go", transitions: [] }] }), "transitions"],
+])("a demo with %s is refused precisely with no partial write", (_, item, names) => {
+  openFlow("s-1", "prototype");
+  const before = tree();
+  const r = submit("s-1", item());
+  expect(r.stderr).toContain(names);
+  expect(r.stderr).toContain("item 1");
+  expect(r.code).toBe(1);
+  expect(r.stdout).toBe("");
+  expect(tree()).toEqual(before);
+});
+
+test("a demo Result is revised like any Result: its header changes, it takes no entries, and a republication keeps the earlier demo", async () => {
+  openFlow("s-1", "prototype");
+  const first = submit("s-1", demo()).json;
+  const id = first.refs.demo;
+  const renamed = submit("s-1", { kind: "revise", result: id, base: first.revision, set: { title: "Cart limit, renamed" } });
+  expect(renamed.stderr).toBe("");
+  const before = tree();
+  const add = submit("s-1", { kind: "revise", result: id, add: [{ cells: ["x"] }] });
+  expect(add.code).toBe(1);
+  expect(add.stderr).toContain(id);
+  expect(tree()).toEqual(before);
+  const again = submit("s-1", demo({ states: [{ name: "browsing", label: "Shopping" }, { name: "full", label: "Cart full" }, { name: "paid", label: "Paid" }] }, { revises: id }));
+  expect(again.stderr).toBe("");
+  const res = show(first.flow).stages[0].results[0];
+  expect(res.revisions.map((x: any) => x.revision)).toEqual([1, 2]);
+  const page = await links(again.json.page);
+  expect(page.ids.has(id)).toBe(true);
+  expect(page.ids.has(`${id}-r1`)).toBe(true);
+});

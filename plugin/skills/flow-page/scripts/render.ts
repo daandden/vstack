@@ -3,11 +3,11 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { optionLabel, type AnswerState, type Attachment, type DocView, type QuestionView, type ResultView, type StageView, type View } from "./model.ts";
+import { optionLabel, type AnswerState, type Attachment, type Condition, type Demo, type DemoLiteral, type DocView, type Effect, type QuestionView, type ResultView, type StageView, type Transition, type View } from "./model.ts";
 import type { ProgressView } from "./progress.ts";
 
 /** Raise this when the page a given state renders to changes, so a page names the renderer that made it. */
-export const RENDERER = 5;
+export const RENDERER = 6;
 const TEMPLATE = join(import.meta.dir, "..", "templates", "flow-page.html");
 
 const STATE_LABELS: Record<string, string> = { "in-progress": "In progress", finished: "Finished" };
@@ -195,6 +195,54 @@ ${blocks.join("\n")}
   return `<div class="document">\n${parts.join("\n")}\n</div>`;
 }
 
+const OP_WORDS: Record<string, string> = { eq: "is", ne: "is not", lt: "<", le: "≤", gt: ">", ge: "≥" };
+/** How the page shows a demo value; the page script shows changed values the same way. */
+const demoValue = (v: DemoLiteral) => (typeof v === "boolean" ? (v ? "yes" : "no") : String(v));
+
+/** One line per transition of an action, so the static page says what each action does without running it. */
+function demoRules(d: Demo): string {
+  const label = new Map([...d.values, ...d.states].map((x) => [x.name, x.label]));
+  const cond = (c: Condition): string => {
+    const inner = (x: Condition) => ("all" in x || "any" in x ? `(${cond(x)})` : cond(x));
+    if ("all" in c) return c.all.map(inner).join(" and ");
+    if ("any" in c) return c.any.map(inner).join(" or ");
+    if ("not" in c) return `not ${inner(c.not)}`;
+    return `${label.get(c.value)} ${OP_WORDS[c.op]} ${demoValue(c.to)}`;
+  };
+  const effect = (name: string, e: Effect) =>
+    "add" in e ? `${label.get(name)} ${e.add < 0 ? "−" : "+"} ${Math.abs(e.add)}` : "toggle" in e ? `${label.get(name)} flips` : `${label.get(name)} becomes ${demoValue(e.set)}`;
+  const line = (t: Transition) => {
+    const from = t.from ? `From ${t.from.map((s) => label.get(s)).join(" or ")}` : "From any state";
+    const when = t.when ? `, when ${cond(t.when)}` : "";
+    const to = t.to ? `go to ${label.get(t.to)}` : "stay";
+    const set = t.set ? `; ${Object.entries(t.set).map(([k, e]) => effect(k, e)).join(", ")}` : "";
+    return `<li>${esc(`${from}${when}: ${to}${set}`)}</li>`;
+  };
+  return `<details class="demo-rules"><summary>How it works</summary><dl class="fields">${d.actions
+    .map((a) => `<dt>${esc(a.label)}</dt><dd><ul class="bullets">${a.transitions.map(line).join("")}</ul></dd>`)
+    .join("")}</dl><p class="source">The first line that applies runs; with none, the action is unavailable. Reset returns to ${esc(label.get(d.start)!)} with every starting value.</p></details>`;
+}
+
+/** A declarative demo, shown at its start. The page script runs it in the browser and keeps its state there only. */
+function demoHtml(r: ResultView, d: Demo): string {
+  const id = `${r.anchor}-demo`;
+  const start = d.states.find((st) => st.name === d.start)!;
+  const descriptions = d.states
+    .filter((st) => st.description)
+    .map((st) => `<div class="description demo-description" data-demo-state="${esc(st.name)}"${st.name === start.name ? "" : " hidden"}>${prose(st.description!)}</div>`);
+  const values = d.values.length ? `<dl class="fields demo-values">${d.values.map((v) => `<dt>${esc(v.label)}</dt><dd id="${id}-v-${v.name}">${esc(demoValue(v.initial))}</dd>`).join("")}</dl>` : "";
+  const buttons = d.actions.map((a) => `<button type="button" data-action="${esc(a.name)}" disabled>${esc(a.label)}</button>`);
+  return `<div class="demo" id="${id}" data-demo="${esc(JSON.stringify(d))}" data-key="${esc(`${r.id}:r${r.revision}`)}">
+<div class="demo-now" aria-live="polite">
+<p class="demo-state"><span class="label">State</span><strong id="${id}-state">${esc(start.label)}</strong></p>
+${descriptions.join("\n")}${values}
+</div>
+<div class="demo-actions" role="group" aria-label="Actions">${buttons.join("")}<button type="button" class="demo-reset" data-reset disabled>Reset</button></div>
+<p class="source">Runs in this browser only. What you do here stays here: it answers no question and records no work.</p>
+${demoRules(d)}
+</div>`;
+}
+
 function provenance(r: ResultView): string {
   const c = r.canonical;
   const link = !c ? "" : "file" in c ? ` from <code>${esc(c.file)}</code> at sha256 <code>${c.sha256.slice(0, 12)}</code>` : "commit" in c ? ` from commit <code>${esc(c.commit.slice(0, 12))}</code>` : ` from ${text(c.tracker)} at <code>${esc(c.revision)}</code>`;
@@ -209,6 +257,8 @@ function resultHtml(r: ResultView, v: View, historical = false): string {
   let body: string;
   if (r.doc) {
     body = documentHtml(r, r.doc, historical);
+  } else if (r.demo) {
+    body = demoHtml(r, r.demo);
   } else if (r.shape === "table") {
     const linked = r.entries.some((e) => e.questions.length);
     const head = `<tr>${r.columns!.map((c) => `<th scope="col">${text(c)}</th>`).join("")}${linked ? `<th scope="col">Asked in</th>` : ""}</tr>`;
