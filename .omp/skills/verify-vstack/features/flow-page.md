@@ -23,11 +23,13 @@ The flow-page script takes typed contributions for one bound Stage, assigns ids,
 - `flow-demo`: a `prototype` Result is a declarative state demo. It has states, a start, actions with transitions, bounded conditions, typed values, and Reset. The page runs it in the browser, from the static file too. Its state and a video's playback position stay in `localStorage` and never change the Flow's revision. A condition or change written as code, a type mismatch, an unknown name, or an unreachable state is refused.
 - `flow-comparison`: a `comparison` Result shows its verdict first, linked to the chosen alternative, then each criterion against each named alternative with that side's finding and evidence, a gap shown as not assessed, and each side's own attachments. A single alternative, an unknown alternative or criterion, a repeated pair, and a verdict that does not fit its outcome are refused.
 - `flow-metrics`: a `metrics` Result shows its workload, environment, and reported outcome, and per measurement a table of each series' value with its unit, samples, uncertainty, and change from the baseline, with a bar on one shared scale beside each measured value. A missing value shows its reason with no number and no bar; a measured zero shows `0` and a zero-length bar. A value given as a string, two baselines, and an inverted range are refused.
+- `flow-host`: concurrent commands start one detached host at a stable loopback URL. Restart restores stored Flows and their URLs. An open page or publication prevents idle shutdown. A taken port or incompatible host returns the static page with the observed failure.
+- `flow-access`: scoped read links, Host and Origin checks, and registered captured assets guard the HTTP reader. Read links cannot author, stop the host, run commands, mutate trackers, or merge.
 
 ## How to get to it (user POV)
 
-- A skill runs `bun "$(realpath skill://flow-page/scripts/flow-page.ts)" open|bind|submit|alias|close|reopen|find|move|show|render ...` and prints the receipt's page path.
-- The user opens that path in a browser.
+- A skill runs `bun "$(realpath skill://flow-page/scripts/flow-page.ts)" open|bind|submit|alias|close|reopen|find|move|show|render ...` and prints `live.url` from the receipt.
+- If `live.state` is `unavailable`, it prints the static `page` path and `live.error` instead.
 
 ## Driving it with bash and the omp browser
 
@@ -35,6 +37,7 @@ Preconditions:
 
 - Follow the baseline in `README.md` and run Doctor.
 - Set `SCRIPT="$CHECKOUT/plugin/skills/flow-page/scripts/flow-page.ts"` and `H="$VERIFY_RUN_DIR/data/flow-home"`. Pass `--home "$H"` and an explicit `--session verify-1` to every command. Run from `$CHECKOUT`.
+- Choose a free `VSTACK_FLOW_PORT` for the proof home. Keep it set for the run. Use `host stop --home "$H"` to stop the owned host before cleanup, since it detaches from the calling session.
 
 Steps:
 
@@ -72,6 +75,15 @@ Steps:
   - Go to `file://` plus the moved page path in the same tab: both wayfinder tabs, their questions, and cross-tab links work as before the move.
 - Stale page (`flow-stale`): `chmod 555` the Flow folder, submit a round, then `chmod 755`. The submit exits 0 with a stderr note, its receipt says `stale`, and reloading the page in the tab shows the older revision without the new question. `render --flow <id>` publishes it; reload shows the question and the page meta revision equals the receipt's.
 - Retention (`flow-retention`): set `CLEAN="$CHECKOUT/plugin/skills/vstack-tmp/scripts/clean.ts"`. In a new Flow, finish its Stage and run `close --flow <id>`. `show` prints `open: false` and a `closed` lifecycle record; reload the page: its heading says Closed with the time. With `T` the record's time, run `bun "$CLEAN" --home "$H" --now <T + 89 days>` and `--now <T + 91 days>`: the Flow folder is absent from `entries` at 89 and listed at 91 with `closed` and `age_days` 91, even after `touch`ing every file in the folder. `reopen --flow <id> --skill grill-me --parent <stage>`: the page heading says Reopened, and the 91-day listing and a `--delete` of the folder leave it in place with the reason `open Flow`. Close a second Flow and delete it with `--now <T + 91 days> --delete <folder>`: the folder is gone, `.ids/` and the other Flows remain, and `find`, `show`, and `open --flow` on its id exit 1 naming it.
+- Local Flow host (`flow-host`, `flow-access`):
+  - Start six `open` commands at once against the same home. All succeed, their live URLs use the same loopback origin, and `host status` and the process listing show one host. Open a live URL in the real browser. Its Flow id and revision match the authoring receipt.
+  - Stop the host with `host stop`. Confirm the listener closes. Run `show --flow <id>` to restart it, and navigate to the earlier URL. The stored Results and questions return. Repeat after `move`.
+  - In a separate home and free port, set `VSTACK_FLOW_IDLE_SECONDS=2`. With the live browser page open, the host stays running past that interval. Close the tab and observe idle shutdown. Test a `submit` process waiting for stdin too: it keeps the host alive until its contribution finishes.
+  - Stop the host, then start another HTTP process on the same port. A page command still commits and publishes its static page, reports `live.state: "unavailable"` with an error, and leaves that process running. Open the fallback with `file://` in the real browser and read its content. Stop only the proof's competing process afterward.
+  - A host from a different copy of flow-page code or a different Bun runtime reports incompatibility. It keeps running until `host stop` authenticates and stops it. The next authoring command starts the current host.
+  - Try a wrong capability, a swapped Flow id, an unregistered file, a traversal path, a captured file replaced by a symlink outside its folder, a wrong Host, and a foreign Origin. Requests fail without exposing paths or private data. Try writes using the page's read link: none author content or control the host.
+  - Capture live and static browser views with lossless WebP and ARIA. Attach the proof to a Flow made through this script. Stop every proof host explicitly with `host stop`.
+
 
 ## Gotchas
 

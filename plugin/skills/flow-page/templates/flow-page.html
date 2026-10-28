@@ -302,6 +302,7 @@
 <!-- BODY -->
   </main>
   <script>
+    if (location.protocol === "http:") window.flowHostEvents = new EventSource(new URL("events", location.href));
     const bar = document.querySelector(".bar");
     const tabs = [...document.querySelectorAll('[role="tab"]')];
     const panels = tabs.map((t) => document.getElementById(t.getAttribute("aria-controls")));

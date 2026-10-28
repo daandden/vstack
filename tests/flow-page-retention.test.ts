@@ -42,7 +42,7 @@ function spawn(cmd: string[], cwd: string, env: Record<string, string>, stdin?: 
   return { code: r.exitCode, stdout, stderr: r.stderr.toString(), json };
 }
 const run = (args: string[], at: At, session?: string, stdin?: unknown) =>
-  spawn(["bun", SCRIPT, ...args, "--home", at.home], at.cwd, { ...ENV, HOME: at.home, ...(session ? { PI_SESSION_ID: session } : {}) }, stdin);
+  spawn(["bun", SCRIPT, ...args, "--home", at.home], at.cwd, { ...ENV, HOME: at.home, VSTACK_FLOW_HOST: "off", ...(session ? { PI_SESSION_ID: session } : {}) }, stdin);
 /** vstack-clean's script with its clock set `days` after `from`. */
 const clean = (at: At, from: number, days: number, ...args: string[]) =>
   spawn(["bun", CLEAN, "--home", at.home, "--now", new Date(from + days * DAY).toISOString(), ...args], at.cwd, ENV);

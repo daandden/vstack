@@ -23,11 +23,12 @@ import { homedir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { canonicalFile, capture, type Root } from "./assets.ts";
-import { addAliases, aliasesOf, closeFlow, contribute, newFlow, nowIso, openStage, parseAlias, Refusal, reopenFlow, SLUG, slugOf, snapshot, stageOf, upgrade, view, type Io, type State } from "./model.ts";
+import { addAliases, aliasesOf, closeFlow, contribute, newFlow, nowIso, openStage, parseAlias, Refusal, reopenFlow, SLUG, slugOf, snapshot, stageOf, view, type Io, type State } from "./model.ts";
 import { RENDERER, render } from "./render.ts";
-import { assetsDir, createFlowFolder, flowFolders, flowsDir, pagePath, pageRevision, readBinding, registerFolder, registeredFolder, statePath, withLock, writeAtomic, writeBinding } from "./store.ts";
+import { assetsDir, createFlowFolder, flowFolders, flowsDir, folderOfId, pagePath, pageRevision, readBinding, readState, registerFolder, registeredFolder, statePath, withLock, writeAtomic, writeBinding } from "./store.ts";
+import { connect, flowUrl, hostCommand } from "./live.ts";
 
-const COMMANDS = ["open", "bind", "submit", "alias", "close", "reopen", "find", "move", "show", "render"];
+const COMMANDS = ["open", "bind", "submit", "alias", "close", "reopen", "find", "move", "show", "render", "host"];
 
 function usage(message: string): never {
   process.stderr.write(`flow-page.ts: ${message}
@@ -41,6 +42,7 @@ usage: bun flow-page.ts open --skill <name> (--title <text> [--slug <slug>] | --
        bun flow-page.ts move [--flow <flow>] --to <folder-key>
        bun flow-page.ts show [--flow <flow>]
        bun flow-page.ts render --flow <flow>
+       bun flow-page.ts host status|stop
 <flow> is a Flow id or a qualified alias such as spec:267
 every command: [--session <id>] [--agent <id>] [--home <dir>]
 `);
@@ -65,29 +67,23 @@ const [command, ...rest] = positionals;
 if (!COMMANDS.includes(command ?? "")) usage(`give a command: ${COMMANDS.join(", ")}`);
 const allowed: Record<string, string[]> = {
   open: ["skill", "title", "slug", "flow", "parent", "ticket"], bind: ["flow", "stage"], submit: ["flow", "stage"], alias: ["flow"], close: ["flow"], reopen: ["skill", "flow", "parent", "ticket"],
-  find: [], move: ["flow", "to"], show: ["flow"], render: ["flow"],
+  find: [], move: ["flow", "to"], show: ["flow"], render: ["flow"], host: [],
 };
 for (const k of Object.keys(opt)) if (!["session", "agent", "home", ...allowed[command]].includes(k)) usage(`${command} takes no --${k}`);
 const positional: Record<string, [number, number, string]> = {
   submit: [0, 1, "takes no more than one contribution file"], alias: [1, Infinity, "needs one or more <kind>:<value> aliases"], find: [1, 1, "needs exactly one <kind>:<value> alias or Flow id"],
+  host: [1, 1, "needs status or stop"],
 };
 const [least, most, says] = positional[command] ?? [0, 0, "takes no positional arguments"];
 if (rest.length < least || rest.length > most) usage(`${command} ${says}`);
 
-const dir = flowsDir(resolve((opt.home as string | undefined) ?? homedir()), process.cwd());
+const home = resolve((opt.home as string | undefined) ?? homedir());
+const dir = flowsDir(home, process.cwd());
 const session = (opt.session as string | undefined) ?? process.env.PI_SESSION_ID ?? undefined;
 const agent = (opt.agent as string | undefined) ?? "main";
 const time = nowIso();
 
 const errno = (e: unknown) => (e as NodeJS.ErrnoException).code;
-function readState(folder: string): State | undefined {
-  try {
-    return upgrade(JSON.parse(readFileSync(statePath(folder), "utf8")));
-  } catch (e) {
-    if (errno(e) === "ENOENT") return undefined;
-    throw e;
-  }
-}
 
 /** The Flow a key names in this project: an id through the id registry, or a qualified alias that exactly one Flow has. */
 function locate(key: string): { id: string; folder: string } {
@@ -102,13 +98,10 @@ function locate(key: string): { id: string; folder: string } {
     return hits[0];
   }
   if (!SLUG.test(key)) refuse(`--flow must be a Flow id of lowercase letters, digits, and hyphens, or a qualified alias such as spec:267, got ${JSON.stringify(key)}`);
-  const name = registeredFolder(dir, key);
-  if (name !== undefined && readState(join(dir, name))?.flow.id === key) return { id: key, folder: join(dir, name) };
-  // A Flow caught mid-move is not where the registry says yet, so look for the exact id.
-  const found = flowFolders(dir).find((n) => readState(join(dir, n))?.flow.id === key);
-  if (found !== undefined) return { id: key, folder: join(dir, found) };
+  const folder = folderOfId(dir, key);
+  if (folder) return { id: key, folder };
   // The registry keeps every id ever given, so an id with no Flow left lost its content; it is never started again empty.
-  return refuse(name !== undefined
+  return refuse(registeredFolder(dir, key) !== undefined
     ? `Flow ${key} has no content any more: it expired after it was closed, or its folder was deleted. Nothing can be read or added under this id; open a new Flow`
     : `this project has no Flow ${key}`);
 }
@@ -214,6 +207,10 @@ const bind = (flow: string, stage: string) => {
 
 async function main(): Promise<object> {
   switch (command) {
+    case "host": {
+      if (rest[0] !== "status" && rest[0] !== "stop") usage("host needs status or stop");
+      return { host: await hostCommand(home, rest[0] as "status" | "stop") };
+    }
     case "open": {
       if (opt.skill === undefined) usage("open needs --skill, the skill whose run this Stage is");
       if (opt.flow !== undefined) {
@@ -334,10 +331,22 @@ async function main(): Promise<object> {
   }
 }
 
+const live = command === "host" ? undefined : await connect(home);
 try {
-  process.stdout.write(`${JSON.stringify(await main())}\n`);
+  const result = await main() as { flow?: string | { id: string }; page?: string };
+  if (live && result.page && result.flow) {
+    const id = typeof result.flow === "string" ? result.flow : result.flow.id;
+    const presentation = live.state === "serving"
+      ? { state: "serving", url: flowUrl(live.port, live.secret.read, basename(dirname(dir)), id) }
+      : live;
+    Object.assign(result, { live: presentation });
+    if (live.state === "unavailable") process.stderr.write(`flow-page.ts: live serving unavailable (${live.error}). Use the static page: ${result.page}\n`);
+  }
+  process.stdout.write(`${JSON.stringify(result)}\n`);
 } catch (e) {
   if (!(e instanceof Refusal)) throw e;
   process.stderr.write(`flow-page.ts: ${e.message}\nNothing was written.\n`);
-  process.exit(1);
+  process.exitCode = 1;
+} finally {
+  if (live?.state === "serving") live.release();
 }

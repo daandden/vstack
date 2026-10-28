@@ -7,7 +7,7 @@ import { constants } from "node:os";
 import { join } from "node:path";
 import { dlopen, read } from "bun:ffi";
 import { repoKey, scratchRoot } from "../../vstack-tmp/scripts/scratch.ts";
-import { closedAt, upgrade, type State } from "./model.ts";
+import { closedAt, SLUG, upgrade, type State } from "./model.ts";
 
 export const FLOW_KIND = "flow";
 /** `<home>/.vstack/tmp/<repo-key>/flow`: one folder per Flow. All worktrees of a project share it; other projects never see it. */
@@ -67,6 +67,22 @@ export const registerFolder = (dir: string, id: string, name: string): void => w
 
 export const flowFolders = (dir: string): string[] =>
   existsSync(dir) ? readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory() && !e.name.startsWith(".")).map((e) => e.name) : [];
+
+export function readState(folder: string): State | undefined {
+  try {
+    return upgrade(JSON.parse(readFileSync(statePath(folder), "utf8")));
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === "ENOENT") return undefined;
+    throw e;
+  }
+}
+
+export function folderOfId(dir: string, id: string): string | undefined {
+  if (!SLUG.test(id)) return undefined;
+  const name = registeredFolder(dir, id);
+  if (name && SLUG.test(name) && readState(join(dir, name))?.flow.id === id) return join(dir, name);
+  return flowFolders(dir).map((n) => join(dir, n)).find((folder) => readState(folder)?.flow.id === id);
+}
 
 // A binding records which Flow and Stage one session's agent writes to. It is scoped to the project's flow dir.
 export type Binding = { flow: string; stage: string; session: string; agent: string; bound: string };
@@ -158,7 +174,7 @@ export async function withLock<T>(folder: string, fn: () => T): Promise<T> {
       if (errno !== constants.errno.EWOULDBLOCK && errno !== constants.errno.EINTR) throw new Error(`flock on ${folder} failed with errno ${errno}`);
       await Bun.sleep(10);
     }
-    return fn();
+    return await fn();
   } finally {
     closeSync(fd);
   }

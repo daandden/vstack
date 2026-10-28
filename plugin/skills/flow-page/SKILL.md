@@ -16,7 +16,7 @@ bun "$(realpath skill://flow-page/scripts/flow-page.ts)" <command> ...
 
 Every command prints one JSON receipt on stdout. Exit 1 prints the refusal on stderr and writes nothing: fix what it names and run the command again. Exit 2 is a usage error.
 
-A receipt always means the content is committed. Its `presentation` says what the page shows: `current`, or `stale` with the older `revision` the page still shows and the `error` that stopped the new page. A stale page keeps its last good content. Run `render --flow <flow>` to publish it again, and never resubmit committed content.
+A receipt always means the content is committed. Its `presentation` says what the static page shows: `current`, or `stale` with the older `revision` and the `error` that stopped the new page. A stale page keeps its last good content. Run `render --flow <flow>` to publish it again, and never resubmit committed content. `live` separately reports the Local Flow host.
 
 ## Open or join a Stage
 
@@ -121,7 +121,7 @@ The script stores evidence byte for byte. Redact it as the producing skill's con
 
 ## The receipt
 
-A submit receipt holds the Flow and Stage ids, the committed `revision`, the absolute `page` path, its `presentation`, `refs` (each ref you gave, mapped to its assigned id), and, when the contribution has a round, `ask`. It does not repeat your content.
+A submit receipt holds the Flow and Stage ids, the committed `revision`, the absolute static `page` path, its `presentation`, `live`, `refs` (each ref you gave, mapped to its assigned id), and, when the contribution has a round, `ask`. It does not repeat your content.
 
 `ask` is the payload for the `ask` tool, in Q-number order: each question's id, its one-line `question` that starts with its Q number (`Q3. ...`), its option labels with their letters, and the index of the recommended option. Pass it to `ask` as it is.
 
@@ -163,6 +163,12 @@ The Overview opens with a progress strip built from these items. Each is its own
 
 The strip reads complete when the Flow has at least one task, no task is `pending` or `active`, no blocker is open, and its requested End state is `none` or reached. It does not close the Flow. `show` prints the same facts under `progress`.
 
-## Print the path
+## Present the page
 
-Never open the page. Print the plain absolute `page` path from the receipt, with no `file://` prefix.
+Never open the page automatically. When `live.state` is `serving`, print `live.url`. That scoped read link stays the same across folder moves and host restarts. When `live.state` is `unavailable`, print the plain absolute `page` path and `live.error`. The contribution remains committed. `live.state: "off"` means static-only mode.
+
+The script starts one detached Local Flow host for the user's home. The default loopback port is `42000 + uid % 10000`. `VSTACK_FLOW_PORT` selects a different port before startup. The running host's discovery record takes precedence until it stops. Hosts with different code or Bun runtimes report incompatibility instead of serving a page with an old renderer. Run `host stop` to stop that authenticated host, then retry the original command.
+
+`host status` reports the host without starting it. `host stop` stops only the host authenticated by this home's private credential. A port held by another program or another home's host stays untouched. The private discovery and secrets live under `<home>/.vstack/host/`; do not attach these files as evidence.
+
+The host stops after 30 idle minutes with no connected reader, publication, or progress sync. `VSTACK_FLOW_IDLE_SECONDS` changes that duration. Set `VSTACK_FLOW_HOST=off` for static-only authoring. Static pages remain readable with the server stopped. Browser links grant read access to one Flow, never authoring, host control, commands, tracker mutations, or merging.

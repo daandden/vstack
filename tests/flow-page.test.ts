@@ -23,7 +23,7 @@ beforeEach(() => {
 
 type Run = { code: number; stdout: string; stderr: string; json: any };
 function run(args: string[], opts: { session?: string; stdin?: unknown } = {}): Run {
-  const env: Record<string, string> = { PATH: process.env.PATH!, HOME: home };
+  const env: Record<string, string> = { PATH: process.env.PATH!, HOME: home, VSTACK_FLOW_HOST: "off" };
   if (opts.session) env.PI_SESSION_ID = opts.session;
   const stdin = opts.stdin === undefined ? "ignore" : new TextEncoder().encode(typeof opts.stdin === "string" ? opts.stdin : JSON.stringify(opts.stdin));
   const r = Bun.spawnSync(["bun", SCRIPT, ...args, "--home", home], { cwd, env, stdin, stdout: "pipe", stderr: "pipe" });
