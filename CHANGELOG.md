@@ -4,6 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [7.0.4] - 2026-10-27
+
+- Make all eight tracker-consuming skills use the configured MCP server's current tool descriptions, schemas, and recorded project facts for Jira creation, labels, directional blocking links, and closing. Preserve CLI, local Markdown, and prose workflows; list implement-spec and session as tracker readers in setup (#207).
+- Normalize Grilling page keys centrally by lowercasing tracker keys and replacing underscores with hyphens, while retaining original issue identities and rename collision and no-op behavior (#207).
+
 ## [7.0.3] - 2026-10-27
 
 - Add the hidden tune-llm-flow Addon for sustained LLM-flow quality, cost, or latency improvement inside implement. The grill settles setup once; Ratchet owns measured gates and host approvals, with review material and each gate on the Grilling page. Kept rounds and the reusable eval get separate commits, excluding traces. Narrow hillclimb's catalog question to code that calls no model and add four routing samples. Require an identified LLM flow for the new catalog route. The optional Flexible Ask host-dialog wrapper is completed in omp-tools#26; installation and combined live behavior must still be observed (#254, ADR 0041).
