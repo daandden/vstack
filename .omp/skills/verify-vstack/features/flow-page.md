@@ -25,10 +25,11 @@ The flow-page script takes typed contributions for one bound Stage, assigns ids,
 - `flow-metrics`: a `metrics` Result shows its workload, environment, and reported outcome, and per measurement a table of each series' value with its unit, samples, uncertainty, and change from the baseline, with a bar on one shared scale beside each measured value. A missing value shows its reason with no number and no bar; a measured zero shows `0` and a zero-length bar. A value given as a string, two baselines, and an inverted range are refused.
 - `flow-host`: concurrent commands start one detached host at a stable loopback URL. Restart restores stored Flows and their URLs. An open page or publication prevents idle shutdown. A taken port or incompatible host returns the static page with the observed failure.
 - `flow-access`: scoped read links, Host and Origin checks, and registered captured assets guard the HTTP reader. Read links cannot author, stop the host, run commands, mutate trackers, or merge.
+- `flow-migrate`: a structured historical Grilling page becomes a Flow without changing its old folder. Record ids, questions, answers, Q numbers, round times, figures, Topics, sources, and fragment anchors survive. Reports become Results. A handwritten page stays untouched.
 
 ## How to get to it (user POV)
 
-- A skill runs `bun "$(realpath skill://flow-page/scripts/flow-page.ts)" open|bind|submit|alias|close|reopen|find|move|show|render ...` and prints `live.url` from the receipt.
+- A skill runs `bun "$(realpath skill://flow-page/scripts/flow-page.ts)" open|bind|submit|alias|close|reopen|find|move|show|render|migrate ...` and prints `live.url` from the receipt.
 - If `live.state` is `unavailable`, it prints the static `page` path and `live.error` instead.
 
 ## Driving it with bash and the omp browser
@@ -84,6 +85,16 @@ Steps:
   - Try a wrong capability, a swapped Flow id, an unregistered file, a traversal path, a captured file replaced by a symlink outside its folder, a wrong Host, and a foreign Origin. Requests fail without exposing paths or private data. Try writes using the page's read link: none author content or control the host.
   - Capture live and static browser views with lossless WebP and ARIA. Attach the proof to a Flow made through this script. Stop every proof host explicitly with `host stop`.
 
+
+- Migration (`flow-migrate`):
+  - Copy a structured Grilling folder into the project's Scratch dir under the throwaway `H`. Preserve its `page.jsonl` and `figures/`. Keep the original untouched, especially an in-flight Flow. Capture hashes of the copy before migration.
+  - `bun "$SCRIPT" migrate <copy> --home "$H"`. `show --flow <receipt flow>` preserves its Stage states, question ids and Q numbers, round times, answer states, Results, Topics, and sources. The copy's hashes are unchanged.
+  - Open its receipt's page. Follow old `#q-<id>`, `#stage-<id>`, `#report-<id>_<entry>`, and `#topic-<id>` fragments. Each selects the right Stage and reveals the target below the bar. Open card Evidence and follow its question backlink.
+  - Inspect a picked answer, an Other answer, an unanswered ask, text figures, HTML previews, and captured SVGs. Other words have no invented pick or agent reading. Finished Stages keep unresolved questions historical.
+  - Resize to 360px and inspect the question, figure, and Topics tab. HTML figures retain their content without scripts or CSS leaking into the page.
+  - Bind to the migrated in-progress Stage and submit a round. Its next Q number follows the old ones, and old ids and figures are unchanged. Repeating migration returns the same Flow. A changed source is refused rather than replacing the new Flow.
+  - Try a folder with only a handwritten `page.html`. Migration exits 1 and leaves its bytes and the Flow store unchanged.
+  - Attach the screenshots, ARIA snapshots, commands, and migration comparisons to a Document Result on a proof Flow made by the new flow-page code.
 
 ## Gotchas
 

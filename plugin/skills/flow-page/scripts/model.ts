@@ -7,15 +7,17 @@ import { applyProgress, type Progress, PROGRESS_KINDS, type ProgressView, progre
 export const SCHEMA = 1;
 export const CONTRIBUTION_VERSION = 1;
 
-export type StageState = "in-progress" | "finished";
-export type Stage = { id: string; skill: string; ticket?: string; parent?: string; state: StageState; order: number; opened: string; finished?: string };
-export type Round = { id: string; stage: string; n: number; seq: number; time: string };
-export type Option = { label: string; does: string; gains: string[]; costs: string[]; recommended?: string };
+export type StageState = "not-started" | "in-progress" | "finished";
+export type Stage = { id: string; skill: string; ticket?: string; parent?: string; state: StageState; order: number; opened?: string; finished?: string };
+export type Round = { id: string; stage: string; n: number; seq: number; time: string; session?: number };
+/** Historical figures are readable content, not an authoring option for new contributions. */
+export type Figure = { id: string; text: string } | { id: string; html: string; css?: string } | { id: string; attachment: string };
+export type Option = { label: string; does: string; gains: string[]; costs: string[]; recommended?: string; preview?: Figure };
 export type Fact = { text: string; source: string };
 export type Term = { term: string; text: string };
 export type Question = {
   id: string; stage: string; round: string; q: number; title: string; description: string; options: Option[];
-  again?: string; reopens?: string; today?: Fact[]; terms?: Term[]; topics?: string[]; entries?: string[]; example?: string;
+  again?: string; reopens?: string; today?: Fact[]; terms?: Term[]; topics?: string[]; entries?: string[]; example?: string; figures?: Figure[];
 };
 /** What `ask` returned, as it returned it. `picks` of a timed-out, cancelled, or headless response are not the user's. */
 export type ResponseStatus = "answered" | "empty" | "cancelled" | "timed-out" | "headless";
@@ -23,14 +25,14 @@ export type AskResponse = { status: ResponseStatus; picks?: string[]; text?: str
 /** The agent's reading of words with no pick: they settle the decision, or they leave a part of it unresolved. */
 export type NonConsent = "question" | "concern" | "ambiguous";
 export type Reading = { outcome: "resolved"; decision: string; basis: string; maps_to?: string } | { outcome: NonConsent; unresolved: string };
-export type Answer = { question: string; time: string; response: AskResponse; reading?: Reading };
-export type AnswerState = "open" | "picked" | "resolved" | "unresolved";
+export type Answer = { id?: string; question: string; time?: string; response?: AskResponse; reading?: Reading; legacy?: { other?: string; note?: string; unanswered?: string } };
+export type AnswerState = "open" | "picked" | "written" | "resolved" | "unresolved";
 export type Decision = { question: string; text: string; answer: AnswerState };
-export type Close = { id: string; stage: string; seq: number; time: string; decisions: Decision[]; assumed: string[]; extra?: string[] };
+export type Close = { id: string; stage: string; seq: number; time?: string; decisions: Decision[]; assumed: string[]; extra?: string[] };
 export type Assumed = { id: string; stage: string; decision: string; pick: string; why: string };
-export type Retirement = { question: string; reason: string; time: string };
+export type Retirement = { question: string; reason: string; time?: string };
 export type Section = { heading: string; body: string };
-export type Background = { id: string; stage: string; title: string; summary: string; sections: Section[]; sources: string[] };
+export type Background = { id: string; stage: string; title: string; summary: string; sections: Section[]; sources: string[]; figures?: Figure[]; jump?: string };
 export type Topic = { id: string; title: string; summary: string; body: string; sources: string[] };
 export type Shape = "cards" | "ledger" | "table" | "document" | "prototype" | "comparison" | "metrics";
 /** `changed` is the Flow revision that last changed a Result's header or an entry, which a focused revision checks. */
@@ -75,7 +77,7 @@ export type Demo = {
 /** `revision` counts whole republications of the Result with `revises`; `captured` is when this one was submitted. */
 export type Result = {
   id: string; stage: string; shape: Shape; title: string; summary?: string; columns?: string[]; entries: Entry[]; changed: number;
-  document?: DocumentBody; demo?: Demo; comparison?: ComparisonBody; metrics?: MetricsBody; attachments?: string[]; canonical?: Canonical; revision?: number; captured?: string;
+  document?: DocumentBody; demo?: Demo; comparison?: ComparisonBody; metrics?: MetricsBody; attachments?: string[]; canonical?: Canonical; revision?: number; captured?: string; jump?: string;
 };
 export type Source = { id: string; text: string };
 export const ATTACHMENT_TYPES = ["image", "video", "svg", "file", "trace", "evidence", "artifact"] as const;
@@ -99,7 +101,7 @@ export type Lifecycle = { event: "closed" | "reopened"; time: string };
 
 export type State = {
   schema: number;
-  flow: { id: string; slug: string; title: string; created: string };
+  flow: { id: string; slug: string; title: string; created: string; crumb?: string };
   revision: number;
   next: Record<string, number>;
   seq: number;
@@ -124,6 +126,7 @@ export type State = {
   progress?: Progress;
   /** Closes and reopens, oldest first. A Flow with none, or whose latest is a reopen, is open. */
   lifecycle: Lifecycle[];
+  migrated?: { from: string; sha256: string; time: string; records: Record<string, unknown>[]; anchors: Record<string, string> };
 };
 
 /** Fills fields absent from earlier structured states. */
@@ -367,7 +370,7 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
       const rid = kinds[o.result] === "result" ? refs[o.result] : o.result;
       const r = s.results.find((x) => x.id === rid);
       if (r) {
-        const next = nextEntry.get(rid) ?? Math.max(0, ...r.entries.map((e) => Number(e.id.slice(1)))) + 1;
+        const next = nextEntry.get(rid) ?? Math.max(0, ...r.entries.map((e) => /^e\d+$/.test(e.id) ? Number(e.id.slice(1)) : 0)) + 1;
         ids.entries = o.add.map((e, j) => {
           const eid = `${rid}/e${next + j}`;
           if (isObj(e)) {
@@ -466,7 +469,7 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
         fields(o, where, ["kind", "questions"]);
         if (++rounds > 1) refuse(where, "a contribution asks at most one round, because one round is one ask");
         const qs = list(o, "questions", where);
-        const round: Round = { id: newId(s, "round"), stage: stage.id, n: s.rounds.filter((r) => r.stage === stage.id).length + 1, seq: ++s.seq, time };
+        const round: Round = { id: newId(s, "round"), stage: stage.id, n: Math.max(0, ...s.rounds.filter((r) => r.stage === stage.id).map((r) => r.n)) + 1, seq: ++s.seq, time };
         s.rounds.push(round);
         const parsed = qs.map((q, j) => parseQuestion(q, `${where}: question ${j + 1}`, ids.questions![j], stage.id, round.id, resolve));
         assignQNumbers(s, parsed, stage.id, where);
@@ -622,9 +625,9 @@ function revise(s: State, o: Obj, where: string, stage: string, entryIds: string
     const set = o.set as Obj;
     if (entry) {
       if (set.ref !== undefined) refuse(`${where}: set`, "ref is not a field here; an entry keeps its ref");
-      const { id, changed: _, ...content } = entry;
+      const { id, changed: _, figures, ...content } = entry;
       const at = r.entries.indexOf(entry);
-      r.entries[at] = parseEntry(r.shape, r.columns, { ...content, ...set }, `${where}: set`, id, rev);
+      r.entries[at] = { ...parseEntry(r.shape, r.columns, { ...content, ...set }, `${where}: set`, id, rev), ...(figures ? { figures } : {}) };
     } else {
       fields(set, `${where}: set`, [], ["title", "summary"]);
       if (set.title !== undefined) r.title = text(set, "title", `${where}: set`);
@@ -686,11 +689,12 @@ function parseReading(raw: unknown, where: string, q: Question, response: AskRes
 export function answerState(s: State, question: string): AnswerState {
   const a = s.answers.find((x) => x.question === question);
   if (!a) return "open";
-  if (a.response.status !== "answered") return "unresolved";
+  if (a.legacy) return a.legacy.other !== undefined ? "written" : "unresolved";
+  if (a.response?.status !== "answered") return "unresolved";
   if (a.response.picks) return "picked";
   return a.reading?.outcome === "resolved" ? "resolved" : "unresolved";
 }
-const settled = (state: AnswerState) => state === "picked" || state === "resolved";
+const settled = (state: AnswerState) => state === "picked" || state === "written" || state === "resolved";
 
 /** The Assumed picks of a Stage that no question has reopened. */
 function visibleAssumed(s: State, stage: string): Assumed[] {
@@ -1121,6 +1125,10 @@ function checkLinks(s: State): void {
   }
   const attachments = new Set(s.attachments.map((a) => a.id));
   const used = new Set<string>();
+  for (const [id, figures] of figureOwners(s)) for (const f of figures) if ("attachment" in f) {
+    if (!attachments.has(f.attachment)) refuse(id, `attachment ${f.attachment} does not exist`);
+    used.add(f.attachment);
+  }
   for (const r of [...s.results, ...s.history])
     for (const a of attachmentsOf(r)) {
       if (!attachments.has(a)) refuse(`result ${r.id}`, `attachment ${a} does not exist`);
@@ -1135,13 +1143,21 @@ export function attachmentsOf(r: Result): string[] {
   const sides = (r.comparison?.alternatives ?? []).flatMap((a) => a.attachments ?? []);
   return [...new Set([...figures, ...sides, ...(r.attachments ?? [])])];
 }
+/** Figure owners also count as attachment uses, so migrated evidence is not lost on the next contribution. */
+export function figureOwners(s: Pick<State, "questions" | "backgrounds" | "results" | "history">): [string, Figure[]][] {
+  return [
+    ...s.questions.map((q): [string, Figure[]] => [q.id, [...(q.figures ?? []), ...q.options.flatMap((o) => o.preview ? [o.preview] : [])]]),
+    ...s.backgrounds.map((b): [string, Figure[]] => [b.id, b.figures ?? []]),
+    ...[...s.results, ...s.history].flatMap((r) => r.entries.map((e): [string, Figure[]] => [`${r.id}/${e.id}`, (e.figures as Figure[] | undefined) ?? []])),
+  ];
+}
 
 // ---------------------------------------------------------------------------------------------------------------
 // The derived view: labels, open questions, answers, and every backlink, computed from the single stored records.
 
 /** `picks` holds option labels only for an explicit pick; `why` says why an unresolved answer is not consent. */
-export type AnswerView = { state: AnswerState; why?: ResponseStatus | NonConsent; response?: AskResponse; reading?: Reading; picks?: string[] };
-export type QuestionView = Question & { answer: AnswerView; open: boolean; latest: boolean; retired?: { reason: string; time: string }; decided_in?: string; asked_again_by: string[] };
+export type AnswerView = { state: AnswerState; why?: ResponseStatus | NonConsent; id?: string; time?: string; response?: AskResponse; reading?: Reading; picks?: string[]; legacy?: Answer["legacy"] };
+export type QuestionView = Question & { answer: AnswerView; open: boolean; latest: boolean; retired?: { reason: string; time?: string }; decided_in?: string; asked_again_by: string[] };
 export type DocView = {
   sections: { anchor: string; heading: string; blocks: Block[] }[];
   citations: { anchor: string; n: number; ref: string; source: string; text: string; cited_in: string[] }[]; citationsAnchor: string;
@@ -1196,6 +1212,7 @@ export type View = {
   questions: Map<string, QuestionView>;
   attachments: (Attachment & { used_by: string[] })[];
   progress: ProgressView;
+  migrated?: State["migrated"];
 };
 
 const words = (skill: string) => skill.replace(/-/g, " ").replace(/^./, (c) => c.toUpperCase());
@@ -1218,10 +1235,10 @@ function answerView(s: State, q: Question): AnswerView {
   const a = s.answers.find((x) => x.question === q.id);
   const state = answerState(s, q.id);
   if (!a) return { state };
-  const recorded = { response: a.response, ...(a.reading ? { reading: a.reading } : {}) };
-  if (state === "picked") return { state, ...recorded, picks: a.response.picks!.map((p) => optionLabel(q, p)) };
-  if (state === "resolved") return { state, ...recorded };
-  return { state, why: a.reading && a.reading.outcome !== "resolved" ? a.reading.outcome : a.response.status, ...recorded };
+  const recorded = { ...(a.id ? { id: a.id } : {}), ...(a.time ? { time: a.time } : {}), ...(a.response ? { response: a.response } : {}), ...(a.reading ? { reading: a.reading } : {}), ...(a.legacy ? { legacy: a.legacy } : {}) };
+  if (state === "picked") return { state, ...recorded, picks: a.response!.picks!.map((p) => optionLabel(q, p)) };
+  if (state === "resolved" || state === "written" || a.legacy) return { state, ...recorded };
+  return { state, why: a.reading && a.reading.outcome !== "resolved" ? a.reading.outcome : a.response!.status, ...recorded };
 }
 
 function comparisonView(c: ComparisonBody, anchor: string): ComparisonView {
@@ -1339,17 +1356,23 @@ export function view(s: State): View {
     ...s.results.filter((r) => r.document && (r.document.sources.includes(id) || r.document.citations.some((c) => c.source === id))).map((r) => r.id),
   ];
   return {
-    flow: s.flow, revision: s.revision, stages, questions, progress: progressView(s), lifecycle: s.lifecycle,
+    flow: s.flow, revision: s.revision, stages, questions, progress: progressView(s), lifecycle: s.lifecycle, ...(s.migrated ? { migrated: s.migrated } : {}),
     topics: s.topics.map((t) => ({ ...t, sourceTexts: t.sources.map((x) => sourceText.get(x)!), questions: s.questions.filter((q) => q.topics?.includes(t.id)).map((q) => q.id) })),
     sources: s.sources.map((x) => ({ ...x, cited_by: citers(x.id) })),
-    attachments: s.attachments.map((a) => ({ ...a, used_by: [...new Set([...s.results, ...s.history].filter((r) => attachmentsOf(r).includes(a.id)).map((r) => r.id))] })),
+    attachments: s.attachments.map((a) => ({
+      ...a,
+      used_by: [...new Set([
+        ...[...s.results, ...s.history].filter((r) => attachmentsOf(r).includes(a.id)).map((r) => r.id),
+        ...figureOwners(s).filter(([, fs]) => fs.some((f) => "attachment" in f && f.attachment === a.id)).map(([id]) => id),
+      ])],
+    })),
   };
 }
 
 /** The `show` snapshot: ids, numbers, states, labels, and links, with no page markup. */
 export function snapshot(v: View, page: string, renderer: number) {
   return {
-    flow: v.flow, revision: v.revision, renderer, page, open: v.lifecycle.at(-1)?.event !== "closed", lifecycle: v.lifecycle,
+    flow: v.flow, revision: v.revision, renderer, page, open: v.lifecycle.at(-1)?.event !== "closed", lifecycle: v.lifecycle, ...(v.migrated ? { migrated: { from: v.migrated.from, sha256: v.migrated.sha256, time: v.migrated.time, anchors: v.migrated.anchors } } : {}),
     stages: v.stages.map((st) => ({
       id: st.id, label: st.label, skill: st.skill, ...(st.ticket ? { ticket: st.ticket } : {}), ...(st.parent ? { parent: st.parent } : {}), children: st.children,
       state: st.state, order: st.order, opened: st.opened, ...(st.finished ? { finished: st.finished } : {}),
@@ -1391,6 +1414,7 @@ export function snapshot(v: View, page: string, renderer: number) {
         id: q.id, q: q.q, latest: q.latest, open: q.open, answer: q.answer, ...(q.retired ? { retired: q.retired } : {}),
         ...(q.again ? { again: q.again } : {}), asked_again_by: q.asked_again_by, ...(q.reopens ? { reopens: q.reopens } : {}),
         results: q.entries ?? [], topics: q.topics ?? [], ...(q.decided_in ? { decided_in: q.decided_in } : {}),
+        ...(q.figures ? { figures: q.figures } : {}),
       })),
       closes: st.items.filter((i) => i.type === "close").map((i) => ({
         id: i.close.id, time: i.close.time, decisions: i.close.decisions.map((d) => ({ question: d.question, answer: d.answer })), assumed: i.close.assumed,

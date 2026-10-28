@@ -20,15 +20,16 @@
 
 import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmdirSync } from "node:fs";
 import { homedir } from "node:os";
-import { basename, dirname, join, resolve } from "node:path";
+import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
 import { canonicalFile, capture, type Root } from "./assets.ts";
 import { addAliases, aliasesOf, closeFlow, contribute, newFlow, nowIso, openStage, parseAlias, Refusal, reopenFlow, SLUG, slugOf, snapshot, stageOf, view, type Io, type State } from "./model.ts";
 import { RENDERER, render } from "./render.ts";
 import { assetsDir, createFlowFolder, flowFolders, flowsDir, folderOfId, pagePath, pageRevision, readBinding, readState, registerFolder, registeredFolder, statePath, withLock, writeAtomic, writeBinding } from "./store.ts";
 import { connect, flowUrl, hostCommand } from "./live.ts";
+import { migrateHistorical, parseHistorical } from "./migrate.ts";
 
-const COMMANDS = ["open", "bind", "submit", "alias", "close", "reopen", "find", "move", "show", "render", "host"];
+const COMMANDS = ["open", "bind", "submit", "alias", "close", "reopen", "find", "move", "show", "render", "host", "migrate"];
 
 function usage(message: string): never {
   process.stderr.write(`flow-page.ts: ${message}
@@ -43,6 +44,7 @@ usage: bun flow-page.ts open --skill <name> (--title <text> [--slug <slug>] | --
        bun flow-page.ts show [--flow <flow>]
        bun flow-page.ts render --flow <flow>
        bun flow-page.ts host status|stop
+       bun flow-page.ts migrate <grilling-folder>
 <flow> is a Flow id or a qualified alias such as spec:267
 every command: [--session <id>] [--agent <id>] [--home <dir>]
 `);
@@ -67,12 +69,13 @@ const [command, ...rest] = positionals;
 if (!COMMANDS.includes(command ?? "")) usage(`give a command: ${COMMANDS.join(", ")}`);
 const allowed: Record<string, string[]> = {
   open: ["skill", "title", "slug", "flow", "parent", "ticket"], bind: ["flow", "stage"], submit: ["flow", "stage"], alias: ["flow"], close: ["flow"], reopen: ["skill", "flow", "parent", "ticket"],
-  find: [], move: ["flow", "to"], show: ["flow"], render: ["flow"], host: [],
+  find: [], move: ["flow", "to"], show: ["flow"], render: ["flow"], host: [], migrate: [],
 };
 for (const k of Object.keys(opt)) if (!["session", "agent", "home", ...allowed[command]].includes(k)) usage(`${command} takes no --${k}`);
 const positional: Record<string, [number, number, string]> = {
   submit: [0, 1, "takes no more than one contribution file"], alias: [1, Infinity, "needs one or more <kind>:<value> aliases"], find: [1, 1, "needs exactly one <kind>:<value> alias or Flow id"],
   host: [1, 1, "needs status or stop"],
+  migrate: [1, 1, "needs exactly one Grilling page folder"],
 };
 const [least, most, says] = positional[command] ?? [0, 0, "takes no positional arguments"];
 if (rest.length < least || rest.length > most) usage(`${command} ${says}`);
@@ -210,6 +213,35 @@ async function main(): Promise<object> {
     case "host": {
       if (rest[0] !== "status" && rest[0] !== "stop") usage("host needs status or stop");
       return { host: await hostCommand(home, rest[0] as "status" | "stop") };
+    }
+    case "migrate": {
+      let from: string;
+      try { from = realpathSync(rest[0]); } catch { return refuse(`migrate: ${rest[0]} does not exist`); }
+      if (!existsSync(dirname(dir))) refuse("migrate: this project has no historical Scratch folder");
+      const scratch = realpathSync(dirname(dir));
+      const rel = relative(scratch, from);
+      if (rel === ".." || rel.startsWith(`..${sep}`) || !rel || from === dir || from.startsWith(dir + sep)) refuse("migrate: the source must be a historical folder in this project's Scratch dir, outside its Flow store");
+      const path = join(from, "page.jsonl");
+      if (!existsSync(path)) refuse("migrate: this page has no structured page.jsonl state; its handwritten page stays untouched");
+      const historical = parseHistorical(readFileSync(path, "utf8"));
+      const migrationIo: Io = { ...io, capture: (path, type, where) => io.capture(resolve(from, path), type, where) };
+      // Validate and capture before reserving any Flow, so a refusal cannot leave an incomplete domain record.
+      const migrated = migrateHistorical(historical, "probe", from, time, migrationIo);
+      mkdirSync(dir, { recursive: true });
+      return withLock(dir, () => {
+        for (const name of flowFolders(dir)) {
+          const folder = join(dir, name);
+          const s = readState(folder);
+          if (s?.migrated?.from !== from) continue;
+          if (s.migrated.sha256 !== historical.sha256) refuse(`migrate: ${from} changed after migration to ${s.flow.id}; continue authoring that Flow instead of overwriting it`);
+          return { flow: s.flow.id, revision: s.revision, page: pagePath(folder), presentation: presentationOf(folder, s), repeated: true };
+        }
+        const { id, folder } = createFlowFolder(dir, historical.slug);
+        migrated.flow.id = id;
+        migrated.aliases[0] = `folder:${id}`;
+        const presentation = publish(folder, migrated);
+        return { flow: id, revision: migrated.revision, page: pagePath(folder), presentation };
+      });
     }
     case "open": {
       if (opt.skill === undefined) usage("open needs --skill, the skill whose run this Stage is");

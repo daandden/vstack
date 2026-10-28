@@ -1,6 +1,6 @@
 ---
 name: flow-page
-description: How a Flow keeps its Flow page through Stage-bound authoring. Covers opening or joining a Stage, finding a Flow by alias, moving its folder, closing and reopening the Flow, the typed contribution format, Document, Comparison, and Metrics Results, declarative state demos, typed attachments and captured revisions, focused Result revisions, the receipt and its ask payload, answers, closes, and refusals.
+description: How a Flow keeps its Flow page through Stage-bound authoring. Covers opening or joining a Stage, historical page migration, finding a Flow by alias, moving its folder, closing and reopening the Flow, the typed contribution format, Document, Comparison, and Metrics Results, declarative state demos, typed attachments and captured revisions, focused Result revisions, the receipt and its ask payload, answers, closes, and refusals.
 disable-model-invocation: true
 ---
 
@@ -17,6 +17,18 @@ bun "$(realpath skill://flow-page/scripts/flow-page.ts)" <command> ...
 Every command prints one JSON receipt on stdout. Exit 1 prints the refusal on stderr and writes nothing: fix what it names and run the command again. Exit 2 is a usage error.
 
 A receipt always means the content is committed. Its `presentation` says what the static page shows: `current`, or `stale` with the older `revision` and the `error` that stopped the new page. A stale page keeps its last good content. Run `render --flow <flow>` to publish it again, and never resubmit committed content. `live` separately reports the Local Flow host.
+
+## Continue a historical Grilling page
+
+Run `migrate <grilling-folder>` from the project the page belongs to. The folder must be under that project's Scratch dir and contain `page.jsonl`. The receipt names the new Flow and its page. The original folder, page, and other Scratch files stay untouched. A handwritten page with no structured state is refused and stays readable as it is.
+
+The migration keeps record ids, Q numbers, round times, questions, answers, sources, Topic notes, figures, and old fragment anchors. Report blocks become Results with their entries and question links. Text and HTML figures keep their content. Historical HTML is safety-checked and its CSS is scoped, not accepted as a new authoring format. SVG files become captured attachments. A missing or unsafe SVG stays unavailable with its reason, never fabricated.
+
+Old Other answers show the recorded words, with no invented pick or reading. Old unanswered reasons stay unanswered. Unresolved asks of finished Stages retire from current work. Missing historical timestamps stay missing. The old records, including superseded versions, remain in the migrated provenance.
+
+A historically closed Flow stays closed. Its 90-day retention starts at migration time because the historical format has no Flow close timestamp. Migration never backdates that lifecycle event to a round or Stage.
+
+Run `show --flow <id>` to find the in-progress Stage, then `bind --flow <id> --stage <id>` to continue it. For finished work in an open Flow, open a new Stage. Use `reopen` for a closed Flow. Migration binds no session. Use only the new authoring contract after the cutover. Repeating `migrate` on unchanged state returns the same Flow with `repeated: true`; changed source state is refused instead of overwriting later work.
 
 ## Open or join a Stage
 

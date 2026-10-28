@@ -19,15 +19,14 @@ const refuse = (where: string, message: string): never => {
 const BLOCKED_TAGS = new Set(["script", "iframe", "frame", "frameset", "object", "embed", "applet", "portal", "link", "meta", "base", "style", "form", "input", "button", "textarea", "select", "template", "noscript", "noembed", "noframes", "plaintext", "xmp", "set", "animate", "animatemotion", "animatetransform", "handler", "listener", "foreignobject"]);
 const NAMED_ENTITIES: Record<string, string> = { colon: ":", tab: "\t", newline: "\n", nbsp: " " };
 
-/** Problems in a piece of SVG, found by parsing it the way a browser does. Empty when it is safe to show.
- *  `<style>` stays, which diagram-design's SVG exports carry; its text still cannot import or run anything. */
-function unsafeSvg(markup: string): string[] {
+/** Problems in captured SVG or historical HTML, parsed as the browser parses markup. SVG may retain `<style>`. */
+export function unsafeMarkup(markup: string, allowStyle = false): string[] {
   const problems: string[] = [];
   new HTMLRewriter()
     .on("*", {
       element(el) {
         const tag = el.tagName.toLowerCase();
-        if (BLOCKED_TAGS.has(tag) && tag !== "style") problems.push(`<${el.tagName}> is not allowed`);
+        if (BLOCKED_TAGS.has(tag) && !(allowStyle && tag === "style")) problems.push(`<${el.tagName}> is not allowed`);
         for (const [name, value] of el.attributes) {
           if (name.toLowerCase().startsWith("on")) problems.push(`the ${name} attribute on <${el.tagName}> is not allowed`);
           const decoded = value
@@ -93,7 +92,7 @@ export function capture(path: string, type: string, roots: Root[], cwd: string, 
   else if (type === "svg") {
     const svg = new TextDecoder().decode(bytes).replace(/^\uFEFF/, "").replace(/<\?xml[^>]*\?>\s*/, "").trim();
     if (!svg.startsWith("<svg")) refuse(where, `${path} must be an <svg> document`);
-    const problems = unsafeSvg(svg);
+    const problems = unsafeMarkup(svg, true);
     if (problems.length) refuse(where, `${path} is not safe: ${problems.join("; ")}`);
     ext = "svg";
   } else {

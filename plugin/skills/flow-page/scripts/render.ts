@@ -3,14 +3,14 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { optionLabel, type AnswerState, type Attachment, type ComparisonView, type Condition, type Demo, type DemoLiteral, type DocView, type Effect, type MetricsView, type QuestionView, type ResultView, type StageView, type Transition, type View } from "./model.ts";
+import { optionLabel, type AnswerState, type Attachment, type ComparisonView, type Condition, type Demo, type DemoLiteral, type DocView, type Effect, type Figure, type MetricsView, type QuestionView, type ResultView, type StageView, type Transition, type View } from "./model.ts";
 import type { ProgressView } from "./progress.ts";
 
 /** Raise this when the page a given state renders to changes, so a page names the renderer that made it. */
-export const RENDERER = 8;
+export const RENDERER = 9;
 const TEMPLATE = join(import.meta.dir, "..", "templates", "flow-page.html");
 
-const STATE_LABELS: Record<string, string> = { "in-progress": "In progress", finished: "Finished" };
+const STATE_LABELS: Record<string, string> = { "not-started": "Not started", "in-progress": "In progress", finished: "Finished" };
 const CLAIM_LABELS: Record<string, string> = { confirmed: "Confirmed", cleared: "Cleared", unproven: "Unproven" };
 const TYPE_LABELS: Record<string, string> = { image: "Image", video: "Video", svg: "SVG figure", file: "File", trace: "Trace", evidence: "Captured evidence", artifact: "Runnable artifact" };
 const TASK_LABELS: Record<string, string> = { pending: "To do", active: "Active", done: "Done", skipped: "Skipped", inapplicable: "Does not apply" };
@@ -53,10 +53,25 @@ function formatTime(iso: string): string {
 const labelled = (label: string, items: string[], cls: string) => (items.length ? `\n<div class="${cls}"><p class="label">${label}</p><ul class="bullets">${items.join("")}</ul></div>` : "");
 const sourcesHtml = (sources: string[]) => `<div class="sources"><p class="label">Sources</p><ul class="bullets">${sources.map((src) => `<li>${text(src)}</li>`).join("")}</ul></div>`;
 
+const aliases = (v: View, id: string) => Object.entries(v.migrated?.anchors ?? {}).filter(([old, target]) => target === id && old !== id).map(([old]) => `<span id="${esc(old)}" data-flow-target="${esc(id)}"></span>`).join("");
+
+const scopeHistoricalCss = (css: string, id: string) => css.replace(/([^{}]+)\{([^{}]*)\}/g, (_, selectors: string, body: string) =>
+  `${selectors.split(",").map((s) => s.trim()).filter(Boolean).map((s) => s === ":scope" ? `#${id}` : `#${id} ${s.replace(/^:scope\s*/, "")}`).join(", ")} { ${body} }`);
+
+function figuresHtml(figures: Figure[] | undefined, v: View): string {
+  return (figures ?? []).map((f) => {
+    if ("text" in f) return `<div class="visual" id="${f.id}"><pre>${esc(f.text)}</pre></div>`;
+    if ("html" in f) return `<div class="visual" id="${f.id}">${f.css ? `<style>${scopeHistoricalCss(f.css, f.id)}</style>` : ""}${f.html}</div>`;
+    const a = v.attachments.find((a) => a.id === f.attachment)!;
+    return `<figure class="visual" id="${f.id}">${a.availability === "captured" ? `<img src="assets/${esc(a.file!)}" alt="${esc(a.caption)}">` : `<p class="unavailable">Figure unavailable: ${text(a.reason!)}</p>`}</figure>`;
+  }).join("\n");
+}
+
 /** What the Overview shows for an answer. Only an explicit pick shows an option; words read as a decision show that reading. */
 function shownAnswer(q: QuestionView): { cls: "pick" | "read" | "open"; html: string } {
   const a = q.answer;
   if (a.picks) return { cls: "pick", html: text(a.picks.join(", ")) };
+  if (a.legacy?.other !== undefined) return { cls: "pick", html: text(a.legacy.other) };
   if (a.reading?.outcome === "resolved") return { cls: "read", html: `${text(a.reading.decision)} <span class="label">(read from your words)</span>` };
   if (q.retired) return { cls: "open", html: "Retired" };
   if (a.state === "unresolved") return { cls: "open", html: a.why === "headless" ? "Headless, not your answer" : "Not answered" };
@@ -76,6 +91,11 @@ function answerLines(q: QuestionView): string {
   const line = (state: string, label: string, body: string) => `\n<p class="answer" data-state="${state}"><span class="label">${label}</span><span>${body}</span></p>`;
   const out: string[] = [];
   const r = a.response;
+  if (a.legacy) {
+    if (a.legacy.other !== undefined) out.push(line(a.state, "Your recorded answer", text(a.legacy.other)));
+    else out.push(line(a.state, "Recorded as unanswered", text(a.legacy.unanswered || "No answer was recorded.")));
+    if (a.legacy.note) out.push(line(a.state, "Recorded note", text(a.legacy.note)));
+  }
   if (r) {
     const on = r.note_on ? ` (on ${text(optionLabel(q, r.note_on))}, not picked)` : "";
     if (r.status === "answered" && r.text !== undefined) out.push(line(a.state, a.picks ? `Your note${on}` : `Your words${on}`, text(r.text)));
@@ -95,7 +115,7 @@ function answerLines(q: QuestionView): string {
   return out.join("");
 }
 
-const PROVENANCE: Record<AnswerState, string> = { picked: "your pick", resolved: "read from your words", unresolved: "not your answer", open: "not answered" };
+const PROVENANCE: Record<AnswerState, string> = { picked: "your pick", written: "your recorded words", resolved: "read from your words", unresolved: "not your answer", open: "not answered" };
 const stageLabel = (v: View, id: string) => v.stages.find((st) => st.id === id)!.label;
 
 function questionHtml(q: QuestionView, v: View, entryTitle: (ref: string) => string, sourceText: (id: string) => string): string {
@@ -120,13 +140,13 @@ function questionHtml(q: QuestionView, v: View, entryTitle: (ref: string) => str
       const mark = picked ? `<span class="sr-only"> (your answer)</span>` : "";
       const trade = [...o.gains.map((g) => `<li class="gain">${text(g)}</li>`), ...o.costs.map((c) => `<li class="cost">${text(c)}</li>`)].join("");
       const why = o.recommended ? `<p class="why">Recommended: ${text(o.recommended)}</p>` : "";
-      return `<li class="option"${attrs}><h4>${text(o.label)}${star}${mark}</h4><p>${text(o.does)}</p><ul class="trade">${trade}</ul>${why}</li>`;
+      return `<li class="option"${attrs}><h4>${text(o.label)}${star}${mark}</h4>${o.preview ? figuresHtml([o.preview], v) : ""}<p>${text(o.does)}</p><ul class="trade">${trade}</ul>${why}</li>`;
     })
     .join("\n");
   return `<article class="question" id="${q.id}" data-state="${q.answer.state}"${q.open ? " data-open" : ""}${q.retired ? " data-retired" : ""} data-stop>
-<h3><span class="qnum">Q${q.q}</span>${text(q.title)}</h3>
+${aliases(v, q.id)}<h3><span class="qnum">Q${q.q}</span>${text(q.title)}</h3>
 <div class="description">${prose(q.description)}</div>${labelled("From the results", entries, "result-links")}${labelled("Related asks", [...earlier, ...later, ...reopened, ...decided], "result-links")}${labelled("Today", facts, "today")}${notes ? `\n<div class="terms"><p class="label">Term notes</p><dl>${notes}</dl></div>` : ""}${labelled("Topic notes", topics, "topics")}${q.example ? `\n<div class="example"><p class="label">Example</p><p>${text(q.example)}</p></div>` : ""}
-<ol class="options">
+${figuresHtml(q.figures, v)}<ol class="options">
 ${options}
 </ol>${answerLines(q)}
 </article>`;
@@ -345,12 +365,12 @@ function resultHtml(r: ResultView, v: View, historical = false): string {
   } else if (r.shape === "table") {
     const linked = r.entries.some((e) => e.questions.length);
     const head = `<tr>${r.columns!.map((c) => `<th scope="col">${text(c)}</th>`).join("")}${linked ? `<th scope="col">Asked in</th>` : ""}</tr>`;
-    const rows = r.entries.map((e) => `<tr id="${e.anchor}">${(e.cells as string[]).map((c) => `<td>${text(c)}</td>`).join("")}${linked ? `<td>${asks(e.questions).join("; ")}</td>` : ""}</tr>`);
+    const rows = r.entries.map((e) => `<tr id="${e.anchor}">${(e.cells as string[]).map((c, i) => `<td>${i === 0 ? aliases(v, e.anchor) : ""}${text(c)}</td>`).join("")}${linked ? `<td>${asks(e.questions).join("; ")}</td>` : ""}</tr>`);
     body = `<div class="table"><table>\n<thead>${head}</thead>\n<tbody>\n${rows.join("\n")}\n</tbody>\n</table></div>`;
   } else if (r.shape === "ledger") {
     body = `<ol class="entries">\n${r.entries
       .map((e) => `<li class="claim" id="${e.anchor}" data-status="${e.status}">
-<h3><span class="entry-id">${e.id}</span>${text(e.claim as string)}</h3>
+${aliases(v, e.anchor)}<h3><span class="entry-id">${e.id}</span>${text(e.claim as string)}</h3>
 <p class="tag">${CLAIM_LABELS[e.status as string]}</p>
 ${fields([["Evidence", e.evidence as string], ["Missing proof", e.missing_proof as string], ["Consequence", e.consequence as string]])}${askLine(e.questions)}
 </li>`)
@@ -358,10 +378,10 @@ ${fields([["Evidence", e.evidence as string], ["Missing proof", e.missing_proof 
   } else {
     body = `<ol class="entries">\n${r.entries
       .map((e) => `<li class="card" id="${e.anchor}"${e.blocking ? " data-blocking" : ""}>
-<h3><span class="entry-id">${e.id}</span>${text(e.title as string)}</h3>
+${aliases(v, e.anchor)}<h3><span class="entry-id">${e.id}</span>${text(e.title as string)}</h3>
 <p class="tag">${text(e.label as string)} (${e.blocking ? "blocking" : "non-blocking"})</p>
 ${fields([["Impact", e.impact as string], ["Action", e.action as string]])}
-<details class="evidence"><summary>Evidence</summary><p>${text(e.evidence as string)}</p></details>${askLine(e.questions)}
+<details class="evidence"><summary>Evidence</summary><p>${text(e.evidence as string)}</p></details>${figuresHtml(e.figures as Figure[] | undefined, v)}${askLine(e.questions)}
 </li>`)
       .join("\n")}\n</ol>`;
   }
@@ -373,7 +393,7 @@ ${fields([["Impact", e.impact as string], ["Action", e.action as string]])}
     : "";
   const tag = historical ? "article" : "section";
   return `<${tag} class="result" id="${r.anchor}" data-shape="${r.shape}" aria-labelledby="${r.anchor}-title"${historical ? "" : " data-stop"}>
-<header><h2 id="${r.anchor}-title">${text(r.title)}</h2>${r.summary ? `<p class="result-summary">${text(r.summary)}</p>` : ""}${provenance(r)}</header>
+${aliases(v, r.anchor)}<header><h2 id="${r.anchor}-title">${text(r.title)}</h2>${r.summary ? `<p class="result-summary">${text(r.summary)}</p>` : ""}${provenance(r)}</header>
 ${body}${attachments}${history}
 </${tag}>`;
 }
@@ -390,16 +410,16 @@ function stageHtml(st: StageView, v: View, entryTitle: (ref: string) => string, 
   if (lineage.length) body.push(`<ul class="lineage">${lineage.join("")}</ul>`);
   if (bg) {
     body.push(`<section class="background" id="${bg.id}" aria-labelledby="${bg.id}-title" data-stop>
-<header><p class="label">Background</p><h2 id="${bg.id}-title">${text(bg.title)}</h2></header>
-<p class="summary-line">${text(bg.summary)}</p>
+${aliases(v, bg.id)}<header><p class="label">Background</p><h2 id="${bg.id}-title">${text(bg.title)}</h2></header>
+<p class="summary-line">${text(bg.summary)}</p>${figuresHtml(bg.figures, v)}
 ${bg.sections.map((sec) => `<section><h3>${text(sec.heading)}</h3><div class="description">${prose(sec.body)}</div></section>`).join("\n")}
 ${sourcesHtml(bg.sourceTexts)}
 </section>`);
-    nav.push(link(bg.id, "Background"));
+    nav.push(link(bg.id, bg.jump ?? "Background"));
   }
   st.results.forEach((r, i) => {
     body.push(resultHtml(r, v));
-    nav.push(link(r.id, i === 0 ? "Result" : `Result ${i + 1}`));
+    nav.push(link(r.id, r.jump ?? (i === 0 ? "Result" : `Result ${i + 1}`)));
   });
   if (st.assumed.length) {
     const id = `${st.id}-assumed`;
@@ -420,7 +440,7 @@ ${st.assumed
     if (item.type === "round") {
       const r = item.round;
       body.push(`<section class="round" aria-labelledby="${r.id}">
-<header><h2 id="${r.id}">Round ${r.n}<time datetime="${esc(r.time)}">${formatTime(r.time)}</time></h2></header>
+<header><h2 id="${r.id}">${aliases(v, r.id)}${r.session === undefined ? "" : `Session ${r.session}, `}Round ${r.n}<time datetime="${esc(r.time)}">${formatTime(r.time)}</time></h2></header>
 ${item.questions.map((q) => questionHtml(q, v, entryTitle, sourceText)).join("\n")}
 </section>`);
       if (item.questions.length) {
@@ -436,7 +456,7 @@ ${item.questions.map((q) => questionHtml(q, v, entryTitle, sourceText)).join("\n
         ...(c.extra ?? []).map((e) => `<li>${text(e)}</li>`),
       ];
       body.push(`<section class="summary" id="${c.id}" aria-labelledby="${c.id}-title"${item.latest ? " data-stop" : ""}>
-<h2 id="${c.id}-title">Summary<time datetime="${esc(c.time)}">${formatTime(c.time)}</time></h2>
+${aliases(v, c.id)}<h2 id="${c.id}-title">Summary${c.time ? `<time datetime="${esc(c.time)}">${formatTime(c.time)}</time>` : ""}</h2>
 <ul class="decisions">
 ${bullets.join("\n")}
 </ul>
@@ -526,19 +546,19 @@ export function render(v: View): string {
     let empty = `<p class="empty">No questions yet.</p>`;
     const standing = st.assumed.filter((a) => !a.reopened_by).length;
     if (!asked.length && standing) empty = `<p class="empty"><a href="#${st.id}-assumed">No questions; ${standing} ${standing === 1 ? "decision" : "decisions"} assumed</a></p>`;
-    tabs.push(`<a role="tab" id="tab-${st.id}" aria-selected="false" aria-controls="${st.id}" href="#${st.id}">${dot}${label}</a>`);
+    tabs.push(`<a role="tab" id="tab-${st.id}" aria-selected="false" aria-controls="${st.id}" href="#${st.id}">${aliases(v, `tab-${st.id}`)}${dot}${label}</a>`);
     if (nav.length) jumpRows.push(`<nav class="jump-row" aria-label="Jump row of ${label}" data-tab="${st.id}" hidden>${nav.join("")}</nav>`);
     overview.push(`<li class="stage" data-state="${st.state}">
 <h3><a href="#${st.id}">${dot}${label}</a><span class="meta"><span class="state">${STATE_LABELS[st.state]}</span><span>${esc(st.skill)}</span></span></h3>
 ${asked.length ? `<ul>${asked.join("")}</ul>` : empty}
 </li>`);
-    panels.push(`<section class="tab" id="${st.id}" role="tabpanel" aria-labelledby="tab-${st.id}" hidden>\n${body.join("\n") || `<p class="empty">Nothing recorded yet.</p>`}\n</section>`);
+    panels.push(`<section class="tab" id="${st.id}" role="tabpanel" aria-labelledby="tab-${st.id}" hidden>\n${aliases(v, st.id)}${body.join("\n") || `<p class="empty">Nothing recorded yet.</p>`}\n</section>`);
   }
   if (v.topics.length) {
     tabs.push(`<a role="tab" id="tab-topics" aria-selected="false" aria-controls="topics" href="#topics">Topics</a>`);
     jumpRows.push(`<nav class="jump-row" aria-label="Topic notes" data-tab="topics" hidden>${v.topics.map((t) => `<a href="#${t.id}" data-for="${t.id}">${text(t.title)}</a>`).join("")}</nav>`);
     const notes = v.topics.map((t) => `<article class="topic" id="${t.id}" data-stop>
-<h3>${text(t.title)}</h3>
+${aliases(v, t.id)}<h3>${text(t.title)}</h3>
 <p class="summary-line">${text(t.summary)}</p>
 <div class="description">${prose(t.body)}</div>${labelled("Asked in", t.questions.map((id) => `<li><a href="#${id}">Q${v.questions.get(id)!.q}</a>: ${text(v.questions.get(id)!.title)}</li>`), "result-links")}
 ${sourcesHtml(t.sourceTexts)}
@@ -548,7 +568,7 @@ ${sourcesHtml(t.sourceTexts)}
   // A closed or reopened Flow says so under its heading; a Flow that was never closed needs no line.
   const last = v.lifecycle.at(-1);
   const lifecycle = last ? `<p class="lifecycle" data-state="${last.event}">${last.event === "closed" ? "Closed" : "Reopened"} <time datetime="${esc(last.time)}">${formatTime(last.time)}</time></p>` : "";
-  const head = `<header class="page-head"><h1>${text(v.flow.title)}</h1>${lifecycle}</header>`;
+  const head = `<header class="page-head">${v.flow.crumb ? `<p class="crumb">${text(v.flow.crumb)}</p>` : ""}<h1>${text(v.flow.title)}</h1>${lifecycle}</header>`;
   const overviewPanel = `<section class="tab" id="overview" role="tabpanel" aria-labelledby="tab-overview">\n${progressHtml(v.progress, v)}\n${overview.length ? `<ol class="stages">\n${overview.join("\n")}\n</ol>` : `<p class="empty">No Stage yet.</p>`}\n</section>`;
   const bar = `<header class="bar">\n<div class="tabs" role="tablist" aria-label="Stages">${tabs.join("")}</div>\n${jumpRows.join("\n")}\n</header>`;
   const meta = `<meta name="flow-page-flow" content="${esc(v.flow.id)}">\n  <meta name="flow-page-revision" content="${v.revision}">\n  <meta name="flow-page-renderer" content="${RENDERER}">`;

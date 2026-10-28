@@ -42,7 +42,7 @@
       font-synthesis: none;
     }
     /* Yellow is your pick everywhere: the picked label, the picked dot, and the answer line. Teal is a decision read from your words. */
-    [data-state="picked"] { --state: var(--yellow); }
+    [data-state="picked"], [data-state="written"] { --state: var(--yellow); }
     [data-state="resolved"] { --state: var(--teal); }
     [data-state="unresolved"] { --state: var(--red); }
     [data-state="open"], [data-state="retired"] { --state: var(--overlay0); }
@@ -140,6 +140,7 @@
     .visual, .preview { padding-block: 0.625rem; padding-inline: 0.75rem; border-radius: 0.375rem; background: var(--mantle); overflow-x: auto; }
     .visual { display: grid; gap: 0.5rem; }
     .preview { display: grid; gap: 0.375rem; justify-items: start; }
+    [data-flow-target] { display: none; }
 
     .options { display: grid; padding-inline-start: 0; list-style: none; }
     .option { display: grid; gap: 0.25rem; padding-block: 0.5rem; }
@@ -333,7 +334,9 @@
       scrollTo({ top: 0, behavior: "instant" });
     }
     function reveal(id) {
-      const el = id ? document.getElementById(id) : null;
+      let el = id ? document.getElementById(id) : null;
+      if (el?.dataset.flowTarget) el = document.getElementById(el.dataset.flowTarget);
+      if (tabs.includes(el)) el = panels[tabs.indexOf(el)];
       const t = el ? panels.findIndex((p) => p.contains(el)) : -1;
       if (t >= 0 && t !== open) show(t);
       return t >= 0 ? el : null;
