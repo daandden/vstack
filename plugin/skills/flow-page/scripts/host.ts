@@ -91,7 +91,7 @@ function prototype(req: Request): Response {
 }
 
 /** A held response is a reader, publication, or future progress sync. Disconnect releases it even after SIGKILL. */
-function held(req: Request): Response {
+function held(req: Request, revision?: () => number | undefined): Response {
   active++;
   let done = false;
   let timer: ReturnType<typeof setInterval>;
@@ -105,8 +105,29 @@ function held(req: Request): Response {
   req.signal.addEventListener("abort", release, { once: true });
   return response(new ReadableStream({
     start(controller) {
-      controller.enqueue(new TextEncoder().encode(": connected\n\n"));
-      timer = setInterval(() => controller.enqueue(new TextEncoder().encode(": alive\n\n")), 15000);
+      const encode = (s: string) => new TextEncoder().encode(s);
+      controller.enqueue(encode(": connected\n\n"));
+      let sent: number | undefined;
+      let heartbeat = Date.now();
+      const publish = () => {
+        try {
+          const next = revision?.();
+          if (next !== undefined && next !== sent) {
+            controller.enqueue(encode(`event: revision\ndata: ${JSON.stringify({ revision: next })}\n\n`));
+            sent = next;
+          }
+          if (Date.now() - heartbeat >= 15000) {
+            controller.enqueue(encode(": alive\n\n"));
+            heartbeat = Date.now();
+          }
+        } catch (e) {
+          release();
+          controller.error(e);
+        }
+      };
+      // The initial revision also repairs the gap between a page read and its event connection, including reconnects.
+      timer = setInterval(publish, revision ? 500 : 15000);
+      if (revision) publish();
     },
     cancel: release,
   }), 200, { "Content-Type": "text/event-stream", "X-Accel-Buffering": "no" });
@@ -147,7 +168,10 @@ async function route(req: Request): Promise<Response> {
   const s = readState(folder);
   if (!s || s.flow.id !== id) return missing();
   if (m[4] === "/") return response(req.method === "HEAD" ? null : render(view(s), await runtimes(s, key)), 200, { "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": csp });
-  if (m[4] === "/events" && req.method === "GET") return held(req);
+  if (m[4] === "/events" && req.method === "GET") return held(req, () => {
+    const current = folderOfId(dir, id);
+    return current ? readState(current)?.revision : undefined;
+  });
   if (!m[4].startsWith("/assets/")) return missing();
   let file: string;
   try { file = decodeURIComponent(m[4].slice(8)); } catch { return missing(); }

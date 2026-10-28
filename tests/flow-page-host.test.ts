@@ -97,6 +97,11 @@ async function until(cond: () => boolean, ms = 8000): Promise<boolean> {
 
 const revisionOf = (html: string) => Number(html.match(/<meta name="flow-page-revision" content="(\d+)">/)?.[1]);
 const hasId = (html: string, id: string) => html.includes(`id="${id}"`);
+async function attribute(html: string, id: string, name: string): Promise<string | null> {
+  let value: string | null = null;
+  await new HTMLRewriter().on(`[id="${id}"]`, { element(el) { value = el.getAttribute(name); } }).transform(new Response(html)).text();
+  return value;
+}
 const page = async (url: string) => {
   const r = await fetch(url);
   return { status: r.status, html: await r.text() };
@@ -146,6 +151,66 @@ test("an authoring command starts the host and serves the Flow live at one URL t
   expect(revisionOf(readFileSync(sent.page, "utf8"))).toBe(sent.revision);
   for (const cmd of [["show", "--flow", opened.flow], ["find", `folder:${opened.flow}`]]) expect(ok(run(cmd, w)).live.url).toBe(url);
   expect(hostPids(w)).toHaveLength(1);
+});
+
+test("an open reader receives answers, Results, task changes, and new Stages at the same live URL", async () => {
+  const w = world();
+  const opened = ok(open(w));
+  const seed = ok(run(["submit"], w, { session: "s-1", stdin: contribution(
+    round(question("choice")),
+    { kind: "task", ref: "work", title: "Inspect the update", state: "active" },
+  ) }));
+  const abort = new AbortController();
+  const timeout = setTimeout(() => abort.abort(), 20000);
+  const events = await fetch(new URL("events", opened.live.url), { signal: abort.signal });
+  const reader = events.body!.getReader();
+  const decoder = new TextDecoder();
+  let buffered = "";
+  async function received(revision: number) {
+    for (;;) {
+      let boundary: number;
+      while ((boundary = buffered.indexOf("\n\n")) >= 0) {
+        const frame = buffered.slice(0, boundary);
+        buffered = buffered.slice(boundary + 2);
+        const data = frame.split("\n").find((l) => l.startsWith("data: "));
+        if (data && JSON.parse(data.slice(6)).revision >= revision) return;
+      }
+      const chunk = await reader.read();
+      if (chunk.done) throw new Error("The live page disconnected before the authored update arrived");
+      buffered += decoder.decode(chunk.value, { stream: true });
+    }
+  }
+  try {
+    await received(seed.revision);
+    const answer = ok(run(["submit"], w, { session: "s-1", stdin: contribution(
+      { kind: "answer", question: seed.refs.choice, response: { status: "answered", picks: ["B"] } },
+    ) }));
+    await received(answer.revision);
+    const answered = (await page(opened.live.url)).html;
+    expect(revisionOf(answered)).toBe(answer.revision);
+    expect(await attribute(answered, seed.refs.choice, "data-state")).toBe("picked");
+    const result = ok(run(["submit"], w, { session: "s-1", stdin: contribution(
+      { kind: "result", ref: "report", shape: "table", title: "Update proof", columns: ["Outcome"], rows: [{ cells: ["Observed"] }] },
+    ) }));
+    await received(result.revision);
+    expect(hasId((await page(opened.live.url)).html, result.refs.report)).toBe(true);
+    const task = ok(run(["submit"], w, { session: "s-1", stdin: contribution(
+      { kind: "task", task: seed.refs.work, state: "done", evidence: ["The open reader received the update"] },
+    ) }));
+    await received(task.revision);
+    const snapshot = ok(run(["show", "--flow", opened.flow], w));
+    expect(snapshot.progress.tasks.find((t: any) => t.id === seed.refs.work).state).toBe("done");
+    const completed = (await page(opened.live.url)).html;
+    expect(revisionOf(completed)).toBe(task.revision);
+    expect(await attribute(completed, seed.refs.work, "data-task")).toBe("done");
+    const stage = ok(run(["open", "--flow", opened.flow, "--skill", "research"], w, { session: "s-2" }));
+    await received(stage.revision);
+    expect(hasId((await page(opened.live.url)).html, stage.stage)).toBe(true);
+    expect(stage.live.url).toBe(opened.live.url);
+  } finally {
+    clearTimeout(timeout);
+    abort.abort();
+  }
 });
 
 test("close and reopen keep the same live URL and publish their lifecycle revisions", async () => {

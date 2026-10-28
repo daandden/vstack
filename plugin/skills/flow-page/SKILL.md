@@ -206,6 +206,8 @@ The strip reads complete when the Flow has at least one task, no task is `pendin
 
 Never open the page automatically. When `live.state` is `serving`, print `live.url`. That scoped read link stays the same across folder moves and host restarts. When `live.state` is `unavailable`, print the plain absolute `page` path and `live.error`. The contribution remains committed. `live.state: "off"` means static-only mode.
 
+An open live page receives committed answers, Results, task changes, and new Stages without a reload. Updates keep the selected Stage, URL fragment, reading position, focus, and open evidence disclosures. A static file does not receive live updates.
+
 The script starts one detached Local Flow host for the user's home. The default loopback port is `42000 + uid % 10000`. `VSTACK_FLOW_PORT` selects a different port before startup. The running host's discovery record takes precedence until it stops. Hosts with different code or Bun runtimes report incompatibility instead of serving a page with an old renderer. Run `host stop` to stop that authenticated host, then retry the original command.
 
 `host status` reports the host without starting it. `host stop` stops only the host authenticated by this home's private credential. A port held by another program or another home's host stays untouched. The private discovery and secrets live under `<home>/.vstack/host/`; do not attach these files as evidence.

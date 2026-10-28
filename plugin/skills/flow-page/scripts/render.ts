@@ -8,7 +8,7 @@ import { optionLabel, type AnswerState, type Attachment, type ComparisonView, ty
 import type { ProgressView } from "./progress.ts";
 
 /** Raise this when the page a given state renders to changes, so a page names the renderer that made it. */
-export const RENDERER = 12;
+export const RENDERER = 13;
 const TEMPLATE = join(import.meta.dir, "..", "templates", "flow-page.html");
 export type Runtimes = Record<string, { url?: string; reason?: string }>;
 

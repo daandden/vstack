@@ -360,8 +360,8 @@
   <script>
     if (location.protocol === "http:") window.flowHostEvents = new EventSource(new URL("events", location.href));
     const bar = document.querySelector(".bar");
-    const tabs = [...document.querySelectorAll('[role="tab"]')];
-    const panels = tabs.map((t) => document.getElementById(t.getAttribute("aria-controls")));
+    let tabs = [...document.querySelectorAll('[role="tab"]')];
+    let panels = tabs.map((t) => document.getElementById(t.getAttribute("aria-controls")));
     const pad = () => (bar ? bar.offsetHeight : 0) + 8;
     const setClearance = () => document.documentElement.style.setProperty("--nav-clearance", `${pad()}px`);
     if (bar) new ResizeObserver(setClearance).observe(bar);
@@ -519,59 +519,159 @@
       for (const [name, e] of Object.entries(t.set ?? {})) values[name] = "add" in e ? now.values[name] + e.add : "toggle" in e ? !now.values[name] : e.set;
       return { state: t.to ?? now.state, values };
     }
-    for (const el of document.querySelectorAll(".demo[data-demo]")) {
-      const def = JSON.parse(el.dataset.demo);
-      const key = `flow-page:demo:${flowId}:${el.dataset.key}`;
-      const start = () => ({ state: def.start, values: Object.fromEntries(def.values.map((v) => [v.name, v.initial])) });
-      const fits = (s) => s && def.states.some((x) => x.name === s.state) && def.values.every((v) => typeof s.values?.[v.name] === typeof v.initial);
-      let now = start();
-      try {
-        const saved = JSON.parse(local.get(key));
-        if (fits(saved)) now = saved;
-      } catch {}
-      const actions = new Map(def.actions.map((a) => [a.name, a]));
-      const buttons = [...el.querySelectorAll("button[data-action], button[data-reset]")];
-      function paint() {
-        document.getElementById(`${el.id}-state`).textContent = def.states.find((x) => x.name === now.state).label;
-        el.querySelectorAll("[data-demo-state]").forEach((d) => { d.hidden = d.dataset.demoState !== now.state; });
-        for (const v of def.values) document.getElementById(`${el.id}-v-${v.name}`).textContent = demoValue(now.values[v.name]);
-        // aria-disabled keeps an unavailable action focusable, so the keyboard does not lose its place.
-        for (const b of buttons) {
-          b.disabled = false;
-          b.setAttribute("aria-disabled", String(b.dataset.action !== undefined && !step(actions.get(b.dataset.action), now)));
+    const demos = new WeakSet();
+    const media = new WeakSet();
+    function hydrateInteractions() {
+      for (const el of document.querySelectorAll(".demo[data-demo]")) {
+        if (demos.has(el)) continue;
+        demos.add(el);
+        const def = JSON.parse(el.dataset.demo);
+        const key = `flow-page:demo:${flowId}:${el.dataset.key}`;
+        const start = () => ({ state: def.start, values: Object.fromEntries(def.values.map((v) => [v.name, v.initial])) });
+        const fits = (s) => s && def.states.some((x) => x.name === s.state) && def.values.every((v) => typeof s.values?.[v.name] === typeof v.initial);
+        let now = start();
+        try {
+          const saved = JSON.parse(local.get(key));
+          if (fits(saved)) now = saved;
+        } catch {}
+        const actions = new Map(def.actions.map((a) => [a.name, a]));
+        const buttons = [...el.querySelectorAll("button[data-action], button[data-reset]")];
+        function paint() {
+          document.getElementById(`${el.id}-state`).textContent = def.states.find((x) => x.name === now.state).label;
+          el.querySelectorAll("[data-demo-state]").forEach((d) => { d.hidden = d.dataset.demoState !== now.state; });
+          for (const v of def.values) document.getElementById(`${el.id}-v-${v.name}`).textContent = demoValue(now.values[v.name]);
+          // aria-disabled keeps an unavailable action focusable, so the keyboard does not lose its place.
+          for (const b of buttons) {
+            b.disabled = false;
+            b.setAttribute("aria-disabled", String(b.dataset.action !== undefined && !step(actions.get(b.dataset.action), now)));
+          }
         }
-      }
-      el.addEventListener("click", (e) => {
-        const b = e.target.closest("button");
-        if (!b || !buttons.includes(b) || b.getAttribute("aria-disabled") === "true") return;
-        if (b.dataset.action === undefined) {
-          now = start();
-          local.drop(key);
-        } else {
-          now = step(actions.get(b.dataset.action), now);
-          local.set(key, JSON.stringify(now));
-        }
+        el.addEventListener("click", (e) => {
+          const b = e.target.closest("button");
+          if (!b || !buttons.includes(b) || b.getAttribute("aria-disabled") === "true") return;
+          if (b.dataset.action === undefined) {
+            now = start();
+            local.drop(key);
+          } else {
+            now = step(actions.get(b.dataset.action), now);
+            local.set(key, JSON.stringify(now));
+          }
+          paint();
+        });
         paint();
-      });
-      paint();
+      }
+      for (const video of document.querySelectorAll("video[src]")) {
+        if (media.has(video)) continue;
+        media.add(video);
+        const key = `flow-page:playback:${flowId}:${video.getAttribute("src")}`;
+        const resume = () => {
+          const t = Number(local.get(key));
+          if (t > 0 && t < video.duration) video.currentTime = t;
+        };
+        if (video.readyState >= 1) resume();
+        else video.addEventListener("loadedmetadata", resume, { once: true });
+        let saved = 0;
+        video.addEventListener("timeupdate", () => {
+          if (Math.abs(video.currentTime - saved) < 1) return;
+          saved = video.currentTime;
+          local.set(key, String(saved));
+        });
+        video.addEventListener("pause", () => local.set(key, String(video.currentTime)));
+        video.addEventListener("ended", () => local.drop(key));
+      }
     }
-    for (const video of document.querySelectorAll("video[src]")) {
-      const key = `flow-page:playback:${flowId}:${video.getAttribute("src")}`;
-      const resume = () => {
-        const t = Number(local.get(key));
-        if (t > 0 && t < video.duration) video.currentTime = t;
-      };
-      if (video.readyState >= 1) resume();
-      else video.addEventListener("loadedmetadata", resume, { once: true });
-      let saved = 0;
-      video.addEventListener("timeupdate", () => {
-        if (Math.abs(video.currentTime - saved) < 1) return;
-        saved = video.currentTime;
-        local.set(key, String(saved));
-      });
-      video.addEventListener("pause", () => local.set(key, String(video.currentTime)));
-      video.addEventListener("ended", () => local.drop(key));
+    hydrateInteractions();
+
+    // Keep stable nodes, including focused controls and open disclosures, while applying the server's new view.
+    const nodeKey = (n) => n.nodeType === Node.ELEMENT_NODE
+      ? n.id || n.getAttribute("data-tab") || (n.tagName === "A" ? n.getAttribute("href") : n.tagName === "DETAILS" ? `details:${n.className}` : null)
+      : null;
+    const compatible = (a, b) => a.nodeType === b.nodeType && a.nodeName === b.nodeName && nodeKey(a) === nodeKey(b);
+    const interactionData = (el) => el.dataset.demo ?? el.dataset.quiz;
+    function patch(live, next) {
+      if (live.isEqualNode(next)) return;
+      if (live.nodeType !== Node.ELEMENT_NODE) {
+        live.nodeValue = next.nodeValue;
+        return;
+      }
+      if (interactionData(live) !== undefined && live.dataset.key === next.dataset.key && interactionData(live) === interactionData(next)) return;
+      const preserved = (name) => name === "open" && live.matches("details, dialog");
+      for (const a of [...live.attributes]) if (!preserved(a.name) && !next.hasAttribute(a.name)) live.removeAttribute(a.name);
+      for (const a of next.attributes) if (!preserved(a.name) && live.getAttribute(a.name) !== a.value) live.setAttribute(a.name, a.value);
+      if (live.isContentEditable && live.contains(document.activeElement)) return;
+      const keyed = new Map([...live.childNodes].filter(nodeKey).map((n) => [nodeKey(n), n]));
+      let cursor = live.firstChild;
+      for (const child of next.childNodes) {
+        const key = nodeKey(child);
+        let match = key ? keyed.get(key) : cursor && !nodeKey(cursor) && compatible(cursor, child) ? cursor : null;
+        if (match && !compatible(match, child)) match = null;
+        if (!match) {
+          match = child.cloneNode(true);
+          live.insertBefore(match, cursor);
+        } else {
+          if (match !== cursor) live.insertBefore(match, cursor);
+          if (match.nodeType === Node.ELEMENT_NODE && interactionData(match) !== undefined && (match.dataset.key !== child.dataset.key || interactionData(match) !== interactionData(child))) {
+            const replacement = child.cloneNode(true);
+            match.replaceWith(replacement);
+            match = replacement;
+          } else patch(match, child);
+        }
+        cursor = match.nextSibling;
+      }
+      while (cursor) {
+        const removed = cursor;
+        cursor = cursor.nextSibling;
+        removed.remove();
+      }
     }
+    function refreshReadingView(next) {
+      const selected = panels[open]?.id;
+      const focused = document.activeElement;
+      const x = scrollX, y = scrollY;
+      const picked = stops[current];
+      const box = picked?.getBoundingClientRect();
+      const reading = box && box.top < innerHeight && box.bottom > pad() ? picked
+        : [...(panels[open]?.querySelectorAll("[data-stop]") ?? [])].reverse()
+          .find((el) => el.getBoundingClientRect().top <= pad());
+      const offset = reading?.getBoundingClientRect().top;
+      patch(bar, next.querySelector(".bar"));
+      patch(document.querySelector("main"), next.querySelector("main"));
+      tabs = [...document.querySelectorAll('[role="tab"]')];
+      panels = tabs.map((t) => document.getElementById(t.getAttribute("aria-controls")));
+      show(Math.max(0, panels.findIndex((p) => p.id === selected)));
+      hydrateInteractions();
+      if (focused?.isConnected && document.activeElement !== focused) focusOn(focused);
+      scrollTo({ left: x, top: reading?.isConnected ? scrollY + reading.getBoundingClientRect().top - offset : y, behavior: "instant" });
+      markFromScroll();
+    }
+    const revisionMeta = document.querySelector('meta[name="flow-page-revision"]');
+    let wantedRevision = Number(revisionMeta.content);
+    let refreshing = false;
+    let retry;
+    async function receiveRevision(e) {
+      wantedRevision = Math.max(wantedRevision, JSON.parse(e.data).revision);
+      if (refreshing || wantedRevision <= Number(revisionMeta.content)) return;
+      refreshing = true;
+      clearTimeout(retry);
+      try {
+        while (wantedRevision > Number(revisionMeta.content)) {
+          const response = await fetch(location.href, { cache: "no-store" });
+          if (!response.ok) throw new Error(`Flow refresh failed (${response.status})`);
+          const next = new DOMParser().parseFromString(await response.text(), "text/html");
+          const revision = Number(next.querySelector('meta[name="flow-page-revision"]')?.content);
+          if (!(revision > Number(revisionMeta.content))) throw new Error("Flow refresh is not current");
+          refreshReadingView(next);
+          revisionMeta.content = String(revision);
+          document.dispatchEvent(new CustomEvent("flow-page-updated", { detail: { revision } }));
+        }
+      } catch {
+        // A failed read leaves the last good view intact. Retry without reloading or changing the reader's location.
+        retry = setTimeout(() => receiveRevision({ data: JSON.stringify({ revision: wantedRevision }) }), 2000);
+      } finally {
+        refreshing = false;
+      }
+    }
+    window.flowHostEvents?.addEventListener("revision", receiveRevision);
     show(0);
     goToHash(false);
   </script>
