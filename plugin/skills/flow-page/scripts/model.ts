@@ -2,6 +2,7 @@
 // both `show` and the renderer read. Everything here is pure; flow-page.ts does the reading, locking, and writing.
 
 import { createHash } from "node:crypto";
+import { applyProgress, type Progress, PROGRESS_KINDS, type ProgressView, progressSnapshot, progressView, UPDATE_FIELD } from "./progress.ts";
 
 export const SCHEMA = 1;
 export const CONTRIBUTION_VERSION = 1;
@@ -87,6 +88,7 @@ export type State = {
   attachments: Attachment[];
   /** Earlier revisions of republished Results, oldest first. */
   history: Result[];
+  progress?: Progress;
 };
 
 /** Fills the fields that states written before attachments existed lack. */
@@ -97,13 +99,13 @@ export function upgrade(s: State): State {
 }
 
 export class Refusal extends Error {}
-const refuse = (where: string, message: string): never => {
+export const refuse = (where: string, message: string): never => {
   throw new Refusal(where ? `${where}: ${message}` : message);
 };
 
 export const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const REF = /^[a-z0-9][a-z0-9-]*$/;
-const CODE_ID = /^(stage|round|question|close|background|topic|result|source|assumed|attachment)-\d+$/;
+const CODE_ID = /^(stage|round|question|close|background|topic|result|source|assumed|attachment|task|blocker|pr|check)-\d+$/;
 const TICKET = /^#?[A-Za-z0-9][A-Za-z0-9._/-]*$/;
 const SHAPES: Shape[] = ["cards", "ledger", "table", "document"];
 const CLAIM_STATES = ["confirmed", "cleared", "unproven"];
@@ -115,7 +117,7 @@ function safeLinks(t: string, where: string): string {
   for (const m of t.matchAll(LINK)) if (!/^(https?:\/\/|#)/i.test(m[1])) refuse(where, `the link ${JSON.stringify(m[1])} uses an unsafe or unsupported scheme; links must start with https://, http://, or #`);
   return t;
 }
-const listed = (xs: string[]) => (xs.length === 1 ? xs[0] : `${xs.slice(0, -1).join(", ")}, or ${xs.at(-1)}`);
+export const listed = (xs: string[]) => (xs.length === 1 ? xs[0] : `${xs.slice(0, -1).join(", ")}, or ${xs.at(-1)}`);
 const all = (xs: string[]) => (xs.length === 1 ? xs[0] : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`);
 export const letter = (i: number) => String.fromCharCode(65 + i);
 const letterIndex = (s: string) => (/^[A-Z]$/.test(s) ? s.charCodeAt(0) - 65 : -1);
@@ -211,23 +213,23 @@ export function addAliases(s: State, aliases: string[]): string[] {
 // Parsing external input. Every object is checked against its exact field list, so HTML, CSS, scripts, ids, numbers,
 // and other code-owned fields are refused rather than dropped.
 
-type Obj = Record<string, unknown>;
+export type Obj = Record<string, unknown>;
 const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
 
-function fields(v: unknown, where: string, required: string[], optional: string[] = []): Obj {
+export function fields(v: unknown, where: string, required: string[], optional: string[] = []): Obj {
   if (!isObj(v)) refuse(where, `must be an object with ${listed(required)}`);
   const o = v as Obj;
   for (const k of Object.keys(o)) if (!required.includes(k) && !optional.includes(k)) refuse(where, `${k} is not a field here; the fields are ${listed([...required, ...optional])}`);
   for (const k of required) if (o[k] === undefined) refuse(where, `needs ${k}`);
   return o;
 }
-function text(o: Obj, k: string, where: string): string {
+export function text(o: Obj, k: string, where: string): string {
   const v = o[k];
   if (typeof v !== "string" || v.trim() === "") refuse(where, `${k} must be a non-empty string`);
   return v as string;
 }
 const optText = (o: Obj, k: string, where: string) => (o[k] === undefined ? undefined : text(o, k, where));
-function texts(o: Obj, k: string, where: string): string[] {
+export function texts(o: Obj, k: string, where: string): string[] {
   const v = o[k];
   if (!Array.isArray(v) || v.length === 0 || v.some((x) => typeof x !== "string" || x.trim() === "")) refuse(where, `${k} must be a list of one or more non-empty strings`);
   return v as string[];
@@ -250,7 +252,7 @@ function ref(o: Obj, where: string): string | undefined {
 
 export type Receipt = { refs: Record<string, string>; ask?: { questions: { id: string; question: string; options: { label: string }[]; recommended?: number }[] } };
 
-const KINDS = ["background", "topic", "attachment", "result", "revise", "assumed", "round", "answer", "close", "stage"];
+const KINDS = ["background", "topic", "attachment", "result", "revise", "assumed", "round", "answer", "close", "stage", ...PROGRESS_KINDS];
 
 /** The same JSON value in one spelling, whatever its key order. */
 const canonical = (v: unknown): string =>
@@ -315,6 +317,7 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
         nextEntry.set(rid, next + o.add.length);
       }
     }
+    if (PROGRESS_KINDS.includes(kind) && kind !== "end-state" && o[UPDATE_FIELD[kind]!] === undefined) claim(ref(o, where), (ids.id = newId(s, kind)), kind, where);
     if (kind === "topic") claim(ref(o, where), (ids.id = newId(s, "topic")), "topic", where);
     if (kind === "assumed") claim(ref(o, where), (ids.id = newId(s, "assumed")), "assumed pick", where);
     if (kind === "attachment") claim(ref(o, where), (ids.id = newId(s, "attachment")), "attachment", where);
@@ -471,6 +474,8 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
         stage.finished = time;
         break;
       }
+      default:
+        applyProgress(s, stage.id, kind, o, where, ids.id, resolve, time);
     }
   }
   checkLinks(s);
@@ -847,6 +852,7 @@ export type View = {
   sources: (Source & { cited_by: string[] })[];
   questions: Map<string, QuestionView>;
   attachments: (Attachment & { used_by: string[] })[];
+  progress: ProgressView;
 };
 
 const words = (skill: string) => skill.replace(/-/g, " ").replace(/^./, (c) => c.toUpperCase());
@@ -940,7 +946,7 @@ export function view(s: State): View {
     ...s.results.filter((r) => r.document && (r.document.sources.includes(id) || r.document.citations.some((c) => c.source === id))).map((r) => r.id),
   ];
   return {
-    flow: s.flow, revision: s.revision, stages, questions,
+    flow: s.flow, revision: s.revision, stages, questions, progress: progressView(s),
     topics: s.topics.map((t) => ({ ...t, sourceTexts: t.sources.map((x) => sourceText.get(x)!), questions: s.questions.filter((q) => q.topics?.includes(t.id)).map((q) => q.id) })),
     sources: s.sources.map((x) => ({ ...x, cited_by: citers(x.id) })),
     attachments: s.attachments.map((a) => ({ ...a, used_by: [...new Set([...s.results, ...s.history].filter((r) => attachmentsOf(r).includes(a.id)).map((r) => r.id))] })),
@@ -985,5 +991,6 @@ export function snapshot(v: View, page: string, renderer: number) {
       id: a.id, stage: a.stage, type: a.type, availability: a.availability, time: a.time, used_by: a.used_by,
       ...(a.revision ? { revision: a.revision } : {}), ...(a.file ? { file: `assets/${a.file}`, size: a.size } : {}), ...(a.from ? { from: a.from } : {}),
     })),
+    progress: progressSnapshot(v.progress),
   };
 }

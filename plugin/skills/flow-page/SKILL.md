@@ -83,6 +83,7 @@ Item kinds and their fields:
 - `answer`: `question`, `response`, and, for words with no pick, `reading`. A question takes one answer. To reopen it, ask it again with `again`, which keeps the earlier answer beside the new one.
 - `close`: `decisions`, one `{ question, text }` for the latest ask of each Q number of the Stage, and optional `extra` bullets. The close adds every Assumed pick of the Stage that no question reopened, and marks each decision as the user's pick, read from the user's words, or not the user's answer. A close with no decisions and no Assumed picks needs `extra`.
 - `stage`: `{ "kind": "stage", "state": "finished" }` finishes the bound Stage. A finished Stage takes no more content. Add `retire`, one `{ question, reason }` for each latest ask that has no pick and no settled reading, saying why the Stage leaves it unresolved. Retired questions leave current work and keep their answer and reason.
+- `task`, `blocker`, `end-state`, `pr`, and `check` record workflow progress, as [Record progress](#record-progress) says.
 
 Put each explanation in one place, so the page explains nothing twice. A question's own rationale goes in its `description`. Context that every question of the Stage needs goes in the Background. A concept that questions in several rounds or Stages build on goes in a Topic note. A name that one line defines is a Term note. The script stores each source string once, however many records cite it.
 
@@ -124,6 +125,21 @@ Only a pick or a resolved reading is the user's answer. Everything else keeps th
 Submit a `close`. Write each decision as what is now true, in one or two plain sentences, not as the option label. Add `extra` bullets only when they apply: "Unchanged from earlier: ...", "Glossary: ...", and "Headless, not user-confirmed" for a close in a headless run. Then submit `{ "kind": "stage", "state": "finished" }` with its `retire` reasons when the Stage's skill finishes. If a retired question still matters later, ask it in the current Stage with `again`.
 
 Finishing a Stage authorizes nothing. An action that needs the user's confirmation of the summary, such as a tracker write, still waits for the user's next prompt, as the calling skill says.
+
+## Record progress
+
+The Overview opens with a progress strip built from these items. Each is its own fact. A finished Stage, a task count, a PR, a check, and the End state never stand in for one another, and the script never derives one from another. Record what you did and saw; the strip shows nothing you did not record.
+
+- `task`: a step of the Flow's work. A new task has optional `ref`, `title`, and optional `state`, `evidence`, and `reason`. Update it with `{ "kind": "task", "task": "<ref or id>", ... }` and only the fields that change. Do not send the title again. The states are `pending` (the default), `active`, `done`, `skipped`, and `inapplicable`.
+  - `done` needs `evidence`: one or more strings, such as a command and its outcome, a commit, or a path. Evidence adds to what the task has.
+  - `skipped` and `inapplicable` need a `reason`. They are not left work. Use `inapplicable` for a step that does not apply to this Flow, such as the commit in an explanation.
+  - Any in-progress Stage of the Flow can update a task, such as an implement Stage that finishes a task that a to-tickets Stage recorded.
+- `blocker`: `text` and optional `ref` and `tasks` it blocks. An open blocker marks its tasks blocked. Resolve it with `{ "kind": "blocker", "blocker": "<ref or id>", "resolved": "<what cleared it>" }`.
+- `end-state`: `requested` is `commit`, `merge-ready`, `shipped`, or `none` for a Flow that delivers no commit or PR, such as an explanation. Record it when the Flow settles it. `reached` is `commit`, `merge-ready`, or `shipped`, with `evidence`, when the delivery actually got there. A Flow with `none` reaches no End state.
+- `pr`: a new PR has `url`, `state` (`open`, `merged`, or `closed`), and optional `ref` and `title`. Update it with `{ "kind": "pr", "pr": "<ref or id>", "state": ... }`.
+- `check`: `name`, `outcome` (`passed`, `failed`, or `pending`), and optional `ref`. A passed or failed check needs `evidence`. Update it with `{ "kind": "check", "check": "<ref or id>", "outcome": ..., "evidence": [...] }`.
+
+The strip reads complete when the Flow has at least one task, no task is `pending` or `active`, no blocker is open, and its requested End state is `none` or reached. It does not close the Flow. `show` prints the same facts under `progress`.
 
 ## Print the path
 

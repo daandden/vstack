@@ -4,14 +4,19 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { optionLabel, type AnswerState, type Attachment, type DocView, type QuestionView, type ResultView, type StageView, type View } from "./model.ts";
+import type { ProgressView } from "./progress.ts";
 
 /** Raise this when the page a given state renders to changes, so a page names the renderer that made it. */
-export const RENDERER = 3;
+export const RENDERER = 4;
 const TEMPLATE = join(import.meta.dir, "..", "templates", "flow-page.html");
 
 const STATE_LABELS: Record<string, string> = { "in-progress": "In progress", finished: "Finished" };
 const CLAIM_LABELS: Record<string, string> = { confirmed: "Confirmed", cleared: "Cleared", unproven: "Unproven" };
 const TYPE_LABELS: Record<string, string> = { image: "Image", video: "Video", svg: "SVG figure", file: "File", trace: "Trace", evidence: "Captured evidence", artifact: "Runnable artifact" };
+const TASK_LABELS: Record<string, string> = { pending: "To do", active: "Active", done: "Done", skipped: "Skipped", inapplicable: "Does not apply" };
+const END_LABELS: Record<string, string> = { commit: "Commit", "merge-ready": "Merge-ready", shipped: "Shipped" };
+const PR_LABELS: Record<string, string> = { open: "Open", merged: "Merged", closed: "Closed" };
+const CHECK_LABELS: Record<string, string> = { passed: "Passed", failed: "Failed", pending: "Pending" };
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 /** Citation markers of one Document: `[@ref]` becomes a numbered link to the citation. */
@@ -309,6 +314,61 @@ ${bullets.join("\n")}
   return { nav, body };
 }
 
+/** The progress strip that opens the Overview. Each fact keeps its own line: a finished Stage, the task count, a PR,
+ * a check, and the End state never stand in for one another, and nothing shown here was observed by the page. */
+function progressHtml(p: ProgressView, v: View): string {
+  const stageLabel = (id: string) => esc(v.stages.find((st) => st.id === id)!.label);
+  const when = (s: { time: string; stage: string }) => `<span class="source">${formatTime(s.time)}, <a href="#${s.stage}">${stageLabel(s.stage)}</a></span>`;
+  const evidence = (items: string[]) => (items.length ? `<details class="evidence"><summary>Evidence</summary><ul class="bullets">${items.map((e) => `<li>${text(e)}</li>`).join("")}</ul></details>` : "");
+  const taskTitle = (id: string) => esc(p.tasks.find((t) => t.id === id)!.title);
+  const count = (state: string) => p.tasks.filter((t) => t.state === state).length;
+  const work = p.tasks.filter((t) => t.state !== "skipped" && t.state !== "inapplicable").length;
+  const notWork = count("skipped") + count("inapplicable");
+  const blocked = p.tasks.filter((t) => t.blocked_by.length).length;
+
+  let verdict: string;
+  if (p.complete) verdict = p.delivery ? `Complete: every task is settled and the requested End state is reached.` : `Complete: every task is settled; this Flow delivers no commit or PR.`;
+  else {
+    const why: string[] = [];
+    if (!p.tasks.length) why.push("no tasks recorded");
+    const left = p.remaining.filter((id) => p.tasks.some((t) => t.id === id)).length;
+    if (left) why.push(`${left} ${left === 1 ? "task" : "tasks"} left`);
+    const open = p.remaining.length - left;
+    if (open) why.push(`${open} open ${open === 1 ? "blocker" : "blockers"}`);
+    if (p.delivery === undefined) why.push("End state not chosen");
+    else if (!p.end_state_met) why.push(`requested End state not reached`);
+    verdict = `Not complete: ${why.join(", ")}.`;
+  }
+
+  const taskLine = [`${count("done")} of ${work} done`, ...(count("active") ? [`${count("active")} active`] : []), ...(blocked ? [`${blocked} blocked`] : []), ...(notWork ? [`${notWork} skipped or not applicable`] : [])].join(", ");
+  const requested = p.requested ? (p.requested.value === "none" ? `None: not a delivery Flow ${when(p.requested)}` : `${END_LABELS[p.requested.value]} ${when(p.requested)}`) : "Not chosen";
+  const reached = p.requested?.value === "none" ? "Does not apply" : p.reached ? `${END_LABELS[p.reached.value]} ${when(p.reached)}${evidence(p.reached.evidence)}` : "Not reached";
+  const facts: [string, string][] = [
+    ["Tasks", p.tasks.length ? taskLine : "None recorded"],
+    ["Stages", `${p.stages.finished} of ${p.stages.total} finished`],
+    ["Requested End state", requested],
+    ["Reached End state", reached],
+  ];
+  if (p.prs.length) facts.push(["PRs", `<ul class="bullets">${p.prs.map((x) => `<li id="${x.id}"><a href="${esc(x.url)}">${esc(x.title ?? x.url)}</a> <span class="tag" data-pr="${x.state}">${PR_LABELS[x.state]}</span> <span class="source">reported</span> ${when(x.reported)}</li>`).join("")}</ul>`]);
+  if (p.checks.length) facts.push(["Checks", `<ul class="bullets">${p.checks.map((x) => `<li id="${x.id}">${text(x.name)} <span class="tag" data-check="${x.outcome}">${CHECK_LABELS[x.outcome]}</span> <span class="source">reported</span> ${when(x.reported)}${evidence(x.evidence)}</li>`).join("")}</ul>`]);
+
+  const openBlockers = p.blockers.filter((b) => !b.resolved);
+  const blockers = openBlockers.length
+    ? `\n<div class="blockers"><p class="label">Blockers</p><ul class="bullets">${openBlockers.map((b) => `<li id="${b.id}">${text(b.text)}${b.tasks.length ? ` <span class="source">blocks ${b.tasks.map((id) => `<a href="#${id}">${taskTitle(id)}</a>`).join(", ")}</span>` : ""} ${when({ time: b.opened, stage: b.stage })}</li>`).join("")}</ul></div>`
+    : "";
+  const tasks = p.tasks.length
+    ? `\n<ol class="tasks">\n${p.tasks.map((t) => {
+        const by = t.blocked_by.length ? ` <span class="blocked">Blocked: ${t.blocked_by.map((id) => `<a href="#${id}">${esc(p.blockers.find((b) => b.id === id)!.text)}</a>`).join("; ")}</span>` : "";
+        const resolved = p.blockers.filter((b) => b.resolved && b.tasks.includes(t.id)).map((b) => `<li><span class="label">Blocker resolved</span> ${text(b.resolved!.text)} <span class="source">Was: ${text(b.text)}</span></li>`);
+        return `<li class="task" id="${t.id}" data-task="${t.state}"${t.blocked_by.length ? " data-blocked" : ""}><span class="tag">${TASK_LABELS[t.state]}</span><span>${text(t.title)}</span>${by} ${when(t.updates.at(-1)!)}${t.reason ? `<p class="reason">${text(t.reason)}</p>` : ""}${evidence(t.evidence)}${resolved.length ? `<ul class="bullets resolved">${resolved.join("")}</ul>` : ""}</li>`;
+      }).join("\n")}\n</ol>`
+    : "";
+  return `<section class="progress" id="progress" aria-labelledby="progress-title"${p.complete ? " data-complete" : ""}>
+<header><h2 id="progress-title">Progress</h2><p class="verdict">${verdict}</p></header>
+<dl class="facts">${facts.map(([k, val]) => `<div><dt>${k}</dt><dd>${val}</dd></div>`).join("")}</dl>${blockers}${tasks}
+</section>`;
+}
+
 export function render(v: View): string {
   const sourceText = (id: string) => v.sources.find((x) => x.id === id)!.text;
   const entryTitle = (ref: string) => {
@@ -353,7 +413,7 @@ ${sourcesHtml(t.sourceTexts)}
     panels.push(`<section class="tab" id="topics" role="tabpanel" aria-labelledby="tab-topics" hidden>\n${notes.join("\n")}\n</section>`);
   }
   const head = `<header class="page-head"><h1>${text(v.flow.title)}</h1></header>`;
-  const overviewPanel = `<section class="tab" id="overview" role="tabpanel" aria-labelledby="tab-overview">\n${overview.length ? `<ol class="stages">\n${overview.join("\n")}\n</ol>` : `<p class="empty">No Stage yet.</p>`}\n</section>`;
+  const overviewPanel = `<section class="tab" id="overview" role="tabpanel" aria-labelledby="tab-overview">\n${progressHtml(v.progress, v)}\n${overview.length ? `<ol class="stages">\n${overview.join("\n")}\n</ol>` : `<p class="empty">No Stage yet.</p>`}\n</section>`;
   const bar = `<header class="bar">\n<div class="tabs" role="tablist" aria-label="Stages">${tabs.join("")}</div>\n${jumpRows.join("\n")}\n</header>`;
   const meta = `<meta name="flow-page-flow" content="${esc(v.flow.id)}">\n  <meta name="flow-page-revision" content="${v.revision}">\n  <meta name="flow-page-renderer" content="${RENDERER}">`;
   return readFileSync(TEMPLATE, "utf8")

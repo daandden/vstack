@@ -1,6 +1,6 @@
 # Flow page
 
-The flow-page script takes typed contributions for one bound Stage, assigns ids, Q numbers, option letters, tab labels, and links, and publishes the whole static Flow page. Overview shows each Stage's state and the latest ask of every Q number. Stage tabs show the Background, Results, rounds, answers, and summaries. The Topics tab lists each Topic note with the questions that cite it.
+The flow-page script takes typed contributions for one bound Stage, assigns ids, Q numbers, option letters, tab labels, and links, and publishes the whole static Flow page. Overview opens with a progress strip of tasks, blockers, the requested and reached End state, and reported PRs and checks, then shows each Stage's state and the latest ask of every Q number. Stage tabs show the Background, Results, rounds, answers, and summaries. The Topics tab lists each Topic note with the questions that cite it.
 
 ## Sub-features
 
@@ -18,6 +18,7 @@ The flow-page script takes typed contributions for one bound Stage, assigns ids,
 - `flow-document`: a `document` Result shows its sections in order, numbered citations that link both ways, code with its whitespace, figures, limitations, and sources.
 - `flow-attach`: `attachment` items of every type keep their caption, origin, captured revision, and availability. Captured files are stored in the Flow by sha256 and shown from there. A path outside the project and its Scratch dir, a symlink out of them, an image that is not an image, an unsafe SVG, and a link with an unsafe scheme are refused.
 - `flow-revision`: a Result keeps the content and assets it captured after its sources change. `revises` publishes the next revision, with the canonical file's new sha256, and the earlier revision stays readable.
+- `flow-progress`: `task`, `blocker`, `end-state`, `pr`, and `check` items put progress on the Overview's strip. A task changes state through a focused update with no resend. Skipped and inapplicable tasks are not left work. The Flow reads complete only when no task or blocker is open and a delivery reached its requested End state. A finished Stage, a merged PR, and a passed check are each their own line and complete nothing.
 
 ## How to get to it (user POV)
 
@@ -50,6 +51,9 @@ Steps:
   - Press `n` from Topics: it opens Code review's Q1, not the superseded Grill ask.
   - At 360px wide, `scrollWidth - clientWidth` is 0.
   - In the Document's Stage tab, click citation `[1]`: the citation comes into view below the bar, and its "Cited in" link returns to the section. The code block keeps its tabs and spaces. The image, the video, and the SVG show; the file, trace, and evidence links download the captured bytes; the artifact shows its launch steps and URL; the unavailable video shows its reason. Open "Earlier revisions": revision 1 shows the first screenshot.
+- Progress: on the Code review Stage, which is still in progress, submit `{"kind":"end-state","requested":"shipped"}`, two `task` items with refs, an `active` one and a `pending` one, and a `blocker` naming the active task. Then submit a focused `{"kind":"task","task":"<id>","state":"done","evidence":[...]}`, a task `inapplicable` with a `reason`, a `pr` with `state: "merged"`, a `check` with `outcome: "passed"` and `evidence`, and `{"kind":"end-state","reached":"merge-ready","evidence":[...]}`. `show` has `progress.complete: false`, `end_state.met: false`, and the blocker in `remaining`.
+  - Overview's first block is the strip. It names the requested End state (Shipped) apart from the reached one (Merge-ready), lists the open blocker with a link to its task, marks the blocked task, shows the inapplicable task with its reason and not as left work, and reads Not complete. The task's Evidence is closed and opens with one click.
+  - Resolve the blocker, settle the last task, and submit `reached: "shipped"`. After a reload, the strip reads Complete. A second Flow with `requested: "none"`, one `done` task, and one `inapplicable` task reads Complete with no PR and no reached End state.
 - Concurrency and identity (`flow-concurrent`, `flow-identity`):
   - Bind `--session verify-a` and `--session verify-b` to the two wayfinder Stages with `bind`. Start six `submit -` rounds and six `alias run:<n>` per session at once as background jobs, and wait for all of them. Every exit is 0, every receipt `revision` differs, and `show` lists six questions per Stage and all twelve `run:` aliases.
   - `alias spec:9270`, then `move --to verify-9270`. `find spec:9270`, `find folder:verify-9270`, and `find folder:<old folder key>` print the same `flow`. A `submit` through `verify-a`'s binding lands in the moved Flow, and its receipt `page` is the moved path.

@@ -169,11 +169,13 @@ const cards = (ref: string, ...entries: object[]) => ({ kind: "result", ref, sha
 const topic = (ref: string, sources = ["GLOSSARY.md"]) => ({ kind: "topic", ref, title: `Topic ${ref}`, summary: "One line.", body: "Body.", sources });
 const background = (sources = ["GLOSSARY.md"]) => ({ kind: "background", title: "Context", summary: "One line.", sections: [{ heading: "Now", body: "How it works." }], sources });
 
-type PageFacts = { ids: Set<string>; within: Map<string, Set<string>>; scripts: number; handlers: number; outbound: string[]; meta: Record<string, string> };
-/** Each element id in the page with the in-page link targets inside it, plus scripts, handlers, outbound links, and meta. */
+type PageFacts = { ids: Set<string>; within: Map<string, Set<string>>; contains: Map<string, Set<string>>; first: Map<string, string>; scripts: number; handlers: number; outbound: string[]; meta: Record<string, string> };
+/** Each element id in the page with the in-page link targets inside it, the ids inside it, and the id of its first
+ * child element ("" for a child with no id), plus scripts, handlers, outbound links, and meta. */
 async function links(page: string): Promise<PageFacts> {
-  const f: PageFacts = { ids: new Set(), within: new Map(), scripts: 0, handlers: 0, outbound: [], meta: {} };
+  const f: PageFacts = { ids: new Set(), within: new Map(), contains: new Map(), first: new Map(), scripts: 0, handlers: 0, outbound: [], meta: {} };
   const open: string[] = [];
+  const parents: { id: string; seen: boolean }[] = [];
   await new HTMLRewriter()
     .on("*", {
       element(el) {
@@ -181,11 +183,23 @@ async function links(page: string): Promise<PageFacts> {
         if (el.tagName === "meta" && el.getAttribute("name")) f.meta[el.getAttribute("name")!] = el.getAttribute("content") ?? "";
         for (const [name] of el.attributes) if (name.startsWith("on")) f.handlers++;
         const id = el.getAttribute("id");
+        const parent = parents.at(-1);
+        if (parent && !parent.seen) {
+          parent.seen = true;
+          if (parent.id) f.first.set(parent.id, id ?? "");
+        }
         if (id) {
+          for (const o of open) f.contains.get(o)!.add(id);
           f.ids.add(id);
+          f.contains.set(id, new Set());
           f.within.set(id, new Set());
           open.push(id);
           el.onEndTag(() => void open.splice(open.lastIndexOf(id), 1));
+        }
+        if (el.canHaveContent && !el.selfClosing) {
+          const p = { id: id ?? "", seen: false };
+          parents.push(p);
+          el.onEndTag(() => void parents.splice(parents.lastIndexOf(p), 1));
         }
         for (const attr of ["href", "src"]) {
           const v = el.getAttribute(attr);
@@ -483,7 +497,13 @@ test("a finished Stage takes no more content and cannot reopen, and an answer ca
 test("the published page carries no content markup or script and names its revision and renderer", async () => {
   openFlow("s-1");
   const hostile = `<script>alert(1)</script><img src=x onerror=alert(1)>[x](javascript:alert(1))`;
-  const r = submit("s-1", topic("t"), round(question("a", { title: hostile, description: hostile, terms: [{ term: hostile, text: hostile }] })));
+  const progress = [
+    { kind: "task", ref: "h", title: hostile, state: "skipped", reason: hostile },
+    { kind: "task", ref: "k", title: hostile, state: "active" },
+    { kind: "blocker", text: hostile, tasks: ["k"] },
+    { kind: "check", name: hostile, outcome: "failed", evidence: [hostile] },
+  ];
+  const r = submit("s-1", topic("t"), round(question("a", { title: hostile, description: hostile, terms: [{ term: hostile, text: hostile }] })), ...progress);
   expect(r.stderr).toBe("");
   const page = r.json.page;
   const l = await links(page);
@@ -748,4 +768,157 @@ test("a Result captured from a tracker or commit revision must name its new revi
   const ok = submit("s-1", prose("Fact, revised.", { revises: first.refs.doc, canonical: { tracker: "daandden/vstack#267", revision: "2026-10-29T08:00:00Z" } }));
   expect(ok.stderr).toBe("");
   expect(show(first.flow).stages[0].results[0].revisions.map((x: any) => x.canonical.revision)).toEqual(["2026-10-28T08:00:00Z", "2026-10-29T08:00:00Z"]);
+});
+
+const task = (ref: string, extra: object = {}) => ({ kind: "task", ref, title: `Task ${ref}`, ...extra });
+const progressOf = (flow: string) => show(flow).progress;
+
+test("a task changes state through a focused update, and the Overview opens with a progress strip of its tasks", async () => {
+  openFlow("s-1", "implement");
+  const made = submit("s-1", task("build"), task("prove", { state: "active" }));
+  expect(made.stderr).toBe("");
+  const { refs, flow } = made.json;
+  const done = submit("s-1", { kind: "task", task: refs.build, state: "done", evidence: ["bun test tests/flow-page.test.ts: 20 pass"] });
+  expect(done.stderr).toBe("");
+  const p = progressOf(flow);
+  const t = (id: string) => p.tasks.find((x: any) => x.id === id);
+  expect(t(refs.build)).toMatchObject({ title: "Task build", state: "done", evidence: 1 });
+  expect(t(refs.prove)).toMatchObject({ title: "Task prove", state: "active", evidence: 0 });
+  expect(p.remaining).toEqual([refs.prove]);
+  expect(p.complete).toBe(false);
+  const l = await links(done.json.page);
+  expect(l.first.get("overview")).toBe("progress");
+  for (const id of [refs.build, refs.prove]) expect(l.contains.get("progress")!.has(id)).toBe(true);
+});
+
+test("an open blocker blocks its task and keeps the Flow incomplete until it is resolved", async () => {
+  openFlow("s-1", "implement");
+  const { refs, flow } = submit("s-1", task("deploy", { state: "active" }), { kind: "blocker", ref: "creds", text: "No deploy credentials.", tasks: ["deploy"] }, { kind: "end-state", requested: "none" }).json;
+  let p = progressOf(flow);
+  expect(p.tasks[0].blocked_by).toEqual([refs.creds]);
+  expect(p.remaining).toEqual([refs.deploy, refs.creds]);
+  const page = submit("s-1", { kind: "task", task: refs.deploy, state: "done", evidence: ["deploy log"] }).json.page;
+  p = progressOf(flow);
+  expect(p.tasks[0].blocked_by).toEqual([]);
+  expect(p.remaining).toEqual([refs.creds]);
+  expect(p.complete).toBe(false);
+  expect((await links(page)).contains.get("progress")!.has(refs.creds)).toBe(true);
+  submit("s-1", { kind: "blocker", blocker: refs.creds, resolved: "The user added the credentials." });
+  p = progressOf(flow);
+  expect(p.blockers).toEqual([{ id: refs.creds, state: "resolved", tasks: [refs.deploy] }]);
+  expect(p.complete).toBe(true);
+});
+
+test("a delivery Flow is complete only when its tasks are settled and it reached the requested End state", () => {
+  openFlow("s-1", "implement");
+  const { flow } = submit("s-1", { kind: "end-state", requested: "shipped" }, task("code", { state: "done", evidence: ["commit abc123"] }), task("docs", { state: "inapplicable", reason: "No user-facing change." })).json;
+  let p = progressOf(flow);
+  expect(p.remaining).toEqual([]);
+  expect(p.end_state).toEqual({ requested: "shipped", delivery: true, met: false });
+  expect(p.complete).toBe(false);
+  submit("s-1", { kind: "end-state", reached: "merge-ready", evidence: ["PR is mergeable"] });
+  p = progressOf(flow);
+  expect(p.end_state).toMatchObject({ requested: "shipped", reached: "merge-ready", met: false });
+  expect(p.complete).toBe(false);
+  const { refs } = submit("s-1", task("follow-up"), { kind: "end-state", reached: "shipped", evidence: ["merged into main"] }).json;
+  p = progressOf(flow);
+  expect(p.end_state.met).toBe(true);
+  expect(p.remaining).toEqual([refs["follow-up"]]);
+  expect(p.complete).toBe(false);
+  submit("s-1", { kind: "task", task: refs["follow-up"], state: "skipped", reason: "The user dropped it." });
+  expect(progressOf(flow).complete).toBe(true);
+});
+
+test("a non-delivery Flow completes without a commit or PR, and its skipped and inapplicable steps are not left work", async () => {
+  openFlow("s-1", "explain");
+  const r = submit(
+    "s-1",
+    { kind: "end-state", requested: "none" },
+    task("explain", { state: "done", evidence: ["Result on this page"] }),
+    task("commit", { state: "inapplicable", reason: "An explanation changes no code." }),
+    task("pr", { state: "skipped", reason: "Nothing to review." }),
+  );
+  expect(r.stderr).toBe("");
+  const p = progressOf(r.json.flow);
+  expect(p.end_state).toEqual({ requested: "none", delivery: false, met: true });
+  expect(p.prs).toEqual([]);
+  expect(p.remaining).toEqual([]);
+  expect(p.tasks.map((t: any) => t.state)).toEqual(["done", "inapplicable", "skipped"]);
+  expect(p.complete).toBe(true);
+  const l = await links(r.json.page);
+  for (const id of Object.values(r.json.refs)) expect(l.contains.get("progress")!.has(id as string)).toBe(true);
+});
+
+test("a finished Stage, done tasks, a merged PR, and a passed check do not reach an End state or each other", () => {
+  const opened = openFlow("s-1", "implement");
+  const { refs, flow } = submit(
+    "s-1",
+    { kind: "end-state", requested: "commit" },
+    task("code", { state: "done", evidence: ["bun test: 30 pass"] }),
+    { kind: "pr", ref: "pr", url: "https://example.com/acme/app/pull/7", state: "open" },
+    { kind: "check", ref: "ci", name: "CI", outcome: "pending" },
+  ).json;
+  submit("s-1", { kind: "pr", pr: refs.pr, state: "merged" }, { kind: "check", check: refs.ci, outcome: "passed", evidence: ["run 42 green"] }, { kind: "stage", state: "finished" });
+  const p = progressOf(flow);
+  expect(p.stages).toEqual({ finished: 1, total: 1 });
+  expect(p.remaining).toEqual([]);
+  expect(p.prs).toEqual([{ id: refs.pr, state: "merged" }]);
+  expect(p.checks).toEqual([{ id: refs.ci, outcome: "passed" }]);
+  expect(p.end_state.reached).toBeUndefined();
+  expect(p.complete).toBe(false);
+  const later = run(["open", "--flow", flow, "--skill", "implement"], { session: "s-2" }).json;
+  expect(submit("s-2", { kind: "end-state", reached: "commit", evidence: ["commit abc123"] }).code).toBe(0);
+  const q = progressOf(flow);
+  expect(q.complete).toBe(true);
+  expect(q.stages).toEqual({ finished: 1, total: 2 });
+  expect(show(flow).stages.find((st: any) => st.id === later.stage).state).toBe("in-progress");
+  expect(show(flow).stages.find((st: any) => st.id === opened.stage).state).toBe("finished");
+});
+
+test("a task opened in one Stage takes a focused update from a later Stage of the same Flow", () => {
+  const opened = openFlow("s-1", "to-tickets");
+  const { refs, flow } = submit("s-1", task("ticket-1")).json;
+  submit("s-1", { kind: "stage", state: "finished" });
+  run(["open", "--flow", flow, "--skill", "implement"], { session: "s-2" });
+  const r = submit("s-2", { kind: "task", task: refs["ticket-1"], state: "done", evidence: ["commit def456"] });
+  expect(r.stderr).toBe("");
+  const t = progressOf(flow).tasks[0];
+  expect(t).toMatchObject({ id: refs["ticket-1"], stage: opened.stage, title: "Task ticket-1", state: "done", evidence: 1 });
+});
+
+test.each([
+  ["a done task with no evidence", [task("t", { state: "done" })], "evidence"],
+  ["a skipped task with no reason", [task("t", { state: "skipped" })], "reason"],
+  ["an inapplicable task with no reason", [task("t", { state: "inapplicable" })], "reason"],
+  ["an unknown task state", [task("t", { state: "finished" })], "state"],
+  ["a task update that resends the title", [task("t"), { kind: "task", task: "t", title: "Again", state: "active" }], "title"],
+  ["an update to a missing task", [{ kind: "task", task: "task-99", state: "active" }], "task-99"],
+  ["a blocker on a missing task", [{ kind: "blocker", text: "x", tasks: ["task-99"] }], "task-99"],
+  ["a reached End state with no evidence", [{ kind: "end-state", requested: "commit", reached: "commit" }], "evidence"],
+  ["a reached End state with none requested", [{ kind: "end-state", reached: "commit", evidence: ["c"] }], "requested"],
+  ["a reached End state on a non-delivery Flow", [{ kind: "end-state", requested: "none", reached: "commit", evidence: ["c"] }], "delivery"],
+  ["an unknown End state", [{ kind: "end-state", requested: "released" }], "requested"],
+  ["a passed check with no evidence", [{ kind: "check", name: "CI", outcome: "passed" }], "evidence"],
+  ["a PR that is not a link", [{ kind: "pr", url: "javascript:alert(1)", state: "open" }], "url"],
+  ["a task id used as a ref", [task("task-1")], "task-1"],
+])("%s is refused precisely with no partial write", (_, items, names) => {
+  openFlow("s-1");
+  const before = tree();
+  const r = run(["submit"], { session: "s-1", stdin: contribution(...items) });
+  expect(r.code).toBe(1);
+  expect(r.stdout).toBe("");
+  expect(r.stderr).toStartWith("flow-page.ts: ");
+  expect(r.stderr).toContain(names);
+  expect(tree()).toEqual(before);
+});
+
+test("resolving a blocker twice is refused with no write", () => {
+  openFlow("s-1");
+  const { refs } = submit("s-1", { kind: "blocker", ref: "b", text: "Waiting." }).json;
+  expect(submit("s-1", { kind: "blocker", blocker: refs.b, resolved: "Done." }).code).toBe(0);
+  const before = tree();
+  const again = submit("s-1", { kind: "blocker", blocker: refs.b, resolved: "Done again." });
+  expect(again.code).toBe(1);
+  expect(again.stderr).toContain(refs.b);
+  expect(tree()).toEqual(before);
 });
