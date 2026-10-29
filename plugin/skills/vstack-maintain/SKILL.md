@@ -59,6 +59,7 @@ Confirm decisions only, through `ask`. Do not draft alternatives for the user to
 - Edit or rename of adopt text: ask Flip to adapt with the user's new reason, or Drop this target. Give no recommended option. Do the same for each adopt caller that must change. If the user drops a required caller, also drop the rename or removal that needs that caller.
 - Rename: keep the artifact kind, move the artifact, set a skill's frontmatter name to the new folder name, and change every caller. Record the required rename House style row.
 - Remove: delete the artifact and change every caller. Rows that name only that artifact become reject. Ask for their one-line reason. Shared rows keep their other artifacts.
+- Drop an Upstream: remove its Pin and every register row of it, of any Disposition, with no reject left behind. Each artifact that only its rows name goes, with its callers changed. Ask which House style rows and rules apply only to that Upstream. Give no recommended option.
 
 A timed-out answer is not confirmation. The grill uses its own question and closing steps. It never substitutes an automatic answer for the user's decision.
 
@@ -68,7 +69,7 @@ Draft every Update and Hand edit in one isolated `vstack-worker`. The installed 
 
 Spawn one `vstack-worker` via eval `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`: the drafting brief below, the confirmed hand-off, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: report the Update or Hand edit as not done, and point at `/skill:setup-vstack` when `task.isolation.enabled` is off.
 
-Read the worker's patch path from omp's completion notice, `Isolation: changes captured at … (apply=false). Not applied.`, as skill://ship does. If structured output hides the notice, read the full completion through the handle's `output()` or `agent://<id>`. Never derive a path from an agent id. Read the patch. Apply it on implement's branch in the main checkout with `git apply -- "<patchPath>"`. A worker that returns without passing `gates` lands nothing. Report its failing stage and evidence path.
+Read the worker's patch path from omp's completion notice, `Isolation: changes captured at … (apply=false). Not applied.`, as skill://implement/END-STATE.md step 6b does. Never derive a path from an agent id. Read the patch. Apply it on implement's branch in the main checkout with `git apply -- "<patchPath>"`. A worker that returns without passing `gates` lands nothing. Report its failing stage and evidence path.
 
 For each wave of review fixes, as implement's END-STATE.md step 5 defines them, run the single-subagent line above again after the earlier patch landed. The fresh worker gets code-review's result and the review fixes it calls for in its brief, so its patch holds only the fix and passes `gates` first. State in the brief whether the branch was pushed. If the fix wave lands before the branch's first push, the fix-wave worker runs `gates` alone, because the first push already carries the bump. If the fix wave's plugin changes go into a commit that is pushed after an earlier push, the worker runs `prepare` before `gates`. CI's push check compares the version with the commit before the push, so each push that changes `plugin/` needs a raised version. If the review fixes change a target, a row, or a decision, the worker also runs `prepare` before the first push. Land it the same way. Never edit plugin text in the main checkout.
 
@@ -88,7 +89,7 @@ For a removal or rename, change every caller in your clone. Each changed adopt c
 
 #### One decisions file
 
-Store the file outside your clone, under `<Scratch dir>/maintain/`. It can contain Update rows and Hand edit targets together:
+Store the file outside your clone, under `<Scratch dir>/maintain/`. It can contain Update rows, Hand edit targets, and Upstream drops together:
 
 ```json
 {
@@ -103,6 +104,9 @@ Store the file outside your clone, under `<Scratch dir>/maintain/`. It can conta
     { "action": "edit", "kind": "skill", "artifact": "plugin/skills/adopt-example", "flip": { "confirmed": true, "reason": "The caller needs the local contract." } },
     { "action": "add", "kind": "rule", "artifact": "plugin/rules/local-contract.md" }
   ],
+  "upstreams": [
+    { "action": "drop", "upstream": "old-upstream", "house_style": ["old-upstream-rule"] }
+  ],
   "changelog": ["Record each shipped change in the repo's style."]
 }
 ```
@@ -110,6 +114,8 @@ Store the file outside your clone, under `<Scratch dir>/maintain/`. It can conta
 Update rows use `action` accept, hold, or defer. A changed Disposition uses `disposition`, `artifacts`, and `reason`. New accepted rows also need `upstream`, `path`, and a unique `id`. Removed rows use `removal` drop, original, remove-contribution, or keep-contribution. Renamed adopts use `rename` follow or keep. Keep needs `disposition: adapt` and a new reason. Hand edit actions are add, edit, take, rename, and remove. `kind` is skill, agent, or rule. Takes also need `upstream`, `path`, and `reason`. Renames need `to`. Removals that make rows reject need `reason`. `flip` belongs only to an adopt edit or rename.
 
 An `edit` target can carry an optional, nonempty, one-line `reason`. `prepare` sets that reason on every adapt row that lists the artifact. Other Dispositions keep their reasons. An adopt flip still uses `flip.reason`.
+
+An `upstreams` entry drops a whole Upstream that the user confirmed to drop. `prepare` removes its Pin from `pins.yaml` and every register row of that Upstream, of every Disposition, so none stays as reject. It removes every House style row whose `upstream` is that key, plus each row or rule id in `house_style` that applies only to that Upstream's text. Delete each artifact that only those rows name before `prepare`, and add a `remove` target for each shipped one so `prepare` checks its callers. `prepare` refuses while such an artifact exists, as it does for a `drop` removal. Run `bun scripts/check-register.ts` on the result.
 
 Run `prepare --decisions <file> [--plan <rerun plan.json>]`. It starts from branch HEAD, not the default branch or a saved snapshot. It keeps earlier tickets' rows and CHANGELOG lines. It writes the Decision register, Pins, Hold fields, House style rows, adopt copies, takes, the version, and CHANGELOG only. The version goes above HEAD's version. Removed or renamed shipped skill or agent names need a major bump, but the branch gets at most one major bump compared with its merge base on the default branch.
 

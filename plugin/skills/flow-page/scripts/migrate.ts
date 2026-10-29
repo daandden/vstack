@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { answerState, latestAsks, newFlow, parseAlias, SLUG, slugOf, type Entry, type Figure, type Io, type State } from "./model.ts";
+import { answerState, latestAsks, newFlow, parseAlias, readerNeeds, visualKind, SLUG, slugOf, type Entry, type Figure, type Io, type State } from "./model.ts";
 import { unsafeMarkup } from "./assets.ts";
 import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { join } from "node:path";
@@ -151,14 +151,15 @@ export function migrateHistorical(h: ReturnType<typeof parseHistorical>, id: str
     return vs.map((raw, i) => {
       const vis = object(raw, prefix);
       const fid = `${prefix}${i ? `-${i + 1}` : ""}`;
+      const kind = vis.kind === undefined ? {} : { kind: visualKind(vis.kind, `migrate ${fid}`) };
       if (["text", "html", "svg"].filter((k) => vis[k] !== undefined).length !== 1) fail(fid, "visual needs exactly one of text, html, or svg");
-      if (vis.text !== undefined) return { id: fid, text: str(vis, "text", fid) };
+      if (vis.text !== undefined) return { id: fid, ...kind, text: str(vis, "text", fid) };
       if (vis.html !== undefined) {
         const html = str(vis, "html", fid);
         const problems = unsafeMarkup(html);
         if (problems.length) fail(fid, `unsafe HTML: ${problems.join("; ")}`);
         if (vis.css !== undefined && /@|<\/|expression\(|javascript:/i.test(str(vis, "css", fid))) fail(fid, "CSS must contain plain scoped rules, with no imports, closing tags, or scripts");
-        return { id: fid, html, ...(vis.css === undefined ? {} : { css: vis.css }) };
+        return { id: fid, ...kind, html, ...(vis.css === undefined ? {} : { css: vis.css }) };
       }
       const path = str(vis, "svg", fid);
       const aid = fresh("attachment");
@@ -170,7 +171,7 @@ export function migrateHistorical(h: ReturnType<typeof parseHistorical>, id: str
         if (!(e instanceof Refusal)) throw e;
         s.attachments.push({ ...base, availability: "unavailable", reason: e.message });
       }
-      return { id: fid, attachment: aid };
+      return { id: fid, ...kind, attachment: aid };
     });
   };
   const withFigures = (v: unknown, prefix: string, stage: string) => {
@@ -190,6 +191,7 @@ export function migrateHistorical(h: ReturnType<typeof parseHistorical>, id: str
     const today = r.today === undefined ? undefined : list(r, "today", r.id).map((f) => ({ text: str(object(f, r.id), "text", r.id), source: source(str(f, "source", r.id)) }));
     const terms = r.terms === undefined ? undefined : list(r, "terms", r.id).map((t) => ({ term: str(object(t, r.id), "term", r.id), text: str(t, "text", r.id) }));
     s.questions.push({ id: r.id, stage: round.stage, round: round.id, q: int(r, "q", r.id), title: str(r, "title", r.id), description: str(r, "description", r.id), options, ...pick(r, ["again", "example"]), ...(today ? { today } : {}), ...(terms ? { terms } : {}), ...(r.topics ? { topics: texts(r, "topics", r.id) } : {}), ...(r.report_entries ? { entries: texts(r, "report_entries", r.id) } : {}), ...withFigures(r.visual, `q-${r.id}-visual`, round.stage) });
+    if (r.needs !== undefined) s.questions.at(-1)!.needs = readerNeeds(r.needs, `migrate ${r.id}`);
     anchors[`q-${r.id}`] = r.id;
   }
   for (const r of byType("answer")) {

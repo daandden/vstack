@@ -82,12 +82,13 @@ const errno = (e: unknown) => (e as NodeJS.ErrnoException).code;
 
 function aliasMatches(key: string) {
   const alias = parseAlias(key);
+  const matches = (value: string) => /^(spec|ticket):/.test(alias) ? value.toLowerCase() === alias.toLowerCase() : value === alias;
   const current = flowFolders(dir).flatMap((name) => {
     const s = readState(join(dir, name));
-    return s && aliasesOf(s).includes(alias) ? [{ id: s.flow.id, folder: join(dir, name) }] : [];
+    return s && aliasesOf(s).some(matches) ? [{ id: s.flow.id, folder: join(dir, name) }] : [];
   });
   const historical = historicalFlows(dirname(dir)).filter((h) => {
-    if (!h.aliases.includes(alias)) return false;
+    if (!h.aliases.some(matches)) return false;
     const migrated = migrationIdentity(dir, h.source);
     if (migrated) {
       if (!folderOfId(dir, migrated.flow) && !current.length) refuse(`${alias} belonged to Flow ${migrated.flow}, whose content expired or was deleted. Its historical source cannot recreate that identity. Open a new Flow explicitly`);

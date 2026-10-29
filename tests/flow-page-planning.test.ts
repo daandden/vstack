@@ -27,7 +27,7 @@ function run(args: string[], session: string, items?: object[]) {
 }
 const submit = (session: string, ...items: object[]) => run(["submit"], session, items);
 const option = (label: string) => ({ label, does: label, gains: ["Preserve the work boundary"], costs: ["Requires a planning decision"] });
-const question = (ref: string, extra: object = {}) => ({ ref, title: "Which planning route?", description: "Choose the work boundary.", options: [option("One ticket"), option("Two tickets")], ...extra });
+const question = (ref: string, extra: object = {}) => ({ ref, title: "Which planning route?", description: "Choose the work boundary.", needs: [{ need: "Compare the independently deliverable work boundaries.", kind: "prose" }], options: [option("One ticket"), option("Two tickets")], ...extra });
 
 test("a planning close preserves a resolved note as an interpretation, not a picked answer", () => {
   const opened = run(["open", "--skill", "grill-me", "--title", "Planning a small change"], "interview");

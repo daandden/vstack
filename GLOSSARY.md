@@ -18,10 +18,6 @@ _Avoid_: matt-install, core
 The Upstream that vstack adds selectively from: poteto's pstack at `cursor/plugins`, directory `pstack/`.
 _Avoid_: pstack fork, plugin
 
-**Diagram upstream**:
-The Upstream whose single skill draws every figure vstack shows a person: `cathrynlavery/diagram-design`.
-_Avoid_: diagram dependency, diagram plugin
-
 **CSS upstream**:
 The Upstream that vstack takes its CSS rules from: `vojtaholik/good-css`.
 _Avoid_: good-css upstream, style upstream
@@ -35,7 +31,7 @@ A pstack recipe for one type of task, such as Shipping or Perf issue: an ordered
 _Avoid_: workflow (when a pstack playbook is meant), recipe
 
 **Pin**:
-The exact Upstream version vstack was last reconciled with: a release tag for the Base upstream, a full commit SHA for the Enhancement upstream, the Diagram upstream, and the CSS upstream.
+The exact Upstream version vstack was last reconciled with: a release tag for the Base upstream, and a full commit SHA for the Enhancement upstream and CSS upstream.
 _Avoid_: lock, version (unqualified)
 
 ### Skills
@@ -61,7 +57,7 @@ The native judge model that omp's judge role names, which selects Addons during 
 _Avoid_: jev judge, principle judge
 
 **Utility skill**:
-A vstack skill that is not a Matt skill and that the user can use whatever the work is. unslop, technical-writing, diagram-design, good-css, and skill-creator set how text, figures, styles, and skills are made. explain, how, why, and forensics answer questions about existing work. in-your-own-words restates the user's goal so that the user and the agent agree. clean-wt removes omp checkouts that nothing uses anymore. The hidden helpers are vstack-tmp, vstack-fan-out, vstack-figures, flow-page, and vstack-worktree. Other skills name these helpers by `skill://`. Utility skills can start from their descriptions, from a rule, or by name, subject to each skill's invocation settings.
+A vstack skill that is not a Matt skill and that the user can use whatever the work is. unslop, technical-writing, good-css, and skill-creator set how text, styles, and skills are made. explain, how, why, and forensics answer questions about existing work. in-your-own-words restates the user's goal so that the user and the agent agree. clean-wt removes omp checkouts that nothing uses anymore. The hidden helpers are vstack-tmp, vstack-fan-out, vstack-figures, flow-page, and vstack-worktree. Other skills name these helpers by `skill://`. Utility skills can start from their descriptions, from a rule, or by name, subject to each skill's invocation settings.
 _Avoid_: standalone skill, helper skill
 
 **Command**:
@@ -204,13 +200,45 @@ _Avoid_: Q row, question nav, navigation
 A one-line definition on one question of the Flow page, for a name that a newcomer may not know, such as a glossary term, a skill or file name, or an ADR number. A concept that several questions need is a Topic note instead.
 _Avoid_: glossary note, definition block
 
-**Figure brief**:
-The text a skill writes for one diagram drawer that fixes one figure's type, size, layout, and content: every node, edge, and label, any zones, lanes, or rows, and the focal elements.
-_Avoid_: prompt, figure spec, diagram request
+**Visual kind**:
+The job a visual does for the reader of a Flow page question, chosen from what the reader needs to answer it: a Source view, a source excerpt, a Context diagram, an Option diagram, an option preview, a Before and after, a comparison table, a Data chart, or a Scenario walkthrough.
+_Avoid_: Diagram kind, diagram type (when the visual's job is meant)
+
+**Context diagram**:
+A Visual kind that shows how something works today: steps, branches, states, parts, or time.
+_Avoid_: background figure
+
+**Option diagram**:
+A Visual kind that shows how a question's options differ in shape.
+_Avoid_: comparison figure
+
+**Source view**:
+A Visual kind: a crop or screenshot of the real artifact a question is about, with its subject marked and enough surroundings to locate it.
+_Avoid_: reference image, locator (when a crop of the source is meant)
+
+**Before and after**:
+A Visual kind that shows the current state beside the state one option would produce.
+_Avoid_: diff view (when it is not a text diff)
+
+**Data chart**:
+A Visual kind that shows measured numbers a decision turns on, such as cost, time, or counts.
+_Avoid_: graph (unqualified)
+
+**Scenario walkthrough**:
+A Visual kind that runs one concrete case through each option, step by step, to show where the options part.
+_Avoid_: example (when a run through the options is meant)
 
 **Verify skill**:
 A project-local skill named `verify-<app>` that drives the project's app the way a user does and captures proof that a change works. setup-app-verification creates it, and maintain-app-verification keeps it accurate.
 _Avoid_: control skill, verification skill
+
+**Verifier**:
+An independent agent that did not write a change and runs it the way a user would to judge its behavior. The author's own checks are not independent verification.
+_Avoid_: checker, reviewer
+
+**Verdict**:
+A Verifier's judgment of one patch, with evidence: PASS, PASS+NOTES, FAIL, or DRIFT.
+_Avoid_: status, result
 
 **Drift**:
 A failure in a Verify skill's own instructions, such as a missing command, route, selector, or fixture, while the skill's Doctor check passes. Wrong app behavior is a finding, never drift.

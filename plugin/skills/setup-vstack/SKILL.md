@@ -14,7 +14,7 @@ Two parts, in this order. The machine section checks the omp settings vstack nee
 - Triage labels: the strings used for the five canonical triage roles.
 - Domain docs: where `GLOSSARY.md` and ADRs live, and the rules for reading them.
 
-The project section first checks this repo for Matt Pocock's config. When it finds some, it offers a Migration before setup, in the same run. Migration changes only this repo and its shared private store. It never changes machine state such as global skills, global rules, or diagram profiles.
+The project section first checks this repo for Matt Pocock's config. When it finds some, it offers a Migration before setup, in the same run. Migration changes only this repo and its shared private store. It never changes machine state such as global skills or global rules.
 
 This is a prompt-driven skill with helper scripts. Explore, present what you found, settle each choice through `ask`, then write.
 
@@ -50,10 +50,11 @@ Below, `machine.ts`, `project.ts`, and `migrate.ts` stand for these commands.
    - 5, eval Python is ready: `eval.py` is on and `omp setup python --check` passes. This one only warns.
    - 6, `task.isolation.enabled` is on (ADR 0007). Skills that need an isolated subagent stop without it.
    - 7, `worktree.clone` is on. In Private mode, prototype mounts app-bound prototypes in an `omp wt add` clone and stops on a plain checkout.
+   - 8, `ratchet.enabled` is on (ADR 0041). Ratchet optionally improves an LLM flow against approved cases. Disabled Ratchet only warns, so Leave it still passes a machine with no other failures. An unavailable setting also warns with an omp 18.4.5-or-later upgrade remedy, not a setting change.
 
-   When every check passes, it prints one `OK` line. Otherwise it prints one line per check that does not pass: `FAIL <n> <name>: <what is wrong>. Remedy: <what fixes it>.`, or `WARN` in place of `FAIL` for check 5. Check 2 prints `NOTE 2 <name>: <the role and the jev note>.` when the role names a model other than `typesafe/jev-latest`. Check 3 prints `NOTE 3 <name>: <the overrides>.` when a key exists. Check 4 prints `NOTE 4 <name>: <the new-session note>.` when the extension is enabled. A `NOTE` line has no remedy. Exit 0 means no `FAIL` line, 1 means at least one, and 2 means the script did not run: show its message and go on to the project section.
+   When every check passes, it prints one `OK` line. Otherwise it prints one line per check that does not pass: `FAIL <n> <name>: <what is wrong>. Remedy: <what fixes it>.`, or `WARN` in place of `FAIL` for checks 5 and 8. Check 2 prints `NOTE 2 <name>: <the role and the jev note>.` when the role names a model other than `typesafe/jev-latest`. Check 3 prints `NOTE 3 <name>: <the overrides>.` when a key exists. Check 4 prints `NOTE 4 <name>: <the new-session note>.` when the extension is enabled. A `NOTE` line has no remedy. Exit 0 means no `FAIL` line, 1 means at least one, and 2 means the script did not run: show its message and go on to the project section.
 2. Show the output to the user as it is.
-3. The settings writer fixes only checks 2, 6, and 7, with the user's approval. For each failed setting, call one `ask` with Set it (Recommended) and Leave it. Then run `machine.ts --set <name>...` with only the approved names: `judge` for 2, `isolation` for 6, `clone` for 7. It uses `omp config set` and preserves the other judge roles. Never change omp settings any other way. Run step 1 again and show its output.
+3. The settings writer fixes only checks 2, 6, 7, and disabled-setting WARN 8, with the user's approval. For each of these setting remedies, call one `ask` with Set it (Recommended) and Leave it. An unavailable Ratchet setting needs the reported omp upgrade instead; offer no Set it for that warning. Then run `machine.ts --set <name>...` with only the approved names: `judge` for 2, `isolation` for 6, `clone` for 7, `ratchet` for disabled 8. Leave it keeps that setting unchanged. If no names are approved, do not run the writer. It uses `omp config set` to write the machine-wide user configuration and preserves unrelated settings, including other model roles. Never enable Ratchet in project or session configuration. Never change omp settings any other way. After a write, run step 1 again and show its output.
 4. Leave checks 1, 3, 4, and 5 to the user. TypeSafe credentials come from `/login typesafe`, which only the user can run. The extension needs a new session. Done repeats every line still failing.
 
 ## Project section
@@ -263,7 +264,7 @@ Publish the Result described above. Tell the user whether setup is complete, in 
 
 List the skills that read the config:
 
-- `issue-tracker.md`: to-spec, to-tickets, triage, wayfinder, code-review, and why.
+- `issue-tracker.md`: to-spec, to-tickets, triage, wayfinder, code-review, why, implement-spec, and session.
 - `code-host.md`: implement and its PR chain (open-pr, babysit, and ship), implement-spec, hillclimb, code-review, blast-radius, why, and session. Without it, implement offers only End state commit, and code-review and blast-radius cannot review a PR. Its default End state is the End state that implement, implement-spec, and hillclimb take when the user's words and the ticket name none.
 - `ci.md`: implement, babysit, and wizard. Without it, implement offers only End state commit. Logs, build reruns, secrets, and variables use this file.
 - `triage-labels.md`: triage, to-spec, and to-tickets.
@@ -271,4 +272,4 @@ List the skills that read the config:
 
 Say that the user can edit these files directly later. Re-running this skill adds only missing config files, with one cutover when `ci.md` is missing: it also removes the moved CI rows from `code-host.md` and reduces an MCP Code host to its short shape after confirmation. When `code-host.md` has no default End state, a re-run asks only that question and adds the one line after confirmation. Every other existing config stays unchanged. To switch a choice, edit its file, or delete the file and run this skill again.
 
-Then name the next step. setup-app-verification creates this project's Verify skill, which gives live proof to implement, forensics, hillclimb, and ship's verifiers. Tell the user to start a new session (`/new`) and run `/skill:grill-with-docs` to plan live proof. implement uses `skill://setup-app-verification` to create the Verify skill in that run.
+Then name the next step. setup-app-verification creates this project's Verify skill. implement, hillclimb, and forensics use it for their own checks, and the final Verifier drives it at every End state. Tell the user to start a new session (`/new`) and run `/skill:grill-with-docs` to plan verification. implement uses `skill://setup-app-verification` to create the Verify skill in that run.

@@ -202,6 +202,25 @@ test("a structured Grilling page migrates into a Flow with its questions, answer
   for (const alias of ["spec:41", "ticket:42", "ticket:43", "branch:feat/limits", "run:41-run", "folder:41", "slug:checkout-limits"]) expect(ok(run(w, ["find", alias])).flow).toBe(migrated.flow);
 });
 
+test("migration preserves declared reader needs and visual kinds without inventing them on older questions", () => {
+  const w = world();
+  const folder = legacyPage(w);
+  const records = readFileSync(join(folder, "page.jsonl"), "utf8").trim().split("\n").map((line) => JSON.parse(line));
+  const q = records.find((r) => r.type === "question" && r.id === "q-scope");
+  q.needs = [{ need: "Locate the existing checkout boundary.", kind: "context-diagram" }];
+  for (const v of [q.visual].flat()) v.kind = "context-diagram";
+  writeFileSync(join(folder, "page.jsonl"), records.map((r) => JSON.stringify(r)).join("\n") + "\n");
+  const before = tree(folder);
+  const migrated = ok(run(w, ["migrate", folder]));
+  const snap = ok(run(w, ["show", "--flow", migrated.flow]));
+  const questions = snap.stages.flatMap((st: any) => st.questions);
+  expect(questions.find((r: any) => r.id === "q-scope").needs).toEqual(q.needs);
+  expect(questions.find((r: any) => r.id === "q-scope").figures[0].kind).toBe("context-diagram");
+  expect(questions.find((r: any) => r.id === "q-open").needs).toBeUndefined();
+  expect(snap.stages.every((st: any) => st.opened === undefined)).toBe(true);
+  expect(tree(folder)).toEqual(before);
+});
+
 test("an in-flight migrated Stage takes new contributions without changing old Q numbers, ids, or captured figures", () => {
   const w = world();
   const folder = legacyPage(w);
@@ -210,7 +229,7 @@ test("an in-flight migrated Stage takes new contributions without changing old Q
   ok(run(w, ["bind", "--flow", migrated.flow, "--stage", "impl"], { session: "continue" }));
   const updated = ok(run(w, ["submit"], { session: "continue", stdin: { version: 1, items: [
     { kind: "answer", question: "q-open", response: { status: "answered", picks: ["B"] } },
-    { kind: "round", questions: [{ ref: "next", title: "What comes next?", description: "Continue the implementation.", options: [option("Proceed"), option("Stop")] }] },
+    { kind: "round", questions: [{ ref: "next", title: "What comes next?", description: "Continue the implementation.", needs: [{ need: "Decide whether the implementation can continue.", kind: "prose" }], options: [option("Proceed"), option("Stop")] }] },
     { kind: "revise", result: "checks", add: [{ claim: "Browser checked", status: "confirmed", evidence: "browser", missing_proof: "none", consequence: "continue" }] },
   ] } }));
   const snap = ok(run(w, ["show", "--flow", migrated.flow]));
@@ -306,7 +325,7 @@ test("stageless historical questions keep session-scoped Q numbers and missing f
   expect(snap.attachments[0].availability).toBe("unavailable");
   const stage = snap.stages[1].id;
   const next = ok(run(w, ["submit", "--flow", migrated.flow, "--stage", stage], { stdin: { version: 1, items: [
-    { kind: "round", questions: [{ title: "Which cap?", description: "Continue.", options: [option("First"), option("Second")] }] },
+    { kind: "round", questions: [{ title: "Which cap?", description: "Continue.", needs: [{ need: "Compare the available cap policies.", kind: "prose" }], options: [option("First"), option("Second")] }] },
   ] } }));
   expect(["question-1", "question-2"]).not.toContain(next.ask.questions[0].id);
   expect(next.ask.questions[0].question).toStartWith("Q2.");

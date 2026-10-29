@@ -1,6 +1,6 @@
 ---
 name: maintain-app-verification
-description: "Keep a project's Verify skill and feature map accurate for live proof in implement's END-STATE step 4. Private mode edits the shared copy in place."
+description: "Keep a project's Verify skill and feature map accurate for implement's END-STATE checks in steps 4 and 6b. Private mode edits the shared copy in place."
 disable-model-invocation: true
 ---
 
@@ -12,7 +12,7 @@ Follow `skill://flow-page`'s "Stage entry/exit line". Follow skill://implement/E
 
 ## Entries and outcomes
 
-A feature-scoped caller names one feature whose live proof encountered Drift. Run step 0, step 2 for that feature file only, then steps 3–6 for that feature. Skip index hygiene and the source-wave Fan-out. If the caller names no feature, run the full pass over every feature.
+A feature-scoped caller names one feature whose smoke check or final Verifier encountered Drift. Run step 0, step 2 for that feature file only, then steps 3–6 for that feature. Skip index hygiene and the source-wave Fan-out. If the caller names no feature, run the full pass over every feature.
 
 Report one outcome:
 

@@ -70,7 +70,7 @@ const ok = (r: Run): any => {
 };
 
 const option = (label: string) => ({ label, does: `${label} does`, gains: [`${label} gain`], costs: [`${label} cost`] });
-const question = (ref: string) => ({ ref, title: `Which ${ref}?`, description: `Why ${ref} matters.`, options: [option("First"), option("Second")] });
+const question = (ref: string) => ({ ref, title: `Which ${ref}?`, description: `Why ${ref} matters.`, needs: [{ need: `Understand why ${ref} changes the decision.`, kind: "prose" }], options: [option("First"), option("Second")] });
 const contribution = (...items: object[]) => ({ version: 1, items });
 const round = (...questions: object[]) => ({ kind: "round", questions });
 const open = (w: World, session = "s-1", title = "Checkout limits") => run(["open", "--title", title, "--skill", "grill-me"], w, { session });

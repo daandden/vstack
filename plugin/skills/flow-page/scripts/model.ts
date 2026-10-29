@@ -10,13 +10,27 @@ export const STAGE_STATES = ["not-started", "in-progress", "finished"] as const;
 export type StageState = (typeof STAGE_STATES)[number];
 export type Stage = { id: string; skill: string; ticket?: string; parent?: string; state: StageState; order: number; opened?: string; finished?: string };
 export type Round = { id: string; stage: string; n: number; seq: number; time: string; session?: number };
-export type Figure = { id: string; text: string } | { id: string; html: string; css?: string } | { id: string; attachment: string };
+export const VISUAL_KINDS = {
+  "source-view": "Source view",
+  "source-excerpt": "Source excerpt",
+  "context-diagram": "Context diagram",
+  "option-diagram": "Option diagram",
+  "option-preview": "Option preview",
+  "before-after": "Before and after",
+  "comparison-table": "Comparison table",
+  "data-chart": "Data chart",
+  scenario: "Scenario walkthrough",
+  prose: "Prose",
+} as const;
+export type VisualKind = keyof typeof VISUAL_KINDS;
+export type ReaderNeed = { need: string; kind: VisualKind };
+export type Figure = { id: string; kind?: Exclude<VisualKind, "prose"> } & ({ text: string } | { html: string; css?: string } | { attachment: string });
 export type Option = { label: string; does: string; gains: string[]; costs: string[]; recommended?: string; preview?: Figure };
 export type Fact = { text: string; source: string };
 export type Term = { term: string; text: string };
 export type Question = {
   id: string; stage: string; round: string; q: number; title: string; description: string; options: Option[];
-  again?: string; reopens?: string; today?: Fact[]; terms?: Term[]; topics?: string[]; entries?: string[]; example?: string; figures?: Figure[];
+  again?: string; reopens?: string; today?: Fact[]; terms?: Term[]; topics?: string[]; entries?: string[]; example?: string; figures?: Figure[]; needs?: ReaderNeed[];
 };
 /** What `ask` returned, as it returned it. `picks` of a timed-out, cancelled, or headless response are not the user's. */
 const STATUSES = ["answered", "empty", "cancelled", "timed-out", "headless"] as const;
@@ -332,8 +346,10 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
   const nextEntry = new Map<string, number>();
   const authoredFigures: Figure[] = [];
   const figure = (raw: unknown, id: string, where: string): Figure => {
-    const o = fields(raw, where, ["attachment"]);
-    const f = { id, attachment: resolve(o.attachment, "attachment", where) };
+    const o = fields(raw, where, [], ["attachment", "text", "kind"]);
+    if (["attachment", "text"].filter((k) => o[k] !== undefined).length !== 1) refuse(where, "a figure needs exactly one of attachment or text");
+    const kind = o.kind === undefined ? undefined : visualKind(o.kind, where);
+    const f: Figure = { id, ...(kind ? { kind } : {}), ...(o.text === undefined ? { attachment: resolve(o.attachment, "attachment", where) } : { text: text(o, "text", where) }) };
     authoredFigures.push(f);
     return f;
   };
@@ -1182,8 +1198,24 @@ function parseAttachment(o: Obj, where: string, stage: string, id: string, time:
   return { ...base, caption, origin, availability: "captured", revision: c.revision, file: c.file, size: c.size, name: c.name, from: c.from };
 }
 
+export function visualKind(raw: unknown, where: string): Exclude<VisualKind, "prose"> {
+  if (typeof raw !== "string" || raw === "prose" || !Object.hasOwn(VISUAL_KINDS, raw)) refuse(where, `kind must name a Visual kind other than prose: ${listed(Object.keys(VISUAL_KINDS).filter((k) => k !== "prose"))}`);
+  return raw as Exclude<VisualKind, "prose">;
+}
+
+export function readerNeeds(raw: unknown, where: string): ReaderNeed[] {
+  const o = { needs: raw };
+  return list(o, "needs", where).map((raw, i) => {
+    const w = `${where}: needs ${i + 1}`;
+    const n = fields(raw, w, ["need", "kind"]);
+    const kind = text(n, "kind", w);
+    if (!Object.hasOwn(VISUAL_KINDS, kind)) refuse(w, `kind must be ${listed(Object.keys(VISUAL_KINDS))}`);
+    return { need: text(n, "need", w), kind: kind as VisualKind };
+  });
+}
+
 function parseQuestion(raw: unknown, where: string, id: string, stage: string, round: string, resolve: (v: unknown, kind: string, where: string) => string, figure: (raw: unknown, id: string, where: string) => Figure): Question {
-  const o = fields(raw, where, ["title", "description", "options"], ["ref", "again", "reopens", "today", "terms", "topics", "results", "example", "figures"]);
+  const o = fields(raw, where, ["title", "description", "options", "needs"], ["ref", "again", "reopens", "today", "terms", "topics", "results", "example", "figures"]);
   const options = list(o, "options", where).map((op, i) => {
     const ow = `${where}: option ${i + 1}`;
     const oo = fields(op, ow, ["label", "does", "gains", "costs"], ["recommended", "preview"]);
@@ -1199,7 +1231,7 @@ function parseQuestion(raw: unknown, where: string, id: string, stage: string, r
       const xo = fields(x, xw, [a, b]);
       return { [a]: text(xo, a, xw), [b]: text(xo, b, xw) };
     });
-  const q: Question = { id, stage, round, q: 0, title: text(o, "title", where), description: text(o, "description", where), options };
+  const q: Question = { id, stage, round, q: 0, title: text(o, "title", where), description: text(o, "description", where), options, needs: readerNeeds(o.needs, where) };
   if (o.figures !== undefined) q.figures = list(o, "figures", where).map((f, j) => figure(f, `${id}-figure-${j + 1}`, `${where}: figure ${j + 1}`));
   if (o.again !== undefined) q.again = resolve(o.again, "question", `${where}: again`);
   if (o.reopens !== undefined) q.reopens = resolve(o.reopens, "assumed pick", `${where}: reopens`);
@@ -1211,6 +1243,16 @@ function parseQuestion(raw: unknown, where: string, id: string, stage: string, r
   if (o.results !== undefined) q.entries = texts(o, "results", where).map((t) => resolve(t, "result entry", `${where}: results`));
   const example = optText(o, "example", where);
   if (example) q.example = example;
+  const shown = [
+    ...(q.figures ?? []).map((f) => ({ f, preview: false })),
+    ...q.options.flatMap((o) => o.preview ? [{ f: o.preview, preview: true }] : []),
+  ];
+  for (const { f, preview } of shown) {
+    if (f.kind === undefined) refuse(where, `figure ${f.id} must declare its Visual kind`);
+    if (f.kind === "option-preview" && !preview) refuse(where, "kind option-preview goes only on an option preview");
+    if (!q.needs!.some((n) => n.kind === f.kind)) refuse(where, `no need names kind ${f.kind}`);
+  }
+  for (const n of q.needs!) if (n.kind !== "prose" && !shown.some(({ f }) => f.kind === n.kind)) refuse(where, `no visual or option preview on this question is a ${n.kind}`);
   return q;
 }
 
@@ -1581,6 +1623,7 @@ export function snapshot(v: View, page: string, renderer: number) {
         ...(q.again ? { again: q.again } : {}), asked_again_by: q.asked_again_by, ...(q.reopens ? { reopens: q.reopens } : {}),
         results: q.entries ?? [], topics: q.topics ?? [], ...(q.decided_in ? { decided_in: q.decided_in } : {}),
         ...(q.figures ? { figures: q.figures } : {}),
+        ...(q.needs ? { needs: q.needs } : {}),
         ...(q.options.some((o) => o.preview) ? { options: q.options.map((o) => ({ label: o.label, ...(o.preview ? { preview: o.preview } : {}) })) } : {}),
       })),
       closes: st.items.filter((i) => i.type === "close").map((i) => ({

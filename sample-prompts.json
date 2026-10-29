@@ -1677,6 +1677,34 @@
       "baseline_borderline": {}
     },
     {
+      "id": "tune-llm-flow-quality",
+      "split": "tune",
+      "prompt": "Keep improving the answer quality of our LLM support-reply flow through repeated measured experiments on approved cases, keeping only wins.",
+      "expected": ["tune-llm-flow"],
+      "allowed": ["principle-prove-it-works", "principle-explain-the-number", "benchmark-checklist"]
+    },
+    {
+      "id": "tune-llm-flow-cost",
+      "split": "tune",
+      "prompt": "Keep cutting the cost per answer of our LLM support-reply flow through repeated experiments, holding graded answer quality.",
+      "expected": ["tune-llm-flow"],
+      "allowed": ["principle-prove-it-works", "principle-explain-the-number", "benchmark-checklist"]
+    },
+    {
+      "id": "tune-llm-flow-latency",
+      "split": "holdout1",
+      "prompt": "Keep cutting p95 latency of /summarize, which calls the model, through repeated measured experiments while holding answer quality.",
+      "expected": ["tune-llm-flow"],
+      "allowed": ["principle-prove-it-works", "principle-explain-the-number", "benchmark-checklist"]
+    },
+    {
+      "id": "hillclimb-no-model-latency",
+      "split": "holdout1",
+      "prompt": "Keep cutting p95 latency of our parser, which calls no model, through repeated experiments against the same frozen benchmark until it is under 5 ms.",
+      "expected": ["hillclimb"],
+      "allowed": ["principle-prove-it-works", "principle-explain-the-number", "benchmark-checklist", "principle-build-the-lever"]
+    },
+    {
       "id": "hillclimb-1",
       "split": "tune",
       "prompt": "Keep improving this benchmark until throughput exceeds 1000 requests per second. measure each attempt with the same harness.",

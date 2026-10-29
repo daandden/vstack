@@ -4,8 +4,8 @@ This file is the single source of the lines vstack skill text uses to start suba
 
 Slots:
 
-- `<unit>`: what one part is (a file, a review axis, a design, a PR, a hypothesis, a figure).
-- `vstack-<role>`: an agent the plugin ships. `vstack-explorer` reads, `vstack-worker` writes, `vstack-verifier` runs checks, `vstack-diagram-drawer` draws figures.
+- `<unit>`: what one part is (a file, a review axis, a design, a PR, a hypothesis).
+- `vstack-<role>`: an agent the plugin ships. `vstack-explorer` reads, `vstack-worker` writes, `vstack-verifier` runs checks.
 - `<role brief>`: what the subagent does and returns, from the skill's text.
 - `<reason>`: what the stop reports, beyond the undone parts and why the subagents did not start.
 - When the subagent writes Scratch, add `, the Scratch dir` after `the vstack root`.
@@ -20,7 +20,7 @@ Before this step, read skill://vstack-fan-out.
 Fan-out (skill://vstack-fan-out): parts: one per <unit>. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-<role>"`. Each `task`: <role brief>, the vstack root. <Wait for every result. | Do not wait; keep working.> If they cannot start, stop: <reason>.
 ```
 
-Roles that fan out in their own clones (compare-attempts runners, hillclimb workers, implement-spec implementers, wayfinder research runners, ship verifiers) use this eval form:
+Roles that fan out in their own clones (compare-attempts runners, hillclimb workers, implement-spec implementers, wayfinder research runners, final Verifiers) use this eval form:
 
 ```
 Fan-out (skill://vstack-fan-out): parts: one per <unit>. One eval cell: per part, `agent(<prompt>, agent="vstack-<role>", isolated=True, apply=False, merge=False)`; <collect>. Each prompt: <role brief>, the vstack root. <What the parent does with each `patchPath`.> If they cannot start or isolation is off, stop: <reason>.

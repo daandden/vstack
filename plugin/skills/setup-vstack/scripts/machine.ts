@@ -1,5 +1,5 @@
 //   bun machine.ts                              check; prints one OK line or one line per failing check, plus NOTE lines
-//   bun machine.ts --set judge|isolation|clone…  write those settings to the user's omp config
+//   bun machine.ts --set judge|isolation|clone|ratchet…  write those settings to the user's omp config
 //
 // Every fact comes from the `omp` on PATH, so the checks see what omp itself resolves for this HOME and cwd.
 // Checking never writes. `--set` runs only after the user approved the change through `ask`.
@@ -23,7 +23,7 @@ type Problem = Extract<Result, { status: "fail" | "warn" }>;
 const isProblem = (r: Result): r is Problem => r.status === "fail" || r.status === "warn";
 
 function usage(message: string): never {
-  console.error(`${message}\nUsage: machine.ts\n       machine.ts --set judge|isolation|clone...`);
+  console.error(`${message}\nUsage: machine.ts\n       machine.ts --set judge|isolation|clone|ratchet...`);
   process.exit(2);
 }
 
@@ -53,7 +53,10 @@ async function settings(): Promise<Map<string, unknown>> {
 }
 
 async function check(): Promise<Result[]> {
-  const [cfg, python] = await Promise.all([settings(), omp("setup", "python", "--check", "--json")]);
+  // `config list` runs first and alone: on a HOME with no agent.db yet, two omp processes that start together
+  // can both create its tables, and the loser fails with "table settings already exists".
+  const cfg = await settings();
+  const python = await omp("setup", "python", "--check", "--json");
   const results: Result[] = [];
   const roles = (cfg.get("modelRoles") ?? {}) as Record<string, unknown>;
   const judge = roles.judge;
@@ -130,13 +133,13 @@ async function check(): Promise<Result[]> {
     });
   }
 
-  // 5. eval Python (warn only: diagram-design runs its scripts through eval's interpreter).
+  // 5. eval Python.
   if (cfg.get("eval.py") === false) {
     results.push({
       id: 5,
       name: "eval Python",
       status: "warn",
-      detail: "eval.py is off, so eval cannot run Python cells and diagram-design cannot export figures",
+      detail: "eval.py is off, so eval cannot run Python cells",
       remedy: "turn it on with omp config set eval.py true, then run omp setup python --check",
     });
   } else if (python.code !== 0) {
@@ -149,7 +152,7 @@ async function check(): Promise<Result[]> {
       id: 5,
       name: "eval Python",
       status: "warn",
-      detail: `omp setup python --check fails${found}, so eval cannot run Python cells and diagram-design cannot export figures`,
+      detail: `omp setup python --check fails${found}, so eval cannot run Python cells`,
       remedy: "run omp setup python and fix what it reports",
     });
   } else {
@@ -180,6 +183,26 @@ async function check(): Promise<Result[]> {
         },
   );
 
+  results.push(
+    cfg.get("ratchet.enabled") === true
+      ? { id: 8, name: "ratchet.enabled", status: "ok" }
+      : cfg.has("ratchet.enabled")
+        ? {
+            id: 8,
+            name: "ratchet.enabled",
+            status: "warn",
+            detail: "ratchet.enabled is off, so optional Ratchet tuning is unavailable",
+            remedy: "setup-vstack sets ratchet.enabled to true once you approve, or choose Leave it to keep Ratchet disabled",
+          }
+        : {
+            id: 8,
+            name: "ratchet.enabled",
+            status: "warn",
+            detail: "this omp has no ratchet.enabled setting, so optional Ratchet tuning is unavailable",
+            remedy: "upgrade omp to 18.4.5 or later, then run /skill:setup-vstack again",
+          },
+  );
+
   return results;
 }
 
@@ -197,14 +220,19 @@ const SETTERS: Record<string, () => Promise<[key: string, value: string]>> = {
   },
   isolation: async () => ["task.isolation.enabled", "true"],
   clone: async () => ["worktree.clone", "true"],
+  ratchet: async () => ["ratchet.enabled", "true"],
 };
 
 async function main(argv: string[]) {
   if (argv[0] === "--set") {
     const names = argv.slice(1);
-    if (names.length === 0) usage("--set needs at least one of: judge, isolation, clone");
+    if (names.length === 0) usage("--set needs at least one of: judge, isolation, clone, ratchet");
     for (const name of names) if (!(name in SETTERS)) usage(`unknown setting for --set: ${name}`);
     if (!OMP) usage("omp is not on PATH; setup-vstack needs the omp CLI");
+    if (names.includes("ratchet") && !(await settings()).has("ratchet.enabled")) {
+      console.error("Ratchet requires omp 18.4.5 or later. Upgrade omp, then run /skill:setup-vstack again; no settings were written.");
+      return 2;
+    }
     for (const name of new Set(names)) {
       const [key, value] = await SETTERS[name]!();
       await ompOrDie("config", "set", key, value);

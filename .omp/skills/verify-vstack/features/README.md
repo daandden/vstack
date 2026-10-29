@@ -14,7 +14,7 @@ This directory maps the user-facing features of the vstack omp plugin. Read this
 
 - Start every recipe from the baseline. A recipe that needs earlier state names it under `Preconditions:`.
 - Run session behavior through `scripts/drive.ts`. Use the feature ID as `--name`, so each drive has its own evidence dir. drive.ts refuses a name that the run already used. Retry with a new name such as `<feature>-retry1`, and read the proof from that new dir.
-- Run a skill's Bun CLI or Python script from `$CHECKOUT/plugin/skills/<skill>/scripts/`, not through `skill://...`.
+- Run a skill's Bun CLI from `$CHECKOUT/plugin/skills/<skill>/scripts/`, not through `skill://...`.
 - Pass `--home "$VERIFY_RUN_DIR/data/<name>"` to every script that takes `--home`. Never let a script write to the real `~/.vstack/`.
 - In the browser, open tabs with a name, `app: { tern: false }`, and a 1280 by 900 `viewport`. Act by ARIA role and name.
 - Treat every command as literal. Keep quoted names and flags as they are.
@@ -46,11 +46,10 @@ Keep implementation details out of the map. Name only user paths, stable handles
 - [Addon tools](./addon-tools.md): typed Matt runs display intent-gathering instructions, and agent-called tools select Addons. The stub proves tool completion without a native judge, not native selection.
 - [Scratch dir](./scratch-dir.md): the vstack-tmp scripts make and list Scratch entries. The `/vstack-clean` Command previews expired entries and deletes only confirmed choices.
 - [Flow page](./flow-page.md): the flow-page script takes typed contributions for a bound Stage, numbers and links them, refuses bad input without writing, and publishes the static Flow page with Overview, Stage tabs, Results, and Topics. A Flow closes and reopens, and Scratch cleanup never removes an open Flow. The Local Flow host serves live pages, native omp sessions present their bound Flow after each reply, and the combined-product proof drives every T4 case in one run.
-- [Diagram scripts](./diagram-scripts.md): the diagram-design Python scripts extract Mermaid, draw.io, and Excalidraw files, self-check a diagram page, check its connector geometry and its colors and fonts, and export it to SVG.
+- [Figure render](./figure-render.md): the caller writes Mermaid and renders a Catppuccin Mocha Pele SVG through Bun. The Flow captures and displays the real SVG safely, with reader needs and Visual kinds.
 - [Clean worktrees](./clean-wt.md): `/skill:clean-wt` inventories the omp worktree base from a session with a held lease, removes unused clean checkouts, keeps their branches, and skips stale, unique, or unapproved dirty checkouts.
 
 ## Not mapped yet
 
 - The maintainer CLIs `scripts/check-register.ts`, `scripts/vstack-maintain.ts`, and the by-hand jev check `scripts/addon-judge-check.ts`. `README.md` documents their commands and exit codes.
 - The setup-vstack scripts (`machine.ts`, `project.ts`, and the Migration helper `migrate.ts`). They change omp configuration and git state, so a recipe needs a throwaway `HOME` and a throwaway repo.
-- The diagram-design PNG export. It needs Playwright and its Chromium in eval's Python, and the skill installs them only after the user approves through `ask`.

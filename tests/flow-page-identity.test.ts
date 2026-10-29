@@ -50,7 +50,7 @@ const ok = (r: Run): any => {
 };
 
 const option = (label: string) => ({ label, does: `${label} does`, gains: [`${label} gain`], costs: [`${label} cost`] });
-const question = (ref: string) => ({ ref, title: `Which ${ref}?`, description: `Why ${ref} matters.`, options: [option("First"), option("Second")] });
+const question = (ref: string) => ({ ref, title: `Which ${ref}?`, description: `Why ${ref} matters.`, needs: [{ need: `Understand why ${ref} changes the decision.`, kind: "prose" }], options: [option("First"), option("Second")] });
 const contribution = (...items: object[]) => ({ version: 1, items });
 const round = (...questions: object[]) => ({ kind: "round", questions });
 const card = (ref: string) => ({ ref, title: `Finding ${ref}`, label: "issue", blocking: true, impact: `Users see ${ref}.`, action: `Fix ${ref}.`, evidence: `${ref}.ts:1` });
@@ -74,6 +74,20 @@ function twoTickets(w: ReturnType<typeof world>) {
   const b = ok(run(["open", "--flow", a.flow, "--skill", "wayfinder", "--ticket", "102"], { ...at, session: "s-b" }));
   return { at, a, b };
 }
+
+test("tracker aliases match case-insensitively while preserving original keys and distinguishing underscores", () => {
+  const w = world();
+  const at = { cwd: w.project, home: w.home, session: "tracker" };
+  const a = ok(run(["open", "--title", "Underscore project", "--skill", "implement", "--ticket", "MY_PROJ-12"], at));
+  ok(run(["alias", "spec:MY_PROJ-10"], at));
+  const b = ok(run(["open", "--title", "Hyphen project", "--skill", "implement", "--ticket", "MY-PROJ-12"], at));
+  expect(ok(run(["find", "ticket:my_proj-12"], at)).flow).toBe(a.flow);
+  expect(ok(run(["find", "ticket:my-proj-12"], at)).flow).toBe(b.flow);
+  expect(ok(run(["find", "spec:my_proj-10"], at)).flow).toBe(a.flow);
+  const snap = ok(run(["show", "--flow", a.flow], at));
+  expect(snap.stages[0].ticket).toBe("MY_PROJ-12");
+  expect(snap.aliases).toContain("spec:MY_PROJ-10");
+});
 
 test("two callers bound to different Stages commit concurrently without losing work or aliases", async () => {
   const w = world();

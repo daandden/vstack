@@ -8,7 +8,9 @@ disable-model-invocation: true
 
 Break a plan, spec, or conversation into a set of **tickets**: tracer-bullet vertical slices, each declaring the tickets that **block** it.
 
-The issue tracker and triage label vocabulary should have been provided to you. If not, tell the user to run `/skill:setup-vstack`.
+Read the project's `issue-tracker.md` and `triage-labels.md` under `<vstack root>/docs/vstack/` in Standard mode or `<vstack root>/config/` in Private mode. If they have not been provided and are missing, tell the user to run `/skill:setup-vstack`.
+
+For an MCP tracker such as Jira, read the named server's current tool list, descriptions, and parameter schemas. Select search, full issue and comment reads, creation, labeling, and blocking-link tools using the recorded project facts. No per-operation config rows or assumed tool names are needed. If discovery or a needed capability is unavailable, name the server and gap and leave the affected publication undone. CLI, local-markdown, and no-tool prose configs keep their configured workflows.
 
 ## Process
 
@@ -38,7 +40,7 @@ Break the work into **tracer bullet** tickets.
 
 Give each ticket its **blocking edges**: the other tickets that must complete before it can start. A ticket with no blockers can start immediately.
 
-Copy from the spec into each ticket only the non-principle Addon pointers that its work needs. Omit `principle-*` pointers from inherited spec context and copied per-ticket pointers. Build sessions pick principles fresh.
+Write no `skill://<addon>` pointers in tickets, and drop any inherited from the spec. Build sessions pick Addons fresh.
 
 **Wide refactors are the exception to vertical slicing.** A **wide refactor** is one mechanical change (rename a column, retype a shared symbol) whose **blast radius** fans across the whole codebase, so a single edit breaks thousands of call sites at once and no vertical slice can land green. Don't force it into a tracer bullet; sequence it as **expand–contract**. First expand: add the new form beside the old so nothing breaks. Then migrate the call sites over in batches sized by blast radius (per package, per directory), each batch its own ticket blocked by the expand, keeping CI green batch to batch because the old form still exists. Finally contract: delete the old form once no caller remains, in a ticket blocked by every migrate batch. When even the batches can't stay green alone, keep the sequence but let them share an integration branch that all block a final integrate-and-verify ticket; green is promised only there.
 
@@ -70,6 +72,8 @@ Publish the approved tickets. **How** depends on the tracker `/skill:setup-vstac
 
 - **Local files** → write one file per ticket under `.scratch/<feature-slug>/issues/<NN>-<slug>.md`, numbered from `01` in dependency order (blockers first). Each file's "Blocked by" lists the numbers/titles it depends on. Use the per-ticket file template below: one ticket per file, never a single combined file.
 - **A real issue tracker (GitHub, Linear, …)** → publish one issue per ticket in dependency order (blockers first) so each ticket's blocking edges can reference real identifiers. Use the platform's native blocking / sub-issue relationship where it has one; otherwise set each ticket's "Blocked by" to the blocking issues. Apply the `ready-for-agent` triage label unless instructed otherwise; the tickets are agent-grabbable by construction.
+
+For an MCP tracker, create each approved ticket with the recorded project key and ticket issue type. Translate `ready-for-agent` through the configured canonical-role label mapping. Use the recorded blocking link type and its direction with the selected tool's schema, so the blocker blocks the dependent, not the reverse. A parent or sub-issue relation alone does not establish a blocking edge.
 
 Work the **frontier**: any ticket whose blockers are all done. For a purely linear chain that means top to bottom.
 

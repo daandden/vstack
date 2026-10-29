@@ -1,6 +1,6 @@
 # Shared judge text goes in the jev state once
 
-> [ADR 0040](0040-structured-flow-data-drives-server-rendered-pages.md) removed the Grilling page visual judge in vstack 7.0.0, with grilling-page, `visual-judge-cases.json`, and `scripts/visual_judge_check.py`. The rule below still holds for the Addon judge.
+> [ADR 0040](0040-figures-are-mermaid-rendered-by-pele.md) removes the Grilling page visual judge and its calibration artifacts. [ADR 0044](0044-structured-flow-data-drives-server-rendered-pages.md) also removes the old page writer in the Flow cutover. The rule below still holds for the Addon judge.
 
 > [ADR 0039](0039-main-agent-tools-pick-addons-from-gathered-intent.md) replaces main-session prompt selection and smol restatements with tools that receive gathered source intent. The shared state, 0.70 threshold, and session-wide dedup remain. Subagent Brief selection stays under ADR 0025.
 

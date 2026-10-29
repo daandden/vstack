@@ -8,6 +8,8 @@ You have been provided a spec. This spec should have tickets associated with it,
 
 The issue tracker should have been provided to you. If not, tell the user to run `/skill:setup-vstack`. Read it from `docs/vstack/issue-tracker.md` under the vstack root in Standard mode, or from `<vstack root>/config/issue-tracker.md` in Private mode.
 
+For an MCP tracker such as Jira, read the named server's current tool list, descriptions, and parameter schemas. Select tools for searching and reading the spec, tickets, comments, parent-child relationships, blocking links, and status, and for closing work, using the recorded project facts. No per-operation config rows or assumed tool names are needed. Interpret blockers using the recorded blocking link type and its direction, and use the recorded close transition when step 8 calls for resolution. Keep already-closed blockers distinct from tickets completed in this run. If discovery or a needed capability is unavailable, name the server and gap and leave the affected work open. CLI, local-markdown, and no-tool prose configs keep their configured graph and closure rules.
+
 The goal is the entire spec implemented on a single **integration branch**, with every ticket resolved the way the issue tracker closes work.
 
 The tickets are not a list of steps. They are a **task graph** with blocking relationships between them. This means there is always a **frontier** of tickets which are ready to be grabbed.
@@ -18,7 +20,7 @@ Communication to and from subagents should be sparse. Communicate primarily thro
 
 ## Shared steps
 
-Read skill://implement/END-STATE.md before work. It owns the shared steps 0a–0b, 3b, and 4–7, also used by implement and hillclimb. Run each shared step once for the whole spec, not once per ticket.
+Read skill://implement/END-STATE.md before work. It owns the shared steps 0a–0b, 3b, 4–6, 6b, and 7, also used by implement and hillclimb. Run each shared step once for the whole spec, not once per ticket.
 
 Before task-specific items, open the todo list as END-STATE.md says, with the shared steps and the steps below as `local` steps. Steps 4–7 exist on both sides: `shared 5` is Review the whole diff and `local 5` is Merge each result.
 
@@ -118,9 +120,9 @@ Draft review fixes only in the isolated worker, never directly in the parent che
 
 ### 8. Commit and close
 
-Update the affected checks and live proof. Then run shared step 6. It commits the review fixes after the ticket commits.
+Update the affected development checks. Then run shared step 6. It commits the review fixes after the ticket commits. Then run shared step 6b on the committed head.
 
-Resolve each complete ticket the way the issue tracker closes work. The spec is done only when every one of its tickets is complete in this run or was closed before this run. Resolve a done spec the same way. A ticket that stays open keeps the spec open. If the tracker closes work through PRs, pass the complete tickets to open-pr in shared step 7 as the PR's closing references instead, and add the spec only when it is done. At End state commit, those tickets and the spec stay open.
+Resolve tickets and the spec only after shared step 6b accepts the Verdict. Resolve each complete ticket the way the issue tracker closes work. The spec is done only when every one of its tickets is complete in this run or was closed before this run. Resolve a done spec the same way. A ticket that stays open keeps the spec open. If the tracker closes work through PRs, pass the complete tickets to open-pr in shared step 7 as the PR's closing references instead, and add the spec only when it is done. At End state commit, those tickets and the spec stay open.
 
 Then run shared step 7 once, up to the settled or capped End state. It opens the one PR, ready for review.
 
@@ -130,4 +132,4 @@ Add no cleanup step. omp parks and reclaims the implementer workspaces. Leave th
 
 ## Reply
 
-Print the flow's page path first. Then report the requested and reached End state, the integration branch, commits (one per ticket, then the review-fix commit), PR URLs and observed status, each ticket's outcome (resolved, open with its reason, or closing through the PR), the spec's outcome (resolved, closing through the PR, or open with the tickets that keep it open), checks and live proof with evidence paths, Blast radius findings, open prune-comments work, failed merges, unanswered questions with their held patch paths, worker patch paths, and every skipped step or blocker. Do not claim a PR, readiness, merge, or closed ticket that the chain did not observe.
+Print the flow's page path first. Then report the requested and reached End state, the integration branch, commits (one per ticket, then the review-fix commit), PR URLs and observed status, each ticket's outcome (resolved, open with its reason, or closing through the PR), the spec's outcome (resolved, closing through the PR, or open with the tickets that keep it open), development checks with evidence paths, each accepted Verdict with its verifier identity, patch id, and evidence paths, Blast radius findings, open prune-comments work, failed merges, unanswered questions with their held patch paths, worker patch paths, and every skipped step or blocker. Do not claim a PR, readiness, merge, End state, or closed ticket that the chain did not observe.

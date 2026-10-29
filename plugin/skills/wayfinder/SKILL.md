@@ -22,7 +22,11 @@ The map is a single issue on this repo's issue tracker, labelled `wayfinder:map`
 
 The map is an index, not a store. It lists the decisions made and points at the tickets that hold their detail; a decision lives in exactly one place, its ticket, so the map never restates it, only gists it and links.
 
-Where the map, its child tickets, blocking, and frontier queries physically live is tracker-specific. The issue tracker should have been provided to you. If not, tell the user to run `/skill:setup-vstack`. Consult the tracker doc's "Wayfinding operations" section for how _this_ repo expresses them. If no tracker has been provided, default to the local-markdown tracker.
+Where the map, child tickets, blocking, and frontier queries live is tracker-specific. Read `issue-tracker.md` under `<vstack root>/docs/vstack/` in Standard mode or `<vstack root>/config/` in Private mode. If no tracker is configured, tell the user to run `/skill:setup-vstack` and use the local-markdown tracker. Keep configured CLI workflows.
+
+For an MCP tracker such as Jira, read the server's current tool list, descriptions, and parameter schemas. Select map and child-ticket creation, assignment, full reads, comments, blocking links, and close transition from their actual capabilities and recorded project, issue type, labels, link type, and direction. No per-operation rows or guessed names are required. If discovery or a required operation fails, report the missing capability and leave that operation undone.
+
+Use the recorded blocking link type and direction to find blockers. The frontier contains only open, unclaimed children whose blockers are closed. Parent-child membership alone is not a blocker edge. Closing uses the recorded transition, not a guessed status.
 
 ### The map body
 
@@ -72,7 +76,7 @@ The answer isn't part of the body; it's recorded on resolution (see [Work throug
 
 ## The Flow page
 
-A map keeps one Flow page across sessions. Follow `skill://flow-page`'s "Stage entry/exit line" for charting and each claimed ticket. Discover the map by `ticket:<map id>` in a later session. After creating the canonical map, add that alias. Identity and URLs stay stable without renaming a folder.
+A map keeps one Flow page across sessions. Follow `skill://flow-page`'s "Stage entry/exit line" for charting and each claimed ticket. Discover the map by `ticket:<original map id>` in a later session. After creating the canonical map, add that alias with the original key and underscores. Tracker lookup is case-insensitive without conflating underscores and hyphens. Identity and URLs stay stable without renaming a folder.
 
 Each ticket run supplies its ticket id to the central Stage protocol and puts the ticket's name in its Background. Nested result-producing grilling, prototype, and domain-modeling runs follow the same protocol. Interviewing or reference helpers contribute to their producer without an independent run. Never rewrite shared Flow records.
 

@@ -1,13 +1,13 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { highlighter, linesOf, markTrailing, parseDiff, type DiffLine, type Token } from "./code.ts";
-import { optionLabel, type AnswerState, type Attachment, type ComparisonView, type Condition, type Demo, type DemoLiteral, type DocView, type Effect, type Figure, type MetricsView, type QuestionView, type ResultView, type StageView, type Transition, type View } from "./model.ts";
+import { VISUAL_KINDS, optionLabel, type AnswerState, type Attachment, type ComparisonView, type Condition, type Demo, type DemoLiteral, type DocView, type Effect, type Figure, type MetricsView, type QuestionView, type ResultView, type StageView, type Transition, type View } from "./model.ts";
 import type { AttachmentType, ClaimState, NonConsent, ResponseStatus, ReviewAxisName, ReviewStatus, StageState, TimelineOutcome, VERDICTS, MEASURE_VERDICTS } from "./model.ts";
 import type { CheckOutcome, EndState, PrState, ProgressView, TaskState } from "./progress.ts";
 import { observationVersion, unknownObservations, type Observations } from "./observations.ts";
 
 /** Raise this when the page a given state renders to changes, so a page names the renderer that made it. */
-export const RENDERER = 18;
+export const RENDERER = 19;
 const TEMPLATE = join(import.meta.dir, "..", "templates", "flow-page.html");
 export type Runtimes = Record<string, { url?: string; reason?: string }>;
 
@@ -212,7 +212,7 @@ function questionHtml(q: QuestionView, v: View, entryTitle: (ref: string) => str
   const rank = v.next.indexOf(q.id);
   return `<article class="question" id="${q.id}" data-state="${q.answer.state}"${rank >= 0 ? ` data-next="${rank}"` : ""}${q.retired ? " data-retired" : ""} data-stop>
 ${aliases(v, q.id)}<h3><span class="qnum">Q${q.q}</span>${text(q.title)}</h3>
-<div class="description">${prose(q.description)}</div>${labelled("From the results", entries, "result-links")}${labelled("Related asks", [...earlier, ...later, ...reopened, ...decided], "result-links")}${labelled("Today", facts, "today")}${notes ? `\n<div class="terms"><p class="label">Term notes</p><dl>${notes}</dl></div>` : ""}${labelled("Topic notes", topics, "topics")}${q.example ? `\n<div class="example"><p class="label">Example</p><p>${text(q.example)}</p></div>` : ""}
+<div class="description">${prose(q.description)}</div>${labelled("Reader needs", (q.needs ?? []).map((n) => `<li>${text(n.need)} <span class="source">${VISUAL_KINDS[n.kind]}</span></li>`), "needs")}${labelled("From the results", entries, "result-links")}${labelled("Related asks", [...earlier, ...later, ...reopened, ...decided], "result-links")}${labelled("Today", facts, "today")}${notes ? `\n<div class="terms"><p class="label">Term notes</p><dl>${notes}</dl></div>` : ""}${labelled("Topic notes", topics, "topics")}${q.example ? `\n<div class="example"><p class="label">Example</p><p>${text(q.example)}</p></div>` : ""}
 ${figuresHtml(q.figures, v)}<ol class="options">
 ${options}
 </ol>${answerLines(q)}

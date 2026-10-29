@@ -132,14 +132,14 @@ test("captured figures and option previews survive source changes and serve only
   writeFileSync(join(root, "choice.png"), png);
   const sent = ok(submit(home,
     { kind: "background", title: "Context", summary: "Compare captured alternatives", sections: [{ heading: "Scope", body: "One checkout." }], sources: ["fixture"], figures: [{ attachment: "diagram" }] },
-    { kind: "round", questions: [{ ref: "choose", title: "Which layout?", description: "Compare the diagram and preview.", figures: [{ attachment: "diagram" }], options: [{ label: "Compact", does: "Uses less space", gains: ["Space"], costs: ["Density"], preview: { attachment: "pixel" } }] }] },
+    { kind: "round", questions: [{ ref: "choose", title: "Which layout?", description: "Compare the diagram and preview.", needs: [{ need: "Locate the checkout boundary.", kind: "context-diagram" }, { need: "See the compact option.", kind: "option-preview" }], figures: [{ attachment: "diagram", kind: "context-diagram" }], options: [{ label: "Compact", does: "Uses less space", gains: ["Space"], costs: ["Density"], preview: { attachment: "pixel", kind: "option-preview" } }] }] },
     { kind: "attachment", ref: "diagram", type: "svg", caption: "Green checkout layout", origin: "Captured fixture", path: "choice.svg" },
     { kind: "attachment", ref: "pixel", type: "image", caption: "Compact checkout preview", origin: "Captured fixture", path: "choice.png" },
   ));
   const snapshot = ok(run(home, ["show"]));
   const q = snapshot.stages[0].questions[0];
-  expect(q.figures).toEqual([{ id: `${sent.refs.choose}-figure-1`, attachment: sent.refs.diagram }]);
-  expect(q.options[0].preview).toEqual({ id: `${sent.refs.choose}-option-1-preview`, attachment: sent.refs.pixel });
+  expect(q.figures).toEqual([{ id: `${sent.refs.choose}-figure-1`, attachment: sent.refs.diagram, kind: "context-diagram" }]);
+  expect(q.options[0].preview).toEqual({ id: `${sent.refs.choose}-option-1-preview`, attachment: sent.refs.pixel, kind: "option-preview" });
   expect(snapshot.stages[0].background_figures).toEqual([{ id: "background-1-figure-1", attachment: sent.refs.diagram }]);
   writeFileSync(join(root, "choice.svg"), "<svg>changed</svg>");
   const live = await (await fetch(opened.live.url)).text();
@@ -159,14 +159,14 @@ test("captured figures and option previews survive source changes and serve only
   const before = ok(run(home, ["show"]));
   const beforePage = readFileSync(before.page, "utf8");
   for (const figure of [{ attachment: "missing" }, { html: "<b>raw</b>" }, { attachment: sent.refs.diagram, css: "body{}" }]) {
-    expect(submit(home, { kind: "round", questions: [{ title: "Unsafe?", description: "Must not commit.", figures: [figure], options: [{ label: "No", does: "Refuses", gains: ["Safety"], costs: ["None"] }] }] }).code).toBe(1);
+    expect(submit(home, { kind: "round", questions: [{ title: "Unsafe?", description: "Must not commit.", needs: [{ need: "Locate the current boundary.", kind: "context-diagram" }], figures: [{ ...figure, kind: "context-diagram" }], options: [{ label: "No", does: "Refuses", gains: ["Safety"], costs: ["None"] }] }] }).code).toBe(1);
     expect(ok(run(home, ["show"])).revision).toBe(before.revision);
   }
   for (const attachment of [
     { kind: "attachment", ref: "invalid", type: "file", caption: "Not a figure", origin: "Fixture", path: "choice.png" },
     { kind: "attachment", ref: "invalid", type: "image", caption: "Unavailable figure", origin: "Fixture", unavailable: "No capture exists" },
   ]) {
-    const refused = submit(home, attachment, { kind: "round", questions: [{ title: "Preview?", description: "Needs captured image bytes.", options: [{ label: "No", does: "Refuses", gains: ["Safety"], costs: ["None"], preview: { attachment: "invalid" } }] }] });
+    const refused = submit(home, attachment, { kind: "round", questions: [{ title: "Preview?", description: "Needs captured image bytes.", needs: [{ need: "See the proposed option.", kind: "option-preview" }], options: [{ label: "No", does: "Refuses", gains: ["Safety"], costs: ["None"], preview: { attachment: "invalid", kind: "option-preview" } }] }] });
     expect(refused.code).toBe(1);
     expect(refused.stderr).toContain("must be a captured image or SVG figure");
     expect(ok(run(home, ["show"])).revision).toBe(before.revision);

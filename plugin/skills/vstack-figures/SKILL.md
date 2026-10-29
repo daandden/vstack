@@ -1,58 +1,70 @@
 ---
 name: vstack-figures
-description: How a vstack skill gets its diagram-design figures drawn. It settles each figure's plan, writes one brief per figure, starts one vstack-diagram-drawer per figure, and collects the SVGs before they are placed.
+description: How a vstack skill draws a figure. The caller writes Mermaid, follows the styling rules, and renders it with Pele to a Catppuccin Mocha SVG.
 disable-model-invocation: true
 ---
 
 # vstack-figures
 
-A caller is a skill step that shows figures to a person. The caller writes one brief per figure. `vstack-diagram-drawer` agents draw the figures while the caller keeps working (ADR 0023). The user picks the drawing model with the `vstack-diagram-drawer` key in omp's `task.agentModelOverrides`. With no key, the drawers run on the Session model.
+A caller is a skill step that shows figures to a person. The caller writes each figure's Mermaid in its own context and runs the render script itself. A render takes milliseconds, so a figure step starts no subagent (ADR 0040).
 
-## 1. Settle the plan
-
-A drawer has no `ask`, so settle each figure's plan before any drawer starts. Fix each figure's type, size, layout, and content from the caller's rules and evidence. Choose the type with diagram-design's visual-type guide. Draw without the plan pause.
-
-## 2. Write one Figure brief per figure
-
-This list is the one list of a Figure brief's fields, and every caller writes them:
-
-- Slug: a basename that is unique on the page, so that SVG IDs stay unique.
-- Type and size preset.
-- Layout: the figure's direction, such as left to right or top to bottom, and where each part sits, such as "the three stores in one column on the right".
-- Groups, when the figure has zones, lanes, or rows: each group's name, in its order, and the nodes in it.
-- Content: every node, edge, and label, and the one or two focal elements.
-- Out dir: the caller's Scratch entry, `<Scratch dir>/<kind>/<entry>/`.
-- The caller's extra rules for the figure, such as one step of a build-up series.
-
-## 3. Start the drawers
-
-Start the drawers as soon as their briefs are fixed. For two or more figures, use the Fan-out line below.
-
-Before this step, read skill://vstack-fan-out.
-
-Fan-out (skill://vstack-fan-out): parts: one per figure. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-diagram-drawer"`. Each `task`: draw and export the figure from its brief and return its SVG path, the vstack root, the Scratch dir. Do not wait; keep working. If they cannot start, stop: place no figure, and say in one line which figures were not drawn and why.
-
-For one figure, use this line instead:
-
-Spawn one `vstack-diagram-drawer` via `task` (`agent: "vstack-diagram-drawer"`): draw and export the figure from its brief and return its SVG path, the vstack root, the Scratch dir. Do not wait; keep working. If it cannot be spawned, stop: place no figure, and say in one line which figure was not drawn and why.
-
-## 4. Keep working, then collect
-
-Write the caller's own text while the drawers run. Wait for the drawers only at the caller's collect point, the step that places the figures. Each drawer returns an SVG path or a failure for its brief. If a figure failed, name it and its reason in one line, and place the rest.
-
-## 5. Place the figures
-
-Place the figures in the order of their briefs. A Flow page publisher submits each SVG path as a typed `attachment` with `type: "svg"`, its caption, and the command or brief that produced it as `origin`. Its Document Result names those attachments in `figure` blocks. The script captures and safety-checks the bytes. Return paths and captions to a caller that owns publication, not handwritten page markup.
-
-If no figure can be drawn (no eval tool for the export script), report that missing prerequisite. Show no Mermaid, generated image, or hand-built figure in its place.
-
-Follow `skill://flow-page`'s "Stage entry/exit line" for a direct result-producing figure run. Publish a Document with figures, explanations, and unavailable exports as typed attachments with reasons. Preserve exported SVGs and editable HTML sources as deliverables.
+This is a rendering helper, not a result-producing run. It opens no Stage. The caller follows `skill://flow-page`'s "Stage entry/exit line" and owns publication.
 
 ## Draw one figure
 
-Only a drawer follows these steps. It runs them for each brief, in order.
+1. Choose the Mermaid type from the [Mermaid type reference](references/mermaid-types.md). Read it when choosing a type or writing its syntax.
+2. Write the Mermaid to `<slug>.mmd` in the caller's Scratch entry. The slug is a basename that is unique on the page. Follow every rule in [Make Pele figures look good](#make-pele-figures-look-good).
+3. Render it, with one `--focus` per focal Mermaid id, one or two in all:
 
-1. Read `skill://diagram-design`, its `references/style-guide.md`, the type reference for the brief's type, and `references/export.md`.
-2. Draw the figure with the brief's type, size, layout, groups, and content. Add no node, edge, or label that the brief does not give.
-3. Save the source as `<out dir>/<slug>.html`. Run diagram-design's taste gate and the eval cells for `scripts/verify-geometry.py`, `scripts/lint-skin.py`, and `scripts/self_check.py` on that file, and fix what fails.
-4. Export `<out dir>/<slug>.svg` with the eval cell for `scripts/export_svg.py`.
+   ```sh
+   bun "$(realpath skill://vstack-figures/scripts/render.ts)" <slug>.mmd <out dir>/<slug>.svg --focus <id>
+   ```
+
+   `bun` never sees `skill://` paths, so `realpath` turns the URL into the file path. Pass `-` in place of the source path to read the Mermaid from stdin. Exit 0 writes the SVG and prints its absolute path. Exit 1 prints Pele's parse error and writes nothing. Exit 2 is a usage error.
+4. If the render fails, fix the Mermaid and run the script again. If it still fails, place no figure, and say in one line which figure was not drawn and why. Never show a hand-built figure, a Mermaid code block, or a generated image in its place.
+
+## Place the figure
+
+Place figures in the order the caller drew them. Capture each successful SVG through a typed `attachment` with `type: "svg"`, its actual `path`, a meaningful `caption`, and provenance in `origin`. Put its reference in a Document `figure` block, a question or Background `figures` list, or an option `preview`, as flow-page's captured-attachment contract says. A question figure or preview also declares its Visual `kind` and satisfies a declared reader need. Keep the embedded `<style>` in the captured bytes. Write sources and exports in the caller's Scratch entry, not the Flow's managed assets.
+
+An offline lesson export may inline the exact SVG with its `<style>`. That does not permit raw markup authoring in the Flow page. On render failure, publish no stale output. A Document can record an unavailable figure and its reason. An unavailable attachment never satisfies a question's visual need.
+
+## Supported Mermaid types
+
+The [Mermaid type reference](references/mermaid-types.md) covers all 32 visualization families rendered by pinned Pele 1.12.0, which targets Mermaid 12.1.0 built-ins. It gives when-to-use lines and minimal examples, including all five C4 views and four railroad notations. Aliases are separate spellings of existing families. `info` is a utility, not a figure.
+
+## Make Pele figures look good
+
+Each rule comes from a comparison of 26 figures that Pele and the earlier drawer drew from the same briefs (issue #260).
+
+### Keep the Catppuccin Mocha theme
+
+The render script sets every `--pele-*` variable to Catppuccin Mocha in a `<style>` inside the SVG. With Pele's defaults, a figure renders on white. The script also passes the theme's font, `'IosevkaTerm Nerd Font Mono', ui-monospace, monospace`, to `render()` as `fontFamily`, because Pele measures each label in that font to size its node. Write no `classDef` or `style` line: each one fixes a color that the theme can no longer change.
+
+### Mark one or two focal elements
+
+Pele gives each node, edge, and series a `data-id` from its Mermaid id. Each `--focus <id>` adds a mauve (`#cba6f7`) stroke and text rule for that id, scoped to that figure's root, so a page with several figures marks only this one. Timeline events, ishikawa causes, and single xychart bars have no `data-id`, so in those types the focal element stays plain. Name it in the text beside the figure instead.
+
+### Keep a figure inside its width
+
+A page scales a wide figure down to fit, and its text shrinks with it. A 2880px ER figure rendered at about 5px text.
+
+- Set the direction so the long side runs down the page. A 12-state `stateDiagram-v2` with `direction LR` rendered 2420 by 246.
+- Group states with composite states (`state "Payment" as Payment { ... }`) and flowchart steps with `subgraph`. Groups gave the best Pele layouts in the comparison.
+- Keep an ER figure under about 15 entities. Split a larger schema by zone into two figures.
+- Keep labels short. Pele wraps a long label inside its node, and the node grows.
+
+### Draw more than about 10 services as a flowchart
+
+`architecture-beta` overlaps its groups and routes edges through other groups. It scored 6 of 15 at 15 services and 5 of 15 at 33 services. Draw a large architecture as a `flowchart LR` with one `subgraph` per zone. This rule comes from those scores only, and the comparison did not test the flowchart alternative.
+
+### Escape what Mermaid parses
+
+- Write `#` in sequence messages as `#35;`. A bare `#` cuts a message's text.
+- Quote a mindmap label that has parentheses: `ab["Audiobook, new in 2026"]`. A bare `(new 2026)` becomes a node shape and loses its text.
+- Never use `Note` as a participant id. It is a keyword, and the diagram fails to parse.
+- In sequence diagrams, `-)` draws a solid line with an open head. Use `--)` for a dashed async message.
+
+### Put what Mermaid cannot say in the text
+
+Mermaid has no reference lines or annotations in `xychart`, no value labels on bars, no blocked state in `kanban`, and no label for a set's own region in `venn-beta`. When a figure needs one of these, write it in the caption or the text beside the figure.

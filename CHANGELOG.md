@@ -4,11 +4,13 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
-## [7.0.0] - 2026-10-28
+## [8.0.0] - 2026-10-29
 
-- Verification status: corrected combined browser/native proof passed after fixing the live-selection defect. It covers selection through observation and authored refreshes, captured figures and previews, historical continuation, shared-worktree observer recovery, and the combined T4 reading and interaction cases.
+- Reconcile upstream #264, #263, #265, #268, #294, #295, and #296. Typed Flow questions require reader needs and matching Visual kinds, including safe source/usage text. Capture caller-rendered Pele SVGs without restoring removed writers or visual judges. Preserve MCP discovery and tracker identities, remove inherited Addon pointers, migrate tune-llm-flow to centralized child-Stage publication, and gate delivery on independent committed-head Verdicts. Preserve published ADRs 0040 through 0043 and renumber the unpublished Flow ADR to 0044. Renderer advances once from 18 to 19. The breaking Flow cutover raises the plugin version from upstream 7.0.7 to 8.0.0.
 
-- The Flow page replaces the Grilling page (spec #267, ADR 0040). A Flow is related work on one change, tracker item, or topic across skill runs and sessions, and its page has an Overview, one tab per Stage, and the Topics tab. The new hidden helper flow-page is its only writer: skills open or bind a Stage once and submit typed contributions, and code assigns ids, Q numbers, option letters, tab labels, links, and layout. Agents no longer write page HTML, CSS, or scripts.
+- Historical verification: the review-fix tree passed combined browser/native proof. Upstream reconciliation changes the tree again. Fresh final-tree evidence is recorded separately, not inferred from that earlier pass.
+
+- The Flow page replaces the Grilling page (spec #267, ADR 0044). A Flow is related work on one change, tracker item, or topic across skill runs and sessions, and its page has an Overview, one tab per Stage, and the Topics tab. The new hidden helper flow-page is its only writer: skills open or bind a Stage once and submit typed contributions, and code assigns ids, Q numbers, option letters, tab labels, links, and layout. Agents no longer write page HTML, CSS, or scripts.
 - Breaking: the grilling-page skill, its `grilling-page.ts` script and template, its visual judge (`visual_judge.py` and its rubric), `visual-judge-cases.json`, and `scripts/visual_judge_check.py` are removed. explain and how no longer have their own page templates. flow-page's `migrate` command continues a structured historical Grilling page as a Flow with its ids, Q numbers, answers, Topics, figures, and old anchors. A handwritten page stays as it was.
 - Result blocks replace Report blocks. Result is the authoring short form. Besides cards, ledger, and table, a Stage can publish Document (sections, citations, code, figures), Comparison (alternatives, criteria, verdict), Metrics (values, units, samples, uncertainty, bars, and baseline deltas), Code/diff (highlighted excerpts and unified diffs with line numbers), Timeline, Quiz, and Interactive prototype Results. Typed attachments carry images, videos, SVGs, files, traces, evidence, and runnable artifacts, captured by sha256 so a later source edit never changes an old Result. Questions and Backgrounds reference captured image/SVG figures, and options reference captured previews. `revises` and `revise` publish a new revision or change one entry without resending the rest.
 - Answers keep the user's response apart from the agent's reading. Only an explicit pick or a reading that plainly settles the decision counts as the user's answer. A question, concern, timeout, cancellation, or headless default does not. Finishing a Stage retires its unresolved questions with a reason, and a later Stage can ask one again with a link back. flow-page's guidance normalizes native `ask` results (`selectedOptions` labels, `customInput`, whole-call cancellation) into these answers.
@@ -24,6 +26,46 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 - Comparison boxes contain their screen-reader text. Live refresh keeps the selected stop's stable id rather than inferring it only from scroll position.
 - verify-vstack's `drive.ts` takes `--rpc-ui` for drives whose model calls `ask`, which omp 18.13 registers only in `--mode rpc-ui`. The Flow page recipe gains native ask steps and a combined-product proof (`flow-t4`). The Grilling page recipe is removed.
 
+## [7.0.7] - 2026-10-29
+
+- An independent, isolated Verifier checks the committed head at every End state, commit included, in implement's new shared END-STATE step 6b. The author runs development tests and targeted smoke checks and keeps Verify skill setup and repair, without a full live-proof pass. The chain reuses the accepted Verdict when the patch id is unchanged and verifies a changed patch before merge-ready or shipped. FAIL and DRIFT get one repair-and-retry cycle per pass of step 6b, including a pass after babysit changes the patch, and an unavailable Verdict stops the run. The run record, the Report block, and a merge-ready PR comment keep the Verdict. ship reuses a matching Verdict and otherwise verifies through step 6b. A Verifier whose clone inherits uncommitted changes runs the head SHA in a detached worktree (ADR 0043, #261).
+
+## [7.0.6] - 2026-10-28
+
+- Every new Grilling page question lists its reader needs, each with the Visual kind that shows it: a Source view, a source excerpt, a Context diagram, an Option diagram, an option preview, a Before and after, a comparison table, a Data chart, a Scenario walkthrough, or prose. The agent prepares the complete question and appends it once. `grilling-page.ts` refuses an appended question with no needs, a need with no visual of its kind on the question or its options, or a visual that no need names. Stored questions still render. The page lists each question's needs under its description. improve-codebase-architecture repeats its card figures and usage examples on the pick and design questions (ADR 0042).
+- Clarify Grilling page authoring: name concrete decision distinctions, share concise visuals across needs of the same kind, preserve qualifications and evidence limits, label authored examples hypothetical, state chart measurement scope, and use supported link targets for local artifacts.
+
+## [7.0.5] - 2026-10-28
+
+- The agent executing each Grilling page step, including a subagent in its own session, decides separately whether a Context diagram and an Option diagram help and chooses each Mermaid type. Remove the Grilling page visual judge, its rubric, its calibration checker and cases, and its setup claims. The Addon judge is unchanged (ADR 0040).
+- `vstack-figures` documents all 32 visualization families in pinned Pele 1.12.0, which targets Mermaid 12.1.0 built-ins, including all five C4 views, four railroad notations, aliases, and the `info` utility. Every documented keyword has a minimal Mermaid source example rendered through `render.ts` by `tests/figure-types.test.ts`.
+
+## [7.0.4] - 2026-10-27
+
+- Make all eight tracker-consuming skills use the configured MCP server's current tool descriptions, schemas, and recorded project facts for Jira creation, labels, directional blocking links, and closing. Preserve CLI, local Markdown, and prose workflows; list implement-spec and session as tracker readers in setup (#207).
+- Normalize Grilling page keys centrally by lowercasing tracker keys and replacing underscores with hyphens, while retaining original issue identities and rename collision and no-op behavior (#207).
+
+## [7.0.3] - 2026-10-27
+
+- Add the hidden tune-llm-flow Addon for sustained LLM-flow quality, cost, or latency improvement inside implement. The grill settles setup once; Ratchet owns measured gates and host approvals, with review material and each gate on the Grilling page. Kept rounds and the reusable eval get separate commits, excluding traces. Narrow hillclimb's catalog question to code that calls no model and add four routing samples. Require an identified LLM flow for the new catalog route. The optional Flexible Ask host-dialog wrapper is completed in omp-tools#26; installation and combined live behavior must still be observed (#254, ADR 0041).
+- Stop tuning before UI-only Ratchet operations in subagent, isolated, or headless contexts. Retry an unanswered approval at most once while the host session remains active; Abort or dismissal stops immediately. Record ambiguous abort-or-dismissal outcomes as unanswered. Document Ratchet's native `approve()` dialog exception to the `ask` policy and distinguish Ratchet eval names from the vstack run (#252, ADR 0041).
+- setup-vstack reports `ratchet.enabled` and offers Set it or Leave it before enabling Ratchet globally. Disabled optional Ratchet warns without failing the machine check. An unavailable setting warns with an omp 18.4.5-or-later upgrade remedy, and `--set ratchet` refuses before any writes on an unsupported host. Its machine writer preserves unrelated omp settings. Setup rechecks after approved changes (#253, ADR 0041).
+- setup-vstack's machine check runs `omp config list` before `omp setup python --check` instead of alongside it. On a HOME with no `agent.db` yet, the two omp processes could both create its tables, and `config list` then failed with `table settings already exists`, so the check exited 2 instead of reporting its rows.
+- implement loads tune-llm-flow from the gathered LLM improvement task and its agreed setup contract. Specs and tickets retain task facts rather than Addon pick lists; build sessions keep the current `inject_principles` instruction.
+
+## [7.0.1] - 2026-10-27
+
+- Specs and tickets carry no Addon pointers. to-spec and to-tickets drop inherited pointers too (ADR 0039).
+- The run-start instruction is shorter. implement and implement-spec call `inject_principles`; every other Matt skill calls `inject_addons`.
+
+## [7.0.0] - 2026-10-27
+
+- Figures are Mermaid that the caller renders with Pele through `plugin/skills/vstack-figures/scripts/render.ts`, a Bun script that writes a Catppuccin Mocha SVG and marks each `--focus` id in mauve, scoped to that figure so other figures on the page stay plain. Bad Mermaid exits 1 with Pele's parse error. A figure step starts no subagent (ADR 0040).
+- Remove the diagram-design skill, the vstack-diagram-drawer agent, and the `diagram` Upstream with its Pin, its three register rows, and the `python-eval` House style rule. Run `bun install --frozen-lockfile` in the clone, because the render script loads the pinned `pele` 1.12.0 from its `node_modules`.
+- explain, how, improve-codebase-architecture, teach, and the Grilling page write Mermaid and render it through vstack-figures. The Grilling page visual judge ranks Pele's Mermaid diagram types from its own guide in `references/visual-judge.json`.
+- `vstack-maintain prepare` drops a whole Upstream through an `upstreams` entry in the decisions file: its Pin, every register row of every Disposition, and the House style rows that apply only to it.
+- setup-vstack's eval Python check names the Grilling page visual judge. The vstack-figures evals compare two refs of the skill, each drawn by a `vstack-worker` that writes Mermaid and renders it.
+
 ## [6.0.0] - 2026-10-27
 
 - Update: pstack ce649c0 to e73df47, diagram-design 0482b93 to 97d7951. matt stays at v1.3.1 and good-css at 92d436b. The principles make-operations-idempotent, migrate-callers-then-delete-legacy-apis, and type-system-discipline take their new pstack text, and the changed reject rows keep their reasons.
@@ -37,8 +79,6 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [5.0.20] - 2026-10-26
 
-- Main sessions select Addons through `inject_addons` and `inject_principles` after the agent gathers intent from real task context. Typed Matt runs display the shared tool instruction, and no main prompt calls `smol` or the Addon judge automatically. Tool picks remain session-wide, use the native judge role and 0.70 threshold, and keep the four-second deadline. Subagent Brief picks stay automatic (ADR 0039).
-- to-spec and to-tickets preserve only non-principle Addon pointers in specs and tickets, including inherited context. Build sessions select principles fresh. The Verify feature map covers the displayed instructions and executable unavailable-native-judge tool path.
 - Main sessions select Addons through `inject_addons` and `inject_principles` after the agent gathers intent from real task context. Typed Matt runs display the shared tool instruction, and no main prompt calls `smol` or the Addon judge automatically. Tool picks remain session-wide, use the native judge role and 0.70 threshold, and keep the four-second deadline. Subagent Brief picks stay automatic (ADR 0039).
 - to-spec and to-tickets preserve only non-principle Addon pointers in specs and tickets, including inherited context. Build sessions select principles fresh. The Verify feature map covers the displayed instructions and executable unavailable-native-judge tool path.
 

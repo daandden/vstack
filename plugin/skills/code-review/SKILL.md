@@ -55,7 +55,7 @@ If a trigger fires outside a run, do not read `skill://blast-radius` or run the 
 
 Read the tracker workflow from the vstack configuration above. Look for the originating spec in this order:
 
-1. Issue references in the commit messages (`#123`, `Closes #45`, GitLab `!67`), fetched through that workflow.
+1. Issue references in the commit messages (`#123`, `Closes #45`, GitLab `!67`, or tracker keys such as Jira `MY_PROJ-12`), fetched with their full body and comments through that workflow. For an MCP tracker, read the named server's current tool list, descriptions, and parameter schemas. Select the issue and comment read tools using the recorded project facts and original issue key, without per-operation config rows or assumed tool names. If discovery fails, the server is unreachable, or a needed capability is missing, name the server and gap in Spec's chat line, then try the next source. CLI, local-markdown, and no-tool prose configs keep their configured workflows.
 2. A path the user passed as an argument.
 3. A file under `docs/`, `specs/`, or `.scratch/` matching the branch or feature. In Private mode search `<vstack root>/artifacts/` instead of `.scratch/` too.
 4. If nothing is found, use `ask` for the spec source. If the user says there is none, skip Spec and report `no spec available`.

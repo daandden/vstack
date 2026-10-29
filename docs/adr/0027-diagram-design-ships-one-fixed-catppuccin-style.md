@@ -1,5 +1,7 @@
 # diagram-design ships one fixed Catppuccin style
 
+> Superseded by [ADR 0040](0040-figures-are-mermaid-rendered-by-pele.md): vstack-figures' render script themes every Pele figure with Catppuccin Mocha and a mauve focal rule. diagram-design and its checkers are gone. This ADR stays as history.
+
 diagram-design carries one built-in style and never asks which skin to use. Catppuccin Mocha is the only palette, and mauve is the focal accent. Titles and callouts use IosevkaTermSlab Nerd Font Mono, and all other text uses IosevkaTerm Nerd Font Mono, from installed fonts only. The style lives in the skill's own `references/style-guide.md`, rewritten in place. Profiles, onboarding, the style gate, the `diagram-profile:` config line, and the shipped example gallery go away. We chose this because the user always wants the same look. The skin question was noise, and the wanted style lived outside the skill in a hand-made profile that a drawer could skip.
 
 The first version of this decision also kept Catppuccin Latte as a light palette, and a figure brief named light or dark. The user then chose Mocha only: the skill has no light variant, and a figure brief names no variant.

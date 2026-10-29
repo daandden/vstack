@@ -1,6 +1,6 @@
 ---
 name: setup-app-verification
-description: "Generate a project-local Verify skill for live proof in implement's END-STATE step 4. Standard mode writes a .omp/skills/verify-* dir. Private mode uses the vstack root."
+description: "Generate a project-local Verify skill for implement's END-STATE checks in steps 4 and 6b. Standard mode writes a .omp/skills/verify-* dir. Private mode uses the vstack root."
 disable-model-invocation: true
 ---
 
@@ -40,7 +40,7 @@ In Standard mode, write `.omp/skills/verify-<app>/SKILL.md` in this checkout. In
 
 If an existing Private-mode skill has no link, re-create the link. Read its SKILL.md by absolute path for the rest of this session. omp discovers a new link in the next session.
 
-Generated frontmatter has `name: verify-<app>` and a description that names the app, every surface, and when to use it. Omit `disable-model-invocation` so live proof can choose a Verify skill by surface.
+Generated frontmatter has `name: verify-<app>` and a description that names the app, every surface, and when to use it. Omit `disable-model-invocation` so END-STATE step 4 can choose a Verify skill by surface.
 
 Ground every section in the repo. Leave no placeholders:
 

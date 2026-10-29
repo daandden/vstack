@@ -44,9 +44,9 @@ Follow `skill://flow-page`'s "Stage entry/exit line". Publish the candidates and
 
 If exploration finds no evidence-backed candidate, publish that outcome as a Document Result with the searched scope, evidence, and limitations. Finish the Stage without an empty candidate Result or pick question.
 
-Draw a before figure and an after figure for each candidate through `skill://vstack-figures`. Write each Figure brief with that skill's fields, layout included, fixed from the evidence. Give both figures the same type and layout so the reader compares them part by part. Label leakage and seams in words as well as color. Keep sources in a distinct project Scratch entry with unique basenames. If drawing cannot run, stop and report the missing prerequisite.
+Draw a before figure and an after figure for each candidate through `skill://vstack-figures`. Write their Mermaid in this caller's context and render with Pele. Give both figures the same type and layout so the reader compares them part by part. Label leakage and seams in words as well as color. Keep sources in a distinct project Scratch entry with unique basenames. If drawing cannot run, stop and report the missing prerequisite.
 
-Write one `result` item with `shape: "cards"` while the drawers run. Give each candidate one entry with a stable `ref`:
+Write one `result` item with `shape: "cards"`. Give each candidate one entry with a stable `ref`:
 
 - `title`: the deepening, named in the domain and architecture vocabulary.
 - `label`: the recommendation strength, one of `Strong`, `Worth exploring`, or `Speculative`.
@@ -61,13 +61,13 @@ Use GLOSSARY.md vocabulary for the domain, and the `skill://codebase-design` voc
 
 ADR conflicts: if a candidate contradicts an existing ADR, only surface it when the friction is real enough to warrant revisiting the ADR. Start the card's `evidence` with the conflict, such as _"Contradicts ADR-0007, but worth reopening because…"_. Don't list every theoretical refactor an ADR forbids.
 
-Do not propose interfaces yet. Submit the candidate Result, figure attachments, Document, and pick round in one contribution. The first round asks which candidate to explore, with one option per entry in entry order and the top recommendation as recommended. Its question's `results` names every candidate entry. Present the receipt's page and pass its `ask` payload to `ask`, then record the response through flow-page.
+Do not propose interfaces yet. Submit the candidate Result, figure attachments, Document, and complete pick round in one contribution. The first round asks which candidate to explore, with one option per entry in entry order and the top recommendation as recommended. Its question's `results` names every candidate entry. Its `needs` includes comparing the candidates' before and after shapes. The Document does not satisfy that need, so repeat its captured SVG references in the question's `figures`, each with `kind: "before-after"`, in candidate order. Present the receipt's page and pass its `ask` payload to `ask`, then record the response through flow-page.
 
 ### 3. Design It Twice
 
 Once the user picks a candidate, read `skill://codebase-design` and run its DESIGN-IT-TWICE.md in this Stage before any other question. Its problem-space Document, screened design Document, and Comparison Result stay on this page. Preserve complete interfaces and usage examples in the Document and compare depth, locality, and seam placement in the Comparison.
 
-The design question is the grilling loop's first question: which design, or which hybrid, to keep. Submit its round after the design Results, with one option per surviving alternative and a hybrid option when proposed. Link the question's `results` to those Results. Its description names each dropped design with its red flag. Present the receipt's `ask` payload and record the response.
+The design question is the grilling loop's first question: which design, or which hybrid, to keep. Submit the complete round after the design Results, with one option per surviving alternative and a hybrid option when proposed. Link the question's `results` to those Results. Its description names each dropped design with its red flag. Its `needs` includes seeing how a caller uses each design. The Results do not satisfy that need, so repeat the actual usage example on each design's option as `preview: { text: "<usage example>", kind: "option-preview" }`. Present the receipt's `ask` payload and record the response.
 
 If Design It Twice stops at its Fan-out stop clause, or screening drops every design, publish the failed screening with its limitations rather than a fabricated Comparison. Name each dropped design and red flag in the next question's description, then grill the module's shape without designs.
 

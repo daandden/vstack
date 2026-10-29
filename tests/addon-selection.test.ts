@@ -66,10 +66,10 @@ describe("Principle picks in subagent sessions", () => {
     expect(judge.calls).toHaveLength(1);
     expect(judge.calls[0]!.signal?.aborted).toBe(true);
   }, 6000);
-  test("the diagram drawer, the comment critic, omp's own agents, and /tan clones get no picks", async () => {
+  test("the comment critic, omp's own agents, and /tan clones get no picks", async () => {
     judgeAnswers({ "principle-prove-it-works": .9 });
     await registerMainSession(fakeHost(running));
-    for (const name of ["vstack-diagram-drawer", "vstack-comment-critic", "task", "scout", "worker", "sub"]) {
+    for (const name of ["vstack-comment-critic", "task", "scout", "worker", "sub"]) {
       expect(addonPicks(await child(name).emit("before_agent_start", { prompt: brief("Fix the parser") }))).toEqual([]);
     }
     expect(judge.calls).toHaveLength(0);

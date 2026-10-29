@@ -241,12 +241,12 @@ function registerAddonSelection(pi: ExtensionAPI): void {
     if (startsRun || holdsMattRun(manager.getBranch(), mattSkills)) active.push("inject_principles", "inject_addons");
     await pi.setActiveTools(active);
     if (!startsRun) return;
-    const choice = header[1] === "implement" || header[1] === "implement-spec"
-      ? "If the source has non-principle Addon pointers, call inject_principles. Otherwise call inject_addons."
-      : "Call inject_addons.";
+    const build = header[1] === "implement" || header[1] === "implement-spec";
     return { message: {
       customType: "vstack-addon-instruction", display: true, attribution: "agent" as const,
-      content: `Before starting the work, gather the intent from the real context, such as the issue title and body, map Notes, selected ticket, and prior conversation. Read relevant skill:// pointers from the source. ${choice} Pass the gathered intent as intent. Call again if the work changes kind.`,
+      content: build
+        ? "Gather intent from the issue, spec, ticket, and conversation, then call inject_principles with it. Call again if the work changes."
+        : "Gather intent from the issue, ticket, map Notes, and conversation, then call inject_addons with it. Call again if the work changes.",
     } };
   });
   pi.on("session_shutdown", (_event, ctx) => unregister(ctx));

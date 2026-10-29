@@ -6,7 +6,9 @@ disable-model-invocation: true
 
 This skill takes the current conversation context and codebase understanding and produces a spec. Do NOT interview the user; just synthesize what you already know.
 
-The issue tracker and triage label vocabulary should have been provided to you. If not, tell the user to run `/skill:setup-vstack`.
+Read the project's `issue-tracker.md` and `triage-labels.md` under `<vstack root>/docs/vstack/` in Standard mode or `<vstack root>/config/` in Private mode. If either is missing, tell the user to run `/skill:setup-vstack`.
+
+For an MCP tracker such as Jira, read the named server's current tool list, descriptions, and parameter schemas. Select search, full issue and comment reads, creation, and label operations by what they do, using the recorded project, issue type, and mapped label facts. Do not require operation rows or guess tool names or parameters. If discovery or a required operation is unavailable, report that gap and leave publication undone. Keep configured CLI and local-markdown workflows.
 
 ## Process
 
@@ -22,7 +24,7 @@ Ask about the map only at a real fork: two module splits that differ in a way th
 
 3. Write the spec draft using the template below.
 
-Write a `skill://<addon>` pointer in the spec for each non-principle Addon that the session loaded through a tool result, an Addon message, or a running skill's `skill://` read. Omit all `principle-*` pointers, including any inherited from source context. Build sessions pick principles fresh.
+Write no `skill://<addon>` pointers in the spec, and drop any inherited from source context. Build sessions pick Addons fresh.
 
 Before you publish, check the draft against what the user decided, as skill://to-spec/DRIFT-CHECK.md says. Its source is the issue that this run starts from, with its comments, or none. Covered in names a spec section, and the table Result goes on the to-spec Stage.
 
@@ -32,7 +34,7 @@ Fix the draft and show the coverage table as DRIFT-CHECK.md's "Fix and show" say
 
 Then publish the spec to the project issue tracker. Apply the `ready-for-agent` triage label - no need for additional triage.
 
-Publish the full spec as a Document Result, with `canonical: { tracker, revision }` naming the published issue and its observed revision, or `{ file }` for a local-markdown spec. If publication fails, put the full draft and observed failure on the Stage as a Document Result, explicitly not published. After successful publication, add `alias spec:<number-or-feature-slug>` to the existing Flow. Also add `ticket:<source issue>` when applicable. Identity and the live URL stay unchanged, so no folder rename is required. The tracker or local file remains canonical.
+Publish the full spec as a Document Result, with `canonical: { tracker, revision }` naming the published issue and its observed revision, or `{ file }` for a local-markdown spec. If publication fails, put the full draft and observed failure on the Stage as a Document Result, explicitly not published. After successful publication, add `alias spec:<original-number-or-tracker-key>` to the existing Flow, or the feature slug for a local spec. Keep the original tracker spelling and underscores. Also add `ticket:<source issue>` when applicable. Identity and the live URL stay unchanged, so no folder rename is required. The tracker or local file remains canonical.
 
 <spec-template>
 

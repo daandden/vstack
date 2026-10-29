@@ -1,10 +1,10 @@
 # Addon tools
 
-A typed Matt run displays an instruction to gather intent from the task's real context, read source Addon pointers, and call `inject_addons` or `inject_principles`. Main-session prompts do not select Addons automatically. Subagent Brief selection remains automatic for judged vstack agents in a Matt run.
+A typed Matt run displays an instruction to gather intent from the task's real context and call `inject_principles` (implement, implement-spec) or `inject_addons` (other Matt skills). Main-session prompts do not select Addons automatically. Subagent Brief selection remains automatic for judged vstack agents in a Matt run.
 
 ## Sub-features
 
-- `addon-run-instruction` a bare typed Matt skill displays the instruction even without a native judge. implement and implement-spec explain the source-pointer choice. Other Matt skills name `inject_addons`.
+- `addon-run-instruction` a bare typed Matt skill displays the instruction even without a native judge. implement and implement-spec name `inject_principles`. Other Matt skills name `inject_addons`.
 - `addon-no-chat-instruction` plain chat and a pasted skill header below the first line display no instruction.
 - `addon-tool-unavailable` both registered tools complete without picks when the judge role has no native candidate.
 - `addon-tool-picks` with a native judge, tools return fitting pointers and save them once per session across branches and resume.
@@ -31,7 +31,7 @@ Start a fresh saved session with a bare Matt skill:
 bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN_DIR" --name addon-run-instruction --session '{"type":"prompt","message":"/skill:implement"}' '{"type":"get_state"}'
 ```
 
-Read `addon-run-instruction/model-requests.jsonl` and `rpc.jsonl`. The first request contains a displayed `vstack-addon-instruction` message explaining gathered intent and both tool choices. The saved session records that message. There is no automatic pick. Repeat with `/skill:to-spec` in a new drive named `addon-other-matt-instruction` and observe the `inject_addons` instruction. Use a new drive named `addon-no-chat-instruction` with plain chat and then a message containing a pasted skill header below its first line. Neither receives the instruction.
+Read `addon-run-instruction/model-requests.jsonl` and `rpc.jsonl`. The first request contains a displayed `vstack-addon-instruction` message to gather intent and call `inject_principles`. The saved session records that message. There is no automatic pick. Repeat with `/skill:to-spec` in a new drive named `addon-other-matt-instruction` and observe the `inject_addons` instruction. Use a new drive named `addon-no-chat-instruction` with plain chat and then a message containing a pasted skill header below its first line. Neither receives the instruction.
 
 To exercise both tools without a native judge, create `$VERIFY_RUN_DIR/addon-tool-replies.json`:
 

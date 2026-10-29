@@ -1,6 +1,6 @@
 # vstack
 
-vstack is a personal omp plugin. Matt Pocock's skills are its core. Addons supplement those skills, and Utility skills provide shared tools and writing rules. It also takes selected items from poteto's pstack, diagram-design, and good-css. `GLOSSARY.md` defines the terms, and `docs/adr/` records decisions.
+vstack is a personal omp plugin. Matt Pocock's skills are its core. Addons supplement those skills, and Utility skills provide shared tools and writing rules. It takes selected items from poteto's pstack and good-css. Figures are Mermaid rendered by Pele. `GLOSSARY.md` defines the terms, and `docs/adr/` records decisions.
 
 ## Skill kinds and the Matt flow
 
@@ -9,20 +9,23 @@ vstack is a personal omp plugin. Matt Pocock's skills are its core. Addons suppl
 - A Utility skill works outside a Matt run. The register's `utility:` list names these skills, including explain and hidden helpers such as vstack-tmp.
 - A Command runs in the extension without a model. `/vstack-clean` is the Scratch cleanup Command, not a skill.
 
-Every change starts with the grill (`/skill:grill-with-docs` or `/skill:grill-me`). The grill closes with its summary and asks nothing. Your next prompt confirms the summary or pushes back, and a pushback reopens the grill. grill-with-docs ends with a line that names the skill to type next. For a change that fits one session, type `/skill:implement`. For a bigger change, continue through `/skill:to-spec` and `/skill:to-tickets`, then type `/skill:implement-spec`. implement and implement-spec own the changes and the settled End state. Specs and tickets carry the non-principle Addon `skill://` pointers that later sessions need. Build sessions pick principles fresh.
+Every change starts with the grill (`/skill:grill-with-docs` or `/skill:grill-me`). The grill closes with its summary and asks nothing. Your next prompt confirms the summary or pushes back, and a pushback reopens the grill. grill-with-docs names the skill to type next. For a change that fits one session, type `/skill:implement`. For a bigger change, continue through `/skill:to-spec`, `/skill:to-tickets`, then `/skill:implement-spec`. implement and implement-spec own changes and the settled End state. Specs and tickets contain no Addon pointers, including inherited ones. Build sessions select principles fresh.
 
 ## Install
 
-You need omp and git with working HTTPS credentials for github.com (the repo is private).
+You need omp, Bun, and git with working HTTPS credentials for github.com (the repo is private).
 
 1. Clone the repo: `git clone https://github.com/daandden/vstack.git`
-2. Link its plugin directory: `omp plugin link <clone>/plugin`
-3. Start a new omp session.
-4. Run `/skill:setup-vstack` to configure the machine and project. When the repo is set up for Matt Pocock's skills, its project section offers a Migration of that repo first and then goes on with setup in the same run. Migration changes only this repo and its shared private store, never machine state such as global skills or diagram profiles. The Code host section writes `code-host.md`, which implement needs for End states past commit. For GitHub and GitLab it uses a `gh` or `glab` template. For any other host, such as Bitbucket, it maps the MCP server or CLI that you already set up for the project. The same section asks for the project's default End state, which implement, implement-spec, and hillclimb take when your prompt and the ticket name none, and writes it as one line in `code-host.md`. A re-run asks only the sections whose config files are missing, plus the default End state question when `code-host.md` has none.
+2. Install the clone's pinned dependencies: `bun install --frozen-lockfile`.
+3. Link its plugin directory: `omp plugin link <clone>/plugin`.
+4. Start a new omp session.
+5. Run `/skill:setup-vstack` to configure the machine and project. A project previously set up for Matt Pocock's skills offers Migration first, then continues setup. Migration changes only this repo and its shared private store, never global skills. The Code host section writes `code-host.md`, using GitHub/GitLab CLI templates or the configured MCP server or CLI for another host. It records the default End state for implement, implement-spec, and hillclimb. A re-run asks only missing config sections and a missing default End state.
 
 The CI section writes `ci.md` independently of the Code host. For GitHub Actions and GitLab CI it uses a `gh` or `glab` template. For any other CI service, such as Jenkins, it maps the MCP server or CLI that you already set up for the project. For a CLI, it drafts command rows from the CLI's help. For an MCP server, it records the server, project facts such as the Jenkins URL, and two pinned tools: a read-only check and a full rerun of a failed build. Setup recommends a service from the repo's CI files, shows the draft for confirmation, then runs its read-only check once. The GitLab CI template marks build reruns unsupported, because GitLab cannot rerun a whole existing pipeline, so babysit reports a flaky build to you instead of rerunning it. Migration leaves `ci.md` for setup's CI section in the same run. implement requires both `code-host.md` and `ci.md` for End states past commit. CI logs, build reruns, secrets, and variables use `ci.md`. Required PR checks stay in `code-host.md`. Existing projects without `ci.md` get only commit and a prompt to run `/skill:setup-vstack`. That re-run moves the CI log, rerun, secret, and variable rows from `code-host.md` into a new `ci.md`, reduces an MCP Code host to its server, facts, and check, and shows both files for one confirmation before it writes them.
 
-To refresh, run `git pull` in the clone and start a new omp session. The link points at the working tree, so there is nothing else to update.
+The machine section reports `ratchet.enabled`. Disabled Ratchet is an optional-capability warning, not a machine failure. Set it enables Ratchet globally only after approval. Leave it preserves configuration. Setup preserves unrelated settings and rechecks after a write. An unavailable setting gets an omp 18.4.5-or-later upgrade remedy, not a setter.
+
+To refresh, run `git pull`, then `bun install --frozen-lockfile` in the clone, and start a new omp session. The link points at the working tree.
 
 ## Flow page
 
@@ -36,12 +39,28 @@ Discovery searches supported structured historical Grilling pages before declari
 
 GitHub and GitHub Actions have built-in read-only observation adapters. A separate provider-neutral `http-json` override supports other configured services. GitLab has no built-in native observation adapter and stays unknown unless configured through that contract. Code host and CI selection remain independent. Read flow-page's [host and observation reference](plugin/skills/flow-page/references/host-observations.md) before configuring either.
 
+Every fresh question declares its reader needs and Visual kinds before atomic publication. Matching visuals appear on that question or its options, with captured image/Pele SVG references or escaped source/usage text. Background and Result visuals alone do not satisfy a question. Old records remain readable without invented needs. The caller chooses Mermaid types without a visual model judge. See the [reader-needs contract](plugin/skills/flow-page/references/reader-needs.md).
+
+At every delivery End state, an independent isolated Verifier checks the committed head through implement's shared step 6b. The chain reuses accepted proof only when its patch id matches, and readiness alone does not establish delivery. tune-llm-flow uses a child Stage and Ratchet's native approval gates while implement retains landing ownership.
+
 ## Flow links in omp
 
 When a session has a bound Flow, the extension displays its URL after every main-agent reply, including blocker replies and follow-up explanations. The extension does not open a browser or start another model turn. If the local host fails, the message gives the static page path and the observed error instead.
 
 Bindings belong to a project, session, and agent. Continuing a session restores its binding from disk. Switching sessions does not inherit the previous session's Flow. The extension gives each agent its authoring identity before a turn because bash supplies only `PI_SESSION_ID`. The `flow-page` helper documents the authoring commands and the `bound` lookup.
 
+
+## Improve an LLM flow
+
+Start with the grill and ask for sustained LLM-flow answer-quality, cost, or latency improvement. The hidden tune-llm-flow Addon settles the real entry point, case source and history permissions, metric and guardrails, editable and off-limits paths, and stop rule once. implement retains landing ownership. hillclimb handles code that calls no model.
+
+Ratchet needs omp 18.4.5 or later, `ratchet.enabled` on, and the parent interactive checkout with its UI. Disabled, missing, subagent, isolated-worker, or headless contexts stop before UI operations. The Addon changes no settings.
+
+Review every eval case, five complete graded pilot cases and their reasoning, and the plan on its child Stage of the existing Flow. Ratchet's native dialog gets only the receipt's Q-numbered question and page pointer. Approve continues, Revise returns feedback, and Abort or dismissal stops without retry. Ambiguous abort-or-dismissal remains unanswered. An unanswered gate retries at most once while the host session stays active. Ratchet alone records approval and freshness.
+
+Each candidate must improve beyond noise on both train and test without held-metric regressions. Cost and latency goals hold graded quality. Each kept round gets a separate measured commit. Rejections remove only candidate edits. The reusable `.omp/ratchet/<eval>/` eval gets another commit with agreed cases, runner, grader, baseline, state, and results, excluding every `traces/` directory. Cases, including production data they contain, enter git history. implement resumes shared review, independent verification, and its settled End state chain.
+
+The optional [omp-tools Flexible Ask companion #26](https://github.com/daandden/omp-tools/issues/26) is completed and closed. Without it, the stock native dialog uses the same short content. Completion does not establish an installed version or prove a given run reached Flexible Ask. Claim these only when observed. [ADR 0041](docs/adr/0041-llm-flows-improve-through-a-tune-llm-flow-addon.md) records the decision.
 
 ## /vstack-clean Command
 
@@ -92,9 +111,9 @@ At every typed Matt run start, including a bare start, the extension displays an
 Both tools take `intent: string`:
 
 - `inject_addons` asks the whole catalog, including principles. Every Matt skill other than implement and implement-spec uses it.
-- `inject_principles` asks all principle questions only. implement and implement-spec use it when their source contains non-principle Addon pointers. When the source has none, they use `inject_addons`.
+- `inject_principles` asks all principle questions only. implement and implement-spec use it.
 
-The agent loads matching returned `skill://` pointers and the source's non-principle Addon pointers before the work that needs them. When the kind of work changes, the agent calls the appropriate tool again. Specs and tickets contain no principle pointers. Non-principle pointers still follow ADR 0015. There is no enforcement gate or automatic fallback if the agent skips a call.
+The agent loads matching returned `skill://` pointers before the work that needs them. When the kind of work changes, it calls the appropriate tool again. Specs and tickets carry no Addon pointers. ADR 0039 supersedes ADR 0015's pointer rule. There is no enforcement gate or automatic fallback if the agent skips a call.
 
 The tools clean the supplied intent and limit it to 10,000 characters with the subagent Brief cleaner. The judge state holds the cleaned intent as `request`, followed by the catalog's `preamble`. The tools return matching `skill://` pointers and save the picks as `vstack-addons` session entries. Delivered-Addon dedup stays session-wide, including after a resume and across branches. Each call leaves out Addons named in saved `vstack-addons` messages or entries. When no undelivered question remains in the tool's scope, it makes no judge request. The running Matt skill's steps and its Addons still win over a conflicting principle.
 
@@ -104,7 +123,7 @@ Each main-session tool selection has a four-second judge deadline and aborts at 
 
 #### Subagent briefs
 
-During a Matt run, the extension also judges the brief of a `vstack-explorer`, `vstack-worker`, or `vstack-verifier` subagent (ADR 0025). A constant in `plugin/extensions/vstack.ts` lists these three agents, matched against the session's agent name. Every other subagent gets no picks: `vstack-diagram-drawer`, `vstack-comment-critic`, omp's own agents such as `task` and `scout`, and `/tan` clones.
+During a Matt run, the extension also judges the brief of a `vstack-explorer`, `vstack-worker`, or `vstack-verifier` subagent (ADR 0025). A constant in `plugin/extensions/vstack.ts` lists these agents, matched against the session's agent name. Every other subagent gets no picks: `vstack-comment-critic`, omp's own agents such as `task` and `scout`, and `/tan` clones.
 
 omp loads the extension module once and rebinds it to every subagent session. When a session's `before_agent_start` fires for the first time, the extension records the session under its agent id. For a top-level session, the record keeps a way to read the active branch. For a subagent, the record links to the record of its parent, which the extension finds through `parentId`. A subagent follows these links to the top-level session that started it, also through a nested subagent. It gets a request only when that session's active branch holds a Matt run.
 
@@ -135,16 +154,20 @@ For each form, the runner sends the same request as the check. A form passes whe
 
 The runner appends completed slots to `results.jsonl` and unscorable API, model, or response failures to `errors.jsonl`. Failures exit nonzero. With `--state`, it writes transcripts only for explicitly listed training ids. Without it, it writes no transcripts. Reusing an output directory resumes completed `(case id, repetition)` slots. Use a fresh output directory whenever the catalog, case file, model, or scoring rules change. `TYPESAFE_ENDPOINT` overrides the API URL for local boundary checks.
 
+### Figure type reference
+
+The executing caller chooses visuals from each question's reader needs and chooses its Mermaid types without a model judge. `plugin/skills/vstack-figures/references/mermaid-types.md` covers every visualization family in pinned Pele 1.12.0, including C4 views, railroad notations, and aliases. `tests/figure-types.test.ts` renders every example through the real figure CLI and checks documented keywords against an independent list.
+
 ### Pins and Upstream clones
 
-`pins.yaml` keys (`matt`, `pstack`, `diagram`, `css`) are the register's `upstream` values and local clone names under `~/.cache/vstack/upstreams/<key>`. Set `VSTACK_UPSTREAMS` or pass `--upstreams` for another directory. Blobless clones are enough. check-register never fetches, checks out, or moves HEAD. vstack-maintain plan clones or fetches selected Upstreams without moving HEAD. Target checks and takes fetch only missing Pins and held refs. Keep the cache outside every checkout. To make a clone by hand:
+`pins.yaml` keys (`matt`, `pstack`, `css`) are register `upstream` values and local clone names under `~/.cache/vstack/upstreams/<key>`. Set `VSTACK_UPSTREAMS` or pass `--upstreams` for another directory. Blobless clones suffice. check-register never fetches, checks out, or moves HEAD. vstack-maintain plan fetches selected Upstreams without moving HEAD. Target checks fetch only missing Pins and held refs. Keep the cache outside every checkout. To create a clone:
 
 ```sh
 git clone --filter=blob:none https://github.com/mattpocock/skills.git ~/.cache/vstack/upstreams/matt
 git -C ~/.cache/vstack/upstreams/matt fetch --tags origin   # when a Pin is missing from the clone
 ```
 
-`pin_kind` says how the Update finds the next Pin. `tag` (Base): the highest `v<major>.<minor>.<patch>` tag; pre-release tags such as `v1.3.0-beta.1` and other tags such as `mattpocock-skills@1.0.0` never count. `commit` (Enhancement, Diagram, CSS): the newest commit on the default branch that touches the entry's `path`. `pin` is the tag name or the full commit SHA.
+`pin_kind` selects how the Update finds its next Pin. `tag` for Base selects the highest `v<major>.<minor>.<patch>` tag, excluding prereleases and other tag forms. `commit` for Enhancement and CSS selects the newest default-branch commit touching the configured `path`. `pin` is the tag name or full commit SHA.
 
 Each entry's `items:` list says which tree entries at the Pin are Upstream items. `match` is a path glob from the repo root where `*` stays inside one path segment, `type` is `tree` or `blob`, and the first matching pattern sets the `kind`. For example, pstack's automations are one item each, so their nested skills get no rows.
 
@@ -246,7 +269,7 @@ A lint over shipped text starts from `lintTargets(ctx)` in `scripts/lib/checks/s
 
 #### Page templates
 
-Every page vstack writes for the user (the Flow page and teach's lessons) starts from a page template. Every template follows good-css (#61). A page template is any `*.html` or `*.css` file under `plugin/skills/<name>/templates/`. `scripts/lib/checks/pages.ts` finds these files and runs the CSS Upstream's `page_lint:` script at its Pin over them. Each flagged template reports one `page-css` failure. With no template, the check prints `page templates: none` and reads nothing. Templates hold no figure. The skill draws its figure through diagram-design, exports it, and inlines the export in the rendered page.
+Every page vstack writes for the user, the Flow page and teach's lessons, starts from a page template. Every template follows good-css (#61). A page template is any `*.html` or `*.css` under `plugin/skills/<name>/templates/`. `scripts/lib/checks/pages.ts` runs the CSS Upstream's `page_lint:` script at its Pin over these files. Each flagged template reports `page-css`. With no template, the check reads nothing. Templates hold no authored figure. The caller writes Mermaid and renders it through vstack-figures with Pele, captures the SVG in the Flow, and may inline its exact bytes in an offline lesson.
 
 ### House style
 
@@ -262,7 +285,7 @@ To write an adapt item, start from the Upstream text at the Pin with the rows ap
 
 ```sh
 bun -e 'import { applyRows, parseHouseStyle, selectRows } from "./scripts/lib/house-style.ts";
-const { houseStyle } = parseHouseStyle(Bun.YAML.parse(await Bun.file("house-style.yaml").text()), new Set(["matt", "pstack", "diagram", "css"]));
+const { houseStyle } = parseHouseStyle(Bun.YAML.parse(await Bun.file("house-style.yaml").text()), new Set(["matt", "pstack", "css"]));
 const rows = selectRows(houseStyle.replacements, { use: "update", upstreams: ["matt"], disposition: "adapt" });
 process.stdout.write(applyRows(await Bun.stdin.text(), rows));' \
   < <(git -C ~/.cache/vstack/upstreams/matt show v1.2.3:skills/engineering/wizard/SKILL.md) > plugin/skills/wizard/SKILL.md

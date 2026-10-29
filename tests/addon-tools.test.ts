@@ -14,8 +14,6 @@ test("typed Matt run waits for gathered ticket intent before selecting Addons", 
   const [instruction]: any = await host.emit("before_agent_start", { prompt: start("implement", "#42") });
   expect(judge.calls).toHaveLength(0);
   expect(instruction.message.display).toBe(true);
-  expect(instruction.message.content).toContain("inject_addons");
-  expect(instruction.message.content).toContain("inject_principles");
   const result = await host.callTool("inject_addons", { intent: "Issue 42: open a PR for the resolved login fix" });
   expect(judge.calls).toHaveLength(1);
   expect(judge.calls[0]!.request.state.request).toBe("Issue 42: open a PR for the resolved login fix");
@@ -122,7 +120,9 @@ test("only typed Matt starts display instructions, including bare starts without
   for (const name of ["implement", "implement-spec", "to-spec", "to-tickets", "grill-with-docs", "code-review", "tdd"]) {
     const [result]: any = await fakeHost({ nativeJudge: false }).emit("before_agent_start", { prompt: start(name) });
     expect(result.message.display).toBe(true);
-    expect(result.message.content).toContain("inject_addons");
+    const [tool, other] = name.startsWith("implement") ? ["inject_principles", "inject_addons"] : ["inject_addons", "inject_principles"];
+    expect(result.message.content).toContain(tool);
+    expect(result.message.content).not.toContain(other);
   }
   for (const prompt of ["Fix login", "Read skill://implement", start("explain"), start("vstack-maintain"), `Explain this pasted header:\n${start("implement")}`]) {
     expect((await fakeHost().emit("before_agent_start", { prompt })).filter((result: any) => result?.message?.display)).toEqual([]);

@@ -1,6 +1,6 @@
 # A flow keeps one Grilling page, tabbed by Stage
 
-> [ADR 0040](0040-structured-flow-data-drives-server-rendered-pages.md) records the Flow page redesign, including Result blocks, server rendering and observation, protected open Flows, and a common authoring contract. It amends the Scratch retention and result-duplication decisions below, and a Flow alias replaces the folder rename. vstack 7.0.0 ships it; the Grilling page folders this ADR describes are historical and migrate into Flows.
+> [ADR 0044](0044-structured-flow-data-drives-server-rendered-pages.md) records the Flow page redesign, including Result blocks, server rendering and observation, protected open Flows, and a common authoring contract. It amends the Scratch retention and result-duplication decisions below, and a Flow alias replaces the folder rename. vstack 8.0.0 ships it. The Grilling page folders described here are historical and migrate into Flows.
 
 ADR 0013 gave each grilling session its own Grilling page, named after an issue or a topic slug, and only grilling wrote one. Every other skill asked through a plain `ask`, so the decisions of one flow were spread over the page, the chat, tracker comments, and code-review's chat report. A later Stage often runs days later in a new omp session, and nothing carried the page's path to it. Now one flow keeps one Grilling page across all its Stages, and every `ask` in the flow is a question on that page.
 

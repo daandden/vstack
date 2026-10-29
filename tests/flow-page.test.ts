@@ -38,6 +38,7 @@ const question = (ref: string, extra: object = {}) => ({
   ref,
   title: `Which ${ref}?`,
   description: `Why ${ref} matters.`,
+  needs: [{ need: `Understand why ${ref} changes the decision.`, kind: "prose" }],
   options: [option("First", { recommended: "it is first" }), option("Second")],
   ...extra,
 });
@@ -134,6 +135,76 @@ test.each([
   const refused = submit("s-1", { kind: "topic", title: "Earlier item", summary: "Must not land", body: "No partial write.", sources: ["#285"] }, review(extra));
   expect(refused.code).toBe(1);
   expect(refused.stderr).not.toBe("");
+  expect(tree()).toEqual(before);
+});
+
+test("a new question declares its reader needs before any part of its contribution is published", () => {
+  const opened = openFlow();
+  const before = tree();
+  const { needs: _, ...bare } = question("scope");
+  const refused = submit("s-1",
+    { kind: "topic", title: "Unpublished context", summary: "Must remain atomic.", body: "The round is incomplete.", sources: ["fixture"] },
+    round(bare));
+  expect(refused.code).toBe(1);
+  expect(refused.stderr).toContain("needs");
+  expect(tree()).toEqual(before);
+  expect(show(opened.flow).stages[0].questions).toEqual([]);
+});
+
+test("a declared visual need requires a visual with its declared kind on the question", () => {
+  openFlow();
+  const before = tree();
+  const refused = submit("s-1", round(question("source", {
+    needs: [{ need: "Read the exact changed configuration.", kind: "source-excerpt" }],
+    example: "timeout: 30",
+  })));
+  expect(refused.code).toBe(1);
+  expect(refused.stderr).toContain("source-excerpt");
+  expect(tree()).toEqual(before);
+});
+
+test.each([
+  ["empty needs", { needs: [] }],
+  ["unknown need kind", { needs: [{ need: "Find the boundary.", kind: "unknown" }] }],
+  ["missing visual kind", { figures: [{ text: "timeout: 30" }] }],
+  ["unrequested visual kind", { figures: [{ text: "timeout: 30", kind: "source-excerpt" }] }],
+  ["option preview outside an option", { needs: [{ need: "See the output.", kind: "option-preview" }], figures: [{ text: "Ready", kind: "option-preview" }] }],
+] as const)("incomplete %s is refused atomically", (_name, extra) => {
+  openFlow();
+  const before = tree();
+  expect(submit("s-1", round(question("source", extra))).code).toBe(1);
+  expect(tree()).toEqual(before);
+});
+
+test("one complete question publishes source text and option usage with their reader needs in the same revision", () => {
+  const opened = openFlow();
+  const needs = [
+    { need: "Read the current timeout at config.ts:4.", kind: "source-excerpt" },
+    { need: "Compare the call a consumer writes.", kind: "option-preview" },
+  ];
+  const r = submit("s-1", round(question("source", {
+    needs,
+    figures: [{ text: "config.ts:4\n\ttimeout: 30 < 60", kind: "source-excerpt" }],
+    options: [option("Explicit timeout", { preview: { text: "checkout({ timeout: 30 })", kind: "option-preview" } }), option("Default timeout", { preview: { text: "checkout()", kind: "option-preview" } })],
+  })));
+  expect(r.code).toBe(0);
+  const snap = show(opened.flow);
+  expect(snap.revision).toBe(r.json.revision);
+  expect(snap.stages[0].questions[0].needs).toEqual(needs);
+  expect(snap.stages[0].questions[0].figures[0]).toMatchObject({ text: "config.ts:4\n\ttimeout: 30 < 60", kind: "source-excerpt" });
+  expect(snap.stages[0].questions[0].options[1].preview).toMatchObject({ text: "checkout()", kind: "option-preview" });
+  const before = tree();
+  const { needs: _, ...bare } = question("again", { again: r.json.refs.source });
+  expect(submit("s-1", round(bare)).code).toBe(1);
+  expect(tree()).toEqual(before);
+});
+
+test("a Background figure cannot fulfill a question need even when it has the same kind", () => {
+  openFlow();
+  const before = tree();
+  expect(submit("s-1",
+    { kind: "background", title: "Source", summary: "Current configuration", sections: [{ heading: "Scope", body: "One checkout." }], sources: ["config.ts:4"], figures: [{ text: "timeout: 30", kind: "source-excerpt" }] },
+    round(question("source", { needs: [{ need: "Read the current timeout.", kind: "source-excerpt" }] }))).code).toBe(1);
   expect(tree()).toEqual(before);
 });
 
