@@ -1,6 +1,6 @@
 # Mermaid type reference
 
-Pele 1.12.0 renders the 32 visualization families below and targets Mermaid 12.1.0 built-ins. A Mermaid type is a syntax family, not a Diagram kind. A Context diagram or an Option diagram can use any family that fits its purpose.
+Pele 1.12.0 renders the 32 visualization families below and targets Mermaid 12.1.0 built-ins. A Mermaid type is a syntax family, not a Visual kind. A Context diagram, an Option diagram, a Data chart, or a Scenario walkthrough can use any family that fits its purpose.
 
 Each keyword links to a minimal `.mmd` source example. `scripts/render.ts` renders these sources with Catppuccin Mocha. They contain no theme directives, `classDef`, or `style` lines, so the renderer owns the colors. `tests/figure-types.test.ts` renders every example as a process and checks the keywords against an independent list.
 
