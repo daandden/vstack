@@ -47,7 +47,7 @@ Keep implementation details out of the map. Name only user paths, stable handles
 - [Scratch dir](./scratch-dir.md): the vstack-tmp scripts make and list Scratch entries. The `/vstack-clean` Command previews expired entries and deletes only confirmed choices.
 - [Flow page](./flow-page.md): the flow-page script takes typed contributions for a bound Stage, numbers and links them, refuses bad input without writing, and publishes the static Flow page with Overview, Stage tabs, Results, and Topics. A Flow closes and reopens, and Scratch cleanup never removes an open Flow. The Local Flow host serves live pages, native omp sessions present their bound Flow after each reply, and the combined-product proof drives every T4 case in one run.
 - [Figure render](./figure-render.md): the caller writes Mermaid and renders a Catppuccin Mocha Pele SVG through Bun. The Flow captures and displays the real SVG safely, with reader needs and Visual kinds.
-- [Clean worktrees](./clean-wt.md): `/skill:clean-wt` inventories the omp worktree base from a session with a held lease, removes unused clean checkouts, keeps their branches, and skips stale, unique, or unapproved dirty checkouts.
+- [Clean worktrees](./clean-wt.md): `/skill:clean-wt` checks ownership before inactive contents, removes unused clean checkouts and verified integrated drafts, keeps their branches, and protects stale, unique, unverified, or unapproved unresolved work.
 
 ## Not mapped yet
 

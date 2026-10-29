@@ -18,6 +18,9 @@ try {
       sessions: { type: "string", multiple: true },
       "session-owners": { type: "string" },
       approve: { type: "string", multiple: true },
+      target: { type: "string", multiple: true },
+      "prepare-source": { type: "string", multiple: true },
+      "source-facts": { type: "string" },
     },
   });
 } catch (e) {
@@ -27,8 +30,11 @@ const { values, positionals } = parsed;
 const command = positionals[0];
 if (command !== "inventory" && command !== "remove") usage("the first argument must be inventory or remove");
 if (command === "inventory" && (positionals.length > 1 || values.approve)) usage("inventory takes only the evidence flags");
+if (command === "remove" && (values.target || values["prepare-source"] || values["source-facts"])) usage("integration evidence options belong to inventory");
+if (values.target && (!values["source-facts"] || values["prepare-source"])) usage("--target requires --source-facts and cannot accompany --prepare-source");
+if (values["source-facts"] && !values.target) usage("--source-facts requires --target");
 
-function run(cmd: string[], cwd?: string, env?: Record<string, string | undefined>) {
+function run(cmd: string[], cwd?: string, env?: Record<string, string | undefined>): { code: number; out: string; err: string } {
   const r = Bun.spawnSync(cmd, { cwd, env, stdout: "pipe", stderr: "pipe" });
   return { code: r.exitCode, out: r.stdout.toString(), err: r.stderr.toString() };
 }
@@ -98,28 +104,54 @@ function readHeader(p: string, buf: Buffer): SessionHeader | undefined {
   return undefined;
 }
 
+const sessionDirectories = new Map<string, { stamp: string; children: string[]; files: string[] }>();
+const headersByFile = new Map<string, SessionHeader>();
+
 function readSessions(): SessionHeader[] {
-  const found: SessionHeader[] = [];
   const buf = Buffer.alloc(1 << 16);
-  const walk = (d: string) => {
-    let names: string[];
-    try {
-      names = readdirSync(d);
-    } catch {
+  const update = (file: string) => {
+    const header = readHeader(file, buf);
+    if (header) headersByFile.set(file, header);
+    else headersByFile.delete(file);
+  };
+  const walk = (dir: string) => {
+    const st = lstat(dir);
+    if (!st?.isDirectory()) {
+      const old = sessionDirectories.get(dir);
+      for (const file of old?.files ?? []) headersByFile.delete(file);
+      for (const child of old?.children ?? []) walk(child);
+      sessionDirectories.delete(dir);
       return;
     }
-    for (const name of names) {
-      const p = join(d, name);
-      const st = lstat(p);
-      if (st?.isDirectory()) walk(p);
-      else if (st?.isFile() && name.endsWith(".jsonl")) {
-        const header = readHeader(p, buf);
-        if (header) found.push(header);
+    const stamp = `${st.ino}:${st.mtimeMs}:${st.ctimeMs}`;
+    let cached = sessionDirectories.get(dir);
+    if (cached?.stamp !== stamp) {
+      let names: string[];
+      try {
+        names = readdirSync(dir);
+      } catch {
+        return;
       }
+      const children: string[] = [];
+      const files: string[] = [];
+      for (const name of names) {
+        const file = join(dir, name);
+        const stat = lstat(file);
+        if (stat?.isDirectory()) children.push(file);
+        else if (stat?.isFile() && name.endsWith(".jsonl")) {
+          files.push(file);
+          update(file);
+        }
+      }
+      for (const file of cached?.files ?? []) if (!files.includes(file)) headersByFile.delete(file);
+      for (const child of cached?.children ?? []) if (!children.includes(child)) walk(child);
+      cached = { stamp, children, files };
+      sessionDirectories.set(dir, cached);
     }
+    for (const child of cached.children) walk(child);
   };
   for (const root of sessionRoots) walk(root);
-  return found;
+  return [...headersByFile.values()];
 }
 
 /** Session headers from the `.jsonl` files that the given processes hold open, which finds sessions saved outside the session dirs. */
@@ -211,13 +243,23 @@ function leaseDetectionGap(): string | undefined {
   if (!ownSession) return "PI_SESSION_ID is not set, so the run cannot prove it sees session leases; run clean-wt from an omp session";
   if (!leases.held.has(ownSession)) return `the running session's own lease (${ownSession}) does not show as held under ${ownersDir}`;
   if (!sessionHeaders.some((s) => s.id === ownSession)) return `the running session ${ownSession} has no session file under ${sessionRoots.join(", ")}, so other sessions may be missing too`;
+  const missing = [...leases.held.keys()].filter((id) => !sessionHeaders.some((s) => s.id === id));
+  if (missing.length > 0) return `live sessions have no readable current header (${missing.join(", ")}), so their checkouts are unknown`;
   if (leases.unknown.size > 0) return `live sessions hold leases with no readable session file (${[...leases.unknown.keys()].join(", ")}), so their checkouts are unknown`;
   return undefined;
 }
 
 function gatherEvidence() {
+  listing = ompListing();
   sessionHeaders = readSessions();
   leases = heldLeases([...sessionHeaders.map((s) => s.id), ...(ownSession ? [ownSession] : [])]);
+  const buf = Buffer.alloc(1 << 16);
+  sessionHeaders = sessionHeaders.flatMap((header) => {
+    if (!leases.held.has(header.id)) return [header];
+    const current = readHeader(header.file, buf);
+    if (current) headersByFile.set(header.file, current);
+    return current ? [current] : [];
+  });
   const holders = [...new Set(leases.unknown.values())].filter((p): p is number => p !== null);
   if (holders.length > 0) {
     const known = new Set(sessionHeaders.map((s) => s.id));
@@ -231,7 +273,6 @@ function gatherEvidence() {
     }
   }
   cwds = processCwds();
-  listing = ompListing();
   evidenceGaps = [leaseDetectionGap(), cwds.ok ? undefined : cwds.reason, listing.ok ? undefined : listing.reason].filter((g): g is string => !!g);
 }
 
@@ -261,6 +302,9 @@ interface Checkout {
   fingerprint: string;
   sessions: SessionLink[];
   moved_sessions: SessionLink[];
+  integration?: Integration;
+  automatic?: boolean;
+  source_git_dir?: string;
 }
 
 /** An owner keeps a checkout. Without one, any missing evidence keeps it as uncertain. */
@@ -392,7 +436,11 @@ function expand(root: string, rel: string): string[] {
   const clean = rel.replace(/\/$/, "");
   const st = lstat(join(root, clean));
   if (!st?.isDirectory()) return [clean];
-  return readdirSync(join(root, clean)).sort().flatMap((n) => expand(root, `${clean}/${n}`));
+  try {
+    return readdirSync(join(root, clean)).sort().flatMap((n) => expand(root, `${clean}/${n}`));
+  } catch {
+    return [clean];
+  }
 }
 
 function sameBytes(a: string, b: string): boolean {
@@ -438,6 +486,44 @@ interface WorkState {
   stamp: unknown[];
 }
 
+function contentStamp(file: string): string {
+  let fd: number | undefined;
+  try {
+    const st = lstat(file);
+    if (!st) return "missing";
+    if (st.isSymbolicLink()) return `link:${readlinkSync(file)}`;
+    if (!st.isFile()) return "unverified";
+    const hash = createHash("sha256");
+    const buf = Buffer.alloc(1 << 16);
+    fd = openSync(file, "r");
+    for (;;) {
+      const n = readSync(fd, buf, 0, buf.length, null);
+      if (n === 0) break;
+      hash.update(buf.subarray(0, n));
+    }
+    return hash.digest("hex");
+  } catch {
+    return "unverified";
+  } finally {
+    if (fd !== undefined) closeSync(fd);
+  }
+}
+
+function workingEntry(path: string, rel: string): string | undefined {
+  try {
+    const st = lstatSync(join(path, rel));
+    if (!st.isFile() && !st.isSymbolicLink()) return undefined;
+    const hash = st.isSymbolicLink()
+      ? Bun.spawnSync(["git", "hash-object", "--stdin"], { cwd: path, stdin: Buffer.from(readlinkSync(join(path, rel))), stdout: "pipe", stderr: "pipe" })
+      : Bun.spawnSync(["git", "--literal-pathspecs", "hash-object", "--no-filters", "--", rel], { cwd: path, stdout: "pipe", stderr: "pipe" });
+    if (hash.exitCode !== 0) return undefined;
+    const mode = st.isSymbolicLink() ? "120000" : st.mode & 0o111 ? "100755" : "100644";
+    return `${mode} ${hash.stdout.toString().trim()}`;
+  } catch {
+    return undefined;
+  }
+}
+
 function workState(path: string, ref: string | null): WorkState {
   const r = run(["git", "status", "--porcelain=v2", "-z", "--untracked-files=all", "--ignored"], path);
   if (r.code !== 0) return { state: "unknown", changes: { unreadable: [r.err.trim() || `git status exit ${r.code}`] }, stamp: [r.err] };
@@ -454,8 +540,31 @@ function workState(path: string, ref: string | null): WorkState {
       const file = fields.slice(t.startsWith("1 ") ? 8 : 9).join(" ");
       if (fields[1][0] !== ".") changes.staged.push(file);
       if (fields[1][1] !== ".") changes.unstaged.push(file);
-      if (t.startsWith("2 ")) i++; // the rename's original path
+      if (t.startsWith("2 ")) {
+        const original = tokens[++i];
+        if (fields[1][0] !== ".") changes.staged.push(original);
+        if (fields[1][1] !== ".") changes.unstaged.push(original);
+      }
     } else if (t.startsWith("u ")) changes.unmerged.push(t.split(" ").slice(10).join(" "));
+  }
+  const flags = run(["git", "ls-files", "-v", "-z"], path);
+  if (flags.code !== 0) return { state: "unknown", changes: { unreadable: ["the index flags could not be read"] }, stamp: [r.out, flags.err] };
+  const hidden = flags.out.split("\0").filter((line) => line[0] === "S" || /^[a-z]/.test(line)).map((line) => line.slice(2));
+  let hiddenUnknown = false;
+  if (hidden.length > 0) {
+    const index = run(["git", "--literal-pathspecs", "ls-files", "--stage", "-z", "--", ...hidden], path);
+    const entries = new Map(index.out.split("\0").filter(Boolean).map((line) => {
+      const at = line.indexOf("\t");
+      const [mode, sha, stage] = line.slice(0, at).split(" ");
+      return [line.slice(at + 1), stage === "0" ? `${mode} ${sha}` : "unmerged"];
+    }));
+    for (const rel of hidden) {
+      const actual = workingEntry(path, rel);
+      if (index.code !== 0 || !actual || !entries.has(rel)) {
+        (changes.unreadable ??= []).push(rel);
+        hiddenUnknown = true;
+      } else if (actual !== entries.get(rel) && !changes.unstaged.includes(rel)) changes.unstaged.push(rel);
+    }
   }
   for (const rel of ignored) {
     const verdict = compareIgnored(path, ref, rel);
@@ -463,12 +572,12 @@ function workState(path: string, ref: string | null): WorkState {
     else if (verdict === "unverified") changes.ignored_unverified.push(rel);
   }
   const listed = Object.values(changes).flat();
-  const stamp = [r.out, ...[...listed, ...ignored].map((rel) => {
+  const stamp = [r.out, flags.out, ...[...new Set([...listed, ...ignored, ...hidden])].map((rel) => {
     const st = lstat(join(path, rel));
-    return st ? [rel, st.size, st.mtimeMs, st.ino, st.mode] : [rel];
+    return st ? [rel, st.size, st.mtimeMs, st.ctimeMs, st.ino, st.mode, contentStamp(join(path, rel))] : [rel];
   })];
   for (const k of Object.keys(changes)) if (changes[k].length === 0) delete changes[k];
-  return { state: listed.length > 0 ? "dirty" : "clean", changes, stamp };
+  return { state: hiddenUnknown ? "unknown" : listed.length > 0 ? "dirty" : "clean", changes, stamp };
 }
 
 interface Tip {
@@ -561,7 +670,7 @@ function inspectOrphan(path: string, gitdir: string): Checkout {
   const { sessions, moved } = sessionLinks(path);
   const owners = ownersOf(path, [], sessions);
   const { verdict, reasons } = verdictOf(owners, evidenceGaps);
-  const fingerprint = verdict === "owned" ? "" : createHash("sha256").update(JSON.stringify(treeStamp(path))).digest("hex");
+  const fingerprint = verdict !== "unused" ? "" : createHash("sha256").update(JSON.stringify(treeStamp(path))).digest("hex");
   const unreadable = [`the repo no longer has this worktree's registration (${gitdir || "no gitdir line"}), so git cannot read its changes`];
   return { path, entry: path, kind: "orphaned-worktree", verdict, reasons, owners, state: "unknown", changes: { unreadable }, unique_history: [], branch: null, fingerprint, sessions, moved_sessions: moved };
 }
@@ -571,19 +680,113 @@ function ownersOf(entry: string, entryOwners: Owner[], sessions: SessionLink[]):
   return [...entryOwners, ...processOwners, ...sessions.filter((s) => s.live).map((s): Owner => ({ type: "session", id: s.id, file: s.file, pid: leases.held.get(s.id) ?? null }))];
 }
 
+interface RemoteDefault {
+  source_git_dir: string;
+  remote: string;
+  url: string;
+  ref: string;
+  sha: string;
+}
+
+interface Integration {
+  status: "verified" | "unresolved";
+  reason?: string;
+  default?: RemoteDefault;
+  ref?: string;
+  paths?: string[];
+}
+
+const remoteDefaults = new Map<string, RemoteDefault | string>();
+let refreshRemote = false;
+let compareIntegration = false;
+
+function remoteDefault(commonDir: string): RemoteDefault | string {
+  const cached = remoteDefaults.get(commonDir);
+  if (cached && !refreshRemote) return cached;
+  const git = ["git", `--git-dir=${commonDir}`];
+  const remotes = run([...git, "remote"]).out.trim().split("\n").filter(Boolean);
+  const remote = remotes.includes("origin") ? "origin" : remotes.length === 1 ? remotes[0] : undefined;
+  let fact: RemoteDefault | string = "the source has no unambiguous remote";
+  if (remote) {
+    const url = run([...git, "remote", "get-url", remote]).out.trim();
+    const advertised = run([...git, "ls-remote", "--symref", remote, "HEAD"]);
+    const ref = /^ref: (refs\/heads\/[^\t\n]+)\tHEAD$/m.exec(advertised.out)?.[1];
+    const sha = /^([0-9a-f]{40,64})\tHEAD$/m.exec(advertised.out)?.[1];
+    if (advertised.code !== 0 || !url || !ref || !sha) fact = "the source remote HEAD could not be verified";
+    else if (typeof cached === "object" && cached.url === url && cached.remote === remote && cached.ref === ref && cached.sha === sha) fact = cached;
+    else {
+      const fetch = run([...git, "fetch", "--no-tags", "--no-write-fetch-head", remote, sha]);
+      fact = fetch.code === 0 ? { source_git_dir: commonDir, remote, url, ref, sha } : "the advertised remote default commit could not be fetched";
+    }
+  }
+  remoteDefaults.set(commonDir, fact);
+  return fact;
+}
+
+function integrated(path: string, source: Source | null, work: WorkState): Integration {
+  const commonDir = source?.commonDir ?? run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], path).out.trim();
+  const fact = values["source-facts"]
+    ? remoteDefaults.get(commonDir) ?? "no prepared remote-default facts were supplied for this source"
+    : remoteDefault(commonDir);
+  if (typeof fact === "string") return { status: "unresolved", reason: fact };
+  const unresolved = (reason: string): Integration => ({ status: "unresolved", default: fact, ref: fact.ref, reason });
+  if (run(["git", `--git-dir=${commonDir}`, "remote", "get-url", fact.remote]).out.trim() !== fact.url) return unresolved("the source remote identity changed after preparation");
+  if (work.state !== "dirty" || work.changes.unmerged?.length) return unresolved("the tracked contents cannot be verified");
+  if (run(["git", "cat-file", "-e", `${fact.sha}^{commit}`], path).code !== 0) {
+    if (run(["git", "fetch", "--no-tags", "--no-write-fetch-head", fact.url, fact.sha], path).code !== 0) return unresolved("the remote default commit is unavailable in this checkout");
+  }
+  const base = run(["git", "merge-base", "HEAD", fact.sha], path);
+  if (base.code !== 0) return unresolved("the checkout and remote default have no verified common base");
+  const committed = run(["git", "diff", "--no-renames", "--name-only", "-z", base.out.trim(), "HEAD"], path);
+  if (committed.code !== 0) return unresolved("the checkout's committed changes could not be read");
+  const paths = [...new Set([...committed.out.split("\0").filter(Boolean), ...(work.changes.staged ?? []), ...(work.changes.unstaged ?? []), ...(work.changes.untracked ?? [])])].sort();
+  if (paths.length === 0) return unresolved("there are no changed files to compare");
+  const tree = run(["git", "--literal-pathspecs", "ls-tree", "-z", fact.sha, "--", ...paths], path);
+  const index = run(["git", "--literal-pathspecs", "ls-files", "--stage", "-z", "--", ...paths], path);
+  if (tree.code !== 0 || index.code !== 0) return unresolved("the remote tree or checkout index could not be read");
+  const remoteEntries = new Map(tree.out.split("\0").filter(Boolean).map((line) => {
+    const at = line.indexOf("\t");
+    const name = line.slice(at + 1);
+    const [mode, , sha] = line.slice(0, at).split(" ");
+    return [name, `${mode} ${sha}`];
+  }));
+  const indexEntries = new Map(index.out.split("\0").filter(Boolean).map((line) => {
+    const at = line.indexOf("\t");
+    const [mode, sha, stage] = line.slice(0, at).split(" ");
+    return [line.slice(at + 1), stage === "0" ? `${mode} ${sha}` : "unmerged"];
+  }));
+  for (const rel of paths) {
+    const expected = remoteEntries.get(rel);
+    if (work.changes.staged?.includes(rel) && indexEntries.get(rel) !== expected) return unresolved(`the staged version of ${rel} differs from the remote default`);
+    const st = lstat(join(path, rel));
+    if (!st) {
+      if (expected !== undefined) return unresolved(`${rel} is missing locally but exists on the remote default`);
+      continue;
+    }
+    const actual = workingEntry(path, rel);
+    if (!actual || actual !== expected) return unresolved(`${rel} differs from the remote default`);
+  }
+  return { status: "verified", default: fact, ref: fact.ref, paths };
+}
+
 function inspect(path: string, entry: string, kind: Kind, entryOwners: Owner[], entryGaps: string[]): Checkout {
-  const branch = run(["git", "symbolic-ref", "-q", "--short", "HEAD"], path).out.trim() || null;
+  const branch: string | null = null;
   const { sessions, moved } = sessionLinks(entry);
   const owners = ownersOf(entry, entryOwners, sessions);
   const { verdict, reasons } = verdictOf(owners, [...evidenceGaps, ...entryGaps]);
-  const common = { path, entry, kind, verdict, reasons, owners, branch, sessions, moved_sessions: moved };
-  if (verdict === "owned") return { ...common, state: "not checked", changes: {}, unique_history: [], fingerprint: "" };
+  const common: Pick<Checkout, "path" | "entry" | "kind" | "verdict" | "reasons" | "owners" | "branch" | "sessions" | "moved_sessions"> = { path, entry, kind, verdict, reasons, owners, branch, sessions, moved_sessions: moved };
+  if (verdict !== "unused") return { ...common, state: "not checked", changes: {}, unique_history: [], fingerprint: "" };
+  common.branch = run(["git", "symbolic-ref", "-q", "--short", "HEAD"], path).out.trim() || null;
   const source = sourceOf(path, entry, kind);
   const head = run(["git", "rev-parse", "HEAD"], path).out.trim();
   const work = workState(path, source?.checkout ?? null);
   const unique_history = uniqueHistory(path, kind, source);
-  const fingerprint = createHash("sha256").update(JSON.stringify([head, work.stamp, unique_history])).digest("hex");
-  return { ...common, state: work.state, changes: work.changes, unique_history, fingerprint };
+  const integration = compareIntegration && work.state === "dirty" ? integrated(path, source, work) : undefined;
+  const artifacts = ["ignored_unique", "ignored_unverified", "unmerged"].some((key) => work.changes[key]?.length);
+  const automatic = unique_history.length === 0 && (work.state === "clean" || (integration?.status === "verified" && !artifacts));
+  const fingerprint = createHash("sha256").update(JSON.stringify([head, common.branch, work.stamp, unique_history, integration])).digest("hex");
+  const source_git_dir = source?.commonDir ?? run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], path).out.trim();
+  return { ...common, state: work.state, changes: work.changes, unique_history, fingerprint, integration, automatic, source_git_dir };
 }
 
 const TASK_MOUNTS = ["m", "merged"];
@@ -621,7 +824,10 @@ function classify(path: string, out: Checkout[]): boolean {
     const { owner, gap } = taskOwner(path);
     // Removal deletes the whole sandbox, so a sandbox is removable only when it holds a single checkout.
     const multiMount = mounts.length > 1 ? `${path} holds both m and merged, and removing one would delete the other; check both before removing the sandbox by hand` : undefined;
-    const gaps = [gap, retainedMountGap(path), multiMount].filter((g): g is string => !!g);
+    const known = new Set([...TASK_MOUNTS, TASK_MARKER, ".omp-retained-backend.json"]);
+    const artifacts = readdirSync(path).filter((name) => !known.has(name));
+    const wrapperGap = artifacts.length > 0 ? `${path} holds unverified files outside its checkout (${artifacts.join(", ")})` : undefined;
+    const gaps = [gap, retainedMountGap(path), multiMount, wrapperGap].filter((g): g is string => !!g);
     for (const m of mounts) out.push(inspect(join(path, m), path, "task-isolation", owner ? [owner] : [], gaps));
     return true;
   }
@@ -659,22 +865,29 @@ function rescan(entry: string, path: string): Checkout | undefined {
   return out.find((c) => c.path === path);
 }
 
+function entryFor(path: string): string | undefined {
+  if (!inside(path, base) || path === base) return undefined;
+  const entry = TASK_MOUNTS.includes(basename(path)) && listing.paths.has(dirname(path)) ? dirname(path) : path;
+  const relative = entry.slice(base.length + 1).split(sep);
+  if (relative.length > 2 || !lstat(entry)?.isDirectory() || (listing.ok && !listing.paths.has(entry))) return undefined;
+  return lstat(join(path, ".git")) ? entry : undefined;
+}
+
 function print(v: unknown) {
   process.stdout.write(`${JSON.stringify(v, null, 2)}\n`);
 }
 
 function removeAll() {
   if (positionals.length < 2) usage("remove needs at least one <path>=<fingerprint>");
-  const known = new Map(scan().map((c) => [c.path, c]));
   const approved = new Set((values.approve ?? []).map((p) => realpath(p) || resolve(p)));
   const targets = positionals.slice(1).map((arg) => {
     const at = arg.lastIndexOf("=");
     const path = realpath(arg.slice(0, at)) || resolve(arg.slice(0, at));
     const fingerprint = arg.slice(at + 1);
     if (at < 0 || !/^[0-9a-f]{64}$/.test(fingerprint)) usage(`${arg} is not <path>=<fingerprint>`);
-    const c = known.get(path);
-    if (!c) usage(`${path} is not a checkout under ${base}`);
-    return { path, entry: c.entry, fingerprint };
+    const entry = entryFor(path);
+    if (!entry) usage(`${path} is not a checkout under ${base}`);
+    return { path, entry, fingerprint };
   });
   for (const p of approved) if (!targets.some((t) => t.path === p)) usage(`--approve ${p} names no checkout in this removal`);
 
@@ -683,14 +896,22 @@ function removeAll() {
   const failed: { path: string; error: string }[] = [];
   for (const t of targets) {
     gatherEvidence();
+    compareIntegration = false;
+    const discovered = rescan(t.entry, t.path);
+    compareIntegration = discovered?.state === "dirty" && discovered.fingerprint !== t.fingerprint;
+    refreshRemote = true;
+    if (compareIntegration) rescan(t.entry, t.path);
+    refreshRemote = false;
+    gatherEvidence();
     const c = rescan(t.entry, t.path);
-    const needsApproval = !!c && c.state !== "clean";
+    const needsApproval = !!c && !c.automatic;
     let reason: string | undefined;
     if (!c) reason = "it is no longer a checkout that omp lists under the base";
     else if (c.verdict === "owned") reason = `it is in use now: ${c.owners.map((o) => [o.type, o.id, o.pid].filter((v) => v !== undefined && v !== null).join(" ")).join(", ")}`;
     else if (c.verdict !== "unused") reason = `its ownership is uncertain: ${c.reasons.join("; ")}`;
     else if (c.fingerprint !== t.fingerprint) reason = "it changed since the inventory";
     else if (c.unique_history.length > 0) reason = `it holds commits or stashes that exist nowhere else (${c.unique_history.map((h) => h.ref).join(", ")}); push or branch them first`;
+    else if (c.state === "unknown") reason = "its Git state and history cannot be verified; repair the checkout before removal";
     else if (needsApproval && !approved.has(t.path)) reason = `it holds ${c.state} work, and removing it needs --approve`;
     if (reason || !c) {
       skipped.push({ path: t.path, reason: reason! });
@@ -700,8 +921,9 @@ function removeAll() {
       let method: string;
       if (c.kind === "linked-worktree") {
         const commonDir = run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], c.path).out.trim();
-        method = needsApproval ? "git worktree remove --force" : "git worktree remove";
-        const r = run(["git", `--git-dir=${commonDir}`, "worktree", "remove", ...(needsApproval ? ["--force"] : []), c.path]);
+        const force = c.state !== "clean";
+        method = force ? "git worktree remove --force" : "git worktree remove";
+        const r = run(["git", `--git-dir=${commonDir}`, "worktree", "remove", ...(force ? ["--force"] : []), c.path]);
         if (r.code !== 0) throw new Error(r.err.trim() || `git worktree remove exit ${r.code}`);
         if (run(["git", `--git-dir=${commonDir}`, "worktree", "list", "--porcelain"]).out.split("\n").includes(`worktree ${c.path}`)) {
           throw new Error("git still registers the worktree after removal");
@@ -720,4 +942,33 @@ function removeAll() {
 }
 
 gatherEvidence();
-print(command === "inventory" ? { base, evidence_gaps: evidenceGaps, checkouts: scan() } : removeAll());
+if (command === "remove") print(removeAll());
+else if (values["prepare-source"]) {
+  const source_facts = [...new Set(values["prepare-source"].map((p) => realpath(p) || resolve(p)))].map((source_git_dir) => {
+    const fact = remoteDefault(source_git_dir);
+    return typeof fact === "string" ? { source_git_dir, reason: fact } : fact;
+  });
+  print({ base, evidence_gaps: evidenceGaps, checkouts: [], source_facts });
+} else if (values.target) {
+  try {
+    const prepared = JSON.parse(readFileSync(values["source-facts"]!, "utf8"));
+    if (!Array.isArray(prepared.source_facts)) throw new Error("expected a source_facts array");
+    for (const fact of prepared.source_facts) {
+      if (typeof fact.source_git_dir !== "string") throw new Error("source_git_dir must be a string");
+      if (typeof fact.reason === "string") remoteDefaults.set(fact.source_git_dir, fact.reason);
+      else {
+        if (![fact.remote, fact.url, fact.ref, fact.sha].every((v) => typeof v === "string" && v.length > 0) || !/^refs\/heads\/.+/.test(fact.ref) || !/^[0-9a-f]{40,64}$/.test(fact.sha)) throw new Error("invalid remote-default fact");
+        remoteDefaults.set(fact.source_git_dir, fact);
+      }
+    }
+  } catch (e) {
+    usage(`cannot read --source-facts: ${(e as Error).message}`);
+  }
+  compareIntegration = true;
+  const targets = [...new Set(values.target.map((p) => realpath(p) || resolve(p)))].map((path) => {
+    const entry = entryFor(path);
+    if (!entry) usage(`${path} is not a checkout under ${base}`);
+    return { path, entry };
+  });
+  print({ base, evidence_gaps: evidenceGaps, checkouts: targets.map(({ path, entry }) => rescan(entry, path)).filter(Boolean) });
+} else print({ base, evidence_gaps: evidenceGaps, checkouts: scan() });
