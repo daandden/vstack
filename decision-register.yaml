@@ -60,7 +60,7 @@ items:
     tree: f07d230f645fc9ac390cf13a450bbff12ad791a3
     disposition: adapt
     artifacts: [plugin/skills/implement]
-    reason: "Settles End states from the user's words or the ticket, then the project's default End state in code-host.md, then an ask, through live MCP capability discovery, and shares description-based Code host routing, with unsupported optional tools reported as gaps (ADR 0034, ADR 0035, ADR 0038, #204). Numbers its steps so the seams are settled before the first code change and each slice goes red before its code, and reuses a Grilling-page seam only when the user picked it (#183). Shares End state ownership with tune-llm-flow, preserving kept-round and eval commits (#254, ADR 0041)."
+    reason: "Settles End states from the user's words or the ticket, then the project's default End state in code-host.md, then an ask, through live MCP capability discovery, and shares description-based Code host routing, with unsupported optional tools reported as gaps (ADR 0034, ADR 0035, ADR 0038, #204). Numbers its steps so the seams are settled before the first code change and each slice goes red before its code, and reuses a Grilling-page seam only when the user picked it (#183). Shares End state ownership with tune-llm-flow, preserving kept-round and eval commits (#254, ADR 0041). The author runs development checks, and an independent isolated Verifier checks the committed head at every End state in shared step 6b, whose accepted Verdict the chain reuses or renews (ADR 0042, #261)."
   - id: matt/improve-codebase-architecture
     upstream: matt
     kind: skill
@@ -92,7 +92,7 @@ items:
     tree: b1568cde855a189b16e5d7dd8a0fa4c3f156bc2e
     disposition: adapt
     artifacts: [plugin/skills/setup-vstack]
-    reason: "Other issue trackers and Code hosts use short MCP configs from current descriptions; re-setup preserves CI hand edits, confirms the CI and Code host drafts together, and adds a missing default End state line to code-host.md; its eval Python check no longer names the removed Grilling page visual judge (ADR 0035, ADR 0038, #204, #205, #206). Lists implement-spec and session among tracker readers (#207)."
+    reason: "Other issue trackers and Code hosts use short MCP configs from current descriptions; re-setup preserves CI hand edits, confirms the CI and Code host drafts together, and adds a missing default End state line to code-host.md; its eval Python check no longer names the removed Grilling page visual judge (ADR 0035, ADR 0038, #204, #205, #206). Lists implement-spec and session among tracker readers (#207). Names the final Verifier as a Verify skill user (ADR 0042)."
   - id: matt/tdd
     upstream: matt
     kind: skill
@@ -324,7 +324,7 @@ items:
     tree: 5aa2dae2726d09d219397fbbedc1e9500a239d28
     disposition: adapt
     artifacts: [plugin/skills/setup-app-verification]
-    reason: "Renamed for live proof in implement. It commits its own Standard output unless implement runs it and commits, and Private mode links the shared copy (ADR 0009, ADR 0015)."
+    reason: "Renamed for implement's development checks and final Verifier. It commits its own Standard output unless implement runs it and commits, and Private mode links the shared copy (ADR 0009, ADR 0015, ADR 0042)."
   - id: pstack/figure-it-out
     upstream: pstack
     kind: skill
@@ -356,7 +356,7 @@ items:
     tree: b6ce4dcdc378492f9acd55a4e56ae111204b4f11
     disposition: adapt
     artifacts: [plugin/skills/maintain-app-verification]
-    reason: "Renamed for feature-scoped or Fan-out source passes and live proof. It commits its own Standard fixes unless implement runs it and commits (ADR 0009, ADR 0015)."
+    reason: "Renamed for feature-scoped or Fan-out source passes and Drift found by smoke checks or the final Verifier. It commits its own Standard fixes unless implement runs it and commits (ADR 0009, ADR 0015, ADR 0042)."
   - id: pstack/make-bot-ui
     upstream: pstack
     kind: skill
@@ -724,7 +724,7 @@ items:
     tree: e9cf267908a9737236b3a8a8a5a99fe9066f7554
     disposition: adapt
     artifacts: [plugin/skills/hillclimb]
-    reason: "The grill settles the metric and stop predicate, and implement commits each accepted win before one final review (ADR 0015)."
+    reason: "The grill settles the metric and stop predicate, and implement commits each accepted win before one final review (ADR 0015); the final Verifier in END-STATE step 6b checks the committed head (ADR 0042)."
   - id: pstack/playbook-investigation
     upstream: pstack
     kind: playbook
@@ -748,7 +748,7 @@ items:
     tree: d729a7a06c5b67e406b081e1777114bc03b66f4a
     disposition: adapt
     artifacts: [plugin/skills/open-pr]
-    reason: "Opens a ready PR through the repo's code-host.md (ADR 0020); the body follows skill://pr with a Blast Radius backed by code-review's Blast radius findings and Verify proof; /deslop and interrogate dropped."
+    reason: "Opens a ready PR through the repo's code-host.md (ADR 0020); the body follows skill://pr with a Blast Radius backed by code-review's Blast radius findings and an Evidence section that cites the accepted Verdict (ADR 0042); /deslop and interrogate dropped."
   - id: pstack/playbook-orchestrate
     upstream: pstack
     kind: playbook
@@ -812,7 +812,7 @@ items:
     tree: 0a0c3cfde8948e3aa8ee80c6f3f9ce7e3e64fcba
     disposition: adapt
     artifacts: [plugin/skills/ship]
-    reason: "Verifiers are vstack agents in a Fan-out; cloud agents dropped."
+    reason: "Verifiers are vstack agents in a Fan-out; cloud agents dropped. ship reuses a caller's accepted Verdict for a matching patch id and otherwise verifies through implement's END-STATE step 6b (ADR 0042)."
   - id: pstack/playbook-trace-forensics
     upstream: pstack
     kind: playbook
@@ -877,7 +877,7 @@ items:
     tree: 0cfefc751d0cb64f0c948ffcb17e13b94e778f08
     disposition: adapt
     artifacts: [plugin/skills/implement-spec]
-    reason: "Runs Matt's steps with an orchestrator-only main agent: isolated vstack-worker implementers start as tickets become ready, a merger vstack-worker commits each ticket, and implement's END-STATE steps finish the run, asking the End state only when no project default settles it. It finds the flow's Grilling page from the spec issue and puts its seam confirmations and relayed implementer questions in its own Stage (ADR 0019, ADR 0022, ADR 0038, #167). Reads the MCP task graph and resolves completed work with recorded directional blocking links and close transition (#207, ADR 0035)."
+    reason: "Runs Matt's steps with an orchestrator-only main agent: isolated vstack-worker implementers start as tickets become ready, a merger vstack-worker commits each ticket, and implement's END-STATE steps finish the run, asking the End state only when no project default settles it. It finds the flow's Grilling page from the spec issue and puts its seam confirmations and relayed implementer questions in its own Stage (ADR 0019, ADR 0022, ADR 0038, #167). Reads the MCP task graph and resolves completed work with recorded directional blocking links and close transition (#207, ADR 0035). Resolves tickets and the spec only after END-STATE step 6b accepts the Verdict (ADR 0042)."
   - id: matt/pr
     upstream: matt
     kind: skill

@@ -83,8 +83,8 @@ Stop when the target and attempt floor are both met, or when remaining ideas are
 
 ## 8. Return to implement
 
-After the loop, implement resumes its End state chain. Keep accepted wins in separate commits and in landing order. Run code-review once after the last work commit. Put the review fixes in new commits. Live proof covers the final diff, including cleanup and Verify maintenance.
+After the loop, implement resumes its End state chain. Keep accepted wins in separate commits and in landing order. Run code-review once after the last work commit. Put the review fixes in new commits. The Verifier in shared step 6b checks the final committed head, including cleanup and Verify maintenance.
 
 ## Reply
 
-Report metric, unit and target; initial baseline → final with percent delta; attempts run, kept, rejected, and deferred; each accepted fix on one line with its commit; raw measurement and live-proof paths; losing patch paths; the absolute `attempts.tsv` path; the best next idea; and requested versus reached End state. Include open cleanup, verification, target, or isolation gaps. Claim only checks and outcomes that were observed.
+Report metric, unit and target; initial baseline → final with percent delta; attempts run, kept, rejected, and deferred; each accepted fix on one line with its commit; raw measurement paths; each accepted Verdict with its verifier identity, patch id, and evidence paths; losing patch paths; the absolute `attempts.tsv` path; the best next idea; and requested versus reached End state. Include open cleanup, verification, target, or isolation gaps. Claim only checks and outcomes that were observed.

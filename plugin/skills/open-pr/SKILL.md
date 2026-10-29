@@ -25,17 +25,17 @@ Use the default branch as the base unless the user requested a stack. Pin the ba
 
 ## 2. Clean up the diff
 
-If the caller says "prune-comments already run", skip cleanup and use its final-diff proof and review. Otherwise run skill://prune-comments over the diff against the default branch. Return accepted fixes to implement for the proof, review, and commit steps in END-STATE.md.
+If the caller says "prune-comments already run", skip cleanup and use its development checks, review, and accepted Verdict. Otherwise run skill://prune-comments over the diff against the default branch. Return accepted fixes to implement for the development check, review, and commit steps in END-STATE.md.
 
 If prune-comments stops because its critic is unavailable or rejects the second report, return accepted fixes to implement and keep going. Record prune-comments as open in the todo list and reply. Its failure never blocks the chain.
 
-Use the caller's final-diff proof and review. If cleanup changes the diff, return accepted edits to implement for live proof in END-STATE step 4, its one review, and its step 6 commit before continuing to step 3.
+Use the caller's development checks, review, and accepted Verdict. If cleanup changes the diff, return accepted edits to implement for development checks in END-STATE step 4, its one review, and its step 6 commit before continuing to step 3.
 
 ## 3. Order the unpushed commits
 
 Read the remote tip as END-STATE step 0b says, and order only the unpushed commits that it leaves into small, ordered commits. Each commit has one separable change and tells the story in order. Amend when a fix belongs to a just-made unpushed commit. Use a new commit for a separable fix.
 
-If ordering changes the diff rather than only history, return the changed diff to implement for updated live proof, review, and commit before step 4.
+If ordering changes the diff rather than only history, return the changed diff to implement for updated development checks, review, and commit before step 4.
 
 ## 4. Push the final tip
 
@@ -56,7 +56,7 @@ Follow the title convention visible in recent `git log` on the default branch. I
 Write the body with skill://pr: its Summary, Evidence, and Merge Danger sections, in its order. The body is a one-minute briefing for a reviewer who has the diff, not a lab notebook. Write short, simple sentences with few identifiers. The body becomes the squash commit body, so keep it to about 40 lines. Put this run's facts in pr's sections:
 
 - Merge Danger: the door call (one-way or two-way) and the Blast Radius from step 5. Back the Blast Radius with the reused code-review Blast radius findings or the new blast-radius proof, and cite that report. State affected callers or data, the safety fact and its proof status, and confirmed risks. Name the continuing cost if the default branch stays red without the fix. If Blast radius did not run, the Blast Radius says so and gives the reason, with no safety claim.
-- Evidence: the before and after of every real run path, with its command, observed outcome, and evidence path. Cite the chosen Verify skill and absolute Scratch `verify/` paths. For performance, report one primary number with its unit in `before -> after` form, and link the rest of the evidence. State failures, skipped checks, missing live proof, and limits. Report only proof that ran on the final diff.
+- Evidence: the before and after of every real run path, with its command, observed outcome, and evidence path. Cite the accepted Verdict with its verdict, verifier identity, patch id, and evidence paths, plus the chosen Verify skill and absolute Scratch `verify/` paths. For performance, report one primary number with its unit in `before -> after` form, and link the rest of the evidence. State failures, skipped checks, and limits. If the accepted Verdict does not cover the final diff, or no Verdict exists, say so. Report only proof that ran on the final diff.
 - Closing references: end the Summary with one `Closes <reference>` line per caller-supplied reference, in the form the issue tracker closes work through PRs. Add none the caller did not supply.
 
 Attach videos or screenshots only when they prove a claim. Strip private information before publication. Local evidence paths identify local proof, not remotely accessible links. Use an existing approved artifact URL when available. Put long logs, commit details, metric tables, full SHAs, lane recitals, and "CLEAN" verdicts in linked evidence, not the body. A commit body does not restate its subject.

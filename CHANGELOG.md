@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [7.0.6] - 2026-10-29
+
+- An independent, isolated Verifier checks the committed head at every End state, commit included, in implement's new shared END-STATE step 6b. The author runs development tests and targeted smoke checks and keeps Verify skill setup and repair, without a full live-proof pass. The chain reuses the accepted Verdict when the patch id is unchanged and verifies a changed patch before merge-ready or shipped. FAIL and DRIFT get one repair-and-retry cycle per pass of step 6b, including a pass after babysit changes the patch, and an unavailable Verdict stops the run. The run record, the Report block, and a merge-ready PR comment keep the Verdict. ship reuses a matching Verdict and otherwise verifies through step 6b. A Verifier whose clone inherits uncommitted changes runs the head SHA in a detached worktree (ADR 0042, #261).
+
 ## [7.0.5] - 2026-10-28
 
 - The agent executing each Grilling page step, including a subagent in its own session, decides separately whether a Context diagram and an Option diagram help and chooses each Mermaid type. Remove the Grilling page visual judge, its rubric, its calibration checker and cases, and its setup claims. The Addon judge is unchanged (ADR 0040).
