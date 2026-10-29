@@ -177,8 +177,11 @@ rules:
     scope: adapted
     text: |
       One subagent uses a single-spawn line from plugin/skills/vstack-fan-out/FORMS.md: the `task` form, or the isolated eval form for a role that runs in its own clone. An isolated role uses the eval form in a Fan-out line and in a single spawn. If isolation is off, the skill stops and points at setup-vstack (ADR 0007). The line ends `If it cannot be spawned, stop: …`. Only compare-attempts' cross-judge ends `If it cannot be spawned, skip it: …` instead and records `cross-judge: not run`. In both cases the caller leaves the subagent's work undone.
+
+      Every line naming vstack-verifier uses the isolated eval form, in a single-subagent line or a Fan-out line. A task form is unsafe even if the caller bypasses ship.
     lint: >-
       In markdown outside frontmatter and code fences, a `Spawn one` line names one vstack agent (an agent the plugin ships) in both places, uses the `task` form or the eval form with isolated=True, apply=False, merge=False, passes the vstack root, and ends with `If it cannot be spawned, stop: …`. A `skip it: …` ending passes only in compare-attempts, on a line that records `cross-judge: not run`. Any other line that names an agent through `agent: "…"` or `agent="…"` names a vstack agent, and an eval `agent()` call or a `task` call that names no agent fails. The `fan-out` lint reads Fan-out lines instead. The class `agent-spawns` follows this rule too, for agent files whose `spawns:` lists `*` or an agent the plugin does not ship (adapt, merge, and original text).
+      Every call naming vstack-verifier requires eval `agent(…, agent="vstack-verifier", isolated=True, apply=False, merge=False)`. Task forms and unsafe isolation arguments fail, including in a Fan-out line.
   - id: headless-run
     scope: adapted
     allowlist: [skill-creator]

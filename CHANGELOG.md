@@ -6,7 +6,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [8.0.0] - 2026-10-29
 
-- Reconcile upstream #264, #263, #265, #268, #294, #295, and #296. Typed Flow questions require reader needs and matching Visual kinds, including safe source/usage text. Capture caller-rendered Pele SVGs without restoring removed writers or visual judges. Preserve MCP discovery and tracker identities, remove inherited Addon pointers, migrate tune-llm-flow to centralized child-Stage publication, and gate delivery on independent committed-head Verdicts. Preserve published ADRs 0040 through 0043 and renumber the unpublished Flow ADR to 0044. Renderer advances once from 18 to 19. The breaking Flow cutover raises the plugin version from upstream 7.0.7 to 8.0.0.
+- Reconcile upstream #264, #263, #265, #268, #294, #295, #296, and #297. Typed Flow questions require reader needs and matching Visual kinds, including safe source/usage text. Capture caller-rendered Pele SVGs without restoring removed writers or visual judges. Preserve MCP discovery and tracker identities, remove inherited Addon pointers, migrate tune-llm-flow to centralized child-Stage publication, and gate delivery on independent committed-head Verdicts. Preserve #297's Shared checkout guards, separate detached verifier worktree, REFUSED and cleanup-error handling, and isolated eval requirements. Preserve published ADRs 0040 through 0043 and renumber the unpublished Flow ADR to 0044. Renderer advances once from 18 to 19. The breaking Flow cutover raises the plugin version from upstream 7.0.8 to 8.0.0.
 
 - Historical verification: the review-fix tree passed combined browser/native proof. Upstream reconciliation changes the tree again. Fresh final-tree evidence is recorded separately, not inferred from that earlier pass.
 
@@ -25,6 +25,12 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 - Result-producing skills use flow-page's single Stage entry/exit protocol, including nested Stage ownership and caller binding restoration. Per-kind fields and host/observation contracts are disclosed through triggered references. Canonical files, tracker items, exports, and retained lessons keep their ownership.
 - Comparison boxes contain their screen-reader text. Live refresh keeps the selected stop's stable id rather than inferring it only from scroll position.
 - verify-vstack's `drive.ts` takes `--rpc-ui` for drives whose model calls `ask`, which omp 18.13 registers only in `--mode rpc-ui`. The Flow page recipe gains native ask steps and a combined-product proof (`flow-t4`). The Grilling page recipe is removed.
+## [7.0.8] - 2026-10-29
+
+- Guard verifier isolation before mutation, verify in a separate detached head worktree, and return REFUSED when isolation or head preparation cannot be proven. Remove nonignored carried inputs while preserving ignored inputs and Shared checkout exclusions.
+- Require isolated eval verifier calls, remove verifier delegation from workers, pass the Shared checkout in ship briefs, and keep triage PR runtime checks out of the user's checkout.
+- Reject mixed-quote verifier spawn bypasses and clone-local exclusions that mask carried ignore rules. Preserve the app verdict and evidence when worktree removal fails, report the failure as `cleanup_error`, and prevent ship from accepting that run.
+- Integrate independent committed-head proof at every End state with the checkout safety contract. Shared END-STATE step 6b owns the Shared checkout brief and REFUSED and cleanup_error validation; ship reuses that contract for single, Fan-out, and fresh verification. Preserve ADR 0043 and the upstream workflow and register changes.
 
 ## [7.0.7] - 2026-10-29
 

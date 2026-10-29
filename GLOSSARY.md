@@ -116,6 +116,14 @@ _Avoid_: prompt (for this), assignment
 The one block of background that a parent gives to every subagent it starts in one call, a single subagent included, placed in each subagent's system prompt. It holds only what every part needs. A subagent started from an eval cell gets none.
 _Avoid_: brief (for this), shared brief
 
+**Shared checkout**:
+The checkout that a session and its non-isolated subagents use together. A subagent that moves HEAD or edits files there changes the user's own working tree, whether that checkout is the main one or a linked worktree.
+_Avoid_: original branch, main checkout (for this), parent checkout
+
+**Isolated clone**:
+omp's private copy of a checkout for one subagent, with its own repository metadata, so moving HEAD there leaves the Shared checkout alone. Its changes come back only as a patch or branch that the parent chooses to apply.
+_Avoid_: sandbox, worktree (for this), isolated checkout
+
 **Headless run**:
 A run of a skill under test, or of its blind judge, in its own omp process that sees only what the test gives it. It is not a subagent, so it is never Fan-out, but it uses the Session model.
 _Avoid_: eval subagent, runner (unqualified)
@@ -237,9 +245,13 @@ An independent agent that did not write a change and runs it the way a user woul
 _Avoid_: checker, reviewer
 
 **Verdict**:
-A Verifier's judgment of one patch, with evidence: PASS, PASS+NOTES, FAIL, or DRIFT.
+A Verifier's judgment of one patch, with evidence: PASS, PASS+NOTES, FAIL, DRIFT, or REFUSED. REFUSED is unavailable proof. An optional `cleanup_error` preserves the judgment and evidence but makes the proof unavailable, even for PASS or PASS+NOTES.
 _Avoid_: status, result
 
 **Drift**:
 A failure in a Verify skill's own instructions, such as a missing command, route, selector, or fixture, while the skill's Doctor check passes. Wrong app behavior is a finding, never drift.
 _Avoid_: stale, rot
+
+**Refused**:
+A verifier outcome where nothing was checked, because the verifier could not prove it runs in an Isolated clone or could not set up a usable tree at the head commit. It is neither a finding nor Drift.
+_Avoid_: blocked, skipped, unavailable (for this)
