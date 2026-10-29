@@ -66,6 +66,61 @@ async function runSpec(mutate: (spec: RepoSpec) => void): Promise<Run> {
   return checkout(up, spec).run();
 }
 
+test("a verifier task spawn refuses the Shared checkout form", async () => {
+  const r = await runSpec(s => {
+    s.register.originals.push("plugin/agents/vstack-verifier.md");
+    s.files["plugin/agents/vstack-verifier.md"] = "---\nname: vstack-verifier\ndescription: verifier\n---\nVerify.\n";
+    addTo(GONE, FORM.single.replaceAll("vstack-explorer", "vstack-verifier"))(s);
+  });
+  expect(r.code).toBe(1);
+  expect(r.json!.failures[0].message).toContain("vstack-verifier requires the isolated eval form");
+});
+
+test("every verifier call in a Fan-out line needs isolated eval arguments", async () => {
+  const safe = FORM.evalBatch.replaceAll("vstack-explorer", "vstack-verifier");
+  const r = await runSpec(s => {
+    s.register.originals.push("plugin/agents/vstack-verifier.md");
+    s.files["plugin/agents/vstack-verifier.md"] = "---\nname: vstack-verifier\ndescription: verifier\n---\nVerify.\n";
+    addTo(GONE, safe + ' Also `agent(<prompt>, agent="vstack-verifier", isolated=False, apply=False, merge=False)`.')(s);
+  });
+  expect(r.code).toBe(1);
+  expect(r.json!.failures[0].message).toContain("vstack-verifier requires the isolated eval form");
+});
+
+test.each([
+  "agent(<prompt>, agent='vstack-verifier', isolated=False, apply=False, merge=False)",
+  'agent(<prompt>, agent = "vstack-verifier", isolated=False, apply=False, merge=False)',
+  "agent (<prompt>, agent = 'vstack-verifier', isolated=False, apply=False, merge=False)",
+  "task(<prompt>, agent: 'vstack-verifier')",
+])("a safe explorer call cannot mask an unsafe verifier call: %s", async (call) => {
+  const r = await runSpec(s => {
+    s.register.originals.push("plugin/agents/vstack-verifier.md");
+    s.files["plugin/agents/vstack-verifier.md"] = "---\nname: vstack-verifier\ndescription: verifier\n---\nVerify.\n";
+    addTo(GONE, FORM.evalBatch + ` Also \`${call}\`.`)(s);
+  });
+  expect(r.code).toBe(1);
+  expect(r.json!.failures[0].message).toContain("vstack-verifier requires the isolated eval form");
+});
+
+test("verifier task batches and differently spelled unsafe arguments fail, isolated forms pass", async () => {
+  const forms = [
+    [FORM.taskBatch, false],
+    [FORM.singleIsolated.replace("isolated=True", 'isolated="True"'), false],
+    [FORM.evalBatch.replace("apply=False", "apply=True"), false],
+    [FORM.evalStream.replace("merge=False", "merge=True"), false],
+    [FORM.singleIsolated, true], [FORM.evalBatch, true], [FORM.evalStream, true],
+  ] as const;
+  for (const [form, passes] of forms) {
+    const r = await runSpec(s => {
+      s.register.originals.push("plugin/agents/vstack-verifier.md");
+      s.files["plugin/agents/vstack-verifier.md"] = "---\nname: vstack-verifier\ndescription: verifier\n---\nVerify.\n";
+      addTo(GONE, form.replaceAll("vstack-explorer", "vstack-verifier"))(s);
+    });
+    expect(r.code).toBe(passes ? 0 : 1);
+    if (!passes) expect(r.json!.failures[0].message).toContain("vstack-verifier requires the isolated eval form");
+  }
+});
+
 test("the passing fixture passes: held, moved-and-held, removed-and-held rows and a shared artifact", async () => {
   const r = await checkout(up, passingSpec(up)).run();
   expect(r.json!.failures).toEqual([]);

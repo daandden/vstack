@@ -60,7 +60,7 @@ items:
     tree: f07d230f645fc9ac390cf13a450bbff12ad791a3
     disposition: adapt
     artifacts: [plugin/skills/implement]
-    reason: "Settles End states from the user's words or the ticket, then the project's default End state in code-host.md, then an ask, through live MCP capability discovery, and shares description-based Code host routing, with unsupported optional tools reported as gaps (ADR 0034, ADR 0035, ADR 0038, #204). Numbers its steps so the seams are settled before the first code change and each slice goes red before its code, and reuses a Grilling-page seam only when the user picked it (#183). Shares End state ownership with tune-llm-flow, preserving kept-round and eval commits (#254, ADR 0041). The author runs development checks, and an independent isolated Verifier checks the committed head at every End state in shared step 6b, whose accepted Verdict the chain reuses or renews (ADR 0043, #261)."
+    reason: "Settles End states from the user's words or the ticket, then the project's default End state in code-host.md, then an ask, through live MCP capability discovery, and shares description-based Code host routing, with unsupported optional tools reported as gaps (ADR 0034, ADR 0035, ADR 0038, #204). Numbers its steps so the seams are settled before the first code change and each slice goes red before its code, and reuses a Grilling-page seam only when the user picked it (#183). Shares End state ownership with tune-llm-flow, preserving kept-round and eval commits (#254, ADR 0041). The author runs development checks, and an independent isolated Verifier checks the committed head at every End state in shared step 6b, whose accepted Verdict the chain reuses or renews (ADR 0043, #261). Shared step 6b owns Shared checkout briefs, REFUSED and cleanup_error availability checks, and unchanged-clone verification safety."
   - id: matt/improve-codebase-architecture
     upstream: matt
     kind: skill
@@ -812,7 +812,7 @@ items:
     tree: 0a0c3cfde8948e3aa8ee80c6f3f9ce7e3e64fcba
     disposition: adapt
     artifacts: [plugin/skills/ship]
-    reason: "Verifiers are vstack agents in a Fan-out; cloud agents dropped. ship reuses a caller's accepted Verdict for a matching patch id and otherwise verifies through implement's END-STATE step 6b (ADR 0043)."
+    reason: "Verifiers are vstack agents in a Fan-out; cloud agents dropped. ship reuses a caller's accepted Verdict for a matching patch id and otherwise verifies through implement's END-STATE step 6b (ADR 0043). Every brief passes Shared checkout, and shared step 6b preserves REFUSED and cleanup_error as unavailable proof."
   - id: pstack/playbook-trace-forensics
     upstream: pstack
     kind: playbook

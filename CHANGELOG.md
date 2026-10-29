@@ -4,6 +4,13 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [7.0.8] - 2026-10-29
+
+- Guard verifier isolation before mutation, verify in a separate detached head worktree, and return REFUSED when isolation or head preparation cannot be proven. Remove nonignored carried inputs while preserving ignored inputs and Shared checkout exclusions.
+- Require isolated eval verifier calls, remove verifier delegation from workers, pass the Shared checkout in ship briefs, and keep triage PR runtime checks out of the user's checkout.
+- Reject mixed-quote verifier spawn bypasses and clone-local exclusions that mask carried ignore rules. Preserve the app verdict and evidence when worktree removal fails, report the failure as `cleanup_error`, and prevent ship from accepting that run.
+- Integrate independent committed-head proof at every End state with the checkout safety contract. Shared END-STATE step 6b owns the Shared checkout brief and REFUSED and cleanup_error validation; ship reuses that contract for single, Fan-out, and fresh verification. Preserve ADR 0043 and the upstream workflow and register changes.
+
 ## [7.0.7] - 2026-10-29
 
 - An independent, isolated Verifier checks the committed head at every End state, commit included, in implement's new shared END-STATE step 6b. The author runs development tests and targeted smoke checks and keeps Verify skill setup and repair, without a full live-proof pass. The chain reuses the accepted Verdict when the patch id is unchanged and verifies a changed patch before merge-ready or shipped. FAIL and DRIFT get one repair-and-retry cycle per pass of step 6b, including a pass after babysit changes the patch, and an unavailable Verdict stops the run. The run record, the Report block, and a merge-ready PR comment keep the Verdict. ship reuses a matching Verdict and otherwise verifies through step 6b. A Verifier whose clone inherits uncommitted changes runs the head SHA in a detached worktree (ADR 0043, #261).
