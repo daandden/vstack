@@ -91,7 +91,7 @@ The approved environment fixes from skill://session get one commit per approved 
 
 ## 6b. Verify the committed head
 
-At every End state, commit included, an independent Verifier checks the committed head after step 6 (ADR 0042). The author's checks from step 4 are not independent verification. The Verifier checks only committed work: the base SHA from step 0a and the current branch's HEAD, or the PR's base and head SHAs from `read-pr` when step 7 or ship runs this step. Compute your own patch id for comparison as the first field of `git diff <base_sha>...<head_sha> | git patch-id --stable`.
+At every End state, commit included, an independent Verifier checks the committed head after step 6 (ADR 0043). The author's checks from step 4 are not independent verification. The Verifier checks only committed work: the base SHA from step 0a and the current branch's HEAD, or the PR's base and head SHAs from `read-pr` when step 7 or ship runs this step. Compute your own patch id for comparison as the first field of `git diff <base_sha>...<head_sha> | git patch-id --stable`.
 
 Give the Verifier the full base and head SHAs, the PR number when one exists, the relevant builds and tests, and the Verify skill's name or absolute path from step 4. Its brief requires parent-versus-head proof of the real changed surface, not only a successful launch. The Verifier runs in its own clone, never in this checkout (ADR 0007), and checks out only the supplied head SHA. It reads the base for comparison without moving its checkout to another commit.
 
