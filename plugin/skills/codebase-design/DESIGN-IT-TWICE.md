@@ -6,6 +6,8 @@ Uses the vocabulary in [SKILL.md](SKILL.md): **module**, **interface**, **seam**
 
 ## Process
 
+Follow `skill://flow-page`'s "Stage entry/exit line" for a design comparison run.
+
 ### 1. Frame the problem space
 
 Before step 2, write a user-facing explanation of the problem space for the chosen candidate:
@@ -14,7 +16,7 @@ Before step 2, write a user-facing explanation of the problem space for the chos
 - The dependencies it would rely on, and which category they fall into (see [DEEPENING.md](DEEPENING.md))
 - A rough illustrative code sketch to ground the constraints, not a proposal, just a way to make the constraints concrete
 
-Show this to the user, then immediately proceed to Step 2. The user reads and thinks while the designs are drafted.
+Publish this framing as a Document Result in the run's Stage, then immediately proceed to Step 2. The user reads while the designs are drafted.
 
 ### 2. Draft the designs
 
@@ -45,6 +47,8 @@ Fan-out (skill://vstack-fan-out): parts: one per design (3–4, each with its de
 
 Screen every design against [RED-FLAGS.md](RED-FLAGS.md) first. Revise a design that shows a red flag, or drop it, and say which flag it showed.
 
-Outside a flow, present designs sequentially in chat so the user can absorb each one, then compare them in prose. Inside a flow, the designs and the comparison go on the flow's Grilling page, as the calling skill says. Contrast by **depth** (leverage at the interface), **locality** (where change concentrates), and **seam placement**.
+Publish the surviving designs as a Document Result with each interface, usage example, hidden implementation, dependency strategy, and trade-offs. With at least two survivors, publish a Comparison Result with alternatives for the designs, criteria for depth, locality, and seam placement, evidence-backed assessments, and your verdict. Preserve dropped designs and their red flags in the Document's limitations. With one survivor, record its recommendation in the Document. With none, publish the failed screening and an inconclusive verdict there rather than inventing alternatives.
 
 After comparing, give your own recommendation: which design you think is strongest and why. If elements from different designs would combine well, propose a hybrid. Be opinionated: the user wants a strong read, not a menu.
+
+The Results replace sequential chat-only designs and separate report pages. The caller retains its remaining decision work.

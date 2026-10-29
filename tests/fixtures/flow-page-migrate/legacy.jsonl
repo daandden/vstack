@@ -1,0 +1,21 @@
+{"type":"page","id":"page","title":"Checkout limits","crumb":"[SHOP-41](https://example.com/SHOP-41)"}
+{"type":"flow","id":"flow","slug":"checkout-limits","key":"41","state":"open","spec":"41","tickets":["42","43"],"branch":"feat/limits","runs":["41-run"]}
+{"type":"stage","id":"grill","skill":"grill-with-docs","state":"in-progress","order":1}
+{"type":"background","id":"bg","stage":"grill","title":"How limits work","summary":"Limits apply per cart.","sections":[{"heading":"Now","body":"One cap."}],"sources":["src/limits.ts:10"]}
+{"type":"topic","id":"caps","title":"Caps","summary":"What a cap is.","body":"A cap bounds a cart.","sources":["docs/caps.md"]}
+{"type":"report","id":"findings","stage":"grill","title":"Findings","shape":"cards","entries":[{"id":"f1","title":"Cap ignored","label":"issue","blocking":true,"impact":"Users exceed the cap.","action":"Check the cap.","evidence":"src/limits.ts:12","question":"q-scope"}]}
+{"type":"round","id":"r1","stage":"grill","time":"2026-10-28T20:09:59+07:00","session":1,"round":1}
+{"type":"question","id":"q-scope","round":"r1","title":"Which q-scope?","description":"Why q-scope matters.","options":[{"label":"A. First","does":"A. First does","gains":["A. First gain"],"costs":["A. First cost"],"recommended":"it is first"},{"label":"B. Second","does":"B. Second does","gains":["B. Second gain"],"costs":["B. Second cost"]}],"today":[{"text":"The cap is global.","source":"src/limits.ts:10"}],"terms":[{"term":"Cap","text":"An upper bound."}],"topics":["caps"],"visual":{"svg":"figures/scope.svg"},"q":1}
+{"type":"question","id":"q-limit","round":"r1","title":"Which q-limit?","description":"Why q-limit matters.","options":[{"label":"A. First","does":"A. First does","gains":["A. First gain"],"costs":["A. First cost"],"preview":{"html":"<b>first</b>","css":"b { color: #a6e3a1; }"}},{"label":"B. Second","does":"B. Second does","gains":["B. Second gain"],"costs":["B. Second cost"]}],"visual":{"text":"cart -> cap"},"q":2}
+{"type":"answer","question":"q-scope","picks":["A"],"note":"keep it simple","id":"answer-q-scope"}
+{"type":"answer","question":"q-limit","other":"Use the store's own limit","id":"answer-q-limit"}
+{"type":"round","id":"r2","stage":"grill","time":"2026-10-28T20:09:59+07:00","session":1,"round":2}
+{"type":"question","id":"q-scope-again","round":"r2","title":"Which q-scope-again?","description":"Why q-scope-again matters.","options":[{"label":"A. First","does":"A. First does","gains":["A. First gain"],"costs":["A. First cost"],"recommended":"it is first"},{"label":"B. Second","does":"B. Second does","gains":["B. Second gain"],"costs":["B. Second cost"]}],"again":"q-scope","q":1}
+{"type":"answer","question":"q-scope-again","unanswered":"superseded by the review","id":"answer-q-scope-again"}
+{"type":"close","id":"c1","stage":"grill","decisions":[{"question":"q-scope-again","text":"Scope stays per cart."},{"question":"q-limit","text":"The store sets the limit."}],"extra":["Assumed: no new config"],"session":1}
+{"type":"stage","id":"grill","skill":"grill-with-docs","state":"finished","order":1}
+{"type":"stage","id":"impl","skill":"implement-spec","state":"in-progress","order":2}
+{"type":"report","id":"checks","stage":"impl","title":"Checks","shape":"ledger","entries":[{"id":"l1","claim":"Tests pass","status":"confirmed","evidence":"bun test","missing_proof":"none","consequence":"ship"}]}
+{"type":"report","id":"tickets","stage":"impl","title":"Tickets","shape":"table","columns":["Ticket","State"],"rows":[{"id":"t42","cells":["#42","done"]}]}
+{"type":"round","id":"r3","stage":"impl","time":"2026-10-28T20:09:59+07:00","session":2,"round":3}
+{"type":"question","id":"q-open","round":"r3","title":"Which q-open?","description":"Why q-open matters.","options":[{"label":"A. First","does":"A. First does","gains":["A. First gain"],"costs":["A. First cost"],"recommended":"it is first"},{"label":"B. Second","does":"B. Second does","gains":["B. Second gain"],"costs":["B. Second cost"]}],"q":1}

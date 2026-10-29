@@ -9,6 +9,8 @@ metadata:
     url: "https://github.com/humanlayer/skills/blob/main/plugins/show-me/skills/show-me/SKILL.md"
 ---
 
+Follow `skill://flow-page`'s "Stage entry/exit line". When producing a PR body, follow skill://implement/END-STATE.md's "Publish delivery progress". Keep the real Markdown body file that open-pr passes to the Code host. Capture it as a file attachment and publish its Summary, Evidence, and Merge Danger as a Document Result. Put code, diff sketches, and figures in typed Results or attachments rather than page markup. Record the draft task and its outcome in a delivery table and Timeline. Drafting is not publication or merge-readiness.
+
 Use this template for writing the PR body:
 
 ```markdown
@@ -81,6 +83,7 @@ src/
 - Show component interaction, control flow, or data flow with Mermaid:
 
 ```mermaid
+%%{init: {"themeVariables": {"actorBkg": "#313244", "actorBorder": "#cba6f7", "actorTextColor": "#cdd6f4", "actorLineColor": "#6c7086", "signalColor": "#b4befe", "signalTextColor": "#cdd6f4", "lineColor": "#b4befe", "noteBkgColor": "#45475a", "noteTextColor": "#cdd6f4", "noteBorderColor": "#fab387"}}}%%
 sequenceDiagram
     participant User
     participant UI

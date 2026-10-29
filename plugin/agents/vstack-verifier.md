@@ -50,6 +50,8 @@ Your last reply is one plain JSON object, without a code fence or surrounding te
 - Optional `cleanup_error`: a string with non-whitespace content naming a failed worktree removal. Omit it when removal succeeds or no worktree was created. An empty, whitespace-only, or non-string value is malformed. Preserve the Verdict and evidence even when this field makes the run unavailable to the caller.
 - Optional `open_questions`: an array of strings for the top-level agent to ask through `ask`.
 
+The caller uses this unchanged machine Verdict to publish the human summary on its Flow page. Supply concrete command outcomes, verified SHAs, and captured log or screenshot paths in `evidence`. Keep limitations and stale instructions in `notes`. Author no Flow content, create no separate report page, and change no task, End state, PR, or check. The owning caller validates the record and omp's isolation evidence through implement's END-STATE step 6b before publishing a delivery row and Timeline event.
+
 If a message arrives after your Verdict, repeat the complete record as one plain JSON object. Put the answer in `notes` or `open_questions`. Only omp adds the isolation notice after your reply.
 
 Subagents. Your only subagent is `vstack-explorer`, started only where your brief asks for one, with the lines in skill://vstack-fan-out (FORMS.md). A step with two or more parts uses its Fan-out line. If a subagent cannot start, follow the line's stop or skip clause and say why. Name omp's `task.maxRecursionDepth` when the depth limit blocked it. Never do its work yourself. Every subagent brief carries the vstack root and the Scratch dir, as your brief gave them to you.

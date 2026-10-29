@@ -8,6 +8,8 @@ disable-model-invocation: true
 
 A caller is a skill step that shows figures to a person. The caller writes each figure's Mermaid in its own context and runs the render script itself. A render takes milliseconds, so a figure step starts no subagent (ADR 0040).
 
+This is a rendering helper, not a result-producing run. It opens no Stage. The caller follows `skill://flow-page`'s "Stage entry/exit line" and owns publication.
+
 ## Draw one figure
 
 1. Choose the Mermaid type from the [Mermaid type reference](references/mermaid-types.md). Read it when choosing a type or writing its syntax.
@@ -23,7 +25,9 @@ A caller is a skill step that shows figures to a person. The caller writes each 
 
 ## Place the figure
 
-Place figures in the order the caller drew them. To inline a figure, read the SVG and paste its `<svg>` element as written, with its `<style>`. A caller that takes a file gets the path instead: a Grilling page question takes `{ "svg": "figures/<file>", "kind": "<Visual kind id>" }`, with the SVG written to the flow folder's `figures/`.
+Place figures in the order the caller drew them. Capture each successful SVG through a typed `attachment` with `type: "svg"`, its actual `path`, a meaningful `caption`, and provenance in `origin`. Put its reference in a Document `figure` block, a question or Background `figures` list, or an option `preview`, as flow-page's captured-attachment contract says. A question figure or preview also declares its Visual `kind` and satisfies a declared reader need. Keep the embedded `<style>` in the captured bytes. Write sources and exports in the caller's Scratch entry, not the Flow's managed assets.
+
+An offline lesson export may inline the exact SVG with its `<style>`. That does not permit raw markup authoring in the Flow page. On render failure, publish no stale output. A Document can record an unavailable figure and its reason. An unavailable attachment never satisfies a question's visual need.
 
 ## Supported Mermaid types
 

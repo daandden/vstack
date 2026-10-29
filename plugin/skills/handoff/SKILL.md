@@ -11,8 +11,12 @@ Include a "suggested skills" section in the document, naming each skill the next
 
 Do not duplicate content already captured in other artifacts (specs, plans, ADRs, issues, commits, diffs). Reference them by path or URL instead.
 
-If this session printed a Grilling page path, put that path in the document. The next session then continues the flow's page instead of starting a new one.
+Follow `skill://flow-page`'s "Stage entry/exit line". Put the durable Flow id and relevant in-progress Stage id in the handoff, with its live URL and static path. The next session follows the same central discovery protocol.
 
 Redact any sensitive information, such as API keys, passwords, or personally identifiable information.
 
 If the user passed arguments, treat them as a description of what the next session will focus on and tailor the doc accordingly.
+
+## Publish the handoff
+
+Submit a Document Result with the handoff's headed content and `canonical: { "file": "<absolute handoff path>" }`. Capture the redacted Markdown as a `file` attachment so the next agent can download the retained export. Keep references to existing artifacts instead of copying them. Return the canonical file path.

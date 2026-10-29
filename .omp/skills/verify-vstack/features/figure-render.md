@@ -1,58 +1,46 @@
 # Figure render
 
-vstack-figures' render script turns one Mermaid source into a Catppuccin Mocha SVG with Pele, under Bun alone. The SVG holds one `<style>` that sets every `--pele-*` variable and a mauve rule for each focal id. Bad Mermaid exits 1 with Pele's parse error and writes no file. A Grilling page question declares the figure's reader need and takes the SVG as a `{ "svg": "figures/<file>", "kind": "<kind>" }` visual.
+vstack-figures renders caller-written Mermaid with Pele under Bun. The Catppuccin Mocha SVG keeps its embedded theme and scoped mauve focal rules. Flow authoring captures those real bytes safely and displays them on a complete question with declared reader needs.
 
 ## Sub-features
 
 - `figure-render`: `render.ts <source.mmd | -> <out.svg> [--focus <id>]...` writes the SVG, prints its absolute path, and exits 0.
-- `figure-focus`: each `--focus <id>` adds a mauve `stroke` rule and a mauve `text` rule for `[data-id="<id>"]`, scoped to a `pele-f<8 hex>` class on the figure's own root, so the rule never marks another figure on the same page.
-- `figure-refuse`: bad Mermaid exits 1, prints Pele's parse error on stderr, and writes nothing. A usage error exits 2.
-- `figure-page`: the Grilling page script accepts the SVG through its safety check and inlines it with its `<style>`.
+- `figure-focus`: focal shape and text rules target the case-sensitive Mermaid `data-id` under a `pele-f<8 hex>` root class, without marking other figures.
+- `figure-refuse`: bad Mermaid exits 1 with the parse error and creates no output. Usage errors exit 2. An older existing output is not deleted or made fresh by failure.
+- `figure-page`: a captured SVG passes the Flow safety check, retains its style byte for byte, and loads through an image element rather than raw markup in the page.
 
 ## How to get to it (user POV)
 
-- A skill that shows figures (explain, how, improve-codebase-architecture, teach, or the Grilling page) writes Mermaid and runs `bun "$(realpath skill://vstack-figures/scripts/render.ts)" ...`, as skill://vstack-figures says.
-- The user sees the SVG inline on that skill's page, or as a question visual on the flow's Grilling page.
+- A result-producing caller such as explain, how, architecture improvement, or teach writes Mermaid and runs vstack-figures' render script.
+- The caller owns the Flow Stage and captures its output. The rendering helper opens no empty Stage.
 
 ## Driving it with bash and the omp browser
 
 Preconditions:
 
 - Follow the baseline in `README.md` and run Doctor.
-- `$CHECKOUT/node_modules/pele` exists. If not, run `bun install --frozen-lockfile` in `$CHECKOUT` first.
-- Set `R="$VERIFY_RUN_DIR/figure-render"`, `F="$R/grilling/vstack-verify-figure"`, `RENDER="$CHECKOUT/plugin/skills/vstack-figures/scripts/render.ts"`, and `PAGE="$CHECKOUT/plugin/skills/grilling-page/scripts/grilling-page.ts"`. Use a fresh directory. Keep proof outside `data/`.
-- Run every command with the bash tool's `cwd` set to `CHECKOUT`.
+- Pele 1.12.0 from the checkout's pinned dependencies must resolve. Report a missing dependency and obtain approval before provisioning in a restricted run.
+- Set `R="$VERIFY_RUN_DIR/figure-render"`, `H="$VERIFY_RUN_DIR/data/figure-home"`, `RENDER="$CHECKOUT/plugin/skills/vstack-figures/scripts/render.ts"`, and `PAGE="$CHECKOUT/plugin/skills/flow-page/scripts/flow-page.ts"`.
+- Use the checkout's scripts, pinned Bun, explicit `--home "$H" --session figure-proof`, and the checkout as cwd. Keep persistent proof outside `data/` and capture generated media from the isolated project's Scratch dir.
 
-1. Write `$R/order.mmd`:
+1. Open a proof Flow with `open --skill grill-with-docs --title "Verify figure"`. Save its receipt and derive the project's Scratch path from the returned page path. Write an order-flow `.mmd` in a fresh proof-assets directory there. It shows Cart, Stock, Wait, and Split, with a stock branch and short labels.
+2. Run `bun "$RENDER" <order.mmd> <order.svg> --focus Stock`. Capture command, stdout, stderr, and exit code. Expect exit 0, empty stderr, and the SVG's absolute path.
+3. Read the SVG bytes. Its root has `pele pele-flowchart pele-f<8 hex>` classes and its first child is a style. Inspect every `--pele-*` theme variable, the IosevkaTerm Nerd Font Mono family, disabled text ligatures, eight series colors, and scoped shape/text focus selectors for `Stock`. Preserve these bytes and their SHA-256.
+4. Render a malformed source into a distinct nonexistent `bad.svg`. Expect exit 1, a Pele parse error, and no new output. Capture exact directory listings before and after. Run with the output argument missing and expect usage exit 2. Do not publish an earlier SVG after a failed render.
+5. Submit this contribution, substituting the actual SVG path:
 
-   ```mermaid
-   flowchart TD
-     Cart([Cart submitted]) --> Stock{In stock?}
-     Stock -- Yes --> Pay[Take payment]
-     Stock -- No --> Split[Split shipment]
-     Split --> Pay
+   ```json
+   {"version":1,"items":[{"kind":"attachment","ref":"order","type":"svg","caption":"Stock check with wait and split shipment paths","origin":"Pele render of the order-flow proof source","path":"<absolute order.svg>"},{"kind":"round","questions":[{"ref":"choose","title":"Where does a split order wait?","description":"Choose the shipping policy.","needs":[{"need":"Follow the stock check and the split-shipment path.","kind":"context-diagram"}],"figures":[{"attachment":"order","kind":"context-diagram"}],"options":[{"label":"Wait","does":"Hold the order.","gains":["One shipment"],"costs":["Slower"]},{"label":"Split","does":"Ship what is in stock.","gains":["Faster"],"costs":["Two shipments"]}]}]}]}
    ```
 
-   Run `bun "$RENDER" "$R/order.mmd" "$F/figures/order.svg" --focus Stock`. Expect exit 0, empty stderr, and only the absolute path of `$F/figures/order.svg` on stdout. Save stdout, stderr, and the exit code to `$R/render.txt`.
-2. Read `$F/figures/order.svg`. The root tag starts `<svg` with `class="pele pele-flowchart pele-f<8 hex>"`, and its first child is a `<style>`. The style sets `--pele-bg: #1e1e2e;`, `--pele-fg: #cdd6f4;`, `--pele-accent: #cba6f7;`, `--pele-font` and `--pele-font-mono` to `'IosevkaTerm Nerd Font Mono', ui-monospace, monospace`, and `--pele-series-1` through `--pele-series-8`. With `S` set to that `pele-f…` class, it holds `.S [data-id="Stock"]:is(rect, path, polygon, circle, ellipse), .S [data-id="Stock"] :is(rect, path, polygon, circle, ellipse) { stroke: #cba6f7; stroke-width: 2.5px; }` and `.S [data-id="Stock"] text { fill: #cba6f7; }`, and no rule for `Pay`. Save the style text to `$R/style.css`.
-3. Write `$R/bad.mmd` with `flowchart TD` and the line `  A[Cart --> `. Save a listing of `$R` and `$F/figures`. Run `bun "$RENDER" "$R/bad.mmd" "$F/figures/bad.svg"`. Expect exit 1, empty stdout, and stderr that starts `Parse error on line 2:`. List both directories again: `bad.svg` does not exist. Save the command, both streams, the exit code, and both listings to `$R/refuse.txt`.
-4. Run `bun "$RENDER" "$R/order.mmd"`. Expect exit 2 and stderr that holds `Usage: bun render.ts`. Append it to `$R/refuse.txt`.
-5. Write `$R/records.jsonl`:
-
-   ```jsonl
-   {"type":"page","id":"page","title":"Verify figure"}
-   {"type":"flow","id":"flow","slug":"verify-figure","key":"verify-figure","state":"open"}
-   {"type":"stage","id":"docs","skill":"grill-with-docs","state":"in-progress"}
-   {"type":"round","id":"s1-r1","stage":"docs"}
-   {"type":"question","id":"s1-r1-q1","title":"Where does a split order wait?","description":"The figure shows the stock check.","needs":[{"need":"Follow the stock check and the split-shipment path.","kind":"context-diagram"}],"visual":{"svg":"figures/order.svg","kind":"context-diagram"},"options":[{"label":"A. Wait","does":"Hold the order.","gains":["One shipment"],"costs":["Slower"]},{"label":"B. Split","does":"Ship what is in stock.","gains":["Faster"],"costs":["Two shipments"]}]}
-   ```
-
-   Run `bun "$PAGE" append "$F/page.jsonl" "$R/records.jsonl"`. Expect exit 0 and only `$F/page.html` on stdout. The page holds `class="pele pele-flowchart pele-f` and `--pele-bg: #1e1e2e;`.
-6. Open `$F/page.html#q-s1-r1-q1` in the browser. The figure sits on a dark background, `Stock` and its label are mauve, and no label overflows its box. Save an ARIA snapshot and a lossless WebP screenshot of the question as `$R/page.webp`.
+6. Read `show`. The question retains its exact needs and figure kind. Fetch the registered captured SVG and compare its SHA-256 to step 3. Edit the source file and render the Flow again. The captured bytes remain unchanged.
+7. Open the live URL and select the question using its receipt id. The Reader needs list follows the description, the image loads with meaningful alternative text, its background is dark, and Stock is mauve. Capture ARIA and full-resolution lossless WebP at 1280 and 360px. Page-level overflow is zero.
+8. Refuse a question whose need has no matching figure, a figure without a declared need, and a question that relies only on a Background figure. Compare authored-state and page hashes before and after. Stop only this proof's host and preserve the export before scoped Verify cleanup.
 
 ## Gotchas
 
-- Run the checkout's script, not `skill://vstack-figures/scripts/render.ts`, which resolves to the plugin that your own session loaded.
-- `render.ts` resolves `pele` from the checkout's `node_modules`. A missing install fails at import with exit 1, not with a parse error.
-- Pele gives no `data-id` to timeline events, ishikawa causes, or single xychart bars, so a `--focus` on those ids adds a rule that matches nothing. Use a flowchart id for this recipe.
-- Mermaid ids are case-sensitive. `--focus stock` matches nothing in step 1.
+- Run the checkout script, not the copy loaded by the current omp session.
+- A missing Pele import is a dependency failure, not a Mermaid parse error.
+- Timeline events, ishikawa causes, and individual xychart bars have no usable focal `data-id`. Explain their focal point in accompanying text.
+- Focus ids are case-sensitive. A selector that matches nothing does not prove a visible accent.
+- Flow images isolate the SVG's style from the page. Inspect focal rules in the captured SVG and visible image, not a nonexistent inline `svg` element.

@@ -17,6 +17,8 @@ Accept the chain facts and any closing references: the issues or tickets the PR 
 
 Keep PR body files under `<Scratch dir>/verify/<app>-<run-id>/`, beside the proof they describe.
 
+Follow `skill://flow-page`'s "Stage entry/exit line". Follow END-STATE.md's "Publish delivery progress". Publish tasks for the steps below and retain stopped or skipped work.
+
 ## 1. Check the branch
 
 Read the default branch through `default-branch`. Fetch its tip and read the current branch. Stop on the default branch, detached HEAD, or no commits beyond the base. Leave unrelated working-tree changes untouched. Stop if they prevent cleanup or history edits.
@@ -72,6 +74,8 @@ Create a stack only on request, and only when `code-host.md` supports `retarget-
 ## 8. Read the PR before reporting status
 
 Read the PR through `read-pr`: its URL, title, draft state, state, base branch, head branch, and head SHA. If it is a draft, run `mark-ready` and read it again. If `mark-ready` is unsupported, report the draft. Make sure that its head SHA is the final tip pushed in step 4. Report a mismatch or unavailable status instead of claiming that the final diff is published.
+
+Publish the observed PR as a `pr` item only after this read, preserving a head mismatch or unavailable status in the Document and Timeline. Capture the body file and proof as attachments. Use a delivery table with PR, Status, Head, and Proof columns and a Timeline of push, create or edit, and read outcomes. An open or ready-for-review PR does not establish merge-ready. Leave the requested End state unchanged.
 
 ## Reply
 

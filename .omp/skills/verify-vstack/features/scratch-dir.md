@@ -7,12 +7,13 @@ vstack skills write throwaway output to Scratch, `~/.vstack/tmp/<repo-key>/<kind
 - `scratch-path` the path script prints and creates `<home>/.vstack/tmp/<repo-key>/` or a kind directory, with a trailing slash.
 - `scratch-key` worktrees of one repo share its key: the main checkout's name plus 6 hex chars.
 - `scratch-bad-kind` a kind that is not one lowercase path segment exits 2 and creates nothing.
-- `clean-list` list mode prints expired entries and the `kept` count as JSON, without deletion.
+- `clean-list` list mode prints expired entries and the `kept` count as JSON, without deletion. A Flow in the `flow` kind is judged by its lifecycle; the Flow page recipe's `flow-retention` covers it.
 - `clean-delete` `--delete <path>...` deletes named expired entries and prints `deleted`, `skipped`, and `pruned`.
 - `clean-command-table` `/vstack-clean [age]` shows repo key, kind, entry, age, size, and totals before confirmation.
 - `clean-command-choose` Choose items opens a checklist. Done deletes only marked entries.
 - `clean-command-cancel` Cancel at either selection deletes nothing.
 - `clean-command-no-ui` the Command refuses without a UI and deletes nothing.
+- `clean-command-flow` a bound Command publishes its outcome and raw diagnostics in its own finished Stage, then restores an in-progress caller's binding. An unbound Command creates no Flow.
 
 ## How to get to it (user POV)
 
@@ -58,10 +59,17 @@ Preconditions:
 3. Save `find "$C" -type f | sort` as `$VERIFY_RUN_DIR/clean-command-no-ui-after.txt`. Compare it with the before listing using `diff -u`. Both fixture files must remain. Read `clean-command-no-ui/summary.json` and `clean-command-no-ui/rpc.jsonl`: the Command must complete with `agentInvoked: false`, zero model requests, and `ui_requests` of `0`, so no deletion dialog was shown.
 4. The refusal is a displayed custom message, because `--no-ui` drops extension notifications. Run `jq -r 'select(.type=="message_end" and .message.customType=="vstack-clean") | .message.content' "$VERIFY_RUN_DIR/clean-command-no-ui/rpc.jsonl"`. It must print `/vstack-clean requires an interactive UI to confirm deletion. Nothing deleted.` Record the exact text. If it prints nothing, record a product finding: the no-UI refusal has no observable message. Unchanged files or a completed Command are not proof of the message. `--mode json --no-ui` is invalid and must not be used.
 
+### Bound Flow outcome
+
+Use the session-enabled drive with the stub's bash reply to run the checkout's `flow-page.ts open --skill implement --title "Cleanup proof" --agent main` before `/vstack-clean`. Keep both prompts in one drive so they share the session identity. Seed expired Scratch as above, then confirm Apply all. Observe `agentInvoked: false` for the Command and no extra model request for publication. Use `show --flow <receipt flow>` from that drive's project with its isolated `--home` to inspect a finished `vstack-clean` Stage and its Result. `bound --session <session id> --agent main` must still name the caller's Stage.
+
+Open the live Flow URL in the browser. Select the cleanup Stage and read its outcome, preview JSON, deletion JSON, and exit codes. Capture the page and ARIA snapshot. Repeat with Cancel and without a UI; the Result must report no deletion and the files must remain. Run an unbound Command in another session and confirm `bound` is null and no Flow folder appeared. Keep the existing confirmation UI proof above.
+
+
 ## Gotchas
 
 - The direct CLIs use the cwd's git repo key, or `_global` outside a repo. The Command scans all keys in its isolated home.
-- An entry's age is its newest mtime, including descendants. Touch files first and the entry directory last.
+- An entry's age is its newest mtime, including descendants. Touch files first and the entry directory last. A Flow in the `flow` kind is the exception: its close time decides, and an open Flow is never listed.
 - Never change your own session's `HOME`. Direct CLIs use `--home`. Only the isolated omp process gets a throwaway `HOME`.
 - `--delete` needs absolute entry paths at `<repo-key>/<kind>/<entry>` depth. Other paths exit 2 before deletion.
 - RPC proof must come from the linked checkout. The fake extension host and cleanup CLI prove different entry points.

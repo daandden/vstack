@@ -1,6 +1,6 @@
 # Shared judge text goes in the jev state once
 
-> [ADR 0040](0040-figures-are-mermaid-rendered-by-pele.md) amends this decision. The executing agent now decides whether each Diagram kind helps and chooses each Mermaid type. The Grilling page visual judge, its rubric, `visual_judge.py`, `visual_judge_check.py`, and its calibration cases are removed. The Addon judge provisions and historical measurements below remain.
+> [ADR 0040](0040-figures-are-mermaid-rendered-by-pele.md) removes the Grilling page visual judge and its calibration artifacts. [ADR 0044](0044-structured-flow-data-drives-server-rendered-pages.md) also removes the old page writer in the Flow cutover. The rule below still holds for the Addon judge.
 
 > [ADR 0039](0039-main-agent-tools-pick-addons-from-gathered-intent.md) replaces main-session prompt selection and smol restatements with tools that receive gathered source intent. The shared state, 0.70 threshold, and session-wide dedup remain. Subagent Brief selection stays under ADR 0025.
 

@@ -14,7 +14,7 @@ This directory maps the user-facing features of the vstack omp plugin. Read this
 
 - Start every recipe from the baseline. A recipe that needs earlier state names it under `Preconditions:`.
 - Run session behavior through `scripts/drive.ts`. Use the feature ID as `--name`, so each drive has its own evidence dir. drive.ts refuses a name that the run already used. Retry with a new name such as `<feature>-retry1`, and read the proof from that new dir.
-- Run a skill's Bun CLI or Python script from `$CHECKOUT/plugin/skills/<skill>/scripts/`, not through `skill://...`.
+- Run a skill's Bun CLI from `$CHECKOUT/plugin/skills/<skill>/scripts/`, not through `skill://...`.
 - Pass `--home "$VERIFY_RUN_DIR/data/<name>"` to every script that takes `--home`. Never let a script write to the real `~/.vstack/`.
 - In the browser, open tabs with a name, `app: { tern: false }`, and a 1280 by 900 `viewport`. Act by ARIA role and name.
 - Treat every command as literal. Keep quoted names and flags as they are.
@@ -45,8 +45,8 @@ Keep implementation details out of the map. Name only user paths, stable handles
 - [Skill commands](./skill-command.md): `/skill:<name>` puts that skill's text from the checkout into the prompt the model gets.
 - [Addon tools](./addon-tools.md): typed Matt runs display intent-gathering instructions, and agent-called tools select Addons. The stub proves tool completion without a native judge, not native selection.
 - [Scratch dir](./scratch-dir.md): the vstack-tmp scripts make and list Scratch entries. The `/vstack-clean` Command previews expired entries and deletes only confirmed choices.
-- [Grilling page](./grilling-page.md): the grilling-page script renders a flow's Grilling page from the state file in its flow folder and renames the folder. The page opens on an Overview tab, has one tab per Stage with its Background, Report blocks, questions, answers, and summary, and links between tabs. A Stage that settled every decision as Assumed shows its count on Overview.
-- [Figure render](./figure-render.md): the vstack-figures render script turns Mermaid into a Catppuccin Mocha SVG with Pele, marks focal ids in mauve, refuses bad Mermaid with Pele's parse error, and the Grilling page accepts the SVG.
+- [Flow page](./flow-page.md): the flow-page script takes typed contributions for a bound Stage, numbers and links them, refuses bad input without writing, and publishes the static Flow page with Overview, Stage tabs, Results, and Topics. A Flow closes and reopens, and Scratch cleanup never removes an open Flow. The Local Flow host serves live pages, native omp sessions present their bound Flow after each reply, and the combined-product proof drives every T4 case in one run.
+- [Figure render](./figure-render.md): the caller writes Mermaid and renders a Catppuccin Mocha Pele SVG through Bun. The Flow captures and displays the real SVG safely, with reader needs and Visual kinds.
 - [Clean worktrees](./clean-wt.md): `/skill:clean-wt` inventories the omp worktree base from a session with a held lease, removes unused clean checkouts, keeps their branches, and skips stale, unique, or unapproved dirty checkouts.
 
 ## Not mapped yet

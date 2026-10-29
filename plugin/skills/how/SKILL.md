@@ -14,6 +14,8 @@ If the scope is ambiguous, state your interpretation and explore. The user can r
 
 The top-level agent resolves the vstack root per the Private-mode rule. Read `skill://vstack-tmp` and obtain the project Scratch dir once. Under a caller, use its supplied absolute root and Scratch dir. Create a distinct `how/<run-id>/` entry. Pass both paths to each brief. Read `references/explainer-prompt.md` for the explanation structure.
 
+Follow `skill://flow-page`'s "Stage entry/exit line" for an explanation run. Helper investigators return the explanation, citations, and figure points to the producer.
+
 Split the question into 1–4 exploration angles. Two to four angles go to step 2. When in doubt, take the simple path.
 
 One angle needs no explorers. Build the explainer's brief from `references/explainer-prompt.md` without the explorer-findings section. It explores and explains in one pass.
@@ -38,10 +40,10 @@ Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): write the e
 
 ## 4. Present
 
-Write the explanation into `templates/how.html` under the run's Scratch entry. Draw the figures as described below. Print the plain absolute path of the page with the explanation, with no `file://` prefix. For a direct invocation, open the completed page once in the browser. Under a caller, return the output unedited, including citations, the figures, and the page path. The caller can blend it into its own page. Light edits for clarity are allowed only for a direct invocation.
+Submit a Document Result in the how Stage. Keep the explanation's headed sections, code with source locations, and citations. Capture figures as typed attachments and place their `figure` blocks in reading order. Helper investigators return their output unedited, including citations and figure points. Light clarity edits belong to the producer.
 
 ## Figures and page
 
 Use Overview, Key concepts, How it works, Where things live, and Gotchas. Drop sections that do not apply. Cite files and symbols beside claims. Include figures that explain component relationships or data flow.
 
-For each figure point in the explanation, write the figure's Mermaid in this context and render it through `skill://vstack-figures`. The out dir is this run's `how/<run-id>/` entry. Inline each SVG in the page. Keep the page self-contained, without external image files.
+Draw every figure through `skill://vstack-figures`. From the explanation's figure points, write each figure's Mermaid in this caller's context and render it with Pele. Use this run's `how/<run-id>/` entry and a unique basename per figure. Capture the SVG paths in the Document. Keep Mermaid sources and SVG exports as deliverables, not a separate explanation page.

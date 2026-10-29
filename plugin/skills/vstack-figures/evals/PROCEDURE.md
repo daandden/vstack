@@ -2,6 +2,8 @@
 
 Run the 18 cases in [briefs.json](briefs.json) once per side, then judge each pair twice with [RUBRIC.md](RUBRIC.md), once in each A/B order. A pair is a candidate win only when both verdicts pick the candidate. Keep the candidate when it wins at least 11 of 18 pairs. Report cost separately. Cost does not decide whether to keep the candidate.
 
+When executing this comparison, follow `skill://flow-page`'s "Stage entry/exit line" for the result-producing comparison run. A reference read or one rendering helper creates no Stage. Keep the canonical report under this run's Scratch entry and publish its complete findings and captured evidence as Document, Comparison, Metrics, and Timeline Results before closing the Stage. Workers return their figure evidence to the comparison owner. They publish no separate report page.
+
 A side is skill://vstack-figures at one git ref: its `SKILL.md` and its render script, with the `pele` version that ref pins. One `vstack-worker` per brief per side follows that side's text to write the Mermaid and render it. This procedure does not compare writing models. Read skill://benchmark-checklist before you run it.
 
 ## 1. Fix the inputs and models
@@ -98,24 +100,16 @@ For failed or unstarted workers, set `status` to `failed` or `not_started`, reco
 
 ## 4. Render at the measured display width
 
-Use **1376 CSS pixels** as the SVG display width. This is the rendered width of a question visual on a Grilling page at a 1440 by 900 viewport, not the SVG's viewBox width.
+The historical comparison used a **1376 CSS pixel** maximum SVG display width at a 1440 by 900 viewport. That was measured on the retired Grilling page on 2026-10-24, not on the Flow renderer. The old SVG parent was 1400px, its viewBox was `0 0 960 600`, its displayed height was 860px, and device scale factor was 1.25. Historical evidence is under `/Users/vanguyen/.vstack/tmp/vstack-a7925b/vstack-figures/display-width-measurement/`. Do not claim those values as a new Flow measurement.
 
-The measurement used the installed Grilling page builder on 2026-10-24. A throwaway page held one question with `{ "svg": "<existing figure>" }`, using `grilling/vstack-234/figures/t234-tickets-deps.svg`. The builder command was:
+Read `xd://eval/browser` before browser use. Use the same current Flow renderer only for display on both sides, never as either side's figure chain. Open a fresh proof Flow through `flow-page open`, using an isolated `--home`, and put generated media inside that project's Scratch dir. Submit each SVG as a captured `attachment` and a complete question with `needs: [{ need: "<the brief's actual decision distinction>", kind: "context-diagram" }]` and `figures: [{ attachment: "<ref>", kind: "context-diagram" }]`. Record the receipt and use its actual question id, not a guessed anchor. Rendering helpers open no Stage.
 
-```sh
-bun "$(realpath ~/.omp/plugins/node_modules/vstack/skills/grilling-page/scripts/grilling-page.ts)" append <measurement>/page.jsonl <measurement>/records.jsonl
-```
+Use Chromium at 1440 by 900 and device scale factor 1.25 for both sides, with `app: { tern: false, relay: false }`. Wait for `document.fonts.ready` and the question's image to load. Measure the `.visual img` bounding rectangle and its container on this renderer, and record font availability. A Pele SVG keeps its intrinsic width up to the page width. Use this fresh common display measurement in the manifest. A changed renderer or environment needs another documented measurement, never silent scaling. Historical 1376px results are not directly comparable until display conditions match.
 
-The browser opened `page.html#q-measure` in Chromium at 1440 by 900. `document.querySelector('#q-measure svg').getBoundingClientRect().width` returned `1376`. The SVG parent measured `1400`, the viewBox was `0 0 960 600`, and the rendered SVG height was `860`. The device scale factor was `1.25`. Measurement evidence lives under `/Users/vanguyen/.vstack/tmp/vstack-a7925b/vstack-figures/display-width-measurement/`, including `records.jsonl`, the built page, and `page.webp`. Scratch evidence expires. The dimensions and measurement method here remain the run contract.
-
-Read `xd://eval/browser` before browser use. For each SVG, build a throwaway Grilling page under `<run>/<side>/renders/<id>/` with the same append command. Include a page record, a `grill-with-docs` Stage, a round, and one question with the SVG as its visual. Open its question hash so that the Stage is visible. This uses the installed page builder only for display, never as a side's chain.
-
-Use Chromium, a 1440 by 900 viewport, and device scale factor `1.25` for both sides. In eval, pass `app={"tern": false, "relay": false}` to `browser.open` to avoid Tern's WebView and the user's browser. Wait for `document.fonts.ready`, and record the SVG's bounding rectangle and font availability. A Pele SVG keeps its own width up to the page width, so a narrow figure renders narrower than 1376. Record its width; a figure wider than the page renders at 1376. A changed page template or environment that changes the page width needs a new documented measurement, not silent scaling.
-
-Capture the complete SVG element, including content below the viewport. Preserve its aspect ratio and height. Do not crop, shrink, edit, or relayout an SVG to improve a side's score. A selector screenshot avoids page text around the visual:
+Capture the complete SVG image, including content below the viewport. Preserve its aspect ratio and height. Do not crop, shrink, edit, or relayout SVG bytes to improve a side's score. Use the actual receipt's question id for a selector screenshot that excludes page text:
 
 ```javascript
-const pngPath = await tab.screenshot({selector: "#q-export svg", format: "png", silent: true});
+const pngPath = await tab.screenshot({selector: "#<question-id> .visual img", format: "png", silent: true});
 const out = "<run>/<side>/renders/<id>/figure.webp";
 await Bun.write(out, await new Bun.Image(await Bun.file(pngPath).bytes()).webp({lossless: true}).bytes());
 ```

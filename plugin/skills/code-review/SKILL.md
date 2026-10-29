@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Review changes since a fixed point on three axes, Standards, Spec, and conditional Blast radius. Runs each axis as its own reviewer in parallel, shows their reports on the flow's Grilling page, and asks only about findings it cannot decide. Use to review a branch, PR, work-in-progress changes, or changes since a commit, branch, tag, or merge-base.
+description: Review changes since a fixed point on three axes, Standards, Spec, and conditional Blast radius. Runs each axis as its own reviewer in parallel, publishes a linked summary and findings on the Flow page, and asks only about findings it cannot decide. Use to review a branch, PR, work-in-progress changes, or changes since a commit, branch, tag, or merge-base.
 ---
 
 Review the supplied change scope against the fixed point on separate axes:
@@ -13,7 +13,7 @@ Each axis runs as its own reviewer so that findings from one do not mask another
 
 Resolve the absolute vstack root through the Private-mode rule once. Read `docs/vstack/issue-tracker.md` under that root in Standard mode, or `<vstack root>/config/issue-tracker.md` in Private mode. If it is missing, stop and tell the user to run `/skill:setup-vstack`. Subagents use the supplied root, never resolve it again.
 
-code-review runs as its own Stage on the flow's Grilling page, also when implement or implement-spec runs it. Read `skill://grilling-page` before the first `ask`. Find or start the page and add a code-review Stage, as it says. Every `ask` below is a question in that Stage. A code-review that runs in a subagent writes no page and asks nothing. It returns its Report blocks and its open questions, and the top-level agent puts them on the page and asks them.
+Follow `skill://flow-page`'s "Stage entry/exit line". A subagent reviewer returns its structured review Result and open questions to the coordinator for publication in the code-review Stage.
 
 ## Process
 
@@ -94,9 +94,9 @@ With two or three axes, use this Fan-out line. With only Standards, use the sing
 
 Before this step, read skill://vstack-fan-out.
 
-Fan-out (skill://vstack-fan-out): parts: one per axis that runs. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: that axis's reviewer prompt below, the vstack root, the Scratch dir. Wait for every result. If they cannot start, stop: report code-review as not run.
+Fan-out (skill://vstack-fan-out): parts: one per axis that runs. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: that axis's reviewer prompt below, the vstack root, the Scratch dir. Wait for every result. If they cannot start, stop: publish the affected axes as blocked through step 5 and report code-review as not run.
 
-Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the Standards reviewer prompt below, the vstack root. Wait for its result. If it cannot be spawned, stop: report code-review as not run.
+Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the Standards reviewer prompt below, the vstack root. Wait for its result. If it cannot be spawned, stop: publish Standards as blocked through step 5 and report code-review as not run.
 
 The Standards reviewer prompt must include:
 
@@ -112,7 +112,7 @@ The Spec reviewer prompt must include:
 - The path or fetched contents of the spec.
 - The brief: "Report: (a) requirements the spec asked for that are missing or partial; (b) behaviour in the diff that wasn't asked for (scope creep); (c) requirements that look implemented but where the implementation looks wrong. Quote the spec line for each finding. Give each finding a short title, a label such as `issue` or `suggestion`, whether it blocks the merge, its impact, the suggested change, and its evidence, in that order. Open the impact with what a user or caller sees, such as 'When you run X, Y happens instead of Z', then state the decision the user faces. The impact describes behavior only and names no file path; the file and line go in the evidence, for whoever fixes it. Say whether the spec settles the change, or why it needs the user's judgement, such as a spec line that reads two ways. Under 400 words."
 
-If the spec is missing, skip the Spec reviewer and say so in the chat line of step 5.
+If the user confirms there is no spec, skip the Spec reviewer and record the reason in the review's Spec axis. An unreadable source is unavailable, not a clean review.
 
 The Blast radius reviewer prompt must include:
 
@@ -125,17 +125,18 @@ The Blast radius reviewer prompt must include:
 
 ### 5. Show the report, then ask
 
-Show the reports on the page before any question about them, so that the user reads the evidence first. Append one Report block per axis that has findings to the code-review Stage, as `skill://grilling-page` says. Keep the axes separate. Never merge or re-rank findings, and keep each reviewer's order.
+Publish through `skill://flow-page` before asking about findings. Submit one `review` Result with all three `axes` and its authoritative `entries`. The renderer derives one summary table at the start of the Stage and links each finding to its full card. Do not author a second summary table or a separate report page.
 
-- Standards and Spec are each a `cards` block. Each finding is one card with its id (such as `std-1` or `spec-1`), title, label, blocking flag, impact, suggested action, and evidence, as the reviewer reported them.
-- Blast radius is a `ledger` block titled "Blast radius". The safety fact is one claim, `confirmed` when executed proof established it and `unproven` otherwise. Each risk is one claim, `confirmed` when the proof showed it and `unproven` otherwise. Each cleared item is a `cleared` claim. The evidence names the proof script, command, and observed output in the run's `blast-radius/` entry. The missing proof names the check that settles the claim, or `none`. The consequence says what follows if the claim holds.
-- When a trigger fired outside a run, the Blast radius ledger has one `unproven` claim per trigger. Its missing proof is the blast-radius proof that `/skill:code-review` runs.
+- Each axis names `standards`, `spec`, or `blast-radius`, and has a `status`: `findings` when it completed with findings, `clean` when it completed without findings, `skipped` when deliberately not run or not triggered, `unavailable` when its source or provider could not be read, or `blocked` when a prerequisite prevented completion. Every status except `findings` needs a `reason`. A blocked axis may retain findings already established, but its reason must name the uncompleted work. Never use `clean` for an axis that did not run.
+- Each finding is one entry with a local `ref` such as `std-1`, its `axis`, `title`, `label`, `blocking`, `impact`, `location`, `action`, and `evidence`. `location` gives the source file and line, or the named interface when no source line is known. Keep each reviewer's order within its axis. The impact opens with what a user or caller sees. The script assigns the entry's id and links, including after a focused correction.
+- Blast radius risks use the same finding cards. Keep the confirmed or unproven proof level in the `label`, the consequence in `impact`, the proposed change and missing proof in `action`, and the proof script, command, and observed output in `evidence`. Publish the safety fact and cleared checks as a separate `ledger` Result. Do not repeat risks in that ledger. A clean Blast radius axis may still have a safety fact and cleared checks, but has no fabricated finding card.
+- When a trigger fires outside a run, use Blast radius `skipped`, with a reason naming the triggers, stating that no proof ran, and recommending `/skill:code-review`. A missing spec is `skipped` only when the user says none exists. A source that cannot be read is `unavailable`. If reviewers cannot start, publish the affected axes as `blocked` with the launch failure before stopping.
 
-Give each block a summary line with the axis's finding count and worst issue. For Blast radius, add its trigger and whether the safety fact is proven or unproven. An axis with no findings, or one that did not run, gets no Report block, because the page script refuses an empty one. The chat line below says why.
+Decide each finding that its evidence settles: a documented-standard breach, a missing or incorrect spec requirement, a confirmed risk, or a cleared claim. A card holds its decision in `blocking` and `action`, and a claim in `status` and `consequence`. Ask about every other finding, one question per finding. Examples are an unsettled baseline smell, behavior the spec neither asks for nor rules out, an ambiguous spec line, and an unproven claim. If every finding is decided, ask nothing. Otherwise submit one round and use its receipt's `ask` payload unchanged. Each question names the finding and ends with "?". Its `results` names `<review ref or id>/<entry ref or id>` so the script links both ways. Record the answers through the common interface.
 
-Decide each finding that its evidence settles: a breach of a documented standard, a spec requirement that the diff misses or gets wrong, a confirmed risk, or a cleared claim. A card holds the decision in its blocking flag and suggested action, and a claim in its status and consequence. Ask about every other finding, one question per finding. Examples are a baseline smell that the sources do not settle, behavior that the spec neither asks for nor rules out, a spec line that reads two ways, and an unproven claim. If every finding is decided, ask nothing. Otherwise add the questions as one round, as grilling-page says, and put them in one `ask`. Each question title names the finding's id and ends with "?". Its options are the likely actions, such as Fix as suggested and Keep as is. Link each asked finding and its question both ways. Record the answers. If the Stage asked any question, close its session as grilling-page says. Then mark the Stage finished.
+Use flow-page's "Close the Stage" after recording the review decisions or no-question outcome.
 
-In chat, print the page path and one line per axis instead of the findings. Give the axis's finding count and worst issue, or say why it did not run. For Blast radius include its trigger or skip reason. When the proof ran, state whether the safety fact is proven or unproven. When a trigger fired outside a run, use `Blast radius: triggered, no proof (not in a run)`. Never select a worst issue across axes. The review's result for the caller is each finding that code-review decided, plus the answer to each question. For a PR, remove the worktree as step 1 says.
+In chat, summarize each axis's count and worst issue, or its explicit state and reason, instead of repeating the findings. For Blast radius include its triggers or skip reason and, when proof ran, whether the safety fact is proven or unproven. Never select a worst issue across axes. The extension presents the bound Flow URL after the main-agent reply. The caller receives each decided finding plus each question's answer. For a PR, remove the worktree as step 1 says.
 
 ## Why three axes
 

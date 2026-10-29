@@ -7,12 +7,63 @@ import { addonJudgeState, briefJudgeState, briefQuestions, parseAddonCatalog, ty
 import { mattSkillNames, type MattSkillRow } from "./matt-skills.ts";
 import { cleanBrief, preprocessTinyMessage } from "./prompt-cleaner.ts";
 import * as fs from "node:fs";
-import { homedir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 export default function vstack(pi: ExtensionAPI): void {
   registerAddonSelection(pi);
   registerCleanCommand(pi);
+  registerFlowPresentation(pi);
+}
+
+const flowScript = fileURLToPath(new URL("../skills/flow-page/scripts/flow-page.ts", import.meta.url));
+const flowIdentity = (ctx: ExtensionContext) => [
+  "--session", ctx.sessionManager.getSessionId(),
+  "--agent", ctx.agent.kind === "main" ? "main" : ctx.agent.id,
+];
+
+async function flowPage<T>(pi: ExtensionAPI, ctx: ExtensionContext, args: string[]): Promise<T> {
+  const result = await pi.exec("bun", [flowScript, ...args, ...flowIdentity(ctx)], { cwd: ctx.cwd });
+  if (result.code !== 0) throw new Error(result.stderr.trim() || `Flow command exited ${result.code}`);
+  return JSON.parse(result.stdout);
+}
+
+function registerFlowPresentation(pi: ExtensionAPI): void {
+  type Bound = {
+    binding: { flow: string; stage: string } | null;
+    page?: string;
+    live?: { state: "serving"; url: string } | { state: "unavailable"; error: string } | { state: "off" };
+    presentation?: { state: "current" | "stale"; error?: string };
+  };
+  pi.on("before_agent_start", async (_event, ctx) => {
+    const args = flowIdentity(ctx).map(value => JSON.stringify(value)).join(" ");
+    let target = "";
+    try {
+      const current = await flowPage<Bound>(pi, ctx, ["bound"]);
+      if (current.binding) target = ` Your bound Flow is ${current.binding.flow}, Stage ${current.binding.stage}.`;
+    } catch (error) {
+      target = ` Flow binding lookup failed: ${error instanceof Error ? error.message : String(error)}.`;
+    }
+    return { message: {
+      customType: "vstack-flow-context", display: false, attribution: "agent" as const,
+      content: `For flow-page authoring commands, pass ${args}. Bash supplies PI_SESSION_ID but no agent id. Never use another agent's binding.${target}`,
+    } };
+  });
+  pi.on("agent_end", async (event, ctx) => {
+    if (ctx.agent.kind !== "main" || event.isTerminal === false) return;
+    let content: string;
+    try {
+      const current = await flowPage<Bound>(pi, ctx, ["bound"]);
+      if (!current.binding) return;
+      content = current.live?.state === "serving"
+        ? `Flow page: ${current.live.url}`
+        : `Flow page (static): ${current.page}\nLive serving ${current.live?.state === "unavailable" ? `failed: ${current.live.error}` : "is disabled"}.`;
+      if (current.presentation?.state === "stale") content += `\nStatic projection is stale${current.presentation.error ? `: ${current.presentation.error}` : "."}`;
+    } catch (error) {
+      content = `Flow page unavailable: ${error instanceof Error ? error.message : String(error)}`;
+    }
+    pi.sendMessage({ customType: "vstack-flow", content, display: true }, { triggerTurn: false });
+  });
 }
 
 function readAddonCatalog(): AddonCatalog | undefined {
@@ -214,24 +265,62 @@ interface ScratchEntry {
 
 function registerCleanCommand(pi: ExtensionAPI): void {
   const script = fileURLToPath(new URL("../skills/vstack-tmp/scripts/clean.ts", import.meta.url));
+  async function publish(ctx: ExtensionContext, outcome: string, diagnostics: { heading: string; blocks: { code: string }[] }[]) {
+    const run = (args: string[]) => flowPage<any>(pi, ctx, args);
+    const current = await run(["bound"]);
+    if (!current.binding) return;
+    const caller = await run(["show", "--flow", current.binding.flow]);
+    const resumeCaller = caller.stages.some((stage: { id: string; state: string }) => stage.id === current.binding.stage && stage.state === "in-progress");
+    const folder = fs.mkdtempSync(`${tmpdir()}/vstack-clean-`);
+    try {
+      const stage = await run(["open", "--flow", current.binding.flow, "--skill", "vstack-clean", "--parent", current.binding.stage]);
+      try {
+        const file = `${folder}/contribution.json`;
+        fs.writeFileSync(file, JSON.stringify({ version: 1, items: [
+          { kind: "result", shape: "document", title: "Scratch cleanup", sections: [
+            { heading: "Outcome", blocks: [{ prose: outcome }] }, ...diagnostics,
+          ] },
+          { kind: "stage", state: "finished" },
+        ] }));
+        const receipt = await run(["submit", "--flow", stage.flow, "--stage", stage.stage, file]);
+        const link = receipt.live?.state === "serving" ? receipt.live.url : receipt.page;
+        pi.sendMessage({ customType: "vstack-flow", content: `Flow page: ${link}${receipt.live?.state === "unavailable" ? `\nLive serving failed: ${receipt.live.error}` : ""}${receipt.presentation?.state === "stale" ? "\nStatic projection is stale; the outcome is committed." : ""}`, display: true }, { triggerTurn: false });
+      } finally {
+        if (resumeCaller) await run(["bind", "--flow", current.binding.flow, "--stage", current.binding.stage]);
+      }
+    } finally {
+      fs.rmSync(folder, { recursive: true, force: true });
+    }
+  }
   pi.registerCommand("vstack-clean", {
     description: "Delete expired Scratch entries: /vstack-clean [age] (default 90d).",
     async handler(age, ctx) {
-      if (!ctx.hasUI) {
-        pi.sendMessage({
-          customType: "vstack-clean",
-          content: "/vstack-clean requires an interactive UI to confirm deletion. Nothing deleted.",
-          display: true,
-        }, { triggerTurn: false });
-        return;
-      }
-      const args = [script, "--home", homedir(), "--older-than", age.trim() || "90d"];
+      let outcome = "/vstack-clean requires an interactive UI to confirm deletion. Nothing deleted.";
+      const diagnostics: { heading: string; blocks: { code: string }[] }[] = [];
+      const record = (heading: string, result: { stdout: string; stderr: string; code: number }) => {
+        diagnostics.push({ heading, blocks: [
+          { code: `Exit code: ${result.code}` },
+          ...(result.stdout ? [{ code: result.stdout }] : []),
+          ...(result.stderr ? [{ code: result.stderr }] : []),
+        ] });
+      };
       let deleteStarted = false;
       try {
+        if (!ctx.hasUI) {
+          pi.sendMessage({
+            customType: "vstack-clean",
+            content: outcome,
+            display: true,
+          }, { triggerTurn: false });
+          return;
+        }
+        const args = [script, "--home", homedir(), "--older-than", age.trim() || "90d"];
         const preview = await pi.exec("bun", args);
+        record("Dry run diagnostics", preview);
         if (preview.code !== 0) throw new Error(preview.stderr.trim() || `clean.ts exited with code ${preview.code}`);
         const listing = JSON.parse(preview.stdout) as { root: string; older_than: string; entries: ScratchEntry[]; kept: number };
         if (!listing.entries.length) {
+          outcome = `No expired Scratch entries. Kept ${listing.kept} entries. Nothing deleted.`;
           ctx.ui.notify(`No expired Scratch entries. Kept ${listing.kept} entries. Nothing deleted.`, "info");
           return;
         }
@@ -255,18 +344,26 @@ function registerCleanCommand(pi: ExtensionAPI): void {
             if (checked.has(index)) checked.delete(index); else checked.add(index);
           }
         }
-        if (!picked.length) { ctx.ui.notify("Nothing deleted.", "info"); return; }
+        if (!picked.length) { outcome = "Deletion was not confirmed for any entry. Nothing deleted."; ctx.ui.notify("Nothing deleted.", "info"); return; }
         deleteStarted = true;
         const deletion = await pi.exec("bun", [...args, "--delete", ...picked.map(entry => entry.path)]);
+        record("Deletion diagnostics", deletion);
         if (deletion.code !== 0) throw new Error(deletion.stderr.trim() || `clean.ts exited with code ${deletion.code}`);
         const result = JSON.parse(deletion.stdout) as { deleted: string[]; skipped: { path: string; reason: string }[] };
         const deleted = new Set(result.deleted);
         const freed = picked.reduce((size, entry) => size + (deleted.has(entry.path) ? entry.size : 0), 0);
         const skipped = result.skipped.map(entry => `${entry.path}: ${entry.reason}`).join("\n");
-        ctx.ui.notify(`Deleted ${result.deleted.length} ${result.deleted.length === 1 ? "entry" : "entries"}; freed ${freed} bytes. Skipped ${result.skipped.length} entries.${skipped ? `\n${skipped}` : ""}`, "info");
+        outcome = `Deleted ${result.deleted.length} ${result.deleted.length === 1 ? "entry" : "entries"}; freed ${freed} bytes. Skipped ${result.skipped.length} entries.${skipped ? `\n${skipped}` : ""}`;
+        ctx.ui.notify(outcome, "info");
       } catch (error) {
-        const outcome = deleteStarted ? "Some entries may already be deleted." : "Nothing deleted.";
-        ctx.ui.notify(`/vstack-clean failed: ${error instanceof Error ? error.message : String(error)}. ${outcome}`, "error");
+        const effect = deleteStarted ? "Some entries may already be deleted." : "Nothing deleted.";
+        outcome = `/vstack-clean failed: ${error instanceof Error ? error.message : String(error)}. ${effect}`;
+        ctx.ui.notify(outcome, "error");
+      } finally {
+        try { await publish(ctx, outcome, diagnostics); }
+        catch (error) {
+          pi.sendMessage({ customType: "vstack-clean", content: `Cleanup outcome could not be attached to the Flow: ${error instanceof Error ? error.message : String(error)}\n${outcome}`, display: true }, { triggerTurn: false });
+        }
       }
     },
   });

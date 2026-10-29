@@ -20,7 +20,7 @@ items:
     tree: d8e341cee7980127dddda05159bedf25dc853615
     disposition: adapt
     artifacts: [plugin/skills/code-review]
-    reason: "PR pinning accepts MCP Code hosts without operation rows, selects read-pr by descriptions and schemas, and fetches exact commits through project facts; retains CLI rows and review axes (#204, ADR 0035). Fetches originating Jira keys and comments through current tracker descriptions, schemas, and facts (#207, ADR 0035)."
+    reason: "PR pinning accepts MCP Code hosts without operation rows, selects read-pr by descriptions and schemas, and fetches exact commits through project facts. It retains CLI rows and review axes and fetches originating tracker keys and comments through current descriptions, schemas, and recorded facts (#204, #207, ADR 0035)."
   - id: matt/codebase-design
     upstream: matt
     kind: skill
@@ -44,7 +44,7 @@ items:
     tree: ea30ee454ba264543dbe40737973b1a5afb9f0e6
     disposition: adapt
     artifacts: [plugin/skills/domain-modeling]
-    reason: "Its user questions go through ask and on the flow's Grilling page, with option labels only in ask (ask-tool, #58, #165)."
+    reason: "Its user questions go through ask and on the Flow page, with option labels only in ask (ask-tool, #58, #165)."
   - id: matt/grill-with-docs
     upstream: matt
     kind: skill
@@ -52,7 +52,7 @@ items:
     tree: eedaf2562c83155115e9c649fa3ecaac2e10e81d
     disposition: adapt
     artifacts: [plugin/skills/grill-with-docs]
-    reason: "Names skill://grilling and skill://domain-modeling where Matt calls the Skill tool, adds a grill-with-docs Stage to the flow's Grilling page, and names the next skill after the summary (#165, ADR 0032)."
+    reason: "Names skill://grilling and skill://domain-modeling where Matt calls the Skill tool, adds a grill-with-docs Stage to the Flow's page, and names the next skill after the summary (#165, ADR 0032)."
   - id: matt/implement
     upstream: matt
     kind: skill
@@ -60,7 +60,7 @@ items:
     tree: f07d230f645fc9ac390cf13a450bbff12ad791a3
     disposition: adapt
     artifacts: [plugin/skills/implement]
-    reason: "Settles End states from the user's words or the ticket, then the project's default End state in code-host.md, then an ask, through live MCP capability discovery, and shares description-based Code host routing, with unsupported optional tools reported as gaps (ADR 0034, ADR 0035, ADR 0038, #204). Numbers its steps so the seams are settled before the first code change and each slice goes red before its code, and reuses a Grilling-page seam only when the user picked it (#183). Shares End state ownership with tune-llm-flow, preserving kept-round and eval commits (#254, ADR 0041). The author runs development checks, and an independent isolated Verifier checks the committed head at every End state in shared step 6b, whose accepted Verdict the chain reuses or renews (ADR 0043, #261). Shared step 6b owns Shared checkout briefs, REFUSED and cleanup_error availability checks, and unchanged-clone verification safety."
+    reason: "Settles End states from user words, the ticket, project default, then ask through live MCP discovery and Code host routing. Confirms Flow test seams before code and goes red per slice (#183, ADR 0035, ADR 0038). Preserves tune-llm-flow kept-round and eval commits (ADR 0041). Shared step 6b independently verifies committed HEAD at every End state and gates reached progress (ADR 0043). It owns Shared checkout briefs, REFUSED and cleanup_error availability checks, and unchanged-clone verification safety."
   - id: matt/improve-codebase-architecture
     upstream: matt
     kind: skill
@@ -68,7 +68,7 @@ items:
     tree: 39bd9cc130f7dfcc4e3ea0b3613f6ebed0d0ad2b
     disposition: adapt
     artifacts: [plugin/skills/improve-codebase-architecture]
-    reason: "Its sub-agent spawn names a vstack agent (ADR 0004); its candidates go on the flow's Grilling page as a cards Report block, not an HTML report (#169); it runs Design It Twice after every pick and shows the designs as a cards Report block before grilling."
+    reason: "Its sub-agent spawn names a vstack agent (ADR 0004); its candidates go on the Flow page as a cards Result, not an HTML report (#169); it runs Design It Twice after every pick and shows the designs as Document and Comparison Results before grilling (#267)."
   - id: matt/prototype
     upstream: matt
     kind: skill
@@ -92,7 +92,7 @@ items:
     tree: b1568cde855a189b16e5d7dd8a0fa4c3f156bc2e
     disposition: adapt
     artifacts: [plugin/skills/setup-vstack]
-    reason: "Other issue trackers and Code hosts use short MCP configs from current descriptions; re-setup preserves CI hand edits, confirms the CI and Code host drafts together, and adds a missing default End state line to code-host.md; its eval Python check no longer names the removed Grilling page visual judge (ADR 0035, ADR 0038, #204, #205, #206). Lists implement-spec and session among tracker readers (#207). Names the final Verifier as a Verify skill user (ADR 0043)."
+    reason: "Uses current MCP descriptions, schemas, and recorded tracker and Code host facts. Preserves CI hand edits and confirms CI and Code host drafts together, including the default End state. Lists all eight tracker readers and the final Verifier as a Verify skill consumer. Removes obsolete diagram and visual-judge setup claims (#204, #205, #206, #207, ADR 0035, ADR 0038, ADR 0043)."
   - id: matt/tdd
     upstream: matt
     kind: skill
@@ -100,7 +100,7 @@ items:
     tree: bf1bf5ffcd63aa8abce830f2955a853c121fb463
     disposition: adapt
     artifacts: [plugin/skills/tdd]
-    reason: "Asks the seam question through `ask` on the flow's Grilling page and points at `skill://codebase-design` and `skill://code-review` (#209)."
+    reason: "Asks the seam question through `ask` on the Flow page and points at `skill://codebase-design` and `skill://code-review` (#209)."
   - id: matt/to-spec
     upstream: matt
     kind: skill
@@ -108,7 +108,7 @@ items:
     tree: 136b9651747cfccbfbb7c50a6b0dfb757e7547d2
     disposition: adapt
     artifacts: [plugin/skills/to-spec]
-    reason: "Names setup-vstack, puts its seam confirmation in a to-spec Stage on the flow's Grilling page, shows a capability map for a change that spans modules, renames the page after the spec issue, and has a fresh vstack-explorer check the draft against the close decisions and the source issue before it publishes (#166, #230, #226). The check also covers each close's Assumed picks, and its shared steps live in DRIFT-CHECK.md, which to-tickets also follows (#223). Publishes through MCP tracker descriptions, schemas, and recorded project, issue type, and mapped label (#207, ADR 0035)."
+    reason: "Publishes a spec Document and seam confirmation on the Flow, adds its spec alias, and checks draft drift against close decisions and the source issue through shared DRIFT-CHECK.md. MCP publication uses current descriptions, schemas, recorded creation facts, and mapped labels. Specs contain no inherited Addon pointers (#166, #223, #226, #230, #263, #267, #207, ADR 0035)."
   - id: matt/to-tickets
     upstream: matt
     kind: skill
@@ -116,7 +116,7 @@ items:
     tree: b32c94e5a51c24ee9c41fcb7fe9ea9fff9af6369
     disposition: adapt
     artifacts: [plugin/skills/to-tickets]
-    reason: "Names setup-vstack, finds the flow's Grilling page from the spec issue, shows the breakdown as a table Report block before one approval question (#166), and has a fresh vstack-explorer check the draft tickets against the close decisions and the spec before the user sees them (#226). The check also covers each close's Assumed picks and follows to-spec's DRIFT-CHECK.md (#223). Publishes through MCP tracker descriptions, schemas, recorded creation facts, mapped labels, and directional blocking links (#207, ADR 0035)."
+    reason: "Finds the Flow by spec alias and publishes the ticket breakdown as a table Result before approval. Checks draft drift against close decisions, Assumed picks, and the spec through DRIFT-CHECK.md. MCP publication uses current descriptions, schemas, creation facts, labels, and directional blocking links. Tickets contain no inherited Addon pointers (#166, #223, #226, #263, #267, #207, ADR 0035)."
   - id: matt/triage
     upstream: matt
     kind: skill
@@ -124,7 +124,7 @@ items:
     tree: 4cb951d62ecccaed601cdc5f9a1b7b3d8a799635
     disposition: adapt
     artifacts: [plugin/skills/triage]
-    reason: "Names setup-vstack. Its questions to the maintainer go through ask, and every ask after the item pick goes on the item's Grilling page (ask-tool, #58, #170). Uses MCP tracker discovery, recorded creation facts, canonical-role labels, and close transition (#207, ADR 0035)."
+    reason: "Questions after item selection use ask on the item's Flow page. MCP operations use current descriptions, schemas, recorded creation facts, canonical-role labels, and close transition. Discovery creates no administrative Flow by default (#58, #170, #207, ADR 0035)."
   - id: matt/wayfinder
     upstream: matt
     kind: skill
@@ -132,7 +132,7 @@ items:
     tree: 8ec0462658381bd1606d3f9db14ffc67df6a2a43
     disposition: adapt
     artifacts: [plugin/skills/wayfinder]
-    reason: "Names setup-vstack; charting research is Fan-out; its user questions go through ask and on the map's Grilling page, with one Stage per ticket (#171). Uses MCP tracker discovery, recorded directional blocking links and close transition, and shared page-key normalization (#207, ADR 0035)."
+    reason: "Charting research fans out and user questions use the Flow page with one Stage per ticket. MCP operations use current descriptions, schemas, directional blockers, and close transition. Tracker keys retain their original spelling and underscores, with case-insensitive lookup (#171, #207, ADR 0035)."
   - id: matt/wizard
     upstream: matt
     kind: skill
@@ -148,7 +148,7 @@ items:
     tree: 3df14e2d3a89459bf300614be9247e3ce74798f8
     disposition: adapt
     artifacts: [plugin/skills/grill-me]
-    reason: "Names skill://grilling where Matt calls the Skill tool, and adds a grill-me Stage to the flow's Grilling page (#165)."
+    reason: "Names skill://grilling where Matt calls the Skill tool, and adds a grill-me Stage to the Flow's page (#165)."
   - id: matt/grilling
     upstream: matt
     kind: skill
@@ -156,7 +156,7 @@ items:
     tree: f0732035b8b1b60ae39454e4191caef32fa91903
     disposition: adapt
     artifacts: [plugin/skills/grilling]
-    reason: "Sub-agent spawn names a vstack agent; one round is one ask; the Grilling page lives in grilling-page; pushback reopens its decision; a session writes into its flow's page as a Stage, and ask options carry labels only; the grill closes with its summary and no ask, and the caller waits for the user's next prompt; reversible, non-taste, cited decisions are settled in an Assumed table that a note can reopen (#42, #58, #145, #165, #225, ADR 0032, ADR 0037)."
+    reason: "Sub-agent spawn names a vstack agent; one round is one ask; the Flow page lives in flow-page (#267); pushback reopens its decision; a session writes into its flow's page as a Stage, and ask options carry labels only; the grill closes with its summary and no ask, and the caller waits for the user's next prompt; reversible, non-taste, cited decisions are settled in an Assumed table that a note can reopen (#42, #58, #145, #165, #225, ADR 0032, ADR 0037)."
   - id: matt/handoff
     upstream: matt
     kind: skill
@@ -164,7 +164,7 @@ items:
     tree: 2242e8f05424b8c2ae94194a90d97b88d16108ec
     disposition: adapt
     artifacts: [plugin/skills/handoff]
-    reason: "Saves to Scratch under ~/.vstack/tmp instead of the OS temp dir, and carries the flow's Grilling page path (tmp-path, #57, #171)."
+    reason: "Saves to Scratch under ~/.vstack/tmp instead of the OS temp dir, and carries the Flow's id, Stage, and page link (tmp-path, #57, #171, #267)."
   - id: matt/teach
     upstream: matt
     kind: skill
@@ -172,7 +172,7 @@ items:
     tree: 2ab11f2f51f3c29771edb5d4258d807a49462491
     disposition: adapt
     artifacts: [plugin/skills/teach]
-    reason: "Its user questions go through ask and on the flow's Grilling page in a teach Stage (ask-tool, #58, #172)."
+    reason: "Its user questions go through ask and on the Flow page in a teach Stage (ask-tool, #58, #172)."
   - id: matt/to-questionnaire
     upstream: matt
     kind: skill
@@ -180,15 +180,15 @@ items:
     tree: 46dfbeeba12a9e52eef446676f42e7551023d9a9
     disposition: adapt
     artifacts: [plugin/skills/to-questionnaire]
-    reason: "Its user questions go through ask and on the flow's Grilling page in a to-questionnaire Stage (ask-tool, #58, #172)."
+    reason: "Its user questions go through ask and on the Flow page in a to-questionnaire Stage (ask-tool, #58, #172)."
   - id: matt/wait-what
     upstream: matt
     kind: skill
     path: skills/productivity/wait-what
     tree: c8b050e6b8c711be1a9008ceacb2126914f0763e
-    disposition: adopt
+    disposition: adapt
     artifacts: [plugin/skills/wait-what]
-    reason: "Kept unchanged; Matt names GLOSSARY.md from v1.3.0."
+    reason: "Re-pitched explanations are Document Results on the bound or standalone Flow page (#267, #287)."
   - id: matt/writing-for-agents
     upstream: matt
     kind: skill
@@ -324,7 +324,7 @@ items:
     tree: 5aa2dae2726d09d219397fbbedc1e9500a239d28
     disposition: adapt
     artifacts: [plugin/skills/setup-app-verification]
-    reason: "Renamed for implement's development checks and final Verifier. It commits its own Standard output unless implement runs it and commits, and Private mode links the shared copy (ADR 0009, ADR 0015, ADR 0043)."
+    reason: "Creates Verify skills for implement development checks and the final Verifier. Commits Standard output unless implement owns the commit, and Private mode links the shared copy (ADR 0009, ADR 0015, ADR 0043)."
   - id: pstack/figure-it-out
     upstream: pstack
     kind: skill
@@ -356,7 +356,7 @@ items:
     tree: b6ce4dcdc378492f9acd55a4e56ae111204b4f11
     disposition: adapt
     artifacts: [plugin/skills/maintain-app-verification]
-    reason: "Renamed for feature-scoped or Fan-out source passes and Drift found by smoke checks or the final Verifier. It commits its own Standard fixes unless implement runs it and commits (ADR 0009, ADR 0015, ADR 0043)."
+    reason: "Feature-scoped or Fan-out source passes repair Drift from development checks or the final Verifier. Commits Standard fixes unless implement owns the commit (ADR 0009, ADR 0015, ADR 0043)."
   - id: pstack/make-bot-ui
     upstream: pstack
     kind: skill
@@ -652,7 +652,7 @@ items:
     tree: ba549f92c3a8dc1506b21674e8794eb980019bf3
     disposition: adapt
     artifacts: [plugin/skills/why]
-    reason: "Profiles git, Code host, tracker and MCP evidence; resolves MCP review history from descriptions and facts, records gaps, and retains fresh-context synthesis (#49, #204, ADR 0035). Resolves configured MCP tracker evidence from current descriptions, schemas, and recorded facts (#207, ADR 0035)."
+    reason: "Profiles git, Code host, tracker, and MCP evidence. Resolves configured MCP evidence through current descriptions, schemas, and facts, records gaps, and retains fresh-context synthesis (#49, #204, #207, ADR 0035)."
   - id: pstack/playbook-authoring-a-skill
     upstream: pstack
     kind: playbook
@@ -724,7 +724,7 @@ items:
     tree: e9cf267908a9737236b3a8a8a5a99fe9066f7554
     disposition: adapt
     artifacts: [plugin/skills/hillclimb]
-    reason: "The grill settles the metric and stop predicate, and implement commits each accepted win before one final review (ADR 0015); the final Verifier in END-STATE step 6b checks the committed head (ADR 0043)."
+    reason: "The grill settles the metric and stop predicate. implement commits each accepted win before one final review, and shared step 6b independently verifies the committed head (ADR 0015, ADR 0043)."
   - id: pstack/playbook-investigation
     upstream: pstack
     kind: playbook
@@ -748,7 +748,7 @@ items:
     tree: d729a7a06c5b67e406b081e1777114bc03b66f4a
     disposition: adapt
     artifacts: [plugin/skills/open-pr]
-    reason: "Opens a ready PR through the repo's code-host.md (ADR 0020); the body follows skill://pr with a Blast Radius backed by code-review's Blast radius findings and an Evidence section that cites the accepted Verdict (ADR 0043); /deslop and interrogate dropped."
+    reason: "Opens a ready PR through code-host.md. The body follows skill://pr, with Blast Radius findings and an Evidence section citing the accepted Verdict. Publishes the draft and delivery facts on the Flow page (ADR 0020, ADR 0043)."
   - id: pstack/playbook-orchestrate
     upstream: pstack
     kind: playbook
@@ -812,7 +812,7 @@ items:
     tree: 0a0c3cfde8948e3aa8ee80c6f3f9ce7e3e64fcba
     disposition: adapt
     artifacts: [plugin/skills/ship]
-    reason: "Verifiers are vstack agents in a Fan-out; cloud agents dropped. ship reuses a caller's accepted Verdict for a matching patch id and otherwise verifies through implement's END-STATE step 6b (ADR 0043). Every brief passes Shared checkout, and shared step 6b preserves REFUSED and cleanup_error as unavailable proof."
+    reason: "Uses isolated vstack Verifiers, reuses accepted Verdicts only for matching patch ids, and otherwise verifies through implement END-STATE step 6b. Every brief passes Shared checkout, and shared step 6b preserves REFUSED and cleanup_error as unavailable proof. Publishes validated human summaries while retaining original machine evidence (ADR 0043)."
   - id: pstack/playbook-trace-forensics
     upstream: pstack
     kind: playbook
@@ -861,7 +861,6 @@ items:
     disposition: reject
     artifacts: []
     reason: "A Cursor automation."
-  
   - id: css/good-css
     upstream: css
     kind: skill
@@ -877,15 +876,15 @@ items:
     tree: 0cfefc751d0cb64f0c948ffcb17e13b94e778f08
     disposition: adapt
     artifacts: [plugin/skills/implement-spec]
-    reason: "Runs Matt's steps with an orchestrator-only main agent: isolated vstack-worker implementers start as tickets become ready, a merger vstack-worker commits each ticket, and implement's END-STATE steps finish the run, asking the End state only when no project default settles it. It finds the flow's Grilling page from the spec issue and puts its seam confirmations and relayed implementer questions in its own Stage (ADR 0019, ADR 0022, ADR 0038, #167). Reads the MCP task graph and resolves completed work with recorded directional blocking links and close transition (#207, ADR 0035). Resolves tickets and the spec only after END-STATE step 6b accepts the Verdict (ADR 0043)."
+    reason: "Runs isolated ticket implementers and mergers, preserving one commit per ticket and final review fixes. Uses one Flow Stage for coordinator asks and Results. Resolves the MCP task graph through current descriptions, schemas, directional blockers, and close transition. Tickets and spec close only after shared step 6b accepts the committed-head Verdict (ADR 0019, ADR 0022, ADR 0035, ADR 0038, ADR 0043, #167, #207)."
   - id: matt/pr
     upstream: matt
     kind: skill
     path: skills/engineering/pr
     tree: 00b896d811adffad747c7ca30078d909d60c7f93
-    disposition: adopt
+    disposition: adapt
     artifacts: [plugin/skills/pr]
-    reason: "Kept unchanged; open-pr writes its PR body with it."
+    reason: "Keeps the PR body export and publishes its draft, evidence, and delivery status on the Flow page. Mermaid examples use the house palette (ADR 0044, #292)."
   - id: matt/retro
     upstream: matt
     kind: skill
@@ -915,9 +914,9 @@ items:
     kind: skill
     path: pstack/skills/in-your-own-words
     tree: e5ff93020dd4ed33b80d9df9a235d1945c676a0d
-    disposition: adopt
+    disposition: adapt
     artifacts: [plugin/skills/in-your-own-words]
-    reason: "Kept unchanged as a Utility skill the user types."
+    reason: "Goal restatements are Document Results on the bound or standalone Flow page (#267, #287)."
   - id: pstack/ketchup
     upstream: pstack
     kind: skill
@@ -994,7 +993,7 @@ originals:
   - plugin/rules/vstack-writing.md
   - plugin/skills/vstack-tmp
   - plugin/skills/vstack-fan-out
-  - plugin/skills/grilling-page
+  - plugin/skills/flow-page
   - plugin/skills/vstack-worktree
   - plugin/skills/skill-creator
   - plugin/skills/vstack-maintain
@@ -1013,7 +1012,7 @@ utility:
   - plugin/skills/vstack-tmp
   - plugin/skills/vstack-fan-out
   - plugin/skills/vstack-figures
-  - plugin/skills/grilling-page
+  - plugin/skills/flow-page
   - plugin/skills/vstack-worktree
   - plugin/skills/in-your-own-words
   - plugin/skills/clean-wt

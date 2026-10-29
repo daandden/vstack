@@ -12,6 +12,8 @@ Use the critic's fresh perspective. The critic edits comments. The caller of thi
 
 Use the caller's files or diff. Otherwise use the current diff against the default branch, including the working tree.
 
+Follow `skill://flow-page`'s "Stage entry/exit line" for a critique run. The coordinator publishes the critic's evidence.
+
 ## Steps
 
 ### 1. Get the critique
@@ -39,5 +41,7 @@ Constraint comments say `do not remove`, `do not change wording`, or `talk to X 
 ### 5. Report
 
 Report the deletion count, restored comments, reruns, direct fixes, fixes that need a new shape and remain open, and other open work.
+
+Publish a Document Result with these counts and dispositions, and a Code/diff Result for reportable accepted changes with their real paths. Use a Timeline for reruns and their actual outcomes, and a ledger for claims that remain unproven or need a new shape. Capture redacted critic evidence and verification outputs as attachments. Keep step 4's intentionally unreported constraint deletions out of individual findings. A missing critic remains not run, not a clean pass. The reply summarizes the Flow Results, with no separate report page.
 
 Never commit in this skill. The caller commits. On stop or failure, the caller keeps and commits accepted fixes, continues, and lists prune-comments as open.

@@ -10,6 +10,14 @@ An Update moves one or more Pins through confirmed row decisions. A Hand edit ch
 
 An Update is one ticket and one implement session. A Hand edit can span tickets. Run the commands from the vstack checkout root. Resolve the checkout and script paths once and pass absolute paths in briefs. Read GLOSSARY.md, house-style.yaml, and every docs/adr file for the affected choices.
 
+## Flow page and diagnostics
+
+Follow `skill://flow-page`'s "Stage entry/exit line" when producing `plan`, `merge`, `check`, `prepare`, or `gates` outcomes. Confirmation questions belong to the run requesting approval. Publishing a Result grants no approval.
+
+Keep the plan, decisions file, gate evidence, patches, and other canonical deliverables at their existing paths. Save raw command stdout, stderr, and exit codes under this run's `maintain` Scratch entry, redacting credentials first. Publish Results before returning, including blocked or failed runs: a table of command or gate outcomes with explicit skipped cases, plus captured evidence attachments for the raw diagnostics and canonical exports. Use a Document Result when explaining a conflict or blocker needs prose. Link the plan and confirmed hand-off without rewriting them as another source of truth.
+
+A drafting worker returns the publication receipt and evidence paths with its existing gate result. It does not publish a separate report page.
+
 ## Fact-finding for the grill
 
 The grill runs these commands before it asks about a case:
@@ -32,7 +40,7 @@ The plan classifies unchanged, changed, moved, removed, and new rows. It groups 
 
 `check` reports target actions, current register rows and Dispositions, callers, and name clashes at the current Pins. For a rename or removal, callers include Upstream forms such as `/<name>`, and `adopt_callers` lists callers that need a flip. With `--plan`, check also covers every artifact of the Update rows. Read the returned callers before asking.
 
-Confirm decisions only, through `ask`. Do not draft alternatives for the user to review or make a finished-text report. Mechanical gates need no user approval. Use `ask` for row actions, Disposition changes, removal and rename choices, name clashes, adopt flips, and the user's one-line reasons. State each moved Upstream as `<upstream>@<ref>` with each confirmed decision and its reason. Preserve the row ids, new-item paths, and Hand edit target paths in the hand-off. A later session cannot use this session's Scratch entry as its plan.
+Confirm decisions only, through `ask`. Do not draft alternatives for the user to review. Publish the observed diagnostics and outcomes as Results, not a finished draft of the proposed skill text. Mechanical gates need no user approval. Use `ask` for row actions, Disposition changes, removal and rename choices, name clashes, adopt flips, and the user's one-line reasons. State each moved Upstream as `<upstream>@<ref>` with each confirmed decision and its reason. Preserve the row ids, new-item paths, and Hand edit target paths in the hand-off. A later session cannot use this session's Scratch entry as its plan.
 
 ### Update cases
 

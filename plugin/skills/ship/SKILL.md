@@ -14,6 +14,8 @@ Accept the caller's chain facts. Follow these rules in skill://implement/END-STA
 - Step 4: Verify discovery and link repair.
 - Step 6b: the Verifier brief, the result and record checks, and the accepted Verdict.
 
+Follow `skill://flow-page`'s "Stage entry/exit line". Follow END-STATE.md's "Publish delivery progress" and track verification and landing tasks per PR.
+
 ## 0. Establish the frontier
 
 Take the PR or bottom-to-top stack from the caller. Resolve the default branch through `default-branch`. Read each PR's base, head, state, checks, review state, and merge state through `read-pr`. Freeze the bottom-to-top PR numbers for this pass. Confirm that each descendant depends on the previous PR. Keep independent work outside this chain.
@@ -35,6 +37,8 @@ Before this step, read skill://vstack-fan-out.
 Fan-out (skill://vstack-fan-out): parts: one per PR. One eval cell: per part, `agent(<prompt>, agent="vstack-verifier", isolated=True, apply=False, merge=False)`; `wait()` on all handles and retain each returned result text. Each prompt: END-STATE step 6b's Verifier brief for one PR, the Shared checkout absolute path, the vstack root, the Scratch dir. Never apply a Verifier patch. If they cannot start or isolation is off, stop: ship cannot verify its own PRs, so point to `/skill:setup-vstack`.
 
 Check each result's isolation notice and JSON record as END-STATE step 6b says, and ask each `open_questions` item through top-level `ask`. Record who produced each Verdict. Post only complete valid Verdict records yourself through `comment-pr` from a Scratch file, unless the caller already posted them, including REFUSED and records with `cleanup_error`. Include SHAs and patch id as returned, evidence paths, notes, Verifier identity, any cleanup error, and any separate isolation-evidence gap.
+
+Publish each validated verifier record as a human-readable table row with PR, Verdict, Verifier, Verified base, Verified head, Patch id, and Proof. Attach its unchanged JSON and captured evidence; retain notes, open questions, and isolation failures in a Document. Record unavailable and malformed verdicts honestly rather than turning them into passing rows. The verifier itself stays run-only and authors no Flow content.
 
 ## 2. Find the contiguous verified run
 
@@ -81,6 +85,8 @@ Report the blocking state and evidence. If a merge stalls, find out why before y
 ## 8. Stop at the ceiling
 
 When the verified run merges, stop. Report what landed, the next unverified PR, and what verifying it requires. Extending the run requires a new pass through step 1. If no PR passes from the bottom, land nothing.
+
+Publish a delivery table of verified versus current SHAs, verdicts, the frozen run and ceiling, landed PRs, and the next gap. Append Timeline events for verification, patch-id rechecks, branch updates, retargets, queued or armed requests, merge observations, and default-branch ancestry checks. Update `pr` and `check` facts only from actual reads. Submit `end-state` with `reached: "shipped"` only after every PR requested by the run has the merge and ancestry proof above. A partial ceiling, armed request, queue success, or passed verifier is not shipped.
 
 ## Reply
 

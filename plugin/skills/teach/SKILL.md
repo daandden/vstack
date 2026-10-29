@@ -46,13 +46,13 @@ Fluency can give the user an illusory sense of mastery, but storage strength is 
 
 ## Lessons
 
-A lesson is the main thing you produce: the unit in which knowledge and skills reach the user. Each lesson is one self-contained HTML file, saved under the resolved Scratch `teach/` kind (see Page output below) and titled `0001-<dash-case-name>.html` where the number increments each time.
+A lesson is the main thing you produce: the unit in which knowledge and skills reach the user. Publish its teaching content and practice on the Flow page, and keep a self-contained HTML lesson as the offline deliverable described in [Page output](#page-output).
 
 A lesson should be beautiful, with clean, readable typography and layout, since the user will return to these later to review. Think Tufte.
 
 The lesson should be short, and completable very quickly. Learners' working memory is very small, and we need to stay within it. But each lesson should give the user a single tangible win that they can build on. It should be directly tied to the mission, and should be in the user's zone of proximal development.
 
-If possible, open the lesson file for the user by running a CLI command.
+Present the Flow URL without opening it automatically.
 
 Each lesson should link via HTML anchors to other lessons and reference documents.
 
@@ -142,14 +142,18 @@ The user will sometimes express preferences of how they want to be taught, or th
 
 ## Page output
 
-Read `skill://vstack-tmp` and resolve the `teach/` kind for every lesson or reference page. Create a fresh `<topic-slug>-<timestamp>/` entry, with `index.html` as the lesson and any reference pages beside it. Start each page from [templates/teach.html](templates/teach.html). Print the plain absolute path of every page, with no `file://` prefix; open the lesson with the platform opener when available. Opening failure never hides the path.
+Follow `skill://flow-page`'s "Stage entry/exit line" before producing a lesson or asking the learner anything.
 
-The delivered page is one file, usable offline: inline reusable workspace CSS and quiz scripts, with no CDN, external fonts, or linked assets. Keep the existing workspace mission, resources, learning records, notes, reference materials, and reusable asset sources as durable teaching state. Do not treat Scratch as learning history: use `learning-records/` to track progress across sessions. Use `ask` before keeping a generated page in `./lessons/` or `./reference/`; copy it only after approval, and keep workspace links pointed at durable copies. Links to earlier durable lessons and references use absolute file URLs from a Scratch page.
+Publish the lesson and reference material as Document Results with ordered sections, citations, code, and captured figures. Publish retrieval practice as Quiz Results with choice, text, or numeric answer rules and explanations. Use a declarative prototype demo for representable state exercises, or a captured HTML artifact for a real simulator that needs code. Follow flow-page's typed contracts rather than adding scripts to the Flow page.
 
-Draw lesson and reference figures through `skill://vstack-figures`: write each figure's Mermaid from the lesson plan and render it. The out dir is the page's Scratch entry, with unique filenames for distinct figures. Inline each SVG in the page.
+Keep the offline lesson deliverable. Read `skill://vstack-tmp` and resolve the `teach/` kind. Create a fresh `<topic-slug>-<timestamp>/` entry and number lessons `0001-<dash-case-name>.html`, incrementing for later lessons. Start each lesson or reference export from [templates/teach.html](templates/teach.html). Inline reusable workspace CSS, quiz scripts, and assets, with no CDN or external fonts. Capture each export as a file attachment on its Result, not as a separate report page. Print its absolute path with the Flow URL, without opening it automatically.
+
+The workspace mission, resources, learning records, notes, references, and asset sources remain durable teaching state. Ask before keeping an export in `./lessons/` or `./reference/`, and copy only after approval. Point workspace links at those durable copies. Publish a new revision of the associated Results with `canonical: { file: "lessons/<name>.html" }` or the reference path after retention. Before approval, the canonical file is the Scratch export. Later edits do not rewrite captured revisions. Scratch and Quiz progress never replace learning records, and a Quiz click never grants retention approval or authorizes real work.
+
+Draw lesson and reference figures through `skill://vstack-figures`. Write each figure's Mermaid in this caller's context and render it with Pele. The out dir is the lesson's Scratch entry, with unique filenames for distinct figures so IDs do not collide. Inline each rendered SVG with its embedded style in the offline lesson and capture it as an SVG attachment for the Document Result. Never substitute hand-drawn figures or raw Mermaid. If drawing cannot run, stop and report the missing prerequisite.
 
 ## In-session questions
 
-Every question addressed to the learner during the session goes through `ask` and is a question in a teach Stage on the flow's Grilling page, as `skill://grilling-page` says: mission discovery, prior knowledge, topic choices, preferences, and approvals. Add the Stage before the first question, and mark it finished when this run asks the learner nothing more. Use short option labels, mark the recommendation with `recommended`, and let the tool supply Other. Lesson quizzes and in-browser tasks are unchanged: they remain in the lesson and provide immediate feedback, not session `ask` calls.
+Every question addressed to the learner during the session goes through `ask` and is recorded in the bound Stage as `skill://flow-page` says: mission discovery, prior knowledge, topic choices, preferences, and approvals. Keep Quiz attempts separate from these real questions. Quiz feedback and completion persist through the learning-progress contract, including supported offline attempts.
 
 A timed-out answer is not the learner's answer. Leave ordinary questions unanswered; for an approval, re-ask once, then stop without acting if it times out again. A subagent without `ask` returns open questions to its parent. A headless run takes the recommended answer and reports that choice.

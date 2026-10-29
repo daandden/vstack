@@ -37,7 +37,7 @@ The core of the explanation, and the longest section. Walk through the flow: wha
 
 Use prose, not pseudocode. Reference specific files and functions so the reader knows where to look, but don't dump large code blocks unless a snippet is essential to a point.
 
-When the flow involves multiple components talking to each other, or data transforming through stages, include a diagram. Return one figure point per diagram with the explanation: what the diagram shows, its parts and the links between them with their labels, and the one or two focal parts. The how agent writes the Mermaid from it, renders the figure, and inlines it on its Scratch page. A diagram should clarify, not decorate. If prose covers the flow, skip the diagram.
+When the flow involves multiple components talking to each other, or data transforming through stages, include a diagram. Return the points it must show: its purpose, parts, labelled links, and one or two focal parts. The publishing caller writes the Mermaid, renders it through `skill://vstack-figures`, and captures the SVG as a typed attachment in its Flow page Document. A diagram should clarify, not decorate. If prose covers the flow, skip the diagram.
 
 ### Where Things Live
 A brief file/directory map. Just the ones someone would need to start working here.

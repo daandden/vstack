@@ -56,3 +56,5 @@ For several evals with repeated runs, look for patterns the averages hide:
 - Time or token cost that rises sharply with the skill is a tradeoff to report.
 
 Report observations grounded in the run data, and keep improvement proposals for the next iteration.
+
+Publish the randomized A/B assessments, rubric criteria, evidence, and winner or tie as a Comparison Result on the evaluation Stage. Preserve the private mapping outside comparator inputs. After comparison, put the unblinded causal analysis, confounders, improvement proposals, and missing analysis in a Document Result. Label causal interpretations as hypotheses unless evidence proves them. Use Metrics for measured per-criterion scores, assertion counts, time, cost, and variance with numeric values, units, sample counts, and uncertainty. Attach redacted outputs, comparator verdicts, and analyzer evidence without exposing the mapping to the blind run. Keep all workspace exports. Use `SKILL.md` for Flow discovery, Stage ownership, and completion.

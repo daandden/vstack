@@ -1,0 +1,7 @@
+{"type":"page","id":"page","title":"Before Stages"}
+{"type":"round","id":"round-1","session":1,"round":1,"time":"2026-10-28T20:09:59+07:00"}
+{"type":"question","id":"question-1","round":"round-1","title":"Which question-1?","description":"Why question-1 matters.","options":[{"label":"A. First","does":"A. First does","gains":["A. First gain"],"costs":["A. First cost"],"recommended":"it is first"},{"label":"B. Second","does":"B. Second does","gains":["B. Second gain"],"costs":["B. Second cost"]}],"q":1}
+{"type":"answer","question":"question-1","other":"Use a cap","id":"answer-question-1"}
+{"type":"close","id":"close-1","decisions":[{"question":"question-1","text":"Use a cap."}],"session":1}
+{"type":"round","id":"round-2","session":1,"round":2,"time":"2026-10-28T20:09:59+07:00"}
+{"type":"question","id":"question-2","round":"round-2","title":"Which question-2?","description":"Why question-2 matters.","options":[{"label":"A. First","does":"A. First does","gains":["A. First gain"],"costs":["A. First cost"],"recommended":"it is first"},{"label":"B. Second","does":"B. Second does","gains":["B. Second gain"],"costs":["B. Second cost"]}],"q":2}

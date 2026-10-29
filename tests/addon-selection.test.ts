@@ -10,6 +10,7 @@ const options = {};
 const savedRun = { type: "custom_message", customType: "skill-prompt", details: { name: "implement" } };
 const running = { ...options, entries: [savedRun] };
 const stalled = () => new Promise<never>(() => {});
+const addonPicks = (results: any[]) => results.filter(result => result?.message?.customType === "vstack-addons");
 
 describe("Principle picks in subagent sessions", () => {
   const child = (name: string, id = "0-Child", parentId = "Main", entries: unknown[] = []) =>
@@ -54,12 +55,12 @@ describe("Principle picks in subagent sessions", () => {
     expect((await child("vstack-verifier").emit("before_agent_start", { prompt: brief("Verify PR #12") }))[0]).toBeDefined();
     judge.calls = [];
     judge.respond = async () => { throw new Error("network"); };
-    expect(await child("vstack-verifier").emit("before_agent_start", { prompt: brief("Verify PR #12") })).toEqual([undefined]);
+    expect(addonPicks(await child("vstack-verifier").emit("before_agent_start", { prompt: brief("Verify PR #12") }))).toEqual([]);
     expect(judge.calls).toHaveLength(1);
     judge.calls = [];
     judge.respond = stalled;
     const begin = performance.now();
-    expect(await child("vstack-verifier").emit("before_agent_start", { prompt: brief("Verify PR #12") })).toEqual([undefined]);
+    expect(addonPicks(await child("vstack-verifier").emit("before_agent_start", { prompt: brief("Verify PR #12") }))).toEqual([]);
     expect(performance.now() - begin).toBeGreaterThanOrEqual(3900);
     expect(performance.now() - begin).toBeLessThan(4500);
     expect(judge.calls).toHaveLength(1);
@@ -69,16 +70,16 @@ describe("Principle picks in subagent sessions", () => {
     judgeAnswers({ "principle-prove-it-works": .9 });
     await registerMainSession(fakeHost(running));
     for (const name of ["vstack-comment-critic", "task", "scout", "worker", "sub"]) {
-      expect(await child(name).emit("before_agent_start", { prompt: brief("Fix the parser") })).toEqual([undefined]);
+      expect(addonPicks(await child(name).emit("before_agent_start", { prompt: brief("Fix the parser") }))).toEqual([]);
     }
     expect(judge.calls).toHaveLength(0);
   });
   test("a child of a main session outside a Matt run, or of an unknown session, gets no picks", async () => {
     judgeAnswers({ "principle-prove-it-works": .9 });
     await registerMainSession(fakeHost(options));
-    expect(await child("vstack-worker").emit("before_agent_start", { prompt: brief("Fix the parser") })).toEqual([undefined]);
+    expect(addonPicks(await child("vstack-worker").emit("before_agent_start", { prompt: brief("Fix the parser") }))).toEqual([]);
     await registerMainSession(fakeHost(running));
-    expect(await child("vstack-worker", "0-Child", "Unknown").emit("before_agent_start", { prompt: brief("Fix the parser") })).toEqual([undefined]);
+    expect(addonPicks(await child("vstack-worker", "0-Child", "Unknown").emit("before_agent_start", { prompt: brief("Fix the parser") }))).toEqual([]);
     expect(judge.calls).toHaveLength(0);
   });
   test("a nested child follows the top-level session, also below an agent that gets no picks", async () => {
@@ -86,13 +87,13 @@ describe("Principle picks in subagent sessions", () => {
     const entries: unknown[] = [savedRun];
     await registerMainSession(fakeHost({ ...options, entries }));
     expect((await child("vstack-worker", "0-Worker").emit("before_agent_start", { prompt: brief("Build ticket 3") }))[0]).toBeDefined();
-    expect(await child("task", "1-Task").emit("before_agent_start", { prompt: brief("Look around") })).toEqual([undefined]);
+    expect(addonPicks(await child("task", "1-Task").emit("before_agent_start", { prompt: brief("Look around") }))).toEqual([]);
     for (const parentId of ["0-Worker", "1-Task"]) {
       expect((await child("vstack-explorer", `${parentId}.0-Explore`, parentId).emit("before_agent_start", { prompt: brief("Find the fact") }))[0]).toBeDefined();
     }
     entries.length = 0;
     judge.calls = [];
-    expect(await child("vstack-explorer", "0-Worker.0-Explore", "0-Worker").emit("before_agent_start", { prompt: brief("Find the fact") })).toEqual([undefined]);
+    expect(addonPicks(await child("vstack-explorer", "0-Worker.0-Explore", "0-Worker").emit("before_agent_start", { prompt: brief("Find the fact") }))).toEqual([]);
     expect(judge.calls).toHaveLength(0);
   });
   test("only the first prompt of a subagent session, its brief, is judged, also when omp dropped and resent it", async () => {
@@ -102,7 +103,7 @@ describe("Principle picks in subagent sessions", () => {
     const worker = child("vstack-worker", "0-Child", "Main", entries);
     for (let attempt = 0; attempt < 2; attempt++) expect((await worker.emit("before_agent_start", { prompt: brief("Build ticket 3") }))[0]).toBeDefined();
     entries.push(said("user", brief("Build ticket 3")), said("assistant", "Ticket 3 is built."));
-    for (const prompt of ["Yield your result now.", "Also check the README."]) expect(await worker.emit("before_agent_start", { prompt })).toEqual([undefined]);
+    for (const prompt of ["Yield your result now.", "Also check the README."]) expect(addonPicks(await worker.emit("before_agent_start", { prompt }))).toEqual([]);
     expect(judge.calls).toHaveLength(2);
   });
   test("a child started after its top-level session shut down gets no picks", async () => {
@@ -110,7 +111,7 @@ describe("Principle picks in subagent sessions", () => {
     const main = fakeHost(running);
     await registerMainSession(main);
     await main.emit("session_shutdown");
-    expect(await child("vstack-worker").emit("before_agent_start", { prompt: brief("Fix the parser") })).toEqual([undefined]);
+    expect(addonPicks(await child("vstack-worker").emit("before_agent_start", { prompt: brief("Fix the parser") }))).toEqual([]);
     expect(judge.calls).toHaveLength(0);
   });
   test("a later top-level session with the same agent id does not serve the descendants of one that shut down", async () => {
@@ -121,7 +122,7 @@ describe("Principle picks in subagent sessions", () => {
     await registerMainSession(old);
     await old.emit("session_shutdown");
     await registerMainSession(fakeHost(running));
-    expect(await child("vstack-explorer", "0-Worker.0-Explore", "0-Worker").emit("before_agent_start", { prompt: brief("Find the fact") })).toEqual([undefined]);
+    expect(addonPicks(await child("vstack-explorer", "0-Worker.0-Explore", "0-Worker").emit("before_agent_start", { prompt: brief("Find the fact") }))).toEqual([]);
     expect((await child("vstack-worker", "1-Worker").emit("before_agent_start", { prompt: brief("Build ticket 4") }))[0]).toBeDefined();
     expect(judge.calls).toHaveLength(1);
   });
@@ -132,7 +133,7 @@ describe("Principle picks in subagent sessions", () => {
     expect((await child("vstack-worker", "0-Worker").emit("before_agent_start", { prompt: brief("Build ticket 3") }))[0]).toBeDefined();
     await main.emit("session_switch", { reason: "new" });
     await registerMainSession(main);
-    expect(await child("vstack-explorer", "0-Worker.0-Explore", "0-Worker").emit("before_agent_start", { prompt: brief("Find the fact") })).toEqual([undefined]);
+    expect(addonPicks(await child("vstack-explorer", "0-Worker.0-Explore", "0-Worker").emit("before_agent_start", { prompt: brief("Find the fact") }))).toEqual([]);
     expect((await child("vstack-worker", "1-Worker").emit("before_agent_start", { prompt: brief("Build ticket 4") }))[0]).toBeDefined();
     expect(judge.calls).toHaveLength(1);
   });
@@ -142,7 +143,7 @@ describe("Principle picks in subagent sessions", () => {
     const worker = child("vstack-worker", "0-Worker");
     expect((await worker.emit("before_agent_start", { prompt: brief("Build ticket 3") }))[0]).toBeDefined();
     await worker.emit("session_shutdown");
-    expect(await child("vstack-explorer", "0-Worker.0-Explore", "0-Worker").emit("before_agent_start", { prompt: brief("Find the fact") })).toEqual([undefined]);
+    expect(addonPicks(await child("vstack-explorer", "0-Worker.0-Explore", "0-Worker").emit("before_agent_start", { prompt: brief("Find the fact") }))).toEqual([]);
     expect(judge.calls).toHaveLength(1);
   });
 });

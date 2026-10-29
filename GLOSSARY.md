@@ -31,7 +31,7 @@ A pstack recipe for one type of task, such as Shipping or Perf issue: an ordered
 _Avoid_: workflow (when a pstack playbook is meant), recipe
 
 **Pin**:
-The exact Upstream version vstack was last reconciled with: a release tag for the Base upstream, a full commit SHA for the Enhancement upstream and the CSS upstream.
+The exact Upstream version vstack was last reconciled with: a release tag for the Base upstream, and a full commit SHA for the Enhancement upstream and CSS upstream.
 _Avoid_: lock, version (unqualified)
 
 ### Skills
@@ -57,7 +57,7 @@ The native judge model that omp's judge role names, which selects Addons during 
 _Avoid_: jev judge, principle judge
 
 **Utility skill**:
-A vstack skill that is not a Matt skill and that the user can use whatever the work is. unslop, technical-writing, good-css, and skill-creator set how text, styles, and skills are made. explain, how, why, and forensics answer questions about existing work. in-your-own-words restates the user's goal so that the user and the agent agree. clean-wt removes omp checkouts that nothing uses anymore. The hidden helpers are vstack-tmp, vstack-fan-out, vstack-figures, grilling-page, and vstack-worktree. Other skills name these helpers by `skill://`. Utility skills can start from their descriptions, from a rule, or by name, subject to each skill's invocation settings.
+A vstack skill that is not a Matt skill and that the user can use whatever the work is. unslop, technical-writing, good-css, and skill-creator set how text, styles, and skills are made. explain, how, why, and forensics answer questions about existing work. in-your-own-words restates the user's goal so that the user and the agent agree. clean-wt removes omp checkouts that nothing uses anymore. The hidden helpers are vstack-tmp, vstack-fan-out, vstack-figures, flow-page, and vstack-worktree. Other skills name these helpers by `skill://`. Utility skills can start from their descriptions, from a rule, or by name, subject to each skill's invocation settings.
 _Avoid_: standalone skill, helper skill
 
 **Command**:
@@ -105,7 +105,7 @@ The model of the session that starts a subagent or a Headless run. For the user'
 _Avoid_: parent's model, run's model
 
 **Fan-out**:
-One skill step running two or more subagents at the same time. A step with two or more parts always fans out: no judgment of the job's size decides it, the agent at that step never does the parts itself, and the user's words, such as "sequential" or "no fan-out", do not turn it off. If the subagents cannot start, the step stops and says why. Every subagent uses the Session model of the step's session unless the user has set a model for its agent.
+One skill step running two or more subagents at the same time. A step with two or more parts always fans out: no judgment of the job's size decides it, the agent at that step never does the parts itself, and the user's words, such as "sequential" or "no fan-out", do not turn it off. If the subagents cannot start, the step stops and says why. A step that draws figures gives each figure its own subagent. Every subagent uses the Session model of the step's session unless the user has set a model for its agent.
 _Avoid_: swarm, parallelism (unqualified)
 
 **Brief**:
@@ -136,14 +136,6 @@ _Avoid_: sync, upgrade
 A change to a vstack skill, agent, or rule made outside an Update: adding one, editing one, taking an Upstream item at its current Pin, or renaming or removing one.
 _Avoid_: update (for this), manual edit, patch
 
-**LLM flow**:
-The code in an app that sends prompts to a model and returns an answer that a grader can score. Ratchet improves one LLM flow at a time.
-_Avoid_: flow (unqualified), pipeline
-
-**Ratchet**:
-omp's built-in loop that improves one LLM flow against cases the user approved. It keeps a change only when the target metric improves on both its train and test cases.
-_Avoid_: rachet, ratchet tool, native tool
-
 **End state**:
 How far a flow that produces a commit goes before it stops: commit, merge-ready, or shipped. Commit stays on the current branch. Merge-ready opens a PR and drives it until it can merge. Shipped means every PR in the run is merged into the default branch; deploys and releases are not part of it. The flow settles it once, before it starts: from the user's words or the ticket, else from the project's default End state, which the user chose once for the project.
 _Avoid_: goal, target, finish line
@@ -157,7 +149,7 @@ The service that runs a repo's builds and checks, such as GitHub Actions, GitLab
 _Avoid_: CI provider, CI server, build server, CI host
 
 **Migration**:
-Moving one project that is set up for the Base upstream onto vstack, before its vstack setup. It changes only that project and its shared private store. Machine state such as global skills and global rules is not part of it.
+Moving one project that is set up for the Base upstream onto vstack, before its vstack setup. It changes only that project and its shared private store. Machine state such as global skills, global rules, and diagram profiles is not part of it.
 _Avoid_: conversion, reinstall, machine Migration
 
 **Private mode**:
@@ -169,20 +161,32 @@ The absolute directory where a run writes the project's vstack config and workfl
 _Avoid_: artifact dir, private root
 
 **Scratch**:
-A vstack output that nothing reads after its run, such as an explanation page, proof evidence, an eval workspace, or a hillclimb attempt log. It is kept under `~/.vstack/tmp/`, grouped by project, until vstack-clean deletes it after a retention period. Temporary files a script creates and deletes itself are not Scratch. A later Stage of the same flow can continue a Grilling page.
+A vstack output kept under `~/.vstack/tmp/`, grouped by project, until vstack-clean deletes it after a retention period. Temporary files a script creates and deletes itself are not Scratch. A later Stage of the same flow can continue a Flow page.
 _Avoid_: temp files, artifacts, tmp output
 
-**Grilling page**:
-The page that one flow keeps for the user across all its Stages. A flow is the run of skills on one change, such as grill-with-docs through implement-spec, or on one tracker item, such as the triage of one issue. The page shows every `ask` of the flow as a question in full, with its context, options, trade-offs, and the answer given, while the `ask` call carries only the question and its option labels. It is Scratch.
-_Avoid_: Grilling HTML, question page, round page
+**Flow**:
+Related vstack work on one change, tracker item, or topic across one or more skill runs. A standalone explanation can start a flow without a grill or a tracker item.
+_Avoid_: session, Matt run
+
+**Flow page**:
+The document one Flow keeps across all its Stages, including questions, answers, Result blocks, shared explanations, and workflow progress. It is Scratch.
+_Avoid_: Grilling page, Grilling HTML, question page, round page
+
+**Local Flow host**:
+The detached local server for one operating-system user that serves live Flow pages, runs captured prototypes on a separate origin, and observes git, the Code host, and the CI service read-only. The normal host uses the user's home namespace, while an explicit isolated `--home` namespace has its own host identity.
+_Avoid_: Flow server, page server, daemon
+
+**Flow alias**:
+A qualified name that finds one Flow: `spec:`, `ticket:`, `branch:`, `run:`, `folder:`, or `slug:` and a value. The Flow's id never changes, and an alias only finds it. A lookup that matches no Flow or several is refused. Historical Grilling folders kept these names in `flow.json`.
+_Avoid_: flow key, flow.json
 
 **Stage**:
-One skill's part of a flow on the flow's Grilling page, such as the to-spec part or one wayfinder ticket. Each Stage has its own tab and a state: not started, in progress, or finished.
+One skill's part of a Flow on its Flow page, such as a research run, the to-spec part, or one wayfinder ticket. Each Stage has its own tab and a state: not started, in progress, or finished.
 _Avoid_: step, phase, section
 
-**Report block**:
-A report that a Stage shows on the Grilling page before the questions it leads to, such as code-review's findings or to-tickets' proposed breakdown. It has one of three shapes. Cards show one finding or candidate each, with its impact, evidence, and suggested action. A ledger lists claims, each confirmed, cleared, or unproven, with its evidence and the proof that is missing. A table lists rows under named columns, such as tickets or run results.
-_Avoid_: result block, stage result, report section
+**Result block**:
+A Stage's output on the Flow page, such as a research document, a prototype comparison, review findings, or run results. Result is its authoring short form.
+_Avoid_: Report block, stage result, report section
 
 **Blast radius**:
 The review axis that lists what code outside a diff depends on and may break. code-review runs it through the blast-radius skill, and a PR body reports it under its Blast Radius heading. It is not a security review.
@@ -193,47 +197,43 @@ An explanation at the top of a Stage tab that gives the context that all of the 
 _Avoid_: intro, explain block, context section
 
 **Topic note**:
-An explanation of one concept that the Grilling page shows once, in a shared area, and that questions in any Stage link to. It differs from a Term note, which defines one name in one line on one question.
+An explanation of one concept that the Flow page shows once in its Topics tab and that questions in any Stage link to. It differs from a Term note, which defines one name in one line on one question.
 _Avoid_: explain block, glossary entry
 
 **Jump row**:
-The row of links under a Grilling page's Stage tabs. It has one link for each part of the open tab, in page order: its Background, each Report block, each question, and the latest summary.
+The row of links under a Flow page's Stage tabs. It has one link for each part of the open tab, in page order: its Background, each Result block, each question, and the latest summary.
 _Avoid_: Q row, question nav, navigation
 
 **Term note**:
-A one-line definition on one question of the Grilling page, for a name that a newcomer may not know, such as a glossary term, a skill or file name, or an ADR number. A concept that several questions need is a Topic note instead.
+A one-line definition on one question of the Flow page, for a name that a newcomer may not know, such as a glossary term, a skill or file name, or an ADR number. A concept that several questions need is a Topic note instead.
 _Avoid_: glossary note, definition block
 
-**flow.json**:
-The file beside a flow's Grilling page that names the flow's original topic slug, its spec issue, tickets, branch, and run ids. A later Stage, even one in another omp session, finds the flow's page by any of them.
-_Avoid_: flow manifest, flow index
-
 **Visual kind**:
-The job a visual does for the reader of a Grilling page question, chosen from what the reader needs to answer it: a Source view, a source excerpt, a Context diagram, an Option diagram, an option preview, a Before and after, a comparison table, a Data chart, or a Scenario walkthrough.
+The job a visual does for the reader of a Flow page question, chosen from what the reader needs to answer it: a Source view, a source excerpt, a Context diagram, an Option diagram, an option preview, a Before and after, a comparison table, a Data chart, or a Scenario walkthrough.
 _Avoid_: Diagram kind, diagram type (when the visual's job is meant)
 
 **Context diagram**:
-A Visual kind: a figure on a Grilling page question that shows the logic its description and Today facts explain: steps, branches, states, parts, or time.
+A Visual kind that shows how something works today: steps, branches, states, parts, or time.
 _Avoid_: background figure
 
 **Option diagram**:
-A Visual kind: a figure on a Grilling page question that shows how its options differ in shape.
+A Visual kind that shows how a question's options differ in shape.
 _Avoid_: comparison figure
 
 **Source view**:
-A Visual kind: a crop or screenshot of the real artifact a question is about, with the subject marked and enough of its surroundings kept to locate it.
+A Visual kind: a crop or screenshot of the real artifact a question is about, with its subject marked and enough surroundings to locate it.
 _Avoid_: reference image, locator (when a crop of the source is meant)
 
 **Before and after**:
-A Visual kind: for one option, the current state shown next to the state that option would produce.
+A Visual kind that shows the current state beside the state one option would produce.
 _Avoid_: diff view (when it is not a text diff)
 
 **Data chart**:
-A Visual kind: a bar or line chart of the measured numbers a decision turns on, such as cost per use, time, or counts.
+A Visual kind that shows measured numbers a decision turns on, such as cost, time, or counts.
 _Avoid_: graph (unqualified)
 
 **Scenario walkthrough**:
-A Visual kind: one concrete case run through each option, step by step, to show where the options part.
+A Visual kind that runs one concrete case through each option, step by step, to show where the options part.
 _Avoid_: example (when a run through the options is meant)
 
 **Verify skill**:

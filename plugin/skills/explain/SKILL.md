@@ -10,7 +10,9 @@ Explain what the thing is, how it works, and why it has that shape. The goal is 
 ## Step 1. Orient
 
 Read the conversation to learn why the person asks and what they already know. Skip familiar material and put depth where their question is. Read just enough code to identify the target.
-Use the caller's vstack root and project Scratch dir if supplied. Otherwise resolve the root per the Private-mode rule, read `skill://vstack-tmp`, and obtain the project Scratch dir once. Create one distinct `explain/<run-id>/` entry for the explanation page and figure sources.
+Use the caller's vstack root and project Scratch dir if supplied. Otherwise resolve the root per the Private-mode rule, read `skill://vstack-tmp`, and obtain the project Scratch dir once. Keep figure sources in a distinct `explain/<run-id>/` entry.
+
+Follow `skill://flow-page`'s "Stage entry/exit line" for an explanation run. Read-only investigators return findings to the coordinator.
 
 ## Step 2. Let how and why investigate
 
@@ -34,12 +36,12 @@ No quizzes, pacing labels, or requests to repeat the explanation. Stop at a natu
 
 ## Step 5. Build the picture on one page
 
-Use `templates/explain.html` for one HTML page in `explain/<run-id>/`. Keep that same page across the conversation. Add each new explanation section and figure below the last. Print the plain absolute path of the page with the explanation, with no `file://` prefix.
+Publish the explanation as a Document Result through `flow-page submit`. Use headed `sections` with prose, lists, code with source locations, and numbered citations. Keep evidence and why's confidence language beside the claims. Follow-up ad-hoc answers in this Flow are Documents too, not separate report pages. Revise the same explanation with `revises` when correcting or extending it during this run.
 
-Draw every figure through `skill://vstack-figures`: write its Mermaid from the explanation and render it. For three or more moving parts, plan a short build-up series: each figure redraws the last one and adds one part. The out dir is this run's Scratch entry, with a unique figure slug. Inline each SVG in the page under the last figure. Use no external image files.
+Draw every figure through `skill://vstack-figures`. Write each figure's Mermaid in this caller's context and render it with Pele. For three or more moving parts, plan a short build-up series: each figure redraws the last one and adds one part. Use this run's Scratch entry and a unique basename per figure. Capture the rendered SVGs as typed attachments and place `figure` blocks in reading order. Keep an unavailable figure's reason visible instead of substituting a drawing.
 
-Open the page in the browser on its first figure. Keep appending without reopening it on later turns. The page contains the explanation and cited evidence, not just the figures. All figures appear in reading order and the HTML is self-contained.
+Publish the Document before returning. Never open the page automatically.
 
 ## Reply
 
-Return the explanation itself, never a report about the steps. Lead with the main point, then explain what it is, how it works, and why. Include the page path and keep evidence and uncertainty visible.
+Lead with the main point and summarize what it is, how it works, and why. The complete explanation and its evidence live on the Flow page.

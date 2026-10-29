@@ -13,6 +13,8 @@ Follow these rules in skill://implement/END-STATE.md:
 - Step 0a: the chain facts, Code host and CI service routing, and the reuse of the vstack root and Scratch dir.
 - Step 0b: the push to the remote branch, and the last SHA this run pushed. Fix waves are fast-forward pushes.
 
+Follow `skill://flow-page`'s "Stage entry/exit line". Follow END-STATE.md's "Publish delivery progress" and keep frontier tasks and blockers current.
+
 ## Establish the frontier
 
 Accept the caller's chain facts. Use `drive` mode: repeat the loop until merge-ready or a human-owned blocker.
@@ -65,6 +67,8 @@ For a linked failure, read that exact build's logs through `ci.md`'s `ci-logs`. 
 - Proven flake or infrastructure failure: one fresh full rerun of that exact failed build, not a failed-job-only retry. Use only `ci.md`'s `rerun-ci` command row for a CLI config or its pinned rerun tool for an MCP config. Record the job, failed build or run, and consumed retry so a new poll or worker does not reset the allowance for that failure. An identical second failure must be reclassified from child logs; never retry blindly. If the command row or rerun pin is absent or `unsupported`, report the flake for the human and rerun nothing. Never substitute another rerun tool.
 
 After publishing fixes, watch required checks, then read merge state, review decision, and all threads again. Stop at merge-ready. Owner approval, permissions, a conflict, or a policy decision is the human's line: report it, finish independent actionable items where safe, then return. Never merge to make a blocked state disappear.
+
+Publish a delivery table for the frontier and pending upstack PRs, with current head, checks, threads, review decision, status, and evidence. Keep unknown or unavailable values explicit. Append Timeline events for each fix or dismissal, push wave, exact failed build and log classification, consumed rerun, refreshed frontier, and blocker. Update the Flow's existing `pr` and `check` ids from these reads. After all four current-head conditions hold, return readiness and the establishing head, check, thread, and review evidence. The owning END-STATE caller publishes reached merge-ready only after its final patch-id and accepted-Verdict gate. A standalone babysit run reports readiness without claiming independently verified delivery. Neither a completed watch nor the strip's observations replaces those reads.
 
 ## Hand-back
 

@@ -20,6 +20,16 @@ This is a prompt-driven skill with helper scripts. Explore, present what you fou
 
 Every question to the user goes through `ask`. An answer marked `timedOut: true` is not the user's: put a gate to the user once more with `ask`, and if that times out too, stop without acting and say why.
 
+## Flow page and diagnostics
+
+Follow `skill://flow-page`'s "Stage entry/exit line" before the first check. All setup and Migration questions belong to this run.
+
+Keep each helper's command, exit code, stdout, and stderr in this run's `setup-vstack` Scratch entry. Keep machine diagnostics verbatim, including remaining FAIL, WARN, and NOTE lines. Redact credentials before capturing them. Project config and Migration exports stay canonical at their existing paths.
+
+Before every exit, including incomplete Migration, unavailable discovery, and a declined confirmation, submit a Document Result with the observed machine checks, project mode, config paths, Migration outcome, remaining failures, and next action. Include the raw diagnostics in code blocks and capture their files as evidence attachments. A skipped section says why. An incomplete setup is not complete. Link written project files as sources, not a separate report page.
+
+Continue with the machine section below.
+
 Run the scripts with the bash tool, from inside the repo when there is one:
 
 ```sh
@@ -250,7 +260,7 @@ On failure, print `WARN <config name>: <named tool or command and observed failu
 
 ### 8. Done
 
-Tell the user the setup is complete, in which mode, and where the config is. Repeat every machine line that still fails. Report the Migration result: applied and skipped items, remaining manual hits, and notices. When the user set up beside the Matt files, name the Matt files that remain.
+Publish the Result described above. Tell the user whether setup is complete, in which mode, and where the config is. Repeat every machine line that still fails unchanged. Report the Migration result: applied and skipped items, remaining manual hits, and notices. When the user set up beside the Matt files, name the Matt files that remain.
 
 List the skills that read the config:
 

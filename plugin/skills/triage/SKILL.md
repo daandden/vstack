@@ -14,7 +14,9 @@ Read `issue-tracker.md` and `triage-labels.md` under `<vstack root>/docs/vstack/
 
 Every question to the maintainer during the session goes through `ask`, in this file and in its reference docs. That covers picks, confirmations, "ask before proceeding", and "wait for direction". Questions for a reporter go into tracker comments, not `ask`. An answer `ask` picks after a timeout is not the maintainer's. Ask once more, then stop without acting.
 
-Each issue or PR keeps one Grilling page, keyed by its number (`skill://grilling-page`). The pick of an item in discovery is a plain `ask` and goes on no page. Every later `ask` about the item goes on its page. Before the first one, find or start the item's page and add a triage Stage. When triage of the item ends, mark the Stage finished. Leave the flow open, so that a later to-spec on the same issue continues the page.
+Follow `skill://flow-page`'s "Stage entry/exit line" for bound discovery and selected or named item work. Unbound discovery retains chat and plain `ask`, creating no Flow, host, or administrative Stage. When an item needs work, discover it by `ticket:<item id>` before starting a Flow. On a continued Flow, add the item alias. Discovery publishes a table Result for the three buckets, counts, and named item links, with a round for its pick.
+
+Publish item recommendations, redundancy and prior-rejection evidence, verification outcomes, resume summaries, and actual role or publication outcomes as Document, ledger, or Timeline Results. Capture the full brief, needs-info notes, or rejection with the posted comment's canonical tracker revision when one exists. Tracker comments and `.out-of-scope/` files remain canonical and retain their AI disclaimer. Keep raw ask responses separate from readings. A note that settles a decision needs no invented pick. Questions or concerns remain unresolved. A finished grill summary still waits for the user's next-prompt confirmation before tracker writes.
 
 Every comment or issue posted to the issue tracker during triage **must** start with this disclaimer:
 
