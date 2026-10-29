@@ -168,7 +168,7 @@ rules:
   - id: fan-out
     scope: adapted
     text: |
-      A step that runs two or more subagents at once uses the one Fan-out line in plugin/skills/vstack-fan-out/FORMS.md, the single source every skill copies. The step always fans out. The line cites skill://vstack-fan-out, names its parts, and starts one subagent per part in one batch. It is the `task` batch, or the isolated eval batch for roles that fan out in their own clones (compare-attempts runners, hillclimb workers, implement-spec implementers, wayfinder research runners, ship verifiers). It ends with a stop clause. If its subagents cannot start, the step stops and names the parts that were not done and the reason.
+      A step that runs two or more subagents at once uses the one Fan-out line in plugin/skills/vstack-fan-out/FORMS.md, the single source every skill copies. The step always fans out. The line cites skill://vstack-fan-out, names its parts, and starts one subagent per part in one batch. It is the `task` batch, or the isolated eval batch for roles that fan out in their own clones (compare-attempts runners, hillclimb workers, implement-spec implementers, wayfinder research runners, final Verifiers). It ends with a stop clause. If its subagents cannot start, the step stops and names the parts that were not done and the reason.
 
       Every subagent prompt carries the vstack root, and also the Scratch dir when the child writes Scratch.
     lint: >-

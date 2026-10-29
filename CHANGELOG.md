@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [7.0.7] - 2026-10-29
+
+- An independent, isolated Verifier checks the committed head at every End state, commit included, in implement's new shared END-STATE step 6b. The author runs development tests and targeted smoke checks and keeps Verify skill setup and repair, without a full live-proof pass. The chain reuses the accepted Verdict when the patch id is unchanged and verifies a changed patch before merge-ready or shipped. FAIL and DRIFT get one repair-and-retry cycle per pass of step 6b, including a pass after babysit changes the patch, and an unavailable Verdict stops the run. The run record, the Report block, and a merge-ready PR comment keep the Verdict. ship reuses a matching Verdict and otherwise verifies through step 6b. A Verifier whose clone inherits uncommitted changes runs the head SHA in a detached worktree (ADR 0043, #261).
+
 ## [7.0.6] - 2026-10-28
 
 - Every new Grilling page question lists its reader needs, each with the Visual kind that shows it: a Source view, a source excerpt, a Context diagram, an Option diagram, an option preview, a Before and after, a comparison table, a Data chart, a Scenario walkthrough, or prose. The agent prepares the complete question and appends it once. `grilling-page.ts` refuses an appended question with no needs, a need with no visual of its kind on the question or its options, or a visual that no need names. Stored questions still render. The page lists each question's needs under its description. improve-codebase-architecture repeats its card figures and usage examples on the pick and design questions (ADR 0042).

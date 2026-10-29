@@ -20,7 +20,7 @@ Before this step, read skill://vstack-fan-out.
 Fan-out (skill://vstack-fan-out): parts: one per <unit>. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-<role>"`. Each `task`: <role brief>, the vstack root. <Wait for every result. | Do not wait; keep working.> If they cannot start, stop: <reason>.
 ```
 
-Roles that fan out in their own clones (compare-attempts runners, hillclimb workers, implement-spec implementers, wayfinder research runners, ship verifiers) use this eval form:
+Roles that fan out in their own clones (compare-attempts runners, hillclimb workers, implement-spec implementers, wayfinder research runners, final Verifiers) use this eval form:
 
 ```
 Fan-out (skill://vstack-fan-out): parts: one per <unit>. One eval cell: per part, `agent(<prompt>, agent="vstack-<role>", isolated=True, apply=False, merge=False)`; <collect>. Each prompt: <role brief>, the vstack root. <What the parent does with each `patchPath`.> If they cannot start or isolation is off, stop: <reason>.
