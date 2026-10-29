@@ -1,6 +1,3 @@
-// Where a project's Flows live, how one Flow's commands serialize, and how files are replaced atomically.
-// Callers of flow-page.ts never see these paths; they name Flows and Stages by id.
-
 import { closeSync, existsSync, lstatSync, mkdirSync, openSync, readFileSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { createHash, randomBytes } from "node:crypto";
 import { constants } from "node:os";
@@ -13,8 +10,6 @@ export const FLOW_KIND = "flow";
 /** `<home>/.vstack/tmp/<repo-key>/flow`: one folder per Flow. All worktrees of a project share it; other projects never see it. */
 export const flowsDir = (home: string, cwd: string): string => join(scratchRoot(home), repoKey(cwd), FLOW_KIND);
 
-// A Flow folder holds its committed domain state under `data/` and the last page published from it at `index.html`.
-// The page is a projection: a failed publish leaves the state committed and the older page in place.
 export const statePath = (folder: string) => join(folder, "data", "state.json");
 export const pagePath = (folder: string) => join(folder, "index.html");
 /** Captured attachment bytes, as `<sha256>/<name>`, linked from the page by a path relative to it. */
@@ -38,8 +33,6 @@ export function writeAtomic(path: string, text: string | Uint8Array): void {
   }
 }
 
-// `.ids/<id>` reserves each Flow id for good and names the folder that holds it now, so an id stays unique after its
-// folder moves and a lookup by id reads one file instead of every Flow.
 const idPath = (dir: string, id: string) => join(dir, ".ids", id);
 
 /** A new Flow id `<slug>-<6 hex>`, reserved exclusively, and its new folder with an empty `data/`. */
@@ -65,6 +58,17 @@ export const registeredFolder = (dir: string, id: string): string | undefined =>
 /** Points `id` at the folder `name`; called after the folder has moved there. */
 export const registerFolder = (dir: string, id: string, name: string): void => writeAtomic(idPath(dir, id), name);
 
+type MigrationIdentity = { source: string; flow: string; sha256: string };
+const migrationPath = (dir: string, source: string) => join(dir, ".migrations", createHash("sha256").update(source).digest("hex"));
+export function migrationIdentity(dir: string, source: string): MigrationIdentity | undefined {
+  const path = migrationPath(dir, source);
+  return existsSync(path) ? JSON.parse(readFileSync(path, "utf8")) : undefined;
+}
+export function registerMigration(dir: string, identity: MigrationIdentity): void {
+  mkdirSync(join(dir, ".migrations"), { recursive: true });
+  writeAtomic(migrationPath(dir, identity.source), JSON.stringify(identity));
+}
+
 export const flowFolders = (dir: string): string[] =>
   existsSync(dir) ? readdirSync(dir, { withFileTypes: true }).filter((e) => e.isDirectory() && !e.name.startsWith(".")).map((e) => e.name) : [];
 
@@ -84,7 +88,6 @@ export function folderOfId(dir: string, id: string): string | undefined {
   return flowFolders(dir).map((n) => join(dir, n)).find((folder) => readState(folder)?.flow.id === id);
 }
 
-// A binding records which Flow and Stage one session's agent writes to. It is scoped to the project's flow dir.
 export type Binding = { flow: string; stage: string; session: string; agent: string; bound: string };
 const bindingPath = (dir: string, session: string, agent: string) =>
   join(dir, ".bindings", `${createHash("sha256").update(`${session}\n${agent}`).digest("hex").slice(0, 32)}.json`);
@@ -110,15 +113,10 @@ export function dropBindings(dir: string, id: string): void {
     try {
       if ((JSON.parse(readFileSync(path, "utf8")) as Binding).flow === id) rmSync(path, { force: true });
     } catch {
-      // A binding being replaced right now, or not one at all: leave it.
     }
   }
 }
 
-// Scratch cleanup judges a Flow by its lifecycle, never by file times or page reads: an open Flow is never removed,
-// and a closed one becomes eligible CLOSED_RETENTION after its latest close. The `.ids/` and `.bindings/` dot entries
-// of the flow dir are the project's Flow registry: `.ids/` keeps every id ever given, so an expired id is reported
-// and never handed out again, and bindings go when their Flow goes.
 export const CLOSED_RETENTION = 90 * 86_400_000;
 export type Retention = { flow: string; closed?: string } | "unreadable";
 

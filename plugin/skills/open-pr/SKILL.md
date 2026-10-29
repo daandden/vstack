@@ -17,7 +17,7 @@ Accept the chain facts and any closing references: the issues or tickets the PR 
 
 Keep PR body files under `<Scratch dir>/verify/<app>-<run-id>/`, beside the proof they describe.
 
-Follow END-STATE.md's "Publish delivery progress". Open an `open-pr` Stage on the caller's Flow and save its binding. Publish tasks for the steps below and retain stopped or skipped work. Return to the caller's binding after publishing Results and finishing this Stage, including a blocked return.
+Follow `skill://flow-page`'s "Stage entry/exit line". Follow END-STATE.md's "Publish delivery progress". Publish tasks for the steps below and retain stopped or skipped work.
 
 ## 1. Check the branch
 

@@ -3,10 +3,11 @@ import { join } from "node:path";
 import { createHash } from "node:crypto";
 import { repoKey } from "../../vstack-tmp/scripts/scratch.ts";
 import type { State } from "./model.ts";
+import { writeAtomic } from "./store.ts";
 
 export type Observation = {
   status: "current" | "stale" | "unavailable" | "unknown";
-  provenance: { adapter: string; source: string };
+  provenance: { adapter: string; source: string; checkout?: string; stage?: string; branch?: string };
   attempted_at?: string;
   observed_at?: string;
   records: { name: string; state: string; url?: string }[];
@@ -22,6 +23,18 @@ export const observing = () => pending > 0;
 const unknown = (adapter = "none", source = "Not configured"): Observation => ({ status: "unknown", provenance: { adapter, source }, records: [], reason: "No supported observation adapter is configured." });
 export const unknownObservations = (): Observations => ({ git: unknown("git", "Local checkout unavailable"), "code-host": unknown(), ci: unknown() });
 export const observationVersion = (o: Observations) => createHash("sha256").update(JSON.stringify(o)).digest("hex");
+
+type AuthoringContext = { cwd: string; stage?: string; revision?: number };
+type ProjectRegistration = AuthoringContext & { contexts?: AuthoringContext[] };
+export function registerObservation(folder: string, cwd: string, s: State, stage?: string): void {
+  const path = join(folder, "observation-project.json");
+  let previous: ProjectRegistration | undefined;
+  try { previous = JSON.parse(readFileSync(path, "utf8")); } catch {}
+  const context = { cwd, ...(stage ? { stage } : {}), revision: s.revision };
+  const prior = previous?.contexts ?? (previous ? [previous] : []);
+  const contexts = [context, ...prior.filter((c) => c.cwd !== cwd || c.stage !== stage)];
+  writeAtomic(path, JSON.stringify({ ...context, contexts }));
+}
 
 async function command(cwd: string, args: string[]): Promise<string> {
   const p = Bun.spawn(args, { cwd, env: { ...process.env, GIT_OPTIONAL_LOCKS: "0", GH_PROMPT_DISABLED: "1", GIT_TERMINAL_PROMPT: "0" }, stdout: "pipe", stderr: "ignore", stdin: "ignore" });
@@ -98,20 +111,31 @@ async function collect(cwd: string, kind: keyof Observations, c: Config, branch:
 /** No domain writes. Cache entries are scoped to the checkout, provider configuration, and authored branch. */
 export function observations(folder: string, key: string, s: State): Observations {
   const out = unknownObservations();
-  let cwd: string, dir: string;
+  let cwd: string, dir: string, stage: string | undefined;
   try {
-    cwd = JSON.parse(readFileSync(join(folder, "observation-project.json"), "utf8")).cwd;
-    if (typeof cwd !== "string") return out;
-    const id = `${key}/${cwd}`;
-    let project = projects.get(id);
-    if (!project || Date.now() >= project.expires) {
-      if (repoKey(cwd) !== key) return out;
-      const git = Bun.spawnSync(["git", "rev-parse", "--show-toplevel", "--path-format=absolute", "--git-common-dir"], { cwd, stdout: "pipe", stderr: "ignore", env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } });
-      if (git.exitCode !== 0) return out;
-      const [root, common] = git.stdout.toString().trim().split("\n");
-      project = { root, common, expires: Date.now() + 15000 };
-      projects.set(id, project);
+    const registration = JSON.parse(readFileSync(join(folder, "observation-project.json"), "utf8")) as ProjectRegistration;
+    const contexts = registration.contexts ?? [registration];
+    let selected: { context: AuthoringContext; project: { root: string; common: string; expires: number } } | undefined;
+    for (const context of contexts) {
+      const candidate = context.cwd;
+      if (typeof candidate !== "string" || !existsSync(candidate)) continue;
+      const id = `${key}/${candidate}`;
+      let project = projects.get(id);
+      if (!project || Date.now() >= project.expires) {
+        if (repoKey(candidate) !== key) continue;
+        const git = Bun.spawnSync(["git", "rev-parse", "--show-toplevel", "--path-format=absolute", "--git-common-dir"], { cwd: candidate, stdout: "pipe", stderr: "ignore", env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } });
+        if (git.exitCode !== 0) continue;
+        const [root, common] = git.stdout.toString().trim().split("\n");
+        project = { root, common, expires: Date.now() + 15000 };
+        projects.set(id, project);
+      }
+      selected = { context, project };
+      break;
     }
+    if (!selected) return out;
+    cwd = selected.context.cwd;
+    stage = selected.context.stage;
+    const project = selected.project;
     dir = existsSync(join(project.common, "vstack", "config")) ? join(project.common, "vstack", "config") : join(project.root, "docs", "vstack");
   } catch { return out; }
   const branch = s.aliases.findLast((a) => a.startsWith("branch:"))?.slice(7);
@@ -121,7 +145,7 @@ export function observations(folder: string, key: string, s: State): Observation
     catch { out[kind] = { ...unknown("invalid", `${kind} configuration`), status: "unavailable", reason: "Observation configuration is invalid." }; continue; }
     if (c.adapter === "none") { out[kind] = unknown(c.adapter, c.source); continue; }
     const id = `${key}/${s.flow.id}/${kind}`;
-    const signature = JSON.stringify([cwd, c, branch]);
+    const signature = JSON.stringify([cwd, c, branch, stage]);
     let slot = cache.get(id);
     if (!slot || slot.signature !== signature) { slot = { signature, next: 0, value: unknown(c.adapter, c.source) }; cache.set(id, slot); }
     if (!slot.pending && Date.now() >= slot.next) {
@@ -130,7 +154,7 @@ export function observations(folder: string, key: string, s: State): Observation
       current.next = Date.now() + c.poll * 1000;
       pending++;
       current.pending = collect(cwd, kind, c, branch).then((data) => {
-        current.value = { status: data.records.length ? "current" : "unknown", provenance: { adapter: c.adapter, source: c.source }, attempted_at, ...data, ...(data.records.length ? {} : { reason: "The provider returned no matching records." }) };
+        current.value = { status: data.records.length ? "current" : "unknown", provenance: { adapter: c.adapter, source: c.source, checkout: cwd, ...(stage ? { stage } : {}), ...(branch ? { branch } : {}) }, attempted_at, ...data, ...(data.records.length ? {} : { reason: "The provider returned no matching records." }) };
       }).catch(() => {
         current.value = { ...current.value, status: current.value.observed_at ? "stale" : "unavailable", attempted_at, reason: "The read-only provider could not be observed. No workflow state was changed." };
       }).finally(() => { current.pending = undefined; pending--; });

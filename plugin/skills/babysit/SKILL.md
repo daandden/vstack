@@ -13,7 +13,7 @@ Follow these rules in skill://implement/END-STATE.md:
 - Step 0a: the chain facts, Code host and CI service routing, and the reuse of the vstack root and Scratch dir.
 - Step 0b: the push to the remote branch, and the last SHA this run pushed. Fix waves are fast-forward pushes.
 
-Follow END-STATE.md's "Publish delivery progress". Open a `babysit` Stage on the caller's Flow, save the caller's binding, and keep frontier tasks and blockers current. Publish Results before finishing this Stage and restoring the binding on every return.
+Follow `skill://flow-page`'s "Stage entry/exit line". Follow END-STATE.md's "Publish delivery progress" and keep frontier tasks and blockers current.
 
 ## Establish the frontier
 

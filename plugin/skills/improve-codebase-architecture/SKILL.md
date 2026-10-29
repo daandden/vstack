@@ -40,7 +40,7 @@ Apply the deletion test to anything you suspect is shallow: would deleting it co
 
 ### 2. Present candidates on the Flow page
 
-Read `skill://flow-page`. Discover the supplied session and agent's binding with `bound`, then open an improve-codebase-architecture Stage on that Flow, or start one when unbound. Reopen a closed Flow explicitly. The candidates, the pick, and the grilling that follows all go in this Stage.
+Follow `skill://flow-page`'s "Stage entry/exit line". Publish the candidates and pick here. Use grilling as the interviewing procedure below.
 
 If exploration finds no evidence-backed candidate, publish that outcome as a Document Result with the searched scope, evidence, and limitations. Finish the Stage without an empty candidate Result or pick question.
 
@@ -73,7 +73,7 @@ If Design It Twice stops at its Fan-out stop clause, or screening drops every de
 
 ### 4. Grilling loop
 
-Run `skill://grilling` to walk the decision tree with the user. Its rounds continue through the common authoring interface in this Stage, starting from the design question, then constraints, dependencies, hidden implementation, and surviving tests. After its summary, finish the Stage with retirement reasons for unresolved questions. If no candidate is picked, record that outcome and finish the Stage without implying authorization.
+Use `skill://grilling`'s interviewing procedure to walk the decision tree with the user, starting from the design question, then constraints, dependencies, hidden implementation, and surviving tests. Record a no-candidate or no-pick outcome without implying authorization.
 
 Side effects happen inline as decisions crystallize. Run the `skill://domain-modeling` skill to keep the domain model current as you go:
 

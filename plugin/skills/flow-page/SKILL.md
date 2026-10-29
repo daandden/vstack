@@ -1,6 +1,6 @@
 ---
 name: flow-page
-description: How a Flow keeps its Flow page through Stage-bound authoring. Covers opening or joining a Stage, historical page migration, finding a Flow by alias, moving its folder, closing and reopening the Flow, the typed contribution format, Document, Comparison, Metrics, Code/diff, Timeline, and Quiz Results, declarative state demos, typed attachments and captured revisions, focused Result revisions, the receipt and its ask payload, answers, closes, and refusals.
+description: Publish Flow questions and results through the shared Stage, ask, and receipt protocol.
 disable-model-invocation: true
 ---
 
@@ -8,13 +8,15 @@ The skill that runs a Stage says when each page step happens. This skill says ho
 
 You send meaning: questions, answers, decisions, notes, and Results. The script owns everything else: ids, Stage order and tab labels, round and Q numbers, option letters, timestamps, the links between records, storage, and the page itself. It renders the page from its own template and escapes every string you send. You never write HTML, CSS, or scripts, and a contribution that carries them is refused.
 
+Result block is the canonical name for a Stage's output. Result is its authoring short form.
+
 Run the script from inside the repo the work is about. The extension supplies your `--session` and `--agent` arguments before each turn. Use them on authoring commands, especially in subagents: bash sets `PI_SESSION_ID` but supplies no agent id.
 
 ```sh
 bun "$(realpath skill://flow-page/scripts/flow-page.ts)" <command> ...
 ```
 
-Every command prints one JSON receipt on stdout. Exit 1 prints the refusal on stderr and writes nothing: fix what it names and run the command again. Exit 2 is a usage error.
+Every command prints one JSON receipt on stdout. Exit 1 prints the refusal on stderr and commits no Flow content. On-demand startup may still write host lifecycle metadata. Fix what the refusal names and run the command again. Exit 2 is a usage error.
 
 A receipt always means the content is committed. Its `presentation` says what the static page shows: `current`, or `stale` with the older `revision` and the `error` that stopped the new page. A stale page keeps its last good content. Run `render --flow <flow>` to publish it again, and never resubmit committed content. `live` separately reports the Local Flow host.
 
@@ -28,37 +30,38 @@ Old Other answers show the recorded words, with no invented pick or reading. Old
 
 A historically closed Flow stays closed. Its 90-day retention starts at migration time because the historical format has no Flow close timestamp. Migration never backdates that lifecycle event to a round or Stage.
 
-Run `show --flow <id>` to find the in-progress Stage, then `bind --flow <id> --stage <id>` to continue it. For finished work in an open Flow, open a new Stage. Use `reopen` for a closed Flow. Migration binds no session. Use only the new authoring contract after the cutover. Repeating `migrate` on unchanged state returns the same Flow with `repeated: true`; changed source state is refused instead of overwriting later work.
+Run `show --flow <id>` to find the in-progress Stage, then `bind --flow <id> --stage <id>` to continue it. For finished work in an open Flow, open a new Stage. Use `reopen` for a closed Flow. Migration binds no session. Use only the new authoring contract after the cutover. Repeating `migrate` on unchanged state returns the same Flow with `repeated: true`. Changed source state is refused instead of overwriting later work.
 
-## Open or join a Stage
+## Stage entry/exit line
 
-A result-producing run is one Stage. Open it once, before its first contribution:
+Every result-producing skill follows this line once per run. Producers cite this section and specify only their own content. Reading a reference, using a helper, returning machine facts, or performing another test cycle within an existing run opens no empty Stage.
 
-- `open --skill <name> --title <title>` starts a new Flow with its first Stage. `--title` is the Flow page's heading. A `--slug` of 3 to 5 words is optional; the script derives one from the title.
-- `open --skill <name> --flow <flow>` adds a Stage to an existing Flow. A return to finished work opens a new Stage with `--parent <stage>`, the Stage it continues; the finished Stage stays as it was.
-- Add `--ticket <id>` when the Stage works on one ticket, such as one wayfinder ticket. Its tab label then names the ticket.
+1. Discover the Flow through [Find a Flow](#find-a-flow). Use the extension's `--session` and `--agent` on every command. Save the caller's binding and Stage before a nested run. A binding belongs to one project, session, and agent, never the globally last active Stage.
+2. Open one Stage before the run's first contribution or ask. Use `open --skill <name> --flow <flow>` on an open Flow, adding `--parent <caller-stage>` for a nested run or continuation of finished work and `--ticket <id>` for ticket work. A closed Flow requires explicit `reopen --skill <name> --flow <flow>` with those same context flags. Only after discovery proves no matching modern or supported historical Flow exists, start one with `open --skill <name> --title <title>`. Its optional `--slug` has 3 to 5 words.
+3. Publish the run's Results and every real ask through [Submit a contribution](#submit-a-contribution), [The receipt](#the-receipt), and [Every ask in a Flow](#every-ask-in-a-flow). A nested result-producing run owns its own Stage even when its caller has an active Stage. A helper that only supplies evidence returns it to the owning producer without creating a separate run. Pass explicit Flow and Stage ids to parallel workers. Workers return structured results and open questions to their coordinator unless the brief explicitly assigns publication. A run-only verifier returns its machine record without authoring.
+4. On every return, including blocked returns, publish the actual outcome and follow [Close the Stage](#close-the-stage). Restore the saved caller binding with `bind --flow <flow> --stage <caller-stage>` when that Stage is still in progress. A finished caller cannot accept a new binding or more content. Leave the Flow open unless [Close or reopen the Flow](#close-or-reopen-the-flow) applies.
 
-Any skill name works; the tab label comes from it. `open` binds this session's agent to the new Stage. Later commands from the same session write there without naming it. `bind --flow <flow> --stage <id>` joins an existing Stage instead, for example when a nested skill continues its caller's Stage. A binding belongs to one session and one agent. `--agent <id>` names a second agent in the same session; it defaults to `main`.
+`open` binds only this session's agent to the new Stage. Later commands use that binding. `bind --flow <flow> --stage <id>` resumes an existing in-progress run, not a new nested result-producing run. Loading this skill, reading a page, `show`, and `bind` open no Stage. An unbound write without an explicit target is refused.
 
-Loading this skill, reading a page, `show`, and `bind` open no Stage. A run that only reads a reference skill or helper adds nothing to the page.
-
-Parallel callers, and callers outside an omp session, name the target on each write: `submit --flow <flow> --stage <id>`. There is no other default. A session with no binding and no named target is refused. Callers bound to different Stages of one Flow, such as two wayfinder tickets, write at the same time safely: each contribution commits whole against the latest state.
+Parallel callers and callers outside an omp session name `--flow <flow> --stage <id>` on every write. Contributions from different Stages commit whole against the latest state. The script derives tab labels from any skill name.
 
 `show [--flow <flow>]` prints the Flow's structure: Stages with their labels, states, and open-question counts, rounds, Q numbers, answer states, Results with each entry and the revision that last `changed` it, every link and backlink, its aliases, and its `presentation`. Its `next` lists actionable questions in navigation order, newest in-progress Stage first.
 
 `bound` returns this session and agent's binding with its `page`, projection status, and `live` status. When none exists, it returns `{"binding":null}` without starting a host or creating a Flow. Bindings persist across session continuation. A different session or agent gets only its own binding, never the last active Stage.
 
-The extension presents the bound Flow URL after every main-agent reply, including blockers and follow-up explanations with no new Result. It starts no model turn and opens no browser. When live serving fails, it presents the static path and the observed error. Your reply still summarizes the work; it need not repeat the link.
+The extension presents the bound Flow URL after every main-agent reply, including blockers and follow-up explanations with no new Result. It starts no model turn and opens no browser. When live serving fails, it presents the static path and the observed error. Your reply still summarizes the work. It need not repeat the link.
 
 ## Find a Flow
 
-`<flow>` is the Flow id that a receipt printed, or a qualified alias: `spec:<n>`, `ticket:<n>`, `branch:<name>`, `run:<id>`, `folder:<key>`, or `slug:<slug>`. The id never changes. Aliases only find it.
+`<flow>` is the immutable id from a receipt or a qualified alias: `spec:<n>`, `ticket:<n>`, `branch:<name>`, `run:<id>`, `folder:<key>`, or `slug:<slug>`. Every worktree of the project sees the same Flows. Other projects cannot find or write them.
 
-- `find <kind>:<value>` prints the one Flow that has the alias. No match, or several, is refused with the Flows it found; name one by id. Lookup never guesses.
-- `alias [--flow <flow>] <kind>:<value>...` adds aliases, such as `spec:267` when a spec is published. Each Stage's ticket, the slug, and every folder the Flow has had are aliases already. Adding one again changes nothing.
-- `move [--flow <flow>] --to <key>` moves the Flow's folder to the folder key `<key>`. Bindings, ids, anchors, and the old folder key keep working; only the `page` path changes. A key in use is refused, and a failed move leaves the Flow where it was.
+1. Use a supplied Flow id or historical source path first. Otherwise run `find` for the work's known alias, including a ticket's parent spec, then use this session and agent's `bound` Flow when no work-specific identity is supplied.
+2. `find <kind>:<value>` searches modern Flows and supported structured historical sources before reporting no match. A modern match returns the Flow. A historical match returns `migration_required: true` and `historical` candidates with `source`, `title`, `aliases`, and `open`. Run explicit `migrate <source>` and continue the returned Flow. Discovery itself migrates nothing. Multiple modern or historical matches are ambiguous. Resolve the named ids or source paths instead of guessing or starting a duplicate Flow.
+3. Start a new Flow only after discovery reports no match. Failed migration is not a missing Flow. An expired identity stays expired even when its retained historical source still exists.
 
-Flows belong to the project of the current repo. Every worktree of the project sees the same Flows, and no other project can find or write them, even by id.
+`alias [--flow <flow>] <kind>:<value>...` adds aliases, such as `spec:267` after publication. A Stage's ticket, the slug, and every folder the Flow has had are aliases already. Adding one again changes nothing.
+
+`move [--flow <flow>] --to <key>` changes the folder key. Bindings, ids, anchors, and the old folder alias keep working. Only the static `page` path changes. A key in use is refused. A failed move leaves the Flow where it was.
 
 ## Close or reopen the Flow
 
@@ -83,85 +86,14 @@ The script applies all items to the bound Stage, or refuses all of them. Give a 
 
 Submitting the Stage's latest contribution again, for example after a lost receipt, applies nothing and prints its first receipt with `repeated: true`.
 
-Item kinds and their fields:
+Read only the field contract for the kind you are about to publish:
 
-- `background`: `title`, `summary` (one line), `sections` (one or more `{ heading, body }`), and `sources` (one or more strings, such as `GLOSSARY.md` or `[text](url)`). A Stage has one Background. Submit it before the Stage's first round.
-- `topic`: optional `ref`, `title`, `summary`, `body`, and `sources`. The Topics tab shows each Topic note once and lists the questions that cite it.
-- `result`: optional `ref`, `shape`, `title`, and an optional `summary` line. A Result shows a Stage's output before the questions it leads to, such as review findings, candidates, a ticket breakdown, run results, or a report.
-  - `cards` has `entries`, each with optional `ref`, `title`, `label` (such as `issue`), `blocking` (`true` or `false`), `impact`, `action`, and `evidence`. In a review finding, `impact` opens with what a user or caller sees, and `evidence` gives the file and line.
-  - `review` has `axes` and `entries`. State each of `standards`, `spec`, and `blast-radius` exactly once as `{ axis, status, reason? }`. `status` is `findings`, `clean`, `skipped`, `unavailable`, or `blocked`. Every status except `findings` needs a `reason`. `findings` needs at least one entry. `blocked` may have entries established before the blocker, while clean, skipped, and unavailable axes have none. `entries` may be empty when the review has no findings. Each entry has the `cards` fields plus required `axis` and `location`, the source file and line or named interface. A Stage has one review Result. Its opening summary table is derived from these entries and links to the full impact, action, and evidence cards. Keep findings in reviewer order within their axis. Never submit a duplicate summary table. `show` exposes the derived rows under `review`, including each finding's `target` anchor. Focused entry revisions update the summary automatically. Revise the Result's `axes` with `set` and its `base` when a review's availability changes.
-  - `ledger` has `entries`, each with optional `ref`, `claim`, `status` (`confirmed`, `cleared`, or `unproven`), `evidence`, `missing_proof`, and `consequence`.
-  - `table` has `columns` and `rows`, each row with optional `ref` and `cells`, one string per column.
-  - `document` is long-form content, such as an explanation, research findings, or an investigation report. It has `sections`, in reading order, each with a `heading` and `blocks`. A block is one of `{ prose }`, `{ list, ordered }` (`ordered` is optional), `{ code, language, source }` (`language` and `source` are optional; `source` is the file and line), or `{ figure }`, naming an attachment. Optional `citations` are `{ ref, source }`; cite one in prose or a list item as `[@<ref>]`, and the script numbers it and links both ways. Optional `limitations` lists what the Document does not show, and optional `sources` lists what it was built from.
-  - `code` shows code excerpts or unified diffs. It has `entries`, each with optional `ref`, required `file` naming the source path, and exactly one of `code` or `diff`. Optional `language` selects syntax highlighting. Common JS, TS, Python, shell, Go, Rust, C-family, SQL, JSON, YAML, and TOML names work; other languages remain plain. Optional `revision` names the source revision, and optional `note` explains the excerpt. A code excerpt takes optional `line`, the positive whole-number source line it starts at. Leave `line` out when it is unknown. A diff has one file's unified `@@` hunks, optionally with its file headers. Each hunk's counts must match its lines. The page preserves tabs, line breaks, and trailing spaces, numbers the old and new lines separately, and links to each hunk. Known lines have anchors ending in `-L<n>` for old or excerpt lines and `-R<n>` for new lines.
-  - `timeline` has `entries` in the order the events happened. Code preserves that order, even when a clock went backward. Each event has optional `ref`, required `title` and `outcome`, and optional `time`, `detail`, `evidence`, and `attachments`. `outcome` is `succeeded`, `failed`, `blocked`, `skipped`, `unknown`, or `noted`. `time` is an ISO 8601 date, such as `2026-10-28`, or a date-time with its offset, such as `2026-10-28T10:05:00+07:00`. Leave it out when it is unknown. `attachments` names the evidence shown with that event. A later `revise` with `add` appends events, and `set` updates a recorded outcome against its `base`.
-  - `prototype` has exactly one of `demo`, a declarative state demo the reader tries on the page, or `artifact`, the ref or id of a runnable artifact attachment. A `demo` has `states`, `start`, `actions`, and optional `values`:
-    - `values` are what the demo shows, each `{ name, label, initial }`. `initial` is a number, `true` or `false`, or a string, and fixes the value's type.
-    - `states` are `{ name, label, description }` (`description` is optional). `start` names the state the demo begins in.
-    - `actions` are the reader's buttons, each `{ name, label, transitions }`. A transition has optional `from` (the states it leaves; any state when left out), `when` (a condition), `to` (the next state; the same state when left out), and `set` (value changes). An action runs its first transition that leaves the current state and whose `when` holds. With none, its button is unavailable.
-    - A condition is `{ "value": "<name>", <op>: <literal> }` with op `eq`, `ne`, `lt`, `le`, `gt`, or `ge` (the last four compare numbers), or `{ "all": [...] }`, `{ "any": [...] }`, or `{ "not": {...} }`, nested at most 4 deep. A `set` change is a literal of the value's type, `{ "add": <number> }`, or `{ "toggle": true }` for a true-or-false value.
-    - Names are lowercase letters, digits, and hyphens. A demo has at most 16 values, 32 states, 32 actions, and 16 transitions per action, and every state must be reachable from `start`. Nothing in a demo is evaluated as code: a condition or change written as an expression is refused.
-    - The page adds Reset, which returns to `start` and every `initial`. The demo runs in the reader's browser, also in the static page, and keeps its state there. Clicking through it answers no question, records nothing in the Flow, and authorizes nothing. A video attachment's playback position stays in the browser the same way.
-    - An `artifact` keeps the real HTML bundle, local app route, or terminal launch steps. Use the runnable-artifact contract below. It is not a second demo and never simulates a missing runtime.
-  - `comparison` puts alternatives side by side. It has `alternatives`, two or more `{ ref, name }` with an optional `summary` and `attachments` (that side's own evidence); `criteria`, one or more `{ ref, name }` with an optional `description`; `assessments`, at most one `{ alternative, criterion, finding }` per pair, with optional `evidence` (such as the file and line); and `verdict`, the verdict you recorded: `{ outcome, reason }`, where `outcome` is `chosen` with `alternative` naming the choice, or `tie` or `inconclusive` with no `alternative`. A pair with no assessment shows as not assessed.
-  - `metrics` carries measurements. It has `workload` (what was measured, such as the operation and its inputs), an optional `environment`, `outcome` (the outcome as you report it), `series` (each `{ ref, label }`, such as a commit or a variant, with `baseline: true` on at most one), and `measurements`. Each measurement has `ref`, `name`, `unit`, optional `better` (`lower` or `higher`), an optional reported `verdict` (`better`, `worse`, `no-difference`, or `inconclusive`), and `values`. A value is `{ series, value }`, where `value` is a JSON number, with optional `samples` (the run count) and `uncertainty` (`{ low, high, of }` or `{ plusminus, of }`, where `of` names it, such as `min to max` or `95% CI`), or `{ series, missing }` with the reason there is none. A series with no value shows as missing, never as zero. The script draws each measurement's bars and computes each value's change from the baseline; it rates nothing, so a verdict appears only when you give one.
-    - Each measurement's bars share a scale from zero. A measurement with a negative value keeps its numeric table and has no bars.
-    - Deltas use the measurement's unit. A `%` measurement uses `pp` for its absolute delta. A zero baseline has no relative percentage. A delta outside the numeric range shows as unavailable.
-  - `quiz` has `questions`, each with a unique `ref`, `prompt`, `explanation`, and `answer`. A choice question has at least two `choices`, each `{ ref, label }`, and `answer: { choice: "<ref>" }`. Other rules are `{ text: ["accepted answer", ...], case_sensitive: false }` or `{ number: 5, tolerance: 0.1 }`. Text rules trim whitespace and ignore case unless `case_sensitive: true`. Numbers and nonnegative tolerances must be finite. Leave out `choices` for text and number questions.
-    - The browser saves attempts locally before sending them to the Flow's separate learning-progress endpoint. A lesson completes when every question in that Quiz revision has a correct attempt. Republished revisions keep their own progress.
-    - The live page resumes server-saved attempts across browsers and host restarts. When the host is unavailable, the open page queues attempts and retries after reconnection. Static exports keep quizzes usable and browser-local without promising server sync from `file://`.
-    - Learning writes use a Flow-scoped HttpOnly, SameSite cookie issued when the live page opens, with same-origin checks. No write credential appears in page data. Quiz attempts never answer real asks, update workflow tasks, or authorize work.
-  - Any shape takes optional `attachments`, the attachments it shows, and `canonical`, the canonical record it was made from: `{ file }` (a path in the project), `{ commit }` (a hash), or `{ tracker, revision }` (such as `daandden/vstack#267` and the issue's updated time).
-  - `revises` publishes a new revision of an earlier Result of the bound Stage, named by its id. Send the whole Result again. The page shows the new revision and keeps the earlier ones readable, and `show` gives the committing revision as the Result's and each entry's `changed`. A `{ file }` canonical link carries over with the file's current revision. A `{ commit }` or `{ tracker }` link must be given again with its new revision.
-- `revise`: changes one Result of the bound Stage without resending it. `result` names the Result, or one entry as `<result>/<entry>`. A Document, Comparison, Metrics Result, Quiz, or demo has no entries; publish its next revision with `revises`.
-  - `set` replaces only the fields it names: an entry's fields, or a Result's `title` and `summary`. It needs `base`, the revision that `show` printed as that entry's or Result's `changed`. When someone changed it after `base`, the edit is refused as a conflict: run `show` and decide again.
-  - `add` appends new entries or rows to a Result, in its shape. It needs no `base`.
-- `attachment`: optional `ref`, `type`, `caption`, and `origin` (what produced it, such as the command or the browser step). `type` is `image` (PNG, JPEG, GIF, or WebP), `video` (MP4 or WebM), `svg`, `file`, `trace`, `evidence`, or `artifact`. Give `path`, the file to capture, or `unavailable`, the reason there is none. An `artifact` instead takes `launch` and `revision`, with the runtime fields below. Name each attachment in a Result's `attachments`, a Document `figure`, a Comparison alternative's `attachments`, a Timeline event's `attachments`, or a prototype's `artifact` in the same contribution.
-- `assumed`: optional `ref`, `decision`, `pick`, and `why`, one decision settled without asking. `why` cites its repo fact with file and line, its ADR, or its convention. The page lists each Assumed pick before the rounds, and the close lists every one no question reopened.
-- `round`: `questions`, in `ask` order. One contribution holds at most one round, because one round is one `ask`. Each question has optional `ref`, `title` (one question that ends with "?"), `description`, and `options`. Each option has `label` (the label alone; the script adds `A. `, `B. `), `does`, `gains`, `costs`, and an optional `recommended` reason on at most one option. A question can add:
-  - `again`: the earlier question it asks again. In the same Stage it names a question of an earlier round and keeps that Q number. From a finished Stage it names that Stage's latest ask of the Q number and takes a new Q number here; both questions link to each other.
-  - `reopens`: the Assumed pick it reopens, of this Stage or a finished one. That pick leaves the close; this question's decision replaces it.
-  - `today`: `{ text, source }` facts about how things work now, each with its file-and-line source. Use it when the decision changes something that exists.
-  - `terms`: `{ term, text }` Term notes, one line each, for names a newcomer does not know.
-  - `topics`: Topic notes it builds on.
-  - `results`: the Result entries it comes from. The page links them both ways.
-  - `example`: text that makes the question concrete.
-- `answer`: `question`, `response`, and, for words with no pick, `reading`. A question takes one answer. To reopen it, ask it again with `again`, which keeps the earlier answer beside the new one.
-- `close`: `decisions`, one `{ question, text }` for the latest ask of each Q number of the Stage, and optional `extra` bullets. The close adds every Assumed pick of the Stage that no question reopened, and marks each decision as the user's pick, read from the user's words, or not the user's answer. A close with no decisions and no Assumed picks needs `extra`.
-- `stage`: `{ "kind": "stage", "state": "finished" }` finishes the bound Stage. A finished Stage takes no more content. Add `retire`, one `{ question, reason }` for each latest ask that has no pick and no settled reading, saying why the Stage leaves it unresolved. Retired questions leave current work and keep their answer and reason.
-- `task`, `blocker`, `end-state`, `pr`, and `check` record workflow progress, as [Record progress](#record-progress) says.
+- Before a Background, Topic note, round, answer, Assumed pick, close, Stage state, or progress item, read the relevant section of [Contribution fields, version 1](references/contributions.md).
+- Before publishing or revising a Result, read [Result fields, version 1](references/results.md). It includes cards, review, ledger, table, Document, Code/diff, and Timeline.
+- Before Comparison or Metrics, also read [Comparison and Metrics fields](references/comparison-metrics.md).
+- Before a prototype demo, runnable-artifact Result, or Quiz, also read [Interactive Result fields](references/interactive-results.md).
+- Before capturing attachments, canonical file revisions, question/Background figures, option previews, or real HTML/app/terminal artifacts, read [Captured attachments](references/attachments.md). Capture actual redacted evidence and preserve canonical deliverables.
 
-Put each explanation in one place, so the page explains nothing twice. A question's own rationale goes in its `description`. Context that every question of the Stage needs goes in the Background. A concept that questions in several rounds or Stages build on goes in a Topic note. A name that one line defines is a Term note. The script stores each source string once, however many records cite it.
-
-Text fields are plain text. A blank line starts a paragraph, a block of `- ` lines is a bullet list, and `` `code` `` and `[text](https://url)` links are kept. In Document, Comparison, Metrics, and attachment text, a link to anything but `https://`, `http://`, or a `#` anchor is refused.
-
-## Captured revisions
-
-The script reads an attachment's file once, when you submit it, and stores its bytes in the Flow under their sha256. A `{ file }` canonical link records the file's sha256 at that time. Editing a source file later changes nothing on the page. To show the new content, submit the Result again with `revises`.
-
-A `path` is relative to the working directory, or absolute, and must be a regular file inside the project or its Scratch dir. A path that leaves both, directly or through a symlink, is refused. An image or video must be one of the formats above, and an SVG with scripts, event handlers, embedded HTML, or script URLs is refused.
-
-The script stores evidence byte for byte. Redact it as the producing skill's contract requires before you attach it, for example with every secret replaced by `<REDACTED>`.
-
-## Runnable artifacts
-
-An `artifact` attachment always has `launch`, the real commands or steps a reader runs outside the page, and `revision`, the producer's source revision. Add `unavailable` with a reason when a required runtime or dependency is absent.
-
-- `runtime: "html"` captures a bundle with `bundle: { entry, files }`. `entry` is its HTML entry path. Each file is `{ path, source }`, where `path` is its unique relative URL path and `source` is a regular file in the project or its Scratch dir. Register every resource the bundle needs. Use relative resource URLs. Traversal and paths outside those roots are refused. The captured bundle's content hash replaces the supplied source revision as its attachment revision. Editing source files does not change the captured bundle.
-- `runtime: "local-app"` takes `url`, an `http://127.0.0.1:<port>/<route>` URL with no credentials. Start the actual app yourself. The host neither launches it nor keeps it alive. On each page read it checks that the route answers with HTML, without following redirects. The route must permit iframe embedding. Its own backend dependencies remain the producer's responsibility; record an absent one with `unavailable`.
-- `runtime: "terminal"` shows launch steps and availability without pretending to provide a terminal. An artifact with no `runtime` also remains launch-only; its optional HTTP URL is a reference, not proof that an app is running.
-
-A prototype Result names the attachment with `artifact: "<ref or id>"`. The live host runs captured HTML on a separate loopback origin with an artifact-only read capability. Its sandbox permits scripts but blocks top navigation, forms, popups, and access to the parent Flow. Bundle network access stays on the viewer origin. Local app routes run in a sandbox on their own origin, never the Flow host's origin. Neither origin has an authoring or workflow endpoint.
-
-The static export always shows launch instructions and an explicit unavailable state for runnable artifacts, even if a local app happened to be running when the Result was submitted. It embeds no live runtime or viewer URL. Declarative demos remain usable offline.
-
-## Read the page
-
-`n` cycles through actionable questions, newest in-progress Stage first, then older in-progress Stages. Finished Stages, retired questions, settled answers, and superseded asks are excluded. Repeated Stage tabs include ticket ids when known; unticketed repeats get distinct labels.
-
-`t` or the Stages button opens a clickable Stage-only tree with each Stage's state and open-question count. A continued Stage sits under its parent. This tree does not describe ticket dependencies. The Topics tab keeps shared notes.
-
-`h` and `l`, or the left and right arrows, select and focus tabs. `j` and `k`, or the down and up arrows, select reading stops, update the URL fragment, and move focus to the target. Cross-Stage links open the target's tab. Shortcuts do nothing while typing in an input, textarea, select, or editable content.
 
 ## The receipt
 
@@ -171,21 +103,21 @@ A submit receipt holds the Flow and Stage ids, the committed `revision`, the abs
 
 ## Every ask in a Flow
 
-Every `ask` in a Flow is a question on its page, whichever skill asks it. Submit the round first, then ask with the receipt's `ask` payload and print the page path. The page question carries the description, trade-offs, and context; the `ask` carries only the numbered title and labels. A subagent never asks. It returns its open questions, and the top-level agent puts them on the page and asks them.
+Every `ask` in a Flow is a question on its page, whichever skill asks it. Submit the round first, then ask with the receipt's `ask` payload and print the page path. The page question carries the description, trade-offs, and context. The `ask` carries only the numbered title and labels. A subagent never asks. It returns its open questions, and the top-level agent puts them on the page and asks them.
 
 When `ask` returns, normalize its native output into one `answer` per question. The Flow's `response` has `status`, optional `picks` as letters, `text` for the user's verbatim custom words or note, and `note_on` for the letter of an unpicked option the note concerns. These are Flow fields, not a claim that the native tool returns those field names.
 
 Observed native omp forms:
 
-- A multi-question result has `details.results[]` entries with question ids. Match each entry to the receipt by id. A single-question result can instead have `details.question` and no id; it belongs to the one question just asked.
+- A multi-question result has `details.results[]` entries with question ids. Match each entry to the receipt by id. A single-question result can instead have `details.question` and no id. It belongs to the one question just asked.
 - `selectedOptions` contains labels, such as `"A. Keep local"`. Match them to the receipt's options and record their letters in `picks`. Set `status: "answered"` only for an explicit user selection, not a default supplied after timeout, cancellation, or a headless run.
 - `customInput` becomes `text` unchanged. When the user supplied it with an empty `selectedOptions`, it is words without a pick, so record `status: "answered"` and a separate reading.
 - A whole-call cancellation can return a tool error saying the ask was cancelled, with no per-question results. Record `cancelled` for each unanswered question in that call. Preserve earlier recorded answers, but never reconstruct a partial answer that the tool did not return.
 
 Keep any other observed note text, note target, timeout, cancellation, and automatic-selection evidence honest. Use `note_on`, `timed-out`, or `cancelled` only when the tool reports that meaning. An empty selection alone proves neither timeout nor cancellation. An unrelated tool failure is not a cancelled answer: report the failure on the Stage and leave its questions unanswered. Never invent native fields or interpret a supplied default as the user's choice.
 
-- `answered`: the user picked or wrote something. A pick is the answer, whatever its note says; it takes no `reading`.
-- `empty`, `cancelled`, `timed-out`: the user gave no answer. Keep any automatic selection in `picks`; it stays out of the decision.
+- `answered`: the user picked or wrote something. A pick is the answer, whatever its note says. It takes no `reading`.
+- `empty`, `cancelled`, `timed-out`: the user gave no answer. Keep any automatic selection in `picks`. It stays out of the decision.
 - `headless`: no user was asked. `picks` is the recommended option you substituted.
 
 Words with no pick need a `reading`, your interpretation, kept apart from the words:
@@ -203,48 +135,10 @@ Finishing a Stage authorizes nothing. An action that needs the user's confirmati
 
 ## Record progress
 
-The Overview opens with a progress strip built from these items. Each is its own fact. A finished Stage, a task count, a PR, a check, and the End state never stand in for one another. Authored PRs and checks stay labelled as reported, beside the host's separate read-only observations.
+Before recording tasks, blockers, End state, PRs, or checks, read [Record progress](references/contributions.md#record-progress). Authored records and host observations stay separate. Neither a finished Stage nor a green observation authorizes delivery or closes the Flow.
 
-- `task`: a step of the Flow's work. A new task has optional `ref`, `title`, and optional `state`, `evidence`, and `reason`. Update it with `{ "kind": "task", "task": "<ref or id>", ... }` and only the fields that change. Do not send the title again. The states are `pending` (the default), `active`, `done`, `skipped`, and `inapplicable`.
-  - `done` needs `evidence`: one or more strings, such as a command and its outcome, a commit, or a path. Evidence adds to what the task has.
-  - `skipped` and `inapplicable` need a `reason`. They are not left work. Use `inapplicable` for a step that does not apply to this Flow, such as the commit in an explanation.
-  - Any in-progress Stage of the Flow can update a task, such as an implement Stage that finishes a task that a to-tickets Stage recorded.
-- `blocker`: `text` and optional `ref` and `tasks` it blocks. An open blocker marks its tasks blocked. Resolve it with `{ "kind": "blocker", "blocker": "<ref or id>", "resolved": "<what cleared it>" }`.
-- `end-state`: `requested` is `commit`, `merge-ready`, `shipped`, or `none` for a Flow that delivers no commit or PR, such as an explanation. Record it when the Flow settles it. `reached` is `commit`, `merge-ready`, or `shipped`, with `evidence`, when the delivery actually got there. A Flow with `none` reaches no End state.
-- `pr`: a new PR has `url`, `state` (`open`, `merged`, or `closed`), and optional `ref` and `title`. Update it with `{ "kind": "pr", "pr": "<ref or id>", "state": ... }`.
-- `check`: `name`, `outcome` (`passed`, `failed`, or `pending`), and optional `ref`. A passed or failed check needs `evidence`. Update it with `{ "kind": "check", "check": "<ref or id>", "outcome": ..., "evidence": [...] }`.
+## Configure or present the local host
 
-The strip reads complete when the Flow has at least one task, no task is `pending` or `active`, no blocker is open, and its requested End state is `none` or reached. It does not close the Flow. `show` prints the same facts under `progress`.
+Before configuring adapters, recovering checkout context, diagnosing host startup, choosing an isolated `--home` namespace, or presenting a live/static fallback, read [Local host and read-only observations](references/host-observations.md). It defines the GitHub built-ins, the separate provider-neutral HTTP JSON override, GitLab limits, freshness states, port ownership, credentials, and lifecycle settings.
 
-## Read-only observations
-
-The host observes git and the separately configured Code host and CI service while a page is being read. It never runs the operation strings in project configuration. Observation changes update the open page without changing the authored revision, task completion, requested or reached End state, or Flow lifecycle.
-
-Existing `code-host.md` facts `Host: GitHub` and `Repo: owner/repo` select the fixed `gh pr list` adapter. Existing `ci.md` facts `CI service: GitHub Actions` and its own `Repo` select the fixed `gh run list` adapter independently. Repo values can be backtick-quoted as setup writes them. The files live under `docs/vstack/` in Standard mode or `<vstack root>/config/` in Private mode. A Flow's most recently recorded `branch:` alias selects the remote branch; without one, the adapter reads the checkout's branch. A detached checkout needs a branch alias. Record it with `alias branch:<branch>`.
-
-The detached host needs `git` and, for GitHub adapters, an authenticated `gh` on its startup `PATH` in the same user's home. Missing credentials, tools, or checkout access are observation failures, never a reason to run setup or log in automatically. Repository and provider errors are not copied into the page. Git reads HEAD, the branch, and tracked working-tree changes with optional locks disabled.
-
-An optional `- Flow observation: <JSON>` line in either configuration file overrides only that service's adapter. `adapter` is `github` in Code host configuration, `github-actions` in CI configuration, or `http-json` for a separate read-only JSON service. The GitHub adapters take `repo: "owner/repo"`. All adapters accept `poll_seconds`, at least `0.1`, default `15`, and positive `stale_after_seconds`, default `120`. Unsupported or absent provider configuration is unknown; invalid override configuration is unavailable.
-
-For example, a controlled Code host adapter can use:
-
-```text
-- Flow observation: {"adapter":"http-json","url":"http://127.0.0.1:43120/prs","poll_seconds":1,"stale_after_seconds":120}
-```
-
-The HTTP adapter sends only GET, follows no redirects, and accepts HTTPS or loopback `http://127.0.0.1`. URLs contain no credentials, query, or fragment. The service returns `{ "observed_at": "<ISO timestamp>", "records": [{ "name": "PR 42", "state": "open", "url": "https://..." }] }`. `url` is optional. Code host states are `open`, `merged`, `closed`, or `unknown`. CI states are `passed`, `failed`, `pending`, `cancelled`, `skipped`, or `unknown`. At most 100 records are accepted. Keep secrets out of record names and URLs. There are no configured commands, scripts, write operations, or browser-triggered actions.
-
-Each observation shows its adapter, source, last observation time, and attempt time. `current` means a recent successful read, not a successful build. `stale` keeps a last observation when its freshness period expires or a later read fails. `unavailable` means a read failed with no observation from that source. `unknown` means no configured adapter or no matching records. Empty results do not mean passed checks. A configuration or branch change discards the earlier source's cache. Restarting the host observes again; observations are not authored evidence or durable workflow history. Static exports show unknown observations and preserve reported records.
-
-
-## Present the page
-
-Never open the page automatically. When `live.state` is `serving`, print `live.url`. That scoped read link stays the same across folder moves and host restarts. When `live.state` is `unavailable`, print the plain absolute `page` path and `live.error`. The contribution remains committed. `live.state: "off"` means static-only mode.
-
-An open live page receives committed answers, Results, task changes, and new Stages without a reload. Updates keep the selected Stage, URL fragment, reading position, focus, and open evidence disclosures. A static file does not receive live updates.
-
-The script starts one detached Local Flow host for the user's home. The default loopback port is `42000 + uid % 10000`. `VSTACK_FLOW_PORT` selects a different port before startup. The running host's discovery record takes precedence until it stops. Hosts with different code or Bun runtimes report incompatibility instead of serving a page with an old renderer. Run `host stop` to stop that authenticated host, then retry the original command.
-
-`host status` reports the host without starting it. `host stop` stops only the host authenticated by this home's private credential. A port held by another program or another home's host stays untouched. The private discovery and secrets live under `<home>/.vstack/host/`; do not attach these files as evidence.
-
-The host stops after 30 idle minutes with no connected reader, publication, or progress sync. `VSTACK_FLOW_IDLE_SECONDS` changes that duration. Set `VSTACK_FLOW_HOST=off` for static-only authoring. Static pages remain readable with the server stopped. Browser links grant read access to one Flow, never authoring, host control, commands, tracker mutations, or merging.
+For keyboard navigation or reader help, read [Read the Flow page](references/reading.md).

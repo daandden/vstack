@@ -9,7 +9,7 @@ metadata:
 
 Create diagrams as self-contained HTML files with inline SVG and an editorial design system.
 
-Every question this skill or its references put to the user goes through omp's `ask` tool and `skill://flow-page`'s question contract. A direct result-producing run reads flow-page, discovers the supplied session and agent's binding with `bound`, and opens a diagram-design Stage on that Flow or starts one when unbound. Reopen a closed Flow explicitly. Under a caller, its questions and Results join the caller's Stage. A read-only reference load opens no Stage. A subagent returns each open question for the top-level agent instead of asking.
+Follow `skill://flow-page`'s "Stage entry/exit line" for a result-producing drawing run. Every question from this skill or its references uses the common Flow ask protocol.
 
 Forty-five visual types. Semantic patterns describe behavior; type references describe layout.
 
@@ -387,7 +387,7 @@ The editable HTML is a diagram source and runnable deliverable, not a separate r
 
 For an animated diagram, preserve its actual controls as a captured HTML runnable artifact and publish a prototype Result, with a companion Document for the explanation and fidelity ledger. Use the flow-page bundle contract and register every required resource. A static export states runtime availability honestly rather than claiming the animation runs there.
 
-Return files and structured content to a caller that owns publication. Otherwise submit these Results in the owned Stage, finish it after publication, and present the receipt's live URL or static fallback alongside the deliverable paths.
+Publish these Results alongside the deliverable paths. A helper drawer returns files and structured content to its producer.
 
 ### Accessible SVG contract (optional)
 

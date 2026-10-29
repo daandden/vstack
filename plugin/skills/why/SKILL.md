@@ -13,7 +13,7 @@ Read `references/epistemics.md` before investigating. Keep Direct, Supported, In
 
 Identify the code, pattern, feature, or decision and the rationale the question seeks. If the target is vague, infer it from the conversation, state your interpretation, and proceed.
 
-For a result-producing run, read `skill://flow-page` and discover the session and agent's Flow with `bound`. Open a why Stage on that Flow, or start a new Flow when unbound. Reopen a closed Flow explicitly. A read-only investigator under a caller returns findings for the caller's Stage without opening one.
+Follow `skill://flow-page`'s "Stage entry/exit line" for a historical explanation run. Read-only investigators return evidence to the coordinator.
 
 ## Step 2. Profile the repo and establish the code anchor
 
@@ -65,6 +65,6 @@ Under a calling skill or parent agent, return the output unedited. For a direct 
 Keep The question, The code in question, What we found, What we can reasonably infer, Competing hypotheses, What we do not know, Sources consulted, and Confidence summary. Drop optional empty sections but retain gaps and one coverage line per category, including null or skipped sources.
 If the user or caller says a change follows, append a Preserve / Change / Avoid / Risk constraint set after Sources consulted. An explain caller does not request this tail.
 
-Publish these sections as a Document Result in the run's Stage, preserving the confidence tiers, citations, coverage map, null searches, and gaps. A caller that owns publication submits the returned content in its Stage instead. Finish the owned Stage after publication and present the receipt's live URL or static fallback. Follow-up explanations stay on this Flow as Results.
+Publish these sections as a Document Result in the run's Stage, preserving confidence tiers, citations, the coverage map, null searches, and gaps. Helper investigators return their evidence to this producer. Follow-up explanations remain Results on the same Flow.
 
 Investigators and the synthesizer modify no product files or external state. Cite explicit historical evidence for intent. Code demonstrates mechanics, not its own motivation. Trace earlier decisions instead of assuming the latest commit explains the present shape.

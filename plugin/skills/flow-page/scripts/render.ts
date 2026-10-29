@@ -1,30 +1,27 @@
-// The one Flow page renderer. It turns the derived view into the whole static page; every string from a
-// contribution is escaped, so the page's only markup, style, and script come from this file and the template.
-
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { highlighter, linesOf, markTrailing, parseDiff, type DiffLine, type Token } from "./code.ts";
 import { optionLabel, type AnswerState, type Attachment, type ComparisonView, type Condition, type Demo, type DemoLiteral, type DocView, type Effect, type Figure, type MetricsView, type QuestionView, type ResultView, type StageView, type Transition, type View } from "./model.ts";
-import type { ProgressView } from "./progress.ts";
+import type { AttachmentType, ClaimState, NonConsent, ResponseStatus, ReviewAxisName, ReviewStatus, StageState, TimelineOutcome, VERDICTS, MEASURE_VERDICTS } from "./model.ts";
+import type { CheckOutcome, EndState, PrState, ProgressView, TaskState } from "./progress.ts";
 import { observationVersion, unknownObservations, type Observations } from "./observations.ts";
 
 /** Raise this when the page a given state renders to changes, so a page names the renderer that made it. */
-export const RENDERER = 17;
+export const RENDERER = 18;
 const TEMPLATE = join(import.meta.dir, "..", "templates", "flow-page.html");
 export type Runtimes = Record<string, { url?: string; reason?: string }>;
 
-const STATE_LABELS: Record<string, string> = { "not-started": "Not started", "in-progress": "In progress", finished: "Finished" };
-const CLAIM_LABELS: Record<string, string> = { confirmed: "Confirmed", cleared: "Cleared", unproven: "Unproven" };
-const TYPE_LABELS: Record<string, string> = { image: "Image", video: "Video", svg: "SVG figure", file: "File", trace: "Trace", evidence: "Captured evidence", artifact: "Runnable artifact" };
-const TASK_LABELS: Record<string, string> = { pending: "To do", active: "Active", done: "Done", skipped: "Skipped", inapplicable: "Does not apply" };
-const END_LABELS: Record<string, string> = { commit: "Commit", "merge-ready": "Merge-ready", shipped: "Shipped" };
-const PR_LABELS: Record<string, string> = { open: "Open", merged: "Merged", closed: "Closed" };
-const CHECK_LABELS: Record<string, string> = { passed: "Passed", failed: "Failed", pending: "Pending" };
-const OUTCOME_LABELS: Record<string, string> = { succeeded: "Succeeded", failed: "Failed", blocked: "Blocked", skipped: "Skipped", unknown: "Outcome unknown", noted: "Noted" };
-const AXIS_LABELS: Record<string, string> = { standards: "Standards", spec: "Spec", "blast-radius": "Blast radius" };
-const REVIEW_LABELS: Record<string, string> = { findings: "Findings", clean: "Clean", skipped: "Skipped", unavailable: "Unavailable", blocked: "Blocked" };
+const STATE_LABELS: Record<StageState, string> = { "not-started": "Not started", "in-progress": "In progress", finished: "Finished" };
+const CLAIM_LABELS: Record<ClaimState, string> = { confirmed: "Confirmed", cleared: "Cleared", unproven: "Unproven" };
+const TYPE_LABELS: Record<AttachmentType, string> = { image: "Image", video: "Video", svg: "SVG figure", file: "File", trace: "Trace", evidence: "Captured evidence", artifact: "Runnable artifact" };
+const TASK_LABELS: Record<TaskState, string> = { pending: "To do", active: "Active", done: "Done", skipped: "Skipped", inapplicable: "Does not apply" };
+const END_LABELS: Record<EndState, string> = { commit: "Commit", "merge-ready": "Merge-ready", shipped: "Shipped" };
+const PR_LABELS: Record<PrState, string> = { open: "Open", merged: "Merged", closed: "Closed" };
+const CHECK_LABELS: Record<CheckOutcome, string> = { passed: "Passed", failed: "Failed", pending: "Pending" };
+const OUTCOME_LABELS: Record<TimelineOutcome, string> = { succeeded: "Succeeded", failed: "Failed", blocked: "Blocked", skipped: "Skipped", unknown: "Outcome unknown", noted: "Noted" };
+const AXIS_LABELS: Record<ReviewAxisName, string> = { standards: "Standards", spec: "Spec", "blast-radius": "Blast radius" };
+const REVIEW_LABELS: Record<ReviewStatus, string> = { findings: "Findings", clean: "Clean", skipped: "Skipped", unavailable: "Unavailable", blocked: "Blocked" };
 
-/** Timeline times retain their recorded offset instead of adopting the viewer's timezone. */
 function eventTime(iso: string): string {
   const [, y, mo, d, rest] = iso.match(/^(\d{4})-(\d{2})-(\d{2})(.*)$/)!;
   const month = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][Number(mo) - 1];
@@ -36,7 +33,6 @@ function eventTime(iso: string): string {
 const tokensHtml = (tokens: Token[]) => markTrailing(tokens).map((t) => (t.kind ? `<span class="tok-${t.kind}">${esc(t.text)}</span>` : esc(t.text))).join("");
 
 type CodeEntry = ResultView["entries"][number];
-/** Known source lines have `-L<n>` and `-R<n>` anchors. The preformatted text stays byte-for-byte as submitted. */
 function codeEntryHtml(e: CodeEntry, askLine: string): string {
   const loc = e.location!;
   const hl = highlighter(e.language as string | undefined);
@@ -94,9 +90,7 @@ function codeEntryHtml(e: CodeEntry, askLine: string): string {
 }
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
-/** Citation markers of one Document: `[@ref]` becomes a numbered link to the citation. */
 type Cites = Map<string, { anchor: string; n: number }>;
-/** Escaped text with `code` and [text](https://url) kept, and citation markers numbered when `cites` is given. */
 function text(s: string, cites?: Cites): string {
   const out = esc(s)
     .replace(/`([^`]+)`/g, "<code>$1</code>")
@@ -107,7 +101,6 @@ function text(s: string, cites?: Cites): string {
     return c ? `<a class="cite" href="#${c.anchor}" aria-label="Citation ${c.n}">[${c.n}]</a>` : m;
   });
 }
-/** Paragraphs split on blank lines; a block whose lines all start with "- " is a bullet list. */
 function prose(s: string, cites?: Cites): string {
   return s
     .split(/\n\s*\n/)
@@ -142,7 +135,6 @@ function figuresHtml(figures: Figure[] | undefined, v: View): string {
   }).join("\n");
 }
 
-/** What the Overview shows for an answer. Only an explicit pick shows an option; words read as a decision show that reading. */
 function shownAnswer(q: QuestionView): { cls: "pick" | "read" | "open"; html: string } {
   const a = q.answer;
   if (a.picks) return { cls: "pick", html: text(a.picks.join(", ")) };
@@ -153,14 +145,13 @@ function shownAnswer(q: QuestionView): { cls: "pick" | "read" | "open"; html: st
   return { cls: "open", html: "Open" };
 }
 
-const NOT_ASKED: Record<string, string> = {
+const NOT_ASKED: Record<Exclude<ResponseStatus, "answered" | "headless">, string> = {
   "timed-out": "The ask timed out. This is not your answer.",
   cancelled: "The ask was cancelled. This is not your answer.",
   empty: "The ask came back empty. This is not your answer.",
 };
-const NOT_DECIDED: Record<string, string> = { question: "Your words ask a question", concern: "Your words raise a concern", ambiguous: "Your words do not settle it" };
+const NOT_DECIDED: Record<NonConsent, string> = { question: "Your words ask a question", concern: "Your words raise a concern", ambiguous: "Your words do not settle it" };
 
-/** Your own words first, then, apart from them, how they were read; nothing reads a non-answer as consent. */
 function answerLines(q: QuestionView): string {
   const a = q.answer;
   const line = (state: string, label: string, body: string) => `\n<p class="answer" data-state="${state}"><span class="label">${label}</span><span>${body}</span></p>`;
@@ -175,7 +166,7 @@ function answerLines(q: QuestionView): string {
     const on = r.note_on ? ` (on ${text(optionLabel(q, r.note_on))}, not picked)` : "";
     if (r.status === "answered" && r.text !== undefined) out.push(line(a.state, a.picks ? `Your note${on}` : `Your words${on}`, text(r.text)));
     if (r.status === "headless") out.push(line(a.state, "Headless", `No one was asked; ${text(r.picks!.map((p) => optionLabel(q, p)).join(", "))} stands in as the recommended answer. This is not your answer.`));
-    else if (NOT_ASKED[r.status]) out.push(line(a.state, "Unanswered", `${NOT_ASKED[r.status]}${r.picks ? ` The automatic selection, ${text(r.picks.map((p) => optionLabel(q, p)).join(", "))}, is ignored.` : ""}`));
+    else if (r.status !== "answered") out.push(line(a.state, "Unanswered", `${NOT_ASKED[r.status]}${r.picks ? ` The automatic selection, ${text(r.picks.map((p) => optionLabel(q, p)).join(", "))}, is ignored.` : ""}`));
   }
   const rd = a.reading;
   if (rd?.outcome === "resolved") {
@@ -230,7 +221,6 @@ ${options}
 
 const size = (n: number) => (n < 1024 ? `${n} B` : n < 1024 * 1024 ? `${(n / 1024).toFixed(1)} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
 
-/** One typed attachment where a Result shows it. `id` is unique per place, because one attachment can appear twice. */
 function attachmentHtml(a: Attachment, id: string): string {
   let body: string;
   let state: string;
@@ -303,10 +293,8 @@ ${blocks.join("\n")}
 }
 
 const OP_WORDS: Record<string, string> = { eq: "is", ne: "is not", lt: "<", le: "≤", gt: ">", ge: "≥" };
-/** How the page shows a demo value; the page script shows changed values the same way. */
 const demoValue = (v: DemoLiteral) => (typeof v === "boolean" ? (v ? "yes" : "no") : String(v));
 
-/** One line per transition of an action, so the static page says what each action does without running it. */
 function demoRules(d: Demo): string {
   const label = new Map([...d.values, ...d.states].map((x) => [x.name, x.label]));
   const cond = (c: Condition): string => {
@@ -330,7 +318,6 @@ function demoRules(d: Demo): string {
     .join("")}</dl><p class="source">The first line that applies runs; with none, the action is unavailable. Reset returns to ${esc(label.get(d.start)!)} with every starting value.</p></details>`;
 }
 
-/** A declarative demo, shown at its start. The page script runs it in the browser and keeps its state there only. */
 function demoHtml(r: ResultView, d: Demo): string {
   const id = `${r.anchor}-demo`;
   const start = d.states.find((st) => st.name === d.start)!;
@@ -350,7 +337,7 @@ ${demoRules(d)}
 </div>`;
 }
 
-const VERDICT_LABELS: Record<string, string> = { chosen: "Chosen", tie: "Tie", inconclusive: "Inconclusive" };
+const VERDICT_LABELS: Record<(typeof VERDICTS)[number], string> = { chosen: "Chosen", tie: "Tie", inconclusive: "Inconclusive" };
 
 function comparisonHtml(c: ComparisonView, shown: Map<string, Attachment>): string {
   const chosen = c.alternatives.find((a) => a.ref === c.verdict.alternative);
@@ -384,8 +371,7 @@ ${rows.join("\n")}
 </div>`;
 }
 
-const MEASURE_LABELS: Record<string, string> = { better: "Reported better", worse: "Reported worse", "no-difference": "Reported no measurable difference", inconclusive: "Reported inconclusive" };
-/** A number as the producer wrote it, with an explicit sign when it is a change. */
+const MEASURE_LABELS: Record<(typeof MEASURE_VERDICTS)[number], string> = { better: "Reported better", worse: "Reported worse", "no-difference": "Reported no measurable difference", inconclusive: "Reported inconclusive" };
 const signed = (n: number) => (n > 0 ? `+${n}` : String(n));
 
 function metricsHtml(m: MetricsView): string {
@@ -478,7 +464,7 @@ function resultHtml(r: ResultView, v: View, historical = false, runtimes: Runtim
     body = `<ol class="entries">\n${r.entries
       .map((e) => `<li class="claim" id="${e.anchor}" data-status="${e.status}">
 ${aliases(v, e.anchor)}<h3><span class="entry-id">${e.id}</span>${text(e.claim as string)}</h3>
-<p class="tag">${CLAIM_LABELS[e.status as string]}</p>
+<p class="tag">${CLAIM_LABELS[e.status as ClaimState]}</p>
 ${fields([["Evidence", e.evidence as string], ["Missing proof", e.missing_proof as string], ["Consequence", e.consequence as string]])}${askLine(e.questions)}
 </li>`)
       .join("\n")}\n</ol>`;
@@ -491,7 +477,7 @@ ${fields([["Evidence", e.evidence as string], ["Missing proof", e.missing_proof 
         const t = e.time as string | undefined;
         const shown = ((e.attachments as string[] | undefined) ?? []).map((id) => attachmentHtml(byId.get(id)!, `${e.anchor}-${id}`));
         return `<li class="event" id="${e.anchor}" data-outcome="${e.outcome}">
-<p class="event-meta">${t ? `<time datetime="${esc(t)}">${eventTime(t)}</time>` : `<span class="no-time">Time not recorded</span>`}<span class="outcome">${OUTCOME_LABELS[e.outcome as string]}</span></p>
+<p class="event-meta">${t ? `<time datetime="${esc(t)}">${eventTime(t)}</time>` : `<span class="no-time">Time not recorded</span>`}<span class="outcome">${OUTCOME_LABELS[e.outcome as TimelineOutcome]}</span></p>
 <h3><span class="entry-id">${e.id}</span>${text(e.title as string)}</h3>${e.detail ? `\n<div class="description">${prose(e.detail as string)}</div>` : ""}${e.evidence ? `\n${fields([["Evidence", e.evidence as string]])}` : ""}${shown.length ? `\n<div class="attachments">${shown.join("\n")}</div>` : ""}${askLine(e.questions)}
 </li>`;
       })
@@ -502,7 +488,7 @@ ${fields([["Evidence", e.evidence as string], ["Missing proof", e.missing_proof 
 ${aliases(v, e.anchor)}<h3><span class="entry-id">${e.id}</span>${text(e.title as string)}</h3>
 <p class="tag">${text(e.label as string)} (${e.blocking ? "blocking" : "non-blocking"})</p>
 ${fields([["Impact", e.impact as string], ["Action", e.action as string]])}
-${r.shape === "review" ? fields([["Axis", AXIS_LABELS[e.axis as string]], ["Location", e.location as unknown as string]]) : ""}
+${r.shape === "review" ? fields([["Axis", AXIS_LABELS[e.axis as ReviewAxisName]], ["Location", e.location as unknown as string]]) : ""}
 <details class="evidence"><summary>Evidence</summary><p>${text(e.evidence as string)}</p></details>${figuresHtml(e.figures as Figure[] | undefined, v)}${askLine(e.questions)}
 </li>`)
       .join("\n")}\n</ol>`;
@@ -592,7 +578,6 @@ ${bullets.join("\n")}
   return { nav, body };
 }
 
-/** Authored progress and read-only observations stay separate facts. */
 function progressHtml(p: ProgressView, v: View, observations: Observations): string {
   const stageLabel = (id: string) => esc(v.stages.find((st) => st.id === id)!.label);
   const when = (s: { time: string; stage: string }) => `<span class="source">${formatTime(s.time)}, <a href="#${s.stage}">${stageLabel(s.stage)}</a></span>`;
@@ -701,7 +686,6 @@ ${sourcesHtml(t.sourceTexts)}
 </article>`);
     panels.push(`<section class="tab" id="topics" role="tabpanel" aria-labelledby="tab-topics" hidden>\n${notes.join("\n")}\n</section>`);
   }
-  // A closed or reopened Flow says so under its heading; a Flow that was never closed needs no line.
   const last = v.lifecycle.at(-1);
   const lifecycle = last ? `<p class="lifecycle" data-state="${last.event}">${last.event === "closed" ? "Closed" : "Reopened"} <time datetime="${esc(last.time)}">${formatTime(last.time)}</time></p>` : "";
   const head = `<header class="page-head">${v.flow.crumb ? `<p class="crumb">${text(v.flow.crumb)}</p>` : ""}<h1>${text(v.flow.title)}</h1>${lifecycle}</header>`;

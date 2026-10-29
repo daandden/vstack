@@ -41,7 +41,7 @@ Create files lazily: only when you have something to write. If no `GLOSSARY.md` 
 
 ## During the session
 
-Read `skill://flow-page` before authoring. Every question below is a question on the Flow page and goes through its round, receipt `ask`, and raw answer with separate reading. Inside another skill's in-progress Stage, such as grill-with-docs's, join that Stage. Otherwise use `bound` or the work's alias to find its Flow, and open a domain-modeling Stage, starting a Flow if none exists. A timeout, cancellation, or headless recommendation is not the user's answer. Keep its term open; for an ADR offer ask once more with `again`, then create no ADR without an explicit pick or resolved reading. Publish resulting terms, scenarios, and decisions as Document Results linked to the canonical glossary or ADR files, then finish any Stage this skill opened. Loading this skill only as a reference creates no Stage.
+Follow `skill://flow-page`'s "Stage entry/exit line" for a domain-modeling run. A timeout, cancellation, or headless recommendation does not settle a term. For an ADR offer, ask once more with `again`, then create no ADR without an explicit pick or resolved reading. Publish resulting terms, scenarios, and decisions as Document Results linked to the canonical glossary or ADR files.
 
 ### Challenge against the glossary
 

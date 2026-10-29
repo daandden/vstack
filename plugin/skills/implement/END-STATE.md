@@ -20,7 +20,7 @@ Keep one run record across every ticket. It holds the requested End state and th
 - The final-diff Blast radius findings (step 5)
 - The Verify evidence paths
 
-Read `skill://flow-page`. Find the Flow by the caller's supplied identity, then its `spec:` or `ticket:` alias, including a ticket's parent spec. Otherwise use this session and agent's `bound` Flow. Migrate a supplied historical structured page before continuing it. A missing alias can start a Flow; ambiguous lookup or failed migration needs resolution, not a second page. Open the caller's `implement` or `implement-spec` Stage, with `--ticket` when known and `--parent` when continuing finished work. Use `reopen` for a closed Flow. Record the Flow id, Stage id, URL, and static path in the run record and chain facts. Every shared-step `ask` belongs to this Stage. Follow [Publish delivery progress](#publish-delivery-progress) throughout the run.
+Follow `skill://flow-page`'s "Stage entry/exit line" for the caller's implement or implement-spec run. Record the Flow id, Stage id, URL, and static path in the run record and chain facts. Follow [Publish delivery progress](#publish-delivery-progress) throughout the run.
 
 Settle the End state once, before any work: commit, merge-ready, or shipped. Commit stays on the current branch. Merge-ready opens a PR and drives it until it can merge. Shipped merges it into the default branch. Reuse an already settled caller End state rather than settling it again. Otherwise settle it in this order:
 
@@ -115,7 +115,7 @@ Finish the caller's Stage through flow-page after publishing its Results and ret
 
 This is the common publication contract for implement, implement-spec, tdd, pr, open-pr, babysit, ship, and Verify setup and maintenance. Read `skill://flow-page` for the typed fields and receipts. Keep canonical run records, PR body files, Verify skills, and machine verdicts as real deliverables. Publish their human-facing Results on the same Flow, never a separate report page.
 
-A result-producing skill opens its own Stage on the caller's Flow, with the caller's Stage as `--parent`. An unbound standalone run opens a Flow. Reference reads and nested tdd cycles use the caller's Stage. Save the caller's binding before a nested run and restore it with `bind` on return, including a blocked return. Pass the Flow and Stage ids to workers; only the coordinator publishes returned results. A run-only verifier returns its machine record without authoring. ship publishes its validated human summary.
+Follow `skill://flow-page`'s "Stage entry/exit line". A nested tdd cycle is part of the existing implementation run, not an independent result-producing run. ship publishes its validated human summary.
 
 Record shared and local execution steps as `task` items before work. Reuse existing ticket and chain task ids from `show` instead of duplicating them. Update only changed fields. Activate a task when work starts; mark it done with concrete evidence only when its completion criterion holds. Use `skipped` or `inapplicable` with a reason for omitted work. A task waiting for a missing prerequisite stays pending or active with a linked `blocker`; resolve that blocker only when the prerequisite clears.
 

@@ -23,7 +23,7 @@ A **seam** is the public boundary you test at: the interface where you observe b
 
 Put this question in the `ask`: "What's the public interface, and which seams should we test?" An answer that `ask` picks after a timeout is not the user's, so the seam stays unconfirmed.
 
-Read `skill://flow-page`. Put this `ask` in the caller's bound Stage, such as implement's or implement-spec's. A standalone result-producing tdd run opens its own Stage on the existing Flow, or starts a Flow when unbound. Loading this reference or starting another red-green cycle opens no Stage. Reuse seams the spec, ticket, or user already confirmed; ask only about a missing seam.
+Follow `skill://flow-page`'s "Stage entry/exit line" for a standalone result-producing tdd run. A test cycle within implement or implement-spec is part of that existing run. Reuse seams already confirmed by the spec, ticket, or user. Ask only about a missing seam.
 
 When the shape of that interface is itself in question (how deep the module is, where the seam belongs, what the interface should expose), use `skill://codebase-design` for the vocabulary. It is the shared source of the module, interface, depth, seam, adapter, leverage and locality terms, and it is a reference to consult, not a session to run.
 
@@ -41,4 +41,4 @@ When the shape of that interface is itself in question (how deep the module is, 
 
 ## Record the loop
 
-Follow skill://implement/END-STATE.md's "Publish delivery progress" in the caller's Stage, or the standalone tdd Stage. Append red then green commands and observed outcomes to its Timeline, attach the captured outputs, and record checks against the tested revision. State a missing red, unconfirmed seam, skipped check, or unavailable live proof explicitly. A green test reaches no delivery End state. Finish only a standalone Stage that this run opened, and restore the caller's binding on return.
+Follow skill://implement/END-STATE.md's "Publish delivery progress" in the caller's Stage, or the standalone tdd Stage. Append red then green commands and observed outcomes to its Timeline, attach the captured outputs, and record checks against the tested revision. State a missing red, unconfirmed seam, skipped check, or unavailable live proof explicitly. A green test reaches no delivery End state.

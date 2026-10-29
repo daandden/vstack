@@ -14,7 +14,7 @@ The issue tracker and triage label vocabulary should have been provided to you. 
 
 2. Sketch out the seams at which you're going to test the feature. Existing seams should be preferred to new ones. Use the highest seam possible. If new seams are needed, propose them at the highest point you can. The fewer seams across the codebase, the better - the ideal number is one.
 
-Confirm with one `ask` that these seams match the user's expectations. Read `skill://flow-page` first. Use `bound` to discover the session and agent's Flow, or `find ticket:<source issue>` when starting from an issue in a later session. Open a to-spec Stage on that Flow, or start one with `open --skill to-spec --title <topic>` when none exists. A historical structured page is migrated first, not overwritten. Submit the round and use its receipt's `ask`, then record raw answers and separate readings. Automatic picks never confirm a seam.
+Follow `skill://flow-page`'s "Stage entry/exit line". Discover the source Flow by `ticket:<source issue>` when known. Confirm with one `ask` that these seams match the user's expectations. Automatic picks never confirm a seam.
 
 When the change spans more than one module, draft a capability map before that `ask`, so that you weigh the module split before the spec fixes it. Use `skill://codebase-design`'s vocabulary. Submit the map to the to-spec Stage as a table Result with the columns Module, Responsibility, Depends on, and Build order, one row per module. Depends on gives the dependency direction: the modules that this module uses. A change inside one module gets no map.
 
@@ -32,7 +32,7 @@ Fix the draft and show the coverage table as DRIFT-CHECK.md's "Fix and show" say
 
 Then publish the spec to the project issue tracker. Apply the `ready-for-agent` triage label - no need for additional triage.
 
-Publish the full spec as a Document Result, with `canonical: { tracker, revision }` naming the published issue and its observed revision, or `{ file }` for a local-markdown spec. If publication fails, put the full draft and observed failure on the Stage as a Document Result, explicitly not published. After successful publication, add `alias spec:<number-or-feature-slug>` to the existing Flow; also add `ticket:<source issue>` when applicable. Identity and the live URL stay unchanged, so no folder rename is required. Present the receipt's URL or static fallback and finish the to-spec Stage. The tracker or local file remains canonical.
+Publish the full spec as a Document Result, with `canonical: { tracker, revision }` naming the published issue and its observed revision, or `{ file }` for a local-markdown spec. If publication fails, put the full draft and observed failure on the Stage as a Document Result, explicitly not published. After successful publication, add `alias spec:<number-or-feature-slug>` to the existing Flow. Also add `ticket:<source issue>` when applicable. Identity and the live URL stay unchanged, so no folder rename is required. The tracker or local file remains canonical.
 
 <spec-template>
 

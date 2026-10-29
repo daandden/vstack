@@ -17,7 +17,7 @@ Resolve the absolute vstack root and mode through the Private-mode rule. Resolve
 
 Record the artifact path, format, capture time, app revision when known, and the workload that triggered the symptom. Record unknown fields as unknown. This step ends with the branch and absolute evidence directory named.
 
-Read `skill://flow-page` and use `bound` with the supplied session and agent identity. Open a `forensics` Stage on the bound Flow with `--parent` naming the caller's Stage, or start a Flow when unbound. A reference read creates no Stage. The read-only checkout rule allows Flow publication in Scratch, not tracked edits. Route any asks through this Stage.
+Follow `skill://flow-page`'s "Stage entry/exit line". The read-only checkout rule permits Flow publication in Scratch, not tracked edits.
 
 ## 2. Capture the live signal
 
@@ -89,6 +89,6 @@ Report the following:
 
 Publish this hand-back as a Document Result with citations to the capture and source mapping. Put query measurements in Metrics Results with numeric values, units, capture duration, workload, sample counts, and uncertainty. Use Code Results for the saved SQL and relevant source excerpts, and a Timeline for captures, probes, and cleanup. Record mechanism claims in a ledger. Only paired-capture confirmation earns `confirmed`; otherwise keep `unproven`, the strongest-hypothesis label, alternatives, and missing proof.
 
-Capture the redacted artifacts, database, queries, and probe outputs as typed attachments on those Results. Strip secrets from the captured bytes before submission. Preserve the original evidence and derived files at their required Scratch paths. Finish the Stage after publishing, restore the caller's binding when nested, and summarize the Result in the reply. Write no separate report page.
+Capture the redacted artifacts, database, queries, and probe outputs as typed attachments on those Results. Strip secrets from the captured bytes before submission. Preserve the original evidence and derived files at their required Scratch paths. Write no separate report page.
 
 For a defect or slowness, recommend `/skill:diagnosing-bugs` through the Matt flow. Pass the cited diagnosis and evidence paths as Phase 1 input. Stop at the diagnosis. Do not apply a fix or start an End-state chain.

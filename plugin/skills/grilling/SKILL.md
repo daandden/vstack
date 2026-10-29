@@ -5,7 +5,7 @@ description: Grill the user relentlessly about a plan, decision, or idea. Use wh
 
 Interview the user through `ask` until you reach a shared understanding. Map a design tree: every decision branches into the decisions that depend on it. Work in rounds. The frontier contains every decision whose prerequisites are settled. A question that depends on an open decision waits for a later round.
 
-Every grilling run writes into its Flow page as a Stage. Read `skill://flow-page` before the first contribution. Use `bound` with the extension's session and agent identity, then continue that Flow or find it by its issue, spec, ticket, branch, or run alias. If none exists, `open --skill grilling --title <topic>` starts one. If the caller already owns an in-progress Stage, join it with `bind`; otherwise open a Stage with the caller's skill name, or `grilling` for a direct run. Keep the Flow and Stage ids from the receipt. Parallel callers name both on every write.
+Follow `skill://flow-page`'s "Stage entry/exit line" for a grilling run. When a producer uses this reference only as its interviewing procedure, its own run owns the decisions and close.
 
 ## Find facts
 
@@ -48,7 +48,7 @@ A note, Other text, or pushback that names an Assumed decision reopens it, whate
 
 ## Close
 
-An empty frontier means every branch was visited and no decision remains silently assumed: each one was asked or is Assumed in the open. Submit a `close` with every latest asked decision as what is now true; code adds the unreopened Assumed picks and decision provenance. Present the page. If grilling owns the Stage, submit `stage` with `state: "finished"` as flow-page's "Close the Stage" says. The close asks nothing, so the turn ends after the calling skill's own close steps.
+An empty frontier means every branch was visited and no decision remains silently assumed. Each one was asked or is Assumed in the open. Follow flow-page's "Close the Stage" for the summary. The close asks nothing, so the turn ends after the producer's own close steps.
 
 The user's next prompt confirms the summary or pushes back. A pushback opens a new Stage with `--parent` when the earlier Stage is finished, and reopens its named questions with `again` or its Assumed picks with `reopens`. Keep the earlier record intact. A calling skill that acts after the grill, such as triage's or wayfinder's tracker writes, acts only after a next prompt confirms the summary. Finishing a Stage is not authorization.
 

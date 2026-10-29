@@ -1,7 +1,3 @@
-// Code/diff content: the unified-diff parser that checks a diff and numbers its lines, and the small syntax
-// highlighter the renderer uses. Both are pure. A token is escaped text with an optional class; nothing here
-// reads input as markup.
-
 export type Hunk = { old: { start: number; count: number }; new: { start: number; count: number } };
 /** One line of a diff as submitted, with the old and new line numbers it stands at. */
 export type DiffLine = { kind: "meta" | "hunk" | "ctx" | "del" | "add" | "note"; text: string; old?: number; new?: number; hunk?: number };
@@ -78,9 +74,6 @@ export function parseDiff(diff: string): { lines: DiffLine[]; hunks: Hunk[] } | 
   if (!hunks.length) return "a unified diff needs at least one @@ hunk";
   return { lines, hunks };
 }
-
-// ---------------------------------------------------------------------------------------------------------------
-// Syntax highlighting: comments, strings, numbers, and keywords for common languages. Unknown languages stay plain.
 
 export type Token = { text: string; kind?: "kw" | "str" | "com" | "num" | "ws" };
 type Lang = { line: string[]; block?: [string, string]; quotes: string[]; keywords: Set<string>; hashNeedsSpace?: boolean };

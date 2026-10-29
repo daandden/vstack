@@ -12,11 +12,11 @@ Open the todo list with one item per step 1–5 before task-specific items. Each
 
 ## Flow page and diagnostics
 
-Read `skill://flow-page` before inventory. Use the extension's session and agent identity with `bound`, then open one `clean-wt` Stage in the bound Flow, or start a Flow for this cleanup when unbound. Put confirmation questions and their actual responses on this Stage. The page records approval; it never replaces the deletion rules below.
+Follow `skill://flow-page`'s "Stage entry/exit line" before inventory. The page records approval. It never replaces the deletion rules below.
 
 Save each inventory and removal command's exit code, stdout, and stderr in a `clean-wt` entry under the supplied Scratch dir. Preserve the raw JSON and failure diagnostics. Before every exit, publish a table Result with every checkout's outcome, ownership or uncertainty reason, work classification when investigated, and evidence. Include skipped investigations and failures explicitly. Attach the raw inventory, removal, and verification diagnostics as captured evidence, with a Document Result for errors that have no checkout row.
 
-Step 5's grouped summary is this Stage's Result, not a second report page. Retain its classes and recommendations. Finish the Stage after publication, retiring unresolved questions with reasons, then present the receipt's live URL or static fallback and summarize in chat. Loading this skill only as a reference creates no Stage.
+Step 5's grouped summary is this Stage's Result, not a second report page. Retain its classes and recommendations. Summarize the published outcome in chat.
 
 ## The script
 

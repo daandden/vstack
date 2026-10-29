@@ -16,28 +16,30 @@ export default function vstack(pi: ExtensionAPI): void {
   registerFlowPresentation(pi);
 }
 
+const flowScript = fileURLToPath(new URL("../skills/flow-page/scripts/flow-page.ts", import.meta.url));
+const flowIdentity = (ctx: ExtensionContext) => [
+  "--session", ctx.sessionManager.getSessionId(),
+  "--agent", ctx.agent.kind === "main" ? "main" : ctx.agent.id,
+];
+
+async function flowPage<T>(pi: ExtensionAPI, ctx: ExtensionContext, args: string[]): Promise<T> {
+  const result = await pi.exec("bun", [flowScript, ...args, ...flowIdentity(ctx)], { cwd: ctx.cwd });
+  if (result.code !== 0) throw new Error(result.stderr.trim() || `Flow command exited ${result.code}`);
+  return JSON.parse(result.stdout);
+}
+
 function registerFlowPresentation(pi: ExtensionAPI): void {
-  const script = fileURLToPath(new URL("../skills/flow-page/scripts/flow-page.ts", import.meta.url));
   type Bound = {
     binding: { flow: string; stage: string } | null;
     page?: string;
     live?: { state: "serving"; url: string } | { state: "unavailable"; error: string } | { state: "off" };
     presentation?: { state: "current" | "stale"; error?: string };
   };
-  const identity = (ctx: ExtensionContext) => [
-    "--session", ctx.sessionManager.getSessionId(),
-    "--agent", ctx.agent.kind === "main" ? "main" : ctx.agent.id,
-  ];
-  async function bound(ctx: ExtensionContext): Promise<Bound> {
-    const result = await pi.exec("bun", [script, "bound", ...identity(ctx)], { cwd: ctx.cwd });
-    if (result.code !== 0) throw new Error(result.stderr.trim() || `Flow lookup exited ${result.code}`);
-    return JSON.parse(result.stdout);
-  }
   pi.on("before_agent_start", async (_event, ctx) => {
-    const args = identity(ctx).map(value => JSON.stringify(value)).join(" ");
+    const args = flowIdentity(ctx).map(value => JSON.stringify(value)).join(" ");
     let target = "";
     try {
-      const current = await bound(ctx);
+      const current = await flowPage<Bound>(pi, ctx, ["bound"]);
       if (current.binding) target = ` Your bound Flow is ${current.binding.flow}, Stage ${current.binding.stage}.`;
     } catch (error) {
       target = ` Flow binding lookup failed: ${error instanceof Error ? error.message : String(error)}.`;
@@ -51,7 +53,7 @@ function registerFlowPresentation(pi: ExtensionAPI): void {
     if (ctx.agent.kind !== "main" || event.isTerminal === false) return;
     let content: string;
     try {
-      const current = await bound(ctx);
+      const current = await flowPage<Bound>(pi, ctx, ["bound"]);
       if (!current.binding) return;
       content = current.live?.state === "serving"
         ? `Flow page: ${current.live.url}`
@@ -263,14 +265,8 @@ interface ScratchEntry {
 
 function registerCleanCommand(pi: ExtensionAPI): void {
   const script = fileURLToPath(new URL("../skills/vstack-tmp/scripts/clean.ts", import.meta.url));
-  const flowScript = fileURLToPath(new URL("../skills/flow-page/scripts/flow-page.ts", import.meta.url));
   async function publish(ctx: ExtensionContext, outcome: string, diagnostics: { heading: string; blocks: { code: string }[] }[]) {
-    const identity = ["--session", ctx.sessionManager.getSessionId(), "--agent", ctx.agent.kind === "main" ? "main" : ctx.agent.id];
-    const run = async (args: string[]) => {
-      const result = await pi.exec("bun", [flowScript, ...args, ...identity], { cwd: ctx.cwd });
-      if (result.code !== 0) throw new Error(result.stderr.trim() || `Flow publication exited ${result.code}`);
-      return JSON.parse(result.stdout);
-    };
+    const run = (args: string[]) => flowPage<any>(pi, ctx, args);
     const current = await run(["bound"]);
     if (!current.binding) return;
     const caller = await run(["show", "--flow", current.binding.flow]);

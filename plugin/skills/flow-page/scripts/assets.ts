@@ -1,21 +1,13 @@
-// Captured assets: the files a contribution attaches to a Result, and the canonical files a Result links to. A file is
-// read once, when it is submitted, and only from inside the project or its Scratch dir. Its bytes are checked against
-// the attachment type and stored under their sha256, so a later edit of the source changes nothing on the page.
-
 import { readFileSync, realpathSync, statSync } from "node:fs";
 import { basename, extname, relative, resolve, sep } from "node:path";
 import { createHash } from "node:crypto";
-import { Refusal } from "./model.ts";
+import { refuse } from "./fields.ts";
 
 /** A directory a contribution may read files from, already resolved through every symlink. */
 export type Root = { name: "project" | "scratch"; dir: string };
 export type Captured = { revision: string; file: string; size: number; name: string; from: { root: string; path: string } };
 
-const refuse = (where: string, message: string): never => {
-  throw new Refusal(`${where}: ${message}`);
-};
 
-// Elements that run code, load other documents, take input, or swallow the rest of the page as raw text.
 const BLOCKED_TAGS = new Set(["script", "iframe", "frame", "frameset", "object", "embed", "applet", "portal", "link", "meta", "base", "style", "form", "input", "button", "textarea", "select", "template", "noscript", "noembed", "noframes", "plaintext", "xmp", "set", "animate", "animatemotion", "animatetransform", "handler", "listener", "foreignobject"]);
 const NAMED_ENTITIES: Record<string, string> = { colon: ":", tab: "\t", newline: "\n", nbsp: " " };
 
@@ -59,11 +51,8 @@ function videoExt(b: Uint8Array): string | undefined {
   if (starts(b, [0x1a, 0x45, 0xdf, 0xa3])) return "webm";
   return undefined;
 }
-/** Downloads keep an extension a browser shows as plain text or saves; anything it could run or render as a page is
- *  stored as `.bin`. The link still names the original file. */
 const DOWNLOAD_EXTS = new Set(["txt", "log", "json", "jsonl", "ndjson", "csv", "tsv", "md", "patch", "diff", "zip", "gz", "tgz", "tar", "pdf"]);
 
-/** The file `path` names, resolved from `cwd`, if it is a regular file inside one of `roots`. */
 function locate(path: string, roots: Root[], cwd: string, where: string): { real: string; root: Root } {
   const lexical = resolve(cwd, path);
   let real: string;
@@ -100,7 +89,6 @@ export function capture(path: string, type: string, roots: Root[], cwd: string, 
     ext = DOWNLOAD_EXTS.has(own) ? own : "bin";
   }
   const revision = createHash("sha256").update(bytes).digest("hex");
-  // The sha256 names the bytes; the file keeps a safe form of its own name, which a browser saves it under.
   const stem = basename(real, extname(real)).replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^[-.]+/, "") || "attachment";
   return { revision, file: `${revision}/${stem}.${ext}`, size: bytes.length, name: basename(real), from: { root: root.name, path: relative(root.dir, real) }, bytes };
 }

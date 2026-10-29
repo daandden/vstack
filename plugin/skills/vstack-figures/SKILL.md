@@ -46,7 +46,7 @@ Place the figures in the order of their briefs. A Flow page publisher submits ea
 
 If no figure can be drawn (no eval tool for the export script), report that missing prerequisite. Show no Mermaid, generated image, or hand-built figure in its place.
 
-A direct result-producing run reads `skill://flow-page`, discovers `bound`, and opens a vstack-figures Stage on that Flow or starts one when unbound. Reopen a closed Flow explicitly. Publish a Document with the figures, their explanations, and any unavailable exports as typed attachments with reasons. Finish the owned Stage after publication and present the receipt's live URL or static fallback. Reading this helper or drawing for a caller adds no empty Stage. Preserve exported SVGs and editable HTML sources as deliverables.
+Follow `skill://flow-page`'s "Stage entry/exit line" for a direct result-producing figure run. Publish a Document with figures, explanations, and unavailable exports as typed attachments with reasons. Preserve exported SVGs and editable HTML sources as deliverables.
 
 ## Draw one figure
 

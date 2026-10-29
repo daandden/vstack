@@ -1,17 +1,15 @@
-// The Flow page domain: a Flow's stored state, the typed contributions that change it, and the derived view that
-// both `show` and the renderer read. Everything here is pure; flow-page.ts does the reading, locking, and writing.
-
 import { createHash } from "node:crypto";
 import { linesOf, parseDiff, type Hunk } from "./code.ts";
-import { applyProgress, type Progress, PROGRESS_KINDS, type ProgressView, progressSnapshot, progressView, UPDATE_FIELD } from "./progress.ts";
+import { progressHandlers, type Progress, PROGRESS_KINDS, type ProgressKind, type ProgressView, progressSnapshot, progressView } from "./progress.ts";
+import { CODE_ID, fields, isObj, list, listed, newId, type Obj, REF, refuse, text, texts } from "./fields.ts";
 
 export const SCHEMA = 1;
 export const CONTRIBUTION_VERSION = 1;
 
-export type StageState = "not-started" | "in-progress" | "finished";
+export const STAGE_STATES = ["not-started", "in-progress", "finished"] as const;
+export type StageState = (typeof STAGE_STATES)[number];
 export type Stage = { id: string; skill: string; ticket?: string; parent?: string; state: StageState; order: number; opened?: string; finished?: string };
 export type Round = { id: string; stage: string; n: number; seq: number; time: string; session?: number };
-/** Historical figures are readable content, not an authoring option for new contributions. */
 export type Figure = { id: string; text: string } | { id: string; html: string; css?: string } | { id: string; attachment: string };
 export type Option = { label: string; does: string; gains: string[]; costs: string[]; recommended?: string; preview?: Figure };
 export type Fact = { text: string; source: string };
@@ -21,10 +19,12 @@ export type Question = {
   again?: string; reopens?: string; today?: Fact[]; terms?: Term[]; topics?: string[]; entries?: string[]; example?: string; figures?: Figure[];
 };
 /** What `ask` returned, as it returned it. `picks` of a timed-out, cancelled, or headless response are not the user's. */
-export type ResponseStatus = "answered" | "empty" | "cancelled" | "timed-out" | "headless";
+const STATUSES = ["answered", "empty", "cancelled", "timed-out", "headless"] as const;
+export type ResponseStatus = (typeof STATUSES)[number];
 export type AskResponse = { status: ResponseStatus; picks?: string[]; text?: string; note_on?: string };
 /** The agent's reading of words with no pick: they settle the decision, or they leave a part of it unresolved. */
-export type NonConsent = "question" | "concern" | "ambiguous";
+const NON_CONSENT = ["question", "concern", "ambiguous"] as const;
+export type NonConsent = (typeof NON_CONSENT)[number];
 export type Reading = { outcome: "resolved"; decision: string; basis: string; maps_to?: string } | { outcome: NonConsent; unresolved: string };
 export type Answer = { id?: string; question: string; time?: string; response?: AskResponse; reading?: Reading; legacy?: { other?: string; note?: string; unanswered?: string } };
 export type AnswerState = "open" | "picked" | "written" | "resolved" | "unresolved";
@@ -35,9 +35,12 @@ export type Retirement = { question: string; reason: string; time?: string };
 export type Section = { heading: string; body: string };
 export type Background = { id: string; stage: string; title: string; summary: string; sections: Section[]; sources: string[]; figures?: Figure[]; jump?: string };
 export type Topic = { id: string; title: string; summary: string; body: string; sources: string[] };
-export type Shape = "cards" | "ledger" | "table" | "document" | "prototype" | "comparison" | "metrics" | "code" | "timeline" | "quiz" | "review";
+const SHAPES = ["cards", "ledger", "table", "document", "prototype", "comparison", "metrics", "code", "timeline", "quiz", "review"] as const;
+export type Shape = (typeof SHAPES)[number];
 const REVIEW_AXES = ["standards", "spec", "blast-radius"] as const;
 const REVIEW_STATES = ["findings", "clean", "skipped", "unavailable", "blocked"] as const;
+export type ReviewAxisName = (typeof REVIEW_AXES)[number];
+export type ReviewStatus = (typeof REVIEW_STATES)[number];
 type ReviewAxis = { axis: (typeof REVIEW_AXES)[number]; status: (typeof REVIEW_STATES)[number]; reason?: string };
 type ReviewRow = ReviewAxis & { finding?: string; impact?: string; location?: string; blocking?: boolean; target?: string };
 /** `changed` is the Flow revision that last changed a Result's header or an entry, which a focused revision checks. */
@@ -100,7 +103,6 @@ export type Attachment = {
   runtime?: "html" | "local-app" | "terminal";
   bundle?: { entry: string; files: { path: string; file: string; size: number }[] };
 };
-/** File reads a contribution needs. flow-page.ts supplies them, so this module stays free of the filesystem. */
 export type Io = {
   capture(path: string, type: AttachmentType, where: string): { revision: string; file: string; size: number; name: string; from: { root: string; path: string } };
   /** The canonical file `path` names, resolved from the working directory, or from the named `root` when given. */
@@ -147,19 +149,11 @@ export function upgrade(s: State): State {
   return s;
 }
 
-export class Refusal extends Error {}
-export const refuse = (where: string, message: string): never => {
-  throw new Refusal(where ? `${where}: ${message}` : message);
-};
-
 export const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const REF = /^[a-z0-9][a-z0-9-]*$/;
-const CODE_ID = /^(stage|round|question|close|background|topic|result|source|assumed|attachment|task|blocker|pr|check)-\d+$/;
 const TICKET = /^#?[A-Za-z0-9][A-Za-z0-9._/-]*$/;
-const SHAPES: Shape[] = ["cards", "ledger", "table", "document", "prototype", "comparison", "metrics", "code", "timeline", "quiz", "review"];
-/** Shapes whose content is one whole body rather than entries, so a focused `add` cannot extend them. */
 const WHOLE: Record<string, string> = { document: "a Document", prototype: "a demo", comparison: "a Comparison", metrics: "a Metrics Result", quiz: "a Quiz" };
-const OUTCOMES = ["succeeded", "failed", "blocked", "skipped", "unknown", "noted"];
+const OUTCOMES = ["succeeded", "failed", "blocked", "skipped", "unknown", "noted"] as const;
+export type TimelineOutcome = (typeof OUTCOMES)[number];
 const TIME = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:Z|[+-]\d{2}:\d{2}))?$/;
 function realTime(t: string): boolean {
   const m = t.match(TIME);
@@ -171,23 +165,20 @@ function realTime(t: string): boolean {
   return mo >= 1 && mo <= 12 && d >= 1 && d <= days.getUTCDate() && h < 24 && mi < 60 && sec < 60 && (!offset || (Number(offset[1]) <= 23 && Number(offset[2]) < 60));
 }
 const LANGUAGE = /^[a-z0-9][a-z0-9+#.-]*$/i;
-const CLAIM_STATES = ["confirmed", "cleared", "unproven"];
+const CLAIM_STATES = ["confirmed", "cleared", "unproven"] as const;
+export type ClaimState = (typeof CLAIM_STATES)[number];
 /** A citation marker in Document prose or a list item. */
 export const CITE = /\[@([a-z0-9][a-z0-9-]*)\]/g;
 const LINK = /\[[^\]]*\]\(([^)\s]*)\)/g;
-/** Links in Document and attachment text may only go to the web or to an anchor on the page. */
 function safeLinks(t: string, where: string): string {
   for (const m of t.matchAll(LINK)) if (!/^(https?:\/\/|#)/i.test(m[1])) refuse(where, `the link ${JSON.stringify(m[1])} uses an unsafe or unsupported scheme; links must start with https://, http://, or #`);
   return t;
 }
-export const listed = (xs: string[]) => (xs.length === 1 ? xs[0] : `${xs.slice(0, -1).join(", ")}, or ${xs.at(-1)}`);
 const all = (xs: string[]) => (xs.length === 1 ? xs[0] : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`);
 export const letter = (i: number) => String.fromCharCode(65 + i);
 const letterIndex = (s: string) => (/^[A-Z]$/.test(s) ? s.charCodeAt(0) - 65 : -1);
 /** The full label, such as "B. Second", of the option a letter names. */
 export const optionLabel = (q: Question, l: string) => q.options[letterIndex(l)].label;
-const STATUSES: ResponseStatus[] = ["answered", "empty", "cancelled", "timed-out", "headless"];
-const NON_CONSENT: NonConsent[] = ["question", "concern", "ambiguous"];
 
 export function nowIso(d = new Date()): string {
   const off = -d.getTimezoneOffset();
@@ -201,10 +192,6 @@ export function slugOf(title: string): string {
   return words.length ? words.join("-") : "flow";
 }
 
-function newId(s: State, kind: string): string {
-  s.next[kind] = (s.next[kind] ?? 0) + 1;
-  return `${kind}-${s.next[kind]}`;
-}
 
 export function newFlow(id: string, slug: string, title: string, time: string): State {
   if (title.trim() === "") refuse("open", "--title must be non-empty");
@@ -232,10 +219,6 @@ export function stageOf(s: State, id: string, where: string): Stage {
   return s.stages.find((st) => st.id === id) ?? refuse(where, `Flow ${s.flow.id} has no Stage ${id}`);
 }
 
-// ---------------------------------------------------------------------------------------------------------------
-// Lifecycle. A Flow stays open until someone closes it; Scratch cleanup never removes an open Flow and removes a
-// closed one only after its retention period, counted from the close. Reading or rendering the page changes neither.
-
 /** When the Flow was closed, or undefined while it is open. */
 export const closedAt = (s: State): string | undefined => (s.lifecycle.at(-1)?.event === "closed" ? s.lifecycle.at(-1)!.time : undefined);
 
@@ -254,9 +237,6 @@ export function reopenFlow(s: State, skill: string, ticket: string | undefined, 
   s.lifecycle.push({ event: "reopened", time });
   return openStage(s, skill, ticket, time, parent);
 }
-
-// ---------------------------------------------------------------------------------------------------------------
-// Lookup aliases. A Flow keeps its immutable id; these qualified keys only find it. Lookup is the caller's job.
 
 export const ALIAS_KINDS = ["spec", "ticket", "branch", "run", "folder", "slug"];
 const ALIAS_VALUE: Record<string, RegExp> = {
@@ -296,37 +276,8 @@ export function addAliases(s: State, aliases: string[]): string[] {
   return added;
 }
 
-// ---------------------------------------------------------------------------------------------------------------
-// Parsing external input. Every object is checked against its exact field list, so HTML, CSS, scripts, ids, numbers,
-// and other code-owned fields are refused rather than dropped.
-
-export type Obj = Record<string, unknown>;
-const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
-
-export function fields(v: unknown, where: string, required: string[], optional: string[] = []): Obj {
-  if (!isObj(v)) refuse(where, `must be an object with ${listed(required)}`);
-  const o = v as Obj;
-  for (const k of Object.keys(o)) if (!required.includes(k) && !optional.includes(k)) refuse(where, `${k} is not a field here; the fields are ${listed([...required, ...optional])}`);
-  for (const k of required) if (o[k] === undefined) refuse(where, `needs ${k}`);
-  return o;
-}
-export function text(o: Obj, k: string, where: string): string {
-  const v = o[k];
-  if (typeof v !== "string" || v.trim() === "") refuse(where, `${k} must be a non-empty string`);
-  return v as string;
-}
 const optText = (o: Obj, k: string, where: string) => (o[k] === undefined ? undefined : text(o, k, where));
-export function texts(o: Obj, k: string, where: string): string[] {
-  const v = o[k];
-  if (!Array.isArray(v) || v.length === 0 || v.some((x) => typeof x !== "string" || x.trim() === "")) refuse(where, `${k} must be a list of one or more non-empty strings`);
-  return v as string[];
-}
 const optTexts = (o: Obj, k: string, where: string) => (o[k] === undefined ? undefined : texts(o, k, where));
-function list(o: Obj, k: string, where: string): unknown[] {
-  const v = o[k];
-  if (!Array.isArray(v) || v.length === 0) refuse(where, `${k} must be a list of one or more items`);
-  return v as unknown[];
-}
 function ref(o: Obj, where: string): string | undefined {
   if (o.ref === undefined) return undefined;
   if (typeof o.ref !== "string" || !REF.test(o.ref)) refuse(where, "ref must be lowercase letters, digits, and hyphens");
@@ -334,16 +285,15 @@ function ref(o: Obj, where: string): string | undefined {
   return o.ref as string;
 }
 
-// ---------------------------------------------------------------------------------------------------------------
-// Applying one contribution to one Stage.
-
 export type Receipt = { refs: Record<string, string>; ask?: { questions: { id: string; question: string; options: { label: string }[]; recommended?: number }[] } };
 
-const KINDS = ["background", "topic", "attachment", "result", "revise", "assumed", "round", "answer", "close", "stage", ...PROGRESS_KINDS];
+const KINDS = ["background", "topic", "attachment", "result", "revise", "assumed", "round", "answer", "close", "stage", ...PROGRESS_KINDS] as const;
+type ContributionKind = (typeof KINDS)[number];
+type PlannedIds = { id?: string; entries?: string[]; questions?: string[] };
+type ContributionHandler = { plan?: (o: Obj, where: string, ids: PlannedIds) => void; apply: (o: Obj, where: string, ids: PlannedIds) => void };
 
-/** The same JSON value in one spelling, whatever its key order. */
-const canonical = (v: unknown): string =>
-  Array.isArray(v) ? `[${v.map(canonical).join(",")}]` : isObj(v) ? `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${canonical(v[k])}`).join(",")}}` : JSON.stringify(v);
+const stableJson = (v: unknown): string =>
+  Array.isArray(v) ? `[${v.map(stableJson).join(",")}]` : isObj(v) ? `{${Object.keys(v).sort().map((k) => `${JSON.stringify(k)}:${stableJson(v[k])}`).join(",")}}` : JSON.stringify(v);
 
 /**
  * Applies `input` to Stage `stageId` of `s` in place, or throws a Refusal and leaves the caller to discard `s`.
@@ -354,7 +304,7 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
   if (env.version !== CONTRIBUTION_VERSION) refuse("contribution", `version ${JSON.stringify(env.version)} is not supported; flow-page reads contribution version ${CONTRIBUTION_VERSION}`);
   const items = list(env, "items", "contribution");
   const stage = stageOf(s, stageId, "contribution");
-  const digest = createHash("sha256").update(canonical(input)).digest("hex");
+  const digest = createHash("sha256").update(stableJson(input)).digest("hex");
   const last = s.submissions[stage.id];
   if (last?.digest === digest) return { ...last.receipt, revision: last.revision, repeated: true };
   if (stage.state === "finished") refuse("contribution", `Stage ${stage.id} is finished, so it takes no more content; open a new Stage to continue the Flow`);
@@ -368,7 +318,6 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
     refs[r] = id;
     kinds[r] = kind;
   };
-  /** An id or an earlier ref of this contribution, which must name a `kind`. */
   const resolve = (v: unknown, kind: string, where: string): string => {
     if (typeof v !== "string" || v.trim() === "") refuse(where, `must name a ${kind} by ref or id`);
     const key = v as string;
@@ -380,69 +329,20 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
   };
 
   const revised = new Set<string>();
-  // Pass 1: give every new referable thing its id, so later items and forward references can name it.
   const nextEntry = new Map<string, number>();
-  const planned = items.map((raw, i) => {
-    const kind = isObj(raw) ? raw.kind : undefined;
-    const where = `item ${i + 1}${typeof kind === "string" ? ` (${kind})` : ""}`;
-    if (typeof kind !== "string" || !KINDS.includes(kind)) refuse(where, `kind must be ${listed(KINDS)}, got ${JSON.stringify(kind)}`);
-    const o = raw as Obj;
-    const ids: { id?: string; entries?: string[]; questions?: string[] } = {};
-    if (kind === "revise" && Array.isArray(o.add) && typeof o.result === "string" && !o.result.includes("/")) {
-      const rid = kinds[o.result] === "result" ? refs[o.result] : o.result;
-      const r = s.results.find((x) => x.id === rid);
-      if (r) {
-        const next = nextEntry.get(rid) ?? Math.max(0, ...r.entries.map((e) => /^e\d+$/.test(e.id) ? Number(e.id.slice(1)) : 0)) + 1;
-        ids.entries = o.add.map((e, j) => {
-          const eid = `${rid}/e${next + j}`;
-          if (isObj(e)) {
-            const er = ref(e, `${where}: entry ${j + 1}`);
-            if (er !== undefined) claim(`${o.result}/${er}`, eid, "result entry", where);
-          }
-          return eid;
-        });
-        nextEntry.set(rid, next + o.add.length);
-      }
-    }
-    if (PROGRESS_KINDS.includes(kind) && kind !== "end-state" && o[UPDATE_FIELD[kind]!] === undefined) claim(ref(o, where), (ids.id = newId(s, kind)), kind, where);
-    if (kind === "topic") claim(ref(o, where), (ids.id = newId(s, "topic")), "topic", where);
-    if (kind === "assumed") claim(ref(o, where), (ids.id = newId(s, "assumed")), "assumed pick", where);
-    if (kind === "attachment") claim(ref(o, where), (ids.id = newId(s, "attachment")), "attachment", where);
-    if (kind === "result") {
-      let id: string;
-      if (o.revises !== undefined) {
-        const old = s.results.find((r) => r.id === o.revises) ?? refuse(where, `revises must name a Result published earlier by its id, got ${JSON.stringify(o.revises)}`);
-        if (old.stage !== stage.id) refuse(where, `${old.id} belongs to Stage ${old.stage}; revise a Result from its own Stage, or publish a new Result here`);
-        if (revised.has(old.id)) refuse(where, `${old.id} is already revised in this contribution`);
-        revised.add(old.id);
-        id = old.id;
-      } else id = newId(s, "result");
-      claim(ref(o, where), (ids.id = id), "result", where);
-      const rows = Array.isArray(o.entries) ? o.entries : Array.isArray(o.rows) ? o.rows : [];
-      ids.entries = rows.map((e, j) => {
-        const eid = `${ids.id}/e${j + 1}`;
-        if (isObj(e)) {
-          const r = ref(e, `${where}: entry ${j + 1}`);
-          if (r !== undefined && typeof o.ref === "string") claim(`${o.ref}/${r}`, eid, "result entry", where);
-        }
-        return eid;
-      });
-    }
-    if (kind === "round" && Array.isArray(o.questions))
-      ids.questions = o.questions.map((q, j) => {
-        const qid = newId(s, "question");
-        if (isObj(q)) claim(ref(q, `${where}: question ${j + 1}`), qid, "question", `${where}: question ${j + 1}`);
-        return qid;
-      });
-    return { o, kind, where, ids };
-  });
-
+  const authoredFigures: Figure[] = [];
+  const figure = (raw: unknown, id: string, where: string): Figure => {
+    const o = fields(raw, where, ["attachment"]);
+    const f = { id, attachment: resolve(o.attachment, "attachment", where) };
+    authoredFigures.push(f);
+    return f;
+  };
   const receipt: Receipt = { refs };
   let rounds = 0;
-  for (const { o, kind, where, ids } of planned) {
-    switch (kind) {
-      case "background": {
-        fields(o, where, ["kind", "title", "summary", "sections", "sources"]);
+  const handlers: Record<ContributionKind, ContributionHandler> = {
+    background: {
+      apply(o, where, ids) {
+        fields(o, where, ["kind", "title", "summary", "sections", "sources"], ["figures"]);
         const other = s.backgrounds.find((b) => b.stage === stage.id);
         if (other) refuse(where, `Stage ${stage.id} already has ${other.id}; a Stage has one Background`);
         const sections = list(o, "sections", where).map((sec, j) => {
@@ -450,24 +350,50 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
           const so = fields(sec, sw, ["heading", "body"]);
           return { heading: text(so, "heading", sw), body: text(so, "body", sw) };
         });
-        s.backgrounds.push({ id: newId(s, "background"), stage: stage.id, title: text(o, "title", where), summary: text(o, "summary", where), sections, sources: texts(o, "sources", where).map((t) => sourceId(s, t)) });
-        break;
-      }
-      case "topic":
+        const id = newId(s, "background");
+        const figures = o.figures === undefined ? undefined : list(o, "figures", where).map((f, j) => figure(f, `${id}-figure-${j + 1}`, `${where}: figure ${j + 1}`));
+        s.backgrounds.push({ id, stage: stage.id, title: text(o, "title", where), summary: text(o, "summary", where), sections, sources: texts(o, "sources", where).map((t) => sourceId(s, t)), ...(figures ? { figures } : {}) });
+      },
+    },
+    topic: {
+      plan(o, where, ids) {
+        claim(ref(o, where), (ids.id = newId(s, "topic")), "topic", where);
+      },
+      apply(o, where, ids) {
         fields(o, where, ["kind", "title", "summary", "body", "sources"], ["ref"]);
         s.topics.push({ id: ids.id!, title: text(o, "title", where), summary: text(o, "summary", where), body: text(o, "body", where), sources: texts(o, "sources", where).map((t) => sourceId(s, t)) });
-        break;
-      case "attachment":
+      },
+    },
+    attachment: {
+      plan(o, where, ids) {
+        claim(ref(o, where), (ids.id = newId(s, "attachment")), "attachment", where);
+      },
+      apply(o, where, ids) {
         s.attachments.push(parseAttachment(o, where, stage.id, ids.id!, time, io));
-        break;
-      case "revise":
-        revise(s, o, where, stage.id, ids.entries, rev, resolve);
-        break;
-      case "assumed":
-        fields(o, where, ["kind", "decision", "pick", "why"], ["ref"]);
-        s.assumed.push({ id: ids.id!, stage: stage.id, decision: text(o, "decision", where), pick: text(o, "pick", where), why: text(o, "why", where) });
-        break;
-      case "result": {
+      },
+    },
+    result: {
+      plan(o, where, ids) {
+        let id: string;
+        if (o.revises !== undefined) {
+          const old = s.results.find((r) => r.id === o.revises) ?? refuse(where, `revises must name a Result published earlier by its id, got ${JSON.stringify(o.revises)}`);
+          if (old.stage !== stage.id) refuse(where, `${old.id} belongs to Stage ${old.stage}; revise a Result from its own Stage, or publish a new Result here`);
+          if (revised.has(old.id)) refuse(where, `${old.id} is already revised in this contribution`);
+          revised.add(old.id);
+          id = old.id;
+        } else id = newId(s, "result");
+        claim(ref(o, where), (ids.id = id), "result", where);
+        const rows = Array.isArray(o.entries) ? o.entries : Array.isArray(o.rows) ? o.rows : [];
+        ids.entries = rows.map((e, j) => {
+          const eid = `${ids.id}/e${j + 1}`;
+          if (isObj(e)) {
+            const r = ref(e, `${where}: entry ${j + 1}`);
+            if (r !== undefined && typeof o.ref === "string") claim(`${o.ref}/${r}`, eid, "result entry", where);
+          }
+          return eid;
+        });
+      },
+      apply(o, where, ids) {
         const r = parseResult(o, where, stage.id, ids.id!, ids.entries!, rev, (v, w) => resolve(v, "attachment", w), (t) => sourceId(s, t), io);
         if (r.shape === "review" && s.results.some((other) => other.stage === stage.id && other.shape === "review" && other.id !== r.id)) refuse(where, "a Stage has one authoritative review Result; revise the existing review instead");
         r.captured = time;
@@ -475,9 +401,8 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
         if (i < 0) {
           r.revision = 1;
           s.results.push(r);
-          break;
+          return;
         }
-        // A republished Result: the old revision stays in history, and the canonical link carries over.
         const old = s.results[i];
         if (r.canonical === undefined && old.canonical !== undefined) {
           if (!("file" in old.canonical)) refuse(where, `${old.id} was captured from ${"commit" in old.canonical ? `commit ${old.canonical.commit}` : `${old.canonical.tracker} at ${old.canonical.revision}`}; give canonical again with the revision this one captures`);
@@ -486,15 +411,56 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
         r.revision = (old.revision ?? 1) + 1;
         s.history.push(old);
         s.results[i] = r;
-        break;
-      }
-      case "round": {
+      },
+    },
+    revise: {
+      plan(o, where, ids) {
+        if (Array.isArray(o.add) && typeof o.result === "string" && !o.result.includes("/")) {
+          const rid = kinds[o.result] === "result" ? refs[o.result] : o.result;
+          const r = s.results.find((x) => x.id === rid);
+          if (r) {
+            const next = nextEntry.get(rid) ?? Math.max(0, ...r.entries.map((e) => /^e\d+$/.test(e.id) ? Number(e.id.slice(1)) : 0)) + 1;
+            ids.entries = o.add.map((e, j) => {
+              const eid = `${rid}/e${next + j}`;
+              if (isObj(e)) {
+                const er = ref(e, `${where}: entry ${j + 1}`);
+                if (er !== undefined) claim(`${o.result}/${er}`, eid, "result entry", where);
+              }
+              return eid;
+            });
+            nextEntry.set(rid, next + o.add.length);
+          }
+        }
+      },
+      apply(o, where, ids) {
+        revise(s, o, where, stage.id, ids.entries, rev, resolve);
+      },
+    },
+    assumed: {
+      plan(o, where, ids) {
+        claim(ref(o, where), (ids.id = newId(s, "assumed")), "assumed pick", where);
+      },
+      apply(o, where, ids) {
+        fields(o, where, ["kind", "decision", "pick", "why"], ["ref"]);
+        s.assumed.push({ id: ids.id!, stage: stage.id, decision: text(o, "decision", where), pick: text(o, "pick", where), why: text(o, "why", where) });
+      },
+    },
+    round: {
+      plan(o, where, ids) {
+        if (Array.isArray(o.questions))
+          ids.questions = o.questions.map((q, j) => {
+            const qid = newId(s, "question");
+            if (isObj(q)) claim(ref(q, `${where}: question ${j + 1}`), qid, "question", `${where}: question ${j + 1}`);
+            return qid;
+          });
+      },
+      apply(o, where, ids) {
         fields(o, where, ["kind", "questions"]);
         if (++rounds > 1) refuse(where, "a contribution asks at most one round, because one round is one ask");
         const qs = list(o, "questions", where);
         const round: Round = { id: newId(s, "round"), stage: stage.id, n: Math.max(0, ...s.rounds.filter((r) => r.stage === stage.id).map((r) => r.n)) + 1, seq: ++s.seq, time };
         s.rounds.push(round);
-        const parsed = qs.map((q, j) => parseQuestion(q, `${where}: question ${j + 1}`, ids.questions![j], stage.id, round.id, resolve));
+        const parsed = qs.map((q, j) => parseQuestion(q, `${where}: question ${j + 1}`, ids.questions![j], stage.id, round.id, resolve, figure));
         assignQNumbers(s, parsed, stage.id, where);
         s.questions.push(...parsed);
         receipt.ask = {
@@ -504,9 +470,10 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
           }),
         };
         for (const q of parsed) for (const f of q.today ?? []) f.source = sourceId(s, f.source);
-        break;
-      }
-      case "answer": {
+      },
+    },
+    answer: {
+      apply(o, where, ids) {
         fields(o, where, ["kind", "question", "response"], ["reading"]);
         const qid = resolve(o.question, "question", `${where}: question`);
         const q = s.questions.find((x) => x.id === qid) ?? refuse(where, `question ${qid} does not exist`);
@@ -515,9 +482,10 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
         const response = parseResponse(o.response, `${where}: response`, q);
         const reading = parseReading(o.reading, `${where}: reading`, q, response);
         s.answers.push({ question: qid, time, response, ...(reading ? { reading } : {}) });
-        break;
-      }
-      case "close": {
+      },
+    },
+    close: {
+      apply(o, where, ids) {
         fields(o, where, ["kind", "decisions"], ["extra"]);
         if (!Array.isArray(o.decisions)) refuse(where, "decisions must be a list of { question, text }, empty when the Stage asked nothing");
         const extra = optTexts(o, "extra", where);
@@ -536,13 +504,13 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
         });
         const missing = [...latest].filter(([n]) => !named.has(n)).map(([n, q]) => `Q${n} (${q.id})`);
         if (missing.length) refuse(where, `a close decides every latest ask of its Stage; ${all(missing)} ${missing.length === 1 ? "has" : "have"} no decision`);
-        // The close lists every Assumed pick still standing; code takes them from their records, so none is left out.
         const assumed = visibleAssumed(s, stage.id).map((a) => a.id);
         if (decisions.length === 0 && assumed.length === 0 && extra === undefined) refuse(where, "a close with no decisions and no Assumed picks needs extra bullets");
         s.closes.push({ id: newId(s, "close"), stage: stage.id, seq: ++s.seq, time, decisions, assumed, ...(extra ? { extra } : {}) });
-        break;
-      }
-      case "stage": {
+      },
+    },
+    stage: {
+      apply(o, where, ids) {
         fields(o, where, ["kind", "state"], ["retire"]);
         if (o.state !== "finished") refuse(where, `a Stage moves only from in-progress to finished; ${JSON.stringify(o.state)} is not a transition from in-progress`);
         const unresolved = [...latestAsks(s, stage.id).values()].filter((q) => !settled(answerState(s, q.id)));
@@ -560,11 +528,34 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
         for (const g of given) s.retirements.push({ question: g.question, reason: g.reason, time });
         stage.state = "finished";
         stage.finished = time;
-        break;
-      }
-      default:
-        applyProgress(s, stage.id, kind, o, where, ids.id, resolve, time);
-    }
+      },
+    },
+    ...Object.fromEntries(PROGRESS_KINDS.map((kind) => {
+      const handler = progressHandlers[kind];
+      return [kind, {
+        plan(o: Obj, where: string, ids: PlannedIds) {
+          if (handler.update !== undefined && o[handler.update] === undefined) claim(ref(o, where), (ids.id = newId(s, kind)), kind, where);
+        },
+        apply(o: Obj, where: string, ids: PlannedIds) {
+          handler.apply({ s, stage: stage.id, o, where, plannedId: ids.id, resolve, time });
+        },
+      }];
+    })) as Record<ProgressKind, ContributionHandler>,
+  };
+  const planned = items.map((raw, i) => {
+    const kind = isObj(raw) ? raw.kind : undefined;
+    const where = `item ${i + 1}${typeof kind === "string" ? ` (${kind})` : ""}`;
+    if (typeof kind !== "string" || !KINDS.includes(kind as ContributionKind)) refuse(where, `kind must be ${listed(KINDS)}, got ${JSON.stringify(kind)}`);
+    const o = raw as Obj;
+    const ids: PlannedIds = {};
+    const handler = handlers[kind as ContributionKind];
+    handler.plan?.(o, where, ids);
+    return { o, where, ids, handler };
+  });
+  for (const { o, where, ids, handler } of planned) handler.apply(o, where, ids);
+  for (const f of authoredFigures) if ("attachment" in f) {
+    const a = s.attachments.find((a) => a.id === f.attachment) ?? refuse(f.id, `attachment ${f.attachment} does not exist`);
+    if (!["image", "svg"].includes(a.type) || a.availability !== "captured") refuse(f.id, `attachment ${a.id} must be a captured image or SVG figure`);
   }
   checkLinks(s);
   s.revision = rev;
@@ -666,7 +657,6 @@ function parseQuiz(o: Obj, where: string): Quiz {
   return { questions };
 }
 
-/** One Result entry or table row, checked against its shape. */
 function parseEntry(shape: Shape, columns: string[] | undefined, e: unknown, ew: string, id: string, changed: number, attachment: (v: unknown, where: string) => string): Entry {
   if (shape === "cards" || shape === "review") {
     const c = fields(e, ew, ["title", "label", "blocking", "impact", "action", "evidence", ...(shape === "review" ? ["axis", "location"] : [])], ["ref"]);
@@ -676,7 +666,7 @@ function parseEntry(shape: Shape, columns: string[] | undefined, e: unknown, ew:
   }
   if (shape === "ledger") {
     const c = fields(e, ew, ["claim", "status", "evidence", "missing_proof", "consequence"], ["ref"]);
-    if (!CLAIM_STATES.includes(c.status as string)) refuse(ew, `status must be ${listed(CLAIM_STATES)}`);
+    if (!CLAIM_STATES.includes(c.status as ClaimState)) refuse(ew, `status must be ${listed(CLAIM_STATES)}`);
     return { id, ...(c.ref ? { ref: c.ref } : {}), claim: text(c, "claim", ew), status: c.status, evidence: text(c, "evidence", ew), missing_proof: text(c, "missing_proof", ew), consequence: text(c, "consequence", ew), changed };
   }
   if (shape === "code") {
@@ -705,7 +695,7 @@ function parseEntry(shape: Shape, columns: string[] | undefined, e: unknown, ew:
   }
   if (shape === "timeline") {
     const c = fields(e, ew, ["title", "outcome"], ["ref", "time", "detail", "evidence", "attachments"]);
-    if (!OUTCOMES.includes(c.outcome as string)) refuse(ew, `outcome must be ${listed(OUTCOMES)}, got ${JSON.stringify(c.outcome)}`);
+    if (!OUTCOMES.includes(c.outcome as TimelineOutcome)) refuse(ew, `outcome must be ${listed(OUTCOMES)}, got ${JSON.stringify(c.outcome)}`);
     const time = optText(c, "time", ew);
     if (time !== undefined && !realTime(time)) refuse(ew, `time must be a real ISO 8601 date such as 2026-10-28, or a date-time with its offset such as 2026-10-28T10:05:00+07:00, got ${JSON.stringify(time)}; leave time out when it is not known`);
     const opt = (k: string) => (c[k] !== undefined ? { [k]: safeLinks(text(c, k, ew), ew) } : {});
@@ -740,7 +730,6 @@ function checkReview(axes: ReviewAxis[], entries: Entry[], where: string): void 
   }
 }
 
-/** A focused revision: `set` replaces named fields of one entry or of a Result's header, `add` appends entries. */
 function revise(s: State, o: Obj, where: string, stage: string, entryIds: string[] | undefined, rev: number, resolve: (v: unknown, kind: string, where: string) => string): void {
   fields(o, where, ["kind", "result"], ["base", "set", "add"]);
   if (o.set === undefined && o.add === undefined) refuse(where, "needs set, add, or both");
@@ -785,7 +774,6 @@ function optionLetter(q: Question, p: string, where: string): string {
   return p;
 }
 
-/** The ask response as `ask` returned it, checked but never reworded. */
 function parseResponse(raw: unknown, where: string, q: Question): AskResponse {
   const o = fields(raw, where, ["status"], ["picks", "text", "note_on"]);
   if (!STATUSES.includes(o.status as ResponseStatus)) refuse(where, `status must be ${listed(STATUSES)}, got ${JSON.stringify(o.status)}`);
@@ -801,7 +789,6 @@ function parseResponse(raw: unknown, where: string, q: Question): AskResponse {
   return { status, ...(picks ? { picks } : {}), ...(words !== undefined ? { text: words } : {}), ...(noteOn !== undefined ? { note_on: noteOn } : {}) };
 }
 
-/** Words with no pick need the agent's reading; a pick, and anything that is not the user's response, take none. */
 function parseReading(raw: unknown, where: string, q: Question, response: AskResponse): Reading | undefined {
   const needed = response.status === "answered" && response.picks === undefined;
   if (raw === undefined) {
@@ -832,7 +819,6 @@ export function answerState(s: State, question: string): AnswerState {
 }
 const settled = (state: AnswerState) => state === "picked" || state === "written" || state === "resolved";
 
-/** The Assumed picks of a Stage that no question has reopened. */
 function visibleAssumed(s: State, stage: string): Assumed[] {
   return s.assumed.filter((a) => a.stage === stage && !s.questions.some((q) => q.reopens === a.id));
 }
@@ -865,7 +851,6 @@ function parseDocument(o: Obj, where: string, attachment: (v: unknown, where: st
     if (seen.has(c.ref)) refuse(`${where}: citation ${j + 1}`, `ref ${c.ref} is already a citation of this Document`);
     seen.add(c.ref);
   }
-  /** Text that a reader sees with its links and citation markers, each checked here. */
   const cited = (t: string, w: string) => {
     for (const m of t.matchAll(CITE)) if (!seen.has(m[1])) refuse(w, `[@${m[1]}] names no citation of this Document; add { ref: "${m[1]}", source } to citations`);
     return safeLinks(t, w);
@@ -906,14 +891,11 @@ function parseDocument(o: Obj, where: string, attachment: (v: unknown, where: st
   return { sections, citations: citations.map((c) => ({ ref: c.ref, source: source(c.source) })), limitations, sources };
 }
 
-/** Bounds that keep a demo small enough to read and its conditions shallow enough to follow. */
 const DEMO_LIMITS = { values: 16, states: 32, actions: 32, transitions: 16, depth: 4 };
 const TYPE_WORD: Record<string, string> = { number: "a number", boolean: "true or false", string: "text" };
 
-/** A declarative state demo, checked whole: names, types, bounds, and that every state is reachable from `start`. */
 function parseDemo(raw: unknown, where: string): Demo {
   const o = fields(raw, where, ["states", "start", "actions"], ["values"]);
-  /** The items of `k`, each with a unique `name`, at most `max` of them. */
   const named = (k: string, what: string, max: number, required: string[], optional: string[] = []) => {
     const xs = list(o, k, where);
     if (xs.length > max) refuse(`${where}: ${k}`, `a demo has at most ${max} ${k}`);
@@ -1010,7 +992,6 @@ function parseDemo(raw: unknown, where: string): Demo {
     return { name, label: text(xo, "label", w), transitions };
   });
 
-  // Reachability ignores conditions, so a state it misses can never be shown.
   const reached = new Set([start]);
   const queue = [start];
   while (queue.length) {
@@ -1030,7 +1011,6 @@ function parseDemo(raw: unknown, where: string): Demo {
   return { values, states, start, actions };
 }
 
-/** Local refs of one list, such as a Comparison's alternatives, each unique within it. */
 function localRefs<T extends { ref: string }>(xs: T[], where: string, what: string): T[] {
   const seen = new Set<string>();
   xs.forEach((x, j) => {
@@ -1043,7 +1023,6 @@ function localRef(o: Obj, where: string): string {
   if (typeof o.ref !== "string" || !REF.test(o.ref)) refuse(where, "ref must be lowercase letters, digits, and hyphens");
   return o.ref as string;
 }
-/** A name in `refs`, the local refs of `what`s in this Result. */
 function oneOf(v: unknown, refs: string[], where: string, what: string): string {
   if (typeof v !== "string" || !refs.includes(v)) refuse(where, `${JSON.stringify(v)} names no ${what} of this Result; the ${what}s are ${listed(refs)}`);
   return v as string;
@@ -1189,7 +1168,7 @@ function parseAttachment(o: Obj, where: string, stage: string, id: string, time:
     return {
       ...base, caption: safeLinks(text(o, "caption", where), where), origin: safeLinks(text(o, "origin", where), where),
       availability: o.unavailable !== undefined ? "unavailable" : bundle ? "captured" : "external",
-      launch: safeLinks(text(o, "launch", where), where), revision: bundle ? createHash("sha256").update(canonical(bundle)).digest("hex") : revision,
+      launch: safeLinks(text(o, "launch", where), where), revision: bundle ? createHash("sha256").update(stableJson(bundle)).digest("hex") : revision,
       ...(runtime ? { runtime } : {}), ...(bundle ? { bundle } : {}), ...(o.url !== undefined ? { url: o.url as string } : {}),
       ...(o.unavailable !== undefined ? { reason: text(o, "unavailable", where) } : {}),
     };
@@ -1203,14 +1182,14 @@ function parseAttachment(o: Obj, where: string, stage: string, id: string, time:
   return { ...base, caption, origin, availability: "captured", revision: c.revision, file: c.file, size: c.size, name: c.name, from: c.from };
 }
 
-function parseQuestion(raw: unknown, where: string, id: string, stage: string, round: string, resolve: (v: unknown, kind: string, where: string) => string): Question {
-  const o = fields(raw, where, ["title", "description", "options"], ["ref", "again", "reopens", "today", "terms", "topics", "results", "example"]);
+function parseQuestion(raw: unknown, where: string, id: string, stage: string, round: string, resolve: (v: unknown, kind: string, where: string) => string, figure: (raw: unknown, id: string, where: string) => Figure): Question {
+  const o = fields(raw, where, ["title", "description", "options"], ["ref", "again", "reopens", "today", "terms", "topics", "results", "example", "figures"]);
   const options = list(o, "options", where).map((op, i) => {
     const ow = `${where}: option ${i + 1}`;
-    const oo = fields(op, ow, ["label", "does", "gains", "costs"], ["recommended"]);
+    const oo = fields(op, ow, ["label", "does", "gains", "costs"], ["recommended", "preview"]);
     const label = text(oo, "label", ow);
     if (/^[A-Z]\.\s/.test(label)) refuse(ow, `label starts with "${label.slice(0, 3)}"; give the label alone, the script adds the option letter`);
-    return { label: `${letter(i)}. ${label}`, does: text(oo, "does", ow), gains: texts(oo, "gains", ow), costs: texts(oo, "costs", ow), ...(oo.recommended !== undefined ? { recommended: text(oo, "recommended", ow) } : {}) };
+    return { label: `${letter(i)}. ${label}`, does: text(oo, "does", ow), gains: texts(oo, "gains", ow), costs: texts(oo, "costs", ow), ...(oo.recommended !== undefined ? { recommended: text(oo, "recommended", ow) } : {}), ...(oo.preview !== undefined ? { preview: figure(oo.preview, `${id}-option-${i + 1}-preview`, `${ow}: preview`) } : {}) };
   });
   if (options.length > 26) refuse(where, "options must be 26 or fewer");
   if (options.filter((op) => op.recommended !== undefined).length > 1) refuse(where, "at most one option can be recommended");
@@ -1221,6 +1200,7 @@ function parseQuestion(raw: unknown, where: string, id: string, stage: string, r
       return { [a]: text(xo, a, xw), [b]: text(xo, b, xw) };
     });
   const q: Question = { id, stage, round, q: 0, title: text(o, "title", where), description: text(o, "description", where), options };
+  if (o.figures !== undefined) q.figures = list(o, "figures", where).map((f, j) => figure(f, `${id}-figure-${j + 1}`, `${where}: figure ${j + 1}`));
   if (o.again !== undefined) q.again = resolve(o.again, "question", `${where}: again`);
   if (o.reopens !== undefined) q.reopens = resolve(o.reopens, "assumed pick", `${where}: reopens`);
   const today = pairs("today", "text", "source") as Fact[] | undefined;
@@ -1234,10 +1214,6 @@ function parseQuestion(raw: unknown, where: string, id: string, stage: string, r
   return q;
 }
 
-/**
- * Q numbers count up within a Stage. A question asked again in its own Stage takes the Q number of the earlier question.
- * A question of a finished Stage that is still relevant is asked again in the current Stage under a new Q number.
- */
 function assignQNumbers(s: State, qs: Question[], stage: string, where: string): void {
   const fresh = new Map(qs.map((q) => [q.id, q]));
   for (const q of qs) {
@@ -1327,9 +1303,6 @@ function codeLocation(e: Entry, anchor: string): CodeLocation {
   return loc;
 }
 
-// ---------------------------------------------------------------------------------------------------------------
-// The derived view: labels, open questions, answers, and every backlink, computed from the single stored records.
-
 /** `picks` holds option labels only for an explicit pick; `why` says why an unresolved answer is not consent. */
 export type AnswerView = { state: AnswerState; why?: ResponseStatus | NonConsent; id?: string; time?: string; response?: AskResponse; reading?: Reading; picks?: string[]; legacy?: Answer["legacy"] };
 export type QuestionView = Question & { answer: AnswerView; open: boolean; latest: boolean; retired?: { reason: string; time?: string }; decided_in?: string; asked_again_by: string[] };
@@ -1395,7 +1368,6 @@ export type View = {
 
 const words = (skill: string) => skill.replace(/-/g, " ").replace(/^./, (c) => c.toUpperCase());
 
-/** Tab labels come from the skill name, plus the ticket when the Stage has one; repeated labels get a number. */
 function stageLabels(stages: Stage[]): Map<string, string> {
   const base = new Map(stages.map((st) => [st.id, st.ticket ? `${words(st.skill)} ${st.ticket.startsWith("#") ? st.ticket : `#${st.ticket}`}` : words(st.skill)]));
   const total = new Map<string, number>();
@@ -1429,7 +1401,6 @@ function comparisonView(c: ComparisonBody, anchor: string): ComparisonView {
   return { alternatives, criteria, cells, verdict: { ...c.verdict, anchor: `${anchor}-verdict` } };
 }
 
-/** Decimal precision including scientific notation, for rounding subtraction noise without erasing tiny values. */
 function decimalPlaces(n: number): number {
   const [mantissa, exponent = "0"] = String(n).split(/e/i);
   return Math.max(0, (mantissa.split(".")[1]?.length ?? 0) - Number(exponent));
@@ -1569,6 +1540,7 @@ export function snapshot(v: View, page: string, renderer: number) {
       state: st.state, order: st.order, opened: st.opened, ...(st.finished ? { finished: st.finished } : {}),
       open_questions: st.open_questions,
       background: st.background?.id,
+      ...(st.background?.figures ? { background_figures: st.background.figures } : {}),
       results: st.results.map((r) => ({
         id: r.id, shape: r.shape, revision: r.revision, ...(r.captured ? { captured: r.captured } : {}), ...(r.canonical ? { canonical: r.canonical } : {}), changed: r.changed,
         ...(r.demo ? { demo: { start: r.demo.start, states: r.demo.states.map((x) => x.name), actions: r.demo.actions.map((x) => x.name), values: r.demo.values.map((x) => x.name) } } : {}),
@@ -1609,6 +1581,7 @@ export function snapshot(v: View, page: string, renderer: number) {
         ...(q.again ? { again: q.again } : {}), asked_again_by: q.asked_again_by, ...(q.reopens ? { reopens: q.reopens } : {}),
         results: q.entries ?? [], topics: q.topics ?? [], ...(q.decided_in ? { decided_in: q.decided_in } : {}),
         ...(q.figures ? { figures: q.figures } : {}),
+        ...(q.options.some((o) => o.preview) ? { options: q.options.map((o) => ({ label: o.label, ...(o.preview ? { preview: o.preview } : {}) })) } : {}),
       })),
       closes: st.items.filter((i) => i.type === "close").map((i) => ({
         id: i.close.id, time: i.close.time, decisions: i.close.decisions.map((d) => ({ question: d.question, answer: d.answer })), assumed: i.close.assumed,

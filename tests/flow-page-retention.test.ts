@@ -1,8 +1,3 @@
-// Flow lifecycle and retention (spec #267 D11, T3): flow-page's script closes and reopens a Flow through explicit
-// lifecycle records, and vstack-clean's script judges a Flow by them, never by file times or page reads. Both run as
-// processes against a temp home; `clean.ts --now` controls the clock. Tests read receipts, `show` snapshots, listings,
-// and which files exist, never page wording or markup.
-
 import { afterAll, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -16,7 +11,6 @@ const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-page-retention-")));
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 
 let n = 0;
-/** A fresh home and a fresh git project in it. */
 function world() {
   const base = join(root, String(n++));
   const home = join(base, "home");
@@ -42,10 +36,9 @@ function spawn(cmd: string[], cwd: string, env: Record<string, string>, stdin?: 
   return { code: r.exitCode, stdout, stderr: r.stderr.toString(), json };
 }
 const run = (args: string[], at: At, session?: string, stdin?: unknown) =>
-  spawn(["bun", SCRIPT, ...args, "--home", at.home], at.cwd, { ...ENV, HOME: at.home, VSTACK_FLOW_HOST: "off", ...(session ? { PI_SESSION_ID: session } : {}) }, stdin);
-/** vstack-clean's script with its clock set `days` after `from`. */
+  spawn([process.execPath, SCRIPT, ...args, "--home", at.home], at.cwd, { ...ENV, HOME: at.home, VSTACK_FLOW_HOST: "off", ...(session ? { PI_SESSION_ID: session } : {}) }, stdin);
 const clean = (at: At, from: number, days: number, ...args: string[]) =>
-  spawn(["bun", CLEAN, "--home", at.home, "--now", new Date(from + days * DAY).toISOString(), ...args], at.cwd, ENV);
+  spawn([process.execPath, CLEAN, "--home", at.home, "--now", new Date(from + days * DAY).toISOString(), ...args], at.cwd, ENV);
 const ok = (r: Run): any => {
   expect(r.stderr).toBe("");
   expect(r.code).toBe(0);
@@ -57,7 +50,6 @@ const contribution = (...items: object[]) => ({ version: 1, items });
 const card = (ref: string) => ({ ref, title: `Finding ${ref}`, label: "issue", blocking: true, impact: `Users see ${ref}.`, action: `Fix ${ref}.`, evidence: `${ref}.ts:1` });
 const FINISH = { kind: "stage", state: "finished" };
 const RESULT = contribution({ kind: "result", shape: "cards", title: "Late", entries: [card("late")] });
-/** A Flow with one finished Stage that holds a Result, and the folder its receipt's page lives in. */
 function finishedFlow(w: ReturnType<typeof world>, session = "s-1") {
   const o = ok(run(["open", "--title", "Retention proof", "--skill", "explain"], w.at, session));
   ok(run(["submit"], w.at, session, contribution({ kind: "result", ref: "r", shape: "cards", title: "Findings", entries: [card("a")] }, FINISH)));
@@ -65,7 +57,6 @@ function finishedFlow(w: ReturnType<typeof world>, session = "s-1") {
 }
 const lifecycleTime = (at: At, flow: string): number => Date.parse(ok(run(["show", "--flow", flow], at)).lifecycle.at(-1).time);
 
-/** Every file under `dir`. */
 function files(dir: string): string[] {
   const out: string[] = [];
   const walk = (d: string) => {
@@ -78,7 +69,6 @@ function files(dir: string): string[] {
   walk(dir);
   return out;
 }
-/** Gives every file and dir under `dir`, and `dir` itself, the mtime `when`, as a write or a read that touched them would. */
 function touchAll(dir: string, when: number) {
   const t = new Date(when);
   const walk = (d: string) => {
@@ -114,19 +104,16 @@ test("a closed Flow becomes eligible 90 days after its close, whatever its file 
   const at = lifecycleTime(w.at, f.flow);
   expect(ok(run(["show", "--flow", f.flow], w.at)).open).toBe(false);
 
-  // Old files do not make a recently closed Flow eligible.
   touchAll(f.folder, at - 1000 * DAY);
   expect(listed(clean(w.at, at, 89))).not.toContain(f.folder);
   expect(ok(clean(w.at, at, 89, "--delete", f.folder)).deleted).toEqual([]);
 
-  // Reads, renders, and served files touched the day before do not renew a Flow closed 91 days ago.
   for (const read of [["show", "--flow", f.flow], ["find", `slug:${ok(run(["show", "--flow", f.flow], w.at)).flow.slug}`], ["render", "--flow", f.flow]]) ok(run(read, w.at));
   expect(lifecycleTime(w.at, f.flow)).toBe(at);
   touchAll(f.folder, at + 90 * DAY);
   const due = ok(clean(w.at, at, 91));
   expect(due.entries.map((e: { path: string }) => e.path)).toContain(f.folder);
   expect(due.entries.find((e: { path: string }) => e.path === f.folder).age_days).toBe(91);
-  // An explicit --older-than never makes a closed Flow eligible sooner than 90 days.
   expect(listed(clean(w.at, at, 30, "--older-than", "1d"))).not.toContain(f.folder);
 });
 
@@ -188,7 +175,6 @@ test("an expired Flow goes with its page, data, and captured files, and its iden
   ok(run(["close", "--flow", f.flow], w.at));
   const at = lifecycleTime(w.at, f.flow);
   const flowsDir = dirname(f.folder);
-  // Captured assets under the Flow's assets directory expire with its data and page.
   touchAll(f.folder, at + 90 * DAY);
 
   const del = ok(clean(w.at, at, 91, "--delete", f.folder));
@@ -204,11 +190,9 @@ test("an expired Flow goes with its page, data, and captured files, and its iden
     expect(r.stderr).toContain(f.flow);
     expect(r.stderr.replaceAll(f.flow, "")).not.toBe(never.stderr.replaceAll("never-seen-000000", ""));
   }
-  // The binding went with the Flow, and nothing recreated a folder for its id.
   expect(run(["submit"], w.at, "s-1", RESULT).code).toBe(1);
   expect(readdirSync(flowsDir).filter((e) => !e.startsWith(".")).map((e) => join(flowsDir, e))).toEqual([keep.folder]);
   expect(files(flowsDir).some((p) => p.includes(f.flow) && !p.includes(`${join(flowsDir, ".ids")}/`))).toBe(false);
-  // A new Flow with the same title gets a new identity; the other Flow and its binding are untouched.
   expect(ok(run(["open", "--title", "Retention proof", "--skill", "explain"], w.at)).flow).not.toBe(f.flow);
   ok(run(["show"], w.at, "s-keep"));
 });

@@ -21,13 +21,13 @@ When the question has more than one plausible answer, build the variants the use
 
 ## The Flow page
 
-Read `skill://flow-page` before producing a result or asking the branch question. Continue the current Flow and add a prototype Stage. A standalone prototype starts a Flow. A detour returns to the Flow it left, including through the Flow identity in a handoff. A prototype that resolves a wayfinder ticket binds that ticket's active Stage instead.
+Follow `skill://flow-page`'s "Stage entry/exit line" before producing a Result or asking the branch question. A detour retains the Flow identity in its handoff. A prototype for a wayfinder ticket is a nested result-producing run under that ticket's Stage.
 
 Publish a `prototype` Result with a declarative `demo` or a runnable `artifact` attachment. Capture a self-contained HTML bundle with `runtime: "html"`, every resource it needs, real launch steps, and its source revision. For app-bound UI variants, preserve the actual application route and `?variant=` keys. Start the app yourself and register its loopback route with `runtime: "local-app"`. Keep terminal and backend-dependent scripts as terminal artifacts with real launch commands and an explicit `unavailable` reason when a runtime is missing. A static description or a simulated backend never replaces the executable.
 
 Put the design question, walkthrough steps, observed evidence, limitations, and throwaway notice in a Document Result beside the prototype. Use Comparison for competing variants and Metrics for measurements. Attach the screenshots and raw script output. Keep the actual source and capture paths required below. The Flow page is the reading document, not a second report page or the canonical implementation.
 
-Record every `ask` through flow-page, never through a prototype button. Demo state remains browser-local and authorizes nothing. Finish the Stage when the run ends, unless its caller owns it.
+Record real questions through the common ask protocol, never through a prototype button. Demo state remains browser-local and authorizes nothing.
 
 ## Rules that apply to all three
 

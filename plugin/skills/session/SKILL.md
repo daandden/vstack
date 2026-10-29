@@ -99,7 +99,7 @@ If filing or commenting fails, move the row to Backlog with its proposed text an
 
 ### Ask on the Flow page
 
-Read `skill://flow-page` and discover the session and agent's Flow with `bound`. Open a session Stage on that Flow, or start one with `open --skill session --title <review topic>` for a standalone retro. session owns this Stage even when invoked inside a grill. Open it before the first question, whether session selection or finding approval. Keep the caller's Stage id and restore its binding after this Stage ends.
+Follow `skill://flow-page`'s "Stage entry/exit line" before session selection or finding approval. A session review remains its own result-producing run inside a grill.
 
 Publish the synthesis as Results before approval: a table of accepted findings with Problem, Proposal, Home, and Route, and a Document containing Rejected reasons, Backlog, and evidence limits. Rank findings most severe first by harm, rework, and recurrence. Submit one round and use its receipt's `ask` per finding, in that order. Each question names its Result row in `results` and carries the evidence, proposed change, resolved home, and route. Class 4 and 5 rows name a matching open vstack issue when present; environment rows carry the ladder level, reasons higher levels did not work, and the past mistake a new check must fail on. Preserve raw responses and separate readings. A timeout, cancellation, or headless recommendation authorizes no edit or issue.
 
@@ -109,7 +109,7 @@ Record each approved lesson with its proposed text and resolved target for imple
 
 The grill runs the lenses and synthesis as fact-finding. It makes no edits and files nothing. implement makes only the approved edits and files only the approved vstack issues, on the routes above.
 
-Before finishing the session Stage, publish the approved lessons with proposed text and resolved targets, routing redirects, dropped findings, Backlog, and review limits as a Document Result. Preserve existing approval and publication boundaries. If implement acts later, it opens its own Stage and records actual edits, issue outcomes, copies, diffs, and checks there, rather than rewriting this finished Stage. Restore the caller's binding when returning to it.
+Before finishing the session Stage, publish the approved lessons with proposed text and resolved targets, routing redirects, dropped findings, Backlog, and review limits as a Document Result. Preserve existing approval and publication boundaries. If implement acts later, it opens its own Stage and records actual edits, issue outcomes, copies, diffs, and checks there, rather than rewriting this finished Stage.
 
 ### Skill edits
 

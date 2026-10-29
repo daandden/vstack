@@ -13,7 +13,7 @@ Each axis runs as its own reviewer so that findings from one do not mask another
 
 Resolve the absolute vstack root through the Private-mode rule once. Read `docs/vstack/issue-tracker.md` under that root in Standard mode, or `<vstack root>/config/issue-tracker.md` in Private mode. If it is missing, stop and tell the user to run `/skill:setup-vstack`. Subagents use the supplied root, never resolve it again.
 
-code-review runs as its own Stage on the Flow page, also when implement or implement-spec runs it. Read `skill://flow-page` before publishing or asking. Use `bound` to find this session and agent's Flow, then `open --flow <flow> --skill code-review`, or start a Flow when unbound. Every `ask` below is a question in that Stage. A code-review in a subagent returns its structured review Result and open questions without writing a page or asking. The caller publishes that Result in a code-review Stage and asks its questions.
+Follow `skill://flow-page`'s "Stage entry/exit line". A subagent reviewer returns its structured review Result and open questions to the coordinator for publication in the code-review Stage.
 
 ## Process
 
@@ -134,7 +134,7 @@ Publish through `skill://flow-page` before asking about findings. Submit one `re
 
 Decide each finding that its evidence settles: a documented-standard breach, a missing or incorrect spec requirement, a confirmed risk, or a cleared claim. A card holds its decision in `blocking` and `action`, and a claim in `status` and `consequence`. Ask about every other finding, one question per finding. Examples are an unsettled baseline smell, behavior the spec neither asks for nor rules out, an ambiguous spec line, and an unproven claim. If every finding is decided, ask nothing. Otherwise submit one round and use its receipt's `ask` payload unchanged. Each question names the finding and ends with "?". Its `results` names `<review ref or id>/<entry ref or id>` so the script links both ways. Record the answers through the common interface.
 
-Submit a `close` covering the recorded decisions, or an `extra` outcome when there were no questions or Assumed picks. Then finish the Stage. Its completion authorizes no downstream action.
+Use flow-page's "Close the Stage" after recording the review decisions or no-question outcome.
 
 In chat, summarize each axis's count and worst issue, or its explicit state and reason, instead of repeating the findings. For Blast radius include its triggers or skip reason and, when proof ran, whether the safety fact is proven or unproven. Never select a worst issue across axes. The extension presents the bound Flow URL after the main-agent reply. The caller receives each decided finding plus each question's answer. For a PR, remove the worktree as step 1 says.
 

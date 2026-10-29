@@ -10,7 +10,7 @@ Use this when you produce a performance number: a PR's before and after, a regre
 
 For a quick ballpark the user asked for, one run is enough. Still check questions 4 and 7, and say that it is one run. Skip the rest unless that run looks wrong. A choice between options is never a ballpark.
 
-When performing a measurement review, read `skill://flow-page`, discover the session and agent's `bound` Flow, and open a `benchmark-checklist` Stage there with the caller's Stage as `--parent`, or start a Flow if unbound. A reference read adds no Stage. Route asks through this Stage, publish the Results below, finish the Stage, and restore a nested caller's binding.
+Follow `skill://flow-page`'s "Stage entry/exit line" for a measurement-review run. Publish the measurement Results below.
 
 ## Before you run anything
 

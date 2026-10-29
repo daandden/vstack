@@ -1,11 +1,6 @@
-// flow-page's migrate command run as a process: a structured Grilling page becomes a Flow in the Flow page store with
-// its records intact, and a page without structured state is left alone (spec #267 D13). The historical states under
-// fixtures/flow-page-migrate are page.jsonl files that the retired grilling-page writer produced. Tests read
-// receipts, refusals, the `show` snapshot, stored bytes, and the page's element ids, never page wording or markup.
-
 import { afterAll, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { repoKey, scratchRoot } from "../plugin/skills/vstack-tmp/scripts/scratch.ts";
@@ -13,11 +8,11 @@ import { ENV, git } from "./support/fixture.ts";
 
 const FLOW_PAGE = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
 const FIXTURES = join(import.meta.dir, "fixtures", "flow-page-migrate");
+const CLEAN = join(import.meta.dir, "..", "plugin", "skills", "vstack-tmp", "scripts", "clean.ts");
 const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-page-migrate-")));
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 
 let n = 0;
-/** A fresh home and git project, and the project's Scratch dir where its Grilling pages live. */
 function world() {
   const base = join(root, String(n++));
   const home = join(base, "home");
@@ -34,7 +29,7 @@ type Run = { code: number; stdout: string; stderr: string; json: any };
 function run(w: World, args: string[], o: { session?: string; stdin?: unknown } = {}): Run {
   const env = { ...ENV, HOME: w.home, VSTACK_FLOW_HOST: "off", ...(o.session ? { PI_SESSION_ID: o.session } : {}) };
   const stdin = o.stdin === undefined ? "ignore" : new TextEncoder().encode(JSON.stringify(o.stdin));
-  const r = Bun.spawnSync(["bun", FLOW_PAGE, ...args, "--home", w.home], { cwd: w.project, env, stdin, stdout: "pipe", stderr: "pipe" });
+  const r = Bun.spawnSync([process.execPath, FLOW_PAGE, ...args, "--home", w.home], { cwd: w.project, env, stdin, stdout: "pipe", stderr: "pipe" });
   let json: any;
   try {
     json = JSON.parse(r.stdout.toString());
@@ -49,13 +44,11 @@ const ok = (r: Run): any => {
   return r.json;
 };
 
-/** Puts a captured historical page.jsonl state into a Grilling folder, as the retired writer left it. */
 function historical(folder: string, fixture: string) {
   mkdirSync(folder, { recursive: true });
   writeFileSync(join(folder, "page.jsonl"), readFileSync(join(FIXTURES, fixture)));
 }
 
-/** Every file under `dir` with its bytes. */
 function tree(dir: string): Record<string, string> {
   const out: Record<string, string> = {};
   const walk = (d: string) => {
@@ -72,7 +65,6 @@ function tree(dir: string): Record<string, string> {
 const option = (label: string, extra: object = {}) => ({ label, does: `${label} does`, gains: [`${label} gain`], costs: [`${label} cost`], ...extra });
 const SVG = readFileSync(join(FIXTURES, "scope.svg"), "utf8");
 
-/** A structured Grilling page with a finished Stage and an in-progress one, its SVG figure beside it. */
 function legacyPage(w: World, fixture = "legacy.jsonl") {
   const folder = join(w.scratch, "grilling", "project-41");
   mkdirSync(join(folder, "figures"), { recursive: true });
@@ -80,6 +72,80 @@ function legacyPage(w: World, fixture = "legacy.jsonl") {
   historical(folder, fixture);
   return folder;
 }
+
+test("alias discovery offers historical continuation before a new Flow, and requires explicit migration", () => {
+  const w = world();
+  const folder = legacyPage(w);
+  const before = tree(w.scratch);
+  const found = ok(run(w, ["find", "ticket:42"]));
+  expect(found.migration_required).toBe(true);
+  expect(found.historical).toEqual([expect.objectContaining({ source: folder, title: "Checkout limits", open: true })]);
+  expect(found.flow).toBeUndefined();
+  expect(tree(w.scratch)).toEqual(before);
+  const migrated = ok(run(w, ["migrate", found.historical[0].source]));
+  expect(ok(run(w, ["find", "ticket:42"])).flow).toBe(migrated.flow);
+  const continued = ok(run(w, ["open", "--flow", "ticket:42", "--skill", "research"]));
+  expect(continued.flow).toBe(migrated.flow);
+});
+
+test("automatic cleanup protects an open historical structured Flow regardless of file age", () => {
+  const w = world();
+  const folder = legacyPage(w);
+  const old = new Date("2020-01-01T00:00:00Z");
+  for (const file of Object.keys(tree(folder)).reverse()) utimesSync(file, old, old);
+  utimesSync(join(folder, "figures"), old, old);
+  utimesSync(folder, old, old);
+  const before = tree(folder);
+  const result = Bun.spawnSync([process.execPath, CLEAN, "--home", w.home, "--now", "2030-01-01T00:00:00Z", "--delete", folder], { cwd: w.project, env: ENV, stdout: "pipe", stderr: "pipe" });
+  expect(result.stderr.toString()).toBe("");
+  expect(result.exitCode).toBe(0);
+  expect(JSON.parse(result.stdout.toString()).deleted).toEqual([]);
+  expect(tree(folder)).toEqual(before);
+  expect(ok(run(w, ["find", "spec:41"])).migration_required).toBe(true);
+});
+
+test("historical alias ambiguity names the sources and never silently chooses a new or existing Flow", () => {
+  const w = world();
+  const first = legacyPage(w);
+  const second = join(w.scratch, "grilling", "another-41");
+  historical(second, "legacy.jsonl");
+  const before = tree(w.scratch);
+  const ambiguous = run(w, ["find", "ticket:42"]);
+  expect(ambiguous.code).toBe(1);
+  expect(ambiguous.stdout).toBe("");
+  expect(ambiguous.stderr).toContain(first);
+  expect(ambiguous.stderr).toContain(second);
+  expect(tree(w.scratch)).toEqual(before);
+  const migrated = ok(run(w, ["migrate", first]));
+  const mixed = run(w, ["find", "ticket:42"]);
+  expect(mixed.code).toBe(1);
+  expect(mixed.stderr).toContain(migrated.flow);
+  expect(mixed.stderr).toContain(second);
+  expect(ok(run(w, ["show", "--flow", migrated.flow])).flow.id).toBe(migrated.flow);
+});
+
+test("an expired migrated Flow cannot be resurrected by its retained historical source", () => {
+  const w = world();
+  const source = legacyPage(w, "legacy-closed.jsonl");
+  const migrated = ok(run(w, ["migrate", source]));
+  const folder = join(migrated.page, "..");
+  const beforeSource = tree(source);
+  const clean = Bun.spawnSync([process.execPath, CLEAN, "--home", w.home, "--now", "2030-01-01T00:00:00Z", "--delete", folder], { cwd: w.project, env: ENV, stdout: "pipe", stderr: "pipe" });
+  expect(clean.stderr.toString()).toBe("");
+  expect(clean.exitCode).toBe(0);
+  expect(JSON.parse(clean.stdout.toString()).deleted).toEqual([join(w.scratch, "flow", migrated.flow)]);
+  expect(existsSync(migrated.page)).toBe(false);
+  const before = tree(w.scratch);
+  for (const args of [["find", "spec:41"], ["migrate", source], ["show", "--flow", migrated.flow]]) {
+    const refused = run(w, args);
+    expect(refused.code).toBe(1);
+    expect(refused.stdout).toBe("");
+    expect(refused.stderr).toContain(migrated.flow);
+  }
+  expect(tree(w.scratch)).toEqual(before);
+  expect(tree(source)).toEqual(beforeSource);
+  expect(ok(run(w, ["open", "--title", "Explicit new work", "--skill", "research"])).flow).not.toBe(migrated.flow);
+});
 
 test("a structured Grilling page migrates into a Flow with its questions, answers, numbers, times, ids, sources, figures, Topics, and Results", () => {
   const w = world();
@@ -99,8 +165,6 @@ test("a structured Grilling page migrates into a Flow with its questions, answer
   expect([q["q-scope"].q, q["q-limit"].q, q["q-scope-again"].q, q["q-open"].q]).toEqual([1, 2, 1, 1]);
   expect(q["q-scope-again"].again).toBe("q-scope");
 
-  // An explicit pick stays the user's pick; Other words stay the user's words with no invented pick or reading; an
-  // unanswered ask stays no answer, and a finished Stage takes it out of current work.
   expect(q["q-scope"].answer.state).toBe("picked");
   expect(q["q-scope"].answer.picks).toEqual(["A. First"]);
   expect(q["q-scope"].answer.response.text).toBe("keep it simple");
@@ -115,7 +179,6 @@ test("a structured Grilling page migrates into a Flow with its questions, answer
   expect(q["q-open"].open).toBe(true);
   expect(grillStage.closes.map((c: any) => [c.id, c.decisions.map((d: any) => d.question)])).toEqual([["c1", ["q-scope-again", "q-limit"]]]);
 
-  // Report blocks are Result blocks with the same ids, entries, and question links, and nothing added.
   expect(grillStage.results.map((r: any) => [r.id, r.shape, r.entries.map((e: any) => e.id)])).toEqual([["findings", "cards", ["findings/f1"]]]);
   expect(grillStage.results[0].entries[0].questions).toEqual(["q-scope"]);
   expect(q["q-scope"].results).toEqual(["findings/f1"]);
@@ -123,23 +186,19 @@ test("a structured Grilling page migrates into a Flow with its questions, answer
   expect(grillStage.background).toBe("bg");
   expect(snap.topics).toEqual([{ id: "caps", questions: ["q-scope"] }]);
   expect(q["q-scope"].topics).toEqual(["caps"]);
-  // The Background and the Today fact cite one source, stored once.
   const shared = snap.sources.find((s: any) => s.cited_by.includes("bg"));
   expect(shared.cited_by).toContain("q-scope");
 
-  // The SVG figure is captured byte for byte; the text and HTML figures stay with their question.
   const svg = snap.attachments.find((a: any) => a.used_by.includes("q-scope"));
   expect(svg.type).toBe("svg");
   expect(svg.revision).toBe(createHash("sha256").update(SVG).digest("hex"));
   expect(readFileSync(join(migrated.page, "..", svg.file), "utf8")).toBe(SVG);
   expect(q["q-limit"].figures.length).toBe(1);
 
-  // The old page's anchors still lead to the same records on the Flow page.
   const ids = new Set([...readFileSync(migrated.page, "utf8").matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
   for (const anchor of ["q-q-scope", "q-q-open", "stage-grill", "stage-impl", "round-r1", "close-c1", "background-bg", "report-findings", "report-findings_f1", "report-tickets_t42", "topic-caps", "q-scope", "grill"])
     expect(ids).toContain(anchor);
 
-  // The old flow record's keys find the Flow.
   for (const alias of ["spec:41", "ticket:42", "ticket:43", "branch:feat/limits", "run:41-run", "folder:41", "slug:checkout-limits"]) expect(ok(run(w, ["find", alias])).flow).toBe(migrated.flow);
 });
 

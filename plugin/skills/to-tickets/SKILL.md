@@ -16,7 +16,7 @@ The issue tracker and triage label vocabulary should have been provided to you. 
 
 Work from whatever is already in the conversation context. If the user passes a reference (a spec path, an issue number or URL) as an argument, fetch it and read its full body and comments.
 
-Read `skill://flow-page`. Use `bound` to discover the session and agent's Flow, or `find spec:<number-or-feature-slug>` for a later session. Open a to-tickets Stage on it, or start a Flow with `open --skill to-tickets --title <topic>` if none exists. Migrate a supported historical structured page first. Submit typed contributions only.
+Follow `skill://flow-page`'s "Stage entry/exit line". Discover the source Flow by its `spec:<number-or-feature-slug>` alias.
 
 ### 2. Explore the codebase (optional)
 
@@ -75,7 +75,7 @@ Work the **frontier**: any ticket whose blockers are all done. For a purely line
 
 Do NOT close or modify any parent issue.
 
-After publishing, add each `ticket:<id>` alias to the Flow without resending existing aliases. Publish the full ticket bodies as Document Results with their canonical tracker revisions or local file links, and update the breakdown to use named published links. Preserve the blocking graph as Result content: attach a dependency figure when produced, and keep every blocking edge in the table regardless. The Stage tree is navigation, not a dependency graph. Finish the to-tickets Stage; do not close the Flow.
+After publishing, add each `ticket:<id>` alias to the Flow without resending existing aliases. Publish the full ticket bodies as Document Results with their canonical tracker revisions or local file links, and update the breakdown to use named published links. Preserve the blocking graph as Result content: attach a dependency figure when produced, and keep every blocking edge in the table regardless. The Stage tree is navigation, not a dependency graph.
 
 <local-ticket-template>
 

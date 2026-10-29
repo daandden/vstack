@@ -12,7 +12,7 @@ Use the critic's fresh perspective. The critic edits comments. The caller of thi
 
 Use the caller's files or diff. Otherwise use the current diff against the default branch, including the working tree.
 
-For a critique run, read `skill://flow-page` and discover the session and agent's `bound` Flow. Open a `prune-comments` Stage there with the caller's Stage as `--parent`, or start a Flow if unbound. A reference read creates no Stage. The parent publishes the critic's returned evidence and owns the binding. Route any asks through this Stage.
+Follow `skill://flow-page`'s "Stage entry/exit line" for a critique run. The coordinator publishes the critic's evidence.
 
 ## Steps
 
@@ -42,6 +42,6 @@ Constraint comments say `do not remove`, `do not change wording`, or `talk to X 
 
 Report the deletion count, restored comments, reruns, direct fixes, fixes that need a new shape and remain open, and other open work.
 
-Publish a Document Result with these counts and dispositions, and a Code/diff Result for reportable accepted changes with their real paths. Use a Timeline for reruns and their actual outcomes, and a ledger for claims that remain unproven or need a new shape. Capture redacted critic evidence and verification outputs as attachments. Keep step 4's intentionally unreported constraint deletions out of individual findings. A missing critic remains not run, not a clean pass. Finish the Stage and restore the caller's binding when nested. The reply summarizes the Flow Results, with no separate report page.
+Publish a Document Result with these counts and dispositions, and a Code/diff Result for reportable accepted changes with their real paths. Use a Timeline for reruns and their actual outcomes, and a ledger for claims that remain unproven or need a new shape. Capture redacted critic evidence and verification outputs as attachments. Keep step 4's intentionally unreported constraint deletions out of individual findings. A missing critic remains not run, not a clean pass. The reply summarizes the Flow Results, with no separate report page.
 
 Never commit in this skill. The caller commits. On stop or failure, the caller keeps and commits accepted fixes, continues, and lists prune-comments as open.

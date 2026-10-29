@@ -1,4 +1,3 @@
-// Runnable artifacts through the producer CLI and real host. Observe captured bytes, availability, and permissions.
 import { afterAll, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -9,7 +8,7 @@ const SCRIPT = join(import.meta.dir, "..", "plugin/skills/flow-page/scripts/flow
 const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-artifacts-")));
 const homes: string[] = [];
 function run(home: string, args: string[], input?: object) {
-  const p = Bun.spawnSync(["bun", SCRIPT, ...args, "--home", home, "--session", "artifacts"], {
+  const p = Bun.spawnSync([process.execPath, SCRIPT, ...args, "--home", home, "--session", "artifacts"], {
     cwd: root, env: { ...ENV, VSTACK_FLOW_PORT: String(port), HOME: home },
     stdin: input ? new TextEncoder().encode(JSON.stringify(input)) : "ignore", stdout: "pipe", stderr: "pipe",
   });
@@ -121,5 +120,57 @@ test("unsafe bundles, nonlocal app routes, and non-artifact prototypes are refus
   }
   expect(submit(home, { kind: "attachment", ref: "app", type: "file", caption: "Not runnable", origin: "fixture", path: "fixture.html" }, prototype).code).toBe(1);
   expect(ok(run(home, ["show"])).attachments).toHaveLength(0);
+  ok(run(home, ["host", "stop"]));
+});
+
+test("captured figures and option previews survive source changes and serve only registered image bytes", async () => {
+  const home = world();
+  const opened = ok(run(home, ["open", "--skill", "grill-me", "--title", "Visual choice"]));
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="80" height="40"><rect width="80" height="40" fill="green"/></svg>';
+  writeFileSync(join(root, "choice.svg"), svg);
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64");
+  writeFileSync(join(root, "choice.png"), png);
+  const sent = ok(submit(home,
+    { kind: "background", title: "Context", summary: "Compare captured alternatives", sections: [{ heading: "Scope", body: "One checkout." }], sources: ["fixture"], figures: [{ attachment: "diagram" }] },
+    { kind: "round", questions: [{ ref: "choose", title: "Which layout?", description: "Compare the diagram and preview.", figures: [{ attachment: "diagram" }], options: [{ label: "Compact", does: "Uses less space", gains: ["Space"], costs: ["Density"], preview: { attachment: "pixel" } }] }] },
+    { kind: "attachment", ref: "diagram", type: "svg", caption: "Green checkout layout", origin: "Captured fixture", path: "choice.svg" },
+    { kind: "attachment", ref: "pixel", type: "image", caption: "Compact checkout preview", origin: "Captured fixture", path: "choice.png" },
+  ));
+  const snapshot = ok(run(home, ["show"]));
+  const q = snapshot.stages[0].questions[0];
+  expect(q.figures).toEqual([{ id: `${sent.refs.choose}-figure-1`, attachment: sent.refs.diagram }]);
+  expect(q.options[0].preview).toEqual({ id: `${sent.refs.choose}-option-1-preview`, attachment: sent.refs.pixel });
+  expect(snapshot.stages[0].background_figures).toEqual([{ id: "background-1-figure-1", attachment: sent.refs.diagram }]);
+  writeFileSync(join(root, "choice.svg"), "<svg>changed</svg>");
+  const live = await (await fetch(opened.live.url)).text();
+  for (const html of [readFileSync(sent.page, "utf8"), live]) {
+    const images: { src: string | null; alt: string | null }[] = [];
+    new HTMLRewriter().on(".visual img", { element(e) { images.push({ src: e.getAttribute("src"), alt: e.getAttribute("alt") }); } }).transform(html);
+    expect(images.map((i) => i.alt)).toEqual(["Green checkout layout", "Green checkout layout", "Compact checkout preview"]);
+    if (html === live) {
+      const captured = await fetch(new URL(images[0].src!, opened.live.url));
+      expect(captured.status).toBe(200);
+      expect(captured.headers.get("content-type")).toContain("image/svg+xml");
+      expect(await captured.text()).toBe(svg);
+      expect(Buffer.from(await (await fetch(new URL(images[2].src!, opened.live.url))).arrayBuffer())).toEqual(png);
+      expect((await fetch(new URL("assets/unregistered.svg", opened.live.url))).status).toBe(404);
+    }
+  }
+  const before = ok(run(home, ["show"]));
+  const beforePage = readFileSync(before.page, "utf8");
+  for (const figure of [{ attachment: "missing" }, { html: "<b>raw</b>" }, { attachment: sent.refs.diagram, css: "body{}" }]) {
+    expect(submit(home, { kind: "round", questions: [{ title: "Unsafe?", description: "Must not commit.", figures: [figure], options: [{ label: "No", does: "Refuses", gains: ["Safety"], costs: ["None"] }] }] }).code).toBe(1);
+    expect(ok(run(home, ["show"])).revision).toBe(before.revision);
+  }
+  for (const attachment of [
+    { kind: "attachment", ref: "invalid", type: "file", caption: "Not a figure", origin: "Fixture", path: "choice.png" },
+    { kind: "attachment", ref: "invalid", type: "image", caption: "Unavailable figure", origin: "Fixture", unavailable: "No capture exists" },
+  ]) {
+    const refused = submit(home, attachment, { kind: "round", questions: [{ title: "Preview?", description: "Needs captured image bytes.", options: [{ label: "No", does: "Refuses", gains: ["Safety"], costs: ["None"], preview: { attachment: "invalid" } }] }] });
+    expect(refused.code).toBe(1);
+    expect(refused.stderr).toContain("must be a captured image or SVG figure");
+    expect(ok(run(home, ["show"])).revision).toBe(before.revision);
+    expect(readFileSync(before.page, "utf8")).toBe(beforePage);
+  }
   ok(run(home, ["host", "stop"]));
 });

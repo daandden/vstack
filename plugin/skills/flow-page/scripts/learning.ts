@@ -1,6 +1,7 @@
 import { existsSync, lstatSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { fields, Refusal, refuse, text, type Quiz, type State } from "./model.ts";
+import { fields, Refusal, refuse, text } from "./fields.ts";
+import type { Quiz, State } from "./model.ts";
 import { readState, withLock, writeAtomic } from "./store.ts";
 
 type Attempt = { id: string; result: string; revision: number; question: string; answer: string; correct: boolean; time: string };
@@ -34,7 +35,6 @@ export async function learning(folder: string, req: Request): Promise<{ status: 
   try {
     if (req.method === "GET") return { status: 200, body: read(folder) };
     if (req.method !== "POST") return { status: 405, body: { error: "Only GET and POST are supported" } };
-    // Bound the streamed body as well as Content-Length before parsing any input.
     const reader = req.body?.getReader();
     const parts: Uint8Array[] = [];
     let size = 0;

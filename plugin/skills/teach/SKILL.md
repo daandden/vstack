@@ -142,7 +142,7 @@ The user will sometimes express preferences of how they want to be taught, or th
 
 ## Page output
 
-Read `skill://flow-page` before producing a lesson or asking the learner anything. Continue the current Flow and open a teach Stage, or start a Flow for a standalone teaching run. A nested run that belongs to an active caller's Stage binds that Stage instead.
+Follow `skill://flow-page`'s "Stage entry/exit line" before producing a lesson or asking the learner anything.
 
 Publish the lesson and reference material as Document Results with ordered sections, citations, code, and captured figures. Publish retrieval practice as Quiz Results with choice, text, or numeric answer rules and explanations. Use a declarative prototype demo for representable state exercises, or a captured HTML artifact for a real simulator that needs code. Follow flow-page's typed contracts rather than adding scripts to the Flow page.
 
@@ -154,6 +154,6 @@ Draw lesson and reference figures through `skill://vstack-figures`. Write each F
 
 ## In-session questions
 
-Every question addressed to the learner during the session goes through `ask` and is recorded in the bound Stage as `skill://flow-page` says: mission discovery, prior knowledge, topic choices, preferences, and approvals. Keep Quiz attempts separate from these real questions. Quiz feedback and completion persist through the learning-progress contract, including supported offline attempts. When the run has no more teaching or questions, close and finish its Stage through flow-page. If the caller owns the Stage, return the Results and open questions for that caller to close.
+Every question addressed to the learner during the session goes through `ask` and is recorded in the bound Stage as `skill://flow-page` says: mission discovery, prior knowledge, topic choices, preferences, and approvals. Keep Quiz attempts separate from these real questions. Quiz feedback and completion persist through the learning-progress contract, including supported offline attempts.
 
 A timed-out answer is not the learner's answer. Leave ordinary questions unanswered; for an approval, re-ask once, then stop without acting if it times out again. A subagent without `ask` returns open questions to its parent. A headless run takes the recommended answer and reports that choice.

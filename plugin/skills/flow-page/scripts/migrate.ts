@@ -1,15 +1,15 @@
-// The supported Grilling JSONL format becomes Flow domain records once. The original log stays in provenance, so
-// superseded records and fields the old renderer did not display remain available without inventing new facts.
 import { createHash } from "node:crypto";
-import { answerState, latestAsks, newFlow, parseAlias, Refusal, SLUG, slugOf, type Entry, type Figure, type Io, type State } from "./model.ts";
+import { answerState, latestAsks, newFlow, parseAlias, SLUG, slugOf, type Entry, type Figure, type Io, type State } from "./model.ts";
 import { unsafeMarkup } from "./assets.ts";
+import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from "node:fs";
+import { join } from "node:path";
+import { CODE_ID, isObj, newId, REF as ID, Refusal, text } from "./fields.ts";
 
 type Old = Record<string, any>;
-const ID = /^[a-z0-9][a-z0-9-]*$/;
 const TYPES = ["page", "flow", "stage", "round", "question", "answer", "close", "background", "topic", "report"];
 const fail = (where: string, message: string): never => { throw new Refusal(`migrate ${where}: ${message}`); };
-const object = (x: unknown, where: string): Old => typeof x === "object" && x !== null && !Array.isArray(x) ? x : fail(where, "must be an object");
-const str = (o: Old, k: string, w: string): string => typeof o[k] === "string" && o[k].trim() !== "" ? o[k] : fail(w, `${k} must be a non-empty string`);
+const object = (x: unknown, where: string): Old => isObj(x) ? x : fail(where, "must be an object");
+const str = (o: Old, k: string, w: string): string => text(o, k, `migrate ${w}`);
 const int = (o: Old, k: string, w: string): number => Number.isInteger(o[k]) && o[k] > 0 ? o[k] : fail(w, `${k} must be a positive integer`);
 const list = (o: Old, k: string, w: string, empty = false): any[] => Array.isArray(o[k]) && (empty || o[k].length) ? o[k] : fail(w, `${k} must be a list${empty ? "" : " with at least one item"}`);
 const texts = (o: Old, k: string, w: string): string[] => list(o, k, w).map((s) => typeof s === "string" && s.trim() ? s : fail(w, `${k} must hold non-empty strings`));
@@ -42,6 +42,30 @@ export function parseHistorical(raw: string) {
   if (flow && !["open", "closed"].includes(flow.state)) fail("flow", "state must be open or closed");
   return { records, all, page, flow, slug: flow && typeof flow.slug === "string" && SLUG.test(flow.slug) ? flow.slug : slugOf(page.title), sha256: createHash("sha256").update(raw).digest("hex") };
 }
+export function historicalAliases(h: ReturnType<typeof parseHistorical>): string[] {
+  const f = h.flow;
+  return [...new Set([
+    `slug:${h.slug}`,
+    ...(f ? [f.key, ...(f.old_keys ?? [])].map((k) => `folder:${k}`) : []),
+    ...["spec", "branch"].flatMap((k) => f?.[k] ? [`${k}:${f[k]}`] : []),
+    ...(f?.tickets ?? []).map((x: string) => `ticket:${x}`),
+    ...(f?.runs ?? []).map((x: string) => `run:${x}`),
+  ].map(parseAlias))];
+}
+
+export function historicalFlows(scratch: string) {
+  const dir = join(scratch, "grilling");
+  if (!existsSync(dir) || !lstatSync(dir).isDirectory()) return [];
+  return readdirSync(dir).flatMap((name) => {
+    const source = join(dir, name);
+    const path = join(source, "page.jsonl");
+    try {
+      if (!lstatSync(source).isDirectory() || !lstatSync(path).isFile()) return [];
+      const h = parseHistorical(readFileSync(path, "utf8"));
+      return [{ source: realpathSync(source), title: h.page.title as string, aliases: historicalAliases(h), open: h.flow?.state !== "closed" }];
+    } catch { return []; }
+  });
+}
 
 
 export function migrateHistorical(h: ReturnType<typeof parseHistorical>, id: string, from: string, time: string, io: Io): State {
@@ -53,12 +77,12 @@ export function migrateHistorical(h: ReturnType<typeof parseHistorical>, id: str
   const allIds = new Set(h.all.map((r) => r.id));
   if ([...allIds].some((x) => x === "overview" || x === "topics")) fail("state", "a record id collides with a reserved page anchor");
   for (const r of h.all) {
-    const m = r.id.match(/^(stage|round|question|close|background|topic|result|source|assumed|attachment)-(\d+)$/);
+    const m = r.id.match(CODE_ID);
     if (m) s.next[m[1]] = Math.max(s.next[m[1]] ?? 0, Number(m[2]));
   }
   const fresh = (kind: string) => {
     let next: string;
-    do { s.next[kind] = (s.next[kind] ?? 0) + 1; next = `${kind}-${s.next[kind]}`; } while (allIds.has(next));
+    do { next = newId(s, kind); } while (allIds.has(next));
     allIds.add(next);
     return next;
   };
@@ -101,7 +125,6 @@ export function migrateHistorical(h: ReturnType<typeof parseHistorical>, id: str
     if (previous !== undefined && previous !== stage) fail(r.id, `session ${session} crosses Stages`);
     sessionStages.set(session, stage);
   }
-  // Old Q numbers were session-scoped. Distinct implicit Stages preserve that scope without renumbering.
   const stageSessions = new Map<string, number>();
   for (const [session, stage] of sessionStages) {
     if (stageSessions.has(stage)) fail(stage, "has multiple question sessions; their Q-number scopes cannot be merged");
@@ -234,8 +257,7 @@ export function migrateHistorical(h: ReturnType<typeof parseHistorical>, id: str
     if (["open", "unresolved"].includes(answerState(s, q.id))) s.retirements.push({ question: q.id, reason: "This Stage was already finished when the Grilling page was migrated. No settled answer was recorded." });
   }
   const f = h.flow;
-  const aliases = [...(f ? [f.key, ...(f.old_keys ?? [])].map((k) => `folder:${k}`) : []), ...["spec", "branch"].flatMap((k) => f?.[k] ? [`${k}:${f[k]}`] : []), ...(f?.tickets ?? []).map((x: string) => `ticket:${x}`), ...(f?.runs ?? []).map((x: string) => `run:${x}`)];
-  s.aliases.push(...new Set(aliases.map(parseAlias)));
+  s.aliases.push(...historicalAliases(h).filter((alias) => !s.aliases.includes(alias)));
   if (f?.state === "closed") s.lifecycle.push({ event: "closed", time });
   return s;
 }

@@ -15,11 +15,12 @@
 // empty, and prints JSON {root, deleted, skipped: [{path, reason}], pruned}. Exit 2 on a usage error, and on a
 // delete path that is not an entry under the root, before anything is deleted.
 
-import { lstatSync, readdirSync, rmdirSync, unlinkSync, type Stats } from "node:fs";
+import { lstatSync, readFileSync, readdirSync, rmdirSync, unlinkSync, type Stats } from "node:fs";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
-import { CLOSED_RETENTION, dropBindings, FLOW_KIND, retentionOf, withLock } from "../../flow-page/scripts/store.ts";
+import { CLOSED_RETENTION, dropBindings, FLOW_KIND, readState, registerMigration, retentionOf, withLock } from "../../flow-page/scripts/store.ts";
 import { scratchRoot } from "./scratch.ts";
+import { parseHistorical } from "../../flow-page/scripts/migrate.ts";
 
 const UNITS: Record<string, number> = { h: 3_600_000, d: 86_400_000, w: 604_800_000 };
 
@@ -94,12 +95,19 @@ function remove(p: string) {
   }
 }
 
-type Verdict = { registry: true } | { registry?: false; due: boolean; age: number; newest: number; size: number; flow?: string; closed?: string; reason: string };
+type RetentionDecision = { registry: true } | { registry?: false; due: boolean; age: number; newest: number; size: number; flow?: string; closed?: string; reason: string };
 
-/** Whether an entry is due for deletion, and its age: by its newest mtime, or by its lifecycle when it is a Flow. */
-function judge(kind: string, entry: string, path: string, st: Stats): Verdict {
+function retentionDecision(kind: string, entry: string, path: string, st: Stats): RetentionDecision {
   if (kind === FLOW_KIND && entry.startsWith(".")) return { registry: true };
   const { newest, size } = measure(path, st);
+  if (kind === "grilling" && st.isDirectory() && lstat(join(path, "page.jsonl"))?.isFile()) {
+    try {
+      const history = parseHistorical(readFileSync(join(path, "page.jsonl"), "utf8"));
+      if (history.flow?.state !== "closed") return { due: false, age: now - newest, newest, size, reason: "open historical Flow" };
+    } catch {
+      return { due: false, age: now - newest, newest, size, reason: "historical Flow state unreadable" };
+    }
+  }
   const flow = kind === FLOW_KIND ? retentionOf(path) : undefined;
   if (flow === "unreadable") return { due: false, age: now - newest, newest, size, reason: "Flow state unreadable" };
   if (flow && flow.closed === undefined) return { due: false, age: now - newest, newest, size, flow: flow.flow, reason: "open Flow" };
@@ -122,7 +130,7 @@ if (!values.delete) {
           const path = join(root, repoKey, kind, entry);
           const st = lstat(path);
           if (!st) continue;
-          const v = judge(kind, entry, path, st);
+          const v = retentionDecision(kind, entry, path, st);
           if (v.registry) continue;
           if (!v.due) {
             kept++;
@@ -164,7 +172,7 @@ for (const { path, kind, entry } of targets) {
     skipped.push({ path, reason: "missing" });
     continue;
   }
-  const v = judge(kind, entry, path, st);
+  const v = retentionDecision(kind, entry, path, st);
   if (v.registry) {
     skipped.push({ path, reason: "Flow registry" });
     continue;
@@ -174,11 +182,12 @@ for (const { path, kind, entry } of targets) {
     continue;
   }
   if (v.flow) {
-    // Under the Flow's own lock, so a reopen that lands first keeps it, and a command that waited finds it gone.
     const flow = v.flow;
     const reason = await withLock(path, () => {
-      const again = judge(kind, entry, path, lstatSync(path)) as Exclude<Verdict, { registry: true }>;
+      const again = retentionDecision(kind, entry, path, lstatSync(path)) as Exclude<RetentionDecision, { registry: true }>;
       if (!again.due) return again.reason;
+      const state = readState(path);
+      if (state?.migrated) registerMigration(dirname(path), { source: state.migrated.from, flow, sha256: state.migrated.sha256 });
       remove(path);
       dropBindings(dirname(path), flow);
     });

@@ -13,7 +13,7 @@ Accept the caller's chain facts. Follow these rules in skill://implement/END-STA
 - Step 0a: the chain facts, Code host routing, and the reuse of the vstack root and Scratch dir.
 - Step 4: Verify discovery and link repair.
 
-Follow END-STATE.md's "Publish delivery progress". Open a `ship` Stage on the caller's Flow and save its binding. Track verification and landing tasks per PR. Publish Results before finishing this Stage and restoring the binding on every return.
+Follow `skill://flow-page`'s "Stage entry/exit line". Follow END-STATE.md's "Publish delivery progress" and track verification and landing tasks per PR.
 
 ## 0. Establish the frontier
 

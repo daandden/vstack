@@ -1,7 +1,3 @@
-// flow-page's authoring script run as a process: a bound Stage takes typed contributions, code numbers and links them,
-// and one renderer publishes the static Flow page (ADR 0040). Tests read receipts, refusals, the `show` snapshot, and
-// page structure (ids and the links between them), never page wording or markup.
-
 import { afterAll, beforeEach, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
@@ -26,7 +22,7 @@ function run(args: string[], opts: { session?: string; stdin?: unknown } = {}): 
   const env: Record<string, string> = { PATH: process.env.PATH!, HOME: home, VSTACK_FLOW_HOST: "off" };
   if (opts.session) env.PI_SESSION_ID = opts.session;
   const stdin = opts.stdin === undefined ? "ignore" : new TextEncoder().encode(typeof opts.stdin === "string" ? opts.stdin : JSON.stringify(opts.stdin));
-  const r = Bun.spawnSync(["bun", SCRIPT, ...args, "--home", home], { cwd, env, stdin, stdout: "pipe", stderr: "pipe" });
+  const r = Bun.spawnSync([process.execPath, SCRIPT, ...args, "--home", home], { cwd, env, stdin, stdout: "pipe", stderr: "pipe" });
   const stdout = r.stdout.toString();
   let json: any;
   try {
@@ -48,7 +44,6 @@ const question = (ref: string, extra: object = {}) => ({
 const contribution = (...items: object[]) => ({ version: 1, items });
 const round = (...questions: object[]) => ({ kind: "round", questions });
 
-/** Opens a new Flow with one Stage bound to `session`, and returns the receipt. */
 function openFlow(session = "s-1", skill = "grill-me"): any {
   const r = run(["open", "--title", "Checkout limits", "--skill", skill], { session });
   expect(r.stderr).toBe("");
@@ -164,7 +159,6 @@ test("a bound caller submits a round and gets assigned references, a numbered la
   for (const content of ["Why scope matters.", "First does", "First gain", "it is first"]) expect(r.stdout).not.toContain(content);
 });
 
-/** Every file under the test home with its bytes, to prove a refusal wrote nothing. */
 function tree(dir = home): Record<string, string> {
   const out: Record<string, string> = {};
   const walk = (d: string) => {
@@ -254,8 +248,6 @@ const topic = (ref: string, sources = ["GLOSSARY.md"]) => ({ kind: "topic", ref,
 const background = (sources = ["GLOSSARY.md"]) => ({ kind: "background", title: "Context", summary: "One line.", sections: [{ heading: "Now", body: "How it works." }], sources });
 
 type PageFacts = { ids: Set<string>; within: Map<string, Set<string>>; contains: Map<string, Set<string>>; first: Map<string, string>; scripts: number; handlers: number; outbound: string[]; meta: Record<string, string> };
-/** Each element id in the page with the in-page link targets inside it, the ids inside it, and the id of its first
- * child element ("" for a child with no id), plus scripts, handlers, outbound links, and meta. */
 async function links(page: string): Promise<PageFacts> {
   const f: PageFacts = { ids: new Set(), within: new Map(), contains: new Map(), first: new Map(), scripts: 0, handlers: 0, outbound: [], meta: {} };
   const open: string[] = [];
@@ -600,12 +592,8 @@ test("the published page carries no content markup or script and names its revis
   expect(readdirSync(join(page, "..")).filter((f) => f.endsWith(".tmp"))).toEqual([]);
 });
 
-// ---------------------------------------------------------------------------------------------------------------
-// Document Results, typed attachments, and captured revisions (#272).
-
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
 const sha = (b: Uint8Array | string) => createHash("sha256").update(b).digest("hex");
-/** Writes `bytes` to `rel` under the working directory, the project the script runs in. */
 const put = (rel: string, bytes: Uint8Array | string) => {
   mkdirSync(dirname(join(cwd, rel)), { recursive: true });
   writeFileSync(join(cwd, rel), bytes);
@@ -628,7 +616,6 @@ const doc = (ref: string, extra: object = {}) => ({
 });
 
 type El = { tag: string; attrs: Record<string, string>; text: string; inside: string[] };
-/** Every element of the page in document order, with its attributes, its own text, and the ids of the elements around it. */
 async function elements(page: string): Promise<El[]> {
   const out: El[] = [];
   const stack: El[] = [];
@@ -669,7 +656,6 @@ test("a Document Result keeps ordered sections, citations, code, figures, limita
   const ids = els.map((e) => e.attrs.id).filter(Boolean);
   expect(ids.indexOf(d.sections[0])).toBeLessThan(ids.indexOf(d.sections[1]));
   expect(ids).toContain(d.limitations_anchor);
-  // Each citation is numbered by code, links from the section that cites it, and links back.
   expect(d.citations.map((c: any) => c.cited_in)).toEqual([[d.sections[0]], [d.sections[1]]]);
   for (const c of d.citations) {
     expect(within(els, c.cited_in[0]).some((e) => e.attrs.href === `#${c.anchor}`)).toBe(true);
@@ -677,11 +663,8 @@ test("a Document Result keeps ordered sections, citations, code, figures, limita
   }
   const l = await links(page);
   for (const targets of l.within.values()) for (const t of targets) expect(l.ids.has(t)).toBe(true);
-  // Every j/k stop is an anchor a link or URL can name.
   expect(els.filter((e) => "data-stop" in e.attrs && !e.attrs.id)).toEqual([]);
-  // Code keeps its significant whitespace.
   expect(within(els, d.sections[0]).filter((e) => e.tag === "pre").map((e) => e.text)).toEqual([CODE]);
-  // The figure shows the captured bytes, named by its caption.
   const img = within(els, d.sections[1]).find((e) => e.tag === "img")!;
   expect(img.attrs.alt).toBe("Caption of shot");
   expect(readFileSync(join(dirname(page), img.attrs.src))).toEqual(PNG);
@@ -737,7 +720,6 @@ test("every attachment type keeps its caption, origin, captured revision, and av
     return snap;
   };
   const before = await check();
-  // Move the whole Flow store; a rendered page and its attachments keep working from the new place.
   const moved = join(dirname(home), "moved-home");
   renameSync(home, moved);
   home = moved;
@@ -763,7 +745,6 @@ test("a Result keeps what it captured when its sources change, until a new revis
   const captured = show(flow).stages[0].results[0];
   expect(captured.canonical).toEqual({ file: "docs/research.md", root: "project", sha256: sha("first findings\n") });
 
-  // Editing every source and rendering again changes nothing the Result shows.
   put("docs/research.md", "second findings\n");
   put("shot.png", GIF);
   expect(run(["render", "--flow", flow]).code).toBe(0);
@@ -771,7 +752,6 @@ test("a Result keeps what it captured when its sources change, until a new revis
   expect(unchanged.stages[0].results[0]).toEqual(captured);
   expect(await figureBytes(unchanged.page, captured.document.sections[1])).toEqual(PNG);
 
-  // Publishing again captures the new revision, keeps the canonical file, and keeps the old revision readable.
   const sections = doc("doc").sections.map((sec: any, i: number) => (i === 1 ? { ...sec, blocks: [{ figure: "shot-2" }, ...sec.blocks.slice(1)] } : sec));
   const second = submit("s-1", attachment("shot-2", "image", { path: "shot.png" }), { ...doc("doc"), sections, revises: refs.doc });
   expect(second.stderr).toBe("");
@@ -1007,10 +987,6 @@ test("resolving a blocker twice is refused with no write", () => {
   expect(tree()).toEqual(before);
 });
 
-// ---------------------------------------------------------------------------------------------------------------
-// Declarative state demos (#278). The page runs them in the browser; these tests cover what authoring accepts and
-// what the static page carries. Clicking through a demo is proven in a real browser by the verify recipe.
-
 const demo = (body: object = {}, extra: object = {}) => ({
   kind: "result",
   ref: "demo",
@@ -1049,7 +1025,6 @@ test("a demo beside a real decision neither answers it nor adds executable page 
   const { refs, page, flow, revision } = r.json;
   expect(questionOf(show(flow), refs.real).answer.state).toBe("open");
 
-  // The demo runs from the page's own script; it adds no script, handler, or outbound request to the page.
   const l = await links(page);
   const template = await links(join(import.meta.dir, "..", "plugin", "skills", "flow-page", "templates", "flow-page.html"));
   expect(l.scripts).toBe(template.scripts);
@@ -1109,9 +1084,6 @@ test("a demo Result is revised like any Result: its header changes, it takes no 
   expect(page.ids.has(`${id}-r1`)).toBe(true);
 });
 
-// ---------------------------------------------------------------------------------------------------------------
-// Comparison and Metrics Results (#274).
-
 const comparison = (ref: string, extra: object = {}) => ({
   kind: "result",
   ref,
@@ -1149,28 +1121,23 @@ test("a Comparison keeps named alternatives, shared criteria, per-side evidence,
   expect(c.alternatives[0].attachments).toEqual([refs["cache-shot"]]);
   expect(c.verdict.outcome).toBe("chosen");
   expect(c.verdict.alternative).toBe("cache");
-  // The one pair nobody assessed stays a gap; code fills nothing in.
   expect(c.cells.filter((x: any) => !x.assessed).map((x: any) => [x.alternative, x.criterion])).toEqual([["queue", "ops"]]);
 
   const els = await elements(page);
   const l = await links(page);
   for (const targets of l.within.values()) for (const t of targets) expect(l.ids.has(t)).toBe(true);
   const text = (id: string) => els.find((e) => e.attrs.id === id)!.text;
-  // Every side shows its own finding and evidence, in the cell for its alternative and criterion.
   const cell = (alt: string, crit: string) => c.cells.find((x: any) => x.alternative === alt && x.criterion === crit).anchor;
   expect(text(cell("cache", "latency"))).toContain("Cache adds 1 ms.");
   expect(text(cell("cache", "latency"))).toContain("bench/cache.txt:4");
   expect(text(cell("queue", "latency"))).toContain("Queue adds 9 ms.");
   expect(text(cell("queue", "latency"))).toContain("bench/queue.txt:7");
   for (const finding of ["Cache adds 1 ms.", "Queue adds 9 ms.", "One more service to run."]) expect(text(cell("queue", "ops"))).not.toContain(finding);
-  // Alternatives and criteria are named where the reader meets them.
   expect(text(c.alternatives[0].anchor)).toContain("Redis cache");
   expect(text(c.alternatives[1].anchor)).toContain("Write queue");
   expect(text(c.criteria[0].anchor)).toContain("Checkout latency");
-  // The verdict shows its reason and links to the alternative it chose.
   expect(text(c.verdict.anchor)).toContain("Latency decides it");
   expect(within(els, c.verdict.anchor).some((e) => e.attrs.href === `#${c.alternatives[0].anchor}`)).toBe(true);
-  // The chosen side's own evidence is shown with it.
   const img = els.find((e) => e.tag === "img" && e.inside.includes(refs.cmp))!;
   expect(readFileSync(join(dirname(page), img.attrs.src))).toEqual(PNG);
 });
@@ -1186,7 +1153,6 @@ test("a Comparison with no single winner records that verdict and links to no al
   expect(within(els, c.verdict.anchor).some((e) => c.alternatives.some((a: any) => e.attrs.href === `#${a.anchor}`))).toBe(false);
 });
 
-// Labels carry no digits, so a missing row can be checked for showing no number.
 const series = [
   { ref: "main", label: "main branch", baseline: true },
   { ref: "branch", label: "feature branch" },
@@ -1234,11 +1200,9 @@ test("Metrics keeps numeric values with units, samples, workload, baselines, unc
   const val = (ref: string, s: string) => at(ref).values.find((x: any) => x.series === s);
   expect(at("p50").unit).toBe("ms");
   expect(val("p50", "main")).toMatchObject({ value: 10.1, samples: 30, uncertainty: { low: 9.8, high: 10.6, of: "min to max" } });
-  // A delta is the difference from the baseline, and its share of it.
   expect(val("p50", "branch").delta).toBeCloseTo(2.5, 10);
   expect(val("p50", "branch").relative).toBeCloseTo(24.75, 1);
   expect(val("p50", "main").delta).toBeUndefined();
-  // Missing is not zero: a missing value has no value and no delta, and a measured zero keeps both.
   expect(val("p50", "fork").value).toBeUndefined();
   expect(val("p50", "fork").missing).toBe(true);
   expect(val("p50", "fork").delta).toBeUndefined();
@@ -1246,11 +1210,8 @@ test("Metrics keeps numeric values with units, samples, workload, baselines, unc
   expect(val("errors", "main").missing).toBeUndefined();
   expect(val("errors", "branch").delta).toBe(3);
   expect(val("errors", "branch").relative).toBeUndefined();
-  // A series the producer did not list is missing too, never zero.
   expect(val("errors", "fork").missing).toBe(true);
-  // With no baseline value there is no delta to compute.
   expect(val("rss", "branch").delta).toBeUndefined();
-  // Nothing the producer did not report is invented.
   expect(val("errors", "branch").samples).toBeUndefined();
   expect(val("errors", "branch").uncertainty).toBeUndefined();
   expect(at("errors").verdict).toBeUndefined();
@@ -1260,7 +1221,6 @@ test("Metrics keeps numeric values with units, samples, workload, baselines, unc
   const text = (id: string) => els.find((e) => e.attrs.id === id)!.text;
   const resultText = text(refs.m);
   for (const s of ["500 checkouts of 3 items, 8 workers", "M3 laptop, Bun 1.3", "The branch is slower; the fork did not finish.", "main branch", "p50 latency"]) expect(resultText).toContain(s);
-  // Numeric data remains readable in an accessible table, independent of the chart implementation.
   const row = (ref: string, s: string) => val(ref, s).anchor;
   expect(els.find((e) => e.attrs.id === row("p50", "branch"))!.tag).toBe("tr");
   expect(within(els, at("p50").anchor).some((e) => e.tag === "table")).toBe(true);
@@ -1551,7 +1511,6 @@ test.each([
   expect(tree()).toEqual(before);
 });
 
-/** Concurrent ticket work beside historical asks and an older active Stage. */
 function busyFlow() {
   const grill = openFlow("s-1", "grill-me");
   const flow = grill.flow;

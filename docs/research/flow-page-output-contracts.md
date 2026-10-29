@@ -2,7 +2,7 @@
 
 Research date: 2026-10-27. This is a source inventory and coverage reference for the Flow page design, not an implementation specification.
 
-Status: vstack 7.0.0 ships the design (spec #267, [ADR 0040](../adr/0040-structured-flow-data-drives-server-rendered-pages.md)). Every output family below now publishes through flow-page. The shipped contract settles the gaps listed at the end: typed attachments; declarative demos, quizzes, and isolated runnable artifacts, with diagram motion left out of scope; explicit review and setup outcomes; captured revisions with canonical links and lifecycle retention; a Stage-only `t` tree; and Stage labels for any skill name. The inventory still describes the sources as they were on the research date, and it remains the coverage checklist. Links into the removed grilling-page skill point at commit 7692b30, the last one that had it.
+Status: the accepted design targets vstack 7.0.0 (spec #267, [ADR 0040](../adr/0040-structured-flow-data-drives-server-rendered-pages.md)). The review-fix wave corrected the live-selection defect, and the corrected combined browser/native proof passed. This inventory remains a coverage checklist, not the proof record for every accepted contract. The contracts include typed attachments, captured question figures and option previews, declarative demos, quizzes, isolated runnable artifacts, explicit review and setup outcomes, captured revisions with canonical links, lifecycle retention, a Stage-only `t` tree, and Stage labels for any skill name. Diagram motion remains out of scope. The inventory describes sources as they were on the research date. Links into the removed grilling-page skill point at commit 7692b30, the last one that had it.
 
 ## Scope and completeness
 

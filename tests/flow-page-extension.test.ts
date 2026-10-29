@@ -23,7 +23,7 @@ function world() {
   const port = String(listener.port);
   listener.stop(true);
   const run = async (args: string[], input?: unknown) => {
-    const p = Bun.spawn(["bun", script, ...args, "--home", home], {
+    const p = Bun.spawn([process.execPath, script, ...args, "--home", home], {
       cwd: project, env: { ...ENV, HOME: home, VSTACK_FLOW_PORT: port },
       stdin: input === undefined ? "ignore" : new TextEncoder().encode(JSON.stringify(input)), stdout: "pipe", stderr: "pipe",
     });

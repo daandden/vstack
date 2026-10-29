@@ -12,7 +12,7 @@ Explain what the thing is, how it works, and why it has that shape. The goal is 
 Read the conversation to learn why the person asks and what they already know. Skip familiar material and put depth where their question is. Read just enough code to identify the target.
 Use the caller's vstack root and project Scratch dir if supplied. Otherwise resolve the root per the Private-mode rule, read `skill://vstack-tmp`, and obtain the project Scratch dir once. Keep figure sources in a distinct `explain/<run-id>/` entry.
 
-Read `skill://flow-page` and run `bound` with the supplied session and agent identity. Continue the bound Flow with an explain Stage, or start a Flow with `open --skill explain --title <topic>` when unbound. Reopen a closed Flow explicitly. A caller that already owns this run's Stage supplies its binding or explicit Flow and Stage ids. Read-only investigators return findings to that caller without opening Stages.
+Follow `skill://flow-page`'s "Stage entry/exit line" for an explanation run. Read-only investigators return findings to the coordinator.
 
 ## Step 2. Let how and why investigate
 
@@ -40,7 +40,7 @@ Publish the explanation as a Document Result through `flow-page submit`. Use hea
 
 Draw every figure through `skill://vstack-figures`. Write each Figure brief with that skill's fields, layout included, fixed from the explanation. For three or more moving parts, plan a short build-up series: each figure redraws the last one and adds one part. Use this run's Scratch entry and a unique figure slug. Write the Document while the drawers run, then capture the exported SVGs as typed attachments and place `figure` blocks in reading order. Keep an unavailable figure's reason visible instead of substituting a drawing.
 
-Finish an owned Stage after the Document is committed. A caller that owns the Stage keeps it open for its remaining work. Present the receipt's live URL or static fallback as flow-page says. Never open the page automatically.
+Publish the Document before returning. Never open the page automatically.
 
 ## Reply
 

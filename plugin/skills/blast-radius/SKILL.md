@@ -10,7 +10,7 @@ Find what a change breaks outside the diff before it ships. `skill://how` explai
 
 Listing callers is not the job. Follow dependencies that a symbol search does not reveal and prove the facts that make the change safe.
 
-For a safety-review run, read `skill://flow-page` and discover the session and agent's `bound` Flow. Open a `blast-radius` Stage there with the caller's Stage as `--parent`, or start a Flow if unbound. A reference read creates no Stage. Route asks through this Stage. A reviewer subagent returns its complete evidence to the parent, which publishes it on the Flow instead of relying on child-local bindings.
+Follow `skill://flow-page`'s "Stage entry/exit line" for a safety-review run. The coordinator publishes reviewer evidence.
 
 ## Do not trust your own writeup
 
@@ -66,4 +66,4 @@ The Blast radius reviewer in `skill://code-review` always skips step 6. That ski
 
 Cite real code, and strip private information before publishing. The reply must state whether the safety fact is proven or unproven.
 
-Publish the hand-back as a Document Result and the safety facts as a ledger. Use `confirmed` only for executed proof that establishes the claim, `cleared` for checked risks, and `unproven` with missing proof for source-only or unavailable checks. Keep proof-ladder level, likelihood, cost, alternatives, and exact observed output. Use Code Results for the proof script or relevant diff and Timeline for executed, blocked, or skipped probes. Attach redacted proof scripts and outputs while preserving their Scratch paths. Finish this Stage and restore the caller's binding when nested. The reply summarizes Results on the Flow page, not a separate report page.
+Publish the hand-back as a Document Result and the safety facts as a ledger. Use `confirmed` only for executed proof that establishes the claim, `cleared` for checked risks, and `unproven` with missing proof for source-only or unavailable checks. Keep proof-ladder level, likelihood, cost, alternatives, and exact observed output. Use Code Results for the proof script or relevant diff and Timeline for executed, blocked, or skipped probes. Attach redacted proof scripts and outputs while preserving their Scratch paths. The reply summarizes Results on the Flow page, not a separate report page.

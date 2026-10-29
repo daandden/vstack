@@ -1,7 +1,3 @@
-// flow-page's authoring script run as concurrent processes: two bound callers on one Flow, focused Result revisions,
-// qualified lookup aliases, project and worktree scope, folder relocation, and a failed page projection (ADR 0040,
-// spec D3). Tests read receipts, refusals, the `show` snapshot, and stored bytes, never page wording or markup.
-
 import { afterAll, expect, test } from "bun:test";
 import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -13,7 +9,6 @@ const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-page-identity-")));
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 
 let n = 0;
-/** A fresh home and a fresh git project in it. */
 function world() {
   const base = join(root, String(n++));
   const home = join(base, "home");
@@ -60,7 +55,6 @@ const contribution = (...items: object[]) => ({ version: 1, items });
 const round = (...questions: object[]) => ({ kind: "round", questions });
 const card = (ref: string) => ({ ref, title: `Finding ${ref}`, label: "issue", blocking: true, impact: `Users see ${ref}.`, action: `Fix ${ref}.`, evidence: `${ref}.ts:1` });
 
-/** Every file under `dir` with its bytes, to prove a refusal wrote nothing. */
 function tree(dir: string): Record<string, string> {
   const out: Record<string, string> = {};
   const walk = (d: string) => {
@@ -74,7 +68,6 @@ function tree(dir: string): Record<string, string> {
   return out;
 }
 
-/** A Flow with two wayfinder ticket Stages, each bound to its own session. */
 function twoTickets(w: ReturnType<typeof world>) {
   const at = { cwd: w.project, home: w.home };
   const a = ok(run(["open", "--title", "Checkout limits", "--skill", "wayfinder", "--ticket", "101"], { ...at, session: "s-a" }));

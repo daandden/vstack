@@ -1,9 +1,3 @@
-// flow-page's authoring script and the real Local Flow host it starts, run as processes: one host per user on a
-// stable loopback port, shared by sessions that start at once, restarted from stored Flow data, stopped when idle,
-// reporting a taken port or other host code without touching that process, and serving each Flow only to its own read
-// capability (ADR 0040, spec D8 and D12). Tests read receipts, HTTP status and bytes, page ids and revision, and which
-// host processes run, never page wording or markup.
-
 import { afterAll, expect, test } from "bun:test";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -30,7 +24,6 @@ function freePort(): number {
 }
 
 let n = 0;
-/** A fresh user home, a project directory in it, and the port its host listens on. */
 function world(o: { idle?: number; cwd?: string; home?: string; port?: number } = {}): World {
   const base = join(root, String(n++));
   const w = { home: o.home ?? join(base, "home"), cwd: o.cwd ?? join(base, "work"), port: o.port ?? freePort(), idle: o.idle };
@@ -42,7 +35,7 @@ function world(o: { idle?: number; cwd?: string; home?: string; port?: number } 
 
 type Run = { code: number; stdout: string; stderr: string; json: any };
 type Opts = { session?: string; stdin?: unknown; script?: string };
-const argv = (args: string[], w: World, o: Opts) => ["bun", o.script ?? SCRIPT, ...args, "--home", w.home];
+const argv = (args: string[], w: World, o: Opts) => [process.execPath, o.script ?? SCRIPT, ...args, "--home", w.home];
 const envOf = (w: World, o: Opts) => ({
   ...ENV,
   HOME: w.home,
@@ -65,7 +58,6 @@ function run(args: string[], w: World, o: Opts = {}): Run {
   const r = Bun.spawnSync(argv(args, w, o), { cwd: w.cwd, env: envOf(w, o), stdin: stdinOf(o), stdout: "pipe", stderr: "pipe" });
   return parse(r.exitCode, r.stdout.toString(), r.stderr.toString());
 }
-/** Runs without blocking this process, for tests whose own servers must keep answering meanwhile. */
 async function runAsync(args: string[], w: World, o: Opts = {}): Promise<Run> {
   const p = Bun.spawn(argv(args, w, o), { cwd: w.cwd, env: envOf(w, o), stdin: stdinOf(o), stdout: "pipe", stderr: "pipe" });
   const [stdout, stderr, code] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited]);
@@ -83,7 +75,6 @@ const contribution = (...items: object[]) => ({ version: 1, items });
 const round = (...questions: object[]) => ({ kind: "round", questions });
 const open = (w: World, session = "s-1", title = "Checkout limits") => run(["open", "--title", title, "--skill", "grill-me"], w, { session });
 
-/** The host processes serving `w`'s home, by pid. */
 function hostPids(w: World): number[] {
   const ps = Bun.spawnSync(["ps", "-axo", "pid=,command="], { stdout: "pipe" }).stdout.toString();
   return ps
@@ -108,7 +99,6 @@ const page = async (url: string) => {
   return { status: r.status, html: await r.text() };
 };
 
-/** One raw HTTP/1.1 request, so the test controls Host and the path bytes exactly. Resolves with the status code. */
 function raw(port: number, lines: string[]): Promise<{ status: number; body: string }> {
   return new Promise((done, fail) => {
     let buf = "";
@@ -148,7 +138,6 @@ test("an authoring command starts the host and serves the Flow live at one URL t
   expect(live.status).toBe(200);
   expect(revisionOf(live.html)).toBe(sent.revision);
   expect(hasId(live.html, sent.refs.q)).toBe(true);
-  // The static page is still published beside it.
   expect(revisionOf(readFileSync(sent.page, "utf8"))).toBe(sent.revision);
   for (const cmd of [["show", "--flow", opened.flow], ["find", `folder:${opened.flow}`]]) expect(ok(run(cmd, w)).live.url).toBe(url);
   expect(hostPids(w)).toHaveLength(1);
@@ -267,7 +256,6 @@ test("live read-only observations respect separate providers without replacing a
     await eventually((o) => o["code-host"].status === "stale" && o.ci.status === "stale");
     live = (await page(opened.live.url)).html;
     expect(live).not.toContain("never-publish");
-    // Changing provider configuration drops any cached success from the earlier source.
     configure("code-host.md", "/different-provider");
     await eventually((o) => o["code-host"].status === "unavailable");
     writeFileSync(join(config, "ci.md"), "- CI service: Unsupported service\n");
@@ -377,7 +365,6 @@ test("after the host stops or dies, the next command starts it again and earlier
   expect(after.status).toBe(200);
   expect(hasId(after.html, sent.refs.q)).toBe(true);
 
-  // A host killed outright leaves its record behind; the next command still starts a working one.
   for (const pid of hostPids(w)) process.kill(pid, "SIGKILL");
   expect(await until(() => hostPids(w).length === 0)).toBe(true);
   expect(ok(run(["show", "--flow", opened.flow], w)).live.url).toBe(url);
@@ -390,7 +377,6 @@ test("the host stops once idle, while an open reader or a publication in flight 
   const opened = ok(open(w));
   expect(hostPids(w)).toHaveLength(1);
 
-  // A reader with the live page open holds its event stream.
   const reader = new AbortController();
   const events = await fetch(new URL("events", opened.live.url), { signal: reader.signal });
   expect(events.status).toBe(200);
@@ -399,7 +385,6 @@ test("the host stops once idle, while an open reader or a publication in flight 
   reader.abort();
   expect(await until(() => hostPids(w).length === 0)).toBe(true);
 
-  // A submit still reading its contribution is a publication in flight.
   const p = Bun.spawn(argv(["submit"], w, {}), { cwd: w.cwd, env: envOf(w, { session: "s-1" }), stdin: "pipe", stdout: "pipe", stderr: "pipe" });
   expect(await until(() => hostPids(w).length === 1)).toBe(true);
   await Bun.sleep(2500);
@@ -506,7 +491,6 @@ test("the host serves a Flow only to its own read capability, from its own origi
     }),
   );
   const b = ok(open(w, "s-b", "Flow B"));
-  // Another project of the same user, served by the same host.
   const other = world({ home: w.home, port: w.port, cwd: join(root, `project-${n++}`) });
   git(other.cwd, "init", "-q", "-b", "main");
   const c = ok(open(other, "s-c", "Flow C"));
@@ -518,7 +502,6 @@ test("the host serves a Flow only to its own read capability, from its own origi
   expect(asset.status).toBe(200);
   expect(Buffer.from(await asset.arrayBuffer()).equals(PNG)).toBe(true);
 
-  // Swapped ids, other projects, and wrong capabilities find nothing.
   const swap = (from: string, to: string) => urlA.pathname.replace(from, to);
   const pathOf = (u: string) => new URL(u).pathname;
   const capA = pathOf(a.live.url).split("/").filter(Boolean).at(-1)!;
@@ -539,7 +522,6 @@ test("the host serves a Flow only to its own read capability, from its own origi
     expect(r.body).not.toContain(w.home);
   }
 
-  // A file in the Flow's folder that no attachment registered, and a captured file swapped for a symlink out, stay unread.
   const folder = dirname(a.page);
   writeFileSync(join(folder, "assets", "planted.txt"), "planted");
   expect((await fetch(new URL("assets/planted.txt", urlA))).status).toBe(404);
@@ -550,7 +532,6 @@ test("the host serves a Flow only to its own read capability, from its own origi
   expect(escaped.status).toBe(404);
   expect(await escaped.text()).not.toContain("outside secret");
 
-  // Other hosts and origins are refused, and nothing takes a write.
   const path = urlA.pathname;
   for (const headers of [[`Host: evil.example:${w.port}`], [`Host: 127.0.0.1:${w.port}`, "Origin: http://evil.example"], [`Host: 127.0.0.1:${w.port}`, "Sec-Fetch-Site: cross-site"]]) {
     expect((await raw(w.port, [`GET ${path} HTTP/1.1`, ...headers])).status).toBe(403);
@@ -562,7 +543,6 @@ test("the host serves a Flow only to its own read capability, from its own origi
     }
   }
 
-  // No token-like string in the readable page or its assets controls the host.
   const html = (await page(a.live.url)).html;
   const tokens = new Set([...html.matchAll(/[A-Za-z0-9_-]{16,}/g)].map((m) => m[0]));
   for (const t of tokens) {
@@ -572,4 +552,44 @@ test("the host serves a Flow only to its own read capability, from its own origi
   expect(hostPids(w)).toHaveLength(1);
   expect((await page(a.live.url)).status).toBe(200);
   expect(sent.refs.doc).toBeTruthy();
+});
+
+test("a shared Flow observes the current authoring worktree and recovers when its first checkout disappears", async () => {
+  const main = world();
+  git(main.cwd, "init", "-q", "-b", "main");
+  git(main.cwd, "commit", "-q", "--allow-empty", "-m", "base");
+  const a = world({ home: main.home, port: main.port });
+  const b = world({ home: main.home, port: main.port });
+  rmSync(a.cwd, { recursive: true });
+  rmSync(b.cwd, { recursive: true });
+  git(main.cwd, "worktree", "add", "-q", "-b", "feat-a", a.cwd);
+  git(main.cwd, "worktree", "add", "-q", "-b", "feat-b", b.cwd);
+  const opened = ok(open(a, "worktree-a"));
+  const joined = ok(run(["open", "--flow", opened.flow, "--skill", "implement"], b, { session: "worktree-b" }));
+  const observed = async () => (await fetch(new URL("observations", opened.live.url))).json() as Promise<any>;
+  let observation: any;
+  for (let i = 0; i < 80; i++) {
+    observation = await observed();
+    if (observation.git.status === "current") break;
+    await Bun.sleep(50);
+  }
+  expect(observation.git.records[0].name).toBe("feat-b");
+  expect(observation.git.provenance.source).toBe(realpathSync(b.cwd));
+  await Promise.all([
+    runAsync(["submit"], a, { session: "worktree-a", stdin: contribution(round(question("from-a"))) }),
+    runAsync(["submit"], b, { session: "worktree-b", stdin: contribution(round(question("from-b"))) }),
+  ]).then((results) => results.forEach(ok));
+  ok(run(["alias", "branch:release/267"], b, { session: "worktree-b" }));
+  ok(run(["show", "--flow", opened.flow], a));
+  git(main.cwd, "worktree", "remove", a.cwd);
+  a.cwd = main.cwd;
+  ok(run(["submit"], b, { session: "worktree-b", stdin: contribution(round(question("after-removal"))) }));
+  for (let i = 0; i < 80; i++) {
+    observation = await observed();
+    if (observation.git.status === "current" && observation.git.records[0]?.name === "feat-b") break;
+    await Bun.sleep(50);
+  }
+  expect(observation.git.status).toBe("current");
+  expect(observation.git.records[0].name).toBe("feat-b");
+  expect(observation.git.provenance).toMatchObject({ source: realpathSync(b.cwd), stage: joined.stage, branch: "release/267" });
 });

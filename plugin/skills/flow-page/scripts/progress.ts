@@ -1,8 +1,5 @@
-// A Flow's workflow progress: tasks, blockers, the requested and reached End state, and the PRs and checks a producer
-// reports. Each is its own stored fact, so a finished Stage, a task count, a PR, a check, and an End state never stand
-// in for one another. The Overview's progress strip and the `show` snapshot read the derived view below.
-
-import { fields, listed, type Obj, refuse, text, texts, type State } from "./model.ts";
+import { fields, listed, type Obj, refuse, text, texts } from "./fields.ts";
+import type { State } from "./model.ts";
 
 export const TASK_STATES = ["pending", "active", "done", "skipped", "inapplicable"] as const;
 export type TaskState = (typeof TASK_STATES)[number];
@@ -10,16 +7,18 @@ export type TaskState = (typeof TASK_STATES)[number];
 export const END_STATES = ["commit", "merge-ready", "shipped"] as const;
 export type EndState = (typeof END_STATES)[number];
 const REQUESTS = [...END_STATES, "none"] as const;
-const PR_STATES = ["open", "merged", "closed"];
-const CHECK_OUTCOMES = ["passed", "failed", "pending"];
+const PR_STATES = ["open", "merged", "closed"] as const;
+export type PrState = (typeof PR_STATES)[number];
+const CHECK_OUTCOMES = ["passed", "failed", "pending"] as const;
+export type CheckOutcome = (typeof CHECK_OUTCOMES)[number];
 const NOT_WORK: TaskState[] = ["skipped", "inapplicable"];
 const OPEN_WORK: TaskState[] = ["pending", "active"];
 
 type Stamp = { time: string; stage: string };
 export type Task = { id: string; stage: string; title: string; state: TaskState; evidence: string[]; reason?: string; updates: (Stamp & { state: TaskState })[] };
 export type Blocker = { id: string; stage: string; text: string; tasks: string[]; opened: string; resolved?: Stamp & { text: string } };
-export type Pr = { id: string; url: string; title?: string; state: string; reported: Stamp };
-export type Check = { id: string; name: string; outcome: string; evidence: string[]; reported: Stamp };
+export type Pr = { id: string; url: string; title?: string; state: PrState; reported: Stamp };
+export type Check = { id: string; name: string; outcome: CheckOutcome; evidence: string[]; reported: Stamp };
 export type Progress = {
   tasks: Task[];
   blockers: Blocker[];
@@ -29,13 +28,13 @@ export type Progress = {
   checks: Check[];
 };
 
-export const PROGRESS_KINDS = ["task", "blocker", "end-state", "pr", "check"];
-/** The field that makes an item an update of an existing record; an item without it makes a new one. */
-export const UPDATE_FIELD: Record<string, string | undefined> = { task: "task", blocker: "blocker", pr: "pr", check: "check", "end-state": undefined };
+export const PROGRESS_KINDS = ["task", "blocker", "end-state", "pr", "check"] as const;
+export type ProgressKind = (typeof PROGRESS_KINDS)[number];
+const emptyProgress = (): Progress => ({ tasks: [], blockers: [], prs: [], checks: [] });
 
 /** A Flow stored before progress existed has none; it reads as empty. */
 export function progressOf(s: State): Progress {
-  s.progress ??= { tasks: [], blockers: [], prs: [], checks: [] };
+  s.progress ??= emptyProgress();
   return s.progress;
 }
 
@@ -47,16 +46,19 @@ const URL_RE = /^https?:\/\/[^\s"'<>`]+$/;
 
 type Resolve = (v: unknown, kind: string, where: string) => string;
 
-/** Applies one progress item from the bound in-progress Stage `stage`. `id` is the id pass 1 gave a new record. */
-export function applyProgress(s: State, stage: string, kind: string, o: Obj, where: string, id: string | undefined, resolve: Resolve, time: string): void {
-  const p = progressOf(s);
-  const stamp = { time, stage };
-  switch (kind) {
-    case "task": {
+type ProgressItem = { s: State; stage: string; o: Obj; where: string; plannedId?: string; resolve: Resolve; time: string };
+type ProgressHandler = { update?: string; apply(item: ProgressItem): void };
+
+export const progressHandlers: Record<ProgressKind, ProgressHandler> = {
+  task: {
+    update: "task",
+    apply({ s, stage, o, where, plannedId, resolve, time }) {
+      const p = progressOf(s);
+      const stamp = { time, stage };
       let t: Task;
       if (o.task === undefined) {
         fields(o, where, ["kind", "title"], ["ref", "state", "evidence", "reason"]);
-        t = { id: id!, stage, title: text(o, "title", where), state: "pending", evidence: [], updates: [] };
+        t = { id: plannedId!, stage, title: text(o, "title", where), state: "pending", evidence: [], updates: [] };
         p.tasks.push(t);
       } else {
         fields(o, where, ["kind", "task"], ["state", "evidence", "reason"]);
@@ -76,14 +78,18 @@ export function applyProgress(s: State, stage: string, kind: string, o: Obj, whe
       if (state === "done" && t.evidence.length === 0) refuse(where, `task ${t.id} is done only with evidence of the work, such as a command and its outcome or a commit`);
       if (state !== t.state || t.updates.length === 0) t.updates.push({ ...stamp, state });
       t.state = state;
-      break;
-    }
-    case "blocker": {
+    },
+  },
+  blocker: {
+    update: "blocker",
+    apply({ s, stage, o, where, plannedId, resolve, time }) {
+      const p = progressOf(s);
+      const stamp = { time, stage };
       if (o.blocker === undefined) {
         fields(o, where, ["kind", "text"], ["ref", "tasks"]);
         const tasks = o.tasks === undefined ? [] : texts(o, "tasks", where).map((x) => resolve(x, "task", `${where}: tasks`));
         for (const tid of tasks) if (!p.tasks.some((t) => t.id === tid)) refuse(where, `task ${tid} does not exist`);
-        p.blockers.push({ id: id!, stage, text: text(o, "text", where), tasks, opened: time });
+        p.blockers.push({ id: plannedId!, stage, text: text(o, "text", where), tasks, opened: time });
       } else {
         fields(o, where, ["kind", "blocker", "resolved"]);
         const bid = resolve(o.blocker, "blocker", `${where}: blocker`);
@@ -91,9 +97,12 @@ export function applyProgress(s: State, stage: string, kind: string, o: Obj, whe
         if (b.resolved) refuse(where, `blocker ${bid} is already resolved`);
         b.resolved = { ...stamp, text: text(o, "resolved", where) };
       }
-      break;
-    }
-    case "end-state": {
+    },
+  },
+  "end-state": {
+    apply({ s, stage, o, where, time }) {
+      const p = progressOf(s);
+      const stamp = { time, stage };
       fields(o, where, ["kind"], ["requested", "reached", "evidence"]);
       if (o.requested === undefined && o.reached === undefined) refuse(where, "needs requested, reached, or both");
       if (o.requested !== undefined) p.requested = { ...stamp, value: oneOf(o, "requested", REQUESTS, where) };
@@ -103,14 +112,18 @@ export function applyProgress(s: State, stage: string, kind: string, o: Obj, whe
         if (p.requested!.value === "none") refuse(where, "this Flow requested no delivery, so it reaches no End state; request one first if it now delivers");
         p.reached = { ...stamp, value, evidence: texts(o, "evidence", where) };
       } else if (o.evidence !== undefined) refuse(where, "evidence goes with reached");
-      break;
-    }
-    case "pr": {
+    },
+  },
+  pr: {
+    update: "pr",
+    apply({ s, stage, o, where, plannedId, resolve, time }) {
+      const p = progressOf(s);
+      const stamp = { time, stage };
       if (o.pr === undefined) {
         fields(o, where, ["kind", "url", "state"], ["ref", "title"]);
         const url = text(o, "url", where);
         if (!URL_RE.test(url)) refuse(where, "url must be an http or https link to the PR");
-        p.prs.push({ id: id!, url, ...(o.title !== undefined ? { title: text(o, "title", where) } : {}), state: oneOf(o, "state", PR_STATES, where), reported: stamp });
+        p.prs.push({ id: plannedId!, url, ...(o.title !== undefined ? { title: text(o, "title", where) } : {}), state: oneOf(o, "state", PR_STATES, where), reported: stamp });
       } else {
         fields(o, where, ["kind", "pr", "state"]);
         const pid = resolve(o.pr, "pr", `${where}: pr`);
@@ -118,13 +131,17 @@ export function applyProgress(s: State, stage: string, kind: string, o: Obj, whe
         pr.state = oneOf(o, "state", PR_STATES, where);
         pr.reported = stamp;
       }
-      break;
-    }
-    case "check": {
+    },
+  },
+  check: {
+    update: "check",
+    apply({ s, stage, o, where, plannedId, resolve, time }) {
+      const p = progressOf(s);
+      const stamp = { time, stage };
       let c: Check;
       if (o.check === undefined) {
         fields(o, where, ["kind", "name", "outcome"], ["ref", "evidence"]);
-        c = { id: id!, name: text(o, "name", where), outcome: "pending", evidence: [], reported: stamp };
+        c = { id: plannedId!, name: text(o, "name", where), outcome: "pending", evidence: [], reported: stamp };
         p.checks.push(c);
       } else {
         fields(o, where, ["kind", "check", "outcome"], ["evidence"]);
@@ -135,10 +152,9 @@ export function applyProgress(s: State, stage: string, kind: string, o: Obj, whe
       c.reported = stamp;
       if (o.evidence !== undefined) c.evidence = texts(o, "evidence", where);
       if (c.outcome !== "pending" && c.evidence.length === 0) refuse(where, `a ${c.outcome} check needs evidence, such as the command and its output`);
-      break;
-    }
-  }
-}
+    },
+  },
+};
 
 export type ProgressView = Progress & {
   tasks: (Task & { blocked_by: string[] })[];
@@ -154,7 +170,7 @@ export type ProgressView = Progress & {
 
 /** A Flow is complete when it has tasks, none is left open or blocked, and a delivery reached its requested End state. */
 export function progressView(s: State): ProgressView {
-  const p = s.progress ?? { tasks: [], blockers: [], prs: [], checks: [] };
+  const p = s.progress ?? emptyProgress();
   const open = p.blockers.filter((b) => !b.resolved);
   const tasks = p.tasks.map((t) => ({ ...t, blocked_by: OPEN_WORK.includes(t.state) ? open.filter((b) => b.tasks.includes(t.id)).map((b) => b.id) : [] }));
   const remaining = [...tasks.filter((t) => OPEN_WORK.includes(t.state)).map((t) => t.id), ...open.map((b) => b.id)];

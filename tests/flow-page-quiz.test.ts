@@ -81,7 +81,6 @@ test("learning attempts authenticate, survive restarts, and replay offline batch
   const restored = await fetch(endpoint, { headers: { cookie } });
   expect(restored.status).toBe(200);
   expect((await restored.json() as any).attempts).toHaveLength(4);
-  // An offline attempt submitted after reconnection is idempotent too.
   const offline = { version: 1, attempts: [attempt("offline-attempt-005", "sum", "4")] };
   expect((await (await send(offline)).json() as any).attempts).toHaveLength(5);
   expect((await (await send(offline)).json() as any).attempts).toHaveLength(5);

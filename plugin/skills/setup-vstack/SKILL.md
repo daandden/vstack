@@ -22,13 +22,13 @@ Every question to the user goes through `ask`. An answer marked `timedOut: true`
 
 ## Flow page and diagnostics
 
-Read `skill://flow-page` before the first check. Use `bound` with the extension's session and agent identity. Open one `setup-vstack` Stage in that Flow, or start a Flow titled for this project's setup when unbound. Every setup and Migration question uses that Stage's round and answer contract.
+Follow `skill://flow-page`'s "Stage entry/exit line" before the first check. All setup and Migration questions belong to this run.
 
 Keep each helper's command, exit code, stdout, and stderr in this run's `setup-vstack` Scratch entry. Keep machine diagnostics verbatim, including remaining FAIL, WARN, and NOTE lines. Redact credentials before capturing them. Project config and Migration exports stay canonical at their existing paths.
 
-Before every exit, including incomplete Migration, unavailable discovery, and a declined confirmation, submit a Document Result with the observed machine checks, project mode, config paths, Migration outcome, remaining failures, and next action. Include the raw diagnostics in code blocks and capture their files as evidence attachments. A skipped section says why; an incomplete setup is not complete. Link written project files as sources, not a separate report page. Finish this Stage after recording its outcome, retiring any unresolved questions with their reason. Present the receipt's live URL, or its static page and serving error, and summarize the outcome in chat.
+Before every exit, including incomplete Migration, unavailable discovery, and a declined confirmation, submit a Document Result with the observed machine checks, project mode, config paths, Migration outcome, remaining failures, and next action. Include the raw diagnostics in code blocks and capture their files as evidence attachments. A skipped section says why. An incomplete setup is not complete. Link written project files as sources, not a separate report page.
 
-Continue with the machine section below. Loading setup-vstack only as a reference creates no Stage.
+Continue with the machine section below.
 
 Run the scripts with the bash tool, from inside the repo when there is one:
 

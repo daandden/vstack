@@ -6,7 +6,7 @@ Uses the vocabulary in [SKILL.md](SKILL.md): **module**, **interface**, **seam**
 
 ## Process
 
-Read `skill://flow-page` for a result-producing run. Discover the supplied session and agent's binding with `bound`. Use the calling skill's Stage when it owns this run. Otherwise open a codebase-design Stage on the bound Flow, or start a Flow when unbound. Reopen a closed Flow explicitly. Reading this reference alone creates no Stage.
+Follow `skill://flow-page`'s "Stage entry/exit line" for a design comparison run.
 
 ### 1. Frame the problem space
 
@@ -51,4 +51,4 @@ Publish the surviving designs as a Document Result with each interface, usage ex
 
 After comparing, give your own recommendation: which design you think is strongest and why. If elements from different designs would combine well, propose a hybrid. Be opinionated: the user wants a strong read, not a menu.
 
-Finish an owned Stage after the Results are committed. A calling skill keeps its Stage open for the decision that follows. Present the receipt's live URL or static fallback. The Results replace sequential chat-only designs and separate report pages.
+The Results replace sequential chat-only designs and separate report pages. The caller retains its remaining decision work.

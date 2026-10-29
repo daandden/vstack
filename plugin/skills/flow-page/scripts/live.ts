@@ -1,4 +1,3 @@
-// Local Flow host discovery and startup. The private home owns the secrets and stable endpoint, not a checkout.
 import { spawn } from "node:child_process";
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { chmodSync, closeSync, mkdirSync, openSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
@@ -30,7 +29,6 @@ export const capability = (secret: string, key: string, id: string) => createHma
 export const attest = (control: string, nonce: string, version: string, instance: string) => createHmac("sha256", control).update(`flow-host-proof-v1\n${nonce}\n${version}\n${instance}`).digest("hex");
 export const flowUrl = (port: number, secret: string, key: string, id: string) => `${originOf(port)}/f/${encodeURIComponent(key)}/${id}/${capability(secret, key, id)}/`;
 
-/** Different host code or Bun runtimes must not silently render another checkout's new domain data as old content. */
 export function version(): string {
   const hash = createHash("sha256").update(`flow-host-v1\n${Bun.version}\n`);
   for (const dir of [import.meta.dir, join(import.meta.dir, "..", "templates")]) {
@@ -121,7 +119,6 @@ export async function connect(home: string): Promise<Connection> {
   } catch (e) { return { state: "unavailable", error: (e as Error).message }; }
 }
 
-/** Status and explicit shutdown authenticate ownership before touching a host, including an incompatible one. */
 export async function hostCommand(home: string, command: "status" | "stop"): Promise<object> {
   mkdirSync(hostDir(home), { recursive: true, mode: 0o700 });
   return withLock(hostDir(home), async () => {

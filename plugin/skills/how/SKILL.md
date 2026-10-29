@@ -14,7 +14,7 @@ If the scope is ambiguous, state your interpretation and explore. The user can r
 
 The top-level agent resolves the vstack root per the Private-mode rule. Read `skill://vstack-tmp` and obtain the project Scratch dir once. Under a caller, use its supplied absolute root and Scratch dir. Create a distinct `how/<run-id>/` entry. Pass both paths to each brief. Read `references/explainer-prompt.md` for the explanation structure.
 
-Read `skill://flow-page` and run `bound` with the supplied session and agent identity. A direct run adds a how Stage to that Flow, or starts one with `open --skill how --title <topic>` when unbound. Reopen a closed Flow explicitly. Under a caller that owns publication, return the explanation, citations, and Figure briefs for its Stage without creating a separate page or Stage.
+Follow `skill://flow-page`'s "Stage entry/exit line" for an explanation run. Helper investigators return the explanation, citations, and Figure briefs to the producer.
 
 Split the question into 1–4 exploration angles. Two to four angles go to step 2. When in doubt, take the simple path.
 
@@ -40,7 +40,7 @@ Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): write the e
 
 ## 4. Present
 
-For a direct run, submit a Document Result in the how Stage. Keep the explanation's headed sections, code with source locations, and citations. Capture figures as typed attachments and place their `figure` blocks in reading order. Finish the Stage only after publication, and present the live URL or static fallback from the receipt. Under a caller, return the output unedited, including citations and Figure briefs, for publication in its Stage. Light edits for clarity are allowed only for a direct invocation.
+Submit a Document Result in the how Stage. Keep the explanation's headed sections, code with source locations, and citations. Capture figures as typed attachments and place their `figure` blocks in reading order. Helper investigators return their output unedited, including citations and Figure briefs. Light clarity edits belong to the producer.
 
 ## Figures and page
 

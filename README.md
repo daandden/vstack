@@ -26,9 +26,15 @@ To refresh, run `git pull` in the clone and start a new omp session. The link po
 
 ## Flow page
 
-A Flow is related work on one change, tracker item, or topic, across skill runs and omp sessions. Its Flow page is one document with an Overview, one tab per Stage, and a Topics tab. Skills publish typed content to it through the `flow-page` helper: questions and answers, Results (cards, ledger, table, review, Document, Comparison, Metrics, Code/diff, Timeline, Quiz, and Interactive prototype), attachments, and workflow progress. Code owns the ids, numbering, links, layout, and rendering, so no skill writes page HTML.
+A Flow is related work on one change, tracker item, or topic, across skill runs and omp sessions. Its Flow page is one document with an Overview, one tab per Stage, and a Topics tab. Skills publish typed content through the `flow-page` helper, including questions, answers, Result blocks, captured attachments, and workflow progress. Result is the authoring short form of Result block. Code owns ids, numbering, links, layout, and rendering, so no skill writes page HTML.
 
-The helper writes a static page under Scratch `flow/` and starts the Local Flow host on demand: one loopback server per user that serves the live page, refreshes it as work arrives without moving the reader, runs captured prototypes on a separate origin, and observes git, the Code host, and CI read-only. The static page stays readable when the host is stopped. `n` jumps to the newest open question, `t` opens the Stage tree, and `j` and `k` move through a tab. A structured Grilling page from vstack 6 or earlier continues as a Flow with `flow-page`'s `migrate` command; a handwritten one stays as it was.
+The helper writes a static page under Scratch `flow/` and starts the Local Flow host on demand. The normal host is one loopback server per user. An explicit `--home` selects an isolated host namespace. The host serves live pages, runs captured prototypes on a separate origin, and observes git, the Code host, and CI read-only. The static page stays readable when the host stops. A refusal commits no Flow content, although on-demand startup may write host lifecycle metadata.
+
+`n` visits actionable questions in newest in-progress Stage order, `t` opens the Stage tree, and `j` and `k` select reading stops. Live refresh preserves the selected stop by stable id, including on short Stages. The corrected combined browser/native proof passed with one-second observation polling and 2.5-second navigation gaps. It also exercised authored refreshes, captured figures and previews, historical continuation, and shared-worktree observation recovery.
+
+Discovery searches supported structured historical Grilling pages before declaring an alias missing. Continue one with the explicit `migrate` command. Resolve ambiguous candidates rather than starting a duplicate Flow. A handwritten page stays readable as it is.
+
+GitHub and GitHub Actions have built-in read-only observation adapters. A separate provider-neutral `http-json` override supports other configured services. GitLab has no built-in native observation adapter and stays unknown unless configured through that contract. Code host and CI selection remain independent. Read flow-page's [host and observation reference](plugin/skills/flow-page/references/host-observations.md) before configuring either.
 
 ## Flow links in omp
 
@@ -41,7 +47,7 @@ Bindings belong to a project, session, and agent. Continuing a session restores 
 
 Type `/vstack-clean [age]` to preview expired Scratch entries across repos. The default age is `90d`. The extension runs `plugin/skills/vstack-tmp/scripts/clean.ts` without a model.
 
-An entry's age comes from the newest file in it, except for a Flow. The Command never lists an open Flow. It lists a closed Flow once the Flow has been closed for 90 days, or longer when the given age is longer. Reading the Flow page does not change that age.
+An entry's age comes from the newest file in it, except for Flow lifecycle protection. The Command never lists an open Flow or an open supported structured historical Grilling page. It lists a closed Flow once the Flow has been closed for 90 days, or longer when the given age is longer. Reading the Flow page does not change that age. Unrelated Scratch kinds keep their newest-file retention.
 
 The dry-run table shows repo key, kind, entry, age in days, size in bytes, and totals. It also reports kept entries. After the table, the UI offers:
 

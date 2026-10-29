@@ -15,7 +15,7 @@ function world() {
   mkdirSync(project, { recursive: true });
   git(project, "init", "-q", "-b", "main");
   const run = async (args: string[], input?: unknown) => {
-    const p = Bun.spawn(["bun", ...args, "--home", home], { cwd: project,
+    const p = Bun.spawn([process.execPath, ...args, "--home", home], { cwd: project,
       env: { ...ENV, HOME: home, VSTACK_FLOW_HOST: "off" },
       stdin: input === undefined ? "ignore" : new TextEncoder().encode(JSON.stringify(input)), stdout: "pipe", stderr: "pipe" });
     const [stdout, stderr, code] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited]);

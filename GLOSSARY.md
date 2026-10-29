@@ -165,11 +165,11 @@ Related vstack work on one change, tracker item, or topic across one or more ski
 _Avoid_: session, Matt run
 
 **Flow page**:
-The document one Flow keeps across all its Stages, including questions, answers, results, shared explanations, and workflow progress. Skills publish to it through flow-page's Stage-bound authoring script, which renders the static page; the Local Flow host serves the same page live. It is Scratch.
+The document one Flow keeps across all its Stages, including questions, answers, Result blocks, shared explanations, and workflow progress. It is Scratch.
 _Avoid_: Grilling page, Grilling HTML, question page, round page
 
 **Local Flow host**:
-The one detached local server per operating-system user that serves live Flow pages, runs captured prototypes on a separate origin, and observes git, the Code host, and the CI service read-only. The flow-page script starts it on demand. It never runs skills, shell commands, tracker writes, or merges.
+The detached local server for one operating-system user that serves live Flow pages, runs captured prototypes on a separate origin, and observes git, the Code host, and the CI service read-only. The normal host uses the user's home namespace, while an explicit isolated `--home` namespace has its own host identity.
 _Avoid_: Flow server, page server, daemon
 
 **Flow alias**:
@@ -181,7 +181,7 @@ One skill's part of a Flow on its Flow page, such as a research run, the to-spec
 _Avoid_: step, phase, section
 
 **Result block**:
-A Stage's output on the Flow page, such as a research document, a prototype comparison, review findings, or run results. It can stand alone or lead to questions.
+A Stage's output on the Flow page, such as a research document, a prototype comparison, review findings, or run results. Result is its authoring short form.
 _Avoid_: Report block, stage result, report section
 
 **Blast radius**:

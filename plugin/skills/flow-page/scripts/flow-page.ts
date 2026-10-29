@@ -1,34 +1,24 @@
 // The Flow page authoring interface. A caller opens or joins a Stage once, then submits typed contributions to it;
 // the script assigns ids, numbers, timestamps, labels, and links, commits them, and publishes the static page.
 //
-//   bun flow-page.ts open --skill <name> (--title <text> [--slug <slug>] | --flow <flow> [--parent <stage>]) [--ticket <id>]
-//   bun flow-page.ts bind --flow <flow> --stage <id>
-//   bun flow-page.ts submit [--flow <flow> --stage <id>] [<contribution.json> | -]
-//   bun flow-page.ts alias [--flow <flow>] <kind>:<value>...
-//   bun flow-page.ts close [--flow <flow>]
-//   bun flow-page.ts reopen --skill <name> [--flow <flow>] [--parent <stage>] [--ticket <id>]
-//   bun flow-page.ts find <kind>:<value>
-//   bun flow-page.ts move [--flow <flow>] --to <folder-key>
-//   bun flow-page.ts show [--flow <flow>]
-//   bun flow-page.ts bound
-//   bun flow-page.ts render --flow <flow>
-//
 // <flow> is a Flow id or a qualified alias such as spec:267. Every command also takes --session <id> (default:
 // $PI_SESSION_ID), --agent <id> (default: main), and --home <dir> (default: the user's home). A binding belongs to one
-// session and agent in one project; without one, submit needs --flow and --stage. Stdout is one JSON receipt. Exit 1
-// is a refusal, printed to stderr, after which nothing was written; exit 2 is a usage error. A receipt whose
-// `presentation` is stale means the content is committed but the page still shows an older revision.
+// session and agent in one project. Without one, submit needs --flow and --stage. Stdout is one JSON receipt.
+// Exit 1 refuses without committing Flow content. Host lifecycle metadata may be written. Exit 2 is a usage error.
+// A receipt whose `presentation` is stale means committed content is newer than the published page.
 
 import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
 import { canonicalFile, capture, type Root } from "./assets.ts";
-import { addAliases, aliasesOf, closeFlow, contribute, newFlow, nowIso, openStage, parseAlias, Refusal, reopenFlow, SLUG, slugOf, snapshot, stageOf, view, type Io, type State } from "./model.ts";
+import { addAliases, aliasesOf, closeFlow, contribute, newFlow, nowIso, openStage, parseAlias, reopenFlow, SLUG, slugOf, snapshot, stageOf, view, type Io, type State } from "./model.ts";
 import { RENDERER, render } from "./render.ts";
-import { assetsDir, createFlowFolder, flowFolders, flowsDir, folderOfId, pagePath, pageRevision, readBinding, readState, registerFolder, registeredFolder, statePath, withLock, writeAtomic, writeBinding } from "./store.ts";
+import { assetsDir, createFlowFolder, flowFolders, flowsDir, folderOfId, migrationIdentity, pagePath, pageRevision, readBinding, readState, registerFolder, registerMigration, registeredFolder, statePath, withLock, writeAtomic, writeBinding } from "./store.ts";
 import { connect, flowUrl, hostCommand } from "./live.ts";
-import { migrateHistorical, parseHistorical } from "./migrate.ts";
+import { historicalFlows, migrateHistorical, parseHistorical } from "./migrate.ts";
+import { Refusal } from "./fields.ts";
+import { registerObservation } from "./observations.ts";
 
 const COMMANDS = ["open", "bind", "submit", "alias", "close", "reopen", "find", "move", "show", "bound", "render", "host", "migrate"];
 
@@ -90,28 +80,49 @@ const time = nowIso();
 
 const errno = (e: unknown) => (e as NodeJS.ErrnoException).code;
 
-/** The Flow a key names in this project: an id through the id registry, or a qualified alias that exactly one Flow has. */
+function aliasMatches(key: string) {
+  const alias = parseAlias(key);
+  const current = flowFolders(dir).flatMap((name) => {
+    const s = readState(join(dir, name));
+    return s && aliasesOf(s).includes(alias) ? [{ id: s.flow.id, folder: join(dir, name) }] : [];
+  });
+  const historical = historicalFlows(dirname(dir)).filter((h) => {
+    if (!h.aliases.includes(alias)) return false;
+    const migrated = migrationIdentity(dir, h.source);
+    if (migrated) {
+      if (!folderOfId(dir, migrated.flow) && !current.length) refuse(`${alias} belonged to Flow ${migrated.flow}, whose content expired or was deleted. Its historical source cannot recreate that identity. Open a new Flow explicitly`);
+      return false;
+    }
+    return !flowFolders(dir).some((name) => readState(join(dir, name))?.migrated?.from === h.source);
+  });
+  if (current.length + historical.length > 1) refuse(`${alias} names multiple Flows in this project: ${[...current.map((h) => h.id), ...historical.map((h) => h.source)].join(", ")}. Name a Flow by id or explicitly migrate one historical source`);
+  return { alias, current, historical };
+}
+
 function locate(key: string): { id: string; folder: string } {
   if (key.includes(":")) {
-    const alias = parseAlias(key);
-    const hits = flowFolders(dir).flatMap((name) => {
-      const s = readState(join(dir, name));
-      return s && aliasesOf(s).includes(alias) ? [{ id: s.flow.id, folder: join(dir, name) }] : [];
-    });
-    if (hits.length === 0) refuse(`no Flow in this project has ${alias}`);
-    if (hits.length > 1) refuse(`${alias} names ${hits.length} Flows in this project: ${hits.map((h) => h.id).join(", ")}; name one by its id`);
-    return hits[0];
+    const { alias, current, historical } = aliasMatches(key);
+    if (historical.length) refuse(`${alias} has historical structured Flow content at ${historical[0].source}. Continue it with migrate ${JSON.stringify(historical[0].source)} before opening a Stage`);
+    if (!current.length) refuse(`no Flow in this project has ${alias}`);
+    return current[0];
   }
   if (!SLUG.test(key)) refuse(`--flow must be a Flow id of lowercase letters, digits, and hyphens, or a qualified alias such as spec:267, got ${JSON.stringify(key)}`);
   const folder = folderOfId(dir, key);
   if (folder) return { id: key, folder };
-  // The registry keeps every id ever given, so an id with no Flow left lost its content; it is never started again empty.
   return refuse(registeredFolder(dir, key) !== undefined
     ? `Flow ${key} has no content any more: it expired after it was closed, or its folder was deleted. Nothing can be read or added under this id; open a new Flow`
     : `this project has no Flow ${key}`);
 }
 
-/** Runs `fn` on the Flow's latest state under its lock. A Flow that moved while this waited is found again by id. */
+function observeAuthoring(folder: string, s: State, stage?: string): void {
+  const bound = session ? readBinding(dir, session, agent) : undefined;
+  try {
+    registerObservation(folder, realpathSync(process.cwd()), s, stage ?? (bound?.flow === s.flow.id ? bound.stage : undefined));
+  } catch {
+    process.stderr.write("flow-page.ts: the command succeeded, but its checkout could not be registered for read-only observation. Do not resubmit.\n");
+  }
+}
+
 async function locked<T>(key: string, fn: (folder: string, s: State) => T): Promise<T> {
   let at = locate(key);
   for (let tries = 0; tries < 5; tries++) {
@@ -119,7 +130,10 @@ async function locked<T>(key: string, fn: (folder: string, s: State) => T): Prom
     try {
       done = await withLock(at.folder, () => {
         const s = readState(at.folder);
-        return s?.flow.id === at.id ? { value: fn(at.folder, s) } : undefined;
+        if (s?.flow.id !== at.id) return undefined;
+        const value = fn(at.folder, s);
+        if (command !== "render") observeAuthoring(folderOfId(dir, at.id)!, s, (value as { stage?: string }).stage);
+        return { value };
       });
     } catch (e) {
       if (errno(e) !== "ENOENT" || existsSync(at.folder)) throw e;
@@ -132,13 +146,11 @@ async function locked<T>(key: string, fn: (folder: string, s: State) => T): Prom
 
 type Presentation = { state: "current" | "stale"; revision?: number; error?: string };
 
-/** What the published page shows: current when it renders the committed revision, else stale with the revision it shows. */
 function presentationOf(folder: string, s: State): Presentation {
   const shown = pageRevision(folder);
   return shown === s.revision ? { state: "current", revision: shown } : { state: "stale", ...(shown !== undefined ? { revision: shown } : {}) };
 }
 
-/** Replaces the page with one rendered from `s`. A failure keeps the last good page and reports it stale. */
 function project(folder: string, s: State): Presentation {
   try {
     writeAtomic(pagePath(folder), render(view(s)));
@@ -151,8 +163,6 @@ function project(folder: string, s: State): Presentation {
   }
 }
 
-/** The directories a contribution may read files from: the project (its git work tree, else the working directory)
- *  and the project's Scratch dir, each resolved through symlinks. */
 function roots(): Root[] {
   const top = Bun.spawnSync(["git", "rev-parse", "--show-toplevel"], { cwd: process.cwd(), stdout: "pipe", stderr: "ignore" });
   const project = top.exitCode === 0 ? top.stdout.toString().trim() : process.cwd();
@@ -161,7 +171,6 @@ function roots(): Root[] {
   return out;
 }
 
-/** Captured bytes waiting for publish, by their stored file name. */
 const captured = new Map<string, Uint8Array>();
 const io: Io = {
   capture(path, type, where) {
@@ -176,8 +185,6 @@ const io: Io = {
   },
 };
 
-/** Stores captured assets, then commits `s` in one atomic replace, then publishes its page. Assets land first, so
- *  committed state never names a missing file. An asset's directory is its sha256, so one that exists is already right. */
 function publish(folder: string, s: State): Presentation {
   for (const [file, bytes] of captured) {
     const path = join(assetsDir(folder), file);
@@ -194,7 +201,6 @@ function binding() {
   return readBinding(dir, session!, agent) ?? refuse(`session ${session} (agent ${agent}) is bound to no Flow in this project: run open or bind first, or name the Flow`);
 }
 
-/** The target named by --flow and --stage, else this session's binding. Nothing falls back to another session's work. */
 function target(): { flow: string; stage: string } {
   if (opt.flow !== undefined || opt.stage !== undefined) {
     if (opt.flow === undefined || opt.stage === undefined) usage("name both --flow and --stage, or neither to use this session's binding");
@@ -227,21 +233,25 @@ async function main(): Promise<object> {
       if (!existsSync(path)) refuse("migrate: this page has no structured page.jsonl state; its handwritten page stays untouched");
       const historical = parseHistorical(readFileSync(path, "utf8"));
       const migrationIo: Io = { ...io, capture: (path, type, where) => io.capture(resolve(from, path), type, where) };
-      // Validate and capture before reserving any Flow, so a refusal cannot leave an incomplete domain record.
       const migrated = migrateHistorical(historical, "probe", from, time, migrationIo);
       mkdirSync(dir, { recursive: true });
       return withLock(dir, () => {
+        const identity = migrationIdentity(dir, from);
+        if (identity && !folderOfId(dir, identity.flow)) refuse(`migrate: Flow ${identity.flow} expired or was deleted. The retained historical source cannot recreate that identity. Open a new Flow explicitly`);
         for (const name of flowFolders(dir)) {
           const folder = join(dir, name);
           const s = readState(folder);
           if (s?.migrated?.from !== from) continue;
           if (s.migrated.sha256 !== historical.sha256) refuse(`migrate: ${from} changed after migration to ${s.flow.id}; continue authoring that Flow instead of overwriting it`);
+          registerMigration(dir, { source: from, flow: s.flow.id, sha256: historical.sha256 });
           return { flow: s.flow.id, revision: s.revision, page: pagePath(folder), presentation: presentationOf(folder, s), repeated: true };
         }
         const { id, folder } = createFlowFolder(dir, historical.slug);
         migrated.flow.id = id;
         migrated.aliases[0] = `folder:${id}`;
         const presentation = publish(folder, migrated);
+        registerMigration(dir, { source: from, flow: id, sha256: historical.sha256 });
+        observeAuthoring(folder, migrated);
         return { flow: id, revision: migrated.revision, page: pagePath(folder), presentation };
       });
     }
@@ -259,7 +269,6 @@ async function main(): Promise<object> {
       if (opt.parent !== undefined) usage("--parent names a Stage of an existing Flow; give it with --flow");
       const slug = (opt.slug as string | undefined) ?? slugOf(opt.title as string);
       if (!SLUG.test(slug)) refuse(`--slug must be lowercase words joined by hyphens, got ${JSON.stringify(slug)}`);
-      // Check the input before a folder exists, so a refusal leaves nothing behind.
       const probe = newFlow("probe", slug, opt.title as string, time);
       openStage(probe, opt.skill as string, opt.ticket as string | undefined, time);
       const { id, folder } = createFlowFolder(dir, slug);
@@ -267,18 +276,19 @@ async function main(): Promise<object> {
         const s = newFlow(id, slug, opt.title as string, time);
         const stage = openStage(s, opt.skill as string, opt.ticket as string | undefined, time);
         const presentation = publish(folder, s);
+        observeAuthoring(folder, s, stage.id);
         return { flow: id, stage: stage.id, revision: s.revision, page: pagePath(folder), presentation, bound: bind(id, stage.id) };
       });
     }
     case "bind": {
       if (opt.flow === undefined || opt.stage === undefined) usage("bind needs --flow and --stage");
       if (!session) refuse("bind needs a session: run from an omp session (which sets PI_SESSION_ID) or give --session");
-      const { folder } = locate(opt.flow as string);
-      const s = readState(folder)!;
-      const stage = stageOf(s, opt.stage as string, "bind");
-      if (stage.state === "finished") refuse(`Stage ${stage.id} is finished; open a new Stage to continue the Flow`);
-      bind(s.flow.id, stage.id);
-      return { flow: s.flow.id, stage: stage.id, revision: s.revision, page: pagePath(folder), bound: true };
+      return locked(opt.flow as string, (folder, s) => {
+        const stage = stageOf(s, opt.stage as string, "bind");
+        if (stage.state === "finished") refuse(`Stage ${stage.id} is finished; open a new Stage to continue the Flow`);
+        bind(s.flow.id, stage.id);
+        return { flow: s.flow.id, stage: stage.id, revision: s.revision, page: pagePath(folder), bound: true };
+      });
     }
     case "submit": {
       const t = target();
@@ -318,6 +328,10 @@ async function main(): Promise<object> {
       });
     }
     case "find": {
+      if (rest[0].includes(":")) {
+        const { historical } = aliasMatches(rest[0]);
+        if (historical.length) return { migration_required: true, historical };
+      }
       const { folder } = locate(rest[0]);
       const s = readState(folder)!;
       return { flow: s.flow.id, revision: s.revision, aliases: aliasesOf(s), page: pagePath(folder), presentation: presentationOf(folder, s) };
@@ -379,15 +393,6 @@ try {
   const result = await main() as { flow?: string | { id: string }; page?: string };
   if (live && result.page && result.flow) {
     const id = typeof result.flow === "string" ? result.flow : result.flow.id;
-    if (live.state === "serving") {
-      const path = join(dirname(result.page), "observation-project.json");
-      try {
-        if (!existsSync(path)) writeAtomic(path, JSON.stringify({ cwd: realpathSync(process.cwd()) }));
-      } catch {
-        Object.assign(result, { observation_setup: { state: "unavailable", error: "The checkout could not be registered for read-only observation." } });
-        process.stderr.write("flow-page.ts: content is committed, but read-only observation setup is unavailable. Do not resubmit.\n");
-      }
-    }
     const presentation = live.state === "serving"
       ? { state: "serving", url: flowUrl(live.port, live.secret.read, basename(dirname(dir)), id) }
       : live;
@@ -397,7 +402,7 @@ try {
   process.stdout.write(`${JSON.stringify(result)}\n`);
 } catch (e) {
   if (!(e instanceof Refusal)) throw e;
-  process.stderr.write(`flow-page.ts: ${e.message}\nNothing was written.\n`);
+  process.stderr.write(`flow-page.ts: ${e.message}\nNo Flow content was committed. Host lifecycle metadata may have been written.\n`);
   process.exitCode = 1;
 } finally {
   if (live?.state === "serving") live.release();

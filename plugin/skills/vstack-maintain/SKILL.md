@@ -12,11 +12,11 @@ An Update is one ticket and one implement session. A Hand edit can span tickets.
 
 ## Flow page and diagnostics
 
-Reading this Addon supplies knowledge and creates no Stage. When a run actually produces `plan`, `merge`, `check`, `prepare`, or `gates` outcomes, read `skill://flow-page`. Use `bound` with the extension's session and agent identity, then open one `vstack-maintain` Stage in the caller's Flow, or a new Flow for standalone maintenance. Keep the caller's Flow and Stage ids so a nested run can restore its binding after publication. Confirmation questions remain on the grill's Stage; this Result grants no approval.
+Follow `skill://flow-page`'s "Stage entry/exit line" when producing `plan`, `merge`, `check`, `prepare`, or `gates` outcomes. Confirmation questions belong to the run requesting approval. Publishing a Result grants no approval.
 
 Keep the plan, decisions file, gate evidence, patches, and other canonical deliverables at their existing paths. Save raw command stdout, stderr, and exit codes under this run's `maintain` Scratch entry, redacting credentials first. Publish Results before returning, including blocked or failed runs: a table of command or gate outcomes with explicit skipped cases, plus captured evidence attachments for the raw diagnostics and canonical exports. Use a Document Result when explaining a conflict or blocker needs prose. Link the plan and confirmed hand-off without rewriting them as another source of truth.
 
-Finish this Stage after its Results are committed. Restore a nested caller's binding, present the receipt's live URL or static fallback with any serving error, and summarize the outcome in chat. A drafting worker returns the publication receipt and evidence paths with its existing gate result. It does not publish a separate report page.
+A drafting worker returns the publication receipt and evidence paths with its existing gate result. It does not publish a separate report page.
 
 ## Fact-finding for the grill
 
