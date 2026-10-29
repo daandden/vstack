@@ -240,6 +240,14 @@ _Avoid_: example (when a run through the options is meant)
 A project-local skill named `verify-<app>` that drives the project's app the way a user does and captures proof that a change works. setup-app-verification creates it, and maintain-app-verification keeps it accurate.
 _Avoid_: control skill, verification skill
 
+**Verifier**:
+An independent agent that did not write a change and runs it the way a user would to judge its behavior. The author's own checks are not independent verification.
+_Avoid_: checker, reviewer
+
+**Verdict**:
+A Verifier's judgment of one patch, with evidence: PASS, PASS+NOTES, FAIL, DRIFT, or REFUSED. REFUSED is unavailable proof. An optional `cleanup_error` preserves the judgment and evidence but makes the proof unavailable, even for PASS or PASS+NOTES.
+_Avoid_: status, result
+
 **Drift**:
 A failure in a Verify skill's own instructions, such as a missing command, route, selector, or fixture, while the skill's Doctor check passes. Wrong app behavior is a finding, never drift.
 _Avoid_: stale, rot
