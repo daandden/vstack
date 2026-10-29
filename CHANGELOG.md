@@ -4,6 +4,12 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [7.0.7] - 2026-10-29
+
+- Guard verifier isolation before mutation, verify in a separate detached head worktree, and return REFUSED when isolation or head preparation cannot be proven. Remove nonignored carried inputs while preserving ignored inputs and Shared checkout exclusions.
+- Require isolated eval verifier calls, remove verifier delegation from workers, pass the Shared checkout in ship briefs, and keep triage PR runtime checks out of the user's checkout.
+- Reject mixed-quote verifier spawn bypasses and clone-local exclusions that mask carried ignore rules. Preserve the app verdict and evidence when worktree removal fails, report the failure as `cleanup_error`, and prevent ship from accepting that run.
+
 ## [7.0.6] - 2026-10-28
 
 - Every new Grilling page question lists its reader needs, each with the Visual kind that shows it: a Source view, a source excerpt, a Context diagram, an Option diagram, an option preview, a Before and after, a comparison table, a Data chart, a Scenario walkthrough, or prose. The agent prepares the complete question and appends it once. `grilling-page.ts` refuses an appended question with no needs, a need with no visual of its kind on the question or its options, or a visual that no need names. Stored questions still render. The page lists each question's needs under its description. improve-codebase-architecture repeats its card figures and usage examples on the pick and design questions (ADR 0042).

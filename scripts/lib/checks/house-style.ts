@@ -93,7 +93,7 @@ const BRANCH = /^\s*(?:[-*+]|\d+[.)])\s+(fan-out|inline)\s*(?:→|->)/;
 const HEADLESS = /Headless batch \(|\bomp\s+(?:-p|--print)\b/;
 const VSTACK_ROOT = /the vstack root/;
 const ISOLATED_ARGS = "isolated=True, apply=False, merge=False";
-const NAMED_AGENT = /\bagent:\s*"([^"]*)"|\bagent\s*=\s*"([^"]*)"/g;
+const NAMED_AGENT = /\bagent\s*[:=]\s*(["'])(.*?)\1/g;
 const SINGLE_SPAWN = /Spawn one `([^`]+)` via (?:`task` \(`agent: "([^"]*)"`\)|eval `agent\([^`]*?\bagent="([^"]*)"[^`]*\)`)/;
 const SINGLE_STOP = /If it cannot be spawned, stop: \S/;
 const SINGLE_SKIP = /If it cannot be spawned, skip it: \S/;
@@ -143,10 +143,18 @@ function vstackAgents(ctx: CheckContext): Set<string> {
 
 /** Problems with the agents a line names through `agent: "x"` or `agent="x"`. */
 function namedAgentProblems(line: string, agents: Set<string>): string[] {
-  const names = [...line.matchAll(NAMED_AGENT)].map((m) => m[1] ?? m[2]);
+  const names = [...line.matchAll(NAMED_AGENT)].map((m) => m[2]);
   if (names.length === 0) return ["names no agent"];
   const bad = [...new Set(names.filter((n) => !agents.has(n)))];
-  return bad.length > 0 ? [`names ${bad.map((n) => JSON.stringify(n)).join(", ")}, not a vstack agent`] : [];
+  const problems = bad.length > 0 ? [`names ${bad.map((n) => JSON.stringify(n)).join(", ")}, not a vstack agent`] : [];
+  const verifierCalls = [...line.matchAll(/\bagent\s*\([^`]*?\)/g)]
+    .filter(m => [...m[0].matchAll(NAMED_AGENT)].some(name => name[2] === "vstack-verifier"));
+  const verifierNames = names.filter(n => n === "vstack-verifier");
+  if (verifierNames.length > 0 && (verifierCalls.length !== verifierNames.length ||
+    verifierCalls.some(m => !/\bagent="vstack-verifier", isolated=True, apply=False, merge=False\)$/.test(m[0])))) {
+    problems.push(`vstack-verifier requires the isolated eval form with ${ISOLATED_ARGS}`);
+  }
+  return problems;
 }
 
 /** What every subagent prompt carries (ADR 0007). */
@@ -166,7 +174,7 @@ function singleSpawnProblems(line: string, agents: Set<string>, artifact: string
   if (SINGLE_SKIP.test(line)) {
     if (artifact !== SKIP_SITE.artifact || !line.includes(SKIP_SITE.marker)) out.push("ends `If it cannot be spawned, skip it: …`, which only compare-attempts' cross-judge may use");
   } else if (!SINGLE_STOP.test(line)) out.push("does not end `If it cannot be spawned, stop: …`");
-  return [...out, ...promptProblems(line)];
+  return [...out, ...namedAgentProblems(line, agents), ...promptProblems(line)];
 }
 
 function fanOutProblems(line: string, agents: Set<string>): string[] {
