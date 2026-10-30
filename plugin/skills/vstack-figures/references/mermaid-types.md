@@ -91,6 +91,10 @@ Text-only nodes retain accent text without an invented background. An edge bindi
 | `requirementDiagram` | Requirement and element names. The `id:` field is display data, not a target id. Relations are unsupported. |
 | `usecase-beta` | Actor, use-case, system-boundary, and JSON-node ids, plus explicit relationship ids. Notes and generated relationship ids are unsupported. |
 | `treeView-beta` | Exact unique basenames, including directory names without the trailing slash. Repeated basenames are ambiguous. Numeric parser ids and invented paths are unsupported. |
+| Mindmap | Source node ids, or exact names for bare nodes. Repeated ids or names are ambiguous. Top-level branch names supply category keys to their branch nodes. A role or category override affects only its target node, not its descendants. Text-only nodes keep accent text without an invented backing. |
+| Ishikawa and `ishikawa` | Exact category names and the effect name. Repeated names, including an effect/category collision, are ambiguous. Category names supply category keys. Assignments and focus affect the header's own geometry and label, not cause text, bones, or markers. Individual causes have no stable binding or focus identity. |
+| `wardley-beta` | Declared component and anchor ids. A component assignment also colors its associated evolution marks, keeping open routes unfilled. Strategy decorators stay neutral. Market components have only a strategy glyph, so their binding colors their loose label and any evolution marks rather than inventing a separate marker. Anchors remain text-only. Anchor syntax does not establish a person, component names do not establish data at rest, and movement on the evolution axis does not establish changed code. Dependency ids, notes, forces, and annotations are unsupported binding targets. |
+| `cynefin-beta` | The five domain names, plus unique visible item labels. A domain owns its region and domain text, not its child badges. Domain names supply category keys, not status roles. Repeated item labels or item/domain name collisions are ambiguous. Hidden overflow items refuse as unavailable. A visible count badge does not expose the omitted items' geometry. |
 | Packet and `packet-beta` | Unsupported. Bit ranges and labels are not declared semantic ids. Valid figures render neutrally without bindings. |
 | `railroad-beta` | Unsupported. Rule names do not expose stable owned SVG targets in pinned Pele. |
 | `railroad-ebnf-beta` | Unsupported, with the same rule-target limit. |
@@ -114,6 +118,14 @@ Architecture `database` and `disk` service icons and block cylinder shapes estab
 Architecture service labels sit outside their icon backing and use accent text, not Base text on the Base background. Their existing outline icons use Base strokes against a solid accent backing.
 
 Tree file kinds color existing file-icon geometry as `store`, while unbound labels remain Text and directories remain neutral. Icons disabled or absent in the source stay absent. An explicit row binding can color its visible label and existing icon without inventing a backing or icon. Focus applies to visible row marks, not a path identity. Repeated basenames therefore cannot be focused independently through the string-id interface.
+
+Mindmap branch order and spatial position establish no Color role. Ishikawa causes and Cynefin domains do not imply failure or success. Wardley symbols remain neutral unless the caller supplies a role or category. A supported identity can own several marks, such as a Cynefin region and its domain label or a Wardley component and its evolution arrow.
+
+## Retained comparison research
+
+The historical complex comparison lives under the project's Scratch path `grilling/vstack-real-questions-mermaid-report/report/`. It contains 39 Mermaid keyword cases and five C4-flowchart variants, which are 44 comparison pairs, not 44 distinct families. Re-asked questions use their latest record as provenance. Historical drawing-agent wording grants no separate drawer: the executing caller chooses the Mermaid type without a model judge.
+
+The prototype observed 13 accents and 9,980 computed paints. Those counts verify neither this renderer nor every possible target. The source notes and corpus selectors remain research, not a product registry. The discarded 50-real-question gallery, its sampling rules, and its source index are not part of the retained deliverable.
 
 ## Pinned syntax sources
 

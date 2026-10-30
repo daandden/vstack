@@ -8,7 +8,7 @@ const ROLES: Record<string, string> = {
 };
 const ACCENTS = ["#f5e0dc", "#f2cdcd", "#f5c2e7", "#f38ba8", "#eba0ac", "#fab387", "#f9e2af", "#a6e3a1", "#94e2d5", "#89dceb", "#74c7ec", "#89b4fa", "#b4befe"];
 export type Binding = { id: string; role?: string; category?: string };
-type Target = { id: string; role?: string; category?: string; intrinsic?: string; key?: string; neutral?: boolean; line?: boolean; loose?: boolean; unsupported?: boolean; iconOnly?: boolean; looseLabel?: boolean; edge?: boolean };
+type Target = { id: string; role?: string; category?: string; intrinsic?: string; key?: string; sourceCategory?: string; neutral?: boolean; line?: boolean; loose?: boolean; labelOnly?: boolean; unsupported?: boolean; iconOnly?: boolean; looseLabel?: boolean; edge?: boolean };
 const PELE_CLASS = /^(?:pele|usecase-|system-boundary)|^highlight$/;
 const SHAPE = new Set(["rect", "path", "polygon", "circle", "ellipse", "line", "polyline"]);
 const PAINT = new Set(["fill", "stroke", "color", "stop-color", "background", "background-color"]);
@@ -170,6 +170,31 @@ function workTargets(model: DiagramModel) {
   return targets;
 }
 
+function spatialTargets(model: DiagramModel) {
+  const targets = new Map<string, Target[]>();
+  const add = (target: Target) => targets.set(target.id, [...(targets.get(target.id) ?? []), target]);
+  if (model.type === "mindmap") {
+    const branches = new Map(model.nodes.filter((n) => n.level === 1).map((n) => [n.section, n.descr]));
+    for (const node of model.nodes) {
+      const target: Target = { id: node.nodeId, sourceCategory: branches.get(node.section), loose: node.type === 0 };
+      classes(target, (node.class ?? "").split(/\s+/));
+      add(target);
+    }
+  } else if (model.type === "ishikawa") {
+    if (model.root) {
+      add({ id: model.root.text });
+      for (const category of model.root.children) add({ id: category.text, sourceCategory: category.text });
+    }
+  } else if (model.type === "wardley") {
+    for (const node of model.nodes) add({ id: node.id, loose: true, labelOnly: node.sourceStrategy === "market" });
+  } else if (model.type === "cynefin") {
+    // These five domains are grammar identities, including the empty regions Pele always draws.
+    for (const id of ["complex", "complicated", "clear", "chaotic", "confusion"]) add({ id, sourceCategory: id });
+    for (const domain of model.domains.values()) for (const item of domain.items) add({ id: item.label });
+  }
+  return targets;
+}
+
 function themed(value: string) {
   let rest = value;
   for (let before = ""; before !== rest;) { before = rest; rest = rest.replace(/var\([^()]*(?:\([^()]*\))?[^()]*\)/g, " "); }
@@ -181,8 +206,10 @@ function refusePaint(prop: string, value: string, authored = false) {
 
 export function palette(svg: string, model: DiagramModel, bindings: Binding[], focus: string[], scope: string): { svg: string; css: string } {
   const work = ["timeline", "gantt", "journey", "kanban", "gitGraph"].includes(model.type);
-  const resolved = model.type === "flowchart" ? flowTargets(model) : work ? workTargets(model) : entityTargets(model);
+  const spatial = ["mindmap", "ishikawa", "wardley", "cynefin"].includes(model.type);
+  const resolved = model.type === "flowchart" ? flowTargets(model) : work ? workTargets(model) : spatial ? spatialTargets(model) : entityTargets(model);
   const targets = resolved ?? new Map<string, Target[]>();
+  const visible = spatial ? new Set([...svg.matchAll(/\bdata-id="([^"]*)"/g)].map((m) => decode(m[1]!))) : undefined;
   for (const binding of bindings) {
     if (binding.role !== undefined) role(binding.role);
     if (!resolved) throw new Error(`Unsupported binding target ${binding.id}: ${model.type} does not yet expose binding identities.`);
@@ -190,6 +217,7 @@ export function palette(svg: string, model: DiagramModel, bindings: Binding[], f
     if (!matches?.length) throw new Error(`Missing binding target: ${binding.id}. Use a supported source identity for ${model.type}.`);
     if (matches.length !== 1) throw new Error(`Ambiguous binding target: ${binding.id}. It names ${matches.length} source targets.`);
     if (matches[0]!.unsupported) throw new Error(`Unsupported binding target ${binding.id}: generated ${model.type} ids are not declared source identities.`);
+    if (visible && !visible.has(binding.id)) throw new Error(`Unavailable binding target: ${binding.id}. Pele emits no visible geometry for this source target.`);
     assign(matches[0]!, binding.role !== undefined ? "role" : "category", binding.role ?? binding.category!);
   }
   if (model.type === "journey") {
@@ -223,26 +251,43 @@ export function palette(svg: string, model: DiagramModel, bindings: Binding[], f
     const id = attrs.get("data-id"), ownClasses = (attrs.get("class") ?? "").split(/\s+/);
     const parent = stack.at(-1);
     let target = parent?.target, focused = parent?.focused ?? false;
+    // Cause text and its routes do not belong to the category header's paint assignment.
+    if (model.type === "ishikawa" && ownClasses.some((c) => ["pele-ishikawa-causes", "pele-ishikawa-bones", "pele-marker"].includes(c))) {
+      target = undefined; focused = false;
+    }
+    if (model.type === "mindmap" && ownClasses.includes("pele-edges")) {
+      tag = tag.replace(/\bstroke="[^"]*"/, 'stroke="var(--_l)"');
+    }
     if (id !== undefined || ownClasses.some((c) => c === "pele-node" || c === "pele-cluster")) {
       const edge = ownClasses.includes("pele-edge") || ownClasses.includes("pele-edge-label");
       const matches = id === undefined ? undefined : targets.get(id);
-      const matched = matches?.find((candidate) => work || !!candidate.edge === edge);
+      const matched = spatial
+        ? matches?.length === 1 ? matches[0] : model.type === "cynefin"
+          ? matches?.find((t) => !!t.sourceCategory !== ownClasses.includes("pele-node")) : undefined
+        : matches?.find((candidate) => work || !!candidate.edge === edge);
       target = matched ?? (id === undefined ? { id: "unnamed", neutral: work } : { id });
       if (ownClasses.some((c) => c === "pele-node" || c === "pele-cluster")) classes(target, ownClasses);
       focused = id !== undefined && focus.includes(id) && !target.unsupported && (!matches || !!matched);
     }
     if (model.type === "kanban" && ownClasses.includes("pele-priority")) target = { id: target?.id ?? "", key: priorities.get(target?.id ?? ""), neutral: true, line: true };
     if (model.type === "gitGraph" && ownClasses.includes("pele-edge")) target = gitEdges[gitEdge++];
+    if (model.type === "wardley" && ownClasses.includes("pele-wardley-trend") && target) target = { ...target, line: true };
+    if (model.type === "wardley" && ownClasses.some((c) => /^pele-wardley-(?:build|buy|outsource|market)$/.test(c))) {
+      target = undefined; focused = false;
+    }
+    if (model.type === "wardley" && target?.labelOnly && !target.line && SHAPE.has(name)) target = undefined;
     const icon = ownClasses.includes("pele-icon") || (parent?.target === target && (parent?.icon ?? false));
-    const accent = target?.role ? ROLES[target.role] : target?.category !== undefined ? categoryColor(target.category) : target?.intrinsic && (!target.iconOnly || icon) ? ROLES[target.intrinsic] : target?.key !== undefined ? categoryColor(target.key) : undefined;
+    const key = target?.key ?? target?.sourceCategory;
+    const accent = target?.role ? ROLES[target.role] : target?.category !== undefined ? categoryColor(target.category) : target?.intrinsic && (!target.iconOnly || icon) ? ROLES[target.intrinsic] : key !== undefined ? categoryColor(key) : undefined;
     const invisible = attrs.get("fill") === "none" && attrs.get("stroke") === "none";
-    if (!invisible && (accent || focused || target?.neutral) && (SHAPE.has(name) || name === "text")) {
+    const neutral = target && ["wardley", "cynefin"].includes(model.type) && ["rect", "circle"].includes(name) && attrs.get("fill") === "var(--_bg)";
+    if (!invisible && (accent || focused || target?.neutral || neutral) && (SHAPE.has(name) || name === "text")) {
       const line = target?.line || ownClasses.includes("pele-edge") || ownClasses.includes("pele-lane") || parent?.name === "line";
-      const fill = icon || (line && !ownClasses.includes("pele-marker")) ? "none" : model.type === "gitGraph" && attrs.get("fill") === "var(--_bg)" ? BASE : accent ?? SURFACE;
+      const fill = icon || (line && (!spatial || ["path", "line", "polyline"].includes(name)) && !ownClasses.includes("pele-marker")) ? "none" : model.type === "gitGraph" && attrs.get("fill") === "var(--_bg)" ? BASE : accent ?? SURFACE;
       const stroke = model.type === "gitGraph" && attrs.get("stroke") === "var(--_bg)" ? BASE : focused ? MAUVE : icon && !line ? BASE : accent ?? BORDER;
       const paint = name === "text"
         ? `fill:${focused ? MAUVE : !accent ? TEXT : line || target?.loose || target?.looseLabel || model.type === "gantt" && attrs.get("fill") === "var(--_m)" ? accent : BASE}`
-        : `${!["line", "polyline"].includes(name) ? `fill:${fill};` : ""}stroke:${stroke}${focused ? ";stroke-width:2.5px" : ""}`;
+        : `${!["line", "polyline"].includes(name) ? `fill:${fill};${accent && ["mindmap", "cynefin"].includes(model.type) && attrs.has("fill-opacity") ? "fill-opacity:1;" : ""}` : ""}stroke:${stroke}${focused ? ";stroke-width:2.5px" : ""}`;
       if (attrs.has("style")) tag = tag.replace(/\bstyle="([^"]*)"/, (_, style) => `style="${style};${paint}"`);
       else tag = tag.replace(/\/?\s*>$/, (end) => ` style="${paint}"${end}`);
     }

@@ -61,7 +61,7 @@ Each Color role has one fixed Catppuccin Mocha accent. The renderer uses a solid
 
 - Mark every element that a role fits, so the same element has the same color in every figure. Leave an element plain when no role fits.
 - Give an element one explicit role. An explicit state such as `bad` overrides an intrinsic store kind. Two different explicit roles are refused, even when one comes from bindings and one from Mermaid. Identical repeats are accepted.
-- Mark a flowchart node with `:::role` (`Pay[Take payment]:::ok`) or a `class` line (`class Pay,Ship ok`). A `class` line also marks a subgraph or a composite state. State, requirement, and `block-beta` diagrams take a `class` line, ER diagrams `ENTITY:::role`, and class diagrams `class Name:::role`. A mindmap node takes `:::role` on the line under it, and only a node with a shape, such as `a[Label]`, shows the color.
+- Mark a flowchart node with `:::role` (`Pay[Take payment]:::ok`) or a `class` line (`class Pay,Ship ok`). A `class` line also marks a subgraph or a composite state. State, requirement, and `block-beta` diagrams take a `class` line, ER diagrams `ENTITY:::role`, and class diagrams `class Name:::role`. A mindmap node takes `:::role` on the line under it. Shaped nodes receive solid fills, and text-only nodes receive accent text without an invented shape.
 - Meaningful source kinds establish intrinsic roles. Flowchart person shapes and native C4 people establish `actor`; database shapes establish `store`; native C4 outside systems establish `external`. A person takes precedence over external, which takes precedence over store. A UML actor can be software and stays neutral without a binding. Read the type reference for architecture, block, requirement, and tree kinds and their geometry limits. Words such as "failed" or "database" in labels establish no role.
 - Mauve is focus-only. Focus replaces the border and text, not the underlying role or category fill.
 - Write no `classDef`, `style`, or `linkStyle` line, and no color in a sequence `rect` or `box`. Each sets a color outside the roles. The script refuses it, and an unknown role, with exit 1.
@@ -81,6 +81,8 @@ A category key is an exact identity string. Its color depends on the key alone, 
 Schedules and work histories share this contract. Gantt source `done` means `ok`, `crit` means `warn`, and `active` establishes no state role. Journey scores establish no status, and participant names alone do not establish people. Timeline events have no individual binding or focus id. Kanban priority colors identify metadata on the existing indicator, not failed work or a newly added legend. Read the type reference for exact identities, category defaults, and generated-id limits before binding these families.
 
 Missing, ambiguous, or unsupported explicit targets are semantic refusals. Fix the binding or omit it and keep unclassified elements neutral. A semantic source target can own several SVG marks. DOM mark count does not determine identity.
+
+Mindmap, Ishikawa, Wardley, and Cynefin accept the source identities in the type reference. Branch names, cause categories, and decision domains can establish category keys, not state roles. Spatial position and labels such as "failed database" establish no role. Group bindings affect only supported owned geometry. In particular, an Ishikawa category does not color its causes, and a Cynefin domain does not color its child badges.
 
 ### Read labels and edges
 

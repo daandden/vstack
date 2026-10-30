@@ -2,7 +2,7 @@
 
 > This decision amends [ADR 0040](0040-figures-are-mermaid-rendered-by-pele.md).
 
-> The palette and mapping policy below is confirmed by the grill. Flowchart bindings, literal role fills, native C4 and entity-family mappings, schedule and work-history mappings, and neutral packet and railroad limits are integrated. Family-specific bindings for the remaining types are pending.
+> The palette and mapping policy below is confirmed by the grill. Flowchart bindings, literal role fills, native C4 and entity-family mappings, schedule and work-history mappings, mindmap, Ishikawa, Wardley, Cynefin, and neutral packet and railroad limits are integrated. Workflow and chart-family bindings remain pending. This completion statement covers implemented slices, not the prototype corpus.
 
 Every authored paint color comes directly from the [Catppuccin Mocha palette](https://raw.githubusercontent.com/catppuccin/palette/main/palette.json). The renderer adds no mixed, lightened, or darkened colors. Neutral node backing uses Surface0, the background uses Base, and ordinary text uses Text. Text on a solid accent uses Base.
 
