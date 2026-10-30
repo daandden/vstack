@@ -4,6 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [8.0.2] - 2026-10-30
+
+- Present an automatic Flow link only after a completed, nonempty assistant reply. Cancelled retries, failed requests, and empty turns no longer append duplicate cards.
+- Keep Flow link cards in the UI transcript but exclude them from ordinary-turn model requests, including cards restored from earlier sessions. Preserve the hidden per-agent authoring identity. Compaction and branch-summary input still include persisted cards; complete isolation requires core omp support.
+
 ## [8.0.1] - 2026-10-29
 
 - Make clean-wt protect owners before inspecting contents, remove only requested targets, and reuse historical session metadata while refreshing live ownership.

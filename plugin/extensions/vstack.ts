@@ -35,6 +35,9 @@ function registerFlowPresentation(pi: ExtensionAPI): void {
     live?: { state: "serving"; url: string } | { state: "unavailable"; error: string } | { state: "off" };
     presentation?: { state: "current" | "stale"; error?: string };
   };
+  pi.on("context", event => ({
+    messages: event.messages.filter(message => message.role !== "custom" || message.customType !== "vstack-flow"),
+  }));
   pi.on("before_agent_start", async (_event, ctx) => {
     const args = flowIdentity(ctx).map(value => JSON.stringify(value)).join(" ");
     let target = "";
@@ -51,6 +54,8 @@ function registerFlowPresentation(pi: ExtensionAPI): void {
   });
   pi.on("agent_end", async (event, ctx) => {
     if (ctx.agent.kind !== "main" || event.isTerminal === false) return;
+    const reply = event.messages.findLast(message => message.role === "assistant");
+    if (!reply || reply.stopReason !== "stop" || !reply.content.some(block => block.type === "text" && block.text.trim())) return;
     let content: string;
     try {
       const current = await flowPage<Bound>(pi, ctx, ["bound"]);
