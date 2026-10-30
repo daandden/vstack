@@ -4,10 +4,20 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
-## [8.0.1] - 2026-10-30
+## [8.0.2] - 2026-10-30
 
 - Present an automatic Flow link only after a completed, nonempty assistant reply. Cancelled retries, failed requests, and empty turns no longer append duplicate cards.
 - Keep Flow link cards in the UI transcript but exclude them from ordinary-turn model requests, including cards restored from earlier sessions. Preserve the hidden per-agent authoring identity. Compaction and branch-summary input still include persisted cards; complete isolation requires core omp support.
+
+## [8.0.1] - 2026-10-29
+
+- Make clean-wt protect owners before inspecting contents, remove only requested targets, and reuse historical session metadata while refreshing live ownership.
+- Recognize integrated tracked drafts against the source remote HEAD, including squash-equivalent contents, without weakening artifact, history, fingerprint, or approval guards.
+- Use a script-first clean-wt flow with shared integration facts, checkout-specific investigations, and one unresolved-only approval question.
+- Remove clean checkouts before remote comparisons, then prepare per-source remote-default facts for separate targeted inventory commands.
+- Allow independently verified untracked files and links that match remote-default contents and modes to qualify for automatic cleanup.
+- Check and fingerprint tracked bytes hidden by skip-worktree or assume-unchanged, retaining stale or unverifiable checkouts.
+- Record clean-wt's approved single-question timeout exception in House style and ADR 0008.
 
 ## [8.0.0] - 2026-10-29
 
