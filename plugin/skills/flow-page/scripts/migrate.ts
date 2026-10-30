@@ -67,6 +67,93 @@ export function historicalFlows(scratch: string) {
   });
 }
 
+function srcsetCandidates(srcset: string): { url: string; descriptor: string }[] {
+  const out: { url: string; descriptor: string }[] = [];
+  let i = 0;
+  while (i < srcset.length) {
+    while (i < srcset.length && /[\s,]/.test(srcset[i])) i++;
+    if (i >= srcset.length) break;
+    let j = i;
+    while (j < srcset.length && !/\s/.test(srcset[j])) j++;
+    let url = srcset.slice(i, j);
+    let descriptor = "";
+    if (url.endsWith(",")) url = url.replace(/,+$/, "");
+    else {
+      const comma = srcset.indexOf(",", j);
+      descriptor = srcset.slice(j, comma < 0 ? undefined : comma).trim();
+      j = comma < 0 ? srcset.length : comma + 1;
+    }
+    out.push({ url, descriptor });
+    i = j;
+  }
+  return out;
+}
+
+export function captureHistoricalImages(s: State, from: string, time: string, io: Io): boolean {
+  let changed = false;
+  const figures = (fs: Figure[] | undefined, stage: string) => {
+    for (const f of fs ?? []) {
+      if (!("html" in f)) continue;
+      const attachments = [...(f.attachments ?? [])];
+      const before = attachments.length;
+      const capture = (url: string, caption: string): { url: string } | { reason: string } => {
+        if (!url || /^(?:[a-z][a-z0-9+.-]*:|\/\/|#)/i.test(url)) return { url };
+        const hash = url.indexOf("#");
+        const fragment = hash < 0 ? "" : url.slice(hash);
+        const target = (hash < 0 ? url : url.slice(0, hash)).split("?", 1)[0];
+        if (target.startsWith("assets/") && s.attachments.some((a) => a.file === target.slice(7))) return { url };
+        const id = newId(s, "attachment");
+        attachments.push(id);
+        const base = { id, stage, type: /\.svg$/i.test(target) ? "svg" as const : "image" as const, time, caption, origin: `Grilling page ${from}: ${url}` };
+        try {
+          let path: string;
+          try { path = decodeURIComponent(target); } catch { return fail(f.id, `invalid image URL ${url}`); }
+          const captured = io.capture(path, base.type, f.id);
+          s.attachments.push({ ...base, availability: "captured", ...captured });
+          return { url: `assets/${captured.file}${fragment}` };
+        } catch (e) {
+          if (!(e instanceof Refusal)) throw e;
+          s.attachments.push({ ...base, availability: "unavailable", reason: e.message });
+          return { reason: e.message };
+        }
+      };
+      const rewrite = (el: HTMLRewriterTypes.Element, withSrc: boolean) => {
+        const caption = el.getAttribute("alt") || `Historical image ${f.id}`;
+        const srcset = el.getAttribute("srcset");
+        if (srcset !== null) {
+          const kept = srcsetCandidates(srcset).flatMap((c) => {
+            const r = capture(c.url, caption);
+            return "url" in r ? [[r.url, c.descriptor].filter(Boolean).join(" ")] : [];
+          });
+          if (kept.length) el.setAttribute("srcset", kept.join(", "));
+          else el.removeAttribute("srcset");
+        }
+        const src = withSrc ? el.getAttribute("src") : null;
+        if (src === null) return;
+        const r = capture(src, caption);
+        if ("reason" in r) el.replace(`Image unavailable: ${caption}. ${r.reason}`);
+        else el.setAttribute("src", r.url);
+      };
+      const html = new HTMLRewriter()
+        .on("img", { element: (el) => rewrite(el, true) })
+        .on("picture > source", { element: (el) => rewrite(el, false) })
+        .transform(f.html);
+      if (attachments.length > before) {
+        f.html = html;
+        f.attachments = attachments;
+        changed = true;
+      }
+    }
+  };
+  for (const q of s.questions) {
+    figures(q.figures, q.stage);
+    for (const o of q.options) if (o.preview) figures([o.preview], q.stage);
+  }
+  for (const b of s.backgrounds) figures(b.figures, b.stage);
+  for (const r of [...s.results, ...s.history]) for (const e of r.entries) figures(e.figures as Figure[] | undefined, r.stage);
+  return changed;
+}
+
 
 export function migrateHistorical(h: ReturnType<typeof parseHistorical>, id: string, from: string, time: string, io: Io): State {
   const s = newFlow(id, h.slug, h.page.title, time);
@@ -261,5 +348,6 @@ export function migrateHistorical(h: ReturnType<typeof parseHistorical>, id: str
   const f = h.flow;
   s.aliases.push(...historicalAliases(h).filter((alias) => !s.aliases.includes(alias)));
   if (f?.state === "closed") s.lifecycle.push({ event: "closed", time });
+  captureHistoricalImages(s, from, time, io);
   return s;
 }

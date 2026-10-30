@@ -64,6 +64,18 @@ function tree(dir: string): Record<string, string> {
 
 const option = (label: string, extra: object = {}) => ({ label, does: `${label} does`, gains: [`${label} gain`], costs: [`${label} cost`], ...extra });
 const SVG = readFileSync(join(FIXTURES, "scope.svg"), "utf8");
+const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64");
+
+function pageImageUrls(page: string): string[] {
+  const urls: string[] = [];
+  const collect = { element(el: any) {
+    const src = el.getAttribute("src");
+    if (src) urls.push(src);
+    for (const candidate of (el.getAttribute("srcset") ?? "").split(",")) if (candidate.trim()) urls.push(candidate.trim().split(/\s+/)[0]);
+  } };
+  new HTMLRewriter().on("img", collect).on("source", collect).transform(readFileSync(page, "utf8"));
+  return urls;
+}
 
 function legacyPage(w: World, fixture = "legacy.jsonl") {
   const folder = join(w.scratch, "grilling", "project-41");
@@ -219,6 +231,96 @@ test("migration preserves declared reader needs and visual kinds without inventi
   expect(questions.find((r: any) => r.id === "q-open").needs).toBeUndefined();
   expect(snap.stages.every((st: any) => st.opened === undefined)).toBe(true);
   expect(tree(folder)).toEqual(before);
+});
+
+test("migration captures inline HTML images in questions, previews, Backgrounds, and Results", () => {
+  const w = world();
+  const folder = legacyPage(w);
+  writeFileSync(join(folder, "figures", "room.png"), PNG);
+  const records = readFileSync(join(folder, "page.jsonl"), "utf8").trim().split("\n").map((line) => JSON.parse(line));
+  const visual = { html: '<figure><img src="figures/room.png" alt="Room layout"><figcaption>Room layout</figcaption></figure>' };
+  records.find((r) => r.id === "q-scope").visual = visual;
+  records.find((r) => r.id === "q-limit").options[0].preview = visual;
+  records.find((r) => r.id === "bg").visual = visual;
+  records.find((r) => r.id === "findings").entries[0].visual = visual;
+  writeFileSync(join(folder, "page.jsonl"), records.map((r) => JSON.stringify(r)).join("\n") + "\n");
+  const before = tree(folder);
+  const migrated = ok(run(w, ["migrate", folder]));
+  expect(tree(folder)).toEqual(before);
+  rmSync(join(folder, "figures", "room.png"));
+  const sources: string[] = [];
+  new HTMLRewriter().on("img", { element(el) { sources.push(el.getAttribute("src")!); } }).transform(readFileSync(migrated.page, "utf8"));
+  expect(sources).toHaveLength(4);
+  for (const src of sources) {
+    expect(src).toStartWith("assets/");
+    expect(existsSync(join(migrated.page, "..", src))).toBe(true);
+  }
+  ok(run(w, ["submit", "--flow", migrated.flow, "--stage", "impl"], { stdin: { version: 1, items: [
+    { kind: "result", shape: "document", title: "Continued work", sections: [{ heading: "Decision", blocks: [{ prose: "Keep the migrated room layout." }] }] },
+  ] } }));
+  const snap = ok(run(w, ["show", "--flow", migrated.flow]));
+  expect(snap.attachments.every((a: any) => a.used_by.length > 0)).toBe(true);
+});
+
+test("migration captures responsive image candidates and keeps SVG view fragments", () => {
+  const w = world();
+  const folder = legacyPage(w);
+  writeFileSync(join(folder, "figures", "room.png"), PNG);
+  writeFileSync(join(folder, "figures", "room@2x.png"), PNG);
+  const records = readFileSync(join(folder, "page.jsonl"), "utf8").trim().split("\n").map((line) => JSON.parse(line));
+  records.find((r) => r.id === "q-open").visual = { html: '<picture><source media="(min-width: 1px)" srcset="figures/room@2x.png 2x"><img src="figures/room.png" srcset="figures/room.png 1x, figures/room@2x.png 2x" alt="Room"></picture><img src="figures/scope.svg#detail" alt="Detail">' };
+  writeFileSync(join(folder, "page.jsonl"), records.map((r) => JSON.stringify(r)).join("\n") + "\n");
+  const migrated = ok(run(w, ["migrate", folder]));
+  rmSync(join(folder, "figures"), { recursive: true });
+  const urls = pageImageUrls(migrated.page);
+  for (const url of urls) {
+    expect(url).toStartWith("assets/");
+    expect(existsSync(join(migrated.page, "..", url.split("#")[0]))).toBe(true);
+  }
+  expect(urls.filter((url) => url.endsWith("#detail"))).toHaveLength(1);
+  const html = readFileSync(migrated.page, "utf8");
+  expect(html).toMatch(/srcset="assets\/\S+ 1x, assets\/\S+ 2x"/);
+});
+
+test("repeating migration repairs old inline images without replacing later authored work", () => {
+  const w = world();
+  const folder = legacyPage(w);
+  const records = readFileSync(join(folder, "page.jsonl"), "utf8").trim().split("\n").map((line) => JSON.parse(line));
+  const visual = { html: '<img src="figures/scope.svg" alt="Checkout boundary">' };
+  records.find((r) => r.id === "q-open").visual = visual;
+  writeFileSync(join(folder, "page.jsonl"), records.map((r) => JSON.stringify(r)).join("\n") + "\n");
+  const migrated = ok(run(w, ["migrate", folder]));
+  const continued = ok(run(w, ["submit", "--flow", migrated.flow, "--stage", "impl"], { stdin: { version: 1, items: [
+    { kind: "answer", question: "q-open", response: { status: "answered", picks: ["B"] } },
+    { kind: "result", ref: "new-work", shape: "document", title: "Later work", sections: [{ heading: "Decision", blocks: [{ prose: "Keep later work intact." }] }] },
+  ] } }));
+  const stateFile = join(migrated.page, "..", "data", "state.json");
+  const state = JSON.parse(readFileSync(stateFile, "utf8"));
+  const figure = state.questions.find((q: any) => q.id === "q-open").figures[0];
+  const inline = new Set(figure.attachments);
+  state.attachments = state.attachments.filter((a: any) => !inline.has(a.id));
+  figure.html = visual.html;
+  delete figure.attachments;
+  writeFileSync(stateFile, JSON.stringify(state));
+  const beforeSource = tree(folder);
+  const repaired = ok(run(w, ["migrate", folder]));
+  expect(repaired.flow).toBe(migrated.flow);
+  expect(repaired.repaired).toBe(true);
+  expect(repaired.revision).toBe(continued.revision + 1);
+  const snap = ok(run(w, ["show", "--flow", migrated.flow]));
+  const impl = snap.stages.find((st: any) => st.id === "impl");
+  expect(impl.questions.find((q: any) => q.id === "q-open").answer.picks).toEqual(["B. Second"]);
+  expect(JSON.parse(readFileSync(stateFile, "utf8")).results.find((r: any) => r.id === continued.refs["new-work"])).toEqual(state.results.find((r: any) => r.id === continued.refs["new-work"]));
+  const sources: string[] = [];
+  new HTMLRewriter().on("img", { element(el) { sources.push(el.getAttribute("src")!); } }).transform(readFileSync(migrated.page, "utf8"));
+  for (const src of sources) {
+    expect(src).toStartWith("assets/");
+    expect(existsSync(join(migrated.page, "..", src))).toBe(true);
+  }
+  expect(tree(folder)).toEqual(beforeSource);
+  const beforeRepeat = tree(w.home);
+  expect(ok(run(w, ["migrate", folder])).repeated).toBe(true);
+  expect(tree(w.home)).toEqual(beforeRepeat);
 });
 
 test("an in-flight migrated Stage takes new contributions without changing old Q numbers, ids, or captured figures", () => {

@@ -16,7 +16,7 @@ import { addAliases, aliasesOf, closeFlow, contribute, newFlow, nowIso, openStag
 import { RENDERER, render } from "./render.ts";
 import { assetsDir, createFlowFolder, flowFolders, flowsDir, folderOfId, migrationIdentity, pagePath, pageRevision, readBinding, readState, registerFolder, registerMigration, registeredFolder, statePath, withLock, writeAtomic, writeBinding } from "./store.ts";
 import { connect, flowUrl, hostCommand } from "./live.ts";
-import { historicalFlows, migrateHistorical, parseHistorical } from "./migrate.ts";
+import { captureHistoricalImages, historicalFlows, migrateHistorical, parseHistorical } from "./migrate.ts";
 import { Refusal } from "./fields.ts";
 import { registerObservation } from "./observations.ts";
 
@@ -243,9 +243,13 @@ async function main(): Promise<object> {
           const folder = join(dir, name);
           const s = readState(folder);
           if (s?.migrated?.from !== from) continue;
-          if (s.migrated.sha256 !== historical.sha256) refuse(`migrate: ${from} changed after migration to ${s.flow.id}; continue authoring that Flow instead of overwriting it`);
-          registerMigration(dir, { source: from, flow: s.flow.id, sha256: historical.sha256 });
-          return { flow: s.flow.id, revision: s.revision, page: pagePath(folder), presentation: presentationOf(folder, s), repeated: true };
+          return locked(s.flow.id, (folder, current) => {
+            if (current.migrated!.sha256 !== historical.sha256) refuse(`migrate: ${from} changed after migration to ${current.flow.id}; continue authoring that Flow instead of overwriting it`);
+            const repaired = captureHistoricalImages(current, from, time, migrationIo);
+            if (repaired) current.revision++;
+            registerMigration(dir, { source: from, flow: current.flow.id, sha256: historical.sha256 });
+            return { flow: current.flow.id, revision: current.revision, page: pagePath(folder), presentation: repaired ? publish(folder, current) : presentationOf(folder, current), ...(repaired ? { repaired: true } : { repeated: true }) };
+          });
         }
         const { id, folder } = createFlowFolder(dir, historical.slug);
         migrated.flow.id = id;

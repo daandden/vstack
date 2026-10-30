@@ -24,7 +24,7 @@ export const VISUAL_KINDS = {
 } as const;
 export type VisualKind = keyof typeof VISUAL_KINDS;
 export type ReaderNeed = { need: string; kind: VisualKind };
-export type Figure = { id: string; kind?: Exclude<VisualKind, "prose"> } & ({ text: string } | { html: string; css?: string } | { attachment: string });
+export type Figure = { id: string; kind?: Exclude<VisualKind, "prose"> } & ({ text: string } | { html: string; css?: string; attachments?: string[] } | { attachment: string });
 export type Option = { label: string; does: string; gains: string[]; costs: string[]; recommended?: string; preview?: Figure };
 export type Fact = { text: string; source: string };
 export type Term = { term: string; text: string };
@@ -1308,9 +1308,9 @@ function checkLinks(s: State): void {
   }
   const attachments = new Set(s.attachments.map((a) => a.id));
   const used = new Set<string>();
-  for (const [id, figures] of figureOwners(s)) for (const f of figures) if ("attachment" in f) {
-    if (!attachments.has(f.attachment)) refuse(id, `attachment ${f.attachment} does not exist`);
-    used.add(f.attachment);
+  for (const [id, figures] of figureOwners(s)) for (const f of figures) for (const attachment of figureAttachments(f)) {
+    if (!attachments.has(attachment)) refuse(id, `attachment ${attachment} does not exist`);
+    used.add(attachment);
   }
   for (const r of [...s.results, ...s.history]) if (r.artifact && s.attachments.find((a) => a.id === r.artifact)?.type !== "artifact") refuse(`result ${r.id}`, "artifact must name a runnable artifact attachment");
   for (const r of [...s.results, ...s.history])
@@ -1326,6 +1326,10 @@ export function attachmentsOf(r: Result): string[] {
   const figures = (r.document?.sections ?? []).flatMap((sec) => sec.blocks.flatMap((b) => ("figure" in b ? [b.figure] : [])));
   const sides = (r.comparison?.alternatives ?? []).flatMap((a) => a.attachments ?? []);
   return [...new Set([...figures, ...sides, ...(r.artifact ? [r.artifact] : []), ...(r.attachments ?? []), ...r.entries.flatMap((e) => (e.attachments as string[] | undefined) ?? [])])];
+}
+
+function figureAttachments(f: Figure): string[] {
+  return "attachment" in f ? [f.attachment] : "html" in f ? f.attachments ?? [] : [];
 }
 /** Figure owners also count as attachment uses, so migrated evidence is not lost on the next contribution. */
 export function figureOwners(s: Pick<State, "questions" | "backgrounds" | "results" | "history">): [string, Figure[]][] {
@@ -1566,7 +1570,7 @@ export function view(s: State): View {
       ...a,
       used_by: [...new Set([
         ...[...s.results, ...s.history].filter((r) => attachmentsOf(r).includes(a.id)).map((r) => r.id),
-        ...figureOwners(s).filter(([, fs]) => fs.some((f) => "attachment" in f && f.attachment === a.id)).map(([id]) => id),
+        ...figureOwners(s).filter(([, fs]) => fs.some((f) => figureAttachments(f).includes(a.id))).map(([id]) => id),
       ])],
     })),
   };
