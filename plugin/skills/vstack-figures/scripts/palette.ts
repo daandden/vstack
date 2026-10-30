@@ -1,4 +1,5 @@
 import type { DiagramModel, FlowchartModel } from "pele";
+import { sankeyMode } from "./sankey-mode.ts";
 
 export const FONT = "'IosevkaTerm Nerd Font Mono', ui-monospace, monospace";
 const BASE = "#1e1e2e", TEXT = "#cdd6f4", SURFACE = "#313244", BORDER = "#6c7086", MAUVE = "#cba6f7";
@@ -7,8 +8,9 @@ const ROLES: Record<string, string> = {
   actor: "#f5c2e7", store: "#94e2d5", external: "#fab387",
 };
 const ACCENTS = ["#f5e0dc", "#f2cdcd", "#f5c2e7", "#f38ba8", "#eba0ac", "#fab387", "#f9e2af", "#a6e3a1", "#94e2d5", "#89dceb", "#74c7ec", "#89b4fa", "#b4befe"];
+const CHARTS = new Set(["quadrantChart", "xychart", "pie", "sankey", "radar", "treemap", "venn"]);
 export type Binding = { id: string; role?: string; category?: string };
-type Target = { id: string; role?: string; category?: string; intrinsic?: string; key?: string; sourceCategory?: string; neutral?: boolean; line?: boolean; loose?: boolean; labelOnly?: boolean; unsupported?: boolean; iconOnly?: boolean; looseLabel?: boolean; edge?: boolean };
+type Target = { id: string; role?: string; category?: string; categorical?: string; intrinsic?: string; key?: string; sourceCategory?: string; neutral?: boolean; line?: boolean; loose?: boolean; labelOnly?: boolean; unsupported?: boolean; iconOnly?: boolean; looseLabel?: boolean; edge?: boolean };
 const PELE_CLASS = /^(?:pele|usecase-|system-boundary)|^highlight$/;
 const SHAPE = new Set(["rect", "path", "polygon", "circle", "ellipse", "line", "polyline"]);
 const PAINT = new Set(["fill", "stroke", "color", "stop-color", "background", "background-color"]);
@@ -195,6 +197,73 @@ function spatialTargets(model: DiagramModel) {
   return targets;
 }
 
+function chartTargets(model: DiagramModel) {
+  const targets = new Map<string, Target[]>();
+  const add = (id: string, categorical = id, names: string[] = []) => {
+    const target: Target = { id, categorical };
+    classes(target, names);
+    targets.set(id, [...(targets.get(id) ?? []), target]);
+  };
+  if (model.type === "pie") for (const name of model.sections.keys()) add(name);
+  if (model.type === "sankey") for (const node of model.nodes) add(node.id);
+  if (model.type === "quadrantChart") {
+    for (const style of [...model.classes.values(), ...model.points]) {
+      if (style.color) refusePaint("fill", style.color, true);
+      if (style.strokeColor) refusePaint("stroke", style.strokeColor, true);
+    }
+    for (const point of model.points) add(point.text.text, point.text.text, [point.className]);
+    for (const [i, quadrant] of model.quadrants.entries()) if (quadrant) add(`quadrant-${i + 1}`, quadrant.text);
+  }
+  if (model.type === "xychart") for (const plot of model.plots) if (plot.title) add(plot.title);
+  if (model.type === "radar") for (const curve of model.curves) add(curve.name);
+  if (model.type === "venn") {
+    for (const style of model.styles) for (const [property, value] of style.styles) refusePaint(property, value, true);
+    for (const subset of model.subsets) add(subset.sets.join("|"));
+    for (const text of model.textNodes) add(text.id);
+  }
+  if (model.type === "treemap") {
+    for (const declarations of model.classes.values()) for (const declaration of declarations) {
+      const colon = declaration.indexOf(":");
+      if (colon > 0) refusePaint(declaration.slice(0, colon).trim(), declaration.slice(colon + 1), true);
+    }
+    const visit = (nodes: typeof model.roots) => {
+      for (const node of nodes) {
+        add(node.name, node.name, node.classSelector?.split(/\s+/) ?? []);
+        if (node.children) visit(node.children);
+      }
+    };
+    visit(model.roots);
+  }
+  return targets;
+}
+
+function targetColor(target: Target | undefined): string | undefined {
+  return target?.role ? ROLES[target.role] : target?.category !== undefined ? categoryColor(target.category) : target?.intrinsic ? ROLES[target.intrinsic] : target?.categorical !== undefined ? categoryColor(target.categorical) : undefined;
+}
+
+function sankeyPaint(svg: string, model: Extract<DiagramModel, { type: "sankey" }>, targets: Map<string, Target[]>, scope: string) {
+  const templates = new Map([...svg.matchAll(/<linearGradient\b[^>]*\bid="([^"]+)"[^>]*>[\s\S]*?<\/linearGradient>/g)].map((m) => [m[1]!, m[0]]));
+  const gradients: string[] = [];
+  let index = 0;
+  svg = svg.replace(/<path\b[^>]*>/g, (tag) => {
+    if (!/\bclass="pele-sankey-link"/.test(tag)) return tag;
+    const link = model.links[index++]!;
+    const source = targetColor(targets.get(link.source.id)?.[0])!, destination = targetColor(targets.get(link.target.id)?.[0])!;
+    const oldId = /\bfill="url\(#([^)]*)\)/.exec(tag)?.[1];
+    if (oldId) {
+      const template = templates.get(oldId);
+      if (!template) throw new Error("Unsupported Sankey gradient: no endpoint definition.");
+      const id = `${scope}-sankey-${index}`;
+      let stop = 0;
+      gradients.push(template.replace(/\bid="[^"]*"/, `id="${id}"`).replace(/stop-color="[^"]*"/g, () => `stop-color="${stop++ === 0 ? source : destination}"`));
+      return tag.replace(/\bfill="[^"]*"/, `fill="url(#${id}) ${source}"`);
+    }
+    return tag.replace(/\bfill="[^"]*"/, `fill="${sankeyMode(model) === "target" ? destination : source}"`);
+  });
+  if (gradients.length) svg = svg.replace(/<linearGradient\b[^>]*>[\s\S]*?<\/linearGradient>/g, "").replace("</defs>", `${gradients.join("")}</defs>`);
+  return svg;
+}
+
 function themed(value: string) {
   let rest = value;
   for (let before = ""; before !== rest;) { before = rest; rest = rest.replace(/var\([^()]*(?:\([^()]*\))?[^()]*\)/g, " "); }
@@ -207,7 +276,8 @@ function refusePaint(prop: string, value: string, authored = false) {
 export function palette(svg: string, model: DiagramModel, bindings: Binding[], focus: string[], scope: string): { svg: string; css: string } {
   const work = ["timeline", "gantt", "journey", "kanban", "gitGraph"].includes(model.type);
   const spatial = ["mindmap", "ishikawa", "wardley", "cynefin"].includes(model.type);
-  const resolved = model.type === "flowchart" ? flowTargets(model) : work ? workTargets(model) : spatial ? spatialTargets(model) : entityTargets(model);
+  const chart = CHARTS.has(model.type);
+  const resolved = model.type === "flowchart" ? flowTargets(model) : work ? workTargets(model) : spatial ? spatialTargets(model) : chart ? chartTargets(model) : entityTargets(model);
   const targets = resolved ?? new Map<string, Target[]>();
   const visible = spatial ? new Set([...svg.matchAll(/\bdata-id="([^"]*)"/g)].map((m) => decode(m[1]!))) : undefined;
   for (const binding of bindings) {
@@ -239,13 +309,28 @@ export function palette(svg: string, model: DiagramModel, bindings: Binding[], f
   }
   const gitEdges = [...crossBranch, ...sameBranch];
   let gitEdge = 0;
-  const stack: { name: string; target?: Target; focused: boolean; icon: boolean }[] = [];
+  if (model.type === "sankey") {
+    // Validate the native paints before replacing links and stops, including caller-authored nodeColors.
+    for (const match of svg.matchAll(/\b(fill|stroke|stop-color)="([^"]*)"/g)) {
+      const value = match[2]!.replace(/^url\(#[^)]+\)\s*/, "");
+      refusePaint(match[1]!, value);
+    }
+    for (const match of svg.matchAll(/\bstyle="([^"]*)"/g)) for (const decl of decode(match[1]!).split(";")) {
+      const colon = decl.indexOf(":");
+      if (colon > 0) refusePaint(decl.slice(0, colon).trim(), decl.slice(colon + 1));
+    }
+    svg = sankeyPaint(svg, model, targets, scope);
+  }
+  const stack: { name: string; target?: Target; focused: boolean; icon: boolean; classes: string[]; loose: boolean }[] = [];
+  const chartVisible = new Set<Target>();
+  const xyPlots = model.type === "xychart" ? [...model.plots.filter((p) => p.type === "bar"), ...model.plots.filter((p) => p.type === "line")] : [];
+  let quadrantLabel = 0, xyPlot = 0, xyBar = 0;
   svg = svg.replace(/<\/?[\w:-]+\b(?:"[^"]*"|'[^']*'|[^'">])*>/g, (tag) => {
     if (tag.startsWith("</")) { stack.pop(); return tag; }
     const name = /^<([\w:-]+)/.exec(tag)![1]!;
     const attrs = new Map([...tag.matchAll(/([\w:-]+)="([^"]*)"/g)].map((m) => [m[1]!, decode(m[2]!)]));
     for (const [prop, value] of attrs) {
-      refusePaint(prop, value);
+      if (model.type !== "sankey" || !["fill", "stop-color"].includes(prop)) refusePaint(prop, value);
       if (prop === "style") for (const decl of value.split(";")) { const colon = decl.indexOf(":"); if (colon > 0) refusePaint(decl.slice(0, colon).trim(), decl.slice(colon + 1)); }
     }
     const id = attrs.get("data-id"), ownClasses = (attrs.get("class") ?? "").split(/\s+/);
@@ -258,16 +343,20 @@ export function palette(svg: string, model: DiagramModel, bindings: Binding[], f
     if (model.type === "mindmap" && ownClasses.includes("pele-edges")) {
       tag = tag.replace(/\bstroke="[^"]*"/, 'stroke="var(--_l)"');
     }
-    if (id !== undefined || ownClasses.some((c) => c === "pele-node" || c === "pele-cluster")) {
+    let loose = parent?.loose ?? false;
+    let sourceId = id;
+    if (model.type === "quadrantChart" && ownClasses.includes("pele-quadrant")) sourceId = `quadrant-${id}`;
+    if (model.type === "quadrantChart" && parent?.classes.includes("pele-point-labels")) sourceId = model.points[quadrantLabel++]?.text.text;
+    if (sourceId !== undefined || ownClasses.some((c) => c === "pele-node" || c === "pele-cluster")) {
       const edge = ownClasses.includes("pele-edge") || ownClasses.includes("pele-edge-label");
-      const matches = id === undefined ? undefined : targets.get(id);
-      const matched = spatial
+      const matches = sourceId === undefined ? undefined : targets.get(sourceId);
+      const matched = chart ? matches?.length === 1 ? matches[0] : undefined : spatial
         ? matches?.length === 1 ? matches[0] : model.type === "cynefin"
           ? matches?.find((t) => !!t.sourceCategory !== ownClasses.includes("pele-node")) : undefined
         : matches?.find((candidate) => work || !!candidate.edge === edge);
-      target = matched ?? (id === undefined ? { id: "unnamed", neutral: work } : { id });
+      target = matched ?? (sourceId === undefined ? { id: "unnamed", neutral: work } : { id: sourceId });
       if (ownClasses.some((c) => c === "pele-node" || c === "pele-cluster")) classes(target, ownClasses);
-      focused = id !== undefined && focus.includes(id) && !target.unsupported && (!matches || !!matched);
+      focused = !!(sourceId !== undefined && focus.includes(sourceId) && !target.unsupported && (chart ? matched : !matches || matched));
     }
     if (model.type === "kanban" && ownClasses.includes("pele-priority")) target = { id: target?.id ?? "", key: priorities.get(target?.id ?? ""), neutral: true, line: true };
     if (model.type === "gitGraph" && ownClasses.includes("pele-edge")) target = gitEdges[gitEdge++];
@@ -275,25 +364,41 @@ export function palette(svg: string, model: DiagramModel, bindings: Binding[], f
     if (model.type === "wardley" && ownClasses.some((c) => /^pele-wardley-(?:build|buy|outsource|market)$/.test(c))) {
       target = undefined; focused = false;
     }
+    if (model.type === "radar" && ownClasses.includes("pele-axis-label") || model.type === "sankey" && ownClasses.includes("pele-sankey-link")) { target = undefined; focused = false; }
+    if (model.type === "xychart") {
+      if (ownClasses.includes("pele-series")) {
+        const plot = xyPlots[xyPlot++];
+        xyBar = 0;
+        if (!plot?.title) target = { id: "" };
+      }
+      if (name === "rect" && parent?.classes.includes("pele-bars") && !target?.id) {
+        const datum = xyPlots[xyPlot - 1]?.data.filter(([, value]) => typeof value === "number" && Number.isFinite(value))[xyBar++];
+        target = model.xAxis.type === "band" && datum ? { id: "", categorical: datum[0] } : undefined;
+        focused = false;
+      }
+    }
     if (model.type === "wardley" && target?.labelOnly && !target.line && SHAPE.has(name)) target = undefined;
     const icon = ownClasses.includes("pele-icon") || (parent?.target === target && (parent?.icon ?? false));
     const key = target?.key ?? target?.sourceCategory;
-    const accent = target?.role ? ROLES[target.role] : target?.category !== undefined ? categoryColor(target.category) : target?.intrinsic && (!target.iconOnly || icon) ? ROLES[target.intrinsic] : key !== undefined ? categoryColor(key) : undefined;
+    if (chart) loose = ownClasses.includes("pele-legend-item") || ownClasses.includes("pele-section") || model.type === "sankey" || model.type === "venn" || model.type === "quadrantChart" && (ownClasses.includes("pele-point") || parent?.classes.includes("pele-point-labels")) || parent?.loose === true;
+    const accent = chart ? targetColor(target) : target?.role ? ROLES[target.role] : target?.category !== undefined ? categoryColor(target.category) : target?.intrinsic && (!target.iconOnly || icon) ? ROLES[target.intrinsic] : key !== undefined ? categoryColor(key) : undefined;
     const invisible = attrs.get("fill") === "none" && attrs.get("stroke") === "none";
     const neutral = target && ["wardley", "cynefin"].includes(model.type) && ["rect", "circle"].includes(name) && attrs.get("fill") === "var(--_bg)";
-    if (!invisible && (accent || focused || target?.neutral || neutral) && (SHAPE.has(name) || name === "text")) {
-      const line = target?.line || ownClasses.includes("pele-edge") || ownClasses.includes("pele-lane") || parent?.name === "line";
+    if (chart && target && !invisible && (SHAPE.has(name) || name === "text")) chartVisible.add(target);
+    if (!invisible && (accent || focused || target?.neutral || neutral || chart && target) && (SHAPE.has(name) || name === "text")) {
+      const line = target?.line || ownClasses.includes("pele-edge") || ownClasses.includes("pele-lane") || parent?.name === "line" || chart && attrs.get("fill") === "none";
       const fill = icon || (line && (!spatial || ["path", "line", "polyline"].includes(name)) && !ownClasses.includes("pele-marker")) ? "none" : model.type === "gitGraph" && attrs.get("fill") === "var(--_bg)" ? BASE : accent ?? SURFACE;
       const stroke = model.type === "gitGraph" && attrs.get("stroke") === "var(--_bg)" ? BASE : focused ? MAUVE : icon && !line ? BASE : accent ?? BORDER;
       const paint = name === "text"
-        ? `fill:${focused ? MAUVE : !accent ? TEXT : line || target?.loose || target?.looseLabel || model.type === "gantt" && attrs.get("fill") === "var(--_m)" ? accent : BASE}`
+        ? `fill:${focused ? MAUVE : !accent ? TEXT : line || loose || target?.loose || target?.looseLabel || model.type === "gantt" && attrs.get("fill") === "var(--_m)" ? accent : BASE}`
         : `${!["line", "polyline"].includes(name) ? `fill:${fill};${accent && ["mindmap", "cynefin"].includes(model.type) && attrs.has("fill-opacity") ? "fill-opacity:1;" : ""}` : ""}stroke:${stroke}${focused ? ";stroke-width:2.5px" : ""}`;
       if (attrs.has("style")) tag = tag.replace(/\bstyle="([^"]*)"/, (_, style) => `style="${style};${paint}"`);
       else tag = tag.replace(/\/?\s*>$/, (end) => ` style="${paint}"${end}`);
     }
-    if (!tag.endsWith("/>")) stack.push({ name, target, focused, icon });
+    if (!tag.endsWith("/>")) stack.push({ name, target, focused, icon, classes: ownClasses, loose });
     return tag;
   });
+  for (const binding of bindings) if (chart && !chartVisible.has(targets.get(binding.id)![0]!)) throw new Error(`Unsupported binding target ${binding.id}: no visible owned marks in ${model.type}.`);
   // Pele embeds default fallback colors and mixes nested cluster borders. Resolve both to literal Mocha.
   svg = svg.replace(/color-mix\([^()]*(?:\([^()]*\)[^()]*)*\)/g, BORDER).replace(/var\((--[\w-]+),\s*#[\da-f]{3,8}\s*\)/gi, "var($1)");
   const theme = `.${scope} {
@@ -302,7 +407,7 @@ background: ${BASE};
 --pele-muted: #a6adc8; --pele-line: #bac2de; --pele-surface: ${SURFACE}; --pele-surface-alt: ${SURFACE}; --pele-border: ${BORDER};
 --pele-accent: ${BORDER}; --pele-critical: #f38ba8; --pele-error: #f38ba8;
 --pele-font: ${FONT}; --pele-font-mono: ${FONT};
-${ACCENTS.slice(0, 8).map((c, i) => `--pele-series-${i + 1}: ${c};`).join(" ")}
+${ACCENTS.slice(0, 8).map((c, i) => `--pele-series-${i + 1}: ${CHARTS.has(model.type) ? SURFACE : c};`).join(" ")}
 }
 .${scope} text { font-variant-ligatures: none; }`;
   return { svg, css: theme };

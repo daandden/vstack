@@ -81,6 +81,7 @@ try {
 	const model = parse(source, { config });
 	const painted = palette(render(model, {
 		fontFamily: FONT, fontFamilyMono: FONT, measurer: fontMeasurer, config,
+		...(model.type === "sankey" ? { idPrefix: scope } : {}),
 	}).svg, model, bindings, focus, scope);
 	svg = painted.svg;
 	style = `<style>\n${painted.css}\n${readabilityRules(scope)}\n</style>`;

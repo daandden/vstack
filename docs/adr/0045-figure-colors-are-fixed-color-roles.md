@@ -2,7 +2,7 @@
 
 > This decision amends [ADR 0040](0040-figures-are-mermaid-rendered-by-pele.md).
 
-> The palette and mapping policy below is confirmed by the grill. Flowchart bindings, literal role fills, native C4 and entity-family mappings, schedule and work-history mappings, mindmap, Ishikawa, Wardley, Cynefin, and neutral packet and railroad limits are integrated. Workflow and chart-family bindings remain pending. This completion statement covers implemented slices, not the prototype corpus.
+> The palette and mapping policy below is confirmed by the grill. Flowchart bindings, literal role fills, native C4 and entity-family mappings, schedule and work-history mappings, mindmap, Ishikawa, Wardley, Cynefin, quantitative and set charts, and neutral packet and railroad limits are integrated. Workflow bindings remain pending. This completion statement covers implemented slices, not the prototype corpus.
 
 Every authored paint color comes directly from the [Catppuccin Mocha palette](https://raw.githubusercontent.com/catppuccin/palette/main/palette.json). The renderer adds no mixed, lightened, or darkened colors. Neutral node backing uses Surface0, the background uses Base, and ordinary text uses Text. Text on a solid accent uses Base.
 
@@ -10,7 +10,7 @@ Seven Color roles keep fixed meanings and accents across diagram types: `ok` use
 
 Categorical series use the other 13 Mocha accents, including accents also used by semantic roles. Their colors identify category keys, not status or declaration order. The same key keeps its color across types. Labels distinguish categories when colors repeat. This is an explicit exception to giving every hue one semantic meaning: Green in a chart does not itself mean success.
 
-Integration combines source kinds with optional explicit role and category mapping from the caller. Supported families accept `--bindings <json>` with an `elements` array of source ids and one role or category per entry. A person or stored-data kind establishes its role. Unclassified elements stay neutral, including UML actors that may be software. The renderer does not infer roles from words in labels. The type reference records supported identities and refusals as family mappings are integrated.
+Integration combines source kinds with optional explicit role and category mapping from the caller. Supported families accept `--bindings <json>` with an `elements` array of source ids and one role or category per entry. A person or stored-data kind establishes its role. Quantitative charts derive category keys from exact source names or declared keys, not magnitudes or scores. Unclassified elements stay neutral, including UML actors that may be software. The renderer does not infer roles from words in labels. The type reference records supported identities and refusals as family mappings are integrated.
 
 The renderer continues to refuse unknown authored roles, two different authored roles on one element, and colors authored through `classDef`, `style`, `linkStyle`, or sequence `rect` or `box`. Color ownership stays in the renderer. Repeating the same role is harmless.
 
