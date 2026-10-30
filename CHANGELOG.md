@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [8.0.3] - 2026-10-30
+
+- Capture local images embedded in historical HTML figures during Flow migration, including `srcset` candidates and `<picture>` sources, and keep SVG view fragments. Repeating migration repairs uncaptured inline images in an existing Flow without replacing later questions, answers, or Results, and subsequent repeats remain unchanged.
+
 ## [8.0.2] - 2026-10-30
 
 - Present an automatic Flow link only after a completed, nonempty assistant reply. Cancelled retries, failed requests, and empty turns no longer append duplicate cards.
