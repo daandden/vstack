@@ -4,6 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [8.0.1] - 2026-10-30
+
+- Figures retain seven fixed Color roles with solid literal Mocha fills and Base text instead of custom 20% tints. Flowchart --bindings documents assign roles or stable keyed categories to declared nodes, subgraphs, and explicit edge ids. Intrinsic person and stored-data shapes establish kinds without guessing from labels. Explicit assignments have deterministic precedence and conflict refusals. Mauve remains focus-only and preserves the fill. Groups color their own marks, inline figures remain isolated, and neutral packet and railroad figures retain documented binding limits. Invalid input or semantic coloring never creates or overwrites an SVG (ADR 0045, #302).
+- Maintainer gates run the repository's declared test script, preserving its existing timeout configuration instead of Bun's shorter default.
+
 ## [8.0.0] - 2026-10-29
 
 - Reconcile upstream #264, #263, #265, #268, #294, #295, #296, and #297. Typed Flow questions require reader needs and matching Visual kinds, including safe source/usage text. Capture caller-rendered Pele SVGs without restoring removed writers or visual judges. Preserve MCP discovery and tracker identities, remove inherited Addon pointers, migrate tune-llm-flow to centralized child-Stage publication, and gate delivery on independent committed-head Verdicts. Preserve #297's Shared checkout guards, separate detached verifier worktree, REFUSED and cleanup-error handling, and isolated eval requirements. Preserve published ADRs 0040 through 0043 and renumber the unpublished Flow ADR to 0044. Renderer advances once from 18 to 19. The breaking Flow cutover raises the plugin version from upstream 7.0.8 to 8.0.0.

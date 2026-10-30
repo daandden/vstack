@@ -68,6 +68,25 @@ These keywords name an existing family, not an additional visualization family. 
 
 [info](examples/info.mmd) displays renderer information. It is a utility, not a figure or a visualization family.
 
+## Binding identities and limits
+
+The optional `--bindings` document currently supports the flowchart family, including `graph` and `flowchart-elk`. Node and subgraph ids resolve directly from Pele's parsed source model. Explicit edge ids such as `A link@--> B` are supported. Automatically generated edge ids are not binding identities. Labels are not aliases for ids. A node and an edge sharing one id are ambiguous. A group assignment colors its own backing and label, not its children.
+
+Flowchart person shapes establish `actor`. Cylinder shapes, including `cyl`, establish `store`. Generic boxes, queue-like symbols, values, and words in labels establish no role. An explicit binding or authored role overrides an intrinsic kind.
+Text-only nodes retain accent text without an invented background. An edge binding colors its route, marker, and label without filling the open route.
+
+| Family | Explicit binding targets |
+|---|---|
+| Flowchart and its aliases | Declared nodes, subgraphs, and explicit edge ids |
+| Packet and `packet-beta` | Unsupported. Bit ranges and labels are not declared semantic ids. Valid figures render neutrally without bindings. |
+| `railroad-beta` | Unsupported. Rule names do not expose stable owned SVG targets in pinned Pele. |
+| `railroad-ebnf-beta` | Unsupported, with the same rule-target limit. |
+| `railroad-abnf-beta` | Unsupported, with the same rule-target limit. |
+| `railroad-peg-beta` | Unsupported, with the same rule-target limit. |
+| Other documented families | Explicit bindings are refused until their source-identity mapping is integrated. Existing rendering, authored roles, and documented focus remain supported. |
+
+Packet and all railroad notations keep neutral paint when semantic identity is unavailable. Do not substitute generated DOM ids, selectors, or a label guessed from visual position. A refusal leaves any previous SVG untouched, and the caller must not publish that old output as the failed render.
+
 ## Pinned syntax sources
 
 The [Pele 1.12.0 README](https://unpkg.com/pele@1.12.0/README.md) states the Mermaid 12.1.0 compatibility target. The [lazy registry](https://unpkg.com/pele@1.12.0/dist/esm/lazy.js) lists all families. The [type detector](https://unpkg.com/pele@1.12.0/dist/esm/chunks/2U463FD2.js) identifies keyword spellings. The pinned parser implementations define the rarer syntax used by these examples:
