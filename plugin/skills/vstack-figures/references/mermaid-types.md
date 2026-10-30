@@ -102,12 +102,16 @@ Text-only nodes retain accent text without an invented background. An edge bindi
 | `radar-beta` | Declared curve names, shared by the curve and its legend. Axis names and scores do not establish a curve category or a state role. |
 | `treemap-beta` and `treemap` | Exact node names, including section headers and leaf values. Repeated names at different depths are ambiguous, not unique paths. A section colors its own header and backing, not its descendants. Zero-sized or collapsed nodes with no emitted marks refuse explicit bindings. |
 | `venn-beta` | Exact set names, declared text ids, and intersection identities formed from sorted set names joined by `|`, as Pele emits them. Colliding identities are ambiguous. An intersection with text but no fillable region colors only its text. Missing geometry remains missing. |
+| `sequenceDiagram` | Participant ids, including declared actors and database participants. One identity owns header, footer when present, and lifeline. Alias text is not an id. Messages, activations, notes, boxes, and loop or alternative frames have no stable declared identity and refuse binding or focus. |
+| `stateDiagram-v2` and `stateDiagram` | Declared and referenced state ids, including composite states and their visible children. Generated transition ids and start or end pseudostates are unsupported binding and focus targets. Labels do not identify a state or establish an outcome. |
+| `swimlane-beta` | The flowchart node, lane subgraph, and explicit edge identities. Lane roles do not imply child roles. |
+| `agentflow-beta` | Visible task, tool, connector, flow group, and explicit edge ids. Collapsed groups retain their own target, but their children have no visible geometry and refuse binding or focus. Generated edge ids are unsupported. |
+| `eventmodeling` | Exact `tf` and `rf` frame ids, including leading zeros. Entity names, lane labels, generated relations, notes, and Given/When/Then cards are not independent binding or focus identities. Repeated frame ids are ambiguous. |
 | Packet and `packet-beta` | Unsupported. Bit ranges and labels are not declared semantic ids. Valid figures render neutrally without bindings. |
 | `railroad-beta` | Unsupported. Rule names do not expose stable owned SVG targets in pinned Pele. |
 | `railroad-ebnf-beta` | Unsupported, with the same rule-target limit. |
 | `railroad-abnf-beta` | Unsupported, with the same rule-target limit. |
 | `railroad-peg-beta` | Unsupported, with the same rule-target limit. |
-| Other documented families | Explicit bindings are refused until their source-identity mapping is integrated. Existing rendering, authored roles, and documented focus remain supported. |
 
 Packet and all railroad notations keep neutral paint when semantic identity is unavailable. Do not substitute generated DOM ids, selectors, or a label guessed from visual position. A refusal leaves any previous SVG untouched, and the caller must not publish that old output as the failed render.
 
@@ -125,6 +129,11 @@ Architecture `database` and `disk` service icons and block cylinder shapes estab
 Architecture service labels sit outside their icon backing and use accent text, not Base text on the Base background. Their existing outline icons use Base strokes against a solid accent backing.
 
 Tree file kinds color existing file-icon geometry as `store`, while unbound labels remain Text and directories remain neutral. Icons disabled or absent in the source stay absent. An explicit row binding can color its visible label and existing icon without inventing a backing or icon. Focus applies to visible row marks, not a path identity. Repeated basenames therefore cannot be focused independently through the string-id interface.
+In sequences, only `actor` declarations establish a person and `database` participant kinds establish stored data. Generic software participants, collections, and queues stay neutral. Figure-shaped participant labels sit outside their icon and use accent text rather than Base text on the Base background. Participant headers and footers are one semantic target, not a duplicate assignment.
+
+Agent-flow `refdoc` kinds establish `store`, and source failure relations establish `bad`. Other source vertex kinds use their exact kind key, such as `task`, `tool`, or `decision`, as categorical identity. Software tools are not people and a decision is not a success verdict. Flow containers stay neutral without a binding. Event-model `readmodel` frames establish `store`. Command, event, and processor frames use exact `command`, `event`, and `processor` category keys. UI and reset declarations establish no outcome. An event occurrence does not mean success, a processor is not a person, and a command does not imply changed code.
+
+These interaction and workflow bindings use the shared role, category, kind, and focus precedence. Distinct explicit roles conflict, as do distinct explicit category keys even when a role masks them. Identical repeats are accepted. Unknown elements stay neutral. Palette changes preserve Pele's geometry rather than creating hidden children or fillable regions. Agent-flow accent fills are opaque so Base text remains readable. Neutral container opacity remains unchanged. Focus on an unsupported or missing sequence, state, agent-flow, or event-model identity exits 1 without publishing an SVG.
 
 Mindmap branch order and spatial position establish no Color role. Ishikawa causes and Cynefin domains do not imply failure or success. Wardley symbols remain neutral unless the caller supplies a role or category. A supported identity can own several marks, such as a Cynefin region and its domain label or a Wardley component and its evolution arrow.
 

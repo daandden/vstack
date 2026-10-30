@@ -43,7 +43,7 @@ function categoryColor(key: string) {
   for (const byte of new TextEncoder().encode(key)) hash = Math.imul(hash ^ byte, 16777619) >>> 0;
   return ACCENTS[hash % ACCENTS.length]!;
 }
-function flowTargets(model: FlowchartModel) {
+function flowTargets(model: FlowchartModel | Extract<DiagramModel, { type: "agentflow" }>) {
   const declarations = [
     ...[...model.classes.values()].flatMap((c) => [...c.styles, ...c.textStyles]),
     ...[...model.nodes.values()].flatMap((n) => n.styles),
@@ -68,7 +68,21 @@ function flowTargets(model: FlowchartModel) {
     add(n.id, n.classes, intrinsic, n.type === "text");
   }
   for (const g of model.subgraphs) add(g.id, g.classes);
-  for (const e of model.edges) if (e.isUserDefinedId && e.id) add(e.id, e.classes, undefined, true).edge = true;
+  for (const e of model.edges) if (e.id && (e.isUserDefinedId || model.type === "agentflow")) {
+    const target = add(e.id, e.classes, model.type === "agentflow" && "edgeSemantic" in e && e.edgeSemantic === "failure" ? "bad" : undefined, true);
+    target.edge = true;
+    target.unsupported = !e.isUserDefinedId;
+  }
+  if (model.type === "agentflow") {
+    for (const vertex of model.semanticModel().vertices) {
+      const target = targets.get(vertex.id)?.[0];
+      if (!target) continue;
+      if (vertex.vertexKind === "refdoc") target.intrinsic = "store";
+      else target.key = vertex.vertexKind;
+    }
+    for (const group of model.subgraphs) targets.get(group.id)![0]!.neutral = true;
+    for (const [id, connector] of model.connectors) if (!targets.has(id)) add(id, connector.classes).key = "connector";
+  }
   return targets;
 }
 
@@ -264,6 +278,48 @@ function sankeyPaint(svg: string, model: Extract<DiagramModel, { type: "sankey" 
   return svg;
 }
 
+function interactionTargets(model: DiagramModel) {
+  if (model.type === "eventmodeling") {
+    const targets = new Map<string, Target[]>();
+    for (const box of model.boxes) {
+      const target: Target = { id: box.id, neutral: true };
+      if (box.kind === "readmodel") target.intrinsic = "store";
+      else if (box.kind !== "ui") target.key = box.kind;
+      targets.set(box.id, [...(targets.get(box.id) ?? []), target]);
+    }
+    return targets;
+  }
+  if (model.type === "agentflow") return flowTargets(model);
+  if (model.type === "state") {
+    const targets = new Map<string, Target[]>();
+    const add = (state: { id: string; start?: boolean; classes?: string[] }) => {
+      if (state.start !== undefined) return;
+      const target = targets.get(state.id)?.[0] ?? { id: state.id };
+      for (const name of state.classes ?? []) assign(target, "role", name);
+      targets.set(state.id, [target]);
+    };
+    const visit = (doc: typeof model.rootDoc) => {
+      for (const stmt of doc) {
+        if (typeof stmt === "string") continue;
+        if (stmt.stmt === "relation") { add(stmt.state1); add(stmt.state2); }
+        else if (stmt.stmt === "state") { add(stmt); if (stmt.doc) visit(stmt.doc); }
+      }
+    };
+    visit(model.rootDoc);
+    for (const [id, state] of model.states) if (targets.has(id)) add(state);
+    for (const c of model.classes.values()) for (const declaration of [...c.styles, ...c.textStyles]) {
+      const colon = declaration.indexOf(":");
+      if (colon > 0) refusePaint(declaration.slice(0, colon).trim(), declaration.slice(colon + 1), true);
+    }
+    return targets;
+  }
+  if (model.type !== "sequence") return undefined;
+  return new Map([...model.actors].map(([id, actor]) => [id, [{
+    id, intrinsic: actor.type === "actor" ? "actor" : actor.type === "database" ? "store" : undefined,
+    looseLabel: ["actor", "boundary", "control", "entity", "database"].includes(actor.type),
+  } as Target]]));
+}
+
 function themed(value: string) {
   let rest = value;
   for (let before = ""; before !== rest;) { before = rest; rest = rest.replace(/var\([^()]*(?:\([^()]*\))?[^()]*\)/g, " "); }
@@ -277,11 +333,33 @@ export function palette(svg: string, model: DiagramModel, bindings: Binding[], f
   const work = ["timeline", "gantt", "journey", "kanban", "gitGraph"].includes(model.type);
   const spatial = ["mindmap", "ishikawa", "wardley", "cynefin"].includes(model.type);
   const chart = CHARTS.has(model.type);
-  const resolved = model.type === "flowchart" ? flowTargets(model) : work ? workTargets(model) : spatial ? spatialTargets(model) : chart ? chartTargets(model) : entityTargets(model);
+  const interaction = interactionTargets(model);
+  const resolved = model.type === "flowchart" ? flowTargets(model) : interaction ?? (work ? workTargets(model) : spatial ? spatialTargets(model) : chart ? chartTargets(model) : entityTargets(model));
   const targets = resolved ?? new Map<string, Target[]>();
   const visible = spatial ? new Set([...svg.matchAll(/\bdata-id="([^"]*)"/g)].map((m) => decode(m[1]!))) : undefined;
+  const ownsIdentity = (names: string[]) => model.type === "sequence"
+    ? names.some((n) => n === "pele-actor" || n === "pele-lifeline")
+    : model.type === "state" ? names.some((n) => n === "pele-state" || n === "pele-state-composite")
+    : model.type === "eventmodeling" ? names.includes("pele-node")
+    : true;
+  const interactionVisible = new Set<string>(), emitted = new Set<string>();
+  if (interaction) for (const match of svg.matchAll(/<[\w:-]+\b(?:"[^"]*"|'[^']*'|[^'">])*>/g)) {
+    const id = /\bdata-id="([^"]*)"/.exec(match[0])?.[1];
+    if (id === undefined) continue;
+    emitted.add(decode(id));
+    if (ownsIdentity((/\bclass="([^"]*)"/.exec(match[0])?.[1] ?? "").split(/\s+/))) interactionVisible.add(decode(id));
+  }
+  const resolve = (id: string, kind: "binding" | "focus") => {
+    const matches = targets.get(id);
+    if (!matches?.length) throw new Error(`${emitted.has(id) ? "Unsupported" : "Missing"} ${kind} target: ${id}. Use a declared source id supported by ${model.type}.`);
+    if (matches.length !== 1) throw new Error(`Ambiguous ${kind} target: ${id}. It names ${matches.length} source targets.`);
+    const target = matches[0]!;
+    if (target.unsupported || !interactionVisible.has(id)) throw new Error(`Unsupported ${kind} target ${id}: ${target.unsupported ? "Generated ids are not declared source identities." : "No visible geometry, including children of collapsed flows."}`);
+    return target;
+  };
   for (const binding of bindings) {
     if (binding.role !== undefined) role(binding.role);
+    if (interaction) { assign(resolve(binding.id, "binding"), binding.role !== undefined ? "role" : "category", binding.role ?? binding.category!); continue; }
     if (!resolved) throw new Error(`Unsupported binding target ${binding.id}: ${model.type} does not yet expose binding identities.`);
     const matches = targets.get(binding.id);
     if (!matches?.length) throw new Error(`Missing binding target: ${binding.id}. Use a supported source identity for ${model.type}.`);
@@ -290,6 +368,7 @@ export function palette(svg: string, model: DiagramModel, bindings: Binding[], f
     if (visible && !visible.has(binding.id)) throw new Error(`Unavailable binding target: ${binding.id}. Pele emits no visible geometry for this source target.`);
     assign(matches[0]!, binding.role !== undefined ? "role" : "category", binding.role ?? binding.category!);
   }
+  if (interaction) for (const id of focus) resolve(id, "focus");
   if (model.type === "journey") {
     svg = svg.replace(/(<circle\b[^>]*class="pele-actor"[^>]*)(>)(<title>([^<]*)<\/title>)/g, (_, start, end, title, person) => `${start} data-id="${person}"${end}${title}`);
   }
@@ -353,10 +432,11 @@ export function palette(svg: string, model: DiagramModel, bindings: Binding[], f
       const matched = chart ? matches?.length === 1 ? matches[0] : undefined : spatial
         ? matches?.length === 1 ? matches[0] : model.type === "cynefin"
           ? matches?.find((t) => !!t.sourceCategory !== ownClasses.includes("pele-node")) : undefined
-        : matches?.find((candidate) => work || !!candidate.edge === edge);
+        : ownsIdentity(ownClasses) ? matches?.find((candidate) => work || !!candidate.edge === edge) : undefined;
       target = matched ?? (sourceId === undefined ? { id: "unnamed", neutral: work } : { id: sourceId });
+      if (model.type === "eventmodeling" && ownClasses.includes("pele-em-lane")) target = { id: id ?? "lane", neutral: true };
       if (ownClasses.some((c) => c === "pele-node" || c === "pele-cluster")) classes(target, ownClasses);
-      focused = !!(sourceId !== undefined && focus.includes(sourceId) && !target.unsupported && (chart ? matched : !matches || matched));
+      focused = !!(sourceId !== undefined && ownsIdentity(ownClasses) && focus.includes(sourceId) && !target.unsupported && (chart ? matched : !matches || matched));
     }
     if (model.type === "kanban" && ownClasses.includes("pele-priority")) target = { id: target?.id ?? "", key: priorities.get(target?.id ?? ""), neutral: true, line: true };
     if (model.type === "gitGraph" && ownClasses.includes("pele-edge")) target = gitEdges[gitEdge++];
@@ -386,12 +466,13 @@ export function palette(svg: string, model: DiagramModel, bindings: Binding[], f
     const neutral = target && ["wardley", "cynefin"].includes(model.type) && ["rect", "circle"].includes(name) && attrs.get("fill") === "var(--_bg)";
     if (chart && target && !invisible && (SHAPE.has(name) || name === "text")) chartVisible.add(target);
     if (!invisible && (accent || focused || target?.neutral || neutral || chart && target) && (SHAPE.has(name) || name === "text")) {
-      const line = target?.line || ownClasses.includes("pele-edge") || ownClasses.includes("pele-lane") || parent?.name === "line" || chart && attrs.get("fill") === "none";
-      const fill = icon || (line && (!spatial || ["path", "line", "polyline"].includes(name)) && !ownClasses.includes("pele-marker")) ? "none" : model.type === "gitGraph" && attrs.get("fill") === "var(--_bg)" ? BASE : accent ?? SURFACE;
+      const line = target?.line || ownClasses.includes("pele-edge") || ownClasses.includes("pele-lane") || ownClasses.includes("pele-lifeline") || parent?.name === "line" || chart && attrs.get("fill") === "none";
+      const open = (model.type === "flowchart" || interaction) && attrs.get("fill") === "none";
+      const fill = open || icon || (line && (!spatial || ["path", "line", "polyline"].includes(name)) && !ownClasses.includes("pele-marker")) ? "none" : model.type === "gitGraph" && attrs.get("fill") === "var(--_bg)" ? BASE : accent ?? SURFACE;
       const stroke = model.type === "gitGraph" && attrs.get("stroke") === "var(--_bg)" ? BASE : focused ? MAUVE : icon && !line ? BASE : accent ?? BORDER;
       const paint = name === "text"
         ? `fill:${focused ? MAUVE : !accent ? TEXT : line || loose || target?.loose || target?.looseLabel || model.type === "gantt" && attrs.get("fill") === "var(--_m)" ? accent : BASE}`
-        : `${!["line", "polyline"].includes(name) ? `fill:${fill};${accent && ["mindmap", "cynefin"].includes(model.type) && attrs.has("fill-opacity") ? "fill-opacity:1;" : ""}` : ""}stroke:${stroke}${focused ? ";stroke-width:2.5px" : ""}`;
+        : `${!["line", "polyline"].includes(name) ? `fill:${fill};${accent && ["mindmap", "cynefin"].includes(model.type) && attrs.has("fill-opacity") ? "fill-opacity:1;" : ""}` : ""}stroke:${stroke}${focused ? ";stroke-width:2.5px" : ""}${model.type === "agentflow" && accent && fill !== "none" ? ";fill-opacity:1" : ""}`;
       if (attrs.has("style")) tag = tag.replace(/\bstyle="([^"]*)"/, (_, style) => `style="${style};${paint}"`);
       else tag = tag.replace(/\/?\s*>$/, (end) => ` style="${paint}"${end}`);
     }
