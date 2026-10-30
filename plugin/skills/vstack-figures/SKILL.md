@@ -78,6 +78,8 @@ Callers supply meaning, not CSS selectors or paints. An explicit role wins a cat
 
 A category key is an exact identity string. Its color depends on the key alone, not declaration order, other categories, or process. The pool contains all 13 non-Mauve Mocha accents. Colors may repeat, so labels remain authoritative. A green category does not assert success. Use the same key for the same concept across figures.
 
+Schedules and work histories share this contract. Gantt source `done` means `ok`, `crit` means `warn`, and `active` establishes no state role. Journey scores establish no status, and participant names alone do not establish people. Timeline events have no individual binding or focus id. Kanban priority colors identify metadata on the existing indicator, not failed work or a newly added legend. Read the type reference for exact identities, category defaults, and generated-id limits before binding these families.
+
 Missing, ambiguous, or unsupported explicit targets are semantic refusals. Fix the binding or omit it and keep unclassified elements neutral. A semantic source target can own several SVG marks. DOM mark count does not determine identity.
 
 ### Read labels and edges

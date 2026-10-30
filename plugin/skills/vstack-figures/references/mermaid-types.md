@@ -70,7 +70,7 @@ These keywords name an existing family, not an additional visualization family. 
 
 ## Binding identities and limits
 
-The optional `--bindings` document currently supports the flowchart family, including `graph` and `flowchart-elk`. Node and subgraph ids resolve directly from Pele's parsed source model. Explicit edge ids such as `A link@--> B` are supported. Automatically generated edge ids are not binding identities. Labels are not aliases for ids. A node and an edge sharing one id are ambiguous. A group assignment colors its own backing and label, not its children.
+The optional `--bindings` document supports the targets listed below. Node and subgraph ids in flowcharts, including `graph` and `flowchart-elk`, resolve directly from Pele's parsed source model. Explicit edge ids such as `A link@--> B` are supported. Automatically generated edge ids are not binding identities. Labels are not aliases for ids. A node and an edge sharing one id are ambiguous. A group assignment colors its own backing and label, not its children.
 
 Flowchart person shapes establish `actor`. Cylinder shapes, including `cyl`, establish `store`. Generic boxes, queue-like symbols, values, and words in labels establish no role. An explicit binding or authored role overrides an intrinsic kind.
 Text-only nodes retain accent text without an invented background. An edge binding colors its route, marker, and label without filling the open route.
@@ -78,6 +78,11 @@ Text-only nodes retain accent text without an invented background. An edge bindi
 | Family | Explicit binding targets |
 |---|---|
 | Flowchart and its aliases | Declared nodes, subgraphs, and explicit edge ids |
+| `timeline` | Exact section names and unique period text. Events have no stable individual binding or focus identity. Repeated period text, or a period and section with the same name, is ambiguous. |
+| `gantt` | Declared task ids and exact section names. Generated task ids are not binding or focus identities. Section bindings color their visible labels only, not the background bands or their tasks. |
+| `journey` | Unique task text, exact section names, and exact participant names. A participant owns every corresponding task dot and legend entry. Collisions between these source identities are ambiguous. Scores, faces, and score routes have no binding identity. |
+| `kanban` | Declared column and card ids. Duplicate ids are ambiguous. Columns do not pass their assignments to cards. Priority and assignee metadata have no separate binding identity. |
+| `gitGraph` | Exact branch names and explicitly declared commit ids. Generated commit ids and relationship routes are not binding or focus identities. Branch bindings affect their lane, label, and associated routes, not separate commit targets. |
 | Packet and `packet-beta` | Unsupported. Bit ranges and labels are not declared semantic ids. Valid figures render neutrally without bindings. |
 | `railroad-beta` | Unsupported. Rule names do not expose stable owned SVG targets in pinned Pele. |
 | `railroad-ebnf-beta` | Unsupported, with the same rule-target limit. |
@@ -86,6 +91,15 @@ Text-only nodes retain accent text without an invented background. An edge bindi
 | Other documented families | Explicit bindings are refused until their source-identity mapping is integrated. Existing rendering, authored roles, and documented focus remain supported. |
 
 Packet and all railroad notations keep neutral paint when semantic identity is unavailable. Do not substitute generated DOM ids, selectors, or a label guessed from visual position. A refusal leaves any previous SVG untouched, and the caller must not publish that old output as the failed render.
+
+Timeline sections supply exact category keys for their own headers and their periods. An unsectioned period uses its exact period text. Individual event boxes stay neutral. Gantt `done` supplies `ok`, and `crit` supplies `warn`, not failure. A task marked both uses `done` precedence. `active`, ordinary tasks, section bands, and names that resemble states establish no role. Explicit role or category bindings replace intrinsic task coloring.
+
+Journey participant names are exact category keys, not proof that a participant is a person. Use an explicit `actor` binding when the source description establishes a person. Task boxes, sections, satisfaction scores, faces, and score routes stay neutral unless their supported target has a binding. A binding on a task does not recolor its participant dots.
+
+Kanban columns and cards stay neutral without bindings. Only the existing priority indicator uses the exact priority value as a category key. Priority does not mean failure, and column labels such as "Done" establish no state. Pele supplies no priority legend or printed priority label here. Coloring adds neither. Explain priority in accompanying text when readers need it.
+
+Git branch names are exact category keys. Commits use their source branch key, and routes use the destination branch, except merge routes use the merged branch. The resolver reads actual branch membership rather than treating a repeated series slot as identity. Merge rings and reverse or cherry-pick cutouts retain their glyphs. These glyphs establish no success, failure, change, or focus role. Labels remain authoritative when keys share an accent.
+
 
 ## Pinned syntax sources
 
