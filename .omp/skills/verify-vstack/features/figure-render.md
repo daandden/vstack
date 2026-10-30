@@ -10,6 +10,7 @@ vstack-figures renders caller-written Mermaid with Pele under Bun. The Catppucci
 - `figure-bindings`: declared flowchart nodes, subgraphs, and explicit edges support roles or exact category keys. Identical assignments repeat, different assignments conflict, roles beat categories, and explicit meanings beat intrinsic kinds. Packet and all four railroad notations retain neutral rendering and explicitly refuse bindings.
 - `figure-refuse`: invalid Mermaid, unknown roles, conflicting roles or categories, unresolved targets, and authored paints exit 1. Malformed bindings, usage, and unreadable inputs exit 2. Every refusal writes nothing and preserves an older output without making it current.
 - `figure-page`: a captured SVG passes the Flow safety check, retains its style byte for byte, and loads through an image element rather than raw markup in the page.
+- `figure-readability`: fixed-font cell measurement preserves graphemes and common wide text, scales subscript and superscript to 75%, and defaults flowchart edges to steps. Loose labels have a scoped `0.12em` Base outline.
 
 ## How to get to it (user POV)
 
@@ -39,6 +40,14 @@ Preconditions:
 7. Open the live URL and select the question using its receipt id. Check the Reader needs, image alternative text, dark background, and Mauve focus. Open the captured SVG in its own browser context to inspect actual computed geometry and text paints, not nonexistent inline SVG in the Flow. Capture ARIA and full-resolution lossless WebP at 1280 and 360px. Page-level overflow is zero.
 8. Refuse a question whose need has no matching figure, a figure without a declared need, and a question that relies only on a Background figure. Compare authored-state and page hashes before and after. Stop only this proof's host and preserve the export before scoped Verify cleanup.
 9. Render two flowcharts with shared ids and different output names. Bind one node to a role and another to a category, focus their group, and inline both exact SVGs in a throwaway consumer. Inspect computed fills and text on group and child marks to prove no descendant or cross-figure leakage. Compare category keys under reorder and insertion in separate render processes, and inspect two distinct labels sharing one accent. Retain the standalone and inline browser audits. Keep this consumer outside the product patch.
+
+For a readability change, also drive these checks through the real renderer CLI:
+
+1. Render equal-length `W` and `i` labels, a precomposed accent and its combining sequence, common CJK text, and plain, bold, italic, code, subscript, and superscript labels. In the SVG's own browser context, inspect text bounds against the backing shape. Equal fixed-cell labels have equal boxes. A long word-separated label wraps, while its smaller formatted version needs fewer lines. Confirm the actual font and record fallback-font limits.
+2. Render a branched flowchart with an edge label and a subgraph label. Compare one change at a time against the previous renderer: measurement only, step edges only, and outline only. Check angular step presentation without attributing a crossing reduction to it. Inspect computed `stroke`, `stroke-width`, and `paint-order` for the loose labels and an ordinary node label.
+3. Render Wardley and Venn examples and inspect their loose text for the light outline. Keep the `0.12em` target distinct from a heavy halo. Do not claim that the outline fixes text-on-text overlap.
+4. Inline two SVGs with repeated source ids and distinct output paths. Focus only one, then inspect both figures' computed text and shape styles. Remove the first figure's embedded style in the throwaway consumer and confirm the second figure's outline remains unchanged. Preserve ARIA and lossless WebP proof.
+5. Open the standalone SVG and the captured Flow image. Compare captured bytes and their SHA-256, then inspect SVG computed styles in its own context. Render invalid Mermaid over a previously successful output and confirm its bytes are unchanged. Publish no attachment for the failed render.
 
 ## Gotchas
 

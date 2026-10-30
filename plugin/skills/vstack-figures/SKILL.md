@@ -39,7 +39,7 @@ Each rule comes from a comparison of 26 figures that Pele and the earlier drawer
 
 ### Keep the Catppuccin Mocha theme
 
-The render script sets every `--pele-*` variable to Catppuccin Mocha in a `<style>` inside the SVG. With Pele's defaults, a figure renders on white. The script also passes the theme's font, `'IosevkaTerm Nerd Font Mono', ui-monospace, monospace`, to `render()` as `fontFamily`, because Pele measures each label in that font to size its node. The Mermaid sets no color itself. It names a Color role, as [Color elements by role](#color-elements-by-role) says.
+The render script sets every `--pele-*` variable to Catppuccin Mocha in a `<style>` inside the SVG. With Pele's defaults, a figure renders on white. The script uses `'IosevkaTerm Nerd Font Mono', ui-monospace, monospace` for ordinary and monospace text and measures labels for IosevkaTerm's half-em cells. The Mermaid sets no color itself. It names a Color role, as [Color elements by role](#color-elements-by-role) says.
 
 ### Mark one or two focal elements
 
@@ -79,6 +79,16 @@ Callers supply meaning, not CSS selectors or paints. An explicit role wins a cat
 A category key is an exact identity string. Its color depends on the key alone, not declaration order, other categories, or process. The pool contains all 13 non-Mauve Mocha accents. Colors may repeat, so labels remain authoritative. A green category does not assert success. Use the same key for the same concept across figures.
 
 Missing, ambiguous, or unsupported explicit targets are semantic refusals. Fix the binding or omit it and keep unclassified elements neutral. A semantic source target can own several SVG marks. DOM mark count does not determine identity.
+
+### Read labels and edges
+
+The renderer measures grapheme clusters rather than code units. Common East Asian wide characters use two cells, and combining marks stay with their base character. Bold, italic, monospace, and underline keep the fixed cell advance. Subscript and superscript use 75% of the base size in both measurement and output, including combinations with other styles. These are fixed-font estimates, not universal Unicode metrics. Fallback fonts, emoji, and unverified Unicode sequences can have different advances.
+
+Pele 1.12.0 emits `font-size="smaller"` for those spans. Browser proof showed about 13.33px at a 16px base, rather than 12px. The renderer normalizes that browser-dependent keyword to an explicit 75% so its fixed-font measurement and displayed script size agree.
+
+Flowchart edges default to `step`. This changes the presentation of Pele's routes. It adds no line jumps and does not reduce crossings.
+
+Edge and cluster labels and loose Wardley and Venn text have a Base-colored `0.12em` outline. The outline hides a line behind the letters, not text overlapping other text. Ordinary node labels keep their existing treatment. Outline and focus rules stay inside each figure, including inline exports with repeated Mermaid ids.
 
 ### Keep a figure inside its width
 

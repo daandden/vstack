@@ -8,6 +8,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 - Figures retain seven fixed Color roles with solid literal Mocha fills and Base text instead of custom 20% tints. Flowchart --bindings documents assign roles or stable keyed categories to declared nodes, subgraphs, and explicit edge ids. Intrinsic person and stored-data shapes establish kinds without guessing from labels. Explicit assignments have deterministic precedence and conflict refusals. Mauve remains focus-only and preserves the fill. Groups color their own marks, inline figures remain isolated, and neutral packet and railroad figures retain documented binding limits. Invalid input or semantic coloring never creates or overwrites an SVG (ADR 0045, #302).
 - Maintainer gates run the repository's declared test script, preserving its existing timeout configuration instead of Bun's shorter default.
+- Measure Pele labels for IosevkaTerm cells and formatted spans, default flowchart edges to steps, and outline loose labels with a scoped 0.12em Base stroke (#301).
 
 ## [8.0.0] - 2026-10-29
 
