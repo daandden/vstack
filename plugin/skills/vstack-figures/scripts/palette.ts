@@ -8,7 +8,7 @@ const ROLES: Record<string, string> = {
 };
 const ACCENTS = ["#f5e0dc", "#f2cdcd", "#f5c2e7", "#f38ba8", "#eba0ac", "#fab387", "#f9e2af", "#a6e3a1", "#94e2d5", "#89dceb", "#74c7ec", "#89b4fa", "#b4befe"];
 export type Binding = { id: string; role?: string; category?: string };
-type Target = { id: string; role?: string; category?: string; intrinsic?: string; key?: string; neutral?: boolean; line?: boolean; loose?: boolean; unsupported?: boolean };
+type Target = { id: string; role?: string; category?: string; intrinsic?: string; key?: string; neutral?: boolean; line?: boolean; loose?: boolean; unsupported?: boolean; iconOnly?: boolean; looseLabel?: boolean; edge?: boolean };
 const PELE_CLASS = /^(?:pele|usecase-|system-boundary)|^highlight$/;
 const SHAPE = new Set(["rect", "path", "polygon", "circle", "ellipse", "line", "polyline"]);
 const PAINT = new Set(["fill", "stroke", "color", "stop-color", "background", "background-color"]);
@@ -57,6 +57,7 @@ function flowTargets(model: FlowchartModel) {
     const t: Target = { id, intrinsic, line };
     for (const name of names) assign(t, "role", name);
     targets.set(id, [...(targets.get(id) ?? []), t]);
+    return t;
   };
   const groups = new Set(model.subgraphs.map((g) => g.id));
   for (const n of model.nodes.values()) {
@@ -65,7 +66,68 @@ function flowTargets(model: FlowchartModel) {
     add(n.id, n.classes, intrinsic, n.type === "text");
   }
   for (const g of model.subgraphs) add(g.id, g.classes);
-  for (const e of model.edges) if (e.isUserDefinedId && e.id) add(e.id, e.classes, undefined, true);
+  for (const e of model.edges) if (e.isUserDefinedId && e.id) add(e.id, e.classes, undefined, true).edge = true;
+  return targets;
+}
+
+function entityTargets(model: DiagramModel): Map<string, Target[]> | undefined {
+  const targets = new Map<string, Target[]>();
+  const add = (id: string, names: string[] = [], intrinsic?: string, line = false) => {
+    const target: Target = { id, intrinsic, line };
+    for (const name of names) if (name && name !== "default") assign(target, "role", name);
+    targets.set(id, [...(targets.get(id) ?? []), target]);
+    return target;
+  };
+  switch (model.type) {
+    case "c4":
+      for (const shape of model.shapes) {
+        const kinds = shape.kind.split("_");
+        add(shape.alias, [], kinds.includes("person") ? "actor" : kinds.includes("external") ? "external" : kinds.includes("db") ? "store" : undefined);
+      }
+      for (const group of model.boundaries) if (group.type !== "global") add(group.alias);
+      break;
+    case "er":
+      for (const [id, entity] of model.entities) add(id, entity.cssClasses.split(/\s+/));
+      for (const group of model.subgraphs) add(group.id, group.classes);
+      break;
+    case "class":
+      for (const node of model.classes.values()) add(node.id, node.cssClasses.split(/\s+/));
+      for (const group of model.namespaces.values()) if (group.explicit) add(group.id);
+      break;
+    case "architecture":
+      for (const node of model.nodes.values()) {
+        const target = add(node.id, [], node.type === "service" && ["database", "disk"].includes(node.icon ?? "") ? "store" : undefined);
+        target.looseLabel = true;
+      }
+      for (const group of model.groups.values()) add(group.id);
+      break;
+    case "block":
+      for (const node of model.byId.values()) if (node.type !== "space") add(node.id, node.classes, node.type === "cylinder" ? "store" : undefined);
+      break;
+    case "requirement":
+      for (const node of model.requirements.values()) add(node.name, node.classes);
+      for (const node of model.elements.values()) add(node.name, node.classes, node.type.toLowerCase() === "file" ? "store" : undefined);
+      break;
+    case "usecase":
+      for (const node of model.actors.values()) add(node.id, node.classes, undefined, true);
+      for (const node of model.useCases.values()) add(node.id, node.classes);
+      for (const node of model.systemBoundaries.values()) add(node.id, node.classes);
+      for (const node of model.jsonNodes.values()) add(node.id, node.classes);
+      for (const edge of model.relationships) if (edge.explicitId) add(edge.id, edge.classes, undefined, true).edge = true;
+      break;
+    case "treeView": {
+      const pending = [...model.root.children];
+      while (pending.length) {
+        const node = pending.pop()!;
+        const target = add(node.name, (node.cssClass ?? "").split(/\s+/).filter((name) => name !== "highlight"), node.nodeType === "file" ? "store" : undefined, true);
+        target.iconOnly = true;
+        pending.push(...node.children);
+      }
+      break;
+    }
+    default:
+      return undefined;
+  }
   return targets;
 }
 
@@ -119,10 +181,11 @@ function refusePaint(prop: string, value: string, authored = false) {
 
 export function palette(svg: string, model: DiagramModel, bindings: Binding[], focus: string[], scope: string): { svg: string; css: string } {
   const work = ["timeline", "gantt", "journey", "kanban", "gitGraph"].includes(model.type);
-  const targets = model.type === "flowchart" ? flowTargets(model) : workTargets(model);
+  const resolved = model.type === "flowchart" ? flowTargets(model) : work ? workTargets(model) : entityTargets(model);
+  const targets = resolved ?? new Map<string, Target[]>();
   for (const binding of bindings) {
     if (binding.role !== undefined) role(binding.role);
-    if (model.type !== "flowchart" && !work) throw new Error(`Unsupported binding target ${binding.id}: ${model.type} does not yet expose binding identities.`);
+    if (!resolved) throw new Error(`Unsupported binding target ${binding.id}: ${model.type} does not yet expose binding identities.`);
     const matches = targets.get(binding.id);
     if (!matches?.length) throw new Error(`Missing binding target: ${binding.id}. Use a supported source identity for ${model.type}.`);
     if (matches.length !== 1) throw new Error(`Ambiguous binding target: ${binding.id}. It names ${matches.length} source targets.`);
@@ -148,7 +211,7 @@ export function palette(svg: string, model: DiagramModel, bindings: Binding[], f
   }
   const gitEdges = [...crossBranch, ...sameBranch];
   let gitEdge = 0;
-  const stack: { name: string; target?: Target; focused: boolean }[] = [];
+  const stack: { name: string; target?: Target; focused: boolean; icon: boolean }[] = [];
   svg = svg.replace(/<\/?[\w:-]+\b(?:"[^"]*"|'[^']*'|[^'">])*>/g, (tag) => {
     if (tag.startsWith("</")) { stack.pop(); return tag; }
     const name = /^<([\w:-]+)/.exec(tag)![1]!;
@@ -161,24 +224,29 @@ export function palette(svg: string, model: DiagramModel, bindings: Binding[], f
     const parent = stack.at(-1);
     let target = parent?.target, focused = parent?.focused ?? false;
     if (id !== undefined || ownClasses.some((c) => c === "pele-node" || c === "pele-cluster")) {
-      target = id === undefined ? { id: "unnamed", neutral: work } : targets.get(id)?.[0] ?? { id };
+      const edge = ownClasses.includes("pele-edge") || ownClasses.includes("pele-edge-label");
+      const matches = id === undefined ? undefined : targets.get(id);
+      const matched = matches?.find((candidate) => work || !!candidate.edge === edge);
+      target = matched ?? (id === undefined ? { id: "unnamed", neutral: work } : { id });
       if (ownClasses.some((c) => c === "pele-node" || c === "pele-cluster")) classes(target, ownClasses);
-      focused = id !== undefined && focus.includes(id) && !target.unsupported;
+      focused = id !== undefined && focus.includes(id) && !target.unsupported && (!matches || !!matched);
     }
     if (model.type === "kanban" && ownClasses.includes("pele-priority")) target = { id: target?.id ?? "", key: priorities.get(target?.id ?? ""), neutral: true, line: true };
     if (model.type === "gitGraph" && ownClasses.includes("pele-edge")) target = gitEdges[gitEdge++];
-    const accent = target?.role ? ROLES[target.role] : target?.category !== undefined ? categoryColor(target.category) : target?.intrinsic ? ROLES[target.intrinsic] : target?.key !== undefined ? categoryColor(target.key) : undefined;
+    const icon = ownClasses.includes("pele-icon") || (parent?.target === target && (parent?.icon ?? false));
+    const accent = target?.role ? ROLES[target.role] : target?.category !== undefined ? categoryColor(target.category) : target?.intrinsic && (!target.iconOnly || icon) ? ROLES[target.intrinsic] : target?.key !== undefined ? categoryColor(target.key) : undefined;
     const invisible = attrs.get("fill") === "none" && attrs.get("stroke") === "none";
     if (!invisible && (accent || focused || target?.neutral) && (SHAPE.has(name) || name === "text")) {
       const line = target?.line || ownClasses.includes("pele-edge") || ownClasses.includes("pele-lane") || parent?.name === "line";
-      const fill = line && !ownClasses.includes("pele-marker") ? "none" : model.type === "gitGraph" && attrs.get("fill") === "var(--_bg)" ? BASE : accent ?? SURFACE;
+      const fill = icon || (line && !ownClasses.includes("pele-marker")) ? "none" : model.type === "gitGraph" && attrs.get("fill") === "var(--_bg)" ? BASE : accent ?? SURFACE;
+      const stroke = model.type === "gitGraph" && attrs.get("stroke") === "var(--_bg)" ? BASE : focused ? MAUVE : icon && !line ? BASE : accent ?? BORDER;
       const paint = name === "text"
-        ? `fill:${focused ? MAUVE : !accent ? TEXT : line || target?.loose || model.type === "gantt" && attrs.get("fill") === "var(--_m)" ? accent : BASE}`
-        : `${!["line", "polyline"].includes(name) ? `fill:${fill};` : ""}stroke:${model.type === "gitGraph" && attrs.get("stroke") === "var(--_bg)" ? BASE : focused ? MAUVE : accent ?? BORDER}${focused ? ";stroke-width:2.5px" : ""}`;
+        ? `fill:${focused ? MAUVE : !accent ? TEXT : line || target?.loose || target?.looseLabel || model.type === "gantt" && attrs.get("fill") === "var(--_m)" ? accent : BASE}`
+        : `${!["line", "polyline"].includes(name) ? `fill:${fill};` : ""}stroke:${stroke}${focused ? ";stroke-width:2.5px" : ""}`;
       if (attrs.has("style")) tag = tag.replace(/\bstyle="([^"]*)"/, (_, style) => `style="${style};${paint}"`);
       else tag = tag.replace(/\/?\s*>$/, (end) => ` style="${paint}"${end}`);
     }
-    if (!tag.endsWith("/>")) stack.push({ name, target, focused });
+    if (!tag.endsWith("/>")) stack.push({ name, target, focused, icon });
     return tag;
   });
   // Pele embeds default fallback colors and mixes nested cluster borders. Resolve both to literal Mocha.

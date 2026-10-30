@@ -70,7 +70,7 @@ These keywords name an existing family, not an additional visualization family. 
 
 ## Binding identities and limits
 
-The optional `--bindings` document supports the targets listed below. Node and subgraph ids in flowcharts, including `graph` and `flowchart-elk`, resolve directly from Pele's parsed source model. Explicit edge ids such as `A link@--> B` are supported. Automatically generated edge ids are not binding identities. Labels are not aliases for ids. A node and an edge sharing one id are ambiguous. A group assignment colors its own backing and label, not its children.
+The optional `--bindings` document resolves the supported identities below from Pele's parsed source model. Flowchart aliases `graph` and `flowchart-elk` share the flowchart contract. Explicit edge ids such as `A link@--> B` are supported where listed. Automatically generated edge ids are not binding identities. Labels are not aliases for declared ids. An id naming distinct source targets is ambiguous. A group assignment colors its own backing and label, not its children.
 
 Flowchart person shapes establish `actor`. Cylinder shapes, including `cyl`, establish `store`. Generic boxes, queue-like symbols, values, and words in labels establish no role. An explicit binding or authored role overrides an intrinsic kind.
 Text-only nodes retain accent text without an invented background. An edge binding colors its route, marker, and label without filling the open route.
@@ -83,6 +83,14 @@ Text-only nodes retain accent text without an invented background. An edge bindi
 | `journey` | Unique task text, exact section names, and exact participant names. A participant owns every corresponding task dot and legend entry. Collisions between these source identities are ambiguous. Scores, faces, and score routes have no binding identity. |
 | `kanban` | Declared column and card ids. Duplicate ids are ambiguous. Columns do not pass their assignments to cards. Priority and assignee metadata have no separate binding identity. |
 | `gitGraph` | Exact branch names and explicitly declared commit ids. Generated commit ids and relationship routes are not binding or focus identities. Branch bindings affect their lane, label, and associated routes, not separate commit targets. |
+| Native C4, all five views | Declared entity aliases and boundary or deployment-node aliases. The synthetic global boundary and relationship endpoint concatenations are unsupported. |
+| `erDiagram` | Source entity names and declared subgraph ids. A display alias and the generated `entity-...` id are not alternative identities. Fields and relationships are unsupported. |
+| `classDiagram` | Class ids and explicit namespace ids. Members, methods, notes, and generated relationships are unsupported. |
+| `architecture-beta` | Service, junction, and group ids. Generated edge endpoint strings are unsupported. |
+| `block-beta` and `block` | Block and composite ids. Spacer cells and generated edges are unsupported. |
+| `requirementDiagram` | Requirement and element names. The `id:` field is display data, not a target id. Relations are unsupported. |
+| `usecase-beta` | Actor, use-case, system-boundary, and JSON-node ids, plus explicit relationship ids. Notes and generated relationship ids are unsupported. |
+| `treeView-beta` | Exact unique basenames, including directory names without the trailing slash. Repeated basenames are ambiguous. Numeric parser ids and invented paths are unsupported. |
 | Packet and `packet-beta` | Unsupported. Bit ranges and labels are not declared semantic ids. Valid figures render neutrally without bindings. |
 | `railroad-beta` | Unsupported. Rule names do not expose stable owned SVG targets in pinned Pele. |
 | `railroad-ebnf-beta` | Unsupported, with the same rule-target limit. |
@@ -100,6 +108,12 @@ Kanban columns and cards stay neutral without bindings. Only the existing priori
 
 Git branch names are exact category keys. Commits use their source branch key, and routes use the destination branch, except merge routes use the merged branch. The resolver reads actual branch membership rather than treating a repeated series slot as identity. Merge rings and reverse or cherry-pick cutouts retain their glyphs. These glyphs establish no success, failure, change, or focus role. Labels remain authoritative when keys share an accent.
 
+Native C4 keeps its own syntax. `Person` and `Person_Ext` establish `actor`. Otherwise an external entity establishes `external`, even when it is also a database. An internal `SystemDb`, `ContainerDb`, or `ComponentDb` establishes `store`. Internal software and queue kinds stay neutral. An enclosure never makes its children external.
+
+Architecture `database` and `disk` service icons and block cylinder shapes establish `store`. A requirement element explicitly typed `file` establishes data at rest. Generic ER entities, classes, requirements, use cases, and UML actors stay neutral without a role. In particular, a UML actor may be software. Use an explicit binding for a person or an outside system whose kind is not established by the notation. Labels, risk fields, and queue shapes supply no extra role.
+Architecture service labels sit outside their icon backing and use accent text, not Base text on the Base background. Their existing outline icons use Base strokes against a solid accent backing.
+
+Tree file kinds color existing file-icon geometry as `store`, while unbound labels remain Text and directories remain neutral. Icons disabled or absent in the source stay absent. An explicit row binding can color its visible label and existing icon without inventing a backing or icon. Focus applies to visible row marks, not a path identity. Repeated basenames therefore cannot be focused independently through the string-id interface.
 
 ## Pinned syntax sources
 
