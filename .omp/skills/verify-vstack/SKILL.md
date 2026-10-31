@@ -119,6 +119,9 @@ All paths are relative to `SKILL_DIR`.
 - `scripts/load.sh <checkout> <run dir>`: the repo's load gate for one run. See Launch.
 - `scripts/doctor.sh <checkout> <run dir>`: the read-only Doctor check. See Doctor.
 - `scripts/cleanup.sh <run dir>`: stops this run's recorded processes and deletes `data/` and the temp working directory. See Cleanup.
+- `scripts/figures.ts <checkout> <new evidence directory>`: renders the named figure inputs and refusals, retains raw CLI proof, and writes the browser consumer. Use `features/figure-render.md`.
+- `scripts/figure-audit.js`: evaluate its complete text in the figure consumer with `await tab.evaluate(await Bun.file(SKILL_DIR + "/scripts/figure-audit.js").text())`. It returns browser-computed paint and geometry checks.
+- `scripts/figure-flow.ts <checkout> <verify run> <own session> <own agent>`: captures the figure in a labelled disposable isolated-home Flow. Follow the figure recipe's authenticated host stop and export steps before Cleanup.
 
 ## Gotchas
 

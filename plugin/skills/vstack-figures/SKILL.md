@@ -20,7 +20,7 @@ This is a rendering helper, not a result-producing run. It opens no Stage. The c
    bun "$(realpath skill://vstack-figures/scripts/render.ts)" <slug>.mmd <out dir>/<slug>.svg --focus <id>
    ```
 
-   `bun` never sees `skill://` paths, so `realpath` turns the URL into the file path. Pass `-` in place of the source path to read the Mermaid from stdin. Exit 0 writes the SVG and prints its absolute path. Exit 1 prints Pele's parse error and writes nothing. Exit 2 is a usage error.
+   `bun` never sees `skill://` paths, so `realpath` turns the URL into the file path. Pass `-` to read Mermaid from stdin. Exit 0 writes the SVG and prints its absolute path. Exit 1 refuses invalid Mermaid or semantic coloring and writes nothing. Exit 2 reports usage, malformed bindings, or unreadable input. Failures preserve an existing output without making it current.
 4. If the render fails, fix the Mermaid and run the script again. If it still fails, place no figure, and say in one line which figure was not drawn and why. Never show a hand-built figure, a Mermaid code block, or a generated image in its place.
 
 ## Place the figure
@@ -39,11 +39,66 @@ Each rule comes from a comparison of 26 figures that Pele and the earlier drawer
 
 ### Keep the Catppuccin Mocha theme
 
-The render script sets every `--pele-*` variable to Catppuccin Mocha in a `<style>` inside the SVG. With Pele's defaults, a figure renders on white. The script also passes the theme's font, `'IosevkaTerm Nerd Font Mono', ui-monospace, monospace`, to `render()` as `fontFamily`, because Pele measures each label in that font to size its node. Write no `classDef` or `style` line: each one fixes a color that the theme can no longer change.
+The render script sets every `--pele-*` variable to Catppuccin Mocha in a `<style>` inside the SVG. With Pele's defaults, a figure renders on white. The script uses `'IosevkaTerm Nerd Font Mono', ui-monospace, monospace` for ordinary and monospace text and measures labels for IosevkaTerm's half-em cells. The Mermaid sets no color itself. It names a Color role, as [Color elements by role](#color-elements-by-role) says.
 
 ### Mark one or two focal elements
 
-Pele gives each node, edge, and series a `data-id` from its Mermaid id. Each `--focus <id>` adds a mauve (`#cba6f7`) stroke and text rule for that id, scoped to that figure's root, so a page with several figures marks only this one. Timeline events, ishikawa causes, and single xychart bars have no `data-id`, so in those types the focal element stays plain. Name it in the text beside the figure instead.
+Pele exposes supported focal identities through case-sensitive `data-id` values. Each `--focus <id>` paints that target's border and text Mauve `#cba6f7`, while keeping its fill. The renderer colors owned marks, not unrelated descendants of a group. Inline figures sharing ids remain isolated. Timeline events, ishikawa causes, and single xychart bars have no usable focal id. Name their focal point in the accompanying text.
+
+Focus requires one supported stable source identity with visible owned marks. Missing, ambiguous, generated, or hidden targets exit 1 without creating or replacing the output. A participant with several header and footer marks is still one target.
+
+### Color elements by role
+
+Each Color role has one fixed Catppuccin Mocha accent. The renderer uses a solid accent fill and border, with Base text. Neutral backing is Surface0, ordinary labels are Text, and the background is Base. Every authored paint is a literal official Mocha value. Opacity and antialiasing may blend displayed pixels.
+
+| Role | Color | Mark an element that |
+|---|---|---|
+| `ok` | Green `#a6e3a1` | succeeds, is done, is accepted, or is added |
+| `warn` | Yellow `#f9e2af` | is a risk, waits, or needs a decision |
+| `bad` | Red `#f38ba8` | fails, is refused, is rejected, or is removed |
+| `changed` | Blue `#89b4fa` | is modified by the change the figure explains |
+| `actor` | Pink `#f5c2e7` | is a person: the user, a developer, a reviewer |
+| `store` | Teal `#94e2d5` | holds data at rest: a file, a state record, a database, a cache |
+| `external` | Peach `#fab387` | is a system outside the one the figure explains |
+
+- Mark every element that a role fits, so the same element has the same color in every figure. Leave an element plain when no role fits.
+- Give an element one explicit role. An explicit state such as `bad` overrides an intrinsic store kind. Two different explicit roles are refused, even when one comes from bindings and one from Mermaid. Identical repeats are accepted.
+- Mark a flowchart node with `:::role` (`Pay[Take payment]:::ok`) or a `class` line (`class Pay,Ship ok`). A `class` line also marks a subgraph or a composite state. State, requirement, and `block-beta` diagrams take a `class` line, ER diagrams `ENTITY:::role`, and class diagrams `class Name:::role`. A mindmap node takes `:::role` on the line under it. Shaped nodes receive solid fills, and text-only nodes receive accent text without an invented shape.
+- Meaningful source kinds establish intrinsic roles. Flowchart and swimlane person shapes, declared sequence actors, and native C4 people establish `actor`. Database shapes and declared sequence database participants establish `store`. Native C4 outside systems establish `external`. A person takes precedence over external, which takes precedence over store. A UML actor can be software and stays neutral without a binding. Generic participants, software agents, queues, and label words establish no role. Event-model read models and agent-flow reference documents establish stored data. State names do not establish outcomes. Read the type reference for architecture, block, requirement, and tree kinds and their geometry limits.
+- Mauve is focus-only. Focus replaces the border and text, not the underlying role or category fill.
+- Write no paint-bearing `classDef`, `style`, or `linkStyle` line, no color in a sequence `rect` or `box`, and no Sankey `nodeColors` paint. The script refuses authored paints with exit 1, even in unused declarations or when a role would mask them. Theme-variable paint values are authored paints too. Empty Sankey color configuration remains valid. Unknown roles also exit 1.
+
+### Bind source identities
+
+The existing command also accepts `--bindings <bindings.json>`. Read [Binding identities and limits](references/mermaid-types.md#binding-identities-and-limits) before choosing a target. A document contains an `elements` array. Each entry has a source `id` and exactly one `role` or nonempty `category` key:
+
+```json
+{"elements":[{"id":"Cache","role":"bad"},{"id":"Orders","category":"orders"}]}
+```
+
+Callers supply meaning, not CSS selectors or paints. An explicit role wins a category. Otherwise, an explicit category wins an intrinsic kind, then a genuine source category, then neutral paint. Different explicit category keys on one target are refused even when a role would mask them. Identical assignments may repeat.
+
+A category key is an exact identity string. Its color depends on the key alone, not declaration order, other categories, or process. The pool contains all 13 non-Mauve Mocha accents. Colors may repeat, so labels remain authoritative. A green category does not assert success. Use the same key for the same concept across figures.
+
+Schedules and work histories share this contract. Gantt source `done` means `ok`, `crit` means `warn`, and `active` establishes no state role. Journey scores establish no status, and participant names alone do not establish people. Timeline events have no individual binding or focus id. Kanban priority colors identify metadata on the existing indicator, not failed work or a newly added legend. Read the type reference for exact identities, category defaults, and generated-id limits before binding these families.
+
+Quantitative and set charts derive keys from their exact source identities where the type exposes them. Pie slices and legends share a key, as do radar curves and their legends. Sankey nodes and link endpoints resolve the actual node identity. Named xychart series use their titles, while unnamed categorical bars use their band names without gaining fabricated binding or focus ids. Read the type reference for quadrant, treemap, Venn, and ambiguous-name limits. A value or score does not establish a state role.
+
+Missing, ambiguous, or unsupported explicit targets are semantic refusals. Fix the binding or omit it and keep unclassified elements neutral. A semantic source target can own several SVG marks. DOM mark count does not determine identity.
+
+Mindmap, Ishikawa, Wardley, and Cynefin accept the source identities in the type reference. Branch names, cause categories, and decision domains can establish category keys, not state roles. Spatial position and labels such as "failed database" establish no role. Group bindings affect only supported owned geometry. In particular, an Ishikawa category does not color its causes, and a Cynefin domain does not color its child badges.
+
+Sequence participant ids own their header, footer, and lifeline together. State ids, swimlane ids, agent-flow ids, and event-model frame ids support the same bindings and duplicate rules. Agent-flow kinds and event-model command, event, and processor kinds use their exact source kind as a category key. A failure relation establishes `bad`, but a task called "Failed" does not. Collapsed children have no visible target. Unsupported workflow frame, message, pseudostate, and event-label identities refuse bindings and focus instead of reporting an invisible selection. Read the type reference for the precise limits.
+
+### Read labels and edges
+
+The renderer measures grapheme clusters rather than code units. Common East Asian wide characters use two cells, and combining marks stay with their base character. Bold, italic, monospace, and underline keep the fixed cell advance. Subscript and superscript use 75% of the base size in both measurement and output, including combinations with other styles. These are fixed-font estimates, not universal Unicode metrics. Fallback fonts, emoji, and unverified Unicode sequences can have different advances.
+
+Pele 1.12.0 emits `font-size="smaller"` for those spans. Browser proof showed about 13.33px at a 16px base, rather than 12px. The renderer normalizes that browser-dependent keyword to an explicit 75% so its fixed-font measurement and displayed script size agree.
+
+Flowchart edges default to `step`. This changes the presentation of Pele's routes. It adds no line jumps and does not reduce crossings.
+
+Edge and cluster labels and loose Wardley and Venn text have a Base-colored `0.12em` outline. The outline hides a line behind the letters, not text overlapping other text. Ordinary node labels keep their existing treatment. Outline and focus rules stay inside each figure, including inline exports with repeated Mermaid ids.
 
 ### Keep a figure inside its width
 

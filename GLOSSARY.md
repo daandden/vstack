@@ -220,6 +220,10 @@ _Avoid_: background figure
 A Visual kind that shows how a question's options differ in shape.
 _Avoid_: comparison figure
 
+**Color role**:
+What an element in a figure is or what happened to it, established by source kind, Mermaid role, or an explicit caller binding, such as `ok`, `store`, or `external`. vstack-figures draws each Color role in one fixed Catppuccin Mocha accent. Category colors encode identity instead of role and can reuse those accents.
+_Avoid_: color class, highlight color
+
 **Source view**:
 A Visual kind: a crop or screenshot of the real artifact a question is about, with its subject marked and enough surroundings to locate it.
 _Avoid_: reference image, locator (when a crop of the source is meant)
