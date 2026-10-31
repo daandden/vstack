@@ -5,6 +5,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 ## [Unreleased]
 
 - Add the Flow first-publication authoring evaluation set for #311. Keep realistic subjects separate from the original Q7/Q8 negatives and inadequate-diagram controls, document isolated headless reruns and rendered evidence capture, and check frozen record integrity without treating local kind coverage as visual adequacy.
+- The current Flow reader opens on one durable first-publication sequence across Stages (#313). Serialized contributions preserve item and question order without relying on clocks. Refusal allocates no positions and replay keeps the committed identities and positions. Answers and Result revisions stay in place with accessible evidence history. Existing unprovable order stays behind an explicit retained-order historical boundary. Stage context, actionable-question navigation, Topics, and deep links remain available. The host exposes the same content order at its read-scoped `content` endpoint. This does not start the Nuxt migration.
 
 ## [8.0.0] - 2026-10-29
 

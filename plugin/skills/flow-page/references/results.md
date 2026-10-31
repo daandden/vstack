@@ -2,12 +2,12 @@
 
 Read this reference before publishing or revising a Result block. Result is its authoring short form.
 
-- `result`: optional `ref`, `shape`, `title`, and an optional `summary` line. A Result shows a Stage's output before the questions it leads to, such as review findings, candidates, a ticket breakdown, run results, or a report.
+- `result`: optional `ref`, `shape`, `title`, and an optional `summary` line. A Result shows a Stage's output, such as review findings, candidates, a ticket breakdown, run results, or a report. Submit it before a question when the reader needs it to decide. The reader preserves publication order rather than moving Results ahead of questions.
 
   - Any shape takes optional `attachments`, the attachments it shows, and `canonical`, the canonical record it was made from: `{ file }` (a path in the project), `{ commit }` (a hash), or `{ tracker, revision }` (such as `daandden/vstack#267` and the issue's updated time).
-  - `revises` publishes a new revision of an earlier Result of the bound Stage, named by its id. Send the whole Result again. The page shows the new revision and keeps the earlier ones readable, and `show` gives the committing revision as the Result's and each entry's `changed`. A `{ file }` canonical link carries over with the file's current revision. A `{ commit }` or `{ tracker }` link must be given again with its new revision.
+  - `revises` publishes a new revision of an earlier Result of the bound Stage, named by its id. Send the whole Result again. The block keeps its original reading position and earlier revisions remain readable. `show` gives the committing revision as the Result's and each entry's `changed`. A `{ file }` canonical link carries over with the file's current revision. A `{ commit }` or `{ tracker }` link must be given again with its new revision.
 
-- `revise`: changes one Result of the bound Stage without resending it. `result` names the Result, or one entry as `<result>/<entry>`. A Document, Comparison, Metrics Result, Quiz, or demo has no entries. Publish its next revision with `revises`.
+- `revise`: changes one Result of the bound Stage without resending it. `result` names the Result, or one entry as `<result>/<entry>`. The block keeps its reading position and retains the previous revision in history. A Document, Comparison, Metrics Result, Quiz, or demo has no entries. Publish its next revision with `revises`.
   - `set` replaces only the fields it names: an entry's fields, or a Result's `title` and `summary`. It needs `base`, the revision that `show` printed as that entry's or Result's `changed`. When someone changed it after `base`, the edit is refused as a conflict: run `show` and decide again.
   - `add` appends new entries or rows to a Result, in its shape. It needs no `base`.
 

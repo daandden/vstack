@@ -143,6 +143,39 @@ test("an authoring command starts the host and serves the Flow live at one URL t
   expect(hostPids(w)).toHaveLength(1);
 });
 
+test("the host exposes and renders the same cross-Stage publication sequence with in-place history", async () => {
+  const w = world();
+  const a = ok(open(w, "author-a"));
+  const b = ok(run(["open", "--flow", a.flow, "--skill", "research", "--parent", a.stage], w, { session: "author-b" }));
+  const first = ok(run(["submit"], w, { session: "author-a", stdin: contribution(round(question("first"))) }));
+  const second = ok(run(["submit"], w, { session: "author-b", stdin: contribution({ kind: "result", ref: "research", shape: "cards", title: "Research between asks", entries: [{ title: "Recorded finding", label: "fact", blocking: false, impact: "Explains the choice", action: "Read before deciding", evidence: "Original evidence" }] }) }));
+  const third = ok(run(["submit"], w, { session: "author-a", stdin: contribution(round(question("last"))) }));
+  const url = a.live.url;
+  const content = await fetch(new URL("content", url));
+  expect(content.status).toBe(200);
+  const model = await content.json() as any;
+  const ids = [first.refs.first, second.refs.research, third.refs.last];
+  expect(model.reading.publications.map((b: any) => b.id)).toEqual(ids);
+  const rendered = async () => {
+    const blocks: { id: string | null; hidden: string | null }[] = [];
+    const html = (await page(url)).html;
+    await new HTMLRewriter().on("[data-reading]", { element(el) { blocks.push({ id: el.getAttribute("data-reading"), hidden: el.getAttribute("hidden") }); } }).transform(new Response(html)).text();
+    return { blocks, html };
+  };
+  expect((await rendered()).blocks).toEqual(ids.map((id) => ({ id, hidden: null })));
+  ok(run(["submit"], w, { session: "author-a", stdin: contribution({ kind: "answer", question: first.refs.first, response: { status: "answered", picks: ["A"], text: "Keep the evidence." } }) }));
+  ok(run(["submit"], w, { session: "author-b", stdin: contribution({ kind: "result", revises: second.refs.research, shape: "cards", title: "Revised research", entries: [{ title: "Updated finding", label: "fact", blocking: false, impact: "Clarifies the choice", action: "Continue reading", evidence: "New evidence" }] }) }));
+  ok(run(["submit"], w, { session: "author-b", stdin: contribution({ kind: "revise", result: second.refs.research, base: ok(run(["show", "--flow", a.flow], w)).revision, set: { title: "Focused clarification" } }) }));
+  const after = await rendered();
+  expect(after.blocks.map((b) => b.id)).toEqual(ids);
+  for (const evidence of ["Keep the evidence.", "Original evidence", "New evidence"]) expect(after.html).toContain(evidence);
+  const current = await (await fetch(new URL("content", url))).json() as any;
+  expect(current.reading).toEqual(model.reading);
+  expect(current.stages[1].results[0].history[0].entries[0].evidence).toBe("Original evidence");
+  expect(current.stages[1].results[0].history.map((r: any) => r.title)).toEqual(["Research between asks", "Revised research"]);
+  expect(await attribute(after.html, `${second.refs.research}-r1`, "id")).toBe(`${second.refs.research}-r1`);
+});
+
 test("an open reader receives answers, Results, task changes, and new Stages at the same live URL", async () => {
   const w = world();
   const opened = ok(open(w));
@@ -241,7 +274,7 @@ test("live read-only observations respect separate providers without replacing a
       }
       expect(condition(latest)).toBe(true);
     }
-    await eventually((o) => o["code-host"]?.records[0]?.state === "open" && o.ci?.records[0]?.state === "pending");
+    await eventually((o) => o.git.status === "current" && o["code-host"]?.records[0]?.state === "open" && o.ci?.records[0]?.state === "pending");
     expect(latest.git.status).toBe("current");
     expect(latest["code-host"].status).toBe("current");
     expect(latest.ci.observed_at).toBe(observed);

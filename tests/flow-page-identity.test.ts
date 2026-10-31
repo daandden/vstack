@@ -94,8 +94,9 @@ test("two callers bound to different Stages commit concurrently without losing w
   const { at, a, b } = twoTickets(w);
   const jobs: Promise<Run>[] = [];
   for (let i = 0; i < 6; i++) {
-    jobs.push(runAsync(["submit"], { ...at, session: "s-a", stdin: contribution(round(question(`a${i}`))) }));
-    jobs.push(runAsync(["submit"], { ...at, session: "s-b", stdin: contribution(round(question(`b${i}`))) }));
+    const draft = { kind: "result", ref: "draft", shape: "timeline", title: `Draft ${i}`, entries: [{ title: "Equal author clocks", time: "2000-01-01T00:00:00Z", outcome: "noted" }, { title: "Clock went backward", time: "1999-01-01T00:00:00Z", outcome: "noted" }] };
+    jobs.push(runAsync(["submit"], { ...at, session: "s-a", stdin: contribution(draft, round(question(`a${i}`))) }));
+    jobs.push(runAsync(["submit"], { ...at, session: "s-b", stdin: contribution(round(question(`b${i}`)), draft) }));
     jobs.push(runAsync(["alias", `run:run-a${i}`], { ...at, session: "s-a" }));
     jobs.push(runAsync(["alias", `run:run-b${i}`], { ...at, session: "s-b" }));
   }
@@ -111,6 +112,43 @@ test("two callers bound to different Stages commit concurrently without losing w
   expect(stage(a.stage).questions.map((q: any) => q.q).sort((x: number, y: number) => x - y)).toEqual([1, 2, 3, 4, 5, 6]);
   for (let i = 0; i < 6; i++) expect(s.aliases).toEqual(expect.arrayContaining([`run:run-a${i}`, `run:run-b${i}`]));
   expect(s.revision).toBe(Math.max(...revisions));
+  const committed = results.filter((r) => r.json.refs).sort((x, y) => x.json.revision - y.json.revision);
+  const expectedIds = committed.flatMap((r) => r.json.stage === a.stage ? [r.json.refs.draft, ...r.json.ask.questions.map((q: any) => q.id)] : [...r.json.ask.questions.map((q: any) => q.id), r.json.refs.draft]);
+  expect(s.reading.publications.map((b: any) => b.id)).toEqual(expectedIds);
+  expect(s.reading.publications.map((b: any) => b.position)).toEqual(Array.from({ length: 24 }, (_, i) => i + 1));
+  for (let i = 0; i < committed.length; i++) expect(s.reading.publications.slice(i * 2, i * 2 + 2).map((b: any) => b.publication)).toEqual([committed[i].json.revision, committed[i].json.revision]);
+});
+
+test("mixed publications keep declared order across Stages, refusal, replay, answers and revisions", () => {
+  const w = world();
+  const { at, a, b } = twoTickets(w);
+  const send = (session: string, ...items: object[]) => ok(run(["submit"], { ...at, session, stdin: contribution(...items) }));
+  const first = send("s-a", round(question("one"), question("two")), { kind: "result", ref: "r", shape: "cards", title: "Late research", entries: [card("e")] });
+  const second = send("s-b", { kind: "result", ref: "child", shape: "timeline", title: "Earlier draft", entries: [{ title: "Drafted earlier", time: "2000-01-01", outcome: "noted" }] });
+  const read = () => ok(run(["show", "--flow", a.flow], at)).reading;
+  const expected = [
+    { id: first.refs.one, kind: "question", stage: a.stage, position: 1, publication: first.revision },
+    { id: first.refs.two, kind: "question", stage: a.stage, position: 2, publication: first.revision },
+    { id: first.refs.r, kind: "result", stage: a.stage, position: 3, publication: first.revision },
+    { id: second.refs.child, kind: "result", stage: b.stage, position: 4, publication: second.revision },
+  ];
+  expect(read()).toEqual({ historical: [], publications: expected });
+  const refused = run(["submit"], { ...at, session: "s-a", stdin: contribution(round(question("refused")), { kind: "revise", result: first.refs.r, base: 1, set: { title: "Stale" } }) });
+  expect(refused.code).toBe(1);
+  expect(refused.stderr).toContain("conflict");
+  expect(read().publications).toEqual(expected);
+  const replay = ok(run(["submit"], { ...at, session: "s-b", stdin: contribution({ kind: "result", ref: "child", shape: "timeline", title: "Earlier draft", entries: [{ title: "Drafted earlier", time: "2000-01-01", outcome: "noted" }] }) }));
+  expect(replay).toMatchObject({ repeated: true, refs: second.refs, revision: second.revision });
+  send("s-a", { kind: "answer", question: first.refs.one, response: { status: "answered", text: "Keep the first publication." }, reading: { outcome: "resolved", decision: "Keep publication order.", basis: "The words name that order." } }, { kind: "revise", result: first.refs.r, base: first.revision, set: { title: "Revised research" } });
+  expect(read().publications).toEqual(expected);
+  const last = send("s-a", round(question("three"), { ...question("again"), again: first.refs.one }));
+  expect(last.ask.questions.map((q: any) => q.id)).toEqual([last.refs.again, last.refs.three]);
+  expect(read().publications.slice(4)).toEqual([
+    { id: last.refs.three, kind: "question", stage: a.stage, position: 5, publication: last.revision },
+    { id: last.refs.again, kind: "question", stage: a.stage, position: 6, publication: last.revision },
+  ]);
+  const snapshot = ok(run(["show", "--flow", a.flow], at));
+  expect(snapshot.stages[0].questions.find((q: any) => q.id === first.refs.one).answer).toMatchObject({ response: { text: "Keep the first publication." }, reading: { decision: "Keep publication order." } });
 });
 
 test("a repeated submission, even a simultaneous one, creates nothing twice", async () => {

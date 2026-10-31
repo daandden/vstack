@@ -225,6 +225,10 @@ test("an in-flight migrated Stage takes new contributions without changing old Q
   const w = world();
   const folder = legacyPage(w);
   const migrated = ok(run(w, ["migrate", folder]));
+  const retained = ok(run(w, ["show", "--flow", migrated.flow])).reading;
+  expect(retained.publications).toEqual([]);
+  expect(retained.historical.map((b: any) => b.id)).toEqual(["bg", "findings", "q-scope", "q-limit", "q-scope-again", "c1", "checks", "tickets", "q-open", "caps"]);
+  expect(retained.historical.every((b: any) => b.position === undefined && b.publication === undefined)).toBe(true);
   const before = tree(folder);
   ok(run(w, ["bind", "--flow", migrated.flow, "--stage", "impl"], { session: "continue" }));
   const updated = ok(run(w, ["submit"], { session: "continue", stdin: { version: 1, items: [
@@ -233,6 +237,9 @@ test("an in-flight migrated Stage takes new contributions without changing old Q
     { kind: "revise", result: "checks", add: [{ claim: "Browser checked", status: "confirmed", evidence: "browser", missing_proof: "none", consequence: "continue" }] },
   ] } }));
   const snap = ok(run(w, ["show", "--flow", migrated.flow]));
+  expect(snap.reading.historical).toEqual(retained.historical);
+  expect(snap.reading.publications).toEqual([{ id: updated.refs.next, kind: "question", stage: "impl", position: 1, publication: updated.revision }]);
+  expect(readFileSync(migrated.page, "utf8")).toContain('id="historical-content"');
   const impl = snap.stages.find((s: any) => s.id === "impl");
   expect(impl.questions.map((q: any) => [q.id, q.q])).toEqual([["q-open", 1], [updated.refs.next, 2]]);
   expect(impl.questions[0].answer.picks).toEqual(["B. Second"]);

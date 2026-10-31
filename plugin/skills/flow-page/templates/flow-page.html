@@ -407,6 +407,9 @@
       if (tabs.includes(el)) el = panels[tabs.indexOf(el)];
       const t = el ? panels.findIndex((p) => p.contains(el)) : -1;
       if (t >= 0 && t !== open) show(t);
+      if (el) for (let parent = el.parentElement; parent; parent = parent.parentElement) {
+        if (parent.matches("details")) parent.open = true;
+      }
       return t >= 0 ? el : null;
     }
     function markFromScroll() {
@@ -448,6 +451,7 @@
         return;
       }
       const el = reveal(id);
+      if (el && tree?.open) tree.close();
       const i = stops.findIndex((s) => s.id === el?.id);
       if (i >= 0) mark(i);
       if (el && location.hash === a.getAttribute("href")) {

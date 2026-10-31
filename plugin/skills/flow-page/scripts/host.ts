@@ -184,6 +184,10 @@ async function route(req: Request): Promise<Response> {
     "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": csp,
     "Set-Cookie": `flow_learning=${progressToken}; Path=${url.pathname}; HttpOnly; SameSite=Strict; Max-Age=31536000`,
   });
+  if (m[4] === "/content") {
+    const content = view(s);
+    return response(req.method === "HEAD" ? null : JSON.stringify({ ...content, questions: [...content.questions.values()] }), 200, { "Content-Type": "application/json" });
+  }
   if (m[4] === "/observations") return response(req.method === "HEAD" ? null : JSON.stringify(observations(folder, key, s)), 200, { "Content-Type": "application/json" });
   if (m[4] === "/events" && req.method === "GET") return eventStream(req, () => {
     const current = folderOfId(dir, id);

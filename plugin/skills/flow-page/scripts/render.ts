@@ -7,7 +7,7 @@ import type { CheckOutcome, EndState, PrState, ProgressView, TaskState } from ".
 import { observationVersion, unknownObservations, type Observations } from "./observations.ts";
 
 /** Raise this when the page a given state renders to changes, so a page names the renderer that made it. */
-export const RENDERER = 19;
+export const RENDERER = 20;
 const TEMPLATE = join(import.meta.dir, "..", "templates", "flow-page.html");
 export type Runtimes = Record<string, { url?: string; reason?: string }>;
 
@@ -493,7 +493,7 @@ ${r.shape === "review" ? fields([["Axis", AXIS_LABELS[e.axis as ReviewAxisName]]
 </li>`)
       .join("\n")}\n</ol>`;
   }
-  if (r.review && historical) body = `${reviewSummary(r)}\n${body}`;
+  if (r.review) body = `${reviewSummary(r)}\n${body}`;
   const figures = new Set([...(r.doc?.figures ?? []), ...(r.comparison?.alternatives.flatMap((a) => a.attachments ?? []) ?? [])]);
   const listed = r.shown.filter((a) => r.attachments?.includes(a.id) && !figures.has(a.id) && a.id !== r.artifact);
   const attachments = listed.length ? `\n<div class="attachments"><p class="label">Attachments</p>${listed.map((a) => attachmentHtml(a, `${r.anchor}-${a.id}`)).join("\n")}</div>` : "";
@@ -507,75 +507,51 @@ ${body}${attachments}${history}
 </${tag}>`;
 }
 
-function stageHtml(st: StageView, v: View, entryTitle: (ref: string) => string, sourceText: (id: string) => string, runtimes: Runtimes) {
-  const nav: string[] = [];
-  const body: string[] = [];
-  const link = (id: string, label: string) => `<a href="#${id}" data-for="${id}">${esc(label)}</a>`;
-  const review = st.results.find((r) => r.review);
-  if (review) body.push(`<section class="result" id="${st.id}-review" aria-labelledby="${st.id}-review-title" data-stop><header><h2 id="${st.id}-review-title">Review summary</h2></header>${reviewSummary(review)}</section>`);
-  const bg = st.background;
-  const lineage = [
-    ...(st.parent ? [`<li><span class="label">Continues</span> <a href="#${st.parent}">${esc(stageLabel(v, st.parent))}</a></li>`] : []),
-    ...st.children.map((id) => `<li><span class="label">Continued in</span> <a href="#${id}">${esc(stageLabel(v, id))}</a></li>`),
-  ];
-  if (lineage.length) body.push(`<ul class="lineage">${lineage.join("")}</ul>`);
-  if (bg) {
-    body.push(`<section class="background" id="${bg.id}" aria-labelledby="${bg.id}-title" data-stop>
+function readingHtml(block: View["reading"]["historical"][number], v: View, entryTitle: (ref: string) => string, sourceText: (id: string) => string, runtimes: Runtimes): { label: string; html: string } {
+  const st = v.stages.find((s) => s.id === block.stage);
+  if (block.kind === "question") {
+    const q = v.questions.get(block.id)!;
+    const round = st!.items.find((i) => i.type === "round" && i.round.id === q.round)!;
+    const r = round.type === "round" ? round.round : undefined;
+    const first = round.type === "round" && round.questions[0].id === q.id;
+    const heading = first && r ? `<header><h2 id="${r.id}">${aliases(v, r.id)}${r.session === undefined ? "" : `Session ${r.session}, `}Round ${r.n}${r.time ? `<time datetime="${esc(r.time)}">${formatTime(r.time)}</time>` : ""}</h2></header>` : "";
+    return { label: `${st!.label}: Q${q.q}`, html: `<section class="round">${heading}${questionHtml(q, v, entryTitle, sourceText)}</section>` };
+  }
+  if (block.kind === "result") {
+    const r = st!.results.find((r) => r.id === block.id)!;
+    return { label: r.jump ?? r.title, html: `${r.review ? `<span id="${st!.id}-review"></span>` : ""}${resultHtml(r, v, false, runtimes)}` };
+  }
+  if (block.kind === "background") {
+    const bg = st!.background!;
+    return { label: bg.jump ?? bg.title, html: `<section class="background" id="${bg.id}" aria-labelledby="${bg.id}-title" data-stop>
 ${aliases(v, bg.id)}<header><p class="label">Background</p><h2 id="${bg.id}-title">${text(bg.title)}</h2></header>
 <p class="summary-line">${text(bg.summary)}</p>${figuresHtml(bg.figures, v)}
 ${bg.sections.map((sec) => `<section><h3>${text(sec.heading)}</h3><div class="description">${prose(sec.body)}</div></section>`).join("\n")}
-${sourcesHtml(bg.sourceTexts)}
-</section>`);
-    nav.push(link(bg.id, bg.jump ?? "Background"));
+${sourcesHtml(bg.sourceTexts)}</section>` };
   }
-  st.results.forEach((r, i) => {
-    body.push(resultHtml(r, v, false, runtimes));
-    nav.push(link(r.id, r.jump ?? (i === 0 ? "Result" : `Result ${i + 1}`)));
-  });
-  if (st.assumed.length) {
-    const id = `${st.id}-assumed`;
-    body.push(`<section class="result" id="${id}" data-shape="cards" aria-labelledby="${id}-title" data-stop>
-<header><h2 id="${id}-title">Assumed</h2></header>
-<ol class="entries">
-${st.assumed
-  .map((a) => `<li class="card" id="${a.id}">
-<h3>${text(a.decision)}</h3>
-<dl class="fields"><dt>Pick</dt><dd>${text(a.pick)}</dd><dt>Why</dt><dd>${text(a.why)}</dd></dl>${a.reopened_by ? `\n<p class="ask"><span class="label">Reopened in</span><span><a href="#${a.reopened_by}">Q${v.questions.get(a.reopened_by)!.q}</a>: ${text(v.questions.get(a.reopened_by)!.title)}</span></p>` : ""}
-</li>`)
-  .join("\n")}
-</ol>
-</section>`);
-    nav.push(link(id, "Assumed"));
+  if (block.kind === "topic") {
+    const t = v.topics.find((t) => t.id === block.id)!;
+    return { label: t.title, html: `<article class="topic" id="${t.id}" data-stop>
+${aliases(v, t.id)}<h3>${text(t.title)}</h3><p class="summary-line">${text(t.summary)}</p>
+<div class="description">${prose(t.body)}</div>${labelled("Asked in", t.questions.map((id) => `<li><a href="#${id}">Q${v.questions.get(id)!.q}</a>: ${text(v.questions.get(id)!.title)}</li>`), "result-links")}
+${sourcesHtml(t.sourceTexts)}</article>` };
   }
-  for (const item of st.items) {
-    if (item.type === "round") {
-      const r = item.round;
-      body.push(`<section class="round" aria-labelledby="${r.id}">
-<header><h2 id="${r.id}">${aliases(v, r.id)}${r.session === undefined ? "" : `Session ${r.session}, `}Round ${r.n}<time datetime="${esc(r.time)}">${formatTime(r.time)}</time></h2></header>
-${item.questions.map((q) => questionHtml(q, v, entryTitle, sourceText)).join("\n")}
-</section>`);
-      if (item.questions.length) {
-        if (nav.length) nav.push(`<span class="sep" aria-hidden="true"></span>`);
-        for (const q of item.questions) nav.push(`<a href="#${q.id}" data-for="${q.id}"><span class="dot" data-state="${q.retired ? "retired" : q.answer.state}"></span>Q${q.q}</a>`);
-      }
-    } else {
-      const c = item.close;
-      const assumed = st.assumed.filter((a) => c.assumed.includes(a.id));
-      const bullets = [
-        ...[...c.decisions].sort((a, b) => v.questions.get(a.question)!.q - v.questions.get(b.question)!.q).map((d) => `<li><a href="#${d.question}">Q${v.questions.get(d.question)!.q}</a> <span class="label">(${PROVENANCE[d.answer]})</span>: ${text(d.text)}</li>`),
-        ...assumed.map((a) => `<li><a href="#${a.id}">Assumed</a>: ${text(a.decision)}: ${text(a.pick)} <span class="label">(${text(a.why)})</span></li>`),
-        ...(c.extra ?? []).map((e) => `<li>${text(e)}</li>`),
-      ];
-      body.push(`<section class="summary" id="${c.id}" aria-labelledby="${c.id}-title"${item.latest ? " data-stop" : ""}>
+  if (block.kind === "assumed") {
+    const a = st!.assumed.find((a) => a.id === block.id)!;
+    const first = st!.assumed[0].id === a.id ? `<span id="${st!.id}-assumed"></span>` : "";
+    return { label: "Assumed", html: `<section class="result" id="${a.id}" data-stop>${first}<header><h2>Assumed</h2></header><h3>${text(a.decision)}</h3>
+<dl class="fields"><dt>Pick</dt><dd>${text(a.pick)}</dd><dt>Why</dt><dd>${text(a.why)}</dd></dl>${a.reopened_by ? `<p class="ask"><a href="#${a.reopened_by}">Reopened in Q${v.questions.get(a.reopened_by)!.q}</a></p>` : ""}</section>` };
+  }
+  const item = st!.items.find((i) => i.type === "close" && i.close.id === block.id)!;
+  const c = item.type === "close" ? item.close : null!;
+  const bullets = [
+    ...c.decisions.map((d) => `<li><a href="#${d.question}">Q${v.questions.get(d.question)!.q}</a> <span class="label">(${PROVENANCE[d.answer]})</span>: ${text(d.text)}</li>`),
+    ...st!.assumed.filter((a) => c.assumed.includes(a.id)).map((a) => `<li><a href="#${a.id}">Assumed</a>: ${text(a.decision)}: ${text(a.pick)} <span class="label">(${text(a.why)})</span></li>`),
+    ...(c.extra ?? []).map((e) => `<li>${text(e)}</li>`),
+  ];
+  return { label: "Summary", html: `<section class="summary" id="${c.id}" aria-labelledby="${c.id}-title" data-stop>
 ${aliases(v, c.id)}<h2 id="${c.id}-title">Summary${c.time ? `<time datetime="${esc(c.time)}">${formatTime(c.time)}</time>` : ""}</h2>
-<ul class="decisions">
-${bullets.join("\n")}
-</ul>
-</section>`);
-      if (item.latest) nav.push(`<span class="sep" aria-hidden="true"></span>${link(c.id, "Summary")}`);
-    }
-  }
-  return { nav, body };
+<ul class="decisions">${bullets.join("\n")}</ul></section>` };
 }
 
 function progressHtml(p: ProgressView, v: View, observations: Observations): string {
@@ -652,44 +628,36 @@ export function render(v: View, runtimes: Runtimes = {}, observations: Observati
     const name = r.shape === "cards" || r.shape === "review" || r.shape === "timeline" ? (e.title as string) : r.shape === "code" ? (e.file as string) : r.shape === "ledger" ? (e.claim as string) : (e.cells as string[])[0] || e.id;
     return `${text(r.title)} <span class="entry-id">${e.id}</span>: ${text(name)}`;
   };
-  const tabs = [`<a role="tab" id="tab-overview" aria-selected="true" aria-controls="overview" href="#overview">Overview</a>`];
-  const jumpRows: string[] = [];
-  const overview: string[] = [];
+  const tabs = [
+    `<a role="tab" id="tab-reading" aria-selected="true" aria-controls="reading" href="#reading">Reading</a>`,
+    `<a role="tab" id="tab-overview" aria-selected="false" aria-controls="overview" href="#overview">Overview</a>`,
+  ];
+  const nav: string[] = [];
+  const publication = (block: View["reading"]["historical"][number], position?: number): string => {
+    const { label, html } = readingHtml(block, v, entryTitle, sourceText, runtimes);
+    const st = v.stages.find((s) => s.id === block.stage);
+    nav.push(`<a href="#${block.id}" data-for="${block.id}">${esc(label)}</a>`);
+    const attribution = st ? `<p class="meta"><a href="#${st.id}">${esc(st.label)}</a> · ${STATE_LABELS[st.state]}${st.parent ? ` · Parent <a href="#${st.parent}">${esc(stageLabel(v, st.parent))}</a>` : ""}</p>` : "";
+    return `<div data-reading="${block.id}"${position === undefined ? ' data-historical' : ` data-position="${position}"`}>${attribution}${html}</div>`;
+  };
+  const historical = v.reading.historical.length ? `<section id="historical-content" aria-labelledby="historical-title"><header><h2 id="historical-title">Historical content in retained order</h2><p>Exact publication order across content types was not recorded. This retained order is not a proved chronology.</p></header>${v.reading.historical.map((b) => publication(b)).join("\n")}</section>` : "";
+  const sequence = v.reading.publications.map((b) => publication(b, b.position)).join("\n");
+  const reading = `<section class="tab" id="reading" role="tabpanel" aria-labelledby="tab-reading">${historical}${historical && sequence ? '<h2 id="publication-order">First-publication order</h2>' : ""}${sequence || (!historical ? '<p class="empty">Nothing recorded yet.</p>' : "")}</section>`;
+  const overview = v.stages.map((st) => `<li class="stage" id="${st.id}" data-state="${st.state}">${aliases(v, st.id)}${aliases(v, `tab-${st.id}`)}<span id="tab-${st.id}" data-flow-target="${st.id}"></span>
+<h3>${esc(st.label)}<span class="meta"><span class="state">${STATE_LABELS[st.state]}</span><span>${esc(st.skill)}</span></span></h3>
+${st.parent ? `<p>Parent <a href="#${st.parent}">${esc(stageLabel(v, st.parent))}</a></p>` : ""}
+${st.children.length ? `<p>Continued in ${st.children.map((id) => `<a href="#${id}">${esc(stageLabel(v, id))}</a>`).join(", ")}</p>` : ""}
+<ul>${st.asked.map((q) => { const shown = shownAnswer(q); return `<li><a href="#${q.id}">Q${q.q}</a> ${text(q.title)} <span class="${shown.cls}">${shown.html}</span></li>`; }).join("")}</ul></li>`);
+  const jumpRows = [`<nav class="jump-row" aria-label="Reading sequence" data-tab="reading">${nav.join("")}</nav>`];
   const panels: string[] = [];
-  for (const st of v.stages) {
-    const { nav, body } = stageHtml(st, v, entryTitle, sourceText, runtimes);
-    const label = esc(st.label);
-    const dot = `<span class="dot" data-state="${st.state}"></span>`;
-    const asked = st.asked.map((q) => {
-      const shown = shownAnswer(q);
-      return `<li><a href="#${q.id}">Q${q.q}</a> ${text(q.title)} <span class="${shown.cls}">${shown.html}</span></li>`;
-    });
-    let empty = `<p class="empty">No questions yet.</p>`;
-    const standing = st.assumed.filter((a) => !a.reopened_by).length;
-    if (!asked.length && standing) empty = `<p class="empty"><a href="#${st.id}-assumed">No questions; ${standing} ${standing === 1 ? "decision" : "decisions"} assumed</a></p>`;
-    tabs.push(`<a role="tab" id="tab-${st.id}" aria-selected="false" aria-controls="${st.id}" href="#${st.id}">${aliases(v, `tab-${st.id}`)}${dot}${label}</a>`);
-    if (nav.length) jumpRows.push(`<nav class="jump-row" aria-label="Jump row of ${label}" data-tab="${st.id}" hidden>${nav.join("")}</nav>`);
-    overview.push(`<li class="stage" data-state="${st.state}">
-<h3><a href="#${st.id}">${dot}${label}</a><span class="meta"><span class="state">${STATE_LABELS[st.state]}</span><span>${esc(st.skill)}</span></span></h3>
-${asked.length ? `<ul>${asked.join("")}</ul>` : empty}
-</li>`);
-    panels.push(`<section class="tab" id="${st.id}" role="tabpanel" aria-labelledby="tab-${st.id}" hidden>\n${aliases(v, st.id)}${body.join("\n") || `<p class="empty">Nothing recorded yet.</p>`}\n</section>`);
-  }
   if (v.topics.length) {
     tabs.push(`<a role="tab" id="tab-topics" aria-selected="false" aria-controls="topics" href="#topics">Topics</a>`);
-    jumpRows.push(`<nav class="jump-row" aria-label="Topic notes" data-tab="topics" hidden>${v.topics.map((t) => `<a href="#${t.id}" data-for="${t.id}">${text(t.title)}</a>`).join("")}</nav>`);
-    const notes = v.topics.map((t) => `<article class="topic" id="${t.id}" data-stop>
-${aliases(v, t.id)}<h3>${text(t.title)}</h3>
-<p class="summary-line">${text(t.summary)}</p>
-<div class="description">${prose(t.body)}</div>${labelled("Asked in", t.questions.map((id) => `<li><a href="#${id}">Q${v.questions.get(id)!.q}</a>: ${text(v.questions.get(id)!.title)}</li>`), "result-links")}
-${sourcesHtml(t.sourceTexts)}
-</article>`);
-    panels.push(`<section class="tab" id="topics" role="tabpanel" aria-labelledby="tab-topics" hidden>\n${notes.join("\n")}\n</section>`);
+    panels.push(`<section class="tab" id="topics" role="tabpanel" aria-labelledby="tab-topics" hidden><ul>${v.topics.map((t) => `<li><a href="#${t.id}">${text(t.title)}</a> ${text(t.summary)}</li>`).join("")}</ul></section>`);
   }
   const last = v.lifecycle.at(-1);
   const lifecycle = last ? `<p class="lifecycle" data-state="${last.event}">${last.event === "closed" ? "Closed" : "Reopened"} <time datetime="${esc(last.time)}">${formatTime(last.time)}</time></p>` : "";
   const head = `<header class="page-head">${v.flow.crumb ? `<p class="crumb">${text(v.flow.crumb)}</p>` : ""}<h1>${text(v.flow.title)}</h1>${lifecycle}</header>`;
-  const overviewPanel = `<section class="tab" id="overview" role="tabpanel" aria-labelledby="tab-overview">\n${progressHtml(v.progress, v, observations)}\n${overview.length ? `<ol class="stages">\n${overview.join("\n")}\n</ol>` : `<p class="empty">No Stage yet.</p>`}\n</section>`;
+  const overviewPanel = `<section class="tab" id="overview" role="tabpanel" aria-labelledby="tab-overview" hidden>\n${progressHtml(v.progress, v, observations)}\n${overview.length ? `<ol class="stages">\n${overview.join("\n")}\n</ol>` : `<p class="empty">No Stage yet.</p>`}\n</section>`;
   const treeButton = v.stages.length ? `<button type="button" class="tree-open" aria-haspopup="dialog" aria-controls="stage-tree" aria-keyshortcuts="t">Stages<kbd>t</kbd></button>` : "";
   const bar = `<header class="bar">\n<div class="tabs"><div class="tablist" role="tablist" aria-label="Stages">${tabs.join("")}</div>${treeButton}</div>\n${jumpRows.join("\n")}\n${v.stages.length ? stageTree(v) : ""}\n</header>`;
   const meta = `<meta name="flow-page-flow" content="${esc(v.flow.id)}">\n  <meta name="flow-page-revision" content="${v.revision}">\n  <meta name="flow-page-observations" content="${observationVersion(observations)}">\n  <meta name="flow-page-renderer" content="${RENDERER}">`;
@@ -697,5 +665,5 @@ ${sourcesHtml(t.sourceTexts)}
     .replace("{{title}}", () => esc(v.flow.title))
     .replace("<!-- META -->", () => meta)
     .replace("<!-- NAV -->", () => bar)
-    .replace("<!-- BODY -->", () => [head, overviewPanel, ...panels].join("\n"));
+    .replace("<!-- BODY -->", () => [head, reading, overviewPanel, ...panels].join("\n"));
 }

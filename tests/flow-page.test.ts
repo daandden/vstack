@@ -1619,8 +1619,6 @@ test("the Stage tree links only to Stages, with their actionable question counts
   expect(targets).toEqual(new Set(snap.stages.map((st: any) => st.id)));
   const l = await links(r.json.page);
   expect(l.ids.has("topics")).toBe(true);
-  expect(l.contains.get(child.stage)!.has(r.json.refs["left-again"])).toBe(true);
-  expect(l.contains.get(stages.done)!.has(q.left)).toBe(true);
   expect(l.within.get(r.json.refs["left-again"])!.has(q.left)).toBe(true);
   expect(l.within.get(q.left)!.has(r.json.refs["left-again"])).toBe(true);
 });

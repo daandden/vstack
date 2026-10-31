@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 The skill that runs a Stage says when each page step happens. This skill says how to do it. The Flow page replaced the Grilling page, and this script is the only page writer.
 
-You send meaning: questions, answers, decisions, notes, and Results. The script owns everything else: ids, Stage order and tab labels, round and Q numbers, option letters, timestamps, the links between records, storage, and the page itself. It renders the page from its own template and escapes every string you send. You never write raw HTML, CSS, or scripts into contributions. Safe text figures are escaped, and SVGs and images are captured attachments.
+You send meaning: questions, answers, decisions, notes, and Results. The script owns ids, Stage labels, round and Q numbers, option letters, timestamps, links, storage, and the page. It escapes every string you send. You never write raw HTML, CSS, or scripts into contributions. Safe text figures are escaped, and SVGs and images are captured attachments.
 
 Result block is the canonical name for a Stage's output. Result is its authoring short form.
 
@@ -43,9 +43,9 @@ Every result-producing skill follows this line once per run. Producers cite this
 
 `open` binds only this session's agent to the new Stage. Later commands use that binding. `bind --flow <flow> --stage <id>` resumes an existing in-progress run, not a new nested result-producing run. Loading this skill, reading a page, `show`, and `bind` open no Stage. An unbound write without an explicit target is refused.
 
-Parallel callers and callers outside an omp session name `--flow <flow> --stage <id>` on every write. Contributions from different Stages commit whole against the latest state. The script derives tab labels from any skill name.
+Parallel callers and callers outside an omp session name `--flow <flow> --stage <id>` on every write. Contributions from different Stages commit whole against the latest state. Reading content takes its immutable position at the first successful commit, in submitted item order and declared question order. Answers and Result revisions update their original blocks with history, not duplicate publications. Refusal allocates no positions; replay preserves the committed positions. Content whose publication order was not recorded stays behind an explicit retained-order historical boundary.
 
-`show [--flow <flow>]` prints the Flow's structure: Stages with their labels, states, and open-question counts, rounds, Q numbers, answer states, Results with each entry and the revision that last `changed` it, every link and backlink, its aliases, and its `presentation`. Its `next` lists actionable questions in navigation order, newest in-progress Stage first.
+`show [--flow <flow>]` prints the Flow's structure: Stages with their labels, states, and open-question counts, rounds, Q numbers, answer states, Results with each entry and the revision that last `changed` it, every link and backlink, its aliases, and its `presentation`. Its `reading` separates retained historical references from durable publications with immutable `position` and committing `publication` revision. Its `next` lists actionable questions in navigation order, newest in-progress Stage first, independently of reading order.
 
 `bound` returns this session and agent's binding with its `page`, projection status, and `live` status. When none exists, it returns `{"binding":null}` without starting a host or creating a Flow. Bindings persist across session continuation. A different session or agent gets only its own binding, never the last active Stage.
 
