@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ENV } from "./support/fixture.ts";
+import { statePathOf } from "./support/flow-store.ts";
 
 const script = join(import.meta.dir, "../plugin/skills/flow-page/scripts/flow-page.ts");
 const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-quiz-")));
@@ -40,7 +41,7 @@ test("a producer publishes a retained Quiz and invalid answer rules leave its do
   const w = world();
   ok(run(w, ["open", "--title", "Quiz lesson", "--skill", "teach"]));
   const sent = ok(submit(w, quiz()));
-  const statePath = join(sent.page, "../data/state.json");
+  const statePath = statePathOf(w.home, sent.flow);
   const state = JSON.parse(readFileSync(statePath, "utf8"));
   expect(state.results[0].quiz.questions.map((q: any) => q.ref)).toEqual(["authority", "sum", "word"]);
   const before = readFileSync(statePath, "utf8");
@@ -59,7 +60,7 @@ test("learning attempts authenticate, survive restarts, and replay offline batch
   const endpoint = new URL("learning", url);
   const page = await fetch(url);
   const cookie = page.headers.get("set-cookie")?.split(";")[0] ?? "";
-  const statePath = join(sent.page, "../data/state.json");
+  const statePath = statePathOf(w.home, sent.flow);
   const before = readFileSync(statePath, "utf8");
   const attempt = (id: string, question: string, answer: string) => ({ id, result: sent.refs.lesson, revision: 1, question, answer });
   const batch = { version: 1, attempts: [attempt("attempt-wrong-001", "authority", "quiz"), attempt("attempt-right-002", "authority", "ask"), attempt("attempt-sum-003", "sum", "5"), attempt("attempt-word-004", "word", "FLOW")] };

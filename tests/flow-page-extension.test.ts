@@ -69,7 +69,7 @@ test("a session's Flow returns after every completed reply, including a blocker 
   expect(unbound.sent).toHaveLength(0);
 });
 
-test("an occupied live endpoint presents the static page and the observed failure, not an old URL", async () => {
+test("an occupied live endpoint reports that the reader needs the host, with the observed failure and no file path or old URL", async () => {
   const w = setup();
   const a = await w.ok(["open", "--title", "Offline ticket", "--skill", "implement", "--session", "a"]);
   await w.ok(["host", "stop"]);
@@ -77,12 +77,14 @@ test("an occupied live endpoint presents the static page and the observed failur
   try {
     const current = await w.ok(["bound", "--session", "a"]);
     expect(current.live.state).toBe("unavailable");
+    expect(current).not.toHaveProperty("page");
     const h = w.host("a");
     await h.emit("agent_end", { isTerminal: true });
     expect(urls(h)).toHaveLength(0);
     const content = h.sent.map((m: any) => m.content).join("\n");
-    expect(content).toContain(a.page);
     expect(content).toContain(current.live.error);
+    expect(content).not.toContain(w.home);
+    expect(content).not.toContain(a.live.url);
     expect((await fetch(`http://127.0.0.1:${w.port}`)).status).toBe(200);
   } finally { listener.stop(true); }
 });

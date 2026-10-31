@@ -11,7 +11,7 @@ Include a "suggested skills" section in the document, naming each skill the next
 
 Do not duplicate content already captured in other artifacts (specs, plans, ADRs, issues, commits, diffs). Reference them by path or URL instead.
 
-Follow `skill://flow-page`'s "Stage entry/exit line". Put the durable Flow id and relevant in-progress Stage id in the handoff, with its live URL and static path. The next session follows the same central discovery protocol.
+Follow `skill://flow-page`'s "Stage entry/exit line". Put the durable Flow id and relevant in-progress Stage id in the handoff, with its live URL. The next session follows the same central discovery protocol.
 
 Redact any sensitive information, such as API keys, passwords, or personally identifiable information.
 

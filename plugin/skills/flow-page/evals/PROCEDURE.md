@@ -16,26 +16,16 @@ The set uses one trial per subject per side. It establishes neither recurrence n
 1. Create a new workspace under the caller's Scratch directory, outside every git repository. Keep the real `HOME`, credentials, and `PATH`. Preserve the tested Flow skill and its dependency versions, checksums, model records, and evaluator configuration before candidate changes.
 2. Read every JSONL line in the parent session with `json.loads`. Select the last `model_change.model` and last `thinking_level_change.thinkingLevel`. Missing records are unavailable prerequisites. Do not infer or substitute them. The #311 capture used `anthropic/claude-opus-5-5` and `high`, from the supplied parent session configuration.
 3. Prepare each subject's `with_skill` and no-skill `baseline` directories. Each initially contains only `input.json`, `outputs/`, `isolate.yml`, its prompt, and its session transcript. Put process logs and argv beside them as evidence. Use an independent `outputs/flow-home` on every run. Never reuse live user storage or bindings.
-4. Use this JSON as `isolate.yml`. JSON is valid YAML. `vstack-figures` is the tested skill's cited dependency. Both sides receive the same dependency list. Keep plugins and extensions enabled. An empty dependency list instead requires `--no-skills`.
-
-```json
-{
-	"memory": { "backend": "off" },
-	"skills": {
-		"ignoredSkills": ["flow-page", "*/flow-page"],
-		"includeSkills": ["vstack-figures"]
-	}
-}
-```
+4. Copy this evaluation home's `isolate.json` to the run's `isolate.yml`. JSON is valid YAML. `vstack-figures` is the tested skill's cited dependency. Both sides receive the same dependency list. Keep plugins and extensions enabled. An empty dependency list instead requires `--no-skills`.
 
 5. Inspect discovery under that overlay before inference. In omp 18.14.1, `omp skill list --json` ignores the run overlay and lists the installed tested skill. Do not treat that listing as isolated discovery. Start `omp --mode rpc --no-rules --config <run>/isolate.yml --cwd <run> --session-dir <run>/session`, close its input, and retain its `available_commands_update` event. Confirm its skill commands contain only `skill:vstack-figures`, with no `skill:flow-page`. The inspection makes no model request. Preserve a discovery failure as unavailable rather than proceeding.
 6. For `with_skill`, explicitly request reading the tested absolute `SKILL.md` path. The no-skill baseline names no skill and receives only the real CLI path needed to publish. Supply the same process constraints and input on both sides. Require explicit isolated `--home` and the caller's supplied `--session` and `--agent` on every Flow command. A child that substitutes another identity is invalid even if its home remains isolated. Inspect both `read` and search calls for tested-skill exposure. A no-skill process that reads the tested instructions is contaminated, not a no-skill success.
 
 Use this task after the side's skill-loading sentence, substituting absolute paths and the caller's supplied identity:
 
-> Read input.json. Publish that one decision question through the actual Flow CLI at `<script>`. This is an isolated headless task. Write only in your cwd and outputs, and never modify the tool or repository. Every Flow command must pass `--home <run>/outputs/flow-home --session <session> --agent <agent>`. Use a fresh Flow, never live user bindings. No user is available. Take a recommended answer only as a headless choice, not consent, and do not invoke ask. After the first successful question submit, stop authoring. Preserve its exact JSON as outputs/submitted.json, actual receipt as outputs/receipt.json, and the receipt page directory with state and assets as outputs/frozen. Preserve failed attempts separately. Do not answer, repair, revise, or finish the Stage. Record prerequisites and any headless recommendation in outputs/notes.json. The coordinator captures the rendered question separately.
+> Read input.json. Publish that one decision question through the actual Flow CLI at `<script>`. This is an isolated headless task. Write only in your cwd and outputs, and never modify the tool or repository. Every Flow command must pass `--home <run>/outputs/flow-home --session <session> --agent <agent>`. Use a fresh Flow, never live user bindings. No user is available. Take a recommended answer only as a headless choice, not consent, and do not invoke ask. After the first successful question submit, stop authoring. Preserve its exact JSON as outputs/submitted.json, actual receipt as outputs/receipt.json, and `show --flow <flow>` output as outputs/show.json. Preserve failed attempts separately. Do not answer, repair, revise, or finish the Stage. Record prerequisites and any headless recommendation in outputs/notes.json. The coordinator captures the rendered question separately.
 
-Set `VSTACK_FLOW_HOST=off` for this static-render baseline. This keeps each isolated namespace from competing for the user's live host port. It is not live-host or native-ask proof.
+Set `VSTACK_FLOW_HOST=off` for this authoring baseline. This keeps each isolated namespace from competing for the user's live host port. The Flow state and captured assets stay under `<run>/outputs/flow-home/.vstack/tmp/`. It is not live-host or native-ask proof.
 
 ## Start the headless batch
 
@@ -75,9 +65,9 @@ Retain main and auxiliary session transcripts. Check the actual authoring model 
 
 ## Freeze and capture the first publication
 
-1. Read the actual successful receipt, not a guessed Flow id or anchor. Freeze `submitted.json`, `receipt.json`, and the receipt's page directory immediately. Preserve question and option words, needs, revision, state, page, captured bytes, and SHA-256 values. A later successful publication belongs in a separate record.
+1. Read the actual successful receipt, not a guessed Flow id or anchor. Freeze `submitted.json`, `receipt.json`, and the Flow's folder under `<run>/outputs/flow-home/.vstack/tmp/*/flow/` immediately. Preserve question and option words, needs, revision, state, captured bytes, and SHA-256 values. A later successful publication belongs in a separate record.
 2. Verify receipt Flow, Stage, revision, and question identities against persisted state. Check submitted question titles, options, and needs against that state. Inspect the transcript for the first successful submit. An earlier schema refusal is not a publication or an adequacy failure. Preserve its input and refusal.
-3. Open the frozen page in managed Chromium at 1280 by 900 CSS pixels. Use `app: { tern: false, relay: false }`. Record the actual device scale, browser version, computed font family, font readiness, image load state, intrinsic and displayed image sizes, and screenshot time. The #311 environment reported scale 1.25, despite requesting 1. Record observations, not requested values.
+3. Start the reader for that isolated home without `VSTACK_FLOW_HOST=off`: run `show --flow <flow> --home <run>/outputs/flow-home` with `VSTACK_FLOW_PORT` set to a free port, and open its `live.url` in managed Chromium at 1280 by 900 CSS pixels. Run `host stop` with the same home after capture. Use `app: { tern: false, relay: false }`. Record the actual device scale, browser version, computed font family, font readiness, image load state, intrinsic and displayed image sizes, and screenshot time. The #311 environment reported scale 1.25, despite requesting 1. Record observations, not requested values.
 4. Wait for `document.fonts.ready` and all images. Select the actual question from the receipt. Capture its ARIA and a full-page PNG after scrolling to the top. Full-page evidence avoids the sticky navigation obscuring a tall question's title and needs. Preserve any failed or occluded question crop as a failed capture, not primary evidence.
 5. Convert without resizing in JavaScript eval, then read the WebP:
 
@@ -108,4 +98,4 @@ The checker detects changed or omitted required bytes, revision replacement, and
 
 Keep transcript identity and timing checks, byte availability, locality, and kind matching in `mechanical.json`. In a separate assessment, map each option distinction in `judging.json` to exact visible labels, paths, groupings, or prose. Name missing content explicitly. Preserve the approved original Q7 and Q8 negative judgments even when a fresh authoring trial performs better.
 
-Return the frozen screenshots, ARIA, display records, and distinction mappings to the coordinator. Ask the user to review clarity, readability, completeness, and prose suitability through the coordinator's owning Flow. Workers return this as an open question and publish nothing on the user's Flow. Until that review, new subjective adequacy outcomes remain pending. No model or mechanical pass supplies user consent.
+Return the frozen screenshots, ARIA, display records, and distinction mappings to the coordinator. The coordinator uses `ask` on its owning Flow to request user review of clarity, readability, completeness, and prose suitability. Workers return this as an open question and publish nothing on the user's Flow. Until that review, new subjective adequacy outcomes remain pending. No model or mechanical pass supplies user consent.

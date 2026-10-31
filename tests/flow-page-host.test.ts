@@ -1,8 +1,9 @@
 import { afterAll, expect, test } from "bun:test";
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { ENV, git } from "./support/fixture.ts";
+import { storedFolder } from "./support/flow-store.ts";
 
 const SKILLS = join(import.meta.dir, "..", "plugin", "skills");
 const SCRIPT = join(SKILLS, "flow-page", "scripts", "flow-page.ts");
@@ -87,17 +88,25 @@ async function until(cond: () => boolean, ms = 8000): Promise<boolean> {
   return cond();
 }
 
-const revisionOf = (html: string) => Number(html.match(/<meta name="flow-page-revision" content="(\d+)">/)?.[1]);
-const hasId = (html: string, id: string) => html.includes(`id="${id}"`);
-async function attribute(html: string, id: string, name: string): Promise<string | null> {
-  let value: string | null = null;
-  await new HTMLRewriter().on(`[id="${id}"]`, { element(el) { value = el.getAttribute(name); } }).transform(new Response(html)).text();
-  return value;
-}
+/** The host's reader interface for one Flow: its content contract with artifact availability. */
+const contentOf = async (url: string) => {
+  const r = await fetch(new URL("content", url));
+  expect(r.status).toBe(200);
+  return await r.json() as any;
+};
+const askedIn = (model: any, id: string) => model.questions.find((q: any) => q.id === id);
 const page = async (url: string) => {
   const r = await fetch(url);
   return { status: r.status, html: await r.text() };
 };
+/** Every file the reader shell loads, by its URL path, read from the served shell itself. */
+async function shellResources(html: string): Promise<string[]> {
+  const found: string[] = [];
+  await new HTMLRewriter()
+    .on("script[src], link[href]", { element(el) { found.push(el.getAttribute("src") ?? el.getAttribute("href")!); } })
+    .transform(new Response(html)).text();
+  return found.filter((x) => x.startsWith("/"));
+}
 
 function raw(port: number, lines: string[]): Promise<{ status: number; body: string }> {
   return new Promise((done, fail) => {
@@ -130,20 +139,43 @@ test("an authoring command starts the host and serves the Flow live at one URL t
   const url: string = opened.live.url;
   expect(new URL(url).hostname).toBe("127.0.0.1");
   expect(new URL(url).port).toBe(String(w.port));
-  expect(revisionOf((await page(url)).html)).toBe(opened.revision);
+  expect((await contentOf(url)).revision).toBe(opened.revision);
 
   const sent = ok(run(["submit"], w, { session: "s-1", stdin: contribution(round(question("q"))) }));
   expect(sent.live.url).toBe(url);
-  const live = await page(url);
-  expect(live.status).toBe(200);
-  expect(revisionOf(live.html)).toBe(sent.revision);
-  expect(hasId(live.html, sent.refs.q)).toBe(true);
-  expect(revisionOf(readFileSync(sent.page, "utf8"))).toBe(sent.revision);
+  const live = await contentOf(url);
+  expect(live.revision).toBe(sent.revision);
+  expect(askedIn(live, sent.refs.q)).toBeDefined();
   for (const cmd of [["show", "--flow", opened.flow], ["find", `folder:${opened.flow}`]]) expect(ok(run(cmd, w)).live.url).toBe(url);
   expect(hostPids(w)).toHaveLength(1);
 });
 
-test("the host exposes and renders the same cross-Stage publication sequence with in-place history", async () => {
+test("the Flow URL serves the built reader, and the host serves every resource the reader loads without the capability", async () => {
+  const w = world();
+  const opened = ok(open(w));
+  const capability = new URL(opened.live.url).pathname.split("/").filter(Boolean).at(-1)!;
+  const shell = await fetch(opened.live.url);
+  expect(shell.status).toBe(200);
+  expect(shell.headers.get("content-type")).toContain("text/html");
+  expect(shell.headers.get("set-cookie")).toContain("HttpOnly");
+  const html = await shell.text();
+  expect(html).not.toContain(capability);
+  expect(html).not.toContain(opened.flow);
+  const resources = await shellResources(html);
+  expect(resources.some((path) => path.endsWith(".js"))).toBe(true);
+  expect(resources.some((path) => path.endsWith(".css"))).toBe(true);
+  for (const path of resources) {
+    expect(path).not.toContain(capability);
+    const r = await fetch(new URL(path, opened.live.url));
+    expect([path, r.status]).toEqual([path, 200]);
+    expect(r.headers.get("content-type")).toMatch(/^text\/(javascript|css)/);
+    expect((await raw(w.port, [`GET ${path} HTTP/1.1`, `Host: evil.example:${w.port}`])).status).toBe(403);
+  }
+  for (const path of ["/_flow-reader/missing.js", "/_flow-reader/../index.html", "/index.html"]) expect((await raw(w.port, [`GET ${path} HTTP/1.1`, `Host: 127.0.0.1:${w.port}`])).status).toBe(404);
+  expect((await fetch(new URL(resources[0], opened.live.url), { method: "POST" })).status).toBe(405);
+});
+
+test("the host exposes the same cross-Stage publication sequence with in-place history", async () => {
   const w = world();
   const a = ok(open(w, "author-a"));
   const b = ok(run(["open", "--flow", a.flow, "--skill", "research", "--parent", a.stage], w, { session: "author-b" }));
@@ -151,29 +183,19 @@ test("the host exposes and renders the same cross-Stage publication sequence wit
   const second = ok(run(["submit"], w, { session: "author-b", stdin: contribution({ kind: "result", ref: "research", shape: "cards", title: "Research between asks", entries: [{ title: "Recorded finding", label: "fact", blocking: false, impact: "Explains the choice", action: "Read before deciding", evidence: "Original evidence" }] }) }));
   const third = ok(run(["submit"], w, { session: "author-a", stdin: contribution(round(question("last"))) }));
   const url = a.live.url;
-  const content = await fetch(new URL("content", url));
-  expect(content.status).toBe(200);
-  const model = await content.json() as any;
+  const model = await contentOf(url);
   const ids = [first.refs.first, second.refs.research, third.refs.last];
   expect(model.reading.publications.map((b: any) => b.id)).toEqual(ids);
-  const rendered = async () => {
-    const blocks: { id: string | null; hidden: string | null }[] = [];
-    const html = (await page(url)).html;
-    await new HTMLRewriter().on("[data-reading]", { element(el) { blocks.push({ id: el.getAttribute("data-reading"), hidden: el.getAttribute("hidden") }); } }).transform(new Response(html)).text();
-    return { blocks, html };
-  };
-  expect((await rendered()).blocks).toEqual(ids.map((id) => ({ id, hidden: null })));
   ok(run(["submit"], w, { session: "author-a", stdin: contribution({ kind: "answer", question: first.refs.first, response: { status: "answered", picks: ["A"], text: "Keep the evidence." } }) }));
   ok(run(["submit"], w, { session: "author-b", stdin: contribution({ kind: "result", revises: second.refs.research, shape: "cards", title: "Revised research", entries: [{ title: "Updated finding", label: "fact", blocking: false, impact: "Clarifies the choice", action: "Continue reading", evidence: "New evidence" }] }) }));
   ok(run(["submit"], w, { session: "author-b", stdin: contribution({ kind: "revise", result: second.refs.research, base: ok(run(["show", "--flow", a.flow], w)).revision, set: { title: "Focused clarification" } }) }));
-  const after = await rendered();
-  expect(after.blocks.map((b) => b.id)).toEqual(ids);
-  for (const evidence of ["Keep the evidence.", "Original evidence", "New evidence"]) expect(after.html).toContain(evidence);
-  const current = await (await fetch(new URL("content", url))).json() as any;
+  const current = await contentOf(url);
   expect(current.reading).toEqual(model.reading);
+  expect(askedIn(current, first.refs.first).answer.response.text).toBe("Keep the evidence.");
+  expect(current.stages[1].results[0].entries[0].evidence).toBe("New evidence");
   expect(current.stages[1].results[0].history[0].entries[0].evidence).toBe("Original evidence");
   expect(current.stages[1].results[0].history.map((r: any) => r.title)).toEqual(["Research between asks", "Revised research"]);
-  expect(await attribute(after.html, `${second.refs.research}-r1`, "id")).toBe(`${second.refs.research}-r1`);
+  expect(current.stages[1].results[0].history[0].anchor).toBe(`${second.refs.research}-r1`);
 });
 
 test("an open reader receives answers, Results, task changes, and new Stages at the same live URL", async () => {
@@ -209,26 +231,26 @@ test("an open reader receives answers, Results, task changes, and new Stages at 
       { kind: "answer", question: seed.refs.choice, response: { status: "answered", picks: ["B"] } },
     ) }));
     await received(answer.revision);
-    const answered = (await page(opened.live.url)).html;
-    expect(revisionOf(answered)).toBe(answer.revision);
-    expect(await attribute(answered, seed.refs.choice, "data-state")).toBe("picked");
+    const answered = await contentOf(opened.live.url);
+    expect(answered.revision).toBe(answer.revision);
+    expect(askedIn(answered, seed.refs.choice).answer.state).toBe("picked");
     const result = ok(run(["submit"], w, { session: "s-1", stdin: contribution(
       { kind: "result", ref: "report", shape: "table", title: "Update proof", columns: ["Outcome"], rows: [{ cells: ["Observed"] }] },
     ) }));
     await received(result.revision);
-    expect(hasId((await page(opened.live.url)).html, result.refs.report)).toBe(true);
+    expect((await contentOf(opened.live.url)).stages[0].results.map((r: any) => r.id)).toContain(result.refs.report);
     const task = ok(run(["submit"], w, { session: "s-1", stdin: contribution(
       { kind: "task", task: seed.refs.work, state: "done", evidence: ["The open reader received the update"] },
     ) }));
     await received(task.revision);
     const snapshot = ok(run(["show", "--flow", opened.flow], w));
     expect(snapshot.progress.tasks.find((t: any) => t.id === seed.refs.work).state).toBe("done");
-    const completed = (await page(opened.live.url)).html;
-    expect(revisionOf(completed)).toBe(task.revision);
-    expect(await attribute(completed, seed.refs.work, "data-task")).toBe("done");
+    const completed = await contentOf(opened.live.url);
+    expect(completed.revision).toBe(task.revision);
+    expect(completed.progress.tasks.find((t: any) => t.id === seed.refs.work).state).toBe("done");
     const stage = ok(run(["open", "--flow", opened.flow, "--skill", "research"], w, { session: "s-2" }));
     await received(stage.revision);
-    expect(hasId((await page(opened.live.url)).html, stage.stage)).toBe(true);
+    expect((await contentOf(opened.live.url)).stages.map((s: any) => s.id)).toContain(stage.stage);
     expect(stage.live.url).toBe(opened.live.url);
   } finally {
     clearTimeout(timeout);
@@ -281,14 +303,13 @@ test("live read-only observations respect separate providers without replacing a
     expect(latest["code-host"].provenance.adapter).toBe("http-json");
     prState = "merged"; checkState = "passed";
     await eventually((o) => o["code-host"].records[0]?.state === "merged" && o.ci.records[0]?.state === "passed");
-    let live = (await page(opened.live.url)).html;
-    expect(await attribute(live, "observation-code-host", "data-observation")).toBe("current");
+    expect((await contentOf(opened.live.url)).progress.prs.find((x: any) => x.id === authored.refs.pr).state).toBe("open");
     configure("ci.md", "/checks", 0.001);
     await eventually((o) => o.ci.status === "stale");
     failing = true;
     await eventually((o) => o["code-host"].status === "stale" && o.ci.status === "stale");
-    live = (await page(opened.live.url)).html;
-    expect(live).not.toContain("never-publish");
+    expect(JSON.stringify(latest)).not.toContain("never-publish");
+    expect(JSON.stringify(await contentOf(opened.live.url))).not.toContain("never-publish");
     configure("code-host.md", "/different-provider");
     await eventually((o) => o["code-host"].status === "unavailable");
     writeFileSync(join(config, "ci.md"), "- CI service: Unsupported service\n");
@@ -359,11 +380,11 @@ test("close and reopen keep the same live URL and publish their lifecycle revisi
   ok(run(["submit"], w, { session: "s-1", stdin: contribution({ kind: "stage", state: "finished" }) }));
   const closed = ok(run(["close", "--flow", opened.flow], w));
   expect(closed.live.url).toBe(opened.live.url);
-  expect(revisionOf((await page(closed.live.url)).html)).toBe(closed.revision);
+  expect((await contentOf(closed.live.url)).revision).toBe(closed.revision);
   expect(ok(run(["show", "--flow", opened.flow], w)).open).toBe(false);
   const reopened = ok(run(["reopen", "--flow", opened.flow, "--skill", "explain"], w, { session: "s-1" }));
   expect(reopened.live.url).toBe(opened.live.url);
-  expect(revisionOf((await page(reopened.live.url)).html)).toBe(reopened.revision);
+  expect((await contentOf(reopened.live.url)).revision).toBe(reopened.revision);
   expect(ok(run(["show", "--flow", opened.flow], w)).open).toBe(true);
 });
 
@@ -375,9 +396,8 @@ test("sessions that start at once share one host and each gets a working URL", a
   expect(new Set(receipts.map((r) => r.live.url)).size).toBe(6);
   expect(hostPids(w)).toHaveLength(1);
   for (const r of receipts) {
-    const p = await page(r.live.url);
-    expect(p.status).toBe(200);
-    expect(p.html).toContain(`content="${r.flow}"`);
+    expect((await fetch(r.live.url)).status).toBe(200);
+    expect((await contentOf(r.live.url)).flow.id).toBe(r.flow);
   }
 });
 
@@ -394,14 +414,13 @@ test("after the host stops or dies, the next command starts it again and earlier
 
   const moved = ok(run(["move", "--to", "renamed-flow"], w, { session: "s-1" }));
   expect(moved.live.url).toBe(url);
-  const after = await page(url);
-  expect(after.status).toBe(200);
-  expect(hasId(after.html, sent.refs.q)).toBe(true);
+  expect((await fetch(url)).status).toBe(200);
+  expect(askedIn(await contentOf(url), sent.refs.q)).toBeDefined();
 
   for (const pid of hostPids(w)) process.kill(pid, "SIGKILL");
   expect(await until(() => hostPids(w).length === 0)).toBe(true);
   expect(ok(run(["show", "--flow", opened.flow], w)).live.url).toBe(url);
-  expect((await page(url)).status).toBe(200);
+  expect((await contentOf(url)).flow.id).toBe(opened.flow);
   expect(hostPids(w)).toHaveLength(1);
 });
 
@@ -430,8 +449,10 @@ test("the host stops once idle, while an open reader or a publication in flight 
   expect(await until(() => hostPids(w).length === 0)).toBe(true);
 });
 
-test("a port another program holds is reported, that program keeps running, and the static page stays readable", async () => {
+test("a port another program holds is reported truthfully, the publication stays committed, and presentation recovers without duplicate content", async () => {
   const w = world();
+  const opened = ok(open(w));
+  ok(run(["host", "stop"], w));
   const credentials: string[] = [];
   const other = Bun.serve({ hostname: "127.0.0.1", port: w.port, fetch(req) {
     const auth = req.headers.get("authorization");
@@ -439,18 +460,24 @@ test("a port another program holds is reported, that program keeps running, and 
     return new Response("someone else");
   } });
   try {
-    const r = await runAsync(["open", "--title", "Checkout limits", "--skill", "grill-me"], w, { session: "s-1" });
+    const r = await runAsync(["submit"], w, { session: "s-1", stdin: contribution(round(question("q"))) });
     expect(r.code).toBe(0);
     expect(r.json.live.state).toBe("unavailable");
     expect(r.json.live.url).toBeUndefined();
     expect(typeof r.json.live.error).toBe("string");
-    expect(r.stderr).not.toBe("");
-    expect(revisionOf(readFileSync(r.json.page, "utf8"))).toBe(r.json.revision);
+    expect(r.json).not.toHaveProperty("page");
+    expect(r.stderr).toContain(r.json.live.error);
+    expect(r.stderr).not.toContain(w.home);
     expect(await (await fetch(`http://127.0.0.1:${w.port}/`)).text()).toBe("someone else");
     expect(hostPids(w)).toHaveLength(0);
     expect(credentials).toEqual([]);
     other.stop(true);
-    expect(ok(await runAsync(["show", "--flow", r.json.flow], w)).live.state).toBe("serving");
+    const recovered = ok(await runAsync(["bound"], w, { session: "s-1" }));
+    expect(recovered.live.url).toBe(opened.live.url);
+    const model = await contentOf(recovered.live.url);
+    expect(model.revision).toBe(r.json.revision);
+    expect(model.questions.filter((q: any) => q.id === r.json.refs.q)).toHaveLength(1);
+    expect(model.reading.publications.filter((b: any) => b.id === r.json.refs.q)).toHaveLength(1);
   } finally {
     other.stop(true);
   }
@@ -463,38 +490,66 @@ test("a host another user home started on the port is reported and left running"
   const r = open(second);
   expect(r.code).toBe(0);
   expect(r.json.live.state).toBe("unavailable");
-  expect(revisionOf(readFileSync(r.json.page, "utf8"))).toBe(r.json.revision);
-  expect((await page(url)).status).toBe(200);
+  expect(r.json).not.toHaveProperty("page");
+  expect((await fetch(url)).status).toBe(200);
   expect(hostPids(first)).toHaveLength(1);
   expect(hostPids(second)).toHaveLength(0);
 });
 
-test("a host running other flow-page code is reported, keeps serving, and gives way only to host stop", async () => {
+function copiedPlugin(): string {
+  const skills = join(root, `copy-${n++}`, "skills");
+  cpSync(join(SKILLS, "flow-page"), join(skills, "flow-page"), { recursive: true });
+  cpSync(join(SKILLS, "vstack-tmp"), join(skills, "vstack-tmp"), { recursive: true });
+  return skills;
+}
+
+test("a refreshed reader build makes the running host incompatible: it keeps serving its own bundle and gives way only to host stop", async () => {
   const w = world();
-  const old = join(root, `old-${n++}`, "skills");
-  cpSync(join(SKILLS, "flow-page"), join(old, "flow-page"), { recursive: true });
-  cpSync(join(SKILLS, "vstack-tmp"), join(old, "vstack-tmp"), { recursive: true });
-  writeFileSync(join(old, "flow-page", "templates", "flow-page.html"), `${readFileSync(join(old, "flow-page", "templates", "flow-page.html"), "utf8")}<!-- older -->\n`);
-  const opened = ok(run(["open", "--title", "Checkout limits", "--skill", "grill-me"], w, { session: "s-1", script: join(old, "flow-page", "scripts", "flow-page.ts") }));
+  const skills = copiedPlugin();
+  const script = join(skills, "flow-page", "scripts", "flow-page.ts");
+  const opened = ok(run(["open", "--title", "Checkout limits", "--skill", "grill-me"], w, { session: "s-1", script }));
   expect(opened.live.state).toBe("serving");
   const oldPids = hostPids(w);
   expect(oldPids).toHaveLength(1);
+  const asset = (await shellResources(await (await fetch(opened.live.url)).text())).find((path) => path.endsWith(".js"))!;
+  const served = async () => Buffer.from(await (await fetch(new URL(asset, opened.live.url))).arrayBuffer());
+  const original = await served();
+  writeFileSync(join(skills, "flow-page", "reader", asset.slice(1)), Buffer.concat([original, Buffer.from("\n// refreshed build\n")]));
+  const refreshed = readFileSync(join(skills, "flow-page", "reader", asset.slice(1)));
 
-  const r = run(["show", "--flow", opened.flow], w);
+  const r = run(["show", "--flow", opened.flow], w, { script });
   expect(r.code).toBe(0);
   expect(r.json.live.state).toBe("unavailable");
-  expect(typeof r.json.live.error).toBe("string");
-  expect((await page(opened.live.url)).status).toBe(200);
+  expect(r.json.live.error).toContain("incompatible");
+  expect((await served()).equals(original)).toBe(true);
   expect(hostPids(w)).toEqual(oldPids);
 
-  expect(ok(run(["host", "stop"], w)).host.state).toBe("stopped");
-  const again = ok(run(["show", "--flow", opened.flow], w));
+  expect(ok(run(["host", "stop"], w, { script })).host.state).toBe("stopped");
+  const again = ok(run(["show", "--flow", opened.flow], w, { script }));
   expect(again.live.url).toBe(opened.live.url);
   expect(hostPids(w)).toHaveLength(1);
   expect(hostPids(w)).not.toEqual(oldPids);
+  expect((await served()).equals(refreshed)).toBe(true);
 });
 
-test("VSTACK_FLOW_HOST=off keeps the static page only and starts no host", () => {
+test("an unbuilt reader starts no host: the receipt says why, and the content stays committed", async () => {
+  const w = world();
+  const skills = copiedPlugin();
+  rmSync(join(skills, "flow-page", "reader"), { recursive: true, force: true });
+  const script = join(skills, "flow-page", "scripts", "flow-page.ts");
+  const r = run(["open", "--title", "Checkout limits", "--skill", "grill-me"], w, { session: "s-1", script });
+  expect(r.code).toBe(0);
+  expect(r.json.live.state).toBe("unavailable");
+  expect(r.json.live.error).toContain("not built");
+  expect(r.json).not.toHaveProperty("page");
+  expect(hostPids(w)).toHaveLength(0);
+  const sent = run(["submit"], w, { session: "s-1", script, stdin: contribution(round(question("q"))) });
+  expect(sent.code).toBe(0);
+  expect(run(["show", "--flow", r.json.flow], w, { script }).json.stages[0].questions.map((q: any) => q.id)).toEqual([sent.json.refs.q]);
+  expect(hostPids(w)).toHaveLength(0);
+});
+
+test("VSTACK_FLOW_HOST=off starts no host and reports presentation off, not a file", () => {
   const w = world();
   const r = Bun.spawnSync(argv(["open", "--title", "Checkout limits", "--skill", "grill-me"], w, {}), {
     cwd: w.cwd,
@@ -503,8 +558,8 @@ test("VSTACK_FLOW_HOST=off keeps the static page only and starts no host", () =>
     stderr: "pipe",
   });
   const json = ok(parse(r.exitCode, r.stdout.toString(), r.stderr.toString()));
-  expect(json.live.state).toBe("off");
-  expect(revisionOf(readFileSync(json.page, "utf8"))).toBe(json.revision);
+  expect(json.live).toEqual({ state: "off" });
+  expect(json).not.toHaveProperty("page");
   expect(hostPids(w)).toHaveLength(0);
 });
 
@@ -555,7 +610,7 @@ test("the host serves a Flow only to its own read capability, from its own origi
     expect(r.body).not.toContain(w.home);
   }
 
-  const folder = dirname(a.page);
+  const folder = storedFolder(w.home, a.flow);
   writeFileSync(join(folder, "assets", "planted.txt"), "planted");
   expect((await fetch(new URL("assets/planted.txt", urlA))).status).toBe(404);
   writeFileSync(join(root, "outside.png"), "outside secret");
@@ -576,8 +631,8 @@ test("the host serves a Flow only to its own read capability, from its own origi
     }
   }
 
-  const html = (await page(a.live.url)).html;
-  const tokens = new Set([...html.matchAll(/[A-Za-z0-9_-]{16,}/g)].map((m) => m[0]));
+  const exposed = `${(await page(a.live.url)).html}${JSON.stringify(await contentOf(a.live.url))}${await (await fetch(new URL("observations", a.live.url))).text()}`;
+  const tokens = new Set([...exposed.matchAll(/[A-Za-z0-9_-]{16,}/g)].map((m) => m[0]));
   for (const t of tokens) {
     const r = await raw(w.port, ["POST /.host/stop HTTP/1.1", `Host: 127.0.0.1:${w.port}`, `Authorization: Bearer ${t}`, "Content-Length: 0"]);
     expect(r.status).not.toBe(200);

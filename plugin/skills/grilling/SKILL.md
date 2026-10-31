@@ -36,7 +36,7 @@ A note, Other text, or pushback that names an Assumed decision reopens it, whate
 ## Each round
 
 1. Submit the newly settled `assumed` items, then one `round` containing every other frontier decision. A round that settles its whole frontier has no `ask`: recompute the frontier.
-2. Present the receipt's live URL, or its static path and observed failure, before each `ask`.
+2. Present the receipt's live URL before each `ask`. When the host is not serving, say the reader is unavailable and give the observed error.
 3. Pass the receipt's `ask` payload to one `ask` call unchanged. The page carries descriptions, trade-offs, and context; code assigns Q numbers and option letters. Wait for the response before advancing dependent decisions.
 4. Normalize native ask output into flow-page's `response` contract as its "Every ask in a Flow" says. Submit an `answer` for each question, preserving the user's words separately from your interpretation:
    - Preserve cancellations, timeouts, empty and headless responses, including any automatic picks, as non-consent. Their decisions remain open.

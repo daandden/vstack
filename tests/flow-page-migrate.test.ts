@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { repoKey, scratchRoot } from "../plugin/skills/vstack-tmp/scripts/scratch.ts";
 import { ENV, git } from "./support/fixture.ts";
+import { storedFolder } from "./support/flow-store.ts";
 
 const FLOW_PAGE = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
 const FIXTURES = join(import.meta.dir, "fixtures", "flow-page-migrate");
@@ -128,13 +129,13 @@ test("an expired migrated Flow cannot be resurrected by its retained historical 
   const w = world();
   const source = legacyPage(w, "legacy-closed.jsonl");
   const migrated = ok(run(w, ["migrate", source]));
-  const folder = join(migrated.page, "..");
+  const folder = storedFolder(w.home, migrated.flow);
   const beforeSource = tree(source);
   const clean = Bun.spawnSync([process.execPath, CLEAN, "--home", w.home, "--now", "2030-01-01T00:00:00Z", "--delete", folder], { cwd: w.project, env: ENV, stdout: "pipe", stderr: "pipe" });
   expect(clean.stderr.toString()).toBe("");
   expect(clean.exitCode).toBe(0);
   expect(JSON.parse(clean.stdout.toString()).deleted).toEqual([join(w.scratch, "flow", migrated.flow)]);
-  expect(existsSync(migrated.page)).toBe(false);
+  expect(existsSync(folder)).toBe(false);
   const before = tree(w.scratch);
   for (const args of [["find", "spec:41"], ["migrate", source], ["show", "--flow", migrated.flow]]) {
     const refused = run(w, args);
@@ -147,7 +148,7 @@ test("an expired migrated Flow cannot be resurrected by its retained historical 
   expect(ok(run(w, ["open", "--title", "Explicit new work", "--skill", "research"])).flow).not.toBe(migrated.flow);
 });
 
-test("a structured Grilling page migrates into a Flow with its questions, answers, numbers, times, ids, sources, figures, Topics, and Results", () => {
+test("a structured Grilling page migrates into a Flow with its questions, answers, numbers, times, ids, sources, figures, Topics, and Results", async () => {
   const w = world();
   const folder = legacyPage(w);
   const before = tree(folder);
@@ -192,12 +193,24 @@ test("a structured Grilling page migrates into a Flow with its questions, answer
   const svg = snap.attachments.find((a: any) => a.used_by.includes("q-scope"));
   expect(svg.type).toBe("svg");
   expect(svg.revision).toBe(createHash("sha256").update(SVG).digest("hex"));
-  expect(readFileSync(join(migrated.page, "..", svg.file), "utf8")).toBe(SVG);
+  expect(readFileSync(join(storedFolder(w.home, migrated.flow), svg.file), "utf8")).toBe(SVG);
   expect(q["q-limit"].figures.length).toBe(1);
 
-  const ids = new Set([...readFileSync(migrated.page, "utf8").matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
+  const socket = Bun.listen({ hostname: "127.0.0.1", port: 0, socket: { data() {} } });
+  const port = socket.port;
+  socket.stop(true);
+  const host = (cmd: string[]) => JSON.parse(Bun.spawnSync([process.execPath, FLOW_PAGE, ...cmd, "--home", w.home], { cwd: w.project, env: { ...ENV, HOME: w.home, VSTACK_FLOW_PORT: String(port) }, stdout: "pipe", stderr: "pipe" }).stdout.toString());
+  const url: string = host(["show", "--flow", migrated.flow]).live.url;
+  const content = await (await fetch(new URL("content", url))).json();
+  host(["host", "stop"]);
+  const ids = new Set<string>();
+  const collect = (v: unknown): void => {
+    if (Array.isArray(v)) v.forEach(collect);
+    else if (v && typeof v === "object") for (const [k, x] of Object.entries(v)) ["id", "anchor"].includes(k) && typeof x === "string" ? ids.add(x) : collect(x);
+  };
+  collect(content);
   for (const anchor of ["q-q-scope", "q-q-open", "stage-grill", "stage-impl", "round-r1", "close-c1", "background-bg", "report-findings", "report-findings_f1", "report-tickets_t42", "topic-caps", "q-scope", "grill"])
-    expect(ids).toContain(anchor);
+    expect([anchor, ids.has(content.migrated.anchors[anchor] ?? anchor)]).toEqual([anchor, true]);
 
   for (const alias of ["spec:41", "ticket:42", "ticket:43", "branch:feat/limits", "run:41-run", "folder:41", "slug:checkout-limits"]) expect(ok(run(w, ["find", alias])).flow).toBe(migrated.flow);
 });
@@ -239,7 +252,6 @@ test("an in-flight migrated Stage takes new contributions without changing old Q
   const snap = ok(run(w, ["show", "--flow", migrated.flow]));
   expect(snap.reading.historical).toEqual(retained.historical);
   expect(snap.reading.publications).toEqual([{ id: updated.refs.next, kind: "question", stage: "impl", position: 1, publication: updated.revision }]);
-  expect(readFileSync(migrated.page, "utf8")).toContain('id="historical-content"');
   const impl = snap.stages.find((s: any) => s.id === "impl");
   expect(impl.questions.map((q: any) => [q.id, q.q])).toEqual([["q-open", 1], [updated.refs.next, 2]]);
   expect(impl.questions[0].answer.picks).toEqual(["B. Second"]);
@@ -247,9 +259,9 @@ test("an in-flight migrated Stage takes new contributions without changing old Q
   expect(new Set(snap.stages.flatMap((s: any) => s.questions).map((q: any) => q.id)).size).toBe(5);
   expect(tree(folder)).toEqual(before);
   writeFileSync(join(folder, "figures", "scope.svg"), SVG.replace("#cba6f7", "#a6e3a1"));
-  ok(run(w, ["render", "--flow", migrated.flow]));
+  ok(run(w, ["show", "--flow", migrated.flow]));
   const figure = snap.attachments.find((a: any) => a.used_by.includes("q-scope"));
-  expect(readFileSync(join(migrated.page, "..", figure.file), "utf8")).toBe(SVG);
+  expect(readFileSync(join(storedFolder(w.home, migrated.flow), figure.file), "utf8")).toBe(SVG);
   const nextStage = ok(run(w, ["open", "--flow", migrated.flow, "--skill", "research"]));
   expect(snap.stages.some((s: any) => s.id === nextStage.stage)).toBe(false);
 });

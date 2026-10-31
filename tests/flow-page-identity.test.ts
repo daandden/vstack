@@ -3,6 +3,7 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSyn
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { ENV, git } from "./support/fixture.ts";
+import { storedFolder } from "./support/flow-store.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
 const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-page-identity-")));
@@ -260,13 +261,14 @@ test("a spec alias and a folder relocation keep the Flow's identity, anchors, an
   const w = world();
   const { at, a, b } = twoTickets(w);
   const first = ok(run(["submit"], { ...at, session: "s-a", stdin: contribution(round(question("before"))) }));
+  const folder = storedFolder(w.home, a.flow);
   ok(run(["alias", "spec:267"], { ...at, session: "s-a" }));
   const before = ok(run(["show", "--flow", a.flow], at));
 
   const moved = ok(run(["move", "--to", "vstack-267"], { ...at, session: "s-a" }));
   expect(moved.flow).toBe(a.flow);
-  expect(existsSync(dirname(first.page))).toBe(false);
-  expect(dirname(moved.page)).not.toBe(dirname(first.page));
+  expect(existsSync(folder)).toBe(false);
+  expect(storedFolder(w.home, a.flow)).not.toBe(folder);
   for (const key of [a.flow, "spec:267", "folder:vstack-267", `folder:${a.flow}`]) expect(ok(run(["show", "--flow", key], at)).flow.id).toBe(a.flow);
 
   const after = ok(run(["show", "--flow", a.flow], at));
@@ -274,16 +276,16 @@ test("a spec alias and a folder relocation keep the Flow's identity, anchors, an
   const later = ok(run(["submit"], { ...at, session: "s-a", stdin: contribution(round(question("after"))) }));
   const fromB = ok(run(["submit"], { ...at, session: "s-b", stdin: contribution(round(question("other"))) }));
   expect([later.flow, fromB.flow]).toEqual([a.flow, a.flow]);
-  expect(later.page).toBe(moved.page);
-  const page = readFileSync(moved.page, "utf8");
-  for (const id of [first.refs.before, later.refs.after, fromB.refs.other, a.stage, b.stage]) expect(page).toContain(`id="${id}"`);
+  const snapshot = ok(run(["show", "--flow", a.flow], at));
+  const ids = [...snapshot.stages.map((s: any) => s.id), ...snapshot.stages.flatMap((s: any) => s.questions.map((q: any) => q.id))];
+  for (const id of [first.refs.before, later.refs.after, fromB.refs.other, a.stage, b.stage]) expect(ids).toContain(id);
 });
 
 test("a failed relocation leaves the old Flow usable", () => {
   const w = world();
   const { at, a } = twoTickets(w);
   const other = ok(run(["open", "--title", "Another flow", "--skill", "explain"], { ...at, session: "s-c" }));
-  const flowsDir = dirname(dirname(other.page));
+  const flowsDir = dirname(storedFolder(w.home, other.flow));
 
   const before = tree(w.home);
   const taken = run(["move", "--to", other.flow], { ...at, session: "s-a" });
@@ -302,42 +304,4 @@ test("a failed relocation leaves the old Flow usable", () => {
   } finally {
     chmodSync(flowsDir, 0o755);
   }
-});
-
-const pageRevision = (page: string) => readFileSync(page, "utf8").match(/name="flow-page-revision" content="(\d+)"/)?.[1];
-
-test("a failed page projection keeps the last good page, marks it stale, and the receipt says the content is committed", () => {
-  const w = world();
-  const { at, a } = twoTickets(w);
-  const good = ok(run(["submit"], { ...at, session: "s-a", stdin: contribution(round(question("kept"))) }));
-  expect(good.presentation).toMatchObject({ state: "current", revision: good.revision });
-  const folder = dirname(good.page);
-  const lastGood = readFileSync(good.page, "utf8");
-
-  chmodSync(folder, 0o555);
-  let failed: Run;
-  try {
-    failed = run(["submit"], { ...at, session: "s-a", stdin: contribution(round(question("committed"))) });
-    expect(failed.code).toBe(0);
-    expect(failed.stderr).not.toBe("");
-    expect(failed.json.revision).toBe(good.revision + 1);
-    expect(failed.json.refs.committed).toBeDefined();
-    expect(failed.json.presentation).toMatchObject({ state: "stale", revision: good.revision });
-    expect(readFileSync(good.page, "utf8")).toBe(lastGood);
-
-    const s = ok(run(["show", "--flow", a.flow], at));
-    expect(s.revision).toBe(failed.json.revision);
-    expect(s.presentation).toMatchObject({ state: "stale", revision: good.revision });
-    expect(s.stages[0].questions.map((q: any) => q.id)).toContain(failed.json.refs.committed);
-
-    const repeat = run(["submit"], { ...at, session: "s-a", stdin: contribution(round(question("committed"))) });
-    expect(repeat.code).toBe(0);
-    expect(repeat.json.refs).toEqual(failed.json.refs);
-  } finally {
-    chmodSync(folder, 0o755);
-  }
-  const fixed = ok(run(["render", "--flow", a.flow], at));
-  expect(fixed.presentation).toMatchObject({ state: "current", revision: failed.json.revision });
-  expect(pageRevision(good.page)).toBe(String(failed.json.revision));
-  expect(ok(run(["show", "--flow", a.flow], at)).stages[0].questions).toHaveLength(2);
 });

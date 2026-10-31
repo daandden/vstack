@@ -1,8 +1,9 @@
 import { afterAll, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { ENV } from "./support/fixture.ts";
+import { storedFolder } from "./support/flow-store.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin/skills/flow-page/scripts/flow-page.ts");
 const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-artifacts-")));
@@ -31,7 +32,8 @@ afterAll(() => {
 });
 const artifact = (extra: object) => ({ kind: "attachment", ref: "app", type: "artifact", caption: "Checkout prototype", origin: "fixture", launch: "bun app.ts", revision: "fixture-1", ...extra });
 const prototype = { kind: "result", ref: "prototype", shape: "prototype", title: "Checkout", artifact: "app" };
-const frameSrc = (html: string) => html.match(/<iframe\b[^>]*\bsrc="([^"]+)"/)?.[1]?.replaceAll("&amp;", "&");
+/** The host's reader interface: the Flow content with the host's artifact availability. */
+const contentOf = async (url: string) => (await (await fetch(new URL("content", url))).json()) as any;
 
 test("an HTML bundle is captured once and runs only on an isolated read-only viewer origin", async () => {
   const home = world();
@@ -39,8 +41,7 @@ test("an HTML bundle is captured once and runs only on an isolated read-only vie
   writeFileSync(join(root, "checkout.html"), '<!doctype html><button>Buy</button><script src="app.js"></script>');
   writeFileSync(join(root, "app.js"), 'document.querySelector("button").onclick = e => e.target.textContent = "Bought";');
   const sent = ok(submit(home, artifact({ runtime: "html", bundle: { entry: "index.html", files: [{ path: "index.html", source: "checkout.html" }, { path: "app.js", source: "app.js" }] } }), prototype));
-  const live = await (await fetch(opened.live.url)).text();
-  const viewer = frameSrc(live)!;
+  const viewer: string = (await contentOf(opened.live.url)).runtimes[sent.refs.app].url;
   expect(viewer).toBeDefined();
   expect(new URL(viewer).origin).not.toBe(new URL(opened.live.url).origin);
   const entry = await fetch(viewer);
@@ -49,23 +50,24 @@ test("an HTML bundle is captured once and runs only on an isolated read-only vie
   expect(await (await fetch(new URL("app.js", viewer))).text()).toBe(readFileSync(join(root, "app.js"), "utf8"));
   writeFileSync(join(root, "app.js"), "throw new Error('changed source');");
   expect(await (await fetch(new URL("app.js", viewer))).text()).not.toContain("changed source");
-  for (const path of ["unregistered.js", "../data/state.json", "/.host/hello", "/author", "/merge"]) {
+  for (const path of ["unregistered.js", "../data/state.json", "/.host/hello", "/author", "/merge", "/_flow-reader/missing.js"]) {
     expect((await fetch(new URL(path, viewer))).status).toBeGreaterThanOrEqual(400);
   }
   expect((await fetch(viewer, { method: "POST", body: "{}" })).status).toBe(405);
   expect((await fetch(opened.live.url, { headers: { Origin: new URL(viewer).origin } })).status).toBe(403);
+  expect((await fetch(new URL("content", opened.live.url), { headers: { Origin: new URL(viewer).origin } })).status).toBe(403);
   expect(new URL(viewer).pathname).not.toContain(new URL(opened.live.url).pathname.split("/").filter(Boolean).at(-1)!);
   expect((await fetch(new URL(".host/stop", new URL(viewer).origin), { method: "POST" })).status).not.toBe(200);
-  expect(readFileSync(sent.page, "utf8")).not.toContain(new URL(viewer).origin);
+  expect(await (await fetch(opened.live.url)).text()).not.toContain(new URL(viewer).origin);
   const stored = ok(run(home, ["show"])).attachments[0].bundle.files.find((f: any) => f.path === "app.js").file;
-  const captured = join(dirname(sent.page), "assets", stored);
+  const captured = join(storedFolder(home, sent.flow), "assets", stored);
   unlinkSync(captured);
   symlinkSync("/etc/hosts", captured);
   expect((await fetch(new URL("app.js", viewer))).status).toBe(404);
   ok(run(home, ["host", "stop"]));
 });
 
-test("a local app opens its real route only while available; missing backends and terminal artifacts keep launch steps in live and static pages", async () => {
+test("a local app opens its real route only while available; missing backends and terminal artifacts keep their launch steps", async () => {
   const home = world();
   const opened = ok(run(home, ["open", "--skill", "prototype", "--title", "Runtime availability"]));
   const app = Bun.serve({ hostname: "127.0.0.1", port: 0, fetch(req) {
@@ -74,22 +76,19 @@ test("a local app opens its real route only while available; missing backends an
   try {
     const url = `http://127.0.0.1:${app.port}/checkout`;
     const sent = ok(submit(home, artifact({ runtime: "local-app", url }), prototype));
-    const live = await (await fetch(opened.live.url)).text();
-    expect(frameSrc(live)).toBe(url);
-    expect(new URL(frameSrc(live)!).origin).not.toBe(new URL(opened.live.url).origin);
+    expect((await contentOf(opened.live.url)).runtimes[sent.refs.app]).toEqual({ url });
     app.stop(true);
-    expect(frameSrc(await (await fetch(opened.live.url)).text())).toBeUndefined();
-    expect(frameSrc(readFileSync(sent.page, "utf8"))).toBeUndefined();
+    const missing = (await contentOf(opened.live.url)).runtimes[sent.refs.app];
+    expect(missing.url).toBeUndefined();
+    expect(missing.reason).toContain("not reachable");
     const terminal = ok(submit(home, artifact({ runtime: "terminal", unavailable: "Requires an interactive terminal", launch: "bash wizard.sh" }), prototype));
     const shown = ok(run(home, ["show"]));
     expect(shown.attachments.at(-1).availability).toBe("unavailable");
     expect(shown.attachments.at(-1).launch).toBe("bash wizard.sh");
-    for (const html of [readFileSync(terminal.page, "utf8"), await (await fetch(opened.live.url)).text()]) {
-      expect(frameSrc(html)).toBeUndefined();
-      const states: string[] = [];
-      new HTMLRewriter().on('[role="status"]', { element(e) { states.push(e.getAttribute("data-availability")!); } }).transform(html);
-      expect(states).toEqual(["unavailable", "unavailable"]);
-    }
+    const model = await contentOf(opened.live.url);
+    expect(model.runtimes[terminal.refs.app]).toBeUndefined();
+    const offered = model.attachments.find((a: any) => a.id === terminal.refs.app);
+    expect(offered).toMatchObject({ availability: "unavailable", reason: "Requires an interactive terminal", launch: "bash wizard.sh" });
   } finally {
     app.stop(true);
     ok(run(home, ["host", "stop"]));
@@ -102,7 +101,6 @@ test("unsafe bundles, nonlocal app routes, and non-artifact prototypes are refus
   writeFileSync(join(root, "fixture.html"), "<!doctype html><p>Fixture</p>");
   symlinkSync("/etc/hosts", join(root, "escape.html"));
   const before = ok(run(home, ["show"]));
-  const beforePage = readFileSync(before.page, "utf8");
   const files = [{ path: "index.html", source: "fixture.html" }];
   for (const extra of [
     { runtime: "html", bundle: { entry: "../index.html", files } },
@@ -115,8 +113,7 @@ test("unsafe bundles, nonlocal app routes, and non-artifact prototypes are refus
     { runtime: "local-app", url: "http://user:password@127.0.0.1:1234/" },
   ]) {
     expect(submit(home, artifact(extra), prototype).code).toBe(1);
-    expect(ok(run(home, ["show"])).revision).toBe(before.revision);
-    expect(readFileSync(before.page, "utf8")).toBe(beforePage);
+    expect(ok(run(home, ["show"]))).toEqual(before);
   }
   expect(submit(home, { kind: "attachment", ref: "app", type: "file", caption: "Not runnable", origin: "fixture", path: "fixture.html" }, prototype).code).toBe(1);
   expect(ok(run(home, ["show"])).attachments).toHaveLength(0);
@@ -142,22 +139,17 @@ test("captured figures and option previews survive source changes and serve only
   expect(q.options[0].preview).toEqual({ id: `${sent.refs.choose}-option-1-preview`, attachment: sent.refs.pixel, kind: "option-preview" });
   expect(snapshot.stages[0].background_figures).toEqual([{ id: "background-1-figure-1", attachment: sent.refs.diagram }]);
   writeFileSync(join(root, "choice.svg"), "<svg>changed</svg>");
-  const live = await (await fetch(opened.live.url)).text();
-  for (const html of [readFileSync(sent.page, "utf8"), live]) {
-    const images: { src: string | null; alt: string | null }[] = [];
-    new HTMLRewriter().on(".visual img", { element(e) { images.push({ src: e.getAttribute("src"), alt: e.getAttribute("alt") }); } }).transform(html);
-    expect(images.map((i) => i.alt)).toEqual(["Green checkout layout", "Green checkout layout", "Compact checkout preview"]);
-    if (html === live) {
-      const captured = await fetch(new URL(images[0].src!, opened.live.url));
-      expect(captured.status).toBe(200);
-      expect(captured.headers.get("content-type")).toContain("image/svg+xml");
-      expect(await captured.text()).toBe(svg);
-      expect(Buffer.from(await (await fetch(new URL(images[2].src!, opened.live.url))).arrayBuffer())).toEqual(png);
-      expect((await fetch(new URL("assets/unregistered.svg", opened.live.url))).status).toBe(404);
-    }
-  }
+  const model = await contentOf(opened.live.url);
+  const fileOf = (id: string) => model.attachments.find((a: any) => a.id === id);
+  const question = model.questions.find((x: any) => x.id === sent.refs.choose);
+  expect([question.figures[0].attachment, question.options[0].preview.attachment].map((id: string) => fileOf(id).caption)).toEqual(["Green checkout layout", "Compact checkout preview"]);
+  const captured = await fetch(new URL(`assets/${fileOf(sent.refs.diagram).file}`, opened.live.url));
+  expect(captured.status).toBe(200);
+  expect(captured.headers.get("content-type")).toContain("image/svg+xml");
+  expect(await captured.text()).toBe(svg);
+  expect(Buffer.from(await (await fetch(new URL(`assets/${fileOf(sent.refs.pixel).file}`, opened.live.url))).arrayBuffer())).toEqual(png);
+  expect((await fetch(new URL("assets/unregistered.svg", opened.live.url))).status).toBe(404);
   const before = ok(run(home, ["show"]));
-  const beforePage = readFileSync(before.page, "utf8");
   for (const figure of [{ attachment: "missing" }, { html: "<b>raw</b>" }, { attachment: sent.refs.diagram, css: "body{}" }]) {
     expect(submit(home, { kind: "round", questions: [{ title: "Unsafe?", description: "Must not commit.", needs: [{ need: "Locate the current boundary.", kind: "context-diagram" }], figures: [{ ...figure, kind: "context-diagram" }], options: [{ label: "No", does: "Refuses", gains: ["Safety"], costs: ["None"] }] }] }).code).toBe(1);
     expect(ok(run(home, ["show"])).revision).toBe(before.revision);
@@ -169,8 +161,7 @@ test("captured figures and option previews survive source changes and serve only
     const refused = submit(home, attachment, { kind: "round", questions: [{ title: "Preview?", description: "Needs captured image bytes.", needs: [{ need: "See the proposed option.", kind: "option-preview" }], options: [{ label: "No", does: "Refuses", gains: ["Safety"], costs: ["None"], preview: { attachment: "invalid", kind: "option-preview" } }] }] });
     expect(refused.code).toBe(1);
     expect(refused.stderr).toContain("must be a captured image or SVG figure");
-    expect(ok(run(home, ["show"])).revision).toBe(before.revision);
-    expect(readFileSync(before.page, "utf8")).toBe(beforePage);
+    expect(ok(run(home, ["show"]))).toEqual(before);
   }
   ok(run(home, ["host", "stop"]));
 });

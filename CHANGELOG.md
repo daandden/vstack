@@ -4,8 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [9.0.0] - 2026-10-31
+
 - Add the Flow first-publication authoring evaluation set for #311. Keep realistic subjects separate from the original Q7/Q8 negatives and inadequate-diagram controls, document isolated headless reruns and rendered evidence capture, and check frozen record integrity without treating local kind coverage as visual adequacy.
 - The current Flow reader opens on one durable first-publication sequence across Stages (#313). Serialized contributions preserve item and question order without relying on clocks. Refusal allocates no positions and replay keeps the committed identities and positions. Answers and Result revisions stay in place with accessible evidence history. Existing unprovable order stays behind an explicit retained-order historical boundary. Stage context, actionable-question navigation, Topics, and deep links remain available. The host exposes the same content order at its read-scoped `content` endpoint. This does not start the Nuxt migration.
+- Breaking: the Local Flow host serves the Flow page as a production Nuxt reader built with Vite+ and shipped prebuilt under `skills/flow-page/reader/` (#314, spec #309). The page is one compact document, an outline then the reading sequence, then the Overview and Topic notes, in Catppuccin Mocha dark and Catppuccin Latte light, following the system preference with a visible theme control. The bespoke page renderer, its HTML template, the static `index.html` export, and the `render` command are removed, and receipts no longer carry `page` or `presentation`. `live` is the one presentation status: when the host cannot serve, the receipt, stderr, and the extension say the reader is unavailable and the content is stored, and the open reader keeps its content while it reconnects. A running host serves only the reader bytes it loaded at startup and reports itself incompatible after a plugin refresh until `host stop`. `h` and `l` now move between reading blocks. CI rebuilds the reader and fails when the committed build is stale, and check-register lints the reader's stylesheet with the page lint.
 
 ## [8.0.0] - 2026-10-29
 

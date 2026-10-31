@@ -1,4 +1,5 @@
-# Runs the tests and check-register on every push and pull request (spec #63 "Register check").
+# Runs the tests, the Flow reader freshness check, and check-register on every push and pull request (spec #63
+# "Register check", spec #309).
 name: check-register
 
 on:
@@ -23,6 +24,23 @@ jobs:
 
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      # Nuxt's CLI runs on Node; the reader it builds is served by Bun.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.15.0
+
+      # The shipped reader under plugin/skills/flow-page/reader/ must be the build of reader/ in this commit.
+      - name: Rebuild the Flow reader
+        run: ./node_modules/.bin/vp run reader:build
+
+      - name: Check the committed Flow reader is fresh
+        run: |
+          git add --intent-to-add plugin/skills/flow-page/reader
+          git diff --exit-code --stat -- plugin/skills/flow-page/reader || {
+            echo "plugin/skills/flow-page/reader is stale: run vp run reader:build and commit its output" >&2
+            exit 1
+          }
 
       - name: Test
         run: bun run test

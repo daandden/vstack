@@ -28,5 +28,3 @@ An `artifact` attachment always has `launch`, the real commands or steps a reade
 
 A prototype Result names the attachment with `artifact: "<ref or id>"`. The live host runs captured HTML on a separate loopback origin with an artifact-only read capability. Its sandbox permits scripts but blocks top navigation, forms, popups, and access to the parent Flow. Bundle network access stays on the viewer origin. Local app routes run in a sandbox on their own origin, never the Flow host's origin. Neither origin has an authoring or workflow endpoint.
 
-The static export always shows launch instructions and an explicit unavailable state for runnable artifacts, even if a local app happened to be running when the Result was submitted. It embeds no live runtime or viewer URL. Declarative demos remain usable offline.
-

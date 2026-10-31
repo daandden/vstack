@@ -662,6 +662,14 @@ describe("page templates", () => {
     expect(failuresOf(r)).toEqual(["page-css plugin/skills/shared/templates/page.css"]);
   });
 
+  test("the Flow reader's stylesheets are linted, and its components are not", async () => {
+    const r = await runSpec((s) => {
+      s.files["reader/app/assets/reader.css"] = ".box {\n  left: 0;\n}\n";
+      s.files["reader/app/components/Box.vue"] = PAGE_TEMPLATE.violation;
+    });
+    expect(failuresOf(r)).toEqual(["page-css reader/app/assets/reader.css"]);
+  });
+
   test("exit 2 when no Upstream names a page lint and templates exist", async () => {
     const spec = clone(passingSpec(up));
     delete spec.pins.upstreams.beta.page_lint;

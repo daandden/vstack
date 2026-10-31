@@ -1,11 +1,11 @@
 // The Flow page authoring interface. A caller opens or joins a Stage once, then submits typed contributions to it;
-// the script assigns ids, numbers, timestamps, labels, and links, commits them, and publishes the static page.
+// the script assigns ids, numbers, timestamps, labels, and links and commits them. The Local Flow host presents them.
 //
 // <flow> is a Flow id or a qualified alias such as spec:267. Every command also takes --session <id> (default:
 // $PI_SESSION_ID), --agent <id> (default: main), and --home <dir> (default: the user's home). A binding belongs to one
 // session and agent in one project. Without one, submit needs --flow and --stage. Stdout is one JSON receipt.
 // Exit 1 refuses without committing Flow content. Host lifecycle metadata may be written. Exit 2 is a usage error.
-// A receipt whose `presentation` is stale means committed content is newer than the published page.
+// A receipt's `live` says whether the host presents the Flow; committed content never depends on it.
 
 import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmdirSync } from "node:fs";
 import { homedir } from "node:os";
@@ -13,14 +13,13 @@ import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
 import { canonicalFile, capture, type Root } from "./assets.ts";
 import { addAliases, aliasesOf, closeFlow, contribute, newFlow, nowIso, openStage, parseAlias, reopenFlow, SLUG, slugOf, snapshot, stageOf, view, type Io, type State } from "./model.ts";
-import { RENDERER, render } from "./render.ts";
-import { assetsDir, createFlowFolder, flowFolders, flowsDir, folderOfId, migrationIdentity, pagePath, pageRevision, readBinding, readState, registerFolder, registerMigration, registeredFolder, statePath, withLock, writeAtomic, writeBinding } from "./store.ts";
+import { assetsDir, createFlowFolder, flowFolders, flowsDir, folderOfId, migrationIdentity, readBinding, readState, registerFolder, registerMigration, registeredFolder, statePath, withLock, writeAtomic, writeBinding } from "./store.ts";
 import { connect, flowUrl, hostCommand } from "./live.ts";
 import { historicalFlows, migrateHistorical, parseHistorical } from "./migrate.ts";
 import { Refusal } from "./fields.ts";
 import { registerObservation } from "./observations.ts";
 
-const COMMANDS = ["open", "bind", "submit", "alias", "close", "reopen", "find", "move", "show", "bound", "render", "host", "migrate"];
+const COMMANDS = ["open", "bind", "submit", "alias", "close", "reopen", "find", "move", "show", "bound", "host", "migrate"];
 
 function usage(message: string): never {
   process.stderr.write(`flow-page.ts: ${message}
@@ -33,7 +32,6 @@ usage: bun flow-page.ts open --skill <name> (--title <text> [--slug <slug>] | --
        bun flow-page.ts find <kind>:<value>
        bun flow-page.ts move [--flow <flow>] --to <folder-key>
        bun flow-page.ts show [--flow <flow>]
-       bun flow-page.ts render --flow <flow>
        bun flow-page.ts bound
        bun flow-page.ts host status|stop
        bun flow-page.ts migrate <grilling-folder>
@@ -61,7 +59,7 @@ const [command, ...rest] = positionals;
 if (!COMMANDS.includes(command ?? "")) usage(`give a command: ${COMMANDS.join(", ")}`);
 const allowed: Record<string, string[]> = {
   open: ["skill", "title", "slug", "flow", "parent", "ticket"], bind: ["flow", "stage"], submit: ["flow", "stage"], alias: ["flow"], close: ["flow"], reopen: ["skill", "flow", "parent", "ticket"],
-  find: [], move: ["flow", "to"], show: ["flow"], bound: [], render: ["flow"], host: [], migrate: [],
+  find: [], move: ["flow", "to"], show: ["flow"], bound: [], host: [], migrate: [],
 };
 for (const k of Object.keys(opt)) if (!["session", "agent", "home", ...allowed[command]].includes(k)) usage(`${command} takes no --${k}`);
 const positional: Record<string, [number, number, string]> = {
@@ -133,7 +131,7 @@ async function locked<T>(key: string, fn: (folder: string, s: State) => T): Prom
         const s = readState(at.folder);
         if (s?.flow.id !== at.id) return undefined;
         const value = fn(at.folder, s);
-        if (command !== "render") observeAuthoring(folderOfId(dir, at.id)!, s, (value as { stage?: string }).stage);
+        observeAuthoring(folderOfId(dir, at.id)!, s, (value as { stage?: string }).stage);
         return { value };
       });
     } catch (e) {
@@ -143,25 +141,6 @@ async function locked<T>(key: string, fn: (folder: string, s: State) => T): Prom
     at = locate(at.id);
   }
   return refuse(`Flow ${at.id} kept moving while this command waited; run it again`);
-}
-
-type Presentation = { state: "current" | "stale"; revision?: number; error?: string };
-
-function presentationOf(folder: string, s: State): Presentation {
-  const shown = pageRevision(folder);
-  return shown === s.revision ? { state: "current", revision: shown } : { state: "stale", ...(shown !== undefined ? { revision: shown } : {}) };
-}
-
-function project(folder: string, s: State): Presentation {
-  try {
-    writeAtomic(pagePath(folder), render(view(s)));
-    return { state: "current", revision: s.revision };
-  } catch (e) {
-    const error = (e as Error).message;
-    const p = { ...presentationOf(folder, s), error };
-    process.stderr.write(`flow-page.ts: revision ${s.revision} is committed, but the page could not be published (${error}); it still shows ${p.revision === undefined ? "no revision" : `revision ${p.revision}`}. Run render to publish it again; do not resubmit.\n`);
-    return p;
-  }
 }
 
 function roots(): Root[] {
@@ -186,7 +165,7 @@ const io: Io = {
   },
 };
 
-function publish(folder: string, s: State): Presentation {
+function publish(folder: string, s: State): void {
   for (const [file, bytes] of captured) {
     const path = join(assetsDir(folder), file);
     if (existsSync(path)) continue;
@@ -194,7 +173,6 @@ function publish(folder: string, s: State): Presentation {
     writeAtomic(path, bytes);
   }
   writeAtomic(statePath(folder), `${JSON.stringify(s)}\n`);
-  return project(folder, s);
 }
 
 function binding() {
@@ -245,15 +223,15 @@ async function main(): Promise<object> {
           if (s?.migrated?.from !== from) continue;
           if (s.migrated.sha256 !== historical.sha256) refuse(`migrate: ${from} changed after migration to ${s.flow.id}; continue authoring that Flow instead of overwriting it`);
           registerMigration(dir, { source: from, flow: s.flow.id, sha256: historical.sha256 });
-          return { flow: s.flow.id, revision: s.revision, page: pagePath(folder), presentation: presentationOf(folder, s), repeated: true };
+          return { flow: s.flow.id, revision: s.revision, repeated: true };
         }
         const { id, folder } = createFlowFolder(dir, historical.slug);
         migrated.flow.id = id;
         migrated.aliases[0] = `folder:${id}`;
-        const presentation = publish(folder, migrated);
+        publish(folder, migrated);
         registerMigration(dir, { source: from, flow: id, sha256: historical.sha256 });
         observeAuthoring(folder, migrated);
-        return { flow: id, revision: migrated.revision, page: pagePath(folder), presentation };
+        return { flow: id, revision: migrated.revision };
       });
     }
     case "open": {
@@ -262,8 +240,8 @@ async function main(): Promise<object> {
         if (opt.title !== undefined || opt.slug !== undefined) usage("--title and --slug start a new Flow; leave them out with --flow");
         return locked(opt.flow as string, (folder, s) => {
           const stage = openStage(s, opt.skill as string, opt.ticket as string | undefined, time, opt.parent as string | undefined);
-          const presentation = publish(folder, s);
-          return { flow: s.flow.id, stage: stage.id, revision: s.revision, page: pagePath(folder), presentation, bound: bind(s.flow.id, stage.id) };
+          publish(folder, s);
+          return { flow: s.flow.id, stage: stage.id, revision: s.revision, bound: bind(s.flow.id, stage.id) };
         });
       }
       if (opt.title === undefined) usage("open needs --title for a new Flow, or --flow to add a Stage to an existing one");
@@ -276,19 +254,19 @@ async function main(): Promise<object> {
       return withLock(folder, () => {
         const s = newFlow(id, slug, opt.title as string, time);
         const stage = openStage(s, opt.skill as string, opt.ticket as string | undefined, time);
-        const presentation = publish(folder, s);
+        publish(folder, s);
         observeAuthoring(folder, s, stage.id);
-        return { flow: id, stage: stage.id, revision: s.revision, page: pagePath(folder), presentation, bound: bind(id, stage.id) };
+        return { flow: id, stage: stage.id, revision: s.revision, bound: bind(id, stage.id) };
       });
     }
     case "bind": {
       if (opt.flow === undefined || opt.stage === undefined) usage("bind needs --flow and --stage");
       if (!session) refuse("bind needs a session: run from an omp session (which sets PI_SESSION_ID) or give --session");
-      return locked(opt.flow as string, (folder, s) => {
+      return locked(opt.flow as string, (_folder, s) => {
         const stage = stageOf(s, opt.stage as string, "bind");
         if (stage.state === "finished") refuse(`Stage ${stage.id} is finished; open a new Stage to continue the Flow`);
         bind(s.flow.id, stage.id);
-        return { flow: s.flow.id, stage: stage.id, revision: s.revision, page: pagePath(folder), bound: true };
+        return { flow: s.flow.id, stage: stage.id, revision: s.revision, bound: true };
       });
     }
     case "submit": {
@@ -302,30 +280,31 @@ async function main(): Promise<object> {
       }
       return locked(t.flow, (folder, s) => {
         const { revision, repeated, ...receipt } = contribute(s, t.stage, input, time, io);
-        const presentation = repeated ? presentationOf(folder, s) : publish(folder, s);
-        return { flow: s.flow.id, stage: t.stage, revision, page: pagePath(folder), presentation, ...(repeated ? { repeated } : {}), ...receipt };
+        if (!repeated) publish(folder, s);
+        return { flow: s.flow.id, stage: t.stage, revision, ...(repeated ? { repeated } : {}), ...receipt };
       });
     }
     case "alias": {
       const aliases = rest.map(parseAlias);
       return locked(flowKey(), (folder, s) => {
         const added = addAliases(s, aliases);
-        const presentation = added.length ? publish(folder, s) : presentationOf(folder, s);
-        return { flow: s.flow.id, revision: s.revision, added, aliases: aliasesOf(s), page: pagePath(folder), presentation };
+        if (added.length) publish(folder, s);
+        return { flow: s.flow.id, revision: s.revision, added, aliases: aliasesOf(s) };
       });
     }
     case "close": {
       return locked(flowKey(), (folder, s) => {
         closeFlow(s, time);
-        return { flow: s.flow.id, revision: s.revision, closed: time, page: pagePath(folder), presentation: publish(folder, s) };
+        publish(folder, s);
+        return { flow: s.flow.id, revision: s.revision, closed: time };
       });
     }
     case "reopen": {
       if (opt.skill === undefined) usage("reopen needs --skill, the skill whose run the new Stage is");
       return locked(flowKey(), (folder, s) => {
         const stage = reopenFlow(s, opt.skill as string, opt.ticket as string | undefined, time, opt.parent as string | undefined);
-        const presentation = publish(folder, s);
-        return { flow: s.flow.id, stage: stage.id, revision: s.revision, page: pagePath(folder), presentation, bound: bind(s.flow.id, stage.id) };
+        publish(folder, s);
+        return { flow: s.flow.id, stage: stage.id, revision: s.revision, bound: bind(s.flow.id, stage.id) };
       });
     }
     case "find": {
@@ -335,7 +314,7 @@ async function main(): Promise<object> {
       }
       const { folder } = locate(rest[0]);
       const s = readState(folder)!;
-      return { flow: s.flow.id, revision: s.revision, aliases: aliasesOf(s), page: pagePath(folder), presentation: presentationOf(folder, s) };
+      return { flow: s.flow.id, revision: s.revision, aliases: aliasesOf(s) };
     }
     case "move": {
       const to = opt.to as string | undefined;
@@ -365,7 +344,7 @@ async function main(): Promise<object> {
           registerFolder(dir, s.flow.id, from);
           refuse(`could not move Flow ${s.flow.id} to ${to} (${(e as Error).message}); it stays in ${from}`);
         }
-        return { flow: s.flow.id, revision: s.revision, moved_from: from, page: pagePath(dest), presentation: project(dest, s) };
+        return { flow: s.flow.id, revision: s.revision, moved_from: from };
       });
     }
     case "bound": {
@@ -374,16 +353,12 @@ async function main(): Promise<object> {
       const { folder } = locate(b.flow);
       const s = readState(folder)!;
       stageOf(s, b.stage, "bound");
-      return { binding: b, flow: s.flow.id, stage: b.stage, revision: s.revision, page: pagePath(folder), presentation: presentationOf(folder, s) };
-    }
-    case "show": {
-      const { folder } = locate(flowKey());
-      const s = readState(folder)!;
-      return { ...snapshot(view(s), pagePath(folder), RENDERER), aliases: aliasesOf(s), presentation: presentationOf(folder, s) };
+      return { binding: b, flow: s.flow.id, stage: b.stage, revision: s.revision };
     }
     default: {
-      if (opt.flow === undefined) usage("render needs --flow");
-      return locked(opt.flow as string, (folder, s) => ({ flow: s.flow.id, revision: s.revision, page: pagePath(folder), presentation: project(folder, s) }));
+      const { folder } = locate(flowKey());
+      const s = readState(folder)!;
+      return { ...snapshot(view(s)), aliases: aliasesOf(s) };
     }
   }
 }
@@ -391,14 +366,14 @@ async function main(): Promise<object> {
 const unbound = command === "bound" && (!session || !readBinding(dir, session, agent));
 const live = command === "host" || unbound ? undefined : await connect(home);
 try {
-  const result = await main() as { flow?: string | { id: string }; page?: string };
-  if (live && result.page && result.flow) {
+  const result = await main() as { flow?: string | { id: string } };
+  if (live && result.flow) {
     const id = typeof result.flow === "string" ? result.flow : result.flow.id;
     const presentation = live.state === "serving"
       ? { state: "serving", url: flowUrl(live.port, live.secret.read, basename(dirname(dir)), id) }
       : live;
     Object.assign(result, { live: presentation });
-    if (live.state === "unavailable") process.stderr.write(`flow-page.ts: live serving unavailable (${live.error}). Use the static page: ${result.page}\n`);
+    if (live.state === "unavailable") process.stderr.write(`flow-page.ts: the Flow reader needs the Local Flow host, which is not serving (${live.error}). The Flow content is stored; do not resubmit it. Fix the host, then run bound or show for the reader URL.\n`);
   }
   process.stdout.write(`${JSON.stringify(result)}\n`);
 } catch (e) {

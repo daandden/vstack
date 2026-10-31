@@ -3,10 +3,9 @@ import { lstatSync, realpathSync, rmSync } from "node:fs";
 import { extname, join, sep } from "node:path";
 import { parseArgs } from "node:util";
 import { scratchRoot } from "../../vstack-tmp/scripts/scratch.ts";
-import { attest, capability, originOf, record, recordPath, same, secrets, version, type HostRecord } from "./live.ts";
+import { attest, capability, originOf, readerBundle, record, recordPath, same, secrets, version, type HostRecord, type Runtimes } from "./live.ts";
 import { SLUG, view, type State } from "./model.ts";
 import { learning } from "./learning.ts";
-import { render, type Runtimes } from "./render.ts";
 import { assetsDir, folderOfId, readState, writeAtomic } from "./store.ts";
 import { observations, observationVersion, observing, type Observations } from "./observations.ts";
 
@@ -17,7 +16,10 @@ const idle = Number(values.idle) * 1000;
 if (!home || !Number.isInteger(port) || !Number.isFinite(idle) || idle <= 0) throw new Error("host needs --home, --port, and positive --idle");
 const secret = secrets(home);
 const instance = randomBytes(16).toString("hex");
-const hostVersion = version();
+// The host serves the reader bytes it loaded at startup and advertises their version, so a later build on disk is
+// never served by this process: the next authoring command reports the host as incompatible instead.
+const reader = readerBundle();
+const hostVersion = version(reader);
 const origin = originOf(port);
 let active = 0;
 let last = Date.now();
@@ -155,6 +157,13 @@ async function route(req: Request): Promise<Response> {
     }
     return missing();
   }
+  if (url.pathname.startsWith("/_flow-reader/")) {
+    // Shared reader code, never Flow data: the capability-scoped shell and its endpoints carry every Flow.
+    const bytes = reader.get(url.pathname.slice(1));
+    if (!bytes) return missing();
+    if (req.method !== "GET" && req.method !== "HEAD") return response("Read-only reader.", 405, { Allow: "GET, HEAD" });
+    return response(req.method === "HEAD" ? null : bytes, 200, { "Content-Type": executableMime[extname(url.pathname).toLowerCase()] ?? "application/octet-stream" });
+  }
   if (!["GET", "HEAD", "POST"].includes(req.method)) return response("Unsupported method.", 405);
   const m = url.pathname.match(/^\/f\/([^/]+)\/([^/]+)\/([a-f0-9]{64})(\/.*)?$/);
   if (!m) return missing();
@@ -180,13 +189,13 @@ async function route(req: Request): Promise<Response> {
     return response(JSON.stringify(result.body), result.status, { "Content-Type": "application/json" });
   }
   if (req.method !== "GET" && req.method !== "HEAD") return response("Read-only host.", 405, { Allow: "GET, HEAD" });
-  if (m[4] === "/") return response(req.method === "HEAD" ? null : render(view(s), await runtimes(s, key), observations(folder, key, s)), 200, {
+  if (m[4] === "/") return response(req.method === "HEAD" ? null : reader.get("index.html")!, 200, {
     "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": csp,
     "Set-Cookie": `flow_learning=${progressToken}; Path=${url.pathname}; HttpOnly; SameSite=Strict; Max-Age=31536000`,
   });
   if (m[4] === "/content") {
     const content = view(s);
-    return response(req.method === "HEAD" ? null : JSON.stringify({ ...content, questions: [...content.questions.values()] }), 200, { "Content-Type": "application/json" });
+    return response(req.method === "HEAD" ? null : JSON.stringify({ ...content, questions: [...content.questions.values()], runtimes: await runtimes(s, key) }), 200, { "Content-Type": "application/json" });
   }
   if (m[4] === "/observations") return response(req.method === "HEAD" ? null : JSON.stringify(observations(folder, key, s)), 200, { "Content-Type": "application/json" });
   if (m[4] === "/events" && req.method === "GET") return eventStream(req, () => {
@@ -228,7 +237,7 @@ try {
     async fetch(req) {
       active++;
       try { return await route(req); }
-      catch (e) { return (e as NodeJS.ErrnoException).code === "ENOENT" ? missing() : response("Flow presentation is unavailable; use the static page.", 500); }
+      catch (e) { return (e as NodeJS.ErrnoException).code === "ENOENT" ? missing() : response("Flow presentation is unavailable. The committed Flow content is unchanged.", 500); }
       finally { active--; last = Date.now(); }
     },
   });

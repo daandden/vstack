@@ -32,7 +32,7 @@ Record real questions through the common ask protocol, never through a prototype
 ## Rules that apply to all three
 
 1. **Throwaway from day one, and clearly marked as such.** Locate the prototype code close to where it will actually be used (next to the module or page it's prototyping for) so context is obvious, but name it so a casual reader can see it's a prototype, not production. For throwaway UI routes, obey whatever routing convention the project already uses; don't invent a new top-level structure. In Private mode, the location is different: see [Private mode](#private-mode).
-2. **Trivial to run.** A declarative logic demo runs on the Flow page, including its static export. A runnable UI, HTML demo, or behavior script keeps one real launch command. The page host never starts the app for you.
+2. **Trivial to run.** A declarative logic demo runs on the Flow page. A runnable UI, HTML demo, or behavior script keeps one real launch command. The page host never starts the app for you.
 3. **No application persistence by default.** Use in-memory state. Flow demos may resume browser-local exploration, which is not workflow history. If the question explicitly involves a database, use a scratch DB or local file clearly marked "PROTOTYPE, wipe me".
 4. **Skip the polish.** No tests, no error handling beyond what makes the prototype _runnable_, no abstractions. The point is to learn something fast.
 5. **Surface the state.** After every action (logic) or on every variant switch (UI), print or render the full relevant state so the user can see what changed.

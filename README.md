@@ -17,7 +17,7 @@ You need omp, Bun, and git with working HTTPS credentials for github.com (the re
 
 1. Clone the repo: `git clone https://github.com/daandden/vstack.git`
 2. Install the clone's pinned dependencies: `bun install --frozen-lockfile`.
-3. Link its plugin directory: `omp plugin link <clone>/plugin`.
+3. Link its plugin directory: `omp plugin link <clone>/plugin`. The Flow reader ships prebuilt under `plugin/skills/flow-page/reader/`, so no build step runs at install.
 4. Start a new omp session.
 5. Run `/skill:setup-vstack` to configure the machine and project. A project previously set up for Matt Pocock's skills offers Migration first, then continues setup. Migration changes only this repo and its shared private store, never global skills. The Code host section writes `code-host.md`, using GitHub/GitLab CLI templates or the configured MCP server or CLI for another host. It records the default End state for implement, implement-spec, and hillclimb. A re-run asks only missing config sections and a missing default End state.
 
@@ -25,15 +25,15 @@ The CI section writes `ci.md` independently of the Code host. For GitHub Actions
 
 The machine section reports `ratchet.enabled`. Disabled Ratchet is an optional-capability warning, not a machine failure. Set it enables Ratchet globally only after approval. Leave it preserves configuration. Setup preserves unrelated settings and rechecks after a write. An unavailable setting gets an omp 18.4.5-or-later upgrade remedy, not a setter.
 
-To refresh, run `git pull`, then `bun install --frozen-lockfile` in the clone, and start a new omp session. The link points at the working tree.
+To refresh, run `git pull`, then `bun install --frozen-lockfile` in the clone, and start a new omp session. The link points at the working tree. A Local Flow host that is still running keeps serving the reader it loaded at startup and reports itself incompatible with the refreshed plugin. Run `bun plugin/skills/flow-page/scripts/flow-page.ts host stop` in the clone once, and the next Flow command starts a host with the new reader.
 
 ## Flow page
 
 A Flow is related work on one change, tracker item, or topic, across skill runs and omp sessions. Its Flow page opens on one reading sequence across Stages, with an Overview and a Topics index. New content keeps its first successful publication position, including the submitted item order and question order. Answers and Result revisions update their original blocks, with earlier Result evidence in history. Content without provable publication order stays behind a retained-order historical boundary. Skills publish typed content through the `flow-page` helper, including questions, answers, Result blocks, captured attachments, and workflow progress. Code owns ids, numbering, links, layout, and rendering, so no skill writes page HTML.
 
-The helper writes a static page under Scratch `flow/` and starts the Local Flow host on demand. The normal host is one loopback server per user. An explicit `--home` selects an isolated host namespace. The host serves live pages, runs captured prototypes on a separate origin, and observes git, the Code host, and CI read-only. The static page stays readable when the host stops. A refusal commits no Flow content, although on-demand startup may write host lifecycle metadata.
+The helper stores each Flow under Scratch `flow/` and starts the Local Flow host on demand. The normal host is one loopback server per user. An explicit `--home` selects an isolated host namespace. The host serves the Flow page as a built Nuxt reader, runs captured prototypes on a separate origin, and observes git, the Code host, and CI read-only. The page needs the host: with the host stopped or unavailable, the content stays committed and no static file stands in for the reader. A refusal commits no Flow content, although on-demand startup may write host lifecycle metadata.
 
-`n` visits actionable questions in newest in-progress Stage order, `t` opens the Stage tree, and `j` and `k` select reading stops. Live refresh preserves the selected stop by stable id, including on short Stages. The corrected combined browser/native proof passed with one-second observation polling and 2.5-second navigation gaps. It also exercised authored refreshes, captured figures and previews, historical continuation, and shared-worktree observation recovery.
+The page is one document: an outline of the reading sequence, the sequence itself, then the Overview and the Topic notes. It uses Catppuccin Mocha when dark and Catppuccin Latte when light, following the system preference until the reader picks a theme. `n` visits actionable questions in newest in-progress Stage order, `t` opens the Stage tree, `j` and `k` select reading stops, and `h` and `l` move between reading blocks. Live refresh preserves the selected stop by stable id, the fragment, reading position, focus, open disclosures, demo state, quiz attempts, and video position.
 
 Discovery searches supported structured historical Grilling pages before declaring an alias missing. Continue one with the explicit `migrate` command. Resolve ambiguous candidates rather than starting a duplicate Flow. A handwritten page stays readable as it is.
 
@@ -45,7 +45,7 @@ At every delivery End state, an independent isolated Verifier checks the committ
 
 ## Flow links in omp
 
-When a session has a bound Flow, the extension displays its URL after every main-agent reply, including blocker replies and follow-up explanations. The extension does not open a browser or start another model turn. If the local host fails, the message gives the static page path and the observed error instead.
+When a session has a bound Flow, the extension displays its URL after every main-agent reply, including blocker replies and follow-up explanations. The extension does not open a browser or start another model turn. If the local host is not serving, the message says the reader is unavailable, gives the observed error, and says the content is stored.
 
 Bindings belong to a project, session, and agent. Continuing a session restores its binding from disk. Switching sessions does not inherit the previous session's Flow. The extension gives each agent its authoring identity before a turn because bash supplies only `PI_SESSION_ID`. The `flow-page` helper documents the authoring commands and the `bound` lookup.
 
@@ -92,7 +92,8 @@ The repo scripts need Bun. Run `bun run test` and `bun scripts/check-register.ts
 | `addon-questions.json`, `sample-prompts.json`, `sample-briefs.json` | no | The Addon judge catalog and its two sample corpora, read from the linked clone. |
 | `.omp/skills/verify-vstack/` | no | The Verify skill, feature recipes, and omp driver. |
 | `tests/` | no | Test suites, run with `bun run test`. Each script is run as a process over temp-dir fixtures (`tests/support/`). |
-| `.github/workflows/` | no | CI: the tests and `check-register` on every push and pull request. |
+| `reader/` | built into `plugin/` | The Flow reader's Nuxt source. `vp run reader:build` generates it and copies the output to `plugin/skills/flow-page/reader/`, which ships and is committed. Rebuild and commit that output with every reader change. CI rebuilds it and fails when the committed output differs. |
+| `.github/workflows/` | no | CI: the tests, the reader freshness check, and `check-register` on every push and pull request. |
 | `CHANGELOG.md` | no | Unreleased section plus one entry per plugin version. |
 | `docs/adr/`, `GLOSSARY.md` | no | Decisions and vocabulary. |
 
@@ -171,7 +172,7 @@ git -C ~/.cache/vstack/upstreams/matt fetch --tags origin   # when a Pin is miss
 
 Each entry's `items:` list says which tree entries at the Pin are Upstream items. `match` is a path glob from the repo root where `*` stays inside one path segment, `type` is `tree` or `blob`, and the first matching pattern sets the `kind`. For example, pstack's automations are one item each, so their nested skills get no rows.
 
-One entry, the CSS upstream, also has `page_lint: scripts/check-css.mjs`: the script `check-register` runs at that Pin over vstack's page templates (see "Page templates" below).
+One entry, the CSS upstream, also has `page_lint: scripts/check-css.mjs`: the script `check-register` runs at that Pin over vstack's page templates and the Flow reader's stylesheets (see "Page templates" below).
 
 ### Decision register
 
@@ -241,7 +242,7 @@ Text output prints one line per failure, `FAIL <class> <item>: <message>`, after
 | `worktree-cmd` | adapt, merge, or original text runs `git worktree add` |
 | `tmp-path` | adapt, merge, or original text names `$TMPDIR/`, `/tmp/`, or the OS temp directory, outside a `mktemp` line |
 | `ask-tool` | any markdown artifact, adopt included, has a sentence with an `ask-tool` phrase that does not name `` `ask` `` |
-| `page-css` | a page template breaks the CSS upstream's `check-css.mjs` at its Pin; the item is the template and the message holds the script's `path:line` lines |
+| `page-css` | a page template or Flow reader stylesheet breaks the CSS upstream's `check-css.mjs` at its Pin; the item is the file and the message holds the script's `path:line` lines |
 | `invalid-utility` | a `utility:` entry names no shipped skill, or names a skill with a non-reject Base upstream row |
 | `addon-slash-route` | text under `plugin/` or in `README.md` contains `/skill:<addon>`. Use `skill://<addon>` instead |
 | `addon-question-mismatch` | a key in the `questions` map of `addon-questions.json` names no shipped skill or names a Utility skill, or a shipped Addon has no such key |
@@ -269,7 +270,7 @@ A lint over shipped text starts from `lintTargets(ctx)` in `scripts/lib/checks/s
 
 #### Page templates
 
-Every page vstack writes for the user, the Flow page and teach's lessons, starts from a page template. Every template follows good-css (#61). A page template is any `*.html` or `*.css` under `plugin/skills/<name>/templates/`. `scripts/lib/checks/pages.ts` runs the CSS Upstream's `page_lint:` script at its Pin over these files. Each flagged template reports `page-css`. With no template, the check reads nothing. Templates hold no authored figure. The caller writes Mermaid and renders it through vstack-figures with Pele, captures the SVG in the Flow, and may inline its exact bytes in an offline lesson.
+Every page vstack writes for the user, the Flow page and teach's lessons, follows good-css (#61). A page source is any `*.html` or `*.css` under `plugin/skills/<name>/templates/`, and any `*.css` of the Flow reader under `reader/app/`. `scripts/lib/checks/pages.ts` runs the CSS Upstream's `page_lint:` script at its Pin over these files. Each flagged file reports `page-css`. With no page source, the check reads nothing. Pages hold no authored figure. The caller writes Mermaid and renders it through vstack-figures with Pele, captures the SVG in the Flow, and may inline its exact bytes in an offline lesson.
 
 ### House style
 

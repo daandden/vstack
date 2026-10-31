@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { linesOf, parseDiff, type Hunk } from "./code.ts";
 import { progressHandlers, type Progress, PROGRESS_KINDS, type ProgressKind, type ProgressView, progressSnapshot, progressView } from "./progress.ts";
-import { CODE_ID, fields, isObj, list, listed, newId, type Obj, REF, refuse, text, texts } from "./fields.ts";
+import { CODE_ID, fields, isObj, list, listed, newId, type Obj, REF, refuse, text, texts, VISUAL_KINDS } from "./fields.ts";
 
 export const SCHEMA = 1;
 export const CONTRIBUTION_VERSION = 1;
@@ -10,18 +10,6 @@ export const STAGE_STATES = ["not-started", "in-progress", "finished"] as const;
 export type StageState = (typeof STAGE_STATES)[number];
 export type Stage = { id: string; skill: string; ticket?: string; parent?: string; state: StageState; order: number; opened?: string; finished?: string };
 export type Round = { id: string; stage: string; n: number; seq: number; time: string; session?: number };
-export const VISUAL_KINDS = {
-  "source-view": "Source view",
-  "source-excerpt": "Source excerpt",
-  "context-diagram": "Context diagram",
-  "option-diagram": "Option diagram",
-  "option-preview": "Option preview",
-  "before-after": "Before and after",
-  "comparison-table": "Comparison table",
-  "data-chart": "Data chart",
-  scenario: "Scenario walkthrough",
-  prose: "Prose",
-} as const;
 export type VisualKind = keyof typeof VISUAL_KINDS;
 export type ReaderNeed = { need: string; kind: VisualKind };
 export type Figure = { id: string; kind?: Exclude<VisualKind, "prose"> } & ({ text: string } | { html: string; css?: string } | { attachment: string });
@@ -1613,10 +1601,10 @@ export function view(s: State): View {
   };
 }
 
-/** The `show` snapshot: ids, numbers, states, labels, and links, with no page markup. */
-export function snapshot(v: View, page: string, renderer: number) {
+/** The `show` snapshot: ids, numbers, states, labels, and links, with no presentation markup. */
+export function snapshot(v: View) {
   return {
-    flow: v.flow, revision: v.revision, renderer, page, open: v.lifecycle.at(-1)?.event !== "closed", lifecycle: v.lifecycle, ...(v.migrated ? { migrated: { from: v.migrated.from, sha256: v.migrated.sha256, time: v.migrated.time, anchors: v.migrated.anchors } } : {}),
+    flow: v.flow, revision: v.revision, open: v.lifecycle.at(-1)?.event !== "closed", lifecycle: v.lifecycle, ...(v.migrated ? { migrated: { from: v.migrated.from, sha256: v.migrated.sha256, time: v.migrated.time, anchors: v.migrated.anchors } } : {}),
     next: v.next,
     reading: v.reading,
     stages: v.stages.map((st) => ({
