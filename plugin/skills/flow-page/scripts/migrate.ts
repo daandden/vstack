@@ -117,24 +117,34 @@ export function captureHistoricalImages(s: State, from: string, time: string, io
           return { reason: e.message };
         }
       };
+      const pictureSources: boolean[] = [];
       const rewrite = (el: HTMLRewriterTypes.Element, withSrc: boolean) => {
         const caption = el.getAttribute("alt") || `Historical image ${f.id}`;
         const srcset = el.getAttribute("srcset");
+        let hasSrcset = false;
         if (srcset !== null) {
           const kept = srcsetCandidates(srcset).flatMap((c) => {
             const r = capture(c.url, caption);
             return "url" in r ? [[r.url, c.descriptor].filter(Boolean).join(" ")] : [];
           });
-          if (kept.length) el.setAttribute("srcset", kept.join(", "));
+          hasSrcset = kept.length > 0;
+          if (hasSrcset) el.setAttribute("srcset", kept.join(", "));
           else el.removeAttribute("srcset");
+          if (!withSrc && hasSrcset && pictureSources.length) pictureSources[pictureSources.length - 1] = true;
         }
         const src = withSrc ? el.getAttribute("src") : null;
         if (src === null) return;
         const r = capture(src, caption);
-        if ("reason" in r) el.replace(`Image unavailable: ${caption}. ${r.reason}`);
-        else el.setAttribute("src", r.url);
+        if ("reason" in r) {
+          if (hasSrcset || pictureSources.at(-1)) el.removeAttribute("src");
+          else el.replace(`Image unavailable: ${caption}. ${r.reason}`);
+        } else el.setAttribute("src", r.url);
       };
       const html = new HTMLRewriter()
+        .on("picture", { element(el) {
+          pictureSources.push(false);
+          el.onEndTag(() => { pictureSources.pop(); });
+        } })
         .on("img", { element: (el) => rewrite(el, true) })
         .on("picture > source", { element: (el) => rewrite(el, false) })
         .transform(f.html);

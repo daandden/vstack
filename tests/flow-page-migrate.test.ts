@@ -282,6 +282,55 @@ test("migration captures responsive image candidates and keeps SVG view fragment
   expect(html).toMatch(/srcset="assets\/\S+ 1x, assets\/\S+ 2x"/);
 });
 
+test("migration keeps a usable img srcset when its fallback file is missing", () => {
+  const w = world();
+  const folder = legacyPage(w);
+  writeFileSync(join(folder, "figures", "room@2x.png"), PNG);
+  const records = readFileSync(join(folder, "page.jsonl"), "utf8").trim().split("\n").map((line) => JSON.parse(line));
+  records.find((r) => r.id === "q-open").visual = { html: '<img src="figures/missing.png" srcset="figures/missing.png 1x, figures/room@2x.png 2x" alt="Responsive room">' };
+  writeFileSync(join(folder, "page.jsonl"), records.map((r) => JSON.stringify(r)).join("\n") + "\n");
+  const migrated = ok(run(w, ["migrate", folder]));
+  const images: { src: string | null; srcset: string | null }[] = [];
+  new HTMLRewriter().on('img[alt="Responsive room"]', { element(el) {
+    images.push({ src: el.getAttribute("src"), srcset: el.getAttribute("srcset") });
+  } }).transform(readFileSync(migrated.page, "utf8"));
+  expect(images).toEqual([{ src: null, srcset: expect.stringMatching(/^assets\/\S+ 2x$/) }]);
+  rmSync(join(folder, "figures"), { recursive: true });
+  const url = images[0].srcset!.split(" ")[0];
+  expect(readFileSync(join(migrated.page, "..", url))).toEqual(PNG);
+  const beforeRepeat = tree(w.home);
+  expect(ok(run(w, ["migrate", folder])).repeated).toBe(true);
+  expect(tree(w.home)).toEqual(beforeRepeat);
+});
+
+test("migration keeps the img for usable picture sources without leaking to other pictures", () => {
+  const w = world();
+  const folder = legacyPage(w);
+  writeFileSync(join(folder, "figures", "room.png"), PNG);
+  const records = readFileSync(join(folder, "page.jsonl"), "utf8").trim().split("\n").map((line) => JSON.parse(line));
+  records.find((r) => r.id === "q-open").visual = { html: '<picture><source media="(min-width: 1px)" srcset="figures/room.png 1x"><img src="figures/missing.png" alt="Picture room"></picture><picture><source srcset="figures/missing.png 1x"><img src="figures/missing.png" alt="Unavailable room"></picture><img src="figures/missing.png" alt="Unavailable standalone">' };
+  writeFileSync(join(folder, "page.jsonl"), records.map((r) => JSON.stringify(r)).join("\n") + "\n");
+  const beforeSource = tree(folder);
+  const migrated = ok(run(w, ["migrate", folder]));
+  expect(tree(folder)).toEqual(beforeSource);
+  const images: { alt: string | null; src: string | null }[] = [];
+  const sources: (string | null)[] = [];
+  new HTMLRewriter()
+    .on("picture img", { element(el) { images.push({ alt: el.getAttribute("alt"), src: el.getAttribute("src") }); } })
+    .on("picture source", { element(el) { sources.push(el.getAttribute("srcset")); } })
+    .transform(readFileSync(migrated.page, "utf8"));
+  expect(images).toEqual([{ alt: "Picture room", src: null }]);
+  expect(sources).toEqual([expect.stringMatching(/^assets\/\S+ 1x$/), null]);
+  const html = readFileSync(migrated.page, "utf8");
+  expect(html).toContain("Image unavailable: Unavailable room.");
+  expect(html).toContain("Image unavailable: Unavailable standalone.");
+  rmSync(join(folder, "figures"), { recursive: true });
+  expect(readFileSync(join(migrated.page, "..", sources[0]!.split(" ")[0]))).toEqual(PNG);
+  const beforeRepeat = tree(w.home);
+  expect(ok(run(w, ["migrate", folder])).repeated).toBe(true);
+  expect(tree(w.home)).toEqual(beforeRepeat);
+});
+
 test("repeating migration repairs old inline images without replacing later authored work", () => {
   const w = world();
   const folder = legacyPage(w);
