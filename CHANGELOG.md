@@ -4,6 +4,8 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+- Add the Flow first-publication authoring evaluation set for #311. Keep realistic subjects separate from the original Q7/Q8 negatives and inadequate-diagram controls, document isolated headless reruns and rendered evidence capture, and check frozen record integrity without treating local kind coverage as visual adequacy.
+
 ## [8.0.0] - 2026-10-29
 
 - Reconcile upstream #264, #263, #265, #268, #294, #295, #296, and #297. Typed Flow questions require reader needs and matching Visual kinds, including safe source/usage text. Capture caller-rendered Pele SVGs without restoring removed writers or visual judges. Preserve MCP discovery and tracker identities, remove inherited Addon pointers, migrate tune-llm-flow to centralized child-Stage publication, and gate delivery on independent committed-head Verdicts. Preserve #297's Shared checkout guards, separate detached verifier worktree, REFUSED and cleanup-error handling, and isolated eval requirements. Preserve published ADRs 0040 through 0043 and renumber the unpublished Flow ADR to 0044. Renderer advances once from 18 to 19. The breaking Flow cutover raises the plugin version from upstream 7.0.8 to 8.0.0.

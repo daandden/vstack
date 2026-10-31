@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "subject_expectations": [
+    {
+      "id": "stream-versus-tabs",
+      "distinctions": [
+        "Q1, research Result, then Q2 in one reading path",
+        "Grilling Q1 and Q2 in one tab and research in another",
+        "Stage identity retained on content versus Stage tabs as the main navigation"
+      ],
+      "prose_control": false
+    },
+    {
+      "id": "update-placement",
+      "distinctions": [
+        "Original question and Result keep their original positions",
+        "Late answer and latest Result visible in the original block under A",
+        "A later linked notice appears where the update happened under B",
+        "Full content is not duplicated and Result history remains available"
+      ],
+      "prose_control": false
+    },
+    {
+      "id": "terminology",
+      "distinctions": [
+        "A specifically named Vite+ product versus ordinary Vite",
+        "Clarifies the term without approving an integration"
+      ],
+      "prose_control": true
+    },
+    {
+      "id": "prototype-review",
+      "distinctions": [
+        "Review a design prototype before production implementation versus retain current visual language",
+        "The choice is a review step, not approval of a finished appearance"
+      ],
+      "prose_control": true
+    }
+  ],
+  "controls": [
+    {
+      "id": "original-question-7",
+      "expected": "negative",
+      "basis": "Approved unchanged historical prose-only structural negative. Words name the choices but no question-local representation shows their reading routes. Historical capture unavailable; reconstruction is not that capture."
+    },
+    {
+      "id": "original-question-8",
+      "expected": "negative",
+      "basis": "Approved unchanged historical prose-only structural negative. No local representation locates the same late answer or revision under both options. Historical capture unavailable."
+    },
+    {
+      "id": "wrong-locality",
+      "expected": "negative",
+      "basis": "A complete diagram exists only on the Background, not on the question or its options. Schema-valid prose does not establish semantic adequacy."
+    },
+    {
+      "id": "missing-distinction",
+      "expected": "negative",
+      "basis": "The local diagram only shows Q1 then research then Q2. It omits the Stage-tab alternative and tab switches despite matching the declared scenario kind."
+    },
+    {
+      "id": "unreadable",
+      "expected": "negative",
+      "basis": "Both labels exist in captured bytes, but a 6986px-wide diagram shrinks to about 1216 CSS px, with its labels about 2.8 CSS px high. Judge displayed evidence, not source zoom."
+    },
+    {
+      "id": "late-repair",
+      "expected": "negative-at-first-publication",
+      "basis": "Revision 2 has no local visual. A separately captured re-ask at revision 3 cannot change revision 2. Review the repair independently."
+    }
+  ],
+  "human_review": {
+    "status": "reviewed",
+    "reviewed": "2026-10-31",
+    "questions": [
+      "Do the fresh question-local diagrams or previews explain every listed option distinction clearly at the captured display size?",
+      "Are the terminology and prototype-review prose controls realistic and adequately explained without requiring a diagram? Is the prototype-review with-skill diagram unnecessary?",
+      "Do the negative controls discriminate locality, decision coverage, readability, and timing without treating every valid prose question as a failure?"
+    ],
+    "outcome": [
+      "Flow question question-20, answer A: The recorded judgments hold. Original Q7 and Q8 fail. The wrong-locality, missing-distinction, unreadable, and late-repair controls fail. The current-skill stream-versus-tabs page is adequate. Terminology is a legitimate prose control.",
+      "Flow question question-21, answer A: The update-placement B side reads correctly. The page is adequate.",
+      "Flow question question-22, answer A: The prototype-review diagram helps. It is acceptable, not a penalty."
+    ]
+  }
+}
