@@ -141,7 +141,7 @@ Quantitative category keys retain exact spelling and case. The same key keeps it
 
 Sankey keeps the source's `source`, `target`, or `gradient` link-color mode. The renderer supplies a figure-scoped internal prefix so Pele can emit its configured gradients instead of falling back to a source-colored link. Each stop receives its actual endpoint's resolved role or category paint. Stops are literal Mocha colors, although the displayed gradient interpolates between them. A focused node keeps its fill, and does not recolor the link's endpoint paint.
 
-Bindings to a source identity with no visible owned mark are refused. Without such a binding, valid figures still render. Ambiguous names remain neutral instead of selecting an arbitrary source target.
+Bindings and focus require one supported stable source identity with visible owned marks. Missing, ambiguous, generated, collapsed, or geometry-free explicit targets are refused without creating or replacing output. One semantic target may own several marks. Without an explicit target, valid figures still render, and ambiguous names stay neutral.
 
 ## Retained comparison research
 

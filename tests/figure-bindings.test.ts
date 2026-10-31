@@ -115,3 +115,17 @@ test.each([
   const r = await renderFigure(dir, source, { name: "bound", bindings: elements({ id: "rule", role: "ok" }) });
   expect(r.code).toBe(1); expect(r.stderr).toContain("Unsupported binding target rule"); expect(existsSync(r.out)).toBe(false);
 });
+
+test.each([
+  ["flowchart LR\n A --> B\n", "Absent"],
+  ["flowchart LR\n A A@--> B\n", "A"],
+])("%s refuses %s focus without publishing or replacing a figure", async (source, id) => {
+  const dir = setup(), good = await renderFigure(dir, SOURCE);
+  expect(good.code).toBe(0);
+  for (const name of ["figure", "fresh"]) {
+    const refused = await renderFigure(dir, source, { name, focus: [id] });
+    expect(refused.code).toBe(1); expect(refused.stdout).toBe("");
+    if (name === "figure") expect(refused.svg).toBe(good.svg);
+    else expect(existsSync(refused.out)).toBe(false);
+  }
+});

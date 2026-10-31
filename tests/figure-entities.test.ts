@@ -140,3 +140,22 @@ test("an explicit use-case edge colors all its existing route marks", async () =
   expect(shape(r.svg!, "link").style).toContain("fill:none;stroke:#a6e3a1");
   expect(marks(r.svg!, "link").filter((m) => !m.text).every((m) => m.style.includes("stroke:#a6e3a1"))).toBe(true);
 });
+
+test.each([
+  'classDiagram\n class A\n classDef unused fill:#ff0000\n',
+  'erDiagram\n A\n classDef unused fill:#ff0000\n',
+  'block-beta\n A["Node"]\n classDef unused fill:#ff0000\n',
+  'classDiagram\n class A:::ok\n classDef ok fill:var(--pele-error)\n',
+  'classDiagram\n class A\n style A fill:var(--pele-error)\n',
+  'erDiagram\n A\n style A fill:#ff0000\n',
+  'block-beta\n A["Node"]\n style A fill:var(--pele-error)\n',
+])("entity authored paint is refused even when unused or masked: %s", async (source) => {
+  const dir = setup(), good = await renderFigure(dir, "flowchart LR\n Prior[Previous figure]\n");
+  expect(good.code).toBe(0);
+  for (const name of ["figure", "fresh"]) {
+    const refused = await renderFigure(dir, source, { name });
+    expect(refused.code).toBe(1); expect(refused.stdout).toBe("");
+    if (name === "figure") expect(refused.svg).toBe(good.svg);
+    else expect(existsSync(refused.out)).toBe(false);
+  }
+});

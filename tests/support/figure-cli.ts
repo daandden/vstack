@@ -14,7 +14,6 @@ export async function renderFigure(dir: string, source: string, options: { bindi
   return { code, stdout, stderr, out, svg: existsSync(out) ? readFileSync(out, "utf8") : undefined };
 }
 
-// Read the actual marks owned by a public Mermaid data-id, without selecting private renderer classes.
 export function marks(svg: string, id: string) {
   const result: { tag: string; style: string; text: boolean }[] = [], owners: (string | undefined)[] = [];
   for (const match of svg.matchAll(/<\/?[\w:-]+\b(?:"[^"]*"|'[^']*'|[^'">])*>/g)) {

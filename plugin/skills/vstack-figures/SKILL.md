@@ -45,6 +45,8 @@ The render script sets every `--pele-*` variable to Catppuccin Mocha in a `<styl
 
 Pele exposes supported focal identities through case-sensitive `data-id` values. Each `--focus <id>` paints that target's border and text Mauve `#cba6f7`, while keeping its fill. The renderer colors owned marks, not unrelated descendants of a group. Inline figures sharing ids remain isolated. Timeline events, ishikawa causes, and single xychart bars have no usable focal id. Name their focal point in the accompanying text.
 
+Focus requires one supported stable source identity with visible owned marks. Missing, ambiguous, generated, or hidden targets exit 1 without creating or replacing the output. A participant with several header and footer marks is still one target.
+
 ### Color elements by role
 
 Each Color role has one fixed Catppuccin Mocha accent. The renderer uses a solid accent fill and border, with Base text. Neutral backing is Surface0, ordinary labels are Text, and the background is Base. Every authored paint is a literal official Mocha value. Opacity and antialiasing may blend displayed pixels.
@@ -64,7 +66,7 @@ Each Color role has one fixed Catppuccin Mocha accent. The renderer uses a solid
 - Mark a flowchart node with `:::role` (`Pay[Take payment]:::ok`) or a `class` line (`class Pay,Ship ok`). A `class` line also marks a subgraph or a composite state. State, requirement, and `block-beta` diagrams take a `class` line, ER diagrams `ENTITY:::role`, and class diagrams `class Name:::role`. A mindmap node takes `:::role` on the line under it. Shaped nodes receive solid fills, and text-only nodes receive accent text without an invented shape.
 - Meaningful source kinds establish intrinsic roles. Flowchart and swimlane person shapes, declared sequence actors, and native C4 people establish `actor`. Database shapes and declared sequence database participants establish `store`. Native C4 outside systems establish `external`. A person takes precedence over external, which takes precedence over store. A UML actor can be software and stays neutral without a binding. Generic participants, software agents, queues, and label words establish no role. Event-model read models and agent-flow reference documents establish stored data. State names do not establish outcomes. Read the type reference for architecture, block, requirement, and tree kinds and their geometry limits.
 - Mauve is focus-only. Focus replaces the border and text, not the underlying role or category fill.
-- Write no `classDef`, `style`, or `linkStyle` line, and no color in a sequence `rect` or `box`. Each sets a color outside the roles. The script refuses it, and an unknown role, with exit 1.
+- Write no paint-bearing `classDef`, `style`, or `linkStyle` line, no color in a sequence `rect` or `box`, and no Sankey `nodeColors` paint. The script refuses authored paints with exit 1, even in unused declarations or when a role would mask them. Theme-variable paint values are authored paints too. Empty Sankey color configuration remains valid. Unknown roles also exit 1.
 
 ### Bind source identities
 

@@ -1,79 +1,105 @@
 # Figure render
 
-vstack-figures renders caller-written Mermaid with Pele under Bun. The Catppuccin Mocha SVG keeps its embedded theme, fixed Color role rules, and scoped mauve focal rules. Bad Mermaid, an unknown Color role, two different Color roles on one element, or a color the Mermaid sets itself exits 1 without writing output. Flow authoring captures those real bytes safely and displays them on a complete question with declared reader needs.
+A caller renders Mermaid with the Bun CLI and receives a literal Catppuccin Mocha SVG. Roles, exact category keys, and explicit focus retain their meanings across supported families. Refusals publish nothing and preserve an older output. A Flow captures successful SVG bytes and displays them as an isolated image.
 
 ## Sub-features
 
-- `figure-render`: `render.ts <source.mmd | -> <out.svg> [--focus <id>]... [--bindings <bindings.json>]` writes the SVG, prints its absolute path, and exits 0.
-- `figure-focus`: focal geometry and text use Mauve while preserving fills. Owned marks keep focus isolated from group descendants and other inline figures sharing ids.
-- `figure-roles`: a Mermaid role or supported explicit binding receives its fixed solid Mocha accent and Base text. Source kinds establish roles only where documented. Native C4 distinguishes people, outside systems, and internal databases without converting to flowcharts.
-- `figure-bindings`: supported source identities accept roles or exact category keys. Identical assignments repeat, different assignments conflict, roles beat categories, and explicit meanings beat intrinsic kinds. The type reference lists family targets and limits. Packet and all four railroad notations retain neutral rendering and explicitly refuse bindings.
-- `figure-chart-colors`: quadrant, xy, pie, Sankey, radar, treemap, and Venn charts use exact category identities and supported bindings. The same key retains its accent across types and processes, including all aliases. Chart values do not imply status.
-- `figure-workflows`: sequence actors and databases retain their source meanings, software participants stay neutral, and one participant binding owns its header and footer. State aliases, swimlanes, visible agent-flow identities, and event-model frame ids use shared role and category rules. Collapsed children and generated workflow identities refuse explicit binding or focus.
-- `figure-refuse`: invalid Mermaid, unknown roles, conflicting roles or categories, unresolved targets, and authored paints exit 1. Malformed bindings, usage, and unreadable inputs exit 2. Every refusal writes nothing and preserves an older output without making it current.
-- `figure-schedules`: timeline, Gantt, journey, Kanban, and Git history support their documented source identities. Exact section, participant, priority, or branch keys replace ordinal colors where the source is categorical. Gantt `done` is Green and `crit` Yellow. Active schedules, journey scores, and names imply no state.
-- `figure-page`: a captured SVG passes the Flow safety check, retains its style byte for byte, and loads through an image element rather than raw markup in the page.
-- `figure-readability`: fixed-font cell measurement preserves graphemes and common wide text, scales subscript and superscript to 75%, and defaults flowchart edges to steps. Loose labels have a scoped `0.12em` Base outline.
+- `figure-render`: file or stdin input writes an SVG, prints its absolute path, and exits 0.
+- `figure-focus`: one stable source identity owns its visible marks. Mauve borders and text preserve the target's fill without affecting children or other figures.
+- `figure-roles`: seven fixed roles override explicit categories, eligible intrinsic kinds, and genuine source categories in that order. Labels establish no role.
+- `figure-bindings`: supported source ids accept roles or exact category keys. Identical repeats succeed. Conflicting assignments refuse even behind a higher-precedence role.
+- `figure-chart-colors`: category keys retain their accent across types, order, insertion, and processes. Labels distinguish collisions among the 13 non-Mauve accents. Sankey source, target, and gradient modes use actual endpoints.
+- `figure-entities`: native C4, ER, class, architecture, block, requirement, use-case, and tree identities retain their documented kind and geometry limits.
+- `figure-schedules`: timeline, Gantt, journey, Kanban, and Git identities preserve source categories without deriving status from scores or names.
+- `figure-spatial`: mindmap, Ishikawa, Wardley, and Cynefin assignments affect their owned geometry rather than unrelated children.
+- `figure-workflows`: sequence headers and footers share one participant identity. State, swimlane, visible agent-flow, and event-model targets keep documented generated-id and collapsed-child limits.
+- `figure-refuse`: semantic failures exit 1. Malformed bindings, usage, and unreadable input exit 2. Neither failure creates or replaces output.
+- `figure-readability`: fixed-cell labels preserve common wide and combining text. Sub/Sup use explicit 75% sizing. Step edges and a light Base outline improve presentation without claiming fewer crossings or fixing text overlap.
+- `figure-page`: captured SVG bytes and embedded styles survive source edits and load through an image element.
 
 ## How to get to it (user POV)
 
-- A result-producing caller such as explain, how, architecture improvement, or teach writes Mermaid and runs vstack-figures' render script.
-- The caller owns the Flow Stage and captures its output. The rendering helper opens no empty Stage.
+- A caller writes Mermaid and runs `plugin/skills/vstack-figures/scripts/render.ts`.
+- The caller captures the successful SVG in its owning Flow Stage. The renderer itself opens no Stage.
+- An offline consumer can inline the exact SVG, including its embedded style.
 
 ## Driving it with bash and the omp browser
 
 Preconditions:
 
-- Follow the baseline in `README.md` and run Doctor.
-- Pele 1.12.0 from the checkout's pinned dependencies must resolve. Report a missing dependency and obtain approval before provisioning in a restricted run.
-- Set `R="$VERIFY_RUN_DIR/figure-render"`, `H="$VERIFY_RUN_DIR/data/figure-home"`, `RENDER="$CHECKOUT/plugin/skills/vstack-figures/scripts/render.ts"`, and `PAGE="$CHECKOUT/plugin/skills/flow-page/scripts/flow-page.ts"`.
-- Use the checkout's scripts, pinned Bun, explicit `--home "$H" --session figure-proof`, and the checkout as cwd. Keep persistent proof outside `data/` and capture generated media from the isolated project's Scratch dir.
+- Follow `README.md` and the parent skill's Doctor and Cleanup instructions.
+- Use the checkout's pinned Bun and Pele 1.12.0. Obtain approval before provisioning missing dependencies.
+- Set `SKILL_DIR`, `CHECKOUT`, and a fresh `VERIFY_RUN_DIR` as the parent skill defines them.
+- Set `FLOW_SESSION` and `FLOW_AGENT` to this caller's extension-supplied identity. Never reuse another agent's binding.
+- Run commands from `CHECKOUT`. All helper paths below are relative to `SKILL_DIR`.
 
-1. Open a proof Flow with `open --skill grill-with-docs --title "Verify figure"`. Save its receipt and derive the project's Scratch path from the returned page path. Write an order-flow `.mmd` in a fresh proof-assets directory there. It shows Cart, Stock, Pay, Wait, and Split, with a stock branch and short labels. Mark Stock and Wait `warn`, Pay `ok`, and Split `changed`.
-2. Run `bun "$RENDER" <order.mmd> <order.svg> --focus Stock`. Capture command, stdout, stderr, and exit code. Expect exit 0, empty stderr, and the SVG's absolute path.
-3. Read the SVG bytes. Its root has `pele pele-flowchart pele-f<8 hex>` classes and its first child is a style. Inspect the font, scoped theme, and actual geometry paints. Pay has a solid Green fill and Base text, Split has Blue, and focal Stock keeps Yellow under a Mauve border and text. Audit all authored paints against the 26 official Mocha values, including inherited paints and nested groups. No custom tint or `color-mix` remains. Preserve the bytes and their SHA-256.
-4. Exercise malformed Mermaid, unknown and conflicting roles, authored colors, missing ids, an id shared by a source node and edge, and unsupported packet or railroad bindings. Expect exit 1 and no new output. Exercise malformed JSON, invalid binding entries, missing arguments, and unreadable inputs. Expect exit 2. Repeat each refusal against a prior successful output and confirm identical bytes and empty stdout. Verify identical role and category repeats succeed, but different category keys still conflict when a role masks them.
-5. Submit this contribution, substituting the actual SVG path:
+1. Run Doctor, then generate the concrete CLI and browser fixtures:
 
-   ```json
-   {"version":1,"items":[{"kind":"attachment","ref":"order","type":"svg","caption":"Stock check with wait and split shipment paths","origin":"Pele render of the order-flow proof source","path":"<absolute order.svg>"},{"kind":"round","questions":[{"ref":"choose","title":"Where does a split order wait?","description":"Choose the shipping policy.","needs":[{"need":"Follow the stock check and the split-shipment path.","kind":"context-diagram"}],"figures":[{"attachment":"order","kind":"context-diagram"}],"options":[{"label":"Wait","does":"Hold the order.","gains":["One shipment"],"costs":["Slower"]},{"label":"Split","does":"Ship what is in stock.","gains":["Faster"],"costs":["Two shipments"]}]}]}]}
+   ```sh
+   bash "$SKILL_DIR/scripts/doctor.sh" "$CHECKOUT" "$VERIFY_RUN_DIR"
+   bun "$SKILL_DIR/scripts/figures.ts" "$CHECKOUT" "$VERIFY_RUN_DIR/figures"
    ```
 
-6. Read `show`. The question retains its exact needs and figure kind. Fetch the registered captured SVG and compare its SHA-256 to step 3. Edit the source file and render the Flow again. The captured bytes remain unchanged.
-7. Open the live URL and select the question using its receipt id. Check the Reader needs, image alternative text, dark background, and Mauve focus. Open the captured SVG in its own browser context to inspect actual computed geometry and text paints, not nonexistent inline SVG in the Flow. Capture ARIA and full-resolution lossless WebP at 1280 and 360px. Page-level overflow is zero.
-8. Refuse a question whose need has no matching figure, a figure without a declared need, and a question that relies only on a Background figure. Compare authored-state and page hashes before and after. Stop only this proof's host and preserve the export before scoped Verify cleanup.
-9. Render two flowcharts with shared ids and different output names. Bind one node to a role and another to a category, focus their group, and inline both exact SVGs in a throwaway consumer. Inspect computed fills and text on group and child marks to prove no descendant or cross-figure leakage. Compare category keys under reorder and insertion in separate render processes, and inspect two distinct labels sharing one accent. Retain the standalone and inline browser audits. Keep this consumer outside the product patch.
-10. Render each schedule and work-history family through the real CLI. Compare unchanged source datasets and geometry with the starting renderer. Bind declared Gantt tasks, unique timeline periods, journey participants and tasks, Kanban columns and cards, and explicit Git commits and branches. Check every associated participant dot and legend entry, critical versus done scheduling, neutral active tasks, neutral journey scores, and neutral unbound workflow columns. Audit priority indicator paints without claiming a priority label or legend exists.
-11. Reorder and insert timeline sections, journey participants, and Git branches in separate processes. Compare exact-key paints across these families and explicit flowchart bindings. Exercise more than eight Git lanes so reused Pele series slots cannot substitute for branch identity. Keep distinct labels when category hues collide. Refuse repeated timeline period names, duplicate journey task text, duplicate board ids, generated task or commit ids, missing ids, and conflicting assignments without replacing old output.
-12. Open the actual five standalone SVGs in the browser and inspect computed shape and text paints against Mocha, including inherited paint, opacity, participant legends, and Git cutouts. Inline two SVGs with shared source ids and different output names, then verify group focus and role or category rules stay inside their owning figure. Capture a successful SVG in a typed Flow attachment, compare the captured bytes, and retain ARIA plus full-resolution lossless WebP proof. Record missing geometry or identities instead of inventing focus targets.
-13. Render all five native C4 views, ER, class, architecture, block and its alias, requirement, use-case, and tree examples through the CLI. Bind one declared target in each and inspect actual computed geometry and text in its standalone SVG. Compare the same source before and after coloring, retaining coordinates, path data, labels, and viewBox so the comparison isolates paint.
-14. Render C4 `Person_Ext`, an external database, an internal database, internal software, and a queue. Expect Pink, Peach, Teal, neutral, and neutral respectively. Bind the internal database to `bad`, then to a category, then both. Check state-over-kind, category-over-kind, role-over-category, and fill-preserving focus. Repeat explicit assignments and refuse conflicting roles or category keys, including categories masked by a role.
-15. Bind a C4 deployment boundary, architecture group, block composite, and use-case boundary. Inspect each own backing and an unrelated child. The child retains its own meaning and does not inherit external or focus. Inspect architecture icon strokes against accent backing. A UML actor or a class named "Database person" stays neutral unless explicitly bound.
-16. Render a tree with repeated `index.ts` basenames and an icon-disabled file. Unbound rendering succeeds, but a basename binding to both rows is ambiguous. Numeric parser ids and invented paths are refused. Bind a unique icon-disabled row and inspect its label; no icon geometry appears. Inspect intrinsic store paint on an existing file icon separately from its neutral label.
-17. Exercise mindmap, both Ishikawa spellings, Wardley, and Cynefin through the real CLI. Match a branch/category name against a flowchart binding, then reorder and insert unrelated categories in separate processes. Check explicit roles over categories and focal borders/text over both. Mindmap roles affect one node, Ishikawa assignments affect the category header rather than causes or bones, and Cynefin domains affect regions and domain text rather than child badges. Wardley anchors remain text-only, strategies imply no role, evolution routes stay open, and market strategy glyphs remain neutral. A role-like label establishes no status.
-18. Refuse repeated category names, repeated Cynefin item labels, an item/domain collision, an Ishikawa cause, and a hidden Cynefin overflow item. Preserve old output on every refusal. Keep color-only before/after geometry and data comparisons against this slice's actual starting renderer. Inline two owned-family SVGs with shared ids and different roles/focus, then inspect both standalone and inline computed paints. Capture each successful family SVG into the owning Flow Stage and compare the captured bytes and embedded style. Do not create a question or Stage just for renderer evidence.
-19. Render matching category keys through pie, Sankey, and treemap in separate CLI processes. Reverse their declarations and insert another key. Compare actual geometry fills and visible labels, including two labels sharing one accent. Check all 13 non-Mauve accents. Exercise quadrant points and named quadrants, named xy series and categorical unnamed bars, radar curves, and Venn sets and text-only intersections, including aliases. Retain each source and output.
-20. Bind the same chart identity to a category and then a role. Check that the role wins, identical assignments repeat, conflicts refuse, and focus preserves the fill. Compare unchanged geometry attributes, labels, values, and relationships between palette-only outputs. Refuse ambiguous duplicate names, Sankey link concatenations, missing targets, and treemap nodes with no visible geometry. Keep individual xy bars outside binding and focus claims.
-21. Render Sankey sources with `linkColor: source`, `target`, and `gradient` in their source configuration. Inspect the actual endpoint identities, link paints, and gradient stops in the browser. The scoped internal prefix enables Pele's selected gradient mode where omission previously caused a source-color fallback. Verify literal Mocha stops, not sampled interpolated pixels. Retain that exact before-and-after distinction. Capture a chart SVG through a Document figure, compare its captured SHA-256 and bytes, and inspect its isolated image consumer.
+   Expect `ok: true`. The helper refuses an existing output directory. It retains every Mermaid source, bindings document, SVG, command, stdout, stderr, and exit code. Read `figures/commands.json` and `figures/summary.json`. Every successful command reports its absolute SVG path with empty stderr. Each refusal runs against both a prior successful SVG and a nonexistent output. Prior bytes remain identical and no new SVG appears.
 
-For a readability change, also drive these checks through the real renderer CLI:
+2. Exercise the remaining precise consumer regression scenarios through their real CLI calls:
 
-1. Render equal-length `W` and `i` labels, a precomposed accent and its combining sequence, common CJK text, and plain, bold, italic, code, subscript, and superscript labels. In the SVG's own browser context, inspect text bounds against the backing shape. Equal fixed-cell labels have equal boxes. A long word-separated label wraps, while its smaller formatted version needs fewer lines. Confirm the actual font and record fallback-font limits.
-2. Render a branched flowchart with an edge label and a subgraph label. Compare one change at a time against the previous renderer: measurement only, step edges only, and outline only. Check angular step presentation without attributing a crossing reduction to it. Inspect computed `stroke`, `stroke-width`, and `paint-order` for the loose labels and an ordinary node label.
-3. Render Wardley and Venn examples and inspect their loose text for the light outline. Keep the `0.12em` target distinct from a heavy halo. Do not claim that the outline fixes text-on-text overlap.
-4. Inline two SVGs with repeated source ids and distinct output paths. Focus only one, then inspect both figures' computed text and shape styles. Remove the first figure's embedded style in the throwaway consumer and confirm the second figure's outline remains unchanged. Preserve ARIA and lossless WebP proof.
-5. Open the standalone SVG and the captured Flow image. Compare captured bytes and their SHA-256, then inspect SVG computed styles in its own context. Render invalid Mermaid over a previously successful output and confirm its bytes are unchanged. Publish no attachment for the failed render.
+   ```sh
+   bun run test tests/figure-render.test.ts tests/figure-readability.test.ts tests/figure-bindings.test.ts tests/figure-entities.test.ts tests/figure-schedules.test.ts tests/figure-spatial.test.ts tests/figure-chart-colors.test.ts tests/figure-workflows.test.ts tests/figure-types.test.ts
+   ```
 
-For interaction and workflow changes, also drive these checks:
+   Expect no failures. The inputs are the literal sources in each named test, not workstation-only research files. Use these scenario names to locate a source for an individual replay:
 
-1. Render sequences with a declared person, a software participant labelled "Human", and a database participant. Bind the software participant, then inspect both header and footer geometry and text in the browser. Loose actor and database labels remain readable on Base. Compare a state id with label-only text under both state spellings. Exercise swimlane group and child roles, nested agent-flow groups with distinct child meanings, and event-model frame ids. Commands, events, and processors use exact source-kind category keys, not inferred outcomes.
-2. Attempt bindings and focus on a collapsed agent-flow child, a generated edge, a sequence frame or message, a state pseudostate, and an event entity name or lane label. Each attempt exits 1 without writing or overwriting output. The unbound valid source still renders. Compare starting and resulting SVG geometry without treating palette changes as layout improvements. Inline two workflow SVGs with shared ids and different role, category, and focus choices. Inspect computed paints to prove scope isolation, then capture one resulting SVG in a disposable labelled Flow fixture and compare the captured bytes and hash. Keep receipts, ARIA, and lossless WebP proof.
-3. Compare focused C4 deployment boundaries with open sequence icons and swimlane frames. The C4 boundary keeps its bound accent backing under Mauve focus. Open workflow geometry remains unfilled, and child meanings stay distinct.
+   - `figure-bindings.test.ts`: "category colors depend only on exact keys", "identical explicit assignments repeat", "an id shared by a source node and edge", "malformed bindings", and the packet and four railroad notation rows.
+   - `figure-entities.test.ts`: "native C4 kinds", "a failing C4 store", "a group colors its own backing", "architecture store icons", "tree basenames", and "entity authored paint". The example-driven rows name each native C4 and entity-family target.
+   - `figure-schedules.test.ts`: "Gantt source states", "journey people", "category identities survive declaration and branch reordering", "Kanban priority", "Git histories keep branch identity", and every unavailable-identity row. The named `GANTT` and `FAMILIES` sources supply task, participant, period, card, and branch ids.
+   - `figure-spatial.test.ts`: "category names match across families", "colors only the category header", "Wardley source strategies", "Cynefin domains", "unresolvable or conflicting spatial binding", and "mindmap text-only roles". The named `MINDMAP` source includes a child whose meaning must survive a parent assignment.
+   - `figure-chart-colors.test.ts`: "exact category names stay stable", all `CHARTS` rows, "Venn intersections", "unnamed xy bars", "a source target with no emitted marks", "Sankey link concatenations", "Sankey refuses authored nodeColors", and "Sankey accepts a configuration without node paint".
+   - `figure-workflows.test.ts`: the named `SEQUENCE`, `AGENT`, and `EVENT` inputs and all unsupported-target rows. These cover participant header/footer ownership, software neutrality, state aliases, open swimlane frames, collapsed children, generated edges, pseudostates, frame ids, and entity-name refusals.
+   - `figure-readability.test.ts`: "labels use fixed-font cell widths", "wrapping follows visible cells", "default flowchart edges", and prior-output preservation.
+   - `figure-types.test.ts`: every documented keyword and alias uses `plugin/skills/vstack-figures/references/examples/<keyword>.mmd`.
+
+3. Open `figures/consumer.html` in a named browser tab with `app: { tern: false }` and a 1280 by 900 viewport. Evaluate the complete text of `scripts/figure-audit.js` in that page:
+
+   ```js
+   const audit = await tab.evaluate(await Bun.file(`${SKILL_DIR}/scripts/figure-audit.js`).text());
+   ```
+
+   Expect `ok: true`, 13 category accents, literal computed Mocha paints, and 12px Sub/Sup at a 16px base. Save the returned JSON. The audit checks group and figure isolation, multi-mark participant ownership, all three native Sankey modes, cross-family category stability under reorder and insertion, fixed-cell geometry, wrapping, and outline independence. It removes the first figure's style temporarily and restores it before returning.
+
+   Inspect the named sections `one`, `two`, `sequence`, `pie`, `sankey-source`, `sankey-target`, `sankey-gradient`, `readability`, and each `*-plain`/`*-bound` pair. Inspect ordinary node text separately from loose outlined text. In the tree pair, the icon-disabled `README.md` gains no icon; the existing `index.ts` icon keeps its source-kind distinction. Inspect architecture icon contrast, Gantt outside labels, journey dots and legend, Git cutouts, Wardley open routes and loose labels, Venn text-only intersections, and child meanings in spatial and workflow groups. All example SVGs also remain available as standalone files. Open representative files in their own SVG context, not only the inline page.
+
+4. Read `figures/revisions.json`. The historical comparison starts at `9a3a54bbb269732d548c0cc00af18497657d6933`. The after revision is the recorded checkout HEAD plus the recorded working renderer SHA-256. For this feature's review-fix wave, the parent is `da4dea5027f0871b7c97a652ed735a4dabddf481` plus the review patch. Compare `before-9a3a54b.svg` with `after-working-tree.svg` using their identical retained `comparison.mmd` input. This comparison includes intentional typography, step routing, outline, and palette changes. It does not prove any one change caused all visible differences.
+
+   Palette-only comparisons instead use each `*-plain.svg` and `*-bound.svg` pair from the same current renderer and unchanged source. The helper compares coordinates, path data, dimensions, and viewBox for those pairs. Do not demand layout equality across the historical typography/routing change. Compare explicit source configurations or temporarily remove only the outline in the browser when judging routing or outline alone. Native Pele `smaller` previously displayed about 13.33px at a 16px base. The confirmed output is explicitly 12px, not a promise to retain native keyword sizing. Record fallback-font and unverified Unicode limits.
+
+5. Drive a clearly labelled disposable Flow fixture:
+
+   ```sh
+   bash "$SKILL_DIR/scripts/doctor.sh" "$CHECKOUT" "$VERIFY_RUN_DIR"
+   bun "$SKILL_DIR/scripts/figure-flow.ts" "$CHECKOUT" "$VERIFY_RUN_DIR" "$FLOW_SESSION" "$FLOW_AGENT"
+   ```
+
+   Expect `ok: true` in `figure-flow/summary.json`. This uses only `data/figure-home`, creates a disposable Stage, captures `figures/one.svg` in both a Document and a question with reader needs, and saves receipts and raw commands. The captured bytes and SHA-256 remain unchanged after the original source changes. A question missing its required figure refuses without changing the page. Open the summary's live URL, select the question, and inspect Reader needs, meaningful image alternative text, and the visible focused group. Inspect the saved `figure-flow/captured.svg` in its own browser tab for computed SVG paints. Flow images are not inline SVG.
+
+6. Save ARIA and full-resolution lossless WebP proof at 1280 and 360px. Capture PNG silently, convert losslessly, and read the resulting WebP as the parent skill requires. Record page overflow and visible readability separately from the computed-paint audit. Keep the raw outputs and revision record beside the screenshots.
+
+7. Preserve the disposable Flow export before cleanup. Stop only its authenticated isolated-home host, close owned tabs, and run scoped cleanup:
+
+   ```sh
+   bun "$CHECKOUT/plugin/skills/flow-page/scripts/flow-page.ts" host stop --home "$VERIFY_RUN_DIR/data/figure-home" --session "$FLOW_SESSION" --agent "$FLOW_AGENT"
+   bash "$SKILL_DIR/scripts/cleanup.sh" "$VERIFY_RUN_DIR"
+   ```
+
+   Keep `figures/`, `figure-flow/`, screenshots, ARIA, and `notes.md` outside `data/`. Record every failed attempt, Doctor retry, correction, re-drive, and teardown. Do not publish this disposable fixture to the real Flow.
 
 ## Gotchas
 
-- Run the checkout script, not the copy loaded by the current omp session.
+- Run checkout scripts, not the plugin already loaded in the current omp session.
 - A missing Pele import is a dependency failure, not a Mermaid parse error.
-- Timeline events, ishikawa causes, and individual xychart bars have no usable focal `data-id`. Explain their focal point in accompanying text.
-- Focus ids are case-sensitive. A selector that matches nothing does not prove a visible accent.
-- Flow images isolate the SVG's style from the page. Inspect focal rules in the captured SVG and visible image, not a nonexistent inline `svg` element.
+- Focus is case-sensitive and requires one stable source identity with visible owned marks. Multiple SVG marks can belong to one semantic target.
+- Timeline events, Ishikawa causes, and individual xy bars have no supported focus id. Generated ids, hidden children, and missing geometry remain unsupported.
+- Used or unused paint declarations are refused, including theme-variable paints and Sankey `nodeColors`. Empty color configuration remains valid.
+- Authored palette values differ from pixels blended by opacity, gradients, and antialiasing. Audit gradient stops rather than sampling interpolated pixels.
+- Browser `paint-order: stroke fill` can serialize as `stroke`; both mean the outline precedes the fill.
+- A combined historical before/after is not palette-only evidence. Keep intended typography and routing differences separate.

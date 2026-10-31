@@ -38,7 +38,6 @@ function classes(target: Target, names: string[]) {
   for (const name of names) if (name && !PELE_CLASS.test(name)) assign(target, "role", name);
 }
 function categoryColor(key: string) {
-  // FNV-1a over UTF-8 fixes the mapping across processes and diagram families.
   let hash = 2166136261;
   for (const byte of new TextEncoder().encode(key)) hash = Math.imul(hash ^ byte, 16777619) >>> 0;
   return ACCENTS[hash % ACCENTS.length]!;
@@ -87,6 +86,19 @@ function flowTargets(model: FlowchartModel | Extract<DiagramModel, { type: "agen
 }
 
 function entityTargets(model: DiagramModel): Map<string, Target[]> | undefined {
+  if (model.type === "class" || model.type === "er" || model.type === "block") {
+    const definitions = model.type === "class" ? model.styleClasses : model.classes;
+    const declarations = [...definitions.values()].flatMap((definition) => [...definition.styles, ...definition.textStyles]);
+    if (model.type === "class") for (const node of model.classes.values()) declarations.push(...node.styles);
+    else if (model.type === "er") {
+      for (const entity of model.entities.values()) declarations.push(...entity.cssStyles);
+      for (const group of model.subgraphs) declarations.push(...group.cssStyles);
+    } else for (const node of [...model.byId.values(), ...model.edges]) declarations.push(...(node.styles ?? []));
+    for (const declaration of declarations) {
+      const colon = declaration.indexOf(":");
+      if (colon > 0) refusePaint(declaration.slice(0, colon).trim(), declaration.slice(colon + 1), true);
+    }
+  }
   const targets = new Map<string, Target[]>();
   const add = (id: string, names: string[] = [], intrinsic?: string, line = false) => {
     const target: Target = { id, intrinsic, line };
@@ -251,8 +263,9 @@ function chartTargets(model: DiagramModel) {
   return targets;
 }
 
-function targetColor(target: Target | undefined): string | undefined {
-  return target?.role ? ROLES[target.role] : target?.category !== undefined ? categoryColor(target.category) : target?.intrinsic ? ROLES[target.intrinsic] : target?.categorical !== undefined ? categoryColor(target.categorical) : undefined;
+function targetColor(target: Target | undefined, intrinsicEligible = true): string | undefined {
+  const category = target?.categorical ?? target?.key ?? target?.sourceCategory;
+  return target?.role ? ROLES[target.role] : target?.category !== undefined ? categoryColor(target.category) : intrinsicEligible && target?.intrinsic ? ROLES[target.intrinsic] : category !== undefined ? categoryColor(category) : undefined;
 }
 
 function sankeyPaint(svg: string, model: Extract<DiagramModel, { type: "sankey" }>, targets: Map<string, Target[]>, scope: string) {
@@ -368,7 +381,14 @@ export function palette(svg: string, model: DiagramModel, bindings: Binding[], f
     if (visible && !visible.has(binding.id)) throw new Error(`Unavailable binding target: ${binding.id}. Pele emits no visible geometry for this source target.`);
     assign(matches[0]!, binding.role !== undefined ? "role" : "category", binding.role ?? binding.category!);
   }
-  if (interaction) for (const id of focus) resolve(id, "focus");
+  for (const id of focus) {
+    if (interaction) { resolve(id, "focus"); continue; }
+    if (!resolved) throw new Error(`Unsupported focus target ${id}: ${model.type} does not expose stable focus identities.`);
+    const matches = targets.get(id);
+    if (!matches?.length) throw new Error(`Missing focus target: ${id}. Use a supported source identity for ${model.type}.`);
+    if (matches.length !== 1) throw new Error(`Ambiguous focus target: ${id}. It names ${matches.length} source targets.`);
+    if (matches[0]!.unsupported) throw new Error(`Unsupported focus target ${id}: generated ${model.type} ids are not declared source identities.`);
+  }
   if (model.type === "journey") {
     svg = svg.replace(/(<circle\b[^>]*class="pele-actor"[^>]*)(>)(<title>([^<]*)<\/title>)/g, (_, start, end, title, person) => `${start} data-id="${person}"${end}${title}`);
   }
@@ -389,7 +409,6 @@ export function palette(svg: string, model: DiagramModel, bindings: Binding[], f
   const gitEdges = [...crossBranch, ...sameBranch];
   let gitEdge = 0;
   if (model.type === "sankey") {
-    // Validate the native paints before replacing links and stops, including caller-authored nodeColors.
     for (const match of svg.matchAll(/\b(fill|stroke|stop-color)="([^"]*)"/g)) {
       const value = match[2]!.replace(/^url\(#[^)]+\)\s*/, "");
       refusePaint(match[1]!, value);
@@ -402,6 +421,7 @@ export function palette(svg: string, model: DiagramModel, bindings: Binding[], f
   }
   const stack: { name: string; target?: Target; focused: boolean; icon: boolean; classes: string[]; loose: boolean }[] = [];
   const chartVisible = new Set<Target>();
+  const focusedVisible = new Set<string>();
   const xyPlots = model.type === "xychart" ? [...model.plots.filter((p) => p.type === "bar"), ...model.plots.filter((p) => p.type === "line")] : [];
   let quadrantLabel = 0, xyPlot = 0, xyBar = 0;
   svg = svg.replace(/<\/?[\w:-]+\b(?:"[^"]*"|'[^']*'|[^'">])*>/g, (tag) => {
@@ -415,7 +435,6 @@ export function palette(svg: string, model: DiagramModel, bindings: Binding[], f
     const id = attrs.get("data-id"), ownClasses = (attrs.get("class") ?? "").split(/\s+/);
     const parent = stack.at(-1);
     let target = parent?.target, focused = parent?.focused ?? false;
-    // Cause text and its routes do not belong to the category header's paint assignment.
     if (model.type === "ishikawa" && ownClasses.some((c) => ["pele-ishikawa-causes", "pele-ishikawa-bones", "pele-marker"].includes(c))) {
       target = undefined; focused = false;
     }
@@ -459,12 +478,12 @@ export function palette(svg: string, model: DiagramModel, bindings: Binding[], f
     }
     if (model.type === "wardley" && target?.labelOnly && !target.line && SHAPE.has(name)) target = undefined;
     const icon = ownClasses.includes("pele-icon") || (parent?.target === target && (parent?.icon ?? false));
-    const key = target?.key ?? target?.sourceCategory;
     if (chart) loose = ownClasses.includes("pele-legend-item") || ownClasses.includes("pele-section") || model.type === "sankey" || model.type === "venn" || model.type === "quadrantChart" && (ownClasses.includes("pele-point") || parent?.classes.includes("pele-point-labels")) || parent?.loose === true;
-    const accent = chart ? targetColor(target) : target?.role ? ROLES[target.role] : target?.category !== undefined ? categoryColor(target.category) : target?.intrinsic && (!target.iconOnly || icon) ? ROLES[target.intrinsic] : key !== undefined ? categoryColor(key) : undefined;
+    const accent = targetColor(target, !target?.iconOnly || icon);
     const invisible = attrs.get("fill") === "none" && attrs.get("stroke") === "none";
     const neutral = target && ["wardley", "cynefin"].includes(model.type) && ["rect", "circle"].includes(name) && attrs.get("fill") === "var(--_bg)";
     if (chart && target && !invisible && (SHAPE.has(name) || name === "text")) chartVisible.add(target);
+    if (focused && target && !invisible && (SHAPE.has(name) || name === "text")) focusedVisible.add(target.id);
     if (!invisible && (accent || focused || target?.neutral || neutral || chart && target) && (SHAPE.has(name) || name === "text")) {
       const line = target?.line || ownClasses.includes("pele-edge") || ownClasses.includes("pele-lane") || ownClasses.includes("pele-lifeline") || parent?.name === "line" || chart && attrs.get("fill") === "none";
       const open = (model.type === "flowchart" || interaction) && attrs.get("fill") === "none";
@@ -480,7 +499,7 @@ export function palette(svg: string, model: DiagramModel, bindings: Binding[], f
     return tag;
   });
   for (const binding of bindings) if (chart && !chartVisible.has(targets.get(binding.id)![0]!)) throw new Error(`Unsupported binding target ${binding.id}: no visible owned marks in ${model.type}.`);
-  // Pele embeds default fallback colors and mixes nested cluster borders. Resolve both to literal Mocha.
+  for (const id of focus) if (!focusedVisible.has(id)) throw new Error(`Unsupported focus target ${id}: no visible owned marks in ${model.type}.`);
   svg = svg.replace(/color-mix\([^()]*(?:\([^()]*\)[^()]*)*\)/g, BORDER).replace(/var\((--[\w-]+),\s*#[\da-f]{3,8}\s*\)/gi, "var($1)");
   const theme = `.${scope} {
 background: ${BASE};

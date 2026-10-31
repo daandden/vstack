@@ -117,19 +117,33 @@ test("Venn intersections color visible text but do not invent a fillable region"
 });
 
 test("unnamed xy bars use exact band categories, but do not acquire fabricated focus or binding ids", async () => {
-  const dir = setup(), r = await renderFigure(dir, 'xychart\n x-axis [Orders, Other]\n bar [3, 7]\n', { focus: ["Orders"] });
+  const dir = setup(), source = 'xychart\n x-axis [Orders, Other]\n bar [3, 7]\n', r = await renderFigure(dir, source);
   expect(r.code).toBe(0);
   const reference = await renderFigure(dir, 'pie\n "Orders": 3\n "Other": 7\n', { name: "reference" });
   const rectangles = [...r.svg!.matchAll(/<rect\b[^>]*style="([^"]*)"[^>]*>/g)];
   expect(rectangles.map((m) => /fill:(#[\da-f]+)/.exec(m[1]!)?.[1])).toEqual(["Orders", "Other"].map((id) => fill(reference.svg!, id)));
   expect(r.svg).not.toContain("stroke:#cba6f7");
-  const bound = await renderFigure(dir, 'xychart\n x-axis [Orders, Other]\n bar [3, 7]\n', { name: "bound", bindings: elements({ id: "Orders", role: "bad" }) });
-  expect(bound.code).toBe(1); expect(bound.stderr).toContain("Missing binding target");
+  for (const options of [{ bindings: elements({ id: "Orders", role: "bad" }) }, { focus: ["Orders"] }]) {
+    for (const name of ["figure", "fresh"]) {
+      const refused = await renderFigure(dir, source, { ...options, name });
+      expect(refused.code).toBe(1); expect(refused.stdout).toBe("");
+      if (name === "figure") expect(refused.svg).toBe(r.svg);
+      else expect(existsSync(refused.out)).toBe(false);
+    }
+  }
 });
 
 test("a source target with no emitted marks is an explicit support limit", async () => {
-  const r = await renderFigure(setup(), 'treemap\n "Empty": 0\n "Visible": 1\n', { bindings: elements({ id: "Empty", role: "bad" }) });
-  expect(r.code).toBe(1); expect(r.stderr).toContain("no visible"); expect(existsSync(r.out)).toBe(false);
+  const dir = setup(), source = 'treemap\n "Empty": 0\n "Visible": 1\n', good = await renderFigure(dir, source);
+  expect(good.code).toBe(0);
+  for (const options of [{ bindings: elements({ id: "Empty", role: "bad" }) }, { focus: ["Empty"] }]) {
+    for (const name of ["figure", "fresh"]) {
+      const refused = await renderFigure(dir, source, { ...options, name });
+      expect(refused.code).toBe(1); expect(refused.stdout).toBe("");
+      if (name === "figure") expect(refused.svg).toBe(good.svg);
+      else expect(existsSync(refused.out)).toBe(false);
+    }
+  }
 });
 
 test("named quadrant labels contrast with their backing while loose point labels retain their category", async () => {
@@ -170,4 +184,23 @@ test.each([
 ])("unused chart paint declarations are also semantic refusals", async (source) => {
   const r = await renderFigure(setup(), source);
   expect(r.code).toBe(1); expect(r.stderr).toContain("sets its own color"); expect(existsSync(r.out)).toBe(false);
+});
+
+test.each(["Orders: var(--pele-error)", "Unused: red"])("Sankey refuses authored nodeColors %s even when masked or unused", async (declaration) => {
+  const dir = setup(), good = await renderFigure(dir, "sankey\n\nOrders,Other,1\n");
+  expect(good.code).toBe(0);
+  const source = `---\nconfig:\n sankey:\n  nodeColors:\n   ${declaration}\n---\nsankey\n\nOrders,Other,1\n`;
+  for (const name of ["figure", "fresh"]) {
+    const refused = await renderFigure(dir, source, { name });
+    expect(refused.code).toBe(1); expect(refused.stdout).toBe("");
+    if (name === "figure") expect(refused.svg).toBe(good.svg);
+    else expect(existsSync(refused.out)).toBe(false);
+  }
+});
+
+test.each(["{}", "{Orders: ''}", "{Orders: null}"])("Sankey accepts a configuration without node paint: %s", async (nodeColors) => {
+  const dir = setup(), plain = await renderFigure(dir, "sankey\n\nOrders,Other,1\n");
+  expect(plain.code).toBe(0);
+  const r = await renderFigure(dir, `---\nconfig:\n sankey:\n  nodeColors: ${nodeColors}\n---\nsankey\n\nOrders,Other,1\n`);
+  expect(r.code).toBe(0); expect(r.svg).toBe(plain.svg);
 });

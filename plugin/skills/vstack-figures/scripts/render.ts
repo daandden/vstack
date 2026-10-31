@@ -1,4 +1,3 @@
-// The public Bun CLI for caller-authored Pele figures. Palette and identity rules stay private.
 
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -8,7 +7,6 @@ import { bindingsDocument, FONT, palette, type Binding } from "./palette.ts";
 
 const GRAPHEMES = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 const WIDE = /[\u1100-\u115f\u2e80-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe30-\ufe4f\uff00-\uff60\uffe0-\uffe6]/u;
-// IosevkaTerm uses half-em cells in every face. Fallback fonts and other Unicode widths may differ.
 const fontMeasurer = {
 	width(text: string, size: number, style: number) {
 		let cells = 0;
@@ -25,8 +23,6 @@ function usage(message: string): never {
 }
 
 function readabilityRules(scope: string) {
-	// Pele emits "smaller", which Chromium renders at 13.33px for a 16px label, not 12px.
-	// Fix the output size explicitly so script measurement and browser text use the same scale.
 	return `.${scope} tspan[baseline-shift] { font-size: 75%; }
 .${scope}:is(.pele-wardley, .pele-venn) text, .${scope} .pele-edge-label text, .${scope} .pele-cluster-label {
 	paint-order: stroke fill; stroke: #1e1e2e; stroke-width: 0.12em; stroke-linejoin: round;
