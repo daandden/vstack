@@ -45,9 +45,11 @@ At every delivery End state, an independent isolated Verifier checks the committ
 
 ## Flow links in omp
 
-When a session has a bound Flow, the extension displays its URL after every main-agent reply, including blocker replies and follow-up explanations. The extension does not open a browser or start another model turn. If the local host fails, the message gives the static page path and the observed error instead.
+When a session has a bound Flow, the extension displays its URL after each completed, nonempty main-agent reply, including blocker replies and follow-up explanations. Cancelled, failed, tool-only, and empty runs add no link. The extension does not open a browser or start another model turn. If the local host fails, the message gives the static page path and the observed error instead.
 
 Bindings belong to a project, session, and agent. Continuing a session restores its binding from disk. Switching sessions does not inherit the previous session's Flow. The extension gives each agent its authoring identity before a turn because bash supplies only `PI_SESSION_ID`. The `flow-page` helper documents the authoring commands and the `bound` lookup.
+
+Displayed `vstack-flow` cards remain in session history but are excluded from ordinary-turn model requests. The hidden `vstack-flow-context` authoring instructions remain available to the model. This filter does not cover compaction or branch-summary input rebuilt from persisted history.
 
 
 ## Improve an LLM flow

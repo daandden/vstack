@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import type { Subprocess } from "bun";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { ENV, git } from "./support/fixture.ts";
@@ -106,6 +106,9 @@ interface Checkout {
   fingerprint: string;
   branch: string | null;
   sessions: { id: string; file: string; live: boolean }[];
+  automatic?: boolean;
+  integration?: { status: string; ref?: string; reason?: string };
+  source_git_dir?: string;
 }
 
 function inventory(env: Record<string, string | undefined> = {}): Record<string, Checkout> {
@@ -465,4 +468,399 @@ test("a sandbox with both an m and a merged checkout is uncertain, so removing o
   const r = remove(`${m}=${inv[m].fingerprint || "0".repeat(64)}`);
   expect(r.removed).toEqual([]);
   expect(existsSync(merged)).toBe(true);
+});
+
+test("uncertain ownership leaves contents uninspected, just like a live owner", () => {
+  const path = linkedWorktree("wt-uncertain");
+  writeFileSync(join(path, "private-draft.txt"), "not inspected\n");
+  const c = inventory({ PI_SESSION_ID: undefined })[path];
+  expect(c).toMatchObject({ verdict: "uncertain", state: "not checked", changes: {}, fingerprint: "" });
+});
+
+test("remove inspects only requested targets even when an unrelated checkout cannot be read", () => {
+  const path = linkedWorktree("wt-target");
+  const c = inventory()[path];
+  const unrelated = linkedWorktree("wt-unrelated");
+  const privateFiles = join(unrelated, ".git");
+  chmodSync(privateFiles, 0);
+  try {
+    const r = cleanWt(["remove", `${path}=${c.fingerprint}`]);
+    expect(r.code).toBe(0);
+    expect(r.json.removed.map((c: { path: string }) => c.path)).toEqual([path]);
+    expect(existsSync(unrelated)).toBe(true);
+  } finally {
+    chmodSync(privateFiles, 0o700);
+  }
+});
+
+function publishDefault(branch: string) {
+  const remote = join(dir, "remote.git");
+  git(dir, "clone", "-q", "--bare", repo, remote);
+  git(remote, "symbolic-ref", "HEAD", `refs/heads/${branch}`);
+  git(repo, "remote", "add", "origin", remote);
+  return remote;
+}
+
+test("squash-equivalent tracked drafts use remote HEAD rather than the source checkout branch and remove automatically", () => {
+  const path = linkedWorktree("wt-integrated");
+  writeFileSync(join(path, "feature.txt"), "first\n");
+  git(path, "add", ".");
+  git(path, "commit", "-q", "-m", "first");
+  writeFileSync(join(path, "feature.txt"), "finished\n");
+  git(path, "commit", "-qam", "finish");
+  writeFileSync(join(path, "README.md"), "landed draft\n");
+  git(path, "add", "README.md");
+  git(repo, "checkout", "-qb", "release");
+  git(repo, "merge", "--squash", "wt/wt-integrated");
+  writeFileSync(join(repo, "README.md"), "landed draft\n");
+  writeFileSync(join(repo, "upstream-only.txt"), "unrelated upstream work\n");
+  git(repo, "add", ".");
+  git(repo, "commit", "-qm", "squashed review");
+  publishDefault("release");
+  git(repo, "checkout", "-q", "main");
+  const c = comparedCheckout(path);
+  expect(c).toMatchObject({ state: "dirty", integration: { status: "verified", ref: "refs/heads/release" }, automatic: true });
+  expect(remove(`${path}=${c.fingerprint}`).removed.map((c) => c.path)).toEqual([path]);
+  expect(existsSync(path)).toBe(false);
+  expect(git(repo, "rev-parse", "--verify", "wt/wt-integrated")).toMatch(/^[0-9a-f]{40}$/);
+});
+
+test("approval cannot discard replaced untracked bytes even when file metadata is restored", () => {
+  const path = linkedWorktree("wt-stale-bytes");
+  const file = join(path, "notes.txt");
+  writeFileSync(file, "first\n");
+  utimesSync(file, 1_700_000_000, 1_700_000_000);
+  const before = statSync(file);
+  const c = inventory()[path];
+  writeFileSync(file, "other\n");
+  utimesSync(file, before.atime, before.mtime);
+  const out = remove("--approve", path, `${path}=${c.fingerprint}`);
+  expect(out.removed).toEqual([]);
+  expect(existsSync(path)).toBe(true);
+});
+
+function integratedDraft() {
+  const path = linkedWorktree("wt-draft");
+  git(repo, "checkout", "-qb", "release");
+  writeFileSync(join(repo, "README.md"), "integrated\n");
+  git(repo, "commit", "-qam", "landed");
+  const remote = publishDefault("release");
+  git(repo, "checkout", "-q", "main");
+  writeFileSync(join(path, "README.md"), "integrated\n");
+  return { path, remote };
+}
+
+function comparedCheckout(path: string): Checkout {
+  const discovered = inventory()[path];
+  const prepared = cleanWt(["inventory", "--prepare-source", discovered.source_git_dir!]);
+  expect(prepared.code).toBe(0);
+  const file = join(dir, "source-facts.json");
+  writeFileSync(file, JSON.stringify(prepared.json));
+  const compared = cleanWt(["inventory", "--target", path, "--source-facts", file]);
+  expect(compared.code).toBe(0);
+  return compared.json.checkouts[0];
+}
+
+test.each(["untracked", "ignored", "index"])("integrated tracked work does not authorize unique %s contents", (kind) => {
+  const { path } = integratedDraft();
+  if (kind === "index") {
+    writeFileSync(join(path, "README.md"), "unique staged version\n");
+    git(path, "add", "README.md");
+    writeFileSync(join(path, "README.md"), "integrated\n");
+  } else {
+    writeFileSync(join(path, kind === "ignored" ? ".env" : "notes.txt"), "only here\n");
+  }
+  const c = comparedCheckout(path);
+  expect(c.automatic).toBe(false);
+  expect(remove(`${path}=${c.fingerprint}`).removed).toEqual([]);
+  expect(existsSync(path)).toBe(true);
+});
+
+test("a changed advertised default invalidates both automatic removal and an old approval", () => {
+  const { path, remote } = integratedDraft();
+  const c = comparedCheckout(path);
+  expect(c.automatic).toBe(true);
+  git(remote, "symbolic-ref", "HEAD", "refs/heads/main");
+  const out = remove("--approve", path, `${path}=${c.fingerprint}`);
+  expect(out.removed).toEqual([]);
+  expect(out.skipped.map((s) => s.path)).toEqual([path]);
+});
+
+test("missing remote HEAD evidence leaves a tracked draft unresolved", () => {
+  const { path, remote } = integratedDraft();
+  git(remote, "symbolic-ref", "HEAD", "refs/heads/absent");
+  const c = comparedCheckout(path);
+  expect(c).toMatchObject({ automatic: false, integration: { status: "unresolved" } });
+  expect(remove(`${path}=${c.fingerprint}`).removed).toEqual([]);
+});
+
+test("a newly held idle session with an extra workspace protects an integrated draft", async () => {
+  const { path } = integratedDraft();
+  const c = comparedCheckout(path);
+  session("new-idle-owner", repo, undefined, { additionalDirectories: [path] });
+  await holdLease("new-idle-owner");
+  expect(remove(`${path}=${c.fingerprint}`).removed).toEqual([]);
+  expect(existsSync(path)).toBe(true);
+});
+
+test("new unique history prevents even approved integrated task removal", () => {
+  const dead = Bun.spawnSync(["true"]).pid;
+  const path = join(taskSandbox("t-integrated-history", { pid: dead }), "m");
+  const c = inventory()[path];
+  git(path, "checkout", "-qb", "only-here");
+  git(path, "commit", "-q", "--allow-empty", "-m", "new history");
+  const out = remove("--approve", path, `${path}=${c.fingerprint}`);
+  expect(out.removed).toEqual([]);
+  expect(existsSync(path)).toBe(true);
+});
+
+test("one approval does not authorize another unresolved checkout", () => {
+  const first = linkedWorktree("wt-first");
+  const second = linkedWorktree("wt-second");
+  writeFileSync(join(first, "notes.txt"), "first\n");
+  writeFileSync(join(second, "notes.txt"), "second\n");
+  const inv = inventory();
+  const out = remove("--approve", first, `${first}=${inv[first].fingerprint}`, `${second}=${inv[second].fingerprint}`);
+  expect(out.removed.map((c) => c.path)).toEqual([first]);
+  expect(out.skipped.map((c) => c.path)).toEqual([second]);
+  expect(existsSync(second)).toBe(true);
+});
+
+test("an integrated draft with a shared external skill link removes only the checkout", () => {
+  const { path } = integratedDraft();
+  const external = join(dir, "verify-app");
+  mkdirSync(external);
+  writeFileSync(join(external, "SKILL.md"), "keep me\n");
+  for (const checkout of [repo, path]) {
+    mkdirSync(join(checkout, ".omp", "skills"), { recursive: true });
+    symlinkSync(external, join(checkout, ".omp", "skills", "verify-app"));
+  }
+  writeFileSync(join(repo, ".git", "info", "exclude"), ".omp/skills/verify-*\n");
+  const c = comparedCheckout(path);
+  expect(c.automatic).toBe(true);
+  expect(remove(`${path}=${c.fingerprint}`).removed.map((c) => c.path)).toEqual([path]);
+  expect(readFileSync(join(external, "SKILL.md"), "utf8")).toBe("keep me\n");
+});
+
+test("task wrapper artifacts are not discarded with their checkout", () => {
+  const dead = Bun.spawnSync(["true"]).pid;
+  const entry = taskSandbox("t-wrapper-artifact", { pid: dead });
+  writeFileSync(join(entry, "design.md"), "unique design outside m\n");
+  const path = join(entry, "m");
+  const c = inventory()[path];
+  expect(c.verdict).toBe("uncertain");
+  const out = remove("--approve", path, `${path}=${c.fingerprint || "0".repeat(64)}`);
+  expect(out.removed).toEqual([]);
+  expect(readFileSync(join(entry, "design.md"), "utf8")).toBe("unique design outside m\n");
+});
+
+test("an unlanded rename deletion remains unresolved even when the new filename exists remotely", () => {
+  const path = linkedWorktree("wt-rename");
+  git(path, "mv", "README.md", "renamed.md");
+  git(repo, "checkout", "-qb", "release");
+  writeFileSync(join(repo, "renamed.md"), "hello\n");
+  git(repo, "add", ".");
+  git(repo, "commit", "-qm", "copy rather than rename");
+  publishDefault("release");
+  git(repo, "checkout", "-q", "main");
+  const c = comparedCheckout(path);
+  expect(c.automatic).toBe(false);
+  expect(remove(`${path}=${c.fingerprint}`).removed).toEqual([]);
+});
+
+test("removal refreshes a live session's changed workspace list between targets", async () => {
+  const first = linkedWorktree("wt-first-removed");
+  const second = linkedWorktree("wt-new-workspace");
+  const file = session("workspace-owner", repo);
+  await holdLease("workspace-owner");
+  const inv = inventory();
+  const header = JSON.stringify({ type: "session", id: "workspace-owner", cwd: repo, additionalDirectories: [second] });
+  const observer = Bun.spawn(["python3", "-c", "import os,sys,time\nprint('ready',flush=True)\nwhile os.path.exists(sys.argv[1]): time.sleep(0.002)\nopen(sys.argv[2],'w').write(sys.argv[3]+'\\n')", first, file, header], { stdout: "pipe", stderr: "inherit" });
+  holders.push(observer);
+  const reader = observer.stdout.getReader();
+  const { value } = await reader.read();
+  reader.releaseLock();
+  expect(new TextDecoder().decode(value)).toContain("ready");
+  const out = remove(`${first}=${inv[first].fingerprint}`, `${second}=${inv[second].fingerprint}`);
+  expect(out.removed.map((c) => c.path)).toEqual([first]);
+  expect(out.skipped.map((c) => c.path)).toEqual([second]);
+  expect(existsSync(second)).toBe(true);
+});
+
+test("an unreadable ignored artifact keeps otherwise integrated work unresolved", () => {
+  const { path } = integratedDraft();
+  writeFileSync(join(repo, ".env"), "same bytes but unreadable copy\n");
+  const file = join(path, ".env");
+  writeFileSync(file, "same bytes but unreadable copy\n");
+  chmodSync(file, 0);
+  try {
+    const c = comparedCheckout(path);
+    expect(c.automatic).toBe(false);
+    expect(c.changes.ignored_unverified).toEqual([".env"]);
+    expect(remove(`${path}=${c.fingerprint}`).removed).toEqual([]);
+    expect(existsSync(path)).toBe(true);
+  } finally {
+    chmodSync(file, 0o600);
+  }
+});
+
+test("approval cannot remove an orphan whose Git history cannot be verified", () => {
+  const path = linkedWorktree("wt-orphan-approval");
+  rmSync(join(repo, ".git", "worktrees", "wt-orphan-approval"), { recursive: true });
+  const c = inventory()[path];
+  const out = remove("--approve", path, `${path}=${c.fingerprint}`);
+  expect(out.removed).toEqual([]);
+  expect(out.skipped.map((c) => c.path)).toEqual([path]);
+  expect(existsSync(path)).toBe(true);
+});
+
+test.each(["--skip-worktree", "--assume-unchanged"])("automatic removal retains tracked bytes hidden by %s after inventory", (flag) => {
+  writeFileSync(join(repo, "local-config.txt"), "defaults\n");
+  git(repo, "add", ".");
+  git(repo, "commit", "-qm", "tracked configuration");
+  const path = join(base, "hidden-clone");
+  git(dir, "clone", "-q", "--shared", repo, path);
+  git(repo, "checkout", "-qb", "release");
+  writeFileSync(join(repo, "README.md"), "integrated\n");
+  git(repo, "commit", "-qam", "landed");
+  publishDefault("release");
+  git(repo, "checkout", "-q", "main");
+  writeFileSync(join(path, "README.md"), "integrated\n");
+  git(path, "update-index", flag, "local-config.txt");
+  const c = comparedCheckout(path);
+  expect(c.automatic).toBe(true);
+  writeFileSync(join(path, "local-config.txt"), "unique bytes after inventory\n");
+  const out = remove(`${path}=${c.fingerprint}`);
+  expect(out.removed).toEqual([]);
+  expect(out.skipped.map((row) => row.path)).toEqual([path]);
+  expect(readFileSync(join(path, "local-config.txt"), "utf8")).toBe("unique bytes after inventory\n");
+});
+
+test("discovery leaves integration for targeted comparisons after clean removal", () => {
+  const { path } = integratedDraft();
+  const clean = linkedWorktree("wt-clean-first");
+  const initial = cleanWt(["inventory"]);
+  expect(initial.code).toBe(0);
+  const records = Object.fromEntries(initial.json.checkouts.map((c: Checkout) => [c.path, c]));
+  expect(records[path]).toMatchObject({ state: "dirty", automatic: false });
+  expect(records[path].integration).toBeUndefined();
+  expect(remove(`${clean}=${records[clean].fingerprint}`).removed.map((c) => c.path)).toEqual([clean]);
+  const source = join(repo, ".git");
+  const prepared = cleanWt(["inventory", "--prepare-source", source]);
+  expect(prepared.code).toBe(0);
+  expect(prepared.json.source_facts).toMatchObject([{ source_git_dir: source, ref: "refs/heads/release" }]);
+  const file = join(dir, "source-facts.json");
+  writeFileSync(file, JSON.stringify(prepared.json));
+  const compared = cleanWt(["inventory", "--target", path, "--source-facts", file]);
+  expect(compared.code).toBe(0);
+  expect(compared.json.checkouts).toHaveLength(1);
+  expect(compared.json.checkouts[0]).toMatchObject({ path, automatic: true, integration: { status: "verified" } });
+  expect(remove(`${path}=${compared.json.checkouts[0].fingerprint}`).removed.map((c) => c.path)).toEqual([path]);
+});
+
+test("a verified untracked landed file and link can be removed automatically", () => {
+  const path = linkedWorktree("wt-untracked-landed");
+  git(repo, "checkout", "-qb", "release");
+  writeFileSync(join(repo, "landed.txt"), "landed contents\n", { mode: 0o755 });
+  symlinkSync("landed.txt", join(repo, "landed-link"));
+  git(repo, "add", ".");
+  git(repo, "commit", "-qm", "landed new files");
+  publishDefault("release");
+  git(repo, "checkout", "-q", "main");
+  writeFileSync(join(path, "landed.txt"), "landed contents\n", { mode: 0o755 });
+  symlinkSync("landed.txt", join(path, "landed-link"));
+  const c = comparedCheckout(path);
+  expect(c).toMatchObject({ automatic: true, integration: { status: "verified" } });
+  expect(remove(`${path}=${c.fingerprint}`).removed.map((row) => row.path)).toEqual([path]);
+  expect(existsSync(path)).toBe(false);
+});
+
+test.each(["--skip-worktree", "--assume-unchanged"])("unique or unreadable tracked bytes hidden by %s are protected at inventory", (flag) => {
+  const path = linkedWorktree("wt-hidden-initial");
+  git(path, "update-index", flag, "README.md");
+  writeFileSync(join(path, "README.md"), "unique hidden draft\n");
+  const c = inventory()[path];
+  expect(c).toMatchObject({ state: "dirty", automatic: false, changes: { unstaged: ["README.md"] } });
+  expect(remove(`${path}=${c.fingerprint}`).removed).toEqual([]);
+  chmodSync(join(path, "README.md"), 0);
+  try {
+    const unavailable = inventory()[path];
+    expect(unavailable).toMatchObject({ state: "unknown", automatic: false });
+    expect(remove("--approve", path, `${path}=${unavailable.fingerprint}`).removed).toEqual([]);
+  } finally {
+    chmodSync(join(path, "README.md"), 0o644);
+  }
+  expect(readFileSync(join(path, "README.md"), "utf8")).toBe("unique hidden draft\n");
+});
+
+test.each(["bytes", "mode", "link", "ignored", "unreadable"])("untracked integration cannot discard %s artifacts", (kind) => {
+  const path = linkedWorktree("wt-untracked-protected");
+  git(repo, "checkout", "-qb", "release");
+  writeFileSync(join(repo, "landed.txt"), "landed\n");
+  symlinkSync("landed.txt", join(repo, "landed-link"));
+  git(repo, "add", ".");
+  git(repo, "commit", "-qm", "landed copies");
+  publishDefault("release");
+  git(repo, "checkout", "-q", "main");
+  const file = join(path, "landed.txt");
+  writeFileSync(file, kind === "bytes" ? "unique\n" : "landed\n");
+  symlinkSync(kind === "link" ? "elsewhere" : "landed.txt", join(path, "landed-link"));
+  if (kind === "mode") chmodSync(file, 0o755);
+  if (kind === "ignored") writeFileSync(join(path, ".env"), "unique ignored\n");
+  if (kind === "unreadable") chmodSync(file, 0);
+  try {
+    const c = comparedCheckout(path);
+    expect(c.automatic).toBe(false);
+    expect(remove(`${path}=${c.fingerprint}`).removed).toEqual([]);
+    expect(existsSync(path)).toBe(true);
+  } finally {
+    chmodSync(file, 0o644);
+  }
+});
+
+test("new unique bytes invalidate verified untracked integration even with approval", () => {
+  const path = linkedWorktree("wt-untracked-replaced");
+  git(repo, "checkout", "-qb", "release");
+  writeFileSync(join(repo, "landed.txt"), "landed\n");
+  git(repo, "add", ".");
+  git(repo, "commit", "-qm", "landed copy");
+  publishDefault("release");
+  git(repo, "checkout", "-q", "main");
+  const file = join(path, "landed.txt");
+  writeFileSync(file, "landed\n");
+  const c = comparedCheckout(path);
+  expect(c.automatic).toBe(true);
+  const before = statSync(file);
+  writeFileSync(file, "unique\n");
+  utimesSync(file, before.atime, before.mtime);
+  expect(remove("--approve", path, `${path}=${c.fingerprint}`).removed).toEqual([]);
+  expect(readFileSync(file, "utf8")).toBe("unique\n");
+});
+
+test("shared prepared source facts support separate target comparisons but never replace fresh removal evidence", () => {
+  const { path, remote } = integratedDraft();
+  const second = linkedWorktree("wt-second-draft");
+  writeFileSync(join(second, "README.md"), "integrated\n");
+  const prepared = cleanWt(["inventory", "--prepare-source", join(repo, ".git")]);
+  expect(prepared.code).toBe(0);
+  const file = join(dir, "shared-source-facts.json");
+  writeFileSync(file, JSON.stringify(prepared.json));
+  const unrelated = linkedWorktree("wt-unreadable");
+  chmodSync(join(unrelated, ".git"), 0);
+  try {
+    const records = [path, second].map((target) => {
+      const compared = cleanWt(["inventory", "--target", target, "--source-facts", file]);
+      expect(compared.code).toBe(0);
+      expect(compared.json.checkouts).toHaveLength(1);
+      expect(compared.json.checkouts[0]).toMatchObject({ path: target, automatic: true });
+      return compared.json.checkouts[0];
+    });
+    git(remote, "symbolic-ref", "HEAD", "refs/heads/main");
+    const out = remove(...records.flatMap((c) => ["--approve", c.path, `${c.path}=${c.fingerprint}`]));
+    expect(out.removed).toEqual([]);
+    expect(out.skipped.map((c) => c.path)).toEqual([path, second]);
+    expect(existsSync(path) && existsSync(second)).toBe(true);
+  } finally {
+    chmodSync(join(unrelated, ".git"), 0o644);
+  }
 });

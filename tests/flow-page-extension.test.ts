@@ -44,6 +44,10 @@ function world() {
 }
 function setup() { const w = world(); worlds.push(w); return w; }
 const urls = (h: ReturnType<typeof fakeHost>) => h.sent.flatMap((m: any) => m.content.match(/http:\/\/127\.0\.0\.1:\d+\/f\/[^\s)]+/g) ?? []);
+const completedReply = (text = "Done.") => ({
+  isTerminal: true,
+  messages: [{ role: "assistant", stopReason: "stop", content: [{ type: "text", text }] }],
+});
 
 test("a session's Flow returns after every completed reply, including a blocker and follow-up", async () => {
   const w = setup();
@@ -54,19 +58,70 @@ test("a session's Flow returns after every completed reply, including a blocker 
   await h.emit("agent_end", { isTerminal: false });
   expect(urls(h)).toHaveLength(0);
   for (const text of ["Implemented.", "Blocked on credentials.", "Here is why the blocker matters."]) {
-    await h.emit("agent_end", { isTerminal: true, messages: [{ role: "assistant", content: [{ type: "text", text }] }] });
+    await h.emit("agent_end", completedReply(text));
   }
   expect(urls(h)).toEqual([a.live.url, a.live.url, a.live.url]);
   const resumed = w.host("a");
   await resumed.emit("before_agent_start", { prompt: "Continue" });
-  await resumed.emit("agent_end", { isTerminal: true });
+  await resumed.emit("agent_end", completedReply("Continued."));
   expect(urls(resumed)).toEqual([a.live.url]);
   const other = w.host("b");
-  await other.emit("agent_end", { isTerminal: true });
+  await other.emit("agent_end", completedReply("Other ticket complete."));
   expect(urls(other)).toEqual([b.live.url]);
   const unbound = w.host("unbound");
-  await unbound.emit("agent_end", { isTerminal: true });
+  await unbound.emit("agent_end", completedReply());
   expect(unbound.sent).toHaveLength(0);
+});
+
+test("cancelled retries do not present a Flow without a completed visible reply", async () => {
+  const w = setup();
+  const a = await w.ok(["open", "--title", "Cancelled retries", "--skill", "implement", "--session", "a"]);
+  const h = w.host("a");
+  await h.emit("agent_end", completedReply("The first reply is complete."));
+  const aborted = { role: "assistant", stopReason: "aborted", content: [{ type: "text", text: "" }] };
+  for (const messages of [
+    [aborted],
+    [aborted],
+    [...completedReply("Earlier text in the cancelled run.").messages, aborted],
+    [{ ...aborted, stopReason: "error", content: [{ type: "text", text: "Request failed." }] }],
+    [{ ...aborted, stopReason: "toolUse" }, { role: "toolResult", isError: true }],
+    completedReply("  ").messages,
+    [],
+  ]) {
+    await h.emit("agent_end", { isTerminal: true, messages });
+    expect(urls(h)).toEqual([a.live.url]);
+  }
+  const resumed = w.host("a");
+  await resumed.emit("agent_end", { isTerminal: true, messages: [aborted] });
+  expect(urls(resumed)).toEqual([]);
+  await resumed.emit("agent_end", completedReply("A new reply after retrying."));
+  expect(urls(resumed)).toEqual([a.live.url]);
+});
+
+test("Flow presentation stays in the transcript but not ordinary-turn model context", async () => {
+  const w = setup();
+  await w.ok(["open", "--title", "Context isolation", "--skill", "implement", "--session", "context"]);
+  const h = w.host("context");
+  const start = await h.emit("before_agent_start") as any[];
+  const { message: identity } = start.find(result => result?.message?.customType === "vstack-flow-context");
+  await h.emit("agent_end", completedReply());
+  const [presentation] = h.sent as any[];
+  const user = { role: "user", content: presentation.content };
+  const assistant = { role: "assistant", content: [{ type: "text", text: "The work is blocked." }] };
+  const authoring = { role: "custom", ...identity };
+  const other = { role: "custom", customType: "another-extension", content: presentation.content, display: true };
+  const kept = [user, assistant, authoring, other];
+  const history = [
+    user,
+    { role: "custom", ...presentation },
+    assistant,
+    authoring,
+    { role: "custom", customType: "vstack-flow", content: "Flow page unavailable: offline", display: true },
+    other,
+  ];
+  const results = await h.emit("context", { messages: history });
+  const modelMessages = results.reduce((messages: any, result: any) => result?.messages ?? messages, history);
+  expect(modelMessages).toEqual(kept);
 });
 
 test("an occupied live endpoint presents the static page and the observed failure, not an old URL", async () => {
@@ -78,7 +133,7 @@ test("an occupied live endpoint presents the static page and the observed failur
     const current = await w.ok(["bound", "--session", "a"]);
     expect(current.live.state).toBe("unavailable");
     const h = w.host("a");
-    await h.emit("agent_end", { isTerminal: true });
+    await h.emit("agent_end", completedReply());
     expect(urls(h)).toHaveLength(0);
     const content = h.sent.map((m: any) => m.content).join("\n");
     expect(content).toContain(a.page);
@@ -104,13 +159,13 @@ test("session and agent bindings keep ticket contributions and later presentatio
   ]);
   expect(snapshot.stages[2].results).toHaveLength(1);
   const h = w.host("a");
-  await h.emit("agent_end", { isTerminal: true });
+  await h.emit("agent_end", completedReply("First ticket complete."));
   h.ctx.sessionManager = { ...h.ctx.sessionManager, getSessionId: () => "b" };
   await h.emit("session_switch");
-  await h.emit("agent_end", { isTerminal: true });
+  await h.emit("agent_end", completedReply("Second ticket complete."));
   expect(urls(h)).toEqual([a.live.url, b.live.url]);
   const sub = w.host("a", { kind: "sub", id: "worker-1", name: "vstack-worker", depth: 1, parentId: "Main" });
-  await sub.emit("agent_end", { isTerminal: true });
+  await sub.emit("agent_end", completedReply());
   expect(sub.sent).toHaveLength(0);
   expect((await w.ok(["bound", "--session", "a"])).stage).toBe(a.stage);
   expect((await w.ok(["bound", "--session", "a", "--agent", "worker-1"])).stage).toBe(child.stage);
