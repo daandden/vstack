@@ -82,5 +82,31 @@
       "Flow question question-21, answer A: The update-placement B side reads correctly. The page is adequate.",
       "Flow question question-22, answer A: The prototype-review diagram helps. It is acceptable, not a penalty."
     ]
+  },
+  "shipped_reader_rerun": {
+    "ticket": 315,
+    "run": "2026-10-31",
+    "reader": "Nuxt reader 9.0.0 served by the Bun host, integration tip 417a5d8",
+    "configuration": "One trial per subject per side, anthropic/claude-opus-5-5 at high thinking, isolated --home and own host port per run, each child under its own harness identity.",
+    "identity": "All eight children used their own harness binding. The checker confirmed each frozen binding.",
+    "availability": [
+      "stream-versus-tabs, terminology, and prototype-review: both sides available.",
+      "update-placement baseline unavailable: a search over the tested skill tree returned SKILL.md and evals/PROCEDURE.md text."
+    ],
+    "capture": "The watcher froze every first publication at revision 2 while it was current, and each receipt shows the host serving. The rendered captures were taken after the children exited, once their live state SHA-256 matched the freeze. The six controls and the late repair are labelled re-renders.",
+    "human_review": {
+      "status": "reviewed",
+      "reviewed": "2026-11-01",
+      "questions": [
+        "Do the fresh question-local visuals and prose explain every listed option distinction clearly at the captured display size?",
+        "Do the re-rendered controls still fail for locality, decision coverage, readability, and timing in the shipped reader?",
+        "Is the no-skill stream-versus-tabs text figure declared as option-diagram adequate, and are the prototype-review diagram's edge-crossed cluster titles readable?"
+      ],
+      "outcome": [
+        "Flow question question-23, answer A: The shipped-reader judgments hold.",
+        "Flow question question-24, answer C: The no-skill stream-versus-tabs text figure declared as option-diagram is not an adequate structural visual. A structural choice needs a drawn diagram.",
+        "Flow question question-25, answer B: The prototype-review diagram is not readable in the light theme. Light-mode figure styling needs a fix."
+      ]
+    }
   }
 }

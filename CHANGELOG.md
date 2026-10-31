@@ -4,6 +4,8 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+- The Flow authoring evaluation reruns on the shipped Nuxt reader (#315). Each headless child authors under its own harness identity with its own home and host port. `check-record.ts` now requires the frozen binding and rejects one whose session, agent, Flow, or Stage differs from the required identity and receipt. The procedure freezes each first publication while the batch runs and keeps evidence outside the children's cwd. A no-skill run that receives tested instructions through search results counts as contaminated. The rerun's outcomes are recorded in `judging.json` and await user review.
+
 ## [9.0.0] - 2026-10-31
 
 - Add the Flow first-publication authoring evaluation set for #311. Keep realistic subjects separate from the original Q7/Q8 negatives and inadequate-diagram controls, document isolated headless reruns and rendered evidence capture, and check frozen record integrity without treating local kind coverage as visual adequacy.

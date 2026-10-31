@@ -10,7 +10,7 @@ try {
   if (record.version !== 1 || !record.files || Object.keys(record.files).length === 0) {
     throw new Error("Record needs version 1 and a nonempty files sha256 map");
   }
-  for (const field of ["submitted", "receipt", "state", "screenshot", "aria", "display"]) {
+  for (const field of ["submitted", "receipt", "state", "binding", "screenshot", "aria", "display"]) {
     if (typeof record[field] !== "string" || !Object.hasOwn(record.files, record[field])) {
       throw new Error(`${field}: ${record[field]} is not in the hash manifest`);
     }
@@ -28,6 +28,14 @@ try {
   if (receipt.flow !== state.flow.id) {
     throw new Error(`receipt Flow ${receipt.flow} does not match state ${state.flow.id}`);
   }
+  const binding = load(record.binding);
+  const identity = record.identity ?? {};
+  if (binding.session !== identity.session || binding.agent !== identity.agent) {
+    throw new Error(`binding identity ${binding.session}/${binding.agent} does not match required ${identity.session}/${identity.agent}`);
+  }
+  if (binding.flow !== receipt.flow || binding.stage !== receipt.stage) {
+    throw new Error(`binding ${binding.flow}/${binding.stage} does not match receipt ${receipt.flow}/${receipt.stage}`);
+  }
   const questions = record.question_ids.map((id: string) => {
     const question = state.questions.find((item: { id: string }) => item.id === id);
     if (!question) throw new Error(`${id}: question is absent from frozen state`);
@@ -40,7 +48,7 @@ try {
       local_attachments: [...new Set(visuals.flatMap(visual => visual.attachment ? [visual.attachment] : []))].sort(),
     };
   });
-  console.log(JSON.stringify({ files_verified: Object.keys(record.files).length, questions }));
+  console.log(JSON.stringify({ files_verified: Object.keys(record.files).length, identity: { session: binding.session, agent: binding.agent }, questions }));
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
   process.exitCode = 1;

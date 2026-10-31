@@ -17,13 +17,14 @@ function fixture() {
   const submitted = { version: 1, items: [{ kind: "round", questions: [{ title: "Where does the update appear?", needs: [{ need: "Locate the later update", kind: "prose" }], options: [] }] }] };
   const receipt = { flow: "flow-fixture", stage: "stage-1", revision: 2, refs: { pick: "question-1" } };
   const state = { flow: { id: "flow-fixture" }, revision: 2, questions: [{ id: "question-1", stage: "stage-1", title: "Where does the update appear?", needs: submitted.items[0].questions[0].needs, options: [] }], attachments: [] };
-  const files = { "submitted.json": JSON.stringify(submitted), "receipt.json": JSON.stringify(receipt), "state.json": JSON.stringify(state), "page.webp": "captured bytes", "aria.json": "{}", "display.json": "{}" };
+  const binding = { flow: "flow-fixture", stage: "stage-1", session: "01a19000-0000-7000-8000-000000000001", agent: "main", bound: "2026-10-31T00:00:00Z" };
+  const files = { "submitted.json": JSON.stringify(submitted), "receipt.json": JSON.stringify(receipt), "state.json": JSON.stringify(state), "binding.json": JSON.stringify(binding), "page.webp": "captured bytes", "aria.json": "{}", "display.json": "{}" };
   const hashes: Record<string, string> = {};
   for (const [path, content] of Object.entries(files)) {
     writeFileSync(join(root, path), content);
     hashes[path] = createHash("sha256").update(content).digest("hex");
   }
-  const record = { version: 1, first_revision: 2, question_ids: ["question-1"], submitted: "submitted.json", receipt: "receipt.json", state: "state.json", screenshot: "page.webp", aria: "aria.json", display: "display.json", files: hashes };
+  const record = { version: 1, first_revision: 2, question_ids: ["question-1"], identity: { session: binding.session, agent: binding.agent }, submitted: "submitted.json", receipt: "receipt.json", state: "state.json", binding: "binding.json", screenshot: "page.webp", aria: "aria.json", display: "display.json", files: hashes };
   const path = join(root, "record.json");
   writeFileSync(path, JSON.stringify(record));
   return { root, path, record };
@@ -101,4 +102,40 @@ test("omitting a required capture from the hash manifest makes evidence unavaila
   const result = check(path);
   expect(result.code).toBe(1);
   expect(result.error).toContain("screenshot: page.webp is not in the hash manifest");
+});
+
+test("a Flow bound under a substituted identity cannot stand for the required authoring identity", () => {
+  const { root, path, record } = fixture();
+  const binding = JSON.parse(readFileSync(join(root, "binding.json"), "utf8"));
+  binding.session = "01a19000-0000-7000-8000-000000000002";
+  binding.agent = "ArbitrarySalamander";
+  const bytes = JSON.stringify(binding);
+  writeFileSync(join(root, "binding.json"), bytes);
+  record.files["binding.json"] = createHash("sha256").update(bytes).digest("hex");
+  writeFileSync(path, JSON.stringify(record));
+  const result = check(path);
+  expect(result.code).toBe(1);
+  expect(result.error).toContain("binding identity 01a19000-0000-7000-8000-000000000002/ArbitrarySalamander does not match required 01a19000-0000-7000-8000-000000000001/main");
+});
+
+test("a binding for another Flow cannot identify the frozen publication", () => {
+  const { root, path, record } = fixture();
+  const binding = JSON.parse(readFileSync(join(root, "binding.json"), "utf8"));
+  binding.flow = "flow-other";
+  const bytes = JSON.stringify(binding);
+  writeFileSync(join(root, "binding.json"), bytes);
+  record.files["binding.json"] = createHash("sha256").update(bytes).digest("hex");
+  writeFileSync(path, JSON.stringify(record));
+  const result = check(path);
+  expect(result.code).toBe(1);
+  expect(result.error).toContain("binding flow-other/stage-1 does not match receipt flow-fixture/stage-1");
+});
+
+test("omitting the frozen binding makes the authoring identity unavailable", () => {
+  const { path, record } = fixture();
+  delete record.files["binding.json"];
+  writeFileSync(path, JSON.stringify(record));
+  const result = check(path);
+  expect(result.code).toBe(1);
+  expect(result.error).toContain("binding: binding.json is not in the hash manifest");
 });
