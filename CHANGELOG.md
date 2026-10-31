@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [8.0.4] - 2026-10-31
+
+- Keep responsive images during historical Flow migration when the fallback `src` file is missing but an `img` srcset or a source in its `picture` remains available. Remove only the broken `src`, and keep unavailable-image notices when no candidate survives.
+
 ## [8.0.3] - 2026-10-30
 
 - Capture local images embedded in historical HTML figures during Flow migration, including `srcset` candidates and `<picture>` sources, and keep SVG view fragments. Repeating migration repairs uncaptured inline images in an existing Flow without replacing later questions, answers, or Results, and subsequent repeats remain unchanged.
