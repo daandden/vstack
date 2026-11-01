@@ -194,7 +194,9 @@ setup-vstack ships the root `uses: migration` rows under `plugin/skills/setup-vs
 
 ## Migration
 
-Use `/skill:setup-vstack` for Migration. Read its [migration reference](../plugin/skills/setup-vstack/references/migration.md) before applying a plan. It documents Move and Private modes, mandatory items, stale-plan refusal, rollback, commit scope, and machine-state protection.
+Use `/skill:setup-vstack` for Migration. Read its [migration reference](../plugin/skills/setup-vstack/references/migration.md) before applying a plan. It documents Move and Private modes, mandatory items, stale-plan refusal, commit scope, and machine-state protection.
+
+Moving the old private store is mandatory for every registered worktree. If the move fails, Migration rolls back the store, text, directory name, links, and exclude content. A destination conflict never merges files. The existing vstack copy wins, and an optional deletion item resolves the old copy. Migration stays incomplete until the old store moves or is deleted against that existing copy.
 
 ## vstack-maintain
 
@@ -279,6 +281,7 @@ Each `rows[]` entry has `id`, `upstream`, `kind`, `disposition`, and `artifacts`
 | `house_style_rows` | ids of the `uses: update` House style rows applied to both Upstream sides, in order |
 | `sides` | `{old, new}` directories for adapt and merge rows with changed files, else `null`. Missing files stay absent on that side. Binary files stay unchanged. These are the base and incoming sides for implement's merge. |
 | `staged` | `{path, files, dropped}` for changed or moved adopt rows, else `null`. `files` records each path and verified blob SHA. `dropped` lists `agents/openai.yaml` when present Upstream. |
+
 ## Skill contracts
 
 Consult the skill instead of maintaining a second copy of its procedure here:
