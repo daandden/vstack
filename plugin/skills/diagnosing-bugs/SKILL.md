@@ -13,9 +13,9 @@ When exploring the codebase, read `GLOSSARY.md` (if it exists) to get a clear me
 
 Follow `skill://flow-page`'s "Stage entry/exit line" before the first probe or ask.
 
-Publish the repro command and redacted observed output as Code Results with source paths. Keep the ranked hypotheses and their falsifiable predictions in a Document Result, and the probes and their outcomes in a Timeline. A ledger distinguishes confirmed, cleared, and unproven claims and names missing proof. A hypothesis becomes confirmed only when the executed evidence establishes it. Add Metrics for timing or reproduction rates, with workload, environment, numeric values, units, samples, and uncertainty.
+In a Flow, publish the repro command and redacted observed output as Code Results with source paths. Keep the ranked hypotheses and their falsifiable predictions in a Document Result, and the probes and their outcomes in a Timeline. A ledger distinguishes confirmed, cleared, and unproven claims and names missing proof. A hypothesis becomes confirmed only when the executed evidence establishes it. Add Metrics for timing or reproduction rates, with workload, environment, numeric values, units, samples, and uncertainty.
 
-Attach redacted repros, captures, raw outputs, and regression evidence before publishing their Results. Redact the files themselves because attachments retain their bytes. Update focused findings or publish a new captured Result revision as evidence changes. At hand-back, publish the cause, red and green evidence, cleanup, and remaining gaps in the Document. The reply summarizes the Results. Keep canonical regression tests and scripts at their required paths, and use the Flow page rather than a separate report page.
+In a Flow, attach redacted repros, captures, raw outputs, and regression evidence before publishing their Results. Redact the files themselves because attachments retain their bytes. Update focused findings or publish a new captured Result revision as evidence changes. At hand-back, publish the cause, red and green evidence, cleanup, and remaining gaps in the Document. The reply summarizes the Results. Keep canonical regression tests and scripts at their required paths, and use the Flow page rather than a separate report page.
 
 ## Redact
 

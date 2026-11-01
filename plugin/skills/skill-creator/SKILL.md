@@ -116,6 +116,6 @@ It reports every problem it finds: frontmatter syntax and types, naming, a folde
 
 Ordinary creation and small edits need no formal evaluation. For a complex or risky skill, or when the user asks whether a skill works, read [references/evaluation.md](references/evaluation.md). For description changes or misrouting, read [references/trigger-evals.md](references/trigger-evals.md). To decide whether one version beats another, or whether a section earns its place, read [references/blind-comparison.md](references/blind-comparison.md).
 
-Follow `skill://flow-page`'s "Stage entry/exit line" for an evaluation run. Publish the Results specified by the selected evaluation reference. Preserve skill files and all required eval exports. Redact secrets in transcripts and captured outputs. Summarize the Results rather than writing a separate report page.
+Follow `skill://flow-page`'s "Stage entry/exit line" for an evaluation run. In a Flow, publish the Results specified by the selected evaluation reference and summarize them rather than writing a separate report page. Outside a Flow, deliver the full evaluation findings in chat. Preserve skill files and all required eval exports. Redact secrets in transcripts and captured outputs.
 
 Improve skills from real usage and demonstrated failures, preferring a narrow correction to a new universal rule.

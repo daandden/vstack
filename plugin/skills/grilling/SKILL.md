@@ -11,13 +11,13 @@ Follow `skill://flow-page`'s "Stage entry/exit line" for a grilling run. When a 
 
 Facts from files and tools are your job, not the user's. Resolve the vstack root using the project mode before assigning exploration. A running exploration is an unsettled prerequisite: only its downstream decisions wait; the rest of the frontier proceeds.
 
-Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): find the environment fact needed by the frontier question and return evidence and open questions, the vstack root. Do not wait; keep working. If it cannot be spawned, stop: the decisions that depend on the fact stay open on the page.
+Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): find the environment fact needed by the frontier question and return evidence and open questions, the vstack root. Do not wait; keep working. If it cannot be spawned, stop: the decisions that depend on the fact stay open.
 
 For two or more independent explorations, use this Fan-out line instead of repeated single calls:
 
 Before this step, read skill://vstack-fan-out.
 
-Fan-out (skill://vstack-fan-out): parts: one per independent fact question. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: find the fact, return evidence and open questions without edits, the vstack root. Do not wait; keep working. If they cannot start, stop: the decisions that depend on those facts stay open on the page.
+Fan-out (skill://vstack-fan-out): parts: one per independent fact question. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: find the fact, return evidence and open questions without edits, the vstack root. Do not wait; keep working. If they cannot start, stop: the decisions that depend on those facts stay open.
 
 ## Settle or ask
 
@@ -29,11 +29,11 @@ Settle a frontier decision yourself only when all three hold:
 
 Ask every other decision, including one where any of the three is in doubt.
 
-Record each settled decision as an `assumed` item with `decision`, `pick`, and `why` citing its repo fact with file and line, ADR, or convention. Submit it before the round's `ask`. Code owns the Assumed list and includes its current picks in the close.
+Record each settled decision with its decision, pick, and why, citing its repo fact with file and line, ADR, or convention. In a Flow, submit it as an `assumed` item before the round's `ask`. Outside a Flow, show the Assumed list in chat before asking.
 
-A note, Other text, or pushback that names an Assumed decision reopens it, whatever else the answer picks. Ask it in the next round with `reopens` naming the Assumed item's id. Code links the records and removes that pick from the current Assumed list.
+A note, Other text, or pushback that names an Assumed decision reopens it, whatever else the answer picks. Ask it in the next round. In a Flow, use `reopens` naming the Assumed item's id. Code links the records and removes that pick from the current Assumed list.
 
-## Each round
+## Each round in a Flow
 
 1. Submit the newly settled `assumed` items, then one `round` containing every other frontier decision. A round that settles its whole frontier has no `ask`: recompute the frontier.
 2. Present the receipt's live URL, or its static path and observed failure, before each `ask`.
@@ -46,10 +46,12 @@ A note, Other text, or pushback that names an Assumed decision reopens it, whate
 
    Recompute the frontier from explicit picks and resolved readings only.
 
+Outside a Flow, present newly settled decisions and the full context for the remaining frontier in chat, then use one plain `ask` for the round. Preserve the user's words and distinguish explicit picks, resolved readings, and unresolved concerns as above, without page records. Recompute the frontier from explicit picks and resolved readings only.
+
 ## Close
 
-An empty frontier means every branch was visited and no decision remains silently assumed. Each one was asked or is Assumed in the open. Follow flow-page's "Close the Stage" for the summary. The close asks nothing, so the turn ends after the producer's own close steps.
+An empty frontier means every branch was visited and no decision remains silently assumed. Each one was asked or is Assumed in the open. In a Flow, follow flow-page's "Close the Stage" for the summary. Outside a Flow, give the complete summary and standing Assumed picks in chat. The close asks nothing, so the turn ends after the producer's own close steps.
 
-The user's next prompt confirms the summary or pushes back. A pushback opens a new Stage with `--parent` when the earlier Stage is finished, and reopens its named questions with `again` or its Assumed picks with `reopens`. Keep the earlier record intact. A calling skill that acts after the grill, such as triage's or wayfinder's tracker writes, acts only after a next prompt confirms the summary. Finishing a Stage is not authorization.
+The user's next prompt confirms the summary or pushes back. A pushback reopens the named decisions. In a Flow, open a new Stage with `--parent` when the earlier Stage is finished, and use `again` for its named questions or `reopens` for its Assumed picks. Keep the earlier record intact. A calling skill that acts after the grill, such as triage's or wayfinder's tracker writes, acts only after a next prompt confirms the summary. Finishing a Stage is not authorization.
 
-When `ask` is unavailable in a headless run, record each substituted recommendation as `response: { status: "headless", picks: [...] }`, not as the user's answer. At the close, add "Headless, not user-confirmed" to `extra` and finish with a `retire` reason for each unresolved question. Stop without any action that needs the user's confirmation, such as a tracker write, and report each action not taken. A subagent never asks or claims user confirmation. It returns open decisions for the top-level agent to put on the page and ask.
+When `ask` is unavailable in a headless run, record each substituted recommendation as headless, not as the user's answer. In a Flow, use `response: { status: "headless", picks: [...] }`, add "Headless, not user-confirmed" to the close's `extra`, and finish with a `retire` reason for each unresolved question. Outside a Flow, state "Headless, not user-confirmed" and name every unresolved question in chat. Stop without any action that needs the user's confirmation, such as a tracker write, and report each action not taken. A subagent never asks or claims user confirmation. It returns open decisions for the top-level agent to ask.

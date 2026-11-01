@@ -13,11 +13,11 @@ A wizard is ephemeral by default: built for one run, saved to a scratch or `scri
 
 ## The Flow page
 
-Follow `skill://flow-page`'s "Stage entry/exit line" before the first question or Result. Record scope and approval questions on the page. A page interaction never substitutes for `ask` or a terminal confirmation.
+Follow `skill://flow-page`'s "Stage entry/exit line" before the first question or Result. In a Flow, record scope and approval questions on the page. A page interaction never substitutes for `ask` or a terminal confirmation.
 
-Publish the ordered procedure and each value's destination as a Document Result. Keep secret names and destinations, never their values, in the Flow, attachments, and evidence. The real bash script remains the executable deliverable. Capture its redacted source as a file attachment and publish a `prototype` Result naming an artifact with `runtime: "terminal"`, the actual `bash <absolute-script-path>` launch command, and its source revision. State that an interactive terminal and the named external services are required using `unavailable`. The page does not run the script, collect secrets, or claim the procedure has completed.
+In a Flow, publish the ordered procedure and each value's destination as a Document Result. Keep secret names and destinations, never their values, in chat, the Flow, attachments, and evidence. The real bash script remains the executable deliverable. In a Flow, capture its redacted source as a file attachment and publish a `prototype` Result naming an artifact with `runtime: "terminal"`, the actual `bash <absolute-script-path>` launch command, and its source revision. State that an interactive terminal and the named external services are required using `unavailable`. The page does not run the script, collect secrets, or claim the procedure has completed.
 
-Publish verification and any human-reported outcome beside the launch instructions. Return the script path without claiming the human executed it.
+In a Flow, publish verification and any human-reported outcome beside the launch instructions. Return the script path without claiming the human executed it.
 
 ## Process
 
@@ -49,4 +49,4 @@ Hold the bar the template sets: open the URL before asking for its value, use `a
 - `bash -n <script>`; run `shellcheck` if available.
 - `chmod +x <script>`.
 - Don't run it end-to-end yourself: it opens browsers and blocks on human input. Trace it statically instead: every value from step 1 is captured and lands where step 1 said, and every `set_secret` name exactly matches a secret reference in the CI config.
-- Publish the launch instructions on the Flow page as above and tell the user how to run the script. If it's a repeatable setup path, commit it only when the user requested that durable deliverable, and link it from the README.
+- In a Flow, publish the launch instructions on the Flow page as above. In either delivery mode, tell the user how to run the script. If it's a repeatable setup path, commit it only when the user requested that durable deliverable, and link it from the README.
