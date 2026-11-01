@@ -149,6 +149,8 @@ Resolve the mode and absolute vstack root once using the project's vstack config
 
 Before either path below, check `task.isolation.enabled`. If it is off, stop and point at `/skill:setup-vstack`.
 
+Track every research runner through skill://vstack-fan-out/WORKER-LIFECYCLE.md. Retain it while a question, landing conflict, or follow-up needs its clone. After findings land in Standard mode, or their external Private-mode files are confirmed, preserve the cited answer, questions, patch, and evidence and release the unneeded settled runner. Reconcile all started runners before every return, including partial starts, missing notices, invalid patches, unanswered questions, and landing failures. Preserve useful unapplied findings before release. Record retention reasons or observed release outcomes. Temporary landing-worktree removal below is separate from runner release.
+
 For two or more claimed research tickets:
 
 Before this step, read skill://vstack-fan-out.

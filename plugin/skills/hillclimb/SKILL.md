@@ -18,6 +18,8 @@ Follow `skill://flow-page`'s "Stage entry/exit line". Only the coordinator publi
 
 Before any hypothesis, require `omp config get task.isolation.enabled` to print `true`. If isolation is off, stop and point at `/skill:setup-vstack`.
 
+Track every hypothesis worker through skill://vstack-fan-out/WORKER-LIFECYCLE.md in the run record. Retain it while selection, measurements, a question, or follow-up still needs its clone. After accepted work lands, or rejected and deferred results have been used and preserved, release the unneeded settled worker and record the observed outcome. Reconcile all workers before every stop, including partial starts, missing patches or measurements, failed application, and parent-validation rejection. Preserve useful failed or superseded work and exact retry patches in Scratch; later remeasurement uses a fresh baseline, not a retained clone by default.
+
 ## 1. Ground the workload and architecture
 
 Run skill://how over the target. Name realistic workload dimensions that move the result: data size, history, state, and concurrency. Select a case that reproduces the complaint. If none does, fix the reproduction before measuring hypotheses. Use the metric, unit, direction, target, and stop predicate that the grill settled. If that contract is missing, report the gap instead of starting the loop or inventing numbers.

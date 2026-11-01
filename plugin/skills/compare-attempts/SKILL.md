@@ -37,6 +37,8 @@ Fan-out (skill://vstack-fan-out): parts: one per runner. One eval cell: per part
 
 Make sure that `omp config get task.isolation.enabled` prints `true` before starting. Every runner starts at once, each in its own clone.
 
+Track each runner through skill://vstack-fan-out/WORKER-LIFECYCLE.md. Retain it while comparison, evaluation, grafting, or a question still needs its clone. Before every early stop or re-run, account for all started runners, including partial starts, unavailable candidates, and dropouts. Preserve useful answers, rationales, patches, and evidence outside their clones before release.
+
 In Python eval, set `shared_prompt` to the complete brief from Frame and `runner_count` to the chosen count. Set `directions` to one supplied direction line per runner, or an empty list when none are given. Reuse supplied directions for extra runners. Start every handle before waiting:
 
 ```python
@@ -84,7 +86,7 @@ Read each losing candidate again and identify the parts worth keeping. Graft the
 
 When the candidates converge, use the consensus shape and omit grafts that add nothing. Report convergence as a weaker signal because every runner shares one model's priors. When the candidates diverge without a common frame, return to Frame. Reframe, then use `ask` for Re-run / Stop before paying for another batch. A timed-out answer is not approval; re-ask once, then stop.
 
-Leave losing patches untouched in omp's artifacts directory and cite their absolute paths. Create no branch, copy, or cleanup step for them.
+After grafting and evaluation no longer need a runner, release it through the shared lifecycle contract and record the observed outcome. Keep losing patches and evidence, with stable Scratch copies when their exact bytes matter. On failed base application or fewer than two candidates, preserve useful results and reconcile every runner before returning. Running or still-needed runners stay retained with reasons.
 
 ## Phase F: Verify
 

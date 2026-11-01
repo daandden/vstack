@@ -4,6 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [8.0.6] - 2026-11-01
+
+- Own isolated-worker retention, release, and observed clone removal across implementers, review fixers, research, experiments, forensics, drafting, and Verifiers (#323).
+- Add read-only worker-clone status with owner checks, retained-clone detection, and CLI behavior tests (#323).
+
 ## [8.0.5] - 2026-10-31
 
 - Carry semantic roles and exact category keys through sequences, state diagrams and their alias, swimlanes, agent flows, and event models. Declared people and stored data retain their kinds without inferring status from labels or treating software as people. Sequence headers and footers share one identity. Group assignments preserve child meanings, agent-flow accents keep Base text readable, and unsupported or collapsed identities refuse binding and focus without overwriting output. Preserve open workflow and flowchart geometry without removing native C4 boundary accent fills under focus. Real CLI, browser-computed paints, shared-id isolation, and byte-preserving Flow capture cover the documented limits (ADR 0045, #304).

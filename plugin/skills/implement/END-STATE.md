@@ -103,6 +103,10 @@ Verifier brief: before any mutation, follow `vstack-verifier`'s authoritative sy
 
 Keep the call schemaless so its result text includes omp's isolation notice.
 
+Track each final Verifier, including retries, through skill://vstack-fan-out/WORKER-LIFECYCLE.md. Retain it until the machine record and runtime isolation suffix have been checked, the original completion text and evidence are preserved outside its clone, and no question or follow-up needs it. Then release the settled child and record the observed outcome. On malformed or unavailable results, preserve the actual text, patches needed for validation, diagnostics, and useful failed-run work before release instead of claiming validation passed. Reconcile all started Verifiers before any stop or retry; running or still-needed workers remain retained with reasons.
+
+This parent-owned clone release is separate from the Verifier's detached head worktree cleanup and its `cleanup_error`. Preserve the actual Verdict and report clone-release failures or unverified removal separately. Never apply a Verifier patch.
+
 Spawn one `vstack-verifier` via eval `agent(<prompt>, agent="vstack-verifier", isolated=True, apply=False, merge=False)`: the Verifier brief above for this head, the Shared checkout absolute path, the vstack root, the Scratch dir. Wait for its result through `handle.wait()` and retain the returned text for the checks below. If it cannot be spawned, stop: the Verdict is unavailable and the End state is not reached; point to `/skill:setup-vstack` when `task.isolation.enabled` is off.
 
 Use the result text returned by eval `wait()` or `handle.wait()`, or the auto-delivered completion. Decode one leading JSON object with a JSON decoder that reports where the object ends and respects strings and escapes. Inspect the remaining suffix separately for the actual omp-added isolation notice. Braces or `Isolation:` text in JSON strings do not mark the boundary. Verifier-authored claims, record fields, notes, fenced text, and diff contents are not isolation evidence. The handle's `output()` and `agent://<id>` omit the notice, so neither can recover it.
