@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [8.0.6] - 2026-11-02
+
+- Every commit and merge commit in an implement-family run passes a branch guard first: `git symbolic-ref -q HEAD` must name the branch the step commits to, or the run commits nothing and stops with a blocker naming the expected branch and the actual HEAD. Right after each commit, the new commit must be the branch tip before the run records it. The guard lives in implement's shared step 0b and covers step 6, step 6b repair commits, the Conflict owner merge, implement-spec's merger, hillclimb and tune-llm-flow kept commits, and babysit fix commits. Commit lists and the Verifier's head SHA come from the branch ref, not `HEAD`, and every push first checks that the branch tip equals the tip the run recorded. A guard blocker reaches no End state. The End state glossary entry now says commit stays on the run's branch (#261).
+
 ## [8.0.5] - 2026-10-31
 
 - Carry semantic roles and exact category keys through sequences, state diagrams and their alias, swimlanes, agent flows, and event models. Declared people and stored data retain their kinds without inferring status from labels or treating software as people. Sequence headers and footers share one identity. Group assignments preserve child meanings, agent-flow accents keep Base text readable, and unsupported or collapsed identities refuse binding and focus without overwriting output. Preserve open workflow and flowchart geometry without removing native C4 boundary accent fills under focus. Real CLI, browser-computed paints, shared-id isolation, and byte-preserving Flow capture cover the documented limits (ADR 0045, #304).
