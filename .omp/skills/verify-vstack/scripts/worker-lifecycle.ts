@@ -31,8 +31,13 @@ const mergeCell = (role: string) => {
 var applied = Bun.spawnSync(["git","apply","--3way","--",h.patch],{cwd:h.repo,stdout:"pipe",stderr:"pipe"});
 if(applied.exitCode) throw new Error(applied.stderr.toString());
 if(await Bun.file(h.repo+"/lifecycle.txt").text()!==h.expected) throw new Error("landed contents differ");
+var branch = Bun.spawnSync(["git","symbolic-ref","-q","HEAD"],{cwd:h.repo,stdout:"pipe",stderr:"pipe"});
+if(branch.exitCode || branch.stdout.toString().trim()!=="refs/heads/"+h.branch) throw new Error("fixture merger branch guard failed");
 var committed = Bun.spawnSync(["git","commit","-qm",${JSON.stringify("Land " + role + " lifecycle fixture")}],{cwd:h.repo,stdout:"pipe",stderr:"pipe"});
-if(committed.exitCode) throw new Error(committed.stderr.toString());`);
+if(committed.exitCode) throw new Error(committed.stderr.toString());
+var newHead = Bun.spawnSync(["git","rev-parse","HEAD"],{cwd:h.repo,stdout:"pipe",stderr:"pipe"});
+var branchTip = Bun.spawnSync(["git","rev-parse",h.branch],{cwd:h.repo,stdout:"pipe",stderr:"pipe"});
+if(newHead.exitCode || branchTip.exitCode || newHead.stdout.toString()!==branchTip.stdout.toString()) throw new Error("fixture commit anchor mismatch");`);
   replies.push({ text: `Landed ${role} after verifying its committed contents.` });
 };
 cell(`var fs = await import("node:fs");
@@ -44,10 +49,13 @@ function save(n,data){fs.writeFileSync(E+"/"+n+".json",JSON.stringify(data,null,
 function check(ok,msg){if(!ok)throw new Error(msg);}
 function patchOf(result){var text=typeof result==="string"?result:JSON.stringify(result);var m=text.match(/Isolation: changes captured at \\x60?([^\\x60\\n]+?)\\x60? \\(apply=false\\)\\. Not applied\\./);check(m,"missing omp patch notice: "+text);check(fs.statSync(m[1]).size>0,"empty patch");return m[1];}
 function status(id,name){var r=Bun.spawnSync(["bun",CLI,"status",id],{cwd:repo,env:{...process.env,OMP_WORKTREE_DIR:WT},stdout:"pipe",stderr:"pipe"});save(name,{exit:r.exitCode,stdout:r.stdout.toString(),stderr:r.stderr.toString()});check(r.exitCode===0,"status command failed: "+r.stderr);return JSON.parse(r.stdout.toString()).workers[0];}
-function handoff(role,result,expected){var p=patchOf(result);fs.copyFileSync(p,E+"/"+role+".patch");save(role+"-completion",{result,patch:p});save(role+"-handoff",{patch:p,repo,expected});return p;}
-cmd(["git","init","-q"]);cmd(["git","config","user.name","Verify"]);cmd(["git","config","user.email","verify@example.invalid"]);
-fs.writeFileSync(repo+"/lifecycle.txt","base\\n");cmd(["git","add","lifecycle.txt"]);cmd(["git","commit","-qm","Fixture baseline"]);
-var start=cmd(["git","rev-parse","HEAD"]).trim();
+function handoff(role,result,expected){var p=patchOf(result);fs.copyFileSync(p,E+"/"+role+".patch");save(role+"-completion",{result,patch:p});save(role+"-handoff",{patch:p,repo,expected,branch:"integration"});return p;}
+cmd(["git","init","-q","-b","integration"]);cmd(["git","config","user.name","Verify"]);cmd(["git","config","user.email","verify@example.invalid"]);
+fs.writeFileSync(repo+"/lifecycle.txt","base\\n");cmd(["git","add","lifecycle.txt"]);
+check(cmd(["git","symbolic-ref","-q","HEAD"]).trim()==="refs/heads/integration","fixture baseline branch guard failed");
+cmd(["git","commit","-qm","Fixture baseline"]);
+var start=cmd(["git","rev-parse","integration"]).trim();
+check(cmd(["git","rev-parse","HEAD"]).trim()===start,"fixture baseline commit anchor mismatch");
 var protectedWorker=${spawn("Keep323", "Keep useful-unlanded.txt as unlanded useful work. Return an unresolved external dependency. Do not commit.")};
 var protectedResult=await protectedWorker.wait();`);
 child("useful-unlanded.txt", "preserve this unfinished work\n", ["External dependency remains unresolved"]);
@@ -58,7 +66,7 @@ var implResult=await implementer.wait();`);
 child("lifecycle.txt", "implemented\n");
 cell(`var implPatch=handoff("implementer",implResult,"implemented\\n");var implBefore=status(implementer.id,"implementer-before");check(implBefore.state==="present","implementer not located before release");${merger("implementer")}`);
 mergeCell("implementer");
-cell(`var implCommit=cmd(["git","rev-parse","HEAD"]).trim();check(cmd(["git","show","HEAD:lifecycle.txt"])==="implemented\\n","implementation commit missing");
+cell(`var implCommit=cmd(["git","rev-parse","integration"]).trim();check(cmd(["git","show","integration:lifecycle.txt"])==="implemented\\n","implementation commit missing");
 var implHash=Bun.hash(fs.readFileSync(implPatch)).toString(16);
 var implRelease=await tool.write({path:"proc://"+implementer.id+"/kill"});
 var implAfter=status(implementer.id,"implementer-after");check(implAfter.state==="absent","implementer survived release");check(!fs.existsSync(implBefore.clone),"implementer clone survives on disk");check(Bun.hash(fs.readFileSync(implPatch)).toString(16)===implHash,"implementation patch changed");
@@ -73,7 +81,7 @@ replies.push({ text: "The review fixer stays retained with its question unresolv
 cell(`var fixtureAnswer="Accept reviewed wording";
 save("fixer-answer",{answer:fixtureAnswer,source:"scripted fixture answer, not maintainer authorization",state:"resolved"});${merger("fixer")}`);
 mergeCell("fixer");
-cell(`var fixCommit=cmd(["git","rev-parse","HEAD"]).trim();check(cmd(["git","show","HEAD:lifecycle.txt"])==="reviewed\\n","fixer commit missing");
+cell(`var fixCommit=cmd(["git","rev-parse","integration"]).trim();check(cmd(["git","show","integration:lifecycle.txt"])==="reviewed\\n","fixer commit missing");
 var fixRelease=await tool.write({path:"proc://"+fixer.id+"/kill"});
 var fixerAfter=status(fixer.id,"fixer-after");check(fixerAfter.state==="absent","fixer survived release");check(!fs.existsSync(fixerBefore.clone),"fixer clone survives on disk");
 check(status(protectedWorker.id,"protected-after-fixer").state==="present","unrelated retained worker was deleted");
