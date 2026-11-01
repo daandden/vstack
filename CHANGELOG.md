@@ -6,6 +6,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 - Shorten the README to installation, everyday use, and documentation links. Preserve maintainer instructions in `docs/maintainer.md` and link to canonical skill contracts.
 
+## [8.0.8] - 2026-11-01
+
+- Run clean-wt's script commands with a long or disabled tool deadline, and treat a host deadline as no exit rather than a nonzero exit. An interrupted inventory keeps its diagnostics and reruns once, investigators return interrupted-attempt diagnostics instead of writing Scratch, and an interrupted removal is reported as unknown without an automatic rerun (#319).
+
 ## [8.0.7] - 2026-11-02
 
 - Own isolated-worker retention, release, and observed clone removal across implementers, review fixers, research, experiments, forensics, drafting, and Verifiers (#323).
