@@ -4,9 +4,13 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
-## [8.0.6] - 2026-11-01
+## [8.0.7] - 2026-11-01
 
 - Run clean-wt's script commands with a long or disabled tool deadline, and treat a host deadline as no exit rather than a nonzero exit. An interrupted inventory keeps its diagnostics and reruns once, investigators return interrupted-attempt diagnostics instead of writing Scratch, and an interrupted removal is reported as unknown without an automatic rerun (#319).
+
+## [8.0.6] - 2026-11-02
+
+- Every commit and merge commit in an implement-family run passes a branch guard first: `git symbolic-ref -q HEAD` must name the branch the step commits to, or the run commits nothing and stops with a blocker naming the expected branch and the actual HEAD. Right after each commit, the new commit must be the branch tip before the run records it. The guard lives in implement's shared step 0b and covers step 6, step 6b repair commits, the Conflict owner merge, implement-spec's merger, hillclimb and tune-llm-flow kept commits, and babysit fix commits. Commit lists and the Verifier's head SHA come from the branch ref, not `HEAD`, and every push first checks that the branch tip equals the tip the run recorded. A guard blocker reaches no End state. The End state glossary entry now says commit stays on the run's branch (#261).
 
 ## [8.0.5] - 2026-10-31
 
