@@ -41,7 +41,7 @@ Create files lazily: only when you have something to write. If no `GLOSSARY.md` 
 
 ## During the session
 
-Follow `skill://flow-page`'s "Stage entry/exit line" for a domain-modeling run. A timeout, cancellation, or headless recommendation does not settle a term. For an ADR offer, ask once more with `again`, then create no ADR without an explicit pick or resolved reading. Publish resulting terms, scenarios, and decisions as Document Results linked to the canonical glossary or ADR files.
+Follow `skill://flow-page`'s "Stage entry/exit line" for a domain-modeling run. A timeout, cancellation, or headless recommendation does not settle a term. In a Flow, for an ADR offer, ask once more with `again`, then create no ADR without an explicit pick or resolved reading. Outside a Flow, repeat the unanswered offer through plain `ask` and require the same explicit choice. In a Flow, publish resulting terms, scenarios, and decisions as Document Results linked to the canonical glossary or ADR files.
 
 ### Challenge against the glossary
 

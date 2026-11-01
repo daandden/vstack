@@ -13,7 +13,7 @@ Each axis runs as its own reviewer so that findings from one do not mask another
 
 Resolve the absolute vstack root through the Private-mode rule once. Read `docs/vstack/issue-tracker.md` under that root in Standard mode, or `<vstack root>/config/issue-tracker.md` in Private mode. If it is missing, stop and tell the user to run `/skill:setup-vstack`. Subagents use the supplied root, never resolve it again.
 
-Follow `skill://flow-page`'s "Stage entry/exit line". A subagent reviewer returns its structured review Result and open questions to the coordinator for publication in the code-review Stage.
+Follow `skill://flow-page`'s "Stage entry/exit line". A subagent reviewer returns its structured review Result and open questions to the coordinator for publication in a Flow or delivery in chat.
 
 ## Process
 
@@ -125,18 +125,18 @@ The Blast radius reviewer prompt must include:
 
 ### 5. Show the report, then ask
 
-Publish through `skill://flow-page` before asking about findings. Submit one `review` Result with all three `axes` and its authoritative `entries`. The renderer derives one summary table at the start of the Stage and links each finding to its full card. Do not author a second summary table or a separate report page.
+In a Flow, publish through `skill://flow-page` before asking about findings. Submit one `review` Result with all three `axes` and its authoritative `entries`. The renderer derives one summary table at the start of the Stage and links each finding to its full card. Do not author a second summary table or a separate report page.
 
 - Each axis names `standards`, `spec`, or `blast-radius`, and has a `status`: `findings` when it completed with findings, `clean` when it completed without findings, `skipped` when deliberately not run or not triggered, `unavailable` when its source or provider could not be read, or `blocked` when a prerequisite prevented completion. Every status except `findings` needs a `reason`. A blocked axis may retain findings already established, but its reason must name the uncompleted work. Never use `clean` for an axis that did not run.
 - Each finding is one entry with a local `ref` such as `std-1`, its `axis`, `title`, `label`, `blocking`, `impact`, `location`, `action`, and `evidence`. `location` gives the source file and line, or the named interface when no source line is known. Keep each reviewer's order within its axis. The impact opens with what a user or caller sees. The script assigns the entry's id and links, including after a focused correction.
 - Blast radius risks use the same finding cards. Keep the confirmed or unproven proof level in the `label`, the consequence in `impact`, the proposed change and missing proof in `action`, and the proof script, command, and observed output in `evidence`. Publish the safety fact and cleared checks as a separate `ledger` Result. Do not repeat risks in that ledger. A clean Blast radius axis may still have a safety fact and cleared checks, but has no fabricated finding card.
 - When a trigger fires outside a run, use Blast radius `skipped`, with a reason naming the triggers, stating that no proof ran, and recommending `/skill:code-review`. A missing spec is `skipped` only when the user says none exists. A source that cannot be read is `unavailable`. If reviewers cannot start, publish the affected axes as `blocked` with the launch failure before stopping.
 
-Decide each finding that its evidence settles: a documented-standard breach, a missing or incorrect spec requirement, a confirmed risk, or a cleared claim. A card holds its decision in `blocking` and `action`, and a claim in `status` and `consequence`. Ask about every other finding, one question per finding. Examples are an unsettled baseline smell, behavior the spec neither asks for nor rules out, an ambiguous spec line, and an unproven claim. If every finding is decided, ask nothing. Otherwise submit one round and use its receipt's `ask` payload unchanged. Each question names the finding and ends with "?". Its `results` names `<review ref or id>/<entry ref or id>` so the script links both ways. Record the answers through the common interface.
+Decide each finding that its evidence settles: a documented-standard breach, a missing or incorrect spec requirement, a confirmed risk, or a cleared claim. A card holds its decision in `blocking` and `action`, and a claim in `status` and `consequence`. Ask about every other finding, one question per finding. Examples are an unsettled baseline smell, behavior the spec neither asks for nor rules out, an ambiguous spec line, and an unproven claim. If every finding is decided, ask nothing. In a Flow, submit one round and use its receipt's `ask` payload unchanged. Each question names the finding and ends with "?". Its `results` names `<review ref or id>/<entry ref or id>` so the script links both ways. Record the answers through the common interface.
 
-Use flow-page's "Close the Stage" after recording the review decisions or no-question outcome.
+In a Flow, use flow-page's "Close the Stage" after recording the review decisions or no-question outcome.
 
-In chat, summarize each axis's count and worst issue, or its explicit state and reason, instead of repeating the findings. For Blast radius include its triggers or skip reason and, when proof ran, whether the safety fact is proven or unproven. Never select a worst issue across axes. The extension presents the bound Flow URL after the main-agent reply. The caller receives each decided finding plus each question's answer. For a PR, remove the worktree as step 1 says.
+With a Flow page, summarize each axis's count and worst issue in chat, or its explicit state and reason, instead of repeating the findings. Without a Flow page, deliver every finding, its evidence and decision, and each axis's state and reason in chat before asking about unresolved findings. For Blast radius include its triggers or skip reason and, when proof ran, whether the safety fact is proven or unproven. Never select a worst issue across axes. The extension presents the bound Flow URL after the main-agent reply. The caller receives each decided finding plus each question's answer. For a PR, remove the worktree as step 1 says.
 
 ## Why three axes
 

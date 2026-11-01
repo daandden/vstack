@@ -7,6 +7,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 - Shorten the README to installation, everyday use, and documentation links. Preserve maintainer instructions in `docs/maintainer.md` and link to canonical skill contracts.
 - Keep Verify browser opens non-Tern during diagnostics, retries, recovery, and delegated verification. Restore explicit WebKit figure coverage and report unavailable proof as unmet rather than substituting Chromium (#329).
 
+## [8.0.9] - 2026-11-01
+
+- Start a Flow only through the central enrollment rule, before discovery or creation. Description-selected research, explanations, reviews, and other producers return complete answers in chat unless enrolled, while typed skill requests and existing Flow work keep page publication. Recognize omp's native skill-invocation header as the expanded typed command and execute Stage entry and exit even without an existing binding. Preserve canonical files, plain chat questions, and real runnable prototypes outside a Flow (ADR 0046, #321).
+- Read synchronous Git identity replies from owned temporary files rather than returned capture buffers, and remove the resources on success or failure. Reject malformed output and operational Git failures before selecting a Scratch or Flow namespace. Reserve `_global` for a genuine outside-repository result and preserve shared linked-worktree keys (#321).
+
 ## [8.0.8] - 2026-11-01
 
 - Run clean-wt's script commands with a long or disabled tool deadline, and treat a host deadline as no exit rather than a nonzero exit. An interrupted inventory keeps its diagnostics and reruns once, investigators return interrupted-attempt diagnostics instead of writing Scratch, and an interrupted removal is reported as unknown without an automatic rerun (#319).

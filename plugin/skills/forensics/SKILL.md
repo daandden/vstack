@@ -89,8 +89,8 @@ Report the following:
 - Whether a paired capture confirmed the mechanism, or the result remains the strongest hypothesis.
 - Any Drift, capture blocker, skipped step, or remaining alternative, and instrumentation cleanup.
 
-Publish this hand-back as a Document Result with citations to the capture and source mapping. Put query measurements in Metrics Results with numeric values, units, capture duration, workload, sample counts, and uncertainty. Use Code Results for the saved SQL and relevant source excerpts, and a Timeline for captures, probes, and cleanup. Record mechanism claims in a ledger. Only paired-capture confirmation earns `confirmed`; otherwise keep `unproven`, the strongest-hypothesis label, alternatives, and missing proof.
+In a Flow, publish this hand-back as a Document Result with citations to the capture and source mapping. Put query measurements in Metrics Results with numeric values, units, capture duration, workload, sample counts, and uncertainty. Use Code Results for the saved SQL and relevant source excerpts, and a Timeline for captures, probes, and cleanup. Record mechanism claims in a ledger. Only paired-capture confirmation earns `confirmed`; otherwise keep `unproven`, the strongest-hypothesis label, alternatives, and missing proof.
 
-Capture the redacted artifacts, database, queries, and probe outputs as typed attachments on those Results. Strip secrets from the captured bytes before submission. Preserve the original evidence and derived files at their required Scratch paths. Write no separate report page.
+In a Flow, capture the redacted artifacts, database, queries, and probe outputs as typed attachments on those Results. Strip secrets from the captured bytes before submission. Preserve the original evidence and derived files at their required Scratch paths. Write no separate report page.
 
 For a defect or slowness, recommend `/skill:diagnosing-bugs` through the Matt flow. Pass the cited diagnosis and evidence paths as Phase 1 input. Stop at the diagnosis. Do not apply a fix or start an End-state chain.
