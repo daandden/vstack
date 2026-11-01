@@ -1,0 +1,25 @@
+---
+status: accepted
+---
+
+# Flow reader uses Nuxt with Vite+ on Bun
+
+This is an accepted design, not an implemented change. It amends the rendering and static-fallback promises in [ADR 0044](0044-structured-flow-data-drives-server-rendered-pages.md). The current product and its earlier verification remain as described there until the cutover.
+
+Use Nuxt for the Flow frontend and the Vite+ product for supported development tooling. Keep Bun as the production runtime for the Local Flow host. The goal is a reader-facing redesign that makes decisions and evidence clearer, not a framework rewrite presented as a user-experience improvement by itself.
+
+The reader may require the running Local Flow host. Directly opening a saved Flow folder without a server is no longer a required fallback. A host failure must be reported as unavailable rather than presented as a working static reader. This removes the requirement that one renderer produce both the live application and a server-free export; it does not remove persisted Flow content or captured evidence.
+
+## Boundaries and alternatives
+
+Retaining the bespoke renderer and its static fallback would preserve today's delivery model, but the user chose a Nuxt redesign and accepted a host-required reader. A client-only shell must not be advertised as preserving the old readable static export. Production Bun is a requirement, not a requirement that every development tool execute under Bun.
+
+Nuxt retains its framework configuration and commands. Vite+ provides the supported package-script workflow and suitable development tools; it is not assumed to replace Nuxt's builder. The [Vite+ command guidance](https://viteplus.dev/guide/troubleshooting#vp-dev-or-vp-build-does-not-run-my-script) distinguishes built-in Vite commands from `vp run` package scripts. The specific Nuxt-to-host integration remains an implementation choice that must prove Bun compatibility.
+
+Typed Stage-bound authoring, Flow identity, authorization, and captured evidence keep their existing ownership. The reader does not become a workflow executor. Executable artifacts retain their separate-origin isolation.
+
+## Evidence required before cutover
+
+Review a visual prototype before production implementation. The prototype must exercise the reading model in [ADR 0046](0046-flow-content-keeps-first-publication-order.md) and retain the reader's position during live updates. The final visual design has not been approved.
+
+The approved authoring regression evaluation must assess structural questions at their first publication, require useful question-local visuals for those cases, and retain legitimate prose controls. Adding a diagram later does not repair the original score. This is not a universal runtime semantic-review gate. No Nuxt integration or authoring-evaluation run has been proved by accepting this ADR.
