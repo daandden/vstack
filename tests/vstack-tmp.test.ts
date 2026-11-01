@@ -2,12 +2,13 @@
 // The fake home goes in through --home only; nothing touches the real home.
 
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, statSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ENV, git } from "./support/fixture.ts";
 
 const PATH_SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "vstack-tmp", "scripts", "path.ts");
+const EMPTY_GIT_CAPTURE = join(import.meta.dir, "support", "empty-git-capture.ts");
 
 let dir: string;
 let home: string;
@@ -77,6 +78,73 @@ test("outside a git repo the key is _global", () => {
   expect(r.code).toBe(0);
   expect(r.stdout.trim()).toBe(`${scratchRoot()}/_global/`);
   expect(statSync(r.stdout.trim()).isDirectory()).toBe(true);
+});
+
+test.each(["repository", "outside-repository"] as const)("real Git %s replies survive empty returned capture buffers", (location) => {
+  const fixture = join(dir, `capture-${location}`);
+  const cwd = location === "repository" ? makeRepo(fixture, "shop") : join(fixture, "plain");
+  mkdirSync(cwd, { recursive: true });
+  const isolatedHome = join(fixture, "home");
+  const temporary = join(fixture, "temporary");
+  mkdirSync(isolatedHome);
+  mkdirSync(temporary);
+  const invoke = (preload: boolean) => Bun.spawnSync([
+    "bun", ...(preload ? ["--preload", EMPTY_GIT_CAPTURE] : []), PATH_SCRIPT, "--home", isolatedHome,
+  ], { cwd, env: { ...ENV, TMPDIR: temporary }, stdout: "pipe", stderr: "pipe" });
+  const baseline = invoke(false);
+  expect(baseline.exitCode).toBe(0);
+  const expected = baseline.stdout.toString();
+  if (location === "repository") expect(expected).toMatch(/\/shop-[0-9a-f]{6}\/\n$/);
+  else expect(expected).toBe(`${join(isolatedHome, ".vstack", "tmp", "_global")}/\n`);
+  const result = invoke(true);
+  expect(result.exitCode).toBe(0);
+  expect(result.stdout.toString()).toBe(expected);
+  expect(statSync(result.stdout.toString().trim()).isDirectory()).toBe(true);
+  expect(readdirSync(join(isolatedHome, ".vstack", "tmp"))).toEqual([expected.trim().split("/").at(-2)!]);
+  expect(readdirSync(temporary)).toEqual([]);
+});
+
+test.each([
+  ["empty-success", 0, false],
+  ["operational-failure", 73, false],
+  ["operational-exit128", 128, false],
+  ["empty-worktree-success", 0, true],
+  ["worktree-operational-failure", 73, true],
+] as const)("Git %s cannot select a storage namespace", (name, exit, worktree) => {
+  const fixture = join(dir, name);
+  const repo = makeRepo(fixture, "shop");
+  const isolatedHome = join(fixture, "home");
+  const bin = join(fixture, "bin");
+  mkdirSync(isolatedHome);
+  mkdirSync(bin);
+  const fakeGit = join(bin, "git");
+  writeFileSync(fakeGit, `#!/bin/sh\n${worktree ? 'if [ "$1" = rev-parse ]; then printf \'%s\\n\' "$IDENTITY_TEST_COMMON"; exit 0; fi\n' : ""}exit ${exit}\n`);
+  chmodSync(fakeGit, 0o755);
+  const r = Bun.spawnSync(["bun", PATH_SCRIPT, "--home", isolatedHome], {
+    cwd: repo,
+    env: { ...ENV, PATH: `${bin}:${ENV.PATH}`, IDENTITY_TEST_COMMON: join(repo, ".git") },
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  expect(r.exitCode).not.toBe(0);
+  expect(r.stdout.toString()).toBe("");
+  expect(existsSync(join(isolatedHome, ".vstack"))).toBe(false);
+});
+
+test("a Git spawn failure leaves no temporary files or storage namespace", () => {
+  const fixture = join(dir, "spawn-failure");
+  const repo = makeRepo(fixture, "shop");
+  const isolatedHome = join(fixture, "home");
+  const temporary = join(fixture, "temporary");
+  mkdirSync(isolatedHome);
+  mkdirSync(temporary);
+  const result = Bun.spawnSync([process.execPath, PATH_SCRIPT, "--home", isolatedHome], {
+    cwd: repo, env: { ...ENV, PATH: temporary, TMPDIR: temporary }, stdout: "pipe", stderr: "pipe",
+  });
+  expect(result.exitCode).not.toBe(0);
+  expect(result.stdout.toString()).toBe("");
+  expect(existsSync(join(isolatedHome, ".vstack"))).toBe(false);
+  expect(readdirSync(temporary)).toEqual([]);
 });
 
 test("a kind prints and creates that kind's dir under the Scratch dir", () => {
