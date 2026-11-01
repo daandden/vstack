@@ -1,7 +1,3 @@
-// vstack pages follow good-css (#61): every `*.html` and `*.css` file under a skill's `templates/` directory,
-// and every `*.css` file of the Flow reader's source under `reader/app/`, is linted with the script the CSS
-// upstream names as `page_lint:` in pins.yaml (its `scripts/check-css.mjs`), read at that Upstream's Pin and run
-// with Bun. With no page source the lint is not fetched.
 
 import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -9,7 +5,6 @@ import { join } from "node:path";
 import { UpstreamError } from "../upstreams.ts";
 import type { Check, CheckContext, Failure } from "./types.ts";
 
-/** Repo-relative paths of every page source: `plugin/skills/<name>/templates/**\/*.{html,css}` and `reader/app/**\/*.css`. */
 export function pageTemplates(root: string): string[] {
   const skills = join(root, "plugin", "skills");
   if (!existsSync(skills)) return [];

@@ -9,7 +9,6 @@ const loc = computed(() => props.e.location as CodeLocation);
 const language = computed(() => props.e.language as string | undefined);
 const kind = computed(() => (typeof props.e.code === "string" ? "Code" : "Diff"));
 
-/** One source line, anchored at `<entry>-L<old>` and `<entry>-R<new>` so links to either side keep working. */
 function line(ids: string[], cls: string, nums: { old?: number; new?: number }, inner: string, nl: string) {
   const data = `${nums.old !== undefined ? ` data-old="${nums.old}"` : ""}${nums.new !== undefined ? ` data-new="${nums.new}"` : ""}`;
   const [outer, ...rest] = ids;

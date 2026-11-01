@@ -1,5 +1,3 @@
-// The reader follows the system color scheme until the reader picks Light (Catppuccin Latte) or Dark (Catppuccin
-// Mocha). The pick is kept in this browser; System clears it.
 export type Theme = "system" | "light" | "dark";
 const KEY = "flow-reader:theme";
 

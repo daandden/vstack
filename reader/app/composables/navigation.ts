@@ -1,18 +1,12 @@
-// Reading position, fragments, and keyboard navigation. A stop is any block or section marked `data-stop`; a reading
-// block (`data-block`) is one entry of the Flow-wide sequence. Fragments name element ids; migrated aliases and old
-// Stage tab ids resolve to the element that now carries them, and a fragment inside a closed disclosure opens it.
 import { flow } from "~/composables/reader";
 
-/** The id of the stop the reader last selected or scrolled to. */
 export const current = ref<string>();
-/** Whether the Stage tree dialog is open; `t` toggles it. */
 export const treeOpen = ref(false);
 
 const shown = (el: Element) => el.getClientRects().length > 0;
 export const stops = () => [...document.querySelectorAll<HTMLElement>("[data-stop]")].filter(shown);
 const blocks = () => [...document.querySelectorAll<HTMLElement>("[data-block]")].map((el) => el.querySelector<HTMLElement>("[id][data-stop]")).filter((el): el is HTMLElement => !!el && shown(el));
 
-/** The element a fragment id names, with its closed ancestor disclosures opened. */
 export function resolve(id: string): HTMLElement | null {
   if (!id) return null;
   let el = document.getElementById(id);
@@ -59,7 +53,6 @@ export function markFromScroll() {
   if (id) current.value = id;
 }
 
-/** The element whose on-screen position must survive an update, with that position. */
 export function readingAnchor(): { el: HTMLElement; top: number } | undefined {
   const visible = (el: Element | null) => {
     const box = el?.getBoundingClientRect();
@@ -71,8 +64,6 @@ export function readingAnchor(): { el: HTMLElement; top: number } | undefined {
   return el ? { el, top: el.getBoundingClientRect().top } : undefined;
 }
 
-/** Applies a DOM change that needs no Vue render, such as a drawn diagram, with the reading anchor kept on screen. It
- *  measures and scrolls at once, so diagrams that finish together each correct only their own shift. */
 export function keepPlaceNow(change: () => void) {
   const anchor = readingAnchor();
   change();
@@ -112,7 +103,6 @@ export function onKey(e: KeyboardEvent) {
   }
 }
 
-/** Follows an in-page link to an alias or to the fragment already in the address bar, which the browser ignores. */
 export function onClick(e: MouseEvent) {
   const a = (e.target as Element | null)?.closest?.('a[href^="#"]');
   if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;

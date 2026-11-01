@@ -1,5 +1,3 @@
-// Copies the generated reader into the flow-page skill: the shell and every asset it loads, nothing else.
-// Run through `vp run reader:build`, after `nuxt generate reader`.
 import { cpSync, existsSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 

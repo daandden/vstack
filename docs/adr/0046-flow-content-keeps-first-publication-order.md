@@ -4,9 +4,11 @@ status: accepted
 
 # Flow content keeps first-publication order
 
-This is an accepted design, not an implemented change. It amends the Stage-tab-primary reading model in [ADR 0029](0029-a-flow-keeps-one-grilling-page-tabbed-by-stage.md) and [ADR 0044](0044-structured-flow-data-drives-server-rendered-pages.md), alongside the frontend decision in [ADR 0045](0045-flow-reader-uses-nuxt-with-vite-plus-on-bun.md).
+This design is implemented by #313 and presented by the Nuxt reader in #314. It amends the Stage-tab-primary reading model in [ADR 0029](0029-a-flow-keeps-one-grilling-page-tabbed-by-stage.md) and [ADR 0044](0044-structured-flow-data-drives-server-rendered-pages.md), alongside the frontend decision in [ADR 0045](0045-flow-reader-uses-nuxt-with-vite-plus-on-bun.md). Spec #309 and #316 remain open because full final-tree verification is unavailable.
 
 Make one reading sequence across the Flow's Stages the main reader experience. New content takes its position at its first successful publication to the Flow. Retain submitted item order within a contribution and declared question order within a round. Persist that order rather than derive it from author timestamps, Stage opening order, content kind, or the latest update time.
+
+The native `ask` receipt keeps the same declared question order as the page. A reasked question retains its stable Q number, even when a newly declared question precedes it.
 
 For example, research drafted before a question but published after it belongs after that question. The shared publication order also distinguishes concurrent contributions without depending on equal or unsynchronized author clocks. An already committed contribution keeps its positions when replayed; it does not create duplicate reading entries.
 
@@ -22,4 +24,4 @@ Use the same reader for historical and new content. The boundary does not requir
 
 Grouping all Results before questions moves research away from the point at which the reader received it. Separate Stage tabs as the only reading path require the reader to reconstruct work across skill runs. Author creation timestamps can insert late publications above already-read content. Appending an entry for every answer or revision produces an activity history rather than the selected concise reading model.
 
-The user chose first-publication order, in-place updates, and a clear historical boundary over a mixed stream with uncertain relationships. Stage identity, parent relationships, lifecycle state, and links remain available. The prototype decides the navigation and visual layout without changing this canonical reading order.
+The user chose first-publication order, in-place updates, and a clear historical boundary over a mixed stream with uncertain relationships. Stage identity, parent relationships, lifecycle state, and links remain available. The approved `reader-review-r3` variant A supplies the navigation and visual layout without changing this canonical reading order.

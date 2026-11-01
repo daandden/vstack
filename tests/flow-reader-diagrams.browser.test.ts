@@ -1,5 +1,3 @@
-// The Flow reader's diagrams as a reader sees them in headless Chromium: a Flow served by the real CLI and host in
-// an isolated home and port. Chromium comes from playwright-core's own browser cache, here and in CI.
 
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
@@ -10,6 +8,8 @@ import { ENV } from "./support/fixture.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
 const CAPTURED_SVG = join(import.meta.dir, "fixtures", "flow-page-diagrams", "captured-pele-mocha.svg");
+const STYLED_SOURCE = join(import.meta.dir, "fixtures", "flow-page-diagrams", "styled-mocha.mmd");
+const STYLED_SVG = join(import.meta.dir, "fixtures", "flow-page-diagrams", "styled-pele-mocha.svg");
 const SETUP = "./node_modules/.bin/playwright-core install --only-shell chromium (CI: the \"Install Chromium\" step in .github/workflows/check-register.yml)";
 
 const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-reader-diagrams-")));
@@ -50,7 +50,6 @@ const PALETTES = {
 };
 type Rgb = number[];
 
-/** The share of a figure's drawn pixels near each palette color, read from a screenshot of the figure. */
 async function palette(figure: Locator, decoder: Page): Promise<Record<string, number>> {
   const png = (await figure.screenshot()).toString("base64");
   const targets = Object.fromEntries(Object.entries(PALETTES).flatMap(([p, colors]) => Object.entries(colors).map(([c, rgb]) => [`${p}.${c}`, rgb])));
@@ -70,7 +69,6 @@ async function palette(figure: Locator, decoder: Page): Promise<Record<string, n
   }, { png, targets });
 }
 
-/** Waits until the figure is drawn in one palette and shows none of the other. */
 async function drawnIn(figure: Locator, decoder: Page, scheme: "latte" | "mocha"): Promise<Record<string, number>> {
   const other = scheme === "latte" ? "mocha" : "latte";
   let seen: Record<string, number> = {};
@@ -82,7 +80,7 @@ async function drawnIn(figure: Locator, decoder: Page, scheme: "latte" | "mocha"
   throw new Error(`the figure did not show ${scheme}: ${JSON.stringify(seen)}`);
 }
 
-test("Flow diagrams draw safely in the reader's Latte or Mocha theme, and a captured Pele SVG keeps its bytes", async () => {
+test.each(["mermaid", "svg"] as const)("Flow diagrams draw safely in the reader's Latte or Mocha theme with styled %s, and captured bytes stay unchanged", async (type) => {
   const opened = cli(["open", "--skill", "grill-me", "--title", "Diagrams in the reader"]);
   writeFileSync(join(root, "hostile.mmd"), [
     "flowchart LR",
@@ -92,8 +90,9 @@ test("Flow diagrams draw safely in the reader's Latte or Mocha theme, and a capt
     '  click h3 href "https://example.com/beacon"',
     "",
   ].join("\n"));
-  writeFileSync(join(root, "reading.mmd"), 'flowchart TD\n  a1["Read the page"] --> a2["Answer the question"]\n  a2 --> a3["Publish the result"]\n');
+  copyFileSync(type === "mermaid" ? STYLED_SOURCE : STYLED_SVG, join(root, "reading"));
   copyFileSync(CAPTURED_SVG, join(root, "captured.svg"));
+  copyFileSync(STYLED_SVG, join(root, "styled.svg"));
   const captured = readFileSync(CAPTURED_SVG);
   const capturedSha = new Bun.CryptoHasher("sha256").update(captured).digest("hex");
   const figure = (ref: string, title: string) => ({
@@ -104,9 +103,10 @@ test("Flow diagrams draw safely in the reader's Latte or Mocha theme, and a capt
   });
   cli(["submit"], { version: 1, items: [
     { kind: "attachment", ref: "hostile", type: "mermaid", caption: "Hostile labels", origin: "Mermaid source hostile.mmd", path: "hostile.mmd", focus: ["h1"] },
-    { kind: "attachment", ref: "reading", type: "mermaid", caption: "Reading then answering", origin: "Mermaid source reading.mmd", path: "reading.mmd", focus: ["a2"] },
+    { kind: "attachment", ref: "reading", type, caption: "Reading then answering", origin: `Styled ${type} capture`, path: "reading", ...(type === "mermaid" ? { focus: ["a2"] } : {}) },
     { kind: "attachment", ref: "captured", type: "svg", caption: "Captured design review", origin: "Pele render of design-review-sequence.mmd", path: "captured.svg" },
-    { kind: "round", questions: [figure("hostile", "hostile"), figure("reading", "reading"), figure("captured", "captured")] },
+    { kind: "attachment", ref: "styled", type: "svg", caption: "Styled historical design", origin: "Pele render of styled-mocha.mmd", path: "styled.svg" },
+    { kind: "round", questions: [figure("hostile", "hostile"), figure("reading", "reading"), figure("captured", "captured"), figure("styled", "styled")] },
   ] });
 
   const context = await browser.newContext({ colorScheme: "light", viewport: { width: 1280, height: 900 } });
@@ -123,7 +123,6 @@ test("Flow diagrams draw safely in the reader's Latte or Mocha theme, and a capt
   await page.goto(opened.live.url);
   await page.getByRole("button", { name: "Light" }).click();
 
-  // A hostile label is text: its markup never becomes elements, handlers, links, or requests.
   const hostile = page.getByRole("img", { name: "Hostile labels" });
   await hostile.getByText("Plain text").waitFor();
   for (const text of ["pwn", "javascript:alert(4)"]) expect(await hostile.getByText(text).first().isVisible()).toBe(true);
@@ -141,7 +140,6 @@ test("Flow diagrams draw safely in the reader's Latte or Mocha theme, and a capt
   expect(page.url()).toBe(opened.live.url);
   expect({ dialogs, offOrigin, popups }).toEqual({ dialogs: [], offOrigin: [], popups: [] });
 
-  // A Mermaid figure draws in Latte on the light theme and in Mocha once the reader switches to dark, in place.
   const reading = page.getByRole("img", { name: "Reading then answering" });
   await reading.getByText("Answer the question").waitFor();
   await reading.scrollIntoViewIfNeeded();
@@ -151,15 +149,29 @@ test("Flow diagrams draw safely in the reader's Latte or Mocha theme, and a capt
   await drawnIn(reading, decoder, "mocha");
   expect(await page.evaluate(() => (window as any).sameDocument)).toBe(true);
 
-  // A Pele SVG captured in Mocha shows Latte on the light theme, while the host still serves its captured bytes.
   await page.getByRole("button", { name: "Light" }).click();
   const old = page.getByRole("img", { name: "Captured design review" });
   await old.scrollIntoViewIfNeeded();
   await drawnIn(old, decoder, "latte");
+  const styled = page.getByRole("img", { name: "Styled historical design" });
+  await styled.scrollIntoViewIfNeeded();
+  await drawnIn(styled, decoder, "latte");
+  const authored = (f: Locator) => f.evaluate((host) => getComputedStyle(host.shadowRoot!.querySelector('[data-id="a4"] rect')!).fill);
+  expect(await authored(reading)).toBe("rgb(18, 52, 86)");
+  expect(await authored(styled)).toBe("rgb(18, 52, 86)");
+  await page.getByRole("button", { name: "Dark" }).click();
+  await drawnIn(styled, decoder, "mocha");
+  expect(await authored(reading)).toBe("rgb(18, 52, 86)");
+  expect(await authored(styled)).toBe("rgb(18, 52, 86)");
   const model = await (await fetch(new URL("content", opened.live.url))).json() as any;
   const stored = model.attachments.find((a: any) => a.caption === "Captured design review");
   const served = Buffer.from(await (await fetch(new URL(`assets/${stored.file}`, opened.live.url))).arrayBuffer());
   expect(new Bun.CryptoHasher("sha256").update(served).digest("hex")).toBe(capturedSha);
+  for (const [caption, file] of [["Reading then answering", type === "mermaid" ? STYLED_SOURCE : STYLED_SVG], ["Styled historical design", STYLED_SVG]]) {
+    const attachment = model.attachments.find((a: any) => a.caption === caption);
+    const bytes = Buffer.from(await (await fetch(new URL(`assets/${attachment.file}`, opened.live.url))).arrayBuffer());
+    expect(bytes.equals(readFileSync(file!))).toBe(true);
+  }
   expect({ dialogs, offOrigin, popups }).toEqual({ dialogs: [], offOrigin: [], popups: [] });
   await context.close();
 }, 120_000);

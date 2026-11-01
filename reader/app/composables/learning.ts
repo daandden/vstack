@@ -1,5 +1,3 @@
-// Quiz attempts are learning progress, never answers to real asks. Each attempt is saved in this browser first, then
-// sent to the Flow's authenticated `learning` endpoint, whose accepted attempts come back and are merged by id.
 import type { Quiz } from "#flow/model.ts";
 
 export type Attempt = { id: string; result: string; revision: number; question: string; answer: string };
@@ -64,7 +62,6 @@ export function attempt(a: Omit<Attempt, "id">) {
   void syncLearning();
 }
 
-/** Loads this Flow's saved attempts once and keeps them in step with other tabs and with the host. */
 export function startLearning(id: string) {
   if (started) return;
   started = true;

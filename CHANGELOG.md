@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+- Fix spec #309 review findings without claiming full-spec completion. Explicit standard Mocha paints in new Mermaid drawings and historical Pele SVGs now use the selected reader theme while captured bytes and authored nonpalette colors stay unchanged. Native `ask` receipts preserve declared round order, including reasks with stable Q numbers. Current docs distinguish the approved r3 design and implemented #313/#314 from unavailable #316 final proof.
+- Stop test checkout leaks by cleaning only roots owned by the check-register fixture lifecycle. Repository-key lookup captures git output through owned temporary files instead of Bun's lossy synchronous pipes under concurrent CLI load. Git lookup failures refuse rather than route a real repository to `_global`; a genuine nonrepository still uses `_global`.
+- Make the cleanup symlink regression independent of temporary pathname length. Growing an outside target must not increase either the linked entry's reported size or the containing entry's size.
+
 - The Flow authoring evaluation reruns on the shipped Nuxt reader (#315). Each headless child authors under its own harness identity with its own home and host port. `check-record.ts` now requires the frozen binding and rejects one whose session, agent, Flow, or Stage differs from the required identity and receipt. The procedure freezes each first publication while the batch runs and keeps evidence outside the children's cwd. A no-skill run that receives tested instructions through search results counts as contaminated. `judging.json` records the rerun's outcomes and the user's review of 2026-11-01: the shipped-reader judgments hold, a text figure declared as an Option diagram is not an adequate structural visual, and the prototype-review diagram is unreadable in the light theme.
 
 ## [9.0.0] - 2026-10-31

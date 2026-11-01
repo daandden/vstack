@@ -1,5 +1,5 @@
 import { afterAll, expect, test } from "bun:test";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { ENV, git } from "./support/fixture.ts";
@@ -143,7 +143,8 @@ test("mixed publications keep declared order across Stages, refusal, replay, ans
   send("s-a", { kind: "answer", question: first.refs.one, response: { status: "answered", text: "Keep the first publication." }, reading: { outcome: "resolved", decision: "Keep publication order.", basis: "The words name that order." } }, { kind: "revise", result: first.refs.r, base: first.revision, set: { title: "Revised research" } });
   expect(read().publications).toEqual(expected);
   const last = send("s-a", round(question("three"), { ...question("again"), again: first.refs.one }));
-  expect(last.ask.questions.map((q: any) => q.id)).toEqual([last.refs.again, last.refs.three]);
+  expect(last.ask.questions.map((q: any) => q.id)).toEqual([last.refs.three, last.refs.again]);
+  expect(last.ask.questions.map((q: any) => q.question.split(".")[0])).toEqual(["Q3", "Q1"]);
   expect(read().publications.slice(4)).toEqual([
     { id: last.refs.three, kind: "question", stage: a.stage, position: 5, publication: last.revision },
     { id: last.refs.again, kind: "question", stage: a.stage, position: 6, publication: last.revision },
@@ -223,6 +224,20 @@ test("qualified aliases find a Flow, and lookup reports a missing or ambiguous F
   expect(ambiguous.stderr).toContain(other.flow);
   const unqualified = run(["alias", "267"], { ...at, session: "s-a" });
   expect(unqualified.code).not.toBe(0);
+  expect(tree(w.home)).toEqual(before);
+});
+
+test("a failed git lookup refuses authoring instead of routing a repository to global Flows", () => {
+  const w = world();
+  const { at } = twoTickets(w);
+  const before = tree(w.home);
+  writeFileSync(join(w.project, ".git", "config"), "[invalid config\n");
+  const result = run(["submit"], { ...at, session: "s-a", stdin: contribution(round(question("must-not-route"))) });
+  expect(result.code).not.toBe(0);
+  expect(result.stdout).toBe("");
+  expect(result.stderr).toContain("git rev-parse");
+  expect(result.stderr).toContain("bad config line");
+  expect(result.stderr).not.toContain("is bound to no Flow");
   expect(tree(w.home)).toEqual(before);
 });
 

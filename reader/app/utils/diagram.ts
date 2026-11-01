@@ -1,8 +1,3 @@
-// Diagrams render in the page, so their labels use the fonts this browser measured them with. A Mermaid attachment
-// is drawn by the pinned Pele, loading only the code for its diagram type. A captured SVG that Pele drew earlier is
-// shown from its stored bytes without its embedded palette. Both take every color from the `--pele-*` variables
-// that reader.css sets per theme, so a theme switch restyles them without drawing again. Any other SVG stays in an
-// <img>, where it cannot reach the page.
 
 /** The font Pele measures each label in, and the font the label is drawn in. */
 export const DIAGRAM_FONT = "'IosevkaTerm Nerd Font Mono', ui-monospace, monospace";
@@ -12,13 +7,28 @@ const ELEMENTS = new Set([
   "svg", "g", "path", "rect", "circle", "ellipse", "line", "polyline", "polygon", "text", "tspan", "textPath", "title", "desc",
   "defs", "marker", "clipPath", "mask", "linearGradient", "radialGradient", "stop", "pattern", "symbol", "use",
 ]);
-// Anything that could load a resource or run code: a URL that leaves the document, an import, or a script URL.
 const UNSAFE = /url\(\s*(?!['"]?#)|@import|javascript:|vbscript:|data:|expression\(/i;
 const SHAPES = ":is(rect, path, polygon, circle, ellipse)";
 
+const MOCHA_PAINTS: Record<string, string> = {
+  "#1e1e2e": "bg", "#cdd6f4": "fg", "#11111b": "fg-on-light",
+  "#a6adc8": "muted", "#bac2de": "line", "#313244": "surface",
+  "#181825": "surface-alt", "#45475a": "surface-1", "#6c7086": "border",
+  "#cba6f7": "accent", "#f38ba8": "critical", "#a6e3a1": "series-2",
+  "#94e2d5": "series-3", "#fab387": "series-4", "#89b4fa": "series-5",
+  "#f9e2af": "series-6", "#f5c2e7": "series-7", "#89dceb": "series-8",
+  "#b4befe": "lavender",
+};
+const PAINT_ATTRIBUTES = new Set(["fill", "stroke", "color", "stop-color", "flood-color", "lighting-color"]);
+function themedPaint(value: string): string {
+  return value.replace(/#[0-9a-f]{6}\b/gi, (hex) => {
+    const token = MOCHA_PAINTS[hex.toLowerCase()];
+    return token ? `var(--pele-${token})` : hex;
+  });
+}
+
 export type Drawn = { svg: SVGSVGElement; css: string };
 
-/** The SVG with only drawing elements and attributes kept: no script, handler, link, style, image, or outside URL. */
 function clean(root: Element): SVGSVGElement {
   for (const el of [...root.querySelectorAll("*")]) {
     if (el.namespaceURI === SVG && el.localName === "a") el.replaceWith(...el.childNodes);
@@ -28,7 +38,11 @@ function clean(root: Element): SVGSVGElement {
     for (const { name, value } of [...el.attributes]) {
       const local = name.slice(name.indexOf(":") + 1).toLowerCase();
       if (local.startsWith("on") || (local === "href" && !value.startsWith("#")) || UNSAFE.test(value)) el.removeAttribute(name);
+      else if (PAINT_ATTRIBUTES.has(local) && !value.includes("url(")) el.setAttribute(name, themedPaint(value));
     }
+    const style = el.getAttribute("style");
+    if (style) el.setAttribute("style", style.replace(/((?:^|;)\s*(?:fill|stroke|color|stop-color|flood-color|lighting-color|--[\w-]+)\s*:)([^;]*)/gi,
+      (declaration, property, value) => value.includes("url(") ? declaration : property + themedPaint(value)));
   }
   return root as SVGSVGElement;
 }
@@ -40,7 +54,6 @@ function parse(markup: string): SVGSVGElement | undefined {
   return root as unknown as SVGSVGElement;
 }
 
-/** Marks each focal Mermaid id in the theme's accent, as vstack-figures' render script does in Mocha mauve. */
 function focusRules(ids: string[]): string {
   return ids.map((id) => {
     const sel = `[data-id="${CSS.escape(id)}"]`;
@@ -48,7 +61,6 @@ function focusRules(ids: string[]): string {
   }).join("\n");
 }
 
-/** The focal ids a stored figure's own focus rules name, read from its `[data-id="…"]` selectors. */
 function storedFocus(css: string): string[] {
   const unescape = (s: string) => s.replace(/\\([0-9a-fA-F]{1,6}) ?|\\(.)/g, (_, hex?: string, ch?: string) => (hex ? String.fromCodePoint(parseInt(hex, 16)) : ch!));
   return [...new Set([...css.matchAll(/\[data-id="((?:[^"\\]|\\.)*)"\]/g)].map((m) => unescape(m[1]!)))];

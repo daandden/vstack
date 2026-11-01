@@ -1,5 +1,3 @@
-// The host's reader interface, as the reader consumes it. `GET content` returns the Flow content contract with its
-// questions as a list and the host's artifact availability; `GET observations` returns read-only observations.
 import type { Attachment, QuestionView, ResultView, StageView, View } from "#flow/model.ts";
 import type { Runtimes } from "#flow/live.ts";
 import type { Observations } from "#flow/observations.ts";
@@ -8,11 +6,9 @@ export type { Attachment, QuestionView, ResultView, StageView, Runtimes, Observa
 export type Content = Omit<View, "questions"> & { questions: QuestionView[]; runtimes: Runtimes };
 export type ReadingBlock = View["reading"]["historical"][number];
 
-/** The content with its lookups built once per revision. */
 export type Flow = Content & {
   question: Map<string, QuestionView>;
   stage: Map<string, StageView>;
-  /** Old fragment ids kept by migration, and Stage tab ids, each pointing at the id that now carries it. */
   aliases: Map<string, string>;
 };
 
@@ -33,7 +29,6 @@ export function sourceText(flow: Flow, id: string): string {
   return flow.sources.find((x) => x.id === id)?.text ?? id;
 }
 
-/** The title of a linked Result entry: its own title, claim, file, or first cell. */
 export function entryTitle(flow: Flow, ref: string): { result: string; entry: string; name: string } | undefined {
   const [rid, eid] = ref.split("/");
   const r = flow.stages.flatMap((st) => st.results).find((x) => x.id === rid);
@@ -43,7 +38,6 @@ export function entryTitle(flow: Flow, ref: string): { result: string; entry: st
   return { result: r.title, entry: e.id, name };
 }
 
-/** The Jump row label of a reading block. */
 export function blockLabel(flow: Flow, b: ReadingBlock): string {
   const st = b.stage ? flow.stage.get(b.stage) : undefined;
   if (b.kind === "question") return `${st?.label}: Q${flow.question.get(b.id)?.q}`;

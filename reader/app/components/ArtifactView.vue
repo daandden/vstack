@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import type { Attachment, Runtimes } from "~/utils/flow";
 
-// A runnable artifact runs only on the host's separate viewer origin, inside a sandboxed frame. When the host knows
-// no viewer for it, the reader says why and shows the producer's real launch steps instead.
 const props = defineProps<{ a: Attachment; runtime?: Runtimes[string]; anchor: string }>();
 const available = computed(() => !!props.runtime?.url && props.a.availability !== "unavailable");
 const reason = computed(() => props.a.reason ?? props.runtime?.reason ?? "Start the runtime with the launch steps below.");

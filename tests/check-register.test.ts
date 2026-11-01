@@ -11,6 +11,7 @@ import {
   SCRIPT,
   artifactFrom,
   checkout,
+  cleanupCheckouts,
   clone,
   git,
   makeUpstreams,
@@ -24,7 +25,10 @@ let up: Upstreams;
 beforeAll(() => {
   up = makeUpstreams();
 });
-afterAll(() => rmSync(up.dir, { recursive: true, force: true }));
+afterAll(() => {
+  cleanupCheckouts();
+  rmSync(up.dir, { recursive: true, force: true });
+});
 
 const failuresOf = (r: Run) => r.json!.failures.map((f) => `${f.class} ${f.item}`);
 const row = (spec: RepoSpec, id: string) => spec.register.items.find((r) => r.id === id)!;

@@ -16,8 +16,6 @@ const idle = Number(values.idle) * 1000;
 if (!home || !Number.isInteger(port) || !Number.isFinite(idle) || idle <= 0) throw new Error("host needs --home, --port, and positive --idle");
 const secret = secrets(home);
 const instance = randomBytes(16).toString("hex");
-// The host serves the reader bytes it loaded at startup and advertises their version, so a later build on disk is
-// never served by this process: the next authoring command reports the host as incompatible instead.
 const reader = readerBundle();
 const hostVersion = version(reader);
 const origin = originOf(port);
@@ -30,9 +28,6 @@ const headers = {
   "X-Content-Type-Options": "nosniff",
   "Cross-Origin-Resource-Policy": "same-origin",
 };
-// The shell runs only its own bundled scripts and the inline bootstrap scripts it shipped with, named by hash, and
-// loads every resource from this origin. Diagrams and other Flow content shown in the page can neither run a script
-// nor fetch from elsewhere. Captured HTML prototypes run on the viewer origin, which this policy does not govern.
 const shellScripts = [...new TextDecoder().decode(reader.get("index.html")).matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)]
   .filter(([, attrs]) => !/\bsrc=|application\/json/.test(attrs!))
   .map(([, , body]) => `'sha256-${createHash("sha256").update(body!).digest("base64")}'`);

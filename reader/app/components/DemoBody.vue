@@ -3,8 +3,6 @@ import type { Condition, Demo, DemoLiteral, Effect, Transition } from "#flow/mod
 import { flow } from "~/composables/reader";
 import type { ResultView } from "~/utils/flow";
 
-// A demo runs only in this browser. Its state is kept per Result revision, so an unrelated Flow update keeps it,
-// and it answers no question and records no work.
 const props = defineProps<{ r: ResultView; demo: Demo }>();
 const id = computed(() => `${props.r.anchor}-demo`);
 const key = computed(() => `flow-page:demo:${flow.value!.flow.id}:${props.r.id}:r${props.r.revision}`);

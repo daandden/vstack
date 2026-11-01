@@ -1,6 +1,3 @@
-// Loads the Flow from the host's reader interface and keeps it current. The host announces each committed revision
-// and each observation change on `events`; the reader then fetches `content` or `observations` and keeps the
-// reader's place: the paragraph being read stays where it was on screen, and focus stays on its element.
 import { flowOf, type Content, type Flow, type Observations } from "~/utils/flow";
 import { readingAnchor } from "~/composables/navigation";
 

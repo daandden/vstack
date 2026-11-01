@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { flow, observations } from "~/composables/reader";
 
-// Authored progress comes from the Flow's committed contributions. Observations are read-only reads of git, the code
-// host, and CI; they never mark work done, settle a question, or authorize anything.
 const f = computed(() => flow.value!);
 const p = computed(() => f.value.progress);
 const stageLabel = (id: string) => f.value.stage.get(id)?.label ?? id;

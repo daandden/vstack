@@ -100,7 +100,7 @@ Read only the field contract for the kind you are about to publish:
 
 A submit receipt holds the Flow and Stage ids, the committed `revision`, `live`, `refs` (each ref you gave, mapped to its assigned id), and, when the contribution has a round, `ask`. It does not repeat your content.
 
-`ask` is the payload for the `ask` tool, in Q-number order: each question's id, its one-line `question` that starts with its Q number (`Q3. ...`), its option labels with their letters, and the index of the recommended option. Pass it to `ask` as it is.
+`ask` is the payload for the `ask` tool, in declared round order: each question's id, its one-line `question` that starts with its stable Q number (`Q3. ...`), its option labels with their letters, and the index of the recommended option. A reask can retain an earlier Q number without moving ahead of a newly declared question. Pass the payload to `ask` as it is.
 
 ## Every ask in a Flow
 

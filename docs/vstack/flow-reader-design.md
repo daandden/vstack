@@ -1,6 +1,6 @@
 # Chronological Flow reader design review
 
-Ticket [#312](https://github.com/daandden/vstack/issues/312) explores the reading structure before production implementation. The review outcome is recorded on the Flow page question for `reader-review-r3`.
+The user approved ticket [#312](https://github.com/daandden/vstack/issues/312)'s `reader-review-r3`, variant A, in Flow question 18. They required a compact layout based on the current Flow page, Catppuccin Mocha dark mode, and Catppuccin Latte light mode. #313 implements durable publication order, and #314 ships the Nuxt reader through the Bun host. The sections below retain the prototype choices and captured evidence. Spec #309 and #316 remain open because the independent final integrated proof and refreshed first-publication evaluation are unavailable.
 
 ## Why revision 3 is smaller
 
@@ -13,7 +13,7 @@ Revision `reader-review-r3` uses that direction for restraint, not copied produc
 - **A, Document outline**, opens with `?variant=A`. An inline "On this page" toggle contains the Jump row. Another toggle contains related notes and backlinks. Navigation stays in the document and uses native disclosures. Opening it moves later content down, and returning to the outline requires scrolling or keyboard navigation.
 - **B, Reading panes**, opens with `?variant=B`. The document has two quiet navigation buttons instead of inline navigation sections. Outline and context open in modal side panes, without changing the reading column's width or document layout. Links close the pane and focus their destination. Escape closes it and returns focus to its trigger. This keeps the document shorter, but context inspection temporarily blocks reading behind the pane. These are on-demand modal panes, not persistent split editors.
 
-I recommend A. Native document disclosures make the navigation easier to discover and avoid modal focus changes on a phone. B is useful when minimizing document length matters more than comparing context with the current paragraph. This recommendation does not substitute for the user's revision-specific review.
+The review recommended A because native document disclosures avoid modal focus changes on a phone. B reduces document length but blocks comparison of context with the current paragraph. The user chose A with the compactness and theme requirements recorded above.
 
 ## Reading behavior retained
 
@@ -40,4 +40,4 @@ Chrome 150.0.7871.24 was driven at 1280 by 900 and 360 by 900 CSS pixels, both a
 
 This is fixture UI, not Nuxt integration, live host updates, durable publication ordering, authenticated Quiz persistence, or an authoring evaluation. The bundle contains no external dependencies, copied logos, proprietary icons, parent access, or authoring credentials. Its production baseline is `9a3a54bbb269732d548c0cc00af18497657d6933`; r3 is a throwaway design revision on that fixture scenario.
 
-The browser walkthrough is observational evidence, not permanent test coverage or an accessibility audit with assistive technology. The driver waits for positioning to settle before measuring queued updates. Earlier positioning measurements are retained separately and are not the final update result. No Safari, Firefox, production reader, or long-session reliability claim is made. The prototype skill exempts these throwaway variants from permanent tests. The checkout has no configured typecheck. GLOSSARY.md and ADRs 0044 through 0046 are unchanged by this ticket.
+The prototype browser walkthrough is observational evidence, not permanent test coverage or an accessibility audit with assistive technology. The driver waits for positioning to settle before measuring queued updates. Earlier positioning measurements are retained separately and are not the final update result. That walkthrough makes no Safari, Firefox, production-reader, or long-session reliability claim. The prototype skill exempts these throwaway variants from permanent tests. The checkout has no configured typecheck. #313 and #314's implementation and later targeted checks do not supply the missing #316 full-spec proof.

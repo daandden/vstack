@@ -1,7 +1,4 @@
 <script setup lang="ts">
-// One captured diagram: Mermaid source drawn by Pele, or an SVG. A Pele diagram lives in its own shadow root, so its
-// ids and rules stay inside it while it inherits the theme's `--pele-*` colors and the page's fonts. Its caption is
-// its accessible name. Any SVG that Pele did not draw stays a sandboxed <img>.
 import { keepPlaceNow } from "~/composables/navigation";
 import { derivePele, drawMermaid, type Drawn } from "~/utils/diagram";
 import type { Attachment } from "~/utils/flow";
@@ -33,7 +30,6 @@ async function draw() {
     const root = el.shadowRoot ?? el.attachShadow({ mode: "open" });
     const style = document.createElement("style");
     style.textContent = `${BASE}\n${drawn.css}`;
-    // The host is the image, named by the caption; the drawing's own text and roles stay out of the accessibility tree.
     drawn.svg.setAttribute("aria-hidden", "true");
     keepPlaceNow(() => root.replaceChildren(style, document.adoptNode(drawn.svg)));
     mode.value = "drawn";
@@ -44,7 +40,6 @@ async function draw() {
   }
 }
 onMounted(draw);
-// A live refresh hands over new attachment objects; only other bytes or focus draw again.
 watch(() => `${props.a.file}\n${props.a.focus?.join("\n") ?? ""}`, draw);
 </script>
 

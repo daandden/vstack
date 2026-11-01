@@ -503,7 +503,7 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
         s.questions.push(...parsed);
         for (const q of parsed) publish("question", q.id);
         receipt.ask = {
-          questions: [...parsed].sort((a, b) => a.q - b.q).map((q) => {
+          questions: parsed.map((q) => {
             const rec = q.options.findIndex((op) => op.recommended !== undefined);
             return { id: q.id, question: `Q${q.q}. ${q.title}`, options: q.options.map((op) => ({ label: op.label })), ...(rec >= 0 ? { recommended: rec } : {}) };
           }),

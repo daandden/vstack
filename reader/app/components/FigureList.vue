@@ -5,7 +5,6 @@ import { flow } from "~/composables/reader";
 defineProps<{ figures?: Figure[] }>();
 const f = computed(() => flow.value!);
 const attachment = (id: string) => f.value.attachments.find((a) => a.id === id);
-// Migrated historical HTML figures were safety-checked at migration; their CSS applies only inside the figure.
 const scoped = (css: string, id: string) => css.replace(/([^{}]+)\{([^{}]*)\}/g, (_, selectors: string, body: string) =>
   `${selectors.split(",").map((s) => s.trim()).filter(Boolean).map((s) => (s === ":scope" ? `#${id}` : `#${id} ${s.replace(/^:scope\s*/, "")}`)).join(", ")} { ${body} }`);
 const historical = (fig: { id: string; html: string; css?: string }) => `${fig.css ? `<style>${scoped(fig.css, fig.id)}</style>` : ""}${fig.html}`;

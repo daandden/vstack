@@ -8,7 +8,6 @@ const src = computed(() => `assets/${props.a.file}`);
 const state = computed(() => (props.a.availability === "unavailable" ? "Unavailable" : props.a.availability === "external" ? "Runs outside this page" : "Captured"));
 const revision = computed(() => (props.a.revision ? (props.a.availability === "captured" ? props.a.revision.slice(0, 12) : props.a.revision) : undefined));
 
-// A paused or half-watched video resumes where this browser left it, also after the Flow updates.
 const video = ref<HTMLVideoElement>();
 onMounted(() => {
   const v = video.value;

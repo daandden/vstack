@@ -270,7 +270,7 @@ A lint over shipped text starts from `lintTargets(ctx)` in `scripts/lib/checks/s
 
 #### Page templates
 
-Every page vstack writes for the user, the Flow page and teach's lessons, follows good-css (#61). A page source is any `*.html` or `*.css` under `plugin/skills/<name>/templates/`, and any `*.css` of the Flow reader under `reader/app/`. `scripts/lib/checks/pages.ts` runs the CSS Upstream's `page_lint:` script at its Pin over these files. Each flagged file reports `page-css`. With no page source, the check reads nothing. Pages hold no authored figure. The caller writes Mermaid and renders it through vstack-figures with Pele, captures the SVG in the Flow, and may inline its exact bytes in an offline lesson.
+Every page vstack writes for the user, the Flow page and teach's lessons, follows good-css (#61). A page source is any `*.html` or `*.css` under `plugin/skills/<name>/templates/`, and any `*.css` of the Flow reader under `reader/app/`. `scripts/lib/checks/pages.ts` runs the CSS Upstream's `page_lint:` script at its Pin over these files. Each flagged file reports `page-css`. With no page source, the check reads nothing. Pages hold no authored figure. For a Flow diagram, the caller writes Mermaid and captures it as a `mermaid` attachment. The reader draws it with the pinned Pele in the selected Light or Dark theme. Historical Pele SVG captures remain supported and keep their bytes. For an explicit offline lesson or export, vstack-figures renders a Mocha SVG whose exact bytes can be inlined.
 
 ### House style
 

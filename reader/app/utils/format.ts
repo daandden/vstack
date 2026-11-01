@@ -1,5 +1,3 @@
-// Presentation helpers for Flow text. Every string the host sends is author text: it is escaped first, and only the
-// inline forms the authoring contract allows become markup: `code`, [links](https://… or #anchor), and [@citations].
 
 export type Cites = Map<string, { anchor: string; n: number }>;
 
@@ -16,7 +14,6 @@ export function inline(s: string, cites?: Cites): string {
   });
 }
 
-/** Paragraphs separated by blank lines; a block whose every line starts with "- " is a bullet list. */
 export function prose(s: string, cites?: Cites): string {
   return s
     .split(/\n\s*\n/)
@@ -32,13 +29,11 @@ export function prose(s: string, cites?: Cites): string {
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-/** `31 Oct 2026, 14:05` in the timestamp's own offset, as the author recorded it. */
 export function formatTime(iso: string): string {
   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
   return m ? `${m[3]} ${MONTHS[Number(m[2]) - 1]} ${m[1]}, ${m[4]}:${m[5]}` : iso;
 }
 
-/** A Timeline time: a date alone, or a date and time with its seconds and offset when given. */
 export function eventTime(iso: string): string {
   const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})(.*)$/);
   if (!m) return iso;

@@ -1,5 +1,3 @@
-// Where a Flow's stored data and captured files live under a test home, for tests of storage side effects
-// (retention, cleanup, planted files). The reader itself is only ever read through the Local Flow host.
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 

@@ -1,5 +1,3 @@
-# Runs the tests, the Flow reader freshness check, and check-register on every push and pull request (spec #63
-# "Register check", spec #309).
 name: check-register
 
 on:
@@ -25,17 +23,13 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
-      # The reader's browser test drives the headless Chromium that the pinned playwright-core expects, from the
-      # same per-user cache it uses locally.
       - name: Install Chromium
         run: ./node_modules/.bin/playwright-core install --with-deps --only-shell chromium
 
-      # Nuxt's CLI runs on Node; the reader it builds is served by Bun.
       - uses: actions/setup-node@v4
         with:
           node-version: 24.15.0
 
-      # The shipped reader under plugin/skills/flow-page/reader/ must be the build of reader/ in this commit.
       - name: Rebuild the Flow reader
         run: ./node_modules/.bin/vp run reader:build
 
