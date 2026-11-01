@@ -5,6 +5,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 ## [Unreleased]
 
 - Shorten the README to installation, everyday use, and documentation links. Preserve maintainer instructions in `docs/maintainer.md` and link to canonical skill contracts.
+- Keep Verify browser opens non-Tern during diagnostics, retries, recovery, and delegated verification. Restore explicit WebKit figure coverage and report unavailable proof as unmet rather than substituting Chromium (#329).
 
 ## [8.0.9] - 2026-11-01
 

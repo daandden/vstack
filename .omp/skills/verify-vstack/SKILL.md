@@ -78,6 +78,10 @@ Each feature file in `features/` gives the exact commands and the proof for one 
 - Pages: open the written HTML file in the omp `browser` with `app: { tern: false }` and a `viewport` of `{ width: 1280, height: 900 }`. Read state with `tab.ariaSnapshot()` and act by role and name, for example `role/tab[name="Overview"]`.
 - Maintainer CLIs: run them with the bash tool's `cwd` set to `CHECKOUT`, as `docs/maintainer.md` documents. Capture the command, stdout, stderr, and exit code.
 
+Keep every verification browser open outside the user's working Tern window. Apply the explicit non-Tern backend selection on each open, including diagnostics, retries, recovery, and delegated verification. An earlier open's backend flags do not constrain later calls or workers. Pass this policy in verification handoffs and inspect each open result to confirm the actual backend.
+
+Opening a browser, capturing a screenshot, and reading an image are separate operations. Image inspection is not evidence that a browser pane opened.
+
 Set the working directory with the bash tool's `cwd` parameter, not with `cd`. On this machine the bash tool's `cd` is a shell function that fails with `command not found: __zsh_like_cd`.
 
 ## Evidence
