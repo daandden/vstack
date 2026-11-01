@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [8.0.6] - 2026-11-01
+
+- Run clean-wt's script commands with a long or disabled tool deadline, and treat a host deadline as no exit rather than a nonzero exit. An interrupted inventory keeps its diagnostics and reruns once, investigators return interrupted-attempt diagnostics instead of writing Scratch, and an interrupted removal is reported as unknown without an automatic rerun (#319).
+
 ## [8.0.5] - 2026-10-31
 
 - Carry semantic roles and exact category keys through sequences, state diagrams and their alias, swimlanes, agent flows, and event models. Declared people and stored data retain their kinds without inferring status from labels or treating software as people. Sequence headers and footers share one identity. Group assignments preserve child meanings, agent-flow accents keep Base text readable, and unsupported or collapsed identities refuse binding and focus without overwriting output. Preserve open workflow and flowchart geometry without removing native C4 boundary accent fills under focus. Real CLI, browser-computed paints, shared-id isolation, and byte-preserving Flow capture cover the documented limits (ADR 0045, #304).
