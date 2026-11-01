@@ -31,9 +31,11 @@ Live-run brief: work only in your clone and in this run's Scratch entry. Never c
 
 Spawn one `vstack-worker` via eval `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`: the live-run brief above with the selected Verify skill's path relative to the checkout root, the symptom's workload, and this run's evidence directory, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: report the live branch as not captured, and point at `/skill:setup-vstack` when `task.isolation.enabled` is off.
 
-Keep the worker's handle for steps 4 and 6. On reported Drift, recommend a Matt run through `/skill:grill-with-docs` to repair the cited Drift in the reply.
+Keep the worker's handle for steps 4 and 6. Follow skill://vstack-fan-out/WORKER-LIFECYCLE.md and record retention for live probe and closing rounds, including its named service. On reported Drift, recommend a Matt run through `/skill:grill-with-docs` to repair the cited Drift in the reply.
 
 This step ends with the worker's real capture, or a cited capture blocker. Without a capture, report the blocker without claiming a diagnosis.
+
+On every early exit after starting the live worker, including a capture blocker or unavailable parser, run step 6's closing round before deciding its lifecycle. If it is running or still needed for instrumentation or service cleanup, retain it with that reason. Preserve useful failed-run work and evidence outside its clone before release.
 
 ## 3. Identify, shape, and reduce the artifact
 
@@ -73,7 +75,7 @@ If a paired capture exists, parse both captures through step 3. Diff them on the
 
 Use `confirmed` only when a paired capture supports the mechanism. Without that evidence, label the result `strongest hypothesis`, even when live probes support it. State unresolved alternatives and missing evidence.
 
-Release the worker without applying its patch. Keep captures, queries, probe evidence, and notes in Scratch. Leave pre-existing user changes untouched. This step ends with the evidence label and instrumentation cleanup recorded.
+After the closing round and evidence preservation, release the settled worker through skill://vstack-fan-out/WORKER-LIFECYCLE.md and record the observed outcome. Never apply its patch. Keep captures, queries, probe evidence, and notes in Scratch. Leave pre-existing user changes untouched. This step ends with the evidence label, instrumentation cleanup, and worker lifecycle recorded; unresolved cleanup keeps the worker retained with its reason.
 
 ## 7. Hand back the cited diagnosis
 

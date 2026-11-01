@@ -18,6 +18,10 @@ A Fan-out line always fans out. The agent at that step never does a part itself.
 
 A subagent at its own Fan-out step runs its line the same way. Each subagent returns its open questions in its result, and the top-level agent asks them with `ask`.
 
+## Account for Isolated clones
+
+For every isolated child, single or Fan-out, read [WORKER-LIFECYCLE.md](WORKER-LIFECYCLE.md) before starting it. The parent records retention or releases its own settled child after preservation, then observes clone disappearance. Apply the contract on normal and early exits. Each caller supplies its role-specific safe trigger. The FORMS.md lines stay unchanged.
+
 ## When a subagent cannot start
 
 If a subagent cannot start, follow the line's stop clause: stop the step, and name the parts that were not done and the reason. A single-subagent line that ends `skip it:` skips that subagent and reports what the clause names instead. Never do the subagent's work in its place.
