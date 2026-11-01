@@ -6,7 +6,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [8.0.6] - 2026-11-01
 
-- Start a Flow only through the central enrollment rule, before discovery or creation. Description-selected research, explanations, reviews, and other producers return complete answers in chat unless enrolled, while typed skill requests and existing Flow work keep page publication. Preserve canonical files, plain chat questions, and real runnable prototypes outside a Flow (ADR 0046, #321).
+- Start a Flow only through the central enrollment rule, before discovery or creation. Description-selected research, explanations, reviews, and other producers return complete answers in chat unless enrolled, while typed skill requests and existing Flow work keep page publication. Recognize omp's native skill-invocation header as the expanded typed command and execute Stage entry and exit even without an existing binding. Preserve canonical files, plain chat questions, and real runnable prototypes outside a Flow (ADR 0046, #321).
 
 ## [8.0.5] - 2026-10-31
 

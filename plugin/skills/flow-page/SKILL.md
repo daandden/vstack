@@ -38,7 +38,9 @@ Every result-producing skill checks enrollment once per run, before discovery or
 
 - The caller supplies a Flow or Stage for this work.
 - This session and agent already hold a binding for this work. The extension's per-turn context names their own binding when one exists.
-- The user typed `/skill:<name>` for the running skill, or asked in words for a page or Flow.
+- The user typed `/skill:<name>` for the running skill, or asked in words for a page or Flow. omp's native `User invoked the "<name>" skill` header is that expanded typed command, even when the slash token is absent.
+
+When any case matches, execute the numbered Stage entry/exit steps below. For a typed run without a binding, discover its Flow and use `open` to create the binding.
 
 Selecting or reading research, explain, or another skill from its description is not enrollment. Reading a reference, using a helper, returning machine facts, or performing another test cycle within an existing run opens no empty Stage.
 
