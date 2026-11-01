@@ -8,14 +8,14 @@ This directory maps the user-facing features of the vstack omp plugin. Read this
 - `CHECKOUT` is the vstack checkout or worktree under test, and `$CHECKOUT/plugin/package.json` names `vstack`.
 - `omp`, `bun`, `jq`, and `git` are on `PATH`.
 - `bash "$SKILL_DIR/scripts/doctor.sh" "$CHECKOUT" "$VERIFY_RUN_DIR"` prints no `FAIL` line.
-- Never drive your own omp session or the real `~/.omp`. Every session drive runs on `$VERIFY_RUN_DIR/data/home`.
+- Never drive your already-running omp session. Stub session drives run on `$VERIFY_RUN_DIR/data/home`. The real-model enrollment recipe in `flow-page.md` uses a fresh native process and its documented real-HOME exception.
 
 ## Driving conventions
 
 - Start every recipe from the baseline. A recipe that needs earlier state names it under `Preconditions:`.
-- Run session behavior through `scripts/drive.ts`. Use the feature ID as `--name`, so each drive has its own evidence dir. drive.ts refuses a name that the run already used. Retry with a new name such as `<feature>-retry1`, and read the proof from that new dir.
+- Run scripted session behavior through `scripts/drive.ts`. Use the feature ID as `--name`, so each drive has its own evidence dir. drive.ts refuses a name that the run already used. Retry with a new name such as `<feature>-retry1`, and read the proof from that new dir. For model instruction following, use `flow-page.md`'s real-model enrollment recipe instead of the stub.
 - Run a skill's Bun CLI from `$CHECKOUT/plugin/skills/<skill>/scripts/`, not through `skill://...`.
-- Pass `--home "$VERIFY_RUN_DIR/data/<name>"` to every script that takes `--home`. Never let a script write to the real `~/.vstack/`.
+- Pass `--home "$VERIFY_RUN_DIR/data/<name>"` to direct isolated CLI fixtures. In a native enrollment run, keep the model's CLI and the extension in the same normal HOME namespace, as `flow-page.md` specifies.
 - In the browser, open tabs with a name, `app: { tern: false }`, and a 1280 by 900 `viewport`. Act by ARIA role and name.
 - Treat every command as literal. Keep quoted names and flags as they are.
 

@@ -5,8 +5,9 @@ vstack skills write throwaway output to Scratch, `~/.vstack/tmp/<repo-key>/<kind
 ## Sub-features
 
 - `scratch-path` the path script prints and creates `<home>/.vstack/tmp/<repo-key>/` or a kind directory, with a trailing slash.
-- `scratch-key` worktrees of one repo share its key: the main checkout's name plus 6 hex chars.
+- `scratch-key` worktrees and concurrent callers of one repo share its key: the main checkout's name plus 6 hex chars. A real Git reply remains usable when returned capture buffers are lost.
 - `scratch-bad-kind` a kind that is not one lowercase path segment exits 2 and creates nothing.
+- `scratch-identity-failure` unavailable Git, operational failure, or invalid identity output fails before creating a storage namespace. Only a genuine outside-repository reply selects `_global`; owned process-output files do not remain after success or failure.
 - `clean-list` list mode prints expired entries and the `kept` count as JSON, without deletion. A Flow in the `flow` kind is judged by its lifecycle; the Flow page recipe's `flow-retention` covers it.
 - `clean-delete` `--delete <path>...` deletes named expired entries and prints `deleted`, `skipped`, and `pruned`.
 - `clean-command-table` `/vstack-clean [age]` shows repo key, kind, entry, age, size, and totals before confirmation.
@@ -38,6 +39,20 @@ Preconditions:
 - Delete. Run `bun plugin/skills/vstack-tmp/scripts/clean.ts --home "$V" --older-than 14d --delete "${D}old-entry" | tee "$VERIFY_RUN_DIR/scratch-clean-delete.json"`. Exit 0. `deleted` holds that path.
 - Prove deletion. Run `find "$V/.vstack/tmp" -mindepth 3 -maxdepth 3 | tee "$VERIFY_RUN_DIR/scratch-after-delete.txt"`. Only `new-entry` remains.
 - Key. Make a throwaway repo with one worktree: `R="$VERIFY_RUN_DIR/data/keyrepo"; git init -q "$R/main" && git -C "$R/main" -c user.name=v -c user.email=v@v commit -q --allow-empty -m init && git -C "$R/main" worktree add -q "$R/wt"`. Run `bun "$CHECKOUT/plugin/skills/vstack-tmp/scripts/path.ts" --home "$V"` twice: once with the bash tool's `cwd` set to the absolute path of `$R/main`, and once with it set to that of `$R/wt`. Both print the same `$V/.vstack/tmp/main-<hex>/`. `main` is the main checkout's dir name, and `<hex>` is the first 6 characters that `printf %s "$(realpath "$R/main/.git")" | shasum -a 256` prints.
+
+### Identity acquisition (`scratch-key`, `scratch-identity-failure`)
+
+Preconditions: use the owned main checkout and linked worktree from the Key check above. Use the fixture Git environment from `tests/support/fixture.ts`: discard inherited Git settings and disable global/system Git config. Give each scenario a fresh isolated `--home`; do not reuse cleanup's seeded home. Set its child `TMPDIR` to an empty owned directory under `$VERIFY_RUN_DIR/data/`, and retain commands, exit codes, stdout, stderr, and final directory listings above `data/`.
+
+1. Control and lost capture. From the fixture's main checkout, run `bun "$CHECKOUT/plugin/skills/vstack-tmp/scripts/path.ts" --home "$CAPTURE_HOME"`. Save its exact stdout. Repeat from that checkout and its linked worktree with `bun --preload "$CHECKOUT/tests/support/empty-git-capture.ts" "$CHECKOUT/plugin/skills/vstack-tmp/scripts/path.ts" --home "$CAPTURE_HOME"`. Both exit 0 and print the control path, whose directory exists. That home contains only the expected repository key.
+2. The preload calls real Git before discarding only Bun's returned stdout/stderr buffers. It does not replace Git's actual output or application code. Use the head-tree fixture, preserve it with the evidence, and report its fault injection as synthetic rather than claiming it reproduces the unknown upstream timing failure.
+3. Genuine outside-repository behavior. Make an owned directory outside every Git repo. Run the path command there with a new `$OUTSIDE_HOME`, first normally and then with the same preload. Both exit 0 and print exactly `$OUTSIDE_HOME/.vstack/tmp/_global/`, with a trailing newline. No repository namespace appears.
+4. Concurrent Flow callers. Follow `flow-page.md`'s direct CLI binding recipe in a fresh isolated home with `VSTACK_FLOW_HOST=off`. Open one owned Flow and two Stages with distinct session identities, from the main checkout and linked worktree. Submit distinct contributions concurrently, adding `--preload "$CHECKOUT/tests/support/empty-git-capture.ts"` before the Flow script path. Each receipt must name its expected Flow and Stage; all returned Topic or question IDs must remain in `show`, with one shared repository namespace. `show` projects Topic IDs and questions, not Topic body text: do not assert hidden bodies from that projection. Finish and close only the owned fixture Flow.
+5. Actual empty Git reply. In a fresh owned bin directory, write an executable `git` containing `#!/bin/sh` and `exit 0`. Run the path command from the known repository with only that child's PATH prefixed by the bin, a new isolated home, and the owned `TMPDIR`. Require a nonzero exit, empty stdout, and no `.vstack` directory in that home.
+6. Operational failure. Repeat with a separate executable Git fixture containing `exit 73` and another fresh home. Require the same refusal, not `_global`. Keep these actual-empty/failure cases separate from the lost-buffer fixture: valid OS-written output must work, while invalid replies must not choose a namespace.
+7. Unavailable Git. Resolve Bun's absolute executable path before changing the child environment, then launch it with PATH containing only an empty owned directory. The CLI must fail without a namespace. Do not accidentally test failure to launch Bun itself.
+8. After every scenario, inspect the owned `TMPDIR`: no process-output files or directories remain. Preserve evidence before the normal Verify Cleanup removes `data/`. Do not stop the maintainer's host, alter its binding, retry unchanged failures until green, or install a plain-checkout fallback.
+
 
 ### Command dialogs through RPC
 
