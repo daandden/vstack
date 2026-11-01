@@ -1,8 +1,10 @@
 # Changelog
 
-Versions of the vstack plugin (`plugin/package.json`). See the README for when to raise each part of the version.
+Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide](docs/maintainer.md#versions-and-changelog) for when to raise each part of the version.
 
 ## [Unreleased]
+
+- Shorten the README to installation, everyday use, and documentation links. Preserve maintainer instructions in `docs/maintainer.md` and link to canonical skill contracts.
 
 ## [8.0.8] - 2026-11-01
 
