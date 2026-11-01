@@ -16,7 +16,8 @@ const historical = (fig: { id: string; html: string; css?: string }) => `${fig.c
     <div v-if="'text' in fig" :id="fig.id" class="visual"><pre>{{ fig.text }}</pre></div>
     <div v-else-if="'html' in fig" :id="fig.id" class="visual" v-html="historical(fig)" />
     <figure v-else :id="fig.id" class="visual">
-      <img v-if="attachment(fig.attachment)?.availability === 'captured'" :src="`assets/${attachment(fig.attachment)!.file}`" :alt="attachment(fig.attachment)!.caption">
+      <DiagramFigure v-if="attachment(fig.attachment)?.availability === 'captured' && attachment(fig.attachment)!.type !== 'image'" :a="attachment(fig.attachment)!" />
+      <img v-else-if="attachment(fig.attachment)?.availability === 'captured'" :src="`assets/${attachment(fig.attachment)!.file}`" :alt="attachment(fig.attachment)!.caption">
       <p v-else class="unavailable"><span class="label">Figure unavailable</span> <span v-html="inline(attachment(fig.attachment)?.reason ?? 'The attachment is missing.')" /></p>
     </figure>
   </template>

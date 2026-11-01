@@ -44,7 +44,7 @@ Follow `skill://flow-page`'s "Stage entry/exit line". Publish the candidates and
 
 If exploration finds no evidence-backed candidate, publish that outcome as a Document Result with the searched scope, evidence, and limitations. Finish the Stage without an empty candidate Result or pick question.
 
-Draw a before figure and an after figure for each candidate through `skill://vstack-figures`. Write their Mermaid in this caller's context and render with Pele. Give both figures the same type and layout so the reader compares them part by part. Label leakage and seams in words as well as color. Keep sources in a distinct project Scratch entry with unique basenames. If drawing cannot run, stop and report the missing prerequisite.
+Draw a before figure and an after figure for each candidate through `skill://vstack-figures`. Write their Mermaid in this caller's context. Give both figures the same type and layout so the reader compares them part by part. Label leakage and seams in words as well as color. Keep sources in a distinct project Scratch entry with unique basenames. If drawing cannot run, stop and report the missing prerequisite.
 
 Write one `result` item with `shape: "cards"`. Give each candidate one entry with a stable `ref`:
 
@@ -55,7 +55,7 @@ Write one `result` item with `shape: "cards"`. Give each candidate one entry wit
 - `action`: the solution, a plain English description of what changes.
 - `impact`: the benefits in terms of locality and leverage, and how the tests improve.
 
-Capture the before and after SVGs as typed attachments. Publish a companion Document with a section for each candidate and its two `figure` blocks. Name this candidate Result's entries in the pick question's `results`; the script creates reciprocal links. Put the top recommendation in the Result's `summary` line.
+Capture the before and after Mermaid sources as `mermaid` attachments. Publish a companion Document with a section for each candidate and its two `figure` blocks. Name this candidate Result's entries in the pick question's `results`; the script creates reciprocal links. Put the top recommendation in the Result's `summary` line.
 
 Use GLOSSARY.md vocabulary for the domain, and the `skill://codebase-design` vocabulary for the architecture. If `GLOSSARY.md` defines "Order," talk about "the Order intake module," not "the FooBarHandler," and not "the Order service."
 

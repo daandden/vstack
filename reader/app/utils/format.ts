@@ -54,7 +54,7 @@ export const demoValue = (v: number | boolean | string) => (typeof v === "boolea
 
 export const STATE_LABELS: Record<string, string> = { "not-started": "Not started", "in-progress": "In progress", finished: "Finished" };
 export const CLAIM_LABELS: Record<string, string> = { confirmed: "Confirmed", cleared: "Cleared", unproven: "Unproven" };
-export const TYPE_LABELS: Record<string, string> = { image: "Image", video: "Video", svg: "SVG figure", file: "File", trace: "Trace", evidence: "Captured evidence", artifact: "Runnable artifact" };
+export const TYPE_LABELS: Record<string, string> = { image: "Image", video: "Video", svg: "SVG figure", mermaid: "Mermaid diagram", file: "File", trace: "Trace", evidence: "Captured evidence", artifact: "Runnable artifact" };
 export const TASK_LABELS: Record<string, string> = { pending: "To do", active: "Active", done: "Done", skipped: "Skipped", inapplicable: "Does not apply" };
 export const END_LABELS: Record<string, string> = { commit: "Commit", "merge-ready": "Merge-ready", shipped: "Shipped" };
 export const PR_LABELS: Record<string, string> = { open: "Open", merged: "Merged", closed: "Closed" };

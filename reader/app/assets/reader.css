@@ -19,6 +19,7 @@
   --green: light-dark(oklch(62.5% 0.177 140.4), oklch(85.8% 0.109 142.7));
   --red: light-dark(oklch(55.0% 0.216 19.8), oklch(75.6% 0.130 2.8));
   --teal: light-dark(oklch(60.2% 0.098 201.1), oklch(85.8% 0.079 182.7));
+  --sky: light-dark(oklch(68.2% 0.145 235.4), oklch(84.7% 0.083 210.3));
   --pink: light-dark(oklch(72.6% 0.174 338.4), oklch(87.0% 0.075 336.3));
   --line: color-mix(in oklch, var(--surface1) 60%, transparent);
   --fs-title: 0.9375rem;
@@ -150,6 +151,21 @@ details > summary:active { color: var(--lavender); }
 .visual, .attachment, .demo, .runnable { display: grid; gap: 0.375rem; justify-items: start; padding-block: 0.625rem; padding-inline: 0.75rem; border-radius: 0.375rem; background: var(--mantle); }
 .visual { position: relative; overflow-x: auto; }
 .attachment img, .attachment video { border-radius: 0.25rem; background: var(--surface0); }
+/* A Pele diagram takes every color from these variables: Catppuccin Latte on light, Mocha on dark, as the theme changes.
+   The fg-on-* pair is the text Pele puts on a light or a dark fill the diagram fixed. */
+.diagram {
+  --pele-bg: var(--base); --pele-fg: var(--text); --pele-muted: var(--subtext0); --pele-line: var(--subtext1);
+  --pele-fg-on-light: light-dark(oklch(43.5% 0.043 279.3), oklch(18.3% 0.020 284.2));
+  --pele-fg-on-dark: light-dark(oklch(95.8% 0.006 264.5), oklch(87.9% 0.043 272.3));
+  --pele-surface: var(--surface0); --pele-surface-alt: var(--mantle); --pele-border: var(--overlay0);
+  --pele-accent: var(--mauve); --pele-critical: var(--red); --pele-error: var(--red);
+  --pele-series-1: var(--mauve); --pele-series-2: var(--green); --pele-series-3: var(--teal); --pele-series-4: var(--peach);
+  --pele-series-5: var(--blue); --pele-series-6: var(--yellow); --pele-series-7: var(--pink); --pele-series-8: var(--sky);
+  --pele-font: "IosevkaTerm Nerd Font Mono", ui-monospace, monospace;
+  --pele-font-mono: "IosevkaTerm Nerd Font Mono", ui-monospace, monospace;
+}
+/* Pele measures each label with this hidden text, so labels are sized in the font they are drawn in. */
+.diagram-measure { position: fixed; inset-block-start: 0; inset-inline-start: 0; visibility: hidden; pointer-events: none; white-space: pre; letter-spacing: normal; word-spacing: normal; font-kerning: normal; font-variant-ligatures: none; }
 .attachment .kind { color: var(--teal); font-weight: 600; }
 .attachment[data-availability="unavailable"] .kind { color: var(--red); }
 .attachment[data-availability="external"] .kind { color: var(--peach); }

@@ -160,8 +160,64 @@ test("captured figures and option previews survive source changes and serve only
   ]) {
     const refused = submit(home, attachment, { kind: "round", questions: [{ title: "Preview?", description: "Needs captured image bytes.", needs: [{ need: "See the proposed option.", kind: "option-preview" }], options: [{ label: "No", does: "Refuses", gains: ["Safety"], costs: ["None"], preview: { attachment: "invalid", kind: "option-preview" } }] }] });
     expect(refused.code).toBe(1);
-    expect(refused.stderr).toContain("must be a captured image or SVG figure");
+    expect(refused.stderr).toContain("must be a captured image, SVG, or Mermaid figure");
     expect(ok(run(home, ["show"]))).toEqual(before);
   }
+  ok(run(home, ["host", "stop"]));
+});
+
+test("a Mermaid diagram source is captured once, satisfies diagram needs, and is served as the stored text", async () => {
+  const home = world();
+  const opened = ok(run(home, ["open", "--skill", "grill-me", "--title", "Diagram source"]));
+  const source = 'flowchart TD\n  a1["Read the page"] --> a2["Answer the question"]\n';
+  writeFileSync(join(root, "reading.mmd"), source);
+  const diagram = { kind: "attachment", ref: "flow", type: "mermaid", caption: "Reading then answering", origin: "Mermaid source reading.mmd", path: "reading.mmd", focus: ["a2"] };
+  const round = (figure: object) => ({ kind: "round", questions: [{ ref: "order", title: "Which order?", description: "Compare the reading order.", needs: [{ need: "Follow today's reading steps.", kind: "context-diagram" }, { need: "Compare where each option answers.", kind: "option-diagram" }], figures: [{ ...figure, kind: "context-diagram" }, { ...figure, kind: "option-diagram" }], options: [{ label: "Read first", does: "Reads before answering", gains: ["Context"], costs: ["Time"] }] }] });
+  const sent = ok(submit(home, diagram, round({ attachment: "flow" })));
+  const shown = ok(run(home, ["show"]));
+  expect(shown.attachments).toEqual([expect.objectContaining({ id: sent.refs.flow, type: "mermaid", availability: "captured", focus: ["a2"], revision: new Bun.CryptoHasher("sha256").update(source).digest("hex") })]);
+  expect(shown.stages[0].questions[0].figures.map((f: any) => f.attachment)).toEqual([sent.refs.flow, sent.refs.flow]);
+  writeFileSync(join(root, "reading.mmd"), "flowchart TD\n  changed\n");
+  const model = await contentOf(opened.live.url);
+  const stored = model.attachments.find((a: any) => a.id === sent.refs.flow);
+  expect(stored).toMatchObject({ type: "mermaid", caption: "Reading then answering", focus: ["a2"] });
+  const served = await fetch(new URL(`assets/${stored.file}`, opened.live.url));
+  expect(served.status).toBe(200);
+  expect(served.headers.get("content-type")).toBe("text/plain; charset=utf-8");
+  expect(await served.text()).toBe(source);
+
+  const before = ok(run(home, ["show"]));
+  writeFileSync(join(root, "broken.mmd"), "flowchart TD\n  a1 --> \n  ((\n");
+  writeFileSync(join(root, "picture.svg"), '<svg xmlns="http://www.w3.org/2000/svg"/>');
+  for (const [attachment, refusal] of [
+    [{ ...diagram, path: "broken.mmd" }, "is not Mermaid that Pele renders"],
+    [{ ...diagram, focus: [] }, "focus must"],
+    [{ ...diagram, focus: ["a1", "a2", "a3"] }, "focus must"],
+    [{ ...diagram, focus: ['a"]'] }, "focus must"],
+    [{ ...diagram, type: "svg", path: "picture.svg" }, "focus is not a field here"],
+  ] as const) {
+    const refused = submit(home, attachment, round({ attachment: "flow" }));
+    expect(refused.code).toBe(1);
+    expect(refused.stderr).toContain(refusal);
+    expect(ok(run(home, ["show"]))).toEqual(before);
+  }
+  ok(run(home, ["host", "stop"]));
+});
+
+test("the reader shell allows only its own scripts and same-origin resources", async () => {
+  const home = world();
+  const opened = ok(run(home, ["open", "--skill", "grill-me", "--title", "Shell policy"]));
+  const shell = await fetch(opened.live.url);
+  const html = await shell.text();
+  const policy = Object.fromEntries(shell.headers.get("content-security-policy")!.split(";").map((d) => d.trim().split(/\s+/)).map(([k, ...v]) => [k, v]));
+  for (const [directive, sources] of Object.entries({ "base-uri": ["'none'"], "form-action": ["'none'"], "frame-ancestors": ["'none'"], "object-src": ["'none'"], "img-src": ["'self'", "data:"], "connect-src": ["'self'"], "font-src": ["'self'"], "media-src": ["'self'"] })) {
+    expect(policy[directive]).toEqual(sources);
+  }
+  expect(policy["style-src"]).toEqual(["'self'", "'unsafe-inline'"]);
+  expect(policy["script-src"]).toContain("'self'");
+  expect(policy["script-src"].filter((s: string) => s.startsWith("'unsafe"))).toEqual([]);
+  const inline = [...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)].filter(([, attrs]) => !/\bsrc=|application\/json/.test(attrs!)).map(([, , body]) => `'sha256-${new Bun.CryptoHasher("sha256").update(body!).digest("base64")}'`);
+  expect(inline.length).toBeGreaterThan(0);
+  for (const hash of inline) expect(policy["script-src"]).toContain(hash);
   ok(run(home, ["host", "stop"]));
 });

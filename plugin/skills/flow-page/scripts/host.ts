@@ -1,4 +1,4 @@
-import { createHmac, randomBytes } from "node:crypto";
+import { createHash, createHmac, randomBytes } from "node:crypto";
 import { lstatSync, realpathSync, rmSync } from "node:fs";
 import { extname, join, sep } from "node:path";
 import { parseArgs } from "node:util";
@@ -30,11 +30,20 @@ const headers = {
   "X-Content-Type-Options": "nosniff",
   "Cross-Origin-Resource-Policy": "same-origin",
 };
-const csp = "base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'";
+// The shell runs only its own bundled scripts and the inline bootstrap scripts it shipped with, named by hash, and
+// loads every resource from this origin. Diagrams and other Flow content shown in the page can neither run a script
+// nor fetch from elsewhere. Captured HTML prototypes run on the viewer origin, which this policy does not govern.
+const shellScripts = [...new TextDecoder().decode(reader.get("index.html")).matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)]
+  .filter(([, attrs]) => !/\bsrc=|application\/json/.test(attrs!))
+  .map(([, , body]) => `'sha256-${createHash("sha256").update(body!).digest("base64")}'`);
+const csp = [
+  "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'", "object-src 'none'",
+  `script-src 'self' ${shellScripts.join(" ")}`, "style-src 'self' 'unsafe-inline'", "img-src 'self' data:", "media-src 'self'", "font-src 'self'", "connect-src 'self'",
+].join("; ");
 const response = (body: BodyInit | null, status = 200, extra: Record<string, string> = {}) => new Response(body, { status, headers: { ...headers, ...extra } });
 const missing = () => response("Flow or captured asset is missing or expired.", 404);
 const controlled = (req: Request) => same(req.headers.get("authorization") ?? "", `Bearer ${secret.control}`);
-const mime: Record<string, string> = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif", ".webp": "image/webp", ".svg": "image/svg+xml", ".mp4": "video/mp4", ".webm": "video/webm", ".pdf": "application/pdf" };
+const mime: Record<string, string> = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif", ".webp": "image/webp", ".svg": "image/svg+xml", ".mmd": "text/plain; charset=utf-8", ".mp4": "video/mp4", ".webm": "video/webm", ".pdf": "application/pdf" };
 const executableMime: Record<string, string> = { ...mime, ".html": "text/html; charset=utf-8", ".htm": "text/html; charset=utf-8", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css", ".json": "application/json", ".wasm": "application/wasm", ".woff": "font/woff", ".woff2": "font/woff2", ".txt": "text/plain" };
 
 function flowFolder(key: string, id: string): string | undefined {

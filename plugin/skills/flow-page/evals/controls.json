@@ -136,10 +136,11 @@
           {
             "kind": "attachment",
             "ref": "diagram",
-            "type": "svg",
-            "path": "${figures}/stream-versus-tabs.svg",
+            "type": "mermaid",
+            "path": "${figures}/stream-versus-tabs.mmd",
+            "focus": ["a2", "b2"],
             "caption": "Hypothetical reading-order comparison, intentionally controlled for evaluation.",
-            "origin": "#311 fixed inadequate-diagram control; original Pele bytes retained."
+            "origin": "#311 fixed inadequate-diagram control; Mermaid source from evals/figures, drawn by the reader's Pele."
           },
           {
             "kind": "background",
@@ -210,10 +211,11 @@
           {
             "kind": "attachment",
             "ref": "diagram",
-            "type": "svg",
-            "path": "${figures}/missing-distinction.svg",
+            "type": "mermaid",
+            "path": "${figures}/missing-distinction.mmd",
+            "focus": ["R"],
             "caption": "Hypothetical reading-order comparison, intentionally controlled for evaluation.",
-            "origin": "#311 fixed inadequate-diagram control; original Pele bytes retained."
+            "origin": "#311 fixed inadequate-diagram control; Mermaid source from evals/figures, drawn by the reader's Pele."
           },
           {
             "kind": "round",
@@ -271,10 +273,11 @@
           {
             "kind": "attachment",
             "ref": "diagram",
-            "type": "svg",
-            "path": "${figures}/unreadable.svg",
+            "type": "mermaid",
+            "path": "${figures}/unreadable.mmd",
+            "focus": ["a1"],
             "caption": "Hypothetical reading-order comparison, intentionally controlled for evaluation.",
-            "origin": "#311 fixed inadequate-diagram control; original Pele bytes retained."
+            "origin": "#311 fixed inadequate-diagram control; Mermaid source from evals/figures, drawn by the reader's Pele."
           },
           {
             "kind": "round",
@@ -375,10 +378,11 @@
           {
             "kind": "attachment",
             "ref": "repair-diagram",
-            "type": "svg",
-            "path": "${figures}/stream-versus-tabs.svg",
+            "type": "mermaid",
+            "path": "${figures}/stream-versus-tabs.mmd",
+            "focus": ["a2", "b2"],
             "caption": "Hypothetical reading-order comparison, intentionally controlled for evaluation.",
-            "origin": "#311 fixed inadequate-diagram control; original Pele bytes retained."
+            "origin": "#311 fixed inadequate-diagram control; Mermaid source from evals/figures, drawn by the reader's Pele."
           },
           {
             "kind": "round",

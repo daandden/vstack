@@ -25,6 +25,11 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      # The reader's browser test drives the headless Chromium that the pinned playwright-core expects, from the
+      # same per-user cache it uses locally.
+      - name: Install Chromium
+        run: ./node_modules/.bin/playwright-core install --with-deps --only-shell chromium
+
       # Nuxt's CLI runs on Node; the reader it builds is served by Bun.
       - uses: actions/setup-node@v4
         with:

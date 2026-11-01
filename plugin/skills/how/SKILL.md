@@ -46,4 +46,4 @@ Submit a Document Result in the how Stage. Keep the explanation's headed section
 
 Use Overview, Key concepts, How it works, Where things live, and Gotchas. Drop sections that do not apply. Cite files and symbols beside claims. Include figures that explain component relationships or data flow.
 
-Draw every figure through `skill://vstack-figures`. From the explanation's figure points, write each figure's Mermaid in this caller's context and render it with Pele. Use this run's `how/<run-id>/` entry and a unique basename per figure. Capture the SVG paths in the Document. Keep Mermaid sources and SVG exports as deliverables, not a separate explanation page.
+Draw every figure through `skill://vstack-figures`. From the explanation's figure points, write each figure's Mermaid in this caller's context. Use this run's `how/<run-id>/` entry and a unique basename per figure. Capture each source as a `mermaid` attachment in the Document, where the reader draws it with Pele. Keep the Mermaid sources as deliverables, not a separate explanation page.

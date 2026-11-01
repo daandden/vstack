@@ -71,6 +71,16 @@ export function readingAnchor(): { el: HTMLElement; top: number } | undefined {
   return el ? { el, top: el.getBoundingClientRect().top } : undefined;
 }
 
+/** Applies a DOM change that needs no Vue render, such as a drawn diagram, with the reading anchor kept on screen. It
+ *  measures and scrolls at once, so diagrams that finish together each correct only their own shift. */
+export function keepPlaceNow(change: () => void) {
+  const anchor = readingAnchor();
+  change();
+  if (!anchor?.el.isConnected) return;
+  const moved = anchor.el.getBoundingClientRect().top - anchor.top;
+  if (Math.abs(moved) >= 0.5) scrollBy({ top: moved, behavior: "instant" });
+}
+
 const editable = (el: EventTarget | null) => el instanceof Element && ((el as HTMLElement).isContentEditable || el.closest("input, textarea, select, video, audio") !== null);
 
 export function onKey(e: KeyboardEvent) {

@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 The skill that runs a Stage says when each page step happens. This skill says how to do it. The Flow page replaced the Grilling page, and this script is the only page writer.
 
-You send meaning: questions, answers, decisions, notes, and Results. The script owns ids, Stage labels, round and Q numbers, option letters, timestamps, links, and storage. The Local Flow host serves the page as a built reader. You never write raw HTML, CSS, or scripts into contributions: the reader shows every string you send as text. Safe text figures stay text, and SVGs and images are captured attachments.
+You send meaning: questions, answers, decisions, notes, and Results. The script owns ids, Stage labels, round and Q numbers, option letters, timestamps, links, and storage. The Local Flow host serves the page as a built reader. You never write raw HTML, CSS, or scripts into contributions: the reader shows every string you send as text. Safe text figures stay text. Diagrams are captured Mermaid source that the reader draws with Pele. SVGs and images are captured attachments.
 
 Result block is the canonical name for a Stage's output. Result is its authoring short form.
 

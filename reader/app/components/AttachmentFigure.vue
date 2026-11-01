@@ -42,7 +42,8 @@ onMounted(() => {
       <div class="prose" v-html="prose(a.launch ?? '')" />
       <p v-if="a.url"><a :href="a.url" rel="noreferrer">{{ a.url }}</a></p>
     </div>
-    <img v-else-if="a.type === 'image' || a.type === 'svg'" :src="src" :alt="a.caption" loading="lazy">
+    <img v-else-if="a.type === 'image'" :src="src" :alt="a.caption" loading="lazy">
+    <DiagramFigure v-else-if="a.type === 'svg' || a.type === 'mermaid'" :a="a" />
     <video v-else-if="a.type === 'video'" ref="video" :src="src" controls preload="metadata" :aria-label="a.caption" />
     <p v-else class="download"><a :href="src" :download="a.name" target="_blank" rel="noopener">{{ a.name }}</a> <span class="quiet">{{ size(a.size ?? 0) }}</span></p>
     <figcaption>

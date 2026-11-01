@@ -94,15 +94,16 @@ export type Result = {
   document?: DocumentBody; demo?: Demo; artifact?: string; quiz?: Quiz; comparison?: ComparisonBody; metrics?: MetricsBody; attachments?: string[]; canonical?: Canonical; revision?: number; captured?: string; jump?: string;
 };
 export type Source = { id: string; text: string };
-export const ATTACHMENT_TYPES = ["image", "video", "svg", "file", "trace", "evidence", "artifact"] as const;
+export const ATTACHMENT_TYPES = ["image", "video", "svg", "mermaid", "file", "trace", "evidence", "artifact"] as const;
 export type AttachmentType = (typeof ATTACHMENT_TYPES)[number];
 /** A typed attachment. `captured` ones hold stored bytes named by their sha256 `revision`; `unavailable` ones say why
- *  there are none; an `artifact` is a runnable thing that runs outside the page, at the `revision` its producer names. */
+ *  there are none; an `artifact` is a runnable thing that runs outside the page, at the `revision` its producer names.
+ *  A `mermaid` attachment is diagram source that the reader renders with Pele; `focus` names its focal Mermaid ids. */
 export type Attachment = {
   id: string; stage: string; type: AttachmentType; caption: string; origin: string; time: string;
   availability: "captured" | "unavailable" | "external";
   revision?: string; file?: string; size?: number; name?: string; from?: { root: string; path: string };
-  reason?: string; launch?: string; url?: string;
+  reason?: string; launch?: string; url?: string; focus?: string[];
   runtime?: "html" | "local-app" | "terminal";
   bundle?: { entry: string; files: { path: string; file: string; size: number }[] };
 };
@@ -594,7 +595,7 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
   for (const { o, where, ids, handler } of planned) handler.apply(o, where, ids);
   for (const f of authoredFigures) if ("attachment" in f) {
     const a = s.attachments.find((a) => a.id === f.attachment) ?? refuse(f.id, `attachment ${f.attachment} does not exist`);
-    if (!["image", "svg"].includes(a.type) || a.availability !== "captured") refuse(f.id, `attachment ${a.id} must be a captured image or SVG figure`);
+    if (!["image", "svg", "mermaid"].includes(a.type) || a.availability !== "captured") refuse(f.id, `attachment ${a.id} must be a captured image, SVG, or Mermaid figure`);
   }
   checkLinks(s);
   s.revision = rev;
@@ -1216,13 +1217,16 @@ function parseAttachment(o: Obj, where: string, stage: string, id: string, time:
       ...(o.unavailable !== undefined ? { reason: text(o, "unavailable", where) } : {}),
     };
   }
-  fields(o, where, ["kind", "type", "caption", "origin"], ["ref", "path", "unavailable"]);
+  fields(o, where, ["kind", "type", "caption", "origin"], ["ref", "path", "unavailable", ...(type === "mermaid" ? ["focus"] : [])]);
   const caption = safeLinks(text(o, "caption", where), where);
   const origin = safeLinks(text(o, "origin", where), where);
   if ((o.path === undefined) === (o.unavailable === undefined)) refuse(where, "needs exactly one of path, the file to capture, or unavailable, the reason there is none");
-  if (o.unavailable !== undefined) return { ...base, caption, origin, availability: "unavailable", reason: text(o, "unavailable", where) };
+  const focus = o.focus === undefined ? undefined : texts(o, "focus", where);
+  if (focus && (focus.length > 2 || focus.some((f) => !/^[A-Za-z0-9_][A-Za-z0-9_.:-]*$/.test(f)))) refuse(where, "focus must list one or two Mermaid ids, each of letters, digits, _, ., :, or -");
+  const marked = focus ? { focus } : {};
+  if (o.unavailable !== undefined) return { ...base, caption, origin, availability: "unavailable", reason: text(o, "unavailable", where), ...marked };
   const c = io.capture(text(o, "path", where), type, where);
-  return { ...base, caption, origin, availability: "captured", revision: c.revision, file: c.file, size: c.size, name: c.name, from: c.from };
+  return { ...base, caption, origin, availability: "captured", revision: c.revision, file: c.file, size: c.size, name: c.name, from: c.from, ...marked };
 }
 
 export function visualKind(raw: unknown, where: string): Exclude<VisualKind, "prose"> {
@@ -1665,7 +1669,7 @@ export function snapshot(v: View) {
     sources: v.sources.map((x) => ({ id: x.id, cited_by: x.cited_by })),
     attachments: v.attachments.map((a) => ({
       id: a.id, stage: a.stage, type: a.type, availability: a.availability, time: a.time, used_by: a.used_by,
-      ...(a.revision ? { revision: a.revision } : {}), ...(a.file ? { file: `assets/${a.file}`, size: a.size } : {}), ...(a.from ? { from: a.from } : {}),
+      ...(a.revision ? { revision: a.revision } : {}), ...(a.file ? { file: `assets/${a.file}`, size: a.size } : {}), ...(a.from ? { from: a.from } : {}), ...(a.focus ? { focus: a.focus } : {}),
       ...(a.type === "artifact" ? { launch: a.launch, ...(a.runtime ? { runtime: a.runtime } : {}), ...(a.url ? { url: a.url } : {}), ...(a.reason ? { reason: a.reason } : {}), ...(a.bundle ? { bundle: a.bundle } : {}) } : {}),
     })),
     progress: progressSnapshot(v.progress),

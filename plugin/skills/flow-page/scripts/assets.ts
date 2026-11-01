@@ -84,6 +84,14 @@ export function capture(path: string, type: string, roots: Root[], cwd: string, 
     const problems = unsafeMarkup(svg, true);
     if (problems.length) refuse(where, `${path} is not safe: ${problems.join("; ")}`);
     ext = "svg";
+  } else if (type === "mermaid") {
+    let source: string;
+    try { source = new TextDecoder("utf-8", { fatal: true }).decode(bytes); } catch { return refuse(where, `${path} is not UTF-8 text`); }
+    // The reader renders the source with this Pele version and these options, so a source it cannot render is refused now.
+    // Pele loads here, not at the top: every CLI command imports this module, and most never capture Mermaid.
+    const { render } = require("pele") as typeof import("pele");
+    try { render(source.replace(/^\uFEFF/, ""), { links: false, images: false }); } catch (e) { refuse(where, `${path} is not Mermaid that Pele renders: ${(e as Error).message}`); }
+    ext = "mmd";
   } else {
     const own = extname(real).slice(1).toLowerCase();
     ext = DOWNLOAD_EXTS.has(own) ? own : "bin";

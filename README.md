@@ -39,7 +39,7 @@ Discovery searches supported structured historical Grilling pages before declari
 
 GitHub and GitHub Actions have built-in read-only observation adapters. A separate provider-neutral `http-json` override supports other configured services. GitLab has no built-in native observation adapter and stays unknown unless configured through that contract. Code host and CI selection remain independent. Read flow-page's [host and observation reference](plugin/skills/flow-page/references/host-observations.md) before configuring either.
 
-Every fresh question declares its reader needs and Visual kinds before atomic publication. Matching visuals appear on that question or its options, with captured image/Pele SVG references or escaped source/usage text. Background and Result visuals alone do not satisfy a question. Old records remain readable without invented needs. The caller chooses Mermaid types without a visual model judge. See the [reader-needs contract](plugin/skills/flow-page/references/reader-needs.md).
+Every fresh question declares its reader needs and Visual kinds before atomic publication. Matching visuals appear on that question or its options, with captured images, captured Mermaid source that the reader draws with Pele in the reader's theme, or escaped source/usage text. Background and Result visuals alone do not satisfy a question. Old records remain readable without invented needs, and their captured Pele SVGs follow the reader's theme. The caller chooses Mermaid types without a visual model judge. See the [reader-needs contract](plugin/skills/flow-page/references/reader-needs.md).
 
 At every delivery End state, an independent isolated Verifier checks the committed head through implement's shared step 6b. The chain reuses accepted proof only when its patch id matches, and readiness alone does not establish delivery. tune-llm-flow uses a child Stage and Ratchet's native approval gates while implement retains landing ownership.
 
@@ -80,7 +80,7 @@ With no expired entries, it reports that nothing was deleted. Without an interac
 
 ### Layout
 
-The repo scripts need Bun. Run `bun run test` and `bun scripts/check-register.ts` before every commit that touches `plugin/`, the register, or the Pins.
+The repo scripts need Bun. Run `bun run test` and `bun scripts/check-register.ts` before every commit that touches `plugin/`, the register, or the Pins. The test suite drives headless Chromium: install it once per playwright-core version with `./node_modules/.bin/playwright-core install --only-shell chromium`.
 
 | Path | Ships | What it holds |
 |---|---|---|
@@ -409,7 +409,7 @@ Inside a vstack clone, approved vstack lessons use `skill://vstack-maintain` for
 
 `tests/vstack-maintain.test.ts` runs the maintainer CLI over fixture repos and Upstreams. It covers read-only planning, overlap previews and target checks, combined Update and Hand edit preparation, version bookkeeping, and gates. Injected commands replace external validation and load boundaries. The tests inspect process output, exit codes, and resulting files.
 
-`tests/flow-page*.test.ts` run the flow-page script, its Local Flow host, and the extension as processes or through the extension host. They submit contributions through the same CLI that skills use and read receipts, refusals, `show` snapshots, stored bytes, and page element ids, never page wording or markup. `tests/flow-page-migrate.test.ts` migrates `page.jsonl` states in `tests/fixtures/flow-page-migrate/` that the retired grilling-page writer produced. The browser and native omp behavior is proved live through the Verify recipe, not by a browser test harness.
+`tests/flow-page*.test.ts` run the flow-page script, its Local Flow host, and the extension as processes or through the extension host. They submit contributions through the same CLI that skills use and read receipts, refusals, `show` snapshots, stored bytes, and page element ids, never page wording or markup. `tests/flow-page-migrate.test.ts` migrates `page.jsonl` states in `tests/fixtures/flow-page-migrate/` that the retired grilling-page writer produced. `tests/flow-reader-diagrams.browser.test.ts` serves a Flow through the CLI and host and opens it in headless Chromium through the pinned `playwright-core`. It checks that a hostile Mermaid label stays text, that a diagram draws in Catppuccin Latte on light and Mocha after a switch to dark, and that a captured Pele SVG shows Latte while the host serves its captured sha256. It reads colors from screenshots of the figures. Chromium comes from playwright-core's browser cache, and the test fails with the install command when it is missing. Other browser and native omp behavior is proved live through the Verify recipe.
 
 `tests/addon-tools.test.ts` exercises the main-session tools and run-start instruction through the registered extension handlers with a controlled judge. It covers gathered intent, question scope, the selection threshold, saved-entry dedup, concurrent calls, cancellation, and the four-second deadline. `tests/addon-selection.test.ts` covers the preserved subagent Brief selection and session ancestry.
 

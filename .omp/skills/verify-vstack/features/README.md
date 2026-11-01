@@ -46,7 +46,7 @@ Keep implementation details out of the map. Name only user paths, stable handles
 - [Addon tools](./addon-tools.md): typed Matt runs display intent-gathering instructions, and agent-called tools select Addons. The stub proves tool completion without a native judge, not native selection.
 - [Scratch dir](./scratch-dir.md): the vstack-tmp scripts make and list Scratch entries. The `/vstack-clean` Command previews expired entries and deletes only confirmed choices.
 - [Flow page](./flow-page.md): the flow-page script takes typed contributions for a bound Stage, numbers and links them, refuses bad input without writing, and commits them to the Flow. The Local Flow host serves the Flow page as a prebuilt reader: an outline, one reading sequence with Results, then the Overview and Topic notes, in Catppuccin Mocha or Latte. A Flow closes and reopens, and Scratch cleanup never removes an open Flow. Native omp sessions present their bound Flow after each reply, and the combined-product proof drives every T4 case in one run.
-- [Figure render](./figure-render.md): the caller writes Mermaid and renders a Catppuccin Mocha Pele SVG through Bun. The Flow captures and displays the real SVG safely, with reader needs and Visual kinds.
+- [Figure render](./figure-render.md): the caller writes Mermaid. The Flow captures the source and the reader draws it with Pele in Catppuccin Latte or Mocha, safely, with reader needs and Visual kinds. For exports, the render script writes a Catppuccin Mocha Pele SVG through Bun.
 - [Clean worktrees](./clean-wt.md): `/skill:clean-wt` inventories the omp worktree base from a session with a held lease, removes unused clean checkouts, keeps their branches, and skips stale, unique, or unapproved dirty checkouts.
 
 ## Not mapped yet
