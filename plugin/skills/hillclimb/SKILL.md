@@ -18,6 +18,8 @@ Follow `skill://flow-page`'s "Stage entry/exit line". Only the coordinator publi
 
 Before any hypothesis, require `omp config get task.isolation.enabled` to print `true`. If isolation is off, stop and point at `/skill:setup-vstack`.
 
+Track every hypothesis worker through skill://vstack-fan-out/WORKER-LIFECYCLE.md in the run record. Retain it while selection, measurements, a question, or follow-up still needs its clone. After accepted work lands, or rejected and deferred results have been used and preserved, release the unneeded settled worker and record the observed outcome. Reconcile all workers before every stop, including partial starts, missing patches or measurements, failed application, and parent-validation rejection. Preserve useful failed or superseded work and exact retry patches in Scratch; later remeasurement uses a fresh baseline, not a retained clone by default.
+
 ## 1. Ground the workload and architecture
 
 Run skill://how over the target. Name realistic workload dimensions that move the result: data size, history, state, and concurrency. Select a case that reproduces the complaint. If none does, fix the reproduction before measuring hypotheses. Use the metric, unit, direction, target, and stop predicate that the grill settled. If that contract is missing, report the gap instead of starting the loop or inventing numbers.
@@ -75,7 +77,7 @@ Pair handles and results in input order. A handle has no `patchPath` field. Reco
 
 Read every diff and measurement. Compare only results on the same frozen harness and wave baseline. Rank passing wins by improvement in the declared direction; for indistinguishable gains, prefer the simpler change under skill://principle-laziness-protocol. Apply only the best measured win with `git apply -- "<chosen patchPath>"`. Leave losing patches untouched and cite their absolute paths. Queue other measured winners for fresh measurement against the new accepted baseline; never graft or apply their stale patches.
 
-If applying the selected patch fails because the parent moved, stop and report instead of forcing it. Re-run the frozen measurement and regression gate in the parent before acceptance. If the win fails to reproduce or behavior breaks, undo only this attempt's changes, preserve unrelated work, and log the rejection. For a reproduced win, stage only its paths or hunks (`git add <files>`, never `-A`) and make one commit with before → after evidence. Record the commit and advance the accepted baseline. Follow skill://principle-sequence-verifiable-units: finish validation and logging before the next wave.
+If applying the selected patch fails because the parent moved, stop and report instead of forcing it. Re-run the frozen measurement and regression gate in the parent before acceptance. If the win fails to reproduce or behavior breaks, undo only this attempt's changes, preserve unrelated work, and log the rejection. For a reproduced win, stage only its paths or hunks (`git add <files>`, never `-A`). Pass implement's shared step 0b branch guard, then make one commit with before → after evidence. Record the commit and advance the accepted baseline. Follow skill://principle-sequence-verifiable-units: finish validation and logging before the next wave.
 
 ## 6. Push past the first plateau
 

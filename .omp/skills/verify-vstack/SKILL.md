@@ -12,7 +12,7 @@ The user-facing parts:
 - Primary: the plugin inside an omp session. That covers the skill list, `/skill:<name>` commands, the model-free `/vstack-clean` Command that the extension registers, the agents in `task`, and the always-on rules.
 - Bun CLIs that skills run through `bun "$(realpath skill://<skill>/scripts/<script>.ts)"`, such as the Scratch scripts under vstack-tmp and the flow-page script.
 - The HTML pages those scripts write or serve, such as the Flow page from a `file://` path or its live `http://127.0.0.1` URL. You view them in a browser.
-- The maintainer CLIs in `scripts/` (`check-register.ts`, `vstack-maintain.ts`, `addon-judge-check.ts`, `load-smoke.sh`), documented in the repo `README.md`.
+- The maintainer CLIs in `scripts/` (`check-register.ts`, `vstack-maintain.ts`, `addon-judge-check.ts`, `load-smoke.sh`), documented in the repo `docs/maintainer.md`.
 
 `features/README.md` indexes the feature map. Read it, then the feature file for the change, before you drive anything.
 
@@ -76,7 +76,7 @@ Each feature file in `features/` gives the exact commands and the proof for one 
 - Session behavior (skills, commands, tools, rules, agents): `scripts/drive.ts`, as in Launch. Make the stub model act as the agent with `--replies`. A `{"tool": ...}` reply makes omp run that tool for real, in the session, with the plugin loaded.
 - Bun CLIs that skills run: run the checkout's script with the bash tool's `cwd` set to `CHECKOUT`, as `bun plugin/skills/<skill>/scripts/<script>.ts ...`. Pass `--home "$VERIFY_RUN_DIR/data/<name>"` when the script takes `--home`. Do not use `realpath skill://...` here. That path resolves to the plugin your own session loaded, which is not always `$CHECKOUT`.
 - Pages: open the written HTML file in the omp `browser` with `app: { tern: false }` and a `viewport` of `{ width: 1280, height: 900 }`. Read state with `tab.ariaSnapshot()` and act by role and name, for example `role/tab[name="Overview"]`.
-- Maintainer CLIs: run them with the bash tool's `cwd` set to `CHECKOUT`, as `README.md` documents. Capture the command, stdout, stderr, and exit code.
+- Maintainer CLIs: run them with the bash tool's `cwd` set to `CHECKOUT`, as `docs/maintainer.md` documents. Capture the command, stdout, stderr, and exit code.
 
 Set the working directory with the bash tool's `cwd` parameter, not with `cd`. On this machine the bash tool's `cd` is a shell function that fails with `command not found: __zsh_like_cd`.
 
@@ -122,6 +122,7 @@ All paths are relative to `SKILL_DIR`.
 - `scripts/figures.ts <checkout> <new evidence directory>`: renders the named figure inputs and refusals, retains raw CLI proof, and writes the browser consumer. Use `features/figure-render.md`.
 - `scripts/figure-audit.js`: evaluate its complete text in the figure consumer with `await tab.evaluate(await Bun.file(SKILL_DIR + "/scripts/figure-audit.js").text())`. It returns browser-computed paint and geometry checks.
 - `scripts/figure-flow.ts <checkout> <verify run> <own session> <own agent>`: captures the figure in a labelled disposable isolated-home Flow. Follow the figure recipe's authenticated host stop and export steps before Cleanup.
+- `scripts/worker-lifecycle.ts <checkout> <new verify run>`: drives real isolated implementer and review-fixer patch landing, retention, and release in a fresh throwaway omp session. Use `features/worker-lifecycle.md`.
 
 ## Gotchas
 
