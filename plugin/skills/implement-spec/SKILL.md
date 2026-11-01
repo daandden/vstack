@@ -26,6 +26,8 @@ Before task-specific items, open the todo list as END-STATE.md says, with the sh
 
 Every subagent uses the Session model unless the user set a model for that agent. Resolve the vstack root and the project Scratch dir once, as END-STATE.md says, and pass both to every subagent. This run keeps its notes and evidence under `<Scratch dir>/implement-spec/<run-id>/`.
 
+Before starting isolated work, read skill://vstack-fan-out/WORKER-LIFECYCLE.md. Record every implementer and review fixer by agent id, role, ticket or review wave, clone path, patch and evidence paths, and lifecycle decision. Apply that contract after each result and before every early return, including partial starts, missing patches, failed workers or mergers, and unanswered questions. Retain running or still-needed workers with concrete reasons; preserve useful unapplied work before releasing any settled worker.
+
 Run shared steps 0a–0b once, before step 1. 0a finds the Flow by the spec alias and opens an implement-spec Stage. Add `alias run:<run-id>` and retain the Flow and Stage ids in the run record. Every `ask` of this run belongs to that Stage: the End state when 0a asks it, each seam confirmation in steps 1 and 6, each implementer question that step 5 relays, each seam question from the fixer in step 7, and the Verify skill choice. 0a settles one End state for the whole spec. If the issue tracker closes work through PRs and 0a asks, say in the End state question's description that End state commit leaves those tickets open.
 
 ## Steps
@@ -68,7 +70,7 @@ Before this step, read skill://vstack-fan-out.
 
 Fan-out (skill://vstack-fan-out): parts: one per ready ticket. One eval cell: per part, `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`; no `wait()`, because each handle delivers its own result when it settles. Each prompt: the implementer brief below for one ticket, the vstack root, the Scratch dir. The merger in step 5 lands each `patchPath` on the integration branch, one ticket at a time. If they cannot start or isolation is off, stop: implement-spec needs isolated implementers, so run `/skill:setup-vstack` and report each ticket left open.
 
-Record each handle's `agent://<id>` with its ticket in the run record. Act on each result in step 5 when it arrives. When nothing else needs you while implementers run, call the `wait` tool. It returns on the first result, so a slow ticket holds back no other ticket.
+Record each handle's `agent://<id>` with its ticket and lifecycle entry in the run record. Act on each result in step 5 when it arrives. When nothing else needs you while implementers run, call the `wait` tool. It returns on the first result, so a slow ticket holds back no other ticket.
 
 Implementer brief: build one ticket in your own clone. Read the spec, the ticket, and the exploration notes through their context pointers. Use skill://tdd to build the ticket at the seams the spec and this brief confirm. The user confirmed them, so tdd asks nothing about them. If the ticket needs another seam, write no test for it, and return the seam as an open question. Run typechecking and the single test files you touch regularly, and the full test suite once at the end. Write product changes at real target paths, so that they enter the patch. Commit nothing, merge nothing, and push nothing. Save evidence under `<Scratch dir>/implement-spec/<run-id>/<ticket>/`. Return the ticket, changed paths, red and green evidence, checks with their outcomes, and open questions.
 
@@ -80,6 +82,8 @@ A handle has no `patchPath` field. Recover that path from omp's completion notic
 
 If the implementer returned an open question, start no merger for it. Hold its patch, record the path, and put the question to the user through `ask`. A ticket whose question the user answers goes back on the frontier once, with the answer and the held patch path in its brief. A timed-out answer leaves the ticket open and its patch unapplied.
 
+Keep the questioned worker available until the answer and required follow-up resolve. Save a stable Scratch copy of its held patch before any later release. A fresh retry gets that copy and the answer; preserve the superseded worker's useful work and evidence before deciding its lifecycle.
+
 Otherwise, land the patch with one merger. Only one merger runs at a time.
 
 Spawn one `vstack-worker` via `task` (`agent: "vstack-worker"`): the merger brief below for one ticket, with its patch path, the integration branch name, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: the main agent never merges a ticket itself, so report each unmerged patch path.
@@ -88,7 +92,11 @@ Merger brief: land one ticket's patch on the integration branch in the parent ch
 
 If the merger returns a branch guard failure, stop the run with that blocker, as shared step 0b's branch guard says. If it returns any other failure, put its ticket back on the frontier once, for a fresh implementer from the current tip.
 
+Preserve the failed attempt's useful patch, retry inputs, and evidence outside its clone. Retain it while conflict resolution or the retry still needs it; otherwise release it through the shared lifecycle contract. A second failure leaves the ticket open, not its worker unaccounted for.
+
 A ticket is complete when its commit is on the integration branch and no question about it is unanswered. Only a complete ticket satisfies a blocker, counts toward the spec, and becomes a closing reference. Record each ticket's handle, changed paths, open questions, patch path, and commit SHA or held patch in the run record.
+
+Once that integration commit has landed and nothing still needs its implementer, release the implementer and verify disappearance through the shared contract. Record the observed outcome beside the commit and preserved patch.
 
 Update the ticket's task only after its integration commit lands with no open question. Append a Timeline event with that SHA and the worker's captured red, green, and live proof. A held patch, failed worker, or failed merge stays visible with its blocker and evidence; none completes the ticket. Update the delivery table as each result arrives, not only at the final reply.
 
@@ -110,6 +118,8 @@ Spawn one `vstack-worker` via eval `agent(<prompt>, agent="vstack-worker", isola
 
 Take the fixer's patch path from its completion notice as step 5 says, never from an inferred path. Reuse step 5's worker-failure, held-patch, seam-question, and once-only retry handling for the review-fix wave instead of a ticket. Put each returned seam question to the user through `ask` before landing the patch. A timed-out answer leaves that fix open and its patch unapplied. Report it.
 
+Give each fixer its own lifecycle entry, including fresh retries. Keep held questions and follow-up workers available as in step 5. After the merger or vstack-maintain landing rule has applied the accepted review-fix hunks and no need remains, release the fixer through the shared contract. Preserve useful failed or superseded work before release; an unavailable patch or failed apply never bypasses that accounting.
+
 With no open question, choose the landing rule by whether skill://vstack-maintain is loaded.
 
 When it is not loaded, use step 5's merger to inspect and land the patch on the integration branch. Reuse its patch application, conflict resolution, checks, and rollback behavior against the spec and code-review's result. The merger leaves the accepted review-fix hunks staged and uncommitted for shared step 6 instead of making a ticket commit.
@@ -126,10 +136,12 @@ Resolve tickets and the spec only after shared step 6b accepts the Verdict. Reso
 
 Then run shared step 7 once, up to the settled or capped End state. It opens the one PR, ready for review.
 
-### 9. Leave the workspaces to omp
+### 9. Reconcile worker lifecycles
 
-Add no cleanup step. omp parks and reclaims the implementer workspaces. Leave the worker patches in omp's artifacts directory, and cite their paths in the reply.
+Reconcile every implementer and review fixer, including failed, held, superseded, and retry attempts, against skill://vstack-fan-out/WORKER-LIFECYCLE.md. Keep running or still-needed workers retained with concrete reasons. For each release, report its observed outcome and before/after status evidence; claim removal only when proven. Keep integration commits, stable held patches, and evidence outside released clones. This final accounting does not defer the earlier per-result and early-return duties.
 
 ## Reply
 
 Print the flow's page path first. Then report the requested and reached End state, the integration branch, commits read from `git log <base>..<integration branch>` (one per ticket, then the review-fix commit), PR URLs and observed status, each ticket's outcome (resolved, open with its reason, or closing through the PR), the spec's outcome (resolved, closing through the PR, or open with the tickets that keep it open), development checks with evidence paths, each accepted Verdict with its verifier identity, patch id, and evidence paths, Blast radius findings, open prune-comments work, failed merges, unanswered questions with their held patch paths, worker patch paths, and every skipped step or blocker. Do not claim a PR, readiness, merge, End state, or closed ticket that the chain did not observe.
+
+Include every worker's identity, role, ticket or review wave, retention reason or release outcome, stable patch paths, and lifecycle evidence. Separate cleanup failures and unverified removal from ticket and delivery outcomes.
