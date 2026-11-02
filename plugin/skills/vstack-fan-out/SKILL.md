@@ -16,7 +16,11 @@ Start one subagent for each part, every part in one batch, and collect the resul
 
 A Fan-out line always fans out. The agent at that step never does a part itself. The user's words do not change this: when the user asks for "sequential", "no fan-out", or "inline", say in one line that vstack always fans out, then run the line as written.
 
-A subagent at its own Fan-out step runs its line the same way. Each subagent returns its open questions in its result, and the top-level agent asks them with `ask`.
+A subagent at its own Fan-out step runs its line the same way. Each subagent returns its open questions in its result. In a Flow-bound run, the top-level agent asks them through `flow_ask` following `skill://flow-page`'s "Every ask in a Flow". Genuinely unbound runs retain `ask`.
+
+## Account for Isolated clones
+
+For every isolated child, single or Fan-out, read [WORKER-LIFECYCLE.md](WORKER-LIFECYCLE.md) before starting it. The parent records retention or releases its own settled child after preservation, then observes clone disappearance. Apply the contract on normal and early exits. Each caller supplies its role-specific safe trigger. The FORMS.md lines stay unchanged.
 
 ## When a subagent cannot start
 

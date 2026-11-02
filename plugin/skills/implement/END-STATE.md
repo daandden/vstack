@@ -12,7 +12,8 @@ Keep one run record across every ticket. It holds the requested End state and th
 - The `code-host.md` and `ci.md` paths
 - The vstack root
 - The Scratch dir
-- The current branch
+- The local branch recorded in step 0b
+- The last recorded commit SHA for each branch the run commits to
 - The remote branch name (step 0b)
 - The base SHA and the whole-diff command
 - The last SHA this run pushed
@@ -27,7 +28,7 @@ Settle the End state once, before any work: commit, merge-ready, or shipped. Com
 
 1. If the user's words or the ticket name an End state, use that. Words that only ask to open a PR settle merge-ready.
 2. Otherwise, if `code-host.md`'s project facts hold the line `- Default End state: <commit|merge-ready|shipped>` with one of those three values exactly, take that project default with no question.
-3. Otherwise use `ask` with the End states on offer and commit recommended.
+3. Otherwise use `flow_ask` with the End states on offer and commit recommended, under `skill://flow-page`'s "Every ask in a Flow" contract.
 
 Before work, say which End state the run took and where it came from: the words, the ticket, the project default, or the answer.
 
@@ -43,21 +44,30 @@ At the start of every run, read the current tool list, descriptions, and paramet
 
 Every other operation, including `rerun-ci`, is optional. Chained skills resolve Code host operation ids through the same rule: choose an MCP tool from the named server's current descriptions and parameter schemas, using the project facts; a missing operation row does not mean unsupported. An optional MCP operation is unsupported when no live tool matches it. For a CLI config, use its command row, where `unsupported` keeps its meaning. A step whose optional operation is unsupported skips that action and reports the gap. If either `code-host.md` or `ci.md` is missing, offer only commit and tell the user to run `/skill:setup-vstack` to add the missing Code host or CI service config. If the user's words, the ticket, or the project default name an End state that the configs do not support, cap it at the furthest End state on offer and name the missing files or operations.
 
-An interactive timeout does not settle the End state. Re-ask the unanswered gate once. If it times out again, stop before work, branching, or committing. A Headless run with no `ask` tool skips the project default. It takes the End state that its prompt names, or else commit, and says so. Tool absence is not a timed-out answer.
+An interactive timeout does not settle the End state. Re-ask the unanswered gate once through `flow_ask` with `again`. If it times out again, stop before work, branching, or committing. Cancellation or an unavailable interactive picker also stops before those actions. A Headless run skips the project default. It takes the End state that its prompt names, or else commit, and says so. This Headless choice is not user consent. Tool absence is not a timed-out answer.
 
 The End state authorizes every step up to it: merge-ready authorizes babysit in drive mode; shipped authorizes ship to merge the verified run into the default branch. Deploys and releases are outside this flow.
 
 ## 0b. Branch
 
-With End state commit, stay on the current branch. Otherwise read the default branch through the `default-branch` operation and the current branch through git. If HEAD is on the default branch, create and switch to `<type>/<slug>` from HEAD, with a type and slug that describe the work. Otherwise stay on the current branch, an omp worktree's `wt/<time>` branch included. Use no worktree. Detached HEAD cannot start a PR chain.
+Read the current branch with `git symbolic-ref -q HEAD`. Detached HEAD stops the run at every End state. With End state commit, stay on that branch. Otherwise read the default branch through the `default-branch` operation. If HEAD is on the default branch, create and switch to `<type>/<slug>` from HEAD, with a type and slug that describe the work. Otherwise stay on the current branch, an omp worktree's `wt/<time>` branch included. Use no worktree. Record the chosen local branch for the rest of the run.
 
 Record the remote branch name. If the local branch is `wt/*`, the remote branch name is a new `<type>/<slug>` that describes the work. Otherwise it is the local branch's name. Never rename the local branch. Add `alias branch:<remote branch>` to the Flow, or the current branch at End state commit, so read-only observations follow the intended branch.
 
 Read the remote tip before any history edit and before the first push. Run `git ls-remote --exit-code <remote> refs/heads/<remote branch>`. Exit code 2 means that the remote branch does not exist yet, and every commit after the base is unpushed. Otherwise fetch it with `git fetch <remote> refs/heads/<remote branch>` and record the fetched SHA as the remote tip. Every commit that the remote tip contains is pushed.
 
-Push with `git push -u <remote> <local branch>:<remote branch>`, which creates the remote branch or fast-forwards it. Push every later update the same way. If git rejects a push, stop and report its output. After every push that updates the remote branch, record its SHA as the last SHA this run pushed. Return that SHA to the caller.
+Push with `git push -u <remote> <local branch>:<remote branch>`, which creates the remote branch or fast-forwards it. Push every later update the same way. Before every push, require the pushed branch's `git rev-parse <branch>` to equal its tip recorded under the branch guard below. On a mismatch, push nothing and stop with a blocker that names both SHAs. If git rejects a push, stop and report its output. After every push that updates the remote branch, record its SHA as the last SHA this run pushed. Return that SHA to the caller.
 
 Keep every pushed commit as it is. Rebase, amend, or reorder only commits after the remote tip, and push only fast-forwards, never with `--force` or `--force-with-lease`. Bring a pushed branch up to date by merging its target into it.
+
+Branch guard. Apply this rule to every commit and merge in this file and in every skill that reuses it:
+
+1. At step 0b, record `git rev-parse <local branch>` as the local branch's initial commit SHA.
+2. Before a commit or a merge that can commit automatically, run `git symbolic-ref -q HEAD`. Require `refs/heads/<branch>` for the recorded local branch, or for the reported branch that the Conflict owner checked out. A detached HEAD, another branch, or a failed lookup stops the run before the commit. Leave the index and working tree as they are. Report the expected branch and the actual branch or detached SHA.
+3. Right after a commit or merge, capture the new commit's SHA with `git rev-parse HEAD`. Require it to equal `git rev-parse <branch>` before recording it as that branch's last commit SHA. A mismatch or a failed lookup stops the run with both results. After an allowed history edit, make the same comparison before updating the recorded SHA.
+4. Read commit lists with `git log <base>..<branch>` and the head SHA for verification or reporting with `git rev-parse <branch>`. The immediate post-commit check above uses `HEAD` only to identify the new commit.
+
+Before a push, compare the branch tip with its last recorded commit SHA, as the push rule above says. A guard or tip-check blocker reaches no End state. Its delivery table row shows the expected and actual values.
 
 ## 3b. Prune comments
 
@@ -69,7 +79,7 @@ Record "prune-comments already run" for open-pr even when the pass stopped, toge
 
 List the project's Verify skills: skills named `verify-*`, plus, in Private mode, directories `<vstack root>/skills/verify-*/`. Deduplicate links and targets. For a Private copy missing its checkout link, create an absolute symlink at `.omp/skills/verify-<app>` and ensure `.omp/skills/verify-*` is in the resolved git common dir's `info/exclude`, following skill://setup-app-verification. Leave shared ignores unchanged; preserve unrelated exclude lines and existing destinations. Read its SKILL.md by absolute path for the rest of this session; helpers stay relative to that directory.
 
-If there is one Verify skill, use it. If several exist, use the one whose description names the changed surface. Otherwise choose through `ask`. If none exists, run skill://setup-app-verification in the same run to create one, and state that implement commits its output in step 6. Then use it. Run development tests and targeted smoke checks of the changed surface through the chosen Verify skill. The full drive belongs to the independent Verifier in step 6b. Save check output, notes, and disposable `data/` under `<Scratch dir>/verify/<app>-<run-id>/`. Preserve unavailable or failed checks as such, never as a passing result.
+If there is one Verify skill, use it. If several exist, use the one whose description names the changed surface. Otherwise choose through `flow_ask` in the caller's Stage. If none exists, run skill://setup-app-verification in the same run to create one, and state that implement commits its output in step 6. Then use it. Run development tests and targeted smoke checks of the changed surface through the chosen Verify skill. The full drive belongs to the independent Verifier in step 6b. Save check output, notes, and disposable `data/` under `<Scratch dir>/verify/<app>-<run-id>/`. Preserve unavailable or failed checks as such, never as a passing result.
 
 Drift is a failure in the Verify skill's own instructions (missing command, route, selector, or fixture) while its Doctor check passes. Wrong app behavior is a finding, never Drift. On Drift, run skill://maintain-app-verification for that one named feature, with no source-wave Fan-out, and state that implement commits its output in step 6. In Standard mode, maintenance edits only the Verify skill's directory. In Private mode, edit the single copy under the vstack root in place and commit nothing. Retain its clean, changed, or blocked outcome, changed files, and product gaps. Treat the gaps as findings. Then retry the smoke checks once. Step 5 covers maintenance edits too.
 
@@ -77,7 +87,7 @@ Run-only consumers (the step 6b Verifier and forensics) may reuse this discovery
 
 ## 5. Review the whole diff
 
-Run skill://code-review once over the whole completed diff at every End state, including commit. Pin the base SHA, diff command, and commit list. Include accepted cleanup and Standard-mode Verify edits, plus the proven uncommitted work that implement will commit.
+Run skill://code-review once over the whole completed diff at every End state, including commit. Pin the base SHA, diff command, and commit list, reading the commit list from the branch ref as step 0b's branch guard says. Include accepted cleanup and Standard-mode Verify edits, plus the proven uncommitted work that implement will commit.
 
 implement reviews before its step 6 commit (Matt's order). implement-spec's merger commits each ticket as it lands, implement-spec reviews once after its last merge, and step 6 commits the review fixes. hillclimb and tune-llm-flow commit each accepted win, review once after their last work commit, and commit review fixes in new commits. Keep Standards, Spec, and Blast radius findings separate. code-review owns the Blast radius trigger list.
 
@@ -87,7 +97,7 @@ Carry the Blast radius findings and the final-diff proof to open-pr: the proven 
 
 ## 6. Commit
 
-Commit the accepted, checked work to the current branch. For implement, this follows review. implement-spec keeps its per-ticket merger commits and commits the review fixes here, after review. hillclimb and tune-llm-flow retain accepted-win commits and put review fixes in new commits. tune-llm-flow also retains its separate reusable-eval commit. Include the Standard-mode setup-app-verification and maintain-app-verification output that step 4 kept uncommitted. Stage only this run's accepted paths or hunks. Leave unrelated changes uncommitted. Keep Private config, artifacts, Verify maintenance, and Scratch out of git. Use the repo's commit convention. Write commit bodies.
+Commit the accepted, checked work to the local branch from step 0b, after its branch guard. For implement, this follows review. implement-spec keeps its per-ticket merger commits and commits the review fixes here, after review. hillclimb and tune-llm-flow retain accepted-win commits and put review fixes in new commits. tune-llm-flow also retains its separate reusable-eval commit. Include the Standard-mode setup-app-verification and maintain-app-verification output that step 4 kept uncommitted. Stage only this run's accepted paths or hunks. Leave unrelated changes uncommitted. Keep Private config, artifacts, Verify maintenance, and Scratch out of git. Use the repo's commit convention. Write commit bodies.
 
 Record the actual commit as a task or Timeline fact with its SHA. A commit alone does not reach the commit End state. Step 6b must accept independent proof first.
 
@@ -95,13 +105,17 @@ The approved environment fixes from skill://session get one commit per approved 
 
 ## 6b. Verify the committed head
 
-At every End state, commit included, an independent Verifier checks the committed head after step 6 (ADR 0043). The author's checks from step 4 are not independent verification. The Verifier checks only committed work: the base SHA from step 0a and the current branch's HEAD, or the PR's base and head SHAs from `read-pr` when step 7 or ship runs this step. Compute your own patch id for comparison as the first field of `git diff <base_sha>...<head_sha> | git patch-id --stable`.
+At every End state, commit included, an independent Verifier checks the committed head after step 6 (ADR 0043). The author's checks from step 4 are not independent verification. The Verifier checks only committed work: the base SHA from step 0a and the local branch's tip, `git rev-parse <local branch>`, or the PR's base and head SHAs from `read-pr` when step 7 or ship runs this step. Compute your own patch id for comparison as the first field of `git diff <base_sha>...<head_sha> | git patch-id --stable`.
 
 Resolve your own `git rev-parse --show-toplevel` to an absolute path. Include `Shared checkout: <absolute Git toplevel>` in every Verifier brief, including retries and calls from ship. Give the Verifier the full base and head SHAs, the PR number when one exists, the relevant builds and tests, and the Verify skill's name or absolute path from step 4. Require parent-versus-head proof of the real changed surface, not only a successful launch.
 
 Verifier brief: before any mutation, follow `vstack-verifier`'s authoritative system Working Tree notice and canonical Shared checkout guard. Keep the Isolated clone's baseline unchanged, even when clean. Prepare a separate detached head worktree through skill://vstack-worktree and the bundled ship `scripts/prepare-verifier.ts` preflight and clean-head commands, passing each required relative input explicitly. Require the clone signal. A plain checkout or failed isolation or head setup returns REFUSED with reason and needed setup, without app checks or dependency-install fallback. Run the named builds and tests and the Verify skill's Doctor, Launch, and Drive steps in the prepared head worktree. Read the base without checking it out. Keep tracked files unchanged and remove the worktree on every exit. If removal fails, preserve the actual Verdict and evidence and add a nonempty `cleanup_error`. Save logs, screenshots, and notes under `<Scratch dir>/verify/<app>-<run-id>/`, with a distinct entry per verification. Wrong app behavior is FAIL. A stale instruction while Doctor passes is DRIFT. Name the failing step and evidence. Return the complete `vstack-verifier` Verdict record as one plain JSON object, without a code fence or surrounding text. The Verifier authors no Flow content. Only omp adds the isolation notice after the reply.
 
 Keep the call schemaless so its result text includes omp's isolation notice.
+
+Track each final Verifier, including retries, through skill://vstack-fan-out/WORKER-LIFECYCLE.md. Retain it until the machine record and runtime isolation suffix have been checked, the original completion text and evidence are preserved outside its clone, and no question or follow-up needs it. Then release the settled child and record the observed outcome. On malformed or unavailable results, preserve the actual text, patches needed for validation, diagnostics, and useful failed-run work before release instead of claiming validation passed. Reconcile all started Verifiers before any stop or retry; running or still-needed workers remain retained with reasons.
+
+This parent-owned clone release is separate from the Verifier's detached head worktree cleanup and its `cleanup_error`. Preserve the actual Verdict and report clone-release failures or unverified removal separately. Never apply a Verifier patch.
 
 Spawn one `vstack-verifier` via eval `agent(<prompt>, agent="vstack-verifier", isolated=True, apply=False, merge=False)`: the Verifier brief above for this head, the Shared checkout absolute path, the vstack root, the Scratch dir. Wait for its result through `handle.wait()` and retain the returned text for the checks below. If it cannot be spawned, stop: the Verdict is unavailable and the End state is not reached; point to `/skill:setup-vstack` when `task.isolation.enabled` is off.
 
@@ -115,9 +129,9 @@ Validate the decoded record before accepting or posting it. Require `verdict` as
 
 If supplied, `cleanup_error` must be a string with non-whitespace content. Empty or incorrectly typed values make the record malformed. A valid `cleanup_error` makes the run unavailable, regardless of its Verdict or isolation suffix. Preserve the actual Verdict and evidence, including an already REFUSED Verdict. Report the app outcome or refusal and the cleanup error separately. Never accept PASS or PASS+NOTES with this field. Missing, malformed, incomplete, or mismatched records or evidence never pass and are not posted. Record who produced the Verdict.
 
-PASS and PASS+NOTES pass only when available, after you read the notes and ask each `open_questions` item through top-level `ask`; silence is never approval. FAIL, DRIFT, REFUSED, and an unavailable Verdict never pass. The Verdict is unavailable if a Verifier cannot start, isolation is off, isolation or head preparation fails, a record is malformed or mismatched, the isolation notice is missing, a captured patch contains a tracked edit, or a valid `cleanup_error` is supplied. When a clone fails, retain its REFUSED record and point at omp's `worktree.clone` setting and `/skill:setup-vstack`. An unavailable Verdict stops the run: report that the End state was not reached.
+PASS and PASS+NOTES pass only when available, after you read the notes and put each `open_questions` item to the user through top-level `flow_ask` in the caller's Stage under the shared contract. Silence is never approval. FAIL, DRIFT, REFUSED, and an unavailable Verdict never pass. The Verdict is unavailable if a Verifier cannot start, isolation is off, isolation or head preparation fails, a record is malformed or mismatched, the isolation notice is missing, a captured patch contains a tracked edit, or a valid `cleanup_error` is supplied. When a clone fails, retain its REFUSED record and point at omp's `worktree.clone` setting and `/skill:setup-vstack`. An unavailable Verdict stops the run: report that the End state was not reached.
 
-On FAIL, fix the problem in a new commit, red-first through skill://tdd where a seam exists. On DRIFT, repair the Verify skill through skill://maintain-app-verification for the named feature, as step 4 says. In Standard mode, commit its output in a new commit. In Private mode, commit nothing. Then run a fresh Verifier through this step on the current head. Allow one repair-and-retry cycle per pass of this step. If the second Verdict of a pass does not pass, stop and report that the End state was not reached.
+On FAIL, fix the problem in a new commit, red-first through skill://tdd where a seam exists. On DRIFT, repair the Verify skill through skill://maintain-app-verification for the named feature, as step 4 says. In Standard mode, commit its output in a new commit. In Private mode, commit nothing. Each repair commit passes step 0b's branch guard first. Then run a fresh Verifier through this step on the current head. Allow one repair-and-retry cycle per pass of this step. If the second Verdict of a pass does not pass, stop and report that the End state was not reached.
 
 Keep the accepted Verdict in the run record: verdict, Verifier identity, base and head SHAs, patch id, and evidence paths. The owning producer publishes a human-readable Result and captures the original machine record and evidence. Step 7 reuses it, and the delivery table's Proof column shows it. Only after acceptance may the owning chain publish `reached: "commit"` with its SHA and Verdict evidence.
 
@@ -133,7 +147,7 @@ Then run skill://babysit in drive mode with the chain facts and PR frontier. Aft
 
 Publish `reached: "merge-ready"` only after both current-head readiness and accepted proof cover the final patch. For shipped, run skill://ship with those facts and accepted Verdicts. open-pr and babysit return to this caller. Neither starts the next link. Stop at the effective End state or a reported blocker and report what was actually reached.
 
-Conflict owner: babysit reports each conflict and each stale base here. ship reports each branch that `update-branch` cannot update and each step 2 move. The reported branch can be any branch of the run's stack. Fetch it and check it out, and fetch its target: the PR's base branch from `read-pr`, or the default branch for a step 2 move. For a step 2 move, first retarget the PR to the default branch through `retarget-pr`. Run `git merge <remote>/<target>`, resolve each conflict once, reconcile the reported caller drift, and commit the merge. Push it as a fast-forward to the PR's head branch with the step 0b push. Then check out the current branch again. If the reported branch is the run's remote branch, record the new last pushed SHA, and record the merged target tip as the new base SHA. Then run babysit again, or return a moved PR to ship for its fresh verdict. If the diff changed, re-establish the affected proof and Blast radius findings.
+Conflict owner: babysit reports each conflict and each stale base here. ship reports each branch that `update-branch` cannot update and each step 2 move. The reported branch can be any branch of the run's stack. Fetch it and check it out, and fetch its target: the PR's base branch from `read-pr`, or the default branch for a step 2 move. For a step 2 move, first retarget the PR to the default branch through `retarget-pr`. Pass step 0b's branch guard against the reported branch before running `git merge <remote>/<target>`, because the merge can commit automatically. Resolve each conflict once, reconcile the reported caller drift, and pass the same guard before an explicit merge commit. Record the resulting commit through step 0b's post-commit check. Push it as a fast-forward to the PR's head branch with the step 0b push. Then check out the recorded local branch again. If the reported branch is the run's remote branch, record the new last pushed SHA, and record the merged target tip as the new base SHA. Then run babysit again, or return a moved PR to ship for its fresh verdict. If the diff changed, re-establish the affected proof and Blast radius findings.
 
 When the run stops, at the effective End state, at commit, or at a blocker, publish a table Result on the caller's Stage with the columns Ticket, Status, Commit, and Proof. Write one row per ticket, or one row for unticketed work. Add a row for step 6 review fixes and for each step 6b Verifier repair commit:
 

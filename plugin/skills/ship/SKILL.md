@@ -14,7 +14,7 @@ Accept the caller's chain facts. Follow these rules in skill://implement/END-STA
 - Step 4: Verify discovery and link repair.
 - Step 6b: the Verifier brief, the result and record checks, and the accepted Verdict.
 
-Follow `skill://flow-page`'s "Stage entry/exit line". Follow END-STATE.md's "Publish delivery progress" and track verification and landing tasks per PR.
+Follow `skill://flow-page`'s "Stage entry/exit line" and "Every ask in a Flow" for all user questions through `flow_ask`, including separate answer recording. Follow END-STATE.md's "Publish delivery progress" and track verification and landing tasks per PR.
 
 ## 0. Establish the frontier
 
@@ -30,13 +30,15 @@ Fetch each exact base and head commit. Read the base and head SHAs from `read-pr
 
 Verify every other PR through END-STATE step 6b, with the SHAs from `read-pr` and the PR number. Resolve ship's own `git rev-parse --show-toplevel` to an absolute path for step 6b's Shared checkout field in every brief, including reverification. Choose the Verify skill through END-STATE step 4. Count changed files and diff lines for each PR. Give each Verifier step 6b's Verifier brief, with a distinct Scratch entry per PR. For one PR, use the single-subagent line below. For two or more, use the Fan-out line. Keep the calls schemaless so their result text includes omp's isolation notice.
 
+For every new Verifier, including batch, partial-start, and step 3 reverification paths, follow END-STATE step 6b's lifecycle duty and skill://vstack-fan-out/WORKER-LIFECYCLE.md. Release only after checking the machine record and runtime isolation suffix, preserving evidence, and resolving every need for the worker. Preserve unavailable or malformed results and useful failure work before deciding release. Reconcile all started workers before a ceiling or early stop; retain running or needed children with reasons. A reused Verdict starts no worker. Report clone-release outcomes separately from detached head worktree `cleanup_error` and the app Verdict.
+
 Spawn one `vstack-verifier` via eval `agent(<prompt>, agent="vstack-verifier", isolated=True, apply=False, merge=False)`: END-STATE step 6b's Verifier brief for this PR, the Shared checkout absolute path, the vstack root, the Scratch dir. Wait for its result through `handle.wait()` and retain the returned text for the checks below. If it cannot be spawned, stop: ship cannot verify its own PRs, so point to `/skill:setup-vstack`.
 
 Before this step, read skill://vstack-fan-out.
 
 Fan-out (skill://vstack-fan-out): parts: one per PR. One eval cell: per part, `agent(<prompt>, agent="vstack-verifier", isolated=True, apply=False, merge=False)`; `wait()` on all handles and retain each returned result text. Each prompt: END-STATE step 6b's Verifier brief for one PR, the Shared checkout absolute path, the vstack root, the Scratch dir. Never apply a Verifier patch. If they cannot start or isolation is off, stop: ship cannot verify its own PRs, so point to `/skill:setup-vstack`.
 
-Check each result's isolation notice and JSON record as END-STATE step 6b says, and ask each `open_questions` item through top-level `ask`. Record who produced each Verdict. Post only complete valid Verdict records yourself through `comment-pr` from a Scratch file, unless the caller already posted them, including REFUSED and records with `cleanup_error`. Include SHAs and patch id as returned, evidence paths, notes, Verifier identity, any cleanup error, and any separate isolation-evidence gap.
+Check each result's isolation notice and JSON record as END-STATE step 6b says, and put each `open_questions` item through top-level `flow_ask`. Record who produced each Verdict. Post only complete valid Verdict records yourself through `comment-pr` from a Scratch file, unless the caller already posted them, including REFUSED and records with `cleanup_error`. Include SHAs and patch id as returned, evidence paths, notes, Verifier identity, any cleanup error, and any separate isolation-evidence gap.
 
 Publish each validated verifier record as a human-readable table row with PR, Verdict, Verifier, Verified base, Verified head, Patch id, and Proof. Attach its unchanged JSON and captured evidence; retain notes, open questions, and isolation failures in a Document. Record unavailable and malformed verdicts honestly rather than turning them into passing rows. The verifier itself stays run-only and authors no Flow content.
 
@@ -56,7 +58,7 @@ If this PR's base is not the default branch, retarget only this PR to the defaul
 
 ## 5. Land one PR at a time
 
-Read the allowed methods through `merge-methods`. Use squash when allowed. Otherwise use the repository's only allowed method. If there is no method, stop. If both merge and rebase remain allowed without squash, choose through `ask` before merging.
+Read the allowed methods through `merge-methods`. Use squash when allowed. Otherwise use the repository's only allowed method. If there is no method, stop. If both merge and rebase remain allowed without squash, choose through `flow_ask` before merging. Without the user's answer, leave the merge undone.
 
 If the current bottom PR is mergeable now and required checks pass, run `merge-pr` with the chosen method and the current head SHA as its guard. Never bypass protections, for example with `gh pr merge --admin`.
 

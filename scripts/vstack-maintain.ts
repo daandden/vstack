@@ -593,7 +593,7 @@ async function gates(root: string, opts: UpstreamOptions, scratch: string | unde
   for (const skill of changedSkills(root)) execute("validate", [...(commands.validate ?? [process.execPath, join(root, "plugin/skills/skill-creator/scripts/quick_validate.ts")]), join(root, skill)]);
   if (!commands.check) clones(root, opts);
   execute("check", commands.check ?? [process.execPath, join(root, "scripts/check-register.ts"), "--root", root, "--source", "clones", "--upstreams", opts.upstreams ?? defaultUpstreamsDir(), "--json"]);
-  execute("test", commands.test ?? [process.execPath, "test"]);
+  execute("test", commands.test ?? [process.execPath, "run", "test"]);
   const out = mkdtempSync(join(tmpdir(), "vstack-maintain-load-"));
   let smoke: (typeof stages)[number];
   try {

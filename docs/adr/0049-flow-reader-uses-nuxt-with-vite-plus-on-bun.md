@@ -2,7 +2,7 @@
 status: accepted
 ---
 
-# Flow reader uses Nuxt with Vite+ on Bun
+# ADR 0049: Flow reader uses Nuxt with Vite+ on Bun
 
 This design is implemented by #314. It amends the rendering and static-fallback promises in [ADR 0044](0044-structured-flow-data-drives-server-rendered-pages.md). The Bun host serves the prebuilt Nuxt reader, and a running host is required. The #316 candidate proof exercises a fresh isolated linked-plugin session, actual CLI and native omp presentation, installed assets, a running host's bundle incompatibility, authenticated restart, and committed-content recovery in an already-open Chromium reader. This is not independent verification of the final integrated commit or closure of spec #309.
 
@@ -20,6 +20,6 @@ Typed Stage-bound authoring, Flow identity, authorization, and captured evidence
 
 ## Design approval and verification
 
-The user approved prototype revision `reader-review-r3`, variant A, in Flow question 18. They required a compact layout based on the current Flow page, Catppuccin Mocha dark mode, and Catppuccin Latte light mode. The prototype exercises the reading model in [ADR 0046](0046-flow-content-keeps-first-publication-order.md) and retains the reader's position during fixture updates. #313 and #314 implement the approved direction. Prototype evidence is not proof of the final integrated product.
+The user approved prototype revision `reader-review-r3`, variant A, in Flow question 18. They required a compact layout based on the current Flow page, Catppuccin Mocha dark mode, and Catppuccin Latte light mode. The prototype exercises the reading model in [ADR 0048](0048-flow-content-keeps-first-publication-order.md) and retains the reader's position during fixture updates. #313 and #314 implement the approved direction. Prototype evidence is not proof of the final integrated product.
 
 The approved authoring regression evaluation assesses structural questions at their first publication, requires useful question-local visuals for those cases, and retains legitimate prose controls. Adding a diagram later does not repair the original score. This is not a universal runtime semantic-review gate. #311 and #315 retain their recorded evidence and limits. #316 completed two fresh paired batches, each with one with-skill and one no-skill trial for each of four subjects. The final-input batch used the recorded `openai-codex/gpt-6.1-sol` Session model at high thinking, isolated homes, frozen bindings, and actual CLI/reader captures, with no main-model fallback or provider failure. In separate reviews of the earlier and final-input examples, the user judged only the with-skill explanation adequate for all four subjects. The original mobile failure remains recorded; the user accepted the repaired mobile comparison in both themes and reclassified the current over-wide control as wide-but-legible rather than a font-readability negative. `judging.json` records those distinct judgments. Earlier interrupted, rate-limited, or fallback attempts remain unavailable, not accepted trials.

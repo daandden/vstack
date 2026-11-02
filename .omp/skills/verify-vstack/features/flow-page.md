@@ -33,6 +33,8 @@ The flow-page script takes typed contributions for one bound Stage, assigns ids,
 - `flow-artifact`: a prototype Result names an HTML bundle, local app route, or terminal artifact. Captured bundles execute on a separate read-only viewer origin, local routes stay on their own origin, and missing runtimes show launch instructions with an unavailable state.
 - `flow-nav`: `n` cycles through actionable questions newest in-progress Stage first; `t` opens a clickable Stage-only tree with states and open-question counts; `j` and `k` set fragments and focus; `h` and `l` move between reading blocks; editable targets, media controls, and modifier keys ignore shortcuts.
 - `flow-session`: each session and agent restores its own binding. A terminal main-agent reply presents the bound URL without another model request or a browser launch. A blocker and a follow-up with no model-written link still get the extension message. A live failure says the reader is unavailable, with the observed error and that the content is stored. A native `ask` through `--rpc-ui` returns labels and custom words that normalize into Flow answers.
+- `flow-ask`: one `flow_ask({ contribution })` commits a complete round with its Results, displays the live reader URL before the existing omp-tools custom picker, and returns the raw host response. An unavailable reader preserves the receipt and content without prompting. An identical repeat does not reopen the picker. Non-TUI sessions and sessions without the active custom route refuse without a question commit or native fallback. A later agent contribution records normalized answers.
+- `flow-enrollment`: an ordinary description-selected explanation stays in chat without a binding or card; a fresh typed explanation enters a Flow and publishes a Document and its normal session card.
 - `flow-quiz`: structured choice, text, and numeric quizzes give immediate feedback and explanations. Attempts and completion persist separately from authored work, resume across host restarts, and synchronize browser-local offline attempts idempotently.
 - `flow-review`: a review Result opens with one summary table linked to each authoritative finding's impact, action, and evidence card. All three axes retain their explicit findings, clean, skipped, unavailable, or blocked outcomes, and focused corrections update the table.
 - `flow-observations`: read-only git, Code host, and CI adapters update the open strip with source and time, without changing authored PRs, checks, End state, or Flow closure. Separate project configuration selects Code host and CI independently.
@@ -43,6 +45,7 @@ The flow-page script takes typed contributions for one bound Stage, assigns ids,
 
 - A skill runs `bun "$(realpath skill://flow-page/scripts/flow-page.ts)" open|bind|submit|alias|close|reopen|find|move|show|migrate ...`. `bound` looks up only the current session and agent, without creating a Flow.
 - The extension displays the bound Flow URL after each main-agent reply, or says the reader is unavailable, with the observed failure, when the host is not serving.
+- For a question round, the main agent calls `flow_ask` once with the complete contribution. The existing omp-tools picker collects the response. The CLI remains the authoring path for non-question contributions and the Ratchet `r.approve` exception.
 
 ## Driving it with bash and the omp browser
 
@@ -170,23 +173,100 @@ Use the same run dir for these sequential drives. Its isolated home is `$VERIFY_
      '{"type":"get_messages"}' '{"type":"get_state"}'
    ```
 
-   Observe two displayed `message_end` frames whose `message.customType` is `vstack-flow`. Each follows its model reply and contains the bound URL. The summary has three model requests, not extra requests caused by presentation. The hidden `vstack-flow-context` gives this session's id and agent `main`.
+   Observe two displayed `message_end` frames whose `message.customType` is `vstack-flow`. Each follows a completed, nonempty assistant reply and contains the bound URL. The summary has three model requests, not extra requests caused by presentation. Inspect `model-requests.jsonl`: neither displayed Flow card appears in ordinary-turn provider messages. The hidden `vstack-flow-context` still gives this session's id and agent `main`.
 4. Run `flow-session-b` with a new omp process in the same run dir. Its stub binds ticket 285 and submits a different Document Result, then answers with text only. Include the settling `bash` command, `get_messages`, and `get_state`. `show --flow <id>` and the real browser show one Result in each ticket Stage. Attempt to revise ticket 284's Result through B's implicit binding. The tool refuses and the Flow revision stays unchanged.
 5. Save A's `data.sessionFile` from the `get_state` response. In another drive, send `{"type":"switch_session","sessionPath":"<saved path>"}` before a text-only prompt. Its automatic URL still names A's Flow. Bind a separate session to another Flow and continue A again. Each session presents its own URL, with one model request for each text-only prompt.
+
+   Provider messages exclude both restored and newly displayed Flow cards, including cards saved before the context-isolation fix.
 6. Stop the proof host. Occupy the endpoint the native extension will use with a listener owned by this proof. Continue A with a text-only reply. Its `vstack-flow` message says the reader is unavailable with the actual port-conflict failure and that the content is stored, not an earlier live URL. The competing listener still responds afterward. Stop only that owned listener.
 7. Read both ticket Stages' Results in the main sequence in the real browser. Capture lossless WebP and ARIA evidence of their distinct attribution. Attach the images, RPC observations, commands, and test outcomes to a Document Result on this proof Flow, not an old Grilling page.
 8. Close the browser tab, stop the owned Flow host, and preserve the stored Flow data and captured assets with the evidence before Cleanup removes the throwaway home.
 
 The RPC `prompt_result` can arrive before the asynchronous `agent_end` presentation finishes. The non-model `bash` pause above lets the message arrive before the drive starts another prompt or exits. It is not a new browser test harness. A drive that exits at `prompt_result` alone does not establish that presentation is missing.
 
+The context filter covers ordinary turns, not compaction or branch-summary input rebuilt from persisted entries. To check that boundary, compact a session containing a Flow card and inspect the summarizer's provider request, then navigate an abandoned branch with summarization and inspect that request. Report any retained card as a limitation, not as complete context isolation.
+
 The drive's env contains only `PATH`, `HOME`, and `TERM`. A custom `VSTACK_FLOW_PORT` on an earlier CLI does not become the extension's environment. After host shutdown removes discovery, use the native default port, `42000 + (uid % 10000)`, for the conflict proof. Never stop an unrelated listener to reserve it.
 
-### Native ask (`flow-session`)
+### Real-model enrollment (`flow-enrollment`)
 
-1. Open a Stage with the CLI in the drive's project dir. Write replies for one drive: a `bash` call that binds that Stage and submits a round of two questions, an `ask` call whose `questions` are the receipt's `ask.questions` (predict the ids from the Flow's question count), a `bash` call that submits the normalized answers, and a closing text.
-2. Write `--ui-replies` that pick an option for the first question and `Other (type your own)` for the second, then `{"value":"<words>"}` for the `editor` dialog that follows.
-3. Run the drive once without `--rpc-ui` and keep it: the `ask` tool result is `Tool ask not found` and no dialog is sent. Then run it with `--rpc-ui` and a new name. Read the `ask` `tool_execution_end`: `details.results[]` has each id, `selectedOptions` labels, and, for the second, `selectedOptions: []` with `customInput`. `ui-responses.jsonl` has two `select` answers and one `editor` answer.
-4. `show --flow <id>`: the first question is `picked` with the selected label; the second keeps the user's words with the reading and no pick. Record that the stub, not a model, wrote the normalization, and that timeout, note, and cancellation forms were not driven unless you drove them.
+The stub proves delivery and presentation mechanics, not whether a model follows the enrollment rule. Use a fresh native real-model process for each case below. This is the real-HOME exception to the stub-drive baseline. Keep `CHECKOUT` pinned to the tree under test.
+
+1. Run Doctor. Retain the caller's real HOME, credentials, and PATH, and remove inherited `PI_*` and `OMP_*` variables from the child environment. Use the caller's Session model and thinking level, as ADR 0010 requires. Record actual model changes, thinking changes, and fallback events from the native session history.
+2. Write an overlay with `skills.customDirectories` containing only `$CHECKOUT/plugin/skills`. Set the child's explicit `PI_CONFIG_FILES` to that overlay and also pass `--config <overlay>`. In omp 18.15, CLI configuration alone can arrive too late for skill discovery. Load the complete package with `--no-extensions -e "$CHECKOUT/plugin"`, not just its extension file, so sibling agents remain available.
+3. Launch `omp --mode rpc` from `CHECKOUT` with a new `--session-dir` under `$VERIFY_RUN_DIR/data/`. Keep stdout and stderr, every RPC frame, effective system prompts, and expanded user messages. Set the recorder's line limit to at least 32 MiB, since tool-result frames can exceed Python's default 64 KiB limit. A capture interruption is incomplete evidence, not a product failure.
+4. Keep tracked files unchanged and disposable evidence under the run directory, but explicitly permit canonical Flow state and skill Scratch in their documented normal locations under real HOME. An evidence-directory-only write restriction conflicts with this feature. Use a fresh owned host namespace for live proof and leave an unrelated host untouched. With `VSTACK_FLOW_HOST=off`, expect an unavailable-reader card, never a static page.
+5. Use the same HOME, checkout, session, and agent for the model's Flow commands and the extension lookup. Do not force an isolated `--home` for publication while the extension reads the normal home. That creates a different store and cannot prove normal session binding or card behavior.
+6. In one fresh process, send `{"type":"prompt","message":"/skill:explain How does flow-page's bound command behave for a session with no binding? Keep it to this command."}`. Confirm a user-attributed native `skill-prompt` headed `User invoked the "explain" skill`, its head-tree skill directory, and successful head-tree reads. Literal slash text in a plain user message is not proof of native expansion.
+7. After the first terminal assistant completion, let presentation settle with the non-model pause used by `flow-session`, then collect `get_state` and `get_messages`. Capture actual `open` and `submit` receipts, a normal-namespace `bound` lookup with that session's explicit identity, one Document Result, and the extension's `vstack-flow` card. Open the Document's page and capture WebP and ARIA proof. An advisor-assisted later publication does not establish first-completion compliance; preserve both outcomes.
+8. In a separate fresh process, ask `How does vstack's Addon judge decide which Addons to pick for a session? I just want to understand it.` Confirm that the model actually reads the affected explanation or research guidance, returns a useful cited chat answer, authors no Flow, emits no card, and remains unbound. Do not continue the typed session for this case, because its existing binding would legitimately enroll later work.
+9. Preserve command, environment, source/model provenance, prompt, receipts, binding, card, and cleanup evidence. Copy native session histories and submitted contributions into the evidence directory before Cleanup removes `data/`. Close only Flows created by these fresh diagnostic sessions, close their browser tabs, and stop their owned native processes. Leave the maintainer's binding and shared host untouched. Report skipped cases explicitly, and do not replace a failed scenario with repeated unchanged attempts until one passes.
+
+### One-call questions through the custom picker (`flow-ask`)
+
+Use `scripts/flow-ask-tui.py`, not the RPC `drive.ts`, for this proof. The helper starts the real interactive omp process on a PTY, links both plugins, and answers only at the model-provider boundary. It sends deterministic keyboard input to the existing omp-tools picker. It does not replace the UI, call the extension factory, or inject a dialog route.
+
+Preconditions:
+
+- Use Python 3.9 or newer on macOS or Linux, with its standard-library `pty`, `fcntl`, and `termios` modules. No package install is needed.
+- Pin a real Bun executable on `PATH`, as in `flow-session`. Both the extension and the fixture CLI use that executable.
+- Set `OMP_TOOLS` to an explicit omp-tools checkout or installed plugin link. Its `extensions/flexible-ask.ts` must install the existing `Symbol.for("omp-tools.host-ask-dialog")` route on `session_start`. Older omp-tools copies without that route cannot prove this feature.
+- Use a new run dir for each case. The helper refuses an existing `data/` directory or evidence name. It creates both HOME and cwd outside the real home, with `data/home` and `data/outside` symlinks for Doctor and Cleanup.
+
+Run these commands from the checkout after the runtime edits have landed:
+
+```sh
+	CHECKOUT=/absolute/path/to/checkout
+	SKILL_DIR="$CHECKOUT/.omp/skills/verify-vstack"
+	OMP_TOOLS=/absolute/path/to/omp-tools
+	VERIFY_RUN_DIR="<Scratch dir>/verify/vstack-$(date +%Y%m%d-%H%M%S)-flow-ask"
+	mkdir -p "$VERIFY_RUN_DIR"
+	bash "$SKILL_DIR/scripts/doctor.sh" "$CHECKOUT" "$VERIFY_RUN_DIR"
+	python3 "$SKILL_DIR/scripts/flow-ask-tui.py" --checkout "$CHECKOUT" \
+		--omp-tools "$OMP_TOOLS" --run "$VERIFY_RUN_DIR" --case tui
+	bash "$SKILL_DIR/scripts/doctor.sh" "$CHECKOUT" "$VERIFY_RUN_DIR"
+	jq '{ok,statuses,assertions,error,cleanup_error}' "$VERIFY_RUN_DIR/flow-ask-tui/summary.json"
+```
+
+The helper's fixture agent opens and binds one disposable Stage with its actual child `PI_SESSION_ID` and agent `main`. It authors one Document Result and two complete questions in one `flow_ask` contribution. The keyboard adds an Alpha option note, selects Alpha and Beta in the first multiselect question, enters Other words for the second question, adds a submit note, and submits. The stub then repeats the identical contribution. That repeat must return without more keyboard input. Finally, the fixture agent records normalized answers through a separate CLI contribution. The custom words retain a scripted unresolved concern, not invented consent. These fixture decisions are not authorization for real work.
+
+Require all of this evidence:
+
+- `identity.json`, `launch.json`, `commands.json`, `child-session-id.txt`, and `bindings.json` identify the exact plugin paths, binary paths, sanitized environment, child session, and bound main agent. No real credentials or real home is inherited. Doctor must list the checkout's vstack version, only the local stub provider, and no leaked process.
+- `terminal.bin` retains the actual PTY bytes. `terminal.txt` removes escape sequences for text inspection, but is not a terminal screen emulator. `inputs.json` retains each keyboard event with its timestamp and terminal byte offset.
+- `before-picker.json` records the first `Flow page:` position before the first custom picker's `n add note` footer. Inspect the adjacent raw terminal output. The picker later displays `Note for`, `Other answer`, and `n add submit note`. A receipt found only after the picker or only in the model transcript does not pass.
+- `sessions/*.jsonl` retain real persisted omp messages. `model-requests.jsonl` retains provider requests. `tool-results.json` must have raw `flow_ask` statuses `submitted` and `repeated`, one original receipt revision, `response.kind: "submit"`, `results[0].selectedOptions: ["A. Alpha", "B. Beta"]`, an option note, the second question's custom words, and its submit note. There is no second model-authored `ask` payload.
+- `persisted-state.json` and `export/data/state.json` contain one round, two questions, two later answers, and the original Document Result. The first answer picks A and B and keeps its option note. The second keeps the custom words and submit note with an unresolved concern reading. The export preserves stored Flow data and captured assets, not a server-free reader.
+- `contribution.json` is the one complete question contribution. `committed-before-answers.json` proves that the runtime has authored no answers after submission and repeat. `normalized-answers.json` is the separate fixture-agent answer contribution.
+
+The helper exits 0 only after its assertions pass and the owned Flow host stops. A missing `flow_ask` registration on the parent revision fails before a picker response. On the changed revision, the same fixture must pass through the custom picker and return the raw results. Compare two checkout paths using two fresh run dirs and the same omp-tools and omp binaries. Keep both failures and passes. A runtime mismatch, missing custom route, or an incompatible omp-tools version is a prerequisite failure, not evidence that the product regression is reproduced.
+
+Drive both refusals in separate fresh run dirs with the same Doctor and Cleanup commands:
+
+```sh
+	for CASE in missing-picker non-tui; do
+		VERIFY_RUN_DIR="<Scratch dir>/verify/vstack-$(date +%Y%m%d-%H%M%S)-flow-ask-$CASE"
+		mkdir -p "$VERIFY_RUN_DIR"
+		bash "$SKILL_DIR/scripts/doctor.sh" "$CHECKOUT" "$VERIFY_RUN_DIR"
+		python3 "$SKILL_DIR/scripts/flow-ask-tui.py" --checkout "$CHECKOUT" \
+			--omp-tools "$OMP_TOOLS" --run "$VERIFY_RUN_DIR" --case "$CASE"
+		bash "$SKILL_DIR/scripts/doctor.sh" "$CHECKOUT" "$VERIFY_RUN_DIR"
+	done
+```
+
+The first case starts a real TUI with vstack but intentionally does not link omp-tools. The second links both plugins but starts `--mode rpc-ui`, which has no active TUI picker route. Each result must be `unavailable`, with no receipt, question, or answer committed and no native dialog fallback. These refusal cases do not replace the passing TUI proof.
+
+Use a fresh run dir with `--case timeout` to check the configured deadline. That case sets `ask.timeout: 1` only in the disposable home, opens the real TUI picker without sending answer keys, and requires every raw result to have `timedOut: true`. The Flow must still have zero answers. Its captured terminal output must show the Flow link before the custom picker.
+
+For each run, write `notes.md` with the exact commands and outcomes, then run `bash "$SKILL_DIR/scripts/cleanup.sh" "$VERIFY_RUN_DIR"`. The helper stops its omp process, provider, and owned Flow host even when an assertion fails. If it is forcibly killed, use Doctor and the recorded PIDs before Cleanup. Never delete the earlier evidence to retry. Cancellation, images, and committed-but-unavailable reader cases are not covered by this terminal fixture. Name each as unexercised unless driven separately. For unavailable-reader proof, occupy only the owned host port, submit once, retain the committed receipt and observed error without a picker, then free that port and recover with `bound` or `show` without resubmission.
+
+### Legacy native ask gates (`flow-session`)
+
+Keep the native gate proof separate from `flow_ask`. An ordinary `ask` call in `drive.ts` without `--rpc-ui` returns `Tool ask not found`. With `--rpc-ui`, native ask uses RPC `select` frames and an `editor` frame for Other words. `ui-responses.jsonl` and the `ask` tool result prove that native path only. They do not load the TUI custom route and cannot prove Flow question delivery.
+
+For native-gate callers, use `--ui-replies` to pick a label or Other, then inspect `details.results[]` and any later normalized Flow answers. State that the stub authored the normalization. Do not reconstruct the receipt's `ask.questions` in a second model tool call to claim `flow_ask` proof. The Ratchet `r.approve` exception and headless non-consent rules remain separate from the interactive custom-picker contract.
+
+Complete one visible reply in a bound interactive session, then retry a failed turn with `F5` and cancel with `Esc` three times. Each aborted `agent_end` adds no Flow card. A later completed, nonempty reply still adds its card. Native RPC proof can cancel three native `ask` dialogs and inspect the aborted events, but distinguish that from physical keyboard proof. The stock RPC drive stops on an aborted `prompt_result`, so a repeated-cancellation capture needs a driver that accepts that expected status and lets presentation settle before the next attempt.
 
 ### Combined-product proof (`flow-t4`)
 
@@ -209,7 +289,7 @@ Steps:
 7. With the live page open, answer a question, add a Result, finish a task, and open a ticket Stage with `--parent` that re-asks the retired question. Follow a link to a question near the end of a short page, revise an earlier Result, and publish later content. Record timeOrigin, reading stop, fragment, focus, disclosures, and the question's viewport top before and after. Repeat `n` and `t`.
 8. Change the provider file to merged and passed, then an old `observed_at` and a failure, then recover. Then resolve the blocker, finish the tasks, and record the reached End state. The strip updates live and never completes from observations alone.
 9. Stop the owned services and reload: the local app is unavailable with launch steps and observations are stale. Stop the host and occupy its port: the open page keeps its content and says it is reconnecting, an authoring receipt reports `unavailable` with the error, and the extension says the reader is unavailable. Free the port and run `bound`: the page reconnects without duplicate content.
-10. Run the Native omp sessions and Native ask steps above in one run dir. Attach the outcomes, observations, and key screenshots to a Document Result on the proof Flow, stop every owned host and service, close the tabs, and name every unexercised provider or runtime case.
+10. Run the Native omp sessions, one-call custom-picker questions, and separate legacy native-gate steps above. Use fresh run dirs where the helper requires them. Attach the outcomes, observations, and key screenshots to a Document Result on the proof Flow, stop every owned host and service, close the tabs, and name every unexercised provider or runtime case.
 
 When the reader changes, refresh the affected first-publication views using `plugin/skills/flow-page/evals/PROCEDURE.md`. Record the actual Session model and thinking from its records, freeze the first committed question and binding, and retain provider failures or fallback attempts as unavailable. Keep raw captures unchanged. Put review-question number, example identity, theme, and viewport in an ordinary visible title above each review image. A later re-render or repair does not replace an earlier judgment. Reassess a control if a general reader fix changes the condition it demonstrated.
 

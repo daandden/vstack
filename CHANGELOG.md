@@ -1,8 +1,10 @@
 # Changelog
 
-Versions of the vstack plugin (`plugin/package.json`). See the README for when to raise each part of the version.
+Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide](docs/maintainer.md#versions-and-changelog) for when to raise each part of the version.
 
 ## [Unreleased]
+
+- Integrate current-main work into spec #309's 9.0.0 cutover. Keep explicit Flow enrollment, standalone research closure, the custom `flow_ask` picker, and optional multiselect. An unavailable host preserves the committed question and receipt without opening a contextless picker; recover the owned host and use `bound` or `show`, never a static fallback or resubmission. Preserve public ADR 0045 and 0046, and renumber the unpushed publication-order and Nuxt decisions to 0048 and 0049.
 
 - Fix spec #309 review findings without claiming full-spec completion. Explicit standard Mocha paints in new Mermaid drawings and historical Pele SVGs now use the selected reader theme while captured bytes and authored nonpalette colors stay unchanged. Native `ask` receipts preserve declared round order, including reasks with stable Q numbers. The fresh #316 candidate proof and remaining final-commit verification gate are recorded under 9.0.0.
 - Stop test checkout leaks by cleaning only roots owned by the check-register fixture lifecycle. Repository-key lookup captures git output through owned temporary files instead of Bun's lossy synchronous pipes under concurrent CLI load. Git lookup failures refuse rather than route a real repository to `_global`; a genuine nonrepository still uses `_global`.
@@ -21,6 +23,70 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 - The current Flow reader opens on one durable first-publication sequence across Stages (#313). Serialized contributions preserve item and question order without relying on clocks. Refusal allocates no positions and replay keeps the committed identities and positions. Answers and Result revisions stay in place with accessible evidence history. Existing unprovable order stays behind an explicit retained-order historical boundary. Stage context, actionable-question navigation, Topics, and deep links remain available. The host exposes the same content order at its read-scoped `content` endpoint. This does not start the Nuxt migration.
 - Breaking: the Local Flow host serves the Flow page as a production Nuxt reader built with Vite+ and shipped prebuilt under `skills/flow-page/reader/` (#314, spec #309). The page is one compact document, an outline then the reading sequence, then the Overview and Topic notes, in Catppuccin Mocha dark and Catppuccin Latte light, following the system preference with a visible theme control. The bespoke page renderer, its HTML template, the static `index.html` export, and the `render` command are removed, and receipts no longer carry `page` or `presentation`. `live` is the one presentation status: when the host cannot serve, the receipt, stderr, and the extension say the reader is unavailable and the content is stored, and the open reader keeps its content while it reconnects. A running host serves only the reader bytes it loaded at startup and reports itself incompatible after a plugin refresh until `host stop`. `h` and `l` now move between reading blocks. CI rebuilds the reader and fails when the committed build is stale, and check-register lints the reader's stylesheet with the page lint.
 - Breaking for authors: Flow diagrams are Mermaid source that the reader draws with the pinned Pele (spec #309, ADR 0047). Capture a diagram as an attachment with `type: "mermaid"` and an optional `focus` of one or two Mermaid ids. The script stores the source by sha256 and refuses Mermaid that Pele cannot render. The reader draws each diagram in the page in Catppuccin Latte on light and Mocha on dark, and a theme switch restyles it without drawing again. Captured Pele SVGs from earlier Flows keep their stored bytes and now follow the theme too, so the #315 prototype-review diagram reads in the light theme. Labels now fit their nodes in WebKit, which ignored the installed font inside an SVG `<img>`. Diagram labels cannot inject markup or scripts, and the reader page's Content Security Policy now allows only the reader's own scripts and same-origin resources. vstack-figures and the authoring references tell callers to submit source. `render.ts` stays for figures outside the Flow.
+## [8.0.11] - 2026-11-02
+
+- Shorten the README to installation, everyday use, and documentation links. Preserve maintainer instructions in `docs/maintainer.md` and link to canonical skill contracts.
+- Keep Verify browser opens non-Tern during diagnostics, retries, recovery, and delegated verification. Restore explicit WebKit figure coverage and report unavailable proof as unmet rather than substituting Chromium (#329).
+- A standalone `research` run that created its Flow closes it after finishing its Stage once the requested research is complete. Inside a caller's or a continuing Flow, research finishes only its own Stage and restores the caller's binding (#322).
+
+## [8.0.10] - 2026-11-02
+
+- Deliver ordinary Flow questions with one `flow_ask` call that commits the complete question and visuals, presents the Flow link, then opens the existing omp-tools picker. Require its routed interactive TUI dialog without a native ask fallback. Preserve raw responses and separate Flow readings, refuse to prompt after stale publication, and avoid reopening repeated contributions. Ratchet keeps its native approval gate.
+- Preserve multiselect cleanup and Migration questions, the configured ask timeout, and the existing picker's read-tier approval behavior. Cut all Flow-bound question recipes over to the shared single-call contract.
+
+## [8.0.9] - 2026-11-01
+
+- Start a Flow only through the central enrollment rule, before discovery or creation. Description-selected research, explanations, reviews, and other producers return complete answers in chat unless enrolled, while typed skill requests and existing Flow work keep page publication. Recognize omp's native skill-invocation header as the expanded typed command and execute Stage entry and exit even without an existing binding. Preserve canonical files, plain chat questions, and real runnable prototypes outside a Flow (ADR 0046, #321).
+- Read synchronous Git identity replies from owned temporary files rather than returned capture buffers, and remove the resources on success or failure. Reject malformed output and operational Git failures before selecting a Scratch or Flow namespace. Reserve `_global` for a genuine outside-repository result and preserve shared linked-worktree keys (#321).
+
+## [8.0.8] - 2026-11-01
+
+- Run clean-wt's script commands with a long or disabled tool deadline, and treat a host deadline as no exit rather than a nonzero exit. An interrupted inventory keeps its diagnostics and reruns once, investigators return interrupted-attempt diagnostics instead of writing Scratch, and an interrupted removal is reported as unknown without an automatic rerun (#319).
+
+## [8.0.7] - 2026-11-02
+
+- Own isolated-worker retention, release, and observed clone removal across implementers, review fixers, research, experiments, forensics, drafting, and Verifiers (#323).
+- Add read-only worker-clone status with owner checks, retained-clone detection, and CLI behavior tests (#323).
+
+## [8.0.6] - 2026-11-02
+
+- Every commit and merge commit in an implement-family run passes a branch guard first: `git symbolic-ref -q HEAD` must name the branch the step commits to, or the run commits nothing and stops with a blocker naming the expected branch and the actual HEAD. Right after each commit, the new commit must be the branch tip before the run records it. The guard lives in implement's shared step 0b and covers step 6, step 6b repair commits, the Conflict owner merge, implement-spec's merger, hillclimb and tune-llm-flow kept commits, and babysit fix commits. Commit lists and the Verifier's head SHA come from the branch ref, not `HEAD`, and every push first checks that the branch tip equals the tip the run recorded. A guard blocker reaches no End state. The End state glossary entry now says commit stays on the run's branch (#261).
+
+## [8.0.5] - 2026-10-31
+
+- Carry semantic roles and exact category keys through sequences, state diagrams and their alias, swimlanes, agent flows, and event models. Declared people and stored data retain their kinds without inferring status from labels or treating software as people. Sequence headers and footers share one identity. Group assignments preserve child meanings, agent-flow accents keep Base text readable, and unsupported or collapsed identities refuse binding and focus without overwriting output. Preserve open workflow and flowchart geometry without removing native C4 boundary accent fills under focus. Real CLI, browser-computed paints, shared-id isolation, and byte-preserving Flow capture cover the documented limits (ADR 0045, #304).
+- Refuse entity-family and Sankey configuration paints even in unused definitions or values masked by roles. Validate explicit focus against unique stable source identities and actual owned marks before publishing, preserving prior output on failure. Keep one shared role, category, and eligible intrinsic-kind precedence policy, explicit 75% Sub/Sup sizing, and executable figure verification inputs (#300 review).
+- Figures retain seven fixed Color roles with solid literal Mocha fills and Base text instead of custom 20% tints. Flowchart --bindings documents assign roles or stable keyed categories to declared nodes, subgraphs, and explicit edge ids. Intrinsic person and stored-data shapes establish kinds without guessing from labels. Explicit assignments have deterministic precedence and conflict refusals. Mauve remains focus-only and preserves the fill. Groups color their own marks, inline figures remain isolated, and neutral packet and railroad figures retain documented binding limits. Invalid input or semantic coloring never creates or overwrites an SVG (ADR 0045, #302).
+- Maintainer gates run the repository's declared test script, preserving its existing timeout configuration instead of Bun's shorter default.
+- Measure Pele labels for IosevkaTerm cells and formatted spans, default flowchart edges to steps, and outline loose labels with a scoped 0.12em Base stroke (#301).
+- Schedules and work histories use literal Mocha paints and source-identity bindings across timeline, Gantt, journey, Kanban, and gitGraph. Exact category keys remain stable across declaration and branch order. Gantt done is Green, critical scheduling is Yellow, and active tasks remain neutral. Journey participant dots and legends share identity without inferring people or status from names and scores. Kanban priority colors only its existing indicator. Git routes resolve actual branch membership beyond repeated series slots. Generated and ambiguous identities are refused, group focus stays isolated, and external Gantt labels retain readable light paint without changing geometry (#306).
+- Extend figure roles and keyed bindings to native C4, ER, class, architecture, block, requirement, use-case, and tree diagrams, with source-kind precedence, owned-mark focus, and explicit identity and missing-icon limits (#303).
+- Apply exact-key Mocha categories and caller role bindings to mindmap, Ishikawa and its alias, Wardley, and Cynefin. Keep category headers and spatial groups separate from their children, preserve neutral strategy symbols and missing geometry, and document binding and focus limits (#307).
+- Keep exact category keys stable across quadrant, xy, pie, Sankey, radar, treemap, and Venn charts, including aliases, shared legends, supported bindings, role precedence, and honest identity limits (#305).
+- Preserve Sankey source, target, and gradient link modes with literal Mocha endpoint paints. A figure-scoped internal prefix enables the native default gradient where omission previously caused a source-color fallback, without changing geometry (#305).
+
+## [8.0.4] - 2026-10-31
+
+- Keep responsive images during historical Flow migration when the fallback `src` file is missing but an `img` srcset or a source in its `picture` remains available. Remove only the broken `src`, and keep unavailable-image notices when no candidate survives.
+
+## [8.0.3] - 2026-10-30
+
+- Capture local images embedded in historical HTML figures during Flow migration, including `srcset` candidates and `<picture>` sources, and keep SVG view fragments. Repeating migration repairs uncaptured inline images in an existing Flow without replacing later questions, answers, or Results, and subsequent repeats remain unchanged.
+
+## [8.0.2] - 2026-10-30
+
+- Present an automatic Flow link only after a completed, nonempty assistant reply. Cancelled retries, failed requests, and empty turns no longer append duplicate cards.
+- Keep Flow link cards in the UI transcript but exclude them from ordinary-turn model requests, including cards restored from earlier sessions. Preserve the hidden per-agent authoring identity. Compaction and branch-summary input still include persisted cards; complete isolation requires core omp support.
+
+## [8.0.1] - 2026-10-29
+
+- Make clean-wt protect owners before inspecting contents, remove only requested targets, and reuse historical session metadata while refreshing live ownership.
+- Recognize integrated tracked drafts against the source remote HEAD, including squash-equivalent contents, without weakening artifact, history, fingerprint, or approval guards.
+- Use a script-first clean-wt flow with shared integration facts, checkout-specific investigations, and one unresolved-only approval question.
+- Remove clean checkouts before remote comparisons, then prepare per-source remote-default facts for separate targeted inventory commands.
+- Allow independently verified untracked files and links that match remote-default contents and modes to qualify for automatic cleanup.
+- Check and fingerprint tracked bytes hidden by skip-worktree or assume-unchanged, retaining stale or unverifiable checkouts.
+- Record clean-wt's approved single-question timeout exception in House style and ADR 0008.
 
 ## [8.0.0] - 2026-10-29
 

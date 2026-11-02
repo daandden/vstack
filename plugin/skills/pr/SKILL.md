@@ -9,7 +9,7 @@ metadata:
     url: "https://github.com/humanlayer/skills/blob/main/plugins/show-me/skills/show-me/SKILL.md"
 ---
 
-Follow `skill://flow-page`'s "Stage entry/exit line". When producing a PR body, follow skill://implement/END-STATE.md's "Publish delivery progress". Keep the real Markdown body file that open-pr passes to the Code host. Capture it as a file attachment and publish its Summary, Evidence, and Merge Danger as a Document Result. Put code, diff sketches, and figures in typed Results or attachments rather than page markup. Record the draft task and its outcome in a delivery table and Timeline. Drafting is not publication or merge-readiness.
+Follow `skill://flow-page`'s "Stage entry/exit line". In a Flow, follow skill://implement/END-STATE.md's "Publish delivery progress" when producing a PR body. Keep the real Markdown body file that open-pr passes to the Code host. In a Flow, capture it as a file attachment and publish its Summary, Evidence, and Merge Danger as a Document Result. Put code, diff sketches, and figures in typed Results or attachments rather than page markup. Record the draft task and its outcome in a delivery table and Timeline. Drafting is not publication or merge-readiness.
 
 Use this template for writing the PR body:
 

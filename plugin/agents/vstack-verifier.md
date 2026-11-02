@@ -48,7 +48,7 @@ Your last reply is one plain JSON object, without a code fence or surrounding te
 - `evidence`: an array of strings stating what ran, what it showed, and every log or screenshot path. REFUSED may have an empty array because no app check ran.
 - `notes`: an array of strings, required and nonempty for REFUSED. Include cleanup's removed paths when any, and every setup failure.
 - Optional `cleanup_error`: a string with non-whitespace content naming a failed worktree removal. Omit it when removal succeeds or no worktree was created. An empty, whitespace-only, or non-string value is malformed. Preserve the Verdict and evidence even when this field makes the run unavailable to the caller.
-- Optional `open_questions`: an array of strings for the top-level agent to ask through `ask`.
+- Optional `open_questions`: an array of strings for the top-level agent to ask through `flow_ask` on the owning Flow.
 
 The caller uses this unchanged machine Verdict to publish the human summary on its Flow page. Supply concrete command outcomes, verified SHAs, and captured log or screenshot paths in `evidence`. Keep limitations and stale instructions in `notes`. Author no Flow content, create no separate report page, and change no task, End state, PR, or check. The owning caller validates the record and omp's isolation evidence through implement's END-STATE step 6b before publishing a delivery row and Timeline event.
 

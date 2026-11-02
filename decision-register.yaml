@@ -20,7 +20,7 @@ items:
     tree: d8e341cee7980127dddda05159bedf25dc853615
     disposition: adapt
     artifacts: [plugin/skills/code-review]
-    reason: "PR pinning accepts MCP Code hosts without operation rows, selects read-pr by descriptions and schemas, and fetches exact commits through project facts. It retains CLI rows and review axes and fetches originating tracker keys and comments through current descriptions, schemas, and recorded facts (#204, #207, ADR 0035)."
+    reason: "PR pinning accepts MCP Code hosts without operation rows, selects read-pr by descriptions and schemas, and fetches exact commits through project facts. It retains CLI rows and review axes and fetches originating tracker keys and comments through current descriptions, schemas, and recorded facts (#204, #207, ADR 0035). Flow publication is conditional and chat keeps the full output (#321, ADR 0046)."
   - id: matt/codebase-design
     upstream: matt
     kind: skill
@@ -36,7 +36,7 @@ items:
     tree: de4236cf34757c4e9ea7afe78d46c023213ff254
     disposition: adapt
     artifacts: [plugin/skills/diagnosing-bugs]
-    reason: "Its user questions go through ask (ask-tool, #58)."
+    reason: "Its user questions go through ask (ask-tool, #58). Flow publication is conditional and chat keeps the full output (#321, ADR 0046)."
   - id: matt/domain-modeling
     upstream: matt
     kind: skill
@@ -44,7 +44,7 @@ items:
     tree: ea30ee454ba264543dbe40737973b1a5afb9f0e6
     disposition: adapt
     artifacts: [plugin/skills/domain-modeling]
-    reason: "Its user questions go through ask and on the Flow page, with option labels only in ask (ask-tool, #58, #165)."
+    reason: "Its user questions use the shared single-call Flow picker protocol (ask-tool, #58, #165). Flow publication is conditional and chat keeps the full output (#321, ADR 0046)."
   - id: matt/grill-with-docs
     upstream: matt
     kind: skill
@@ -84,7 +84,7 @@ items:
     tree: 0a6796c5667e95ed2301ba7381c123b4acb2ae1a
     disposition: adapt
     artifacts: [plugin/skills/research]
-    reason: "Background agent names a vstack agent (#36)."
+    reason: "Background agent names a vstack agent (#36). Flow publication is conditional and chat keeps the full output (#321, ADR 0046). A standalone run closes the Flow it created (#322)."
   - id: matt/setup-matt-pocock-skills
     upstream: matt
     kind: skill
@@ -100,7 +100,7 @@ items:
     tree: bf1bf5ffcd63aa8abce830f2955a853c121fb463
     disposition: adapt
     artifacts: [plugin/skills/tdd]
-    reason: "Asks the seam question through `ask` on the Flow page and points at `skill://codebase-design` and `skill://code-review` (#209)."
+    reason: "Asks the seam question through the shared Flow picker protocol and points at `skill://codebase-design` and `skill://code-review` (#209). Flow publication is conditional and chat keeps the full output (#321, ADR 0046)."
   - id: matt/to-spec
     upstream: matt
     kind: skill
@@ -140,7 +140,7 @@ items:
     tree: 0a163daf092c6f361158ca9627e81f2cb5230574
     disposition: adapt
     artifacts: [plugin/skills/wizard]
-    reason: "Its user questions go through ask (ask-tool, #58). Secrets and variables go to the CI service, with manual instructions when its commands are absent (ADR 0034)."
+    reason: "Its user questions go through ask (ask-tool, #58). Secrets and variables go to the CI service, with manual instructions when its commands are absent (ADR 0034). Flow publication is conditional and chat keeps the full output (#321, ADR 0046)."
   - id: matt/grill-me
     upstream: matt
     kind: skill
@@ -156,7 +156,7 @@ items:
     tree: f0732035b8b1b60ae39454e4191caef32fa91903
     disposition: adapt
     artifacts: [plugin/skills/grilling]
-    reason: "Sub-agent spawn names a vstack agent; one round is one ask; the Flow page lives in flow-page (#267); pushback reopens its decision; a session writes into its flow's page as a Stage, and ask options carry labels only; the grill closes with its summary and no ask, and the caller waits for the user's next prompt; reversible, non-taste, cited decisions are settled in an Assumed table that a note can reopen (#42, #58, #145, #165, #225, ADR 0032, ADR 0037)."
+    reason: "Sub-agent spawn names a vstack agent; one round is one ask; the Flow page lives in flow-page (#267); pushback reopens its decision; a session writes into its flow's page as a Stage, and ask options carry labels only; the grill closes with its summary and no ask, and the caller waits for the user's next prompt; reversible, non-taste, cited decisions are settled in an Assumed table that a note can reopen (#42, #58, #145, #165, #225, ADR 0032, ADR 0037). Flow publication is conditional and chat keeps the full output (#321, ADR 0046)."
   - id: matt/handoff
     upstream: matt
     kind: skill
@@ -172,7 +172,7 @@ items:
     tree: 2ab11f2f51f3c29771edb5d4258d807a49462491
     disposition: adapt
     artifacts: [plugin/skills/teach]
-    reason: "Its user questions go through ask and on the Flow page in a teach Stage (ask-tool, #58, #172)."
+    reason: "Its user questions use the shared Flow picker protocol in a teach Stage (ask-tool, #58, #172)."
   - id: matt/to-questionnaire
     upstream: matt
     kind: skill
@@ -180,7 +180,7 @@ items:
     tree: 46dfbeeba12a9e52eef446676f42e7551023d9a9
     disposition: adapt
     artifacts: [plugin/skills/to-questionnaire]
-    reason: "Its user questions go through ask and on the Flow page in a to-questionnaire Stage (ask-tool, #58, #172)."
+    reason: "Its user questions use the shared Flow picker protocol in a to-questionnaire Stage (ask-tool, #58, #172)."
   - id: matt/wait-what
     upstream: matt
     kind: skill
@@ -620,7 +620,7 @@ items:
     tree: 3ee517292dae0476dc516f9f3805c08fb943c6ff
     disposition: adapt
     artifacts: [plugin/skills/explain]
-    reason: "Renamed from pstack teach, starts from its description, and combines how and why as Fan-out on a Scratch page (ADR 0015)."
+    reason: "Renamed from pstack teach, starts from its description, and combines how and why as Fan-out on a Scratch page (ADR 0015). Flow publication is conditional and chat keeps the full output (#321, ADR 0046)."
   - id: pstack/technical-writing
     upstream: pstack
     kind: skill
@@ -884,7 +884,7 @@ items:
     tree: 00b896d811adffad747c7ca30078d909d60c7f93
     disposition: adapt
     artifacts: [plugin/skills/pr]
-    reason: "Keeps the PR body export and publishes its draft, evidence, and delivery status on the Flow page. Mermaid examples use the house palette (ADR 0044, #292)."
+    reason: "Keeps the PR body export and publishes its draft, evidence, and delivery status on the Flow page. Mermaid examples use the house palette (ADR 0044, #292). Flow publication is conditional and chat keeps the full output (#321, ADR 0046)."
   - id: matt/retro
     upstream: matt
     kind: skill

@@ -41,6 +41,7 @@ export function judgeAnswers(scores: Record<string, number>): void {
 const judgmentCache = { name: "shared judgment cache" };
 
 mock.module("@oh-my-pi/pi-coding-agent", () => ({ settings: {} }));
+mock.module("@oh-my-pi/pi-coding-agent/modes/settings", () => ({ askTimeoutMs: () => undefined }));
 mock.module("@oh-my-pi/pi-coding-agent/judgment", () => ({
   hasNativeJudge: (_settings: unknown, registry: any) => registry.nativeJudge,
   journalJudgmentUsage: (sessionManager: unknown) => {
