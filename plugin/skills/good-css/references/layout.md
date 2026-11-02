@@ -1,5 +1,3 @@
-<!-- Generated from PRACTICES.md by scripts/build-skill.js. Do not edit. -->
-
 ## Content grid with breakouts
 
 Use it as the container of every page, whether or not anything on it goes wider than the content. A centered `max-width` wrapper is the sign, such as `.container`, `.wrapper` or Tailwind's `mx-auto max-w-*`. One grid on the section replaces the `section > .container` wrapper pair and costs no more than it, and any child can be content width, wider, or edge to edge. Put it on `main` for a page of flowing content, or on each section. A band, a figure or a block that an editor later wants wider then takes one class, with no negative margin and no new wrapper.
@@ -36,6 +34,7 @@ Each child picks a width with `grid-column`. Content is the default:
 
 Rules:
 
+- These named content and breakout tracks already consume the container's inline size, including gutters. Use `row-gap` for vertical rhythm and keep `column-gap` at zero. If the layout needs a `column-gap`, include every column gap in the track width budget.
 - Every child must be placed. An unplaced child of the grid lands in the gutter track.
 - Every direct child is a grid item. Wrap a run of inline elements in one element.
 - Change a width by overriding `--content`, not by writing a new column template.

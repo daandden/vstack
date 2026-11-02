@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [8.0.17] - 2026-11-02
+
+- Clarify the content-grid column-gap width budget while preserving vertical row spacing.
+
 ## [8.0.16] - 2026-11-02
 
 - Integrate the accepted Flow single-call custom picker and standalone research closure with the selected UI guidance, preserving existing execution ownership, Pins, Dispositions, and user choices (#338).
