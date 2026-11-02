@@ -13,3 +13,7 @@ Historical content whose exact publication order was not recorded sits behind an
 `t` or the Stages button opens a clickable Stage-only tree with each Stage's state and open-question count. A continued Stage sits under its parent. This tree does not describe ticket dependencies. Stage links go to the Stage in the Overview.
 
 `j` and `k`, or the down and up arrows, select reading stops, update the URL fragment, and move focus to the target. `h` and `l`, or the left and right arrows, move between reading blocks. Content links reveal their destination, including earlier revisions inside disclosures. Old fragment links from migrated pages and earlier tab links still reach their content. Shortcuts do nothing while typing in an input, textarea, select, or editable content, inside media controls, or with a modifier key held.
+
+Diagrams keep their intrinsic label size rather than shrinking to fit a narrow screen. Swipe or scroll inside a wide diagram to read the rest. For keyboard panning, Tab to the diagram and use the arrow keys; those keys do not move the page's reading stop while the diagram has focus. Tab out to resume reading navigation. Captured Mermaid source and historical Pele SVGs follow the same rule in both themes.
+
+Follow a question's Background and Topic note links for its context, and open Term notes for its local definitions. Result-entry links lead to the cited finding or evidence, including earlier revisions inside disclosures.

@@ -16,6 +16,12 @@ Rendering in the page also fixes a WebKit defect. WebKit does not use a user-ins
 
 `plugin/skills/vstack-figures/scripts/render.ts` stays for figures outside the Flow, such as teach's offline lessons. It still writes a Catppuccin Mocha SVG with its embedded style.
 
+## Implementation and proof status
+
+The #316 candidate proof uses the real CLI, production Bun host, installed reader, and Chromium. It checks captured source/SVG hashes, Latte/Mocha paints, preserved nonpalette colors, and the same drawn nodes across theme changes. The user's first-publication review found the wide comparison unreadable on a phone. The reader now retains intrinsic label size in a locally scrollable, keyboard-focusable figure; it removes Pele's display-time `max-width` constraint without changing captured bytes or source semantics. Focused browser regression covers both Mermaid and historical Pele SVGs, both themes, panning, focus, and contained page overflow. The user accepted the repaired mobile comparison in both themes and separately reclassified the current over-wide control as wide-but-legible. The old failed mobile captures, historical negative judgment, and repaired-reader views remain separate. Fresh final-input authoring trials and their new user judgments are recorded in the evaluation's `judging.json`; none of these later views changes an earlier first-publication score.
+
+Use the Verify recipe's `flow-diagram-reading` and `flow-t4` procedures to repeat these checks, and the authoring evaluation's `PROCEDURE.md` to freeze and review first publications. A general readability fix can change an over-wide judging control; record that later rendering separately rather than carry an obsolete tiny-label verdict forward. This candidate run does not repeat the earlier WebKit and Firefox probes above or certify the final integrated commit.
+
 ## Cost
 
 - The captured bytes are the source, not the figure. The figure a reader sees depends on the pinned Pele, the reader's fonts, and the browser. A Pele upgrade redraws every source-based figure, and a font change can rewrap labels. Spec #309's frozen first-publication evidence keeps its captured bytes, but a diagram's screenshot is evidence of one reader revision in one browser, not of the bytes alone.

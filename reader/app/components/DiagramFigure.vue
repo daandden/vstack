@@ -8,7 +8,7 @@ const src = computed(() => `assets/${props.a.file}`);
 const mode = ref<"pending" | "drawn" | "image" | "failed">("pending");
 const error = ref("");
 const host = ref<HTMLElement>();
-const BASE = ":host { display: block; inline-size: fit-content; max-inline-size: 100%; }\nsvg { display: block; max-inline-size: 100%; block-size: auto; }\ntext { font-variant-ligatures: none; }";
+const BASE = ":host { display: block; inline-size: fit-content; max-inline-size: 100%; overflow-x: auto; }\nsvg { display: block; max-inline-size: none; block-size: auto; }\ntext { font-variant-ligatures: none; }";
 
 let drawing = 0;
 async function draw() {
@@ -31,6 +31,7 @@ async function draw() {
     const style = document.createElement("style");
     style.textContent = `${BASE}\n${drawn.css}`;
     drawn.svg.setAttribute("aria-hidden", "true");
+    drawn.svg.style.removeProperty("max-width");
     keepPlaceNow(() => root.replaceChildren(style, document.adoptNode(drawn.svg)));
     mode.value = "drawn";
   } catch (e) {
@@ -46,5 +47,5 @@ watch(() => `${props.a.file}\n${props.a.focus?.join("\n") ?? ""}`, draw);
 <template>
   <img v-if="mode === 'image'" :src="src" :alt="a.caption">
   <p v-else-if="mode === 'failed'" class="unavailable"><span class="label">Diagram unavailable</span> {{ error }}</p>
-  <div v-else ref="host" class="diagram" role="img" :aria-label="a.caption" :aria-busy="mode === 'pending'" :data-render="mode" />
+  <div v-else ref="host" class="diagram" role="img" :aria-label="a.caption" :aria-busy="mode === 'pending'" :data-render="mode" tabindex="0" @keydown.stop />
 </template>

@@ -175,3 +175,65 @@ test.each(["mermaid", "svg"] as const)("Flow diagrams draw safely in the reader'
   expect({ dialogs, offOrigin, popups }).toEqual({ dialogs: [], offOrigin: [], popups: [] });
   await context.close();
 }, 120_000);
+
+test.each(["mermaid", "svg"] as const)("narrow readers preserve %s label size and allow keyboard panning without page overflow", async (type) => {
+  const opened = cli(["open", "--skill", "grill-me", "--title", "Reading a wide diagram"]);
+  const source = join(root, `wide.${type === "mermaid" ? "mmd" : "svg"}`);
+  if (type === "mermaid") writeFileSync(source, [
+    "flowchart LR",
+    '  a["Read the first contribution"] --> b["Answer the current question"]',
+    '  b --> c["Keep the earlier contribution in place"]',
+    '  c --> d["Continue reading the next contribution"]',
+  ].join("\n"));
+  else copyFileSync(CAPTURED_SVG, source);
+  const bytes = readFileSync(source);
+  cli(["submit"], { version: 1, items: [
+    { kind: "attachment", ref: "wide", type, caption: "Wide reading diagram", origin: "Captured diagram", path: source },
+    { kind: "round", questions: [{
+      ref: "wide-reading", title: "Can you follow the full path?", description: "Read every step before answering.",
+      needs: [{ need: "Follow the full reading path.", kind: "context-diagram" }],
+      figures: [{ attachment: "wide", kind: "context-diagram" }],
+      options: [{ label: "Continue", does: "Keeps the reading path", gains: ["Readable steps"], costs: ["None"] }],
+    }] },
+  ] });
+  const context = await browser.newContext({ viewport: { width: 360, height: 900 } });
+  try {
+    const page = await context.newPage();
+    await page.goto(opened.live.url);
+    const figure = page.getByRole("img", { name: "Wide reading diagram" });
+    await figure.locator("svg").waitFor();
+    for (const theme of ["Light", "Dark"]) {
+      await page.getByRole("button", { name: theme, exact: true }).click();
+      const geometry = await figure.evaluate((host) => ({
+        fonts: [...host.shadowRoot!.querySelectorAll("text")].filter((t) => t.textContent?.trim()).map((t) => {
+          const matrix = t.getScreenCTM()!;
+          return parseFloat(getComputedStyle(t).fontSize) * Math.hypot(matrix.a, matrix.b);
+        }),
+        viewport: host.clientWidth, drawing: host.scrollWidth,
+        page: document.documentElement.scrollWidth, screen: innerWidth,
+      }));
+      expect(geometry.fonts.length).toBeGreaterThan(0);
+      expect(Math.min(...geometry.fonts)).toBeGreaterThanOrEqual(12);
+      expect(geometry.drawing).toBeGreaterThan(geometry.viewport);
+      expect(geometry.page).toBeLessThanOrEqual(geometry.screen);
+      await figure.evaluate((host) => { host.scrollLeft = 0; });
+      await figure.focus();
+      const readingUrl = page.url();
+      await page.keyboard.press("ArrowRight");
+      await Bun.sleep(250);
+      const panned = await figure.evaluate((host) => host.scrollLeft);
+      expect(panned).toBeGreaterThan(0);
+      await page.keyboard.press("ArrowLeft");
+      await Bun.sleep(250);
+      expect(await figure.evaluate((host) => host.scrollLeft)).toBeLessThan(panned);
+      expect(page.url()).toBe(readingUrl);
+      expect(await figure.evaluate((host) => document.activeElement === host)).toBe(true);
+    }
+    const model = await (await fetch(new URL("content", opened.live.url))).json() as any;
+    const attachment = model.attachments.find((a: any) => a.caption === "Wide reading diagram");
+    const served = Buffer.from(await (await fetch(new URL(`assets/${attachment.file}`, opened.live.url))).arrayBuffer());
+    expect(served.equals(bytes)).toBe(true);
+  } finally {
+    await context.close();
+  }
+}, 120_000);

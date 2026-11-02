@@ -84,6 +84,8 @@ await Bun.write(out, await new Bun.Image(await Bun.file(pngPath).bytes()).webp({
 
 `out` is an absolute `.webp` path. Retain the PNG. Captures made during this run show the frozen new publication, not the historical Q7 or Q8 publication. A missing image, failed browser capture, clipped evidence, or unavailable display prerequisite is unavailable, never a pass. A re-render of a control in a later reader is labelled as a re-render and does not replace an earlier reviewed capture.
 
+When a reader repair changes a control's displayed meaning, record the current rendering and obtain a new judgment. Do not apply an older negative verdict to it automatically or invent a replacement negative. The #316 current-reader review reclassified the unchanged over-wide source as wide-but-legible with local panning; `judging.json` keeps that judgment separate from the historical tiny-label failure. Preserve both captures and their first-publication scores.
+
 ## Publish the judging controls
 
 Use the real CLI with another isolated home per entry in `controls.json`. Copy the three sources under `figures/` into `${figures}` unchanged. Each control captures its source as a `mermaid` attachment with its `focus`, and the reader draws it with the pinned Pele. The drawn layout follows that Pele version and the reader's fonts, so record the browser and the reader revision with each capture. Controls captured earlier as SVG keep their recorded evidence.

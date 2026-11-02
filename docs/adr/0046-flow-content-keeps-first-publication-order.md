@@ -4,7 +4,7 @@ status: accepted
 
 # Flow content keeps first-publication order
 
-This design is implemented by #313 and presented by the Nuxt reader in #314. It amends the Stage-tab-primary reading model in [ADR 0029](0029-a-flow-keeps-one-grilling-page-tabbed-by-stage.md) and [ADR 0044](0044-structured-flow-data-drives-server-rendered-pages.md), alongside the frontend decision in [ADR 0045](0045-flow-reader-uses-nuxt-with-vite-plus-on-bun.md). Spec #309 and #316 remain open because full final-tree verification is unavailable.
+This design is implemented by #313 and presented by the Nuxt reader in #314. It amends the Stage-tab-primary reading model in [ADR 0029](0029-a-flow-keeps-one-grilling-page-tabbed-by-stage.md) and [ADR 0044](0044-structured-flow-data-drives-server-rendered-pages.md), alongside the frontend decision in [ADR 0045](0045-flow-reader-uses-nuxt-with-vite-plus-on-bun.md). The #316 candidate proof exercises cross-Stage and within-contribution order, concurrent writers, replay/refusal/conflicts, in-place answers and history, historical continuation, and native mixed new/reasked question order. It records retained reading, focus, disclosures, and interaction state during automatic authored and observation updates. Independent verification of the final integrated commit remains separate.
 
 Make one reading sequence across the Flow's Stages the main reader experience. New content takes its position at its first successful publication to the Flow. Retain submitted item order within a contribution and declared question order within a round. Persist that order rather than derive it from author timestamps, Stage opening order, content kind, or the latest update time.
 

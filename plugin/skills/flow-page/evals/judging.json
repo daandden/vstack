@@ -61,7 +61,15 @@
     {
       "id": "unreadable",
       "expected": "negative",
-      "basis": "Both labels exist in captured bytes, but a 6986px-wide diagram shrinks to about 1216 CSS px, with its labels about 2.8 CSS px high. Judge displayed evidence, not source zoom."
+      "basis": "Historical reviewed capture: both labels exist in captured bytes, but a 6986px-wide diagram shrinks to about 1216 CSS px, with its labels about 2.8 CSS px high. Judge displayed evidence, not source zoom.",
+      "expected_scope": "The historical reviewed capture, not every later rendering of this unchanged source.",
+      "current_reader_review": {
+        "question": "Q24",
+        "answer": "B",
+        "classification": "wide-but-legible",
+        "use_as_font_readability_negative": false,
+        "basis": "The repaired reader preserves intrinsic labels and local panning. The user reclassified this current rendering without changing the historical failure."
+      }
     },
     {
       "id": "late-repair",
@@ -108,5 +116,30 @@
         "Flow question question-25, answer B: The prototype-review diagram is not readable in the light theme. Light-mode figure styling needs a fix."
       ]
     }
+  },
+  "ticket_316_candidate": {
+    "status": "Combined candidate proof recorded; independent certification of the final integrated commit remains a separate gate.",
+    "configuration": "Two fresh paired batches, each with one trial per subject and side. The final-input batch used the actual recorded openai-codex/gpt-6.1-sol Session model at high thinking, with no main-model fallback or provider failure.",
+    "first_publication": "All eight final-input trials completed through the actual authoring CLI with isolated identities and homes. Their first revision, binding, submitted fields, captured bytes, reader images, and record-integrity results were preserved before review.",
+    "human_review": {
+      "earlier_batch": "Q17A, Q18A, Q19A, and Q20A: only the with-skill explanation was adequate for each of the four subjects. These judgments remain attached to those examples.",
+      "failed_before_mobile": "Q21B: desktop readable, mobile needs a fix.",
+      "repaired_mobile": "Q23A: the repaired mobile comparison is usable in both themes.",
+      "current_wide_control": "Q24B: the current over-wide rendering is wide-but-legible, not a font-readability negative.",
+      "final_input_batch": [
+        { "subject": "stream-versus-tabs", "question": "Q25", "answer": "A", "with_skill_adequate": true, "baseline_adequate": false },
+        { "subject": "update-placement", "question": "Q26", "answer": "A", "with_skill_adequate": true, "baseline_adequate": false },
+        { "subject": "terminology", "question": "Q27", "answer": "A", "with_skill_adequate": true, "baseline_adequate": false },
+        { "subject": "prototype-review", "question": "Q28", "answer": "A", "with_skill_adequate": true, "baseline_adequate": false }
+      ],
+      "presentation": "Ordinary page titles identified question, example, theme, and viewport above unchanged raw review screenshots; labels were not burned into images."
+    },
+    "scope": "The structural stream example uses drawn question-local Mermaid. The update-delivery example uses concrete numbered text usage previews. The terminology and prototype-review controls retain prose. Mechanical success does not supply these subjective adequacy judgments.",
+    "limits": [
+      "One trial per subject and side in each batch is not a reliability estimate.",
+      "Earlier interrupted, rate-limited, fallback, or unavailable attempts retain their original status.",
+      "A later repair or re-render does not change an earlier first-publication score.",
+      "Repeat with PROCEDURE.md and check-record.ts; raw machine provenance and run-specific captures belong in Verify Scratch, not public capability links."
+    ]
   }
 }

@@ -1,5 +1,5 @@
 import { afterAll, expect, test } from "bun:test";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { ENV, git } from "./support/fixture.ts";
@@ -40,9 +40,19 @@ function run(args: string[], o: Opts): Run {
   return parse(r.exitCode, r.stdout.toString(), r.stderr.toString());
 }
 async function runAsync(args: string[], o: Opts): Promise<Run> {
-  const p = Bun.spawn(argv(args, o), { cwd: o.cwd, env: envOf(o), stdin: stdinOf(o), stdout: "pipe", stderr: "pipe" });
-  const [stdout, stderr, code] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited]);
-  return parse(code, stdout, stderr);
+  const capture = mkdtempSync(join(root, "stdio-"));
+  let stdout = -1, stderr = -1;
+  try {
+    stdout = openSync(join(capture, "stdout"), "w");
+    stderr = openSync(join(capture, "stderr"), "w");
+    const p = Bun.spawn(argv(args, o), { cwd: o.cwd, env: envOf(o), stdin: stdinOf(o), stdout, stderr });
+    const code = await p.exited;
+    return parse(code, readFileSync(join(capture, "stdout"), "utf8"), readFileSync(join(capture, "stderr"), "utf8"));
+  } finally {
+    if (stdout >= 0) closeSync(stdout);
+    if (stderr >= 0) closeSync(stderr);
+    rmSync(capture, { recursive: true, force: true });
+  }
 }
 const ok = (r: Run): any => {
   expect(r.stderr).toBe("");
