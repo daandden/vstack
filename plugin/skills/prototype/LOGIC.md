@@ -2,9 +2,9 @@
 
 A logic prototype lets a reader drive a state model with buttons. Use it for business logic, state transitions, or data shape that is hard to judge without trying cases. State and action labels use domain language so a non-developer can explore the question.
 
-Prefer a declarative `prototype` Result when flow-page's states, typed values, actions, and bounded conditions express the actual model. It provides visible state, action availability, Reset, and browser-local resume in both the live page and static export. Put the question and guided action sequences in its companion Document Result. This branch needs no handwritten HTML or scripts.
+In a Flow, prefer a declarative `prototype` Result when flow-page's states, typed values, actions, and bounded conditions express the actual model. It provides visible state, action availability, Reset, and browser-local resume in both the live page and static export. Put the question and guided action sequences in its companion Document Result. This branch needs no handwritten HTML or scripts.
 
-If the actual logic cannot be expressed by that contract, keep the real implementation in a self-contained HTML artifact and follow steps 2 and 3 below. Publish the captured bundle in the isolated viewer. Do not replace code-dependent behavior with a simpler demo that answers a different question.
+Outside a Flow, or if the actual logic cannot be expressed by that contract, keep the real implementation in a self-contained HTML artifact and follow steps 2 and 3 below. In a Flow, publish the captured bundle in the isolated viewer. Do not replace code-dependent behavior with a simpler demo that answers a different question.
 
 ## When this is the right shape
 
@@ -55,7 +55,7 @@ Keep it beautiful but restrained: clean typography, generous spacing, one accent
 
 ### 4. Hand it over
 
-Present the Flow URL, not an automatically opened file. For a runnable HTML artifact, retain its file and launch instructions as well. The reader can try guided action sequences or free play, and request new actions or scenarios. Publish changes as a new Result revision rather than rewriting earlier evidence.
+In a Flow, present the Flow URL, not an automatically opened file, and publish changes as a new Result revision rather than rewriting earlier evidence. For a runnable HTML artifact, retain its file and launch instructions in either delivery mode. The reader can try guided action sequences or free play, and request new actions or scenarios.
 
 ### 5. Capture the answer and the prototype
 

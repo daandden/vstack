@@ -34,7 +34,17 @@ Run `show --flow <id>` to find the in-progress Stage, then `bind --flow <id> --s
 
 ## Stage entry/exit line
 
-Every result-producing skill follows this line once per run. Producers cite this section and specify only their own content. Reading a reference, using a helper, returning machine facts, or performing another test cycle within an existing run opens no empty Stage.
+Every result-producing skill checks enrollment once per run, before discovery or creation. Producers cite this section and specify only their own content. A run enters a Flow only when one of these holds:
+
+- The caller supplies a Flow or Stage for this work.
+- This session and agent already hold a binding for this work. The extension's per-turn context names their own binding when one exists.
+- The user typed `/skill:<name>` for the running skill, or asked in words for a page or Flow. omp's native `User invoked the "<name>" skill` header is that expanded typed command, even when the slash token is absent.
+
+When any case matches, execute the numbered Stage entry/exit steps below. For a typed run without a binding, discover its Flow and use `open` to create the binding.
+
+Selecting or reading research, explain, or another skill from its description is not enrollment. Reading a reference, using a helper, returning machine facts, or performing another test cycle within an existing run opens no empty Stage.
+
+Without enrollment, run the producer as chat. Skip Flow discovery, authoring, Stage, and receipt steps, and put the full useful output in chat rather than a page-only summary. Use plain `ask` for questions, with their context in chat. Still write canonical research notes and every other file the producer requires. The steps below and producers' Flow publication and `flow_ask` instructions apply only in a Flow.
 
 1. Discover the Flow through [Find a Flow](#find-a-flow). Use the extension's `--session` and `--agent` on every command. Save the caller's binding and Stage before a nested run. A binding belongs to one project, session, and agent, never the globally last active Stage.
 2. Open one Stage before the run's first contribution or ask. Use `open --skill <name> --flow <flow>` on an open Flow, adding `--parent <caller-stage>` for a nested run or continuation of finished work and `--ticket <id>` for ticket work. A closed Flow requires explicit `reopen --skill <name> --flow <flow>` with those same context flags. Only after discovery proves no matching modern or supported historical Flow exists, start one with `open --skill <name> --title <title>`. Its optional `--slug` has 3 to 5 words.
@@ -102,7 +112,7 @@ The receipt's `ask` contains the generated picker questions in Q-number order, w
 
 ## Every ask in a Flow
 
-For every ordinary question, whichever skill owns it, author the full question once and call `flow_ask`. Follow [Reader needs and Visual kinds](references/reader-needs.md) before the call. The complete round and its new visuals commit atomically. The page carries descriptions, trade-offs, and context. Code derives the numbered picker titles and labels.
+This contract applies only to enrolled runs. Outside a Flow, use plain `ask` as the Stage entry rule says. In a Flow, for every ordinary question, whichever skill owns it, author the full question once and call `flow_ask`. Follow [Reader needs and Visual kinds](references/reader-needs.md) before the call. The complete round and its new visuals commit atomically. The page carries descriptions, trade-offs, and context. Code derives the numbered picker titles and labels.
 
 The tool requires the main agent in an interactive omp TUI with the active omp-tools host-dialog route. It uses that custom picker for every question. It does not use or replace native `ask`, and there is no native fallback. A missing route, a non-TUI run, or a subagent call is unavailable. A subagent returns open questions to its coordinator, and the top-level agent authors the round.
 

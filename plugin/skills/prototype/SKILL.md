@@ -9,9 +9,9 @@ A prototype is **throwaway code that answers a question**. The question decides 
 
 ## Pick a branch
 
-Identify which question is being answered, using the user's prompt, the surrounding code, or one `flow_ask` round if the user is around:
+Identify which question is being answered, using the user's prompt, the surrounding code, or one question-tool round if the user is around:
 
-- **"Does this logic / state model feel right?"** → [LOGIC.md](LOGIC.md). Prefer a declarative demo on the Flow page when its states, values, actions, and transitions express the question. Keep a real runnable artifact when the logic needs code.
+- **"Does this logic / state model feel right?"** → [LOGIC.md](LOGIC.md). In a Flow, prefer a declarative demo when its states, values, actions, and transitions express the question. Otherwise keep a real runnable artifact, including for chat runs.
 - **"What should this look like?"** → [UI.md](UI.md). Generate several radically different UI variations on a single route, switchable via a URL search param and a floating bottom bar.
 - **"What does it actually do, and how fast?"** → [BEHAVIOR.md](BEHAVIOR.md). Write the smallest script that exercises the question and prints the output or the timing.
 
@@ -23,11 +23,11 @@ When the question has more than one plausible answer, build the variants the use
 
 Follow `skill://flow-page`'s "Stage entry/exit line" before producing a Result or asking the branch question. A detour retains the Flow identity in its handoff. A prototype for a wayfinder ticket is a nested result-producing run under that ticket's Stage.
 
-Publish a `prototype` Result with a declarative `demo` or a runnable `artifact` attachment. Capture a self-contained HTML bundle with `runtime: "html"`, every resource it needs, real launch steps, and its source revision. For app-bound UI variants, preserve the actual application route and `?variant=` keys. Start the app yourself and register its loopback route with `runtime: "local-app"`. Keep terminal and backend-dependent scripts as terminal artifacts with real launch commands and an explicit `unavailable` reason when a runtime is missing. A static description or a simulated backend never replaces the executable.
+In a Flow, publish a `prototype` Result with a declarative `demo` or a runnable `artifact` attachment. Capture a self-contained HTML bundle with `runtime: "html"`, every resource it needs, real launch steps, and its source revision. For app-bound UI variants, preserve the actual application route and `?variant=` keys. Start the app yourself and register its loopback route with `runtime: "local-app"`. Keep terminal and backend-dependent scripts as terminal artifacts with real launch commands and an explicit `unavailable` reason when a runtime is missing. A static description or a simulated backend never replaces the executable.
 
-Put the design question, walkthrough steps, observed evidence, limitations, and throwaway notice in a Document Result beside the prototype. Use Comparison for competing variants and Metrics for measurements. Attach the screenshots and raw script output. Keep the actual source and capture paths required below. The Flow page is the reading document, not a second report page or the canonical implementation.
+In a Flow, put the design question, walkthrough steps, observed evidence, limitations, and throwaway notice in a Document Result beside the prototype. Use Comparison for competing variants and Metrics for measurements. Attach the screenshots and raw script output. Keep the actual source and capture paths required below. The Flow page is the reading document, not a second report page or the canonical implementation.
 
-Record real questions through `flow_ask` under `skill://flow-page`'s "Every ask in a Flow" contract, never through a prototype button. Demo state remains browser-local and authorizes nothing.
+Put real questions through `flow_ask` under `skill://flow-page`'s "Every ask in a Flow" contract when enrolled, or plain `ask` outside a Flow, never through a prototype button. Demo state remains browser-local and authorizes nothing.
 
 ## Rules that apply to all three
 
@@ -39,7 +39,7 @@ Record real questions through `flow_ask` under `skill://flow-page`'s "Every ask 
 6. **Capture it when done.** Fold any validated decision into the real code, then capture the prototype itself as a **primary source**: commit it to a throwaway branch, out of main, and leave a context pointer to that branch on the implementation issue. Capture the answer too (the verdict and the question it settled) in the issue or a commit. The main branch keeps only the validated decision. In Private mode, capture goes to the vstack root instead: see [Private mode](#private-mode).
 7. Observe before handover. Do not hand a prototype over until you have seen every variant work yourself. The observation is the test here, not an assertion.
    - UI: open each variant in the omp browser, take a screenshot, and drive the interaction the question is about.
-   - LOGIC: open the Flow page's demo or isolated artifact, follow every walkthrough, and check the visible state after each step.
+   - LOGIC: outside a Flow, open the standalone HTML artifact directly. In a Flow, open the Flow page's demo or isolated artifact. In both modes, follow every walkthrough and check the visible state after each step.
    - BEHAVIOR: run the script and keep its output or timing.
 
    Save the evidence files (screenshots, output, timings) in the Scratch dir under the `prototype` kind: run `bun "$(realpath skill://vstack-tmp/scripts/path.ts)" prototype` with the bash tool from inside the repo, and it prints the dir. In Private mode, save them in the prototype's `vstack/artifacts/<topic>/` dir instead.
@@ -60,7 +60,7 @@ A self-contained prototype (a single HTML file, or a script that needs nothing f
 
 ## Reply
 
-Publish the following handover parts as Results on the Flow page, then summarize them in the reply with the Flow URL. Keep the runnable artifact, route, and source capture available through the contracts above.
+In a Flow, publish the following handover parts as Results, then summarize them in the reply with the Flow URL. Outside a Flow, deliver every part in chat. Keep the runnable artifact, route, and source capture available through the contracts above.
 
 - Variants: what each variant is and how to open it. For an app-bound prototype, the URL with its `?variant=` keys and the one command that restarts the dev server.
 - Evidence: the screenshots for UI, the walkthrough results for LOGIC, or the observed output or timing for BEHAVIOR, with the paths of the evidence files.

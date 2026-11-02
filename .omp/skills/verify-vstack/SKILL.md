@@ -24,17 +24,17 @@ The user-facing parts:
 
 ## Isolation
 
-Each run gets its own omp home at `$VERIFY_RUN_DIR/data/home` and its own stub model port on `127.0.0.1`, chosen free by the OS. Runs in parallel do not share ports, data, or omp profiles. omp in a drive gets an env of only `PATH`, `HOME`, and `TERM`, so it never reads the real `~/.omp`.
+Each stub drive gets its own omp home at `$VERIFY_RUN_DIR/data/home` and its own stub model port on `127.0.0.1`, chosen free by the OS. Runs in parallel do not share ports, data, or omp profiles. omp in a stub drive gets an env of only `PATH`, `HOME`, and `TERM`, so it never reads the real `~/.omp`. The real-model enrollment recipe in `features/flow-page.md` uses a separate fresh native process with the caller's real HOME and credentials, as ADR 0010 requires.
 
-omp also loads project skills from `.claude/skills` and `.agents/skills` in every parent dir of its working directory. The run dir is under the real home, so the session's working directory is a temp dir outside it. The first drive or load gate of a run makes that dir with `mktemp` as `<os temp dir>/vstack-verify-XXXXXX/`. Its random name is unique, so two run dirs with the same name never share it. `$VERIFY_RUN_DIR/data/outside` links to that dir, every later drive of the run reuses it, and Cleanup deletes it.
+omp also loads project skills from `.claude/skills` and `.agents/skills` in every parent dir of its working directory. A stub drive's run dir is under the real home, so its working directory is a temp dir outside it. The first drive or load gate makes that dir with `mktemp` as `<os temp dir>/vstack-verify-XXXXXX/`. Its random name is unique, so two run dirs with the same name never share it. `$VERIFY_RUN_DIR/data/outside` links to that dir, later stub drives reuse it, and Cleanup deletes it.
 
 For `flow_ask`, use the PTY helper in `features/flow-page.md`. It creates both HOME and cwd in the outside temp dir, links `data/home` to that HOME, and adds only `VSTACK_FLOW_PORT` to the sanitized child env. The explicit omp-tools path supplies the real custom picker. RPC dialog replies cannot prove that TUI route.
 
-The shared instance is your own omp session and the real `~/.omp`. Never use it as the proof. It loaded the plugin when it started, so it does not show edits made since then. It also uses real models and the user's credentials.
+Never use your already-running omp session as proof. It loaded the plugin when it started, so it does not show edits made since then. Stub drives use the throwaway home. The real-model enrollment recipe verifies instruction following with the actual provider in a fresh session, not the shared session.
 
 ## Launch
 
-There is nothing to build. A launch is one drive: `scripts/drive.ts` links the plugin into the run's home, starts a stub model, starts `omp --mode rpc` (or `--mode rpc-ui` with `--rpc-ui`), sends the RPC commands you give it, and stops both processes before it exits.
+There is nothing to build. For scripted smoke proof, a launch is one drive: `scripts/drive.ts` links the plugin into the run's home, starts a stub model, starts `omp --mode rpc` (or `--mode rpc-ui` with `--rpc-ui`), sends the RPC commands you give it, and stops both processes before it exits. The real-model enrollment recipe launches its own fresh native process from `CHECKOUT`.
 
 ```sh
 bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN_DIR" --name <drive> \
@@ -76,9 +76,13 @@ It prints one `ok` or `FAIL` line per check and exits 1 on a failure. It checks 
 Each feature file in `features/` gives the exact commands and the proof for one feature. The ways to act:
 
 - Session behavior (skills, commands, tools, rules, agents): `scripts/drive.ts`, as in Launch. Make the stub model act as the agent with `--replies`. A `{"tool": ...}` reply makes omp run that tool for real, in the session, with the plugin loaded.
-- Bun CLIs that skills run: run the checkout's script with the bash tool's `cwd` set to `CHECKOUT`, as `bun plugin/skills/<skill>/scripts/<script>.ts ...`. Pass `--home "$VERIFY_RUN_DIR/data/<name>"` when the script takes `--home`. Do not use `realpath skill://...` here. That path resolves to the plugin your own session loaded, which is not always `$CHECKOUT`.
+- Bun CLIs that skills run: run the checkout's script with the bash tool's `cwd` set to `CHECKOUT`, as `bun plugin/skills/<skill>/scripts/<script>.ts ...`. For isolated CLI fixtures, pass `--home "$VERIFY_RUN_DIR/data/<name>"` when the script takes `--home`. Native enrollment instead uses its documented normal-HOME namespace. Do not use `realpath skill://...` here: that path resolves to the plugin your own session loaded, which is not always `$CHECKOUT`.
 - Pages: open the written HTML file in the omp `browser` with `app: { tern: false }` and a `viewport` of `{ width: 1280, height: 900 }`. Read state with `tab.ariaSnapshot()` and act by role and name, for example `role/tab[name="Overview"]`.
 - Maintainer CLIs: run them with the bash tool's `cwd` set to `CHECKOUT`, as `docs/maintainer.md` documents. Capture the command, stdout, stderr, and exit code.
+
+Keep every verification browser open outside the user's working Tern window. Apply the explicit non-Tern backend selection on each open, including diagnostics, retries, recovery, and delegated verification. An earlier open's backend flags do not constrain later calls or workers. Pass this policy in verification handoffs and inspect each open result to confirm the actual backend.
+
+Opening a browser, capturing a screenshot, and reading an image are separate operations. Image inspection is not evidence that a browser pane opened.
 
 Set the working directory with the bash tool's `cwd` parameter, not with `cd`. On this machine the bash tool's `cd` is a shell function that fails with `command not found: __zsh_like_cd`.
 
@@ -97,7 +101,7 @@ Set the working directory with the bash tool's `cwd` parameter, not with `cd`. O
    Read the WebP path to look at it. Keep the ARIA snapshot next to it as a `.aria.txt` file.
 6. Write `$VERIFY_RUN_DIR/notes.md` with the feature ID, the entry point, each command, the result, and the path of each proof file. Report an entry point you did not drive as skipped, with the reason. A proof through one entry point does not prove another.
 
-The stub model is the only mock. It stands at the model-provider boundary. Never prove a feature through `tests/support/extension-host.ts`, the extension factory called in-process, or any other test-only path.
+The model stub stands at the model-provider boundary. Only the Scratch identity recipe adds named process-boundary fault fixtures; those run the real CLIs, and its lost-buffer fixture still runs real Git. Never prove application behavior through `tests/support/extension-host.ts`, the extension factory called in-process, or another replacement of the component under test.
 
 ## Cleanup
 

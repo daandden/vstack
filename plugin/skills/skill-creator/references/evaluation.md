@@ -65,7 +65,7 @@ Assertions can check the process as well as the output: a required tool call or 
 
 ## Review
 
-Present each eval on the Flow page. Use a Document Result for the prompt, assertion results, changed instructions, user feedback, and unverified work. Use a Comparison Result for with-skill versus baseline outputs, criteria, evidence, and verdict. Attach the redacted outputs, assertions, and transcripts, preserving `evals.json`, skill snapshots, and iteration directories. Use Metrics for measured pass counts, time, or cost with units, samples, uncertainty, and missing values where data is absent. Raw assertion rates alone do not establish a skill's quality. Collect feedback per eval through `flow_ask` on the evaluation Stage. Focus revisions on the evals with specific complaints. Silence or unavailable questioning grants no approval.
+In a Flow, present each eval on the Flow page. Use a Document Result for the prompt, assertion results, changed instructions, user feedback, and unverified work. Use a Comparison Result for with-skill versus baseline outputs, criteria, evidence, and verdict. Attach the redacted outputs, assertions, and transcripts, preserving `evals.json`, skill snapshots, and iteration directories. Use Metrics for measured pass counts, time, or cost with units, samples, uncertainty, and missing values where data is absent. Outside a Flow, deliver those findings and evidence in chat and preserve the same files. Raw assertion rates alone do not establish a skill's quality. Collect feedback per eval through `flow_ask` on the evaluation Stage when in a Flow, or plain `ask` outside one. Focus revisions on the evals with specific complaints. Silence or unavailable questioning grants no approval.
 
 ## Improve
 

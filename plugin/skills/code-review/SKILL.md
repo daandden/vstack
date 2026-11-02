@@ -13,7 +13,7 @@ Each axis runs as its own reviewer so that findings from one do not mask another
 
 Resolve the absolute vstack root through the Private-mode rule once. Read `docs/vstack/issue-tracker.md` under that root in Standard mode, or `<vstack root>/config/issue-tracker.md` in Private mode. If it is missing, stop and tell the user to run `/skill:setup-vstack`. Subagents use the supplied root, never resolve it again.
 
-Follow `skill://flow-page`'s "Stage entry/exit line". A subagent reviewer returns its structured review Result and open questions to the coordinator for publication in the code-review Stage.
+Follow `skill://flow-page`'s "Stage entry/exit line". A subagent reviewer returns its structured review Result and open questions to the coordinator for publication in a Flow or delivery in chat.
 
 ## Process
 
@@ -29,7 +29,7 @@ Otherwise, when the user supplies a PR as a number or URL, pin it through these 
 4. Create one detached worktree at the head SHA through `skill://vstack-worktree`, with the purpose `code-review-<first 12 characters of the head SHA>`. On a plain checkout, go on with tracked files only, because reviewers only read files. Leave the user's working tree, index, and current branch unchanged.
 5. When the run ends, also when it stops early, remove the worktree with `git worktree remove --force <path>`.
 
-Otherwise use the commit SHA, branch, tag, or merge-base that the user supplied. If none is supplied, ask for the fixed point through flow-page's "Every ask in a Flow" contract with `flow_ask`.
+Otherwise use the commit SHA, branch, tag, or merge-base that the user supplied. If none is supplied, ask for the fixed point through `flow_ask` under flow-page's "Every ask in a Flow" contract when enrolled, or plain `ask` outside a Flow.
 
 Make sure that the ref resolves with `git rev-parse <fixed-point>`.
 
@@ -58,7 +58,7 @@ Read the tracker workflow from the vstack configuration above. Look for the orig
 1. Issue references in the commit messages (`#123`, `Closes #45`, GitLab `!67`, or tracker keys such as Jira `MY_PROJ-12`), fetched with their full body and comments through that workflow. For an MCP tracker, read the named server's current tool list, descriptions, and parameter schemas. Select the issue and comment read tools using the recorded project facts and original issue key, without per-operation config rows or assumed tool names. If discovery fails, the server is unreachable, or a needed capability is missing, name the server and gap in Spec's chat line, then try the next source. CLI, local-markdown, and no-tool prose configs keep their configured workflows.
 2. A path the user passed as an argument.
 3. A file under `docs/`, `specs/`, or `.scratch/` matching the branch or feature. In Private mode search `<vstack root>/artifacts/` instead of `.scratch/` too.
-4. If nothing is found, ask for the spec source through that same `flow_ask` contract. If the user says there is none, skip Spec and report `no spec available`.
+4. If nothing is found, ask for the spec source through that same question route. If the user says there is none, skip Spec and report `no spec available`.
 
 ### 3. Identify the standards sources
 
@@ -125,18 +125,18 @@ The Blast radius reviewer prompt must include:
 
 ### 5. Show the report, then ask
 
-Publish through `skill://flow-page` before asking about findings. Submit one `review` Result with all three `axes` and its authoritative `entries`. The renderer derives one summary table at the start of the Stage and links each finding to its full card. Do not author a second summary table or a separate report page.
+In a Flow, publish through `skill://flow-page` before asking about findings. Submit one `review` Result with all three `axes` and its authoritative `entries`. The renderer derives one summary table at the start of the Stage and links each finding to its full card. Do not author a second summary table or a separate report page.
 
 - Each axis names `standards`, `spec`, or `blast-radius`, and has a `status`: `findings` when it completed with findings, `clean` when it completed without findings, `skipped` when deliberately not run or not triggered, `unavailable` when its source or provider could not be read, or `blocked` when a prerequisite prevented completion. Every status except `findings` needs a `reason`. A blocked axis may retain findings already established, but its reason must name the uncompleted work. Never use `clean` for an axis that did not run.
 - Each finding is one entry with a local `ref` such as `std-1`, its `axis`, `title`, `label`, `blocking`, `impact`, `location`, `action`, and `evidence`. `location` gives the source file and line, or the named interface when no source line is known. Keep each reviewer's order within its axis. The impact opens with what a user or caller sees. The script assigns the entry's id and links, including after a focused correction.
 - Blast radius risks use the same finding cards. Keep the confirmed or unproven proof level in the `label`, the consequence in `impact`, the proposed change and missing proof in `action`, and the proof script, command, and observed output in `evidence`. Publish the safety fact and cleared checks as a separate `ledger` Result. Do not repeat risks in that ledger. A clean Blast radius axis may still have a safety fact and cleared checks, but has no fabricated finding card.
 - When a trigger fires outside a run, use Blast radius `skipped`, with a reason naming the triggers, stating that no proof ran, and recommending `/skill:code-review`. A missing spec is `skipped` only when the user says none exists. A source that cannot be read is `unavailable`. If reviewers cannot start, publish the affected axes as `blocked` with the launch failure before stopping.
 
-Decide each finding that its evidence settles: a documented-standard breach, a missing or incorrect spec requirement, a confirmed risk, or a cleared claim. A card holds its decision in `blocking` and `action`, and a claim in `status` and `consequence`. Ask about every other finding, one question per finding. Examples are an unsettled baseline smell, behavior the spec neither asks for nor rules out, an ambiguous spec line, and an unproven claim. If every finding is decided, ask nothing. Otherwise deliver one complete round through flow-page's "Every ask in a Flow" contract with `flow_ask`. Each question names the finding and ends with "?". Its `results` names `<review ref or id>/<entry ref or id>` so the script links both ways. Record the answers through the common interface.
+Decide each finding that its evidence settles: a documented-standard breach, a missing or incorrect spec requirement, a confirmed risk, or a cleared claim. A card holds its decision in `blocking` and `action`, and a claim in `status` and `consequence`. Ask about every other finding, one question per finding. Examples are an unsettled baseline smell, behavior the spec neither asks for nor rules out, an ambiguous spec line, and an unproven claim. If every finding is decided, ask nothing. In a Flow, deliver one complete round through flow-page's "Every ask in a Flow" contract with `flow_ask`. Each question names the finding and ends with "?". Its `results` names `<review ref or id>/<entry ref or id>` so the script links both ways. Record the answers through the common interface.
 
-Use flow-page's "Close the Stage" after recording the review decisions or no-question outcome.
+In a Flow, use flow-page's "Close the Stage" after recording the review decisions or no-question outcome.
 
-In chat, summarize each axis's count and worst issue, or its explicit state and reason, instead of repeating the findings. For Blast radius include its triggers or skip reason and, when proof ran, whether the safety fact is proven or unproven. Never select a worst issue across axes. The extension presents the bound Flow URL after the main-agent reply. The caller receives each decided finding plus each question's answer. For a PR, remove the worktree as step 1 says.
+With a Flow page, summarize each axis's count and worst issue in chat, or its explicit state and reason, instead of repeating the findings. Without a Flow page, deliver every finding, its evidence and decision, and each axis's state and reason in chat before asking about unresolved findings. For Blast radius include its triggers or skip reason and, when proof ran, whether the safety fact is proven or unproven. Never select a worst issue across axes. The extension presents the bound Flow URL after the main-agent reply. The caller receives each decided finding plus each question's answer. For a PR, remove the worktree as step 1 says.
 
 ## Why three axes
 

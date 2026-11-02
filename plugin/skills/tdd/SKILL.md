@@ -41,4 +41,4 @@ When the shape of that interface is itself in question (how deep the module is, 
 
 ## Record the loop
 
-Follow skill://implement/END-STATE.md's "Publish delivery progress" in the caller's Stage, or the standalone tdd Stage. Append red then green commands and observed outcomes to its Timeline, attach the captured outputs, and record checks against the tested revision. State a missing red, unconfirmed seam, skipped check, or unavailable live proof explicitly. A green test reaches no delivery End state.
+In a Flow, follow skill://implement/END-STATE.md's "Publish delivery progress" in the caller's Stage, or the standalone tdd Stage. Append red then green commands and observed outcomes to its Timeline, attach the captured outputs, and record checks against the tested revision. Outside a Flow, report the commands and observed outcomes in chat and keep the captured outputs. State a missing red, unconfirmed seam, skipped check, or unavailable live proof explicitly. A green test reaches no delivery End state.

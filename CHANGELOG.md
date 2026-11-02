@@ -5,11 +5,17 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 ## [Unreleased]
 
 - Shorten the README to installation, everyday use, and documentation links. Preserve maintainer instructions in `docs/maintainer.md` and link to canonical skill contracts.
+- Keep Verify browser opens non-Tern during diagnostics, retries, recovery, and delegated verification. Restore explicit WebKit figure coverage and report unavailable proof as unmet rather than substituting Chromium (#329).
 
-## [8.0.9] - 2026-11-02
+## [8.0.10] - 2026-11-02
 
 - Deliver ordinary Flow questions with one `flow_ask` call that commits the complete question and visuals, presents the Flow link, then opens the existing omp-tools picker. Require its routed interactive TUI dialog without a native ask fallback. Preserve raw responses and separate Flow readings, refuse to prompt after stale publication, and avoid reopening repeated contributions. Ratchet keeps its native approval gate.
 - Preserve multiselect cleanup and Migration questions, the configured ask timeout, and the existing picker's read-tier approval behavior. Cut all Flow-bound question recipes over to the shared single-call contract.
+
+## [8.0.9] - 2026-11-01
+
+- Start a Flow only through the central enrollment rule, before discovery or creation. Description-selected research, explanations, reviews, and other producers return complete answers in chat unless enrolled, while typed skill requests and existing Flow work keep page publication. Recognize omp's native skill-invocation header as the expanded typed command and execute Stage entry and exit even without an existing binding. Preserve canonical files, plain chat questions, and real runnable prototypes outside a Flow (ADR 0046, #321).
+- Read synchronous Git identity replies from owned temporary files rather than returned capture buffers, and remove the resources on success or failure. Reject malformed output and operational Git failures before selecting a Scratch or Flow namespace. Reserve `_global` for a genuine outside-repository result and preserve shared linked-worktree keys (#321).
 
 ## [8.0.8] - 2026-11-01
 

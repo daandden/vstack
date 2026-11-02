@@ -11,17 +11,17 @@ When exploring the codebase, read `GLOSSARY.md` (if it exists) to get a clear me
 
 ## Record the investigation
 
-Follow `skill://flow-page`'s "Stage entry/exit line" before the first probe or ask.
+Follow `skill://flow-page`'s "Stage entry/exit line" before the first probe or ask. Use `flow_ask` under its "Every ask in a Flow" contract when enrolled, or plain `ask` outside a Flow, for every question below.
 
-Publish the repro command and redacted observed output as Code Results with source paths. Keep the ranked hypotheses and their falsifiable predictions in a Document Result, and the probes and their outcomes in a Timeline. A ledger distinguishes confirmed, cleared, and unproven claims and names missing proof. A hypothesis becomes confirmed only when the executed evidence establishes it. Add Metrics for timing or reproduction rates, with workload, environment, numeric values, units, samples, and uncertainty.
+In a Flow, publish the repro command and redacted observed output as Code Results with source paths. Keep the ranked hypotheses and their falsifiable predictions in a Document Result, and the probes and their outcomes in a Timeline. A ledger distinguishes confirmed, cleared, and unproven claims and names missing proof. A hypothesis becomes confirmed only when the executed evidence establishes it. Add Metrics for timing or reproduction rates, with workload, environment, numeric values, units, samples, and uncertainty.
 
-Attach redacted repros, captures, raw outputs, and regression evidence before publishing their Results. Redact the files themselves because attachments retain their bytes. Update focused findings or publish a new captured Result revision as evidence changes. At hand-back, publish the cause, red and green evidence, cleanup, and remaining gaps in the Document. The reply summarizes the Results. Keep canonical regression tests and scripts at their required paths, and use the Flow page rather than a separate report page.
+In a Flow, attach redacted repros, captures, raw outputs, and regression evidence before publishing their Results. Redact the files themselves because attachments retain their bytes. Update focused findings or publish a new captured Result revision as evidence changes. At hand-back, publish the cause, red and green evidence, cleanup, and remaining gaps in the Document. The reply summarizes the Results. Keep canonical regression tests and scripts at their required paths, and use the Flow page rather than a separate report page.
 
 ## Redact
 
 This skill has you show commands, outputs and captured artifacts. **Redact every secret first**: write `<REDACTED>` in its place. Build loops against env vars, so the credential stays in the environment rather than in what you show. Captured artifacts carry auth headers: quote only the lines that carry the signal.
 
-If the redacted output is not enough to diagnose the bug, say so and ask the user through `flow_ask` under `skill://flow-page`'s "Every ask in a Flow" contract.
+If the redacted output is not enough to diagnose the bug, say so and ask the user through `flow_ask` in a Flow or plain `ask` outside one.
 
 ## Phase 1: Build a feedback loop
 
@@ -60,7 +60,7 @@ The goal is not a clean repro but a **higher reproduction rate**. Loop the trigg
 
 ### When you genuinely cannot build a loop
 
-Stop and say so explicitly. List what you tried. Ask the user through one `flow_ask` round for: (a) access to whatever environment reproduces it, (b) a redacted captured artifact (HAR file, log dump, core dump, screen recording with timestamps), or (c) permission to add temporary production instrumentation. A timed-out answer is not the user's. Re-ask once through `flow_ask` with `again`, and if that times out too, stop and say why. Cancellation or an unavailable picker grants no permission. Do **not** proceed to hypothesise without a loop.
+Stop and say so explicitly. List what you tried. Ask the user through `flow_ask` in a Flow or plain `ask` outside one for: (a) access to whatever environment reproduces it, (b) a redacted captured artifact (HAR file, log dump, core dump, screen recording with timestamps), or (c) permission to add temporary production instrumentation. A timed-out answer is not the user's. Re-ask once, using `again` in a Flow, and if that times out too, stop and say why. Cancellation or an unavailable picker grants no permission. Do **not** proceed to hypothesise without a loop.
 
 ### Completion criterion: a tight loop that goes red
 
@@ -103,7 +103,7 @@ Each hypothesis must be **falsifiable**: state the prediction it makes.
 
 If you cannot state the prediction, the hypothesis is a vibe: discard or sharpen it.
 
-**Show the ranked list to the user before testing**, with one `flow_ask` round: test in this order (recommended), or re-rank. They often have domain knowledge that re-ranks instantly ("we just deployed a change to #3"), or know hypotheses they've already ruled out. Cheap checkpoint, big time saver. If the question times out or the picker is unavailable, proceed with your own ranking and say the user has not confirmed it.
+**Show the ranked list to the user before testing**, with one question-tool round: test in this order (recommended), or re-rank. They often have domain knowledge that re-ranks instantly ("we just deployed a change to #3"), or know hypotheses they've already ruled out. Cheap checkpoint, big time saver. If the question times out or the picker is unavailable, proceed with your own ranking and say the user has not confirmed it.
 
 ## Phase 4: Instrument
 
