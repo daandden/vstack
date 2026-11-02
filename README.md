@@ -11,6 +11,10 @@ vstack is a personal omp plugin. Matt Pocock's skills are its core. Addons suppl
 
 Every change starts with the grill (`/skill:grill-with-docs` or `/skill:grill-me`). The grill closes with its summary and asks nothing. Your next prompt confirms the summary or pushes back, and a pushback reopens the grill. grill-with-docs names the skill to type next. For a change that fits one session, type `/skill:implement`. For a bigger change, continue through `/skill:to-spec`, `/skill:to-tickets`, then `/skill:implement-spec`. implement and implement-spec own changes and the settled End state. Specs and tickets contain no Addon pointers, including inherited ones. Build sessions select principles fresh.
 
+`/skill:grill-with-docs` assesses each change for consequential unsettled architecture choices before implementation commits to them. It reuses applicable decisions and patterns when their assumptions still hold. A routine change gets a brief grounded reason, not a mandatory diagram or new design document. An open choice gets proportionate visual alternatives, screened trade-offs, and a recommendation through the existing grill. The Architecture brief records the actual agreement in Flow Results, with responsibilities, interactions, guarantees, constraints, and rationale. Recommendations and unanswered or automatic picks are not your consent.
+
+The grill stops at shared understanding. It creates no source scaffold, starts no next skill, and publishes no spec automatically. You invoke `/skill:to-spec` to synthesize a larger change into a self-contained canonical spec with the necessary agreed visuals. A newly discovered consequential fork holds affected synthesis for user-invoked grilling rather than silently choosing an architecture. Implementing agents retain signatures and coding details within the agreed guarantees.
+
 ## Install
 
 You need omp, Bun, and git with working HTTPS credentials for github.com (the repo is private).
@@ -308,6 +312,8 @@ Each setup run keeps its plan JSON in its own Scratch entry, `setup-vstack/run-X
 ### vstack-maintain
 
 `skill://vstack-maintain` is the Addon for Updates and Hand edits to vstack. The grill gathers facts and confirms decisions. implement's isolated drafting worker writes the text and runs the script's bookkeeping and gates in its own clone. implement applies the gated patch and owns git and the End state.
+
+At the current Enhancement Pin, `pstack/architect` contributes grounding, visual alternatives, screening, and rationale to the existing `grill-with-docs` and shared `codebase-design` artifacts. Their contributor rows use merge, as other cross-Upstream shared artifacts do. This does not ship an architect command, import fixed model choices, or change DESIGN-IT-TWICE's existing callers. [ADR 0046](docs/adr/0046-architecture-agreement-belongs-in-the-grill.md) records the assessment and agreement policy. Its [research note](docs/research/architecture-design-in-grilling.md) remains supporting evidence, not a second policy.
 
 Run `bun install --frozen-lockfile` in each clone before running these commands.
 

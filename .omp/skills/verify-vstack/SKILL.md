@@ -30,6 +30,8 @@ omp also loads project skills from `.claude/skills` and `.agents/skills` in ever
 
 The shared instance is your own omp session and the real `~/.omp`. Never use it as the proof. It loaded the plugin when it started, so it does not show edits made since then. It also uses real models and the user's credentials.
 
+Reasoning-led skill behavior is an exception to the stub-model isolation below. For architecture assessment and agreement, use `features/architecture-agreement.md` and skill-creator's actual isolated evaluations with the Session model and real `HOME`. Keep their Flow homes and outputs disposable and separate. Scripted replies prove tool plumbing, never the model's reasoning or a human's consent.
+
 ## Launch
 
 There is nothing to build. A launch is one drive: `scripts/drive.ts` links the plugin into the run's home, starts a stub model, starts `omp --mode rpc` (or `--mode rpc-ui` with `--rpc-ui`), sends the RPC commands you give it, and stops both processes before it exits.

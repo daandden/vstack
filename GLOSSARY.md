@@ -188,6 +188,14 @@ _Avoid_: step, phase, section
 A Stage's output on the Flow page, such as a research document, a prototype comparison, review findings, or run results. Result is its authoring short form.
 _Avoid_: Report block, stage result, report section
 
+**Architecture assessment**:
+A grill's determination of whether a consequential architecture choice remains unsettled and needs agreement before dependent implementation.
+_Avoid_: architecture gate, complexity score
+
+**Architecture brief**:
+The agreed visual account of a change's architecture, including responsibilities, interactions, relevant guarantees, constraints, and trade-offs.
+_Avoid_: code scaffold, implementation plan
+
 **Blast radius**:
 The review axis that lists what code outside a diff depends on and may break. code-review runs it through the blast-radius skill, and a PR body reports it under its Blast Radius heading. It is not a security review.
 _Avoid_: Safety (for this axis), safety review

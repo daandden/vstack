@@ -4,6 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [8.0.12] - 2026-11-02
+
+- grill-with-docs assesses every change, expands only consequential unsettled architecture choices into visual agreement, records the Architecture brief with decision provenance, and stops before implementation or a user-invoked next Matt skill (#334, ADR 0046).
+- Reconciles pinned pstack architect reasoning into the existing grill and shared codebase-design as merged contributions, preserves Design It Twice, restores the accepted glossary, ADR and supporting research, and documents actual-model architecture verification (#334).
+
 ## [8.0.11] - 2026-11-02
 
 - Implementation consumers preserve architecture agreements from specs and tickets while retaining ordinary coding choices. Direct runs and isolated ticket workers expose consequential departures through existing open questions and hold affected work until the user resolves them (#336).

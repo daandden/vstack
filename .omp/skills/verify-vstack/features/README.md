@@ -7,13 +7,13 @@ This directory maps the user-facing features of the vstack omp plugin. Read this
 - `VERIFY_RUN_DIR` is a new run entry under `<Scratch dir>/verify/`, made as `../SKILL.md` Evidence step 1 says. Proof and notes go at its top level, and throwaway data goes in `data/`.
 - `CHECKOUT` is the vstack checkout or worktree under test, and `$CHECKOUT/plugin/package.json` names `vstack`.
 - `omp`, `bun`, `jq`, and `git` are on `PATH`.
-- `bash "$SKILL_DIR/scripts/doctor.sh" "$CHECKOUT" "$VERIFY_RUN_DIR"` prints no `FAIL` line.
-- Never drive your own omp session or the real `~/.omp`. Every session drive runs on `$VERIFY_RUN_DIR/data/home`.
+- For stub-driver recipes, `bash "$SKILL_DIR/scripts/doctor.sh" "$CHECKOUT" "$VERIFY_RUN_DIR"` prints no `FAIL` line.
+- Never drive your own omp session or the real `~/.omp` as proof. Stub-driver recipes use `$VERIFY_RUN_DIR/data/home`. Actual reasoning evaluations use skill-creator's real-credential isolation and Session model protocol instead.
 
 ## Driving conventions
 
 - Start every recipe from the baseline. A recipe that needs earlier state names it under `Preconditions:`.
-- Run session behavior through `scripts/drive.ts`. Use the feature ID as `--name`, so each drive has its own evidence dir. drive.ts refuses a name that the run already used. Retry with a new name such as `<feature>-retry1`, and read the proof from that new dir.
+- Run scripted session behavior through `scripts/drive.ts`. Use the feature ID as `--name`, so each drive has its own evidence dir. drive.ts refuses a name that the run already used. Retry with a new name such as `<feature>-retry1`, and read the proof from that new dir. The architecture-agreement recipe uses actual model evaluations, not scripted replies.
 - Run a skill's Bun CLI from `$CHECKOUT/plugin/skills/<skill>/scripts/`, not through `skill://...`.
 - Pass `--home "$VERIFY_RUN_DIR/data/<name>"` to every script that takes `--home`. Never let a script write to the real `~/.vstack/`.
 - In the browser, open tabs with a name, `app: { tern: false }`, and a 1280 by 900 `viewport`. Act by ARIA role and name.
@@ -49,6 +49,7 @@ Keep implementation details out of the map. Name only user paths, stable handles
 - [Figure render](./figure-render.md): the caller renders Mermaid through Bun to literal Mocha SVG with fixed roles, keyed source bindings, intrinsic kinds, native C4, source-selected Sankey endpoint and gradient paints, and fill-preserving Mauve focus. Refusals preserve old output without publishing it. Standalone and shared-id inline proof inspect actual computed paints, while the Flow captures exact SVG bytes and displays an isolated image.
 - [Clean worktrees](./clean-wt.md): `/skill:clean-wt` checks ownership before inactive contents, removes unused clean checkouts and verified integrated drafts, keeps their branches, and protects stale, unique, unverified, or unapproved unresolved work.
 - [Isolated-worker lifecycle](./worker-lifecycle.md): a parent preserves useful work, retains workers with unresolved needs, releases settled children through omp, and proves clone disappearance without deleting unrelated owned work.
+- [Architecture agreement](./architecture-agreement.md): actual isolated grill evaluations cover assessment, grounding, visual alternatives, agreement provenance, the brief, and the stop. A separate live human checkpoint proves consent. Whole-feature evaluation consumes the other Matt entry points' separate proof.
 
 ## Not mapped yet
 
