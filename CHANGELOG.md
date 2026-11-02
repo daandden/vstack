@@ -4,8 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [8.0.11] - 2026-11-02
+
 - Shorten the README to installation, everyday use, and documentation links. Preserve maintainer instructions in `docs/maintainer.md` and link to canonical skill contracts.
 - Keep Verify browser opens non-Tern during diagnostics, retries, recovery, and delegated verification. Restore explicit WebKit figure coverage and report unavailable proof as unmet rather than substituting Chromium (#329).
+- A standalone `research` run that created its Flow closes it after finishing its Stage once the requested research is complete. Inside a caller's or a continuing Flow, research finishes only its own Stage and restores the caller's binding (#322).
 
 ## [8.0.10] - 2026-11-02
 
