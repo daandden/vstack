@@ -37,7 +37,7 @@ Only remove an effect or make the same effect smaller. Do not add replacement mo
 | Excessive stagger | Cap at 30ms/item or remove delays, without blocking use |
 | Persistent decorative loop | Remove repeats or keep a static end state |
 
-If subtraction would remove the only useful continuity cue or expose a layout jump, keep that motion and report the separate issue. Preserve useful unselected motion. An instant reduced-motion state is valid. Use ADR 0047's browser-qualified guidance rather than declaring every non-transform property invalid.
+If subtraction would remove the only useful continuity cue or expose a layout jump, keep that motion and report the separate issue. Preserve useful unselected motion. An instant reduced-motion state is valid. Use ADR 0048's browser-qualified guidance rather than declaring every non-transform property invalid.
 
 ## Check removal hazards before editing
 

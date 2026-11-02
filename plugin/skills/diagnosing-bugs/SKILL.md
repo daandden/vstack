@@ -13,7 +13,7 @@ For a frontend animation that stutters or drops frames, read skill://good-css an
 
 ## Record the investigation
 
-Follow `skill://flow-page`'s "Stage entry/exit line" before the first probe or ask. Use `flow_ask` under its "Every ask in a Flow" contract when enrolled, or plain `ask` outside a Flow, for every question below.
+Follow `skill://flow-page`'s "Stage entry/exit line" before the first probe or ask. Use `ask` under its "Every ask in a Flow" contract when enrolled, or plain `ask` outside a Flow, for every question below.
 
 In a Flow, publish the repro command and redacted observed output as Code Results with source paths. Keep the ranked hypotheses and their falsifiable predictions in a Document Result, and the probes and their outcomes in a Timeline. A ledger distinguishes confirmed, cleared, and unproven claims and names missing proof. A hypothesis becomes confirmed only when the executed evidence establishes it. Add Metrics for timing or reproduction rates, with workload, environment, numeric values, units, samples, and uncertainty.
 
@@ -23,7 +23,7 @@ In a Flow, attach redacted repros, captures, raw outputs, and regression evidenc
 
 This skill has you show commands, outputs and captured artifacts. **Redact every secret first**: write `<REDACTED>` in its place. Build loops against env vars, so the credential stays in the environment rather than in what you show. Captured artifacts carry auth headers: quote only the lines that carry the signal.
 
-If the redacted output is not enough to diagnose the bug, say so and ask the user through `flow_ask` in a Flow or plain `ask` outside one.
+If the redacted output is not enough to diagnose the bug, say so and ask the user through `ask`.
 
 ## Phase 1: Build a feedback loop
 
@@ -62,7 +62,7 @@ The goal is not a clean repro but a **higher reproduction rate**. Loop the trigg
 
 ### When you genuinely cannot build a loop
 
-Stop and say so explicitly. List what you tried. Ask the user through `flow_ask` in a Flow or plain `ask` outside one for: (a) access to whatever environment reproduces it, (b) a redacted captured artifact (HAR file, log dump, core dump, screen recording with timestamps), or (c) permission to add temporary production instrumentation. A timed-out answer is not the user's. Re-ask once, using `again` in a Flow, and if that times out too, stop and say why. Cancellation or an unavailable picker grants no permission. Do **not** proceed to hypothesise without a loop.
+Stop and say so explicitly. List what you tried. Ask the user through `ask` for: (a) access to whatever environment reproduces it, (b) a redacted captured artifact (HAR file, log dump, core dump, screen recording with timestamps), or (c) permission to add temporary production instrumentation. A timed-out answer is not the user's. Re-ask once, using `again` in a Flow, and if that times out too, stop and say why. Cancellation or an unavailable picker grants no permission. Do **not** proceed to hypothesise without a loop.
 
 ### Completion criterion: a tight loop that goes red
 

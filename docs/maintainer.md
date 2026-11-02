@@ -76,7 +76,7 @@ One entry, the CSS upstream, also has `page_lint: scripts/check-css.mjs`: the sc
 
 The UI upstream is `emilkowalski/skills`, keyed as `emil`, initially pinned at `a81dbca07f2217b7103e510c0f13f8d5b017afc9`. Its `skills/*` tree pattern discovers sixteen items. Ticket 339 ships `emil-design-eng`; ticket 343 adds `review-animations` with its companion standards; ticket 341 adds `break-ui` with its required adverse-content catalog; ticket 342 adds `animate` with component recipes and `animation-performance`; ticket 340 adds `apple-design` and `mobile-native` with their conditional companion references; ticket 344 adds `improve-animations` with audit and selected-requirements companions, `find-animation-opportunities`, and `remove-animations`. Each is an adapted hidden Addon with an upstream MIT notice in its skill directory. Break-ui is reference knowledge used by existing implementation and Verify owners, including delegated UI work. Apple-derived guidance is for web interactions; mobile-native is mobile-web guidance, not Expo or Swift development.
 
-`code-review` and good-css conditionally reach motion review guidance in the coordinator and delegated Standards reviewers. The existing review owns blocking decisions and evidence. A browser-supported clip-path effect is not blocked by the upstream's broad property preference alone. [ADR 0047](adr/0047-selected-emil-skills-govern-animation-guidance.md) governs applicability.
+`code-review` and good-css conditionally reach motion review guidance in the coordinator and delegated Standards reviewers. The existing review owns blocking decisions and evidence. A browser-supported clip-path effect is not blocked by the upstream's broad property preference alone. [ADR 0048](adr/0048-selected-emil-skills-govern-animation-guidance.md) governs applicability.
 
 All ten selected items now ship as adaptations. None remains deferred.
 
@@ -84,7 +84,7 @@ The six permanent exclusions for spec 338 are `animation-vocabulary`, `ask-sonne
 
 The initial registration is a consistent direct Hand edit, including the Pin, object identities, artifact associations, catalog, version, and changelog. `prepare` and target `check` read the register from HEAD. Before the bootstrap is committed, `check --take emil:skills/emil-design-eng` previews the source item, while `check-register` and `plan emil@<initial Pin>` inspect the working registration. Do not run `prepare` against the pre-bootstrap HEAD: it cannot preserve the new source. After that initial commit, use the existing Hand edit and Update commands normally. No bootstrap API or UI-specific runtime is involved.
 
-Implementation and worker pointers reach good-css, which conditionally reaches the shipped UI guidance. Catalog membership satisfies classification and supports other Matt runs; it does not broaden principle-only build or subagent selection. [ADR 0047](adr/0047-selected-emil-skills-govern-animation-guidance.md) records animation authority. Non-animation CSS responsibilities remain with good-css.
+Implementation and worker pointers reach good-css, which conditionally reaches the shipped UI guidance. Catalog membership satisfies classification and supports other Matt runs; it does not broaden principle-only build or subagent selection. [ADR 0048](adr/0048-selected-emil-skills-govern-animation-guidance.md) records animation authority. Non-animation CSS responsibilities remain with good-css.
 
 Use the [frontend-guidance Verify recipe](../.omp/skills/verify-vstack/features/frontend-guidance.md) for native main and delegated runs, an unrelated-task control, packaged-content inspection, and an isolated future-source planning check. Stub load proof does not establish instruction following or UI quality.
 
@@ -162,7 +162,7 @@ Text output prints one line per failure, `FAIL <class> <item>: <message>`, after
 | `headless-run` | adapt, merge, or original markdown outside the rule's allowlist (skill-creator) holds a `Headless batch (` line or an `omp -p` command |
 | `worktree-cmd` | adapt, merge, or original text runs `git worktree add` |
 | `tmp-path` | adapt, merge, or original text names `$TMPDIR/`, `/tmp/`, or the OS temp directory, outside a `mktemp` line |
-| `ask-tool` | any markdown artifact, adopt included, has a sentence with an `ask-tool` phrase that names neither `` `ask` `` nor `` `flow_ask` `` |
+| `ask-tool` | any markdown artifact, adopt included, has a sentence with an `ask-tool` phrase that does not name `` `ask` `` |
 | `page-css` | a page template breaks the CSS upstream's `check-css.mjs` at its Pin; the item is the template and the message holds the script's `path:line` lines |
 | `invalid-utility` | a `utility:` entry names no shipped skill, or names a skill with a non-reject Base upstream row |
 | `addon-slash-route` | text under `plugin/` or in `README.md` contains `/skill:<addon>`. Use `skill://<addon>` instead |

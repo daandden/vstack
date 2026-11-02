@@ -32,7 +32,7 @@ Inspect these classes and record candidates or why the class does not apply:
 - Gestures. Existing drags may benefit from velocity-preserving springs, appropriate dismissal velocity, and rising boundary friction. Inspect the real coordinate units and library API before prescribing source examples such as duration 0.5, bounce 0.2 or a roughly 0.11 units/ms velocity threshold.
 - Rare completion. Onboarding and meaningful first success can earn restrained delight. Ordinary empty states or every repeated success do not automatically qualify.
 
-Use skill://animate for implementation feasibility and skill://animation-performance for driver, property, or cost questions. Under ADR 0047, a property preference does not ban a browser-supported clip-path or layout technique without applicable evidence. Support alone does not establish performance. Reduced motion may be instant or retain useful opacity/color feedback. Hover motion requires fine-pointer hover gating. Keep good-css's non-animation accessibility responsibilities.
+Use skill://animate for implementation feasibility and skill://animation-performance for driver, property, or cost questions. Under ADR 0048, a property preference does not ban a browser-supported clip-path or layout technique without applicable evidence. Support alone does not establish performance. Reduced motion may be instant or retain useful opacity/color feedback. Hover motion requires fine-pointer hover gating. Keep good-css's non-animation accessibility responsibilities.
 
 ## Report and return to the owner
 

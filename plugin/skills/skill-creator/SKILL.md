@@ -68,7 +68,7 @@ Identify which requests the skill handles and which outcomes matter.
 - Ground the skill in real expertise where it exists: runbooks, incident fixes, review comments, a transcript of the task done once. Teach the method, not that instance's answer.
 - Decide whether the need is a skill at all, and whether it is one skill or several; splitting rules are in skill://writing-for-agents.
 
-Ask only when missing information changes the work and cannot be reasonably inferred. In a Flow-bound run, use `flow_ask` following `skill://flow-page`'s "Every ask in a Flow", including separate answer recording. Genuinely unbound clarifications retain `ask` and create no Flow. When the user has explained the task clearly, proceed.
+Ask only when missing information changes the work and cannot be reasonably inferred. In a Flow-bound run, use `ask` following `skill://flow-page`'s "Every ask in a Flow", including Flow CLI publication and a visible current live URL in chat before `ask`, followed by separate answer recording. Genuinely unbound clarifications retain `ask` and create no Flow. When the user has explained the task clearly, proceed.
 
 ### 2. Choose the location and name
 

@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [8.0.18] - 2026-11-02
+
+- Integrate current main's native Flow question publication and ask retries into PR #346 for spec #338, preserving the selected UI guidance and prior corrections.
+
 ## [8.0.17] - 2026-11-02
 
 - Clarify the content-grid column-gap width budget while preserving vertical row spacing.
@@ -17,9 +21,14 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 - Ship adapted animate and animation-performance Addons with component recipes and MIT notices; existing frontend and diagnosis paths conditionally reach motion construction and browser-measured performance guidance without changing execution ownership or principle-only selection (#342).
 - Ship break-ui as an adapted hidden Addon with its adverse-content catalog and MIT notice. Existing main-session implementation, delegated frontend work, and Verify preparation reach realistic content boundaries without another executor. Add a repeatable native and browser robustness recipe.
 - Add hidden review-animations and companion standards to existing main and delegated motion reviews, preserving evidence-backed blocking verdicts and browser-qualified exceptions.
-- Ship emil-design-eng as a hidden, adapted Addon reached conditionally through good-css in main and delegated frontend implementation. Preserve existing execution, review, accessibility, and evidence ownership, with browser-qualified animation authority under ADR 0047 (#339).
+- Ship emil-design-eng as a hidden, adapted Addon reached conditionally through good-css in main and delegated frontend implementation. Preserve existing execution, review, accessibility, and evidence ownership, with browser-qualified animation authority under ADR 0048 (#339).
 - Register all sixteen UI-upstream items at a81dbca07f2217b7103e510c0f13f8d5b017afc9, retain Emil Kowalski's MIT notice in the plugin, and distinguish nine selected Deferred items in tickets 340–344 from six permanent exclusions. Preserve the accepted UI-upstream glossary and ADR.
 - Document repeatable native frontend, unrelated-task, distribution, and future-source maintenance proof. Keep principle-only build and subagent judge scopes and vstack's existing prototype unchanged.
+
+## [8.0.12] - 2026-11-02
+
+- Remove the coupled `flow_ask` tool. Publish Flow questions with the CLI, show the current live URL in chat before ordinary `ask`, and record responses separately. Preserve normal ask retry and cancellation without page-publication notifications.
+- Keep full Flow history, multiselect support, session isolation, and independent consent and Migration safeguards from the introducing change. Recoverable blockers retain their in-progress Stage; completed history stays immutable.
 
 ## [8.0.11] - 2026-11-02
 

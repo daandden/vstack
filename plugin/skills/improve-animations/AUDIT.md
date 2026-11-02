@@ -1,6 +1,6 @@
 # Animation audit criteria
 
-Use these eight categories for surveyed motion. Values below are source recommendations, qualified by interaction, actual dependency versions, target browsers, and ADR 0047. A search hit is an investigation candidate, not a finding by itself. Read skill://review-animations/STANDARDS.md for the shared review bar and skill://animation-performance for measured rendering questions.
+Use these eight categories for surveyed motion. Values below are source recommendations, qualified by interaction, actual dependency versions, target browsers, and ADR 0048. A search hit is an investigation candidate, not a finding by itself. Read skill://review-animations/STANDARDS.md for the shared review bar and skill://animation-performance for measured rendering questions.
 
 ## 1. Purpose and frequency
 

@@ -45,7 +45,7 @@ Use skill://good-css for non-animation CSS, layout, semantics, focus, and access
 
 Under reduced motion, replace movement, elastic overshoot, scaling, and parallax with instant changes or brief nonmoving feedback. For reduced transparency, use solid or more opaque surfaces. For increased contrast, provide legible near-solid backgrounds and defined borders. Check support for each preference in the target engine. Avoid full-screen moving backgrounds, slow looping oscillations, and abrupt brightness changes.
 
-Animation guidance follows ADR 0047. Prefer transform and opacity where appropriate, but a blanket compositor-only rule is not a blocking verdict. Reconcile disagreements within the UI guidance using the actual browser's behavior and observed evidence. Add `will-change` only when an imminent effect and measurement justify it, then release it. Browser-supported blur or other properties need scenario-specific performance evidence.
+Animation guidance follows ADR 0048. Prefer transform and opacity where appropriate, but a blanket compositor-only rule is not a blocking verdict. Reconcile disagreements within the UI guidance using the actual browser's behavior and observed evidence. Add `will-change` only when an imminent effect and measurement justify it, then release it. Browser-supported blur or other properties need scenario-specific performance evidence.
 
 Before using a spring or component library, inspect the application's installed version and consult its applicable documentation. The references explain patterns, not a dependency installation requirement. Do not claim Apple's damping ratio is the same parameter as a library's physical damping constant or that all libraries preserve velocity automatically.
 

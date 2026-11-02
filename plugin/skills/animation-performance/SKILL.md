@@ -61,7 +61,7 @@ Use `will-change` only for an observed promotion issue or measured improvement a
 
 ## Reconcile the rules with evidence
 
-Under ADR 0047, selected Emil animation guidance takes precedence over good-css's animation advice. Good-css's remaining styling and accessibility requirements still apply. Within Emil guidance, a broad transform-and-opacity-only rule does not prohibit browser-supported clip-path, filter, or intrinsic-size techniques by itself.
+Under ADR 0048, selected Emil animation guidance takes precedence over good-css's animation advice. Good-css's remaining styling and accessibility requirements still apply. Within Emil guidance, a broad transform-and-opacity-only rule does not prohibit browser-supported clip-path, filter, or intrinsic-size techniques by itself.
 
 For a disputed technique, record the applicable narrower guidance, target-engine support, observed behavior, measured cost, and any fallback or unavailable engine. Retain a blocking verdict when an applicable rule and evidence justify it. One Chromium run does not establish Safari, Firefox, a phone, or every application stack.
 

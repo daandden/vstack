@@ -22,7 +22,7 @@ Some libraries offer duration-and-bounce controls, such as a 0.5s duration with 
 
 Transform and opacity are usually good starting points for inexpensive motion. They can avoid layout and paint when the engine composites the element. Compositing is conditional, not guaranteed. Width, height, margins, and padding generally require layout. An occasional layout effect can still be appropriate when measured and coordinated with content.
 
-A clip-path reveal, blur, or Web Animations API call is not automatically GPU-accelerated. Performance depends on the shape, property, engine, layer allocation, content, and competing work. Under ADR 0047, investigate supported browser behavior before issuing a blocking verdict. Record the browser, device or emulation, workload, and observed frames or trace.
+A clip-path reveal, blur, or Web Animations API call is not automatically GPU-accelerated. Performance depends on the shape, property, engine, layer allocation, content, and competing work. Under ADR 0048, investigate supported browser behavior before issuing a blocking verdict. Record the browser, device or emulation, workload, and observed frames or trace.
 
 Changing an inherited CSS custom property on a parent can invalidate descendant styles. For a high-frequency drag, compare updating the target element's transform directly with updating an inherited variable. Avoid unnecessary descendant work, but measure the actual tree before claiming a regression.
 

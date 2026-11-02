@@ -1,6 +1,6 @@
 # Animation standards
 
-Use these values and conditions in motion findings. Adapted from Emil Kowalski's design-engineering guidance. The authority rules in [SKILL.md](SKILL.md) apply ADR 0047 and travel with the distributed plugin.
+Use these values and conditions in motion findings. Adapted from Emil Kowalski's design-engineering guidance. The authority rules in [SKILL.md](SKILL.md) apply ADR 0048 and travel with the distributed plugin.
 
 ## Purpose and frequency
 
