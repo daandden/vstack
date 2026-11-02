@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [8.0.11] - 2026-11-02
+
+- Implementation consumers preserve architecture agreements from specs and tickets while retaining ordinary coding choices. Direct runs and isolated ticket workers expose consequential departures through existing open questions and hold affected work until the user resolves them (#336).
+
 ## [8.0.10] - 2026-11-02
 
 - to-spec carries agreed architecture and necessary visuals into the canonical spec without requiring a new brief or repeating design discussions. New consequential forks pause affected synthesis for user-invoked grilling without publishing an unagreed design.

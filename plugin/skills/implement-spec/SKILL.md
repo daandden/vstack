@@ -40,6 +40,8 @@ Reuse the Flow's existing ticket tasks or create one per ticket. Publish the fro
 
 Read the spec's testing decisions. to-spec confirmed those seams with the user through `ask`, so they are the pre-agreed seams for skill://tdd. If a ready ticket needs a seam that the spec does not confirm, settle it with one `ask` before you assign the ticket. An answer `ask` picks after a timeout is not the user's, so that ticket stays off the frontier and stays open.
 
+Read the agreed responsibilities, interactions, observable guarantees, constraints, and rationale through the spec, tickets, and their existing decision-coverage and context pointers. Pass those pointers to each implementer, including the decisions its slice must preserve. Reuse supplied agreements without requiring a separate Architecture brief. Module build order does not replace vertical ticket slices or genuine blocking links. Build sessions select Addons fresh; discard inherited Addon pointers rather than passing them into briefs.
+
 ### 2. Explore (optional)
 
 Use an **exploration subagent** only when the tickets need codebase files or external documentation that they do not point at. This lets **implementer subagents** focus on implementation rather than exploration.
@@ -72,7 +74,7 @@ Fan-out (skill://vstack-fan-out): parts: one per ready ticket. One eval cell: pe
 
 Record each handle's `agent://<id>` with its ticket and lifecycle entry in the run record. Act on each result in step 5 when it arrives. When nothing else needs you while implementers run, call the `wait` tool. It returns on the first result, so a slow ticket holds back no other ticket.
 
-Implementer brief: build one ticket in your own clone. Read the spec, the ticket, and the exploration notes through their context pointers. Use skill://tdd to build the ticket at the seams the spec and this brief confirm. The user confirmed them, so tdd asks nothing about them. If the ticket needs another seam, write no test for it, and return the seam as an open question. Run typechecking and the single test files you touch regularly, and the full test suite once at the end. Write product changes at real target paths, so that they enter the patch. Commit nothing, merge nothing, and push nothing. Save evidence under `<Scratch dir>/implement-spec/<run-id>/<ticket>/`. Return the ticket, changed paths, red and green evidence, checks with their outcomes, and open questions.
+Implementer brief: build one ticket in your own clone. Read the spec, the ticket, and the exploration notes through their context pointers. Follow skill://implement's "Work within the agreement" contract using those inputs and their decision-coverage records. Choose coding details within the agreement. If evidence requires a consequential departure, pause affected work and return the governing decision, evidence, affected behavior, viable options with trade-offs and a recommendation, and the missing decision as an open question, with held-work paths. Use skill://tdd to build the ticket at the seams the spec and this brief confirm. The user confirmed them, so tdd asks nothing about them. If the ticket needs another seam, write no test for it, and return the seam as an open question. Run typechecking and the single test files you touch regularly, and the full test suite once at the end. Write product changes at real target paths, so that they enter the patch. Commit nothing, merge nothing, and push nothing. Save evidence under `<Scratch dir>/implement-spec/<run-id>/<ticket>/`. Return the ticket, changed paths, red and green evidence, checks with their outcomes, and open questions.
 
 ### 5. Merge each result
 
@@ -80,7 +82,7 @@ Once an **implementer subagent** completes, merge its work to the integration br
 
 A handle has no `patchPath` field. Recover that path from omp's completion notice: `Isolation: changes captured at <absolute patch path> (apply=false). Not applied.` If structured output hides the notice, read the full completion through the handle's `output()` or `agent://<id>`. A failed worker, an unavailable notice, or an empty patch leaves its ticket open. Report it, and never guess a patch path.
 
-If the implementer returned an open question, start no merger for it. Hold its patch, record the path, and put the question to the user through `ask`. A ticket whose question the user answers goes back on the frontier once, with the answer and the held patch path in its brief. A timed-out answer leaves the ticket open and its patch unapplied.
+If the implementer returned an open question, start no merger for it. Hold its patch, record the path, and put the question and its evidence to the user through `ask`. This includes a necessary consequential departure from the supplied architecture agreement. A ticket whose question the user's own answer resolves goes back on the frontier once, with the answer and the held patch path in its brief. A recommendation, Headless automatic pick, timeout, cancellation, or absent answer resolves no approval gate. Leave that ticket open and its patch unapplied.
 
 Keep the questioned worker available until the answer and required follow-up resolve. Save a stable Scratch copy of its held patch before any later release. A fresh retry gets that copy and the answer; preserve the superseded worker's useful work and evidence before deciding its lifecycle.
 
