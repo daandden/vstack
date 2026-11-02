@@ -18,6 +18,22 @@
         "false": "Backend validation, CLI data processing, source bookkeeping, motion-only polish, or other work without content-dependent frontend robustness."
       }
     },
+    "animate": {
+      "type": "noul",
+      "instructions": "Does the task implement web animation or choose purposeful motion, timing, interruption, or reduced-motion behavior?",
+      "criteria": {
+        "true": "Build a transition, animated interaction, entry or exit, gesture response, or decide whether a requested web interaction should animate.",
+        "false": "Review-only motion work, frame-cost diagnosis without motion construction, static styling, backend, CLI, prose, or native animation."
+      }
+    },
+    "animation-performance": {
+      "type": "noul",
+      "instructions": "Does the task diagnose web animation stutter or choose animation properties, drivers, or layers on performance grounds?",
+      "criteria": {
+        "true": "Dropped animation frames, rendering cost, busy-main-thread playback, per-frame rerenders, inherited-variable invalidation, or a measured acceleration question.",
+        "false": "Timing or easing taste alone, static CSS, non-animation performance, backend, CLI, prose, or native thread diagnosis."
+      }
+    },
     "emil-design-eng": {
       "type": "noul",
       "instructions": "Does the task build, polish, or review frontend controls, interactions, feedback, or purposeful UI motion?",

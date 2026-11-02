@@ -17,7 +17,9 @@ When reviewing animation or motion changes, read skill://review-animations and i
 
 When building or verifying data-bearing UI, read skill://break-ui to exercise plausible adverse content, empty and single collections, large values, and narrow containers. Apply it in main sessions and delegated frontend work through the existing implementation and Verify owners.
 
-Emil Kowalski's design-engineering guidance is adapted from the UI upstream. Its animation guidance takes precedence over this skill under ADR 0047. Reconcile disagreements within Emil's guidance with browser-specific behavior and observed evidence. Keep this skill's non-animation CSS and accessibility responsibilities. Each shipped derived skill includes its MIT notice. Conditional hand-offs name only shipped guidance.
+When implementing purposeful web motion, read skill://animate. When choosing an animation driver or property on performance grounds, or diagnosing stutter, read skill://animation-performance. Follow these references in main sessions and delegated frontend work; leave them unloaded when the task does not involve motion.
+
+Emil Kowalski's selected guidance is adapted from the UI upstream. Its animation guidance takes precedence over this skill under ADR 0047. Reconcile disagreements within Emil's guidance with browser-specific behavior and observed evidence. Keep this skill's non-animation CSS and accessibility responsibilities. Conditional hand-offs name shipped guidance only. The derived skills retain the upstream MIT notice.
 
 ## In all CSS
 

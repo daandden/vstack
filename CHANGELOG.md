@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [8.0.13] - 2026-11-02
+
+- Ship adapted animate and animation-performance Addons with component recipes and MIT notices; existing frontend and diagnosis paths conditionally reach motion construction and browser-measured performance guidance without changing execution ownership or principle-only selection (#342).
+
 ## [8.0.12] - 2026-11-02
 
 - Ship break-ui as an adapted hidden Addon with its adverse-content catalog and MIT notice. Existing main-session implementation, delegated frontend work, and Verify preparation reach realistic content boundaries without another executor. Add a repeatable native and browser robustness recipe.

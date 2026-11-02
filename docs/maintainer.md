@@ -74,16 +74,15 @@ One entry, the CSS upstream, also has `page_lint: scripts/check-css.mjs`: the sc
 
 ### UI upstream
 
-The UI upstream is `emilkowalski/skills`, keyed as `emil`, initially pinned at `a81dbca07f2217b7103e510c0f13f8d5b017afc9`. Its `skills/*` tree pattern discovers sixteen items. Ticket 339 ships `emil-design-eng`; ticket 343 adds `review-animations` with its companion standards; ticket 341 adds `break-ui` with its required adverse-content catalog. Each is an adapted hidden Addon with an upstream MIT notice in its skill directory. Break-ui is reference knowledge used by existing implementation and Verify owners, including delegated UI work.
+The UI upstream is `emilkowalski/skills`, keyed as `emil`, initially pinned at `a81dbca07f2217b7103e510c0f13f8d5b017afc9`. Its `skills/*` tree pattern discovers sixteen items. Ticket 339 ships `emil-design-eng`; ticket 343 adds `review-animations` with its companion standards; ticket 341 adds `break-ui` with its required adverse-content catalog; ticket 342 adds `animate` with component recipes and `animation-performance`. Each is an adapted hidden Addon with an upstream MIT notice in its skill directory. Break-ui is reference knowledge used by existing implementation and Verify owners, including delegated UI work.
 
 `code-review` and good-css conditionally reach motion review guidance in the coordinator and delegated Standards reviewers. The existing review owns blocking decisions and evidence. A browser-supported clip-path effect is not blocked by the upstream's broad property preference alone. [ADR 0047](adr/0047-selected-emil-skills-govern-animation-guidance.md) governs applicability.
 
-The remaining selected items use reject with `Deferred at <initial Pin>` reasons until their owning ticket ships:
+Selected items not yet shipped in this checkout use reject with `Deferred at <initial Pin>` reasons until their owning ticket ships:
 
 | Ticket | Deferred items |
 | --- | --- |
 | 340 | `apple-design`, `mobile-native` |
-| 342 | `animate`, `animation-performance` |
 | 344 | `improve-animations`, `find-animation-opportunities`, `remove-animations` |
 
 The six permanent exclusions for spec 338 are `animation-vocabulary`, `ask-sonner`, `pick-ui-library`, upstream `prototype`, `animate-expo`, and `write-swift`. Vstack's own prototype remains unchanged.
@@ -93,6 +92,8 @@ The initial registration is a consistent direct Hand edit, including the Pin, ob
 Implementation and worker pointers reach good-css, which conditionally reaches the shipped UI guidance. Catalog membership satisfies classification and supports other Matt runs; it does not broaden principle-only build or subagent selection. [ADR 0047](adr/0047-selected-emil-skills-govern-animation-guidance.md) records animation authority. Non-animation CSS responsibilities remain with good-css.
 
 Use the [frontend-guidance Verify recipe](../.omp/skills/verify-vstack/features/frontend-guidance.md) for native main and delegated runs, an unrelated-task control, packaged-content inspection, and an isolated future-source planning check. Stub load proof does not establish instruction following or UI quality.
+
+The [motion Verify recipe](../.omp/skills/verify-vstack/features/frontend-motion.md) covers construction and diagnosis through fresh main and worker paths, reduced motion, interruption, measured stutter, and browser-qualified property choices. Validate library claims against the runnable fixture's actual dependencies.
 
 
 ## Decision register

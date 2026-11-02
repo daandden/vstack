@@ -11,6 +11,7 @@ Existing frontend work reaches the shipped UI guidance through good-css in main 
 - `frontend-source`: public register and maintenance commands account for every discovered source item and retain adapted classification through future-source planning.
 - `frontend-distribution`: a real package contains the MIT notice and excludes rejected source skills.
 - [Content robustness](frontend-robustness.md) adds realistic adverse-data, collection-boundary, and narrow-container proof through the same native and browser interfaces.
+- `frontend-motion`: [motion construction and diagnosis](frontend-motion.md) cover native main and worker edits, measured stutter, interruption, reduced motion, and a browser-qualified clip-path reveal.
 
 ## How to get to it (user POV)
 
@@ -90,12 +91,12 @@ npm pack --ignore-scripts --json --pack-destination "$VERIFY_RUN_DIR" --cache "$
 
 Inspect the emitted tarball's file inventory and read each shipped UI skill's `LICENSE` from the archive. Compare its bytes with the MIT notice at the actual Pin. Confirm the required copyright, permission, and disclaimer ship. Confirm no skill directory for `animation-vocabulary`, `ask-sonner`, `pick-ui-library`, `animate-expo`, or `write-swift` entered the archive. Vstack's existing `prototype` must still ship; compare its packaged bytes with the unchanged local prototype rather than treating the name alone as the excluded upstream contribution.
 
-Run the applicable public-interface tests, focused catalog checks, changed-skill validation, and load smoke. The load summary must put every shipped UI Addon, including emil-design-eng, review-animations, and break-ui, among hidden skills and exclude them from listed skills. Inspect review-animations/SKILL.md, STANDARDS.md, and LICENSE in the package as well as the design-engineering notice and break-ui/SKILL.md, CATALOG.md, and LICENSE. Run final `vstack-maintain gates --scratch "$VERIFY_RUN_DIR"` after all edits. Keep every stage name, `ok` value, and raw diagnostics. A failed native/browser prerequisite stays unavailable or unmet even when the mechanical gates pass.
+Run the applicable public-interface tests, focused catalog checks, changed-skill validation, and load smoke. The load summary must put every shipped UI Addon among hidden skills and exclude them from listed skills. Inspect review-animations/SKILL.md, STANDARDS.md, and LICENSE in the package as well as the design-engineering notice, break-ui/SKILL.md, CATALOG.md, and LICENSE, animate/SKILL.md, RECIPES.md, and LICENSE, and animation-performance/SKILL.md and LICENSE. Run final `vstack-maintain gates --scratch "$VERIFY_RUN_DIR"` after all edits. Keep every stage name, `ok` value, and raw diagnostics. A failed native/browser prerequisite stays unavailable or unmet even when the mechanical gates pass.
 
 ## Gotchas
 
 - Adding a catalog key does not activate a non-principle Addon during implementation or automatic subagent selection. Exercise the actual conditional references.
-- Use only the UI guidance actually shipped in the checkout under test, currently emil-design-eng, review-animations, and break-ui. Follow-on items stay Deferred until their owning ticket lands. Consult the current register rather than importing deferred guidance or any of the six exclusions for a demonstration.
+- Exercise only the guidance shipped in the checkout under test. Read current Dispositions rather than assuming every spec 338 item has landed. Do not import the six exclusions to make a demonstration easier.
 - Use a saved native skill-invocation header to establish expansion of the typed implementation entry. Literal slash text in an unexpanded user message is not proof.
 - Native models can produce a good UI without this guidance. Report the actual reads, changes, and observations; do not invent a causal quality score.
 - Record model changes, fallbacks, and incomplete captures. A successful stub transport run is not native instruction-following proof.

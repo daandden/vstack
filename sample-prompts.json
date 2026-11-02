@@ -4551,6 +4551,24 @@
       "allowed": ["principle-experience-first", "principle-prove-it-works"],
       "baseline_selected": {},
       "baseline_borderline": {}
+    },
+    {
+      "id": "ui-motion-disclosure",
+      "split": "tune",
+      "prompt": "Animate this occasional web disclosure with a short interruptible reveal. Keep keyboard use instant and respect reduced motion.",
+      "expected": ["animate", "emil-design-eng"],
+      "allowed": ["principle-experience-first", "principle-prove-it-works"],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "ui-motion-stutter",
+      "split": "tune",
+      "prompt": "Diagnose why this web animation stutters during hydration. Measure the browser workload and compare the driver fix without changing duration or distance.",
+      "expected": ["animation-performance"],
+      "allowed": ["emil-design-eng", "perf-issue", "benchmark-checklist", "principle-fix-root-causes", "principle-prove-it-works"],
+      "baseline_selected": {},
+      "baseline_borderline": {}
     }
   ]
 }
