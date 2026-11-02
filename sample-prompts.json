@@ -17,6 +17,20 @@
   },
   "prompts": [
     {
+      "id": "mobile-web-platform",
+      "split": "tune",
+      "prompt": "Make this phone-facing web pickup form work with touch, changing viewport height, safe areas, desktop hover, and accessible email and telephone inputs. Keep the existing web stack.",
+      "expected": ["mobile-native", "emil-design-eng"],
+      "allowed": ["principle-experience-first", "principle-prove-it-works"]
+    },
+    {
+      "id": "apple-web-interaction",
+      "split": "tune",
+      "prompt": "Polish this web sheet with direct pointer tracking, interruptible reversal, immediate press feedback, a legible translucent toolbar, and a deliberate typography hierarchy.",
+      "expected": ["apple-design", "emil-design-eng"],
+      "allowed": ["mobile-native", "principle-experience-first", "principle-prove-it-works"]
+    },
+    {
       "id": "readme-typo",
       "split": "tune",
       "prompt": "Fix the typo \"recieve\" in README.md.",

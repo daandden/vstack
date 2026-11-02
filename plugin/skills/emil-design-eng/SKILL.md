@@ -40,6 +40,8 @@ Read [component details](references/components.md) when implementing controls, p
 
 Polish includes reliable behavior users rarely notice. Preserve focus, input, cancellation, empty states, and interrupted interactions. Choose useful defaults rather than exposing every visual parameter. Keep visual rhythm, timing, and component personality consistent. A professional dashboard usually benefits from crisp responses; an occasional playful interaction can tolerate bounce.
 
+For touch-facing web controls, viewport height, safe areas, hover gating, or mobile inputs, read skill://mobile-native. For direct manipulation, interruptible motion, materials, or Apple-derived typography and feedback, read skill://apple-design. Apply only the guidance relevant to the current interaction.
+
 Study a relevant working interface when the design is uncertain. Inspect what makes its interaction effective rather than copying its appearance wholesale. Test the actual result, including rapid reversal and keyboard use. A fresh look or slow playback can reveal defects, but do not delay the current delivery waiting for a next-day review.
 
 ## Accessibility and authority

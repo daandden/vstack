@@ -34,6 +34,22 @@
         "false": "Timing or easing taste alone, static CSS, non-animation performance, backend, CLI, prose, or native thread diagnosis."
       }
     },
+    "apple-design": {
+      "type": "noul",
+      "instructions": "Does the web UI task need Apple-derived interaction judgment for direct manipulation, interruptible motion, materials, typography, or immediate physical feedback?",
+      "criteria": {
+        "true": "Building or reviewing gesture-driven web controls, reversible sheets, velocity-aware interactions, translucent hierarchy, or a deliberate interface typography system.",
+        "false": "Native Swift or Expo work, unrelated backend or CLI tasks, source bookkeeping, or a web task without these interaction or visual-hierarchy decisions."
+      }
+    },
+    "mobile-native": {
+      "type": "noul",
+      "instructions": "Does the task build or review mobile-web behavior involving touch, viewport height, safe areas, hover, inputs, scrolling, or browser chrome?",
+      "criteria": {
+        "true": "A phone-facing web app, PWA, sheet, carousel, app shell, or touch interaction whose platform behavior needs implementation or review.",
+        "false": "React Native, Expo, Swift, backend or CLI work, source bookkeeping, or a desktop-only task without mobile-web or touch behavior."
+      }
+    },
     "emil-design-eng": {
       "type": "noul",
       "instructions": "Does the task build, polish, or review frontend controls, interactions, feedback, or purposeful UI motion?",

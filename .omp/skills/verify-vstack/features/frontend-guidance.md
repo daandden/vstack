@@ -12,6 +12,7 @@ Existing frontend work reaches the shipped UI guidance through good-css in main 
 - `frontend-distribution`: a real package contains the MIT notice and excludes rejected source skills.
 - [Content robustness](frontend-robustness.md) adds realistic adverse-data, collection-boundary, and narrow-container proof through the same native and browser interfaces.
 - `frontend-motion`: [motion construction and diagnosis](frontend-motion.md) cover native main and worker edits, measured stutter, interruption, reduced motion, and a browser-qualified clip-path reveal.
+- `frontend-mobile`: the [mobile-web recipe](frontend-mobile.md) exercises Apple-derived interaction judgment and touch, viewport, safe-area, hover, and input behavior through the existing main and worker paths.
 
 ## How to get to it (user POV)
 
@@ -79,7 +80,7 @@ bun .omp/skills/verify-vstack/scripts/frontend-maintenance.ts "$CHECKOUT" "$VERI
 
 The helper runs the real register CLI, then copies a source into an isolated fixture remote. It changes an upstream timing recommendation deterministically, constructs fixture-only Git objects, and runs public `plan` and `check` commands over an isolated checkout. The resulting plan must identify the changed UI item and retain its adapted Disposition and artifact group. It compares content hashes before and after to prove the real Pin and checkout and the fixture checkout stayed unchanged. The fixture baseline commit is not a product commit. Each command's stdout, stderr, exit result, plan, and final `outcome.json` remain in the new evidence directory.
 
-The source bootstrap is now committed. Normal target checks and preparation read the current HEAD; keep later ticket decisions scoped to their own rows and preserve earlier tickets' bookkeeping. The helper's committed fixture also exercises normal target checks without moving the real Pin.
+The source bootstrap is now committed. Normal target checks and preparation read the current HEAD; keep later ticket decisions scoped to their own rows and preserve earlier tickets' bookkeeping and changelog entries. The helper's committed fixture also exercises normal target checks without moving the real Pin.
 
 ### Distribution and final gates
 
@@ -89,14 +90,14 @@ Use the public package command from `$CHECKOUT/plugin`, with output and cache un
 npm pack --ignore-scripts --json --pack-destination "$VERIFY_RUN_DIR" --cache "$VERIFY_RUN_DIR/npm-cache"
 ```
 
-Inspect the emitted tarball's file inventory and read each shipped UI skill's `LICENSE` from the archive. Compare its bytes with the MIT notice at the actual Pin. Confirm the required copyright, permission, and disclaimer ship. Confirm no skill directory for `animation-vocabulary`, `ask-sonner`, `pick-ui-library`, `animate-expo`, or `write-swift` entered the archive. Vstack's existing `prototype` must still ship; compare its packaged bytes with the unchanged local prototype rather than treating the name alone as the excluded upstream contribution.
+Inspect the emitted tarball's file inventory and read each shipped UI guidance skill's `LICENSE` from the archive. Compare its bytes with the MIT notice at the actual Pin. Confirm the required copyright, permission, and disclaimer ship, along with required companion references. Confirm no skill directory for `animation-vocabulary`, `ask-sonner`, `pick-ui-library`, `animate-expo`, or `write-swift` entered the archive. Vstack's existing `prototype` must still ship; compare its packaged bytes with the unchanged local prototype rather than treating the name alone as the excluded upstream contribution.
 
-Run the applicable public-interface tests, focused catalog checks, changed-skill validation, and load smoke. The load summary must put every shipped UI Addon among hidden skills and exclude them from listed skills. Inspect review-animations/SKILL.md, STANDARDS.md, and LICENSE in the package as well as the design-engineering notice, break-ui/SKILL.md, CATALOG.md, and LICENSE, animate/SKILL.md, RECIPES.md, and LICENSE, and animation-performance/SKILL.md and LICENSE. Run final `vstack-maintain gates --scratch "$VERIFY_RUN_DIR"` after all edits. Keep every stage name, `ok` value, and raw diagnostics. A failed native/browser prerequisite stays unavailable or unmet even when the mechanical gates pass.
+Run the applicable public-interface tests, focused catalog checks, changed-skill validation, and load smoke. The load summary must put every shipped UI Addon among hidden skills and exclude them from listed skills. Inspect review-animations/SKILL.md, STANDARDS.md, and LICENSE in the package as well as the design-engineering notice, break-ui/SKILL.md, CATALOG.md, and LICENSE, animate/SKILL.md, RECIPES.md, and LICENSE, animation-performance/SKILL.md and LICENSE, and apple-design and mobile-native with their references and LICENSE files. Run final `vstack-maintain gates --scratch "$VERIFY_RUN_DIR"` after all edits. Keep every stage name, `ok` value, and raw diagnostics. A failed native/browser prerequisite stays unavailable or unmet even when the mechanical gates pass.
 
 ## Gotchas
 
 - Adding a catalog key does not activate a non-principle Addon during implementation or automatic subagent selection. Exercise the actual conditional references.
-- Exercise only the guidance shipped in the checkout under test. Read current Dispositions rather than assuming every spec 338 item has landed. Do not import the six exclusions to make a demonstration easier.
+- The Decision register and maintainer guide identify the shipped subset and selected deferrals. Exercise only shipped guidance. Do not import deferred or excluded skills to complete a demonstration.
 - Use a saved native skill-invocation header to establish expansion of the typed implementation entry. Literal slash text in an unexpanded user message is not proof.
 - Native models can produce a good UI without this guidance. Report the actual reads, changes, and observations; do not invent a causal quality score.
 - Record model changes, fallbacks, and incomplete captures. A successful stub transport run is not native instruction-following proof.

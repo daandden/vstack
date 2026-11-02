@@ -1019,9 +1019,9 @@ items:
     kind: skill
     path: skills/apple-design
     tree: cd509ae729c86487d352e17a26651217a4c25711
-    disposition: reject
-    artifacts: []
-    reason: "Deferred at a81dbca07f2217b7103e510c0f13f8d5b017afc9: ticket 340 ships Apple-derived interaction guidance."
+    disposition: adapt
+    artifacts: [ plugin/skills/apple-design ]
+    reason: "Hidden Apple-derived web guidance preserves vstack ownership, conditional references, dependency checks, and browser-qualified motion authority."
   - id: emil/ask-sonner
     upstream: emil
     kind: skill
@@ -1068,9 +1068,9 @@ items:
     kind: skill
     path: skills/mobile-native
     tree: fdad6e6e91d8bbfda7164c7027269a8389dbadcd
-    disposition: reject
-    artifacts: []
-    reason: "Deferred at a81dbca07f2217b7103e510c0f13f8d5b017afc9: ticket 340 ships mobile-web guidance."
+    disposition: adapt
+    artifacts: [ plugin/skills/mobile-native ]
+    reason: "Hidden mobile-web guidance preserves vstack ownership, capability checks, zoom and accessibility, and honest browser versus device evidence."
   - id: emil/pick-ui-library
     upstream: emil
     kind: skill

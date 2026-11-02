@@ -4,6 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [8.0.14] - 2026-11-02
+
+- Ship apple-design and mobile-native as adapted hidden Addons through existing main and delegated frontend references. Preserve mobile-web scope, non-animation CSS and accessibility, browser-qualified motion authority, upstream notices, and existing execution and evidence ownership (#340).
+- Add repeatable mobile-web Verify coverage for touch, viewport, safe areas, hover, and inputs with actual dependency and engine scope (#340).
+
 ## [8.0.13] - 2026-11-02
 
 - Ship adapted animate and animation-performance Addons with component recipes and MIT notices; existing frontend and diagnosis paths conditionally reach motion construction and browser-measured performance guidance without changing execution ownership or principle-only selection (#342).
