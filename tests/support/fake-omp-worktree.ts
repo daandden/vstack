@@ -4,9 +4,17 @@ import { lstatSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const args = process.argv.slice(2);
+if (args.join(" ") === "config get worktree.base" && process.env.FAKE_OMP_BASE !== undefined) {
+  console.log(process.env.FAKE_OMP_BASE);
+  process.exit(0);
+}
 if (args.join(" ") !== "worktree list --json" || process.env.FAKE_OMP_FAIL) {
   console.error(`fake omp cannot run: ${args.join(" ")}`);
   process.exit(1);
+}
+if (process.env.FAKE_OMP_LISTING !== undefined) {
+  console.log(process.env.FAKE_OMP_LISTING);
+  process.exit(0);
 }
 const base = process.env.OMP_WORKTREE_DIR!;
 const hidden = new Set((process.env.FAKE_OMP_HIDE ?? "").split(",").filter(Boolean));

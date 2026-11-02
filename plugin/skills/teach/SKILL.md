@@ -72,11 +72,11 @@ A shared stylesheet is the first component every workspace earns: every generate
 
 Every lesson should be tied into the mission - the reason that the user is interested in learning about the topic.
 
-If the user is unclear about the mission, or the `MISSION.md` is not populated, your first job is to use `ask` to learn why they want to study this topic.
+If the user is unclear about the mission, or the `MISSION.md` is not populated, your first job is to use `flow_ask` to learn why they want to study this topic.
 
 Failing to understand the mission will mean knowledge acquisition is not grounded in real-world goals. Lessons will feel too abstract. You will have no way of judging what the user should do next.
 
-Missions may change as the user develops more skills and knowledge. This is normal - make sure to update the `MISSION.md` and add a learning record to capture the change. Confirm with the user through `ask` before changing the mission.
+Missions may change as the user develops more skills and knowledge. This is normal - make sure to update the `MISSION.md` and add a learning record to capture the change. Confirm with the user through `flow_ask` before changing the mission.
 
 ## Zone Of Proximal Development
 
@@ -154,6 +154,6 @@ Draw lesson and reference figures through `skill://vstack-figures`. Write each f
 
 ## In-session questions
 
-Every question addressed to the learner during the session goes through `ask` and is recorded in the bound Stage as `skill://flow-page` says: mission discovery, prior knowledge, topic choices, preferences, and approvals. Keep Quiz attempts separate from these real questions. Quiz feedback and completion persist through the learning-progress contract, including supported offline attempts.
+Every question addressed to the learner during the session goes through `flow_ask` on the bound Stage, following `skill://flow-page`'s "Every ask in a Flow", including separate answer recording. This covers mission discovery, prior knowledge, topic choices, preferences, and approvals. Keep Quiz attempts separate from these real questions. Quiz feedback and completion persist through the learning-progress contract, including supported offline attempts.
 
-A timed-out answer is not the learner's answer. Leave ordinary questions unanswered; for an approval, re-ask once, then stop without acting if it times out again. A subagent without `ask` returns open questions to its parent. A headless run takes the recommended answer and reports that choice.
+A timed-out answer is not the learner's answer. Leave ordinary questions unanswered. For an approval, re-ask once through `flow_ask` with `again`, then stop without acting if it times out again. A subagent returns open questions to its parent. An unavailable or headless run cannot grant approval. Report any recommended choice as an assumption, not the learner's answer.

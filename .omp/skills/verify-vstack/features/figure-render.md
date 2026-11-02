@@ -59,7 +59,7 @@ Preconditions:
    - `figure-readability.test.ts`: "labels use fixed-font cell widths", "wrapping follows visible cells", "default flowchart edges", and prior-output preservation.
    - `figure-types.test.ts`: every documented keyword and alias uses `plugin/skills/vstack-figures/references/examples/<keyword>.mmd`.
 
-3. Open `figures/consumer.html` in a named browser tab with `app: { tern: false }` and a 1280 by 900 viewport. Evaluate the complete text of `scripts/figure-audit.js` in that page:
+3. Open `figures/consumer.html` in a named browser tab with `app: { tern: false }` and a 1280 by 900 viewport. Follow the parent skill's browser policy for every open, including diagnostics, retries, recovery, and delegated verification. Evaluate the complete text of `scripts/figure-audit.js` in that page:
 
    ```js
    const audit = await tab.evaluate(await Bun.file(`${SKILL_DIR}/scripts/figure-audit.js`).text());
@@ -84,7 +84,9 @@ Preconditions:
 
 6. Save ARIA and full-resolution lossless WebP proof at 1280 and 360px. Capture PNG silently, convert losslessly, and read the resulting WebP as the parent skill requires. Record page overflow and visible readability separately from the computed-paint audit. Keep the raw outputs and revision record beside the screenshots.
 
-7. Preserve the disposable Flow export before cleanup. Stop only its authenticated isolated-home host, close owned tabs, and run scoped cleanup:
+7. WebKit coverage is required for the browser checks in steps 3, 5, and 6. Repeat them through a permitted, non-disruptive, non-Tern WebKit route only if one is available, and record the actual backend and engine. Do not open a Tern browser block to obtain this proof. If no permitted route is available, report WebKit proof as unavailable or unmet, with the reason. Required figure-render browser coverage remains unmet in that case. Chromium proof is not WebKit proof.
+
+8. Preserve the disposable Flow export before cleanup. Stop only its authenticated isolated-home host, close owned tabs, and run scoped cleanup:
 
    ```sh
    bun "$CHECKOUT/plugin/skills/flow-page/scripts/flow-page.ts" host stop --home "$VERIFY_RUN_DIR/data/figure-home" --session "$FLOW_SESSION" --agent "$FLOW_AGENT"

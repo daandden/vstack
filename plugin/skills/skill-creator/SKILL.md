@@ -64,15 +64,15 @@ Adapt the effort to the request: a narrow update may need only a focused edit an
 
 Identify which requests the skill handles and which outcomes matter.
 
-- When the conversation already contains the workflow ("turn this into a skill"), mine it first: tools used, step order, corrections the user made, input and output formats. Resolve only material gaps through `ask`.
+- When the conversation already contains the workflow ("turn this into a skill"), mine it first: tools used, step order, corrections the user made, input and output formats. Resolve only material gaps through the question routing below.
 - Ground the skill in real expertise where it exists: runbooks, incident fixes, review comments, a transcript of the task done once. Teach the method, not that instance's answer.
 - Decide whether the need is a skill at all, and whether it is one skill or several; splitting rules are in skill://writing-for-agents.
 
-Use `ask` only when missing information changes the work and cannot be reasonably inferred. When the user has explained the task clearly, proceed.
+Ask only when missing information changes the work and cannot be reasonably inferred. In a Flow-bound run, use `flow_ask` following `skill://flow-page`'s "Every ask in a Flow", including separate answer recording. Genuinely unbound clarifications retain `ask` and create no Flow. When the user has explained the task clearly, proceed.
 
 ### 2. Choose the location and name
 
-For a new skill, a location the user names wins. Otherwise choose `.omp/skills/<name>/` for guidance about this repo, vstack only when the user names vstack, or `~/.omp/agent/skills/<name>/` in every other case (the default). Use `ask` once only if the home is unclear.
+For a new skill, a location the user names wins. Otherwise choose `.omp/skills/<name>/` for guidance about this repo, vstack only when the user names vstack, or `~/.omp/agent/skills/<name>/` in every other case (the default). Ask once through the question routing above only if the home is unclear.
 
 For an update, resolve `omp skill list --json`: inspect `source` and resolve `filePath` to its real path. Edit an own project or user skill in place and leave it uncommitted. Refuse someone else's install, because its next update overwrites the edit. State the reason and stop.
 
@@ -116,6 +116,6 @@ It reports every problem it finds: frontmatter syntax and types, naming, a folde
 
 Ordinary creation and small edits need no formal evaluation. For a complex or risky skill, or when the user asks whether a skill works, read [references/evaluation.md](references/evaluation.md). For description changes or misrouting, read [references/trigger-evals.md](references/trigger-evals.md). To decide whether one version beats another, or whether a section earns its place, read [references/blind-comparison.md](references/blind-comparison.md).
 
-Follow `skill://flow-page`'s "Stage entry/exit line" for an evaluation run. Publish the Results specified by the selected evaluation reference. Preserve skill files and all required eval exports. Redact secrets in transcripts and captured outputs. Summarize the Results rather than writing a separate report page.
+Follow `skill://flow-page`'s "Stage entry/exit line" for an evaluation run. In a Flow, publish the Results specified by the selected evaluation reference and summarize them rather than writing a separate report page. Outside a Flow, deliver the full evaluation findings in chat. Preserve skill files and all required eval exports. Redact secrets in transcripts and captured outputs.
 
 Improve skills from real usage and demonstrated failures, preferring a narrow correction to a new universal rule.

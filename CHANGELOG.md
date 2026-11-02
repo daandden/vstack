@@ -1,12 +1,30 @@
 # Changelog
 
-Versions of the vstack plugin (`plugin/package.json`). See the README for when to raise each part of the version.
+Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide](docs/maintainer.md#versions-and-changelog) for when to raise each part of the version.
 
 ## [Unreleased]
 
-## [8.0.7] - 2026-11-01
+- Shorten the README to installation, everyday use, and documentation links. Preserve maintainer instructions in `docs/maintainer.md` and link to canonical skill contracts.
+- Keep Verify browser opens non-Tern during diagnostics, retries, recovery, and delegated verification. Restore explicit WebKit figure coverage and report unavailable proof as unmet rather than substituting Chromium (#329).
 
-- A standalone `research` run that created its Flow closes it after finishing its Stage once the requested research is complete. Inside a caller's or a continuing Flow, research finishes only its own Stage and restores the caller's binding (#322).
+## [8.0.10] - 2026-11-02
+
+- Deliver ordinary Flow questions with one `flow_ask` call that commits the complete question and visuals, presents the Flow link, then opens the existing omp-tools picker. Require its routed interactive TUI dialog without a native ask fallback. Preserve raw responses and separate Flow readings, refuse to prompt after stale publication, and avoid reopening repeated contributions. Ratchet keeps its native approval gate.
+- Preserve multiselect cleanup and Migration questions, the configured ask timeout, and the existing picker's read-tier approval behavior. Cut all Flow-bound question recipes over to the shared single-call contract.
+
+## [8.0.9] - 2026-11-01
+
+- Start a Flow only through the central enrollment rule, before discovery or creation. Description-selected research, explanations, reviews, and other producers return complete answers in chat unless enrolled, while typed skill requests and existing Flow work keep page publication. Recognize omp's native skill-invocation header as the expanded typed command and execute Stage entry and exit even without an existing binding. Preserve canonical files, plain chat questions, and real runnable prototypes outside a Flow (ADR 0046, #321).
+- Read synchronous Git identity replies from owned temporary files rather than returned capture buffers, and remove the resources on success or failure. Reject malformed output and operational Git failures before selecting a Scratch or Flow namespace. Reserve `_global` for a genuine outside-repository result and preserve shared linked-worktree keys (#321).
+
+## [8.0.8] - 2026-11-01
+
+- Run clean-wt's script commands with a long or disabled tool deadline, and treat a host deadline as no exit rather than a nonzero exit. An interrupted inventory keeps its diagnostics and reruns once, investigators return interrupted-attempt diagnostics instead of writing Scratch, and an interrupted removal is reported as unknown without an automatic rerun (#319).
+
+## [8.0.7] - 2026-11-02
+
+- Own isolated-worker retention, release, and observed clone removal across implementers, review fixers, research, experiments, forensics, drafting, and Verifiers (#323).
+- Add read-only worker-clone status with owner checks, retained-clone detection, and CLI behavior tests (#323).
 
 ## [8.0.6] - 2026-11-02
 
