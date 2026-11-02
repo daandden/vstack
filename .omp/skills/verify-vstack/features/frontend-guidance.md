@@ -7,6 +7,7 @@ Existing frontend work reaches the shipped UI guidance through good-css in main 
 - `frontend-main`: an ordinary frontend implementation reads and applies the conditional design guidance without an extra UI command.
 - `frontend-worker`: an existing vstack-worker reaches the same guidance and makes the actual UI changes.
 - `frontend-unrelated`: an unrelated command-line task does not load frontend guidance.
+- `frontend-review`: a fresh native code-review and its delegated Standards reviewer block an observed motion defect while preserving a supported browser-specific exception.
 - `frontend-source`: public register and maintenance commands account for every discovered source item and retain adapted classification through future-source planning.
 - `frontend-distribution`: a real package contains the MIT notice and excludes rejected source skills.
 
@@ -14,6 +15,7 @@ Existing frontend work reaches the shipped UI guidance through good-css in main 
 
 - Start an existing implementation run on a frontend task. The implementation pointer reaches good-css, which reaches the shipped UI guidance when interaction work requires it.
 - Delegate frontend implementation to the existing vstack-worker role. Its own frontend pointer reaches good-css, even though automatic Brief selection remains principle-only.
+- Review a frontend motion diff through the existing code-review owner. Its coordinator and delegated Standards reviewer read review-animations and its companion standards conditionally.
 - Run public maintainer commands from the checkout. This is source accounting, not a new UI entry flow.
 
 ## Driving it with native omp, the browser, and public CLIs
@@ -37,6 +39,22 @@ Preconditions:
 3. In another fresh process and identical starting app, request the same frontend outcome through a delegated vstack-worker. Require the existing role and its single-subagent form, pass the allowed tree, vstack root, and Scratch, and leave the UI Addon name out of the worker brief. If the worker cannot start, stop that case and report why. Capture the actual worker transcript and file edits, not a coordinator's claim or a stub echo.
 4. In a separate fresh process, ask the existing implementation entry to change a command-line string normalizer to trim and lowercase a string. Retain the module execution and native read trace. Neither good-css nor the new UI guidance should load.
 5. Read actual tool executions and worker history. A loaded pointer alone is not application. Identify the resulting behavior that applies the guidance, such as instant keyboard opening, short pointer-only transitions, press feedback, focus restoration, cancellation, and nonmoving reduced-motion behavior. Preserve unexpected actions and unavailable checks rather than replacing them with a favorable retry.
+
+### Native motion review
+
+Use a separate runnable vanilla frontend with an empty dependency manifest, a pinned fixture baseline, and an uncommitted CSS change. Keep the fixture Git baseline outside the product checkout.
+
+1. Introduce a genuine defect such as a command palette's unconditional `900ms ease-in` entrance moving 80px from opacity zero. The fixture spec requires instant Control+K opening and reduced motion. Include an occasional pointer preview with a `180ms` ease-out inset clip-path transition guarded by `prefers-reduced-motion: no-preference`.
+2. Before changing the plugin, drive a fresh `/skill:code-review` of that fixture and retain its native history and browser observations. Record actual findings even if existing guidance already catches the defect. Missing review-animations coverage is not proof that the baseline approved bad motion.
+3. After the plugin change, start a new native process on the same starting fixture. Send `/skill:code-review Review the uncommitted app.css change against <fixture baseline SHA>. Spec source is <fixture>/spec.md. Be read-only. Skip blast radius by request. Assess keyboard palette entry and the existing pointer clip-path reveal. Use the existing axes, finding format, and delegated reviewers. The parent owns publication. No Flow, tracker, commit, installation, or machine changes. Every browser open uses app:{tern:false}; record backend/engine and retain ARIA and lossless WebP under <proof>.`
+4. Keep the expanded invocation, coordinator reads, actual `task` call, delegated Standards history, and returned findings. Both coordinator and delegated reviewer must reach review-animations and STANDARDS.md through existing review references. A catalog selection alone does not prove the delegated path.
+5. Observe Control+K entry, Escape, and rapid closing, then repeat with verified reduced motion. Retain the time, opacity, displacement, focus, and visible result. The review must issue an explicit blocking finding at the changed CSS location with an applicable standard and observed user impact. An advisory-only warning does not satisfy this case.
+6. With verified no-preference, use the pointer preview control and reverse it during interpolation. Retain the intermediate clip values, endpoints, enabled control, and immediate status/expanded state. Under reduced motion it should toggle instantly. The resulting review must explain why supported clip-path is nonblocking in this browser rather than applying a transform-and-opacity-only ban.
+
+Verify media settings with `matchMedia` before each branch. If a convenience emulation call does not apply reduced motion, use the actual browser's media-emulation interface and retain the failed attempt separately. Do not mistake a harness timeout for an application defect. Interpolation and reversal do not prove GPU execution, paint cost, or every engine's support. Read the fixture's actual package manifest before making library claims; a dependency-free fixture validates native CSS behavior, not Motion or Base UI APIs.
+
+Retain the review's existing Standards, Spec, and Blast radius states. The two axes can independently report the same defect; distinguish axis findings from unique defects. Keep every reviewer-owned tab and server within the run's teardown ownership.
+
 
 ### Browser observations
 
@@ -71,12 +89,12 @@ npm pack --ignore-scripts --json --pack-destination "$VERIFY_RUN_DIR" --cache "$
 
 Inspect the emitted tarball's file inventory and read `package/skills/emil-design-eng/LICENSE` from the archive. Compare its bytes with the MIT notice at the actual Pin. Confirm the required copyright, permission, and disclaimer ship. Confirm no skill directory for `animation-vocabulary`, `ask-sonner`, `pick-ui-library`, `animate-expo`, or `write-swift` entered the archive. Vstack's existing `prototype` must still ship; compare its packaged bytes with the unchanged local prototype rather than treating the name alone as the excluded upstream contribution.
 
-Run the applicable public-interface tests, catalog checks, changed-skill validation, and load smoke. The load summary must put emil-design-eng among hidden skills and exclude it from listed skills. Run final `vstack-maintain gates --scratch "$VERIFY_RUN_DIR"` after all edits. Keep every stage name, `ok` value, and raw diagnostics. A failed native/browser prerequisite stays unavailable or unmet even when the mechanical gates pass.
+Run the applicable public-interface tests, catalog checks, changed-skill validation, and load smoke. The load summary must put each shipped UI Addon, including emil-design-eng and review-animations, among hidden skills and exclude it from listed skills. Inspect review-animations/SKILL.md, STANDARDS.md, and LICENSE in the package as well as the design-engineering notice. Run final `vstack-maintain gates --scratch "$VERIFY_RUN_DIR"` after all edits. Keep every stage name, `ok` value, and raw diagnostics. A failed native/browser prerequisite stays unavailable or unmet even when the mechanical gates pass.
 
 ## Gotchas
 
 - Adding a catalog key does not activate a non-principle Addon during implementation or automatic subagent selection. Exercise the actual conditional references.
-- Only emil-design-eng ships in ticket 339. Nine other selected items remain Deferred to their named follow-on tickets. Do not treat them as already available or import the six exclusions to make a demonstration easier.
+- Only shipped guidance is available. This recipe covers emil-design-eng and review-animations; other selected items remain Deferred until their owning ticket ships. Consult the current register rather than importing a sibling's skill for a demonstration.
 - Use a saved native skill-invocation header to establish expansion of the typed implementation entry. Literal slash text in an unexpanded user message is not proof.
 - Native models can produce a good UI without this guidance. Report the actual reads, changes, and observations; do not invent a causal quality score.
 - Record model changes, fallbacks, and incomplete captures. A successful stub transport run is not native instruction-following proof.

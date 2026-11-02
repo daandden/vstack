@@ -13,7 +13,9 @@ Each technique is a set of properties and values, so it works in any authoring s
 
 When building or reviewing UI controls, dialogs, popovers, feedback, or motion, read skill://emil-design-eng before choosing the interaction. This applies in main sessions and delegated frontend work. Leave it unloaded for non-frontend tasks.
 
-Emil Kowalski's design-engineering guidance is adapted from the UI upstream. Its animation guidance takes precedence over this skill under ADR 0047. Reconcile disagreements within Emil's guidance with browser-specific behavior and observed evidence. Keep this skill's non-animation CSS and accessibility responsibilities. Only emil-design-eng ships in the initial subset; other selected UI skills remain deferred, so this hand-off requires no unshipped target. The derived skill includes its MIT notice.
+When reviewing animation or motion changes, read skill://review-animations and its standards. Use the existing review owner's finding format and blocking authority in main and delegated reviews.
+
+Emil Kowalski's design-engineering guidance is adapted from the UI upstream. Its animation guidance takes precedence over this skill under ADR 0047. Reconcile disagreements within Emil's guidance with browser-specific behavior and observed evidence. Keep this skill's non-animation CSS and accessibility responsibilities. Each shipped derived skill includes its MIT notice. Conditional hand-offs name only shipped guidance.
 
 ## In all CSS
 

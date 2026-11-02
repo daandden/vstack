@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [8.0.11] - 2026-11-02
+
+- Add hidden review-animations and companion standards to existing main and delegated motion reviews, preserving evidence-backed blocking verdicts and browser-qualified exceptions.
+
 ## [8.0.10] - 2026-11-02
 
 - Ship emil-design-eng as a hidden, adapted Addon reached conditionally through good-css in main and delegated frontend implementation. Preserve existing execution, review, accessibility, and evidence ownership, with browser-qualified animation authority under ADR 0047 (#339).

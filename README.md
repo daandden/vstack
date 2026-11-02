@@ -27,7 +27,7 @@ The [Flow page](plugin/skills/flow-page/SKILL.md) keeps questions, answers, resu
 
 Run `/vstack-clean [age]` to preview expired Scratch entries. The default is `90d`. Deletion requires UI confirmation. Open Flows stay protected. See the [Scratch guide](plugin/skills/vstack-tmp/SKILL.md).
 
-Frontend implementation and delegated UI workers reach [emil-design-eng](plugin/skills/emil-design-eng/SKILL.md) conditionally through good-css. No extra UI command is needed. This first slice ships design-engineering guidance only. The other nine selected UI skills remain deferred to tickets 340–344. The [maintainer guide](docs/maintainer.md#ui-upstream) records the subset and exclusions.
+Frontend implementation and delegated UI workers reach [emil-design-eng](plugin/skills/emil-design-eng/SKILL.md) conditionally through good-css. Existing code review and delegated Standards reviewers also reach [review-animations](plugin/skills/review-animations/SKILL.md) for motion changes. Evidence-backed motion defects can block approval; browser-supported exceptions need applicable evidence rather than a blanket property ban. No extra UI command is needed. Other selected guidance remains deferred to its owning ticket. The [maintainer guide](docs/maintainer.md#ui-upstream) records the shipped subset and exclusions.
 
 ## Documentation
 

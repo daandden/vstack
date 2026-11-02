@@ -4533,6 +4533,24 @@
         "principle-laziness-protocol": 0.807,
         "principle-redesign-from-first-principles": 0.71
       }
+    },
+    {
+      "id": "ui-motion-review-blocking",
+      "split": "tune",
+      "prompt": "Review this frontend motion diff for approval. The command palette now slides in for 900ms on every keyboard shortcut. Check reduced motion and give evidence-backed blocking findings.",
+      "expected": ["review-animations", "emil-design-eng"],
+      "allowed": ["principle-experience-first", "principle-prove-it-works"],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "ui-motion-review-supported-clip",
+      "split": "tune",
+      "prompt": "Review the existing occasional pointer reveal animation before approving it. It uses clip-path in our supported Chromium. Judge actual interruption and reduced-motion behavior rather than banning every property except transform and opacity.",
+      "expected": ["review-animations", "emil-design-eng"],
+      "allowed": ["principle-experience-first", "principle-prove-it-works"],
+      "baseline_selected": {},
+      "baseline_borderline": {}
     }
   ]
 }

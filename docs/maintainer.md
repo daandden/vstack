@@ -74,7 +74,9 @@ One entry, the CSS upstream, also has `page_lint: scripts/check-css.mjs`: the sc
 
 ### UI upstream
 
-The UI upstream is `emilkowalski/skills`, keyed as `emil`, initially pinned at `a81dbca07f2217b7103e510c0f13f8d5b017afc9`. Its `skills/*` tree pattern discovers sixteen items. Ticket 339 ships `emil-design-eng` as an adapted hidden Addon, including its conditional companion references and the upstream MIT notice at `plugin/skills/emil-design-eng/LICENSE`.
+The UI upstream is `emilkowalski/skills`, keyed as `emil`, initially pinned at `a81dbca07f2217b7103e510c0f13f8d5b017afc9`. Its `skills/*` tree pattern discovers sixteen items. Ticket 339 ships `emil-design-eng`; ticket 343 adds `review-animations` with its companion standards. Both are adapted hidden Addons with an upstream MIT notice in their skill directory.
+
+`code-review` and good-css conditionally reach motion review guidance in the coordinator and delegated Standards reviewers. The existing review owns blocking decisions and evidence. A browser-supported clip-path effect is not blocked by the upstream's broad property preference alone. [ADR 0047](adr/0047-selected-emil-skills-govern-animation-guidance.md) governs applicability.
 
 The remaining selected items use reject with `Deferred at <initial Pin>` reasons until their owning ticket ships:
 
@@ -83,7 +85,6 @@ The remaining selected items use reject with `Deferred at <initial Pin>` reasons
 | 340 | `apple-design`, `mobile-native` |
 | 341 | `break-ui` |
 | 342 | `animate`, `animation-performance` |
-| 343 | `review-animations` |
 | 344 | `improve-animations`, `find-animation-opportunities`, `remove-animations` |
 
 The six permanent exclusions for spec 338 are `animation-vocabulary`, `ask-sonner`, `pick-ui-library`, upstream `prototype`, `animate-expo`, and `write-swift`. Vstack's own prototype remains unchanged.

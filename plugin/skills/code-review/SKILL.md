@@ -64,6 +64,8 @@ Read the tracker workflow from the vstack configuration above. Look for the orig
 
 Anything in the repo that documents how code is written, such as `CODING_STANDARDS.md` or `CONTRIBUTING.md`.
 
+When the diff changes frontend styles or interactions, read skill://good-css. When it changes animation or motion behavior, also read skill://review-animations and its standards before judging. These conditional references apply in the coordinator and delegated review work. Motion findings belong to the existing Standards axis, with its blocking decisions and evidence requirements, not a separate gate.
+
 On top of whatever the repo documents, the Standards axis always carries the smell baseline below: a fixed set of Fowler code smells (_Refactoring_, ch.3) that applies even when a repo documents nothing. Two rules bind it:
 
 - The repo overrides. A documented repo standard always wins; where it endorses something the baseline would flag, suppress the smell.
@@ -103,6 +105,7 @@ The Standards reviewer prompt must include:
 - The full diff command, named untracked paths and contents, and commit list.
 - For a PR, the worktree's absolute path from step 1: "Read changed files from this worktree at the head SHA, not from the current checkout."
 - The list of standards-source files you found in step 3, plus the smell baseline from step 3 pasted in full (the reviewer has no other access to it).
+- For frontend styles or interactions, require the reviewer to read skill://good-css. For changed animation or motion behavior, require skill://review-animations and its companion standards. Pass the observed browser evidence and any unavailable checks. The reviewer applies the same conditions independently, ties blocking motion findings to applicable rules and evidence, and reconciles browser-supported exceptions rather than imposing a blanket property ban.
 - The brief: "Report, per file/hunk where relevant, (a) every place the diff violates a documented standard: cite the standard (file + the rule); and (b) any baseline smell you spot: name it and quote the hunk. Distinguish hard violations from judgement calls: documented-standard breaches can be hard, but baseline smells are always judgement calls, and a documented repo standard overrides the baseline. Skip anything tooling enforces. Give each finding a short title, a label (`issue` for a hard violation, `suggestion` for a judgement call), whether it blocks the merge, its impact, the suggested change, and its evidence, in that order. Open the impact with what a user or caller sees, such as 'When you run X, Y happens instead of Z', then state the decision the user faces. The impact describes behavior only and names no file path; the file and line go in the evidence, for whoever fixes it. Say whether the cited sources settle the change, or why it needs the user's judgement. Under 400 words."
 
 The Spec reviewer prompt must include:

@@ -1100,9 +1100,9 @@ items:
     kind: skill
     path: skills/review-animations
     tree: 0e0d3cb3e07ca307fe946ccaf57f6c82eb75124a
-    disposition: reject
-    artifacts: []
-    reason: "Deferred at a81dbca07f2217b7103e510c0f13f8d5b017afc9: ticket 343 ships evidence-backed motion review guidance."
+    disposition: adapt
+    artifacts: [ plugin/skills/review-animations ]
+    reason: "Hidden motion-review guidance and companion standards preserve evidence-backed blocking authority, browser-qualified exceptions, and existing review ownership."
   - id: emil/write-swift
     upstream: emil
     kind: skill

@@ -2,6 +2,14 @@
   "preamble": "The state's `request` is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation in the question. If torn, answer no.",
   "brief_preamble": "The state's `request` is a task brief that a coding agent wrote for a subagent. Read \"the user\" in a question as the brief's author. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation in the question. If torn, answer no.",
   "questions": {
+    "review-animations": {
+      "type": "noul",
+      "instructions": "Does the task review existing frontend animation or motion changes and decide whether the behavior has defects or should block approval?",
+      "criteria": {
+        "true": "A motion review assessing timing, easing, purpose, interruption, rendering, reduced motion, or browser-qualified exceptions, including a review within a broader frontend diff.",
+        "false": "Building new motion without reviewing an existing change, a general review with no animation behavior, backend or CLI work, prose, or source bookkeeping."
+      }
+    },
     "emil-design-eng": {
       "type": "noul",
       "instructions": "Does the task build, polish, or review frontend controls, interactions, feedback, or purposeful UI motion?",
