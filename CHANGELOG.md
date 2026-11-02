@@ -4,6 +4,8 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+- Classify the Git-loss regression fixture's stdout with `fstat(1)` instead of a `/dev/fd` pathname check, preserving regular-file Git bytes on Darwin while still discarding piped output (#333).
+
 ## [8.0.12] - 2026-11-02
 
 - grill-with-docs assesses every change, expands only consequential unsettled architecture choices into visual agreement, records the Architecture brief with decision provenance, and stops before implementation or a user-invoked next Matt skill (#334, ADR 0046).

@@ -53,6 +53,21 @@ Teardown: the script stops its own omp process and stub server. If it was killed
 `--rpc-ui` starts `omp --mode rpc-ui`. omp 18.13 registers the `ask` tool only in that mode; in `--mode rpc`, a stub `ask` call fails with `Tool ask not found`. Each `ask` question reaches the drive as an `extension_ui_request` `select` frame whose options end with `Other (type your own)`. Picking that option opens an `editor` frame for the custom words. `--ui-replies` answers both like any other dialog. Use it for every drive whose model calls `ask`.
 `--session` drops the `--no-session` flag that a drive passes by default. omp then writes the session file under `$VERIFY_RUN_DIR/data/home/.omp/agent/sessions/` and holds its lease under `$VERIFY_RUN_DIR/data/home/.omp/run/session-owners/` while the drive runs. Tool calls get `PI_SESSION_ID` in both modes, but only with `--session` does a session file and a held lease back it. Use it for a skill whose script checks the running session, such as clean-wt.
 
+For actual-model native non-consent cases, use `scripts/native-nonconsent.ts` instead of the stub driver:
+
+```sh
+bun "$SKILL_DIR/scripts/native-nonconsent.ts" --run "$VERIFY_RUN_DIR/<new-case>" \
+  --prompt <scenario.md> --config <isolate.yml> --response <cancelled|timed-out|empty> \
+  [--deadline-ms 5000] [--session-source <persistent-session.jsonl>] \
+  [--continuation <no-new-decision.md>]
+```
+
+The helper reads the last model and thinking records from `PI_SESSION_FILE` or `--session-source`. It clears inherited `PI_*` and `OMP_*` variables, retains real `HOME` for credentials, and starts a persistent `rpc-ui` session with the supplied overlay. Follow `features/architecture-agreement.md`'s native fixture procedure before launching it. Give each case a new directory, dedicated Flow home, and unused `VSTACK_FLOW_PORT`.
+
+It negotiates lossless RPC v2 and requires a successful `set_ask_dialog` acknowledgement with `enabled:true`. It records runtime command discovery before the prompt. It answers the first native `ask` with the selected automated policy. Timeout starts a real host timer after the request arrives and sends `cancelled:true,timedOut:true` only after that deadline. Empty input preserves question order and ids with `selectedOptions:[]`. A second ask is held by aborting the turn rather than inventing consent. Unsupported select/editor fallback is an explicit failure of this helper, not proof of native coverage.
+
+`summary.json` reports transport completion, not a behavioral pass. Inspect `rpc.jsonl`, reassembled `events.jsonl`, `controller.jsonl`, `rpc.err`, `launch.json`, runtime `discovery.json`, and `session/` alongside the actual Flow and files. Optional `--continuation` submits a separately labelled no-new-decision prompt after the initial turn. Use it only when the native interaction prevented the blocked close. Never attribute that continuation's close to an aborted turn.
+
 For a load check with no session turn, use the repo's own load gate. `scripts/load.sh` runs `loadGate` from the checkout's `scripts/lib/update-gates.ts`, which runs `scripts/load-smoke.sh` on a throwaway home. The gate fails when a registered skill, agent, or rule is missing, when the extension's `vstack-clean` Command is missing, or when omp warns about a skill:
 
 ```sh
@@ -70,6 +85,8 @@ bash "$SKILL_DIR/scripts/doctor.sh" "$CHECKOUT" "$VERIFY_RUN_DIR"
 ```
 
 It prints one `ok` or `FAIL` line per check and exits 1 on a failure. It checks that `omp`, `bun`, `jq`, and `git` are on `PATH` with their versions. It names the plugin version, the `HEAD` commit, and the count of uncommitted plugin paths in `CHECKOUT`. After the first drive, it also checks that the session's working directory is outside the real home, that the run's home links `vstack` to `$CHECKOUT/plugin`, and that omp there lists the same version. It checks that the only model provider in that home is the `127.0.0.1` stub, so no real credential is in play. Last, it reports each PID the run recorded as exited, or as live with its listening ports. A `live` line after a drive finished means a process leaked. Run Cleanup.
+
+For the actual-model exception, the stub-home checks do not establish runtime isolation. Run the tool and checkout checks above on every fresh case, then inspect the helper's native acknowledgements, runtime `discovery.json`, and `initial-state` event. Confirm the installed grill is absent, required dependencies are available under the overlay, and the selected model and thinking match the Session source. A missing credential, unsupported native route, or failed discovery leaves the case unavailable.
 
 ## Drive
 
@@ -125,6 +142,7 @@ All paths are relative to `SKILL_DIR`.
 - `scripts/figure-audit.js`: evaluate its complete text in the figure consumer with `await tab.evaluate(await Bun.file(SKILL_DIR + "/scripts/figure-audit.js").text())`. It returns browser-computed paint and geometry checks.
 - `scripts/figure-flow.ts <checkout> <verify run> <own session> <own agent>`: captures the figure in a labelled disposable isolated-home Flow. Follow the figure recipe's authenticated host stop and export steps before Cleanup.
 - `scripts/worker-lifecycle.ts <checkout> <new verify run>`: drives real isolated implementer and review-fixer patch landing, retention, and release in a fresh throwaway omp session. Use `features/worker-lifecycle.md`.
+- `scripts/native-nonconsent.ts`: actual Session-model RPC UI controller for cancelled, elapsed-timeout, and empty architecture responses. See Launch and `features/architecture-agreement.md`.
 
 ## Gotchas
 
