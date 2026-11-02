@@ -10,6 +10,14 @@
         "false": "Building new motion without reviewing an existing change, a general review with no animation behavior, backend or CLI work, prose, or source bookkeeping."
       }
     },
+    "break-ui": {
+      "type": "noul",
+      "instructions": "Does the task exercise or fix frontend robustness under realistic adverse content, collection boundaries, or constrained layouts?",
+      "criteria": {
+        "true": "Data-bearing UI work involving long names or labels, Unicode content, missing fields, empty or single lists, large values, or actions displaced by realistic content.",
+        "false": "Backend validation, CLI data processing, source bookkeeping, motion-only polish, or other work without content-dependent frontend robustness."
+      }
+    },
     "emil-design-eng": {
       "type": "noul",
       "instructions": "Does the task build, polish, or review frontend controls, interactions, feedback, or purposeful UI motion?",

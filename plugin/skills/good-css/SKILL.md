@@ -15,6 +15,8 @@ When building or reviewing UI controls, dialogs, popovers, feedback, or motion, 
 
 When reviewing animation or motion changes, read skill://review-animations and its standards. Use the existing review owner's finding format and blocking authority in main and delegated reviews.
 
+When building or verifying data-bearing UI, read skill://break-ui to exercise plausible adverse content, empty and single collections, large values, and narrow containers. Apply it in main sessions and delegated frontend work through the existing implementation and Verify owners.
+
 Emil Kowalski's design-engineering guidance is adapted from the UI upstream. Its animation guidance takes precedence over this skill under ADR 0047. Reconcile disagreements within Emil's guidance with browser-specific behavior and observed evidence. Keep this skill's non-animation CSS and accessibility responsibilities. Each shipped derived skill includes its MIT notice. Conditional hand-offs name only shipped guidance.
 
 ## In all CSS

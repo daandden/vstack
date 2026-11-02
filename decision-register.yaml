@@ -1035,9 +1035,9 @@ items:
     kind: skill
     path: skills/break-ui
     tree: f2a3441d4cf14df060ee363e155502a4818b5f8d
-    disposition: reject
-    artifacts: []
-    reason: "Deferred at a81dbca07f2217b7103e510c0f13f8d5b017afc9: ticket 341 ships adverse-content verification guidance."
+    disposition: adapt
+    artifacts: [ plugin/skills/break-ui ]
+    reason: "Hidden adverse-content knowledge and required catalog preserve existing implementation, review, Verify, and evidence ownership without an independent executor."
   - id: emil/emil-design-eng
     upstream: emil
     kind: skill

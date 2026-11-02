@@ -74,7 +74,7 @@ One entry, the CSS upstream, also has `page_lint: scripts/check-css.mjs`: the sc
 
 ### UI upstream
 
-The UI upstream is `emilkowalski/skills`, keyed as `emil`, initially pinned at `a81dbca07f2217b7103e510c0f13f8d5b017afc9`. Its `skills/*` tree pattern discovers sixteen items. Ticket 339 ships `emil-design-eng`; ticket 343 adds `review-animations` with its companion standards. Both are adapted hidden Addons with an upstream MIT notice in their skill directory.
+The UI upstream is `emilkowalski/skills`, keyed as `emil`, initially pinned at `a81dbca07f2217b7103e510c0f13f8d5b017afc9`. Its `skills/*` tree pattern discovers sixteen items. Ticket 339 ships `emil-design-eng`; ticket 343 adds `review-animations` with its companion standards; ticket 341 adds `break-ui` with its required adverse-content catalog. Each is an adapted hidden Addon with an upstream MIT notice in its skill directory. Break-ui is reference knowledge used by existing implementation and Verify owners, including delegated UI work.
 
 `code-review` and good-css conditionally reach motion review guidance in the coordinator and delegated Standards reviewers. The existing review owns blocking decisions and evidence. A browser-supported clip-path effect is not blocked by the upstream's broad property preference alone. [ADR 0047](adr/0047-selected-emil-skills-govern-animation-guidance.md) governs applicability.
 
@@ -83,7 +83,6 @@ The remaining selected items use reject with `Deferred at <initial Pin>` reasons
 | Ticket | Deferred items |
 | --- | --- |
 | 340 | `apple-design`, `mobile-native` |
-| 341 | `break-ui` |
 | 342 | `animate`, `animation-performance` |
 | 344 | `improve-animations`, `find-animation-opportunities`, `remove-animations` |
 

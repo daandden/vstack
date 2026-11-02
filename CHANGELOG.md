@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [8.0.12] - 2026-11-02
+
+- Ship break-ui as an adapted hidden Addon with its adverse-content catalog and MIT notice. Existing main-session implementation, delegated frontend work, and Verify preparation reach realistic content boundaries without another executor. Add a repeatable native and browser robustness recipe.
+
 ## [8.0.11] - 2026-11-02
 
 - Add hidden review-animations and companion standards to existing main and delegated motion reviews, preserving evidence-backed blocking verdicts and browser-qualified exceptions.
