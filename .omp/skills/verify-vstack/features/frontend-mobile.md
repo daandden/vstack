@@ -57,7 +57,7 @@ Close only the tabs, protocol sessions, and servers created by this proof. Keep 
 
 ### Mechanical and distribution checks
 
-Follow [frontend guidance](frontend-guidance.md)'s packaging and final gate commands. Inspect both new skill directories, all required references, and each MIT notice in the emitted archive. Verify their hidden load classification and matching catalog questions. Preserve other selected deferrals, all six exclusions, the existing prototype bytes, and principle-only automatic scopes. Keep focused catalog failures separate from mechanical gate results. Do not rerun unchanged stochastic corpora solely to obtain green.
+Follow [frontend guidance](frontend-guidance.md)'s packaging and final gate commands. Inspect apple-design and mobile-native, all required references, and each MIT notice in the emitted archive. Verify their hidden load classification and matching catalog questions. Preserve all ten selected adaptations, all six exclusions, the existing prototype bytes, and principle-only automatic scopes. No selected item remains deferred. Keep focused catalog failures separate from mechanical gate results. Do not rerun unchanged stochastic corpora solely to obtain green.
 
 ## Gotchas
 

@@ -50,7 +50,7 @@ For each resulting main and delegated app:
 
 ### Source, package, and final gates
 
-Use the public current-Pin planner, register check, packaging command, load smoke, and maintenance gates in `frontend-guidance.md`. Check the break-ui row is adapt with the pinned object identity and `plugin/skills/break-ui` association. Preserve other selected deferrals and all six exclusions.
+Use the public current-Pin planner, register check, packaging command, load smoke, and maintenance gates in `frontend-guidance.md`. Check the break-ui row is adapt with the pinned object identity and `plugin/skills/break-ui` association. Preserve all ten selected adaptations and all six exclusions, with no selected deferrals.
 
 Inspect `package/skills/break-ui/SKILL.md`, `CATALOG.md`, and `LICENSE` in the actual tarball. Compare the notice bytes against the MIT license at the real Pin. Check no rejected contribution entered the archive; the existing vstack prototype is expected and must remain byte-unchanged. A fresh load must classify break-ui as hidden, not listed. Run focused catalog positive and negative cases, without broadening principle-only build or Brief selection.
 
@@ -60,6 +60,6 @@ Run applicable public-interface tests and final `vstack-maintain gates` only aft
 
 - The dataset selector is development evidence, not a production feature requirement. Reuse the existing fixture boundary and avoid a new test-only product interface.
 - Audit-only requests stop at findings; implementation with already-authorized fixes continues under the existing owner.
-- Do not import deferred motion or mobile skills just to complete this demonstration. Conditional pointers name only shipped knowledge.
+- Keep this demonstration scoped to content robustness. The companion recipes cover motion and mobile behavior; conditional pointers reach shipped guidance only when relevant.
 - A preserved source catalog does not establish support for any library or browser. Verify APIs against actual installed versions, and report only exercised scenarios.
 - Keep baseline failures and unsuccessful captures. Never relabel a good baseline UI as a failed one or a text-growth proxy as browser zoom.

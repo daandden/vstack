@@ -53,7 +53,7 @@ Preconditions:
 
 ### Distribution and final checks
 
-Use the public maintainer and package interfaces in frontend-guidance. The three rows must be adapted with unchanged pinned object identities. Only their deferrals change; other unshipped selected items stay deferred and six exclusions stay rejected. Inspect the actual tarball for all three SKILL.md files, improve-animations/AUDIT.md and PLAN-TEMPLATE.md, and byte-identical pinned MIT notices. Compare vstack prototype bytes rather than rejecting that name alone.
+Use the public maintainer and package interfaces in frontend-guidance to confirm the complete ten-adaptation, six-exclusion accounting with no selected deferrals. The three audit-path rows must retain their pinned object identities and artifact associations. Inspect the actual tarball for all three SKILL.md files, improve-animations/AUDIT.md and PLAN-TEMPLATE.md, and byte-identical pinned MIT notices. Compare vstack prototype bytes rather than rejecting that name alone.
 
 Run applicable typecheck, targeted public-interface tests, focused changed catalog cases including unrelated controls, validation, actual load smoke, and final maintenance gates. Record stdout, stderr, argv, and exit durably to files, with at least a 1200s deadline for the final gate. Run the full suite once through those gates, not during drafting. Do not rerun unchanged stochastic corpora to chase unrelated failures.
 
@@ -64,4 +64,4 @@ Run applicable typecheck, targeted public-interface tests, focused changed catal
 - A native model can identify the problem before these Addons ship. Report actual source and behavior, not an unsupported causal score.
 - Catalog selection is not delegated activation. Inspect the explorer's real conditional reads and contribution.
 - Browser support and interpolation do not prove compositing, low frame cost, physical touch, Safari, or Firefox. Keep claims within the observed engine and fixture.
-- Parent Flow publication and final integrated all-ten reconciliation remain parent-owned. This recipe covers the shipped three-skill path without pretending that unrelated pending guidance already ships.
+- Parent Flow publication and final integrated verification remain parent-owned. This recipe exercises the three-skill audit path, not the behavioral coverage of the other shipped guidance.

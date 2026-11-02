@@ -17,6 +17,13 @@
   },
   "prompts": [
     {
+      "id": "workspace-member-content-boundaries",
+      "split": "tune",
+      "prompt": "Make the workspace member list robust to long emails, Unicode names, missing roles and translated action labels in a narrow desktop sidebar. Exercise empty, single-member and 1,284-member states, and fix clipped content or displaced row actions.",
+      "expected": ["break-ui"],
+      "allowed": ["emil-design-eng", "principle-experience-first", "principle-prove-it-works"]
+    },
+    {
       "id": "mobile-web-platform",
       "split": "tune",
       "prompt": "Make this phone-facing web pickup form work with touch, changing viewport height, safe areas, desktop hover, and accessible email and telephone inputs. Keep the existing web stack.",

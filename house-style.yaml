@@ -8,9 +8,6 @@
 #   match     literal: exact substring
 #             name: `from` with no [\w-] character on either side (hyphenated names, file names)
 #             ref: only /x, `x`, **x**, and skill://x (one-word names that are also English words)
-#   upstream  a pins.yaml key | any. A row applies to artifacts that have a register row from that Upstream;
-#             a merge artifact gets the rows of every Upstream it merges; an original gets every row except
-#             one whose `from` is still a shipped skill name.
 #   scope     required: every shipped artifact follows it, adopt included (an adopt item holding `from`
 #             fails check-register, and the Update proposes switching it to adapt).
 #             adapted: adapt, merge, and original text only; adopt items keep their Upstream wording.
