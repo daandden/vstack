@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [8.0.19] - 2026-11-02
+
+- Clarify task-required animation workloads and separate playback from responsiveness evidence.
+
 ## [8.0.18] - 2026-11-02
 
 - Integrate current main's native Flow question publication and ask retries into PR #346 for spec #338, preserving the selected UI guidance and prior corrections.

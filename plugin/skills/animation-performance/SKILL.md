@@ -16,7 +16,7 @@ Reproduce the actual interaction and workload before editing. Retain the engine 
 
 At 60Hz the frame interval is about 16.7ms. At 120Hz it is about 8.3ms. Measure the actual environment rather than assuming its refresh rate. Desktop CPU throttling approximates CPU pressure, not phone GPU throughput, thermal behavior, or memory constraints. State when a real-device recording remains unavailable.
 
-List each in-scope element, driver, animated properties, and concurrent work. Expand `transition: all` and library shorthands into their actual effects. Compare the same workload before and after one scoped change. Preserve duration, distance, semantics, and essential work so the comparison does not make the task easier without saying so.
+List each in-scope element, driver, animated properties, and concurrent work. Expand `transition: all` and library shorthands into their actual effects. Compare the same workload before and after one scoped change. Preserve duration, distance, semantics, essential outputs, and task-required benchmark pressure. Classify work by the task and its outputs, not merely its presence in the old loop. Useless synthetic blocking work may be removed when the user goal permits; report the changed workload explicitly rather than claiming retained production work became cheaper.
 
 ## Find the cause
 
@@ -43,7 +43,7 @@ For a shadow, compare a retained shadow faded by opacity or a supported drop-sha
 
 ### Driver and main-thread work
 
-A `requestAnimationFrame` callback competes with other main-thread JavaScript. CSS transitions, CSS keyframes, and WAAPI can hand eligible animations to browser-managed playback. They do not move layout work or arbitrary JavaScript off the main thread. Test busy-page behavior before claiming acceleration.
+A `requestAnimationFrame` callback competes with other main-thread JavaScript. CSS transitions, CSS keyframes, and WAAPI can hand eligible animations to browser-managed playback. They do not move layout work or arbitrary JavaScript off the main thread. Measure main-thread responsiveness and visible startup separately from steady playback; offloading playback does not prove blocking work or startup stalls are fixed. Test busy-page behavior before claiming acceleration.
 
 For predetermined motion, prefer an existing CSS or WAAPI path when it removes a frame-loop bottleneck. Preserve dynamic input and interruption requirements. Gesture springs can justify a library even when a simpler predetermined effect would not.
 
