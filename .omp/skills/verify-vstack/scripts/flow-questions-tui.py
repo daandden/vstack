@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Drive the real omp TUI and omp-tools picker. Only the model provider is a stub."""
+"""Drive CLI publication, a visible chat link, ordinary ask, and separate answer recording."""
 import argparse
 import errno
 import fcntl
@@ -20,6 +20,7 @@ import termios
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.request import urlopen
 
 
 def save(path, value):
@@ -53,7 +54,7 @@ def main():
     parser.add_argument("--checkout", required=True)
     parser.add_argument("--omp-tools", required=True, help="omp-tools checkout or installed plugin link")
     parser.add_argument("--run", required=True, help="new Verify run, with no data directory yet")
-    parser.add_argument("--case", choices=["tui", "timeout", "missing-picker", "non-tui"], default="tui")
+    parser.add_argument("--case", choices=["tui", "timeout", "cancel", "retry"], default="tui")
     args = parser.parse_args()
     checkout, tools, run = (Path(p).resolve() for p in (args.checkout, args.omp_tools, args.run))
     for root, name in [(checkout / "plugin", "vstack"), (tools, "omp-tools")]:
@@ -62,7 +63,7 @@ def main():
     for binary in ["omp", "bun", "git"]:
         if not shutil.which(binary):
             parser.error(f"missing prerequisite: {binary}")
-    out = run / ("flow-ask-" + args.case)
+    out = run / ("flow-questions-" + args.case)
     out.mkdir(parents=True, exist_ok=False)
     data = run / "data"
     data.mkdir(exist_ok=False)
@@ -97,8 +98,7 @@ def main():
         return result.stdout
 
     command(["omp", "plugin", "link", str(checkout / "plugin")], "link vstack")
-    if args.case != "missing-picker":
-        command(["omp", "plugin", "link", str(tools)], "link omp-tools")
+    command(["omp", "plugin", "link", str(tools)], "link omp-tools")
     save(out / "identity.json", {"checkout": str(checkout), "omp_tools": str(tools),
          "home": str(home), "project": str(project), "env": env,
          "omp": str(Path(shutil.which("omp")).resolve()),
@@ -125,14 +125,44 @@ def main():
                 if entry.get("type") == "message"]
 
     def asks():
-        return [m for m in messages() if m.get("role") == "toolResult" and m.get("toolName") == "flow_ask"]
+        return [m for m in messages() if m.get("role") == "toolResult" and m.get("toolName") == "ask"]
 
     q = shlex.quote
     identity = '--session "$PI_SESSION_ID" --agent main'
-    open_command = (f'bun {q(str(cli))} open --skill implement --title "Disposable flow_ask TUI proof" '
+    open_command = (f'bun {q(str(cli))} open --skill implement --title "Disposable Flow questions proof" '
                     f'--home "$HOME" {identity} > {q(str(out / "open.json"))} && '
                     f'printf "%s" "$PI_SESSION_ID" > {q(str(out / "child-session-id.txt"))}')
+    publish_command = (f'bun {q(str(cli))} submit {q(str(out / "contribution.json"))} '
+                       f'--home "$HOME" {identity} > {q(str(out / "publication.json"))}')
     phase, requests, handler_errors = 0, [], []
+    inventory_error = None
+    receipt = None
+
+    def published_state():
+        return json.loads((Path(receipt["page"]).parent / "data/state.json").read_text())
+
+    def live_question():
+        nonlocal receipt
+        receipt = json.loads((out / "publication.json").read_text())
+        assert receipt["presentation"]["state"] == "current", receipt
+        assert receipt["live"]["state"] == "serving", receipt
+        url = receipt["live"]["url"]
+        with urlopen(url, timeout=10) as response:
+            html = response.read().decode()
+            status = response.status
+        (out / "live-page.html").write_text(html)
+        assert status == 200
+        assert f'name="flow-page-flow" content="{receipt["flow"]}"' in html
+        assert f'name="flow-page-revision" content="{receipt["revision"]}"' in html
+        for question in receipt["ask"]["questions"]:
+            assert f'id="{question["id"]}"' in html
+        for content in ["Disposable picker fixture", "Full authored context retained on Flow.",
+                        "Compare fixture tradeoffs.", "Use Alpha.", "Use Beta."]:
+            assert content in html, content
+        save(out / "live-identity.json", {"url": url, "status": status, "flow": receipt["flow"],
+             "revision": receipt["revision"], "question_ids": [x["id"] for x in receipt["ask"]["questions"]]})
+        return {"text": f"FLOW_QUESTIONS_CHAT_LINK {url}",
+                "tool": "ask", "args": receipt["ask"]}
     done = threading.Event()
 
     class Model(BaseHTTPRequestHandler):
@@ -140,7 +170,7 @@ def main():
             pass
 
         def do_POST(self):
-            nonlocal phase
+            nonlocal phase, inventory_error
             try:
                 body = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
                 requests.append({"path": self.path, "body": body})
@@ -151,38 +181,58 @@ def main():
                 if routing:
                     reply = {"text": "Use this tool when its description matches the task."}
                 elif phase == 0:
-                    reply = {"tool": "bash", "args": {"command": open_command}}
-                    phase += 1
-                elif phase == 1 or (phase == 2 and args.case == "tui"):
-                    reply = {"tool": "flow_ask", "args": {"contribution": contribution}}
-                    phase += 1
-                elif phase == 3 and args.case == "tui":
-                    first = asks()[0]["details"]
-                    assert first["status"] == "submitted", first
-                    committed = json.loads((Path(first["receipt"]["page"]).parent / "data/state.json").read_text())
+                    names = sorted(t.get("function", {}).get("name", t.get("name", "")) for t in body.get("tools", []))
+                    save(out / "runtime-inventory.json", names)
+                    if "flow_ask" in names:
+                        inventory_error = "Fresh runtime still registers flow_ask"
+                        reply = {"text": "FLOW_QUESTIONS_INVENTORY_RED"}
+                        done.set()
+                    else:
+                        assert "ask" in names and "bash" in names, names
+                        reply = {"tool": "bash", "args": {"command": open_command}}
+                        phase = 1
+                elif phase == 1:
+                    reply = {"tool": "bash", "args": {"command": publish_command}}
+                    phase = 2
+                elif phase == 2:
+                    reply = live_question()
+                    phase = 3
+                elif phase == 3:
+                    result = asks()
+                    assert result, "No ordinary ask tool result"
+                    raw = result[-1].get("details", {})
+                    committed = published_state()
                     save(out / "committed-before-answers.json", committed)
-                    assert not committed["answers"], "flow_ask must not author normalized answers"
-                    raw = first["response"]["results"]
-                    assert raw[0]["selectedOptions"] == ["A. Alpha", "B. Beta"], raw
-                    assert "fixture-option-note" in raw[0].get("note", ""), raw
-                    assert raw[1].get("customInput") == "fixture-custom-concern", raw
-                    assert "fixture-submit-note" in raw[1].get("note", ""), raw
-                    normalized = {"version": 1, "items": [
-                        {"kind": "answer", "question": raw[0]["id"], "response": {
-                            "status": "answered", "picks": ["A", "B"], "text": raw[0]["note"]}},
-                        {"kind": "answer", "question": raw[1]["id"], "response": {
-                            "status": "answered", "text": raw[1]["customInput"] + "\n" + raw[1]["note"]},
-                         "reading": {"outcome": "concern", "unresolved": "Scripted fixture concern remains unresolved."}}]}
-                    save(out / "normalized-answers.json", normalized)
-                    reply = {"tool": "bash", "args": {"command":
-                        f'bun {q(str(cli))} submit {q(str(out / "normalized-answers.json"))} --home "$HOME" {identity}'}}
-                    phase += 1
+                    assert not committed["answers"], "Ask delivery must not author Flow answers"
+                    if args.case in ("tui", "retry"):
+                        assert not result[-1].get("isError"), result[-1]
+                        answers = raw["results"]
+                        assert [a["id"] for a in answers] == [a["id"] for a in receipt["ask"]["questions"]]
+                        assert answers[0]["selectedOptions"] == ["A. Alpha", "B. Beta"], raw
+                        assert "fixture-option-note" in answers[0].get("note", ""), raw
+                        assert answers[1].get("customInput") == "fixture-custom-concern", raw
+                        assert raw.get("submitNote") == "fixture-submit-note", raw
+                        normalized = {"version": 1, "items": [
+                            {"kind": "answer", "question": answers[0]["id"], "response": {
+                                "status": "answered", "picks": ["A", "B"], "text": answers[0]["note"]}},
+                            {"kind": "answer", "question": answers[1]["id"], "response": {
+                                "status": "answered", "text": answers[1]["customInput"] + "\n" + raw["submitNote"]},
+                             "reading": {"outcome": "concern", "unresolved": "Scripted fixture concern remains unresolved."}}]}
+                        save(out / "normalized-answers.json", normalized)
+                        reply = {"tool": "bash", "args": {"command":
+                            f'bun {q(str(cli))} submit {q(str(out / "normalized-answers.json"))} --home "$HOME" {identity}'}}
+                        phase = 4
+                    else:
+                        assert args.case == "timeout", "Cancellation unexpectedly resumed the model"
+                        assert all(item.get("timedOut") is True for item in raw["results"]), raw
+                        reply = {"text": "FLOW_QUESTIONS_FIXTURE_COMPLETE"}
+                        done.set()
                 else:
-                    reply = {"text": "FLOW_ASK_FIXTURE_COMPLETE"}
+                    reply = {"text": "FLOW_QUESTIONS_FIXTURE_COMPLETE"}
                     done.set()
                 message = {"role": "assistant", "content": reply.get("text")}
                 if "tool" in reply:
-                    message["tool_calls"] = [{"index": 0, "id": f"fixture_{phase}", "type": "function",
+                    message["tool_calls"] = [{"index": 0, "id": f"fixture_{len(requests)}", "type": "function",
                         "function": {"name": reply["tool"], "arguments": json.dumps(reply["args"])}}]
                 finish = "tool_calls" if "tool" in reply else "stop"
                 usage = {"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2}
@@ -222,11 +272,8 @@ def main():
     if args.case == "timeout":
         config += "ask:\n  timeout: 1\n"
     (home / ".omp/agent/config.yml").write_text(config)
-    argv = ["omp", "--no-title", "--model", "stub/stub-model", "--session-dir", str(session_dir)]
-    if args.case == "non-tui":
-        argv += ["--mode", "rpc-ui"]
-    else:
-        argv += ["Run the disposable Flow picker fixture through the scripted provider."]
+    argv = ["omp", "--no-title", "--model", "stub/stub-model", "--session-dir", str(session_dir),
+            "Run the disposable Flow questions fixture through the scripted provider."]
     save(out / "launch.json", {"argv": argv, "cwd": str(project), "case": args.case})
     master, slave = pty.openpty()
     fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 55, 180, 0, 0))
@@ -234,7 +281,7 @@ def main():
                              start_new_session=True, preexec_fn=lambda: fcntl.ioctl(0, termios.TIOCSCTTY, 0))
     os.close(slave)
     with (data / "pids").open("a") as log:
-        log.write(f"{child.pid} omp flow-ask {args.case}\n")
+        log.write(f"{child.pid} omp flow-questions {args.case}\n")
     captured = bytearray()
     inputs, started = [], time.monotonic()
 
@@ -252,9 +299,11 @@ def main():
         while time.monotonic() < deadline:
             if text in plain(captured[after:]):
                 return
-            failed = next((m for m in asks() if m.get("isError") or m.get("details", {}).get("status") in ("failed", "unavailable")), None)
-            if failed:
-                raise RuntimeError(f"flow_ask failed before the picker: {failed}")
+            if inventory_error:
+                raise AssertionError(inventory_error)
+            failed = next((m for m in asks() if m.get("isError")), None)
+            if failed and args.case not in ("cancel", "retry"):
+                raise RuntimeError(f"ordinary ask failed before the picker: {failed}")
             read_output(0.1)
             if child.poll() is not None:
                 raise RuntimeError(f"omp exited before {text!r}")
@@ -275,14 +324,33 @@ def main():
 
     summary = {"ok": False, "case": args.case}
     try:
-        if args.case == "non-tui":
-            send("RPC prompt, not a TUI proof", (json.dumps({"id": "fixture", "type": "prompt", "message": "Run fixture."}) + "\n").encode())
-        if args.case == "tui":
-            wait_for_text("n add note")
-            text = plain(captured)
-            assert 0 <= text.index("Flow page:") < text.index("n add note"), "link did not precede custom picker"
-            save(out / "before-picker.json", {"link_text_offset": text.index("Flow page:"),
-                 "picker_text_offset": text.index("n add note"), "output_bytes": len(captured)})
+        wait_for_text("n add note")
+        text = plain(captured)
+        link_text = "FLOW_QUESTIONS_CHAT_LINK " + receipt["live"]["url"]
+        assert 0 <= text.index(link_text) < text.index("n add note"), "chat link did not precede picker"
+        chat = [m for m in messages() if m.get("role") == "assistant" and
+                link_text in "".join(c.get("text", "") for c in m.get("content", []) if isinstance(c, dict))]
+        assert chat, "The live URL must be actual assistant chat, not a tool or notification"
+        save(out / "before-picker.json", {"link_text_offset": text.index(link_text),
+             "picker_text_offset": text.index("n add note"), "output_bytes": len(captured), "assistant_messages": chat})
+        if args.case in ("cancel", "retry"):
+            send("Escape cancels the actual ordinary ask picker", b"\x1b")
+            deadline = time.monotonic() + 20
+            while not asks() and time.monotonic() < deadline:
+                read_output(0.1)
+            assert asks() and asks()[-1].get("isError"), "Escape did not produce an aborted ask result"
+            cancelled = published_state()
+            save(out / "cancelled-state.json", cancelled)
+            assert not cancelled["answers"], "Cancellation must not record consent"
+            if args.case == "cancel":
+                done.set()
+            else:
+                for _ in range(10):
+                    read_output(0.1)
+                before_retry = len(captured)
+                send("F5 native retry of the aborted turn", b"\x1b[15~")
+                wait_for_text("n add note", after=before_retry)
+        if args.case in ("tui", "retry"):
             send("open Alpha option note", b"n")
             wait_for_text("Note for")
             send("type option note", b"fixture-option-note")
@@ -324,46 +392,55 @@ def main():
         result = asks()
         save(out / "tool-results.json", result)
         assert not handler_errors, handler_errors
-        assert len(result) == (2 if args.case == "tui" else 1), result
-        expected = ["submitted", "repeated"] if args.case == "tui" else ["submitted"] if args.case == "timeout" else ["unavailable"]
-        assert [m["details"]["status"] for m in result] == expected, result
+        assert inventory_error is None, inventory_error
+        assert len(result) == (2 if args.case == "retry" else 1), result
         opened = json.loads((out / "open.json").read_text())
         folder = Path(opened["page"]).parent
-        state = json.loads((folder / "data/state.json").read_text())
+        state = published_state()
         save(out / "persisted-state.json", state)
-        if args.case in ("tui", "timeout"):
-            receipt = result[0]["details"]["receipt"]
-            link = receipt["live"]["url"] if receipt.get("live", {}).get("state") == "serving" else receipt["page"]
-            shown = plain(captured)
-            assert shown.index("Flow page: " + link) < shown.index("n add note"), "wrong or late Flow link"
-            assert result[0]["details"]["response"]["kind"] == "submit"
-            assert len(state["rounds"]) == 1 and len(state["questions"]) == 2, state
-        if args.case == "tui":
+        assert len(state["rounds"]) == 1 and len(state["questions"]) == 2, state
+        assert len(state["results"]) == 1 and state["results"][0]["title"] == "Disposable picker fixture", state
+        if args.case in ("tui", "retry"):
             assert len(state["answers"]) == 2, state
-            assert len(state["results"]) == 1 and state["results"][0]["title"] == "Disposable picker fixture", state
-            assert state["questions"][0]["description"] == "Full authored context retained on Flow.", state
             assert state["answers"][0]["response"]["picks"] == ["A", "B"], state
             assert "fixture-option-note" in state["answers"][0]["response"]["text"]
             assert "fixture-custom-concern" in state["answers"][1]["response"]["text"]
             assert "fixture-submit-note" in state["answers"][1]["response"]["text"]
             assert state["answers"][1]["reading"]["outcome"] == "concern"
-            assert result[0]["details"]["receipt"]["revision"] == result[1]["details"]["receipt"]["revision"]
-        elif args.case == "timeout":
-            assert not state["answers"], "timed-out defaults must not become Flow answers"
-            assert all(item.get("timedOut") is True for item in result[0]["details"]["response"]["results"]), result
         else:
-            assert not state["questions"] and not state["answers"], state
-            assert "receipt" not in result[0]["details"] and "response" not in result[0]["details"], result
+            assert not state["answers"], "Cancellation and timeout must not become Flow answers"
+            assert state["revision"] == receipt["revision"]
+            if args.case == "timeout":
+                assert all(item.get("timedOut") is True for item in result[0]["details"]["results"]), result
+            else:
+                assert result[0].get("isError"), result
+        calls = [c for m in messages() if m.get("role") == "assistant"
+                 for c in m.get("content", []) if isinstance(c, dict) and c.get("type") == "toolCall"]
+        ask_calls = [c for c in calls if c.get("name") == "ask"]
+        save(out / "ask-calls.json", ask_calls)
+        calls_by_id = {c["id"]: c for c in ask_calls}
+        for outcome in result:
+            original = calls_by_id[outcome["toolCallId"]]
+            assert original["arguments"] == receipt["ask"], "Retry changed the original question identities"
+        if args.case == "retry":
+            assert result[0].get("isError") and not result[-1].get("isError"), result
+        publications = [c for c in calls if c.get("name") == "bash" and
+                        str(out / "contribution.json") in c.get("arguments", {}).get("command", "")]
+        assert len(publications) == 1, "Retry must not republish the question round"
         bindings = [json.loads(file.read_text()) for file in home.glob(".vstack/tmp/*/flow/.bindings/*.json")]
         session_id = (out / "child-session-id.txt").read_text()
         assert any(b["session"] == session_id and b["agent"] == "main" and b["flow"] == opened["flow"] for b in bindings), bindings
         save(out / "bindings.json", bindings)
         shutil.copytree(folder, out / "export")
-        summary.update(ok=True, flow=opened["flow"], page=opened["page"], statuses=expected,
-                       session_id=session_id, stub_requests=len(requests), live=opened.get("live"),
-                       assertions=["real plugin links", "isolated HOME and cwd outside real home", "child session binding",
-                       "link before custom picker and keyboard notes" if args.case == "tui" else "timeout stays non-consent" if args.case == "timeout" else "refused without a question commit",
-                       "raw host result", "persisted Flow state", "repeat has no second picker" if args.case == "tui" else "no native fallback"])
+        summary.update(ok=True, flow=opened["flow"], page=opened["page"],
+                       session_id=session_id, stub_requests=len(requests), live=receipt["live"],
+                       assertions=["fresh inventory omits flow_ask", "ordinary ask receives original receipt",
+                       "live HTTP content matches flow, revision and question identities",
+                       "assistant chat URL precedes real picker", "separate CLI answer recording",
+                       "Escape and F5 preserve unrecorded question identities" if args.case == "retry"
+                       else "Escape remains non-consent" if args.case == "cancel"
+                       else "configured timeout remains non-consent" if args.case == "timeout"
+                       else "multiple picks, option note, Other words and submit note"])
     except Exception as error:
         summary["error"] = repr(error)
     finally:

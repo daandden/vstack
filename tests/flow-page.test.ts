@@ -416,6 +416,27 @@ test("the user's raw response is stored apart from the agent's reading, and an e
   expect(questionOf(snap, refs.pick).open).toBe(false);
 });
 
+test("a CLI multiselect round retains multiple explicit picks independently of picker delivery", () => {
+  const opened = openFlow();
+  const published = submit("s-1", round(question("paths", { multi: true }), question("single")));
+  expect(published.code).toBe(0);
+  const { refs, ask } = published.json;
+  expect(ask.questions[0]).toMatchObject({ id: refs.paths, multi: true });
+  expect(questionOf(show(opened.flow), refs.paths)).toMatchObject({ multi: true, open: true });
+  const response = { status: "answered", picks: ["A", "B"], text: "Keep both explicit choices." };
+  const recorded = submit("s-1", answer(refs.paths, response));
+  expect(recorded.code).toBe(0);
+  const snapshot = show(opened.flow);
+  expect(questionOf(snapshot, refs.paths)).toMatchObject({
+    multi: true, open: false,
+    answer: { state: "picked", picks: ["A. First", "B. Second"], response },
+  });
+  expect(questionOf(snapshot, refs.single).open).toBe(true);
+  const before = tree();
+  expect(submit("s-1", round(question("invalid", { multi: "yes" }))).code).toBe(1);
+  expect(tree()).toEqual(before);
+});
+
 test.each([
   ["a reading that overrides an explicit pick", (q: string) => answer(q, { status: "answered", picks: ["A"], text: "Hmm." }, { outcome: "resolved", decision: "B holds.", basis: "The note.", maps_to: "B" })],
   ["words with no reading", (q: string) => answer(q, { status: "answered", text: "Maybe the second?" })],

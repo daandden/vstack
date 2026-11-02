@@ -10,7 +10,7 @@ A Verify skill drives the app as a user and captures proof. Write it for an agen
 
 Use the vstack root and mode from the Private-mode rule. A subagent uses the root from its prompt. Resolve Scratch through `skill://vstack-tmp` at the top level, or use the Scratch dir from the parent.
 
-Follow `skill://flow-page`'s "Stage entry/exit line" and "Every ask in a Flow" for all user questions through `flow_ask`, including separate answer recording. Follow skill://implement/END-STATE.md's "Publish delivery progress". Track the steps below as tasks. Preserve the caller's requested End state. Standalone uncommitted setup uses `none`. Keep the generated Verify skill and feature map as real deliverables.
+Follow `skill://flow-page`'s "Stage entry/exit line" and "Every ask in a Flow" for all user questions through `ask`, including Flow CLI publication and a visible current live URL in chat before `ask`, followed by separate answer recording. Follow skill://implement/END-STATE.md's "Publish delivery progress". Track the steps below as tasks. Preserve the caller's requested End state. Standalone uncommitted setup uses `none`. Keep the generated Verify skill and feature map as real deliverables.
 
 In Standard mode, this run commits its output in step 5. If the caller states that it commits the output, as implement does, hand the output back uncommitted. Private mode commits nothing. A committing run is a Standard-mode run whose caller does not commit the output. It runs the commit script with the bash tool, from inside the repo:
 
@@ -22,7 +22,7 @@ Below, `commit.ts` stands for this command.
 
 ## 1. Interview the repo
 
-Read the code and docs before any question through `flow_ask`. Find:
+Read the code and docs before any question through `ask`. Find:
 
 - The app and every user-facing surface, such as web, CLI, TUI, desktop, API, mobile, or library. Name the primary surface and the rest.
 - The repo's documented build and launch commands, ports, environment, seed data, and auth.
@@ -34,7 +34,7 @@ Run the build and launch as found. If the checkout does not build or start as-is
 
 ## 2. Generate the Verify skill
 
-On a committing run, run the dirty check before you write anything. The dirty check runs `commit.ts state --app <app>`, which prints `mode`, `dir`, and `dirty` as JSON. When `dirty` is true, tell the user that `<dir>` has uncommitted changes and that the commit is going to include them. Call `flow_ask` with the options Go on and include them, and Stop so I can commit them first. On Stop, stop. A timed-out answer is not the user's. Re-ask once with `again`, and if that times out too, stop. Unavailable questioning grants no approval.
+On a committing run, run the dirty check before you write anything. The dirty check runs `commit.ts state --app <app>`, which prints `mode`, `dir`, and `dirty` as JSON. When `dirty` is true, tell the user that `<dir>` has uncommitted changes and that the commit is going to include them. Call `ask` with the options Go on and include them, and Stop so I can commit them first. On Stop, stop. A timed-out answer is not the user's. Re-ask once with `again`, and if that times out too, stop. Unavailable questioning grants no approval.
 
 In Standard mode, write `.omp/skills/verify-<app>/SKILL.md` in this checkout. In Private mode, write `<vstack root>/skills/verify-<app>/SKILL.md`. Create an absolute symlink at this checkout's `.omp/skills/verify-<app>` to that directory. Add the literal line `.omp/skills/verify-*` once to the file returned by `git rev-parse --git-path info/exclude`. Leave shared ignore files unchanged. Never overwrite a conflicting directory or link. Report the conflict instead.
 

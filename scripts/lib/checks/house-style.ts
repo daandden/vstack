@@ -299,7 +299,7 @@ const LINTS: Record<string, Lint> = {
         for (const { n, line, frontmatter, fence } of markdownLines(f.text)) {
           if (frontmatter || fence) continue;
           for (const sentence of line.split(/(?<=[.!?])\s+/)) {
-            if (sentence.includes("`ask`") || sentence.includes("`flow_ask`")) continue;
+            if (sentence.includes("`ask`")) continue;
             const asks = phrases.some((re) => [...sentence.matchAll(re)].some((m) => !NEGATION.test(sentence.slice(0, m.index))));
             if (asks) hits.push({ path: f.path, line: n, excerpt: excerpt(sentence) });
           }

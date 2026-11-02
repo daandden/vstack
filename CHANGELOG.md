@@ -4,6 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [8.0.12] - 2026-11-02
+
+- Remove the coupled `flow_ask` tool. Publish Flow questions with the CLI, show the current live URL in chat before ordinary `ask`, and record responses separately. Preserve normal ask retry and cancellation without page-publication notifications.
+- Keep full Flow history, multiselect support, session isolation, and independent consent and Migration safeguards from the introducing change. Recoverable blockers retain their in-progress Stage; completed history stays immutable.
+
 ## [8.0.11] - 2026-11-02
 
 - Shorten the README to installation, everyday use, and documentation links. Preserve maintainer instructions in `docs/maintainer.md` and link to canonical skill contracts.

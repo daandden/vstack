@@ -58,7 +58,7 @@ Submit the proposed breakdown on the to-tickets Stage as a table Result. Its col
 - Blocked by: the numbers of the tickets that must complete first, or "None".
 - Size: small, medium, or large.
 
-After the table Result, deliver one complete approval question through flow-page's "Every ask in a Flow" contract with `flow_ask`. Use the options Approve and Change something, with `results` naming every row. Code links the question and rows both ways. Record the raw response with a separate reading where needed. Its description asks these questions:
+After the table Result, deliver one complete approval question through flow-page's "Every ask in a Flow" contract with `ask`. Use the options Approve and Change something, with `results` naming every row. Code links the question and rows both ways. Record the raw response with a separate reading where needed. Its description asks these questions:
 
 - Does the granularity feel right? (too coarse / too fine)
 - Are the blocking edges correct: does each ticket only depend on tickets that genuinely gate it?

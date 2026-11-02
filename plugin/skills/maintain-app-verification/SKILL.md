@@ -32,7 +32,7 @@ Drift is a failure in the Verify skill's instructions while its Doctor check pas
 
 Find project skills named `verify-*` whose bodies have Launch and Drive sections and a feature map. In Private mode, also look under `<vstack root>/skills/verify-*/`. Use the root and mode from the Private-mode rule, or the parent's prompt. Treat a link and its target as one candidate.
 
-If several targets remain, choose through `flow_ask` under `skill://flow-page`'s "Every ask in a Flow" contract. If none exists, return to implement with the missing target and name `skill://setup-app-verification` for setup.
+If several targets remain, choose through `ask` under `skill://flow-page`'s "Every ask in a Flow" contract. If none exists, return to implement with the missing target and name `skill://setup-app-verification` for setup.
 
 For a Private-mode target with no link, create an absolute `.omp/skills/verify-<app>` symlink in this checkout to the shared skill directory. Add `.omp/skills/verify-*` once to `git rev-parse --git-path info/exclude`, leaving shared ignores unchanged. Report any conflicting directory or link instead of overwriting it. Read SKILL.md by absolute path for the rest of the session. Discovery sees a new link next session.
 

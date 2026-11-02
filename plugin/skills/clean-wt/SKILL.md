@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # clean-wt
 
-Typing `/skill:clean-wt` authorizes removal of unused clean checkouts and verified integrated drafts that hold no unique or unverified artifacts or history. Other uncommitted work needs the user's explicit selection through `flow_ask`. Remove only checkouts under the omp worktree base. Preserve branches, session archives, Scratch, shared skills, and external artifacts.
+Typing `/skill:clean-wt` authorizes removal of unused clean checkouts and verified integrated drafts that hold no unique or unverified artifacts or history. Other uncommitted work needs the user's explicit selection through `ask`. Remove only checkouts under the omp worktree base. Preserve branches, session archives, Scratch, shared skills, and external artifacts.
 
 ## Flow page and diagnostics
 
@@ -83,7 +83,7 @@ With one checkout, run the targeted comparison and read-only investigation inlin
 
 Show only unresolved checkouts in a compact table with checkout, remaining contents, integration evidence or gap, keep reason, and recommendation. Report protected owners, uncertain checkouts, and unique-history blockers separately. Do not offer a target that deletion guards prohibit removing.
 
-If no eligible unresolved checkouts remain, do not call `flow_ask`. Otherwise use one `flow_ask` round under `skill://flow-page`'s "Every ask in a Flow" contract. Author one question with `multi: true`, one option per eligible unresolved checkout, and no preselected options. Say that selected checkouts are removed and all others stay. Cancellation, timeout, an unavailable picker, or no selections grants no deletion permission. Keep them without a second question.
+If no eligible unresolved checkouts remain, do not call `ask`. Otherwise use one `ask` round under `skill://flow-page`'s "Every ask in a Flow" contract. Author one question with `multi: true`, one option per eligible unresolved checkout, and no preselected options. Say that selected checkouts are removed and all others stay. Cancellation, timeout, an unavailable picker, or no selections grants no deletion permission. Keep them without a second question.
 
 Run `remove` with `--approve <path>` only for selected unresolved checkouts. Pass their investigated fingerprints. Never refresh a fingerprint silently after approval or treat a timed-out default as the user's selection. Report each skip or failure.
 

@@ -44,7 +44,7 @@ items:
     tree: ea30ee454ba264543dbe40737973b1a5afb9f0e6
     disposition: adapt
     artifacts: [plugin/skills/domain-modeling]
-    reason: "Its user questions use the shared single-call Flow picker protocol (ask-tool, #58, #165). Flow publication is conditional and chat keeps the full output (#321, ADR 0046)."
+    reason: "Its user questions use the shared Flow publication and ordinary ask contract (ask-tool, #58, #165). Flow publication is conditional and chat keeps the full output (#321, ADR 0046)."
   - id: matt/grill-with-docs
     upstream: matt
     kind: skill
@@ -100,7 +100,7 @@ items:
     tree: bf1bf5ffcd63aa8abce830f2955a853c121fb463
     disposition: adapt
     artifacts: [plugin/skills/tdd]
-    reason: "Asks the seam question through the shared Flow picker protocol and points at `skill://codebase-design` and `skill://code-review` (#209). Flow publication is conditional and chat keeps the full output (#321, ADR 0046)."
+    reason: "Asks the seam question through the shared Flow publication and ordinary ask contract and points at `skill://codebase-design` and `skill://code-review` (#209). Flow publication is conditional and chat keeps the full output (#321, ADR 0046)."
   - id: matt/to-spec
     upstream: matt
     kind: skill
@@ -172,7 +172,7 @@ items:
     tree: 2ab11f2f51f3c29771edb5d4258d807a49462491
     disposition: adapt
     artifacts: [plugin/skills/teach]
-    reason: "Its user questions use the shared Flow picker protocol in a teach Stage (ask-tool, #58, #172)."
+    reason: "Its user questions use the shared Flow publication and ordinary ask contract in a teach Stage (ask-tool, #58, #172)."
   - id: matt/to-questionnaire
     upstream: matt
     kind: skill
@@ -180,7 +180,7 @@ items:
     tree: 46dfbeeba12a9e52eef446676f42e7551023d9a9
     disposition: adapt
     artifacts: [plugin/skills/to-questionnaire]
-    reason: "Its user questions use the shared Flow picker protocol in a to-questionnaire Stage (ask-tool, #58, #172)."
+    reason: "Its user questions use the shared Flow publication and ordinary ask contract in a to-questionnaire Stage (ask-tool, #58, #172)."
   - id: matt/wait-what
     upstream: matt
     kind: skill

@@ -1,6 +1,6 @@
 ---
 name: flow-page
-description: Publish Flow questions once through flow_ask and record Stage results.
+description: Publish Flow questions and Results, show the live URL in chat, and record ordinary ask responses.
 disable-model-invocation: true
 ---
 
@@ -44,12 +44,12 @@ When any case matches, execute the numbered Stage entry/exit steps below. For a 
 
 Selecting or reading research, explain, or another skill from its description is not enrollment. Reading a reference, using a helper, returning machine facts, or performing another test cycle within an existing run opens no empty Stage.
 
-Without enrollment, run the producer as chat. Skip Flow discovery, authoring, Stage, and receipt steps, and put the full useful output in chat rather than a page-only summary. Use plain `ask` for questions, with their context in chat. Still write canonical research notes and every other file the producer requires. The steps below and producers' Flow publication and `flow_ask` instructions apply only in a Flow.
+Without enrollment, run the producer as chat. Skip Flow discovery, authoring, Stage, and receipt steps, and put the full useful output in chat rather than a page-only summary. Use plain `ask` for questions, with their context in chat. Still write canonical research notes and every other file the producer requires. The steps below and producers' Flow publication instructions apply only in a Flow.
 
 1. Discover the Flow through [Find a Flow](#find-a-flow). Use the extension's `--session` and `--agent` on every command. Save the caller's binding and Stage before a nested run. A binding belongs to one project, session, and agent, never the globally last active Stage.
 2. Open one Stage before the run's first contribution or ask. Use `open --skill <name> --flow <flow>` on an open Flow, adding `--parent <caller-stage>` for a nested run or continuation of finished work and `--ticket <id>` for ticket work. A closed Flow requires explicit `reopen --skill <name> --flow <flow>` with those same context flags. Only after discovery proves no matching modern or supported historical Flow exists, start one with `open --skill <name> --title <title>`. Its optional `--slug` has 3 to 5 words.
 3. Publish the run's Results and every real ask through [Submit a contribution](#submit-a-contribution), [The receipt](#the-receipt), and [Every ask in a Flow](#every-ask-in-a-flow). A nested result-producing run owns its own Stage even when its caller has an active Stage. A helper that only supplies evidence returns it to the owning producer without creating a separate run. Pass explicit Flow and Stage ids to parallel workers. Workers return structured results and open questions to their coordinator unless the brief explicitly assigns publication. A run-only verifier returns its machine record without authoring.
-4. On every return, including blocked returns, publish the actual outcome and follow [Close the Stage](#close-the-stage). Restore the saved caller binding with `bind --flow <flow> --stage <caller-stage>` when that Stage is still in progress. A finished caller cannot accept a new binding or more content. Leave the Flow open unless [Close or reopen the Flow](#close-or-reopen-the-flow) applies.
+4. On every return, publish the actual outcome. A recoverable blocker leaves the owning Stage in progress; record the blocker and resume that Stage when it clears. Follow [Close the Stage](#close-the-stage) only when the skill's work completes or is deliberately abandoned. Restore the saved caller binding with `bind --flow <flow> --stage <caller-stage>` when that Stage is still in progress. A finished caller cannot accept a new binding or more content. Leave the Flow open unless [Close or reopen the Flow](#close-or-reopen-the-flow) applies.
 
 `open` binds only this session's agent to the new Stage. Later commands use that binding. `bind --flow <flow> --stage <id>` resumes an existing in-progress run, not a new nested result-producing run. Loading this skill, reading a page, `show`, and `bind` open no Stage. An unbound write without an explicit target is refused.
 
@@ -86,13 +86,11 @@ Scratch cleanup never deletes an open Flow. It offers a closed Flow for deletion
 
 ## Submit a contribution
 
-For ordinary questions, call `flow_ask` with one `contribution` containing exactly one complete `round`. Include related Results, Assumed picks, and new attachments in that same contribution when needed. The tool uses the current session and agent's existing Stage binding.
-
-For non-question authoring, `submit [<file> | -]` reads a version 1 contribution with an `items` array from a file or stdin. Keep using it for Results without questions, answers, Stage state, and progress. Ratchet's native approval exception below also uses CLI publication.
+`submit [<file> | -]` reads a version 1 contribution with an `items` array from a file or stdin. Use it for question rounds, Results, answers, Stage state, and progress. A question contribution includes exactly one complete `round`, with its related Results, Assumed picks, and new attachments when needed. Publication and ordinary `ask` are separate operations.
 
 The script applies all items to the bound Stage, or refuses all of them. Give a new question, Topic note, Result, or Result entry a `ref` (lowercase letters, digits, and hyphens) when another item names it. An item can name a ref from the same contribution, or an id from an earlier receipt. Name a Result entry as `<result ref or id>/<entry ref or id>`.
 
-Submitting the Stage's latest contribution again, for example after a lost receipt, applies nothing and prints its first receipt with `repeated: true`. `flow_ask` reports `repeated` without reopening the picker. Repetition is not a way to ask an unanswered question again. Author a new round with `again`.
+Submitting the Stage's latest contribution again, for example after a lost receipt, applies nothing and prints its first receipt with `repeated: true`. This deduplicates publication, not asking. If the published question has no recorded response, a failed or cancelled ask can be retried with the same generated payload without publishing it again. Once a non-consent response is recorded, author a linked round with `again` before asking it again; preserve the earlier attempt and Q number.
 
 Read only the field contract for the kind you are about to publish:
 
@@ -108,66 +106,35 @@ Read only the field contract for the kind you are about to publish:
 
 A submit receipt holds the Flow and Stage ids, the committed `revision`, the absolute static `page` path, its `presentation`, `live`, `refs` (each ref you gave, mapped to its assigned id), and, when the contribution has a round, `ask`. It does not repeat your content.
 
-The receipt's `ask` contains the generated picker questions in Q-number order, with assigned ids, numbered titles, lettered option labels, and recommendations. `flow_ask` passes these questions to the existing omp-tools picker itself. Use the receipt to match responses and later records, not to author another picker call.
+The receipt's `ask` contains the generated questions in Q-number order, with assigned ids, numbered titles, lettered option labels, `multi` when present, and recommendations. Use those generated values for the existing `ask` tool and to match its responses. Do not regenerate the full question or change option labels for a second authoring step.
 
 ## Every ask in a Flow
 
-This contract applies only to enrolled runs. Outside a Flow, use plain `ask` as the Stage entry rule says. In a Flow, for every ordinary question, whichever skill owns it, author the full question once and call `flow_ask`. Follow [Reader needs and Visual kinds](references/reader-needs.md) before the call. The complete round and its new visuals commit atomically. The page carries descriptions, trade-offs, and context. Code derives the numbered picker titles and labels.
+This contract applies only to enrolled runs. Outside a Flow, use plain `ask` as the Stage entry rule says. Inside a Flow, every ordinary question follows this sequence:
 
-The tool requires the main agent in an interactive omp TUI with the active omp-tools host-dialog route. It uses that custom picker for every question. It does not use or replace native `ask`, and there is no native fallback. A missing route, a non-TUI run, or a subagent call is unavailable. A subagent returns open questions to its coordinator, and the top-level agent authors the round.
+1. Prepare the complete round and visuals under [Reader needs and Visual kinds](references/reader-needs.md), then publish them once with CLI `submit`.
+2. Require `presentation.state: "current"` and `live.state: "serving"`. Check that the live URL serves the intended Flow and committed question revision. If publication or live serving fails, report the actual receipt and error in chat and leave the question unanswered. A static page remains readable evidence but cannot substitute for the required live page.
+3. Display the live URL in an assistant chat message before calling `ask`. The chat link is sufficient. Do not emit a page-publication notification or replace it with a queued duplicate message.
+4. Call the existing `ask` tool with the receipt's generated questions. Preserve its ordinary retry, cancellation, approval tier, timeout and integration behavior. Vstack adds no picker route, wrapper, delivery queue or retry gate. A repeated publication receipt does not prevent a separate ask call.
+5. Record each observed answer through CLI `submit`, preserving raw words and non-consent separately from interpretation as below.
 
-Call the tool with the version 1 envelope:
+If a committed page is stale, recover its projection with `render`, not by publishing the question again. Check the recovered live revision and print its URL before asking. A transport failure does not create a new Stage. A subagent never asks; it returns open questions to its coordinator for publication and ordinary `ask`.
 
-```json
-{
-	"contribution": {
-		"version": 1,
-		"items": [{
-			"kind": "round",
-			"questions": [{
-				"title": "How much detail should the report include?",
-				"description": "Choose the report length.",
-				"needs": [{"need": "Compare brevity with a fuller explanation.", "kind": "prose"}],
-				"options": [
-					{"label": "Short", "does": "Summarizes the findings.", "gains": ["Less to read."], "costs": ["Less explanation."], "recommended": "The findings need no extra context."},
-					{"label": "Detailed", "does": "Explains each finding.", "gains": ["More context."], "costs": ["More to read."]}
-				]
-			}]
-		}]
-	}
-}
-```
-
-`flow_ask` commits through the Flow CLI, then displays the live URL or the static fallback and observed host error before opening the picker. A publication refusal opens no picker and commits no content. A committed receipt with stale `presentation` also opens no picker. Report that receipt and its error, and recover the projection with `render`, never by resubmitting the committed contribution.
-
-The tool preserves the existing picker's read-tier approval behavior and forwards the configured `ask.timeout` through omp's settings contract. A timeout can return automatic selections, but its `timedOut` marker keeps them outside user consent.
-
-The result's `details` contains `status` and, when available, `receipt`, the raw host `response`, or `error`:
-
-- `submitted` means the host returned `response.kind: "submit"`. It does not mean every question was answered or approved.
-- `cancelled` means the dialog returned no response.
-- `chat` preserves the host's raw chat response, not an approval.
-- `unavailable` means the required interactive custom route or execution context is absent, or the committed page is stale. A preflight refusal has no receipt and commits nothing. A receipt identifies already committed content that was not presented for answering.
-- `failed` reports publication or dialog failure. A receipt means the contribution committed despite that failure.
-- `repeated` returns the existing receipt without opening the picker again.
-
-The tool includes the receipt and raw response in its text output, and returns user images as image content blocks rather than base64 text. It records no Flow answers or readings. Normalize the observed response yourself, then use CLI `submit` to record one `answer` per question.
-
-For Ratchet's native approval gate only, publish the complete question and review material through CLI `submit`, then pass its receipt's numbered title and page pointer to `r.approve()` as `skill://tune-llm-flow` says. That native gate collects the approval without `flow_ask` or a second picker. Record only the outcome the native host identifies, preserving reused approval, revision feedback, abort, dismissal, cancellation, and unanswered states separately.
+For Ratchet's native approval gate, publish the complete question and review material first, display the live page URL, then pass its receipt's numbered title and page pointer to `r.approve()` as `skill://tune-llm-flow` says. The native gate, not a second ordinary picker, collects the approval. Preserve reused approval, revision feedback, abort, dismissal, cancellation, and unanswered states separately.
 
 ### Record the raw answer and separate reading
 
 The Flow answer's `response` has `status`, optional `picks` as letters, `text` for the user's verbatim custom words or note, and `note_on` for the letter of an unpicked option the note concerns. These are Flow fields, not host response field names.
 
-A submitted host response has `results[]` entries with question ids. Match each entry to the receipt by id. `selectedOptions` contains exact lettered labels, such as `"A. Keep"`. Map those explicit selections to the receipt's option letters. Preserve `customInput`, `customInputImages`, `note`, `noteImages`, and `timedOut` as returned. Keep the user's custom words and notes verbatim, apart from your interpretation. A user's custom words without a pick need a separate reading.
+Ordinary `ask` can return a multi-question `details.results[]` with question ids, or a single-question `details.question` without an id. Match returned ids to the receipt; an idless single-question result belongs only to the one question just asked. Map exact `selectedOptions` labels such as `"A. Keep"` to the receipt's letters. Preserve observed custom words, notes, images and `timedOut`, using the actual returned fields rather than a wrapper-specific response envelope.
 
-Set `status: "answered"` only for an explicit user selection or user-authored words. A reported timeout remains `timed-out`, even if the host supplies a selection. A `cancelled` tool status records cancellation for the unanswered questions in that call. Preserve earlier answers, but never reconstruct a partial answer the host did not return.
+Set `status: "answered"` only for an explicit user selection or user-authored words. A reported timeout remains `timed-out`, even if selections are supplied. A whole-call cancellation can be a cancelled tool error without per-question results; record cancellation for the unanswered questions in that call. Preserve earlier answers and do not reconstruct partial answers the tool did not return.
 
 An empty selection alone proves neither timeout nor cancellation. Use `note_on` only when the host actually returns a structured note target such as `noteOption`. The omp-tools mapper can merge notes and omit that metadata. Never reconstruct it from the text. An unrelated failure, unavailable route, repeated call, or chat response is not a cancelled or approved answer. Report the observed outcome and leave unanswered questions open.
 
 - `answered`: the user picked or wrote something. A pick is the answer, whatever its note says. It takes no `reading`.
 - `empty`, `cancelled`, `timed-out`: the user gave no answer. Keep any observed automatic selection in `picks`, outside the decision.
-- `headless`: no user was asked. Any recorded recommendation is an assumption, not consent. `flow_ask` returns unavailable in a headless run and opens no fallback picker. Stop actions that require user confirmation.
+- `headless`: no user was asked. Any recorded recommendation is an assumption, not consent. Stop actions that require user confirmation.
 
 Words with no pick need a `reading`, your interpretation, kept apart from the words:
 
