@@ -4,35 +4,29 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
-## [8.0.15] - 2026-11-02
+## [8.0.16] - 2026-11-02
 
+- Integrate the accepted Flow single-call custom picker and standalone research closure with the selected UI guidance, preserving existing execution ownership, Pins, Dispositions, and user choices (#338).
 - Add hidden improve-animations, find-animation-opportunities, and remove-animations with pinned MIT notices and audit companions. Existing main and delegated owners retain read-only audits, explicit selection, safe scoped subtraction, motion review, and evidence (#344).
-
-## [8.0.14] - 2026-11-02
-
 - Ship apple-design and mobile-native as adapted hidden Addons through existing main and delegated frontend references. Preserve mobile-web scope, non-animation CSS and accessibility, browser-qualified motion authority, upstream notices, and existing execution and evidence ownership (#340).
 - Add repeatable mobile-web Verify coverage for touch, viewport, safe areas, hover, and inputs with actual dependency and engine scope (#340).
-
-## [8.0.13] - 2026-11-02
-
 - Ship adapted animate and animation-performance Addons with component recipes and MIT notices; existing frontend and diagnosis paths conditionally reach motion construction and browser-measured performance guidance without changing execution ownership or principle-only selection (#342).
-
-## [8.0.12] - 2026-11-02
-
 - Ship break-ui as an adapted hidden Addon with its adverse-content catalog and MIT notice. Existing main-session implementation, delegated frontend work, and Verify preparation reach realistic content boundaries without another executor. Add a repeatable native and browser robustness recipe.
-
-## [8.0.11] - 2026-11-02
-
 - Add hidden review-animations and companion standards to existing main and delegated motion reviews, preserving evidence-backed blocking verdicts and browser-qualified exceptions.
-
-## [8.0.10] - 2026-11-02
-
 - Ship emil-design-eng as a hidden, adapted Addon reached conditionally through good-css in main and delegated frontend implementation. Preserve existing execution, review, accessibility, and evidence ownership, with browser-qualified animation authority under ADR 0047 (#339).
 - Register all sixteen UI-upstream items at a81dbca07f2217b7103e510c0f13f8d5b017afc9, retain Emil Kowalski's MIT notice in the plugin, and distinguish nine selected Deferred items in tickets 340–344 from six permanent exclusions. Preserve the accepted UI-upstream glossary and ADR.
 - Document repeatable native frontend, unrelated-task, distribution, and future-source maintenance proof. Keep principle-only build and subagent judge scopes and vstack's existing prototype unchanged.
 
+## [8.0.11] - 2026-11-02
+
 - Shorten the README to installation, everyday use, and documentation links. Preserve maintainer instructions in `docs/maintainer.md` and link to canonical skill contracts.
 - Keep Verify browser opens non-Tern during diagnostics, retries, recovery, and delegated verification. Restore explicit WebKit figure coverage and report unavailable proof as unmet rather than substituting Chromium (#329).
+- A standalone `research` run that created its Flow closes it after finishing its Stage once the requested research is complete. Inside a caller's or a continuing Flow, research finishes only its own Stage and restores the caller's binding (#322).
+
+## [8.0.10] - 2026-11-02
+
+- Deliver ordinary Flow questions with one `flow_ask` call that commits the complete question and visuals, presents the Flow link, then opens the existing omp-tools picker. Require its routed interactive TUI dialog without a native ask fallback. Preserve raw responses and separate Flow readings, refuse to prompt after stale publication, and avoid reopening repeated contributions. Ratchet keeps its native approval gate.
+- Preserve multiselect cleanup and Migration questions, the configured ask timeout, and the existing picker's read-tier approval behavior. Cut all Flow-bound question recipes over to the shared single-call contract.
 
 ## [8.0.9] - 2026-11-01
 

@@ -3,7 +3,7 @@ name: grilling
 description: Grill the user relentlessly about a plan, decision, or idea. Use when the user wants to stress-test their thinking, or uses any 'grill' trigger phrases.
 ---
 
-Interview the user through `ask` until you reach a shared understanding. Map a design tree: every decision branches into the decisions that depend on it. Work in rounds. The frontier contains every decision whose prerequisites are settled. A question that depends on an open decision waits for a later round.
+Interview the user through `flow_ask` in a Flow, or plain `ask` outside one, until you reach a shared understanding. Map a design tree: every decision branches into the decisions that depend on it. Work in rounds. The frontier contains every decision whose prerequisites are settled. A question that depends on an open decision waits for a later round.
 
 Follow `skill://flow-page`'s "Stage entry/exit line" for a grilling run. When a producer uses this reference only as its interviewing procedure, its own run owns the decisions and close.
 
@@ -31,16 +31,15 @@ Settle a frontier decision yourself only when all three hold:
 
 Ask every other decision, including one where any of the three is in doubt.
 
-Record each settled decision with its decision, pick, and why, citing its repo fact with file and line, ADR, or convention. In a Flow, submit it as an `assumed` item before the round's `ask`. Outside a Flow, show the Assumed list in chat before asking.
+Record each settled decision with its decision, pick, and why, citing its repo fact with file and line, ADR, or convention. In a Flow, put it as an `assumed` item before the round in the contribution. Code owns the Assumed list and includes its current picks in the close. Outside a Flow, show the Assumed list in chat before asking.
 
 A note, Other text, or pushback that names an Assumed decision reopens it, whatever else the answer picks. Ask it in the next round. In a Flow, use `reopens` naming the Assumed item's id. Code links the records and removes that pick from the current Assumed list.
 
 ## Each round in a Flow
 
-1. Submit the newly settled `assumed` items, then one `round` containing every other frontier decision. A round that settles its whole frontier has no `ask`: recompute the frontier.
-2. Present the receipt's live URL, or its static path and observed failure, before each `ask`.
-3. Pass the receipt's `ask` payload to one `ask` call unchanged. The page carries descriptions, trade-offs, and context; code assigns Q numbers and option letters. Wait for the response before advancing dependent decisions.
-4. Normalize native ask output into flow-page's `response` contract as its "Every ask in a Flow" says. Submit an `answer` for each question, preserving the user's words separately from your interpretation:
+1. Prepare the newly settled `assumed` items followed by one complete `round` containing every other frontier decision and its visuals. If the whole frontier is settled without questions, submit only the Assumed items and recompute the frontier.
+2. Deliver that contribution through flow-page's "Every ask in a Flow" contract with one `flow_ask` call. Wait for the response before advancing dependent decisions.
+3. Record an `answer` for each question through that common contract, preserving the user's words separately from your interpretation:
    - Preserve cancellations, timeouts, empty and headless responses, including any automatic picks, as non-consent. Their decisions remain open.
    - An explicit pick settles its decision. A note beside a pick does not undo it; reply to the note in a Document Result or open a new frontier question when needed.
    - Words with no pick that plainly settle the decision get a resolved reading with its decision and basis, and `maps_to` only when they match an option. Preserve the user's words without inventing a pick or asking a settled decision again.
@@ -56,4 +55,4 @@ An empty frontier means every branch was visited and no decision remains silentl
 
 The user's next prompt confirms the summary or pushes back. A pushback reopens the named decisions. In a Flow, open a new Stage with `--parent` when the earlier Stage is finished, and use `again` for its named questions or `reopens` for its Assumed picks. Keep the earlier record intact. A calling skill that acts after the grill, such as triage's or wayfinder's tracker writes, acts only after a next prompt confirms the summary. Finishing a Stage is not authorization.
 
-When `ask` is unavailable in a headless run, record each substituted recommendation as headless, not as the user's answer. In a Flow, use `response: { status: "headless", picks: [...] }`, add "Headless, not user-confirmed" to the close's `extra`, and finish with a `retire` reason for each unresolved question. Outside a Flow, state "Headless, not user-confirmed" and name every unresolved question in chat. Stop without any action that needs the user's confirmation, such as a tracker write, and report each action not taken. A subagent never asks or claims user confirmation. It returns open decisions for the top-level agent to ask.
+When `flow_ask` is unavailable in a Flow, report the reason and stop actions that need user confirmation, such as a tracker write. In a headless run, record any substituted recommendation as headless non-consent, not as the user's answer. In a Flow, use `response: { status: "headless", picks: [...] }`, add "Headless, not user-confirmed" to the close's `extra`, and finish with a `retire` reason for each unresolved question. Outside a Flow, state "Headless, not user-confirmed" and name every unresolved question in chat. Report each action not taken. A subagent returns open decisions to the top-level agent and never claims user confirmation.

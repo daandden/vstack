@@ -32,7 +32,7 @@ Reword freely, except for why's confidence language. Keep its hedges and separat
 
 ## Step 4. Keep it conversational
 
-No quizzes, pacing labels, or requests to repeat the explanation. Stop at a natural break and let the person respond. Any optional depth choice goes through `ask`, never a prose question. In a one-shot run, deliver the complete explanation without an interaction requirement.
+No quizzes, pacing labels, or requests to repeat the explanation. Stop at a natural break and let the person respond. Any optional depth choice goes through `flow_ask` under `skill://flow-page`'s "Every ask in a Flow" contract when enrolled, or plain `ask` outside a Flow, never a prose question. In a one-shot run, deliver the complete explanation without an interaction requirement.
 
 ## Step 5. Build the picture on one page
 

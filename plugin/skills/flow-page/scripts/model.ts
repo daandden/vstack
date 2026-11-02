@@ -30,9 +30,9 @@ export type Fact = { text: string; source: string };
 export type Term = { term: string; text: string };
 export type Question = {
   id: string; stage: string; round: string; q: number; title: string; description: string; options: Option[];
+  multi?: boolean;
   again?: string; reopens?: string; today?: Fact[]; terms?: Term[]; topics?: string[]; entries?: string[]; example?: string; figures?: Figure[]; needs?: ReaderNeed[];
 };
-/** What `ask` returned, as it returned it. `picks` of a timed-out, cancelled, or headless response are not the user's. */
 const STATUSES = ["answered", "empty", "cancelled", "timed-out", "headless"] as const;
 export type ResponseStatus = (typeof STATUSES)[number];
 export type AskResponse = { status: ResponseStatus; picks?: string[]; text?: string; note_on?: string };
@@ -299,7 +299,7 @@ function ref(o: Obj, where: string): string | undefined {
   return o.ref as string;
 }
 
-export type Receipt = { refs: Record<string, string>; ask?: { questions: { id: string; question: string; options: { label: string }[]; recommended?: number }[] } };
+export type Receipt = { refs: Record<string, string>; ask?: { questions: { id: string; question: string; options: { label: string }[]; multi?: boolean; recommended?: number }[] } };
 
 const KINDS = ["background", "topic", "attachment", "result", "revise", "assumed", "round", "answer", "close", "stage", ...PROGRESS_KINDS] as const;
 type ContributionKind = (typeof KINDS)[number];
@@ -482,7 +482,7 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
         receipt.ask = {
           questions: [...parsed].sort((a, b) => a.q - b.q).map((q) => {
             const rec = q.options.findIndex((op) => op.recommended !== undefined);
-            return { id: q.id, question: `Q${q.q}. ${q.title}`, options: q.options.map((op) => ({ label: op.label })), ...(rec >= 0 ? { recommended: rec } : {}) };
+            return { id: q.id, question: `Q${q.q}. ${q.title}`, options: q.options.map((op) => ({ label: op.label })), ...(q.multi !== undefined ? { multi: q.multi } : {}), ...(rec >= 0 ? { recommended: rec } : {}) };
           }),
         };
         for (const q of parsed) for (const f of q.today ?? []) f.source = sourceId(s, f.source);
@@ -1215,7 +1215,8 @@ export function readerNeeds(raw: unknown, where: string): ReaderNeed[] {
 }
 
 function parseQuestion(raw: unknown, where: string, id: string, stage: string, round: string, resolve: (v: unknown, kind: string, where: string) => string, figure: (raw: unknown, id: string, where: string) => Figure): Question {
-  const o = fields(raw, where, ["title", "description", "options", "needs"], ["ref", "again", "reopens", "today", "terms", "topics", "results", "example", "figures"]);
+  const o = fields(raw, where, ["title", "description", "options", "needs"], ["ref", "again", "reopens", "today", "terms", "topics", "results", "example", "figures", "multi"]);
+  if (o.multi !== undefined && typeof o.multi !== "boolean") refuse(where, "multi must be true or false");
   const options = list(o, "options", where).map((op, i) => {
     const ow = `${where}: option ${i + 1}`;
     const oo = fields(op, ow, ["label", "does", "gains", "costs"], ["recommended", "preview"]);
@@ -1232,6 +1233,7 @@ function parseQuestion(raw: unknown, where: string, id: string, stage: string, r
       return { [a]: text(xo, a, xw), [b]: text(xo, b, xw) };
     });
   const q: Question = { id, stage, round, q: 0, title: text(o, "title", where), description: text(o, "description", where), options, needs: readerNeeds(o.needs, where) };
+  if (o.multi !== undefined) q.multi = o.multi === true;
   if (o.figures !== undefined) q.figures = list(o, "figures", where).map((f, j) => figure(f, `${id}-figure-${j + 1}`, `${where}: figure ${j + 1}`));
   if (o.again !== undefined) q.again = resolve(o.again, "question", `${where}: again`);
   if (o.reopens !== undefined) q.reopens = resolve(o.reopens, "assumed pick", `${where}: reopens`);
@@ -1624,6 +1626,7 @@ export function snapshot(v: View, page: string, renderer: number) {
       rounds: st.items.filter((i) => i.type === "round").map((i) => ({ id: i.round.id, n: i.round.n, time: i.round.time, questions: i.questions.map((q) => q.id) })),
       questions: st.items.flatMap((i) => (i.type === "round" ? i.questions : [])).map((q) => ({
         id: q.id, q: q.q, latest: q.latest, open: q.open, answer: q.answer, ...(q.retired ? { retired: q.retired } : {}),
+        ...(q.multi !== undefined ? { multi: q.multi } : {}),
         ...(q.again ? { again: q.again } : {}), asked_again_by: q.asked_again_by, ...(q.reopens ? { reopens: q.reopens } : {}),
         results: q.entries ?? [], topics: q.topics ?? [], ...(q.decided_in ? { decided_in: q.decided_in } : {}),
         ...(q.figures ? { figures: q.figures } : {}),
