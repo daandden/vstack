@@ -159,6 +159,15 @@
       ],
       "presentation": "The user reviewed unchanged raw captures with page-text titles identifying the actual Q number, subject, side, theme, viewport, and view state above each image. Answer A means only the with-skill explanation is adequate."
     },
-    "scope": "These actual user judgments apply only to the four frozen after-grid-final pairs. One trial per subject and side is not a reliability estimate. Mechanical record integrity does not establish subjective adequacy. Earlier Q25-Q28 judgments, the historical unaccepted cohort, original Q7/Q8 negatives, and Q24's wide-but-legible judgment retain their own status. No shipped status or independent final-commit acceptance is implied."
+    "scope": "These actual user judgments apply only to the four frozen after-grid-final pairs. One trial per subject and side is not a reliability estimate. Mechanical record integrity does not establish subjective adequacy. Earlier Q25-Q28 judgments, the historical unaccepted cohort, original Q7/Q8 negatives, and Q24's wide-but-legible judgment retain their own status. No shipped status or independent final-commit acceptance is implied.",
+    "caption_projection_repair_audit": {
+      "status": "Unaffected-cohort projection audit, not a new authoring trial or independent acceptance.",
+      "historical_inputs": "The eight frozen after-grid-final questions and all 42 raw view states remain unchanged. Only the stream-versus-tabs with-skill question uses an attachment caption; it is unqualified. The update-placement with-skill previews are text. The other six questions are prose.",
+      "author_input_scope": "Actual pre-first-publication tool calls were audited. Authors did not consume FigureList.vue, generated reader assets, CHANGELOG.md, or judging.json, and did not open a browser before first publication. Executed CLI and author-consumed instruction bytes are unchanged by the repair.",
+      "reader_input_scope": "Reader source and generated bundle bytes changed. They are not claimed byte-identical to the frozen tested-input manifest.",
+      "presentation_comparison": "All 42 frozen raw view states were rendered with the exact c160733 reader and the repaired reader at matched viewport, theme, device scale, disclosure state, and pan position. Chromium 156 and WebKit 27.2 each produced identical question DOM including shadow DOM, ARIA, element geometry, and PNG bytes across all 42 comparisons.",
+      "affected_scope": "The later Q31-Q34 review packet has already-qualified captions and exact adjacent explicit titles. The repaired reader displays one title for each of its 42 unchanged captured images across both engines, themes, and widths. Qualified and unqualified captions, reused assets under different questions, option previews, Result attachments, historical HTML pretitles, and diagram panning have separate real CLI and browser regression proof.",
+      "judgment_scope": "No evaluated first-publication presentation or prepublication author input changed, so no affected candidate condition requires a new semantic trial. Historical manifests, captures, scores, and actual Q31-Q34 answers retain their original identities. Current repair proof is not a replacement subjective review."
+    }
   }
 }

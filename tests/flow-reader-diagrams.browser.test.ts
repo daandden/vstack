@@ -237,3 +237,68 @@ test.each(["mermaid", "svg"] as const)("narrow readers preserve %s label size an
     await context.close();
   }
 }, 120_000);
+
+test("image titles keep one current question prefix and reuse exact adjacent pretitles", async () => {
+  const opened = cli(["open", "--skill", "grill-me", "--title", "Image title projection"]);
+  const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64");
+  const path = join(root, "caption.png");
+  writeFileSync(path, png);
+  const caption = "Q1 · With-skill example · Light · 1280 × 900 CSS px";
+  const options = [{ label: "Inspect", does: "Reads the example", gains: ["Context"], costs: ["Reading"] }];
+  cli(["submit"], { version: 1, items: [
+    { kind: "attachment", ref: "qualified", type: "image", path, caption, origin: "Recorded image fixture" },
+    { kind: "attachment", ref: "unqualified", type: "image", path, caption: "No-skill example", origin: "Recorded image fixture" },
+    { kind: "round", questions: [
+      { title: "Exact adjacent title", description: "Keep the authored title once.", options,
+        needs: [{ need: "Read the title.", kind: "source-excerpt" }, { need: "Inspect the image.", kind: "source-view" }],
+        figures: [{ text: caption, kind: "source-excerpt" }, { attachment: "qualified", kind: "source-view" }] },
+      { title: "Reused image", description: "Use this question's identity.", options,
+        needs: [{ need: "Inspect the image.", kind: "source-view" }], figures: [{ attachment: "qualified", kind: "source-view" }] },
+      { title: "Option preview", description: "Use this question's identity.",
+        needs: [{ need: "Inspect the preview.", kind: "option-preview" }],
+        options: [{ ...options[0], preview: { attachment: "qualified", kind: "option-preview" } }] },
+      { title: "Unqualified caption", description: "Add the owning question's identity.", options,
+        needs: [{ need: "Inspect the image.", kind: "source-view" }], figures: [{ attachment: "unqualified", kind: "source-view" }] },
+    ] },
+    { kind: "result", shape: "document", title: "Recorded Result caption", sections: [{ heading: "Example", blocks: [{ figure: "qualified" }] }] },
+  ] });
+  const historical = join(home, ".vstack", "tmp", "_global", "caption-history");
+  mkdirSync(historical, { recursive: true });
+  writeFileSync(join(historical, "caption.png"), png);
+  const pretitle = "Q7 · Historical example";
+  writeFileSync(join(historical, "page.jsonl"), [
+    { type: "page", id: "page", title: "Historical title projection" },
+    { type: "stage", id: "grill", skill: "grill-me", state: "in-progress", order: 1 },
+    { type: "round", id: "r1", stage: "grill", time: "2026-10-28T20:09:59+07:00", session: 1, round: 1 },
+    { type: "question", id: "historical-caption", round: "r1", q: 7, title: "Historical pretitle", description: "Keep the exact pretitle.",
+      options: [{ ...options[0], label: "A. Inspect" }], visual: { html: `<p>${pretitle}</p><img src="caption.png" alt="${pretitle}">` } },
+  ].map((row) => JSON.stringify(row)).join("\n") + "\n");
+  const migrated = cli(["migrate", historical]);
+  for (const width of [1280, 360]) {
+    const context = await browser.newContext({ viewport: { width, height: 900 } });
+    try {
+      const page = await context.newPage();
+      for (const theme of ["Light", "Dark"]) {
+        await page.goto(opened.live.url);
+        await page.getByRole("button", { name: theme, exact: true }).click();
+        const figures = page.locator("figure.visual, figure.attachment");
+        expect(await figures.count()).toBe(5);
+        const expected = [caption, "Q2 · With-skill example · Light · 1280 × 900 CSS px", "Q3 · With-skill example · Light · 1280 × 900 CSS px", "Q4 · No-skill example", caption];
+        for (let i = 0; i < expected.length; i++) {
+          const figure = figures.nth(i);
+          await figure.locator("img").evaluate((img: HTMLImageElement) => img.decode());
+          expect(await figure.evaluate((el) => el.querySelector(".label")?.textContent ?? (el.classList.contains("attachment") ? el.querySelector("figcaption p")?.textContent : el.previousElementSibling?.textContent))).toBe(expected[i]);
+          expect(await figure.locator("figcaption").innerText()).toContain("Origin: Recorded image fixture");
+        }
+        expect(await figures.first().locator(".label").count()).toBe(0);
+        await page.goto(migrated.live.url);
+        const old = page.locator("#historical-caption");
+        await old.locator("img").evaluate((img: HTMLImageElement) => img.decode());
+        expect((await old.innerText()).split(pretitle).length - 1).toBe(1);
+        expect(await old.locator(".figure-caption .label").count()).toBe(0);
+      }
+    } finally {
+      await context.close();
+    }
+  }
+});

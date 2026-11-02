@@ -7,7 +7,7 @@ const f = computed(() => flow.value!);
 const attachment = (id: string) => f.value.attachments.find((a) => a.id === id);
 const scoped = (css: string, id: string) => css.replace(/([^{}]+)\{([^{}]*)\}/g, (_, selectors: string, body: string) =>
   `${selectors.split(",").map((s) => s.trim()).filter(Boolean).map((s) => (s === ":scope" ? `#${id}` : `#${id} ${s.replace(/^:scope\s*/, "")}`)).join(", ")} { ${body} }`);
-const title = (caption: string) => `${props.question === undefined ? "" : `Q${props.question} · `}${caption}`;
+const title = (caption: string) => props.question === undefined ? caption : `Q${props.question} · ${caption.replace(/^Q\d+ · /, "")}`;
 const unknown = "Unrecorded example identity, theme, or viewport: unknown.";
 const duplicate = (index: number, caption: string) => {
   const previous = props.figures?.[index - 1];
