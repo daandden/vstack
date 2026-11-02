@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [8.0.9] - 2026-11-02
+
+- Keep concurrent Flow callers in their project namespace by capturing Git output in invocation-owned temporary files. Preserve synchronous lookup and remove captures on success, command failure, and spawn failure. Surface capture filesystem errors instead of selecting the outside-Git namespace. Cover lost-output and normal transport orderings through the real Flow CLI (#333).
+
 ## [8.0.8] - 2026-11-01
 
 - Run clean-wt's script commands with a long or disabled tool deadline, and treat a host deadline as no exit rather than a nonzero exit. An interrupted inventory keeps its diagnostics and reruns once, investigators return interrupted-attempt diagnostics instead of writing Scratch, and an interrupted removal is reported as unknown without an automatic rerun (#319).
