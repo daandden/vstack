@@ -16,9 +16,9 @@ Two parts, in this order. The machine section checks the omp settings vstack nee
 
 The project section first checks this repo for Matt Pocock's config. When it finds some, it offers a Migration before setup, in the same run. Migration changes only this repo and its shared private store. It never changes machine state such as global skills or global rules.
 
-This is a prompt-driven skill with helper scripts. Explore, present what you found, settle each choice through `flow_ask`, then write.
+This is a prompt-driven skill with helper scripts. Explore, present what you found, settle each choice through `ask`, then write.
 
-Every question to the user follows `skill://flow-page`'s "Every ask in a Flow", including separate answer recording. A timed-out answer is not the user's. Re-ask a gate once through `flow_ask` with `again`. If it times out again, stop without acting and say why. Unavailable questioning grants no approval.
+Every question to the user follows `skill://flow-page`'s "Every ask in a Flow", with Flow CLI publication of the complete round, current live serving, and a visible live URL in chat before `ask`, followed by separate recording of the observed response. A timed-out answer is not the user's. Re-ask a gate once through the same contract, setting `again` on the Flow-authored question. If it times out again, stop without acting and say why. Unavailable questioning grants no approval.
 
 ## Flow page and diagnostics
 
@@ -54,7 +54,7 @@ Below, `machine.ts`, `project.ts`, and `migrate.ts` stand for these commands.
 
    When every check passes, it prints one `OK` line. Otherwise it prints one line per check that does not pass: `FAIL <n> <name>: <what is wrong>. Remedy: <what fixes it>.`, or `WARN` in place of `FAIL` for checks 5 and 8. Check 2 prints `NOTE 2 <name>: <the role and the jev note>.` when the role names a model other than `typesafe/jev-latest`. Check 3 prints `NOTE 3 <name>: <the overrides>.` when a key exists. Check 4 prints `NOTE 4 <name>: <the new-session note>.` when the extension is enabled. A `NOTE` line has no remedy. Exit 0 means no `FAIL` line, 1 means at least one, and 2 means the script did not run: show its message and go on to the project section.
 2. Show the output to the user as it is.
-3. The settings writer fixes only checks 2, 6, 7, and disabled-setting WARN 8, with the user's approval. For each of these setting remedies, call one `flow_ask` with Set it (Recommended) and Leave it. An unavailable Ratchet setting needs the reported omp upgrade instead; offer no Set it for that warning. Then run `machine.ts --set <name>...` with only the approved names: `judge` for 2, `isolation` for 6, `clone` for 7, `ratchet` for disabled 8. Leave it keeps that setting unchanged. If no names are approved, do not run the writer. It uses `omp config set` to write the machine-wide user configuration and preserves unrelated settings, including other model roles. Never enable Ratchet in project or session configuration. Never change omp settings any other way. After a write, run step 1 again and show its output.
+3. The settings writer fixes only checks 2, 6, 7, and disabled-setting WARN 8, with the user's approval. For each of these setting remedies, call one `ask` with Set it (Recommended) and Leave it. An unavailable Ratchet setting needs the reported omp upgrade instead; offer no Set it for that warning. Then run `machine.ts --set <name>...` with only the approved names: `judge` for 2, `isolation` for 6, `clone` for 7, `ratchet` for disabled 8. Leave it keeps that setting unchanged. If no names are approved, do not run the writer. It uses `omp config set` to write the machine-wide user configuration and preserves unrelated settings, including other model roles. Never enable Ratchet in project or session configuration. Never change omp settings any other way. After a write, run step 1 again and show its output.
 4. Leave checks 1, 3, 4, and 5 to the user. TypeSafe credentials come from `/login typesafe`, which only the user can run. The extension needs a new session. Done repeats every line still failing.
 
 ## Project section
@@ -90,7 +90,7 @@ When `mode` is set, or Migration settled the mode, tell the user the mode and ke
 - `missing_config` is empty, `missing_default_end_state` is false, and this run's Migration changed files, in Private mode: skip to step 8.
 - Otherwise: run only the sections for the missing files in step 5. Draft and write only those files, except for the CI cutover and the default End state below. When `ci.md` is missing and `code-host.md` exists, follow Section C's re-setup branch and include its revised `code-host.md` in the same confirmation. When `missing_default_end_state` is true, ask only Section B's default End state question for the existing `code-host.md` and add its one line there. Leave every other existing config file unchanged.
 
-When `mode` is null, call `flow_ask` with one question and two options:
+When `mode` is null, call `ask` with one question and two options:
 
 - Standard (Recommended): the config is tracked in `docs/vstack/`, with a `## vstack` block in `CLAUDE.md` or `AGENTS.md`, and setup-vstack commits it.
 - Private: the config lives in `<vstack_root>/config/`, inside the git common dir, so every worktree of this repo shares it and git never tracks it. Nothing is committed. The `vstack-private-mode` rule then sends every vstack skill there.
@@ -111,9 +111,9 @@ Look at the repo to understand its starting state. Read whatever exists; do not 
 
 ### 5. Present findings and settle each section
 
-Summarize what is present and what is missing. Then take the missing-file sections in order, one round through `flow_ask` per section. When there is a recommendation, put it first and mark it Recommended. Otherwise keep the listed order with no recommendation. Add a one-line explainer only when the choice really branches.
+Summarize what is present and what is missing. Then take the missing-file sections in order, one round through `ask` per section. When there is a recommendation, put it first and mark it Recommended. Otherwise keep the listed order with no recommendation. Add a one-line explainer only when the choice really branches.
 
-MCP discovery, shared by Sections A, B, and C. Use this rule when the user names an MCP server for an Other choice. Read that server's current tool list, descriptions, and parameter schemas. If discovery fails or the server is unreachable, name the server and the failure, tell the user to connect it, and stop before writing or committing project config. Draft the section's config with its service, the named MCP server, its project facts, and its pins, and with no operation rows. A Check pin is one tool whose description establishes a read-only connection check. Name a tool only when this server's list contains it, and derive its arguments from that tool's schema. If no tool fits a pin, mark that pin `unsupported`; invent no pin or replacement. Project facts hold values that the tool descriptions cannot supply. Collect missing facts through `flow_ask`. Tell the config's reader to select every unpinned operation from the named server's current descriptions and parameter schemas, using these facts. Show the draft for confirmation in step 6.
+MCP discovery, shared by Sections A, B, and C. Use this rule when the user names an MCP server for an Other choice. Read that server's current tool list, descriptions, and parameter schemas. If discovery fails or the server is unreachable, name the server and the failure, tell the user to connect it, and stop before writing or committing project config. Draft the section's config with its service, the named MCP server, its project facts, and its pins, and with no operation rows. A Check pin is one tool whose description establishes a read-only connection check. Name a tool only when this server's list contains it, and derive its arguments from that tool's schema. If no tool fits a pin, mark that pin `unsupported`; invent no pin or replacement. Project facts hold values that the tool descriptions cannot supply. Collect missing facts through `ask`. Tell the config's reader to select every unpinned operation from the named server's current descriptions and parameter schemas, using these facts. Show the draft for confirmation in step 6.
 
 Section A, issue tracker.
 
@@ -132,7 +132,7 @@ For Other with an MCP server, follow MCP discovery. Draft `issue-tracker.md` wit
 
 For Jira, the project facts are the project key, the issue type for tickets, the transition that closes an issue, the blocking link type, and the mapping from the five canonical triage roles to Jira labels. Use the settled Section D names or the existing `triage-labels.md` for that mapping. Collect missing facts without guessing defaults. Keep create, comment, label, close, and blocking tools out of the config. Jira uses Other; there is no Jira template.
 
-For Other with a CLI, read its `--help` for the relevant command groups. Draft the tracker workflow, project facts, and a read-only Check command from that help. Invent no command. For Other with no MCP server or CLI, collect the user's workflow in one paragraph through `flow_ask` and keep it as prose, with no invented tool or Check call.
+For Other with a CLI, read its `--help` for the relevant command groups. Draft the tracker workflow, project facts, and a read-only Check command from that help. Invent no command. For Other with no MCP server or CLI, collect the user's workflow in one paragraph through `ask` and keep it as prose, with no invented tool or Check call.
 
 Section B, Code host.
 
@@ -163,7 +163,7 @@ When `ci.md` is missing and `code-host.md` exists, read that file before present
 - For a CLI source, copy the four rows that exist verbatim, including hand-edited arguments, input handling, and policy notes. The exception is a `rerun-ci` row that does not rerun the linked failed build in full, such as the earlier GitLab template's `glab api --method POST projects/:id/merge_requests/<iid>/pipelines`, which starts a new pipeline. Draft that operation as `unsupported` with the reason, as [ci-gitlab.md](./ci-gitlab.md) does. Draft `code-host.md` with only those rows removed. Keep every other row and note unchanged, including `required-checks` and `watch-checks`.
 - For an MCP source, carry the rows' user-specific values, arguments, and policies into `ci.md`'s project facts. Follow MCP discovery and draft `ci.md` with Section C's MCP pins. Select `ci-logs`, `set-secret`, and `set-variable` from current tool descriptions, not copied pins. Draft `code-host.md` in Section B's short shape, keeping its server, project facts, and read-only Check pin, with no operation rows. Preserve Code host facts embedded in the old rows, such as exact-commit fetching and the review reference.
 
-Include both complete drafts together as Results in step 6's `flow_ask` call for their write confirmation. Write neither file before that confirmation. The agent drafts this cutover; `project.ts` has no row-move command. Skip the service-choice question below when the old rows already supply that choice. Collect only a missing fact needed for these drafts through `flow_ask`, not unrelated setup sections.
+Include both complete drafts together as Results with step 6's write-confirmation round in the Flow CLI contribution before `ask`. Write neither file before that confirmation. The agent drafts this cutover; `project.ts` has no row-move command. Skip the service-choice question below when the old rows already supply that choice. Collect only a missing fact needed for these drafts through `ask`, not unrelated setup sections.
 
 If the existing `code-host.md` has no CI rows, use the normal CI choices below. Still include an MCP Code host's short-shape draft in the same confirmation. A CLI Code host with no CI rows stays unchanged.
 
@@ -182,9 +182,9 @@ For Other with an MCP server, follow MCP discovery. Draft `ci.md` with the CI se
 
 `ci-logs`, `set-secret`, and `set-variable` stay unpinned. The project facts include values such as the Jenkins URL and job folder. A folder is not a substitute for the failed check's build link. Jenkins uses Other; there is no Jenkins template.
 
-Section D, triage labels. This section runs whenever `triage-labels.md` is missing, whatever the tracker, because triage always ships. Call `flow_ask` with one question, whether to keep the default triage labels, and the options Keep the defaults (Recommended) and Use other names. The defaults are the five canonical roles, each label string equal to its name: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. Only on Use other names (usually because the tracker already uses other names, such as `bug:triage` for `needs-triage`), call `flow_ask` once more with one round containing one question per role to collect the names, so triage applies the existing labels instead of creating duplicates.
+Section D, triage labels. This section runs whenever `triage-labels.md` is missing, whatever the tracker, because triage always ships. Call `ask` with one question, whether to keep the default triage labels, and the options Keep the defaults (Recommended) and Use other names. The defaults are the five canonical roles, each label string equal to its name: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. Only on Use other names (usually because the tracker already uses other names, such as `bug:triage` for `needs-triage`), call `ask` once more with one round containing one question per role to collect the names, so triage applies the existing labels instead of creating duplicates.
 
-Section E, domain docs. Default to single-context: one `GLOSSARY.md` plus `docs/adr/` at the repo root. This fits almost every repo; write it without a question. Only when exploration found monorepo signals, call `flow_ask` with single-context and multi-context (a root `GLOSSARY-MAP.md` that points to one `GLOSSARY.md` per context).
+Section E, domain docs. Default to single-context: one `GLOSSARY.md` plus `docs/adr/` at the repo root. This fits almost every repo; write it without a question. Only when exploration found monorepo signals, call `ask` with single-context and multi-context (a root `GLOSSARY-MAP.md` that points to one `GLOSSARY.md` per context).
 
 ### 6. Draft and confirm
 
@@ -212,15 +212,15 @@ In Private mode, change two drafts so that they point under the vstack root by a
 - `issue-tracker.md` for local markdown: replace every `.scratch/` path, the Wayfinding map, ticket, and frontier paths included, with `<vstack_root>/artifacts/`.
 - `domain.md`: the domain docs live in `<vstack_root>/domain/`, as `GLOSSARY.md` (or `GLOSSARY-MAP.md`) and `adr/`, in place of the repo-root files. Add one line saying that the repo's own tracked `GLOSSARY.md` and `docs/adr/` are read as well when they exist.
 
-Include each complete draft and, in Standard mode, the `## vstack` block changes (see step 7) as Results in one `flow_ask` call for the whole write set. Its question offers Write it (Recommended) and Change something. On Change something, make the user's edits and re-ask with `again`, including the revised drafts in that call. A section choice is not write approval. Until this confirmation, keep the project files unchanged.
+Publish each complete draft and, in Standard mode, the `## vstack` block changes (see step 7) as Results with one complete confirmation round for the whole write set. Verify current live serving, show the live URL in chat, then call `ask` with the receipt's generated question. Its question offers Write it (Recommended) and Change something. On Change something, make the user's edits and re-ask with `again`, publishing the revised drafts with the linked round before `ask`. A section choice is not write approval. Until this confirmation, keep the project files unchanged.
 
 ### 7. Write
 
 Standard mode:
 
-1. When `block_file_dirty` from step 1 is true, tell the user that `<block_file>` has uncommitted changes and that the setup commit is going to include them. Call `flow_ask` with the options Go on and include them, and Stop so I can commit them first. On Stop, stop.
+1. When `block_file_dirty` from step 1 is true, tell the user that `<block_file>` has uncommitted changes and that the setup commit is going to include them. Call `ask` with the options Go on and include them, and Stop so I can commit them first. On Stop, stop.
 2. Write each config file that this run drafted: `docs/vstack/issue-tracker.md`, `docs/vstack/code-host.md`, `docs/vstack/ci.md`, `docs/vstack/triage-labels.md`, and `docs/vstack/domain.md`, or only the missing ones on a re-run plus Section C's confirmed `code-host.md` cutover and the confirmed default End state line in an existing `code-host.md`.
-3. Pick the file for the block. When `CLAUDE.md` exists, edit it. Else when `AGENTS.md` exists, edit it. When neither exists, call `flow_ask` with the options `CLAUDE.md` and `AGENTS.md` and no recommended option, and create the one the user picks. Never create `AGENTS.md` when `CLAUDE.md` exists, or the other way round.
+3. Pick the file for the block. When `CLAUDE.md` exists, edit it. Else when `AGENTS.md` exists, edit it. When neither exists, call `ask` with the options `CLAUDE.md` and `AGENTS.md` and no recommended option, and create the one the user picks. Never create `AGENTS.md` when `CLAUDE.md` exists, or the other way round.
 4. When the file already has a `## vstack` block, update it in place instead of adding a second one, and leave the other sections as they are. On a CI-only re-run, preserve its existing subsections and add only a missing CI service subsection. A re-run that only adds the default End state leaves the block unchanged. The block:
 
    ```markdown

@@ -31,7 +31,7 @@ Create directories as runs need them.
 
 ## Test Prompts
 
-Write 2–3 realistic requests, phrased the way a user would type them, with the input files they need. When the user's judgment of realism matters, show them the prompts through `flow_ask` on the evaluation Stage before running. Follow `skill://flow-page`'s "Every ask in a Flow", including separate answer recording. Record each in `evals.json` with the prompt, input files, and a sentence describing the expected result.
+Write 2–3 realistic requests, phrased the way a user would type them, with the input files they need. When the user's judgment of realism matters, show them the prompts through `ask` on the evaluation Stage before running. Follow `skill://flow-page`'s "Every ask in a Flow", including Flow CLI publication and a visible current live URL in chat before `ask`, followed by separate answer recording. Record each in `evals.json` with the prompt, input files, and a sentence describing the expected result.
 
 - Mid-workflow turns: to test a later step of a multi-turn skill in one run, prefix the request with a bracketed note stating where the workflow stands and what the user already said, for example `[Discovery is done; asked about stakeholders, the user replied: "just me and a PM"]`.
 - Non-interactive runs: supply the answers the skill would ask for up front, so the run reaches its deliverable without stopping. When a skill cannot proceed without a live answer, that case needs the user in the loop.
@@ -48,7 +48,7 @@ Each fresh run dir holds only input files, `outputs/`, its config overlay, and i
 
 For an eval cell in Python, build each command as an argument list and use `subprocess.Popen` for every run before waiting on any, with `stdin=subprocess.DEVNULL`. Await all exits before grading. Use `json.loads` on each session line to find the last model and thinking records, not a first-match search. In a JavaScript cell use `Bun.YAML.stringify` to write overlays; JSON is also valid YAML. Never interpolate prompts into a shell command. Headless print mode reads piped stdin before starting; closing it prevents the process from waiting on the parent kernel.
 
-Keep runs within authorized side effects. Use `flow_ask` before a run touching a live system, needing new authorization, or incurring substantial cost. Without that authorization stop the affected case.
+Keep runs within authorized side effects. Use `ask` before a run touching a live system, needing new authorization, or incurring substantial cost. Without that authorization stop the affected case.
 
 A skill that no longer beats the no-skill baseline has been overtaken by the model; recommend retiring it rather than patching it.
 
@@ -65,7 +65,7 @@ Assertions can check the process as well as the output: a required tool call or 
 
 ## Review
 
-In a Flow, present each eval on the Flow page. Use a Document Result for the prompt, assertion results, changed instructions, user feedback, and unverified work. Use a Comparison Result for with-skill versus baseline outputs, criteria, evidence, and verdict. Attach the redacted outputs, assertions, and transcripts, preserving `evals.json`, skill snapshots, and iteration directories. Use Metrics for measured pass counts, time, or cost with units, samples, uncertainty, and missing values where data is absent. Outside a Flow, deliver those findings and evidence in chat and preserve the same files. Raw assertion rates alone do not establish a skill's quality. Collect feedback per eval through `flow_ask` on the evaluation Stage when in a Flow, or plain `ask` outside one. Focus revisions on the evals with specific complaints. Silence or unavailable questioning grants no approval.
+In a Flow, present each eval on the Flow page. Use a Document Result for the prompt, assertion results, changed instructions, user feedback, and unverified work. Use a Comparison Result for with-skill versus baseline outputs, criteria, evidence, and verdict. Attach the redacted outputs, assertions, and transcripts, preserving `evals.json`, skill snapshots, and iteration directories. Use Metrics for measured pass counts, time, or cost with units, samples, uncertainty, and missing values where data is absent. Outside a Flow, deliver those findings and evidence in chat and preserve the same files. Raw assertion rates alone do not establish a skill's quality. Collect feedback per eval through `ask` on the evaluation Stage when in a Flow, or plain `ask` outside one. Focus revisions on the evals with specific complaints. Silence or unavailable questioning grants no approval.
 
 ## Improve
 
