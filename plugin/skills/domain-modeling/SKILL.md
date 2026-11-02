@@ -41,23 +41,23 @@ Create files lazily: only when you have something to write. If no `GLOSSARY.md` 
 
 ## During the session
 
-Follow `skill://flow-page`'s "Stage entry/exit line" for a domain-modeling run. A timeout, cancellation, or headless recommendation does not settle a term. In a Flow, for an ADR offer, ask once more with `again`, then create no ADR without an explicit pick or resolved reading. Outside a Flow, repeat the unanswered offer through plain `ask` and require the same explicit choice. In a Flow, publish resulting terms, scenarios, and decisions as Document Results linked to the canonical glossary or ADR files.
+Follow `skill://flow-page`'s "Stage entry/exit line" for a domain-modeling run. In a Flow, route questions through `flow_ask` under its "Every ask in a Flow" contract. Outside a Flow, use plain `ask`. A timeout, cancellation, or headless recommendation does not settle a term. For an unanswered ADR offer, re-ask once, using `again` in a Flow, then create no ADR without an explicit pick or resolved reading. In a Flow, publish resulting terms, scenarios, and decisions as Document Results linked to the canonical glossary or ADR files.
 
 ### Challenge against the glossary
 
-When the user uses a term that conflicts with the existing language in `GLOSSARY.md`, call it out immediately with an `ask`: "Your glossary defines 'cancellation' as X, but you seem to mean Y, so which is it?"
+When the user uses a term that conflicts with the existing language in `GLOSSARY.md`, call it out immediately through `flow_ask` in a Flow or plain `ask` outside one: "Your glossary defines 'cancellation' as X, but you seem to mean Y, so which is it?"
 
 ### Sharpen fuzzy language
 
-When the user uses vague or overloaded terms, propose a precise canonical term with an `ask` that offers the candidates. "You're saying 'account': do you mean the Customer or the User? Those are different things."
+When the user uses vague or overloaded terms, propose a precise canonical term through `flow_ask` in a Flow or plain `ask` outside one with the candidates. "You're saying 'account': do you mean the Customer or the User? Those are different things."
 
 ### Discuss concrete scenarios
 
-When domain relationships are being discussed, stress-test them with specific scenarios. Invent scenarios that probe edge cases and put each one to the user with `ask`, so they have to be precise about the boundaries between concepts.
+When domain relationships are being discussed, stress-test them with specific scenarios. Invent scenarios that probe edge cases and put each one to the user through `flow_ask` in a Flow or plain `ask` outside one, so they have to be precise about the boundaries between concepts.
 
 ### Cross-reference with code
 
-When the user states how something works, check whether the code agrees. If you find a contradiction, surface it with an `ask`: "Your code cancels entire Orders, but you just said partial cancellation is possible, so which is right?"
+When the user states how something works, check whether the code agrees. If you find a contradiction, surface it through `flow_ask` in a Flow or plain `ask` outside one: "Your code cancels entire Orders, but you just said partial cancellation is possible, so which is right?"
 
 ### Update GLOSSARY.md inline
 
@@ -67,7 +67,7 @@ When a term is resolved, update `GLOSSARY.md` right there. Don't batch these up:
 
 ### Offer ADRs sparingly
 
-Only offer to create an ADR, with one `ask`, when all three are true:
+Only offer to create an ADR, through `flow_ask` in a Flow or plain `ask` outside one, when all three are true:
 
 1. **Hard to reverse**: the cost of changing your mind later is meaningful
 2. **Surprising without context**: a future reader will wonder "why did they do it this way?"

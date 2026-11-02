@@ -80,6 +80,8 @@ A map keeps one Flow page across sessions. Follow `skill://flow-page`'s "Stage e
 
 Each ticket run supplies its ticket id to the central Stage protocol and puts the ticket's name in its Background. Nested result-producing grilling, prototype, and domain-modeling runs follow the same protocol. Interviewing or reference helpers contribute to their producer without an independent run. Never rewrite shared Flow records.
 
+Put every ordinary user question through `flow_ask` on the owning Stage, following `skill://flow-page`'s "Every ask in a Flow", including separate answer recording.
+
 Publish the map's destination, notes, frontier, decisions, fog, and out-of-scope boundaries as Document and table Results, with named tracker links and observed canonical revisions. Preserve the dependency graph as separate Result content: a table lists every ticket and its blockers, and a captured dependency figure shows the graph when produced. The Stage tree describes continuation, never blocking order. Before finishing charting or a ticket Stage, publish its actual resolution, evidence, outstanding questions, and canonical tracker or findings links. Record raw ask responses and separate readings. A headless recommendation, timeout, or cancellation cannot resolve a HITL ticket or authorize tracker writes.
 
 ## Ticket Types
@@ -121,7 +123,7 @@ Two modes. Either way, never resolve more than one ticket per session, with the 
 User invokes with a loose idea.
 
 1. Name the destination. Use skill://grilling and skill://domain-modeling to pin down what this map is finding its way to: the spec, decision, or change. The destination fixes the scope, so it's settled first.
-2. Map the frontier. Grill again, breadth-first this time: range across the whole space rather than deep on any one thread, surfacing the open decisions and the first steps takeable now. If this surfaces no fog (the way to the destination is already clear, the whole journey small enough for one session), you don't need a map. Stop and use `ask` to choose how to proceed.
+2. Map the frontier. Grill again, breadth-first this time: range across the whole space rather than deep on any one thread, surfacing the open decisions and the first steps takeable now. If this surfaces no fog (the way to the destination is already clear, the whole journey small enough for one session), you don't need a map. Stop charting and use `flow_ask` on the charting Stage to choose how to proceed.
 3. Create the map (label `wayfinder:map`): Destination and Notes filled in, Decisions-so-far empty, the fog sketched into Not yet specified. Add the map's alias and publish its Result as [The Flow page](#the-flow-page) says.
 4. Create the tickets you can specify now as child issues of the map, then wire blocking edges in a second pass (issues need ids before they can reference each other). Wiring sorts them into the frontier and the blocked; everything you can't yet specify stays in the fog: the Not yet specified section.
 5. Fire the research runners. Claim each research ticket before work, then use Research runners below to resolve the claimed tickets.
@@ -143,7 +145,7 @@ The user may run unblocked tickets in parallel, so expect other sessions to be e
 
 ## Research runners
 
-Only the parent writes to the tracker: it claims tickets, posts resolutions, closes tickets, and updates the map. Runners never write tracker issues or comments and never ask the user; they return open questions for the parent to put on the map's Flow page and ask. An unanswered question that prevents a cited answer leaves the ticket open. The parent records each runner's result on that ticket's Stage, not the parent's last active Stage.
+Only the parent writes to the tracker: it claims tickets, posts resolutions, closes tickets, and updates the map. Runners never write tracker issues or comments and never ask the user; they return open questions for the parent to put through `flow_ask` on the ticket's Stage. An unanswered question that prevents a cited answer leaves the ticket open. The parent records each runner's result on that ticket's Stage, not the parent's last active Stage.
 
 Resolve the mode and absolute vstack root once using the project's vstack config. Read its tracker and domain docs. Pass that root unchanged to every child; children never resolve the git common dir again. If a child writes Scratch, also resolve and pass the project's Scratch dir through skill://vstack-tmp. Use distinct names for each ticket's findings.
 

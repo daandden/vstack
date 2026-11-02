@@ -84,13 +84,13 @@ For kind `tree`, run `git apply -- "<base patchPath>"` in the parent's checkout.
 
 Read each losing candidate again and identify the parts worth keeping. Graft them by hand, per `skill://principle-redesign-from-first-principles`. Rework each part to fit the base instead of pasting competing designs together. Record each graft's source and each rejection's reason.
 
-When the candidates converge, use the consensus shape and omit grafts that add nothing. Report convergence as a weaker signal because every runner shares one model's priors. When the candidates diverge without a common frame, return to Frame. Reframe, then use `ask` for Re-run / Stop before paying for another batch. A timed-out answer is not approval; re-ask once, then stop.
+When the candidates converge, use the consensus shape and omit grafts that add nothing. Report convergence as a weaker signal because every runner shares one model's priors. When the candidates diverge without a common frame, return to Frame. Reframe, then use `flow_ask` for Re-run / Stop under `skill://flow-page`'s "Every ask in a Flow" contract before paying for another batch. A timed-out answer is not approval. Re-ask once through `flow_ask` with `again`, then stop if unanswered. Cancellation or an unavailable picker stops the re-run.
 
 After grafting and evaluation no longer need a runner, release it through the shared lifecycle contract and record the observed outcome. Keep losing patches and evidence, with stable Scratch copies when their exact bytes matter. On failed base application or fewer than two candidates, preserve useful results and reconcile every runner before returning. Running or still-needed runners stay retained with reasons.
 
 ## Phase F: Verify
 
-Verify the synthesized artifact per `skill://principle-prove-it-works`, using the task's agreed checks. For kind `reply`, exercise the claims and evidence that the answer keeps. If a missed problem comes from the frame, return to Frame and use `ask` before re-running. If a losing candidate caught it, return to Graft. Fix the cause instead of hiding the failure.
+Verify the synthesized artifact per `skill://principle-prove-it-works`, using the task's agreed checks. For kind `reply`, exercise the claims and evidence that the answer keeps. If a missed problem comes from the frame, return to Frame and use `flow_ask` before re-running, with the same unanswered and cancellation stops as Graft. If a losing candidate caught it, return to Graft. Fix the cause instead of hiding the failure.
 
 ## Outputs
 

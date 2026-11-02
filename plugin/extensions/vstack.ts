@@ -1,11 +1,13 @@
-import type { TSchema } from "@oh-my-pi/pi-ai";
-import type { ExtensionAPI, ExtensionContext } from "@oh-my-pi/pi-coding-agent";
+import type { ImageContent, TSchema } from "@oh-my-pi/pi-ai";
+import type { ExtensionAPI, ExtensionAskDialogResult, ExtensionContext } from "@oh-my-pi/pi-coding-agent";
 import { settings } from "@oh-my-pi/pi-coding-agent";
 import { hasNativeJudge, journalJudgmentUsage, resolveJudge, sharedJudgmentCache } from "@oh-my-pi/pi-coding-agent/judgment";
+import { askTimeoutMs } from "@oh-my-pi/pi-coding-agent/modes/settings";
 import catalogFile from "../../addon-questions.json";
 import { addonJudgeState, briefJudgeState, briefQuestions, parseAddonCatalog, type AddonCatalog, type AddonQuestion } from "./addon-catalog.ts";
 import { mattSkillNames, type MattSkillRow } from "./matt-skills.ts";
 import { cleanBrief, preprocessTinyMessage } from "./prompt-cleaner.ts";
+import type { Receipt } from "../skills/flow-page/scripts/model.ts";
 import * as fs from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
@@ -13,6 +15,7 @@ import { fileURLToPath } from "node:url";
 export default function vstack(pi: ExtensionAPI): void {
   registerAddonSelection(pi);
   registerCleanCommand(pi);
+  registerFlowQuestions(pi);
   registerFlowPresentation(pi);
 }
 
@@ -26,6 +29,96 @@ async function flowPage<T>(pi: ExtensionAPI, ctx: ExtensionContext, args: string
   const result = await pi.exec("bun", [flowScript, ...args, ...flowIdentity(ctx)], { cwd: ctx.cwd });
   if (result.code !== 0) throw new Error(result.stderr.trim() || `Flow command exited ${result.code}`);
   return JSON.parse(result.stdout);
+}
+
+type FlowQuestionReceipt = Receipt & {
+  flow: string;
+  stage: string;
+  revision: number;
+  page: string;
+  repeated?: boolean;
+  live?: { state: "serving"; url: string } | { state: "unavailable"; error: string } | { state: "off" };
+  presentation: { state: "current" | "stale"; error?: string };
+};
+
+type FlowQuestionOutcome = {
+  status: "submitted" | "cancelled" | "chat" | "unavailable" | "failed" | "repeated";
+  receipt?: FlowQuestionReceipt;
+  response?: ExtensionAskDialogResult;
+  error?: string;
+};
+
+function flowQuestionResult(details: FlowQuestionOutcome) {
+  const text = JSON.stringify(details, (key, value) =>
+    key === "customInputImages" || key === "noteImages" ? value.map((image: ImageContent, i: number) => ({ image: i + 1, mimeType: image.mimeType })) : value);
+  const content: ({ type: "text"; text: string } | ImageContent)[] = [{ type: "text", text }];
+  if (details.response?.kind === "submit") for (const answer of details.response.results) {
+    for (const field of ["customInputImages", "noteImages"] as const) {
+      for (const [i, image] of (answer[field] ?? []).entries()) {
+        content.push({ type: "text", text: `${answer.id} ${field}, image ${i + 1}:` }, image);
+      }
+    }
+  }
+  return { content, details };
+}
+
+function hasFlowPicker(ctx: ExtensionContext): boolean {
+  const route = Object.getOwnPropertyDescriptor(ctx.ui, Symbol.for("omp-tools.host-ask-dialog"))?.value;
+  return ctx.mode === "tui" && ctx.hasUI && typeof ctx.ui.askDialog === "function" && Array.isArray(route?.opens) && route.opens.length > 0;
+}
+
+function registerFlowQuestions(pi: ExtensionAPI): void {
+  pi.registerTool(Object.assign({
+    name: "flow_ask",
+    label: "Ask on Flow",
+    description: "Publish one complete Flow question round, show its page link, and collect raw answers through the omp-tools picker. Use the current Stage binding; include Results and question visuals in the same contribution.",
+    loadMode: "essential" as const,
+    approval: "read" as const,
+    parameters: {
+      type: "object",
+      properties: { contribution: { type: "object", properties: { version: { const: 1 }, items: { type: "array", items: { type: "object", additionalProperties: true }, minItems: 1 } }, required: ["version", "items"] } },
+      required: ["contribution"],
+    } as TSchema,
+    async execute(_id: string, { contribution }: { contribution: unknown }, signal: AbortSignal | undefined, _onUpdate: unknown, ctx: ExtensionContext) {
+      if (signal?.aborted) return flowQuestionResult({ status: "cancelled" });
+      if (ctx.agent.kind !== "main" || !hasFlowPicker(ctx)) {
+        return flowQuestionResult({ status: "unavailable", error: "flow_ask requires the active omp-tools picker in the main agent's interactive TUI. No question was committed or asked." });
+      }
+      const items = (contribution as { items?: { kind?: string }[] } | null)?.items;
+      if (!Array.isArray(items) || items.filter(item => item?.kind === "round").length !== 1) {
+        return flowQuestionResult({ status: "failed", error: "flow_ask requires exactly one round in the contribution. No content was committed." });
+      }
+      const folder = fs.mkdtempSync(`${tmpdir()}/vstack-flow-ask-`);
+      let receipt: FlowQuestionReceipt;
+      try {
+        const file = `${folder}/contribution.json`;
+        fs.writeFileSync(file, JSON.stringify(contribution));
+        receipt = await flowPage<FlowQuestionReceipt>(pi, ctx, ["submit", file]);
+      } catch (error) {
+        return flowQuestionResult({ status: "failed", error: error instanceof Error ? error.message : String(error) });
+      } finally {
+        fs.rmSync(folder, { recursive: true, force: true });
+      }
+      if (receipt.repeated) return flowQuestionResult({ receipt, status: "repeated" });
+      if (receipt.presentation.state === "stale") {
+        const error = `Question committed, but its page is stale: ${receipt.presentation.error ?? "publication failed"}. Render the committed Flow before asking again; do not resubmit it.`;
+        ctx.ui.notify(`Flow page (static): ${receipt.page}\n${error}`, "warning");
+        return flowQuestionResult({ receipt, status: "unavailable", error });
+      }
+      const notice = receipt.live?.state === "serving"
+        ? `Flow page: ${receipt.live.url}`
+        : `Flow page (static): ${receipt.page}\nLive serving ${receipt.live?.state === "unavailable" ? `failed: ${receipt.live.error}` : "is disabled"}.`;
+      ctx.ui.notify(notice, "info");
+      if (!hasFlowPicker(ctx)) return flowQuestionResult({ receipt, status: "unavailable", error: "Question committed, but the omp-tools picker route is no longer active. No native fallback was opened." });
+      if (signal?.aborted) return flowQuestionResult({ receipt, status: "cancelled" });
+      try {
+        const response: ExtensionAskDialogResult | undefined = await ctx.ui.askDialog!(receipt.ask!.questions, { signal, timeout: askTimeoutMs(settings) });
+        return flowQuestionResult({ receipt, status: response?.kind === "submit" ? "submitted" : response?.kind === "chat" ? "chat" : "cancelled", response });
+      } catch (error) {
+        return flowQuestionResult({ receipt, status: "failed", error: error instanceof Error ? error.message : String(error) });
+      }
+    },
+  }, { concurrency: "exclusive" as const }));
 }
 
 function registerFlowPresentation(pi: ExtensionAPI): void {

@@ -9,7 +9,7 @@ A prototype is **throwaway code that answers a question**. The question decides 
 
 ## Pick a branch
 
-Identify which question is being answered, using the user's prompt, the surrounding code, or one `ask` if the user is around:
+Identify which question is being answered, using the user's prompt, the surrounding code, or one question-tool round if the user is around:
 
 - **"Does this logic / state model feel right?"** → [LOGIC.md](LOGIC.md). In a Flow, prefer a declarative demo when its states, values, actions, and transitions express the question. Otherwise keep a real runnable artifact, including for chat runs.
 - **"What should this look like?"** → [UI.md](UI.md). Generate several radically different UI variations on a single route, switchable via a URL search param and a floating bottom bar.
@@ -27,7 +27,7 @@ In a Flow, publish a `prototype` Result with a declarative `demo` or a runnable 
 
 In a Flow, put the design question, walkthrough steps, observed evidence, limitations, and throwaway notice in a Document Result beside the prototype. Use Comparison for competing variants and Metrics for measurements. Attach the screenshots and raw script output. Keep the actual source and capture paths required below. The Flow page is the reading document, not a second report page or the canonical implementation.
 
-Record real questions through the common ask protocol, never through a prototype button. Demo state remains browser-local and authorizes nothing.
+Put real questions through `flow_ask` under `skill://flow-page`'s "Every ask in a Flow" contract when enrolled, or plain `ask` outside a Flow, never through a prototype button. Demo state remains browser-local and authorizes nothing.
 
 ## Rules that apply to all three
 

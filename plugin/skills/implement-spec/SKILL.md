@@ -16,7 +16,7 @@ The tickets are not a list of steps. They are a **task graph** with blocking rel
 
 Communication to and from subagents should be sparse. Communicate primarily through **context pointers**: to the spec, tickets, research notes, and previous commits. Don't duplicate information already available via pointers.
 
-**Implementer subagents** run in the background for maximum concurrency. You are the orchestrator. You read the task graph, start subagents, act on their results, and put questions to the user on the Flow page through `ask`. You never build or merge a ticket yourself.
+**Implementer subagents** run in the background for maximum concurrency. You are the orchestrator. You read the task graph, start subagents, act on their results, and put questions to the user on the Flow page through `flow_ask` under `skill://flow-page`'s "Every ask in a Flow" contract. You never build or merge a ticket yourself.
 
 ## Shared steps
 
@@ -28,7 +28,7 @@ Every subagent uses the Session model unless the user set a model for that agent
 
 Before starting isolated work, read skill://vstack-fan-out/WORKER-LIFECYCLE.md. Record every implementer and review fixer by agent id, role, ticket or review wave, clone path, patch and evidence paths, and lifecycle decision. Apply that contract after each result and before every early return, including partial starts, missing patches, failed workers or mergers, and unanswered questions. Retain running or still-needed workers with concrete reasons; preserve useful unapplied work before releasing any settled worker.
 
-Run shared steps 0a–0b once, before step 1. 0a finds the Flow by the spec alias and opens an implement-spec Stage. Add `alias run:<run-id>` and retain the Flow and Stage ids in the run record. Every `ask` of this run belongs to that Stage: the End state when 0a asks it, each seam confirmation in steps 1 and 6, each implementer question that step 5 relays, each seam question from the fixer in step 7, and the Verify skill choice. 0a settles one End state for the whole spec. If the issue tracker closes work through PRs and 0a asks, say in the End state question's description that End state commit leaves those tickets open.
+Run shared steps 0a–0b once, before step 1. 0a finds the Flow by the spec alias and opens an implement-spec Stage. Add `alias run:<run-id>` and retain the Flow and Stage ids in the run record. Every `flow_ask` of this run belongs to that Stage: the End state when 0a asks it, each seam confirmation in steps 1 and 6, each implementer question that step 5 relays, each seam question from the fixer in step 7, and the Verify skill choice. 0a settles one End state for the whole spec. If the issue tracker closes work through PRs and 0a asks, say in the End state question's description that End state commit leaves those tickets open.
 
 ## Steps
 
@@ -38,7 +38,7 @@ Read the spec and tickets to understand the task graph. List the ready frontier:
 
 Reuse the Flow's existing ticket tasks or create one per ticket. Publish the frontier and blocking relationships as a table Result, separate from the Stage tree. Keep ticket completion, spec completion, tracker closure, and delivery End state distinct.
 
-Read the spec's testing decisions. to-spec confirmed those seams with the user through `ask`, so they are the pre-agreed seams for skill://tdd. If a ready ticket needs a seam that the spec does not confirm, settle it with one `ask` before you assign the ticket. An answer `ask` picks after a timeout is not the user's, so that ticket stays off the frontier and stays open.
+Read the spec's testing decisions. to-spec confirmed those seams with the user through the Flow question contract, so they are the pre-agreed seams for skill://tdd. If a ready ticket needs a seam that the spec does not confirm, settle it through one `flow_ask` round before you assign the ticket. A timed-out answer is not the user's, so that ticket stays off the frontier and stays open. Cancellation, a headless recommendation, or an unavailable picker also leaves the seam unconfirmed.
 
 ### 2. Explore (optional)
 
@@ -80,7 +80,7 @@ Once an **implementer subagent** completes, merge its work to the integration br
 
 A handle has no `patchPath` field. Recover that path from omp's completion notice: `Isolation: changes captured at <absolute patch path> (apply=false). Not applied.` If structured output hides the notice, read the full completion through the handle's `output()` or `agent://<id>`. A failed worker, an unavailable notice, or an empty patch leaves its ticket open. Report it, and never guess a patch path.
 
-If the implementer returned an open question, start no merger for it. Hold its patch, record the path, and put the question to the user through `ask`. A ticket whose question the user answers goes back on the frontier once, with the answer and the held patch path in its brief. A timed-out answer leaves the ticket open and its patch unapplied.
+If the implementer returned an open question, start no merger for it. Hold its patch, record the path, and put the question to the user through `flow_ask`. A ticket whose question the user answers goes back on the frontier once, with the answer and the held patch path in its brief. A timed-out, cancelled, headless, or unanswered question leaves the ticket open and its patch unapplied. An unavailable picker does not settle the question.
 
 Keep the questioned worker available until the answer and required follow-up resolve. Save a stable Scratch copy of its held patch before any later release. A fresh retry gets that copy and the answer; preserve the superseded worker's useful work and evidence before deciding its lifecycle.
 
@@ -116,7 +116,7 @@ When skill://vstack-maintain is loaded, include its drafting brief and review-fi
 
 Spawn one `vstack-worker` via eval `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`: make every review fix in your own clone from code-review's result and the integration branch tip, with skill://tdd at the seams the spec confirms where a fix changes behavior. Commit nothing, merge nothing, and push nothing. Return changed paths, checks with their outcomes, and any new seam as an open question, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: the main agent only orchestrates, so report each review fix as open and point at `/skill:setup-vstack` when isolation is off.
 
-Take the fixer's patch path from its completion notice as step 5 says, never from an inferred path. Reuse step 5's worker-failure, held-patch, seam-question, and once-only retry handling for the review-fix wave instead of a ticket. Put each returned seam question to the user through `ask` before landing the patch. A timed-out answer leaves that fix open and its patch unapplied. Report it.
+Take the fixer's patch path from its completion notice as step 5 says, never from an inferred path. Reuse step 5's worker-failure, held-patch, seam-question, and once-only retry handling for the review-fix wave instead of a ticket. Put each returned seam question to the user through `flow_ask` before landing the patch. A timed-out, cancelled, headless, or unanswered question leaves that fix open and its patch unapplied. An unavailable picker does not settle the question. Report it.
 
 Give each fixer its own lifecycle entry, including fresh retries. Keep held questions and follow-up workers available as in step 5. After the merger or vstack-maintain landing rule has applied the accepted review-fix hunks and no need remains, release the fixer through the shared contract. Preserve useful failed or superseded work before release; an unavailable patch or failed apply never bypasses that accounting.
 
