@@ -1,6 +1,6 @@
 # vstack
 
-vstack is a personal agent-skills pack for omp. It is built on Matt Pocock's skills and adds selected pstack skills, principles, and playbooks, and it can be updated from both sources.
+vstack is a personal agent-skills pack for omp. It is built on Matt Pocock's skills and adds selected skills and guidance from other Upstreams.
 
 ## Language
 
@@ -22,6 +22,10 @@ _Avoid_: pstack fork, plugin
 The Upstream that vstack takes its CSS rules from: `vojtaholik/good-css`.
 _Avoid_: good-css upstream, style upstream
 
+**UI upstream**:
+The Upstream that vstack selects UI and interaction guidance from: `emilkowalski/skills`.
+_Avoid_: Design upstream, animation upstream, Emil upstream
+
 **Upstream item**:
 One skill, principle, or playbook published by an Upstream.
 _Avoid_: upstream skill (when principles or playbooks are meant too)
@@ -31,7 +35,7 @@ A pstack recipe for one type of task, such as Shipping or Perf issue: an ordered
 _Avoid_: workflow (when a pstack playbook is meant), recipe
 
 **Pin**:
-The exact Upstream version vstack was last reconciled with: a release tag for the Base upstream, and a full commit SHA for the Enhancement upstream and CSS upstream.
+The exact Upstream version vstack was last reconciled with: a release tag for the Base upstream, and a full commit SHA for the Enhancement upstream, CSS upstream, and UI upstream.
 _Avoid_: lock, version (unqualified)
 
 ### Skills

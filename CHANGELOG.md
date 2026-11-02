@@ -4,6 +4,12 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [8.0.10] - 2026-11-02
+
+- Ship emil-design-eng as a hidden, adapted Addon reached conditionally through good-css in main and delegated frontend implementation. Preserve existing execution, review, accessibility, and evidence ownership, with browser-qualified animation authority under ADR 0047 (#339).
+- Register all sixteen UI-upstream items at a81dbca07f2217b7103e510c0f13f8d5b017afc9, retain Emil Kowalski's MIT notice in the plugin, and distinguish nine selected Deferred items in tickets 340–344 from six permanent exclusions. Preserve the accepted UI-upstream glossary and ADR.
+- Document repeatable native frontend, unrelated-task, distribution, and future-source maintenance proof. Keep principle-only build and subagent judge scopes and vstack's existing prototype unchanged.
+
 - Shorten the README to installation, everyday use, and documentation links. Preserve maintainer instructions in `docs/maintainer.md` and link to canonical skill contracts.
 - Keep Verify browser opens non-Tern during diagnostics, retries, recovery, and delegated verification. Restore explicit WebKit figure coverage and report unavailable proof as unmet rather than substituting Chromium (#329).
 

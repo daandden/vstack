@@ -10,6 +10,8 @@ Read [END-STATE.md](END-STATE.md) before work. It owns the shared steps 0a–0b,
 
 When the gathered task intent calls for sustained, measured improvement of an app's LLM-flow quality, cost, or latency, read skill://tune-llm-flow and reuse the setup contract in the source. Keep the run-start `inject_principles` call; the contract carries task facts, not stored Addon picks.
 
+For frontend pages, components, or interactions, read skill://good-css before implementation. Its conditional references supply the UI guidance for the current task. Include that requirement in delegated frontend briefs; non-frontend work does not need it.
+
 Before task-specific items, open the todo list as END-STATE.md says, with the shared steps and steps 1–3 below as `local` steps.
 
 Run shared steps 0a–0b once.

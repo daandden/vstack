@@ -1,6 +1,6 @@
 # vstack
 
-A personal omp plugin built on Matt Pocock's skills, with selected additions from pstack and good-css.
+A personal omp plugin built on Matt Pocock's skills, with selected additions from pstack, good-css, and Emil Kowalski's UI guidance.
 
 ## Install
 
@@ -26,6 +26,8 @@ Start a change with `/skill:grill-with-docs` or `/skill:grill-me`. Confirm the g
 The [Flow page](plugin/skills/flow-page/SKILL.md) keeps questions, answers, results, and delivery progress together across sessions. omp displays its link after replies when the session has a bound Flow.
 
 Run `/vstack-clean [age]` to preview expired Scratch entries. The default is `90d`. Deletion requires UI confirmation. Open Flows stay protected. See the [Scratch guide](plugin/skills/vstack-tmp/SKILL.md).
+
+Frontend implementation and delegated UI workers reach [emil-design-eng](plugin/skills/emil-design-eng/SKILL.md) conditionally through good-css. No extra UI command is needed. This first slice ships design-engineering guidance only. The other nine selected UI skills remain deferred to tickets 340–344. The [maintainer guide](docs/maintainer.md#ui-upstream) records the subset and exclusions.
 
 ## Documentation
 

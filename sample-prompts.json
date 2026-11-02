@@ -89,6 +89,7 @@
       "prompt": "Add a CSV export button to the reports page.",
       "expected": [],
       "allowed": [
+        "emil-design-eng",
         "principle-experience-first",
         "principle-prove-it-works"
       ],
@@ -279,6 +280,7 @@
       "split": "tune",
       "prompt": "Add drag-to-reorder cards to the kanban board (React + TypeScript). We have nothing like it yet.",
       "expected": [
+        "emil-design-eng",
         "principle-experience-first"
       ],
       "allowed": [
@@ -358,6 +360,7 @@
         "principle-experience-first"
       ],
       "allowed": [
+        "emil-design-eng",
         "principle-subtract-before-you-add"
       ],
       "baseline_selected": {
@@ -905,6 +908,7 @@
         "principle-experience-first"
       ],
       "allowed": [
+        "emil-design-eng",
         "principle-prove-it-works"
       ],
       "baseline_selected": {
@@ -1057,7 +1061,7 @@
       "id": "h-add-tooltip",
       "split": "holdout1",
       "prompt": "Add a tooltip to the export button that says \"Download as CSV\".",
-      "expected": [],
+      "expected": ["emil-design-eng"],
       "allowed": [
         "principle-experience-first"
       ],
@@ -1111,6 +1115,7 @@
       "prompt": "Add date and author filters to the search page. Filters on the other list pages already use the FilterBar component.",
       "expected": [],
       "allowed": [
+        "emil-design-eng",
         "principle-experience-first",
         "principle-prove-it-works"
       ],
@@ -1271,6 +1276,7 @@
         "principle-encode-the-domain"
       ],
       "allowed": [
+        "emil-design-eng",
         "principle-prove-it-works",
         "principle-redesign-from-first-principles",
         "principle-type-system-discipline"
@@ -2335,6 +2341,7 @@
       "prompt": "You want to add a button to the reports page that lets users export report data as a CSV file, making it easy to download and use in spreadsheets or other tools.",
       "expected": [],
       "allowed": [
+        "emil-design-eng",
         "principle-experience-first",
         "principle-prove-it-works"
       ],
@@ -2546,6 +2553,7 @@
       "restated": true,
       "prompt": "You want to add drag-and-drop reordering to your React + TypeScript kanban board so users can rearrange cards visually. Since there’s no existing drag-and-drop functionality, this needs to be built from scratch, including the drag interaction and updating the board’s state to reflect the new card order.",
       "expected": [
+        "emil-design-eng",
         "principle-experience-first"
       ],
       "allowed": [
@@ -2626,6 +2634,7 @@
         "principle-experience-first"
       ],
       "allowed": [
+        "emil-design-eng",
         "principle-subtract-before-you-add"
       ],
       "baseline_selected": {
@@ -3212,6 +3221,7 @@
         "principle-experience-first"
       ],
       "allowed": [
+        "emil-design-eng",
         "principle-prove-it-works"
       ],
       "baseline_selected": {
@@ -3376,7 +3386,7 @@
       "split": "restated",
       "restated": true,
       "prompt": "You want the export button to show a tooltip reading “Download as CSV” so users know what the button does.",
-      "expected": [],
+      "expected": ["emil-design-eng"],
       "allowed": [
         "principle-experience-first"
       ],
@@ -3438,6 +3448,7 @@
       "prompt": "You want to add date and author filters to the search page, reusing the FilterBar component already used on other list pages so the filtering interface stays consistent across the app.",
       "expected": [],
       "allowed": [
+        "emil-design-eng",
         "principle-experience-first",
         "principle-prove-it-works"
       ],
@@ -3621,6 +3632,7 @@
         "principle-encode-the-domain"
       ],
       "allowed": [
+        "emil-design-eng",
         "principle-prove-it-works",
         "principle-redesign-from-first-principles",
         "principle-type-system-discipline"

@@ -9,6 +9,12 @@ One declaration that adapts on its own beats a set of breakpoints, and a CSS fea
 
 Each technique is a set of properties and values, so it works in any authoring system. Class names in the examples are placeholders. Write the declarations in what the project already uses, whether that is a stylesheet, Tailwind utilities or StyleX objects. Where that system has no shorthand for a declaration, write it the long way, as a Tailwind arbitrary property or a rule in the project's CSS file. Do not swap the technique for a breakpoint.
 
+## Frontend interaction guidance
+
+When building or reviewing UI controls, dialogs, popovers, feedback, or motion, read skill://emil-design-eng before choosing the interaction. This applies in main sessions and delegated frontend work. Leave it unloaded for non-frontend tasks.
+
+Emil Kowalski's design-engineering guidance is adapted from the UI upstream. Its animation guidance takes precedence over this skill under ADR 0047. Reconcile disagreements within Emil's guidance with browser-specific behavior and observed evidence. Keep this skill's non-animation CSS and accessibility responsibilities. Only emil-design-eng ships in the initial subset; other selected UI skills remain deferred, so this hand-off requires no unshipped target. The derived skill includes its MIT notice.
+
 ## In all CSS
 
 These need no file.
