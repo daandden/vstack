@@ -1,6 +1,6 @@
 # Figure render
 
-vstack-figures has callers write Mermaid. Flow authoring captures the Mermaid source, and the reader draws it with the pinned Pele inside the page, in Catppuccin Latte on light and Mocha on dark, with theme-mauve focal marks. For exports outside the Flow, the render script writes a Catppuccin Mocha SVG with its embedded theme and scoped mauve focal rules. A captured Pele SVG from an earlier Flow keeps its bytes and shows in the reader's theme (ADR 0047).
+vstack-figures has callers write Mermaid. Flow authoring captures the Mermaid source, and the reader draws it with the pinned Pele inside the page, in Catppuccin Latte on light and Mocha on dark, with theme-mauve focal marks. For exports outside the Flow, the render script writes a Catppuccin Mocha SVG with its embedded theme and scoped mauve focal rules. A captured Pele SVG from an earlier Flow keeps its bytes and shows in the reader's theme (ADR 0050).
 
 ## Sub-features
 

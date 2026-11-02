@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # vstack-figures
 
-A caller is a skill step that shows figures to a person. The caller writes each figure's Mermaid in its own context. The Flow reader draws it with the pinned Pele in the reader's theme, so a figure step starts no subagent (ADR 0040, ADR 0047).
+A caller is a skill step that shows figures to a person. The caller writes each figure's Mermaid in its own context. The Flow reader draws it with the pinned Pele in the reader's theme, so a figure step starts no subagent (ADR 0040, ADR 0050).
 
 This is a rendering helper, not a result-producing run. It opens no Stage. The caller follows `skill://flow-page`'s "Stage entry/exit line" and owns publication.
 
