@@ -21,7 +21,7 @@ Attach redacted repros, captures, raw outputs, and regression evidence before pu
 
 This skill has you show commands, outputs and captured artifacts. **Redact every secret first**: write `<REDACTED>` in its place. Build loops against env vars, so the credential stays in the environment rather than in what you show. Captured artifacts carry auth headers: quote only the lines that carry the signal.
 
-If the redacted output is not enough to diagnose the bug, say so and ask the user with `ask`.
+If the redacted output is not enough to diagnose the bug, say so and ask the user through `flow_ask` under `skill://flow-page`'s "Every ask in a Flow" contract.
 
 ## Phase 1: Build a feedback loop
 
@@ -60,7 +60,7 @@ The goal is not a clean repro but a **higher reproduction rate**. Loop the trigg
 
 ### When you genuinely cannot build a loop
 
-Stop and say so explicitly. List what you tried. Ask the user with one `ask` for: (a) access to whatever environment reproduces it, (b) a redacted captured artifact (HAR file, log dump, core dump, screen recording with timestamps), or (c) permission to add temporary production instrumentation. An answer `ask` picks after a timeout is not the user's: ask once more, and if that times out too, stop and say why. Do **not** proceed to hypothesise without a loop.
+Stop and say so explicitly. List what you tried. Ask the user through one `flow_ask` round for: (a) access to whatever environment reproduces it, (b) a redacted captured artifact (HAR file, log dump, core dump, screen recording with timestamps), or (c) permission to add temporary production instrumentation. A timed-out answer is not the user's. Re-ask once through `flow_ask` with `again`, and if that times out too, stop and say why. Cancellation or an unavailable picker grants no permission. Do **not** proceed to hypothesise without a loop.
 
 ### Completion criterion: a tight loop that goes red
 
@@ -103,7 +103,7 @@ Each hypothesis must be **falsifiable**: state the prediction it makes.
 
 If you cannot state the prediction, the hypothesis is a vibe: discard or sharpen it.
 
-**Show the ranked list to the user before testing**, with one `ask`: test in this order (recommended), or re-rank. They often have domain knowledge that re-ranks instantly ("we just deployed a change to #3"), or know hypotheses they've already ruled out. Cheap checkpoint, big time saver. If the `ask` times out, its answer is not the user's: proceed with your own ranking and say the user has not confirmed it.
+**Show the ranked list to the user before testing**, with one `flow_ask` round: test in this order (recommended), or re-rank. They often have domain knowledge that re-ranks instantly ("we just deployed a change to #3"), or know hypotheses they've already ruled out. Cheap checkpoint, big time saver. If the question times out or the picker is unavailable, proceed with your own ranking and say the user has not confirmed it.
 
 ## Phase 4: Instrument
 

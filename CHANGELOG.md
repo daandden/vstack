@@ -6,6 +6,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 - Shorten the README to installation, everyday use, and documentation links. Preserve maintainer instructions in `docs/maintainer.md` and link to canonical skill contracts.
 
+## [8.0.9] - 2026-11-02
+
+- Deliver ordinary Flow questions with one `flow_ask` call that commits the complete question and visuals, presents the Flow link, then opens the existing omp-tools picker. Require its routed interactive TUI dialog without a native ask fallback. Preserve raw responses and separate Flow readings, refuse to prompt after stale publication, and avoid reopening repeated contributions. Ratchet keeps its native approval gate.
+- Preserve multiselect cleanup and Migration questions, the configured ask timeout, and the existing picker's read-tier approval behavior. Cut all Flow-bound question recipes over to the shared single-call contract.
+
 ## [8.0.8] - 2026-11-01
 
 - Run clean-wt's script commands with a long or disabled tool deadline, and treat a host deadline as no exit rather than a nonzero exit. An interrupted inventory keeps its diagnostics and reruns once, investigators return interrupted-attempt diagnostics instead of writing Scratch, and an interrupted removal is reported as unknown without an automatic rerun (#319).

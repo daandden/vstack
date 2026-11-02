@@ -249,8 +249,8 @@ function move(root: string, from: string, to: string) {
 
 export function applyProject(plan: Plan, cwd: string, skip: string[] = []) {
   const here = realpathSync(git(cwd, "rev-parse", "--show-toplevel"));
-  if (plan.root !== here) throw new Error(`The plan is for ${plan.root}, not this checkout (${here}). Make a new plan here through ask before applying`);
-  if (!isDeepStrictEqual(projectPlan(plan.root, plan.mode), plan)) throw new Error("Project state changed since the plan. Show a new plan through ask before applying");
+  if (plan.root !== here) throw new Error(`The plan is for ${plan.root}, not this checkout (${here}). Make a new plan here through flow_ask before applying`);
+  if (!isDeepStrictEqual(projectPlan(plan.root, plan.mode), plan)) throw new Error("Project state changed since the plan. Show a new plan through flow_ask before applying");
   for (const id of skip) {
     const i = plan.items.find(i => i.id === id);
     if (!i) throw new Error(`unknown item ${id}`);

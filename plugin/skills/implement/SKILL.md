@@ -16,7 +16,7 @@ Run shared steps 0a–0b once.
 
 ## 1. Settle the seams
 
-Before the first code change, settle the seams that skill://tdd tests at. Reuse each agreed seam: one that the spec's testing decisions name, one that the ticket's own text names, or one that the user picked through `ask` in a seam question on the Flow page. Only the user's own pick of a seam agrees it. A headless answer, an unanswered or timed-out question, and a no-test pick leave the seam open. Ask tdd's seam question once, in one `ask` that covers every slice with no agreed seam, as a question in implement's Stage.
+Before the first code change, settle the seams that skill://tdd tests at. Reuse each agreed seam: one that the spec's testing decisions name, one that the ticket's own text names, or one that the user picked through `flow_ask` in a seam question on the Flow page. Only the user's own pick of a seam agrees it. A headless answer, an unanswered or timed-out question, and a no-test pick leave the seam open. Ask tdd's seam question once through one `flow_ask` round under `skill://flow-page`'s "Every ask in a Flow" contract. Author one question covering every slice with no agreed seam in implement's Stage.
 
 ## 2. Red then green per slice
 

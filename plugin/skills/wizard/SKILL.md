@@ -13,7 +13,7 @@ A wizard is ephemeral by default: built for one run, saved to a scratch or `scri
 
 ## The Flow page
 
-Follow `skill://flow-page`'s "Stage entry/exit line" before the first question or Result. Record scope and approval questions on the page. A page interaction never substitutes for `ask` or a terminal confirmation.
+Follow `skill://flow-page`'s "Stage entry/exit line" before the first question or Result. Put scope and approval questions through `flow_ask`, following its "Every ask in a Flow", including separate answer recording. Page interactions grant no approval. The generated script's terminal confirmations remain separate.
 
 Publish the ordered procedure and each value's destination as a Document Result. Keep secret names and destinations, never their values, in the Flow, attachments, and evidence. The real bash script remains the executable deliverable. Capture its redacted source as a file attachment and publish a `prototype` Result naming an artifact with `runtime: "terminal"`, the actual `bash <absolute-script-path>` launch command, and its source revision. State that an interactive terminal and the named external services are required using `unavailable`. The page does not run the script, collect secrets, or claim the procedure has completed.
 
@@ -28,13 +28,13 @@ Work out every manual step the human must take and every value that gets capture
 - For setup: `.env`, `.env.example`, `.env.*`, `README`, `docker-compose*`, framework config, and the CI config (`.github/workflows/*`, `.gitlab-ci.yml`, `bitbucket-pipelines.yml`, and so on; every secret or variable it references is a value the wizard must produce).
 - For a migration or transition: the current state, the target state, and the irreversible actions between them.
 
-Then show the user the ordered list of stages and the values each produces, and confirm it with one `ask`. The user may add, drop, or reorder stages through Other. An answer `ask` picks after a timeout is not the user's: ask once more, and if that times out too, stop without writing the wizard and say why.
+Include the ordered list of stages and the values each produces in one `flow_ask` call for confirmation. The user may add, drop, or reorder stages through the picker's custom answer. A timed-out answer is not the user's. Re-ask once with `again`, and if that times out too, stop without writing the wizard and say why. Unavailable questioning grants no approval.
 
 **Done when:** every stage is named in order, and for each captured value you know (a) where the human gets it, (b) where it's written (`.env`, a CI service secret or variable, both, or nowhere; some stages are pure actions), and (c) whether it's secret (hidden entry) or public.
 
 ### 2. Map each stage's journey
 
-For each stage, write the precise path a human follows: which URL to open, what to do there, where a value is shown, which variable it fills: e.g. "Dashboard → Developers → API keys → Reveal test key → copy". Where you don't actually know the current UI or the exact command, say so and ask the user with `ask` or check the docs: never invent steps that may not exist.
+For each stage, write the precise path a human follows: which URL to open, what to do there, where a value is shown, which variable it fills: e.g. "Dashboard → Developers → API keys → Reveal test key → copy". Where you don't actually know the current UI or the exact command, say so and ask the user through `flow_ask` or check the docs: never invent steps that may not exist.
 
 **Done when:** every stage traces to concrete instructions a stranger could follow.
 

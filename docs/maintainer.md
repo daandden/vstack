@@ -139,7 +139,7 @@ Text output prints one line per failure, `FAIL <class> <item>: <message>`, after
 | `headless-run` | adapt, merge, or original markdown outside the rule's allowlist (skill-creator) holds a `Headless batch (` line or an `omp -p` command |
 | `worktree-cmd` | adapt, merge, or original text runs `git worktree add` |
 | `tmp-path` | adapt, merge, or original text names `$TMPDIR/`, `/tmp/`, or the OS temp directory, outside a `mktemp` line |
-| `ask-tool` | any markdown artifact, adopt included, has a sentence with an `ask-tool` phrase that does not name `` `ask` `` |
+| `ask-tool` | any markdown artifact, adopt included, has a sentence with an `ask-tool` phrase that names neither `` `ask` `` nor `` `flow_ask` `` |
 | `page-css` | a page template breaks the CSS upstream's `check-css.mjs` at its Pin; the item is the template and the message holds the script's `path:line` lines |
 | `invalid-utility` | a `utility:` entry names no shipped skill, or names a skill with a non-reject Base upstream row |
 | `addon-slash-route` | text under `plugin/` or in `README.md` contains `/skill:<addon>`. Use `skill://<addon>` instead |

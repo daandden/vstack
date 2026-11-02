@@ -1,12 +1,12 @@
 # Reader needs and Visual kinds
 
-Prepare each new or re-asked question completely before one atomic `submit`. This applies to the executing agent, including a subagent assigned publication. List what the reader must recognize, know, or compare to choose between the options, not a generic instruction to read the page.
+Prepare each new or re-asked question completely before publication through flow-page's "Every ask in a Flow" contract. This applies to the executing author, including a subagent assigned publication without asking. List what the reader must recognize, know, or compare to choose between the options, not a generic instruction to read the page.
 
 1. Write the title, description, options, and sourced Today facts.
 2. Declare one or more `needs`, each `{ need: "<concrete distinction>", kind: "<id>" }`.
 3. Build the visuals for non-prose needs, with the same `kind` on each question figure or option preview. One concise visual can meet several needs of the same kind.
 4. Cut overlapping description and Today text, retaining what the decision changes and why it matters. Preserve source qualifications, unresolved choices, and evidence limits. Label authored examples hypothetical.
-5. Submit the complete question and its new attachments together. Use the receipt for the real ask only after publication succeeds.
+5. For ordinary main-agent delivery, include the complete question and its new attachments in one contribution to `flow_ask`. Follow the common owner for publication-only work, failures, picker delivery, and Ratchet's native approval exception.
 
 | Visual kind | `kind` | Reader need and safe representation |
 | --- | --- | --- |

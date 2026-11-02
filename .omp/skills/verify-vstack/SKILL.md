@@ -28,6 +28,8 @@ Each run gets its own omp home at `$VERIFY_RUN_DIR/data/home` and its own stub m
 
 omp also loads project skills from `.claude/skills` and `.agents/skills` in every parent dir of its working directory. The run dir is under the real home, so the session's working directory is a temp dir outside it. The first drive or load gate of a run makes that dir with `mktemp` as `<os temp dir>/vstack-verify-XXXXXX/`. Its random name is unique, so two run dirs with the same name never share it. `$VERIFY_RUN_DIR/data/outside` links to that dir, every later drive of the run reuses it, and Cleanup deletes it.
 
+For `flow_ask`, use the PTY helper in `features/flow-page.md`. It creates both HOME and cwd in the outside temp dir, links `data/home` to that HOME, and adds only `VSTACK_FLOW_PORT` to the sanitized child env. The explicit omp-tools path supplies the real custom picker. RPC dialog replies cannot prove that TUI route.
+
 The shared instance is your own omp session and the real `~/.omp`. Never use it as the proof. It loaded the plugin when it started, so it does not show edits made since then. It also uses real models and the user's credentials.
 
 ## Launch
@@ -116,6 +118,7 @@ Never stop a process because of its name. Never delete the run dir itself. The `
 All paths are relative to `SKILL_DIR`.
 
 - `scripts/drive.ts`: one omp RPC session on the run's throwaway home, against the stub model. See Launch.
+- `scripts/flow-ask-tui.py --checkout <checkout> --omp-tools <plugin path> --run <new run> --case tui|missing-picker|non-tui`: drives the real TUI custom picker or its explicit refusals with Python's standard-library PTY support. It preserves terminal bytes, keyboard input, real session tool results, and a Flow export. Use `features/flow-page.md`.
 - `scripts/load.sh <checkout> <run dir>`: the repo's load gate for one run. See Launch.
 - `scripts/doctor.sh <checkout> <run dir>`: the read-only Doctor check. See Doctor.
 - `scripts/cleanup.sh <run dir>`: stops this run's recorded processes and deletes `data/` and the temp working directory. See Cleanup.
