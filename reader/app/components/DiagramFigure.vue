@@ -40,6 +40,14 @@ async function draw() {
     mode.value = "failed";
   }
 }
+function pan(event: KeyboardEvent) {
+  if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+  const direction = event.key === "ArrowLeft" ? -1 : event.key === "ArrowRight" ? 1 : 0;
+  const el = host.value;
+  if (!direction || !el || el.scrollWidth <= el.clientWidth) return;
+  event.preventDefault();
+  el.scrollLeft += direction * 40;
+}
 onMounted(draw);
 watch(() => `${props.a.file}\n${props.a.focus?.join("\n") ?? ""}`, draw);
 </script>
@@ -47,5 +55,5 @@ watch(() => `${props.a.file}\n${props.a.focus?.join("\n") ?? ""}`, draw);
 <template>
   <img v-if="mode === 'image'" :src="src" :alt="a.caption">
   <p v-else-if="mode === 'failed'" class="unavailable"><span class="label">Diagram unavailable</span> {{ error }}</p>
-  <div v-else ref="host" class="diagram" role="img" :aria-label="a.caption" :aria-busy="mode === 'pending'" :data-render="mode" tabindex="0" @keydown.stop />
+  <div v-else ref="host" class="diagram" role="img" :aria-label="a.caption" :aria-busy="mode === 'pending'" :data-render="mode" tabindex="0" @keydown.stop="pan" />
 </template>

@@ -84,6 +84,8 @@ await Bun.write(out, await new Bun.Image(await Bun.file(pngPath).bytes()).webp({
 
 `out` is an absolute `.webp` path. Retain the PNG. Captures made during this run show the frozen new publication, not the historical Q7 or Q8 publication. A missing image, failed browser capture, clipped evidence, or unavailable display prerequisite is unavailable, never a pass. A re-render of a control in a later reader is labelled as a re-render and does not replace an earlier reviewed capture.
 
+For review publication, use the untouched raw capture. Put the subject, with-skill example or no-skill baseline, theme, viewport in CSS pixels, and collapsed or expanded view state in each attachment's caption and origin. Use one attachment per captured view. The reader supplies the actual owning Q number above each image, including option previews and reused attachments, so authors do not guess a number before atomic publication. Keep titles in page text, not burned into screenshot pixels. Unknown historical capture details stay unknown. Retain existing historical label-band companions without creating new ones.
+
 When a reader repair changes a control's displayed meaning, record the current rendering and obtain a new judgment. Do not apply an older negative verdict to it automatically or invent a replacement negative. The #316 current-reader review reclassified the unchanged over-wide source as wide-but-legible with local panning; `judging.json` keeps that judgment separate from the historical tiny-label failure. Preserve both captures and their first-publication scores.
 
 ## Publish the judging controls

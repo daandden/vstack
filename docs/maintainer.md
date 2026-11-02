@@ -176,7 +176,7 @@ A lint over shipped text starts from `lintTargets(ctx)` in `scripts/lib/checks/s
 
 ### Page templates
 
-Every page vstack writes for the user, the Flow page and teach's lessons, starts from a page template. Every template follows good-css (#61). A page template is any `*.html` or `*.css` under `plugin/skills/<name>/templates/`. `scripts/lib/checks/pages.ts` runs the CSS Upstream's `page_lint:` script at its Pin over these files. Each flagged template reports `page-css`. With no template, the check reads nothing. Templates hold no authored figure. The caller writes Mermaid and renders it through vstack-figures with Pele, captures the SVG in the Flow, and may inline its exact bytes in an offline lesson.
+Page templates follow good-css (#61). A page template is any `*.html` or `*.css` under `plugin/skills/<name>/templates/`. `scripts/lib/checks/pages.ts` runs the CSS Upstream's `page_lint:` script at its Pin over these files. Each flagged template reports `page-css`. With no template, the check reads nothing. Templates hold no authored figure. The caller writes Mermaid through vstack-figures and captures its source in the Flow. The host-backed reader draws it with Pele. An offline lesson instead renders an SVG and may inline its exact bytes.
 
 ## House style
 

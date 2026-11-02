@@ -141,5 +141,24 @@
       "A later repair or re-render does not change an earlier first-publication score.",
       "Repeat with PROCEDURE.md and check-record.ts; raw machine provenance and run-specific captures belong in Verify Scratch, not public capability links."
     ]
+  },
+  "final_review_fix_batch": {
+    "status": "Human review complete; independent certification of the final integrated commit remains a separate gate.",
+    "source_tree": "0f2b57209035d8e75fa57b4cb1a18ccdba2cfd8c",
+    "configuration": "One fresh trial per subject and side, eight actual authoring processes, using openai-codex/gpt-6.1-sol at high thinking. This is the after-grid-final cohort, separate from the historical unaccepted 2f02d8358e681e37ac32eb35ecc7633fcc739cd0 cohort and the earlier Q25-Q28 examples.",
+    "human_review": {
+      "status": "reviewed",
+      "reviewed": "2026-11-02",
+      "flow": "flow-nuxt-vite-frontend-f2000f",
+      "stage": "stage-7",
+      "outcome": [
+        { "subject": "stream-versus-tabs", "question": "Q31", "question_id": "question-54", "answer": "A", "with_skill_adequate": true, "baseline_adequate": false },
+        { "subject": "update-placement", "question": "Q32", "question_id": "question-55", "answer": "A", "with_skill_adequate": true, "baseline_adequate": false },
+        { "subject": "terminology", "question": "Q33", "question_id": "question-56", "answer": "A", "with_skill_adequate": true, "baseline_adequate": false },
+        { "subject": "prototype-review", "question": "Q34", "question_id": "question-57", "answer": "A", "with_skill_adequate": true, "baseline_adequate": false }
+      ],
+      "presentation": "The user reviewed unchanged raw captures with page-text titles identifying the actual Q number, subject, side, theme, viewport, and view state above each image. Answer A means only the with-skill explanation is adequate."
+    },
+    "scope": "These actual user judgments apply only to the four frozen after-grid-final pairs. One trial per subject and side is not a reliability estimate. Mechanical record integrity does not establish subjective adequacy. Earlier Q25-Q28 judgments, the historical unaccepted cohort, original Q7/Q8 negatives, and Q24's wide-but-legible judgment retain their own status. No shipped status or independent final-commit acceptance is implied."
   }
 }
