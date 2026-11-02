@@ -8,15 +8,15 @@ This directory maps the user-facing features of the vstack omp plugin. Read this
 - `CHECKOUT` is the vstack checkout or worktree under test, and `$CHECKOUT/plugin/package.json` names `vstack`.
 - `omp`, `bun`, `jq`, and `git` are on `PATH`.
 - For stub-driver recipes, `bash "$SKILL_DIR/scripts/doctor.sh" "$CHECKOUT" "$VERIFY_RUN_DIR"` prints no `FAIL` line.
-- Never drive your own omp session or the real `~/.omp` as proof. Stub-driver recipes use `$VERIFY_RUN_DIR/data/home`. Actual reasoning evaluations use skill-creator's real-credential isolation and Session model protocol instead.
+- Never drive your already-running omp session. Stub session drives run on `$VERIFY_RUN_DIR/data/home`. Actual reasoning evaluations use skill-creator's Session model and real-credential isolation. The real-model enrollment and architecture recipes document their fresh-process real-HOME exceptions.
 
 ## Driving conventions
 
 - Start every recipe from the baseline. A recipe that needs earlier state names it under `Preconditions:`.
-- Run scripted session behavior through `scripts/drive.ts`. Use the feature ID as `--name`, so each drive has its own evidence dir. drive.ts refuses a name that the run already used. Retry with a new name such as `<feature>-retry1`, and read the proof from that new dir. The architecture-agreement recipe uses actual model evaluations, not scripted replies.
+- Run scripted session behavior through `scripts/drive.ts`. Use the feature ID as `--name`, so each drive has its own evidence dir. drive.ts refuses a name that the run already used. Retry with a new name such as `<feature>-retry1`, and read the proof from that new dir. For model instruction following, use the real-model enrollment or architecture-agreement recipe rather than the stub.
 - Run a skill's Bun CLI from `$CHECKOUT/plugin/skills/<skill>/scripts/`, not through `skill://...`.
-- Pass `--home "$VERIFY_RUN_DIR/data/<name>"` to every script that takes `--home`. Never let a script write to the real `~/.vstack/`.
-- In the browser, open tabs with a name, `app: { tern: false }`, and a 1280 by 900 `viewport`. Act by ARIA role and name.
+- Pass `--home "$VERIFY_RUN_DIR/data/<name>"` to direct isolated CLI fixtures. In a native enrollment run, keep the model's CLI and the extension in the same normal HOME namespace, as `flow-page.md` specifies.
+- In the browser, open tabs with a name, `app: { tern: false }`, and a 1280 by 900 `viewport`. Apply the parent skill's browser policy on every open, including diagnostics, retries, recovery, and delegated verification. Act by ARIA role and name.
 - Treat every command as literal. Keep quoted names and flags as they are.
 
 ## Proof and skip reporting
@@ -27,6 +27,7 @@ This directory maps the user-facing features of the vstack omp plugin. Read this
 - Page proof is an ARIA snapshot and a full-resolution lossless WebP screenshot, made as `../SKILL.md` Evidence step 5 says.
 - Record the feature ID and the entry point with every proof file in `$VERIFY_RUN_DIR/notes.md`.
 - Report an entry point you did not drive as skipped, with the command you tried and the precondition that was missing. Never report it as verified through another entry point.
+- Record the actual browser backend and engine. Required coverage for an unavailable engine stays unavailable or unmet, never verified through another engine.
 
 ## Feature entry contract
 
@@ -53,5 +54,5 @@ Keep implementation details out of the map. Name only user paths, stable handles
 
 ## Not mapped yet
 
-- The maintainer CLIs `scripts/check-register.ts`, `scripts/vstack-maintain.ts`, and the by-hand jev check `scripts/addon-judge-check.ts`. `README.md` documents their commands and exit codes.
+- The maintainer CLIs `scripts/check-register.ts`, `scripts/vstack-maintain.ts`, and the by-hand jev check `scripts/addon-judge-check.ts`. `docs/maintainer.md` documents their commands and exit codes.
 - The setup-vstack scripts (`machine.ts`, `project.ts`, and the Migration helper `migrate.ts`). They change omp configuration and git state, so a recipe needs a throwaway `HOME` and a throwaway repo.

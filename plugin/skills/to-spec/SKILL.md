@@ -22,9 +22,9 @@ Before dependent synthesis, investigate missing repository facts and distinguish
 
 2. Sketch out the seams at which you're going to test the feature. Existing seams should be preferred to new ones. Use the highest seam possible. If new seams are needed, propose them at the highest point you can. The fewer seams across the codebase, the better - the ideal number is one.
 
-Confirm with one `ask` that these seams match the user's expectations. Automatic picks never confirm a seam.
+Confirm with one `flow_ask` call that these seams match the user's expectations. Follow flow-page's "Every ask in a Flow", including separate answer recording. Automatic picks and unavailable questioning never confirm a seam.
 
-When the change spans more than one module, draft a capability map before that `ask`, so that you weigh the module split before the spec fixes it. Use `skill://codebase-design`'s vocabulary. Submit the map to the to-spec Stage as a table Result with the columns Module, Responsibility, Depends on, and Build order, one row per module. Depends on gives the dependency direction: the modules that this module uses. A change inside one module gets no map.
+When the change spans more than one module, draft a capability map before that call, so that you weigh the module split before the spec fixes it. Use `skill://codebase-design`'s vocabulary. Include the map in the same contribution as a table Result with the columns Module, Responsibility, Depends on, and Build order, one row per module. Depends on gives the dependency direction: the modules that this module uses. A change inside one module gets no map.
 
 Ask about the map only at a real fork: two module splits that differ in a way the user would care about. Add each fork to the seams round and name its map rows in the question's `results`; code makes the reciprocal links. A map with no fork adds no question.
 

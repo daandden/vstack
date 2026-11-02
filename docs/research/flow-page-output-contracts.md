@@ -8,7 +8,7 @@ Status: the accepted design targets vstack 8.0.0 (spec #267, [ADR 0044](../adr/0
 
 The shipped catalog contains **76 skills: 25 Matt skills, 16 Utility skills, and 35 Addons**. The Addons comprise 22 principles and 13 other Addons. The extension registers **one user Command**, `/vstack-clean`, and two agent-facing Addon-selection tools. Every skill appears in the inventory below. Supporting agent and script outputs are accounted for separately, not counted as additional skills.
 
-These are catalog classes, not workflow classes. A Matt skill can be a reference, as `codebase-design` is. `session` is an Addon despite its Matt contribution. Membership follows the Base upstream rows, the Utility list, and the Addon question keys, not a guess from a skill's name or description. Sources: [membership implementation](../../plugin/extensions/matt-skills.ts#L10-L28), [register Utility list](../../decision-register.yaml#L1029-L1045), [catalog loading](../../plugin/extensions/vstack.ts#L18-L27), and [artifact rules](../../README.md#L151-L153).
+These are catalog classes, not workflow classes. A Matt skill can be a reference, as `codebase-design` is. `session` is an Addon despite its Matt contribution. Membership follows the Base upstream rows, the Utility list, and the Addon question keys, not a guess from a skill's name or description. Sources: [membership implementation](../../plugin/extensions/matt-skills.ts#L10-L28), [register Utility list](../../decision-register.yaml#L1029-L1045), [catalog loading](../../plugin/extensions/vstack.ts#L18-L27), and [artifact rules](../maintainer.md#decision-register).
 
 The counts were obtained by reading these local files and invoking the same `mattSkillNames` function that the extension uses. This read-only catalog query regenerates the counts and names from the repository root:
 
@@ -112,7 +112,7 @@ Comparison and Metrics cover these if they retain trial identity, provenance, fa
 
 ### The 13 non-principle Addons
 
-An Addon supplements the running Matt skill and does not own another workflow merely because it was selected. Sources: [Addon definition](../../README.md#L7-L10).
+An Addon supplements the running Matt skill and does not own another workflow merely because it was selected. Sources: [Addon definition](../../GLOSSARY.md#skills).
 
 | Addon and primary contract | Human-facing contribution | Current and proposed coverage |
 |---|---|---|
@@ -187,7 +187,7 @@ These helpers do not add entries to the 76-skill catalog. Their output must be r
 | Human-assisted debugging | `diagnosing-bugs/scripts/hitl-loop.template.sh` | Human trigger and captured output for the repro loop, owned by diagnosing-bugs. [Use contract](../../plugin/skills/diagnosing-bugs/SKILL.md#L24-L35). |
 | Figures | `drawio_extract.py`, `mermaid_extract.py`, `excalidraw_extract.py`, `verify-geometry.py`, `lint-skin.py`, `self_check.py`, and `export_svg.py` | Import digest, nodes, edges, grouping, budget flags, gate diagnostics, exported file, and fidelity accounting. [Import contract](../../plugin/skills/diagram-design/SKILL.md#L346-L368), [gate contract](../../plugin/skills/diagram-design/SKILL.md#L291-L308), [export contract](../../plugin/skills/diagram-design/references/export.md#L19-L47). |
 
-The source-only maintainer CLI is not a shipped plugin Command, but `vstack-maintain` explicitly consumes it. Its `plan`, `merge`, `check`, `prepare`, and `gates` outputs are path or JSON results, including overlap ranges, targets, version, row decisions, and gate stages. Sources: [maintainer command outputs](../../README.md#L292-L315). They fit Document, table, Code/diff, and ledger. They do not imply another extension API.
+The source-only maintainer CLI is not a shipped plugin Command, but `vstack-maintain` explicitly consumes it. Its `plan`, `merge`, `check`, `prepare`, and `gates` outputs are path or JSON results, including overlap ranges, targets, version, row decisions, and gate stages. Sources: [maintainer command outputs](../maintainer.md#vstack-maintain). They fit Document, table, Code/diff, and ledger. They do not imply another extension API.
 
 ### Agent handbacks
 
@@ -202,7 +202,7 @@ The five shipped agents are supporting producers, not five additional user skill
 
 | Flow shape | Source-backed behavior | Consequence for the replacement |
 |---|---|---|
-| Single-session change | Grill, then implement, shared proof, review, commit, and optional PR chain. [Flow guide](../../README.md#L12), [shared block](../../plugin/skills/implement/END-STATE.md#L65-L108). | Progress must distinguish completed tasks, requested End state, reached End state, and blockers. |
+| Single-session change | Grill, then implement, shared proof, review, commit, and optional PR chain. [Flow guide](../../README.md#use), [shared block](../../plugin/skills/implement/END-STATE.md#L65-L108). | Progress must distinguish completed tasks, requested End state, reached End state, and blockers. |
 | Multi-session spec | to-spec publishes and renames identity, to-tickets records graph edges, later implement-spec resumes it. [Spec identity](../../plugin/skills/to-spec/SKILL.md#L33-L35), [ticket identity](../../plugin/skills/to-tickets/SKILL.md#L78), [resume](../../plugin/skills/implement-spec/SKILL.md#L25-L35). | Page URLs and artifact references must survive spec publication and later sessions. |
 | Parallel implementation | Isolated implementers complete independently. A serial merger lands results and recomputes the frontier. [Orchestration](../../plugin/skills/implement-spec/SKILL.md#L51-L95). | Completion order, dependency order, and visual Stage order are different facts. Preserve ticket identity and held patch reasons. |
 | Wayfinding map | Charting and per-ticket decisions share a page. Parallel sessions may resolve unblocked tickets. Research has a special multi-ticket runner path. [Stage rules](../../plugin/skills/wayfinder/SKILL.md#L73-L86), [parallel resolution](../../plugin/skills/wayfinder/SKILL.md#L124-L169). | A stages-only tree must not pretend to be the map's native blocking graph. |

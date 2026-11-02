@@ -1,27 +1,35 @@
 # Changelog
 
-Versions of the vstack plugin (`plugin/package.json`). See the README for when to raise each part of the version.
+Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide](docs/maintainer.md#versions-and-changelog) for when to raise each part of the version.
 
 ## [Unreleased]
 
-- Classify the Git-loss regression fixture's stdout with `fstat(1)` instead of a `/dev/fd` pathname check, preserving regular-file Git bytes on Darwin while still discarding piped output (#333).
+- Reconcile architecture agreement with published main's request-only Flow enrollment and single-call omp-tools picker. Current-route verification uses fresh TUI sessions and keeps automated non-consent separate from human confirmation.
 
 ## [8.0.12] - 2026-11-02
 
-- grill-with-docs assesses every change, expands only consequential unsettled architecture choices into visual agreement, records the Architecture brief with decision provenance, and stops before implementation or a user-invoked next Matt skill (#334, ADR 0046).
+- grill-with-docs assesses every change, expands only consequential unsettled architecture choices into visual agreement, records the Architecture brief with decision provenance, and stops before implementation or a user-invoked next Matt skill (#334, ADR 0047).
 - Reconciles pinned pstack architect reasoning into the existing grill and shared codebase-design as merged contributions, preserves Design It Twice, restores the accepted glossary, ADR and supporting research, and documents actual-model architecture verification (#334).
+- Implementation consumers preserve architecture agreements from specs and tickets while retaining ordinary coding choices. Direct runs and isolated ticket workers expose consequential departures through existing open questions and hold affected work until the user resolves them (#336).
+- to-spec carries agreed architecture and necessary visuals into the canonical spec without requiring a new brief or repeating design discussions. New consequential forks pause affected synthesis for user-invoked grilling without publishing an unagreed design (#335).
+- Keep concurrent Flow callers in their project namespace through invocation-owned regular-file Git capture. Preserve published main's refusal of malformed or operationally failed Git identity and genuine outside-repository handling. Cover lost-output and normal transport orderings through the real Flow CLI (#333).
+- Classify the Git-loss regression fixture's stdout with `fstat(1)` instead of a `/dev/fd` pathname check, preserving regular-file Git bytes on Darwin while still discarding piped output (#333).
 
 ## [8.0.11] - 2026-11-02
 
-- Implementation consumers preserve architecture agreements from specs and tickets while retaining ordinary coding choices. Direct runs and isolated ticket workers expose consequential departures through existing open questions and hold affected work until the user resolves them (#336).
+- Shorten the README to installation, everyday use, and documentation links. Preserve maintainer instructions in `docs/maintainer.md` and link to canonical skill contracts.
+- Keep Verify browser opens non-Tern during diagnostics, retries, recovery, and delegated verification. Restore explicit WebKit figure coverage and report unavailable proof as unmet rather than substituting Chromium (#329).
+- A standalone `research` run that created its Flow closes it after finishing its Stage once the requested research is complete. Inside a caller's or a continuing Flow, research finishes only its own Stage and restores the caller's binding (#322).
 
 ## [8.0.10] - 2026-11-02
 
-- to-spec carries agreed architecture and necessary visuals into the canonical spec without requiring a new brief or repeating design discussions. New consequential forks pause affected synthesis for user-invoked grilling without publishing an unagreed design.
+- Deliver ordinary Flow questions with one `flow_ask` call that commits the complete question and visuals, presents the Flow link, then opens the existing omp-tools picker. Require its routed interactive TUI dialog without a native ask fallback. Preserve raw responses and separate Flow readings, refuse to prompt after stale publication, and avoid reopening repeated contributions. Ratchet keeps its native approval gate.
+- Preserve multiselect cleanup and Migration questions, the configured ask timeout, and the existing picker's read-tier approval behavior. Cut all Flow-bound question recipes over to the shared single-call contract.
 
-## [8.0.9] - 2026-11-02
+## [8.0.9] - 2026-11-01
 
-- Keep concurrent Flow callers in their project namespace by capturing Git output in invocation-owned temporary files. Preserve synchronous lookup and remove captures on success, command failure, and spawn failure. Surface capture filesystem errors instead of selecting the outside-Git namespace. Cover lost-output and normal transport orderings through the real Flow CLI (#333).
+- Start a Flow only through the central enrollment rule, before discovery or creation. Description-selected research, explanations, reviews, and other producers return complete answers in chat unless enrolled, while typed skill requests and existing Flow work keep page publication. Recognize omp's native skill-invocation header as the expanded typed command and execute Stage entry and exit even without an existing binding. Preserve canonical files, plain chat questions, and real runnable prototypes outside a Flow (ADR 0046, #321).
+- Read synchronous Git identity replies from owned temporary files rather than returned capture buffers, and remove the resources on success or failure. Reject malformed output and operational Git failures before selecting a Scratch or Flow namespace. Reserve `_global` for a genuine outside-repository result and preserve shared linked-worktree keys (#321).
 
 ## [8.0.8] - 2026-11-01
 

@@ -2,7 +2,6 @@
 //   bun machine.ts --set judge|isolation|clone|ratchet…  write those settings to the user's omp config
 //
 // Every fact comes from the `omp` on PATH, so the checks see what omp itself resolves for this HOME and cwd.
-// Checking never writes. `--set` runs only after the user approved the change through `ask`.
 // Exit codes: 0 no FAIL line (OK, WARN, or NOTE only) or `--set` done; 1 a FAIL line; 2 usage error or omp missing.
 
 import { readFileSync } from "node:fs";

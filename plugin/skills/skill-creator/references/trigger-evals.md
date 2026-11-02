@@ -13,7 +13,7 @@ Should not select (8–10): use near misses, requests that share keywords or con
 
 Make queries substantive enough that consulting a skill would help. An agent may handle a trivial one-step request directly regardless of any description, so such queries measure nothing.
 
-Review the set through `ask` before running it; a weak set produces a misleading description.
+Review the set through `flow_ask` on the evaluation Stage before running it, following `skill://flow-page`'s "Every ask in a Flow", including separate answer recording. A weak set produces a misleading description.
 
 ## Hold Out a Test Set
 
@@ -34,7 +34,7 @@ Give each batch a new `iteration-<N>` dir. If the run dir exists, the script exi
 Headless batch (ADR 0010): the script starts every query × three runs at once, with no cap, and waits for all of them. Each run is an `omp -p` process with the Session model and thinking level from `$PI_SESSION_FILE`. It runs in its own empty `workspace/` subdir, and its `trigger.yml` overlay turns memory off. Runs keep the real environment, `HOME` included, without the inherited `PI_*` and `OMP_*` variables. If the session file has no model or thinking record, or `omp` cannot start, the script exits with the reason. Report it and stop.
 
 - Selection-only (default): the script adds an instruction to read `SKILL.md` for every skill that applies to this request, then stop before acting. It never supplies the expected selection.
-- Full run (`--full`): the script sends the raw request. Use `ask` before requests with external side effects. When the session shows the selection, stop the run through its pid in `commands.json`.
+- Full run (`--full`): the script sends the raw request. Use `flow_ask` on the evaluation Stage before requests with external side effects. Without authorization, stop the affected case. When the session shows the selection, stop the run through its pid in `commands.json`.
 
 The script scores successful load events. A load is a `read` tool call that resolves `skill://<name>` or the tested skill's `SKILL.md` path against the run cwd (absolute or relative) and gets a non-error result. A `tool.read` inside eval is a load only when the eval result's `details.statusEvents` records that read with its path and no error. A name in prose, the initial skill list, eval source text, or an unsuccessful read is not a load. A trial is correct when the run loads the skill exactly when `expected` says it must. The script writes three files to the run dir:
 
@@ -50,4 +50,4 @@ For a candidate description, copy the complete skill to `<workspace>/candidate/<
 
 Show the user the old and new descriptions with train and test scores. Keep the revision only when the test score improves without new misfires on near misses. Keep one trigger per branch; each added word is loaded on every turn.
 
-Publish the old and new descriptions as Code Results with their source paths and revisions. A Comparison Result records the description alternatives, held-out criteria, misfires, evidence, and keep or reject verdict. A Metrics Result separates all, train, and test scores with numeric correct and completed trial counts, units, and run counts. Keep unfinished selection-only trials excluded and explicit, never successful zero-cost runs. Attach redacted `queries.json`, `commands.json`, `results.json`, and `scores.json`, preserving their canonical workspace files and successful-load session line citations. Record unavailable trials and missing evidence in the Document Result. Use the evaluation Stage and lifecycle from `SKILL.md`.
+In a Flow, publish the old and new descriptions as Code Results with their source paths and revisions. A Comparison Result records the description alternatives, held-out criteria, misfires, evidence, and keep or reject verdict. A Metrics Result separates all, train, and test scores with numeric correct and completed trial counts, units, and run counts. Keep unfinished selection-only trials excluded and explicit, never successful zero-cost runs. Attach redacted `queries.json`, `commands.json`, `results.json`, and `scores.json`, preserving their canonical workspace files and successful-load session line citations. Record unavailable trials and missing evidence in the Document Result. Outside a Flow, deliver the full comparison, scores, and gaps in chat and preserve the same files. Use `SKILL.md` for enrollment, delivery, and completion.

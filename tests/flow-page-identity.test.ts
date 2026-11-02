@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { ENV, git } from "./support/fixture.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
+const EMPTY_GIT_CAPTURE = join(import.meta.dir, "support", "empty-git-capture.ts");
 const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-page-identity-")));
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 
@@ -188,15 +189,23 @@ test.each([["lost", "normal"], ["normal", "lost"]])("bound callers retain their 
   expect(state.revision).toBe(Math.max(...revisions));
 });
 
-test("Git capture cleanup preserves unbound lookup on command and spawn failures", () => {
+test("Git command and spawn failures refuse namespace selection and clean captures", () => {
   const w = world();
   const at = { cwd: w.project, home: w.home, session: "unbound" };
   const transport = gitTransport(w);
-  expect(ok(run(["bound"], { ...at, env: { ...transport.env, FLOW_TEST_GIT_FAILURE: "1" } })).binding).toBeNull();
+  const commandFailure = run(["bound"], { ...at, env: { ...transport.env, FLOW_TEST_GIT_FAILURE: "1" } });
+  expect(commandFailure.code).toBe(1);
+  expect(commandFailure.stdout).toBe("");
+  expect(commandFailure.stderr).toContain("git");
   expect(readdirSync(transport.tmp)).toEqual([]);
+  expect(existsSync(join(w.home, ".vstack"))).toBe(false);
   rmSync(join(transport.bin, "git"));
-  expect(ok(run(["bound"], { ...at, env: { ...transport.env, PATH: transport.bin } })).binding).toBeNull();
+  const spawnFailure = run(["bound"], { ...at, env: { ...transport.env, PATH: transport.bin } });
+  expect(spawnFailure.code).toBe(1);
+  expect(spawnFailure.stdout).toBe("");
+  expect(spawnFailure.stderr).not.toBe("");
   expect(readdirSync(transport.tmp)).toEqual([]);
+  expect(existsSync(join(w.home, ".vstack"))).toBe(false);
 });
 
 test("a repeated submission, even a simultaneous one, creates nothing twice", async () => {
@@ -302,6 +311,31 @@ test("projects stay isolated, and worktrees of one project share a Flow", () => 
   expect(r.flow).toBe(a.flow);
   expect(ok(run(["find", "spec:267"], inWt)).flow).toBe(a.flow);
   expect(ok(run(["show", "--flow", a.flow], at)).stages[0].questions.map((q: any) => q.id)).toContain(r.refs.fromworktree);
+});
+
+test.each(["repository", "outside-repository"] as const)("Flow authoring keeps its namespace when real Git %s capture buffers disappear", (location) => {
+  const w = world();
+  const cwd = location === "repository" ? w.project : join(w.base, "plain");
+  mkdirSync(cwd, { recursive: true });
+  const at = { cwd, home: w.home, session: "capture-loss" };
+  const opened = ok(run(["open", "--title", "Capture loss", "--skill", "implement"], at));
+  const temporary = join(w.base, "temporary");
+  mkdirSync(temporary);
+  const input = contribution(round(question("captured")));
+  const result = Bun.spawnSync(["bun", "--preload", EMPTY_GIT_CAPTURE, ...argv(["submit"], at).slice(1)], {
+    cwd, env: { ...envOf(at), TMPDIR: temporary }, stdin: stdinOf({ ...at, stdin: input }), stdout: "pipe", stderr: "pipe",
+  });
+  const receipt = ok(parse(result.exitCode, result.stdout.toString(), result.stderr.toString()));
+  expect(receipt.flow).toBe(opened.flow);
+  expect(receipt.stage).toBe(opened.stage);
+  expect(receipt.page).toBe(opened.page);
+  const snapshot = ok(run(["show", "--flow", opened.flow], at));
+  expect(snapshot.stages.find((stage: any) => stage.id === opened.stage).questions.map((q: any) => q.id)).toEqual([receipt.refs.captured]);
+  const stores = readdirSync(join(w.home, ".vstack", "tmp"));
+  expect(stores).toHaveLength(1);
+  if (location === "repository") expect(stores[0]).toMatch(/^project-[0-9a-f]{6}$/);
+  else expect(stores).toEqual(["_global"]);
+  expect(readdirSync(temporary)).toEqual([]);
 });
 
 test("a spec alias and a folder relocation keep the Flow's identity, anchors, and continued authoring", () => {

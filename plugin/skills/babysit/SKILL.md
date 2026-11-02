@@ -48,7 +48,7 @@ On a conflict, stop before threads or CI. Report the branch that needs an update
 
 ### Review threads
 
-Verify each claim against current code. Classify it as fix, dismiss with a reason, or ask through the `ask` tool. In a worker, return the question to the parent instead. Do not adopt a bot's claim without proof.
+Verify each claim against current code. Classify it as fix, dismiss with a reason, or ask through `flow_ask` under `skill://flow-page`'s "Every ask in a Flow" contract. In a worker, return the question to the parent instead. Do not adopt a bot's claim without proof.
 
 Fix real findings red-first with skill://tdd in the lowest PR that owns the code. Do not put an upstack fix in the frontier just to avoid its owning PR. If that owner already merged, make a new follow-up PR above the remaining stack through skill://open-pr; never rewrite merged history. This is the only sanctioned stack-list addition. If open-pr is unavailable, report the needed follow-up instead of fabricating it.
 
