@@ -2,6 +2,30 @@
   "preamble": "The state's `request` is a user's request to a coding agent. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation in the question. If torn, answer no.",
   "brief_preamble": "The state's `request` is a task brief that a coding agent wrote for a subagent. Read \"the user\" in a question as the brief's author. Judge the inherent task, not its phrasing. Answer yes only if the task clearly falls into the situation in the question. If torn, answer no.",
   "questions": {
+    "improve-animations": {
+      "type": "noul",
+      "instructions": "Does the task survey existing frontend motion and prioritize actionable improvements or plan selected animation fixes?",
+      "criteria": {
+        "true": "A read-only motion audit or roadmap across existing interactions, including vetting purpose, frequency, lifecycle, accessibility, and rendering findings.",
+        "false": "Review of only a diff, building a new animation without an audit, additive opportunities alone, static styling, backend, CLI, or source bookkeeping."
+      }
+    },
+    "find-animation-opportunities": {
+      "type": "noul",
+      "instructions": "Does the task identify useful new animation opportunities and reject candidates where motion would hinder use?",
+      "criteria": {
+        "true": "Survey unanimated interactions for purposeful feedback, continuity, state indication, explanation, or rare delight, with frequency and function gates.",
+        "false": "Only fixing or reviewing existing motion, scoped subtraction without additive proposals, static styling, backend, CLI, or source bookkeeping."
+      }
+    },
+    "remove-animations": {
+      "type": "noul",
+      "instructions": "Does the task identify unnecessary frontend motion for removal or perform explicitly scoped motion subtraction?",
+      "criteria": {
+        "true": "Audit over-animation, remove keyboard or high-frequency effects, reduce unnecessary motion, or inspect subtraction hazards such as initial visibility, exit callbacks, unmount, and focus.",
+        "false": "Only adding or retuning useful motion, a review without subtraction scope, static styling, backend, CLI, or dependency bookkeeping alone."
+      }
+    },
     "review-animations": {
       "type": "noul",
       "instructions": "Does the task review existing frontend animation or motion changes and decide whether the behavior has defects or should block approval?",

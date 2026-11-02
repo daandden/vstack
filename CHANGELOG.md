@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [8.0.15] - 2026-11-02
+
+- Add hidden improve-animations, find-animation-opportunities, and remove-animations with pinned MIT notices and audit companions. Existing main and delegated owners retain read-only audits, explicit selection, safe scoped subtraction, motion review, and evidence (#344).
+
 ## [8.0.14] - 2026-11-02
 
 - Ship apple-design and mobile-native as adapted hidden Addons through existing main and delegated frontend references. Preserve mobile-web scope, non-animation CSS and accessibility, browser-qualified motion authority, upstream notices, and existing execution and evidence ownership (#340).

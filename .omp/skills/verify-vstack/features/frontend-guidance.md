@@ -13,6 +13,7 @@ Existing frontend work reaches the shipped UI guidance through good-css in main 
 - [Content robustness](frontend-robustness.md) adds realistic adverse-data, collection-boundary, and narrow-container proof through the same native and browser interfaces.
 - `frontend-motion`: [motion construction and diagnosis](frontend-motion.md) cover native main and worker edits, measured stutter, interruption, reduced motion, and a browser-qualified clip-path reveal.
 - `frontend-mobile`: the [mobile-web recipe](frontend-mobile.md) exercises Apple-derived interaction judgment and touch, viewport, safe-area, hover, and input behavior through the existing main and worker paths.
+- `frontend-motion-audit`: [audit and selected subtraction](frontend-motion-audit.md) cover read-only main and delegated surveys, explicit selection, lifecycle-safe removal, retained useful motion, and evidence-backed review.
 
 ## How to get to it (user POV)
 

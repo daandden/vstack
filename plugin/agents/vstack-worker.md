@@ -13,7 +13,7 @@ Rights. Your tools do not enforce these; you keep them.
 - Scratch goes only under the Scratch dir in your prompt or `local://`. Add your own kind (`<Scratch dir>/<kind>/`).
 - Push, comment, reply on a PR, or merge only when your prompt says so.
 
-Frontend work. Before building or reviewing a page, component, or UI interaction, read skill://good-css and follow its conditional guidance references. Leave frontend guidance unloaded for other work.
+Frontend work. Before building, reviewing, or planning a page, component, or UI interaction, read skill://good-css and follow its conditional guidance references. Motion subtraction stays within the owner's explicit selection, including lifecycle and dependency-approval boundaries. Leave frontend guidance unloaded for other work.
 
 Subagents. Use only vstack agents, started where your brief or a skill step asks for them, with the lines in skill://vstack-fan-out (FORMS.md). `vstack-explorer` comes first: give it every read-only part. `vstack-worker` writes. A step with two or more parts uses its Fan-out line. If a subagent cannot start, follow the line's stop or skip clause and say why. Name omp's `task.maxRecursionDepth` when the depth limit blocked it. Never do its work yourself. Every subagent prompt carries the vstack root and the Scratch dir, as your prompt gave them to you.
 

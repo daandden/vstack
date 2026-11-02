@@ -868,7 +868,7 @@ items:
     tree: 716c242ae3ef01743ab8e1851222260a05050763
     disposition: adapt
     artifacts: [plugin/skills/good-css]
-    reason: "keeps non-animation CSS responsibilities and conditionally reaches shipped UI guidance including motion construction and measured diagnosis under ADR 0047"
+    reason: "Keeps non-animation CSS duties and conditionally reaches shipped construction, review, audit, opportunity, and safe subtraction guidance under ADR 0047."
     adr: docs/adr/0047-selected-emil-skills-govern-animation-guidance.md
   - id: matt/implement-spec
     upstream: matt
@@ -1052,17 +1052,17 @@ items:
     kind: skill
     path: skills/find-animation-opportunities
     tree: e6443880f38e33cf78e5d678471eed35e8566763
-    disposition: reject
-    artifacts: []
-    reason: "Deferred at a81dbca07f2217b7103e510c0f13f8d5b017afc9: ticket 344 ships motion opportunity guidance."
+    disposition: adapt
+    artifacts: [ plugin/skills/find-animation-opportunities ]
+    reason: "Hidden opportunity guidance gates additive motion, records rejections, and returns proposals to existing explicit selection ownership."
   - id: emil/improve-animations
     upstream: emil
     kind: skill
     path: skills/improve-animations
     tree: cf1f7aabac34c08f2cf833f039fa99af2f415183
-    disposition: reject
-    artifacts: []
-    reason: "Deferred at a81dbca07f2217b7103e510c0f13f8d5b017afc9: ticket 344 ships animation audit guidance."
+    disposition: adapt
+    artifacts: [ plugin/skills/improve-animations ]
+    reason: "Hidden read-only motion audit and companion requirements use existing selection, planning, review, and evidence owners without executor or plan-status imports."
   - id: emil/mobile-native
     upstream: emil
     kind: skill
@@ -1092,9 +1092,9 @@ items:
     kind: skill
     path: skills/remove-animations
     tree: e1d06083891b6445c7fb5dae31f06b1e8b81f0dc
-    disposition: reject
-    artifacts: []
-    reason: "Deferred at a81dbca07f2217b7103e510c0f13f8d5b017afc9: ticket 344 ships unnecessary-motion guidance."
+    disposition: adapt
+    artifacts: [ plugin/skills/remove-animations ]
+    reason: "Hidden scoped subtraction guidance preserves visibility, callbacks, unmount, focus, useful motion, and separate dependency-removal approval."
   - id: emil/review-animations
     upstream: emil
     kind: skill

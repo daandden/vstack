@@ -74,15 +74,11 @@ One entry, the CSS upstream, also has `page_lint: scripts/check-css.mjs`: the sc
 
 ### UI upstream
 
-The UI upstream is `emilkowalski/skills`, keyed as `emil`, initially pinned at `a81dbca07f2217b7103e510c0f13f8d5b017afc9`. Its `skills/*` tree pattern discovers sixteen items. Ticket 339 ships `emil-design-eng`; ticket 343 adds `review-animations` with its companion standards; ticket 341 adds `break-ui` with its required adverse-content catalog; ticket 342 adds `animate` with component recipes and `animation-performance`; ticket 340 adds `apple-design` and `mobile-native` with their conditional companion references. Each is an adapted hidden Addon with an upstream MIT notice in its skill directory. Break-ui is reference knowledge used by existing implementation and Verify owners, including delegated UI work. Apple-derived guidance is for web interactions; mobile-native is mobile-web guidance, not Expo or Swift development.
+The UI upstream is `emilkowalski/skills`, keyed as `emil`, initially pinned at `a81dbca07f2217b7103e510c0f13f8d5b017afc9`. Its `skills/*` tree pattern discovers sixteen items. Ticket 339 ships `emil-design-eng`; ticket 343 adds `review-animations` with its companion standards; ticket 341 adds `break-ui` with its required adverse-content catalog; ticket 342 adds `animate` with component recipes and `animation-performance`; ticket 340 adds `apple-design` and `mobile-native` with their conditional companion references; ticket 344 adds `improve-animations` with audit and selected-requirements companions, `find-animation-opportunities`, and `remove-animations`. Each is an adapted hidden Addon with an upstream MIT notice in its skill directory. Break-ui is reference knowledge used by existing implementation and Verify owners, including delegated UI work. Apple-derived guidance is for web interactions; mobile-native is mobile-web guidance, not Expo or Swift development.
 
 `code-review` and good-css conditionally reach motion review guidance in the coordinator and delegated Standards reviewers. The existing review owns blocking decisions and evidence. A browser-supported clip-path effect is not blocked by the upstream's broad property preference alone. [ADR 0047](adr/0047-selected-emil-skills-govern-animation-guidance.md) governs applicability.
 
-Selected items not yet shipped in this checkout use reject with `Deferred at <initial Pin>` reasons until their owning ticket ships:
-
-| Ticket | Deferred items |
-| --- | --- |
-| 344 | `improve-animations`, `find-animation-opportunities`, `remove-animations` |
+All ten selected items now ship as adaptations. None remains deferred.
 
 The six permanent exclusions for spec 338 are `animation-vocabulary`, `ask-sonner`, `pick-ui-library`, upstream `prototype`, `animate-expo`, and `write-swift`. Vstack's own prototype remains unchanged.
 
@@ -95,6 +91,8 @@ Use the [frontend-guidance Verify recipe](../.omp/skills/verify-vstack/features/
 The [motion Verify recipe](../.omp/skills/verify-vstack/features/frontend-motion.md) covers construction and diagnosis through fresh main and worker paths, reduced motion, interruption, measured stutter, and browser-qualified property choices. Validate library claims against the runnable fixture's actual dependencies.
 
 The [mobile-web Verify recipe](../.omp/skills/verify-vstack/features/frontend-mobile.md) adds touch, viewport, safe-area, hover, and input proof to those existing paths. Keep actual engine and dependency scope explicit. Emulation does not establish native-device behavior.
+
+The [audit-to-selected-change recipe](../.omp/skills/verify-vstack/features/frontend-motion-audit.md) covers read-only main and delegated surveys, vetted priorities, rejected additive candidates, explicit diagnostic selection, and safe scoped subtraction through existing implementation and motion review. Audit findings enter the existing Flow owner rather than upstream execute dispatch or another plan-status workflow. Source hashes bracket selection; browser observations cover visibility, unmount, callbacks, focus, and retained useful motion.
 
 
 ## Decision register

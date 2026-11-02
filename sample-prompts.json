@@ -4583,6 +4583,33 @@
       "allowed": ["emil-design-eng", "perf-issue", "benchmark-checklist", "principle-fix-root-causes", "principle-prove-it-works"],
       "baseline_selected": {},
       "baseline_borderline": {}
+    },
+    {
+      "id": "ui-motion-audit-selection",
+      "split": "tune",
+      "prompt": "Audit our dispatch dashboard's existing animations read-only, vet the source findings and prioritize which unnecessary effects to remove. Keep the occasional useful reveal. Present evidence-backed choices, but do not implement before explicit selection.",
+      "expected": ["improve-animations", "remove-animations"],
+      "allowed": ["emil-design-eng", "review-animations", "animation-performance", "principle-experience-first", "principle-prove-it-works"],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "ui-motion-opportunities-rejections",
+      "split": "tune",
+      "prompt": "Find useful new animation opportunities in this web dashboard. Gate them by purpose and frequency, and explicitly reject motion on the keyboard command palette and the functional data table. Propose only, no edits.",
+      "expected": ["find-animation-opportunities"],
+      "allowed": ["emil-design-eng", "improve-animations", "principle-experience-first"],
+      "baseline_selected": {},
+      "baseline_borderline": {}
+    },
+    {
+      "id": "ui-motion-selected-subtraction",
+      "split": "tune",
+      "prompt": "I explicitly select only removal of this command palette's entry and exit animation. Make open and close immediate, remove hidden initial styles, move completion callbacks and focus with the lifecycle, and preserve the separate preview reveal. Do not uninstall dependencies.",
+      "expected": ["remove-animations"],
+      "allowed": ["emil-design-eng", "animate", "review-animations", "principle-experience-first", "principle-prove-it-works"],
+      "baseline_selected": {},
+      "baseline_borderline": {}
     }
   ]
 }

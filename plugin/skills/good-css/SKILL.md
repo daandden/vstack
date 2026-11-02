@@ -21,6 +21,8 @@ When implementing purposeful web motion, read skill://animate. When choosing an 
 
 For mobile-web or touch-facing UI, including viewport height, safe areas, hover, or inputs, read skill://mobile-native. For Apple-derived web feedback, gesture-driven controls, interruptible sheets, materials, or typography, read skill://apple-design. These conditions apply equally to main sessions and delegated frontend workers.
 
+When auditing existing motion or planning improvements, read skill://improve-animations. For useful new-motion candidates and explicit rejections, read skill://find-animation-opportunities. For proposed or selected subtraction, read skill://remove-animations. Apply these references in main sessions and delegated audits or scoped builds. Keep audits read-only; the current vstack owner obtains explicit selection before implementation.
+
 Emil Kowalski's selected guidance is adapted from the UI upstream. Its animation guidance takes precedence over this skill under ADR 0047. Reconcile disagreements within Emil's guidance with browser-specific behavior and observed evidence. Keep this skill's non-animation CSS and accessibility responsibilities. Conditional hand-offs name shipped guidance only. The derived skills retain the upstream MIT notice.
 
 ## In all CSS
