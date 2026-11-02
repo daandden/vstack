@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the README for when t
 
 ## [Unreleased]
 
+## [8.0.10] - 2026-11-02
+
+- to-spec carries agreed architecture and necessary visuals into the canonical spec without requiring a new brief or repeating design discussions. New consequential forks pause affected synthesis for user-invoked grilling without publishing an unagreed design.
+
 ## [8.0.9] - 2026-11-02
 
 - Keep concurrent Flow callers in their project namespace by capturing Git output in invocation-owned temporary files. Preserve synchronous lookup and remove captures on success, command failure, and spawn failure. Surface capture filesystem errors instead of selecting the outside-Git namespace. Cover lost-output and normal transport orderings through the real Flow CLI (#333).
