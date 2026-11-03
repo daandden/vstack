@@ -1,5 +1,5 @@
 import { afterAll, expect, test } from "bun:test";
-import { chmodSync, closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { ENV, git } from "./support/fixture.ts";
@@ -42,16 +42,13 @@ function run(args: string[], o: Opts): Run {
 }
 async function runAsync(args: string[], o: Opts): Promise<Run> {
   const capture = mkdtempSync(join(root, "stdio-"));
-  let stdout = -1, stderr = -1;
+  const stdout = join(capture, "stdout");
+  const stderr = join(capture, "stderr");
   try {
-    stdout = openSync(join(capture, "stdout"), "w");
-    stderr = openSync(join(capture, "stderr"), "w");
-    const p = Bun.spawn(argv(args, o), { cwd: o.cwd, env: envOf(o), stdin: stdinOf(o), stdout, stderr });
+    const p = Bun.spawn(argv(args, o), { cwd: o.cwd, env: envOf(o), stdin: stdinOf(o), stdout: Bun.file(stdout), stderr: Bun.file(stderr) });
     const code = await p.exited;
-    return parse(code, readFileSync(join(capture, "stdout"), "utf8"), readFileSync(join(capture, "stderr"), "utf8"));
+    return parse(code, readFileSync(stdout, "utf8"), readFileSync(stderr, "utf8"));
   } finally {
-    if (stdout >= 0) closeSync(stdout);
-    if (stderr >= 0) closeSync(stderr);
     rmSync(capture, { recursive: true, force: true });
   }
 }
