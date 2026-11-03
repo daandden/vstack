@@ -4,6 +4,8 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+- Fix the Flow identity test's Git fault injection on Linux by discarding anonymous regular-file captures as well as pipes and sockets, while preserving linked capture-file bytes. Remove the fixture-only self-test and retain real CLI namespace, ordering, refusal, and cleanup coverage (#333).
+
 ## [9.0.2] - 2026-11-03
 
 - grill-with-docs assesses every change and expands only consequential unsettled architecture choices into visual agreement. It records an Architecture brief with decision provenance and stops before implementation or a user-invoked next Matt skill (#334, ADR 0051).

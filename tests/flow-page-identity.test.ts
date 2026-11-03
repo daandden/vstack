@@ -96,8 +96,8 @@ function gitTransport(w: ReturnType<typeof world>) {
   const bun = `'${process.execPath.replaceAll("'", "'\\''")}'`;
   writeFileSync(join(bin, "git"), `#!/bin/sh
 if [ "$FLOW_TEST_GIT_FAILURE" = "1" ]; then exit 7; fi
-# Inspect stdout itself: Darwin /dev/fd pathname checks can reject a regular file.
-if [ "$FLOW_TEST_DROP_GIT_PIPE" = "1" ] && ! ${bun} -e 'process.exit(require("node:fs").fstatSync(1).isFile() ? 0 : 1)'; then
+# Bun may back logical pipes with unlinked regular files.
+if [ "$FLOW_TEST_DROP_GIT_PIPE" = "1" ] && ! ${bun} -e 'const stats = require("node:fs").fstatSync(1); process.exit(stats.isFile() && stats.nlink > 0 ? 0 : 1)'; then
   exec ${realGit} "$@" >/dev/null
 fi
 exec ${realGit} "$@"
@@ -106,28 +106,6 @@ exec ${realGit} "$@"
   symlinkSync(process.execPath, join(bin, "bun"));
   return { bin, tmp, env: { PATH: `${bin}:${ENV.PATH}`, TMPDIR: tmp, TMP: tmp, TEMP: tmp } };
 }
-
-test("Git transport fixture preserves regular-file bytes and discards pipe bytes", () => {
-  const w = world();
-  const transport = gitTransport(w);
-  const env = { ...ENV, ...transport.env, FLOW_TEST_DROP_GIT_PIPE: "1" };
-  const command = ["git", "rev-parse", "--path-format=absolute", "--git-common-dir"];
-  const piped = Bun.spawnSync(command, { cwd: w.project, env, stdout: "pipe", stderr: "pipe" });
-  expect(piped.exitCode).toBe(0);
-  expect(piped.stderr.toString()).toBe("");
-  expect(piped.stdout.toString()).toBe("");
-
-  const output = join(w.base, "regular-stdout");
-  const fd = openSync(output, "w", 0o600);
-  try {
-    const captured = Bun.spawnSync(command, { cwd: w.project, env, stdout: fd, stderr: "pipe" });
-    expect(captured.exitCode).toBe(0);
-    expect(captured.stderr.toString()).toBe("");
-  } finally {
-    closeSync(fd);
-  }
-  expect(readFileSync(output, "utf8")).toBe(`${join(w.project, ".git")}\n`);
-});
 
 test("tracker aliases match case-insensitively while preserving original keys and distinguishing underscores", () => {
   const w = world();
