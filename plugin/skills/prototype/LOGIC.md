@@ -55,7 +55,7 @@ Keep it beautiful but restrained: clean typography, generous spacing, one accent
 
 ### 4. Hand it over
 
-In a Flow, present the Flow URL, not an automatically opened file, and publish changes as a new Result revision rather than rewriting earlier evidence. For a runnable HTML artifact, retain its file and launch instructions in either delivery mode. The reader can try guided action sequences or free play, and request new actions or scenarios.
+In a Flow, publish changes as a new Result revision rather than rewriting earlier evidence. Present question links through flow-page's "Every ask in a Flow" contract. For a runnable HTML artifact, retain its file and launch instructions in either delivery mode, without opening it automatically. The reader can try guided action sequences or free play, and request new actions or scenarios.
 
 ### 5. Capture the answer and the prototype
 

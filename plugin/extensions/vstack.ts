@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 export default function vstack(pi: ExtensionAPI): void {
   registerAddonSelection(pi);
   registerCleanCommand(pi);
-  registerFlowPresentation(pi);
+  registerFlowContext(pi);
 }
 
 const flowScript = fileURLToPath(new URL("../skills/flow-page/scripts/flow-page.ts", import.meta.url));
@@ -28,17 +28,8 @@ async function flowPage<T>(pi: ExtensionAPI, ctx: ExtensionContext, args: string
   return JSON.parse(result.stdout);
 }
 
-type FlowLive = { state: "serving"; url: string } | { state: "unavailable"; error: string } | { state: "off" };
-
-/** The reader URL, or why the Local Flow host cannot present it. A stored Flow file is not a working reader. */
-function flowPresentation(live: FlowLive | undefined, stored: string): string {
-  if (live?.state === "serving") return `Flow page: ${live.url}`;
-  const why = live?.state === "unavailable" ? `is not serving (${live.error})` : "is turned off (VSTACK_FLOW_HOST=off)";
-  return `Flow page unavailable: the Flow reader needs the Local Flow host, which ${why}. ${stored}`;
-}
-
-function registerFlowPresentation(pi: ExtensionAPI): void {
-  type Bound = { binding: { flow: string; stage: string } | null; live?: FlowLive };
+function registerFlowContext(pi: ExtensionAPI): void {
+  type Bound = { binding: { flow: string; stage: string } | null };
   pi.on("context", event => ({
     messages: event.messages.filter(message => message.role !== "custom" || message.customType !== "vstack-flow"),
   }));
@@ -55,20 +46,6 @@ function registerFlowPresentation(pi: ExtensionAPI): void {
       customType: "vstack-flow-context", display: false, attribution: "agent" as const,
       content: `For flow-page authoring commands, pass ${args}. Bash supplies PI_SESSION_ID but no agent id. Never use another agent's binding.${target}`,
     } };
-  });
-  pi.on("agent_end", async (event, ctx) => {
-    if (ctx.agent.kind !== "main" || event.isTerminal === false) return;
-    const reply = event.messages.findLast(message => message.role === "assistant");
-    if (!reply || reply.stopReason !== "stop" || !reply.content.some(block => block.type === "text" && block.text.trim())) return;
-    let content: string;
-    try {
-      const current = await flowPage<Bound>(pi, ctx, ["bound"]);
-      if (!current.binding) return;
-      content = flowPresentation(current.live, "The Flow content is stored; the link returns after the host serves again.");
-    } catch (error) {
-      content = `Flow page unavailable: ${error instanceof Error ? error.message : String(error)}`;
-    }
-    pi.sendMessage({ customType: "vstack-flow", content, display: true }, { triggerTurn: false });
   });
 }
 
@@ -288,8 +265,7 @@ function registerCleanCommand(pi: ExtensionAPI): void {
           ] },
           { kind: "stage", state: "finished" },
         ] }));
-        const receipt = await run(["submit", "--flow", stage.flow, "--stage", stage.stage, file]);
-        pi.sendMessage({ customType: "vstack-flow", content: flowPresentation(receipt.live, "The cleanup outcome is committed."), display: true }, { triggerTurn: false });
+        await run(["submit", "--flow", stage.flow, "--stage", stage.stage, file]);
       } finally {
         if (resumeCaller) await run(["bind", "--flow", current.binding.flow, "--stage", current.binding.stage]);
       }
