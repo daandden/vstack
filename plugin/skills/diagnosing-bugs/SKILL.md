@@ -9,6 +9,8 @@ A discipline for hard bugs. Skip phases only when explicitly justified.
 
 When exploring the codebase, read `GLOSSARY.md` (if it exists) to get a clear mental model of the relevant modules, and check ADRs in the area you're touching.
 
+For a frontend animation that stutters or drops frames, read skill://good-css and skill://animation-performance before selecting probes or changing the driver. This applies to main sessions and delegated diagnosis. Keep this skill's diagnosis loop and evidence ownership; unrelated failures do not need frontend guidance.
+
 ## Record the investigation
 
 Follow `skill://flow-page`'s "Stage entry/exit line" before the first probe or ask. Use `ask` under its "Every ask in a Flow" contract when enrolled, or plain `ask` outside a Flow, for every question below.

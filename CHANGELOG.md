@@ -4,17 +4,23 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.3] - 2026-11-03
+
+- Merge pinned published main 3f880076 with architecture PR #358 without rewriting pushed history. Preserve all UI guidance, callers, Pins, register and package metadata. Published UI policy remains ADR 0051; move the unchanged architecture policy and its references to ADR 0052 (#333).
 - Fix the Flow identity test's Git fault injection on Linux by discarding anonymous regular-file captures as well as pipes and sockets, while preserving linked capture-file bytes. Remove the fixture-only self-test and retain real CLI namespace, ordering, refusal, and cleanup coverage (#333).
-
-## [9.0.2] - 2026-11-03
-
-- grill-with-docs assesses every change and expands only consequential unsettled architecture choices into visual agreement. It records an Architecture brief with decision provenance and stops before implementation or a user-invoked next Matt skill (#334, ADR 0051).
-- Merge the pinned pstack architect reasoning into the existing grill and shared codebase-design, preserve Design It Twice and the accepted glossary terms, and retain the accepted architecture policy byte-for-byte as ADR 0051.
+- grill-with-docs assesses every change and expands only consequential unsettled architecture choices into visual agreement. It records an Architecture brief with decision provenance and stops before implementation or a user-invoked next Matt skill (#334, ADR 0052).
+- Merge the pinned pstack architect reasoning into the existing grill and shared codebase-design, preserve Design It Twice and the accepted glossary terms, and retain the accepted architecture policy byte-for-byte as ADR 0052.
 - to-spec carries agreed architecture and necessary visuals into a self-contained canonical spec. New consequential forks hold affected synthesis for user-invoked grilling without publishing an unagreed design (#335).
 - Direct implementation and isolated ticket workers preserve architecture agreements while retaining ordinary coding discretion. Consequential departures hold affected work until the user's answer resolves them (#336).
 - Reconcile architecture questions and proof with published main's native `ask`, live-only Nuxt reader, chronological publications, and captured Mermaid source. Publish complete rounds through the CLI, verify live content, display exactly one clickable live URL before each `ask` round, and record observed responses separately. Completion summaries do not repeat the link. Keep cancellation, timeout and automated picks distinct from consent.
 - Preserve concurrent Flow project identity and the real Git pipe-loss regression alongside main's failure refusals, regular-file CLI capture, chronological ordering tests, and genuine outside-repository behavior (#333).
 - Isolate actual-model architecture proof through the CLI's explicit owned `--home` while retaining real HOME for Session credentials. Keep the normal-HOME extension unbound and normal-HOME binding acceptance unproven. Record launch provenance and normal-HOME non-mutation checks without replacing shared discovery or hosts.
+
+## [9.0.2] - 2026-11-03
+
+- Merge exact main 274159e0 into the already-pushed UI integration without rewriting history; retain its Nuxt/Vite+ live-only reader, Mermaid sources, reading order, current prototype, dependencies, and shipped reader assets.
+- Move the unchanged UI animation authority decision to ADR 0051 and migrate its callers while retaining main's ADRs 0048 through 0050; align motion-audit selection proof with read-scoped live content identity and separate ordinary ask responses.
+- Reconcile the integration release above main 9.0.1 and feature 8.0.20 while retaining both release histories and the ordered workload, required-result countercase, canonical timing reference, and exact-Pin source helper repairs.
 
 ## [9.0.1] - 2026-11-03
 
@@ -41,10 +47,42 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 - Breaking: the Local Flow host serves the Flow page as a production Nuxt reader built with Vite+ and shipped prebuilt under `skills/flow-page/reader/` (#314, spec #309). The page is one compact document, an outline then the reading sequence, then the Overview and Topic notes, in Catppuccin Mocha dark and Catppuccin Latte light, following the system preference with a visible theme control. The bespoke page renderer, its HTML template, the static `index.html` export, and the `render` command are removed, and receipts no longer carry `page` or `presentation`. `live` is the one presentation status: when the host cannot serve, the receipt, stderr, and the extension say the reader is unavailable and the content is stored, and the open reader keeps its content while it reconnects. A running host serves only the reader bytes it loaded at startup and reports itself incompatible after a plugin refresh until `host stop`. `h` and `l` now move between reading blocks. CI rebuilds the reader and fails when the committed build is stale, and check-register lints the reader's stylesheet with the page lint.
 - Breaking for authors: Flow diagrams are Mermaid source that the reader draws with the pinned Pele (spec #309, ADR 0050). Capture a diagram as an attachment with `type: "mermaid"` and an optional `focus` of one or two Mermaid ids. The script stores the source by sha256 and refuses Mermaid that Pele cannot render. The reader draws each diagram in the page in Catppuccin Latte on light and Mocha on dark, and a theme switch restyles it without drawing again. Captured Pele SVGs from earlier Flows keep their stored bytes and now follow the theme too, so the #315 prototype-review diagram reads in the light theme. Labels now fit their nodes in WebKit, which ignored the installed font inside an SVG `<img>`. Diagram labels cannot inject markup or scripts, and the reader page's Content Security Policy now allows only the reader's own scripts and same-origin resources. vstack-figures and the authoring references tell callers to submit source. `render.ts` stays for figures outside the Flow.
 
+## [8.0.20] - 2026-11-03
+
+- Replace animation workload guidance with the ordered requirement checkpoint and contrasting example; preserve captured-failure acceptance and add required-result native/browser countercase coverage (#342).
+- Keep shared motion curves and duration defaults in review-animations/STANDARDS.md; construction, design, audit, and opportunity guidance reference its existing qualified recommendations.
+- Fix the frontend-source Verify helper for supported Pin-only caches without local branches by explicitly fetching the exact Pin and its objects into the disposable fixture remote.
+
+## [8.0.19] - 2026-11-02
+
+- Clarify task-required animation workloads and separate playback from responsiveness evidence.
+
+## [8.0.18] - 2026-11-02
+
+- Integrate current main's native Flow question publication and ask retries into PR #346 for spec #338, preserving the selected UI guidance and prior corrections.
+
+## [8.0.17] - 2026-11-02
+
+- Clarify the content-grid column-gap width budget while preserving vertical row spacing.
+
+## [8.0.16] - 2026-11-02
+
+- Integrate the accepted Flow single-call custom picker and standalone research closure with the selected UI guidance, preserving existing execution ownership, Pins, Dispositions, and user choices (#338).
+- Add hidden improve-animations, find-animation-opportunities, and remove-animations with pinned MIT notices and audit companions. Existing main and delegated owners retain read-only audits, explicit selection, safe scoped subtraction, motion review, and evidence (#344).
+- Ship apple-design and mobile-native as adapted hidden Addons through existing main and delegated frontend references. Preserve mobile-web scope, non-animation CSS and accessibility, browser-qualified motion authority, upstream notices, and existing execution and evidence ownership (#340).
+- Add repeatable mobile-web Verify coverage for touch, viewport, safe areas, hover, and inputs with actual dependency and engine scope (#340).
+- Ship adapted animate and animation-performance Addons with component recipes and MIT notices; existing frontend and diagnosis paths conditionally reach motion construction and browser-measured performance guidance without changing execution ownership or principle-only selection (#342).
+- Ship break-ui as an adapted hidden Addon with its adverse-content catalog and MIT notice. Existing main-session implementation, delegated frontend work, and Verify preparation reach realistic content boundaries without another executor. Add a repeatable native and browser robustness recipe.
+- Add hidden review-animations and companion standards to existing main and delegated motion reviews, preserving evidence-backed blocking verdicts and browser-qualified exceptions.
+- Ship emil-design-eng as a hidden, adapted Addon reached conditionally through good-css in main and delegated frontend implementation. Preserve existing execution, review, accessibility, and evidence ownership, with browser-qualified animation authority under ADR 0051 (#339).
+- Register all sixteen UI-upstream items at a81dbca07f2217b7103e510c0f13f8d5b017afc9, retain Emil Kowalski's MIT notice in the plugin, and distinguish nine selected Deferred items in tickets 340–344 from six permanent exclusions. Preserve the accepted UI-upstream glossary and ADR.
+- Document repeatable native frontend, unrelated-task, distribution, and future-source maintenance proof. Keep principle-only build and subagent judge scopes and vstack's existing prototype unchanged.
+
 ## [8.0.12] - 2026-11-02
 
 - Remove the coupled `flow_ask` tool. Publish Flow questions with the CLI, show the current live URL in chat before ordinary `ask`, and record responses separately. Preserve normal ask retry and cancellation without page-publication notifications.
 - Keep full Flow history, multiselect support, session isolation, and independent consent and Migration safeguards from the introducing change. Recoverable blockers retain their in-progress Stage; completed history stays immutable.
+
 ## [8.0.11] - 2026-11-02
 
 - Shorten the README to installation, everyday use, and documentation links. Preserve maintainer instructions in `docs/maintainer.md` and link to canonical skill contracts.

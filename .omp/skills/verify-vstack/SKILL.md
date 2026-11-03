@@ -150,6 +150,7 @@ All paths are relative to `SKILL_DIR`.
 - `scripts/figure-flow.ts <checkout> <verify run> <own session> <own agent>`: captures the figure in a labelled disposable isolated-home Flow. Follow the figure recipe's authenticated host stop and export steps before Cleanup.
 - `scripts/worker-lifecycle.ts <checkout> <new verify run>`: drives real isolated implementer and review-fixer patch landing, retention, and release in a fresh throwaway omp session. Use `features/worker-lifecycle.md`.
 - `scripts/flow-questions-tui.py --prompt <scenario.md> --config <isolate.yml>`: actual Session-model TUI controller for cancelled, elapsed-timeout, and empty architecture responses. See Launch and `features/architecture-agreement.md`.
+- `scripts/frontend-maintenance.ts <checkout> <new evidence directory> <upstream cache>`: drives the public register and maintenance CLIs with a deterministic future-source fixture, preserving the real Pin and local adaptations. Use `features/frontend-guidance.md`.
 
 ## Gotchas
 

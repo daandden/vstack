@@ -28,7 +28,7 @@ items:
     tree: 07ba1cd60efc12d0d3a083005c1d9651cf15e39a
     disposition: merge
     artifacts: [plugin/skills/codebase-design]
-    reason: "DESIGN-IT-TWICE runs a Fan-out of vstack agents (#36), and improve-codebase-architecture runs it after every pick. Adds proportionate visual grounding, screening and rationale for grill-with-docs without weakening that detailed-design workflow (#334, ADR 0051)."
+    reason: "DESIGN-IT-TWICE runs a Fan-out of vstack agents (#36), and improve-codebase-architecture runs it after every pick. Adds proportionate visual grounding, screening and rationale for grill-with-docs without weakening that detailed-design workflow (#334, ADR 0052)."
   - id: matt/diagnosing-bugs
     upstream: matt
     kind: skill
@@ -52,7 +52,7 @@ items:
     tree: eedaf2562c83155115e9c649fa3ecaac2e10e81d
     disposition: merge
     artifacts: [plugin/skills/grill-with-docs]
-    reason: "Names skill://grilling and skill://domain-modeling where Matt calls the Skill tool, adds a grill-with-docs Stage to the Flow page, and names the next skill after the summary (#165, ADR 0032). Integrates architect assessment and visual agreement before implementation while preserving the Matt flow and implementation-owned coding details (#334, ADR 0051)."
+    reason: "Names skill://grilling and skill://domain-modeling where Matt calls the Skill tool, adds a grill-with-docs Stage to the Flow page, and names the next skill after the summary (#165, ADR 0032). Integrates architect assessment and visual agreement before implementation while preserving the Matt flow and implementation-owned coding details (#334, ADR 0052)."
   - id: matt/implement
     upstream: matt
     kind: skill
@@ -60,7 +60,7 @@ items:
     tree: f07d230f645fc9ac390cf13a450bbff12ad791a3
     disposition: adapt
     artifacts: [plugin/skills/implement]
-    reason: "Settles End states from user words, the ticket, project default, then ask through live MCP discovery and Code host routing. Confirms Flow test seams before code and goes red per slice (#183, ADR 0035, ADR 0038). Preserves tune-llm-flow kept-round and eval commits (ADR 0041). Shared step 6b independently verifies committed HEAD at every End state and gates reached progress (ADR 0043). It owns Shared checkout briefs, REFUSED and cleanup_error availability checks, and unchanged-clone verification safety. Preserves supplied architecture agreements while leaving coding choices to implementation; consequential departures remain open until the user resolves them (#336, ADR 0051)."
+    reason: "Settles End states from user words, the ticket, project default, then ask through live MCP discovery and Code host routing. Confirms Flow test seams before code and goes red per slice (#183, ADR 0035, ADR 0038). Preserves tune-llm-flow kept-round and eval commits (ADR 0041). Shared step 6b independently verifies committed HEAD at every End state and gates reached progress (ADR 0043). It owns Shared checkout briefs, REFUSED and cleanup_error availability checks, and unchanged-clone verification safety. Preserves supplied architecture agreements while leaving coding choices to implementation; consequential departures remain open until the user resolves them (#336, ADR 0052). Frontend tasks and delegated briefs conditionally reach good-css and its shipped UI guidance (#339, ADR 0051)."
   - id: matt/improve-codebase-architecture
     upstream: matt
     kind: skill
@@ -284,7 +284,7 @@ items:
     tree: 29891f4b7ff7e4824d0742b15cf920bd428e12e8
     disposition: merge
     artifacts: [ plugin/skills/grill-with-docs ,  plugin/skills/codebase-design ]
-    reason: "Integrate architecture agreement before implementation inside grill-with-docs while preserving the Matt flow, visual trade-offs and implementation-owned coding details. Grounding, visual alternatives, screening and rationale contribute to grill-with-docs and shared codebase-design, not a standalone architect command (#334, ADR 0051)."
+    reason: "Integrate architecture agreement before implementation inside grill-with-docs while preserving the Matt flow, visual trade-offs and implementation-owned coding details. Grounding, visual alternatives, screening and rationale contribute to grill-with-docs and shared codebase-design, not a standalone architect command (#334, ADR 0052)."
   - id: pstack/arena
     upstream: pstack
     kind: skill
@@ -868,7 +868,8 @@ items:
     tree: 716c242ae3ef01743ab8e1851222260a05050763
     disposition: adapt
     artifacts: [plugin/skills/good-css]
-    reason: "removes Emil Kowalski's hand-offs and credit; vstack ships none of his skills"
+    reason: "Keeps non-animation CSS duties and conditionally reaches shipped construction, review, audit, opportunity, and safe subtraction guidance under ADR 0051."
+    adr: docs/adr/0051-selected-emil-skills-govern-animation-guidance.md
   - id: matt/implement-spec
     upstream: matt
     kind: skill
@@ -876,7 +877,7 @@ items:
     tree: 0cfefc751d0cb64f0c948ffcb17e13b94e778f08
     disposition: adapt
     artifacts: [plugin/skills/implement-spec]
-    reason: "Runs isolated ticket implementers and mergers, preserving one commit per ticket and final review fixes. Uses one Flow Stage for coordinator asks and Results. Resolves the MCP task graph through current descriptions, schemas, directional blockers, and close transition. Tickets and spec close only after shared step 6b accepts the committed-head Verdict (ADR 0019, ADR 0022, ADR 0035, ADR 0038, ADR 0043, #167, #207). Carries agreed architecture through existing spec and ticket pointers, holding consequential departures through the existing open-question path (#336, ADR 0051)."
+    reason: "Runs isolated ticket implementers and mergers, preserving one commit per ticket and final review fixes. Uses one Flow Stage for coordinator asks and Results. Resolves the MCP task graph through current descriptions, schemas, directional blockers, and close transition. Tickets and spec close only after shared step 6b accepts the committed-head Verdict (ADR 0019, ADR 0022, ADR 0035, ADR 0038, ADR 0043, #167, #207). Carries agreed architecture through existing spec and ticket pointers, holding consequential departures through the existing open-question path (#336, ADR 0052)."
   - id: matt/pr
     upstream: matt
     kind: skill
@@ -981,6 +982,135 @@ items:
     disposition: reject
     artifacts: []
     reason: "Deferred at e73df471cd4bd918367e99f3dd9c51bd53ddf5f0: formal verification needs a toolchain and figure decision."
+  - id: emil/animate-expo
+    upstream: emil
+    kind: skill
+    path: skills/animate-expo
+    tree: 6874701c790c7e74926ccd0a8716647a81424c85
+    disposition: reject
+    artifacts: []
+    reason: "Native Expo animation is outside the selected web UI scope of spec 338."
+  - id: emil/animate
+    upstream: emil
+    kind: skill
+    path: skills/animate
+    tree: a92e36f28d741aee4ff77d1a001300d7e86e07fe
+    disposition: adapt
+    artifacts: [ plugin/skills/animate ]
+    reason: "Hidden motion construction guidance and companion recipes retain existing execution ownership, accessible state transitions, and ADR 0051 browser-qualified authority."
+  - id: emil/animation-performance
+    upstream: emil
+    kind: skill
+    path: skills/animation-performance
+    tree: 59c4651915a493803d1696d4278d2f9f980e47c8
+    disposition: adapt
+    artifacts: [ plugin/skills/animation-performance ]
+    reason: "Hidden measured animation diagnosis guidance uses actual dependency and browser evidence rather than unconditional acceleration claims or an independent executor."
+  - id: emil/animation-vocabulary
+    upstream: emil
+    kind: skill
+    path: skills/animation-vocabulary
+    tree: d49565744427887a1f719de1ceee04d941d4e681
+    disposition: reject
+    artifacts: []
+    reason: "Terminology lookup is outside the selected UI scope of spec 338."
+  - id: emil/apple-design
+    upstream: emil
+    kind: skill
+    path: skills/apple-design
+    tree: cd509ae729c86487d352e17a26651217a4c25711
+    disposition: adapt
+    artifacts: [ plugin/skills/apple-design ]
+    reason: "Hidden Apple-derived web guidance preserves vstack ownership, conditional references, dependency checks, and browser-qualified motion authority."
+  - id: emil/ask-sonner
+    upstream: emil
+    kind: skill
+    path: skills/ask-sonner
+    tree: aeca3dba0eb0415fa5a310cd6823b824fe60323d
+    disposition: reject
+    artifacts: []
+    reason: "Sonner-specific guidance is outside the selected UI scope of spec 338."
+  - id: emil/break-ui
+    upstream: emil
+    kind: skill
+    path: skills/break-ui
+    tree: f2a3441d4cf14df060ee363e155502a4818b5f8d
+    disposition: adapt
+    artifacts: [ plugin/skills/break-ui ]
+    reason: "Hidden adverse-content knowledge and required catalog preserve existing implementation, review, Verify, and evidence ownership without an independent executor."
+  - id: emil/emil-design-eng
+    upstream: emil
+    kind: skill
+    path: skills/emil-design-eng
+    tree: db7a20dc1d8ad26a0307dcb45ebc79fc372f5c69
+    disposition: adapt
+    artifacts: [plugin/skills/emil-design-eng]
+    reason: "Hidden reference-only design guidance preserves vstack execution and evidence ownership, conditional activation, and browser-qualified motion authority."
+    adr: docs/adr/0051-selected-emil-skills-govern-animation-guidance.md
+  - id: emil/find-animation-opportunities
+    upstream: emil
+    kind: skill
+    path: skills/find-animation-opportunities
+    tree: e6443880f38e33cf78e5d678471eed35e8566763
+    disposition: adapt
+    artifacts: [ plugin/skills/find-animation-opportunities ]
+    reason: "Hidden opportunity guidance gates additive motion, records rejections, and returns proposals to existing explicit selection ownership."
+  - id: emil/improve-animations
+    upstream: emil
+    kind: skill
+    path: skills/improve-animations
+    tree: cf1f7aabac34c08f2cf833f039fa99af2f415183
+    disposition: adapt
+    artifacts: [ plugin/skills/improve-animations ]
+    reason: "Hidden read-only motion audit and companion requirements use existing selection, planning, review, and evidence owners without executor or plan-status imports."
+  - id: emil/mobile-native
+    upstream: emil
+    kind: skill
+    path: skills/mobile-native
+    tree: fdad6e6e91d8bbfda7164c7027269a8389dbadcd
+    disposition: adapt
+    artifacts: [ plugin/skills/mobile-native ]
+    reason: "Hidden mobile-web guidance preserves vstack ownership, capability checks, zoom and accessibility, and honest browser versus device evidence."
+  - id: emil/pick-ui-library
+    upstream: emil
+    kind: skill
+    path: skills/pick-ui-library
+    tree: 370e19776f0aa2403a2edeed78266bd6a5d78036
+    disposition: reject
+    artifacts: []
+    reason: "Dependency curation is outside the selected UI scope of spec 338."
+  - id: emil/prototype
+    upstream: emil
+    kind: skill
+    path: skills/prototype
+    tree: 34cd3a303aef0a975fcce3ac906d6b293e600399
+    disposition: reject
+    artifacts: []
+    reason: "Retain vstack's existing prototype and captured-evidence contract instead of importing another workflow."
+  - id: emil/remove-animations
+    upstream: emil
+    kind: skill
+    path: skills/remove-animations
+    tree: e1d06083891b6445c7fb5dae31f06b1e8b81f0dc
+    disposition: adapt
+    artifacts: [ plugin/skills/remove-animations ]
+    reason: "Hidden scoped subtraction guidance preserves visibility, callbacks, unmount, focus, useful motion, and separate dependency-removal approval."
+  - id: emil/review-animations
+    upstream: emil
+    kind: skill
+    path: skills/review-animations
+    tree: 0e0d3cb3e07ca307fe946ccaf57f6c82eb75124a
+    disposition: adapt
+    artifacts: [ plugin/skills/review-animations ]
+    reason: "Hidden motion-review guidance and companion standards preserve evidence-backed blocking authority, browser-qualified exceptions, and existing review ownership."
+  - id: emil/write-swift
+    upstream: emil
+    kind: skill
+    path: skills/write-swift
+    tree: bdefda3891d347b8a183bdc727e4a1de2be3c82b
+    disposition: reject
+    artifacts: []
+    reason: "Native Swift work is outside the selected web UI scope of spec 338."
 originals:
   - plugin/agents/vstack-explorer.md
   - plugin/agents/vstack-verifier.md
