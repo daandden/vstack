@@ -261,7 +261,7 @@ Keep RPC and native PTY evidence distinct. An ordinary `ask` call in `drive.ts` 
 
 Use `--ui-replies` to choose a label or Other, then inspect raw tool details and later Flow answers. State that the stub authored any normalization. Preserve headless non-consent and the separate Ratchet `r.approve` exception.
 
-For presentation regression proof, complete a visible reply in a bound interactive session, retry a failed turn with F5, and cancel with Escape three times. Each aborted `agent_end` adds no Flow card. A later completed, nonempty reply still adds its card. RPC cancellations can establish aborted events but cannot establish physical keyboard behavior. The stock RPC drive stops on an aborted `prompt_result`, so repeated cancellations require a driver that accepts that expected outcome and lets presentation settle.
+For presentation regression proof, run the native `tui`, `cancel`, `timeout`, and `retry` cases above. Completed and aborted turns must add no automatic Flow card. Each authored question round still gets one explicit live link before ordinary `ask`. The retry case must reopen the real picker with its original question identities and no republished round. RPC cancellation can establish an aborted event, but cannot prove physical Escape or F5 behavior.
 
 ### Combined-product proof (`flow-t4`)
 
