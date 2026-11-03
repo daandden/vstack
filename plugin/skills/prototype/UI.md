@@ -93,7 +93,7 @@ Put the switcher in a single shared component so both sub-shapes can reuse it. L
 
 ### 5. Hand it over
 
-In a Flow, publish the actual route as a `runtime: "local-app"` artifact on a prototype Result, with its launch command, source revision, and `?variant=` keys. Keep the app and backend real. If the runtime is absent or iframe embedding is blocked, state that limitation and keep the external launch path. In a Flow, capture a standalone HTML variant's complete bundle for the isolated viewer instead. Present the app URL and, in a Flow, the Flow URL without opening either automatically.
+In a Flow, publish the actual route as a `runtime: "local-app"` artifact on a prototype Result, with its launch command, source revision, and `?variant=` keys. Keep the app and backend real. If the runtime is absent or iframe embedding is blocked, state that limitation and keep the external launch path. In a Flow, capture a standalone HTML variant's complete bundle for the isolated viewer instead. Present the app URL without opening it automatically. Present Flow links only through flow-page's "Every ask in a Flow" contract.
 
 ### 6. Capture the answer and clean up
 

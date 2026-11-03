@@ -1,0 +1,7 @@
+{
+	"memory": { "backend": "off" },
+	"skills": {
+		"ignoredSkills": ["flow-page", "*/flow-page"],
+		"includeSkills": ["vstack-figures"]
+	}
+}

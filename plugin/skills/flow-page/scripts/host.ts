@@ -1,12 +1,11 @@
-import { createHmac, randomBytes } from "node:crypto";
+import { createHash, createHmac, randomBytes } from "node:crypto";
 import { lstatSync, realpathSync, rmSync } from "node:fs";
 import { extname, join, sep } from "node:path";
 import { parseArgs } from "node:util";
 import { scratchRoot } from "../../vstack-tmp/scripts/scratch.ts";
-import { attest, capability, originOf, record, recordPath, same, secrets, version, type HostRecord } from "./live.ts";
+import { attest, capability, originOf, readerBundle, record, recordPath, same, secrets, version, type HostRecord, type Runtimes } from "./live.ts";
 import { SLUG, view, type State } from "./model.ts";
 import { learning } from "./learning.ts";
-import { render, type Runtimes } from "./render.ts";
 import { assetsDir, folderOfId, readState, writeAtomic } from "./store.ts";
 import { observations, observationVersion, observing, type Observations } from "./observations.ts";
 
@@ -17,7 +16,8 @@ const idle = Number(values.idle) * 1000;
 if (!home || !Number.isInteger(port) || !Number.isFinite(idle) || idle <= 0) throw new Error("host needs --home, --port, and positive --idle");
 const secret = secrets(home);
 const instance = randomBytes(16).toString("hex");
-const hostVersion = version();
+const reader = readerBundle();
+const hostVersion = version(reader);
 const origin = originOf(port);
 let active = 0;
 let last = Date.now();
@@ -28,11 +28,17 @@ const headers = {
   "X-Content-Type-Options": "nosniff",
   "Cross-Origin-Resource-Policy": "same-origin",
 };
-const csp = "base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'";
+const shellScripts = [...new TextDecoder().decode(reader.get("index.html")).matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/g)]
+  .filter(([, attrs]) => !/\bsrc=|application\/json/.test(attrs!))
+  .map(([, , body]) => `'sha256-${createHash("sha256").update(body!).digest("base64")}'`);
+const csp = [
+  "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'", "object-src 'none'",
+  `script-src 'self' ${shellScripts.join(" ")}`, "style-src 'self' 'unsafe-inline'", "img-src 'self' data:", "media-src 'self'", "font-src 'self'", "connect-src 'self'",
+].join("; ");
 const response = (body: BodyInit | null, status = 200, extra: Record<string, string> = {}) => new Response(body, { status, headers: { ...headers, ...extra } });
 const missing = () => response("Flow or captured asset is missing or expired.", 404);
 const controlled = (req: Request) => same(req.headers.get("authorization") ?? "", `Bearer ${secret.control}`);
-const mime: Record<string, string> = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif", ".webp": "image/webp", ".svg": "image/svg+xml", ".mp4": "video/mp4", ".webm": "video/webm", ".pdf": "application/pdf" };
+const mime: Record<string, string> = { ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif", ".webp": "image/webp", ".svg": "image/svg+xml", ".mmd": "text/plain; charset=utf-8", ".mp4": "video/mp4", ".webm": "video/webm", ".pdf": "application/pdf" };
 const executableMime: Record<string, string> = { ...mime, ".html": "text/html; charset=utf-8", ".htm": "text/html; charset=utf-8", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css", ".json": "application/json", ".wasm": "application/wasm", ".woff": "font/woff", ".woff2": "font/woff2", ".txt": "text/plain" };
 
 function flowFolder(key: string, id: string): string | undefined {
@@ -155,6 +161,13 @@ async function route(req: Request): Promise<Response> {
     }
     return missing();
   }
+  if (url.pathname.startsWith("/_flow-reader/")) {
+    // Shared reader code, never Flow data: the capability-scoped shell and its endpoints carry every Flow.
+    const bytes = reader.get(url.pathname.slice(1));
+    if (!bytes) return missing();
+    if (req.method !== "GET" && req.method !== "HEAD") return response("Read-only reader.", 405, { Allow: "GET, HEAD" });
+    return response(req.method === "HEAD" ? null : bytes, 200, { "Content-Type": executableMime[extname(url.pathname).toLowerCase()] ?? "application/octet-stream" });
+  }
   if (!["GET", "HEAD", "POST"].includes(req.method)) return response("Unsupported method.", 405);
   const m = url.pathname.match(/^\/f\/([^/]+)\/([^/]+)\/([a-f0-9]{64})(\/.*)?$/);
   if (!m) return missing();
@@ -180,10 +193,14 @@ async function route(req: Request): Promise<Response> {
     return response(JSON.stringify(result.body), result.status, { "Content-Type": "application/json" });
   }
   if (req.method !== "GET" && req.method !== "HEAD") return response("Read-only host.", 405, { Allow: "GET, HEAD" });
-  if (m[4] === "/") return response(req.method === "HEAD" ? null : render(view(s), await runtimes(s, key), observations(folder, key, s)), 200, {
+  if (m[4] === "/") return response(req.method === "HEAD" ? null : reader.get("index.html")!, 200, {
     "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": csp,
     "Set-Cookie": `flow_learning=${progressToken}; Path=${url.pathname}; HttpOnly; SameSite=Strict; Max-Age=31536000`,
   });
+  if (m[4] === "/content") {
+    const content = view(s);
+    return response(req.method === "HEAD" ? null : JSON.stringify({ ...content, questions: [...content.questions.values()], runtimes: await runtimes(s, key) }), 200, { "Content-Type": "application/json" });
+  }
   if (m[4] === "/observations") return response(req.method === "HEAD" ? null : JSON.stringify(observations(folder, key, s)), 200, { "Content-Type": "application/json" });
   if (m[4] === "/events" && req.method === "GET") return eventStream(req, () => {
     const current = folderOfId(dir, id);
@@ -224,7 +241,7 @@ try {
     async fetch(req) {
       active++;
       try { return await route(req); }
-      catch (e) { return (e as NodeJS.ErrnoException).code === "ENOENT" ? missing() : response("Flow presentation is unavailable; use the static page.", 500); }
+      catch (e) { return (e as NodeJS.ErrnoException).code === "ENOENT" ? missing() : response("Flow presentation is unavailable. The committed Flow content is unchanged.", 500); }
       finally { active--; last = Date.now(); }
     },
   });

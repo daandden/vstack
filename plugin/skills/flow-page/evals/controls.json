@@ -1,0 +1,436 @@
+{
+  "version": 1,
+  "controls": [
+    {
+      "id": "original-question-7",
+      "type": "historical-reconstruction",
+      "first_publication": {
+        "version": 1,
+        "items": [
+          {
+            "kind": "topic",
+            "ref": "reading-order",
+            "title": "Creation order is the reader requirement",
+            "summary": "The user wants research and reports to appear where they were created, after earlier grilling questions.",
+            "body": "Raw note on the second-round answers:\n\ncurrently all report, research move to the front of the page, which is not ideal, i prefer i show requence exactly when it created, for example after first grilling, we have a reseasrch, then research should after grilling question\n\nReading: preserve content creation sequence instead of grouping all Results before questions. The user has not yet specified cross-Stage presentation or where later revisions belong.",
+            "sources": [
+              "Conversation: second-round submitNote, preserved verbatim."
+            ]
+          },
+          {
+            "kind": "round",
+            "questions": [
+              {
+                "title": "Should creation order be the main reading order across the whole Flow or only inside each Stage?",
+                "description": "Your research-after-grilling requirement is settled. The remaining choice is whether a reader can follow that sequence across skill runs without switching tabs. A Stage is one skill run, such as grilling or research. A Flow can contain many Stages.",
+                "options": [
+                  {
+                    "label": "One chronological reading stream across the Flow",
+                    "does": "Make creation order across all Stages the main reading experience, with Stage identity retained on content.",
+                    "gains": [
+                      "A grilling question, later research, and subsequent questions can be read in the order they appeared."
+                    ],
+                    "costs": [
+                      "The redesign must provide orientation and filtering without depending on separate Stage tabs as the only reading path."
+                    ]
+                  },
+                  {
+                    "label": "Keep Stage tabs, order each Stage chronologically",
+                    "does": "Keep each skill run as its own reading tab and interleave its Results and questions by creation order.",
+                    "gains": [
+                      "The present Stage separation remains familiar."
+                    ],
+                    "costs": [
+                      "A research Stage between grilling rounds still requires switching tabs to follow the full sequence."
+                    ]
+                  }
+                ],
+                "needs": [
+                  {
+                    "need": "Distinguish a Flow-wide chronological reading mode from retaining separate Stage reading tabs.",
+                    "kind": "prose"
+                  }
+                ],
+                "ref": "decision",
+                "topics": [
+                  "reading-order"
+                ],
+                "today": [
+                  {
+                    "text": "Each Stage currently has its own tab; the Overview and Stage tree link between them.",
+                    "source": "plugin/skills/flow-page/scripts/render.ts:635-643,655-676"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "original-question-8",
+      "type": "historical-reconstruction",
+      "first_publication": {
+        "version": 1,
+        "items": [
+          {
+            "kind": "topic",
+            "ref": "reading-order",
+            "title": "Creation order is the reader requirement",
+            "summary": "The user wants research and reports to appear where they were created, after earlier grilling questions.",
+            "body": "Raw note on the second-round answers:\n\ncurrently all report, research move to the front of the page, which is not ideal, i prefer i show requence exactly when it created, for example after first grilling, we have a reseasrch, then research should after grilling question\n\nReading: preserve content creation sequence instead of grouping all Results before questions. The user has not yet specified cross-Stage presentation or where later revisions belong.",
+            "sources": [
+              "Conversation: second-round submitNote, preserved verbatim."
+            ]
+          },
+          {
+            "kind": "round",
+            "questions": [
+              {
+                "title": "When earlier content is answered or revised, should the update create a new chronological entry?",
+                "description": "Creation order alone does not settle later changes. For example, an earlier question may receive an answer after a research Result has appeared. The original content can stay in its original place in either option; the choice is how readers discover its later answer or revision.",
+                "options": [
+                  {
+                    "label": "Update the original block in place",
+                    "does": "Keep answers with their questions and the latest Result at its original creation position, with accessible revision history.",
+                    "gains": [
+                      "The page stays concise and avoids repeating content."
+                    ],
+                    "costs": [
+                      "Creation order is not a complete activity history; readers may not notice a later update far above their position."
+                    ]
+                  },
+                  {
+                    "label": "Add a linked update entry at the later position",
+                    "does": "Retain the original block and append a concise answer or revision event where the update happened.",
+                    "gains": [
+                      "The sequence explains when a later decision or correction became available."
+                    ],
+                    "costs": [
+                      "The reader must distinguish original content from update notices; full content should not be duplicated."
+                    ]
+                  }
+                ],
+                "needs": [
+                  {
+                    "need": "Distinguish updating an original block in place from adding a later linked update notice.",
+                    "kind": "prose"
+                  }
+                ],
+                "ref": "decision",
+                "topics": [
+                  "reading-order"
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "wrong-locality",
+      "type": "authored-control",
+      "first_publication": {
+        "version": 1,
+        "items": [
+          {
+            "kind": "attachment",
+            "ref": "diagram",
+            "type": "mermaid",
+            "path": "${figures}/stream-versus-tabs.mmd",
+            "focus": ["a2", "b2"],
+            "caption": "Hypothetical reading-order comparison, intentionally controlled for evaluation.",
+            "origin": "#311 fixed inadequate-diagram control; Mermaid source from evals/figures, drawn by the reader's Pele."
+          },
+          {
+            "kind": "background",
+            "title": "Reading-order context",
+            "summary": "Hypothetical cross-Stage reading example.",
+            "sections": [
+              {
+                "heading": "Scenario",
+                "body": "A grilling question is followed by research and a subsequent question."
+              }
+            ],
+            "sources": [
+              "#311 control fixture"
+            ],
+            "figures": [
+              {
+                "attachment": "diagram"
+              }
+            ]
+          },
+          {
+            "kind": "round",
+            "questions": [
+              {
+                "title": "Should creation order be the main reading order across the whole Flow or only inside each Stage?",
+                "description": "Your research-after-grilling requirement is settled. The remaining choice is whether a reader can follow that sequence across skill runs without switching tabs. A Stage is one skill run, such as grilling or research. A Flow can contain many Stages.",
+                "options": [
+                  {
+                    "label": "One chronological reading stream across the Flow",
+                    "does": "Make creation order across all Stages the main reading experience, with Stage identity retained on content.",
+                    "gains": [
+                      "A grilling question, later research, and subsequent questions can be read in the order they appeared."
+                    ],
+                    "costs": [
+                      "The redesign must provide orientation and filtering without depending on separate Stage tabs as the only reading path."
+                    ]
+                  },
+                  {
+                    "label": "Keep Stage tabs, order each Stage chronologically",
+                    "does": "Keep each skill run as its own reading tab and interleave its Results and questions by creation order.",
+                    "gains": [
+                      "The present Stage separation remains familiar."
+                    ],
+                    "costs": [
+                      "A research Stage between grilling rounds still requires switching tabs to follow the full sequence."
+                    ]
+                  }
+                ],
+                "needs": [
+                  {
+                    "need": "Distinguish a Flow-wide chronological reading mode from retaining separate Stage reading tabs.",
+                    "kind": "prose"
+                  }
+                ],
+                "ref": "decision"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "missing-distinction",
+      "type": "authored-control",
+      "first_publication": {
+        "version": 1,
+        "items": [
+          {
+            "kind": "attachment",
+            "ref": "diagram",
+            "type": "mermaid",
+            "path": "${figures}/missing-distinction.mmd",
+            "focus": ["R"],
+            "caption": "Hypothetical reading-order comparison, intentionally controlled for evaluation.",
+            "origin": "#311 fixed inadequate-diagram control; Mermaid source from evals/figures, drawn by the reader's Pele."
+          },
+          {
+            "kind": "round",
+            "questions": [
+              {
+                "title": "Should creation order be the main reading order across the whole Flow or only inside each Stage?",
+                "description": "Your research-after-grilling requirement is settled. The remaining choice is whether a reader can follow that sequence across skill runs without switching tabs. A Stage is one skill run, such as grilling or research. A Flow can contain many Stages.",
+                "options": [
+                  {
+                    "label": "One chronological reading stream across the Flow",
+                    "does": "Make creation order across all Stages the main reading experience, with Stage identity retained on content.",
+                    "gains": [
+                      "A grilling question, later research, and subsequent questions can be read in the order they appeared."
+                    ],
+                    "costs": [
+                      "The redesign must provide orientation and filtering without depending on separate Stage tabs as the only reading path."
+                    ]
+                  },
+                  {
+                    "label": "Keep Stage tabs, order each Stage chronologically",
+                    "does": "Keep each skill run as its own reading tab and interleave its Results and questions by creation order.",
+                    "gains": [
+                      "The present Stage separation remains familiar."
+                    ],
+                    "costs": [
+                      "A research Stage between grilling rounds still requires switching tabs to follow the full sequence."
+                    ]
+                  }
+                ],
+                "needs": [
+                  {
+                    "need": "Compare a single Flow stream with reading the same publications in separate Stage tabs.",
+                    "kind": "scenario"
+                  }
+                ],
+                "ref": "decision",
+                "figures": [
+                  {
+                    "attachment": "diagram",
+                    "kind": "scenario"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "unreadable",
+      "type": "authored-control",
+      "first_publication": {
+        "version": 1,
+        "items": [
+          {
+            "kind": "attachment",
+            "ref": "diagram",
+            "type": "mermaid",
+            "path": "${figures}/unreadable.mmd",
+            "focus": ["a1"],
+            "caption": "Hypothetical reading-order comparison, intentionally controlled for evaluation.",
+            "origin": "#311 fixed inadequate-diagram control; Mermaid source from evals/figures, drawn by the reader's Pele."
+          },
+          {
+            "kind": "round",
+            "questions": [
+              {
+                "title": "Should creation order be the main reading order across the whole Flow or only inside each Stage?",
+                "description": "Your research-after-grilling requirement is settled. The remaining choice is whether a reader can follow that sequence across skill runs without switching tabs. A Stage is one skill run, such as grilling or research. A Flow can contain many Stages.",
+                "options": [
+                  {
+                    "label": "One chronological reading stream across the Flow",
+                    "does": "Make creation order across all Stages the main reading experience, with Stage identity retained on content.",
+                    "gains": [
+                      "A grilling question, later research, and subsequent questions can be read in the order they appeared."
+                    ],
+                    "costs": [
+                      "The redesign must provide orientation and filtering without depending on separate Stage tabs as the only reading path."
+                    ]
+                  },
+                  {
+                    "label": "Keep Stage tabs, order each Stage chronologically",
+                    "does": "Keep each skill run as its own reading tab and interleave its Results and questions by creation order.",
+                    "gains": [
+                      "The present Stage separation remains familiar."
+                    ],
+                    "costs": [
+                      "A research Stage between grilling rounds still requires switching tabs to follow the full sequence."
+                    ]
+                  }
+                ],
+                "needs": [
+                  {
+                    "need": "Compare a single Flow stream with reading the same publications in separate Stage tabs.",
+                    "kind": "scenario"
+                  }
+                ],
+                "ref": "decision",
+                "figures": [
+                  {
+                    "attachment": "diagram",
+                    "kind": "scenario"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "late-repair",
+      "type": "authored-control",
+      "first_publication": {
+        "version": 1,
+        "items": [
+          {
+            "kind": "round",
+            "questions": [
+              {
+                "title": "Should creation order be the main reading order across the whole Flow or only inside each Stage?",
+                "description": "Your research-after-grilling requirement is settled. The remaining choice is whether a reader can follow that sequence across skill runs without switching tabs. A Stage is one skill run, such as grilling or research. A Flow can contain many Stages.",
+                "options": [
+                  {
+                    "label": "One chronological reading stream across the Flow",
+                    "does": "Make creation order across all Stages the main reading experience, with Stage identity retained on content.",
+                    "gains": [
+                      "A grilling question, later research, and subsequent questions can be read in the order they appeared."
+                    ],
+                    "costs": [
+                      "The redesign must provide orientation and filtering without depending on separate Stage tabs as the only reading path."
+                    ]
+                  },
+                  {
+                    "label": "Keep Stage tabs, order each Stage chronologically",
+                    "does": "Keep each skill run as its own reading tab and interleave its Results and questions by creation order.",
+                    "gains": [
+                      "The present Stage separation remains familiar."
+                    ],
+                    "costs": [
+                      "A research Stage between grilling rounds still requires switching tabs to follow the full sequence."
+                    ]
+                  }
+                ],
+                "needs": [
+                  {
+                    "need": "Distinguish a Flow-wide chronological reading mode from retaining separate Stage reading tabs.",
+                    "kind": "prose"
+                  }
+                ],
+                "ref": "decision"
+              }
+            ]
+          }
+        ]
+      },
+      "later_repair": {
+        "version": 1,
+        "items": [
+          {
+            "kind": "attachment",
+            "ref": "repair-diagram",
+            "type": "mermaid",
+            "path": "${figures}/stream-versus-tabs.mmd",
+            "focus": ["a2", "b2"],
+            "caption": "Hypothetical reading-order comparison, intentionally controlled for evaluation.",
+            "origin": "#311 fixed inadequate-diagram control; Mermaid source from evals/figures, drawn by the reader's Pele."
+          },
+          {
+            "kind": "round",
+            "questions": [
+              {
+                "title": "Should creation order be the main reading order across the whole Flow or only inside each Stage?",
+                "description": "Your research-after-grilling requirement is settled. The remaining choice is whether a reader can follow that sequence across skill runs without switching tabs. A Stage is one skill run, such as grilling or research. A Flow can contain many Stages.",
+                "options": [
+                  {
+                    "label": "One chronological reading stream across the Flow",
+                    "does": "Make creation order across all Stages the main reading experience, with Stage identity retained on content.",
+                    "gains": [
+                      "A grilling question, later research, and subsequent questions can be read in the order they appeared."
+                    ],
+                    "costs": [
+                      "The redesign must provide orientation and filtering without depending on separate Stage tabs as the only reading path."
+                    ]
+                  },
+                  {
+                    "label": "Keep Stage tabs, order each Stage chronologically",
+                    "does": "Keep each skill run as its own reading tab and interleave its Results and questions by creation order.",
+                    "gains": [
+                      "The present Stage separation remains familiar."
+                    ],
+                    "costs": [
+                      "A research Stage between grilling rounds still requires switching tabs to follow the full sequence."
+                    ]
+                  }
+                ],
+                "needs": [
+                  {
+                    "need": "Compare the Flow stream and Stage tab reading routes for Q1, research, and Q2.",
+                    "kind": "scenario"
+                  }
+                ],
+                "ref": "repaired-decision",
+                "again": "${first_question_id}",
+                "figures": [
+                  {
+                    "attachment": "repair-diagram",
+                    "kind": "scenario"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

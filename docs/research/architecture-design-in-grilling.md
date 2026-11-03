@@ -30,9 +30,9 @@ For this workflow, the useful distinction is between a choice that changes share
 
 ### Significance depends on the system and its stakeholders
 
-In *Who Needs an Architect?*, Martin Fowler discusses Ralph Johnson's account of architecture as the developers' shared understanding of important design. Fowler contrasts the importance of persistence in enterprise applications with its potentially minor role in medical imaging. His later *Software Architecture Guide* repeats that determining what matters is central to architectural thinking. [S2, pages 1–2](https://martinfowler.com/ieeeSoftware/whoNeedsArchitect.pdf), [S3, “What is architecture?”](https://martinfowler.com/architecture/)
+In *Who Needs an Architect?*, Martin Fowler discusses Ralph Johnson's account of architecture as the developers' shared understanding of important design. Fowler contrasts the importance of persistence in enterprise applications with its potentially minor role in medical imaging. His later *Software Architecture Guide* repeats that determining what matters is central to architectural thinking. [S2, pages 1–2](https://martinfowler.com/ieeeSoftware/whoNeedsArchitect.pdf), [S3, "What is architecture?"](https://martinfowler.com/architecture/)
 
-This supports a contextual assessment, not a universal list of technologies that always demand design. “Database,” “security,” “new module,” and “performance” name subjects to inspect. They do not establish that the user faces an unsettled architectural choice.
+This supports a contextual assessment, not a universal list of technologies that always demand design. "Database," "security," "new module," and "performance" name subjects to inspect. They do not establish that the user faces an unsettled architectural choice.
 
 Fowler also examines architecture as decisions people perceive as hard to change. His schema-migration example shows that engineering can reduce that difficulty. He does not establish irreversibility as a necessary condition for every important decision. [S2, pages 2–3](https://martinfowler.com/ieeeSoftware/whoNeedsArchitect.pdf)
 
@@ -42,13 +42,13 @@ For the proposed policy, reversal cost is evidence of consequence. It is neither
 
 Bachmann, Bass, and Klein's SEI report distinguishes general scenarios from system-specific concrete scenarios. Section 2.1 gives six parts: the stimulus, its source, the environment, the stimulated artifact, the response, and the response measure. The report connects those requirements to architectural tactics and design fragments. [S4, section 2.1, printed pages 5–6](https://sei.cmu.edu/documents/704/2003_005_001_14213.pdf)
 
-For an interview, this suggests asking what happens, under which conditions, to which part of the system, and what outcome counts as acceptable. “It must scale” does not yet identify a useful choice. A known workload, a required response, or a reasoned failure scenario can do so. Measurements and limits must come from the project or the user, not from an invented threshold.
+For an interview, this suggests asking what happens, under which conditions, to which part of the system, and what outcome counts as acceptable. "It must scale" does not yet identify a useful choice. A known workload, a required response, or a reasoned failure scenario can do so. Measurements and limits must come from the project or the user, not from an invented threshold.
 
 The six-part scenario is a reasoning aid here, not a required form for every change. A clear requirement that acknowledged writes survive a process crash can identify a durability obligation without an arbitrary numerical target.
 
 ### Significant decisions need rationale, not exhaustive specifications
 
-Michael Nygard's original architecture decision record article identifies decisions affecting structure, non-functional characteristics, dependencies, interfaces, or construction techniques as architecturally significant. Each record captures context, one decision, status, and consequences. The article explicitly says that not all decisions occur at project start and allows decisions to be superseded. [S5, “Decision” and “Consequences”](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions)
+Michael Nygard's original architecture decision record article identifies decisions affecting structure, non-functional characteristics, dependencies, interfaces, or construction techniques as architecturally significant. Each record captures context, one decision, status, and consequences. The article explicitly says that not all decisions occur at project start and allows decisions to be superseded. [S5, "Decision" and "Consequences"](https://cognitect.com/blog/2011/11/15/documenting-architecture-decisions)
 
 This is a useful classification of subjects and a model for preserving why a choice was made. It does not mean every interface edit requires an interview or an ADR. That filtering rule would be our policy, not Nygard's. This research creates no ADR.
 
@@ -56,17 +56,17 @@ This is a useful classification of subjects and a model for preserving why a cho
 
 These are proposed working meanings for this decision boundary, not new glossary entries.
 
-**Architecture-significant choice.** A design choice whose consequences matter to the system's organization, shared contracts, ability to meet an important quality requirement, or construction and operation. Its importance is explained through an affected requirement, shared assumption, or dependency, not asserted through the word “architecture.”
+**Architecture-significant choice.** A design choice whose consequences matter to the system's organization, shared contracts, ability to meet an important quality requirement, or construction and operation. Its importance is explained through an affected requirement, shared assumption, or dependency, not asserted through the word "architecture."
 
 **Consequential unsettled choice.** An architecture-significant choice that existing decisions, requirements, and applicable patterns do not already settle. Plausible alternatives produce a difference the user or responsible stakeholders need to understand before implementation commits to one. If the constraints permit only one viable approach, an unagreed consequence can still need explanation and agreement. There is no reason to invent another candidate.
 
-**Implementation detail.** A choice that the implementing agent can make within agreed responsibilities, contracts, and quality constraints, without changing another module's assumptions or the agreed outcomes. “Private” is a claim about effects, not visibility keywords. A private function that determines tenant isolation is not automatically an implementation detail.
+**Implementation detail.** A choice that the implementing agent can make within agreed responsibilities, contracts, and quality constraints, without changing another module's assumptions or the agreed outcomes. "Private" is a claim about effects, not visibility keywords. A private function that determines tenant isolation is not automatically an implementation detail.
 
 **Architecture assessment.** The brief determination of whether a consequential unsettled choice exists. Every change gets an assessment, but most need no separate design artifact. The assessment can cite the applicable pattern and say that no new architecture choice remains.
 
 **Architecture design discussion.** The proportionate explanation and comparison needed to settle an identified choice. It produces agreed responsibilities, interactions, constraints, trade-offs, and rationale. It does not require code-shaped sketches.
 
-The local [codebase-design vocabulary](../../plugin/skills/codebase-design/SKILL.md#glossary) already provides the terms *module*, *interface*, and *seam*. A module is scale-independent. An interface includes invariants, ordering, failures, configuration, and performance properties. A seam is where behavior can vary. Those meanings support high-level contracts without prescribing signatures. Source terminology such as C4 “component” retains its source-specific meaning and is not a replacement for the local term *module*.
+The local [codebase-design vocabulary](../../plugin/skills/codebase-design/SKILL.md#glossary) already provides the terms *module*, *interface*, and *seam*. A module is scale-independent. An interface includes invariants, ordering, failures, configuration, and performance properties. A seam is where behavior can vary. Those meanings support high-level contracts without prescribing signatures. Source terminology such as C4 "component" retains its source-specific meaning and is not a replacement for the local term *module*.
 
 ## When assessment should expand into design
 
@@ -79,7 +79,7 @@ The following are candidate triggers, not independent mandatory checkboxes. A tr
 - A quality requirement creates a meaningful trade-off. Evidence or a credible scenario links the requirement to competing designs with different security, availability, latency, resource, or maintenance consequences.
 - The work conflicts with an existing decision or pattern. Following it and departing from it have materially different consequences that the current requirements do not settle.
 
-A useful explanation connects the effect to the decision: “Acknowledging the request before durable storage changes what success means after a crash. We have not agreed whether that is acceptable.” That is more defensible than “This touches persistence, so we need architecture.”
+A useful explanation connects the effect to the decision: "Acknowledging the request before durable storage changes what success means after a crash. We have not agreed whether that is acceptable." That is more defensible than "This touches persistence, so we need architecture."
 
 Hard-to-reverse data changes, external commitments, and coordination costs strengthen the case for early agreement. Easy reversal does not remove an immediate data-loss or security consequence. Conversely, choosing a hard-to-reverse identifier may need careful product agreement without requiring a comparison of system structures.
 
@@ -93,7 +93,7 @@ The proposed policy skips expansion when the evidence shows that:
 - A rename, generated update, or other mechanical edit preserves behavior and contracts, even across many files.
 - The uncertainty concerns repository facts rather than competing designs. The next useful action is a source read or a bounded investigation.
 
-“Skip design” does not mean “skip requirements, risk assessment, or implementation verification.” It means that another architecture comparison would add no decision value.
+"Skip design" does not mean "skip requirements, risk assessment, or implementation verification." It means that another architecture comparison would add no decision value.
 
 ## Concrete examples
 
@@ -106,17 +106,17 @@ These examples illustrate the proposed policy. They are not claims about defects
 | A persistence module receives a new field using the established additive migration pattern. Existing compatibility and retention rules apply unchanged. | Skip expansion after citing that pattern and checking that its assumptions hold. Persistence is involved, but the architecture choice is already settled. |
 | A mechanical symbol rename updates many files and callers without changing responsibilities or behavior. | Skip expansion. File count measures edit spread, not architectural significance. |
 | A feature adds another report through an existing report module, renderer, and storage pattern. It preserves the same failure and access rules. | Skip expansion after grounding that fit. A new user-visible capability does not by itself introduce a new architecture fork. |
-| A developer proposes a distributed cache because the feature “may need to be fast.” There is no workload, target, measurement, or credible bottleneck analysis. | Do not treat the cache as a necessary architecture decision. Clarify the performance requirement and gather relevant evidence. If nothing establishes a need, retain the existing design rather than invent a scalability problem. |
+| A developer proposes a distributed cache because the feature "may need to be fast." There is no workload, target, measurement, or credible bottleneck analysis. | Do not treat the cache as a necessary architecture decision. Clarify the performance requirement and gather relevant evidence. If nothing establishes a need, retain the existing design rather than invent a scalability problem. |
 | A new latency requirement conflicts with measured behavior of the current synchronous path. A background job changes completion semantics, while a synchronous alternative increases resource cost. | Expand. The evidence connects an actual quality requirement to a trade-off the user needs to understand. |
 | A performance requirement exists before code or measurements do. A documented workload and external deadline make the current proposed design's capacity assumptions questionable. | Assess through analysis or a bounded experiment. Lack of production measurements does not invalidate a credible requirement. Expand when that evidence exposes an unsettled design trade-off. |
 | Greenfield work can run as a local tool or a hosted multi-user system. Ownership, persistence, and operational expectations differ. | Expand around those consequences. No existing implementation is needed for architectural significance. Establish the relevant context rather than forcing an investigation of nonexistent code. |
-| A greenfield single-user utility has agreed local-only behavior and no durable state. A standard project pattern supplies its structure. | Assess, then skip a larger design exercise if that pattern satisfies the actual requirements. “Greenfield” does not mandate services, layers, or diagrams. |
+| A greenfield single-user utility has agreed local-only behavior and no durable state. A standard project pattern supplies its structure. | Assess, then skip a larger design exercise if that pattern satisfies the actual requirements. "Greenfield" does not mandate services, layers, or diagrams. |
 | An agent extracts a private helper inside a module while preserving its interface and quality constraints. | Leave the extraction to implementation. Expand only if inspection reveals that the supposed helper takes on a shared responsibility or changes an important guarantee. |
 | A provider replacement conforms to an existing interface but changes data residency or outage behavior. | Treat the operational or data consequence as significant. Compare it if unsettled. Matching method signatures does not establish equivalence. |
 
 ## Missing evidence is not an automatic architecture exercise
 
-An interviewer should distinguish an unknown fact from an undecided preference or trade-off. “We have not read the persistence code” calls for grounding. “Both approaches satisfy the data rules but assign recovery to different operators” identifies a decision.
+An interviewer should distinguish an unknown fact from an undecided preference or trade-off. "We have not read the persistence code" calls for grounding. "Both approaches satisfy the data rules but assign recovery to different operators" identifies a decision.
 
 Evidence need not be a production benchmark. Relevant evidence can include existing code and tests, accepted decisions, an incident, a contractual obligation, a threat scenario, or a quality-attribute analysis. A proposal that simply names a possible future problem is weaker than evidence that connects a real requirement to the proposed change.
 
@@ -132,7 +132,7 @@ For this interview, the proposed policy is to draw the smallest view that makes 
 
 - A context view explains affected actors, external systems, and trust relationships.
 - A module responsibility and dependency sketch explains competing ownership or seam placement. It need not be a formal C4 diagram.
-- A container view explains separately running applications and data stores. In C4, “container” does not mean only a Docker container. [S7](https://c4model.com/diagrams/container)
+- A container view explains separately running applications and data stores. In C4, "container" does not mean only a Docker container. [S7](https://c4model.com/diagrams/container)
 - A dynamic or sequence view explains ordering, acknowledgment, failure, or recovery when a static sketch would conceal the difference. C4 recommends dynamic diagrams sparingly for interactions that warrant them. [S9](https://c4model.com/diagrams/dynamic)
 - A deployment view explains environment-specific placement, replication, or isolation when those are the choice. A container view alone does not communicate those deployment details. [S7](https://c4model.com/diagrams/container), [S10](https://c4model.com/diagrams/deployment)
 
@@ -184,7 +184,7 @@ The [local rejection of pstack architect](../../decision-register.yaml#L280-L287
 
 At upstream commit `e73df471cd4bd918367e99f3dd9c51bd53ddf5f0`, [pstack architect](https://github.com/cursor/plugins/blob/e73df471cd4bd918367e99f3dd9c51bd53ddf5f0/pstack/skills/architect/SKILL.md) contributes useful ideas: ground the existing system, examine structurally different candidates, explain trade-offs, and reconsider a design when implementation contradicts its assumptions. Its default proceeds into implementation without a human checkpoint, and its sketches prescribe types and signatures. Those defaults do not fit this request. Borrowing its reasoning does not authorize importing its implementation phase, code scaffolds, model choices, or mandatory alternative generation.
 
-The current [to-spec contract](../../plugin/skills/to-spec/SKILL.md) says to synthesize existing conversation rather than interview. It also explicitly asks for seam confirmation and, for changes spanning modules, a capability map of responsibilities, dependencies, and build order. Real module-split forks can enter that confirmation. Thus, “synthesis-only” is the intended division of work, not a claim that the current skill has no questions or design-related content.
+The current [to-spec contract](../../plugin/skills/to-spec/SKILL.md) says to synthesize existing conversation rather than interview. It also explicitly asks for seam confirmation and, for changes spanning modules, a capability map of responsibilities, dependencies, and build order. Real module-split forks can enter that confirmation. Thus, "synthesis-only" is the intended division of work, not a claim that the current skill has no questions or design-related content.
 
 The recommended division keeps consequential architecture discovery and agreement before to-spec. To-spec can express the agreed direction, arrange its capability map, and confirm high-level test seams without becoming a second architecture interview. A newly discovered consequential fork is a shared-understanding gap to resolve upstream, not an invitation to invent the decision in the spec. This is a proposed responsibility split. No skill, decision-register entry, glossary, or ADR changes in this research run.
 

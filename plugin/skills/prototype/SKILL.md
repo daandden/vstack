@@ -27,12 +27,12 @@ In a Flow, publish a `prototype` Result with a declarative `demo` or a runnable 
 
 In a Flow, put the design question, walkthrough steps, observed evidence, limitations, and throwaway notice in a Document Result beside the prototype. Use Comparison for competing variants and Metrics for measurements. Attach the screenshots and raw script output. Keep the actual source and capture paths required below. The Flow page is the reading document, not a second report page or the canonical implementation.
 
-Put real questions through `flow_ask` under `skill://flow-page`'s "Every ask in a Flow" contract when enrolled, or plain `ask` outside a Flow, never through a prototype button. Demo state remains browser-local and authorizes nothing.
+Put real questions through `ask` under `skill://flow-page`'s "Every ask in a Flow" contract when enrolled, or plain `ask` outside a Flow, never through a prototype button. Demo state remains browser-local and authorizes nothing.
 
 ## Rules that apply to all three
 
 1. **Throwaway from day one, and clearly marked as such.** Locate the prototype code close to where it will actually be used (next to the module or page it's prototyping for) so context is obvious, but name it so a casual reader can see it's a prototype, not production. For throwaway UI routes, obey whatever routing convention the project already uses; don't invent a new top-level structure. In Private mode, the location is different: see [Private mode](#private-mode).
-2. **Trivial to run.** A declarative logic demo runs on the Flow page, including its static export. A runnable UI, HTML demo, or behavior script keeps one real launch command. The page host never starts the app for you.
+2. **Trivial to run.** A declarative logic demo runs on the Flow page. A runnable UI, HTML demo, or behavior script keeps one real launch command. The page host never starts the app for you.
 3. **No application persistence by default.** Use in-memory state. Flow demos may resume browser-local exploration, which is not workflow history. If the question explicitly involves a database, use a scratch DB or local file clearly marked "PROTOTYPE, wipe me".
 4. **Skip the polish.** No tests, no error handling beyond what makes the prototype _runnable_, no abstractions. The point is to learn something fast.
 5. **Surface the state.** After every action (logic) or on every variant switch (UI), print or render the full relevant state so the user can see what changed.
@@ -60,7 +60,7 @@ A self-contained prototype (a single HTML file, or a script that needs nothing f
 
 ## Reply
 
-In a Flow, publish the following handover parts as Results, then summarize them in the reply with the Flow URL. Outside a Flow, deliver every part in chat. Keep the runnable artifact, route, and source capture available through the contracts above.
+In a Flow, publish the following handover parts as Results, then summarize them in the reply without a Flow link. Outside a Flow, deliver every part in chat. Keep the runnable artifact, route, and source capture available through the contracts above.
 
 - Variants: what each variant is and how to open it. For an app-bound prototype, the URL with its `?variant=` keys and the one command that restarts the dev server.
 - Evidence: the screenshots for UI, the walkthrough results for LOGIC, or the observed output or timing for BEHAVIOR, with the paths of the evidence files.

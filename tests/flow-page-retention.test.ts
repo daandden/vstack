@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpath
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { ENV, git } from "./support/fixture.ts";
+import { storedFolder } from "./support/flow-store.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
 const CLEAN = join(import.meta.dir, "..", "plugin", "skills", "vstack-tmp", "scripts", "clean.ts");
@@ -53,7 +54,7 @@ const RESULT = contribution({ kind: "result", shape: "cards", title: "Late", ent
 function finishedFlow(w: ReturnType<typeof world>, session = "s-1") {
   const o = ok(run(["open", "--title", "Retention proof", "--skill", "explain"], w.at, session));
   ok(run(["submit"], w.at, session, contribution({ kind: "result", ref: "r", shape: "cards", title: "Findings", entries: [card("a")] }, FINISH)));
-  return { ...o, folder: dirname(o.page) };
+  return { ...o, folder: storedFolder(w.at.home, o.flow) };
 }
 const lifecycleTime = (at: At, flow: string): number => Date.parse(ok(run(["show", "--flow", flow], at)).lifecycle.at(-1).time);
 
@@ -92,11 +93,11 @@ test("an open Flow is never listed or deleted, however old its files are", () =>
   const del = ok(clean(w.at, opened, 500, "--older-than", "1d", "--delete", f.folder));
   expect(del.deleted).toEqual([]);
   expect(del.skipped.map((s: { path: string }) => s.path)).toEqual([f.folder]);
-  expect(existsSync(f.page)).toBe(true);
+  expect(existsSync(f.folder)).toBe(true);
   expect(ok(run(["show", "--flow", f.flow], w.at)).flow.id).toBe(f.flow);
 });
 
-test("a closed Flow becomes eligible 90 days after its close, whatever its file times or page reads say", () => {
+test("a closed Flow becomes eligible 90 days after its close, whatever its file times or reads say", () => {
   const w = world();
   const f = finishedFlow(w);
   const closed = ok(run(["close", "--flow", f.flow], w.at));
@@ -108,7 +109,7 @@ test("a closed Flow becomes eligible 90 days after its close, whatever its file 
   expect(listed(clean(w.at, at, 89))).not.toContain(f.folder);
   expect(ok(clean(w.at, at, 89, "--delete", f.folder)).deleted).toEqual([]);
 
-  for (const read of [["show", "--flow", f.flow], ["find", `slug:${ok(run(["show", "--flow", f.flow], w.at)).flow.slug}`], ["render", "--flow", f.flow]]) ok(run(read, w.at));
+  for (const read of [["show", "--flow", f.flow], ["find", `slug:${ok(run(["show", "--flow", f.flow], w.at)).flow.slug}`]]) ok(run(read, w.at));
   expect(lifecycleTime(w.at, f.flow)).toBe(at);
   touchAll(f.folder, at + 90 * DAY);
   const due = ok(clean(w.at, at, 91));
@@ -159,10 +160,10 @@ test("reopening adds a Stage, keeps the history, and protects the Flow again unt
   expect(listed(clean(w.at, lifecycleTime(w.at, f.flow), 91))).toContain(f.folder);
 });
 
-test("an expired Flow goes with its page, data, and captured files, and its identity reports the loss instead of starting empty", () => {
+test("an expired Flow goes with its data and captured files, and its identity reports the loss instead of starting empty", () => {
   const w = world();
   const opened = ok(run(["open", "--title", "Retention proof", "--skill", "explain"], w.at, "s-1"));
-  const f = { ...opened, folder: dirname(opened.page) };
+  const f = { ...opened, folder: storedFolder(w.at.home, opened.flow) };
   writeFileSync(join(w.project, "captured.bin"), "evidence");
   ok(run(["submit"], w.at, "s-1", contribution(
     { kind: "attachment", ref: "proof", type: "file", caption: "Retained evidence", origin: "project", path: "captured.bin" },
@@ -183,7 +184,7 @@ test("an expired Flow goes with its page, data, and captured files, and its iden
   expect(existsSync(late)).toBe(false);
 
   const never = run(["find", "never-seen-000000"], w.at);
-  for (const args of [["find", f.flow], ["show", "--flow", f.flow], ["render", "--flow", f.flow], ["open", "--flow", f.flow, "--skill", "explain"], ["reopen", "--flow", f.flow, "--skill", "explain"], ["submit", "--flow", f.flow, "--stage", f.stage]]) {
+  for (const args of [["find", f.flow], ["show", "--flow", f.flow], ["open", "--flow", f.flow, "--skill", "explain"], ["reopen", "--flow", f.flow, "--skill", "explain"], ["submit", "--flow", f.flow, "--stage", f.stage]]) {
     const r = run(args, w.at, "s-1", RESULT);
     expect(r.code).toBe(1);
     expect(r.stdout).toBe("");

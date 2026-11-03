@@ -3,7 +3,7 @@ name: grilling
 description: Grill the user relentlessly about a plan, decision, or idea. Use when the user wants to stress-test their thinking, or uses any 'grill' trigger phrases.
 ---
 
-Interview the user through `flow_ask` in a Flow, or plain `ask` outside one, until you reach a shared understanding. Map a design tree: every decision branches into the decisions that depend on it. Work in rounds. The frontier contains every decision whose prerequisites are settled. A question that depends on an open decision waits for a later round.
+Interview the user through `ask`, following flow-page's "Every ask in a Flow" contract when enrolled, until you reach a shared understanding. Map a design tree: every decision branches into the decisions that depend on it. Work in rounds. The frontier contains every decision whose prerequisites are settled. A question that depends on an open decision waits for a later round.
 
 Follow `skill://flow-page`'s "Stage entry/exit line" for a grilling run. When a producer uses this reference only as its interviewing procedure, its own run owns the decisions and close.
 
@@ -36,7 +36,7 @@ A note, Other text, or pushback that names an Assumed decision reopens it, whate
 ## Each round in a Flow
 
 1. Prepare the newly settled `assumed` items followed by one complete `round` containing every other frontier decision and its visuals. If the whole frontier is settled without questions, submit only the Assumed items and recompute the frontier.
-2. Deliver that contribution through flow-page's "Every ask in a Flow" contract with one `flow_ask` call. Wait for the response before advancing dependent decisions.
+2. Publish that complete contribution through the Flow CLI under flow-page's "Every ask in a Flow" contract. Verify current live serving and show the live URL in chat before calling `ask` with the receipt's generated questions. Wait for the response before advancing dependent decisions.
 3. Record an `answer` for each question through that common contract, preserving the user's words separately from your interpretation:
    - Preserve cancellations, timeouts, empty and headless responses, including any automatic picks, as non-consent. Their decisions remain open.
    - An explicit pick settles its decision. A note beside a pick does not undo it; reply to the note in a Document Result or open a new frontier question when needed.
@@ -53,4 +53,4 @@ An empty frontier means every branch was visited and no decision remains silentl
 
 The user's next prompt confirms the summary or pushes back. A pushback reopens the named decisions. In a Flow, open a new Stage with `--parent` when the earlier Stage is finished, and use `again` for its named questions or `reopens` for its Assumed picks. Keep the earlier record intact. A calling skill that acts after the grill, such as triage's or wayfinder's tracker writes, acts only after a next prompt confirms the summary. Finishing a Stage is not authorization.
 
-When `flow_ask` is unavailable in a Flow, report the reason and stop actions that need user confirmation, such as a tracker write. In a headless run, record any substituted recommendation as headless non-consent, not as the user's answer. In a Flow, use `response: { status: "headless", picks: [...] }`, add "Headless, not user-confirmed" to the close's `extra`, and finish with a `retire` reason for each unresolved question. Outside a Flow, state "Headless, not user-confirmed" and name every unresolved question in chat. Report each action not taken. A subagent returns open decisions to the top-level agent and never claims user confirmation.
+When publication, live serving, or `ask` is unavailable in a Flow, preserve the actual receipt and error, report the reason, and stop actions that need user confirmation, such as a tracker write. Leave recoverable work in progress until it completes or is deliberately abandoned. In a headless run, record any substituted recommendation as headless non-consent, not as the user's answer. In a Flow, use `response: { status: "headless", picks: [...] }`, add "Headless, not user-confirmed" to the close's `extra`, and finish with a `retire` reason for each unresolved question. Outside a Flow, state "Headless, not user-confirmed" and name every unresolved question in chat. Report each action not taken. A subagent returns open decisions to the top-level agent and never claims user confirmation.

@@ -1,17 +1,17 @@
 ---
 name: verify-vstack
-description: Drives the vstack omp plugin from a checkout as a user and captures proof. Covers fresh omp sessions, skills, agents, rules, model-free Commands, Bun CLIs, Pele figures, the live and static Flow page, and maintainer scripts. Use before reporting plugin/ or scripts/ changes done.
+description: Drives the vstack omp plugin from a checkout as a user and captures proof. Covers fresh omp sessions, skills, agents, rules, model-free Commands, Bun CLIs, Pele figures, the Flow page served by the Local Flow host, and maintainer scripts. Use before reporting plugin/ or scripts/ changes done.
 ---
 
 # Verify vstack
 
-vstack is an omp plugin. It has no build step: omp loads `plugin/` (skills, agents, rules, and the TypeScript extension `plugin/extensions/vstack.ts`) when a session starts. The one server is the Local Flow host, which the flow-page script starts on demand. To verify the plugin, you start a fresh omp session on a throwaway home with the plugin linked, and you act through that session the way a user does.
+vstack is an omp plugin. omp loads `plugin/` (skills, agents, rules, and the TypeScript extension `plugin/extensions/vstack.ts`) when a session starts. The one server is the Local Flow host, which the flow-page script starts on demand. It serves the Flow page from the prebuilt Nuxt reader committed under `plugin/skills/flow-page/reader/`. To verify the plugin, you start a fresh omp session on a throwaway home with the plugin linked, and you act through that session the way a user does.
 
 The user-facing parts:
 
 - Primary: the plugin inside an omp session. That covers the skill list, `/skill:<name>` commands, the model-free `/vstack-clean` Command that the extension registers, the agents in `task`, and the always-on rules.
 - Bun CLIs that skills run through `bun "$(realpath skill://<skill>/scripts/<script>.ts)"`, such as the Scratch scripts under vstack-tmp and the flow-page script.
-- The HTML pages those scripts write or serve, such as the Flow page from a `file://` path or its live `http://127.0.0.1` URL. You view them in a browser.
+- The HTML pages those scripts serve, such as the Flow page at its live `http://127.0.0.1` URL. You view them in a browser. The Flow page needs the host; it has no `file://` form.
 - The maintainer CLIs in `scripts/` (`check-register.ts`, `vstack-maintain.ts`, `addon-judge-check.ts`, `load-smoke.sh`), documented in the repo `docs/maintainer.md`.
 
 `features/README.md` indexes the feature map. Read it, then the feature file for the change, before you drive anything.
@@ -28,7 +28,7 @@ Each stub drive gets its own omp home at `$VERIFY_RUN_DIR/data/home` and its own
 
 omp also loads project skills from `.claude/skills` and `.agents/skills` in every parent dir of its working directory. A stub drive's run dir is under the real home, so its working directory is a temp dir outside it. The first drive or load gate makes that dir with `mktemp` as `<os temp dir>/vstack-verify-XXXXXX/`. Its random name is unique, so two run dirs with the same name never share it. `$VERIFY_RUN_DIR/data/outside` links to that dir, later stub drives reuse it, and Cleanup deletes it.
 
-For `flow_ask`, use the PTY helper in `features/flow-page.md`. It creates both HOME and cwd in the outside temp dir, links `data/home` to that HOME, and adds only `VSTACK_FLOW_PORT` to the sanitized child env. The explicit omp-tools path supplies the real custom picker. RPC dialog replies cannot prove that TUI route.
+For ordinary Flow questions, use the PTY helper in `features/flow-page.md`. It creates both HOME and cwd in the outside temp dir, links `data/home` to that HOME, and adds only `VSTACK_FLOW_PORT` to the sanitized child env. The explicit omp-tools path supplies its ordinary `ask` picker. RPC dialog replies cannot prove that TUI route.
 
 Never use your already-running omp session as proof. It loaded the plugin when it started, so it does not show edits made since then. Stub drives use the throwaway home. The real-model enrollment recipe verifies instruction following with the actual provider in a fresh session, not the shared session.
 
@@ -36,7 +36,7 @@ Reasoning-led skill behavior is an exception to the stub-model isolation below. 
 
 ## Launch
 
-There is nothing to build. For scripted smoke proof, a launch is one drive: `scripts/drive.ts` links the plugin into the run's home, starts a stub model, starts `omp --mode rpc` (or `--mode rpc-ui` with `--rpc-ui`), sends the RPC commands you give it, and stops both processes before it exits. The real-model enrollment recipe launches its own fresh native process from `CHECKOUT`.
+Nothing builds at launch: the Flow reader is committed prebuilt. When the change touches `reader/`, run `./node_modules/.bin/vp run reader:build` in `CHECKOUT` first and check that the committed output under `plugin/skills/flow-page/reader/` matches. For scripted smoke proof, a launch is one drive: `scripts/drive.ts` links the plugin into the run's home, starts a stub model, starts `omp --mode rpc` (or `--mode rpc-ui` with `--rpc-ui`), sends the RPC commands you give it, and stops both processes before it exits. The real-model enrollment recipe launches its own fresh native process from `CHECKOUT`.
 
 ```sh
 bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN_DIR" --name <drive> \
@@ -58,17 +58,17 @@ Teardown: the script stops its own omp process and stub server. If it was killed
 For actual-model current-picker non-consent cases, use the PTY helper without a stub provider:
 
 ```sh
-python3 "$SKILL_DIR/scripts/flow-ask-tui.py" --checkout "$CHECKOUT" \
+python3 "$SKILL_DIR/scripts/flow-questions-tui.py" --checkout "$CHECKOUT" \
   --omp-tools "$OMP_TOOLS" --run "$VERIFY_RUN_DIR/<new-case>" \
   --prompt <scenario.md> --config <isolate.yml> --case <cancelled|timeout|empty> \
   [--session-source <persistent-session.jsonl>] [--deadline-seconds 1800]
 ```
 
-The helper reads the last model and thinking records from `PI_SESSION_FILE` or `--session-source`. It clears inherited session variables, retains real HOME for credentials, and starts a fresh interactive TUI with the supplied overlay. It loads the checkout's package and the named omp-tools package, not an injected dialog or native RPC ask. Follow `features/architecture-agreement.md`'s current-picker procedure. CLI publication and the extension share the child's normal HOME namespace and identity.
+The helper reads the last model and thinking records from `PI_SESSION_FILE` or `--session-source`. It clears inherited session variables, retains real HOME for credentials, and starts a fresh interactive TUI with the supplied overlay. It loads the checkout's package and the named omp-tools package. It appends operational guidance requiring the checkout CLI's explicit `--home <new-case>/flow-home` on every Flow command and records that home, guidance, and effective prompt hash in `launch.json`. Follow `features/architecture-agreement.md`'s current-picker procedure. The normal-HOME native extension stays intentionally unbound. This proves isolated CLI publication plus ordinary native `ask`, not automatic binding or Flow-card acceptance. A free `VSTACK_FLOW_PORT` selects the owned host's startup port, not its namespace, and cannot override existing discovery.
 
 Cancellation uses Escape in the actual picker. Timeout leaves it unanswered and requires `ask.timeout` in the overlay. Empty uses the real Submit tab without selecting an option, so it needs a generated multi-question or multiselect round. Unsupported routes remain unavailable. A controller deadline is not a picker timeout.
 
-`summary.json` reports transport completion, not a behavioral pass. Inspect `terminal.bin`, `terminal.txt`, `inputs.json`, `tool-results.json`, `before-picker.json`, `launch.json`, and `sessions/` alongside the actual Flow and file inventory. Keep human confirmation separate from automated keyboard actions. Preserve failed attempts, close only owned Flows, and stop only their owned hosts after copying exports.
+`summary.json` reports transport completion, not a behavioral pass. Inspect `terminal.bin`, `terminal.txt`, `inputs.json`, `tool-results.json`, `before-picker.json`, `launch.json`, and `sessions/` alongside the actual Flow and file inventory. Check that all Flow commands use the recorded isolated home and the child's own identity. Keep human confirmation separate from automated keyboard actions. Preserve failed attempts. Copy exports, close only owned Flows, and authenticate host cleanup with the same explicit `--home`. Record normal-HOME discovery, secrets, and binding hashes and nonsecret host identity before and after the proof, never their secret contents. Leave normal-HOME hosts and foreign listeners untouched.
 
 For a load check with no session turn, use the repo's own load gate. `scripts/load.sh` runs `loadGate` from the checkout's `scripts/lib/update-gates.ts`, which runs `scripts/load-smoke.sh` on a throwaway home. The gate fails when a registered skill, agent, or rule is missing, when the extension's `vstack-clean` Command is missing, or when omp warns about a skill:
 
@@ -95,8 +95,8 @@ For the actual-model exception, stub-home checks do not establish runtime isolat
 Each feature file in `features/` gives the exact commands and the proof for one feature. The ways to act:
 
 - Session behavior (skills, commands, tools, rules, agents): `scripts/drive.ts`, as in Launch. Make the stub model act as the agent with `--replies`. A `{"tool": ...}` reply makes omp run that tool for real, in the session, with the plugin loaded.
-- Bun CLIs that skills run: run the checkout's script with the bash tool's `cwd` set to `CHECKOUT`, as `bun plugin/skills/<skill>/scripts/<script>.ts ...`. For isolated CLI fixtures, pass `--home "$VERIFY_RUN_DIR/data/<name>"` when the script takes `--home`. Native enrollment instead uses its documented normal-HOME namespace. Do not use `realpath skill://...` here: that path resolves to the plugin your own session loaded, which is not always `$CHECKOUT`.
-- Pages: open the written HTML file in the omp `browser` with `app: { tern: false }` and a `viewport` of `{ width: 1280, height: 900 }`. Read state with `tab.ariaSnapshot()` and act by role and name, for example `role/tab[name="Overview"]`.
+- Bun CLIs that skills run: run the checkout's script with the bash tool's `cwd` set to `CHECKOUT`, as `bun plugin/skills/<skill>/scripts/<script>.ts ...`. For isolated CLI fixtures, pass `--home "$VERIFY_RUN_DIR/data/<name>"` when the script takes `--home`. Native enrollment instead uses its documented normal-HOME namespace. Do not use `realpath skill://...` here. That path resolves to the plugin your own session loaded, which is not always `$CHECKOUT`.
+- Pages: open the page's URL in the omp `browser` with `app: { tern: false }` and a `viewport` of `{ width: 1280, height: 900 }`. For the Flow page, that is the receipt's `live.url`. Read state with `tab.ariaSnapshot()` and act by role and name.
 - Maintainer CLIs: run them with the bash tool's `cwd` set to `CHECKOUT`, as `docs/maintainer.md` documents. Capture the command, stdout, stderr, and exit code.
 
 Keep every verification browser open outside the user's working Tern window. Apply the explicit non-Tern backend selection on each open, including diagnostics, retries, recovery, and delegated verification. An earlier open's backend flags do not constrain later calls or workers. Pass this policy in verification handoffs and inspect each open result to confirm the actual backend.
@@ -141,7 +141,7 @@ Never stop a process because of its name. Never delete the run dir itself. The `
 All paths are relative to `SKILL_DIR`.
 
 - `scripts/drive.ts`: one omp RPC session on the run's throwaway home, against the stub model. See Launch.
-- `scripts/flow-ask-tui.py --checkout <checkout> --omp-tools <plugin path> --run <new run> --case tui|missing-picker|non-tui`: drives the real TUI custom picker or its explicit refusals with Python's standard-library PTY support. It preserves terminal bytes, keyboard input, real session tool results, and a Flow export. Use `features/flow-page.md`.
+- `scripts/flow-questions-tui.py --checkout <checkout> --omp-tools <plugin path> --run <new run> --case tui|timeout|cancel|retry`: drives CLI publication, a visible assistant chat link, ordinary `ask`, and separate CLI answer recording through the real PTY. It retains runtime inventory, live content identity, terminal bytes, keyboard input, real session tool results, and a Flow export. Use `features/flow-page.md`.
 - `scripts/load.sh <checkout> <run dir>`: the repo's load gate for one run. See Launch.
 - `scripts/doctor.sh <checkout> <run dir>`: the read-only Doctor check. See Doctor.
 - `scripts/cleanup.sh <run dir>`: stops this run's recorded processes and deletes `data/` and the temp working directory. See Cleanup.
@@ -149,7 +149,7 @@ All paths are relative to `SKILL_DIR`.
 - `scripts/figure-audit.js`: evaluate its complete text in the figure consumer with `await tab.evaluate(await Bun.file(SKILL_DIR + "/scripts/figure-audit.js").text())`. It returns browser-computed paint and geometry checks.
 - `scripts/figure-flow.ts <checkout> <verify run> <own session> <own agent>`: captures the figure in a labelled disposable isolated-home Flow. Follow the figure recipe's authenticated host stop and export steps before Cleanup.
 - `scripts/worker-lifecycle.ts <checkout> <new verify run>`: drives real isolated implementer and review-fixer patch landing, retention, and release in a fresh throwaway omp session. Use `features/worker-lifecycle.md`.
-- `scripts/flow-ask-tui.py --prompt <scenario.md> --config <isolate.yml>`: actual Session-model TUI controller for cancelled, elapsed-timeout, and empty architecture responses. See Launch and `features/architecture-agreement.md`.
+- `scripts/flow-questions-tui.py --prompt <scenario.md> --config <isolate.yml>`: actual Session-model TUI controller for cancelled, elapsed-timeout, and empty architecture responses. See Launch and `features/architecture-agreement.md`.
 
 ## Gotchas
 

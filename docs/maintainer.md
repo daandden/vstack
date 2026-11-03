@@ -22,6 +22,14 @@ The repo scripts need Bun. Run `bun run test` and `bun scripts/check-register.ts
 
 Only `plugin/` ships. Upstreams are fetched when needed, never stored in this repo.
 
+### Flow reader delivery
+
+The reader source lives under `reader/`. Its production bundle ships prebuilt under `plugin/skills/flow-page/reader/`. Installation and normal launch require no build or development server.
+
+When reader source changes, run `./node_modules/.bin/vp run reader:build` and commit its shipped output with the source. Compare the source and shipped file inventories against the prior commit to establish freshness. An integration that changes neither source nor shipped files needs no rebuild.
+
+The Local Flow host loads its reader bytes at startup. A changed bundle makes a running host incompatible. Stop only the owned host with `bun plugin/skills/flow-page/scripts/flow-page.ts host stop`, then use `bound` or `show` to start the current host and retrieve the live URL. Stored Flow data is not a static reader. Committed content stays committed when the host is unavailable.
+
 ## Addon judge
 
 Edit `addon-questions.json` for selection criteria, `sample-prompts.json` for user-prompt cases, and `sample-briefs.json` for subagent cases. The catalog holds `preamble`, `brief_preamble`, and a `questions` map keyed by full Addon names. Each question contains its situation and criteria, not repeated preamble text.
@@ -61,9 +69,9 @@ The executing caller chooses visuals from each question's reader needs and choos
 
 At the current pstack Pin, `pstack/architect` contributes grounding, visual alternatives, screening, and rationale to `grill-with-docs` and shared `codebase-design`. Its merged register row does not ship a standalone architect command or its implementation phase. The Matt rows retain their existing owners, and DESIGN-IT-TWICE keeps its detailed-interface workflow. This feature moves no Pin.
 
-[Architecture agreement belongs in the grill](adr/0047-architecture-agreement-belongs-in-the-grill.md) is the canonical architecture policy. The [research note](research/architecture-design-in-grilling.md) supports it without defining another policy. [A Flow starts only on request](adr/0046-a-flow-starts-only-on-request.md) records the separate published enrollment policy. The unpublished architecture record moved from 0046 to 0047 during integration; its accepted policy is unchanged.
+[Architecture agreement belongs in the grill](adr/0051-architecture-agreement-belongs-in-the-grill.md) is the canonical architecture policy. The [research note](research/architecture-design-in-grilling.md) supports it without defining another policy. Published main owns ADRs 0047 through 0050, so the unpublished architecture record moves to 0051 without changing its accepted bytes. [A Flow starts only on request](adr/0046-a-flow-starts-only-on-request.md) retains the separate enrollment policy.
 
-Both branch histories contain versions 8.0.9 through 8.0.11. Published main's changelog entries keep those release identities unchanged. Unpublished feature notes are consolidated under 8.0.12; their original version bookkeeping remains in the feature commits. The integrated feature version remains above published main's 8.0.11.
+Published main's release notes and version 9.0.0 remain intact. The unpublished architecture feature notes are consolidated under 9.0.1, a compatibility Hand edit above that release. Earlier feature version bookkeeping remains in the six local commits. The reconciliation moves no Pin and changes no approved target action, Disposition, or reason beyond the architecture ADR's number.
 
 ## Pins and Upstream clones
 
@@ -147,7 +155,7 @@ Text output prints one line per failure, `FAIL <class> <item>: <message>`, after
 | `headless-run` | adapt, merge, or original markdown outside the rule's allowlist (skill-creator) holds a `Headless batch (` line or an `omp -p` command |
 | `worktree-cmd` | adapt, merge, or original text runs `git worktree add` |
 | `tmp-path` | adapt, merge, or original text names `$TMPDIR/`, `/tmp/`, or the OS temp directory, outside a `mktemp` line |
-| `ask-tool` | any markdown artifact, adopt included, has a sentence with an `ask-tool` phrase that names neither `` `ask` `` nor `` `flow_ask` `` |
+| `ask-tool` | any markdown artifact, adopt included, has a sentence with an `ask-tool` phrase that does not name `` `ask` `` |
 | `page-css` | a page template breaks the CSS upstream's `check-css.mjs` at its Pin; the item is the template and the message holds the script's `path:line` lines |
 | `invalid-utility` | a `utility:` entry names no shipped skill, or names a skill with a non-reject Base upstream row |
 | `addon-slash-route` | text under `plugin/` or in `README.md` contains `/skill:<addon>`. Use `skill://<addon>` instead |
@@ -176,7 +184,7 @@ A lint over shipped text starts from `lintTargets(ctx)` in `scripts/lib/checks/s
 
 ### Page templates
 
-Every page vstack writes for the user, the Flow page and teach's lessons, starts from a page template. Every template follows good-css (#61). A page template is any `*.html` or `*.css` under `plugin/skills/<name>/templates/`. `scripts/lib/checks/pages.ts` runs the CSS Upstream's `page_lint:` script at its Pin over these files. Each flagged template reports `page-css`. With no template, the check reads nothing. Templates hold no authored figure. The caller writes Mermaid and renders it through vstack-figures with Pele, captures the SVG in the Flow, and may inline its exact bytes in an offline lesson.
+Page templates follow good-css (#61). A page template is any `*.html` or `*.css` under `plugin/skills/<name>/templates/`. `scripts/lib/checks/pages.ts` runs the CSS Upstream's `page_lint:` script at its Pin over these files. Each flagged template reports `page-css`. With no template, the check reads nothing. Templates hold no authored figure. The caller writes Mermaid through vstack-figures and captures its source in the Flow. The host-backed reader draws it with Pele. An offline lesson instead renders an SVG and may inline its exact bytes.
 
 ## House style
 

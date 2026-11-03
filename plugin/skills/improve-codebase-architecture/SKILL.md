@@ -44,7 +44,7 @@ Follow `skill://flow-page`'s "Stage entry/exit line". Publish the candidates and
 
 If exploration finds no evidence-backed candidate, publish that outcome as a Document Result with the searched scope, evidence, and limitations. Finish the Stage without an empty candidate Result or pick question.
 
-Draw a before figure and an after figure for each candidate through `skill://vstack-figures`. Write their Mermaid in this caller's context and render with Pele. Give both figures the same type and layout so the reader compares them part by part. Label leakage and seams in words as well as color. Keep sources in a distinct project Scratch entry with unique basenames. If drawing cannot run, stop and report the missing prerequisite.
+Draw a before figure and an after figure for each candidate through `skill://vstack-figures`. Write their Mermaid in this caller's context. Give both figures the same type and layout so the reader compares them part by part. Label leakage and seams in words as well as color. Keep sources in a distinct project Scratch entry with unique basenames. If drawing cannot run, stop and report the missing prerequisite.
 
 Write one `result` item with `shape: "cards"`. Give each candidate one entry with a stable `ref`:
 
@@ -55,19 +55,19 @@ Write one `result` item with `shape: "cards"`. Give each candidate one entry wit
 - `action`: the solution, a plain English description of what changes.
 - `impact`: the benefits in terms of locality and leverage, and how the tests improve.
 
-Capture the before and after SVGs as typed attachments. Publish a companion Document with a section for each candidate and its two `figure` blocks. Name this candidate Result's entries in the pick question's `results`; the script creates reciprocal links. Put the top recommendation in the Result's `summary` line.
+Capture the before and after Mermaid sources as `mermaid` attachments. Publish a companion Document with a section for each candidate and its two `figure` blocks. Name this candidate Result's entries in the pick question's `results`; the script creates reciprocal links. Put the top recommendation in the Result's `summary` line.
 
 Use GLOSSARY.md vocabulary for the domain, and the `skill://codebase-design` vocabulary for the architecture. If `GLOSSARY.md` defines "Order," talk about "the Order intake module," not "the FooBarHandler," and not "the Order service."
 
 ADR conflicts: if a candidate contradicts an existing ADR, only surface it when the friction is real enough to warrant revisiting the ADR. Start the card's `evidence` with the conflict, such as _"Contradicts ADR-0007, but worth reopening because…"_. Don't list every theoretical refactor an ADR forbids.
 
-Do not propose interfaces yet. Deliver the candidate Result, figure attachments, Document, and complete pick round in one `flow_ask` contribution through flow-page's "Every ask in a Flow" contract. The first round asks which candidate to explore, with one option per entry in entry order and the top recommendation as recommended. Its question's `results` names every candidate entry. Its `needs` includes comparing the candidates' before and after shapes. The Document does not satisfy that need, so repeat its captured SVG references in the question's `figures`, each with `kind: "before-after"`, in candidate order. Record the response through the common contract.
+Do not propose interfaces yet. Publish the candidate Result, figure attachments, Document, and complete pick round in one Flow CLI contribution under flow-page's "Every ask in a Flow" contract. Verify current live serving, show the live URL in chat, then call `ask` with the receipt's generated questions. The first round asks which candidate to explore, with one option per entry in entry order and the top recommendation as recommended. Its question's `results` names every candidate entry. Its `needs` includes comparing the candidates' before and after shapes. The Document does not satisfy that need, so repeat its captured Mermaid attachment references in the question's `figures`, each with `kind: "before-after"`, in candidate order. Record the response through the common contract.
 
 ### 3. Design It Twice
 
 Once the user picks a candidate, read `skill://codebase-design` and run its DESIGN-IT-TWICE.md in this Stage before any other question. Its problem-space Document, screened design Document, and Comparison Result stay on this page. Preserve complete interfaces and usage examples in the Document and compare depth, locality, and seam placement in the Comparison.
 
-The design question is the grilling loop's first question: which design, or which hybrid, to keep. Deliver the complete round through the same `flow_ask` contract after the design Results, with one option per surviving alternative and a hybrid option when proposed. Link the question's `results` to those Results. Its description names each dropped design with its red flag. Its `needs` includes seeing how a caller uses each design. The Results do not satisfy that need, so repeat the actual usage example on each design's option as `preview: { text: "<usage example>", kind: "option-preview" }`. Record the response through the common contract.
+The design question is the grilling loop's first question: which design, or which hybrid, to keep. Deliver the complete round through the same Flow publication, visible-link, and `ask` contract after the design Results, with one option per surviving alternative and a hybrid option when proposed. Link the question's `results` to those Results. Its description names each dropped design with its red flag. Its `needs` includes seeing how a caller uses each design. The Results do not satisfy that need, so repeat the actual usage example on each design's option as `preview: { text: "<usage example>", kind: "option-preview" }`. Record the response through the common contract.
 
 If Design It Twice stops at its Fan-out stop clause, or screening drops every design, publish the failed screening with its limitations rather than a fabricated Comparison. Name each dropped design and red flag in the next question's description, then grill the module's shape without designs.
 
@@ -79,6 +79,6 @@ Side effects happen inline as decisions crystallize. Run the `skill://domain-mod
 
 - Naming a deepened module after a concept not in `GLOSSARY.md`? Add the term to `GLOSSARY.md`. Create the file lazily if it doesn't exist.
 - Sharpening a fuzzy term during the conversation? Update `GLOSSARY.md` right there.
-- User rejects the candidate with a load-bearing reason? Offer recording an ADR through `flow_ask` so future architecture reviews do not re-suggest it. Only offer when the reason would actually be needed by a future explorer to avoid re-suggesting the same thing. Skip ephemeral reasons ("not worth it right now") and self-evident ones.
+- User rejects the candidate with a load-bearing reason? Offer recording an ADR through `ask` so future architecture reviews do not re-suggest it. Only offer when the reason would actually be needed by a future explorer to avoid re-suggesting the same thing. Skip ephemeral reasons ("not worth it right now") and self-evident ones.
 
 Every in-session question, including the pick and ADR offer, goes through flow-page's "Every ask in a Flow" contract. A timed-out choice remains unanswered. For approval gates, re-ask once, then stop without acting if it times out again. A headless run records the recommended assumption honestly, never as the user's answer.

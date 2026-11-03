@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { linesOf, parseDiff, type Hunk } from "./code.ts";
 import { progressHandlers, type Progress, PROGRESS_KINDS, type ProgressKind, type ProgressView, progressSnapshot, progressView } from "./progress.ts";
-import { CODE_ID, fields, isObj, list, listed, newId, type Obj, REF, refuse, text, texts } from "./fields.ts";
+import { CODE_ID, fields, isObj, list, listed, newId, type Obj, REF, refuse, text, texts, VISUAL_KINDS } from "./fields.ts";
 
 export const SCHEMA = 1;
 export const CONTRIBUTION_VERSION = 1;
@@ -10,18 +10,6 @@ export const STAGE_STATES = ["not-started", "in-progress", "finished"] as const;
 export type StageState = (typeof STAGE_STATES)[number];
 export type Stage = { id: string; skill: string; ticket?: string; parent?: string; state: StageState; order: number; opened?: string; finished?: string };
 export type Round = { id: string; stage: string; n: number; seq: number; time: string; session?: number };
-export const VISUAL_KINDS = {
-  "source-view": "Source view",
-  "source-excerpt": "Source excerpt",
-  "context-diagram": "Context diagram",
-  "option-diagram": "Option diagram",
-  "option-preview": "Option preview",
-  "before-after": "Before and after",
-  "comparison-table": "Comparison table",
-  "data-chart": "Data chart",
-  scenario: "Scenario walkthrough",
-  prose: "Prose",
-} as const;
 export type VisualKind = keyof typeof VISUAL_KINDS;
 export type ReaderNeed = { need: string; kind: VisualKind };
 export type Figure = { id: string; kind?: Exclude<VisualKind, "prose"> } & ({ text: string } | { html: string; css?: string; attachments?: string[] } | { attachment: string });
@@ -102,18 +90,20 @@ export type Quiz = { questions: { ref: string; prompt: string; explanation: stri
 export type Result = {
   id: string; stage: string; shape: Shape; title: string; summary?: string; columns?: string[]; entries: Entry[]; changed: number;
   axes?: ReviewAxis[];
+  edit?: number;
   document?: DocumentBody; demo?: Demo; artifact?: string; quiz?: Quiz; comparison?: ComparisonBody; metrics?: MetricsBody; attachments?: string[]; canonical?: Canonical; revision?: number; captured?: string; jump?: string;
 };
 export type Source = { id: string; text: string };
-export const ATTACHMENT_TYPES = ["image", "video", "svg", "file", "trace", "evidence", "artifact"] as const;
+export const ATTACHMENT_TYPES = ["image", "video", "svg", "mermaid", "file", "trace", "evidence", "artifact"] as const;
 export type AttachmentType = (typeof ATTACHMENT_TYPES)[number];
 /** A typed attachment. `captured` ones hold stored bytes named by their sha256 `revision`; `unavailable` ones say why
- *  there are none; an `artifact` is a runnable thing that runs outside the page, at the `revision` its producer names. */
+ *  there are none; an `artifact` is a runnable thing that runs outside the page, at the `revision` its producer names.
+ *  A `mermaid` attachment is diagram source that the reader renders with Pele; `focus` names its focal Mermaid ids. */
 export type Attachment = {
   id: string; stage: string; type: AttachmentType; caption: string; origin: string; time: string;
   availability: "captured" | "unavailable" | "external";
   revision?: string; file?: string; size?: number; name?: string; from?: { root: string; path: string };
-  reason?: string; launch?: string; url?: string;
+  reason?: string; launch?: string; url?: string; focus?: string[];
   runtime?: "html" | "local-app" | "terminal";
   bundle?: { entry: string; files: { path: string; file: string; size: number }[] };
 };
@@ -124,6 +114,10 @@ export type Io = {
 };
 /** One explicit lifecycle change of the whole Flow. Retention counts from the latest close; nothing else moves it. */
 export type Lifecycle = { event: "closed" | "reopened"; time: string };
+
+type ReadingBlock = { id: string; kind: "background" | "topic" | "question" | "result" | "assumed" | "close"; stage?: string };
+type Publication = ReadingBlock & { position: number; publication: number };
+type ReadingOrder = { historical: ReadingBlock[]; publications: Publication[] };
 
 export type State = {
   schema: number;
@@ -152,6 +146,7 @@ export type State = {
   progress?: Progress;
   /** Closes and reopens, oldest first. A Flow with none, or whose latest is a reopen, is open. */
   lifecycle: Lifecycle[];
+  reading: ReadingOrder;
   migrated?: { from: string; sha256: string; time: string; records: Record<string, unknown>[]; anchors: Record<string, string> };
 };
 
@@ -160,7 +155,24 @@ export function upgrade(s: State): State {
   s.attachments ??= [];
   s.history ??= [];
   s.lifecycle ??= [];
+  s.reading ??= retainedReading(s);
   return s;
+}
+
+export function retainedReading(s: State): ReadingOrder {
+  const historical: ReadingBlock[] = [];
+  for (const st of s.stages) {
+    for (const [kind, blocks] of [
+      ["background", s.backgrounds], ["result", s.results], ["assumed", s.assumed],
+    ] as const) for (const b of blocks) if (b.stage === st.id) historical.push({ id: b.id, kind, stage: st.id });
+    const items = [
+      ...s.rounds.filter((r) => r.stage === st.id).map((r) => ({ seq: r.seq, blocks: s.questions.filter((q) => q.round === r.id).sort((a, b) => a.q - b.q).map((q): ReadingBlock => ({ id: q.id, kind: "question", stage: st.id })) })),
+      ...s.closes.filter((c) => c.stage === st.id).map((c) => ({ seq: c.seq, blocks: [{ id: c.id, kind: "close" as const, stage: st.id }] })),
+    ].sort((a, b) => a.seq - b.seq);
+    historical.push(...items.flatMap((i) => i.blocks));
+  }
+  historical.push(...s.topics.map((t): ReadingBlock => ({ id: t.id, kind: "topic" })));
+  return { historical, publications: [] };
 }
 
 export const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -212,7 +224,7 @@ export function newFlow(id: string, slug: string, title: string, time: string): 
   return {
     schema: SCHEMA, flow: { id, slug, title, created: time }, revision: 0, next: {}, seq: 0,
     stages: [], rounds: [], questions: [], answers: [], closes: [], backgrounds: [], topics: [], results: [], assumed: [], retirements: [], sources: [],
-    aliases: [`folder:${id}`], submissions: {}, attachments: [], history: [], lifecycle: [],
+    aliases: [`folder:${id}`], submissions: {}, attachments: [], history: [], lifecycle: [], reading: { historical: [], publications: [] },
   };
 }
 
@@ -324,6 +336,12 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
   if (stage.state === "finished") refuse("contribution", `Stage ${stage.id} is finished, so it takes no more content; open a new Stage to continue the Flow`);
   const rev = s.revision + 1;
 
+  const published = new Set([...s.reading.historical, ...s.reading.publications].map((b) => b.id));
+  const publish = (kind: ReadingBlock["kind"], id: string) => {
+    if (published.has(id)) return;
+    published.add(id);
+    s.reading.publications.push({ id, kind, stage: stage.id, position: s.reading.publications.length + 1, publication: rev });
+  };
   const refs: Record<string, string> = {};
   const kinds: Record<string, string> = {};
   const claim = (r: string | undefined, id: string, kind: string, where: string) => {
@@ -369,6 +387,7 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
         const id = newId(s, "background");
         const figures = o.figures === undefined ? undefined : list(o, "figures", where).map((f, j) => figure(f, `${id}-figure-${j + 1}`, `${where}: figure ${j + 1}`));
         s.backgrounds.push({ id, stage: stage.id, title: text(o, "title", where), summary: text(o, "summary", where), sections, sources: texts(o, "sources", where).map((t) => sourceId(s, t)), ...(figures ? { figures } : {}) });
+        publish("background", id);
       },
     },
     topic: {
@@ -378,6 +397,7 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
       apply(o, where, ids) {
         fields(o, where, ["kind", "title", "summary", "body", "sources"], ["ref"]);
         s.topics.push({ id: ids.id!, title: text(o, "title", where), summary: text(o, "summary", where), body: text(o, "body", where), sources: texts(o, "sources", where).map((t) => sourceId(s, t)) });
+        publish("topic", ids.id!);
       },
     },
     attachment: {
@@ -417,6 +437,7 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
         if (i < 0) {
           r.revision = 1;
           s.results.push(r);
+          publish("result", r.id);
           return;
         }
         const old = s.results[i];
@@ -449,7 +470,7 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
         }
       },
       apply(o, where, ids) {
-        revise(s, o, where, stage.id, ids.entries, rev, resolve);
+        revise(s, o, where, stage.id, ids.entries, rev, time, resolve);
       },
     },
     assumed: {
@@ -459,6 +480,7 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
       apply(o, where, ids) {
         fields(o, where, ["kind", "decision", "pick", "why"], ["ref"]);
         s.assumed.push({ id: ids.id!, stage: stage.id, decision: text(o, "decision", where), pick: text(o, "pick", where), why: text(o, "why", where) });
+        publish("assumed", ids.id!);
       },
     },
     round: {
@@ -479,8 +501,9 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
         const parsed = qs.map((q, j) => parseQuestion(q, `${where}: question ${j + 1}`, ids.questions![j], stage.id, round.id, resolve, figure));
         assignQNumbers(s, parsed, stage.id, where);
         s.questions.push(...parsed);
+        for (const q of parsed) publish("question", q.id);
         receipt.ask = {
-          questions: [...parsed].sort((a, b) => a.q - b.q).map((q) => {
+          questions: parsed.map((q) => {
             const rec = q.options.findIndex((op) => op.recommended !== undefined);
             return { id: q.id, question: `Q${q.q}. ${q.title}`, options: q.options.map((op) => ({ label: op.label })), ...(q.multi !== undefined ? { multi: q.multi } : {}), ...(rec >= 0 ? { recommended: rec } : {}) };
           }),
@@ -523,6 +546,7 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
         const assumed = visibleAssumed(s, stage.id).map((a) => a.id);
         if (decisions.length === 0 && assumed.length === 0 && extra === undefined) refuse(where, "a close with no decisions and no Assumed picks needs extra bullets");
         s.closes.push({ id: newId(s, "close"), stage: stage.id, seq: ++s.seq, time, decisions, assumed, ...(extra ? { extra } : {}) });
+        publish("close", s.closes.at(-1)!.id);
       },
     },
     stage: {
@@ -571,7 +595,7 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
   for (const { o, where, ids, handler } of planned) handler.apply(o, where, ids);
   for (const f of authoredFigures) if ("attachment" in f) {
     const a = s.attachments.find((a) => a.id === f.attachment) ?? refuse(f.id, `attachment ${f.attachment} does not exist`);
-    if (!["image", "svg"].includes(a.type) || a.availability !== "captured") refuse(f.id, `attachment ${a.id} must be a captured image or SVG figure`);
+    if (!["image", "svg", "mermaid"].includes(a.type) || a.availability !== "captured") refuse(f.id, `attachment ${a.id} must be a captured image, SVG, or Mermaid figure`);
   }
   checkLinks(s);
   s.revision = rev;
@@ -746,7 +770,7 @@ function checkReview(axes: ReviewAxis[], entries: Entry[], where: string): void 
   }
 }
 
-function revise(s: State, o: Obj, where: string, stage: string, entryIds: string[] | undefined, rev: number, resolve: (v: unknown, kind: string, where: string) => string): void {
+function revise(s: State, o: Obj, where: string, stage: string, entryIds: string[] | undefined, rev: number, time: string, resolve: (v: unknown, kind: string, where: string) => string): void {
   fields(o, where, ["kind", "result"], ["base", "set", "add"]);
   if (o.set === undefined && o.add === undefined) refuse(where, "needs set, add, or both");
   if (typeof o.result !== "string") refuse(where, "result must name a Result as <result ref or id>, or an entry as <result ref or id>/<entry ref or id>");
@@ -755,6 +779,7 @@ function revise(s: State, o: Obj, where: string, stage: string, entryIds: string
   const r = s.results.find((x) => x.id === rid) ?? refuse(where, `Result ${rid} does not exist`);
   if (r.stage !== stage) refuse(where, `Result ${rid} belongs to Stage ${r.stage}, not the bound Stage ${stage}`);
   const entry = ename === undefined ? undefined : (r.entries.find((e) => e.id === ename || e.ref === ename) ?? refuse(where, `Result ${rid} has no entry ${ename}`));
+  const previous = structuredClone(r);
   if (o.set !== undefined) {
     if (!Number.isInteger(o.base) || (o.base as number) < 1 || (o.base as number) > s.revision) refuse(where, `set needs base, the Flow revision you read ${o.result} at (1 to ${s.revision}); show prints it as changed`);
     const base = o.base as number;
@@ -783,6 +808,9 @@ function revise(s: State, o: Obj, where: string, stage: string, entryIds: string
     r.entries.push(...adds.map((e, j) => parseEntry(r.shape, r.columns, e, `${where}: add ${j + 1}`, entryIds![j].split("/")[1], rev, (v, w) => resolve(v, "attachment", w))));
   }
   if (r.shape === "review") checkReview(r.axes!, r.entries, where);
+  s.history.push(previous);
+  r.edit = rev;
+  r.captured = time;
 }
 
 function optionLetter(q: Question, p: string, where: string): string {
@@ -1189,13 +1217,16 @@ function parseAttachment(o: Obj, where: string, stage: string, id: string, time:
       ...(o.unavailable !== undefined ? { reason: text(o, "unavailable", where) } : {}),
     };
   }
-  fields(o, where, ["kind", "type", "caption", "origin"], ["ref", "path", "unavailable"]);
+  fields(o, where, ["kind", "type", "caption", "origin"], ["ref", "path", "unavailable", ...(type === "mermaid" ? ["focus"] : [])]);
   const caption = safeLinks(text(o, "caption", where), where);
   const origin = safeLinks(text(o, "origin", where), where);
   if ((o.path === undefined) === (o.unavailable === undefined)) refuse(where, "needs exactly one of path, the file to capture, or unavailable, the reason there is none");
-  if (o.unavailable !== undefined) return { ...base, caption, origin, availability: "unavailable", reason: text(o, "unavailable", where) };
+  const focus = o.focus === undefined ? undefined : texts(o, "focus", where);
+  if (focus && (focus.length > 2 || focus.some((f) => !/^[A-Za-z0-9_][A-Za-z0-9_.:-]*$/.test(f)))) refuse(where, "focus must list one or two Mermaid ids, each of letters, digits, _, ., :, or -");
+  const marked = focus ? { focus } : {};
+  if (o.unavailable !== undefined) return { ...base, caption, origin, availability: "unavailable", reason: text(o, "unavailable", where), ...marked };
   const c = io.capture(text(o, "path", where), type, where);
-  return { ...base, caption, origin, availability: "captured", revision: c.revision, file: c.file, size: c.size, name: c.name, from: c.from };
+  return { ...base, caption, origin, availability: "captured", revision: c.revision, file: c.file, size: c.size, name: c.name, from: c.from, ...marked };
 }
 
 export function visualKind(raw: unknown, where: string): Exclude<VisualKind, "prose"> {
@@ -1405,6 +1436,7 @@ export type StageView = Stage & {
 };
 export type View = {
   flow: State["flow"]; revision: number; stages: StageView[]; lifecycle: Lifecycle[];
+  reading: ReadingOrder;
   next: string[];
   topics: (Topic & { sourceTexts: string[]; questions: string[] })[];
   sources: (Source & { cited_by: string[] })[];
@@ -1532,7 +1564,7 @@ export function view(s: State): View {
     }
     if (c) rv.comparison = comparisonView(c, anchor);
     if (m) rv.metrics = metricsView(m, anchor);
-    if (current) rv.history = s.history.filter((h) => h.id === r.id).map((h) => resultView(h, `${r.id}-r${h.revision ?? 1}`, false));
+    if (current) rv.history = s.history.filter((h) => h.id === r.id).map((h) => resultView(h, `${r.id}-r${h.revision ?? 1}${h.edit === undefined ? "" : `-edit${h.edit}`}`, false));
     return rv;
   };
   const stages = [...s.stages].sort((a, b) => a.order - b.order).map((st): StageView => {
@@ -1542,7 +1574,7 @@ export function view(s: State): View {
     const lastClose = closes.at(-1)?.id;
     const seqOfRound = (r: Round) => r.seq;
     const items = [
-      ...s.rounds.filter((r) => r.stage === st.id).map((round) => ({ type: "round" as const, seq: seqOfRound(round), round, questions: s.questions.filter((q) => q.round === round.id).sort((a, b) => a.q - b.q).map((q) => questions.get(q.id)!) })),
+      ...s.rounds.filter((r) => r.stage === st.id).map((round) => ({ type: "round" as const, seq: seqOfRound(round), round, questions: s.questions.filter((q) => q.round === round.id).map((q) => questions.get(q.id)!) })),
       ...closes.map((close) => ({ type: "close" as const, seq: close.seq, close, latest: close.id === lastClose })),
     ].sort((a, b) => a.seq - b.seq).map(({ seq: _, ...item }) => item);
     const asked = [...latestAsks(s, st.id).values()].map((q) => questions.get(q.id)!);
@@ -1565,6 +1597,7 @@ export function view(s: State): View {
   ];
   return {
     flow: s.flow, revision: s.revision, stages, questions, progress: progressView(s), lifecycle: s.lifecycle, ...(s.migrated ? { migrated: s.migrated } : {}),
+    reading: s.reading,
     next: stages.filter((st) => st.state === "in-progress").reverse().flatMap((st) => st.asked.filter((q) => q.open).map((q) => q.id)),
     topics: s.topics.map((t) => ({ ...t, sourceTexts: t.sources.map((x) => sourceText.get(x)!), questions: s.questions.filter((q) => q.topics?.includes(t.id)).map((q) => q.id) })),
     sources: s.sources.map((x) => ({ ...x, cited_by: citers(x.id) })),
@@ -1578,11 +1611,12 @@ export function view(s: State): View {
   };
 }
 
-/** The `show` snapshot: ids, numbers, states, labels, and links, with no page markup. */
-export function snapshot(v: View, page: string, renderer: number) {
+/** The `show` snapshot: ids, numbers, states, labels, and links, with no presentation markup. */
+export function snapshot(v: View) {
   return {
-    flow: v.flow, revision: v.revision, renderer, page, open: v.lifecycle.at(-1)?.event !== "closed", lifecycle: v.lifecycle, ...(v.migrated ? { migrated: { from: v.migrated.from, sha256: v.migrated.sha256, time: v.migrated.time, anchors: v.migrated.anchors } } : {}),
+    flow: v.flow, revision: v.revision, open: v.lifecycle.at(-1)?.event !== "closed", lifecycle: v.lifecycle, ...(v.migrated ? { migrated: { from: v.migrated.from, sha256: v.migrated.sha256, time: v.migrated.time, anchors: v.migrated.anchors } } : {}),
     next: v.next,
+    reading: v.reading,
     stages: v.stages.map((st) => ({
       id: st.id, label: st.label, skill: st.skill, ...(st.ticket ? { ticket: st.ticket } : {}), ...(st.parent ? { parent: st.parent } : {}), children: st.children,
       state: st.state, order: st.order, opened: st.opened, ...(st.finished ? { finished: st.finished } : {}),
@@ -1594,7 +1628,8 @@ export function snapshot(v: View, page: string, renderer: number) {
         ...(r.demo ? { demo: { start: r.demo.start, states: r.demo.states.map((x) => x.name), actions: r.demo.actions.map((x) => x.name), values: r.demo.values.map((x) => x.name) } } : {}),
         ...(r.artifact ? { artifact: r.artifact } : {}),
         ...(r.review ? { review: r.review } : {}),
-        revisions: [...r.history, r].map((x) => ({ revision: x.revision, ...(x.captured ? { captured: x.captured } : {}), ...(x.canonical ? { canonical: x.canonical } : {}), attachments: x.shown.map((a) => a.id) })),
+        revisions: [...r.history, r].filter((x, i, all) => !all.slice(i + 1).some((later) => later.revision === x.revision)).map((x) => ({ revision: x.revision, ...(x.captured ? { captured: x.captured } : {}), ...(x.canonical ? { canonical: x.canonical } : {}), attachments: x.shown.map((a) => a.id) })),
+        history: r.history.map((x) => ({ anchor: x.anchor, revision: x.revision, ...(x.edit === undefined ? {} : { edit: x.edit }), ...(x.canonical ? { canonical: x.canonical } : {}), attachments: x.shown.map((a) => a.id) })),
         attachments: r.shown.map((a) => a.id),
         entries: r.entries.map(({ anchor: _, ...e }) => ({ ...e, id: `${r.id}/${e.id}`, questions: e.questions })),
         ...(r.doc ? {
@@ -1641,7 +1676,7 @@ export function snapshot(v: View, page: string, renderer: number) {
     sources: v.sources.map((x) => ({ id: x.id, cited_by: x.cited_by })),
     attachments: v.attachments.map((a) => ({
       id: a.id, stage: a.stage, type: a.type, availability: a.availability, time: a.time, used_by: a.used_by,
-      ...(a.revision ? { revision: a.revision } : {}), ...(a.file ? { file: `assets/${a.file}`, size: a.size } : {}), ...(a.from ? { from: a.from } : {}),
+      ...(a.revision ? { revision: a.revision } : {}), ...(a.file ? { file: `assets/${a.file}`, size: a.size } : {}), ...(a.from ? { from: a.from } : {}), ...(a.focus ? { focus: a.focus } : {}),
       ...(a.type === "artifact" ? { launch: a.launch, ...(a.runtime ? { runtime: a.runtime } : {}), ...(a.url ? { url: a.url } : {}), ...(a.reason ? { reason: a.reason } : {}), ...(a.bundle ? { bundle: a.bundle } : {}) } : {}),
     })),
     progress: progressSnapshot(v.progress),

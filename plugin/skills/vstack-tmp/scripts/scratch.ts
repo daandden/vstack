@@ -23,7 +23,7 @@ function git(cwd: string, args: string[], allowNonRepo = false): string | undefi
     try {
       const errFd = openSync(stderr, "wx", 0o600);
       try {
-        const r = Bun.spawnSync(["git", ...args], { cwd, env: { ...process.env, LC_ALL: "C" }, stdout: outFd, stderr: errFd });
+        const r = Bun.spawnSync(["git", ...args], { cwd, env: { ...process.env, LC_ALL: "C" }, stdin: "ignore", stdout: outFd, stderr: errFd });
         if (r.exitCode === 0 && !r.signalCode) return readFileSync(stdout, "utf8");
         const diagnostic = readFileSync(stderr, "utf8");
         if (allowNonRepo && r.exitCode === 128 && !r.signalCode && fstatSync(outFd).size === 0 &&
