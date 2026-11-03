@@ -25,10 +25,8 @@ Keep keyboard-initiated actions instant. Decoration alone does not justify delay
 
 ### Easing and timing
 
-- Use a strong ease-out for entry and exit, ease-in-out for an element moving between positions, ease for a hover or color change, and linear for constant progress.
-- Avoid ease-in for ordinary UI responses because its slow start delays visible feedback.
-- Useful starting curves are `cubic-bezier(0.23, 1, 0.32, 1)` for ease-out, `cubic-bezier(0.77, 0, 0.175, 1)` for ease-in-out, and `cubic-bezier(0.32, 0.72, 0, 1)` for a drawer. Compare them in the actual interaction rather than inventing curves for each element.
-- Start with 100–160ms for press feedback, 125–200ms for tooltips and small popovers, and 150–250ms for dropdowns. Keep ordinary UI motion below 300ms by default. A large drawer can need 200–500ms when distance and observed behavior justify it. Explanatory marketing motion can take longer.
+When choosing easing or duration, read the Easing and Duration sections of skill://review-animations/STANDARDS.md. Apply their shared curves, component budgets, and qualified exceptions to the actual interaction.
+
 - Once a tooltip is open, adjacent tooltips should appear without the first tooltip's delay or animation. Avoid accidental activation on the first hover.
 - A deliberate hold can take longer than its release. A hold-to-delete fill might take 2s linear, with a 200ms ease-out reset. Provide an accessible keyboard alternative to a pointer hold.
 

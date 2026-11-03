@@ -18,7 +18,7 @@ Record all four answers for each surviving proposal and the deciding answer for 
 
 1. Frequency. Keyboard-initiated and 100+/day actions stay instant. Tens/day actions usually need no motion, or only a near-imperceptible effect with a demonstrated purpose. Occasional interactions can earn standard motion. Rare or first-time moments can earn delight.
 2. Purpose. Name feedback, spatial continuity, state indication, preventing a jarring change, or explanation. Delight is eligible only for rare or first-time moments. Appearance alone is not a functional purpose.
-3. Speed. Can it work within the component's budget? Use skill://improve-animations/AUDIT.md for exact curves and duration recommendations. Ordinary UI generally stays below 300ms, with justified component-specific allowances. Slow showmanship fails this gate.
+3. Speed. Can it work within the component's budget? Read the Easing and Duration sections of skill://review-animations/STANDARDS.md for exact curves, duration recommendations, and qualified exceptions. Slow showmanship fails this gate.
 4. Function. Does motion help users understand or act? Keep functional data stable while users read it. A marketing demonstration has a different purpose from a banking chart or daily queue. A gesture or safety mechanism changes interaction semantics, so propose it only when that change belongs to the task.
 
 ## Survey useful seams

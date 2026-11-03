@@ -37,8 +37,10 @@ const registry = JSON.parse(run('register', ['bun', 'scripts/check-register.ts',
 assert(registry.ok, 'Integrated register check failed.');
 const remote = join(evidence, 'remote', 'emilkowalski', 'skills.git');
 mkdirSync(join(remote, '..'), { recursive: true });
-run('fixture-source', ['git', 'clone', '--bare', join(cache, 'emil'), remote]);
+run('fixture-source', ['git', 'init', '--bare', remote]);
 const git = (name: string, args: string[], input?: string) => run(name, ['git', '--git-dir', remote, ...args], checkout, input);
+const source = run('fixture-origin', ['git', '-C', join(cache, 'emil'), 'remote', 'get-url', 'origin']);
+git('fixture-pin', ['fetch', '--no-tags', source, `${pin}:refs/vstack/pins/${pin}`]);
 const oldSkill = git('old-skill', ['show', `${pin}:skills/emil-design-eng/SKILL.md`]);
 const changedSkill = oldSkill.replace('100-160ms', '110-160ms');
 assert(changedSkill !== oldSkill, 'The fixture must change an actual upstream timing recommendation.');
@@ -78,7 +80,9 @@ assert(plan.artifacts.some((a: any) => a.artifact === active.artifacts[0] && a.r
 assert(plan.new.length === 0 && plan.rows.length === rows.length, 'The future plan lost source coverage.');
 const check = JSON.parse(run('future-check', ['bun', join(checkout, 'scripts/vstack-maintain.ts'), 'check', '--root', fixture, '--plan', planFile, '--upstreams', cache]));
 assert(check.targets.some((t: any) => t.artifact === active.artifacts[0] && t.dispositions.includes('adapt')), 'Public target check lost adapted classification.');
-assert(JSON.stringify(hashes(fixture)) === JSON.stringify(localBefore), 'Planning or check mutated the fixture checkout.');
-assert(JSON.stringify(hashes(checkout)) === JSON.stringify(original), 'The future-source proof changed the real checkout or Pin.');
+const localAfter = hashes(fixture), realAfter = hashes(checkout);
+writeFileSync(join(evidence, 'hashes.json'), JSON.stringify({ realBefore: original, realAfter, fixtureBefore: localBefore, fixtureAfter: localAfter }, null, 2));
+assert(JSON.stringify(localAfter) === JSON.stringify(localBefore), 'Planning or check mutated the fixture checkout.');
+assert(JSON.stringify(realAfter) === JSON.stringify(original), 'The future-source proof changed the real checkout or Pin.');
 writeFileSync(join(evidence, 'outcome.json'), JSON.stringify({ ok: true, pin, future, plan: planFile, sourceRows: rows.length, changed: changed.map((r: any) => ({ id: r.id, class: r.class, disposition: r.disposition, artifacts: r.artifacts })), realCheckoutUnchanged: true, fixtureCheckoutUnchanged: true, calls: calls.length }, null, 2));
 console.log(readFileSync(join(evidence, 'outcome.json'), 'utf8'));

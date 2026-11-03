@@ -4,6 +4,12 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [8.0.20] - 2026-11-03
+
+- Replace animation workload guidance with the ordered requirement checkpoint and contrasting example; preserve captured-failure acceptance and add required-result native/browser countercase coverage (#342).
+- Keep shared motion curves and duration defaults in review-animations/STANDARDS.md; construction, design, audit, and opportunity guidance reference its existing qualified recommendations.
+- Fix the frontend-source Verify helper for supported Pin-only caches without local branches by explicitly fetching the exact Pin and its objects into the disposable fixture remote.
+
 ## [8.0.19] - 2026-11-02
 
 - Clarify task-required animation workloads and separate playback from responsiveness evidence.

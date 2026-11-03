@@ -24,19 +24,9 @@ Use the project's existing accessible component or native semantic control. Reta
 
 ## Timing and properties
 
-| Situation | Starting point |
-| --- | --- |
-| Entry and exit | Strong ease-out, `cubic-bezier(0.23, 1, 0.32, 1)` |
-| Movement between positions | Ease-in-out, `cubic-bezier(0.77, 0, 0.175, 1)` |
-| Drawer | `cubic-bezier(0.32, 0.72, 0, 1)` |
-| Hover and color | `ease` |
-| Constant progress | `linear` |
-| Press feedback | 100–160ms |
-| Tooltip or small popover | 125–200ms |
-| Dropdown or select | 150–250ms |
-| Dialog or drawer | Usually under 300ms. Up to 500ms needs distance and observed behavior to justify it. |
+When choosing easing or duration, read the Easing and Duration sections of skill://review-animations/STANDARDS.md for the shared curves, component budgets, and qualified exceptions. Reuse the project's motion tokens rather than creating a parallel set.
 
-Avoid ease-in for ordinary UI responses because it delays visible feedback. Reuse existing curves or established easing references rather than inventing a curve. A spring can suit momentum and reversal. With an installed library supporting these options, `{ type: 'spring', duration: 0.5, bounce: 0.2 }` is a starting point, not a stack-independent API contract. Avoid bounce in routine UI.
+A spring can suit momentum and reversal. With an installed library supporting these options, `{ type: 'spring', duration: 0.5, bounce: 0.2 }` is a starting point, not a stack-independent API contract. Avoid bounce in routine UI.
 
 - Name transition properties rather than `all`.
 - Start scale entrances near 0.9–0.97 with opacity, not `scale(0)`.

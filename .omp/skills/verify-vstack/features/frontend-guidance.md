@@ -71,7 +71,7 @@ Serve each resulting fixture with its existing runtime. Open every verification 
 
 ### Source and future-source proof
 
-Prepare the normal cache clones named in `pins.yaml`, including `emil`. Run these public interfaces from `$CHECKOUT`:
+Prepare the normal cache clones named in `pins.yaml`, including `emil`. The helper needs access to `emil`'s configured `origin` to materialize the exact Pin and its blobs without filling the real blobless cache. Run these public interfaces from `$CHECKOUT`:
 
 ```sh
 bun scripts/check-register.ts --json --upstreams "$CACHE"
@@ -81,7 +81,9 @@ bun .omp/skills/verify-vstack/scripts/frontend-maintenance.ts "$CHECKOUT" "$VERI
 
 The register must account for all sixteen UI-upstream items at the current Pin. All ten selected items must be adapt with matching pinned object identities and shipped artifact associations. No selected item remains deferred. The six permanent exclusions remain reject.
 
-The helper runs the real register CLI, then copies a source into an isolated fixture remote. It changes an upstream timing recommendation deterministically, constructs fixture-only Git objects, and runs public `plan` and `check` commands over an isolated checkout. The resulting plan must identify the changed UI item and retain its adapted Disposition and artifact group. It compares content hashes before and after to prove the real Pin and checkout and the fixture checkout stayed unchanged. The fixture baseline commit is not a product commit. Each command's stdout, stderr, exit result, plan, and final `outcome.json` remain in the new evidence directory.
+The helper runs the real register CLI, then reads the cache's configured source URL and explicitly fetches the exact Pin and its objects into an isolated fixture remote. The normal cache may be blobless and contain only `refs/vstack/pins/*`, with no local branches. It changes an upstream timing recommendation deterministically, constructs fixture-only Git objects, and runs public `plan` and `check` commands over an isolated checkout. The resulting plan must identify the changed UI item and retain its adapted Disposition and artifact group. It compares content hashes before and after to prove the real Pin and checkout and the fixture checkout stayed unchanged. The fixture baseline commit is not a product commit. Each command's stdout, stderr, exit result, plan, and final `outcome.json` remain in the new evidence directory.
+
+Retain `hashes.json` with the before and after content hashes for both checkouts. Use a Pin-only cache for regression coverage; keep its refs unchanged and retain the original branchless-cache failure separately.
 
 The source bootstrap is now committed. Normal target checks and preparation read the current HEAD; keep later ticket decisions scoped to their own rows and preserve earlier tickets' bookkeeping and changelog entries. The helper's committed fixture also exercises normal target checks without moving the real Pin.
 

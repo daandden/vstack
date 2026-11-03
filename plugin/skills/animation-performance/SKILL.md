@@ -16,7 +16,13 @@ Reproduce the actual interaction and workload before editing. Retain the engine 
 
 At 60Hz the frame interval is about 16.7ms. At 120Hz it is about 8.3ms. Measure the actual environment rather than assuming its refresh rate. Desktop CPU throttling approximates CPU pressure, not phone GPU throughput, thermal behavior, or memory constraints. State when a real-device recording remains unavailable.
 
-List each in-scope element, driver, animated properties, and concurrent work. Expand `transition: all` and library shorthands into their actual effects. Compare the same workload before and after one scoped change. Preserve duration, distance, semantics, essential outputs, and task-required benchmark pressure. Classify work by the task and its outputs, not merely its presence in the old loop. Useless synthetic blocking work may be removed when the user goal permits; report the changed workload explicitly rather than claiming retained production work became cheaper.
+Before changing the animation driver:
+1. Identify the required behavior, outputs, and any explicitly required benchmark pressure.
+2. Trace blocking work to those requirements. Remove it only after establishing that it serves none of them. Existing code or comments alone do not make work required.
+3. Preserve required work and its results. Reduce its main-thread cost or report a conflict with the performance target.
+4. Report removed workload separately from faster retained work.
+
+Example: an empty comparison spin is removable when its load is not required. A calculation must retain its required result.
 
 ## Find the cause
 

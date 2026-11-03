@@ -17,25 +17,7 @@ Inspect command palettes, list navigation, hover effects, and repeated toggles f
 
 ## 2. Easing and duration
 
-Responsive entry and exit usually use ease-out. On-screen movement can use ease-in-out, hover and color changes ease, and constant progress linear. Slow-start ease-in on an ordinary response deserves investigation because it delays the moment the user watches. Built-in easing alone is not a demonstrated defect.
-
-When custom curves are justified, use existing repo tokens. The source's exact recommended values are:
-
-```css
---ease-out: cubic-bezier(0.23, 1, 0.32, 1);
---ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
---ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
-```
-
-| Element | Recommended duration |
-| --- | --- |
-| Press feedback | 100–160ms |
-| Tooltip or small popover | 125–200ms |
-| Dropdown or select | 150–250ms |
-| Modal or drawer | 200–500ms when distance or purpose warrants it |
-| Marketing or explanation | May be longer |
-
-Ordinary UI generally stays below 300ms. Do not turn that general budget into a contradiction of the component-specific drawer allowance. Inspect tooltip delay plus animation, especially after the first tooltip in a toolbar.
+When assessing easing or duration, read the Easing and Duration sections of skill://review-animations/STANDARDS.md for the shared curves, component budgets, and qualified exceptions. Compare custom curves with existing repo tokens before proposing changes. Inspect tooltip delay plus animation, especially after the first tooltip in a toolbar.
 
 ## 3. Physicality and origin
 
