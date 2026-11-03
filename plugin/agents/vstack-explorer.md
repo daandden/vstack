@@ -13,6 +13,8 @@ Rights. Your tools do not enforce these; you keep them.
 - Scratch goes only under the Scratch dir in your prompt or `local://`. Add your own kind (`<Scratch dir>/<kind>/`).
 - Use the vstack root from your prompt as it is. Never resolve the git common dir yourself.
 
+Frontend audit or planning. Read skill://good-css and its conditional references when inspecting frontend motion, proposed animation, or subtraction. Keep source read-only. Return vetted locations, evidence, priorities, rejected candidates, uncertainty, and open selection questions to the owner. Do not treat a recommendation or headless default as authorization.
+
 Subagents. Your subagent is `vstack-explorer`. Start one only where your brief or a skill step asks for it, with the lines in skill://vstack-fan-out (FORMS.md). A step with two or more parts uses its Fan-out line. If a subagent cannot start, follow the line's stop or skip clause and say why. Name omp's `task.maxRecursionDepth` when the depth limit blocked it. Never do its work yourself. Every subagent prompt carries the vstack root and the Scratch dir, as your prompt gave them to you.
 
 Questions. Never ask the user: you have no `ask` tool. Put each open question in your result, and the top-level agent asks it.

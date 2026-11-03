@@ -67,18 +67,41 @@ The executing caller chooses visuals from each question's reader needs and choos
 
 ## Pins and Upstream clones
 
-`pins.yaml` keys (`matt`, `pstack`, `css`) are register `upstream` values and local clone names under `~/.cache/vstack/upstreams/<key>`. Set `VSTACK_UPSTREAMS` or pass `--upstreams` for another directory. Blobless clones suffice. check-register never fetches, checks out, or moves HEAD. vstack-maintain plan fetches selected Upstreams without moving HEAD. Target checks fetch only missing Pins and held refs. Keep the cache outside every checkout. To create a clone:
+`pins.yaml` keys (`matt`, `pstack`, `css`, `emil`) are register `upstream` values and local clone names under `~/.cache/vstack/upstreams/<key>`. Set `VSTACK_UPSTREAMS` or pass `--upstreams` for another directory. Blobless clones suffice. check-register never fetches, checks out, or moves HEAD. vstack-maintain plan fetches selected Upstreams without moving HEAD. Target checks fetch only missing Pins and held refs. Keep the cache outside every checkout. To create a clone:
 
 ```sh
 git clone --filter=blob:none https://github.com/mattpocock/skills.git ~/.cache/vstack/upstreams/matt
 git -C ~/.cache/vstack/upstreams/matt fetch --tags origin
 ```
 
-`pin_kind` selects how the Update finds its next Pin. `tag` for Base selects the highest `v<major>.<minor>.<patch>` tag, excluding prereleases and other tag forms. `commit` for Enhancement and CSS selects the newest default-branch commit touching the configured `path`. `pin` is the tag name or full commit SHA.
+`pin_kind` selects how the Update finds its next Pin. `tag` for Base selects the highest `v<major>.<minor>.<patch>` tag, excluding prereleases and other tag forms. `commit` for Enhancement, CSS, and UI selects the newest default-branch commit touching the configured `path`. `pin` is the tag name or full commit SHA.
 
 Each entry's `items:` list says which tree entries at the Pin are Upstream items. `match` is a path glob from the repo root where `*` stays inside one path segment, `type` is `tree` or `blob`, and the first matching pattern sets the `kind`. For example, pstack's automations are one item each, so their nested skills get no rows.
 
 One entry, the CSS upstream, also has `page_lint: scripts/check-css.mjs`: the script `check-register` runs at that Pin over vstack's page templates (see "Page templates" below).
+
+### UI upstream
+
+The UI upstream is `emilkowalski/skills`, keyed as `emil`, initially pinned at `a81dbca07f2217b7103e510c0f13f8d5b017afc9`. Its `skills/*` tree pattern discovers sixteen items. Ticket 339 ships `emil-design-eng`; ticket 343 adds `review-animations` with its companion standards; ticket 341 adds `break-ui` with its required adverse-content catalog; ticket 342 adds `animate` with component recipes and `animation-performance`; ticket 340 adds `apple-design` and `mobile-native` with their conditional companion references; ticket 344 adds `improve-animations` with audit and selected-requirements companions, `find-animation-opportunities`, and `remove-animations`. Each is an adapted hidden Addon with an upstream MIT notice in its skill directory. Break-ui is reference knowledge used by existing implementation and Verify owners, including delegated UI work. Apple-derived guidance is for web interactions; mobile-native is mobile-web guidance, not Expo or Swift development.
+
+`code-review` and good-css conditionally reach motion review guidance in the coordinator and delegated Standards reviewers. The existing review owns blocking decisions and evidence. A browser-supported clip-path effect is not blocked by the upstream's broad property preference alone. [ADR 0051](adr/0051-selected-emil-skills-govern-animation-guidance.md) governs applicability.
+
+All ten selected items now ship as adaptations. None remains deferred.
+
+The six permanent exclusions for spec 338 are `animation-vocabulary`, `ask-sonner`, `pick-ui-library`, upstream `prototype`, `animate-expo`, and `write-swift`. Vstack's own prototype remains owned by the default branch; UI integration preserves its current version.
+
+The initial registration is a consistent direct Hand edit, including the Pin, object identities, artifact associations, catalog, version, and changelog. `prepare` and target `check` read the register from HEAD. Before the bootstrap is committed, `check --take emil:skills/emil-design-eng` previews the source item, while `check-register` and `plan emil@<initial Pin>` inspect the working registration. Do not run `prepare` against the pre-bootstrap HEAD: it cannot preserve the new source. After that initial commit, use the existing Hand edit and Update commands normally. No bootstrap API or UI-specific runtime is involved.
+
+Implementation and worker pointers reach good-css, which conditionally reaches the shipped UI guidance. Catalog membership satisfies classification and supports other Matt runs; it does not broaden principle-only build or subagent selection. [ADR 0051](adr/0051-selected-emil-skills-govern-animation-guidance.md) records animation authority. Non-animation CSS responsibilities remain with good-css.
+
+Use the [frontend-guidance Verify recipe](../.omp/skills/verify-vstack/features/frontend-guidance.md) for native main and delegated runs, an unrelated-task control, packaged-content inspection, and an isolated future-source planning check. Stub load proof does not establish instruction following or UI quality.
+
+The [motion Verify recipe](../.omp/skills/verify-vstack/features/frontend-motion.md) covers construction and diagnosis through fresh main and worker paths, reduced motion, interruption, measured stutter, and browser-qualified property choices. Validate library claims against the runnable fixture's actual dependencies.
+
+The [mobile-web Verify recipe](../.omp/skills/verify-vstack/features/frontend-mobile.md) adds touch, viewport, safe-area, hover, and input proof to those existing paths. Keep actual engine and dependency scope explicit. Emulation does not establish native-device behavior.
+
+The [audit-to-selected-change recipe](../.omp/skills/verify-vstack/features/frontend-motion-audit.md) covers read-only main and delegated surveys, vetted priorities, rejected additive candidates, explicit diagnostic selection, and safe scoped subtraction through existing implementation and motion review. Audit findings enter the existing Flow owner rather than upstream execute dispatch or another plan-status workflow. Source hashes bracket selection; browser observations cover visibility, unmount, callbacks, focus, and retained useful motion.
+
 
 ## Decision register
 
