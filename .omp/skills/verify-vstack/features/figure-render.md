@@ -1,6 +1,6 @@
 # Figure render
 
-A caller renders Mermaid with the Bun CLI and receives a literal Catppuccin Mocha SVG. Roles, exact category keys, and explicit focus retain their meanings across supported families. Refusals publish nothing and preserve an older output. A Flow captures successful SVG bytes and displays them as an isolated image.
+vstack-figures has callers write Mermaid. Flow authoring captures the Mermaid source, and the reader draws it with the pinned Pele inside the page, in Catppuccin Latte on light and Mocha on dark, with theme-mauve focal marks. For exports outside the Flow, the render script writes a Catppuccin Mocha SVG with its embedded theme and scoped mauve focal rules. A captured Pele SVG from an earlier Flow keeps its bytes and shows in the reader's theme (ADR 0050).
 
 ## Sub-features
 
@@ -15,13 +15,12 @@ A caller renders Mermaid with the Bun CLI and receives a literal Catppuccin Moch
 - `figure-workflows`: sequence headers and footers share one participant identity. State, swimlane, visible agent-flow, and event-model targets keep documented generated-id and collapsed-child limits.
 - `figure-refuse`: semantic failures exit 1. Malformed bindings, usage, and unreadable input exit 2. Neither failure creates or replaces output.
 - `figure-readability`: fixed-cell labels preserve common wide and combining text. Sub/Sup use explicit 75% sizing. Step edges and a light Base outline improve presentation without claiming fewer crossings or fixing text overlap.
-- `figure-page`: captured SVG bytes and embedded styles survive source edits and load through an image element.
+- `figure-page`: a `mermaid` attachment retains source bytes by SHA-256. The reader draws it in a caption-named shadow root, with labels inside nodes, theme changes in place, no script, and no outside requests. Historical Pele SVGs keep captured bytes while following the reader theme; other SVGs remain isolated images. Exported SVG bytes and embedded styles survive source edits.
 
 ## How to get to it (user POV)
 
-- A caller writes Mermaid and runs `plugin/skills/vstack-figures/scripts/render.ts`.
-- The caller captures the successful SVG in its owning Flow Stage. The renderer itself opens no Stage.
-- An offline consumer can inline the exact SVG, including its embedded style.
+- A result-producing caller such as explain, how, architecture improvement, or teach writes Mermaid and captures it as a `mermaid` attachment. teach also runs vstack-figures' render script for its offline lesson.
+- The caller owns the Flow Stage and captures the source. The rendering helper opens no empty Stage.
 
 ## Driving it with bash and the omp browser
 
@@ -80,7 +79,7 @@ Preconditions:
    bun "$SKILL_DIR/scripts/figure-flow.ts" "$CHECKOUT" "$VERIFY_RUN_DIR" "$FLOW_SESSION" "$FLOW_AGENT"
    ```
 
-   Expect `ok: true` in `figure-flow/summary.json`. This uses only `data/figure-home`, creates a disposable Stage, captures `figures/one.svg` in both a Document and a question with reader needs, and saves receipts and raw commands. The captured bytes and SHA-256 remain unchanged after the original source changes. A second copy of the valid question, with only its required figure omitted, refuses with empty success stdout and unchanged page bytes. Inspect the raw refusal to confirm it reached the missing-visual check. Open the summary's live URL, select the question, and inspect Reader needs, meaningful image alternative text, and the visible focused group. Inspect the saved `figure-flow/captured.svg` in its own browser tab for computed SVG paints. Flow images are not inline SVG.
+   Expect `ok: true` in `figure-flow/summary.json`. This uses only `data/figure-home`, creates a disposable Stage, captures `figures/one.svg` in both a Document and a question with reader needs, and saves receipts and raw commands. The captured bytes and SHA-256 remain unchanged after the original source changes. A second copy of the valid question, with only its required figure omitted, refuses with empty success stdout and unchanged stored state. Inspect the raw refusal to confirm it reached the missing-visual check. Open the summary's live URL, select the question, and inspect Reader needs and the visible focused group. Inspect the saved `figure-flow/captured.svg` in its own browser tab for computed export paints. Historical Pele SVGs are drawn in the page; other SVGs remain isolated images.
 
 6. Save ARIA and full-resolution lossless WebP proof at 1280 and 360px. Capture PNG silently, convert losslessly, and read the resulting WebP as the parent skill requires. Record page overflow and visible readability separately from the computed-paint audit. Keep the raw outputs and revision record beside the screenshots.
 
@@ -94,6 +93,16 @@ Preconditions:
    ```
 
    Keep `figures/`, `figure-flow/`, screenshots, ARIA, and `notes.md` outside `data/`. Record every failed attempt, Doctor retry, correction, re-drive, and teardown. Do not publish this disposable fixture to the real Flow.
+
+### Source-based and historical reader figures
+
+1. In an isolated proof Flow, capture the same short order-flow drawing as a `mermaid` attachment with focal id `Stock`, and as an earlier Pele SVG. Put both on one complete question with matching reader needs and Visual kinds. Save the source and captured SVG hashes.
+2. Submit malformed Mermaid and expect Pele's parse error, no committed content, and unchanged `show`. Refuse a question with missing matching figures, a figure with no declared need, and a question relying only on a Background figure. Compare stored state and captured bytes before and after.
+3. Open the live URL through the explicit non-Tern backend. Select the receipt's question id and wait for each `.diagram` to have `data-render="drawn"`. Each has role `img` named by its caption. Inspect labels inside shapes and the visible Stock focus in its shadow root. Pick Light, Dark, then Light. The same nodes change Latte and Mocha fills without a redraw, and the historical SVG follows the theme.
+4. Publish a source figure with labels containing script tags, image handlers, `foreignObject`, and `javascript:` text plus a click link. Labels remain text. The drawing has no script, image, foreign object, link element, event handler, or outside URL. No dialog opens and no request leaves the host origin.
+5. Edit original source files after capture. Served source and historical SVG hashes remain unchanged. Capture ARIA and full-resolution lossless WebP at 1280 and 360px, and record page overflow and label readability. Use the same required non-Tern WebKit policy as step 7 above. An unavailable engine remains unmet proof, not a reason to open Tern.
+6. Stop only the proof host, close owned tabs, and preserve stored Flow data and captured evidence. These CLI reader fixtures prove publication and drawing, not an ordinary user's custom-picker answer.
+
 
 ## Gotchas
 

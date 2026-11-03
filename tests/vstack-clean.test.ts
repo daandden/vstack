@@ -143,7 +143,9 @@ test("symlinks are never followed: not for the newest mtime, the size, or the de
 
   const listed = list().json.entries as Listed[];
   expect(listed.map((e) => e.path).sort()).toEqual([linkEntry, join(root, "shop-aaaaaa/verify/run2")]);
-  expect(listed.find((e) => e.entry === "run2")!.size).toBeLessThan(100);
+  writeFileSync(join(outside, "precious.txt"), "fresh and big ".repeat(10000));
+  const enlarged = list().json.entries as Listed[];
+  for (const entry of listed) expect(enlarged.find((e) => e.path === entry.path)!.size).toBe(entry.size);
 
   const r = clean("--home", home, "--older-than", "14d", "--delete", linkEntry, join(root, "shop-aaaaaa/verify/run2"));
   expect(r.code).toBe(0);

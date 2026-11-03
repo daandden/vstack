@@ -1,0 +1,625 @@
+{
+  "version": 1,
+  "subject_expectations": [
+    {
+      "id": "stream-versus-tabs",
+      "distinctions": [
+        "Q1, research Result, then Q2 in one reading path",
+        "Grilling Q1 and Q2 in one tab and research in another",
+        "Stage identity retained on content versus Stage tabs as the main navigation"
+      ],
+      "prose_control": false
+    },
+    {
+      "id": "update-placement",
+      "distinctions": [
+        "Original question and Result keep their original positions",
+        "Late answer and latest Result visible in the original block under A",
+        "A later linked notice appears where the update happened under B",
+        "Full content is not duplicated and Result history remains available"
+      ],
+      "prose_control": false
+    },
+    {
+      "id": "terminology",
+      "distinctions": [
+        "A specifically named Vite+ product versus ordinary Vite",
+        "Clarifies the term without approving an integration"
+      ],
+      "prose_control": true
+    },
+    {
+      "id": "prototype-review",
+      "distinctions": [
+        "Review a design prototype before production implementation versus retain current visual language",
+        "The choice is a review step, not approval of a finished appearance"
+      ],
+      "prose_control": true
+    }
+  ],
+  "controls": [
+    {
+      "id": "original-question-7",
+      "expected": "negative",
+      "basis": "Approved unchanged historical prose-only structural negative. Words name the choices but no question-local representation shows their reading routes. Historical capture unavailable; reconstruction is not that capture."
+    },
+    {
+      "id": "original-question-8",
+      "expected": "negative",
+      "basis": "Approved unchanged historical prose-only structural negative. No local representation locates the same late answer or revision under both options. Historical capture unavailable."
+    },
+    {
+      "id": "wrong-locality",
+      "expected": "negative",
+      "basis": "A complete diagram exists only on the Background, not on the question or its options. Schema-valid prose does not establish semantic adequacy."
+    },
+    {
+      "id": "missing-distinction",
+      "expected": "negative",
+      "basis": "The local diagram only shows Q1 then research then Q2. It omits the Stage-tab alternative and tab switches despite matching the declared scenario kind."
+    },
+    {
+      "id": "unreadable",
+      "expected": "negative",
+      "basis": "Historical reviewed capture: both labels exist in captured bytes, but a 6986px-wide diagram shrinks to about 1216 CSS px, with its labels about 2.8 CSS px high. Judge displayed evidence, not source zoom.",
+      "expected_scope": "The historical reviewed capture, not every later rendering of this unchanged source.",
+      "current_reader_review": {
+        "question": "Q24",
+        "answer": "B",
+        "classification": "wide-but-legible",
+        "use_as_font_readability_negative": false,
+        "basis": "The repaired reader preserves intrinsic labels and local panning. The user reclassified this current rendering without changing the historical failure."
+      }
+    },
+    {
+      "id": "late-repair",
+      "expected": "negative-at-first-publication",
+      "basis": "Revision 2 has no local visual. A separately captured re-ask at revision 3 cannot change revision 2. Review the repair independently."
+    }
+  ],
+  "human_review": {
+    "status": "reviewed",
+    "reviewed": "2026-10-31",
+    "questions": [
+      "Do the fresh question-local diagrams or previews explain every listed option distinction clearly at the captured display size?",
+      "Are the terminology and prototype-review prose controls realistic and adequately explained without requiring a diagram? Is the prototype-review with-skill diagram unnecessary?",
+      "Do the negative controls discriminate locality, decision coverage, readability, and timing without treating every valid prose question as a failure?"
+    ],
+    "outcome": [
+      "Flow question question-20, answer A: The recorded judgments hold. Original Q7 and Q8 fail. The wrong-locality, missing-distinction, unreadable, and late-repair controls fail. The current-skill stream-versus-tabs page is adequate. Terminology is a legitimate prose control.",
+      "Flow question question-21, answer A: The update-placement B side reads correctly. The page is adequate.",
+      "Flow question question-22, answer A: The prototype-review diagram helps. It is acceptable, not a penalty."
+    ]
+  },
+  "shipped_reader_rerun": {
+    "ticket": 315,
+    "run": "2026-10-31",
+    "reader": "Nuxt reader 9.0.0 served by the Bun host, integration tip 417a5d8",
+    "configuration": "One trial per subject per side, anthropic/claude-opus-5-5 at high thinking, isolated --home and own host port per run, each child under its own harness identity.",
+    "identity": "All eight children used their own harness binding. The checker confirmed each frozen binding.",
+    "availability": [
+      "stream-versus-tabs, terminology, and prototype-review: both sides available.",
+      "update-placement baseline unavailable: a search over the tested skill tree returned SKILL.md and evals/PROCEDURE.md text."
+    ],
+    "capture": "The watcher froze every first publication at revision 2 while it was current, and each receipt shows the host serving. The rendered captures were taken after the children exited, once their live state SHA-256 matched the freeze. The six controls and the late repair are labelled re-renders.",
+    "human_review": {
+      "status": "reviewed",
+      "reviewed": "2026-11-01",
+      "questions": [
+        "Do the fresh question-local visuals and prose explain every listed option distinction clearly at the captured display size?",
+        "Do the re-rendered controls still fail for locality, decision coverage, readability, and timing in the shipped reader?",
+        "Is the no-skill stream-versus-tabs text figure declared as option-diagram adequate, and are the prototype-review diagram's edge-crossed cluster titles readable?"
+      ],
+      "outcome": [
+        "Flow question question-23, answer A: The shipped-reader judgments hold.",
+        "Flow question question-24, answer C: The no-skill stream-versus-tabs text figure declared as option-diagram is not an adequate structural visual. A structural choice needs a drawn diagram.",
+        "Flow question question-25, answer B: The prototype-review diagram is not readable in the light theme. Light-mode figure styling needs a fix."
+      ]
+    }
+  },
+  "ticket_316_candidate": {
+    "status": "Combined candidate proof recorded; independent certification of the final integrated commit remains a separate gate.",
+    "configuration": "Two fresh paired batches, each with one trial per subject and side. The final-input batch used the actual recorded openai-codex/gpt-6.1-sol Session model at high thinking, with no main-model fallback or provider failure.",
+    "first_publication": "All eight final-input trials completed through the actual authoring CLI with isolated identities and homes. Their first revision, binding, submitted fields, captured bytes, reader images, and record-integrity results were preserved before review.",
+    "human_review": {
+      "earlier_batch": "Q17A, Q18A, Q19A, and Q20A: only the with-skill explanation was adequate for each of the four subjects. These judgments remain attached to those examples.",
+      "failed_before_mobile": "Q21B: desktop readable, mobile needs a fix.",
+      "repaired_mobile": "Q23A: the repaired mobile comparison is usable in both themes.",
+      "current_wide_control": "Q24B: the current over-wide rendering is wide-but-legible, not a font-readability negative.",
+      "final_input_batch": [
+        { "subject": "stream-versus-tabs", "question": "Q25", "answer": "A", "with_skill_adequate": true, "baseline_adequate": false },
+        { "subject": "update-placement", "question": "Q26", "answer": "A", "with_skill_adequate": true, "baseline_adequate": false },
+        { "subject": "terminology", "question": "Q27", "answer": "A", "with_skill_adequate": true, "baseline_adequate": false },
+        { "subject": "prototype-review", "question": "Q28", "answer": "A", "with_skill_adequate": true, "baseline_adequate": false }
+      ],
+      "presentation": "Ordinary page titles identified question, example, theme, and viewport above unchanged raw review screenshots; labels were not burned into images."
+    },
+    "scope": "The structural stream example uses drawn question-local Mermaid. The update-delivery example uses concrete numbered text usage previews. The terminology and prototype-review controls retain prose. Mechanical success does not supply these subjective adequacy judgments.",
+    "limits": [
+      "One trial per subject and side in each batch is not a reliability estimate.",
+      "Earlier interrupted, rate-limited, fallback, or unavailable attempts retain their original status.",
+      "A later repair or re-render does not change an earlier first-publication score.",
+      "Repeat with PROCEDURE.md and check-record.ts; raw machine provenance and run-specific captures belong in Verify Scratch, not public capability links."
+    ]
+  },
+  "final_review_fix_batch": {
+    "status": "Human review complete; independent certification of the final integrated commit remains a separate gate.",
+    "source_tree": "0f2b57209035d8e75fa57b4cb1a18ccdba2cfd8c",
+    "configuration": "One fresh trial per subject and side, eight actual authoring processes, using openai-codex/gpt-6.1-sol at high thinking. This is the after-grid-final cohort, separate from the historical unaccepted 2f02d8358e681e37ac32eb35ecc7633fcc739cd0 cohort and the earlier Q25-Q28 examples.",
+    "human_review": {
+      "status": "reviewed",
+      "reviewed": "2026-11-02",
+      "flow": "flow-nuxt-vite-frontend-f2000f",
+      "stage": "stage-7",
+      "outcome": [
+        { "subject": "stream-versus-tabs", "question": "Q31", "question_id": "question-54", "answer": "A", "with_skill_adequate": true, "baseline_adequate": false },
+        { "subject": "update-placement", "question": "Q32", "question_id": "question-55", "answer": "A", "with_skill_adequate": true, "baseline_adequate": false },
+        { "subject": "terminology", "question": "Q33", "question_id": "question-56", "answer": "A", "with_skill_adequate": true, "baseline_adequate": false },
+        { "subject": "prototype-review", "question": "Q34", "question_id": "question-57", "answer": "A", "with_skill_adequate": true, "baseline_adequate": false }
+      ],
+      "presentation": "The user reviewed unchanged raw captures with page-text titles identifying the actual Q number, subject, side, theme, viewport, and view state above each image. Answer A means only the with-skill explanation is adequate."
+    },
+    "scope": "These actual user judgments apply only to the four frozen after-grid-final pairs. One trial per subject and side is not a reliability estimate. Mechanical record integrity does not establish subjective adequacy. Earlier Q25-Q28 judgments, the historical unaccepted cohort, original Q7/Q8 negatives, and Q24's wide-but-legible judgment retain their own status. No shipped status or independent final-commit acceptance is implied.",
+    "caption_projection_repair_audit": {
+      "status": "Unaffected-cohort projection audit, not a new authoring trial or independent acceptance.",
+      "historical_inputs": "The eight frozen after-grid-final questions and all 42 raw view states remain unchanged. Only the stream-versus-tabs with-skill question uses an attachment caption; it is unqualified. The update-placement with-skill previews are text. The other six questions are prose.",
+      "author_input_scope": "Actual pre-first-publication tool calls were audited. Authors did not consume FigureList.vue, generated reader assets, CHANGELOG.md, or judging.json, and did not open a browser before first publication. Executed CLI and author-consumed instruction bytes are unchanged by the repair.",
+      "reader_input_scope": "Reader source and generated bundle bytes changed. They are not claimed byte-identical to the frozen tested-input manifest.",
+      "presentation_comparison": "All 42 frozen raw view states were rendered with the exact c160733 reader and the repaired reader at matched viewport, theme, device scale, disclosure state, and pan position. Chromium 156 and WebKit 27.2 each produced identical question DOM including shadow DOM, ARIA, element geometry, and PNG bytes across all 42 comparisons.",
+      "affected_scope": "The later Q31-Q34 review packet has already-qualified captions and exact adjacent explicit titles. The repaired reader displays one title for each of its 42 unchanged captured images across both engines, themes, and widths. Qualified and unqualified captions, reused assets under different questions, option previews, Result attachments, historical HTML pretitles, and diagram panning have separate real CLI and browser regression proof.",
+      "judgment_scope": "No evaluated first-publication presentation or prepublication author input changed, so no affected candidate condition requires a new semantic trial. Historical manifests, captures, scores, and actual Q31-Q34 answers retain their original identities. Current repair proof is not a replacement subjective review."
+    }
+  },
+  "native_question_final_cohort": {
+    "status": "Historical human adequacy review of the exact older-dependency pairs only. Not current-SUT acceptance. Independent acceptance of the final integrated commit remains a separate gate.",
+    "source_head": "0a3bbd4d2376f94c616a101e5515c53faf2db502",
+    "source_tree": "688ff740051097564c98ca348633fc149d557254",
+    "configuration": "Fresh native-question cohort after reconciliation, separate from the older 0f2b57209035d8e75fa57b4cb1a18ccdba2cfd8c, 991, and ba66 cohorts. The actual parent Session model was openai-codex/gpt-6.1-sol at high thinking, without an override. All ten actual main processes used that model and thinking level, exited 0, and recorded no main fallback or provider errors.",
+    "evidence_root": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-final-authoring",
+    "selected_records": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-final-authoring/selected-records.json",
+    "processes": {
+      "actual_provider_processes": 10,
+      "original_batch": 8,
+      "usable_trials": 8,
+      "unavailable_original_baselines": 2,
+      "infrastructure_only_replacements": 2,
+      "outcomes": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-final-authoring/process-outcomes.json",
+      "replacement_scope": "The original update-placement and prototype-review baselines attempted occupied port 51417 because eval tools lost the Popen environment. Each received exactly one authorized infrastructure-only replacement with explicit assigned-port propagation on every CLI command and the same inputs, source, model, thinking, and overlay. Judge the valid replacement records below. Preserve the invalid originals and their ten views as unavailable evidence, not negative adequacy scores."
+    },
+    "runtime_provenance": {
+      "current_clone": "Executed CLI, explicitly read with-skill SKILL.md, and explicitly loaded extension came from the tested current clone. The frozen process-local overlay disabled the ambient duplicate extension and loaded the current extension file without changing the global installation.",
+      "inventory": "Actual no-inference inventory and context controls show ordinary ask present and flow_ask absent under the frozen overlay. Each author retains its pre-inference identity context. This is not interception of every provider request.",
+      "installed_dependency": "The discoverable vstack-figures dependency came from installed vstack 8.0.12. Its actual read bytes differ from the current clone and are disclosed, not attributed to the clone.",
+      "hash_timing": "Executed source bytes were frozen before process starts. Installed package-manifest hashes were measured after original starts. Later tracked-byte copies matched their prelaunch digests.",
+      "advisor": "Actual auxiliary advisor provider and model are recorded separately. Advisor thinking-level events were unavailable and are not inferred.",
+      "runtime": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-final-authoring/runtime-provenance.json",
+      "dependency_reads": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-final-authoring/dependency-read-provenance.json",
+      "acceptance_qualification": "The actual installed vstack-figures dependency was older than the tested current source. Q35-Q38 A remain real judgments of those outputs, not acceptance of the current dependency or current SUT."
+    },
+    "first_publication": {
+      "basis": "All ten first publications were frozen at revision 2 while their actual Popen poll was None. Post-exit states matched those freezes, with no later answer or repair. The review screenshots were captured after exit from unchanged first-publication states, not while the authors were live.",
+      "mechanical": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-final-authoring/mechanical.json",
+      "integrity": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-final-authoring/integrity-results.json",
+      "exposure": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-final-authoring/exposure-audit.json"
+    },
+    "human_review": {
+      "status": "reviewed",
+      "flow": "flow-nuxt-vite-frontend-f2000f",
+      "stage": "stage-7",
+      "publication_revision": 140,
+      "answer_record_revision": 141,
+      "raw_answers": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-final-human-review-raw.json",
+      "accepted_answers": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-final-human-review-accepted.json",
+      "publication_receipt": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-final-human-review-receipt.json",
+      "outcome": [
+        {
+          "subject": "stream-versus-tabs",
+          "question": "Q35",
+          "question_id": "question-58",
+          "answer": "A",
+          "with_skill_adequate": true,
+          "baseline_adequate": false,
+          "with_skill_trial": "original",
+          "with_skill_record": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-final-authoring/stream-versus-tabs/with_skill-capture/record.json",
+          "with_skill_record_sha256": "d554a839311016b00234920ba350c29f6e702f15df616abd6e8437b45e15d5eb",
+          "baseline_trial": "original",
+          "baseline_record": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-final-authoring/stream-versus-tabs/baseline-capture/record.json",
+          "baseline_record_sha256": "f962f1121aa7e3388837cf8879cba8cf625d5d0157c7dc86e36522c48be33492"
+        },
+        {
+          "subject": "update-placement",
+          "question": "Q36",
+          "question_id": "question-59",
+          "answer": "A",
+          "with_skill_adequate": true,
+          "baseline_adequate": false,
+          "with_skill_trial": "original",
+          "with_skill_record": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-final-authoring/update-placement/with_skill-capture/record.json",
+          "with_skill_record_sha256": "bb00039887dd9d8e36f554cf6f701b865688d3875a577308ac5ff73354b86172",
+          "baseline_trial": "baseline-port-replacement",
+          "baseline_record": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-final-authoring/update-placement/baseline-port-replacement-capture/record.json",
+          "baseline_record_sha256": "2405bd4300fd6139ba364f2cad898c91e5b8b11da6fdcc2e47457727a17aaaee"
+        },
+        {
+          "subject": "terminology",
+          "question": "Q37",
+          "question_id": "question-60",
+          "answer": "A",
+          "with_skill_adequate": true,
+          "baseline_adequate": false,
+          "with_skill_trial": "original",
+          "with_skill_record": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-final-authoring/terminology/with_skill-capture/record.json",
+          "with_skill_record_sha256": "4bac86225e93a66c8edfb88a4858ff305063819bbb4d4c5a47a5f6d1a67b0509",
+          "baseline_trial": "original",
+          "baseline_record": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-final-authoring/terminology/baseline-capture/record.json",
+          "baseline_record_sha256": "96727aa784566fc6a82795d395429ae497b343a2c7cc2814d6e94938fa7c740d"
+        },
+        {
+          "subject": "prototype-review",
+          "question": "Q38",
+          "question_id": "question-61",
+          "answer": "A",
+          "with_skill_adequate": true,
+          "baseline_adequate": false,
+          "with_skill_trial": "original",
+          "with_skill_record": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-final-authoring/prototype-review/with_skill-capture/record.json",
+          "with_skill_record_sha256": "4f2703fdf13f200ac1f0088950982ea2432d3def301f5fb94992f8ac7eaa0413",
+          "baseline_trial": "baseline-port-replacement",
+          "baseline_record": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-final-authoring/prototype-review/baseline-port-replacement-capture/record.json",
+          "baseline_record_sha256": "d3b870c6a5fd30e1ee5f864a79d94360bd1f84d5fa96e698e9a562dcc4adf961"
+        }
+      ],
+      "presentation": "The user reviewed 42 unchanged eligible images. Each had exactly one correct visible page-text title above it, identifying Q number, subject, side, theme, viewport, and view state. Live served SHA-256 values matched source images. Labels were not burned into image bytes.",
+      "views": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-final-authoring/review-ready-manifest.json",
+      "live_title_byte_audit": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-final-live-title-byte-audit.json",
+      "visible_label_proof": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-final-visible-label-proof.webp"
+    },
+    "metadata_only_boundary": {
+      "basis": "All ten actual pre-first-publication read paths, executed commands, and tool results were audited. Neither judging.json nor CHANGELOG.md was consumed or returned by a search. Only this coordinator record and the changelog proof note change. Original frozen files, image bytes, process records, source identities, and historical judgments remain evidence in their original scope.",
+      "frozen_inputs": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-final-authoring/tested-files.json",
+      "input_audit": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-final-authoring/input-freeze-audit.json",
+      "evidence_manifest": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-final-authoring/evidence-manifest.json"
+    },
+    "limits": [
+      "Answer A means only the with-skill example is adequate for each exact recorded pair. It does not approve either product option.",
+      "One usable trial per subject and side is not a reliability estimate. Mechanical integrity does not establish subjective adequacy.",
+      "The two unavailable original baselines are not the baselines judged inadequate in Q36 and Q38. Those judgments apply only to their valid replacement records.",
+      "Sixteen wrong-width failed captures and ten views of the unavailable originals remain preserved outside the 42 eligible views.",
+      "Original Q7/Q8 negatives, historical unreadable captures, Q24's current wide-but-legible classification, and all older cohort judgments retain their own status. No older human answer transfers to this cohort.",
+      "This record does not claim independent final-commit acceptance, closed tickets, a PR, or shipped status.",
+      "This older-dependency cohort is historical evidence only. Its actual Q35-Q38 answers do not transfer to the current-complete cohort, which has its own Q39-Q42 answers."
+    ],
+    "limits_and_first_failures": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-final-authoring/limits-and-first-failures.json"
+  },
+  "current_complete_native_question_cohort": {
+    "status": "Actual user adequacy review complete for these exact current-dependency pairs. Independent final integrated-commit acceptance remains a separate gate.",
+    "source_head": "0a3bbd4d2376f94c616a101e5515c53faf2db502",
+    "source_tree": "688ff740051097564c98ca348633fc149d557254",
+    "evidence_root": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-complete-authoring",
+    "configuration": {
+      "actual_provider_processes": 8,
+      "original_trials": 8,
+      "selected_records": 8,
+      "unavailable_trials": 0,
+      "replacements": 0,
+      "trials_per_subject_side": 1,
+      "single_batch_starts_before_poll_or_wait": true,
+      "model": "openai-codex/gpt-6.1-sol",
+      "thinking": "high",
+      "model_basis": "Actual parent Session model/thinking events, with all eight actual main processes matched, no main provider error or fallback. Auxiliary models and unavailable thinking events remain separately attributed.",
+      "model_snapshot": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-complete-authoring/model-snapshot.json",
+      "runtime": {
+        "pinned_omp": "/Users/vanguyen/.config/tern/omp/versions/18.16.0",
+        "pinned_omp_sha256": "d4a10d97488d6054d2b18198bd24f461079952c7e0fb75ba66336ca0df0cb99e",
+        "pinned_version": "18.16.0",
+        "bun": "/Users/vanguyen/.local/share/mise/installs/bun/1.3.14/bin/bun",
+        "bun_sha256": "e0c90ec15d33363e6b70713d56bc3b2c7585c17f40a0fe0f8fd9305901d4e233",
+        "current_extension": "/Users/vanguyen/.omp/wt/t45ab18688/m/plugin/extensions/vstack.ts",
+        "current_extension_sha256": "9cc9d5864be22b13079403ab7e35bf67a1fe3a9960b8af769bd75572bc6397fe",
+        "extension_override": "Ambient extension-module:vstack disabled; explicit current clone extension file enabled. Plugins and extensions otherwise enabled.",
+        "inherited_disabled_rule": "rule:todo-blockers retained identically on both sides",
+        "dependency_override": {
+          "customDirectories": [
+            "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-dependency-provenance/staged-skills"
+          ],
+          "link": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-dependency-provenance/staged-skills/vstack-figures",
+          "realpath": "/Users/vanguyen/.omp/wt/t45ab18688/m/plugin/skills/vstack-figures",
+          "skill_sha256": "c8991076162eafcd6992d5b83e613e063232ac768e1b4467833928daf7464a3e",
+          "reference_sha256": "db6c4f5f4a72f86672f234f12be815054fdaed30779e3d05fcc2fc864b6df837",
+          "render_script_sha256": "5b4427e46954e3d49054bfe7a7674e90db69f639dc381cb416cd2429a665327d",
+          "actual_prelaunch_discovery": [
+            {
+              "name": "skill:vstack-figures",
+              "description": "How a vstack skill draws a figure. The caller writes Mermaid, follows the styling rules, and submits the source to the Flow, whose reader draws it with Pele in Catppuccin Latte or Mocha.",
+              "input": {
+                "hint": "arguments"
+              },
+              "source": "skill"
+            }
+          ],
+          "no_inference_real_tool_read_proof": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-dependency-provenance/handback.json"
+        },
+        "ordinary_ask_in_inventory": true,
+        "flow_ask_in_inventory": false,
+        "local_provider_stub_in_author_configs": false,
+        "current_config": {
+          "memory": {
+            "backend": "off"
+          },
+          "skills": {
+            "ignoredSkills": [
+              "flow-page",
+              "*/flow-page"
+            ],
+            "includeSkills": [
+              "vstack-figures"
+            ],
+            "customDirectories": [
+              "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-dependency-provenance/staged-skills"
+            ]
+          },
+          "disabledExtensions": [
+            "rule:todo-blockers",
+            "extension-module:vstack"
+          ],
+          "extensions": [
+            "/Users/vanguyen/.omp/wt/t45ab18688/m/plugin/extensions/vstack.ts"
+          ]
+        },
+        "real_HOME_PATH_credentials_retained": true,
+        "PI_OMP_environment_removed": true
+      },
+      "prepared_prompts_inputs_argv_roots": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-complete-authoring/prepared.json",
+      "evaluation_config": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-complete-authoring/evaluation-config.json",
+      "dependency_read_provenance": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-complete-authoring/dependency-read-provenance.json",
+      "all_consumed_dependency_bodies_match_current": true,
+      "same_current_overlay_on_both_sides": true
+    },
+    "selected_records": [
+      {
+        "subject": "stream-versus-tabs",
+        "side": "with_skill",
+        "record": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-complete-authoring/stream-versus-tabs/with_skill-capture/record.json",
+        "sha256": "3e5fe661584e7b6a9a81a685a0b05adc0cf497aceddbe934063efeb750a60f24"
+      },
+      {
+        "subject": "stream-versus-tabs",
+        "side": "baseline",
+        "record": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-complete-authoring/stream-versus-tabs/baseline-capture/record.json",
+        "sha256": "1f41ce36377aa0975f8e8eea8069ffc805bed7227369293c47945e2a97241f10"
+      },
+      {
+        "subject": "update-placement",
+        "side": "with_skill",
+        "record": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-complete-authoring/update-placement/with_skill-capture/record.json",
+        "sha256": "9427afa333a211d842d223d7c98a183664813dc36e34884c3191bf6234592194"
+      },
+      {
+        "subject": "update-placement",
+        "side": "baseline",
+        "record": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-complete-authoring/update-placement/baseline-capture/record.json",
+        "sha256": "73e7c99cbdb10d9c7fcddd0ad0a138d78bb7521b795290ac196979af146c7774"
+      },
+      {
+        "subject": "terminology",
+        "side": "with_skill",
+        "record": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-complete-authoring/terminology/with_skill-capture/record.json",
+        "sha256": "9816b3c433a02af8e3d7fbbd35455547a58f0fef2e5fdbc2dcde9f41fb3c2d0e"
+      },
+      {
+        "subject": "terminology",
+        "side": "baseline",
+        "record": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-complete-authoring/terminology/baseline-capture/record.json",
+        "sha256": "6ac4c1c19ac72e4d3c83e85b52ac894dcf0dc06d821d94189aa7084710e5b01b"
+      },
+      {
+        "subject": "prototype-review",
+        "side": "with_skill",
+        "record": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-complete-authoring/prototype-review/with_skill-capture/record.json",
+        "sha256": "54b593ce44fc1ba85b31fdac9377467769b83930e6b675adcd4895b6cec8ef1f"
+      },
+      {
+        "subject": "prototype-review",
+        "side": "baseline",
+        "record": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-complete-authoring/prototype-review/baseline-capture/record.json",
+        "sha256": "1615cdd57790c76f947533c3e00c1e7f21d16af619e28d76c13768e7a18cec1d"
+      }
+    ],
+    "first_publication": {
+      "first_revision": 2,
+      "frozen_while_actual_process_poll_None": 8,
+      "all_binding_session_agent_flow_stage_matches": true,
+      "all_contexts_precede_first_assistant": true,
+      "all_receipt_state_revision_matches": true,
+      "all_submitted_fields_match": false,
+      "submitted_field_discrepancy": "Only update-placement with-skill options compare false. The original mechanical comparison removes option-letter prefixes but retains nested generated preview ids. model.ts figure() and parseQuestion() add question-1-option-1-preview and question-1-option-2-preview. Removing only these ids makes both stored options equal their unlettered submitted options, including exact preview text. The original false result is preserved, not relabelled.",
+      "normalization_audit": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/complete-current-finalizer/submitted-normalization-audit.json",
+      "all_postexit_state_hashes_equal_first_freeze": true,
+      "answers_or_closes": 0,
+      "capture_timing": "Review images were captured after actual process exit from byte-identical first-publication states. No later successful publication replaced the first.",
+      "timing_limits": "Small negative freeze_after_submit_result_ms values occur for two trials because watcher freeze precedes transcript result-record timestamp by about 4 ms. The receipts and actual process poll=None, not timestamp ordering, identify first publication. Terminology baseline lacks an at-freeze submitted copy, so its at_freeze_submitted_equal_postexit remains null; post-exit submitted bytes and frozen state are retained.",
+      "mechanical": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-complete-authoring/mechanical.json",
+      "port_identity_audit": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-complete-authoring/cli-port-identity-audit.json",
+      "integrity_results": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-complete-authoring/integrity-results.json",
+      "integrity_scope": "Record integrity checks bytes and identities, not subjective adequacy. No semantic scorer rerun or invented numeric score."
+    },
+    "source_assets_views": {
+      "identities": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/complete-current-finalizer/selected-source-asset-view-identities.json",
+      "identities_sha256": "98afc1375e817572b37472f10b726fe4efccaff5308baa3f9991aadbb072d6b8",
+      "raw_manifest": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-complete-authoring/raw-review-manifest.json",
+      "eligible_manifest": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-complete-authoring/review-ready-manifest.json",
+      "eligible_manifest_sha256": "600c2d19d483eb5af9f7e642c86004dc5ac4998ec04b74b5013bcbbea1b42005",
+      "views": 42,
+      "source_tree": "688ff740051097564c98ca348633fc149d557254",
+      "browser": "Actual dedicated Chromium 156.0.8078.4; non-Tern/non-relay; --disable-gpu",
+      "viewport_CSS_widths": [
+        1280,
+        360
+      ],
+      "actual_DPR": 1.25,
+      "themes": [
+        "Light",
+        "Dark"
+      ],
+      "states": "Default collapsed primary, expanded wide companion, and narrow pan-start/end for actual drawn diagram",
+      "format": "Retained PNG plus full-resolution lossless unscaled WebP, no burned-in coordinator labels, per-view ARIA/geometry/source hashes/timing",
+      "capture_failures": 0,
+      "page_horizontal_overflow_views": 0,
+      "representations": [
+        {
+          "subject": "stream-versus-tabs",
+          "side": "with_skill",
+          "local_kinds": [
+            "scenario"
+          ],
+          "captured_asset_hashes": {
+            "assets/2c94cb4488162605a6e98b11da3f8dbbcdda343a735c250ac497ee0bca7fad33/stream-versus-tabs-scenario.mmd": "2c94cb4488162605a6e98b11da3f8dbbcdda343a735c250ac497ee0bca7fad33"
+          }
+        },
+        {
+          "subject": "stream-versus-tabs",
+          "side": "baseline",
+          "local_kinds": [],
+          "captured_asset_hashes": {}
+        },
+        {
+          "subject": "update-placement",
+          "side": "with_skill",
+          "local_kinds": [
+            "option-preview",
+            "option-preview"
+          ],
+          "captured_asset_hashes": {}
+        },
+        {
+          "subject": "update-placement",
+          "side": "baseline",
+          "local_kinds": [],
+          "captured_asset_hashes": {}
+        },
+        {
+          "subject": "terminology",
+          "side": "with_skill",
+          "local_kinds": [],
+          "captured_asset_hashes": {}
+        },
+        {
+          "subject": "terminology",
+          "side": "baseline",
+          "local_kinds": [],
+          "captured_asset_hashes": {}
+        },
+        {
+          "subject": "prototype-review",
+          "side": "with_skill",
+          "local_kinds": [],
+          "captured_asset_hashes": {}
+        },
+        {
+          "subject": "prototype-review",
+          "side": "baseline",
+          "local_kinds": [],
+          "captured_asset_hashes": {}
+        }
+      ],
+      "option_distinction_maps": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-complete-authoring/option-distinction-maps.json"
+    },
+    "human_review": {
+      "status": "reviewed",
+      "flow": "flow-nuxt-vite-frontend-f2000f",
+      "stage": "stage-7",
+      "publication_revision": 144,
+      "answer_record_revision": 145,
+      "raw_answers": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/complete-current-human-review-raw.json",
+      "raw_answers_sha256": "1521cd8eb9e787cbb27d3c36ab7527b1c609b0c8033f9bfb0c1daefc0b0ec8c9",
+      "accepted_answers": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/complete-current-human-review-accepted.json",
+      "accepted_answers_sha256": "0da7b0292edac493620db4faf2ec98ec0afa2c1a096efe5c658d2a6385cbc43f",
+      "outcome": [
+        {
+          "subject": "stream-versus-tabs",
+          "question": "Q39",
+          "question_id": "question-62",
+          "answer": "A",
+          "with_skill_adequate": true,
+          "baseline_adequate": false,
+          "with_skill_record_sha256": "3e5fe661584e7b6a9a81a685a0b05adc0cf497aceddbe934063efeb750a60f24",
+          "baseline_record_sha256": "1f41ce36377aa0975f8e8eea8069ffc805bed7227369293c47945e2a97241f10"
+        },
+        {
+          "subject": "update-placement",
+          "question": "Q40",
+          "question_id": "question-63",
+          "answer": "A",
+          "with_skill_adequate": true,
+          "baseline_adequate": false,
+          "with_skill_record_sha256": "9427afa333a211d842d223d7c98a183664813dc36e34884c3191bf6234592194",
+          "baseline_record_sha256": "73e7c99cbdb10d9c7fcddd0ad0a138d78bb7521b795290ac196979af146c7774"
+        },
+        {
+          "subject": "terminology",
+          "question": "Q41",
+          "question_id": "question-64",
+          "answer": "A",
+          "with_skill_adequate": true,
+          "baseline_adequate": false,
+          "with_skill_record_sha256": "9816b3c433a02af8e3d7fbbd35455547a58f0fef2e5fdbc2dcde9f41fb3c2d0e",
+          "baseline_record_sha256": "6ac4c1c19ac72e4d3c83e85b52ac894dcf0dc06d821d94189aa7084710e5b01b"
+        },
+        {
+          "subject": "prototype-review",
+          "question": "Q42",
+          "question_id": "question-65",
+          "answer": "A",
+          "with_skill_adequate": true,
+          "baseline_adequate": false,
+          "with_skill_record_sha256": "54b593ce44fc1ba85b31fdac9377467769b83930e6b675adcd4895b6cec8ef1f",
+          "baseline_record_sha256": "1615cdd57790c76f947533c3e00c1e7f21d16af619e28d76c13768e7a18cec1d"
+        }
+      ],
+      "live_title_byte_audit": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/complete-current-live-title-byte-audit.json",
+      "live_title_byte_audit_sha256": "a11e253515bb4c9304018c1042a278001ed595821ba0d4937348132b23108b6f",
+      "presentation": "All 42 unchanged source image hashes matched live served bytes. Each image had exactly one correct visible page-text title directly above it, with current Q, subject, side, theme, viewport, and state. The legacy HTML exposes no explicit revision field, so current content identity uses the receipt plus matching question ids, titles, context and source image hashes. Q1 and A/B inside source images identify examples, not Main picker numbers.",
+      "answer_scope": "Actual Q39-Q42 A each mean only the with-skill explanation is adequate for that exact pair. The separate Flow answer records contain those actual picks. No older answer was transferred and no product option was approved."
+    },
+    "metadata_only_boundary": {
+      "changed_product_paths": [
+        "plugin/skills/flow-page/evals/judging.json",
+        "CHANGELOG.md"
+      ],
+      "prepublication_audit": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/complete-current-finalizer/prepublication-audit.json",
+      "original_payloads": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/complete-current-finalizer/prepublication-original-payloads.json",
+      "audit_basis": "All eight original main-session JSONL transcripts were independently read through each actual first successful submit result. All 164 calls and 164 results matched the exposure audit counts. No metadata path or distinctive metadata field appeared. There were no search tool calls. Direct reads and embedded commands read only assigned input, current instructions/dependency, or owned author outputs. Runtime scripts, extension and shipped reader contain no judging.json, CHANGELOG.md or evals/ reference.",
+      "frozen_manifest": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-complete-authoring/tested-files.json",
+      "frozen_manifest_sha256": "c14579e41ed640ca2c0d5c8f6936c9585a52f053f2bdfd4fd5f7db7dced2ca31",
+      "tracked_before": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-complete-authoring/tracked-before.json",
+      "exception": "Only these two post-review metadata paths differ in the finalizer clone. They were not consumed by authors or runtime. The original absolute source checkout, frozen tested-source snapshots, all original manifests and runtime inputs remain unchanged. The original frozen manifest is not rewritten to pretend the metadata files were tested.",
+      "prior_evidence_files": 1714,
+      "current_evidence_files": 1311,
+      "frozen_integrity": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/complete-current-finalizer/before-frozen-integrity.json",
+      "historical_scope": "Q35-Q38 retain actual older-dependency judgments under native_question_final_cohort, including two unavailable original baselines and their two infrastructure-only replacements. They are not current-SUT acceptance. All earlier fields and judgments retain their original values."
+    },
+    "limits": [
+      "Actual advisor models/transcripts separate in mechanical.json; absent thinking records remain unavailable.",
+      "One trial per subject and side. This does not estimate recurrence or long-session reliability.",
+      "No tested instruction exposure or tested CLI source reads observed in any baseline. CLI help/schema refusals are retained actual CLI behavior.",
+      "Actual no-inference RPC discovery/get_state used the same pinned executable and authoring overlay before starts. Whole dependency URI/reference/render resolution was separately proven by real-tool stub-boundary control. No provenance stub or its control-only flags were included in any of these eight provider processes.",
+      "Real permission/usage/schema refusals and author verification tool errors are preserved in process/session logs and first-failures.json. No later publication replaced a first successful publication.",
+      "No fresh control generation. Historical negatives and current wide-but-legible classification retain their own scopes. No older control or authoring judgment is labelled new.",
+      "This is actual headless authoring evidence, not an additional native-picker interaction drive.",
+      "No user Flow publication, answer transfer, canonical file write or user51417 interaction occurred. This isolated writer did not repeat canonical before/after projection hashing; Main may append progress independently.",
+      "Actual user review supersedes only the pending-review status in the immutable authoring handback, not its original bytes. Mechanical availability is not an adequacy judgment.",
+      "No independent final-commit acceptance, shipped status, ticket closure, PR, or reliability estimate follows from these four single-pair judgments."
+    ],
+    "limits_and_first_failures": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-complete-authoring/limits-and-first-failures.json",
+    "first_failures": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-complete-authoring/first-failures.json",
+    "lifecycle": {
+      "exports": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-complete-authoring/served-export.json",
+      "cleanup": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/implement-spec/309-20261030-01a18bad/native-complete-authoring/owned-host-cleanup.json",
+      "owned_hosts_stopped_after_export": 8,
+      "owned_listeners_closed": 8,
+      "owned_tab_browser_closed": true,
+      "user51417": "No invocation, browser, capture, publication or stop targeted it.",
+      "OMP_workspace": "Retained; no deletion."
+    }
+  }
+}

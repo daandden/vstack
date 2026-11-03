@@ -88,6 +88,12 @@ def main():
     cli = checkout / "plugin/skills/flow-page/scripts/flow-page.ts"
     command_log = []
 
+    def flow_folder(flow):
+        for state in home.glob(".vstack/tmp/*/flow/*/data/state.json"):
+            if json.loads(state.read_text()).get("flow", {}).get("id") == flow:
+                return state.parent.parent
+        raise RuntimeError(f"No stored Flow {flow} in the owned home")
+
     def command(argv, label):
         result = subprocess.run(argv, cwd=project, env=env, capture_output=True, text=True, timeout=45)
         command_log.append({"argv": argv, "cwd": str(project), "exit": result.returncode,
@@ -139,12 +145,11 @@ def main():
     receipt = None
 
     def published_state():
-        return json.loads((Path(receipt["page"]).parent / "data/state.json").read_text())
+        return json.loads((flow_folder(receipt["flow"]) / "data/state.json").read_text())
 
     def live_question():
         nonlocal receipt
         receipt = json.loads((out / "publication.json").read_text())
-        assert receipt["presentation"]["state"] == "current", receipt
         assert receipt["live"]["state"] == "serving", receipt
         url = receipt["live"]["url"]
         with urlopen(url, timeout=10) as response:
@@ -152,14 +157,22 @@ def main():
             status = response.status
         (out / "live-page.html").write_text(html)
         assert status == 200
-        assert f'name="flow-page-flow" content="{receipt["flow"]}"' in html
-        assert f'name="flow-page-revision" content="{receipt["revision"]}"' in html
-        for question in receipt["ask"]["questions"]:
-            assert f'id="{question["id"]}"' in html
-        for content in ["Disposable picker fixture", "Full authored context retained on Flow.",
+        content_url = url.rstrip("/") + "/content"
+        with urlopen(content_url, timeout=10) as response:
+            content = json.loads(response.read())
+            content_status = response.status
+        save(out / "live-content.json", content)
+        assert content_status == 200
+        assert content["flow"]["id"] == receipt["flow"], content
+        assert content["revision"] == receipt["revision"], content
+        assert [question["id"] for question in content["questions"]] == [
+            question["id"] for question in receipt["ask"]["questions"]], content
+        authored = json.dumps(content)
+        for context in ["Disposable picker fixture", "Full authored context retained on Flow.",
                         "Compare fixture tradeoffs.", "Use Alpha.", "Use Beta."]:
-            assert content in html, content
-        save(out / "live-identity.json", {"url": url, "status": status, "flow": receipt["flow"],
+            assert context in authored, context
+        save(out / "live-identity.json", {"url": url, "status": status, "content_url": content_url,
+             "content_status": content_status, "flow": receipt["flow"],
              "revision": receipt["revision"], "question_ids": [x["id"] for x in receipt["ask"]["questions"]]})
         return {"text": f"FLOW_QUESTIONS_CHAT_LINK {url}",
                 "tool": "ask", "args": receipt["ask"]}
@@ -395,7 +408,7 @@ def main():
         assert inventory_error is None, inventory_error
         assert len(result) == (2 if args.case == "retry" else 1), result
         opened = json.loads((out / "open.json").read_text())
-        folder = Path(opened["page"]).parent
+        folder = flow_folder(opened["flow"])
         state = published_state()
         save(out / "persisted-state.json", state)
         assert len(state["rounds"]) == 1 and len(state["questions"]) == 2, state
@@ -432,7 +445,7 @@ def main():
         assert any(b["session"] == session_id and b["agent"] == "main" and b["flow"] == opened["flow"] for b in bindings), bindings
         save(out / "bindings.json", bindings)
         shutil.copytree(folder, out / "export")
-        summary.update(ok=True, flow=opened["flow"], page=opened["page"],
+        summary.update(ok=True, flow=opened["flow"], folder=str(folder),
                        session_id=session_id, stub_requests=len(requests), live=receipt["live"],
                        assertions=["fresh inventory omits flow_ask", "ordinary ask receives original receipt",
                        "live HTTP content matches flow, revision and question identities",
@@ -444,6 +457,17 @@ def main():
     except Exception as error:
         summary["error"] = repr(error)
     finally:
+        identity_file = out / "child-session-id.txt"
+        if (out / "open.json").exists():
+            try:
+                opened = json.loads((out / "open.json").read_text())
+                folder = flow_folder(opened["flow"])
+                save(out / "persisted-state-final.json", json.loads((folder / "data/state.json").read_text()))
+                save(out / "tool-results-final.json", asks())
+                if not (out / "export").exists():
+                    shutil.copytree(folder, out / "export")
+            except Exception as error:
+                summary.update(ok=False, export_error=repr(error))
         os.close(master)
         if child.poll() is None:
             child.terminate()

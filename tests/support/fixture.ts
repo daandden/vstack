@@ -287,9 +287,18 @@ export interface Checkout {
   run(extra?: string[], opts?: { json?: boolean; env?: Record<string, string>; source?: string | null }): Promise<Run>;
 }
 
+const checkoutRoots = new Set<string>();
+export function cleanupCheckouts(): void {
+  for (const root of checkoutRoots) {
+    rmSync(root, { recursive: true, force: true });
+    checkoutRoots.delete(root);
+  }
+}
+
 /** Writes the spec into a fresh temp checkout and commits it, so the commit is the version base (HEAD). */
 export function checkout(up: Upstreams, spec: RepoSpec): Checkout {
   const root = mkdtempSync(join(tmpdir(), "vstack-checkout-"));
+  checkoutRoots.add(root);
   writeFiles(root, {
     "pins.yaml": Bun.YAML.stringify(spec.pins, null, 2),
     "decision-register.yaml": Bun.YAML.stringify(spec.register, null, 2),

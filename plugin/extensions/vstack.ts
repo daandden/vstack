@@ -28,14 +28,17 @@ async function flowPage<T>(pi: ExtensionAPI, ctx: ExtensionContext, args: string
   return JSON.parse(result.stdout);
 }
 
+type FlowLive = { state: "serving"; url: string } | { state: "unavailable"; error: string } | { state: "off" };
+
+/** The reader URL, or why the Local Flow host cannot present it. A stored Flow file is not a working reader. */
+function flowPresentation(live: FlowLive | undefined, stored: string): string {
+  if (live?.state === "serving") return `Flow page: ${live.url}`;
+  const why = live?.state === "unavailable" ? `is not serving (${live.error})` : "is turned off (VSTACK_FLOW_HOST=off)";
+  return `Flow page unavailable: the Flow reader needs the Local Flow host, which ${why}. ${stored}`;
+}
 
 function registerFlowPresentation(pi: ExtensionAPI): void {
-  type Bound = {
-    binding: { flow: string; stage: string } | null;
-    page?: string;
-    live?: { state: "serving"; url: string } | { state: "unavailable"; error: string } | { state: "off" };
-    presentation?: { state: "current" | "stale"; error?: string };
-  };
+  type Bound = { binding: { flow: string; stage: string } | null; live?: FlowLive };
   pi.on("context", event => ({
     messages: event.messages.filter(message => message.role !== "custom" || message.customType !== "vstack-flow"),
   }));
@@ -61,10 +64,7 @@ function registerFlowPresentation(pi: ExtensionAPI): void {
     try {
       const current = await flowPage<Bound>(pi, ctx, ["bound"]);
       if (!current.binding) return;
-      content = current.live?.state === "serving"
-        ? `Flow page: ${current.live.url}`
-        : `Flow page (static): ${current.page}\nLive serving ${current.live?.state === "unavailable" ? `failed: ${current.live.error}` : "is disabled"}.`;
-      if (current.presentation?.state === "stale") content += `\nStatic projection is stale${current.presentation.error ? `: ${current.presentation.error}` : "."}`;
+      content = flowPresentation(current.live, "The Flow content is stored; the link returns after the host serves again.");
     } catch (error) {
       content = `Flow page unavailable: ${error instanceof Error ? error.message : String(error)}`;
     }
@@ -289,8 +289,7 @@ function registerCleanCommand(pi: ExtensionAPI): void {
           { kind: "stage", state: "finished" },
         ] }));
         const receipt = await run(["submit", "--flow", stage.flow, "--stage", stage.stage, file]);
-        const link = receipt.live?.state === "serving" ? receipt.live.url : receipt.page;
-        pi.sendMessage({ customType: "vstack-flow", content: `Flow page: ${link}${receipt.live?.state === "unavailable" ? `\nLive serving failed: ${receipt.live.error}` : ""}${receipt.presentation?.state === "stale" ? "\nStatic projection is stale; the outcome is committed." : ""}`, display: true }, { triggerTurn: false });
+        pi.sendMessage({ customType: "vstack-flow", content: flowPresentation(receipt.live, "The cleanup outcome is committed."), display: true }, { triggerTurn: false });
       } finally {
         if (resumeCaller) await run(["bind", "--flow", current.binding.flow, "--stage", current.binding.stage]);
       }

@@ -4,6 +4,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fakeHost } from "./support/extension-host.ts";
 import { ENV, git } from "./support/fixture.ts";
+import { statePathOf, storedFolder } from "./support/flow-store.ts";
+
+const stored = (home: string, flow: string) => readFileSync(statePathOf(home, flow), "utf8");
 
 const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-clean-command-")));
 afterAll(() => rmSync(root, { recursive: true, force: true }));
@@ -51,7 +54,7 @@ test("confirmed Scratch cleanup records its outcome in the bound Flow without lo
   const h = w.host(["Apply all"]);
   await h.callCommand("vstack-clean");
   expect(existsSync(w.expired)).toBe(false);
-  expect(existsSync(opened.page)).toBe(true);
+  expect(existsSync(storedFolder(w.home, opened.flow))).toBe(true);
   const snapshot = await w.ok(["show", "--flow", opened.flow]);
   const cleanup = snapshot.stages.find((stage: any) => stage.skill === "vstack-clean");
   expect(cleanup).toBeDefined();
@@ -59,8 +62,7 @@ test("confirmed Scratch cleanup records its outcome in the bound Flow without lo
   expect(cleanup.results).toHaveLength(1);
   const bound = await w.ok(["bound", "--session", "cleanup"]);
   expect(bound.binding).toMatchObject({ flow: opened.flow, stage: opened.stage });
-  const page = readFileSync(opened.page, "utf8");
-  expect(page).toContain(w.expired);
+  expect(stored(w.home, opened.flow)).toContain(w.expired);
 });
 
 test("unbound cleanup retains confirmation and creates no administrative Flow", async () => {
@@ -104,7 +106,7 @@ test("a refused cleanup preserves raw diagnostics on its Flow and offers no dele
   const snapshot = await w.ok(["show", "--flow", opened.flow]);
   expect(snapshot.stages[1].results).toHaveLength(1);
   expect(snapshot.stages[1].state).toBe("finished");
-  expect(readFileSync(opened.page, "utf8")).toContain("invalid-age");
+  expect(stored(w.home, opened.flow)).toContain("invalid-age");
 });
 
 test("choosing one expired entry deletes only that entry and retains the preview evidence", async () => {
@@ -130,7 +132,7 @@ test("choosing one expired entry deletes only that entry and retains the preview
   expect(step).toBe(3);
   const snapshot = await w.ok(["show", "--flow", opened.flow]);
   expect(snapshot.stages[1].results).toHaveLength(1);
-  expect(readFileSync(opened.page, "utf8")).toContain(other);
+  expect(stored(w.home, opened.flow)).toContain(other);
 });
 
 test("a Command after a finished Stage publishes once without a false attachment failure", async () => {

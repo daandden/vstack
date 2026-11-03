@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { repoKey, scratchRoot } from "../plugin/skills/vstack-tmp/scripts/scratch.ts";
 import { ENV, git } from "./support/fixture.ts";
+import { storedFolder } from "./support/flow-store.ts";
 
 const FLOW_PAGE = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
 const FIXTURES = join(import.meta.dir, "fixtures", "flow-page-migrate");
@@ -66,14 +67,14 @@ const option = (label: string, extra: object = {}) => ({ label, does: `${label} 
 const SVG = readFileSync(join(FIXTURES, "scope.svg"), "utf8");
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64");
 
-function pageImageUrls(page: string): string[] {
+function pageImageUrls(html: string): string[] {
   const urls: string[] = [];
   const collect = { element(el: any) {
     const src = el.getAttribute("src");
     if (src) urls.push(src);
     for (const candidate of (el.getAttribute("srcset") ?? "").split(",")) if (candidate.trim()) urls.push(candidate.trim().split(/\s+/)[0]);
   } };
-  new HTMLRewriter().on("img", collect).on("source", collect).transform(readFileSync(page, "utf8"));
+  new HTMLRewriter().on("img", collect).on("source", collect).transform(html);
   return urls;
 }
 
@@ -140,13 +141,13 @@ test("an expired migrated Flow cannot be resurrected by its retained historical 
   const w = world();
   const source = legacyPage(w, "legacy-closed.jsonl");
   const migrated = ok(run(w, ["migrate", source]));
-  const folder = join(migrated.page, "..");
+  const folder = storedFolder(w.home, migrated.flow);
   const beforeSource = tree(source);
   const clean = Bun.spawnSync([process.execPath, CLEAN, "--home", w.home, "--now", "2030-01-01T00:00:00Z", "--delete", folder], { cwd: w.project, env: ENV, stdout: "pipe", stderr: "pipe" });
   expect(clean.stderr.toString()).toBe("");
   expect(clean.exitCode).toBe(0);
   expect(JSON.parse(clean.stdout.toString()).deleted).toEqual([join(w.scratch, "flow", migrated.flow)]);
-  expect(existsSync(migrated.page)).toBe(false);
+  expect(existsSync(folder)).toBe(false);
   const before = tree(w.scratch);
   for (const args of [["find", "spec:41"], ["migrate", source], ["show", "--flow", migrated.flow]]) {
     const refused = run(w, args);
@@ -159,7 +160,7 @@ test("an expired migrated Flow cannot be resurrected by its retained historical 
   expect(ok(run(w, ["open", "--title", "Explicit new work", "--skill", "research"])).flow).not.toBe(migrated.flow);
 });
 
-test("a structured Grilling page migrates into a Flow with its questions, answers, numbers, times, ids, sources, figures, Topics, and Results", () => {
+test("a structured Grilling page migrates into a Flow with its questions, answers, numbers, times, ids, sources, figures, Topics, and Results", async () => {
   const w = world();
   const folder = legacyPage(w);
   const before = tree(folder);
@@ -204,12 +205,24 @@ test("a structured Grilling page migrates into a Flow with its questions, answer
   const svg = snap.attachments.find((a: any) => a.used_by.includes("q-scope"));
   expect(svg.type).toBe("svg");
   expect(svg.revision).toBe(createHash("sha256").update(SVG).digest("hex"));
-  expect(readFileSync(join(migrated.page, "..", svg.file), "utf8")).toBe(SVG);
+  expect(readFileSync(join(storedFolder(w.home, migrated.flow), svg.file), "utf8")).toBe(SVG);
   expect(q["q-limit"].figures.length).toBe(1);
 
-  const ids = new Set([...readFileSync(migrated.page, "utf8").matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]));
+  const socket = Bun.listen({ hostname: "127.0.0.1", port: 0, socket: { data() {} } });
+  const port = socket.port;
+  socket.stop(true);
+  const host = (cmd: string[]) => JSON.parse(Bun.spawnSync([process.execPath, FLOW_PAGE, ...cmd, "--home", w.home], { cwd: w.project, env: { ...ENV, HOME: w.home, VSTACK_FLOW_PORT: String(port) }, stdout: "pipe", stderr: "pipe" }).stdout.toString());
+  const url: string = host(["show", "--flow", migrated.flow]).live.url;
+  const content = await (await fetch(new URL("content", url))).json();
+  host(["host", "stop"]);
+  const ids = new Set<string>();
+  const collect = (v: unknown): void => {
+    if (Array.isArray(v)) v.forEach(collect);
+    else if (v && typeof v === "object") for (const [k, x] of Object.entries(v)) ["id", "anchor"].includes(k) && typeof x === "string" ? ids.add(x) : collect(x);
+  };
+  collect(content);
   for (const anchor of ["q-q-scope", "q-q-open", "stage-grill", "stage-impl", "round-r1", "close-c1", "background-bg", "report-findings", "report-findings_f1", "report-tickets_t42", "topic-caps", "q-scope", "grill"])
-    expect(ids).toContain(anchor);
+    expect([anchor, ids.has(content.migrated.anchors[anchor] ?? anchor)]).toEqual([anchor, true]);
 
   for (const alias of ["spec:41", "ticket:42", "ticket:43", "branch:feat/limits", "run:41-run", "folder:41", "slug:checkout-limits"]) expect(ok(run(w, ["find", alias])).flow).toBe(migrated.flow);
 });
@@ -248,12 +261,18 @@ test("migration captures inline HTML images in questions, previews, Backgrounds,
   const migrated = ok(run(w, ["migrate", folder]));
   expect(tree(folder)).toEqual(before);
   rmSync(join(folder, "figures", "room.png"));
-  const sources: string[] = [];
-  new HTMLRewriter().on("img", { element(el) { sources.push(el.getAttribute("src")!); } }).transform(readFileSync(migrated.page, "utf8"));
+  const snapBefore = ok(run(w, ["show", "--flow", migrated.flow]));
+  const figures = [
+    snapBefore.stages.find((st: any) => st.id === "grill").background_figures[0],
+    snapBefore.stages.flatMap((st: any) => st.questions).find((q: any) => q.id === "q-scope").figures[0],
+    snapBefore.stages.flatMap((st: any) => st.questions).find((q: any) => q.id === "q-limit").options[0].preview,
+    snapBefore.stages.flatMap((st: any) => st.results).find((r: any) => r.id === "findings").entries[0].figures[0],
+  ];
+  const sources = figures.flatMap((figure: any) => pageImageUrls(figure.html));
   expect(sources).toHaveLength(4);
   for (const src of sources) {
     expect(src).toStartWith("assets/");
-    expect(existsSync(join(migrated.page, "..", src))).toBe(true);
+    expect(existsSync(join(storedFolder(w.home, migrated.flow), src))).toBe(true);
   }
   ok(run(w, ["submit", "--flow", migrated.flow, "--stage", "impl"], { stdin: { version: 1, items: [
     { kind: "result", shape: "document", title: "Continued work", sections: [{ heading: "Decision", blocks: [{ prose: "Keep the migrated room layout." }] }] },
@@ -272,13 +291,14 @@ test("migration captures responsive image candidates and keeps SVG view fragment
   writeFileSync(join(folder, "page.jsonl"), records.map((r) => JSON.stringify(r)).join("\n") + "\n");
   const migrated = ok(run(w, ["migrate", folder]));
   rmSync(join(folder, "figures"), { recursive: true });
-  const urls = pageImageUrls(migrated.page);
+  const snap = ok(run(w, ["show", "--flow", migrated.flow]));
+  const html = snap.stages.flatMap((st: any) => st.questions).find((q: any) => q.id === "q-open").figures[0].html;
+  const urls = pageImageUrls(html);
   for (const url of urls) {
     expect(url).toStartWith("assets/");
-    expect(existsSync(join(migrated.page, "..", url.split("#")[0]))).toBe(true);
+    expect(existsSync(join(storedFolder(w.home, migrated.flow), url.split("#")[0]))).toBe(true);
   }
   expect(urls.filter((url) => url.endsWith("#detail"))).toHaveLength(1);
-  const html = readFileSync(migrated.page, "utf8");
   expect(html).toMatch(/srcset="assets\/\S+ 1x, assets\/\S+ 2x"/);
 });
 
@@ -290,14 +310,16 @@ test("migration keeps a usable img srcset when its fallback file is missing", ()
   records.find((r) => r.id === "q-open").visual = { html: '<img src="figures/missing.png" srcset="figures/missing.png 1x, figures/room@2x.png 2x" alt="Responsive room">' };
   writeFileSync(join(folder, "page.jsonl"), records.map((r) => JSON.stringify(r)).join("\n") + "\n");
   const migrated = ok(run(w, ["migrate", folder]));
+  const snap = ok(run(w, ["show", "--flow", migrated.flow]));
+  const html = snap.stages.flatMap((st: any) => st.questions).find((q: any) => q.id === "q-open").figures[0].html;
   const images: { src: string | null; srcset: string | null }[] = [];
   new HTMLRewriter().on('img[alt="Responsive room"]', { element(el) {
     images.push({ src: el.getAttribute("src"), srcset: el.getAttribute("srcset") });
-  } }).transform(readFileSync(migrated.page, "utf8"));
+  } }).transform(html);
   expect(images).toEqual([{ src: null, srcset: expect.stringMatching(/^assets\/\S+ 2x$/) }]);
   rmSync(join(folder, "figures"), { recursive: true });
   const url = images[0].srcset!.split(" ")[0];
-  expect(readFileSync(join(migrated.page, "..", url))).toEqual(PNG);
+  expect(readFileSync(join(storedFolder(w.home, migrated.flow), url))).toEqual(PNG);
   const beforeRepeat = tree(w.home);
   expect(ok(run(w, ["migrate", folder])).repeated).toBe(true);
   expect(tree(w.home)).toEqual(beforeRepeat);
@@ -313,19 +335,20 @@ test("migration keeps the img for usable picture sources without leaking to othe
   const beforeSource = tree(folder);
   const migrated = ok(run(w, ["migrate", folder]));
   expect(tree(folder)).toEqual(beforeSource);
+  const snap = ok(run(w, ["show", "--flow", migrated.flow]));
+  const html = snap.stages.flatMap((st: any) => st.questions).find((q: any) => q.id === "q-open").figures[0].html;
   const images: { alt: string | null; src: string | null }[] = [];
   const sources: (string | null)[] = [];
   new HTMLRewriter()
     .on("picture img", { element(el) { images.push({ alt: el.getAttribute("alt"), src: el.getAttribute("src") }); } })
     .on("picture source", { element(el) { sources.push(el.getAttribute("srcset")); } })
-    .transform(readFileSync(migrated.page, "utf8"));
+    .transform(html);
   expect(images).toEqual([{ alt: "Picture room", src: null }]);
   expect(sources).toEqual([expect.stringMatching(/^assets\/\S+ 1x$/), null]);
-  const html = readFileSync(migrated.page, "utf8");
   expect(html).toContain("Image unavailable: Unavailable room.");
   expect(html).toContain("Image unavailable: Unavailable standalone.");
   rmSync(join(folder, "figures"), { recursive: true });
-  expect(readFileSync(join(migrated.page, "..", sources[0]!.split(" ")[0]))).toEqual(PNG);
+  expect(readFileSync(join(storedFolder(w.home, migrated.flow), sources[0]!.split(" ")[0]))).toEqual(PNG);
   const beforeRepeat = tree(w.home);
   expect(ok(run(w, ["migrate", folder])).repeated).toBe(true);
   expect(tree(w.home)).toEqual(beforeRepeat);
@@ -343,7 +366,7 @@ test("repeating migration repairs old inline images without replacing later auth
     { kind: "answer", question: "q-open", response: { status: "answered", picks: ["B"] } },
     { kind: "result", ref: "new-work", shape: "document", title: "Later work", sections: [{ heading: "Decision", blocks: [{ prose: "Keep later work intact." }] }] },
   ] } }));
-  const stateFile = join(migrated.page, "..", "data", "state.json");
+  const stateFile = join(storedFolder(w.home, migrated.flow), "data", "state.json");
   const state = JSON.parse(readFileSync(stateFile, "utf8"));
   const figure = state.questions.find((q: any) => q.id === "q-open").figures[0];
   const inline = new Set(figure.attachments);
@@ -360,11 +383,10 @@ test("repeating migration repairs old inline images without replacing later auth
   const impl = snap.stages.find((st: any) => st.id === "impl");
   expect(impl.questions.find((q: any) => q.id === "q-open").answer.picks).toEqual(["B. Second"]);
   expect(JSON.parse(readFileSync(stateFile, "utf8")).results.find((r: any) => r.id === continued.refs["new-work"])).toEqual(state.results.find((r: any) => r.id === continued.refs["new-work"]));
-  const sources: string[] = [];
-  new HTMLRewriter().on("img", { element(el) { sources.push(el.getAttribute("src")!); } }).transform(readFileSync(migrated.page, "utf8"));
+  const sources = pageImageUrls(impl.questions.find((q: any) => q.id === "q-open").figures[0].html);
   for (const src of sources) {
     expect(src).toStartWith("assets/");
-    expect(existsSync(join(migrated.page, "..", src))).toBe(true);
+    expect(existsSync(join(storedFolder(w.home, migrated.flow), src))).toBe(true);
   }
   expect(tree(folder)).toEqual(beforeSource);
   const beforeRepeat = tree(w.home);
@@ -376,6 +398,10 @@ test("an in-flight migrated Stage takes new contributions without changing old Q
   const w = world();
   const folder = legacyPage(w);
   const migrated = ok(run(w, ["migrate", folder]));
+  const retained = ok(run(w, ["show", "--flow", migrated.flow])).reading;
+  expect(retained.publications).toEqual([]);
+  expect(retained.historical.map((b: any) => b.id)).toEqual(["bg", "findings", "q-scope", "q-limit", "q-scope-again", "c1", "checks", "tickets", "q-open", "caps"]);
+  expect(retained.historical.every((b: any) => b.position === undefined && b.publication === undefined)).toBe(true);
   const before = tree(folder);
   ok(run(w, ["bind", "--flow", migrated.flow, "--stage", "impl"], { session: "continue" }));
   const updated = ok(run(w, ["submit"], { session: "continue", stdin: { version: 1, items: [
@@ -384,6 +410,8 @@ test("an in-flight migrated Stage takes new contributions without changing old Q
     { kind: "revise", result: "checks", add: [{ claim: "Browser checked", status: "confirmed", evidence: "browser", missing_proof: "none", consequence: "continue" }] },
   ] } }));
   const snap = ok(run(w, ["show", "--flow", migrated.flow]));
+  expect(snap.reading.historical).toEqual(retained.historical);
+  expect(snap.reading.publications).toEqual([{ id: updated.refs.next, kind: "question", stage: "impl", position: 1, publication: updated.revision }]);
   const impl = snap.stages.find((s: any) => s.id === "impl");
   expect(impl.questions.map((q: any) => [q.id, q.q])).toEqual([["q-open", 1], [updated.refs.next, 2]]);
   expect(impl.questions[0].answer.picks).toEqual(["B. Second"]);
@@ -391,9 +419,9 @@ test("an in-flight migrated Stage takes new contributions without changing old Q
   expect(new Set(snap.stages.flatMap((s: any) => s.questions).map((q: any) => q.id)).size).toBe(5);
   expect(tree(folder)).toEqual(before);
   writeFileSync(join(folder, "figures", "scope.svg"), SVG.replace("#cba6f7", "#a6e3a1"));
-  ok(run(w, ["render", "--flow", migrated.flow]));
+  ok(run(w, ["show", "--flow", migrated.flow]));
   const figure = snap.attachments.find((a: any) => a.used_by.includes("q-scope"));
-  expect(readFileSync(join(migrated.page, "..", figure.file), "utf8")).toBe(SVG);
+  expect(readFileSync(join(storedFolder(w.home, migrated.flow), figure.file), "utf8")).toBe(SVG);
   const nextStage = ok(run(w, ["open", "--flow", migrated.flow, "--skill", "research"]));
   expect(snap.stages.some((s: any) => s.id === nextStage.stage)).toBe(false);
 });

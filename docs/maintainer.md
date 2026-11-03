@@ -22,6 +22,14 @@ The repo scripts need Bun. Run `bun run test` and `bun scripts/check-register.ts
 
 Only `plugin/` ships. Upstreams are fetched when needed, never stored in this repo.
 
+### Flow reader delivery
+
+The reader source lives under `reader/`. Its production bundle ships prebuilt under `plugin/skills/flow-page/reader/`. Installation and normal launch require no build or development server.
+
+When reader source changes, run `./node_modules/.bin/vp run reader:build` and commit its shipped output with the source. Compare the source and shipped file inventories against the prior commit to establish freshness. An integration that changes neither source nor shipped files needs no rebuild.
+
+The Local Flow host loads its reader bytes at startup. A changed bundle makes a running host incompatible. Stop only the owned host with `bun plugin/skills/flow-page/scripts/flow-page.ts host stop`, then use `bound` or `show` to start the current host and retrieve the live URL. Stored Flow data is not a static reader. Committed content stays committed when the host is unavailable.
+
 ## Addon judge
 
 Edit `addon-questions.json` for selection criteria, `sample-prompts.json` for user-prompt cases, and `sample-briefs.json` for subagent cases. The catalog holds `preamble`, `brief_preamble`, and a `questions` map keyed by full Addon names. Each question contains its situation and criteria, not repeated preamble text.
@@ -168,7 +176,7 @@ A lint over shipped text starts from `lintTargets(ctx)` in `scripts/lib/checks/s
 
 ### Page templates
 
-Every page vstack writes for the user, the Flow page and teach's lessons, starts from a page template. Every template follows good-css (#61). A page template is any `*.html` or `*.css` under `plugin/skills/<name>/templates/`. `scripts/lib/checks/pages.ts` runs the CSS Upstream's `page_lint:` script at its Pin over these files. Each flagged template reports `page-css`. With no template, the check reads nothing. Templates hold no authored figure. The caller writes Mermaid and renders it through vstack-figures with Pele, captures the SVG in the Flow, and may inline its exact bytes in an offline lesson.
+Page templates follow good-css (#61). A page template is any `*.html` or `*.css` under `plugin/skills/<name>/templates/`. `scripts/lib/checks/pages.ts` runs the CSS Upstream's `page_lint:` script at its Pin over these files. Each flagged template reports `page-css`. With no template, the check reads nothing. Templates hold no authored figure. The caller writes Mermaid through vstack-figures and captures its source in the Flow. The host-backed reader draws it with Pele. An offline lesson instead renders an SVG and may inline its exact bytes.
 
 ## House style
 

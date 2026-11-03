@@ -2,7 +2,7 @@
 
 A logic prototype lets a reader drive a state model with buttons. Use it for business logic, state transitions, or data shape that is hard to judge without trying cases. State and action labels use domain language so a non-developer can explore the question.
 
-In a Flow, prefer a declarative `prototype` Result when flow-page's states, typed values, actions, and bounded conditions express the actual model. It provides visible state, action availability, Reset, and browser-local resume in both the live page and static export. Put the question and guided action sequences in its companion Document Result. This branch needs no handwritten HTML or scripts.
+In a Flow, prefer a declarative `prototype` Result when flow-page's states, typed values, actions, and bounded conditions express the actual model. The host-backed reader provides visible state, action availability, Reset, and browser-local resume. It requires the Local Flow host, with no static-reader fallback. Put the question and guided action sequences in its companion Document Result. This branch needs no handwritten HTML or scripts.
 
 Outside a Flow, or if the actual logic cannot be expressed by that contract, keep the real implementation in a self-contained HTML artifact and follow steps 2 and 3 below. In a Flow, publish the captured bundle in the isolated viewer. Do not replace code-dependent behavior with a simpler demo that answers a different question.
 

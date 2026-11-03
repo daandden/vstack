@@ -38,7 +38,7 @@ No quizzes, pacing labels, or requests to repeat the explanation. Stop at a natu
 
 In a Flow, publish the explanation as a Document Result through `flow-page submit`. Use headed `sections` with prose, lists, code with source locations, and numbered citations. Keep evidence and why's confidence language beside the claims. Follow-up ad-hoc answers in this Flow are Documents too, not separate report pages. Revise the same explanation with `revises` when correcting or extending it during this run.
 
-Draw every figure through `skill://vstack-figures`. Write each figure's Mermaid in this caller's context and render it with Pele. For three or more moving parts, plan a short build-up series: each figure redraws the last one and adds one part. Use this run's Scratch entry and a unique basename per figure. In a Flow, capture the rendered SVGs as typed attachments and place `figure` blocks in reading order. In chat, include the rendered figures with the explanation. Keep an unavailable figure's reason visible instead of substituting a drawing.
+Draw every figure through `skill://vstack-figures`. Write each figure's Mermaid in this caller's context. For three or more moving parts, plan a short build-up series: each figure redraws the last one and adds one part. Use this run's Scratch entry and a unique basename per figure. In a Flow, capture each source as a `mermaid` attachment and place `figure` blocks in reading order. The reader draws them with Pele. In chat, include the rendered figures with the explanation. Keep an unavailable figure's reason visible instead of substituting a drawing.
 
 In a Flow, publish the Document before returning. Never open the page automatically.
 

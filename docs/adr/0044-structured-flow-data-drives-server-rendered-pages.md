@@ -1,5 +1,6 @@
 # Structured Flow data drives server-rendered pages
 
+> [ADR 0049](0049-flow-reader-uses-nuxt-with-vite-plus-on-bun.md) and [ADR 0048](0048-flow-content-keeps-first-publication-order.md) are implemented by #314 and #313. The host-required Nuxt reader replaces the server-free fallback and Stage-tab-primary reading model below. [ADR 0050](0050-the-flow-reader-draws-diagrams-from-mermaid-source-with-pele.md) replaces new captured SVG diagrams with captured Mermaid source. The remainder records the accepted spec #267 design and its historical evidence. The fresh #316 candidate proof drives the combined CLI, native omp, production host, and Chromium reader; independent verification of the final integrated commit remains a separate gate, not an inference from these historical runs.
 > [ADR 0046](0046-a-flow-starts-only-on-request.md) amends enrollment. Result producers follow flow-page's central entry rule before discovery or creation. Description-selected skills can return full answers in chat without a Flow. The authoring, rendering, and publication decisions below still apply within a Flow.
 
 > [ADR 0047](0047-flow-questions-require-a-live-page-and-recoverable-stages.md) records the accepted recovery changes for visible pre-picker links, required live serving, unfinished blocked Stages, and installed-runtime host ownership. Implementation is pending.

@@ -22,7 +22,7 @@ Keep one run record across every ticket. It holds the requested End state and th
 - The development check evidence paths from step 4
 - The accepted Verdict from step 6b, with Verifier identity, base and head SHAs, patch id, and evidence paths
 
-Follow `skill://flow-page`'s "Stage entry/exit line" for the caller's implement or implement-spec run. Record the Flow id, Stage id, URL, and static path in the run record and chain facts. Follow [Publish delivery progress](#publish-delivery-progress) throughout the run.
+Follow `skill://flow-page`'s "Stage entry/exit line" for the caller's implement or implement-spec run. Record the Flow id, Stage id, and URL in the run record and chain facts. Follow [Publish delivery progress](#publish-delivery-progress) throughout the run.
 
 Settle the End state once, before any work: commit, merge-ready, or shipped. Commit stays on the current branch. Merge-ready opens a PR and drives it until it can merge. Shipped merges it into the default branch. Reuse an already settled caller End state rather than settling it again. Otherwise settle it in this order:
 

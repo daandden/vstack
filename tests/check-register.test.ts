@@ -11,6 +11,7 @@ import {
   SCRIPT,
   artifactFrom,
   checkout,
+  cleanupCheckouts,
   clone,
   git,
   makeUpstreams,
@@ -24,7 +25,10 @@ let up: Upstreams;
 beforeAll(() => {
   up = makeUpstreams();
 });
-afterAll(() => rmSync(up.dir, { recursive: true, force: true }));
+afterAll(() => {
+  cleanupCheckouts();
+  rmSync(up.dir, { recursive: true, force: true });
+});
 
 const failuresOf = (r: Run) => r.json!.failures.map((f) => `${f.class} ${f.item}`);
 const row = (spec: RepoSpec, id: string) => spec.register.items.find((r) => r.id === id)!;
@@ -660,6 +664,14 @@ describe("page templates", () => {
       s.files["plugin/skills/shared/assets/figure.html"] = PAGE_TEMPLATE.violation;
     });
     expect(failuresOf(r)).toEqual(["page-css plugin/skills/shared/templates/page.css"]);
+  });
+
+  test("the Flow reader's stylesheets are linted, and its components are not", async () => {
+    const r = await runSpec((s) => {
+      s.files["reader/app/assets/reader.css"] = ".box {\n  left: 0;\n}\n";
+      s.files["reader/app/components/Box.vue"] = PAGE_TEMPLATE.violation;
+    });
+    expect(failuresOf(r)).toEqual(["page-css reader/app/assets/reader.css"]);
   });
 
   test("exit 2 when no Upstream names a page lint and templates exist", async () => {

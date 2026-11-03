@@ -1,0 +1,113 @@
+{
+  "version": 1,
+  "subjects": [
+    {
+      "id": "stream-versus-tabs",
+      "context": "[The user wants research published after a grilling question to appear after that question, before subsequent questions. A Flow contains skill runs called Stages. Each Stage currently has its own tab. The main reading order across Stages is still undecided.]",
+      "request": "Prepare and publish the next decision question. Should creation order be the main reading order across the whole Flow or only inside each Stage?",
+      "options": [
+        {
+          "label": "A. One chronological reading stream across the Flow",
+          "does": "Make creation order across all Stages the main reading experience, with Stage identity retained on content.",
+          "gains": [
+            "A grilling question, later research, and subsequent questions can be read in the order they appeared."
+          ],
+          "costs": [
+            "The redesign must provide orientation and filtering without depending on separate Stage tabs as the only reading path."
+          ]
+        },
+        {
+          "label": "B. Keep Stage tabs, order each Stage chronologically",
+          "does": "Keep each skill run as its own reading tab and interleave its Results and questions by creation order.",
+          "gains": [
+            "The present Stage separation remains familiar."
+          ],
+          "costs": [
+            "A research Stage between grilling rounds still requires switching tabs to follow the full sequence."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "update-placement",
+      "context": "[The main Flow reading path will follow publication order across Stages. Earlier questions can receive answers after later research Results appear. A Result can also be revised later. The behavior of these updates is undecided.]",
+      "request": "Prepare and publish the next decision question. When earlier content is answered or revised, should the update create a new chronological entry?",
+      "options": [
+        {
+          "label": "A. Update the original block in place",
+          "does": "Keep answers with their questions and the latest Result at its original creation position, with accessible revision history.",
+          "gains": [
+            "The page stays concise and avoids repeating content."
+          ],
+          "costs": [
+            "Creation order is not a complete activity history; readers may not notice a later update far above their position."
+          ]
+        },
+        {
+          "label": "B. Add a linked update entry at the later position",
+          "does": "Retain the original block and append a concise answer or revision event where the update happened.",
+          "gains": [
+            "The sequence explains when a later decision or correction became available."
+          ],
+          "costs": [
+            "The reader must distinguish original content from update notices; full content should not be duplicated."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "terminology",
+      "context": "[An interview is underway about rebuilding the Flow reader with Nuxt. The user wrote \"vite+\" without defining the trailing plus. No tooling integration decision has been made.]",
+      "request": "Prepare and publish the next decision question. Does \"vite+\" mean the Vite+ product or ordinary Vite?",
+      "options": [
+        {
+          "label": "A. The Vite+ product",
+          "does": "Treat the separately named Vite+ toolchain as part of the proposal.",
+          "gains": [
+            "The interview will evaluate the integration and what you want from that toolchain."
+          ],
+          "costs": [
+            "Compatibility and distribution implications need evidence before accepting it."
+          ]
+        },
+        {
+          "label": "B. Ordinary Vite",
+          "does": "Treat Vite as the intended frontend build tooling, not a request for Vite+.",
+          "gains": [
+            "The interview stays focused on Nuxt without adding a separate toolchain requirement."
+          ],
+          "costs": [
+            "No capabilities specific to Vite+ are requested."
+          ]
+        }
+      ]
+    },
+    {
+      "id": "prototype-review",
+      "context": "[The user wants a Nuxt Flow reader with chronological reading across Stages. Typography, density, and the broader visual design have not been agreed. Implementation has not started.]",
+      "request": "Prepare and publish the next decision question. Should the broader visual design be reviewed as a prototype before implementation?",
+      "options": [
+        {
+          "label": "A. Review a prototype first",
+          "does": "Use the agreed reading sequence to propose a visual design, then review that design before production implementation.",
+          "gains": [
+            "You can judge the actual reading experience rather than approve an abstract framework choice."
+          ],
+          "costs": [
+            "The exact appearance remains a separate design decision until that review."
+          ]
+        },
+        {
+          "label": "B. Use the current visual style for this change",
+          "does": "Preserve the current visual language while implementing chronological reading and the Nuxt migration.",
+          "gains": [
+            "The work has a narrower and more concrete design target."
+          ],
+          "costs": [
+            "A broader visual restyling is intentionally excluded rather than implicitly designed by the framework."
+          ]
+        }
+      ]
+    }
+  ]
+}

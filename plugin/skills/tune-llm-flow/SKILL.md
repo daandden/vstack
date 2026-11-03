@@ -52,17 +52,17 @@ Apply this procedure to `inputs`, `grader`, and `plan`, including every revision
 
 1. Publish the full material as a typed Result in this tune Stage. The inputs table has one row for every case with its complete input, expected answer, tag, and provenance. The grader cards show five complete inputs, outputs, grades, and the grader's reasoning. The plan table covers the fields above. Do not replace review material with file pointers or a sample of the case set.
 2. Prepare a complete round and question with the native labels `Approve`, `Revise`, and `Abort`, without authored option letters. Explain that Revise takes feedback and records no approval, and dismissal is not approval. Declare and fulfill its actual reader needs. Link the question's `results` to every relevant Result entry by ref. Submit new material and the question atomically. The script owns ids, letters, numbering, and reciprocal links.
-3. Read the assigned Q number and title from the receipt's `ask` payload, and print the absolute page path before the host dialog. Call only Ratchet's existing approval interface:
+3. Read the assigned Q number and title from the receipt's `ask` payload, and print the receipt's Flow URL before the host dialog. Call only Ratchet's existing approval interface:
 
    ```python
    outcome = await r.approve(
        "inputs",
        question="Q3. Approve these eval inputs?",
-       preview="Review: <absolute page path>, Q3.",
+       preview="Review: <Flow URL>, Q3.",
    )
    ```
 
-   Substitute the actual stage, assigned Q number, question, and page path. The dialog gets one Q-numbered question and a short pointer, never the review material. Keep native host labels, notes, custom feedback, and cancellation semantics. Do not call `ask` for a second approval, pass an external answer, add a recommended option or timeout, or edit `_state.json`.
+   Substitute the actual stage, assigned Q number, question, and Flow URL. The dialog gets one Q-numbered question and a short pointer, never the review material. Keep native host labels, notes, custom feedback, and cancellation semantics. Do not call `ask` for a second approval, pass an external answer, add a recommended option or timeout, or edit `_state.json`.
 4. Record the returned outcome through a typed `answer`, keeping the raw host response as captured evidence. For a fresh `approved: true`, record `response: { status: "answered", picks: ["A"] }`. If `already: true`, record reuse of the existing Ratchet approval in a Timeline event with its identity, not a new user pick. Retire this unanswered page question when finishing the Stage if no new dialog occurred. Record B with verbatim feedback only when the host identifies a revision request. Revise the Result through flow-page, then publish a complete question with `again` naming the earlier question. The script keeps the same Q number and links both ways.
 5. Abort or dismissal stops tuning immediately, including when the host aborts after a timeout or cancels the call instead of returning an outcome. For `approved: false, aborted: true`, record C only when the outcome distinguishes an explicit Abort answer. A visible Abort option does not identify the answer. Otherwise keep the actual ambiguous abort-or-dismissal reason in a Timeline event and leave the page question unanswered. A reported cancellation can record `status: "cancelled"` with its actual reason in `text`. Never invent a pick or retry an aborted session.
 6. Discussion or timeout without a choice remains unanswered. Record `timed-out` only when the host identifies timeout, otherwise `empty`, with the actual reason in `text`. Only if the host leaves the session active and identifies neither abort nor dismissal, publish a linked question as above and retry once. A second unanswered result stops tuning. On any stop, report what earlier gates kept and proceed to final reporting with no further candidates.

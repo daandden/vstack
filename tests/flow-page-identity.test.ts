@@ -1,8 +1,9 @@
 import { afterAll, expect, test } from "bun:test";
-import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { chmodSync, closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { ENV, git } from "./support/fixture.ts";
+import { storedFolder } from "./support/flow-store.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
 const EMPTY_GIT_CAPTURE = join(import.meta.dir, "support", "empty-git-capture.ts");
@@ -40,9 +41,19 @@ function run(args: string[], o: Opts): Run {
   return parse(r.exitCode, r.stdout.toString(), r.stderr.toString());
 }
 async function runAsync(args: string[], o: Opts): Promise<Run> {
-  const p = Bun.spawn(argv(args, o), { cwd: o.cwd, env: envOf(o), stdin: stdinOf(o), stdout: "pipe", stderr: "pipe" });
-  const [stdout, stderr, code] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited]);
-  return parse(code, stdout, stderr);
+  const capture = mkdtempSync(join(root, "stdio-"));
+  let stdout = -1, stderr = -1;
+  try {
+    stdout = openSync(join(capture, "stdout"), "w");
+    stderr = openSync(join(capture, "stderr"), "w");
+    const p = Bun.spawn(argv(args, o), { cwd: o.cwd, env: envOf(o), stdin: stdinOf(o), stdout, stderr });
+    const code = await p.exited;
+    return parse(code, readFileSync(join(capture, "stdout"), "utf8"), readFileSync(join(capture, "stderr"), "utf8"));
+  } finally {
+    if (stdout >= 0) closeSync(stdout);
+    if (stderr >= 0) closeSync(stderr);
+    rmSync(capture, { recursive: true, force: true });
+  }
 }
 const ok = (r: Run): any => {
   expect(r.stderr).toBe("");
@@ -95,8 +106,9 @@ test("two callers bound to different Stages commit concurrently without losing w
   const { at, a, b } = twoTickets(w);
   const jobs: Promise<Run>[] = [];
   for (let i = 0; i < 6; i++) {
-    jobs.push(runAsync(["submit"], { ...at, session: "s-a", stdin: contribution(round(question(`a${i}`))) }));
-    jobs.push(runAsync(["submit"], { ...at, session: "s-b", stdin: contribution(round(question(`b${i}`))) }));
+    const draft = { kind: "result", ref: "draft", shape: "timeline", title: `Draft ${i}`, entries: [{ title: "Equal author clocks", time: "2000-01-01T00:00:00Z", outcome: "noted" }, { title: "Clock went backward", time: "1999-01-01T00:00:00Z", outcome: "noted" }] };
+    jobs.push(runAsync(["submit"], { ...at, session: "s-a", stdin: contribution(draft, round(question(`a${i}`))) }));
+    jobs.push(runAsync(["submit"], { ...at, session: "s-b", stdin: contribution(round(question(`b${i}`)), draft) }));
     jobs.push(runAsync(["alias", `run:run-a${i}`], { ...at, session: "s-a" }));
     jobs.push(runAsync(["alias", `run:run-b${i}`], { ...at, session: "s-b" }));
   }
@@ -112,6 +124,44 @@ test("two callers bound to different Stages commit concurrently without losing w
   expect(stage(a.stage).questions.map((q: any) => q.q).sort((x: number, y: number) => x - y)).toEqual([1, 2, 3, 4, 5, 6]);
   for (let i = 0; i < 6; i++) expect(s.aliases).toEqual(expect.arrayContaining([`run:run-a${i}`, `run:run-b${i}`]));
   expect(s.revision).toBe(Math.max(...revisions));
+  const committed = results.filter((r) => r.json.refs).sort((x, y) => x.json.revision - y.json.revision);
+  const expectedIds = committed.flatMap((r) => r.json.stage === a.stage ? [r.json.refs.draft, ...r.json.ask.questions.map((q: any) => q.id)] : [...r.json.ask.questions.map((q: any) => q.id), r.json.refs.draft]);
+  expect(s.reading.publications.map((b: any) => b.id)).toEqual(expectedIds);
+  expect(s.reading.publications.map((b: any) => b.position)).toEqual(Array.from({ length: 24 }, (_, i) => i + 1));
+  for (let i = 0; i < committed.length; i++) expect(s.reading.publications.slice(i * 2, i * 2 + 2).map((b: any) => b.publication)).toEqual([committed[i].json.revision, committed[i].json.revision]);
+});
+
+test("mixed publications keep declared order across Stages, refusal, replay, answers and revisions", () => {
+  const w = world();
+  const { at, a, b } = twoTickets(w);
+  const send = (session: string, ...items: object[]) => ok(run(["submit"], { ...at, session, stdin: contribution(...items) }));
+  const first = send("s-a", round(question("one"), question("two")), { kind: "result", ref: "r", shape: "cards", title: "Late research", entries: [card("e")] });
+  const second = send("s-b", { kind: "result", ref: "child", shape: "timeline", title: "Earlier draft", entries: [{ title: "Drafted earlier", time: "2000-01-01", outcome: "noted" }] });
+  const read = () => ok(run(["show", "--flow", a.flow], at)).reading;
+  const expected = [
+    { id: first.refs.one, kind: "question", stage: a.stage, position: 1, publication: first.revision },
+    { id: first.refs.two, kind: "question", stage: a.stage, position: 2, publication: first.revision },
+    { id: first.refs.r, kind: "result", stage: a.stage, position: 3, publication: first.revision },
+    { id: second.refs.child, kind: "result", stage: b.stage, position: 4, publication: second.revision },
+  ];
+  expect(read()).toEqual({ historical: [], publications: expected });
+  const refused = run(["submit"], { ...at, session: "s-a", stdin: contribution(round(question("refused")), { kind: "revise", result: first.refs.r, base: 1, set: { title: "Stale" } }) });
+  expect(refused.code).toBe(1);
+  expect(refused.stderr).toContain("conflict");
+  expect(read().publications).toEqual(expected);
+  const replay = ok(run(["submit"], { ...at, session: "s-b", stdin: contribution({ kind: "result", ref: "child", shape: "timeline", title: "Earlier draft", entries: [{ title: "Drafted earlier", time: "2000-01-01", outcome: "noted" }] }) }));
+  expect(replay).toMatchObject({ repeated: true, refs: second.refs, revision: second.revision });
+  send("s-a", { kind: "answer", question: first.refs.one, response: { status: "answered", text: "Keep the first publication." }, reading: { outcome: "resolved", decision: "Keep publication order.", basis: "The words name that order." } }, { kind: "revise", result: first.refs.r, base: first.revision, set: { title: "Revised research" } });
+  expect(read().publications).toEqual(expected);
+  const last = send("s-a", round(question("three"), { ...question("again"), again: first.refs.one }));
+  expect(last.ask.questions.map((q: any) => q.id)).toEqual([last.refs.three, last.refs.again]);
+  expect(last.ask.questions.map((q: any) => q.question.split(".")[0])).toEqual(["Q3", "Q1"]);
+  expect(read().publications.slice(4)).toEqual([
+    { id: last.refs.three, kind: "question", stage: a.stage, position: 5, publication: last.revision },
+    { id: last.refs.again, kind: "question", stage: a.stage, position: 6, publication: last.revision },
+  ]);
+  const snapshot = ok(run(["show", "--flow", a.flow], at));
+  expect(snapshot.stages[0].questions.find((q: any) => q.id === first.refs.one).answer).toMatchObject({ response: { text: "Keep the first publication." }, reading: { decision: "Keep publication order." } });
 });
 
 test("a repeated submission, even a simultaneous one, creates nothing twice", async () => {
@@ -188,6 +238,20 @@ test("qualified aliases find a Flow, and lookup reports a missing or ambiguous F
   expect(tree(w.home)).toEqual(before);
 });
 
+test("a failed git lookup refuses authoring instead of routing a repository to global Flows", () => {
+  const w = world();
+  const { at } = twoTickets(w);
+  const before = tree(w.home);
+  writeFileSync(join(w.project, ".git", "config"), "[invalid config\n");
+  const result = run(["submit"], { ...at, session: "s-a", stdin: contribution(round(question("must-not-route"))) });
+  expect(result.code).not.toBe(0);
+  expect(result.stdout).toBe("");
+  expect(result.stderr).toContain("git rev-parse");
+  expect(result.stderr).toContain("bad config line");
+  expect(result.stderr).not.toContain("is bound to no Flow");
+  expect(tree(w.home)).toEqual(before);
+});
+
 test("projects stay isolated, and worktrees of one project share a Flow", () => {
   const w = world();
   const { at, a } = twoTickets(w);
@@ -234,7 +298,9 @@ test.each(["repository", "outside-repository"] as const)("Flow authoring keeps i
   const receipt = ok(parse(result.exitCode, result.stdout.toString(), result.stderr.toString()));
   expect(receipt.flow).toBe(opened.flow);
   expect(receipt.stage).toBe(opened.stage);
-  expect(receipt.page).toBe(opened.page);
+  expect(receipt.live).toEqual(opened.live);
+  expect(receipt).not.toHaveProperty("page");
+  expect(receipt).not.toHaveProperty("presentation");
   const snapshot = ok(run(["show", "--flow", opened.flow], at));
   expect(snapshot.stages.find((stage: any) => stage.id === opened.stage).questions.map((q: any) => q.id)).toEqual([receipt.refs.captured]);
   const stores = readdirSync(join(w.home, ".vstack", "tmp"));
@@ -248,13 +314,14 @@ test("a spec alias and a folder relocation keep the Flow's identity, anchors, an
   const w = world();
   const { at, a, b } = twoTickets(w);
   const first = ok(run(["submit"], { ...at, session: "s-a", stdin: contribution(round(question("before"))) }));
+  const folder = storedFolder(w.home, a.flow);
   ok(run(["alias", "spec:267"], { ...at, session: "s-a" }));
   const before = ok(run(["show", "--flow", a.flow], at));
 
   const moved = ok(run(["move", "--to", "vstack-267"], { ...at, session: "s-a" }));
   expect(moved.flow).toBe(a.flow);
-  expect(existsSync(dirname(first.page))).toBe(false);
-  expect(dirname(moved.page)).not.toBe(dirname(first.page));
+  expect(existsSync(folder)).toBe(false);
+  expect(storedFolder(w.home, a.flow)).not.toBe(folder);
   for (const key of [a.flow, "spec:267", "folder:vstack-267", `folder:${a.flow}`]) expect(ok(run(["show", "--flow", key], at)).flow.id).toBe(a.flow);
 
   const after = ok(run(["show", "--flow", a.flow], at));
@@ -262,16 +329,16 @@ test("a spec alias and a folder relocation keep the Flow's identity, anchors, an
   const later = ok(run(["submit"], { ...at, session: "s-a", stdin: contribution(round(question("after"))) }));
   const fromB = ok(run(["submit"], { ...at, session: "s-b", stdin: contribution(round(question("other"))) }));
   expect([later.flow, fromB.flow]).toEqual([a.flow, a.flow]);
-  expect(later.page).toBe(moved.page);
-  const page = readFileSync(moved.page, "utf8");
-  for (const id of [first.refs.before, later.refs.after, fromB.refs.other, a.stage, b.stage]) expect(page).toContain(`id="${id}"`);
+  const snapshot = ok(run(["show", "--flow", a.flow], at));
+  const ids = [...snapshot.stages.map((s: any) => s.id), ...snapshot.stages.flatMap((s: any) => s.questions.map((q: any) => q.id))];
+  for (const id of [first.refs.before, later.refs.after, fromB.refs.other, a.stage, b.stage]) expect(ids).toContain(id);
 });
 
 test("a failed relocation leaves the old Flow usable", () => {
   const w = world();
   const { at, a } = twoTickets(w);
   const other = ok(run(["open", "--title", "Another flow", "--skill", "explain"], { ...at, session: "s-c" }));
-  const flowsDir = dirname(dirname(other.page));
+  const flowsDir = dirname(storedFolder(w.home, other.flow));
 
   const before = tree(w.home);
   const taken = run(["move", "--to", other.flow], { ...at, session: "s-a" });
@@ -290,42 +357,4 @@ test("a failed relocation leaves the old Flow usable", () => {
   } finally {
     chmodSync(flowsDir, 0o755);
   }
-});
-
-const pageRevision = (page: string) => readFileSync(page, "utf8").match(/name="flow-page-revision" content="(\d+)"/)?.[1];
-
-test("a failed page projection keeps the last good page, marks it stale, and the receipt says the content is committed", () => {
-  const w = world();
-  const { at, a } = twoTickets(w);
-  const good = ok(run(["submit"], { ...at, session: "s-a", stdin: contribution(round(question("kept"))) }));
-  expect(good.presentation).toMatchObject({ state: "current", revision: good.revision });
-  const folder = dirname(good.page);
-  const lastGood = readFileSync(good.page, "utf8");
-
-  chmodSync(folder, 0o555);
-  let failed: Run;
-  try {
-    failed = run(["submit"], { ...at, session: "s-a", stdin: contribution(round(question("committed"))) });
-    expect(failed.code).toBe(0);
-    expect(failed.stderr).not.toBe("");
-    expect(failed.json.revision).toBe(good.revision + 1);
-    expect(failed.json.refs.committed).toBeDefined();
-    expect(failed.json.presentation).toMatchObject({ state: "stale", revision: good.revision });
-    expect(readFileSync(good.page, "utf8")).toBe(lastGood);
-
-    const s = ok(run(["show", "--flow", a.flow], at));
-    expect(s.revision).toBe(failed.json.revision);
-    expect(s.presentation).toMatchObject({ state: "stale", revision: good.revision });
-    expect(s.stages[0].questions.map((q: any) => q.id)).toContain(failed.json.refs.committed);
-
-    const repeat = run(["submit"], { ...at, session: "s-a", stdin: contribution(round(question("committed"))) });
-    expect(repeat.code).toBe(0);
-    expect(repeat.json.refs).toEqual(failed.json.refs);
-  } finally {
-    chmodSync(folder, 0o755);
-  }
-  const fixed = ok(run(["render", "--flow", a.flow], at));
-  expect(fixed.presentation).toMatchObject({ state: "current", revision: failed.json.revision });
-  expect(pageRevision(good.page)).toBe(String(failed.json.revision));
-  expect(ok(run(["show", "--flow", a.flow], at)).stages[0].questions).toHaveLength(2);
 });
