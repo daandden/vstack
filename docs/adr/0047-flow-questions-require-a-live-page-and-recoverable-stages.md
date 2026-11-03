@@ -42,3 +42,13 @@ Retain these independent capabilities from mixed hunks:
 Session-specific presentation and binding, context isolation, intent-based enrollment, and Scratch identity fixes predate #337 and must remain. Preserve the later standalone research Flow-closing change as well. Do not downgrade release metadata or erase historical release notes to remove the feature. No separate unrelated runtime repair was found in #337's reconciliation.
 
 This selective removal does not implement the separately accepted host-ownership change. The introducing commit did not change host compatibility code, so its reversal cannot fix that incident. Retain the live-page prerequisite and report host failures without asking. The prior coupled-delivery specification was stopped before publication and is not the implementation contract.
+
+## Question-only link presentation
+
+In the `flow-link-before-questions-d9d032` interview on 2026-11-03, the user chose one clickable Flow link before each vstack question round, not only during grilling. This supersedes ADR 0044's every-turn presentation and the earlier requirement above to retain session-specific presentation. This accepted amendment changes presentation only; the other recovery decisions retain their own implementation status.
+
+For a question round on a Flow, publish the complete round, verify its current live content, show exactly one clickable live URL in assistant chat, then call the ordinary `ask` tool. One call containing several questions gets one link. A later round gets its own link. Keep the existing native Ratchet approval exception and its visible pre-gate link requirement.
+
+Remove automatic post-reply Flow messages and the separate `/vstack-clean` result link. Result-only replies and completion summaries show no Flow link or path reminder. Do not open a browser automatically. The user chose access at the question handoff over repeated reminders or links on result-only outcomes.
+
+Keep session and agent authoring identity, binding isolation, full Flow history, enrollment rules, and ordinary asking and answer recording. This change neither enrolls unbound questions in a Flow nor introduces a custom picker, delivery queue, or retry gate.

@@ -59,7 +59,7 @@ Parallel callers and callers outside an omp session name `--flow <flow> --stage 
 
 `bound` returns this session and agent's binding with its `live` status. When none exists, it returns `{"binding":null}` without starting a host or creating a Flow. Bindings persist across session continuation. A different session or agent gets only its own binding, never the last active Stage.
 
-The extension presents the bound Flow URL after every main-agent reply, including blockers and follow-up explanations with no new Result. It starts no model turn and opens no browser. When the host is not serving, it says the reader is unavailable, with the observed error, and that the content is stored. Your reply still summarizes the work. It need not repeat the link.
+Present Flow links only at question handoffs under "Every ask in a Flow", including Ratchet's native approval exception. Result-only replies and completion summaries have no Flow link or path reminder. The extension supplies hidden authoring context without a post-reply message, and `/vstack-clean` publishes its Result without a separate Flow link. Never open a browser automatically.
 
 ## Find a Flow
 
@@ -114,13 +114,13 @@ This contract applies only to enrolled runs. Outside a Flow, use plain `ask` as 
 
 1. Prepare the complete round and visuals under [Reader needs and Visual kinds](references/reader-needs.md), then publish them once with CLI `submit`.
 2. Require `live.state: "serving"`. Fetch the receipt URL's read-scoped `content` endpoint and verify its Flow id, committed revision, generated question ids, and authored context. A generic successful Nuxt shell response is not proof. If publication or live serving fails, report the actual receipt and error in chat and leave the question unanswered. Stored files are not a server-free reader.
-3. Display the live URL in an assistant chat message before calling `ask`. The chat link is sufficient. Do not emit a page-publication notification or replace it with a queued duplicate message.
+3. Display exactly one clickable live URL in an assistant chat message before calling `ask`. Several questions in that call share this one link. Each subsequent question round gets its own link. The chat link is sufficient. Do not emit a page-publication notification or replace it with a queued duplicate message.
 4. Call the existing `ask` tool with the receipt's generated questions. Preserve its ordinary retry, cancellation, approval tier, timeout and integration behavior. Vstack adds no picker route, wrapper, delivery queue or retry gate. A repeated publication receipt does not prevent a separate ask call.
 5. Record each observed answer through CLI `submit`, preserving raw words and non-consent separately from interpretation as below.
 
 If the committed reader is unavailable, recover only the owned Local Flow host, then use `bound` or `show` to retrieve its URL. Verify current content and print the URL before asking, without resubmitting the committed question. A transport failure does not create a new Stage. A subagent never asks; it returns open questions to its coordinator for publication and ordinary `ask`.
 
-For Ratchet's native approval gate, publish the complete question and review material first, display the live page URL, then pass its receipt's numbered title and page pointer to `r.approve()` as `skill://tune-llm-flow` says. The native gate, not a second ordinary picker, collects the approval. Preserve reused approval, revision feedback, abort, dismissal, cancellation, and unanswered states separately.
+For Ratchet's native approval gate, publish the complete question and review material first, verify current live content as above, and display exactly one clickable live URL before passing its receipt's numbered title and page pointer to `r.approve()` as `skill://tune-llm-flow` says. The native gate, not a second ordinary picker, collects the approval. Preserve reused approval, revision feedback, abort, dismissal, cancellation, and unanswered states separately.
 
 ### Record the raw answer and separate reading
 

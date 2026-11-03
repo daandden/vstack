@@ -343,7 +343,9 @@ def main():
         assert 0 <= text.index(link_text) < text.index("n add note"), "chat link did not precede picker"
         chat = [m for m in messages() if m.get("role") == "assistant" and
                 link_text in "".join(c.get("text", "") for c in m.get("content", []) if isinstance(c, dict))]
-        assert chat, "The live URL must be actual assistant chat, not a tool or notification"
+        assert len(chat) == 1, "One question round must have one assistant link message"
+        assert sum(c.get("text", "").count(receipt["live"]["url"])
+                   for m in chat for c in m.get("content", []) if isinstance(c, dict)) == 1, "Several questions share one link"
         save(out / "before-picker.json", {"link_text_offset": text.index(link_text),
              "picker_text_offset": text.index("n add note"), "output_bytes": len(captured), "assistant_messages": chat})
         if args.case in ("cancel", "retry"):
@@ -403,6 +405,16 @@ def main():
         for _ in range(15):
             read_output(0.1)
         result = asks()
+        flow_messages = [entry for file in session_dir.rglob("*.jsonl") for entry in lines(file)
+                         if entry.get("type") == "custom_message" and entry.get("customType") == "vstack-flow"
+                         and entry.get("display") is not False]
+        save(out / "flow-messages.json", flow_messages)
+        assert not flow_messages, "Unsolicited Flow message after question or completion"
+        if args.case != "cancel":
+            completion = next(m for m in reversed(messages()) if m.get("role") == "assistant")
+            completion_text = "".join(c.get("text", "") for c in completion.get("content", []) if isinstance(c, dict))
+            assert "FLOW_QUESTIONS_FIXTURE_COMPLETE" in completion_text, "Missing terminal completion"
+            assert receipt["live"]["url"] not in completion_text, "Completion repeats the Flow link"
         save(out / "tool-results.json", result)
         assert not handler_errors, handler_errors
         assert inventory_error is None, inventory_error
@@ -450,6 +462,7 @@ def main():
                        assertions=["fresh inventory omits flow_ask", "ordinary ask receives original receipt",
                        "live HTTP content matches flow, revision and question identities",
                        "assistant chat URL precedes real picker", "separate CLI answer recording",
+                       "no unsolicited Flow message or completion link",
                        "Escape and F5 preserve unrecorded question identities" if args.case == "retry"
                        else "Escape remains non-consent" if args.case == "cancel"
                        else "configured timeout remains non-consent" if args.case == "timeout"

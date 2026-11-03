@@ -43,69 +43,43 @@ function world() {
   return { home, project, port, run, ok, host };
 }
 function setup() { const w = world(); worlds.push(w); return w; }
-const urls = (h: ReturnType<typeof fakeHost>) => h.sent.flatMap((m: any) => m.content.match(/http:\/\/127\.0\.0\.1:\d+\/f\/[^\s)]+/g) ?? []);
 const completedReply = (text = "Done.") => ({
   isTerminal: true,
   messages: [{ role: "assistant", stopReason: "stop", content: [{ type: "text", text }] }],
 });
 
-test("a session's Flow returns after every completed reply, including a blocker and follow-up", async () => {
+test("completed replies add no unsolicited Flow message, including blockers and follow-ups", async () => {
   const w = setup();
-  const a = await w.ok(["open", "--title", "First ticket", "--skill", "implement", "--ticket", "284", "--session", "a"]);
-  const b = await w.ok(["open", "--title", "Other ticket", "--skill", "implement", "--ticket", "285", "--session", "b"]);
+  await w.ok(["open", "--title", "First ticket", "--skill", "implement", "--ticket", "284", "--session", "a"]);
+  await w.ok(["open", "--title", "Other ticket", "--skill", "implement", "--ticket", "285", "--session", "b"]);
   const h = w.host("a");
   await h.emit("before_agent_start", { prompt: "Work on the ticket" });
   await h.emit("agent_end", { isTerminal: false });
-  expect(urls(h)).toHaveLength(0);
+  expect(h.sent).toHaveLength(0);
   for (const text of ["Implemented.", "Blocked on credentials.", "Here is why the blocker matters."]) {
     await h.emit("agent_end", completedReply(text));
   }
-  expect(urls(h)).toEqual([a.live.url, a.live.url, a.live.url]);
+  expect(h.sent).toEqual([]);
   const resumed = w.host("a");
   await resumed.emit("before_agent_start", { prompt: "Continue" });
   await resumed.emit("agent_end", completedReply("Continued."));
-  expect(urls(resumed)).toEqual([a.live.url]);
+  expect(resumed.sent).toEqual([]);
   const other = w.host("b");
   await other.emit("agent_end", completedReply("Other ticket complete."));
-  expect(urls(other)).toEqual([b.live.url]);
+  expect(other.sent).toEqual([]);
   const unbound = w.host("unbound");
   await unbound.emit("agent_end", completedReply());
   expect(unbound.sent).toHaveLength(0);
 });
 
-test("cancelled retries do not present a Flow without a completed visible reply", async () => {
-  const w = setup();
-  const a = await w.ok(["open", "--title", "Cancelled retries", "--skill", "implement", "--session", "a"]);
-  const h = w.host("a");
-  await h.emit("agent_end", completedReply("The first reply is complete."));
-  const aborted = { role: "assistant", stopReason: "aborted", content: [{ type: "text", text: "" }] };
-  for (const messages of [
-    [aborted],
-    [aborted],
-    [...completedReply("Earlier text in the cancelled run.").messages, aborted],
-    [{ ...aborted, stopReason: "error", content: [{ type: "text", text: "Request failed." }] }],
-    [{ ...aborted, stopReason: "toolUse" }, { role: "toolResult", isError: true }],
-    completedReply("  ").messages,
-    [],
-  ]) {
-    await h.emit("agent_end", { isTerminal: true, messages });
-    expect(urls(h)).toEqual([a.live.url]);
-  }
-  const resumed = w.host("a");
-  await resumed.emit("agent_end", { isTerminal: true, messages: [aborted] });
-  expect(urls(resumed)).toEqual([]);
-  await resumed.emit("agent_end", completedReply("A new reply after retrying."));
-  expect(urls(resumed)).toEqual([a.live.url]);
-});
 
-test("Flow presentation stays in the transcript but not ordinary-turn model context", async () => {
+test("historical Flow messages stay out of ordinary-turn model context", async () => {
   const w = setup();
   await w.ok(["open", "--title", "Context isolation", "--skill", "implement", "--session", "context"]);
   const h = w.host("context");
   const start = await h.emit("before_agent_start") as any[];
   const { message: identity } = start.find(result => result?.message?.customType === "vstack-flow-context");
-  await h.emit("agent_end", completedReply());
-  const [presentation] = h.sent as any[];
+  const presentation = { customType: "vstack-flow", content: "Flow page: http://127.0.0.1:42000/f/historical/", display: true };
   const user = { role: "user", content: presentation.content };
   const assistant = { role: "assistant", content: [{ type: "text", text: "The work is blocked." }] };
   const authoring = { role: "custom", ...identity };
@@ -124,9 +98,9 @@ test("Flow presentation stays in the transcript but not ordinary-turn model cont
   expect(modelMessages).toEqual(kept);
 });
 
-test("an occupied live endpoint reports the unavailable reader and observed failure, not an old URL", async () => {
+test("an occupied live endpoint adds no post-reply message or interference", async () => {
   const w = setup();
-  const a = await w.ok(["open", "--title", "Offline ticket", "--skill", "implement", "--session", "a"]);
+  await w.ok(["open", "--title", "Offline ticket", "--skill", "implement", "--session", "a"]);
   await w.ok(["host", "stop"]);
   const listener = Bun.serve({ port: Number(w.port), fetch: () => new Response("another program") });
   try {
@@ -135,16 +109,12 @@ test("an occupied live endpoint reports the unavailable reader and observed fail
     expect(current).not.toHaveProperty("page");
     const h = w.host("a");
     await h.emit("agent_end", completedReply());
-    expect(urls(h)).toHaveLength(0);
-    const content = h.sent.map((m: any) => m.content).join("\n");
-    expect(content).toContain(current.live.error);
-    expect(content).not.toContain(w.home);
-    expect(content).not.toContain(a.live.url);
+    expect(h.sent).toEqual([]);
     expect((await fetch(`http://127.0.0.1:${w.port}`)).status).toBe(200);
   } finally { listener.stop(true); }
 });
 
-test("session and agent bindings keep ticket contributions and later presentation separate", async () => {
+test("session and agent bindings keep ticket contributions and hidden authoring context separate", async () => {
   const w = setup();
   const a = await w.ok(["open", "--title", "Shared work", "--skill", "wayfinder", "--ticket", "101", "--session", "a"]);
   const b = await w.ok(["open", "--flow", a.flow, "--skill", "wayfinder", "--ticket", "102", "--session", "b"]);
@@ -161,14 +131,24 @@ test("session and agent bindings keep ticket contributions and later presentatio
   ]);
   expect(snapshot.stages[2].results).toHaveLength(1);
   const h = w.host("a");
-  await h.emit("agent_end", completedReply("First ticket complete."));
+  const context = async (host: ReturnType<typeof fakeHost>) => {
+    const start = await host.emit("before_agent_start", { prompt: "Continue" }) as any[];
+    return start.find(result => result?.message?.customType === "vstack-flow-context").message;
+  };
+  const first = await context(h);
+  expect(first.display).toBe(false);
+  expect(first.content).toContain('"--session" "a" "--agent" "main"');
+  expect(first.content).toContain(`Your bound Flow is ${a.flow}, Stage ${a.stage}.`);
   h.ctx.sessionManager = { ...h.ctx.sessionManager, getSessionId: () => "b" };
   await h.emit("session_switch");
-  await h.emit("agent_end", completedReply("Second ticket complete."));
-  expect(urls(h)).toEqual([a.live.url, b.live.url]);
+  const second = await context(h);
+  expect(second.content).toContain('"--session" "b" "--agent" "main"');
+  expect(second.content).toContain(`Your bound Flow is ${b.flow}, Stage ${b.stage}.`);
   const sub = w.host("a", { kind: "sub", id: "worker-1", name: "vstack-worker", depth: 1, parentId: "Main" });
-  await sub.emit("agent_end", completedReply());
-  expect(sub.sent).toHaveLength(0);
+  const worker = await context(sub);
+  expect(worker.display).toBe(false);
+  expect(worker.content).toContain('"--session" "a" "--agent" "worker-1"');
+  expect(worker.content).toContain(`Your bound Flow is ${a.flow}, Stage ${child.stage}.`);
   expect((await w.ok(["bound", "--session", "a"])).stage).toBe(a.stage);
   expect((await w.ok(["bound", "--session", "a", "--agent", "worker-1"])).stage).toBe(child.stage);
 });

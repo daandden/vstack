@@ -63,6 +63,7 @@ test("confirmed Scratch cleanup records its outcome in the bound Flow without lo
   const bound = await w.ok(["bound", "--session", "cleanup"]);
   expect(bound.binding).toMatchObject({ flow: opened.flow, stage: opened.stage });
   expect(stored(w.home, opened.flow)).toContain(w.expired);
+  expect(h.sent).toEqual([]);
 });
 
 test("unbound cleanup retains confirmation and creates no administrative Flow", async () => {
@@ -93,6 +94,7 @@ test("cancelled and headless bound Commands preserve Scratch and record honest o
       ["implement", "in-progress", 0], ["vstack-clean", "finished", 1],
     ]);
     expect((await w.ok(["bound", "--session", "cleanup"])).stage).toBe(opened.stage);
+    expect(h.sent.filter((message: any) => message.customType === "vstack-flow")).toEqual([]);
   }
 });
 
@@ -146,5 +148,5 @@ test("a Command after a finished Stage publishes once without a false attachment
   expect(snapshot.stages.map((stage: any) => [stage.state, stage.results.length])).toEqual([
     ["finished", 0], ["finished", 1],
   ]);
-  expect(h.sent.map((message: any) => message.customType)).toEqual(["vstack-flow"]);
+  expect(h.sent).toEqual([]);
 });

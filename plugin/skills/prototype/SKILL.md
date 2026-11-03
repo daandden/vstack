@@ -60,7 +60,7 @@ A self-contained prototype (a single HTML file, or a script that needs nothing f
 
 ## Reply
 
-In a Flow, publish the following handover parts as Results, then summarize them in the reply with the Flow URL. Outside a Flow, deliver every part in chat. Keep the runnable artifact, route, and source capture available through the contracts above.
+In a Flow, publish the following handover parts as Results, then summarize them in the reply without a Flow link. Outside a Flow, deliver every part in chat. Keep the runnable artifact, route, and source capture available through the contracts above.
 
 - Variants: what each variant is and how to open it. For an app-bound prototype, the URL with its `?variant=` keys and the one command that restarts the dev server.
 - Evidence: the screenshots for UI, the walkthrough results for LOGIC, or the observed output or timing for BEHAVIOR, with the paths of the evidence files.

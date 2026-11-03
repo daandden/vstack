@@ -52,7 +52,7 @@ Apply this procedure to `inputs`, `grader`, and `plan`, including every revision
 
 1. Publish the full material as a typed Result in this tune Stage. The inputs table has one row for every case with its complete input, expected answer, tag, and provenance. The grader cards show five complete inputs, outputs, grades, and the grader's reasoning. The plan table covers the fields above. Do not replace review material with file pointers or a sample of the case set.
 2. Prepare a complete round and question with the native labels `Approve`, `Revise`, and `Abort`, without authored option letters. Explain that Revise takes feedback and records no approval, and dismissal is not approval. Declare and fulfill its actual reader needs. Link the question's `results` to every relevant Result entry by ref. Submit new material and the question atomically. The script owns ids, letters, numbering, and reciprocal links.
-3. Read the assigned Q number and title from the receipt's `ask` payload, and print the receipt's Flow URL before the host dialog. Call only Ratchet's existing approval interface:
+3. Follow flow-page's native approval exception. Verify current live content and display exactly one clickable live URL before the host dialog. Read the assigned Q number and title from the receipt's `ask` payload. Call only Ratchet's existing approval interface:
 
    ```python
    outcome = await r.approve(
@@ -98,4 +98,4 @@ Commit the reusable `.omp/ratchet/<eval>/` eval in its own commit, after the kep
 
 Publish the actual outcome and finish this Stage through flow-page, including blocked and aborted outcomes. Restore implement's active binding and return the run record and kept commits in landing order. Resume shared steps 3b through 7 once, including development checks, whole-diff review, review-fix commits, the independent Verifier's Verdict on the committed head in step 6b, and the settled End state chain. These are implement's steps, not a new commit or landing flow owned by the Addon.
 
-Summarize the goal and held quality, initial and best train/test measurements and deltas, each keep/revert/rerun with evidence, each kept commit and the separate eval commit, each accepted Verdict with its Verifier identity, patch id, and evidence paths, untried levers, requested versus reached End state, and every unavailable approval, proof, or companion-picker prerequisite. The extension presents the bound Flow. Claim only observed outcomes.
+Summarize the goal and held quality, initial and best train/test measurements and deltas, each keep/revert/rerun with evidence, each kept commit and the separate eval commit, each accepted Verdict with its Verifier identity, patch id, and evidence paths, untried levers, requested versus reached End state, and every unavailable approval, proof, or companion-picker prerequisite. Keep Flow links at question handoffs through flow-page, not in the final narrative. Claim only observed outcomes.
