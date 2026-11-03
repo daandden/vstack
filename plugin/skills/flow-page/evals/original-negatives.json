@@ -1,0 +1,313 @@
+{
+  "version": 1,
+  "provenance": {
+    "source": "/Users/vanguyen/.vstack/tmp/vstack-a7925b/flow/flow-nuxt-vite-frontend-f2000f/data/state.json",
+    "sha256_at_extraction": "1d772c7bf09d92ca5bec0d0b83807989ccfca7f068f245906c919a1be9956f9e",
+    "extracted_at": "2026-10-31T07:03:18Z",
+    "historical_revision": 6,
+    "capture_status": "unavailable",
+    "reason": "Retained original question records only. No original submitted JSON, receipt, immutable revision-6 state, or contemporaneous browser capture was recovered. Any new rendering is a reconstruction."
+  },
+  "questions": [
+    {
+      "id": "question-7",
+      "stage": "stage-1",
+      "round": "round-3",
+      "q": 7,
+      "title": "Should creation order be the main reading order across the whole Flow or only inside each Stage?",
+      "description": "Your research-after-grilling requirement is settled. The remaining choice is whether a reader can follow that sequence across skill runs without switching tabs. A Stage is one skill run, such as grilling or research. A Flow can contain many Stages.",
+      "options": [
+        {
+          "label": "A. One chronological reading stream across the Flow",
+          "does": "Make creation order across all Stages the main reading experience, with Stage identity retained on content.",
+          "gains": [
+            "A grilling question, later research, and subsequent questions can be read in the order they appeared."
+          ],
+          "costs": [
+            "The redesign must provide orientation and filtering without depending on separate Stage tabs as the only reading path."
+          ]
+        },
+        {
+          "label": "B. Keep Stage tabs, order each Stage chronologically",
+          "does": "Keep each skill run as its own reading tab and interleave its Results and questions by creation order.",
+          "gains": [
+            "The present Stage separation remains familiar."
+          ],
+          "costs": [
+            "A research Stage between grilling rounds still requires switching tabs to follow the full sequence."
+          ]
+        }
+      ],
+      "needs": [
+        {
+          "need": "Distinguish a Flow-wide chronological reading mode from retaining separate Stage reading tabs.",
+          "kind": "prose"
+        }
+      ],
+      "today": [
+        {
+          "text": "Each Stage currently has its own tab; the Overview and Stage tree link between them.",
+          "source": "source-18"
+        }
+      ],
+      "topics": [
+        "topic-1"
+      ]
+    },
+    {
+      "id": "question-8",
+      "stage": "stage-1",
+      "round": "round-3",
+      "q": 8,
+      "title": "When earlier content is answered or revised, should the update create a new chronological entry?",
+      "description": "Creation order alone does not settle later changes. For example, an earlier question may receive an answer after a research Result has appeared. The original content can stay in its original place in either option; the choice is how readers discover its later answer or revision.",
+      "options": [
+        {
+          "label": "A. Update the original block in place",
+          "does": "Keep answers with their questions and the latest Result at its original creation position, with accessible revision history.",
+          "gains": [
+            "The page stays concise and avoids repeating content."
+          ],
+          "costs": [
+            "Creation order is not a complete activity history; readers may not notice a later update far above their position."
+          ]
+        },
+        {
+          "label": "B. Add a linked update entry at the later position",
+          "does": "Retain the original block and append a concise answer or revision event where the update happened.",
+          "gains": [
+            "The sequence explains when a later decision or correction became available."
+          ],
+          "costs": [
+            "The reader must distinguish original content from update notices; full content should not be duplicated."
+          ]
+        }
+      ],
+      "needs": [
+        {
+          "need": "Distinguish updating an original block in place from adding a later linked update notice.",
+          "kind": "prose"
+        }
+      ],
+      "topics": [
+        "topic-1"
+      ]
+    }
+  ],
+  "round": [
+    {
+      "id": "round-3",
+      "stage": "stage-1",
+      "n": 3,
+      "seq": 3,
+      "time": "2026-10-30T02:43:28+07:00"
+    }
+  ],
+  "topics": [
+    {
+      "id": "topic-1",
+      "title": "Creation order is the reader requirement",
+      "summary": "The user wants research and reports to appear where they were created, after earlier grilling questions.",
+      "body": "Raw note on the second-round answers:\n\ncurrently all report, research move to the front of the page, which is not ideal, i prefer i show requence exactly when it created, for example after first grilling, we have a reseasrch, then research should after grilling question\n\nReading: preserve content creation sequence instead of grouping all Results before questions. The user has not yet specified cross-Stage presentation or where later revisions belong.",
+      "sources": [
+        "source-15"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "source-15",
+      "text": "Conversation: second-round submitNote, preserved verbatim."
+    },
+    {
+      "id": "source-18",
+      "text": "plugin/skills/flow-page/scripts/render.ts:635-643,655-676"
+    },
+    {
+      "id": "source-21",
+      "text": "plugin/skills/flow-page/scripts/model.ts:1206-1255"
+    },
+    {
+      "id": "source-24",
+      "text": "Current session: Q7/Q8 contribution, revision 6 receipt, and note on Q9."
+    },
+    {
+      "id": "source-25",
+      "text": "docs/adr/0042-every-grilling-question-declares-its-reader-needs.md:13-19"
+    },
+    {
+      "id": "source-26",
+      "text": "plugin/skills/skill-creator/references/evaluation.md"
+    },
+    {
+      "id": "source-27",
+      "text": "docs/adr/0010-skill-evals-run-as-headless-omp-processes.md"
+    },
+    {
+      "id": "source-28",
+      "text": "tests/flow-page.test.ts:141-209"
+    },
+    {
+      "id": "source-30",
+      "text": "Conversation: explicit approval of the session finding."
+    },
+    {
+      "id": "source-31",
+      "text": "plugin/skills/skill-creator/references/evaluation.md:32-64"
+    },
+    {
+      "id": "source-32",
+      "text": "docs/adr/0010-skill-evals-run-as-headless-omp-processes.md:3-19"
+    },
+    {
+      "id": "source-33",
+      "text": "plugin/skills/flow-page/scripts/store.ts:13-30"
+    }
+  ],
+  "approval": [
+    {
+      "id": "result-6",
+      "stage": "stage-2",
+      "shape": "document",
+      "title": "Why this is an evaluation proposal, not another prompt rule",
+      "entries": [],
+      "changed": 11,
+      "document": {
+        "sections": [
+          {
+            "heading": "Proposed change and proof boundary",
+            "blocks": [
+              {
+                "prose": "Keep the unchanged revision-6 Q7 and Q8 as red authoring cases. Their question-local presentation must fail visual-selection scoring. Passing cases must include a visual that actually explains the alternative arrangements, not merely an SVG attachment. A later Background or Result diagram must not rescue an earlier inadequate question. Add ordinary terminology or preference questions as prose controls. Route these cases through the existing isolated skill-creator evaluation process rather than introduce another headless runner."
+              }
+            ]
+          },
+          {
+            "heading": "Why not a higher enforcement layer",
+            "blocks": [
+              {
+                "prose": "Publication is already centralized. A type can require a declared kind but cannot establish whether prose is the right kind for arbitrary question meaning. A keyword lint or a requirement for a diagram on every question would also need evidence that it does not reward decorative visuals or reject legitimate prose. A behavioral evaluation is the supported bounded check; it is not a guarantee of adequacy for every new question."
+              }
+            ]
+          },
+          {
+            "heading": "Rejected proposals",
+            "blocks": [
+              {
+                "list": [
+                  "Add another diagram-selection instruction: rejected as already covered by the guidance read before Q7 and Q8.",
+                  "Add a separate instruction to follow a concrete case through options: rejected as already covered by reader needs and scenario visuals.",
+                  "Create three separate findings for metadata checking, semantic quality, and regression coverage: rejected as duplicate treatments of the same observed mistakes.",
+                  "Call this a newly discovered schema-validator defect: rejected because ADR 0042 explicitly says the check catches a skipped decision, not a poor one."
+                ],
+                "ordered": false
+              }
+            ]
+          },
+          {
+            "heading": "Backlog, not approved work",
+            "blocks": [
+              {
+                "list": [
+                  "Experiment with independent semantic review that derives reader needs from the question before seeing the author declarations. Compare it with legitimate prose and inadequate-diagram controls before considering a blocking gate.",
+                  "Keep mechanical attachment/locality assertions separate from visual-adequacy judgments. Preserve isolated inputs, transcripts, process outcomes, and truthful unavailable cases in any later evaluation.",
+                  "Do not introduce mandatory diagrams for every question or keyword heuristics without evidence that they distinguish meaningful visuals from decoration."
+                ],
+                "ordered": false
+              }
+            ]
+          },
+          {
+            "heading": "Review limits",
+            "blocks": [
+              {
+                "prose": "Four independent lenses and a fresh-context synthesis reviewed the current session and referenced source. The original committed receipts are the observed failure evidence; no check was rerun merely to confirm your report. No evaluation, implementation, skill edit, or tracker write has been performed. Human review remains necessary for subjective visual quality."
+              }
+            ]
+          }
+        ],
+        "citations": [],
+        "limitations": [
+          "The proposed evaluation has not run and is not a per-question production enforcement gate.",
+          "Attachment counts cannot establish whether a visual helps a reader choose."
+        ],
+        "sources": [
+          "source-24",
+          "source-21",
+          "source-25",
+          "source-26",
+          "source-27",
+          "source-28"
+        ]
+      },
+      "captured": "2026-10-30T02:55:19+07:00",
+      "revision": 1
+    },
+    {
+      "id": "result-7",
+      "stage": "stage-2",
+      "shape": "document",
+      "title": "Approved session lesson for implement",
+      "entries": [],
+      "changed": 12,
+      "document": {
+        "sections": [
+          {
+            "heading": "Approved proposal and home",
+            "blocks": [
+              {
+                "prose": "Add one visual-authoring regression-evaluation set under plugin/skills/flow-page/evals/ in this checkout, using the existing skill-creator evaluation process and ADR 0010 isolation. This is one environment mistake class at ladder level 4. No skill-body change, new skill, global rule, runtime semantic gate, or tracker mutation is approved."
+              }
+            ]
+          },
+          {
+            "heading": "Concrete evaluation contract",
+            "blocks": [
+              {
+                "list": [
+                  "Preserve the original revision-6 Q7 and Q8 publications as negative judging examples. They must fail authoring adequacy, not current CLI schema validation.",
+                  "For subject runs, supply the earlier task context and decision alternatives without the failed needs declarations, the later user complaint, or an instruction to draw. The run must choose the representation itself.",
+                  "Freeze the submitted contribution, receipt, question IDs, state, rendered page, and captured visuals at first successful publication. Preserve the prompt, selected skill overlay, transcript, process status, model, and thinking level.",
+                  "Use isolated headless omp processes and a separate Flow home per run. Do not author eval artifacts into this live Flow or use this session binding.",
+                  "Check locality and publication evidence mechanically. Assess whether the visual actually explains the alternatives separately, with user review for subjective visual quality.",
+                  "Include legitimate prose controls and inadequate-diagram controls. Later repairs or Result diagrams must not alter the first-publication score."
+                ],
+                "ordered": false
+              }
+            ]
+          },
+          {
+            "heading": "Backlog and dropped items",
+            "blocks": [
+              {
+                "prose": "Backlog remains an experiment with independent pre-publication semantic review. A universal diagram requirement and keyword heuristics are not selected. Duplicate prompt rules and duplicate findings are dropped because existing reader-needs guidance already covers this failure. There were no routing redirects and no new skill proposal."
+              }
+            ]
+          },
+          {
+            "heading": "What has not happened",
+            "blocks": [
+              {
+                "prose": "Nothing was edited, installed, evaluated, committed, filed, or commented on a tracker. The accepted evaluation still needs an implementation run, with its input fixture, rubric, repetition count, and acceptance bar made explicit there. Passing a short isolated case will not by itself establish long-session reliability. The exact first-publication evidence and human visual review remain essential."
+              }
+            ]
+          }
+        ],
+        "citations": [],
+        "limitations": [
+          "No evaluation has run; baseline recurrence and candidate improvement remain unverified.",
+          "No universal semantic enforcement guarantee is claimed."
+        ],
+        "sources": [
+          "source-30",
+          "source-31",
+          "source-32",
+          "source-33",
+          "source-28"
+        ]
+      },
+      "captured": "2026-10-30T03:36:31+07:00",
+      "revision": 1
+    }
+  ]
+}

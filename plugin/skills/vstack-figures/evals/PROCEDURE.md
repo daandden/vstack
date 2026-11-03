@@ -104,12 +104,15 @@ The historical comparison used a **1376 CSS pixel** maximum SVG display width at
 
 Read `xd://eval/browser` before browser use. Use the same current Flow renderer only for display on both sides, never as either side's figure chain. Open a fresh proof Flow through `flow-page open`, using an isolated `--home`, and put generated media inside that project's Scratch dir. Submit each SVG as a captured `attachment` and a complete question with `needs: [{ need: "<the brief's actual decision distinction>", kind: "context-diagram" }]` and `figures: [{ attachment: "<ref>", kind: "context-diagram" }]`. Record the receipt and use its actual question id, not a guessed anchor. Rendering helpers open no Stage.
 
-Use Chromium at 1440 by 900 and device scale factor 1.25 for both sides, with `app: { tern: false, relay: false }`. Wait for `document.fonts.ready` and the question's image to load. Measure the `.visual img` bounding rectangle and its container on this renderer, and record font availability. A Pele SVG keeps its intrinsic width up to the page width. Use this fresh common display measurement in the manifest. A changed renderer or environment needs another documented measurement, never silent scaling. Historical 1376px results are not directly comparable until display conditions match.
+Use Chromium at 1440 by 900 and device scale factor 1.25 for both sides, with `app: { tern: false, relay: false }`. Wait for `document.fonts.ready` and the question's `.diagram[data-render="drawn"]`. Historical Pele SVG attachments draw inside that element's shadow root, not an `<img>`. Measure the `.diagram` viewport, its scroll width, and the shadow root SVG's bounding rectangle, and record font availability. A Pele SVG keeps its intrinsic width with local panning when needed. Use this fresh common display measurement in the manifest. A changed renderer or environment needs another documented measurement, never silent scaling. Historical 1376px results are not directly comparable until display conditions match.
 
-Capture the complete SVG image, including content below the viewport. Preserve its aspect ratio and height. Do not crop, shrink, edit, or relayout SVG bytes to improve a side's score. Use the actual receipt's question id for a selector screenshot that excludes page text:
+Capture the complete drawn SVG, including content beyond the local viewport. Preserve its aspect ratio and height. Do not crop, shrink, edit, or relayout captured SVG bytes to improve a side's score. Use the actual receipt's question id to tag only the display DOM, then capture that drawn shadow-root SVG without page text:
 
 ```javascript
-const pngPath = await tab.screenshot({selector: "#<question-id> .visual img", format: "png", silent: true});
+await tab.evaluate(() => {
+	document.querySelector("#<question-id> .diagram").shadowRoot.querySelector("svg").setAttribute("data-capture-question", "<question-id>");
+});
+const pngPath = await tab.screenshot({selector: 'pierce/svg[data-capture-question="<question-id>"]', format: "png", silent: true});
 const out = "<run>/<side>/renders/<id>/figure.webp";
 await Bun.write(out, await new Bun.Image(await Bun.file(pngPath).bytes()).webp({lossless: true}).bytes());
 ```

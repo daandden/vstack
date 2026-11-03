@@ -52,7 +52,7 @@ A lesson should be beautiful, with clean, readable typography and layout, since 
 
 The lesson should be short, and completable very quickly. Learners' working memory is very small, and we need to stay within it. But each lesson should give the user a single tangible win that they can build on. It should be directly tied to the mission, and should be in the user's zone of proximal development.
 
-Present the Flow URL without opening it automatically.
+Present Flow links through flow-page's "Every ask in a Flow" contract. Keep lesson-only replies free of Flow links, and never open the page automatically.
 
 Each lesson should link via HTML anchors to other lessons and reference documents.
 
@@ -146,11 +146,11 @@ Follow `skill://flow-page`'s "Stage entry/exit line" before producing a lesson o
 
 Publish the lesson and reference material as Document Results with ordered sections, citations, code, and captured figures. Publish retrieval practice as Quiz Results with choice, text, or numeric answer rules and explanations. Use a declarative prototype demo for representable state exercises, or a captured HTML artifact for a real simulator that needs code. Follow flow-page's typed contracts rather than adding scripts to the Flow page.
 
-Keep the offline lesson deliverable. Read `skill://vstack-tmp` and resolve the `teach/` kind. Create a fresh `<topic-slug>-<timestamp>/` entry and number lessons `0001-<dash-case-name>.html`, incrementing for later lessons. Start each lesson or reference export from [templates/teach.html](templates/teach.html). Inline reusable workspace CSS, quiz scripts, and assets, with no CDN or external fonts. Capture each export as a file attachment on its Result, not as a separate report page. Print its absolute path with the Flow URL, without opening it automatically.
+Keep the offline lesson deliverable. Read `skill://vstack-tmp` and resolve the `teach/` kind. Create a fresh `<topic-slug>-<timestamp>/` entry and number lessons `0001-<dash-case-name>.html`, incrementing for later lessons. Start each lesson or reference export from [templates/teach.html](templates/teach.html). Inline reusable workspace CSS, quiz scripts, and assets, with no CDN or external fonts. Capture each export as a file attachment on its Result, not as a separate report page. Print its absolute path without a Flow link or opening it automatically.
 
 The workspace mission, resources, learning records, notes, references, and asset sources remain durable teaching state. Ask before keeping an export in `./lessons/` or `./reference/`, and copy only after approval. Point workspace links at those durable copies. Publish a new revision of the associated Results with `canonical: { file: "lessons/<name>.html" }` or the reference path after retention. Before approval, the canonical file is the Scratch export. Later edits do not rewrite captured revisions. Scratch and Quiz progress never replace learning records, and a Quiz click never grants retention approval or authorizes real work.
 
-Draw lesson and reference figures through `skill://vstack-figures`. Write each figure's Mermaid in this caller's context and render it with Pele. The out dir is the lesson's Scratch entry, with unique filenames for distinct figures so IDs do not collide. Inline each rendered SVG with its embedded style in the offline lesson and capture it as an SVG attachment for the Document Result. Never substitute hand-drawn figures or raw Mermaid. If drawing cannot run, stop and report the missing prerequisite.
+Draw lesson and reference figures through `skill://vstack-figures`. Write each figure's Mermaid in this caller's context. The out dir is the lesson's Scratch entry, with unique filenames for distinct figures so IDs do not collide. Render each figure with the vstack-figures script and inline the SVG with its embedded style in the offline lesson. Capture each Mermaid source as a `mermaid` attachment for the Document Result, where the reader draws it with Pele. Never substitute hand-drawn figures or raw Mermaid. If drawing cannot run, stop and report the missing prerequisite.
 
 ## In-session questions
 

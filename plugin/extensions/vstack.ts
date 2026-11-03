@@ -13,7 +13,7 @@ import { fileURLToPath } from "node:url";
 export default function vstack(pi: ExtensionAPI): void {
   registerAddonSelection(pi);
   registerCleanCommand(pi);
-  registerFlowPresentation(pi);
+  registerFlowContext(pi);
 }
 
 const flowScript = fileURLToPath(new URL("../skills/flow-page/scripts/flow-page.ts", import.meta.url));
@@ -28,14 +28,8 @@ async function flowPage<T>(pi: ExtensionAPI, ctx: ExtensionContext, args: string
   return JSON.parse(result.stdout);
 }
 
-
-function registerFlowPresentation(pi: ExtensionAPI): void {
-  type Bound = {
-    binding: { flow: string; stage: string } | null;
-    page?: string;
-    live?: { state: "serving"; url: string } | { state: "unavailable"; error: string } | { state: "off" };
-    presentation?: { state: "current" | "stale"; error?: string };
-  };
+function registerFlowContext(pi: ExtensionAPI): void {
+  type Bound = { binding: { flow: string; stage: string } | null };
   pi.on("context", event => ({
     messages: event.messages.filter(message => message.role !== "custom" || message.customType !== "vstack-flow"),
   }));
@@ -52,23 +46,6 @@ function registerFlowPresentation(pi: ExtensionAPI): void {
       customType: "vstack-flow-context", display: false, attribution: "agent" as const,
       content: `For flow-page authoring commands, pass ${args}. Bash supplies PI_SESSION_ID but no agent id. Never use another agent's binding.${target}`,
     } };
-  });
-  pi.on("agent_end", async (event, ctx) => {
-    if (ctx.agent.kind !== "main" || event.isTerminal === false) return;
-    const reply = event.messages.findLast(message => message.role === "assistant");
-    if (!reply || reply.stopReason !== "stop" || !reply.content.some(block => block.type === "text" && block.text.trim())) return;
-    let content: string;
-    try {
-      const current = await flowPage<Bound>(pi, ctx, ["bound"]);
-      if (!current.binding) return;
-      content = current.live?.state === "serving"
-        ? `Flow page: ${current.live.url}`
-        : `Flow page (static): ${current.page}\nLive serving ${current.live?.state === "unavailable" ? `failed: ${current.live.error}` : "is disabled"}.`;
-      if (current.presentation?.state === "stale") content += `\nStatic projection is stale${current.presentation.error ? `: ${current.presentation.error}` : "."}`;
-    } catch (error) {
-      content = `Flow page unavailable: ${error instanceof Error ? error.message : String(error)}`;
-    }
-    pi.sendMessage({ customType: "vstack-flow", content, display: true }, { triggerTurn: false });
   });
 }
 
@@ -288,9 +265,7 @@ function registerCleanCommand(pi: ExtensionAPI): void {
           ] },
           { kind: "stage", state: "finished" },
         ] }));
-        const receipt = await run(["submit", "--flow", stage.flow, "--stage", stage.stage, file]);
-        const link = receipt.live?.state === "serving" ? receipt.live.url : receipt.page;
-        pi.sendMessage({ customType: "vstack-flow", content: `Flow page: ${link}${receipt.live?.state === "unavailable" ? `\nLive serving failed: ${receipt.live.error}` : ""}${receipt.presentation?.state === "stale" ? "\nStatic projection is stale; the outcome is committed." : ""}`, display: true }, { triggerTurn: false });
+        await run(["submit", "--flow", stage.flow, "--stage", stage.stage, file]);
       } finally {
         if (resumeCaller) await run(["bind", "--flow", current.binding.flow, "--stage", current.binding.stage]);
       }

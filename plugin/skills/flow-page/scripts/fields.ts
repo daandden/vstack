@@ -3,6 +3,20 @@ export const refuse = (where: string, message: string): never => {
   throw new Refusal(where ? `${where}: ${message}` : message);
 };
 
+/** The Visual kinds a reader need can declare, with the label readers see. */
+export const VISUAL_KINDS = {
+  "source-view": "Source view",
+  "source-excerpt": "Source excerpt",
+  "context-diagram": "Context diagram",
+  "option-diagram": "Option diagram",
+  "option-preview": "Option preview",
+  "before-after": "Before and after",
+  "comparison-table": "Comparison table",
+  "data-chart": "Data chart",
+  scenario: "Scenario walkthrough",
+  prose: "Prose",
+} as const;
+
 export type Obj = Record<string, unknown>;
 export const isObj = (v: unknown): v is Obj => typeof v === "object" && v !== null && !Array.isArray(v);
 export const REF = /^[a-z0-9][a-z0-9-]*$/;

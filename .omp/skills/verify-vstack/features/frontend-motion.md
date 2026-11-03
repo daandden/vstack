@@ -8,7 +8,7 @@ Existing frontend implementation and diagnosis paths reach animate and animation
 - `motion-worker`: the existing vstack-worker reaches the same guidance and makes real edits.
 - `motion-interruption`: pointer reversal, keyboard activation, cancellation, and reduced motion preserve the final functional state.
 - `motion-measurement`: the captured failure and a required-computation countercase distinguish removing useless work from preserving required results.
-- `motion-browser-conflict`: supported clip-path playback reconciles a broader property-only rule under ADR 0048.
+- `motion-browser-conflict`: supported clip-path playback reconciles a broader property-only rule under ADR 0051.
 
 ## How to get to it (user POV)
 
@@ -45,7 +45,7 @@ Preconditions:
 - Activate with Enter or Space and inspect both visible state and focus. The repeated keyboard path should be instant. Emulate reduced motion, reload, and exercise both controls. Observe no positional movement while completion and functional state remain honest. Also test a preference change during playback where supported.
 - Run the same frame-gap measurement after the native fix. Require a maximum rAF gap of 50ms while preserving 1500ms playback, the final 300px position, and honest Delivered status. Retain duration, distance, sample count, raw gaps, final position, and status. Name the actual cause and changed workload. Removing the deliberately useless busy loop is valid here. It does not prove retained production work became cheaper or every animation is composited.
 - Set the preference explicitly for each observation. If a wrapper reapplies its default media preference between calls, set `page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }])` and exercise the UI inside the same `tab.run`. Verify `matchMedia` in the retained sample. Preserve an initial reduced-motion observation rather than mislabelling its lack of movement a failed animation.
-- Measure a supported clip-path reveal in the actual engine. Compare its narrower recipe guidance with the broad transform-and-opacity-only statement under ADR 0048. Retain the computed intermediate clip, playback timings, final visibility, frame samples, and accessibility state. A property-support query alone does not prove rendering or acceleration.
+- Measure a supported clip-path reveal in the actual engine. Compare its narrower recipe guidance with the broad transform-and-opacity-only statement under ADR 0051. Retain the computed intermediate clip, playback timings, final visibility, frame samples, and accessibility state. A property-support query alone does not prove rendering or acceleration.
 - Capture screenshots and ARIA for main, worker, and reduced-motion states. Preserve trace and measurement errors as evidence. Scope results to the observed browser and workload, not every engine or physical phone.
 
 ### Preserve required computation at the same seam

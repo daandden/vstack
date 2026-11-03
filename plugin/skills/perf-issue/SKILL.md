@@ -18,7 +18,7 @@ Vet the baseline with skill://benchmark-checklist before you plan a fix from it.
 
 Capture an after trace on the same original operation, inputs, environment, and unit. Parse and compare both traces. Report the baseline, post-fix number, absolute delta, and percentage delta when the baseline is nonzero. Name the command, workload, and artifact paths. Inconclusive numbers or evidence from another operation do not prove a fix.
 
-Publish baseline and after as numeric series in a Metrics Result with the exact workload, environment, unit, sample count, uncertainty, and honest verdict. The renderer derives baseline deltas. An absent after capture is missing evidence, not a zero or a measured improvement. Use a Comparison Result for strategy assessments and verdict, a Document for the limiter and remaining uncertainty, and Code Results for relevant source changes. Attach redacted before and after traces and command outputs, preserving their Scratch files. Summarize and link its Results rather than writing a separate report page.
+Publish baseline and after as numeric series in a Metrics Result with the exact workload, environment, unit, sample count, uncertainty, and honest verdict. The renderer derives baseline deltas. An absent after capture is missing evidence, not a zero or a measured improvement. Use a Comparison Result for strategy assessments and verdict, a Document for the limiter and remaining uncertainty, and Code Results for relevant source changes. Attach redacted before and after traces and command outputs, preserving their Scratch files. Summarize its Results without a Flow link rather than writing a separate report page.
 
 ## Performance mantras
 

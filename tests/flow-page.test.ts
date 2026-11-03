@@ -1,8 +1,9 @@
 import { afterAll, beforeEach, expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import { storedFolder } from "./support/flow-store.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
 const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-page-test-")));
@@ -80,9 +81,6 @@ test("a review summary links authoritative findings and stays current after a fo
     { axis: "spec", status: "clean", reason: "Every reviewed requirement is covered." },
     { axis: "blast-radius", status: "unavailable", reason: "The external caller could not be reached." },
   ]);
-  const page = readFileSync(submitted.json.page, "utf8");
-  expect(page.match(new RegExp(`href="#${result.review[0].target}"`, "g"))?.length).toBeGreaterThanOrEqual(1);
-  expect(page).toContain(`id="${result.review[0].target}"`);
   const revised = submit("s-1", { kind: "revise", result: submitted.json.refs["review/lost-answer"], base: submitted.json.revision,
     set: { impact: "Only the stale browser loses an answer.", location: "answers.ts:51", blocking: false } });
   expect(revised.code).toBe(0);
@@ -226,7 +224,7 @@ test("a bound caller submits a round and gets assigned references, a numbered la
   expect(receipt.ask.questions[0].question).toStartWith("Q1. ");
   expect(receipt.ask.questions[1].question).toStartWith("Q2. ");
   expect(receipt.ask.questions[0].options).toEqual([{ label: "A. First" }, { label: "B. Second" }]);
-  expect(statSync(receipt.page).isFile()).toBe(true);
+  expect(receipt).not.toHaveProperty("page");
   for (const content of ["Why scope matters.", "First does", "First gain", "it is first"]) expect(r.stdout).not.toContain(content);
 });
 
@@ -318,60 +316,12 @@ const cards = (ref: string, ...entries: object[]) => ({ kind: "result", ref, sha
 const topic = (ref: string, sources = ["GLOSSARY.md"]) => ({ kind: "topic", ref, title: `Topic ${ref}`, summary: "One line.", body: "Body.", sources });
 const background = (sources = ["GLOSSARY.md"]) => ({ kind: "background", title: "Context", summary: "One line.", sections: [{ heading: "Now", body: "How it works." }], sources });
 
-type PageFacts = { ids: Set<string>; within: Map<string, Set<string>>; contains: Map<string, Set<string>>; first: Map<string, string>; scripts: number; handlers: number; outbound: string[]; meta: Record<string, string> };
-async function links(page: string): Promise<PageFacts> {
-  const f: PageFacts = { ids: new Set(), within: new Map(), contains: new Map(), first: new Map(), scripts: 0, handlers: 0, outbound: [], meta: {} };
-  const open: string[] = [];
-  const parents: { id: string; seen: boolean }[] = [];
-  await new HTMLRewriter()
-    .on("*", {
-      element(el) {
-        if (el.tagName === "script") f.scripts++;
-        if (el.tagName === "meta" && el.getAttribute("name")) f.meta[el.getAttribute("name")!] = el.getAttribute("content") ?? "";
-        for (const [name] of el.attributes) if (name.startsWith("on")) f.handlers++;
-        const id = el.getAttribute("id");
-        const parent = parents.at(-1);
-        if (parent && !parent.seen) {
-          parent.seen = true;
-          if (parent.id) f.first.set(parent.id, id ?? "");
-        }
-        if (id) {
-          for (const o of open) f.contains.get(o)!.add(id);
-          f.ids.add(id);
-          f.contains.set(id, new Set());
-          f.within.set(id, new Set());
-          open.push(id);
-          el.onEndTag(() => void open.splice(open.lastIndexOf(id), 1));
-        }
-        if (el.canHaveContent && !el.selfClosing) {
-          const p = { id: id ?? "", seen: false };
-          parents.push(p);
-          el.onEndTag(() => void parents.splice(parents.lastIndexOf(p), 1));
-        }
-        for (const attr of ["href", "src"]) {
-          const v = el.getAttribute(attr);
-          if (v?.startsWith("#")) for (const o of open) f.within.get(o)!.add(v.slice(1));
-          else if (v !== null) f.outbound.push(v);
-        }
-      },
-    })
-    .transform(new Response(readFileSync(page, "utf8")))
-    .text();
-  return f;
-}
-
-test("code links questions and Result entries both ways, and every in-page link has a target", async () => {
+test("code links questions and Result entries both ways", () => {
   openFlow("s-1");
   const r = submit("s-1", cards("review", card("f1"), card("f2")), topic("money"), round(question("fix", { results: ["review/f1"], topics: ["money"] })));
   expect(r.stderr).toBe("");
-  const { refs, page, flow } = r.json;
+  const { refs, flow } = r.json;
   const entry = refs["review/f1"];
-  const anchor = entry.replace("/", "-");
-  const l = await links(page);
-  for (const targets of l.within.values()) for (const t of targets) expect(l.ids.has(t)).toBe(true);
-  expect(l.within.get(refs.fix)!.has(anchor)).toBe(true);
-  expect(l.within.get(anchor)!.has(refs.fix)).toBe(true);
-  expect(l.within.get(refs.money)!.has(refs.fix)).toBe(true);
   const snap = show(flow);
   expect(snap.stages[0].results[0].entries.find((e: any) => e.id === entry).questions).toEqual([refs.fix]);
   expect(snap.topics[0].questions).toEqual([refs.fix]);
@@ -662,7 +612,7 @@ test("a finished Stage takes no more content and cannot reopen, and an answer ca
   expect(later.stage).not.toBe(opened.stage);
 });
 
-test("the published page carries no content markup or script and names its revision and renderer", async () => {
+test("hostile text is stored as submitted, and a publication leaves no temporary files", () => {
   openFlow("s-1");
   const hostile = `<script>alert(1)</script><img src=x onerror=alert(1)>[x](javascript:alert(1))`;
   const progress = [
@@ -673,15 +623,12 @@ test("the published page carries no content markup or script and names its revis
   ];
   const r = submit("s-1", topic("t"), round(question("a", { title: hostile, description: hostile, terms: [{ term: hostile, text: hostile }] })), ...progress);
   expect(r.stderr).toBe("");
-  const page = r.json.page;
-  const l = await links(page);
-  const template = await links(join(import.meta.dir, "..", "plugin", "skills", "flow-page", "templates", "flow-page.html"));
-  expect(l.scripts).toBe(template.scripts);
-  expect(l.handlers).toBe(0);
-  expect(l.outbound).toEqual([]);
-  expect(l.meta["flow-page-revision"]).toBe(String(r.json.revision));
-  expect(l.meta["flow-page-renderer"]).toBe(String(show(r.json.flow).renderer));
-  expect(readdirSync(join(page, "..")).filter((f) => f.endsWith(".tmp"))).toEqual([]);
+  const snap = show(r.json.flow);
+  expect(snap.revision).toBe(r.json.revision);
+  expect(snap.progress.tasks.map((t: any) => t.title)).toEqual([hostile, hostile]);
+  const folder = storedFolder(home, r.json.flow);
+  expect(readdirSync(folder).filter((f) => f.endsWith(".tmp"))).toEqual([]);
+  expect(readdirSync(join(folder, "data")).filter((f) => f.endsWith(".tmp"))).toEqual([]);
 });
 
 const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==", "base64");
@@ -707,59 +654,25 @@ const doc = (ref: string, extra: object = {}) => ({
   ...extra,
 });
 
-type El = { tag: string; attrs: Record<string, string>; text: string; inside: string[] };
-async function elements(page: string): Promise<El[]> {
-  const out: El[] = [];
-  const stack: El[] = [];
-  await new HTMLRewriter()
-    .on("*", {
-      element(e) {
-        const el: El = { tag: e.tagName, attrs: Object.fromEntries(e.attributes), text: "", inside: stack.map((x) => x.attrs.id).filter(Boolean) };
-        out.push(el);
-        if (e.selfClosing || ["img", "meta", "br", "hr", "input", "link", "source"].includes(e.tagName)) return;
-        stack.push(el);
-        e.onEndTag(() => void stack.splice(stack.lastIndexOf(el), 1));
-      },
-      text(t) {
-        for (const el of stack) el.text += t.text;
-      },
-    })
-    .transform(new Response(readFileSync(page, "utf8")))
-    .text();
-  for (const el of out) el.text = el.text.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
-  return out;
-}
-const within = (els: El[], id: string) => els.filter((e) => e.inside.includes(id));
+const bytesOf = (flow: string, attachment: string) => readFileSync(join(storedFolder(home, flow), show(flow).attachments.find((a: any) => a.id === attachment).file));
 
-test("a Document Result keeps ordered sections, citations, code, figures, limitations, and sources", async () => {
+test("a Document Result keeps ordered sections, citations, figures, limitations, and sources", () => {
   openFlow("s-1");
   put("shot.png", PNG);
   const r = submit("s-1", attachment("shot", "image", { path: "shot.png" }), doc("doc"));
   expect(r.stderr).toBe("");
   expect(r.code).toBe(0);
-  const { refs, page, flow } = r.json;
+  const { refs, flow } = r.json;
   const res = show(flow).stages[0].results.find((x: any) => x.id === refs.doc);
   expect(res.shape).toBe("document");
   const d = res.document;
   expect(d.sections.length).toBe(2);
+  expect(new Set(d.sections).size).toBe(2);
   expect(d.figures).toEqual([refs.shot]);
   expect(d.limitations).toBe(1);
-  const els = await elements(page);
-  const ids = els.map((e) => e.attrs.id).filter(Boolean);
-  expect(ids.indexOf(d.sections[0])).toBeLessThan(ids.indexOf(d.sections[1]));
-  expect(ids).toContain(d.limitations_anchor);
+  expect(d.limitations_anchor).toBeString();
   expect(d.citations.map((c: any) => c.cited_in)).toEqual([[d.sections[0]], [d.sections[1]]]);
-  for (const c of d.citations) {
-    expect(within(els, c.cited_in[0]).some((e) => e.attrs.href === `#${c.anchor}`)).toBe(true);
-    expect(within(els, c.anchor).some((e) => e.attrs.href === `#${c.cited_in[0]}`)).toBe(true);
-  }
-  const l = await links(page);
-  for (const targets of l.within.values()) for (const t of targets) expect(l.ids.has(t)).toBe(true);
-  expect(els.filter((e) => "data-stop" in e.attrs && !e.attrs.id)).toEqual([]);
-  expect(within(els, d.sections[0]).filter((e) => e.tag === "pre").map((e) => e.text)).toEqual([CODE]);
-  const img = within(els, d.sections[1]).find((e) => e.tag === "img")!;
-  expect(img.attrs.alt).toBe("Caption of shot");
-  expect(readFileSync(join(dirname(page), img.attrs.src))).toEqual(PNG);
+  expect(bytesOf(flow, refs.shot)).toEqual(PNG);
   const sources = show(flow).sources;
   for (const src of res.document.sources) expect(sources.find((x: any) => x.id === src).cited_by).toContain(refs.doc);
 });
@@ -767,7 +680,7 @@ test("a Document Result keeps ordered sections, citations, code, figures, limita
 const MP4 = Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from("ftypisom"), Buffer.alloc(12)]);
 const SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><style>rect{fill:#a6e3a1}</style><rect width="40" height="20"/></svg>`;
 
-test("every attachment type keeps its caption, origin, captured revision, and availability, and survives moving the Flow", async () => {
+test("every attachment type keeps its caption, origin, captured revision, and availability, and survives moving the Flow", () => {
   openFlow("s-1");
   const files: Record<string, [string, string, Uint8Array | string]> = {
     shot: ["image", "media/shot.png", PNG],
@@ -788,61 +701,49 @@ test("every attachment type keeps its caption, origin, captured revision, and av
   expect(r.stderr).toBe("");
   const { refs, flow } = r.json;
 
-  const check = async () => {
+  const check = () => {
     const snap = show(flow);
-    const page = snap.page;
     const byId = new Map(snap.attachments.map((a: any) => [a.id, a]));
+    const stored = new Map(JSON.parse(readFileSync(join(storedFolder(home, flow), "data", "state.json"), "utf8")).attachments.map((a: any) => [a.id, a]));
     expect(snap.stages[0].results[0].attachments).toEqual(refsOf.map((x) => refs[x]));
-    const els = await elements(page);
     for (const [ref, [type, , bytes]] of Object.entries(files)) {
       const a: any = byId.get(refs[ref]);
-      expect([a.type, a.availability, a.revision]).toEqual([type, "captured", sha(bytes)]);
-      expect(readFileSync(join(dirname(page), a.file))).toEqual(Buffer.from(bytes));
-      const shown = within(els, `${refs.proof}-${refs[ref]}`);
-      expect(shown.some((e) => (e.attrs.src ?? e.attrs.href) === a.file)).toBe(true);
-      const figure = els.find((e) => e.attrs.id === `${refs.proof}-${refs[ref]}`)!;
-      expect(figure.text).toContain(`Caption of ${ref}`);
-      expect(figure.text).toContain(`Origin of ${ref}`);
+      const s: any = stored.get(refs[ref]);
+      expect([a.type, a.availability, a.revision, s.caption, s.origin]).toEqual([type, "captured", sha(bytes), `Caption of ${ref}`, `Origin of ${ref}`]);
+      expect(bytesOf(flow, refs[ref])).toEqual(Buffer.from(bytes));
     }
     const app: any = byId.get(refs.app);
     expect([app.availability, app.revision, app.file]).toEqual(["external", "abc1234", undefined]);
     const gone: any = byId.get(refs.gone);
     expect([gone.availability, gone.file]).toEqual(["unavailable", undefined]);
-    expect(within(els, `${refs.proof}-${refs.gone}`).some((e) => e.attrs.src || e.attrs.href)).toBe(false);
-    return snap;
+    return { snap, folder: storedFolder(home, flow) };
   };
-  const before = await check();
+  const before = check();
   const moved = join(dirname(home), "moved-home");
   renameSync(home, moved);
   home = moved;
-  expect(run(["render", "--flow", flow]).code).toBe(0);
-  const after = await check();
-  expect(after.page).not.toBe(before.page);
-  expect(after.attachments).toEqual(before.attachments);
+  const after = check();
+  expect(after.folder).not.toBe(before.folder);
+  expect(after.snap.attachments).toEqual(before.snap.attachments);
 });
 
 const GIF = Buffer.from("R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==", "base64");
 
-test("a Result keeps what it captured when its sources change, until a new revision is published from the same canonical file", async () => {
+test("a Result keeps what it captured when its sources change, until a new revision is published from the same canonical file", () => {
   openFlow("s-1");
   put("docs/research.md", "first findings\n");
   put("shot.png", PNG);
   const first = submit("s-1", attachment("shot", "image", { path: "shot.png" }), doc("doc", { canonical: { file: "docs/research.md" } }));
   expect(first.stderr).toBe("");
   const { refs, flow } = first.json;
-  const figureBytes = async (page: string, section: string) => {
-    const img = within(await elements(page), section).find((e) => e.tag === "img")!;
-    return readFileSync(join(dirname(page), img.attrs.src));
-  };
   const captured = show(flow).stages[0].results[0];
   expect(captured.canonical).toEqual({ file: "docs/research.md", root: "project", sha256: sha("first findings\n") });
 
   put("docs/research.md", "second findings\n");
   put("shot.png", GIF);
-  expect(run(["render", "--flow", flow]).code).toBe(0);
   const unchanged = show(flow);
   expect(unchanged.stages[0].results[0]).toEqual(captured);
-  expect(await figureBytes(unchanged.page, captured.document.sections[1])).toEqual(PNG);
+  expect(bytesOf(flow, refs.shot)).toEqual(PNG);
 
   const sections = doc("doc").sections.map((sec: any, i: number) => (i === 1 ? { ...sec, blocks: [{ figure: "shot-2" }, ...sec.blocks.slice(1)] } : sec));
   const second = submit("s-1", attachment("shot-2", "image", { path: "shot.png" }), { ...doc("doc"), sections, revises: refs.doc });
@@ -857,10 +758,9 @@ test("a Result keeps what it captured when its sources change, until a new revis
     [1, sha("first findings\n"), [refs.shot]],
     [2, sha("second findings\n"), [second.json.refs["shot-2"]]],
   ]);
-  expect(await figureBytes(snap.page, res.document.sections[1])).toEqual(GIF);
-  const old = (await elements(snap.page)).find((e) => e.attrs.id === `${refs.doc}-r1`);
-  expect(old).toBeDefined();
-  expect(await figureBytes(snap.page, `${refs.doc}-r1`)).toEqual(PNG);
+  expect(res.history.map((x: any) => [x.anchor, x.attachments])).toEqual([[`${refs.doc}-r1`, [refs.shot]]]);
+  expect(bytesOf(flow, second.json.refs["shot-2"])).toEqual(GIF);
+  expect(bytesOf(flow, refs.shot)).toEqual(PNG);
 });
 
 const shown = (...items: object[]) => [...items, { kind: "result", shape: "table", title: "Proof", columns: ["Check"], rows: [{ cells: ["ok"] }], attachments: items.map((i: any) => i.ref) }];
@@ -929,7 +829,7 @@ test("a Result captured from a tracker or commit revision must name its new revi
 const task = (ref: string, extra: object = {}) => ({ kind: "task", ref, title: `Task ${ref}`, ...extra });
 const progressOf = (flow: string) => show(flow).progress;
 
-test("a task changes state through a focused update, and the Overview opens with a progress strip of its tasks", async () => {
+test("a task changes state through a focused update", () => {
   openFlow("s-1", "implement");
   const made = submit("s-1", task("build"), task("prove", { state: "active" }));
   expect(made.stderr).toBe("");
@@ -942,23 +842,19 @@ test("a task changes state through a focused update, and the Overview opens with
   expect(t(refs.prove)).toMatchObject({ title: "Task prove", state: "active", evidence: 0 });
   expect(p.remaining).toEqual([refs.prove]);
   expect(p.complete).toBe(false);
-  const l = await links(done.json.page);
-  expect(l.first.get("overview")).toBe("progress");
-  for (const id of [refs.build, refs.prove]) expect(l.contains.get("progress")!.has(id)).toBe(true);
 });
 
-test("an open blocker blocks its task and keeps the Flow incomplete until it is resolved", async () => {
+test("an open blocker blocks its task and keeps the Flow incomplete until it is resolved", () => {
   openFlow("s-1", "implement");
   const { refs, flow } = submit("s-1", task("deploy", { state: "active" }), { kind: "blocker", ref: "creds", text: "No deploy credentials.", tasks: ["deploy"] }, { kind: "end-state", requested: "none" }).json;
   let p = progressOf(flow);
   expect(p.tasks[0].blocked_by).toEqual([refs.creds]);
   expect(p.remaining).toEqual([refs.deploy, refs.creds]);
-  const page = submit("s-1", { kind: "task", task: refs.deploy, state: "done", evidence: ["deploy log"] }).json.page;
+  submit("s-1", { kind: "task", task: refs.deploy, state: "done", evidence: ["deploy log"] });
   p = progressOf(flow);
   expect(p.tasks[0].blocked_by).toEqual([]);
   expect(p.remaining).toEqual([refs.creds]);
   expect(p.complete).toBe(false);
-  expect((await links(page)).contains.get("progress")!.has(refs.creds)).toBe(true);
   submit("s-1", { kind: "blocker", blocker: refs.creds, resolved: "The user added the credentials." });
   p = progressOf(flow);
   expect(p.blockers).toEqual([{ id: refs.creds, state: "resolved", tasks: [refs.deploy] }]);
@@ -985,7 +881,7 @@ test("a delivery Flow is complete only when its tasks are settled and it reached
   expect(progressOf(flow).complete).toBe(true);
 });
 
-test("a non-delivery Flow completes without a commit or PR, and its skipped and inapplicable steps are not left work", async () => {
+test("a non-delivery Flow completes without a commit or PR, and its skipped and inapplicable steps are not left work", () => {
   openFlow("s-1", "explain");
   const r = submit(
     "s-1",
@@ -1001,8 +897,6 @@ test("a non-delivery Flow completes without a commit or PR, and its skipped and 
   expect(p.remaining).toEqual([]);
   expect(p.tasks.map((t: any) => t.state)).toEqual(["done", "inapplicable", "skipped"]);
   expect(p.complete).toBe(true);
-  const l = await links(r.json.page);
-  for (const id of Object.values(r.json.refs)) expect(l.contains.get("progress")!.has(id as string)).toBe(true);
 });
 
 test("a finished Stage, done tasks, a merged PR, and a passed check do not reach an End state or each other", () => {
@@ -1109,20 +1003,13 @@ const demo = (body: object = {}, extra: object = {}) => ({
   ...extra,
 });
 
-test("a demo beside a real decision neither answers it nor adds executable page code", async () => {
+test("a demo beside a real decision does not answer it, and reading the Flow writes no revision", () => {
   const opened = openFlow("s-1", "prototype");
   const r = submit("s-1", demo(), round(question("real")));
   expect(r.stderr).toBe("");
   expect(r.code).toBe(0);
-  const { refs, page, flow, revision } = r.json;
+  const { refs, flow, revision } = r.json;
   expect(questionOf(show(flow), refs.real).answer.state).toBe("open");
-
-  const l = await links(page);
-  const template = await links(join(import.meta.dir, "..", "plugin", "skills", "flow-page", "templates", "flow-page.html"));
-  expect(l.scripts).toBe(template.scripts);
-  expect(l.handlers).toBe(0);
-  expect(l.outbound).toEqual([]);
-  expect(run(["render", "--flow", flow]).json.revision).toBe(revision);
   expect(show(opened.flow).revision).toBe(revision);
 });
 
@@ -1156,7 +1043,7 @@ test.each([
   expect(tree()).toEqual(before);
 });
 
-test("a demo Result is revised like any Result: its header changes, it takes no entries, and a republication keeps the earlier demo", async () => {
+test("a demo Result is revised like any Result: its header changes, it takes no entries, and a republication keeps the earlier demo", () => {
   openFlow("s-1", "prototype");
   const first = submit("s-1", demo()).json;
   const id = first.refs.demo;
@@ -1171,9 +1058,7 @@ test("a demo Result is revised like any Result: its header changes, it takes no 
   expect(again.stderr).toBe("");
   const res = show(first.flow).stages[0].results[0];
   expect(res.revisions.map((x: any) => x.revision)).toEqual([1, 2]);
-  const page = await links(again.json.page);
-  expect(page.ids.has(id)).toBe(true);
-  expect(page.ids.has(`${id}-r1`)).toBe(true);
+  expect(res.history.map((x: any) => x.anchor)).toContain(`${id}-r1`);
 });
 
 const comparison = (ref: string, extra: object = {}) => ({
@@ -1198,13 +1083,13 @@ const comparison = (ref: string, extra: object = {}) => ({
   ...extra,
 });
 
-test("a Comparison keeps named alternatives, shared criteria, per-side evidence, gaps, and the recorded verdict", async () => {
+test("a Comparison keeps named alternatives, shared criteria, per-side evidence, gaps, and the recorded verdict", () => {
   openFlow("s-1");
   put("cache.png", PNG);
   const r = submit("s-1", attachment("cache-shot", "image", { path: "cache.png" }), comparison("cmp"));
   expect(r.stderr).toBe("");
   expect(r.code).toBe(0);
-  const { refs, page, flow } = r.json;
+  const { refs, flow } = r.json;
   const res = show(flow).stages[0].results.find((x: any) => x.id === refs.cmp);
   expect(res.shape).toBe("comparison");
   const c = res.comparison;
@@ -1214,35 +1099,20 @@ test("a Comparison keeps named alternatives, shared criteria, per-side evidence,
   expect(c.verdict.outcome).toBe("chosen");
   expect(c.verdict.alternative).toBe("cache");
   expect(c.cells.filter((x: any) => !x.assessed).map((x: any) => [x.alternative, x.criterion])).toEqual([["queue", "ops"]]);
-
-  const els = await elements(page);
-  const l = await links(page);
-  for (const targets of l.within.values()) for (const t of targets) expect(l.ids.has(t)).toBe(true);
-  const text = (id: string) => els.find((e) => e.attrs.id === id)!.text;
-  const cell = (alt: string, crit: string) => c.cells.find((x: any) => x.alternative === alt && x.criterion === crit).anchor;
-  expect(text(cell("cache", "latency"))).toContain("Cache adds 1 ms.");
-  expect(text(cell("cache", "latency"))).toContain("bench/cache.txt:4");
-  expect(text(cell("queue", "latency"))).toContain("Queue adds 9 ms.");
-  expect(text(cell("queue", "latency"))).toContain("bench/queue.txt:7");
-  for (const finding of ["Cache adds 1 ms.", "Queue adds 9 ms.", "One more service to run."]) expect(text(cell("queue", "ops"))).not.toContain(finding);
-  expect(text(c.alternatives[0].anchor)).toContain("Redis cache");
-  expect(text(c.alternatives[1].anchor)).toContain("Write queue");
-  expect(text(c.criteria[0].anchor)).toContain("Checkout latency");
-  expect(text(c.verdict.anchor)).toContain("Latency decides it");
-  expect(within(els, c.verdict.anchor).some((e) => e.attrs.href === `#${c.alternatives[0].anchor}`)).toBe(true);
-  const img = els.find((e) => e.tag === "img" && e.inside.includes(refs.cmp))!;
-  expect(readFileSync(join(dirname(page), img.attrs.src))).toEqual(PNG);
+  const cell = (alt: string, crit: string) => c.cells.find((x: any) => x.alternative === alt && x.criterion === crit);
+  expect([cell("cache", "latency").assessed, cell("queue", "latency").assessed, cell("cache", "ops").assessed]).toEqual([true, true, true]);
+  expect(new Set(c.cells.map((x: any) => x.anchor)).size).toBe(4);
+  expect(c.verdict.anchor).toBeString();
+  expect(bytesOf(flow, refs["cache-shot"])).toEqual(PNG);
 });
 
-test("a Comparison with no single winner records that verdict and links to no alternative", async () => {
+test("a Comparison with no single winner records that verdict and names no alternative", () => {
   openFlow("s-1");
   const r = submit("s-1", comparison("cmp", { alternatives: comparison("cmp").alternatives.map(({ attachments: _, ...a }: any) => a), verdict: { outcome: "inconclusive", reason: "Neither was measured under load." } }));
   expect(r.stderr).toBe("");
   const c = show(r.json.flow).stages[0].results[0].comparison;
   expect(c.verdict.outcome).toBe("inconclusive");
   expect(c.verdict.alternative).toBeUndefined();
-  const els = await elements(r.json.page);
-  expect(within(els, c.verdict.anchor).some((e) => c.alternatives.some((a: any) => e.attrs.href === `#${a.anchor}`))).toBe(false);
 });
 
 const series = [
@@ -1278,12 +1148,12 @@ const metrics = (ref: string, extra: object = {}) => ({
   ...extra,
 });
 
-test("Metrics keeps numeric values with units, samples, workload, baselines, uncertainty, and outcome, and computes deltas only from what was measured", async () => {
+test("Metrics keeps numeric values with units, samples, workload, baselines, uncertainty, and outcome, and computes deltas only from what was measured", () => {
   openFlow("s-1");
   const r = submit("s-1", metrics("m"));
   expect(r.stderr).toBe("");
   expect(r.code).toBe(0);
-  const { refs, page, flow } = r.json;
+  const { refs, flow } = r.json;
   const res = show(flow).stages[0].results.find((x: any) => x.id === refs.m);
   expect(res.shape).toBe("metrics");
   const m = res.metrics;
@@ -1308,35 +1178,15 @@ test("Metrics keeps numeric values with units, samples, workload, baselines, unc
   expect(val("errors", "branch").uncertainty).toBeUndefined();
   expect(at("errors").verdict).toBeUndefined();
   expect(at("p50").verdict).toBe("worse");
-
-  const els = await elements(page);
-  const text = (id: string) => els.find((e) => e.attrs.id === id)!.text;
-  const resultText = text(refs.m);
-  for (const s of ["500 checkouts of 3 items, 8 workers", "M3 laptop, Bun 1.3", "The branch is slower; the fork did not finish.", "main branch", "p50 latency"]) expect(resultText).toContain(s);
-  const row = (ref: string, s: string) => val(ref, s).anchor;
-  expect(els.find((e) => e.attrs.id === row("p50", "branch"))!.tag).toBe("tr");
-  expect(within(els, at("p50").anchor).some((e) => e.tag === "table")).toBe(true);
-  for (const [ref, s, n] of [["p50", "main", "10.1"], ["p50", "branch", "12.6"], ["errors", "main", "0"], ["errors", "branch", "3"], ["rss", "branch", "210"]] as const) {
-    expect(text(row(ref, s))).toContain(n);
-  }
-  expect(text(row("p50", "branch"))).toContain("+2.5");
-  expect(text(row("p50", "main"))).toContain("9.8");
-  expect(text(row("p50", "main"))).toContain("10.6");
-  expect(text(row("p50", "branch"))).toContain("0.4");
-  for (const [ref, s] of [["p50", "fork"], ["errors", "fork"], ["rss", "main"]] as const) {
-    expect(text(row(ref, s))).not.toMatch(/\d/);
-  }
-  expect(text(row("p50", "fork"))).toContain("The run crashed before measuring.");
 });
 
-test("negative measured values keep their numeric data and signed baseline change", async () => {
+test("negative measured values keep their numeric data and signed baseline change", () => {
   openFlow("s-1");
   const r = submit("s-1", metrics("m", { measurements: [{ ref: "drift", name: "Clock drift", unit: "ms", values: [{ series: "main", value: -2 }, { series: "branch", value: 3 }] }] }));
   expect(r.stderr).toBe("");
   const m = show(r.json.flow).stages[0].results[0].metrics.measurements[0];
   expect(m.values.find((x: any) => x.series === "branch").delta).toBe(5);
-  const els = await elements(r.json.page);
-  expect(els.find((e) => e.attrs.id === m.values[0].anchor)!.text).toContain("-2");
+  expect(m.values[0].value).toBe(-2);
 });
 
 const cmpWith = (patch: (c: any) => void) => () => {
@@ -1382,7 +1232,7 @@ test.each([
   expect(tree()).toEqual(before);
 });
 
-test("a Comparison or Metrics Result takes a new revision with revises, and earlier revisions stay readable", async () => {
+test("a Comparison or Metrics Result takes a new revision with revises, and earlier revisions stay readable", () => {
   openFlow("s-1");
   const first = submit("s-1", metrics("m"), cmpWith(() => {})()[0]).json;
   const before = tree();
@@ -1393,10 +1243,7 @@ test("a Comparison or Metrics Result takes a new revision with revises, and earl
   expect(r.stderr).toBe("");
   const res = show(first.flow).stages[0].results.find((x: any) => x.id === first.refs.m);
   expect(res.revision).toBe(2);
-  const els = await elements(r.json.page);
-  expect(els.find((e) => e.attrs.id === `${first.refs.m}-r1`)!.text).toContain("The branch is slower");
-  const l = await links(r.json.page);
-  for (const targets of l.within.values()) for (const t of targets) expect(l.ids.has(t)).toBe(true);
+  expect(res.history.map((x: any) => [x.anchor, x.revision])).toEqual([[`${first.refs.m}-r1`, 1]]);
 });
 
 test("Metrics retains sub-microsecond deltas instead of rounding a measured change to zero", () => {
@@ -1410,7 +1257,7 @@ test("Metrics retains sub-microsecond deltas instead of rounding a measured chan
   expect(m.values[1].relative).toBe(100);
 });
 
-test("Metrics does not publish non-finite deltas as numeric data", async () => {
+test("Metrics does not publish non-finite deltas as numeric data", () => {
   openFlow("s-1");
   const r = submit("s-1", metrics("m", {
     measurements: [{ ref: "extreme", name: "Signed magnitude", unit: "units", values: [{ series: "main", value: -1e308 }, { series: "branch", value: 1e308 }] }],
@@ -1421,8 +1268,6 @@ test("Metrics does not publish non-finite deltas as numeric data", async () => {
   expect(me.values[1].delta).toBeUndefined();
   expect(me.values[1].relative).toBeUndefined();
   expect(me.values[1].delta_unavailable).toBe(true);
-  const els = await elements(r.json.page);
-  expect(els.find((e) => e.attrs.id === me.values[1].anchor)!.text).not.toContain("Infinity");
 });
 
 test("Metrics subtracts decimal measurements without displaying floating-point noise", () => {
@@ -1451,9 +1296,8 @@ const DIFF = [
   "\\ No newline at end of file",
 ].join("\n") + "\n";
 const codeResult = (ref: string, ...entries: object[]) => ({ kind: "result", ref, shape: "code", title: "The change", entries });
-const lineAnchor = (entry: string, side: "L" | "R", n: number) => `${entry.replace("/", "-")}-${side}${n}`;
 
-test("a Code/diff Result shows code and a diff at their source lines, keeping every space and line break", async () => {
+test("a Code/diff Result keeps code and a diff at their source lines, with every space and line break", () => {
   openFlow("s-1");
   const r = submit(
     "s-1",
@@ -1466,52 +1310,31 @@ test("a Code/diff Result shows code and a diff at their source lines, keeping ev
   );
   expect(r.stderr).toBe("");
   expect(r.code).toBe(0);
-  const { refs, page, flow } = r.json;
+  const { refs, flow } = r.json;
   const [now, fix, sketch] = ["change/now", "change/fix", "change/sketch"].map((k) => refs[k]);
   const entries = show(flow).stages[0].results[0].entries;
   expect(entries.map((e: any) => e.id)).toEqual([now, fix, sketch]);
   expect(entries[0].location).toEqual({ file: "src/cart.ts", lines: { first: 10, last: 12 } });
   expect(entries[1].location).toMatchObject({ file: "src/cart.ts", revision: "abc1234", hunks: [{ old: { start: 10, count: 4 }, new: { start: 10, count: 5 } }, { old: { start: 20, count: 1 }, new: { start: 21, count: 1 } }] });
   expect(entries[2].location).toEqual({ file: "notes/sketch.txt" });
-  const els = await elements(page);
-  const text = (id: string) => els.find((e) => e.attrs.id === id)?.text;
-  const pre = (entry: string) => within(els, entry.replace("/", "-")).filter((e) => e.tag === "pre").map((e) => e.text);
-  expect(pre(now)).toEqual([CODE]);
-  expect(pre(fix)).toEqual([DIFF]);
-  expect(pre(sketch)).toEqual(["a\n  b\n"]);
-  expect([10, 11, 12].map((n) => text(lineAnchor(now, "L", n)))).toEqual(CODE.split("\n").slice(0, 3).map((l) => `${l}\n`));
-  expect(text(lineAnchor(fix, "L", 11))).toBe("-\treturn refuse();\n");
-  expect(text(lineAnchor(fix, "R", 11))).toBe("+\treturn  refuse();  \n");
-  expect(text(lineAnchor(fix, "R", 14))).toBe(" \n");
-  expect(text(lineAnchor(fix, "L", 20))).toBe("-const limit = 3;\n");
-  expect(text(lineAnchor(fix, "R", 21))).toBe("+const limit = 5;\n");
-  for (const h of entries[1].location.hunks) expect(text(h.anchor)).toStartWith("@@ ");
-  expect(within(els, sketch.replace("/", "-")).filter((e) => /-[LR]\d+$/.test(e.attrs.id ?? ""))).toEqual([]);
-  const l = await links(page);
-  for (const targets of l.within.values()) for (const t of targets) expect(l.ids.has(t)).toBe(true);
+  expect(entries.map((e: any) => e.code ?? e.diff)).toEqual([CODE, DIFF, "a\n  b\n"]);
+  expect(entries[1].location.hunks.every((h: any) => typeof h.anchor === "string")).toBe(true);
 });
 
-test("highlighting never turns submitted code into page markup", async () => {
+test("submitted code is stored verbatim, markup included", () => {
   openFlow("s-1");
   const hostile = `</code></pre><script>alert(1)</script><img src=x onerror=alert(1)> "q" 'r' &amp; /* x */ // y\n`;
   const hostileDiff = `@@ -1 +1 @@\n-${hostile}+${hostile}`;
   const r = submit("s-1", codeResult("c", { ref: "a", file: "a.js", line: 1, language: "js", code: hostile }, { ref: "b", file: "a.js", language: "js", diff: hostileDiff }));
   expect(r.stderr).toBe("");
-  const { page, refs } = r.json;
-  const els = await elements(page);
-  expect(within(els, refs["c/a"].replace("/", "-")).filter((e) => e.tag === "pre").map((e) => e.text)).toEqual([hostile]);
-  expect(within(els, refs["c/b"].replace("/", "-")).filter((e) => e.tag === "pre").map((e) => e.text)).toEqual([hostileDiff]);
-  const l = await links(page);
-  const template = await links(join(import.meta.dir, "..", "plugin", "skills", "flow-page", "templates", "flow-page.html"));
-  expect(l.scripts).toBe(template.scripts);
-  expect(l.handlers).toBe(0);
-  expect(l.outbound).toEqual([]);
+  const entries = show(r.json.flow).stages[0].results[0].entries;
+  expect(entries.map((e: any) => e.code ?? e.diff)).toEqual([hostile, hostileDiff]);
 });
 
 const event = (ref: string, extra: object = {}) => ({ ref, title: `Event ${ref}`, outcome: "succeeded", ...extra });
 const timeline = (ref: string, ...entries: object[]) => ({ kind: "result", ref, shape: "timeline", title: "The run", entries });
 
-test("a Timeline keeps its events in the given order, with times only where known, outcomes, and evidence", async () => {
+test("a Timeline keeps its events in the given order, with times only where known, outcomes, and evidence", () => {
   openFlow("s-1");
   put("out/run.log", "1 failed\n");
   const events = [
@@ -1522,7 +1345,7 @@ test("a Timeline keeps its events in the given order, with times only where know
   const r = submit("s-1", attachment("log", "evidence", { path: "out/run.log" }), timeline("run", ...events), round(question("why", { results: ["run/red"] })));
   expect(r.stderr).toBe("");
   expect(r.code).toBe(0);
-  const { refs, page, flow } = r.json;
+  const { refs, flow } = r.json;
   const ids = ["run/start", "run/red", "run/later"].map((k) => refs[k]);
   const snap = show(flow);
   const res = snap.stages[0].results[0];
@@ -1535,16 +1358,10 @@ test("a Timeline keeps its events in the given order, with times only where know
   expect(res.entries[1].evidence).toBe("tests/cart.test.ts:12");
   expect(res.attachments).toEqual([refs.log]);
   expect(snap.attachments[0].used_by).toEqual([res.id]);
-  const els = await elements(page);
-  const anchors = ids.map((id) => id.replace("/", "-"));
-  expect(els.map((e) => e.attrs.id).filter((id) => anchors.includes(id))).toEqual(anchors);
-  expect(within(els, anchors[0]).filter((e) => e.tag === "time").map((e) => e.attrs.datetime)).toEqual(["2026-10-28T10:05:00+07:00"]);
-  expect(within(els, anchors[2]).filter((e) => e.tag === "time")).toEqual([]);
-  const file = snap.attachments[0].file;
-  expect(within(els, anchors[1]).some((e) => e.attrs.href === file)).toBe(true);
-  expect(readFileSync(join(dirname(page), file), "utf8")).toBe("1 failed\n");
-  expect(within(els, refs.why).some((e) => e.attrs.href === `#${anchors[1]}`)).toBe(true);
-  expect(within(els, anchors[1]).some((e) => e.attrs.href === `#${refs.why}`)).toBe(true);
+  expect(res.entries[1].attachments).toEqual([refs.log]);
+  expect(bytesOf(flow, refs.log).toString()).toBe("1 failed\n");
+  expect(questionOf(snap, refs.why).results).toEqual([ids[1]]);
+  expect(res.entries[1].questions).toEqual([refs.why]);
 });
 
 test("a Timeline grows by focused revisions: add appends later events, and set records a known outcome against its base", () => {
@@ -1624,7 +1441,7 @@ test("next visits actionable questions newest in-progress Stage first, excluding
   expect(show(flow).next).toEqual([q.cache, q.route, q.old, q["stale-again"]]);
 });
 
-test("the Stage tree links only to Stages, with their actionable question counts, and keeps Topics", async () => {
+test("the Stage tree data carries every Stage with its actionable question count, and keeps Topics", () => {
   const { flow, stages, q } = busyFlow();
   const child = run(["open", "--flow", flow, "--skill", "to-spec", "--parent", stages.done], { session: "s-5" }).json;
   const r = submit("s-5", topic("money"), round(question("left-again", { again: q.left, topics: ["money"] })));
@@ -1633,15 +1450,7 @@ test("the Stage tree links only to Stages, with their actionable question counts
   expect(Object.fromEntries(snap.stages.map((st: any) => [st.id, st.open_questions]))).toEqual({
     [stages.grill]: 2, [stages.done]: 0, [stages.w1]: 1, [stages.w2]: 1, [child.stage]: 1,
   });
-  const targets = new Set<string>();
-  await new HTMLRewriter().on("#stage-tree a[href]", {
-    element(el) { targets.add(el.getAttribute("href")!.slice(1)); },
-  }).transform(new Response(readFileSync(r.json.page, "utf8"))).text();
-  expect(targets).toEqual(new Set(snap.stages.map((st: any) => st.id)));
-  const l = await links(r.json.page);
-  expect(l.ids.has("topics")).toBe(true);
-  expect(l.contains.get(child.stage)!.has(r.json.refs["left-again"])).toBe(true);
-  expect(l.contains.get(stages.done)!.has(q.left)).toBe(true);
-  expect(l.within.get(r.json.refs["left-again"])!.has(q.left)).toBe(true);
-  expect(l.within.get(q.left)!.has(r.json.refs["left-again"])).toBe(true);
+  expect(snap.topics.map((t: any) => [t.id, t.questions])).toEqual([[r.json.refs.money, [r.json.refs["left-again"]]]]);
+  expect(questionOf(snap, r.json.refs["left-again"]).again).toBe(q.left);
+  expect(questionOf(snap, q.left).asked_again_by).toEqual([r.json.refs["left-again"]]);
 });

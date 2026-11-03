@@ -1,0 +1,16 @@
+flowchart TB
+  subgraph A["A. One Flow stream"]
+    direction TB
+    a1["Q1 · Grill Stage"] --> a2["Research Result · Research Stage"] --> a3["Q2 · Grill Stage"]
+  end
+  subgraph B["B. Stage tabs"]
+    direction TB
+    subgraph BT1["Grill tab"]
+      b1["Q1"] --> b3["Q2"]
+    end
+    subgraph BT2["Research tab"]
+      b2["Research Result"]
+    end
+    b1 -. "switch tab" .-> b2
+    b2 -. "switch back" .-> b3
+  end

@@ -26,7 +26,7 @@ Use CSS and platform capabilities before device sniffing or JavaScript workaroun
 
 Read [platform fixes](references/platform-fixes.md) before implementing any matching row. It supplies the declarations, capability caveats, and distinctions between native scrolling and custom gesture surfaces. Viewport and safe-area handling are separate checks, not alternatives.
 
-Use skill://good-css for non-animation styling, layout, accessibility, focus-visible, and control sizing. For direct manipulation, interruptibility, materials, or Apple-derived web feedback, read skill://apple-design. For motion choices, use skill://emil-design-eng under ADR 0048. These are conditional references within the existing task, not new workflows or dependency requirements.
+Use skill://good-css for non-animation styling, layout, accessibility, focus-visible, and control sizing. For direct manipulation, interruptibility, materials, or Apple-derived web feedback, read skill://apple-design. For motion choices, use skill://emil-design-eng under ADR 0051. These are conditional references within the existing task, not new workflows or dependency requirements.
 
 ## Observe the result
 

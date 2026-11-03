@@ -44,7 +44,7 @@ Study a relevant working interface when the design is uncertain. Inspect what ma
 
 ## Accessibility and authority
 
-Use skill://good-css for non-animation styling, layout, focus, and accessibility requirements. This skill takes precedence for animation guidance under ADR 0048. Resolve disagreements within Emil's guidance with the target browser's behavior and observed evidence. Transform and opacity are preferred starting points, not proof that every other animated property is forbidden or that every transform is composited.
+Use skill://good-css for non-animation styling, layout, focus, and accessibility requirements. This skill takes precedence for animation guidance under ADR 0051. Resolve disagreements within Emil's guidance with the target browser's behavior and observed evidence. Transform and opacity are preferred starting points, not proof that every other animated property is forbidden or that every transform is composited.
 
 - Under `prefers-reduced-motion: reduce`, remove movement, positional effects, decorative stagger, and scaling feedback. A brief opacity or color change can remain when it helps comprehension and respects the user's preference. An instant change is valid.
 - Gate hover effects with `@media (hover: hover) and (pointer: fine)`.

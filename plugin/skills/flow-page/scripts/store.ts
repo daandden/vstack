@@ -11,16 +11,8 @@ export const FLOW_KIND = "flow";
 export const flowsDir = (home: string, cwd: string): string => join(scratchRoot(home), repoKey(cwd), FLOW_KIND);
 
 export const statePath = (folder: string) => join(folder, "data", "state.json");
-export const pagePath = (folder: string) => join(folder, "index.html");
-/** Captured attachment bytes, as `<sha256>/<name>`, linked from the page by a path relative to it. */
+/** Captured attachment bytes, as `<sha256>/<name>`, which the host serves under the Flow's `assets/` path. */
 export const assetsDir = (folder: string) => join(folder, "assets");
-
-/** The revision the published page shows, read from the meta tag the renderer writes, or undefined with no page. */
-export function pageRevision(folder: string): number | undefined {
-  if (!existsSync(pagePath(folder))) return undefined;
-  const m = readFileSync(pagePath(folder), "utf8").match(/<meta name="flow-page-revision" content="(\d+)">/);
-  return m ? Number(m[1]) : undefined;
-}
 
 /** Replaces `path` in one rename, so a reader sees the old file or the new one and never a partial write. */
 export function writeAtomic(path: string, text: string | Uint8Array): void {

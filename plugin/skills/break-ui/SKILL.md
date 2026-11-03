@@ -52,7 +52,7 @@ Observe the real container width, 320px, and the widest supported layout. Check 
 | Large list stalls | Too much rendered content | Existing pagination or virtualization, with observed evidence |
 | User content becomes markup or escapes twice | Wrong rendering boundary | Render user text as text, escaped exactly once |
 
-Validate causes in the actual component before prescribing a fix. Prefer skill://good-css for CSS, layout, and accessibility. For visual interaction judgment, use skill://emil-design-eng. Motion advice remains subject to ADR 0048 and the running owner's review contract; this skill does not require an unshipped motion skill.
+Validate causes in the actual component before prescribing a fix. Prefer skill://good-css for CSS, layout, and accessibility. For visual interaction judgment, use skill://emil-design-eng. Motion advice remains subject to ADR 0051 and the running owner's review contract; this skill does not require an unshipped motion skill.
 
 ### Choose per field
 

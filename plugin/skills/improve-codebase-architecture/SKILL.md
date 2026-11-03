@@ -44,7 +44,7 @@ Follow `skill://flow-page`'s "Stage entry/exit line". Publish the candidates and
 
 If exploration finds no evidence-backed candidate, publish that outcome as a Document Result with the searched scope, evidence, and limitations. Finish the Stage without an empty candidate Result or pick question.
 
-Draw a before figure and an after figure for each candidate through `skill://vstack-figures`. Write their Mermaid in this caller's context and render with Pele. Give both figures the same type and layout so the reader compares them part by part. Label leakage and seams in words as well as color. Keep sources in a distinct project Scratch entry with unique basenames. If drawing cannot run, stop and report the missing prerequisite.
+Draw a before figure and an after figure for each candidate through `skill://vstack-figures`. Write their Mermaid in this caller's context. Give both figures the same type and layout so the reader compares them part by part. Label leakage and seams in words as well as color. Keep sources in a distinct project Scratch entry with unique basenames. If drawing cannot run, stop and report the missing prerequisite.
 
 Write one `result` item with `shape: "cards"`. Give each candidate one entry with a stable `ref`:
 
@@ -55,13 +55,13 @@ Write one `result` item with `shape: "cards"`. Give each candidate one entry wit
 - `action`: the solution, a plain English description of what changes.
 - `impact`: the benefits in terms of locality and leverage, and how the tests improve.
 
-Capture the before and after SVGs as typed attachments. Publish a companion Document with a section for each candidate and its two `figure` blocks. Name this candidate Result's entries in the pick question's `results`; the script creates reciprocal links. Put the top recommendation in the Result's `summary` line.
+Capture the before and after Mermaid sources as `mermaid` attachments. Publish a companion Document with a section for each candidate and its two `figure` blocks. Name this candidate Result's entries in the pick question's `results`; the script creates reciprocal links. Put the top recommendation in the Result's `summary` line.
 
 Use GLOSSARY.md vocabulary for the domain, and the `skill://codebase-design` vocabulary for the architecture. If `GLOSSARY.md` defines "Order," talk about "the Order intake module," not "the FooBarHandler," and not "the Order service."
 
 ADR conflicts: if a candidate contradicts an existing ADR, only surface it when the friction is real enough to warrant revisiting the ADR. Start the card's `evidence` with the conflict, such as _"Contradicts ADR-0007, but worth reopening because…"_. Don't list every theoretical refactor an ADR forbids.
 
-Do not propose interfaces yet. Publish the candidate Result, figure attachments, Document, and complete pick round in one Flow CLI contribution under flow-page's "Every ask in a Flow" contract. Verify current live serving, show the live URL in chat, then call `ask` with the receipt's generated questions. The first round asks which candidate to explore, with one option per entry in entry order and the top recommendation as recommended. Its question's `results` names every candidate entry. Its `needs` includes comparing the candidates' before and after shapes. The Document does not satisfy that need, so repeat its captured SVG references in the question's `figures`, each with `kind: "before-after"`, in candidate order. Record the response through the common contract.
+Do not propose interfaces yet. Publish the candidate Result, figure attachments, Document, and complete pick round in one Flow CLI contribution under flow-page's "Every ask in a Flow" contract. Verify current live serving, show the live URL in chat, then call `ask` with the receipt's generated questions. The first round asks which candidate to explore, with one option per entry in entry order and the top recommendation as recommended. Its question's `results` names every candidate entry. Its `needs` includes comparing the candidates' before and after shapes. The Document does not satisfy that need, so repeat its captured Mermaid attachment references in the question's `figures`, each with `kind: "before-after"`, in candidate order. Record the response through the common contract.
 
 ### 3. Design It Twice
 

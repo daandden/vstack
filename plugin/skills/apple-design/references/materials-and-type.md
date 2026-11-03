@@ -10,7 +10,7 @@ Material weight conveys hierarchy. Heavier, darker surfaces can separate structu
 
 A modal task needs a scrim and proper modal semantics. A parallel panel can preserve context without a scrim. Stacked sheets need increasing separation between layers. Use higher-contrast text and a suitable weight over changing backgrounds. Put color that must remain stable on a solid layer.
 
-Where floating chrome overlaps scrolling content, a small gradient or blur at the scroll edge can explain that overlap. An ordinary non-overlapping header does not need it. For material entry, coordinated scale and blur can convey thickness, but reduced motion and measured rendering cost constrain the effect. ADR 0048 requires browser-qualified judgment rather than an automatic prohibition or approval of blur animation.
+Where floating chrome overlaps scrolling content, a small gradient or blur at the scroll edge can explain that overlap. An ordinary non-overlapping header does not need it. For material entry, coordinated scale and blur can convey thickness, but reduced motion and measured rendering cost constrain the effect. ADR 0051 requires browser-qualified judgment rather than an automatic prohibition or approval of blur animation.
 
 Respect `prefers-reduced-transparency` with a more opaque or solid surface and no blur. Respect `prefers-contrast: more` with legible backgrounds and defined borders. Check engine support and provide a readable default when a preference query is unavailable.
 

@@ -43,7 +43,7 @@ Under `prefers-reduced-motion: reduce`, remove positional movement, scaling, and
 
 ## Authority and hand-back
 
-Selected Emil guidance takes animation precedence over skill://good-css under ADR 0048. Good-css still owns other styling and accessibility requirements. Reconcile conflicts within Emil guidance using supported browser behavior and observed evidence. A transform-and-opacity-only statement alone cannot block a supported clip-path or intrinsic-size technique. Neither property spelling nor a library name proves smoothness or compositor execution.
+Selected Emil guidance takes animation precedence over skill://good-css under ADR 0051. Good-css still owns other styling and accessibility requirements. Reconcile conflicts within Emil guidance using supported browser behavior and observed evidence. A transform-and-opacity-only statement alone cannot block a supported clip-path or intrinsic-size technique. Neither property spelling nor a library name proves smoothness or compositor execution.
 
 Before using library APIs, inspect the runnable application's installed dependencies and version, then consult matching documentation. Scope engine claims to the observed engine and scenario.
 

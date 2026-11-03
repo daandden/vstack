@@ -34,7 +34,7 @@ Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the audit a
 
 Re-read every cited location yourself. Deduplicate findings and reject misattribution, by-design behavior, unsupported performance claims, and inapplicable rules. A centered modal need not originate at a trigger. A deliberate explanatory animation may exceed an ordinary UI budget. A useful pure fade need not gain a transform.
 
-Use skill://animation-performance for rendering-cost questions and skill://review-animations for applicable motion standards. Under ADR 0048, resolve conflicting Emil rules with actual dependency and browser evidence. A transform-and-opacity preference alone does not prohibit a supported clip-path reveal. Support alone does not prove low cost or compositing.
+Use skill://animation-performance for rendering-cost questions and skill://review-animations for applicable motion standards. Under ADR 0051, resolve conflicting Emil rules with actual dependency and browser evidence. A transform-and-opacity preference alone does not prohibit a supported clip-path reveal. Support alone does not prove low cost or compositing.
 
 Return a prioritized table with stable finding ids, severity, category, file and line, observed behavior, user impact, proposed remedy, evidence, and uncertainty. HIGH means a demonstrated responsiveness, accessibility, continuity, or rendering defect. MEDIUM means an observed mismatch with a useful remedy. LOW means optional polish. Order by impact and effort, not by novelty. Keep accessibility defects visible regardless of rank.
 
@@ -42,7 +42,7 @@ Keep additive opportunities separate from defects. Apply the opportunity gate an
 
 ## Selection and hand-off
 
-Publish findings in the current owner's Flow Results and route explicit selection through that owner's existing question round. When Flow-bound, follow skill://flow-page's "Every ask in a Flow" and raw-answer protocol for publication, the live chat link, ordinary `ask`, and separate answer recording. Outside a Flow, the top-level owner uses `ask`. Subagents return open selection questions. A timeout, cancellation, unavailable picker, recommendation, or headless default is not consent. Until an explicit selection arrives, leave all findings unselected and application source unchanged.
+Publish findings in the current owner's Flow Results and route explicit selection through that owner's existing question round. When Flow-bound, follow skill://flow-page's "Every ask in a Flow" and "Record the raw answer and separate reading" contracts. Outside a Flow, the top-level owner uses `ask`. Subagents return open selection questions. A timeout, cancellation, unavailable picker, recommendation, or headless default is not consent. Until an explicit selection arrives, leave all findings unselected and application source unchanged.
 
 After selection, record only the selected requirements using the companion's fields in the owner's existing spec, ticket, or hand-off location. Include source revision, exact target values where needed, repo exemplars, scope exclusions, dependency constraints, and observable completion checks. Never introduce `plans/README.md`, independent status tracking, execute dispatch, or automatic top-ranked implementation.
 

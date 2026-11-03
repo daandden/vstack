@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { answerState, latestAsks, newFlow, parseAlias, readerNeeds, visualKind, SLUG, slugOf, type Entry, type Figure, type Io, type State } from "./model.ts";
+import { answerState, latestAsks, newFlow, parseAlias, readerNeeds, retainedReading, visualKind, SLUG, slugOf, type Entry, type Figure, type Io, type State } from "./model.ts";
 import { unsafeMarkup } from "./assets.ts";
 import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from "node:fs";
 import { join } from "node:path";
@@ -359,5 +359,6 @@ export function migrateHistorical(h: ReturnType<typeof parseHistorical>, id: str
   s.aliases.push(...historicalAliases(h).filter((alias) => !s.aliases.includes(alias)));
   if (f?.state === "closed") s.lifecycle.push({ event: "closed", time });
   captureHistoricalImages(s, from, time, io);
+  s.reading = retainedReading(s);
   return s;
 }

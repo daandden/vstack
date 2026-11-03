@@ -60,7 +60,7 @@ items:
     tree: f07d230f645fc9ac390cf13a450bbff12ad791a3
     disposition: adapt
     artifacts: [plugin/skills/implement]
-    reason: "Settles End states from user words, the ticket, project default, then ask through live MCP discovery and Code host routing. Confirms Flow test seams before code and goes red per slice (#183, ADR 0035, ADR 0038). Preserves tune-llm-flow kept-round and eval commits (ADR 0041). Shared step 6b independently verifies committed HEAD at every End state and gates reached progress (ADR 0043). It owns Shared checkout briefs, REFUSED and cleanup_error availability checks, and unchanged-clone verification safety. Frontend tasks and delegated briefs conditionally reach good-css and its shipped UI guidance (#339, ADR 0048)."
+    reason: "Settles End states from user words, the ticket, project default, then ask through live MCP discovery and Code host routing. Confirms Flow test seams before code and goes red per slice (#183, ADR 0035, ADR 0038). Preserves tune-llm-flow kept-round and eval commits (ADR 0041). Shared step 6b independently verifies committed HEAD at every End state and gates reached progress (ADR 0043). It owns Shared checkout briefs, REFUSED and cleanup_error availability checks, and unchanged-clone verification safety. Frontend tasks and delegated briefs conditionally reach good-css and its shipped UI guidance (#339, ADR 0051)."
   - id: matt/improve-codebase-architecture
     upstream: matt
     kind: skill
@@ -868,8 +868,8 @@ items:
     tree: 716c242ae3ef01743ab8e1851222260a05050763
     disposition: adapt
     artifacts: [plugin/skills/good-css]
-    reason: "Keeps non-animation CSS duties and conditionally reaches shipped construction, review, audit, opportunity, and safe subtraction guidance under ADR 0048."
-    adr: docs/adr/0048-selected-emil-skills-govern-animation-guidance.md
+    reason: "Keeps non-animation CSS duties and conditionally reaches shipped construction, review, audit, opportunity, and safe subtraction guidance under ADR 0051."
+    adr: docs/adr/0051-selected-emil-skills-govern-animation-guidance.md
   - id: matt/implement-spec
     upstream: matt
     kind: skill
@@ -997,7 +997,7 @@ items:
     tree: a92e36f28d741aee4ff77d1a001300d7e86e07fe
     disposition: adapt
     artifacts: [ plugin/skills/animate ]
-    reason: "Hidden motion construction guidance and companion recipes retain existing execution ownership, accessible state transitions, and ADR 0048 browser-qualified authority."
+    reason: "Hidden motion construction guidance and companion recipes retain existing execution ownership, accessible state transitions, and ADR 0051 browser-qualified authority."
   - id: emil/animation-performance
     upstream: emil
     kind: skill
@@ -1046,7 +1046,7 @@ items:
     disposition: adapt
     artifacts: [plugin/skills/emil-design-eng]
     reason: "Hidden reference-only design guidance preserves vstack execution and evidence ownership, conditional activation, and browser-qualified motion authority."
-    adr: docs/adr/0048-selected-emil-skills-govern-animation-guidance.md
+    adr: docs/adr/0051-selected-emil-skills-govern-animation-guidance.md
   - id: emil/find-animation-opportunities
     upstream: emil
     kind: skill

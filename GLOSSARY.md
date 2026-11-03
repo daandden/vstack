@@ -185,7 +185,7 @@ A qualified name that finds one Flow: `spec:`, `ticket:`, `branch:`, `run:`, `fo
 _Avoid_: flow key, flow.json
 
 **Stage**:
-One skill's part of a Flow on its Flow page, such as a research run, the to-spec part, or one wayfinder ticket. Each Stage has its own tab and a state: not started, in progress, or finished.
+One skill's part of a Flow, such as a research run, a to-spec run, or one wayfinder ticket. It has a state of not started, in progress, or finished and may belong to a parent Stage.
 _Avoid_: step, phase, section
 
 **Result block**:
@@ -197,15 +197,15 @@ The review axis that lists what code outside a diff depends on and may break. co
 _Avoid_: Safety (for this axis), safety review
 
 **Background**:
-An explanation at the top of a Stage tab that gives the context that all of the Stage's questions share. A question's own rationale stays in its description.
+Shared context for a Stage's questions. It contains facts and explanations those questions build on, rather than one question's own rationale.
 _Avoid_: intro, explain block, context section
 
 **Topic note**:
-An explanation of one concept that the Flow page shows once in its Topics tab and that questions in any Stage link to. It differs from a Term note, which defines one name in one line on one question.
+A shared explanation of one concept that questions in any Stage can reference. It differs from a Term note, which defines one name on one question.
 _Avoid_: explain block, glossary entry
 
 **Jump row**:
-The row of links under a Flow page's Stage tabs. It has one link for each part of the open tab, in page order: its Background, each Result block, each question, and the latest summary.
+A row of links to content in a Flow page reading view, following that view's reading order.
 _Avoid_: Q row, question nav, navigation
 
 **Term note**:

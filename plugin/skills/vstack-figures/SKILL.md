@@ -1,12 +1,12 @@
 ---
 name: vstack-figures
-description: How a vstack skill draws a figure. The caller writes Mermaid, follows the styling rules, and renders it with Pele to a Catppuccin Mocha SVG.
+description: How a vstack skill draws a figure. The caller writes Mermaid, follows the styling rules, and submits the source to the Flow, whose reader draws it with Pele in Catppuccin Latte or Mocha.
 disable-model-invocation: true
 ---
 
 # vstack-figures
 
-A caller is a skill step that shows figures to a person. The caller writes each figure's Mermaid in its own context and runs the render script itself. A render takes milliseconds, so a figure step starts no subagent (ADR 0040).
+A caller is a skill step that shows figures to a person. The caller writes each figure's Mermaid in its own context. The Flow reader draws it with the pinned Pele in the reader's theme, so a figure step starts no subagent (ADR 0040, ADR 0050).
 
 This is a rendering helper, not a result-producing run. It opens no Stage. The caller follows `skill://flow-page`'s "Stage entry/exit line" and owns publication.
 
@@ -14,20 +14,20 @@ This is a rendering helper, not a result-producing run. It opens no Stage. The c
 
 1. Choose the Mermaid type from the [Mermaid type reference](references/mermaid-types.md). Read it when choosing a type or writing its syntax.
 2. Write the Mermaid to `<slug>.mmd` in the caller's Scratch entry. The slug is a basename that is unique on the page. Follow every rule in [Make Pele figures look good](#make-pele-figures-look-good).
-3. Render it, with one `--focus` per focal Mermaid id, one or two in all:
-
-   ```sh
-   bun "$(realpath skill://vstack-figures/scripts/render.ts)" <slug>.mmd <out dir>/<slug>.svg --focus <id>
-   ```
-
-   `bun` never sees `skill://` paths, so `realpath` turns the URL into the file path. Pass `-` to read Mermaid from stdin. Exit 0 writes the SVG and prints its absolute path. Exit 1 refuses invalid Mermaid or semantic coloring and writes nothing. Exit 2 reports usage, malformed bindings, or unreadable input. Failures preserve an existing output without making it current.
-4. If the render fails, fix the Mermaid and run the script again. If it still fails, place no figure, and say in one line which figure was not drawn and why. Never show a hand-built figure, a Mermaid code block, or a generated image in its place.
+3. Capture the source through a typed `attachment` with `type: "mermaid"`, its actual `path`, a meaningful `caption`, and provenance in `origin`. Add `focus` with the one or two focal Mermaid ids, as [Mark one or two focal elements](#mark-one-or-two-focal-elements) says. The capture refuses Mermaid that Pele cannot render and prints Pele's parse error. The Flow commits nothing then.
+4. If the capture is refused, fix the Mermaid and submit again. If it still fails, place no figure, and say in one line which figure was not drawn and why. Never show a hand-built figure, a Mermaid code block, or a generated image in its place.
 
 ## Place the figure
 
-Place figures in the order the caller drew them. Capture each successful SVG through a typed `attachment` with `type: "svg"`, its actual `path`, a meaningful `caption`, and provenance in `origin`. Put its reference in a Document `figure` block, a question or Background `figures` list, or an option `preview`, as flow-page's captured-attachment contract says. A question figure or preview also declares its Visual `kind` and satisfies a declared reader need. Keep the embedded `<style>` in the captured bytes. Write sources and exports in the caller's Scratch entry, not the Flow's managed assets.
+Place figures in the order the caller drew them. Put each attachment's reference in a Document `figure` block, a question or Background `figures` list, or an option `preview`, as flow-page's captured-attachment contract says. A question figure or preview also declares its Visual `kind` and satisfies a declared reader need. Write sources in the caller's Scratch entry, not the Flow's managed assets.
 
-An offline lesson export may inline the exact SVG with its `<style>`. That does not permit raw markup authoring in the Flow page. On render failure, publish no stale output. A Document can record an unavailable figure and its reason. An unavailable attachment never satisfies a question's visual need.
+A figure outside the Flow, such as an offline lesson export, is an SVG file. Render it with the script, with one `--focus` per focal Mermaid id:
+
+```sh
+bun "$(realpath skill://vstack-figures/scripts/render.ts)" <slug>.mmd <out dir>/<slug>.svg --focus <id>
+```
+
+`bun` never sees `skill://` paths, so `realpath` turns the URL into the file path. Pass `-` in place of the source path to read the Mermaid from stdin. Exit 0 writes a Catppuccin Mocha SVG and prints its absolute path. Exit 1 refuses invalid Mermaid or semantic coloring and writes nothing. Exit 2 reports usage, malformed bindings, or unreadable input. Failures preserve an existing output without making it current. The export may inline that exact SVG with its `<style>`. That does not permit raw markup authoring in the Flow page. On render failure, publish no stale output. A Document can record an unavailable figure and its reason. An unavailable attachment never satisfies a question's visual need.
 
 ## Supported Mermaid types
 
@@ -37,11 +37,13 @@ The [Mermaid type reference](references/mermaid-types.md) covers all 32 visualiz
 
 Each rule comes from a comparison of 26 figures that Pele and the earlier drawer drew from the same briefs (issue #260).
 
-### Keep the Catppuccin Mocha theme
+### Keep the Catppuccin theme
 
-The render script sets every `--pele-*` variable to Catppuccin Mocha in a `<style>` inside the SVG. With Pele's defaults, a figure renders on white. The script uses `'IosevkaTerm Nerd Font Mono', ui-monospace, monospace` for ordinary and monospace text and measures labels for IosevkaTerm's half-em cells. The Mermaid sets no color itself. It names a Color role, as [Color elements by role](#color-elements-by-role) says.
+The reader sets every `--pele-*` variable to Catppuccin Latte in its light theme and Catppuccin Mocha in its dark theme, and a theme switch restyles the figure in place. The render script sets them to Mocha in a `<style>` inside an exported SVG. With Pele's defaults, a figure renders on white. Both measure each label in the figure font, `'IosevkaTerm Nerd Font Mono', ui-monospace, monospace`, so each node fits its label. Write no `classDef` or `style` line: each one fixes a color that the theme can no longer change.
 
 ### Mark one or two focal elements
+
+In the Flow, each attachment's `focus` gives the reader's theme-mauve border and text to its named Mermaid ids. Timeline events, ishikawa causes, and single xychart bars have no usable focal id. Name their focal point in accompanying text. The export command's stricter focus validation and the role, binding, fixed-font measurement, and readability rules below apply to SVG exports. They do not change Flow attachment fields or replace source-based reader drawing.
 
 Pele exposes supported focal identities through case-sensitive `data-id` values. Each `--focus <id>` paints that target's border and text Mauve `#cba6f7`, while keeping its fill. The renderer colors owned marks, not unrelated descendants of a group. Inline figures sharing ids remain isolated. Timeline events, ishikawa causes, and single xychart bars have no usable focal id. Name their focal point in the accompanying text.
 

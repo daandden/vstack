@@ -1,0 +1,48 @@
+flowchart LR
+    classDef default fill:#313244,stroke:#cba6f7,color:#cdd6f4,stroke-width:1.5px;
+    classDef ok fill:#313244,stroke:#a6e3a1,color:#a6e3a1;
+    classDef warn fill:#313244,stroke:#fab387,color:#fab387;
+    classDef bad fill:#313244,stroke:#f38ba8,color:#f38ba8;
+    linkStyle default stroke:#b4befe,stroke-width:1.5px;
+    subgraph A["A. One Flow stream"]
+        a0["Grilling Q1 1"]
+        a1["Research Result 2"]
+        a2["Grilling Q2 3"]
+        a3["Grilling Q1 4"]
+        a4["Research Result 5"]
+        a5["Grilling Q2 6"]
+        a6["Grilling Q1 7"]
+        a7["Research Result 8"]
+        a8["Grilling Q2 9"]
+        a9["Grilling Q1 10"]
+        a10["Research Result 11"]
+        a11["Grilling Q2 12"]
+        a12["Grilling Q1 13"]
+        a13["Research Result 14"]
+        a14["Grilling Q2 15"]
+        a15["Grilling Q1 16"]
+        a16["Research Result 17"]
+        a17["Grilling Q2 18"]
+        a18["Grilling Q1 19"]
+        a19["Research Result 20"]
+        a20["Grilling Q2 21"]
+        a21["Grilling Q1 22"]
+        a22["Research Result 23"]
+        a23["Grilling Q2 24"]
+        a24["Grilling Q1 25"]
+        a25["Research Result 26"]
+        a26["Grilling Q2 27"]
+        a27["Grilling Q1 28"]
+        a28["Research Result 29"]
+        a29["Grilling Q2 30"]
+        a30["Grilling Q1 31"]
+        a31["Research Result 32"]
+        a32["Grilling Q2 33"]
+        a33["Grilling Q1 34"]
+        a34["Research Result 35"]
+        a35["Grilling Q2 36"]
+        a0 --> a1 --> a2 --> a3 --> a4 --> a5 --> a6 --> a7 --> a8 --> a9 --> a10 --> a11 --> a12 --> a13 --> a14 --> a15 --> a16 --> a17 --> a18 --> a19 --> a20 --> a21 --> a22 --> a23 --> a24 --> a25 --> a26 --> a27 --> a28 --> a29 --> a30 --> a31 --> a32 --> a33 --> a34 --> a35
+    end
+    subgraph B["B. Stage tabs"]
+        b1["Grill tab Q1 then Q2"] --> b2["Switch to Research tab"] --> b3["Research Result"]
+    end

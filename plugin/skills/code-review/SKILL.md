@@ -139,7 +139,7 @@ Decide each finding that its evidence settles: a documented-standard breach, a m
 
 In a Flow, use flow-page's "Close the Stage" after recording the review decisions or no-question outcome.
 
-With a Flow page, summarize each axis's count and worst issue in chat, or its explicit state and reason, instead of repeating the findings. Without a Flow page, deliver every finding, its evidence and decision, and each axis's state and reason in chat before asking about unresolved findings. For Blast radius include its triggers or skip reason and, when proof ran, whether the safety fact is proven or unproven. Never select a worst issue across axes. The extension presents the bound Flow URL after the main-agent reply. The caller receives each decided finding plus each question's answer. For a PR, remove the worktree as step 1 says.
+With a Flow page, summarize each axis's count and worst issue in chat, or its explicit state and reason, instead of repeating the findings. Without a Flow page, deliver every finding, its evidence and decision, and each axis's state and reason in chat before asking about unresolved findings. For Blast radius include its triggers or skip reason and, when proof ran, whether the safety fact is proven or unproven. Never select a worst issue across axes. Present question links through flow-page's "Every ask in a Flow" contract, not in the completion summary. The caller receives each decided finding plus each question's answer. For a PR, remove the worktree as step 1 says.
 
 ## Why three axes
 
