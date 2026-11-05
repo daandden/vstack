@@ -13,6 +13,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 - Preserve independently owned maintenance inputs, retain accepted uncommitted preparation across repeats, and refuse conflicting or competing replacements before checkout writes (#351).
 - Keep Flow navigation responsive with many readers by polling authored and observation versions without overlapping requests or persistent reader streams; retain reading position, focus, selected stops, and captured evidence (#330).
 
+## [9.0.3] - 2026-11-05
+
+- `clean-wt inventory` no longer crashes when a task clone's parent session ran in a directory that was removed since (#359). It skips that session and takes the clone's source from its alternates instead.
+
 ## [9.0.2] - 2026-11-03
 
 - Merge exact main 274159e0 into the already-pushed UI integration without rewriting history; retain its Nuxt/Vite+ live-only reader, Mermaid sources, reading order, current prototype, dependencies, and shipped reader assets.

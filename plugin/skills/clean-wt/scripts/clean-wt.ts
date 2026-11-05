@@ -1,4 +1,4 @@
-import { closeSync, lstatSync, openSync, readdirSync, readFileSync, readlinkSync, readSync, realpathSync, rmSync } from "node:fs";
+import { closeSync, existsSync, lstatSync, openSync, readdirSync, readFileSync, readlinkSync, readSync, realpathSync, rmSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, join, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
@@ -416,7 +416,7 @@ function sourceOf(path: string, entry: string, kind: Kind): Source | null {
         const file: string = `${parent.file.slice(0, parent.file.lastIndexOf(sep))}.jsonl`;
         parent = sessionHeaders.find((h): boolean => h.file === file);
       }
-      if (!parent) continue;
+      if (!parent || !existsSync(parent.cwd)) continue;
       const top = run(["git", "rev-parse", "--show-toplevel"], parent.cwd).out.trim();
       const commonDir = run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], parent.cwd).out.trim();
       if (top && commonDir) return { commonDir, checkout: top };
