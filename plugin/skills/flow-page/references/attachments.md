@@ -18,6 +18,8 @@ In Private mode, `{ file }` can also reference a regular file in the owning proj
 
 A `path` is relative to the working directory, or absolute, and must be a regular file inside the project or its Scratch dir. A path that leaves both, directly or through a symlink, is refused. An image or video must be one of the formats above, and an SVG with scripts, event handlers, embedded HTML, or script URLs is refused. A `mermaid` file must be UTF-8 Mermaid that the pinned Pele renders. Otherwise the refusal carries Pele's parse error.
 
+Safe SVGs may begin with an XML declaration and provenance comments. Capture preserves those bytes and their sha256. SVG references must stay within the document, such as `href="#shape"` or `fill="url(#paint)"`. External resources, stylesheet instructions, document type declarations, CSS imports, and executable styles are refused along with active markup. A refused attachment leaves its entire contribution uncommitted.
+
 The script stores evidence byte for byte. Redact it as the producing skill's contract requires before you attach it, for example with every secret replaced by `<REDACTED>`.
 
 ## Runnable artifacts

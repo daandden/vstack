@@ -727,6 +727,81 @@ test("every attachment type keeps its caption, origin, captured revision, and av
   expect(after.snap.attachments).toEqual(before.snap.attachments);
 });
 
+test.each([
+  ["plain", ""],
+  ["declaration", '<?xml version="1.0" encoding="UTF-8"?>\r\n'],
+  ["comments", "<!-- Figure provenance: measured checkout, not a simulation. -->\n<!-- Rendered by fixture. -->\n"],
+  ["declaration and comments", '\uFEFF<?xml version="1.0" encoding="UTF-8"?>\r\n<!-- Figure provenance: café, measured checkout. -->\r\n'],
+])("a safe SVG with %s retains its original captured bytes and hash", (_, prolog) => {
+  openFlow("s-1");
+  const source = Buffer.from(`${prolog}${SVG}\r\n`);
+  put("media/provenance.svg", source);
+  const r = submit("s-1", attachment("figure", "svg", { path: "media/provenance.svg" }), {
+    kind: "result", shape: "table", title: "Captured figure", columns: ["Check"],
+    rows: [{ cells: ["Original source"] }], attachments: ["figure"],
+  });
+  expect(r.stderr).toBe("");
+  expect(r.code).toBe(0);
+  const snap = show(r.json.flow);
+  const captured = snap.attachments.find((a: any) => a.id === r.json.refs.figure);
+  expect(captured.revision).toBe(sha(source));
+  expect(captured.availability).toBe("captured");
+  expect(snap.stages[0].results[0].attachments).toEqual([captured.id]);
+  expect(bytesOf(r.json.flow, captured.id)).toEqual(source);
+});
+
+test("a captured SVG retains local paint and shape references without external resources", () => {
+  openFlow("s-1");
+  const source = `<?xml version="1.0"?>\n<!-- Local definitions only. -->\n<svg xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="paint"><stop offset="0" stop-color="#a6e3a1"/></linearGradient><rect id="shape" width="40" height="20"/></defs><style><![CDATA[use{fill:url("#paint")}]]></style><use href="#shape" fill="url(#paint)"/></svg>`;
+  put("media/local.svg", source);
+  const r = submit("s-1", attachment("local", "svg", { path: "media/local.svg" }), {
+    kind: "result", shape: "table", title: "Local references", columns: ["Check"],
+    rows: [{ cells: ["Local paint"] }], attachments: ["local"],
+  });
+  expect(r.code).toBe(0);
+  expect(r.stderr).toBe("");
+  expect(bytesOf(r.json.flow, r.json.refs.local)).toEqual(Buffer.from(source));
+});
+
+test.each([
+  ["script inside the root", `<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>`, /script/i],
+  ["script after the root", `${SVG}<script>alert(1)</script>`, /script/i],
+  ["root event handler", `<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>`, /onload/i],
+  ["entity-encoded script URL", `<svg xmlns="http://www.w3.org/2000/svg"><a href="java&#x73;cript:alert(1)">Go</a></svg>`, /javascript/i],
+  ["data URL", `<svg xmlns="http://www.w3.org/2000/svg"><image href="data:image/svg+xml,active"/></svg>`, /data/i],
+  ["embedded HTML", `<svg xmlns="http://www.w3.org/2000/svg"><foreignObject><div>HTML</div></foreignObject></svg>`, /foreignobject/i],
+  ["external image", `<svg xmlns="http://www.w3.org/2000/svg"><image href="https://example.com/image.png"/></svg>`, /external|reference/i],
+  ["external use", `<svg xmlns="http://www.w3.org/2000/svg"><use xlink:href="&#x2f;&#x2f;example.com/figure.svg#shape"/></svg>`, /external|reference/i],
+  ["relative external reference", `<svg xmlns="http://www.w3.org/2000/svg"><use href="other.svg#shape"/></svg>`, /external|reference/i],
+  ["external base", `<svg xmlns="http://www.w3.org/2000/svg" xml:base="https://example.com/"><use href="#shape"/></svg>`, /external|reference/i],
+  ["CSS import", `<svg xmlns="http://www.w3.org/2000/svg"><style>@import "https://example.com/style.css";</style></svg>`, /style|import/i],
+  ["CSS external URL", `<svg xmlns="http://www.w3.org/2000/svg"><style>rect{fill:url(https://example.com/paint.svg#paint)}</style></svg>`, /style|external|reference/i],
+  ["CSS escaped external URL", String.raw`<svg xmlns="http://www.w3.org/2000/svg"><style>rect{fill:\75rl(//example.com/paint.svg#paint)}</style></svg>`, /style|external|reference/i],
+  ["entity-encoded external paint", `<svg xmlns="http://www.w3.org/2000/svg"><rect fill="u&#x72;l(https://example.com/paint.svg#paint)"/></svg>`, /style|external|reference/i],
+  ["inline external style", `<svg xmlns="http://www.w3.org/2000/svg"><rect style="fill:url('other.svg#paint')"/></svg>`, /style|external|reference/i],
+  ["external presentation attribute", `<svg xmlns="http://www.w3.org/2000/svg"><rect fill="url(//example.com/paint.svg#paint)"/></svg>`, /style|external|reference/i],
+  ["CSS expression", `<svg xmlns="http://www.w3.org/2000/svg"><style>rect{width:expression(alert(1))}</style></svg>`, /style|script/i],
+  ["stylesheet instruction after the root", `${SVG}<?xml-stylesheet href="https://example.com/style.css"?>`, /instruction|declaration|style/i],
+  ["external entity declaration", `<!DOCTYPE svg SYSTEM "https://example.com/svg.dtd">${SVG}`, /document|declaration|doctype/i],
+  ["HTML document", "<html><body>Not an SVG</body></html>", /document/i],
+])("an SVG prolog does not admit %s or commit its surrounding contribution", (_, body, category) => {
+  const opened = openFlow("s-1");
+  put("media/unsafe.svg", `<?xml version="1.0" encoding="UTF-8"?>\n<!-- Provenance: security fixture. -->\n${body}`);
+  const before = tree();
+  const beforeState = show(opened.flow);
+  const r = submit("s-1",
+    { kind: "result", shape: "table", title: "Must not be saved", columns: ["Check"], rows: [{ cells: ["Pending capture"] }] },
+    round(question("pending")),
+    attachment("unsafe", "svg", { path: "media/unsafe.svg" }),
+    { kind: "result", shape: "table", title: "Unsafe capture", columns: ["Check"], rows: [{ cells: ["Pending capture"] }], attachments: ["unsafe"] },
+  );
+  expect(r.code).toBe(1);
+  expect(r.stdout).toBe("");
+  expect(r.stderr).toMatch(category);
+  expect(tree()).toEqual(before);
+  expect(show(opened.flow)).toEqual(beforeState);
+});
+
 const GIF = Buffer.from("R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==", "base64");
 
 test("a Result keeps what it captured when its sources change, until a new revision is published from the same canonical file", () => {
