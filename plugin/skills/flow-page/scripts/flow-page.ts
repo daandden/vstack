@@ -7,7 +7,7 @@
 // Exit 1 refuses without committing Flow content. Host lifecycle metadata may be written. Exit 2 is a usage error.
 // A receipt's `live` says whether the host presents the Flow; committed content never depends on it.
 
-import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmdirSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
@@ -18,6 +18,7 @@ import { connect, flowUrl, hostCommand } from "./live.ts";
 import { captureHistoricalImages, historicalFlows, migrateHistorical, parseHistorical } from "./migrate.ts";
 import { Refusal } from "./fields.ts";
 import { registerObservation } from "./observations.ts";
+import { projectCommonDir } from "../../vstack-tmp/scripts/scratch.ts";
 
 const COMMANDS = ["open", "bind", "submit", "alias", "close", "reopen", "find", "move", "show", "bound", "host", "migrate"];
 
@@ -143,11 +144,21 @@ async function locked<T>(key: string, fn: (folder: string, s: State) => T): Prom
   return refuse(`Flow ${at.id} kept moving while this command waited; run it again`);
 }
 
-function roots(): Root[] {
+function roots(canonical = false): Root[] {
   const top = Bun.spawnSync(["git", "rev-parse", "--show-toplevel"], { cwd: process.cwd(), stdout: "pipe", stderr: "ignore" });
   const project = top.exitCode === 0 ? top.stdout.toString().trim() : process.cwd();
   const out: Root[] = [{ name: "project", dir: realpathSync(project) }];
   if (existsSync(dirname(dir))) out.push({ name: "scratch", dir: realpathSync(dirname(dir)) });
+  if (canonical) {
+    const common = projectCommonDir(process.cwd());
+    const shared = common && join(common, "vstack");
+    if (shared && existsSync(join(shared, "config")) && statSync(join(shared, "config")).isDirectory()) {
+      const domain = join(shared, "domain");
+      if (existsSync(domain) && statSync(domain).isDirectory() && realpathSync(shared) === shared && realpathSync(domain) === domain) {
+        out.unshift({ name: "vstack-domain", dir: domain });
+      }
+    }
+  }
   return out;
 }
 
@@ -159,7 +170,7 @@ const io: Io = {
     return c;
   },
   canonical(path, where, root) {
-    const rs = roots();
+    const rs = roots(true);
     const base = root === undefined ? process.cwd() : (rs.find((r) => r.name === root)?.dir ?? refuse(`${where}: this project has no ${root} directory to find ${path} in`));
     return canonicalFile(path, rs, base, where);
   },

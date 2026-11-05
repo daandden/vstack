@@ -34,8 +34,6 @@ function focusOn(el: HTMLElement) {
   el.focus({ preventScroll: true });
 }
 
-let placedAt: number | undefined;
-
 export function measureHeader() {
   const bar = document.querySelector<HTMLElement>(".bar");
   if (bar) document.documentElement.style.setProperty("--bar", `${bar.offsetHeight}px`);
@@ -44,7 +42,7 @@ export function measureHeader() {
 function place(el: HTMLElement) {
   measureHeader();
   el.scrollIntoView({ block: "start", behavior: "instant" });
-  placedAt = scrollY;
+  keepSelectionAtCurrentScroll();
 }
 
 function bringIntoView(el: HTMLElement) {
@@ -97,6 +95,10 @@ function switchTab(by: number) {
   void goTo(next, true);
 }
 
+let scrollThatKeepsSelection: number | undefined;
+function keepSelectionAtCurrentScroll() {
+  scrollThatKeepsSelection = scrollY;
+}
 export function markFromScroll() {
   let id: string | undefined;
   const edge = (parseFloat(getComputedStyle(document.documentElement).scrollPaddingBlockStart) || 0) + 2;
@@ -106,8 +108,8 @@ export function markFromScroll() {
 
 /** A stop near the end of a tab cannot scroll to the top, so the scroll that placed it must not hand the selection to an earlier stop. */
 export function onScroll() {
-  if (placedAt !== undefined && Math.abs(scrollY - placedAt) < 1) return;
-  placedAt = undefined;
+  if (scrollThatKeepsSelection !== undefined && Math.abs(scrollY - scrollThatKeepsSelection) < 1) return;
+  scrollThatKeepsSelection = undefined;
   markFromScroll();
 }
 
@@ -122,12 +124,19 @@ export function readingAnchor(): { el: HTMLElement; top: number } | undefined {
   return el ? { el, top: el.getBoundingClientRect().top } : undefined;
 }
 
+export function restoreReadingAnchor(anchor: ReturnType<typeof readingAnchor>) {
+  if (!anchor?.el.isConnected) return;
+  const moved = anchor.el.getBoundingClientRect().top - anchor.top;
+  if (Math.abs(moved) >= 0.5) {
+    scrollBy({ top: moved, behavior: "instant" });
+  }
+  keepSelectionAtCurrentScroll();
+}
+
 export function keepPlaceNow(change: () => void) {
   const anchor = readingAnchor();
   change();
-  if (!anchor?.el.isConnected) return;
-  const moved = anchor.el.getBoundingClientRect().top - anchor.top;
-  if (Math.abs(moved) >= 0.5) scrollBy({ top: moved, behavior: "instant" });
+  restoreReadingAnchor(anchor);
 }
 
 const editable = (el: EventTarget | null) => el instanceof Element && ((el as HTMLElement).isContentEditable || el.closest("input, textarea, select, video, audio") !== null);

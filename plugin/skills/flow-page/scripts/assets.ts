@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { refuse } from "./fields.ts";
 
 /** A directory a contribution may read files from, already resolved through every symlink. */
-export type Root = { name: "project" | "scratch"; dir: string };
+export type Root = { name: "project" | "scratch" | "vstack-domain"; dir: string };
 export type Captured = { revision: string; file: string; size: number; name: string; from: { root: string; path: string } };
 
 
@@ -14,6 +14,15 @@ const NAMED_ENTITIES: Record<string, string> = { colon: ":", tab: "\t", newline:
 /** Problems in captured SVG or historical HTML, parsed as the browser parses markup. SVG may retain `<style>`. */
 export function unsafeMarkup(markup: string, allowStyle = false): string[] {
   const problems: string[] = [];
+  const checkStyle = (style: string) => {
+    const css = style.replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\\([0-9a-f]{1,6})\s?|\\([^\r\n])/gi, (_, hex, char) => hex ? String.fromCodePoint(Math.min(parseInt(hex, 16), 0x10ffff)) : char);
+    if (/@import|(?:javascript|vbscript|data)\s*:|expression\s*\(/i.test(css)) problems.push("its styles import a file or hold a script URL");
+    for (const match of css.matchAll(/url\s*\(\s*(?:"([^"]*)"|'([^']*)'|([^)]*))\s*\)/gi)) {
+      if (!/^#[^\s]+$/.test((match[1] ?? match[2] ?? match[3]).trim())) problems.push("its styles hold an external reference");
+    }
+  };
+  let styleText = "";
   new HTMLRewriter()
     .on("*", {
       element(el) {
@@ -21,18 +30,36 @@ export function unsafeMarkup(markup: string, allowStyle = false): string[] {
         if (BLOCKED_TAGS.has(tag) && !(allowStyle && tag === "style")) problems.push(`<${el.tagName}> is not allowed`);
         for (const [name, value] of el.attributes) {
           if (name.toLowerCase().startsWith("on")) problems.push(`the ${name} attribute on <${el.tagName}> is not allowed`);
-          const decoded = value
+          const text = value
             .replace(/&#x([0-9a-f]+);?/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
             .replace(/&#(\d+);?/g, (_, n) => String.fromCodePoint(Number(n)))
-            .replace(/&([a-z]+);/gi, (m, n) => NAMED_ENTITIES[n.toLowerCase()] ?? m)
-            .replace(/[\u0000-\u0020]/g, "")
-            .toLowerCase();
+            .replace(/&([a-z]+);/gi, (m, n) => NAMED_ENTITIES[n.toLowerCase()] ?? m);
+          const decoded = text.replace(/[\u0000-\u0020]/g, "").toLowerCase();
           if (/^(javascript|vbscript|data):/.test(decoded)) problems.push(`the ${name} attribute on <${el.tagName}> holds a ${decoded.split(":")[0]}: URL`);
+          if (allowStyle) {
+            const attribute = name.toLowerCase();
+            if ((/^(?:href|xlink:href|src)$/.test(attribute) && decoded !== "" && !/^#[^\s]+$/.test(decoded)) || (attribute === "xml:base" && decoded !== "")) {
+              problems.push(`the ${name} attribute on <${el.tagName}> holds an external reference`);
+            }
+            if (/^(?:style|fill|stroke|filter|clip-path|mask|cursor|marker(?:-start|-mid|-end)?)$/.test(attribute)) checkStyle(text);
+          }
+        }
+      },
+    })
+    .on("style", {
+      text(chunk) {
+        if (allowStyle) {
+          styleText += chunk.text;
+          if (chunk.lastInTextNode) {
+            checkStyle(styleText);
+            styleText = "";
+          }
         }
       },
     })
     .transform(markup);
   if (/@import|javascript:|expression\(/i.test(markup)) problems.push("its styles import a file or hold a script URL");
+  if (allowStyle && /<[!?]/.test(markup.replace(/<!--[\s\S]*?-->|<!\[CDATA\[[\s\S]*?\]\]>/g, ""))) problems.push("document declarations and processing instructions are not allowed");
   return problems;
 }
 
@@ -79,9 +106,11 @@ export function capture(path: string, type: string, roots: Root[], cwd: string, 
   if (type === "image") ext = imageExt(bytes) ?? refuse(where, `${path} is not a PNG, JPEG, GIF, or WebP image`);
   else if (type === "video") ext = videoExt(bytes) ?? refuse(where, `${path} is not an MP4 or WebM video`);
   else if (type === "svg") {
-    const svg = new TextDecoder().decode(bytes).replace(/^\uFEFF/, "").replace(/<\?xml[^>]*\?>\s*/, "").trim();
-    if (!svg.startsWith("<svg")) refuse(where, `${path} must be an <svg> document`);
-    const problems = unsafeMarkup(svg, true);
+    const svg = new TextDecoder().decode(bytes);
+    const document = svg.replace(/^\uFEFF/, "").replace(/^<\?xml\s[^?]*\?>/, "");
+    const root = document.replace(/^(?:\s|<!--(?:(?!-->)[\s\S])*-->)*/, "");
+    if (!/^<svg(?:\s|\/?>)/.test(root)) refuse(where, `${path} must be an <svg> document`);
+    const problems = unsafeMarkup(document, true);
     if (problems.length) refuse(where, `${path} is not safe: ${problems.join("; ")}`);
     ext = "svg";
   } else if (type === "mermaid") {

@@ -151,6 +151,10 @@ Exit codes: 0 pass, 1 register failures, 2 the check could not run (bad argument
 
 Text output prints one line per failure, `FAIL <class> <item>: <message>`, after `check-register:` note lines, and ends with `check-register: OK` or `check-register: <n> failure(s)`. `--json` prints `{"ok", "notes", "failures": [{"class", "item", "message"}]}`. The item is a row `id`, an artifact path, `plugin/package.json`, or `<upstream>:<path>` for an Upstream item with no row.
 
+Artifact discovery reads the working tree, including untracked files. Register, text-scope, Addon, and version checks share its content inventory. Empty directories, `.DS_Store` files, and Python bytecode files ending in `.pyc` or `.pyo` directly under `__pycache__` do not count as shipped content. Discovery leaves these files and directories untouched.
+
+Other files count even when an artifact lacks `SKILL.md`. Source inside `__pycache__` still counts. Directory names such as `dist`, `build`, `.cache`, `.nuxt`, and `.output` do not exclude their contents. The bundled Nuxt reader's `reader/index.html` and `reader/_flow-reader/` assets are shipped content, not local cache residue. A registered artifact with no shipped content reports `missing-artifact`.
+
 | Class | Fails when |
 |---|---|
 | `invalid-row` | a row lacks a field or has a bad one: duplicate or missing `id`, `upstream` not in `pins.yaml`, unknown `kind`, no `reason`, an artifact outside `plugin/`, `tree` not a full SHA, `held_at` without `held_path` or the reverse |
@@ -158,7 +162,7 @@ Text output prints one line per failure, `FAIL <class> <item>: <message>`, after
 | `reject-with-artifacts` | a reject row lists artifacts |
 | `non-reject-without-artifacts` | an adopt, adapt, or merge row names no artifacts |
 | `absent-path` | a row that is not held has no `path` |
-| `missing-artifact` | a row or `originals:` names a path that does not exist |
+| `missing-artifact` | a row or `originals:` names an artifact with no shipped content |
 | `unregistered-artifact` | a plugin artifact that no row names and `originals:` does not list |
 | `current-pin-mismatch` | `path` does not exist at the current Pin, or `tree` is not its object SHA there |
 | `reconciled-missing` | a held row's `held_path` does not exist at `held_at` |
@@ -196,6 +200,8 @@ The version-bump check compares `plugin/` in the working tree, tracked and untra
 1. `--base <ref>` or `VSTACK_BASE_REF`, when set. An all-zero SHA, which GitHub sends for a new branch, counts as unset.
 2. Else the merge base of `HEAD` and `origin/HEAD`. On a branch this covers every change the branch makes; on the default branch it covers unpushed and uncommitted changes.
 3. Else `HEAD`, so only uncommitted changes count.
+
+Existing recognized cache files do not require a version bump. Removed paths still count as changes.
 
 The note line `version base: <sha> <how it was chosen>` shows the choice. When the base has no `plugin/package.json`, the plugin is new and needs no bump. A branch that is not based on `origin/HEAD` passes its own base, for example `--base feat/vstack-build`. CI passes the pull request's base on a pull request and the push's `before` commit on a push, falling back to the merge base with the default branch.
 
@@ -287,9 +293,22 @@ Each Hand edit target has `action` (`add`, `edit`, `take`, `rename`, or `remove`
 
 An `edit` target can also carry an optional, nonempty, one-line `reason`. `prepare` applies it to every adapt row that lists the artifact. Other Dispositions keep their reasons, and an adopt flip still uses `flip.reason`.
 
-`prepare` validates decisions before its first checkout write. It reads bookkeeping from HEAD, not from earlier uncommitted bookkeeping. Its version exceeds HEAD's version, with at most one major bump per branch. Hold preserves the old contribution while current Pins and item identities move. The grill records moved refs and confirmed decisions. implement reruns `plan` at those refs and stops with a report if the row set differs.
+`prepare` validates decisions before its first checkout write. It derives bookkeeping from HEAD and replays accepted decisions recorded for that same HEAD. Its version exceeds HEAD's version, with at most one major bump per branch. Hold preserves the old contribution while current Pins and item identities move. The grill records moved refs and confirmed decisions. implement reruns `plan` at those refs and stops with a report if the row set differs.
 
 `prepare` uses the `yaml` package's Document and source-token APIs to keep comments, quoting, flow style, key order, and untouched text. It changes only the version value in `plugin/package.json`.
+
+### Preparation ownership
+
+Before replacement, `prepare` requires each bookkeeping file, release-metadata file, and selected adopt or take destination to match HEAD or its last recorded prepared output. Added files, removed files, symlinks, executable modes, and untracked files inside replacement directories participate in this comparison. Existing adapt takes remain agent-owned and are not replaced.
+
+Successful preparation saves its accepted decisions, plan, and output identities at the checkout's Git path `vstack-maintain/prepared.json`. This receipt stays outside the product files. Repeats combine accepted decisions by row id, target artifact, and dropped Upstream key. A new decision replaces the earlier decision for that key; omitted keys stay accepted. CHANGELOG entries accumulate without duplicates. A new HEAD starts a new preparation baseline. A different plan at the same HEAD refuses while an earlier Update remains uncommitted.
+
+An `input-conflict` refusal lists `conflicts` paths and changes no checkout content. Reconcile the named differences; a dirty file alone grants no replacement permission. Keep the receipt for repeats and review-fix handoffs, including the original confirmed decisions for revised targets. Losing the receipt does not authorize replacement of dirty content.
+
+Preparation holds a checkout-specific Git-path lock through validation, input rechecking, writes, and receipt persistence. A cooperating invocation receives `preparation-busy` and the lock path rather than overwriting the owner's work. Retry after that owner finishes. If the owner died, inspect the lock's `owner.json` and confirm its process has ended before removing only that abandoned lock. Inputs and HEAD are checked again immediately before replacement. This does not provide a filesystem-wide transaction against arbitrary external editors.
+
+An unexpected `write-failure` reports the completed `written` paths, the `attempted` path, and a possibly partially written checkout. Inspect those files before recovery. A `receipt-write-failure` means checkout preparation completed but ownership persistence failed. Neither outcome claims an unchanged checkout or permits a blind retry.
+
 
 ### Plan JSON
 

@@ -164,6 +164,161 @@ test("prepare refuses invalid edit reasons before writing bookkeeping", async ()
   }
 }, 30000);
 
+test("prepare refuses independently edited bookkeeping and release metadata without changing checkout bytes", async () => {
+  const f = fixture();
+  const file = choices(f, undefined, [{ action: "edit", kind: "skill", artifact: "plugin/skills/wording" }]);
+  for (const path of ["decision-register.yaml", "pins.yaml", "house-style.yaml", "CHANGELOG.md", "plugin/package.json"]) {
+    const original = read(f.root, path);
+    const edited = path.endsWith(".json") ? original.replace('"0.1.0"', '"0.9.0"') : `# Independent work.\n${original}`;
+    writeFiles(f.root, { [path]: edited });
+    const before = state(f.root);
+    const result = await f.run(f.root, ["prepare", "--decisions", file]);
+    expect(result.code).toBe(2);
+    expect(JSON.parse(result.stdout)).toMatchObject({ ok: false, category: "input-conflict", conflicts: [path] });
+    expect(state(f.root)).toEqual(before);
+    expect(read(f.root, path)).toBe(edited);
+    writeFiles(f.root, { [path]: original });
+  }
+}, 30000);
+
+test("prepare carries accepted uncommitted work across repeats and review-fix handoffs", async () => {
+  const f = fixture();
+  writeFiles(f.root, { "plugin/rules/first.md": "First rule.\n" });
+  const first = choices(f, undefined, [own("first")], { changelog: ["First ticket line."] });
+  const prepared = await f.run(f.root, ["prepare", "--decisions", first]);
+  expect(prepared.code).toBe(0);
+  const accepted = state(f.root);
+  expect((await f.run(f.root, ["prepare", "--decisions", first])).code).toBe(0);
+  expect(state(f.root)).toEqual(accepted);
+  writeFiles(f.root, { "plugin/rules/second.md": "Second rule.\n", "plugin/skills/wording/SKILL.md": "Reviewed agent text.\n" });
+  const second = choices(f, undefined, [own("second"), { action: "edit", kind: "skill", artifact: "plugin/skills/wording", reason: "Keep the review correction." }], { changelog: ["Second ticket line."] });
+  const result = await f.run(f.root, ["prepare", "--decisions", second]);
+  expect(result.code).toBe(0);
+  expect(result.plan.version).toBe("0.1.1");
+  expect(register(f.root).originals).toEqual(["plugin/rules/first.md", "plugin/rules/second.md"]);
+  expect(register(f.root).items.find((row: any) => row.id === "matt/wording").reason).toBe("Keep the review correction.");
+  expect(read(f.root, "plugin/skills/wording/SKILL.md")).toBe("Reviewed agent text.\n");
+  expect(read(f.root, "CHANGELOG.md").match(/First ticket line\./g)).toHaveLength(1);
+  expect(read(f.root, "CHANGELOG.md")).toContain("Second ticket line.");
+  const independent = `# Another task.\n${read(f.root, "decision-register.yaml")}`;
+  writeFiles(f.root, { "decision-register.yaml": independent });
+  const before = state(f.root);
+  const refused = await f.run(f.root, ["prepare", "--decisions", second]);
+  expect(refused.code).toBe(2);
+  expect(JSON.parse(refused.stdout).conflicts).toContain("decision-register.yaml");
+  expect(state(f.root)).toEqual(before);
+}, 30000);
+
+test("prepare protects selected adopt and take destinations, including untracked content", async () => {
+  const f = fixture(); const { plan, path } = await planned(f);
+  const file = choices(f, plan);
+  const decisions = JSON.parse(readFileSync(file, "utf8"));
+  decisions.decisions.find((row: any) => row.id === "matt/grow").action = "accept";
+  writeFileSync(file, JSON.stringify(decisions));
+  writeFiles(f.root, { "plugin/skills/grow/independent.txt": "Another task's notes.\n" });
+  const before = state(f.root);
+  const refused = await f.run(f.root, ["prepare", "--plan", path, "--decisions", file]);
+  expect(refused.code).toBe(2);
+  expect(JSON.parse(refused.stdout).conflicts).toContain("plugin/skills/grow");
+  expect(state(f.root)).toEqual(before);
+  expect(read(f.root, "plugin/skills/grow/independent.txt")).toBe("Another task's notes.\n");
+  rmSync(join(f.root, "plugin/skills/grow/independent.txt"));
+  expect((await f.run(f.root, ["prepare", "--plan", path, "--decisions", file])).code).toBe(0);
+  const accepted = state(f.root);
+  expect((await f.run(f.root, ["prepare", "--plan", path, "--decisions", file])).code).toBe(0);
+  expect(state(f.root)).toEqual(accepted);
+  writeFiles(f.root, { "plugin/skills/rej/SKILL.md": "Independent take draft.\n" });
+  const take = { action: "take", kind: "skill", artifact: "plugin/skills/rej", upstream: "matt", path: "skills/misc/rej", reason: "Useful item." };
+  const beforeTake = state(f.root);
+  const rejectedTake = await f.run(f.root, ["prepare", "--decisions", choices(f, undefined, [take])]);
+  expect(rejectedTake.code).toBe(2);
+  expect(JSON.parse(rejectedTake.stdout).conflicts).toContain("plugin/skills/rej");
+  expect(state(f.root)).toEqual(beforeTake);
+  expect(read(f.root, "plugin/skills/rej/SKILL.md")).toBe("Independent take draft.\n");
+}, 30000);
+
+async function pauseBeforeReplacement(f: ReturnType<typeof fixture>) {
+  const { mkdirSync } = await import("node:fs");
+  const bin = join(f.dir, "paused-git"), ready = join(f.dir, "ready"), release = join(f.dir, "release");
+  mkdirSync(bin);
+  const real = Bun.which("git")!;
+  writeFileSync(join(bin, "git"), `#!${process.execPath}
+import { existsSync, writeFileSync } from "node:fs";
+const args = process.argv.slice(2);
+if (args[0] === "show" && args[1] === "HEAD:CHANGELOG.md") {
+  writeFileSync(${JSON.stringify(ready)}, "ready");
+  while (!existsSync(${JSON.stringify(release)})) await Bun.sleep(10);
+}
+const result = Bun.spawnSync([${JSON.stringify(real)}, ...args], { stdout: "inherit", stderr: "inherit" });
+process.exit(result.exitCode);
+`);
+  chmodSync(join(bin, "git"), 0o755);
+  return {
+    env: { PATH: `${bin}:${process.env.PATH}` },
+    async ready() {
+      const deadline = Date.now() + 10000;
+      while (!existsSync(ready) && Date.now() < deadline) await Bun.sleep(10);
+      expect(existsSync(ready)).toBe(true);
+    },
+    release() { writeFileSync(release, "continue"); },
+  };
+}
+
+test("cooperating preparations refuse competing ownership and preserve accepted work on retry", async () => {
+  const f = fixture(); const pause = await pauseBeforeReplacement(f);
+  writeFiles(f.root, { "plugin/rules/first.md": "First.\n", "plugin/rules/second.md": "Second.\n" });
+  const first = choices(f, undefined, [own("first")], { changelog: ["First accepted change."] });
+  const pending = f.run(f.root, ["prepare", "--decisions", first], pause.env);
+  try {
+    await pause.ready();
+    const second = choices(f, undefined, [own("second")], { changelog: ["Second accepted change."] });
+    const before = state(f.root);
+    const competing = await f.run(f.root, ["prepare", "--decisions", second]);
+    expect(competing.code).toBe(2);
+    expect(JSON.parse(competing.stdout).category).toBe("preparation-busy");
+    expect(state(f.root)).toEqual(before);
+    pause.release();
+    expect((await pending).code).toBe(0);
+    expect((await f.run(f.root, ["prepare", "--decisions", second])).code).toBe(0);
+    expect(register(f.root).originals).toEqual(["plugin/rules/first.md", "plugin/rules/second.md"]);
+    expect(read(f.root, "CHANGELOG.md")).toContain("First accepted change.");
+    expect(read(f.root, "CHANGELOG.md")).toContain("Second accepted change.");
+  } finally { pause.release(); await pending; }
+}, 30000);
+
+test("prepare rechecks inputs after planning before it replaces checkout content", async () => {
+  const f = fixture(); const pause = await pauseBeforeReplacement(f);
+  const file = choices(f, undefined, [{ action: "edit", kind: "skill", artifact: "plugin/skills/wording" }]);
+  const pending = f.run(f.root, ["prepare", "--decisions", file], pause.env);
+  try {
+    await pause.ready();
+    writeFiles(f.root, { "CHANGELOG.md": "# Changelog\n\n## [Unreleased]\n\n- Accepted by another editor.\n" });
+    const before = state(f.root);
+    pause.release();
+    const result = await pending;
+    expect(result.code).toBe(2);
+    expect(JSON.parse(result.stdout).conflicts).toContain("CHANGELOG.md");
+    expect(state(f.root)).toEqual(before);
+  } finally { pause.release(); await pending; }
+}, 30000);
+
+test("prepare reports completed writes and the failing path after an unexpected write failure", async () => {
+  const f = fixture();
+  const file = choices(f, undefined, [{ action: "edit", kind: "skill", artifact: "plugin/skills/wording", reason: "A changed reason." }]);
+  const manifest = join(f.root, "plugin/package.json");
+  chmodSync(manifest, 0o444);
+  try {
+    const result = await f.run(f.root, ["prepare", "--decisions", file]);
+    expect(result.code).toBe(2);
+    const report = JSON.parse(result.stdout);
+    expect(report).toMatchObject({ category: "write-failure", attempted: "plugin/package.json", outcome: "checkout-may-be-partially-written" });
+    expect(report.written).toEqual(["decision-register.yaml", "pins.yaml", "house-style.yaml"]);
+    expect(register(f.root).items.find((row: any) => row.id === "matt/wording").reason).toBe("A changed reason.");
+    expect(JSON.parse(read(f.root, "plugin/package.json")).version).toBe("0.1.0");
+    expect(read(f.root, "CHANGELOG.md")).toBe("# Changelog\n\n## [Unreleased]\n");
+  } finally { chmodSync(manifest, 0o644); }
+}, 30000);
+
 test("prepare keeps earlier ticket rows and CHANGELOG lines and raises the version above HEAD", async () => {
   const f = fixture(); git(f.root, "checkout", "-qb", "feature");
   writeFiles(f.root, { "plugin/rules/first.md": "First rule.\n" });

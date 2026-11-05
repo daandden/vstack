@@ -40,16 +40,22 @@ function git(cwd: string, args: string[], allowNonRepo = false): string | undefi
   }
 }
 
+/** The owning project's real Git common directory, shared by its worktrees. */
+export function projectCommonDir(cwd: string): string | undefined {
+  const out = git(cwd, ["rev-parse", "--path-format=absolute", "--git-common-dir"], true);
+  if (out === undefined) return undefined;
+  const commonPath = out.replace(/\r?\n$/, "");
+  if (!isAbsolute(commonPath)) throw new Error("Cannot determine project identity: Git returned no absolute common directory");
+  return realpathSync(commonPath);
+}
+
 /**
  * `<main checkout basename>-<first 6 hex chars of sha256(absolute git common dir)>`, or `_global` outside a repo.
  * Every worktree of a repo shares the common dir, so they share the key.
  */
 export function repoKey(cwd: string): string {
-  const out = git(cwd, ["rev-parse", "--path-format=absolute", "--git-common-dir"], true);
-  if (out === undefined) return GLOBAL_KEY;
-  const commonPath = out.replace(/\r?\n$/, "");
-  if (!isAbsolute(commonPath)) throw new Error("Cannot determine project identity: Git returned no absolute common directory");
-  const common = realpathSync(commonPath);
+  const common = projectCommonDir(cwd);
+  if (common === undefined) return GLOBAL_KEY;
   // The first entry of `git worktree list` is the main checkout (or the bare repo dir).
   const worktrees = git(cwd, ["worktree", "list", "--porcelain", "-z"])!;
   const end = worktrees.indexOf("\0");
