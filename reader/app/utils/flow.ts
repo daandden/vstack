@@ -40,13 +40,13 @@ export function entryTitle(flow: Flow, ref: string): { result: string; entry: st
 
 export function blockLabel(flow: Flow, b: ReadingBlock): string {
   const st = b.stage ? flow.stage.get(b.stage) : undefined;
-  if (b.kind === "question") return `${st?.label}: Q${flow.question.get(b.id)?.q}`;
+  if (b.kind === "question") return `Q${flow.question.get(b.id)?.q}`;
   if (b.kind === "result") {
     const r = st?.results.find((x) => x.id === b.id);
     return r?.jump ?? r?.title ?? b.id;
   }
   if (b.kind === "background") return st?.background?.jump ?? st?.background?.title ?? b.id;
   if (b.kind === "topic") return flow.topics.find((t) => t.id === b.id)?.title ?? b.id;
-  if (b.kind === "assumed") return `${st?.label}: Assumed`;
-  return `${st?.label}: Summary`;
+  if (b.kind === "assumed") return "Assumed";
+  return "Summary";
 }

@@ -1,5 +1,7 @@
 # Chronological Flow reader design review
 
+> [ADR 0052](../adr/0052-the-flow-page-reads-by-stage-tab-in-first-publication-order.md) replaced variant A's On this page outline with Stage tabs and a sticky Jump row. This page keeps the #312 review as it happened.
+
 The user approved ticket [#312](https://github.com/daandden/vstack/issues/312)'s `reader-review-r3`, variant A, in Flow question 18. They required a compact layout based on the current Flow page, Catppuccin Mocha dark mode, and Catppuccin Latte light mode. #313 implements durable publication order, and #314 ships the Nuxt reader through the Bun host. The sections below retain the prototype choices and captured evidence. Spec #309 and #316 remain open because the independent final integrated proof and refreshed first-publication evaluation are unavailable.
 
 ## Why revision 3 is smaller

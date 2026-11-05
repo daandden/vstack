@@ -1,5 +1,5 @@
 import { afterAll, expect, test } from "bun:test";
-import { chmodSync, closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { ENV, git } from "./support/fixture.ts";
@@ -23,9 +23,9 @@ function world() {
 }
 
 type Run = { code: number; stdout: string; stderr: string; json: any };
-type Opts = { session?: string; stdin?: unknown; cwd: string; home: string };
+type Opts = { session?: string; stdin?: unknown; cwd: string; home: string; env?: Record<string, string> };
 const argv = (args: string[], o: Opts) => ["bun", SCRIPT, ...args, "--home", o.home];
-const envOf = (o: Opts) => ({ ...ENV, HOME: o.home, VSTACK_FLOW_HOST: "off", ...(o.session ? { PI_SESSION_ID: o.session } : {}) });
+const envOf = (o: Opts) => ({ ...ENV, ...o.env, HOME: o.home, VSTACK_FLOW_HOST: "off", ...(o.session ? { PI_SESSION_ID: o.session } : {}) });
 const stdinOf = (o: Opts) => (o.stdin === undefined ? "ignore" : new TextEncoder().encode(JSON.stringify(o.stdin)));
 const parse = (code: number, stdout: string, stderr: string): Run => {
   let json: any;
@@ -42,16 +42,13 @@ function run(args: string[], o: Opts): Run {
 }
 async function runAsync(args: string[], o: Opts): Promise<Run> {
   const capture = mkdtempSync(join(root, "stdio-"));
-  let stdout = -1, stderr = -1;
+  const stdout = join(capture, "stdout");
+  const stderr = join(capture, "stderr");
   try {
-    stdout = openSync(join(capture, "stdout"), "w");
-    stderr = openSync(join(capture, "stderr"), "w");
-    const p = Bun.spawn(argv(args, o), { cwd: o.cwd, env: envOf(o), stdin: stdinOf(o), stdout, stderr });
+    const p = Bun.spawn(argv(args, o), { cwd: o.cwd, env: envOf(o), stdin: stdinOf(o), stdout: Bun.file(stdout), stderr: Bun.file(stderr) });
     const code = await p.exited;
-    return parse(code, readFileSync(join(capture, "stdout"), "utf8"), readFileSync(join(capture, "stderr"), "utf8"));
+    return parse(code, readFileSync(stdout, "utf8"), readFileSync(stderr, "utf8"));
   } finally {
-    if (stdout >= 0) closeSync(stdout);
-    if (stderr >= 0) closeSync(stderr);
     rmSync(capture, { recursive: true, force: true });
   }
 }
@@ -85,6 +82,26 @@ function twoTickets(w: ReturnType<typeof world>) {
   const a = ok(run(["open", "--title", "Checkout limits", "--skill", "wayfinder", "--ticket", "101"], { ...at, session: "s-a" }));
   const b = ok(run(["open", "--flow", a.flow, "--skill", "wayfinder", "--ticket", "102"], { ...at, session: "s-b" }));
   return { at, a, b };
+}
+
+function gitTransport(w: ReturnType<typeof world>) {
+  const bin = join(w.base, "bin");
+  const tmp = join(w.base, "tmp");
+  mkdirSync(bin);
+  mkdirSync(tmp);
+  const realGit = `'${Bun.which("git")!.replaceAll("'", "'\\''")}'`;
+  const bun = `'${process.execPath.replaceAll("'", "'\\''")}'`;
+  writeFileSync(join(bin, "git"), `#!/bin/sh
+if [ "$FLOW_TEST_GIT_FAILURE" = "1" ]; then exit 7; fi
+# Bun may back logical pipes with unlinked regular files.
+if [ "$FLOW_TEST_DROP_GIT_PIPE" = "1" ] && ! ${bun} -e 'const stats = require("node:fs").fstatSync(1); process.exit(stats.isFile() && stats.nlink > 0 ? 0 : 1)'; then
+  exec ${realGit} "$@" >/dev/null
+fi
+exec ${realGit} "$@"
+`);
+  chmodSync(join(bin, "git"), 0o755);
+  symlinkSync(process.execPath, join(bin, "bun"));
+  return { bin, tmp, env: { PATH: `${bin}:${ENV.PATH}`, TMPDIR: tmp, TMP: tmp, TEMP: tmp } };
 }
 
 test("tracker aliases match case-insensitively while preserving original keys and distinguishing underscores", () => {
@@ -162,6 +179,58 @@ test("mixed publications keep declared order across Stages, refusal, replay, ans
   ]);
   const snapshot = ok(run(["show", "--flow", a.flow], at));
   expect(snapshot.stages[0].questions.find((q: any) => q.id === first.refs.one).answer).toMatchObject({ response: { text: "Keep the first publication." }, reading: { decision: "Keep publication order." } });
+});
+
+test.each([["lost", "normal"], ["normal", "lost"]])("bound callers retain their project with %s then %s Git pipe output", async (first, second) => {
+  const w = world();
+  const { at, a, b } = twoTickets(w);
+  const transport = gitTransport(w);
+  const revisions: number[] = [];
+  for (const mode of [first, second]) {
+    const env = { ...transport.env, FLOW_TEST_DROP_GIT_PIPE: mode === "lost" ? "1" : "0" };
+    const jobs: Promise<Run>[] = [];
+    for (let i = 0; i < 6; i++) {
+      jobs.push(runAsync(["submit"], { ...at, env, session: "s-a", stdin: contribution(round(question(`${mode}-a${i}`))) }));
+      jobs.push(runAsync(["submit"], { ...at, env, session: "s-b", stdin: contribution(round(question(`${mode}-b${i}`))) }));
+      jobs.push(runAsync(["alias", `run:${mode}-a${i}`], { ...at, env, session: "s-a" }));
+      jobs.push(runAsync(["alias", `run:${mode}-b${i}`], { ...at, env, session: "s-b" }));
+    }
+    for (const result of await Promise.all(jobs)) {
+      const receipt = ok(result);
+      expect(receipt.flow).toBe(a.flow);
+      revisions.push(receipt.revision);
+    }
+    expect(ok(run(["bound"], { ...at, env, session: "s-a" })).stage).toBe(a.stage);
+    expect(ok(run(["bound"], { ...at, env, session: "s-b" })).stage).toBe(b.stage);
+    expect(readdirSync(transport.tmp)).toEqual([]);
+  }
+  expect(new Set(revisions).size).toBe(48);
+  const state = ok(run(["show", "--flow", a.flow], at));
+  expect(state.stages.find((s: any) => s.id === a.stage).questions).toHaveLength(12);
+  expect(state.stages.find((s: any) => s.id === b.stage).questions).toHaveLength(12);
+  for (const mode of [first, second]) {
+    for (let i = 0; i < 6; i++) expect(state.aliases).toEqual(expect.arrayContaining([`run:${mode}-a${i}`, `run:${mode}-b${i}`]));
+  }
+  expect(state.revision).toBe(Math.max(...revisions));
+});
+
+test("Git command and spawn failures refuse namespace selection and clean captures", () => {
+  const w = world();
+  const at = { cwd: w.project, home: w.home, session: "unbound" };
+  const transport = gitTransport(w);
+  const commandFailure = run(["bound"], { ...at, env: { ...transport.env, FLOW_TEST_GIT_FAILURE: "1" } });
+  expect(commandFailure.code).toBe(1);
+  expect(commandFailure.stdout).toBe("");
+  expect(commandFailure.stderr).toContain("git");
+  expect(readdirSync(transport.tmp)).toEqual([]);
+  expect(existsSync(join(w.home, ".vstack"))).toBe(false);
+  rmSync(join(transport.bin, "git"));
+  const spawnFailure = run(["bound"], { ...at, env: { ...transport.env, PATH: transport.bin } });
+  expect(spawnFailure.code).toBe(1);
+  expect(spawnFailure.stdout).toBe("");
+  expect(spawnFailure.stderr).not.toBe("");
+  expect(readdirSync(transport.tmp)).toEqual([]);
+  expect(existsSync(join(w.home, ".vstack"))).toBe(false);
 });
 
 test("a repeated submission, even a simultaneous one, creates nothing twice", async () => {

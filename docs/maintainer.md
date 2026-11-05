@@ -65,6 +65,14 @@ The runner appends completed slots to `results.jsonl` and unscorable API, model,
 
 The executing caller chooses visuals from each question's reader needs and chooses its Mermaid types without a model judge. `plugin/skills/vstack-figures/references/mermaid-types.md` covers every visualization family in pinned Pele 1.12.0, including C4 views, railroad notations, and aliases. `tests/figure-types.test.ts` renders every example through the real figure CLI and checks documented keywords against an independent list.
 
+## Architecture agreement provenance
+
+At the current pstack Pin, `pstack/architect` contributes grounding, visual alternatives, screening, and rationale to `grill-with-docs` and shared `codebase-design`. Its merged register row does not ship a standalone architect command or its implementation phase. The Matt rows retain their existing owners, and DESIGN-IT-TWICE keeps its detailed-interface workflow. This feature moves no Pin.
+
+[Architecture agreement belongs in the grill](adr/0053-architecture-agreement-belongs-in-the-grill.md) is the canonical architecture policy. The [research note](research/architecture-design-in-grilling.md) supports it without defining another policy. Published main owns ADRs 0047 through 0052, so the architecture record moves to 0053 without changing its accepted bytes. [A Flow starts only on request](adr/0046-a-flow-starts-only-on-request.md) retains the separate enrollment policy.
+
+Published main's release notes through 9.0.4 remain intact. The architecture feature and reconciliation notes belong to 9.0.5, a compatibility Hand edit above both branch tips. The reconciliation preserves the UI upstream's Pin, register rows, and package metadata. It changes no approved target action or Disposition, and updates architecture references only for the ADR's number.
+
 ## Pins and Upstream clones
 
 `pins.yaml` keys (`matt`, `pstack`, `css`, `emil`) are register `upstream` values and local clone names under `~/.cache/vstack/upstreams/<key>`. Set `VSTACK_UPSTREAMS` or pass `--upstreams` for another directory. Blobless clones suffice. check-register never fetches, checks out, or moves HEAD. vstack-maintain plan fetches selected Upstreams without moving HEAD. Target checks fetch only missing Pins and held refs. Keep the cache outside every checkout. To create a clone:
@@ -326,6 +334,8 @@ Consult the skill instead of maintaining a second copy of its procedure here:
 ## Tests
 
 Run `bun run test` for the full suite. It limits discovery to `tests/` through `bunfig.toml` and sets a 30-second timeout because suites launch real `git`, `omp`, and `bun` processes. A preload's `setDefaultTimeout` applies to only one test file, so keep the timeout in the package script.
+
+The script runs every `*.browser.test.ts` file in its own Bun process after the other tests. Bun 1.3.14 closes Playwright's extra Chromium stdio descriptors a second time during garbage collection, and a later test's subprocess can own those numbers by then ([microsoft/playwright#42692](https://github.com/microsoft/playwright/issues/42692)). On Linux this throws `EBADF` in an unrelated test or leaves its subprocess wait hanging.
 
 Tests use temporary repos, homes, fixture Upstreams, and process boundaries. Machine setup tests need `omp` and skip without it. Never use real credentials or the user's omp home in a fixture.
 

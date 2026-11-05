@@ -49,15 +49,232 @@ def plain(data):
     return re.sub(r"\x1b[^\n]", "", text).replace("\r", "")
 
 
+def actual_model(args):
+    """Observe a fresh Session-model TUI; keyboard policy is never scenario input."""
+    import hashlib
+
+    checkout, tools, run = (Path(p).resolve() for p in (args.checkout, args.omp_tools, args.run))
+    source = Path(args.session_source or os.environ.get("PI_SESSION_FILE", ""))
+    records = lines(source)
+    model = next((r["model"] for r in reversed(records) if r.get("type") == "model_change"), None)
+    thinking = next((r["thinkingLevel"] for r in reversed(records) if r.get("type") == "thinking_level_change"), None)
+    if not model or not thinking:
+        raise RuntimeError("Session source lacks the last model or thinking record")
+    run.mkdir(parents=True, exist_ok=False)
+    prompt, config = Path(args.prompt).resolve(), Path(args.config).resolve()
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("PI_", "OMP_"))}
+    env.update(PI_CONFIG_FILES=str(config), TERM="xterm-256color")
+    with socket.socket() as free:
+        free.bind(("127.0.0.1", 0))
+        env["VSTACK_FLOW_PORT"] = str(free.getsockname()[1])
+    flow_home = run / "flow-home"
+    scenario = prompt.read_text()
+    guidance = (
+        f"\n\nRuntime isolation for this disposable evaluation: retain real HOME for credentials, "
+        f"but use the checkout CLI at {checkout / 'plugin/skills/flow-page/scripts/flow-page.ts'} "
+        f"with explicit --home {shlex.quote(str(flow_home))} on every Flow command, "
+        "including publication, recovery, export, closure, and host cleanup. "
+        "Use your own fresh session and agent identity. Let the CLI start its owned host on demand "
+        "using VSTACK_FLOW_PORT. The normal-HOME native extension is intentionally unbound; "
+        "this proves explicit isolated CLI publication plus ordinary native ask, not automatic "
+        "binding or Flow-card acceptance. VSTACK_FLOW_PORT cannot override an existing discovery "
+        "record. Do not launch host.ts directly or alter normal-HOME discovery, secrets, bindings, "
+        "or hosts. Do not stop foreign listeners, including port 51417. "
+        "Write scenario outputs only in this run directory."
+    )
+    effective_prompt = scenario + guidance
+    sessions = run / "sessions"
+    argv = ["omp", "--no-title", "--model", model, "--thinking", thinking,
+            "--approval-mode", "yolo", "--no-rules", "--no-context-files",
+            "--no-extensions", "-e", str(checkout / "plugin"), "-e", str(tools),
+            "--config", str(config), "--session-dir", str(sessions),
+            "--cwd", str(run), effective_prompt]
+    save(run / "launch.json", {"argv": argv, "session_source": str(source), "model": model,
+         "thinking": thinking, "checkout": str(checkout), "omp_tools": str(tools),
+         "prompt_sha256": hashlib.sha256(prompt.read_bytes()).hexdigest(),
+         "config_sha256": hashlib.sha256(config.read_bytes()).hexdigest(),
+         "effective_prompt_sha256": hashlib.sha256(effective_prompt.encode()).hexdigest(),
+         "flow_home": str(flow_home), "flow_cli_guidance": guidance.strip(),
+         "normal_home_extension_bound": False, "normal_home_binding_card_proven": False,
+         "cleared_variables": [k for k in os.environ if k.startswith(("PI_", "OMP_"))],
+         "home": env.get("HOME"), "port": env["VSTACK_FLOW_PORT"],
+         "automated_controller": args.case, "human_consent": False})
+    master, slave = pty.openpty()
+    fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 55, 180, 0, 0))
+    child = subprocess.Popen(argv, cwd=run, env=env, stdin=slave, stdout=slave, stderr=slave,
+                             start_new_session=True, preexec_fn=lambda: fcntl.ioctl(0, termios.TIOCSCTTY, 0))
+    os.close(slave)
+    captured, inputs, started = bytearray(), [], time.monotonic()
+    summary = {"transport_complete": False, "human_consent": False, "case": args.case}
+
+    message_sessions = {}
+
+    def messages():
+        current = []
+        for session_file in sessions.rglob("*.jsonl"):
+            for record in lines(session_file):
+                if record.get("type") == "message":
+                    message = record["message"]
+                    if message.get("role") == "toolResult":
+                        message_sessions[message["toolCallId"]] = session_file
+                    current.append(message)
+        return current
+
+    def send(label, value):
+        inputs.append({"at_seconds": time.monotonic() - started, "label": label,
+                       "bytes_hex": value.hex(), "output_byte_offset": len(captured)})
+        save(run / "inputs.json", inputs)
+        os.write(master, value)
+
+    def verify_picker(current, text):
+        ask_calls = [block for message in current if message.get("role") == "assistant"
+                     for block in message.get("content", []) if isinstance(block, dict)
+                     and block.get("type") == "toolCall" and block.get("name") == "ask"]
+        if not ask_calls:
+            raise RuntimeError("Visible picker has no ordinary ask call in the native session")
+        def identities(payload):
+            return [{"id": question.get("id"), "question": question.get("question"),
+                     "labels": [option.get("label") for option in question.get("options", [])],
+                     "multi": question.get("multi", False)}
+                    for question in payload.get("questions", [])]
+
+        expected = identities(ask_calls[-1].get("arguments", {}))
+        receipts = []
+        decoder = json.JSONDecoder()
+        for message in current:
+            if message.get("role") != "toolResult":
+                continue
+            values = [block.get("text", "") for block in message.get("content", [])
+                      if isinstance(block, dict)]
+            column_truncation = (message.get("details", {}).get("meta", {})
+                                 .get("limits", {}).get("columnTruncated", {}))
+            artifact_id = column_truncation.get("artifactId")
+            if artifact_id is not None and re.fullmatch(r"\d+", str(artifact_id)):
+                # omp stores full outputs beside the owning session's JSONL file.
+                artifact_dir = message_sessions[message["toolCallId"]].with_suffix("")
+                artifacts = list(artifact_dir.glob(f"{artifact_id}.*.log"))
+                if len(artifacts) == 1:
+                    values.append(artifacts[0].read_text())
+            for value in values:
+                for match in re.finditer(r"\{", value):
+                    try:
+                        receipt, _ = decoder.raw_decode(value[match.start():])
+                    except json.JSONDecodeError:
+                        continue
+                    if (isinstance(receipt, dict) and isinstance(receipt.get("ask"), dict)
+                            and identities(receipt["ask"]) == expected):
+                        receipts.append(receipt)
+        if not receipts:
+            raise RuntimeError("Ordinary ask has no matching CLI publication receipt")
+        receipt = receipts[-1]
+        if receipt.get("live", {}).get("state") != "serving":
+            raise RuntimeError(f"Question reader is unavailable: {receipt.get('live')}")
+        url = receipt["live"]["url"]
+        with urlopen(url.rstrip("/") + "/content", timeout=10) as response:
+            content = json.loads(response.read())
+        ids = [question["id"] for question in receipt["ask"]["questions"]]
+        visible = {question["id"]: question for question in content["questions"]}
+        if (content["flow"]["id"] != receipt["flow"] or content["revision"] != receipt["revision"]
+                or any(identity not in visible for identity in ids)):
+            raise RuntimeError("Live question identity differs from its publication receipt")
+        save(run / "live-content.json", content)
+        save(run / "publication.json", receipt)
+        save(run / "ask-call.json", ask_calls[-1])
+        save(run / "before-picker.json", {"elapsed_seconds": time.monotonic() - started,
+             "picker_text_offset": text.find("n add note"), "output_bytes": len(captured),
+             "normal_home_extension_bound": False, "popup_proven": False,
+             "question_context": [visible[identity] for identity in ids]})
+
+    try:
+        controlled, submitted_empty, completed_calls, terminal_reply = False, False, 0, False
+        deadline = time.monotonic() + args.deadline_seconds
+        while time.monotonic() < deadline:
+            if select.select([master], [], [], 0.15)[0]:
+                try:
+                    chunk = os.read(master, 65536)
+                except OSError as error:
+                    if error.errno == errno.EIO:
+                        chunk = b""
+                    else:
+                        raise
+                captured.extend(chunk)
+                with (run / "terminal.bin").open("ab") as log:
+                    log.write(chunk)
+                (run / "terminal.txt").write_text(plain(captured))
+            current = messages()
+            calls = [m for m in current if m.get("role") == "toolResult" and m.get("toolName") == "ask"]
+            save(run / "tool-results.json", calls)
+            text = plain(captured)
+            if not controlled and "n add note" in text:
+                verify_picker(current, text)
+                if args.case == "cancelled":
+                    send("cancel actual picker", b"\x1b")
+                elif args.case == "empty":
+                    # Shift+Tab reaches the submit review without selecting an option.
+                    send("open picker submit review without a selection", b"\x1b[Z")
+                controlled = True
+            if args.case == "empty" and controlled and not submitted_empty and "n add submit note" in text:
+                send("submit actual picker with no selection", b"\r")
+                submitted_empty = True
+            if calls and len(calls) != completed_calls:
+                completed_calls = len(calls)
+                summary["attempts"] = [{"isError": m.get("isError", False), "details": m.get("details"),
+                                        "content": m.get("content")} for m in calls]
+                if calls[-1].get("isError"):
+                    summary.update(transport_complete=True, aborted_tool_result=True,
+                                   model_continuation_observed=False)
+                    break
+            if calls:
+                last = current[-1] if current else {}
+                content = last.get("content", [])
+                terminal_reply = (last.get("role") == "assistant" and
+                                  not any(b.get("type") == "toolCall" for b in content if isinstance(b, dict)))
+                if terminal_reply:
+                    summary["transport_complete"] = True
+                    break
+            if child.poll() is not None:
+                raise RuntimeError(f"omp exited {child.returncode} before the scenario completed")
+        else:
+            raise RuntimeError("Controller deadline reached without a terminal scenario result; this is not a picker timeout")
+        summary.update(picker_observed=controlled, ask_results=completed_calls,
+                       elapsed_seconds=time.monotonic() - started,
+                       note="Inspect actual raw results and Flow behavior. Transport completion is not acceptance.")
+    except Exception as error:
+        summary["error"] = repr(error)
+    finally:
+        os.close(master)
+        if child.poll() is None:
+            child.terminate()
+            try:
+                child.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                child.kill()
+                child.wait()
+        summary["exit_code"] = child.returncode
+        save(run / "summary.json", summary)
+        print(json.dumps(summary, indent=2))
+    return 0 if summary["transport_complete"] and not summary.get("unavailable") else 1
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--checkout", required=True)
     parser.add_argument("--omp-tools", required=True, help="omp-tools checkout or installed plugin link")
     parser.add_argument("--run", required=True, help="new Verify run, with no data directory yet")
-    parser.add_argument("--case", choices=["tui", "timeout", "cancel", "retry", "offline", "abort", "ratchet"], default="tui")
+    parser.add_argument("--case", choices=["tui", "timeout", "cancel", "retry", "offline", "abort", "ratchet", "cancelled", "empty", "later-round"], default="tui")
     parser.add_argument("--tern", action="store_true", help="drive a separate real Tern renderer and capture native link clicks")
     parser.add_argument("--dismiss", choices=["enter", "escape"], default="enter")
+    parser.add_argument("--prompt", help="Scenario file selects actual Session-model mode, without a stub provider")
+    parser.add_argument("--config", help="Actual-model isolation overlay")
+    parser.add_argument("--session-source", help="Persistent caller session for model and thinking discovery")
+    parser.add_argument("--deadline-seconds", type=int, default=1800)
     args = parser.parse_args()
+    if args.prompt:
+        if not args.config or args.case not in ("cancelled", "timeout", "empty"):
+            parser.error("--prompt requires --config and --case cancelled|timeout|empty")
+        return actual_model(args)
+    if args.case in ("cancelled", "empty"):
+        parser.error("--case cancelled|empty requires an actual-model --prompt and --config")
     checkout, tools, run = (Path(p).resolve() for p in (args.checkout, args.omp_tools, args.run))
     for root, name in [(checkout / "plugin", "vstack"), (tools, "omp-tools")]:
         if json.loads((root / "package.json").read_text())["name"] != name:
@@ -274,7 +491,7 @@ def main():
                         save(out / "ratchet-outcomes.json", outcomes)
                         reply = {"text": "FLOW_QUESTIONS_FIXTURE_COMPLETE"}
                         done.set()
-                    elif args.case in ("tui", "retry"):
+                    elif args.case in ("tui", "retry", "later-round"):
                         assert not result[-1].get("isError"), result[-1]
                         answers = raw["results"]
                         assert [a["id"] for a in answers] == [a["id"] for a in receipt["ask"]["questions"]]
@@ -297,6 +514,48 @@ def main():
                         assert all(item.get("timedOut") is True for item in raw["results"]), raw
                         reply = {"text": "FLOW_QUESTIONS_FIXTURE_COMPLETE"}
                         done.set()
+                elif phase == 4 and args.case == "later-round":
+                    assert len(published_state()["answers"]) == 2, "First answers were not separately recorded"
+                    later = {"version": 1, "items": [{"kind": "round", "questions": [{
+                        "ref": "later", "title": "Choose the later fixture path",
+                        "description": "This is a new authored round, not a retry of the first picker.",
+                        "needs": [{"need": "Compare the later fixture paths.", "kind": "prose"}],
+                        "options": [
+                            {"label": "Continue", "does": "Continue the fixture.", "gains": ["Exercise a later round"], "costs": ["Fixture only"]},
+                            {"label": "Stop", "does": "Stop the fixture.", "gains": ["No continuation"], "costs": ["No later answer"]},
+                        ],
+                    }]}]}
+                    save(out / "later-contribution.json", later)
+                    reply = {"tool": "bash", "args": {"command":
+                        f'bun {q(str(cli))} submit {q(str(out / "later-contribution.json"))} --home "$HOME" {identity} > {q(str(out / "later-publication.json"))}'}}
+                    phase = 5
+                elif phase == 5 and args.case == "later-round":
+                    later = json.loads((out / "later-publication.json").read_text())
+                    assert later["live"]["state"] == "serving", later
+                    assert later["flow"] == receipt["flow"] and later["live"]["url"] == receipt["live"]["url"]
+                    with urlopen(later["live"]["url"].rstrip("/") + "/content", timeout=10) as response:
+                        content = json.loads(response.read())
+                    expected_ids = [q["id"] for q in receipt["ask"]["questions"] + later["ask"]["questions"]]
+                    assert content["flow"]["id"] == later["flow"] and content["revision"] == later["revision"], content
+                    assert [q["id"] for q in content["questions"]] == expected_ids, content
+                    assert "This is a new authored round" in json.dumps(content), content
+                    save(out / "later-live-content.json", content)
+                    reply = {"tool": "ask", "args": later["ask"]}
+                    phase = 6
+                elif phase == 6 and args.case == "later-round":
+                    result = asks()
+                    assert len(result) == 2 and not result[-1].get("isError"), result
+                    save(out / "later-tool-result.json", result[-1])
+                    assert result[-1]["details"]["selectedOptions"] == ["A. Continue"], result[-1]
+                    assert len(published_state()["answers"]) == 2, "Later ask delivery authored an answer"
+                    later = json.loads((out / "later-publication.json").read_text())
+                    normalized = {"version": 1, "items": [{"kind": "answer",
+                        "question": later["ask"]["questions"][0]["id"],
+                        "response": {"status": "answered", "picks": ["A"]}}]}
+                    save(out / "later-normalized-answer.json", normalized)
+                    reply = {"tool": "bash", "args": {"command":
+                        f'bun {q(str(cli))} submit {q(str(out / "later-normalized-answer.json"))} --home "$HOME" {identity} > {q(str(out / "later-answers-receipt.json"))}'}}
+                    phase = 7
                 else:
                     reply = {"text": "FLOW_QUESTIONS_FIXTURE_COMPLETE"}
                     done.set()
@@ -527,7 +786,7 @@ def main():
                 wait_for_text("Enter or Esc: continue to the questions", after=before_retry)
                 send("dismiss fresh retry popup with Escape", b"\x1b")
                 wait_for_text("n add note", after=before_retry)
-        if args.case in ("tui", "retry"):
+        if args.case in ("tui", "retry", "later-round"):
             send("open Alpha option note", b"n")
             wait_for_text("Note for")
             send("type option note", b"fixture-option-note")
@@ -557,7 +816,36 @@ def main():
             time.sleep(0.15)
             send("save submit note", b"\r")
             time.sleep(0.2)
+            before_submit = len(captured)
             send("submit real picker", b"\r")
+        if args.case == "later-round":
+            wait_for_text("Enter or Esc: continue to the questions", after=before_submit)
+            assert len(asks()) == 1, "Later picker returned before its popup was dismissed"
+            time.sleep(0.3)
+            if args.tern:
+                later_popup = ctl("tree", ".sf-overlay")
+                assert "Add note" not in json.dumps(later_popup), "Later picker opened before popup dismissal"
+                save(out / "later-popup.tree.json", ctl("tree"))
+                shot = ctl("shot", "later-popup")
+                subprocess.run(["cwebp", "-lossless", shot["png"], "-o", str(out / "later-popup.webp")], check=True,
+                               capture_output=True)
+                assert ctl("tree", ".sf-overlay a")["count"] == 1
+            before_later_dismiss = len(captured)
+            send("dismiss later authored round popup with Escape", b"\x1b")
+            wait_for_text("n add note", after=before_later_dismiss)
+            if args.tern:
+                save(out / "later-picker.tree.json", ctl("tree"))
+                shot = ctl("shot", "later-picker")
+                subprocess.run(["cwebp", "-lossless", shot["png"], "-o", str(out / "later-picker.webp")], check=True,
+                               capture_output=True)
+            before_later_pick = len(captured)
+            send("pick Continue in later round", b"\r")
+            deadline = time.monotonic() + 20
+            while len(asks()) < 2 and time.monotonic() < deadline:
+                read_output(0.1)
+                if ("Submit note" if args.tern else "n add submit note") in plain(captured[before_later_pick:]):
+                    send("submit later round picker", b"\r")
+                    break
         deadline = time.monotonic() + 90
         while not done.is_set() and time.monotonic() < deadline:
             read_output(0.1)
@@ -585,20 +873,25 @@ def main():
         assert not handler_errors, handler_errors
         assert inventory_error is None, inventory_error
         if args.case != "abort":
-            assert len(result) == (2 if args.case == "retry" else 1), result
+            assert len(result) == (2 if args.case in ("retry", "later-round") else 1), result
         opened = json.loads((out / "open.json").read_text())
         folder = flow_folder(opened["flow"])
         state = published_state()
         save(out / "persisted-state.json", state)
-        assert len(state["rounds"]) == 1 and len(state["questions"]) == len(receipt["ask"]["questions"]), state
+        assert len(state["rounds"]) == (2 if args.case == "later-round" else 1), state
+        assert len(state["questions"]) == len(receipt["ask"]["questions"]) + (1 if args.case == "later-round" else 0), state
         assert len(state["results"]) == 1 and state["results"][0]["title"] == "Disposable picker fixture", state
-        if args.case in ("tui", "retry"):
-            assert len(state["answers"]) == 2, state
+        if args.case in ("tui", "retry", "later-round"):
+            assert len(state["answers"]) == (3 if args.case == "later-round" else 2), state
             assert state["answers"][0]["response"]["picks"] == ["A", "B"], state
             assert "fixture-option-note" in state["answers"][0]["response"]["text"]
             assert "fixture-custom-concern" in state["answers"][1]["response"]["text"]
             assert "fixture-submit-note" in state["answers"][1]["response"]["text"]
             assert state["answers"][1]["reading"]["outcome"] == "concern"
+            if args.case == "later-round":
+                later = json.loads((out / "later-publication.json").read_text())
+                assert state["answers"][2]["question"] == later["ask"]["questions"][0]["id"], state
+                assert state["answers"][2]["response"]["picks"] == ["A"], state
         else:
             assert not state["answers"], "Cancellation and timeout must not become Flow answers"
             assert state["revision"] == receipt["revision"]
@@ -613,9 +906,11 @@ def main():
         ask_calls = [c for c in calls if c.get("name") == "ask"]
         save(out / "ask-calls.json", ask_calls)
         calls_by_id = {c["id"]: c for c in ask_calls}
-        for outcome in ([] if args.case in ("ratchet", "abort") else result):
+        for index, outcome in enumerate([] if args.case in ("ratchet", "abort") else result):
             original = calls_by_id[outcome["toolCallId"]]
-            assert original["arguments"] == receipt["ask"], "Retry changed the original question identities"
+            expected = (json.loads((out / "later-publication.json").read_text())["ask"]
+                        if args.case == "later-round" and index == 1 else receipt["ask"])
+            assert original["arguments"] == expected, "Picker changed its published question identities"
         if args.case == "retry":
             assert result[0].get("isError") and not result[-1].get("isError"), result
         publications = [c for c in calls if c.get("name") == "bash" and
@@ -638,10 +933,12 @@ def main():
             assertions.append("popup URL precedes the original picker after user dismissal")
             if args.tern:
                 assertions.append("native popup link click opens the exact live URL")
-        if args.case in ("tui", "retry"):
+        if args.case in ("tui", "retry", "later-round"):
             assertions.append("explicit picks, option note, Other words and submit note recorded separately through CLI")
         if args.case == "retry":
             assertions.append("F5 retry shows a fresh popup and preserves the question identities without republication")
+        if args.case == "later-round":
+            assertions.append("a new authored round gets a fresh popup and separate answer while preserving earlier history")
         if args.case == "timeout":
             assertions.append("configured timeout remains non-consent")
         if args.case == "ratchet":

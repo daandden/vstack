@@ -12,29 +12,51 @@ For an MCP tracker such as Jira, read the named server's current tool list, desc
 
 ## Process
 
+Follow `skill://flow-page`'s "Stage entry/exit line". Discover the source Flow by `ticket:<source issue>` when known.
+
 1. Explore the repo to understand the current state of the codebase, if you haven't already. Use the project's domain glossary vocabulary throughout the spec, and respect any ADRs in the area you're touching.
+
+Read the source Flow's Results and decision provenance, including any Architecture brief, alongside the conversation, source issue and comments, and applicable canonical glossary terms and ADRs. Use the existing agreement rather than starting another architecture interview. A source that already settles the design needs no new Architecture brief, assessment document, or compulsory diagram.
+
+Before dependent synthesis, investigate missing repository facts and distinguish them from an unsettled choice. If proceeding would commit to a new consequential structure, shared contract, or quality trade-off, follow "Consequential gaps" below. Arranging agreed material is not a new fork.
 
 2. Sketch out the seams at which you're going to test the feature. Existing seams should be preferred to new ones. Use the highest seam possible. If new seams are needed, propose them at the highest point you can. The fewer seams across the codebase, the better - the ideal number is one.
 
-Follow `skill://flow-page`'s "Stage entry/exit line". Discover the source Flow by `ticket:<source issue>` when known. Confirm that these seams match the user's expectations through flow-page's "Every ask in a Flow" contract. Publish one complete question round through the Flow CLI, then call `ask` with the receipt's generated questions and record the observed response separately. Automatic picks and unavailable questioning never confirm a seam.
+Confirm that these seams match the user's expectations through flow-page's "Every ask in a Flow" contract. Publish one complete question round through the Flow CLI, then call `ask` with the receipt's generated questions and record the observed response separately. Automatic picks and unavailable questioning never confirm a seam.
 
 When the change spans more than one module, draft a capability map before that call, so that you weigh the module split before the spec fixes it. Use `skill://codebase-design`'s vocabulary. Include the map in the same contribution as a table Result with the columns Module, Responsibility, Depends on, and Build order, one row per module. Depends on gives the dependency direction: the modules that this module uses. A change inside one module gets no map.
 
 Ask about the map only at a real fork: two module splits that differ in a way the user would care about. Add each fork to the seams round and name its map rows in the question's `results`; code makes the reciprocal links. A map with no fork adds no question.
 
+Keep these confirmations within the agreed architecture. If a map fork would change an agreed responsibility or guarantee, treat it as a consequential gap rather than using the seams round to choose a new architecture.
+
 3. Write the spec draft using the template below.
 
 Write no `skill://<addon>` pointers in the spec, and drop any inherited from source context. Build sessions pick Addons fresh.
 
-Before you publish, check the draft against what the user decided, as skill://to-spec/DRIFT-CHECK.md says. Its source is the issue that this run starts from, with its comments, or none. Covered in names a spec section, and the table Result goes on the to-spec Stage.
+Make the canonical spec self-contained. In Implementation Decisions, synthesize the agreed responsibilities, interactions, observable guarantees, constraints, accepted trade-offs, rationale, and important rejected alternatives. Include the necessary architecture visuals in the canonical tracker body or local spec, using its supported format and `skill://vstack-figures` for rendering. A link to a Scratch Flow Result or captured source alone is not the handoff. Keep source links for provenance, not as a substitute for the agreement.
 
-Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the close decisions and Assumed picks, the source issue, the spec draft, and the Checker brief from DRIFT-CHECK.md, the vstack root. Wait for its result. If it cannot be spawned, stop: report the spec draft as not published.
+Link the applicable canonical glossary terms and qualifying ADRs without duplicating their explanations or requiring another canonical design document. Keep signatures, local types, private decomposition, ordinary algorithms, and file layout implementation-owned within the agreed semantics.
+
+Before you publish, check the draft against what the user decided, as skill://to-spec/DRIFT-CHECK.md says. Its source is the issue that this run starts from, with its comments, or none. Include the agreed architecture and necessary visuals from the source Results and applicable domain records in the checker's inputs. Preserve each decision's provenance, explicit assumptions, and unresolved or non-confirmed answers. Covered in names a spec section, and the table Result goes on the to-spec Stage.
+
+Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the close decisions and Assumed picks with their provenance, the source issue, the agreed architecture Results and applicable domain records, the spec draft, and the Checker brief from DRIFT-CHECK.md, the vstack root. Wait for its result. If it cannot be spawned, stop: report the spec draft as not published.
 
 Fix the draft and show the coverage table as DRIFT-CHECK.md's "Fix and show" says.
+
+Recheck any discovered consequential gap before publication. A drift-check conflict that requires changing the architecture follows "Consequential gaps" rather than becoming a new design interview here.
 
 Then publish the spec to the project issue tracker. Apply the `ready-for-agent` triage label - no need for additional triage.
 
 Publish the full spec as a Document Result, with `canonical: { tracker, revision }` naming the published issue and its observed revision, or `{ file }` for a local-markdown spec. If publication fails, put the full draft and observed failure on the Stage as a Document Result, explicitly not published. After successful publication, add `alias spec:<original-number-or-tracker-key>` to the existing Flow, or the feature slug for a local spec. Keep the original tracker spelling and underscores. Also add `ticket:<source issue>` when applicable. Identity and the live URL stay unchanged, so no folder rename is required. The tracker or local file remains canonical.
+
+## Consequential gaps
+
+Expose the evidence, the missing choice, why dependent work needs it, and which synthesis is affected on the current to-spec Stage. Keep settled decisions intact and distinguish them from the gap. Preserve a useful partial draft as explicitly not published, with the affected decision open rather than a recommended design presented as agreement.
+
+Pause affected synthesis and publish no canonical spec that commits to the unresolved choice. A recommendation, Assumed pick, timeout, cancellation, headless selection, or close cannot supply missing architecture consent. Return the missing choice for user-invoked `/skill:grill-with-docs`, then stop. Do not invoke that skill or another Matt skill automatically. Resume synthesis from the resulting agreement when the user invokes `/skill:to-spec` again.
+
+## Spec template
 
 <spec-template>
 

@@ -53,4 +53,4 @@ Remove automatic post-reply Flow messages and the separate `/vstack-clean` resul
 
 Keep session and agent authoring identity, binding isolation, full Flow history, enrollment rules, and ordinary asking and answer recording. This change neither enrolls unbound questions in a Flow nor introduces a custom picker, delivery queue, or retry gate.
 
-[ADR 0052](0052-flow-questions-show-their-link-in-a-flow-popup.md) replaces the chat link before questions with a Flow popup and lets questions open when the Local Flow host is down.
+[ADR 0054](0054-flow-questions-show-their-link-in-a-flow-popup.md) replaces the chat link before questions with a Flow popup and lets questions open when the Local Flow host is down.

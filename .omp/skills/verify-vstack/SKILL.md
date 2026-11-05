@@ -32,6 +32,8 @@ For Flow question popups, use the native helper in `features/flow-page.md` with 
 
 Never use your already-running omp session as proof. It loaded the plugin when it started, so it does not show edits made since then. Stub drives use the throwaway home. The real-model enrollment recipe verifies instruction following with the actual provider in a fresh session, not the shared session.
 
+Reasoning-led skill behavior is an exception to the stub-model isolation below. For architecture assessment and agreement, use `features/architecture-agreement.md` and skill-creator's actual isolated evaluations with the Session model and real `HOME`. Keep their Flow homes and outputs disposable and separate. Scripted replies prove tool plumbing, never the model's reasoning or a human's consent.
+
 ## Launch
 
 Nothing builds at launch: the Flow reader is committed prebuilt. When the change touches `reader/`, run `./node_modules/.bin/vp run reader:build` in `CHECKOUT` first and check that the committed output under `plugin/skills/flow-page/reader/` matches. For scripted smoke proof, a launch is one drive: `scripts/drive.ts` links the plugin into the run's home, starts a stub model, starts `omp --mode rpc` (or `--mode rpc-ui` with `--rpc-ui`), sends the RPC commands you give it, and stops both processes before it exits. The real-model enrollment recipe launches its own fresh native process from `CHECKOUT`.
@@ -53,6 +55,21 @@ Teardown: the script stops its own omp process and stub server. If it was killed
 `--rpc-ui` starts `omp --mode rpc-ui`. omp 18.13 registers the `ask` tool only in that mode; in `--mode rpc`, a stub `ask` call fails with `Tool ask not found`. Each `ask` question reaches the drive as an `extension_ui_request` `select` frame whose options end with `Other (type your own)`. Picking that option opens an `editor` frame for the custom words. `--ui-replies` answers both like any other dialog. Use it for every drive whose model calls `ask`.
 `--session` drops the `--no-session` flag that a drive passes by default. omp then writes the session file under `$VERIFY_RUN_DIR/data/home/.omp/agent/sessions/` and holds its lease under `$VERIFY_RUN_DIR/data/home/.omp/run/session-owners/` while the drive runs. Tool calls get `PI_SESSION_ID` in both modes, but only with `--session` does a session file and a held lease back it. Use it for a skill whose script checks the running session, such as clean-wt.
 
+For actual-model current-picker non-consent cases, use the PTY helper without a stub provider:
+
+```sh
+python3 "$SKILL_DIR/scripts/flow-questions-tui.py" --checkout "$CHECKOUT" \
+  --omp-tools "$OMP_TOOLS" --run "$VERIFY_RUN_DIR/<new-case>" \
+  --prompt <scenario.md> --config <isolate.yml> --case <cancelled|timeout|empty> \
+  [--session-source <persistent-session.jsonl>] [--deadline-seconds 1800]
+```
+
+The helper reads the last model and thinking records from `PI_SESSION_FILE` or `--session-source`. It clears inherited session variables, retains real HOME for credentials, and starts a fresh interactive TUI with the supplied overlay. It loads the checkout's package and the named omp-tools package. It appends operational guidance requiring the checkout CLI's explicit `--home <new-case>/flow-home` on every Flow command and records that home, guidance, and effective prompt hash in `launch.json`. Follow `features/architecture-agreement.md`'s current-picker procedure. The normal-HOME native extension stays intentionally unbound. This proves isolated CLI publication plus ordinary native `ask`, not automatic binding or Flow-card acceptance. A free `VSTACK_FLOW_PORT` selects the owned host's startup port, not its namespace, and cannot override existing discovery.
+
+Cancellation uses Escape in the actual picker. Timeout leaves it unanswered and requires `ask.timeout` in the overlay. Empty uses the real Submit tab without selecting an option, so it needs a generated multi-question or multiselect round. Unsupported routes remain unavailable. A controller deadline is not a picker timeout.
+
+`summary.json` reports transport completion, not a behavioral pass. Inspect `terminal.bin`, `terminal.txt`, `inputs.json`, `tool-results.json`, `before-picker.json`, `launch.json`, and `sessions/` alongside the actual Flow and file inventory. Check that all Flow commands use the recorded isolated home and the child's own identity. Keep human confirmation separate from automated keyboard actions. Preserve failed attempts. Copy exports, close only owned Flows, and authenticate host cleanup with the same explicit `--home`. Record normal-HOME discovery, secrets, and binding hashes and nonsecret host identity before and after the proof, never their secret contents. Leave normal-HOME hosts and foreign listeners untouched.
+
 For a load check with no session turn, use the repo's own load gate. `scripts/load.sh` runs `loadGate` from the checkout's `scripts/lib/update-gates.ts`, which runs `scripts/load-smoke.sh` on a throwaway home. The gate fails when a registered skill, agent, or rule is missing, when the extension's `vstack-clean` Command is missing, or when omp warns about a skill:
 
 ```sh
@@ -70,6 +87,8 @@ bash "$SKILL_DIR/scripts/doctor.sh" "$CHECKOUT" "$VERIFY_RUN_DIR"
 ```
 
 It prints one `ok` or `FAIL` line per check and exits 1 on a failure. It checks that `omp`, `bun`, `jq`, and `git` are on `PATH` with their versions. It names the plugin version, the `HEAD` commit, and the count of uncommitted plugin paths in `CHECKOUT`. After the first drive, it also checks that the session's working directory is outside the real home, that the run's home links `vstack` to `$CHECKOUT/plugin`, and that omp there lists the same version. It checks that the only model provider in that home is the `127.0.0.1` stub, so no real credential is in play. Last, it reports each PID the run recorded as exited, or as live with its listening ports. A `live` line after a drive finished means a process leaked. Run Cleanup.
+
+For the actual-model exception, stub-home checks do not establish runtime isolation. Run the tool and checkout checks above on every fresh case. Inspect the persisted effective system prompt, expanded user message, actual dependency read paths, model and thinking records, and raw tool results. Confirm the installed skill is absent and the checkout's dependencies are used. A missing credential, unsupported TUI route, or failed discovery leaves the case unavailable.
 
 ## Drive
 
@@ -122,7 +141,7 @@ Never stop a process because of its name. Never delete the run dir itself. The `
 All paths are relative to `SKILL_DIR`.
 
 - `scripts/drive.ts`: one omp RPC session on the run's throwaway home, against the stub model. See Launch.
-- `scripts/flow-questions-tui.py --checkout <checkout> --omp-tools <plugin path> --run <new run> --case tui|timeout|cancel|retry|offline|abort|ratchet [--tern] [--dismiss enter|escape]`: drives the UI-only popup before the unchanged picker. `--tern` retains native trees, full-resolution lossless WebP shots, a real popup-link click and its browser destination, keyboard inputs, session history, model requests, and a Flow export. The Ratchet case uses its actual eval prelude and verifies reused approval. Use `features/flow-page.md`.
+- `scripts/flow-questions-tui.py --checkout <checkout> --omp-tools <plugin path> --run <new run> --case tui|timeout|cancel|retry|later-round|offline|abort|ratchet [--tern] [--dismiss enter|escape]`: drives the UI-only popup before the unchanged picker. `--tern` retains native trees, full-resolution lossless WebP shots, a real popup-link click and its browser destination, keyboard inputs, session history, model requests, and a Flow export. The later-round case publishes and answers a new question after recording the first round's answers. The Ratchet case uses its actual eval prelude and verifies reused approval. Use `features/flow-page.md`.
 - `scripts/load.sh <checkout> <run dir>`: the repo's load gate for one run. See Launch.
 - `scripts/doctor.sh <checkout> <run dir>`: the read-only Doctor check. See Doctor.
 - `scripts/cleanup.sh <run dir>`: stops this run's recorded processes and deletes `data/` and the temp working directory. See Cleanup.
@@ -130,12 +149,14 @@ All paths are relative to `SKILL_DIR`.
 - `scripts/figure-audit.js`: evaluate its complete text in the figure consumer with `await tab.evaluate(await Bun.file(SKILL_DIR + "/scripts/figure-audit.js").text())`. It returns browser-computed paint and geometry checks.
 - `scripts/figure-flow.ts <checkout> <verify run> <own session> <own agent>`: captures the figure in a labelled disposable isolated-home Flow. Follow the figure recipe's authenticated host stop and export steps before Cleanup.
 - `scripts/worker-lifecycle.ts <checkout> <new verify run>`: drives real isolated implementer and review-fixer patch landing, retention, and release in a fresh throwaway omp session. Use `features/worker-lifecycle.md`.
+- `scripts/flow-questions-tui.py --prompt <scenario.md> --config <isolate.yml>`: actual Session-model TUI controller for cancelled, elapsed-timeout, and empty architecture responses. See Launch and `features/architecture-agreement.md`.
 - `scripts/frontend-maintenance.ts <checkout> <new evidence directory> <upstream cache>`: drives the public register and maintenance CLIs with a deterministic future-source fixture, preserving the real Pin and local adaptations. Use `features/frontend-guidance.md`.
 
 ## Gotchas
 
 - A drive starts a new omp process, so it sees the plugin files as they are on disk now, uncommitted edits included. Your own session does not.
 - `omp plugin link` in the run's home replaces the link each drive. To compare two checkouts, use two run dirs.
+- Run tests with `bun run test`, or pass `--timeout 30000` when naming files. Bun's default 5000 ms timeout fails slow tests such as `tests/clean-wt.test.ts` that pass under the repo's declared command.
 - The stub model does not think. It answers with `--replies` in order, one per model request. A tool call needs a second reply for the turn after the tool result.
 - Startup tool-routing compression requests are logged but do not consume `--replies`. The helper recognizes only tool-less requests whose user text starts with `Compress into one routing hint`.
 - `get_state` holds the whole system prompt (about 40 KB). The summary shows only its size. Read fields from `rpc.jsonl` with `jq`.
