@@ -2,20 +2,31 @@ import { flow } from "~/composables/reader";
 
 export const current = ref<string>();
 export const treeOpen = ref(false);
+export const tab = ref("overview");
 
 const shown = (el: Element) => el.getClientRects().length > 0;
 export const stops = () => [...document.querySelectorAll<HTMLElement>("[data-stop]")].filter(shown);
-const blocks = () => [...document.querySelectorAll<HTMLElement>("[data-block]")].map((el) => el.querySelector<HTMLElement>("[id][data-stop]")).filter((el): el is HTMLElement => !!el && shown(el));
+const tabs = () => [...document.querySelectorAll<HTMLElement>("[data-tab]")].map((el) => el.dataset.tab!);
+export const tabOf = (el: Element) => el.closest<HTMLElement>("[data-tab]")?.dataset.tab;
 
 export function resolve(id: string): HTMLElement | null {
   if (!id) return null;
   let el = document.getElementById(id);
-  if (!el) {
-    const target = flow.value?.aliases.get(id);
-    if (target) el = document.getElementById(target);
+  const seen = new Set([id]);
+  for (let alias = flow.value?.aliases.get(id); !el && alias && !seen.has(alias); alias = flow.value?.aliases.get(alias)) {
+    seen.add(alias);
+    el = document.getElementById(alias);
   }
   for (let parent = el?.parentElement; parent; parent = parent.parentElement) if (parent instanceof HTMLDetailsElement) parent.open = true;
   return el;
+}
+
+async function reveal(el: HTMLElement) {
+  const owner = tabOf(el);
+  if (owner && owner !== tab.value) {
+    tab.value = owner;
+    await nextTick();
+  }
 }
 
 function focusOn(el: HTMLElement) {
@@ -23,18 +34,50 @@ function focusOn(el: HTMLElement) {
   el.focus({ preventScroll: true });
 }
 
-export function goTo(id: string, focus: boolean) {
-  const el = resolve(id);
-  if (!el) return;
-  el.scrollIntoView({ block: "start", behavior: "instant" });
-  const stop = el.closest<HTMLElement>("[data-stop]");
-  if (stop) current.value = stop.id;
-  if (focus) focusOn(el);
+let placedAt: number | undefined;
+
+export function measureHeader() {
+  const bar = document.querySelector<HTMLElement>(".bar");
+  if (bar) document.documentElement.style.setProperty("--bar", `${bar.offsetHeight}px`);
 }
 
-function select(el: HTMLElement | undefined) {
-  if (!el) return;
+function place(el: HTMLElement) {
+  measureHeader();
   el.scrollIntoView({ block: "start", behavior: "instant" });
+  placedAt = scrollY;
+}
+
+function bringIntoView(el: HTMLElement) {
+  const isWholeTab = el.dataset.tab !== undefined;
+  const headerBottom = document.querySelector(".bar")?.getBoundingClientRect().bottom ?? 0;
+  const startHiddenUnderHeader = el.getBoundingClientRect().top < headerBottom;
+  if (!isWholeTab || startHiddenUnderHeader) place(el);
+}
+
+export async function goTo(id: string, focus: boolean): Promise<boolean> {
+  const el = resolve(id);
+  if (!el) return false;
+  await reveal(el);
+  bringIntoView(el);
+  const stop = el.closest<HTMLElement>("[data-stop]");
+  if (stop) current.value = stop.id;
+  else markFromScroll();
+  if (focus) focusOn(el);
+  return true;
+}
+
+export async function openFirstOpenQuestionTab() {
+  const first = flow.value?.next[0];
+  const el = first ? document.getElementById(first) : null;
+  tab.value = (el && tabOf(el)) ?? "overview";
+  await nextTick();
+  markFromScroll();
+}
+
+async function select(el: HTMLElement | undefined) {
+  if (!el) return;
+  await reveal(el);
+  place(el);
   current.value = el.id;
   history.replaceState(null, "", `#${el.id}`);
   focusOn(el);
@@ -43,7 +86,15 @@ function select(el: HTMLElement | undefined) {
 function step(list: HTMLElement[], by: number) {
   const exact = list.findIndex((el) => el.id === current.value);
   const at = exact >= 0 ? exact : list.findIndex((el) => el.contains(document.getElementById(current.value ?? "")));
-  select(list[at < 0 ? (by > 0 ? 0 : list.length - 1) : Math.min(Math.max(at + by, 0), list.length - 1)]);
+  void select(list[at < 0 ? (by > 0 ? 0 : list.length - 1) : Math.min(Math.max(at + by, 0), list.length - 1)]);
+}
+
+function switchTab(by: number) {
+  const ids = tabs();
+  const next = ids[Math.min(Math.max(ids.indexOf(tab.value) + by, 0), ids.length - 1)];
+  if (!next || next === tab.value) return;
+  history.replaceState(null, "", `#${next}`);
+  void goTo(next, true);
 }
 
 export function markFromScroll() {
@@ -51,6 +102,13 @@ export function markFromScroll() {
   const edge = (parseFloat(getComputedStyle(document.documentElement).scrollPaddingBlockStart) || 0) + 2;
   for (const el of stops()) if (el.getBoundingClientRect().top <= edge) id = el.id;
   if (id) current.value = id;
+}
+
+/** A stop near the end of a tab cannot scroll to the top, so the scroll that placed it must not hand the selection to an earlier stop. */
+export function onScroll() {
+  if (placedAt !== undefined && Math.abs(scrollY - placedAt) < 1) return;
+  placedAt = undefined;
+  markFromScroll();
 }
 
 export function readingAnchor(): { el: HTMLElement; top: number } | undefined {
@@ -87,7 +145,7 @@ export function onKey(e: KeyboardEvent) {
     if (!queue.length) return;
     e.preventDefault();
     const at = queue.findIndex((el) => el.id === current.value);
-    select(queue[(at + 1) % queue.length]);
+    void select(queue[(at + 1) % queue.length]);
   } else if (e.key === "j" || e.key === "ArrowDown") {
     e.preventDefault();
     step(stops(), 1);
@@ -96,10 +154,10 @@ export function onKey(e: KeyboardEvent) {
     step(stops(), -1);
   } else if (e.key === "l" || e.key === "ArrowRight") {
     e.preventDefault();
-    step(blocks(), 1);
+    switchTab(1);
   } else if (e.key === "h" || e.key === "ArrowLeft") {
     e.preventDefault();
-    step(blocks(), -1);
+    switchTab(-1);
   }
 }
 
@@ -110,7 +168,7 @@ export function onClick(e: MouseEvent) {
   if (!document.getElementById(id) || location.hash === a.getAttribute("href")) {
     e.preventDefault();
     if (location.hash !== `#${id}`) history.pushState(null, "", `#${id}`);
-    goTo(id, true);
+    void goTo(id, true);
   }
   treeOpen.value = false;
 }

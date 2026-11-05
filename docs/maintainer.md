@@ -335,6 +335,8 @@ Consult the skill instead of maintaining a second copy of its procedure here:
 
 Run `bun run test` for the full suite. It limits discovery to `tests/` through `bunfig.toml` and sets a 30-second timeout because suites launch real `git`, `omp`, and `bun` processes. A preload's `setDefaultTimeout` applies to only one test file, so keep the timeout in the package script.
 
+The script runs every `*.browser.test.ts` file in its own Bun process after the other tests. Bun 1.3.14 closes Playwright's extra Chromium stdio descriptors a second time during garbage collection, and a later test's subprocess can own those numbers by then ([microsoft/playwright#42692](https://github.com/microsoft/playwright/issues/42692)). On Linux this throws `EBADF` in an unrelated test or leaves its subprocess wait hanging.
+
 Tests use temporary repos, homes, fixture Upstreams, and process boundaries. Machine setup tests need `omp` and skip without it. Never use real credentials or the user's omp home in a fixture.
 
 Flow-page tests assert receipts, refusals, `show` snapshots, stored bytes, and element ids, never page wording or markup. Prove browser and native omp behavior through the linked Verify recipes.

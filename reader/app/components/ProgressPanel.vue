@@ -32,7 +32,7 @@ const KINDS: Record<string, string> = { git: "Git", ci: "CI", "code-host": "Code
 </script>
 
 <template>
-  <section id="progress" class="progress" aria-labelledby="progress-title" :data-complete="p.complete ? '' : undefined">
+  <section id="progress" class="progress" data-stop aria-labelledby="progress-title" :data-complete="p.complete ? '' : undefined">
     <h3 id="progress-title">Authored progress</h3>
     <p class="verdict">{{ verdict }}</p>
     <dl class="facts">
@@ -104,7 +104,7 @@ const KINDS: Record<string, string> = { git: "Git", ci: "CI", "code-host": "Code
       </li>
     </ol>
   </section>
-  <section id="observations" class="observations" aria-labelledby="observations-title">
+  <section id="observations" class="observations" data-stop aria-labelledby="observations-title">
     <h3 id="observations-title">Read-only observations</h3>
     <p class="quiet">Observed outside the Flow. They change no authored content, completion, or authorization.</p>
     <p v-if="!observations" class="quiet">Not observed yet.</p>
