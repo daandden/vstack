@@ -69,6 +69,7 @@ Run `project.ts state`. It prints JSON:
 - `mode`: `private` when `<vstack_root>/config/` exists, `standard` when `docs/vstack/` holds config, else null.
 - `missing_config`: the config files that the mode's config directory does not have yet, from `issue-tracker.md`, `code-host.md`, `triage-labels.md`, `domain.md`, and `ci.md`.
 - `missing_default_end_state`: true when the mode's config directory has `code-host.md` and that file has no line `- Default End state: <commit|merge-ready|shipped>` with one of those three values exactly. False when the line is there or `code-host.md` is missing; a missing file is already in `missing_config`.
+- `missing_landing_method`: true when the mode's config directory has `code-host.md` and that file does not have exactly one `- Landing method: <method>` line that names one of its Code host's methods: `squash`, `merge`, or `rebase` for GitHub, `squash`, `merge`, `rebase_merge`, or `ff` for GitLab, and any lowercase method name for another host. An invalid line or a second line also makes it true. False when the one valid line is there or `code-host.md` is missing.
 - `block_file`: `CLAUDE.md` when it exists, else `AGENTS.md` when it exists, else null. `block_exists`: that file already holds a `## vstack` block. `block_file_dirty`: that file has uncommitted changes.
 
 Keep `block_file_dirty` from this first read for step 7. Edits that this run's Migration makes to the block file do not count.
@@ -79,16 +80,16 @@ Read `skill://vstack-tmp` and resolve the project Scratch dir once. Every worktr
 
 - The user set up beside the Matt files, through the first question or Cancel. Keep the Matt files for step 8 and go on to step 3.
 - The Migration is incomplete. Stop the run after showing the failure.
-- The Migration applied. Run `project.ts state` again. Use its facts from here on, except `block_file_dirty`. Keep the Migration paths and the mode that Migration settled. Migration does not seed `ci.md`; the missing file takes this run straight to the CI section in step 5 after exploration. A `code-host.md` that Migration seeds has no default End state, so `missing_default_end_state` adds Section B's default End state question.
+- The Migration applied. Run `project.ts state` again. Use its facts from here on, except `block_file_dirty`. Keep the Migration paths and the mode that Migration settled. Migration does not seed `ci.md`; the missing file takes this run straight to the CI section in step 5 after exploration. A `code-host.md` that Migration seeds has no default End state and no Landing method, so `missing_default_end_state` and `missing_landing_method` add Section B's two questions.
 
 ### 3. Mode
 
 When `mode` is set, or Migration settled the mode, tell the user the mode and keep it. Then take the first branch that applies:
 
-- `missing_config` is empty, `missing_default_end_state` is false, and this run's Migration changed nothing: tell the user that every config file exists and that they can edit any of them directly. Skip to step 8.
-- `missing_config` is empty, `missing_default_end_state` is false, and this run's Migration changed files, in Standard mode: skip steps 4 and 5. Draft only the `## vstack` block in step 6. Go on to the commit in step 7.
-- `missing_config` is empty, `missing_default_end_state` is false, and this run's Migration changed files, in Private mode: skip to step 8.
-- Otherwise: run only the sections for the missing files in step 5. Draft and write only those files, except for the CI cutover and the default End state below. When `ci.md` is missing and `code-host.md` exists, follow Section C's re-setup branch and include its revised `code-host.md` in the same confirmation. When `missing_default_end_state` is true, ask only Section B's default End state question for the existing `code-host.md` and add its one line there. Leave every other existing config file unchanged.
+- `missing_config` is empty, `missing_default_end_state` and `missing_landing_method` are false, and this run's Migration changed nothing: tell the user that every config file exists and that they can edit any of them directly. Skip to step 8.
+- `missing_config` is empty, `missing_default_end_state` and `missing_landing_method` are false, and this run's Migration changed files, in Standard mode: skip steps 4 and 5. Draft only the `## vstack` block in step 6. Go on to the commit in step 7.
+- `missing_config` is empty, `missing_default_end_state` and `missing_landing_method` are false, and this run's Migration changed files, in Private mode: skip to step 8.
+- Otherwise: run only the sections for the missing files in step 5. Draft and write only those files, except for the CI cutover, the default End state, and the Landing method below. When `ci.md` is missing and `code-host.md` exists, follow Section C's re-setup branch and include its revised `code-host.md` in the same confirmation. When `missing_default_end_state` is true, ask only Section B's default End state question for the existing `code-host.md` and add its one line there. When `missing_landing_method` is true, do the same with Section B's Landing method question. Leave every other existing config file unchanged.
 
 When `mode` is null, call `ask` with one question and two options:
 
@@ -154,6 +155,12 @@ Section B's round carries a second question, the project's default End state, wi
 
 Add the answer to the drafted `code-host.md`'s facts list, beside Host and Repo, as the line `- Default End state: <commit|merge-ready|shipped>`. The line is the same in the CLI shape and the MCP short shape. When `code-host.md` already exists and `missing_default_end_state` is true, ask this question alone and draft the existing file with only that line added. If Section C's cutover also revises `code-host.md`, add the line to that draft.
 
+Then ask the project's Landing method in its own round, because its options depend on the Code host answer. Run the drafted `merge-methods` operation once: its command row, or the read-only tool that MCP discovery matches to it for an MCP Code host. Offer each Landing method that it allows now, with the Code host's own name, as the template's `merge-methods` row describes. On GitHub, recommend `rebase` when it is allowed. On another host, recommend the allowed method that lands without squash, such as the GitLab project's `merge_method`. Recommend nothing when the method to recommend is not allowed. If `merge-methods` is unsupported or fails, name the gap and skip this question. The line stays out, ship keeps squash first, and a later re-run asks again.
+
+> Explainer: ship lands each PR with this method. Squash puts one commit on the default branch. A rebase puts each of the PR's commits there with new SHAs. A merge commit keeps the PR's commits and adds one commit that joins them.
+
+Add the answer to the drafted `code-host.md`'s facts list, under the default End state, as the line `- Landing method: <method>`. When `code-host.md` already exists and `missing_landing_method` is true, ask this question alone and draft the existing file with only that line changed: remove every existing `- Landing method:` line and add the one chosen line. On a GitLab Code host, that draft also replaces the existing `merge-methods`, `merge-pr`, and `auto-merge` rows with the rows in [code-host-gitlab.md](./code-host-gitlab.md). Earlier GitLab rows do not read `squash_option` or send `squash=false`, so a non-squash pick could still squash. Show the replaced rows in the confirmation. If Section C's cutover or the default End state question also revises `code-host.md`, make these changes in that draft.
+
 Section C, CI service.
 
 > Explainer: The CI service runs this repo's builds and checks. It can differ from the Code host. Its logs, build reruns, secrets, and variables belong in `ci.md`.
@@ -201,11 +208,11 @@ Write the drafts from the seed templates in this skill's directory:
 - [domain.md](./domain.md): domain doc consumer rules and layout
 
 For an Other issue tracker with an MCP server, use Section A's server, facts, and Check pin, without per-operation tool rows. For a CLI, use Section A's workflow and Check command. With no tool, write `issue-tracker.md` from the user's prose paragraph.
-For an Other Code host with a CLI, write `code-host.md` in the shape of `code-host-github.md`, with the host, repo, tool, read-only Check command, review reference, and drafted command rows. For an MCP Code host, use Section B's server, project facts, and Check pin, without operation rows. In every `code-host.md`, fill in the repo from the remote and, for self-hosted GitLab, the host, and add Section B's default End state line. The seed templates have no such line.
+For an Other Code host with a CLI, write `code-host.md` in the shape of `code-host-github.md`, with the host, repo, tool, read-only Check command, review reference, and drafted command rows. For an MCP Code host, use Section B's server, project facts, and Check pin, without operation rows. In every `code-host.md`, fill in the repo from the remote and, for self-hosted GitLab, the host, and add Section B's default End state and Landing method lines. The seed templates have neither line.
 For an Other CI service with a CLI, write `ci.md` in the shape of `ci-github-actions.md`, with the CI service, repo, tool, read-only Check command, and drafted rows. Fill in the CI repo and, for self-hosted GitLab, its host. Keep CI logs, build reruns, secrets, and variables only in `ci.md`.
 For an Other CI service with an MCP server, use Section C's short shape, not the CLI operation rows.
 
-For Section C's re-setup branch, use the existing rows and facts as directed there instead of replacing hand edits with seed-template text. The two drafts are the new `ci.md` and the revised existing `code-host.md`. Leave every other existing config file out of the draft and write set, apart from Section B's default End state line.
+For Section C's re-setup branch, use the existing rows and facts as directed there instead of replacing hand edits with seed-template text. The two drafts are the new `ci.md` and the revised existing `code-host.md`. Leave every other existing config file out of the draft and write set, apart from Section B's default End state line and Landing method changes.
 
 In Private mode, change two drafts so that they point under the vstack root by absolute path:
 
@@ -219,9 +226,9 @@ Publish each complete draft and, in Standard mode, the `## vstack` block changes
 Standard mode:
 
 1. When `block_file_dirty` from step 1 is true, tell the user that `<block_file>` has uncommitted changes and that the setup commit is going to include them. Call `ask` with the options Go on and include them, and Stop so I can commit them first. On Stop, stop.
-2. Write each config file that this run drafted: `docs/vstack/issue-tracker.md`, `docs/vstack/code-host.md`, `docs/vstack/ci.md`, `docs/vstack/triage-labels.md`, and `docs/vstack/domain.md`, or only the missing ones on a re-run plus Section C's confirmed `code-host.md` cutover and the confirmed default End state line in an existing `code-host.md`.
+2. Write each config file that this run drafted: `docs/vstack/issue-tracker.md`, `docs/vstack/code-host.md`, `docs/vstack/ci.md`, `docs/vstack/triage-labels.md`, and `docs/vstack/domain.md`, or only the missing ones on a re-run plus Section C's confirmed `code-host.md` cutover and the confirmed default End state line and Landing method changes in an existing `code-host.md`.
 3. Pick the file for the block. When `CLAUDE.md` exists, edit it. Else when `AGENTS.md` exists, edit it. When neither exists, call `ask` with the options `CLAUDE.md` and `AGENTS.md` and no recommended option, and create the one the user picks. Never create `AGENTS.md` when `CLAUDE.md` exists, or the other way round.
-4. When the file already has a `## vstack` block, update it in place instead of adding a second one, and leave the other sections as they are. On a CI-only re-run, preserve its existing subsections and add only a missing CI service subsection. A re-run that only adds the default End state leaves the block unchanged. The block:
+4. When the file already has a `## vstack` block, update it in place instead of adding a second one, and leave the other sections as they are. On a CI-only re-run, preserve its existing subsections and add only a missing CI service subsection. A re-run that only adds the default End state or the Landing method leaves the block unchanged. The block:
 
    ```markdown
    ## vstack
@@ -251,7 +258,7 @@ Standard mode:
 
 Private mode:
 
-1. Write each drafted config file to `<vstack_root>/config/`: `issue-tracker.md`, `code-host.md`, `ci.md`, `triage-labels.md`, and `domain.md`, or only the missing ones on a re-run plus Section C's confirmed `code-host.md` cutover and the confirmed default End state line in an existing `code-host.md`. Creating that directory turns Private mode on for every worktree of this repo.
+1. Write each drafted config file to `<vstack_root>/config/`: `issue-tracker.md`, `code-host.md`, `ci.md`, `triage-labels.md`, and `domain.md`, or only the missing ones on a re-run plus Section C's confirmed `code-host.md` cutover and the confirmed default End state line and Landing method changes in an existing `code-host.md`. Creating that directory turns Private mode on for every worktree of this repo.
 2. Write no `## vstack` block, change no tracked file and no ignore file, and commit nothing.
 
 In both modes, check each config that this run or its Migration wrote. For a CLI config, run its read-only Check command once. For an MCP config, call its pinned read-only Check tool exactly once with the recorded arguments. A config with no tool or an unsupported Check gets a reported gap, not an invented call.
@@ -265,11 +272,11 @@ Publish the Result described above. Tell the user whether setup is complete, in 
 List the skills that read the config:
 
 - `issue-tracker.md`: to-spec, to-tickets, triage, wayfinder, code-review, why, implement-spec, and session.
-- `code-host.md`: implement and its PR chain (open-pr, babysit, and ship), implement-spec, hillclimb, code-review, blast-radius, why, and session. Without it, implement offers only End state commit, and code-review and blast-radius cannot review a PR. Its default End state is the End state that implement, implement-spec, and hillclimb take when the user's words and the ticket name none.
+- `code-host.md`: implement and its PR chain (open-pr, babysit, and ship), implement-spec, hillclimb, code-review, blast-radius, why, and session. Without it, implement offers only End state commit, and code-review and blast-radius cannot review a PR. Its default End state is the End state that implement, implement-spec, and hillclimb take when the user's words and the ticket name none. Its Landing method is how ship lands each PR.
 - `ci.md`: implement, babysit, and wizard. Without it, implement offers only End state commit. Logs, build reruns, secrets, and variables use this file.
 - `triage-labels.md`: triage, to-spec, and to-tickets.
 - `domain.md` and the domain docs: domain-modeling, grill-with-docs, improve-codebase-architecture, codebase-design, diagnosing-bugs, tdd, and wait-what.
 
-Say that the user can edit these files directly later. Re-running this skill adds only missing config files, with one cutover when `ci.md` is missing: it also removes the moved CI rows from `code-host.md` and reduces an MCP Code host to its short shape after confirmation. When `code-host.md` has no default End state, a re-run asks only that question and adds the one line after confirmation. Every other existing config stays unchanged. To switch a choice, edit its file, or delete the file and run this skill again.
+Say that the user can edit these files directly later. Re-running this skill adds only missing config files, with one cutover when `ci.md` is missing: it also removes the moved CI rows from `code-host.md` and reduces an MCP Code host to its short shape after confirmation. When `code-host.md` has no default End state or no Landing method, a re-run asks only the missing questions and adds their lines after confirmation. Every other existing config stays unchanged. To switch a choice, edit its file, or delete the file and run this skill again.
 
 Then name the next step. setup-app-verification creates this project's Verify skill. implement, hillclimb, and forensics use it for their own checks, and the final Verifier drives it at every End state. Tell the user to start a new session (`/new`) and run `/skill:grill-with-docs` to plan verification. implement uses `skill://setup-app-verification` to create the Verify skill in that run.

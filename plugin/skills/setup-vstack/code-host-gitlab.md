@@ -26,6 +26,6 @@ Each skill looks up an operation by its id. A row that says `unsupported` means 
 - `resolve-thread`: `glab api --method PUT projects/:id/merge_requests/<iid>/discussions/<discussion-id> -f resolved=true`
 - `comment-pr`: `glab api --method POST projects/:id/merge_requests/<iid>/notes --input <payload.json>`, where the payload is `{"body": "..."}`.
 - `update-branch`: unsupported. GitLab can only rebase the MR on the host.
-- `merge-methods`: `glab api projects/:id`, fields `merge_method` (`merge`, `rebase_merge`, or `ff`) and `squash_option`.
-- `merge-pr`: `glab mr merge <iid> --sha <head-sha> --auto-merge=false --yes`. Add `--squash` to squash.
-- `auto-merge`: arm with `glab mr merge <iid> --sha <head-sha> --auto-merge --yes`. Disarm with `glab api --method POST projects/:id/merge_requests/<iid>/cancel_merge_when_pipeline_succeeds`.
+- `merge-methods`: `glab api projects/:id`, fields `merge_method` (`merge`, `rebase_merge`, or `ff`) and `squash_option` (`never`, `default_off`, `default_on`, or `always`). The Landing methods are the project's `merge_method` value, allowed unless `squash_option` is `always`, and `squash`, allowed unless `squash_option` is `never`.
+- `merge-pr`: for `squash`, `glab mr merge <iid> --sha <head-sha> --squash --auto-merge=false --yes`. For the project's `merge_method`, `glab api --method PUT projects/:id/merge_requests/<iid>/merge -f sha=<head-sha> -F squash=false`. Always send `squash=false` for the project's `merge_method`. `glab mr merge` sends no squash field without `--squash`, and a `default_on` project starts each MR with squash on.
+- `auto-merge`: arm with `glab mr merge <iid> --sha <head-sha> --squash --auto-merge --yes` for `squash`, or with the `merge-pr` API call plus `-F auto_merge=true` for the project's `merge_method`. Disarm with `glab api --method POST projects/:id/merge_requests/<iid>/cancel_merge_when_pipeline_succeeds`.

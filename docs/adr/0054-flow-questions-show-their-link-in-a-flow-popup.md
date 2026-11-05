@@ -24,4 +24,4 @@ Earlier fixes failed in other ways. ADR 0044's post-reply card appeared too ofte
 - Add a context-free, awaited transcript card to omp core. The user replaced the card requirement with a popup, which needs no omp change.
 - Add an omp event before Ratchet's gate. The user chose the vstack wrapper. Two limits come with it. The wrapper runs in an order set by omp-tools' own `ui.askDialog` wrapper. It also misses Ratchet's `ui.select` fallback, which runs only when `ui.askDialog` is absent.
 
-[ADR 0055](0055-flow-questions-show-their-link-in-a-flow-panel.md) replaces the Flow popup with a Flow panel above the composer, and the picker opens without an Enter or Escape step.
+[ADR 0056](0056-flow-questions-show-their-link-in-a-flow-panel.md) replaces the Flow popup with a Flow panel above the composer, and the picker opens without an Enter or Escape step.

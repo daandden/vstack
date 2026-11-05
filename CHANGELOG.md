@@ -4,9 +4,20 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.11] - 2026-11-06
+
+- Replace the Flow popup with a Flow panel above the composer (ADR 0056). The panel shows the `Flow page` title and the clickable live URL while a bound interactive question picker or native Ratchet approval is open, and the picker opens without an Enter or Escape step. The panel goes away when the picker returns, the turn ends, or the session switches or shuts down, and a link lookup that finishes after the picker closed shows nothing. Unavailable hosts show their error in the panel. The panel text stays out of session history and model context.
+
+## [9.0.10] - 2026-11-06
+
+- `code-host.md` holds exactly one Landing method. `project.ts state` reports `missing_landing_method` when the file has an invalid line beside a valid one or two lines, and a setup-vstack re-run removes every existing `- Landing method:` line before it adds the chosen one. ship treats several lines as a missing line, because none of them takes precedence (#366).
+
 ## [9.0.9] - 2026-11-06
 
-- Replace the Flow popup with a Flow panel above the composer (ADR 0055). The panel shows the `Flow page` title and the clickable live URL while a bound interactive question picker or native Ratchet approval is open, and the picker opens without an Enter or Escape step. The panel goes away when the picker returns, the turn ends, or the session switches or shuts down, and a link lookup that finishes after the picker closed shows nothing. Unavailable hosts show their error in the panel. The panel text stays out of session history and model context.
+- ship lands each PR by the project's Landing method, the `- Landing method: <method>` line in `code-host.md`, instead of always squashing. setup-vstack offers the methods that the Code host allows and recommends `rebase` on GitHub and the non-squash project method on GitLab. If the stored method is not allowed or cannot land a PR, ship asks which method to use. A project without the line keeps squash first until a setup-vstack re-run adds it (ADR 0055).
+- The GitLab template sends `squash=false` when it lands with the project's non-squash Landing method, because `glab mr merge` without `--squash` can still squash an MR in a project that turns squash on by default. Its `merge-methods` row reads `squash_option` to decide whether squash, the project method, or both are allowed. A setup-vstack re-run that adds the Landing method to an existing GitLab `code-host.md` also replaces those three rows.
+- `project.ts state` reports `missing_landing_method` when `code-host.md` names no Landing method of its Code host.
+- The End state Conflict owner asks the user before it resolves a conflicting hunk that chooses between two behaviors. babysit no longer lists a conflict as the human's line, because the Conflict owner owns it.
 
 ## [9.0.8] - 2026-11-06
 

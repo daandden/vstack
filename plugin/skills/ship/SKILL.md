@@ -58,7 +58,7 @@ If this PR's base is not the default branch, retarget only this PR to the defaul
 
 ## 5. Land one PR at a time
 
-Read the allowed methods through `merge-methods`. Use squash when allowed. Otherwise use the repository's only allowed method. If there is no method, stop. If both merge and rebase remain allowed without squash, choose through `ask` before merging. Without the user's answer, leave the merge undone.
+Read the project's Landing method from the `- Landing method: <method>` line in `code-host.md`'s project facts, and the allowed methods through `merge-methods`. The method is the Code host's own name, as its `merge-methods` row describes. Use the line only when the file has exactly one. Treat several lines as a missing line, because none of them takes precedence. If the line names a method that `merge-methods` allows now, use it. If the line is missing, use squash when allowed, else the repository's only allowed method. Without the line, if both merge and rebase remain allowed without squash, choose through `ask` before merging. If the stored method is no longer allowed, or the Code host refuses it for this PR in `merge-pr` or `auto-merge`, choose one of the allowed methods for this PR through `ask`. The Code host can refuse a rebase landing when a replayed commit conflicts. Never rebase or force-push the branch to make a method possible. If there is no method, stop. Without the user's answer, leave the merge undone.
 
 If the current bottom PR is mergeable now and required checks pass, run `merge-pr` with the chosen method and the current head SHA as its guard. Never bypass protections, for example with `gh pr merge --admin`.
 

@@ -138,6 +138,32 @@ test("missing_default_end_state is true only when code-host.md lacks a valid def
   }
 });
 
+test("missing_landing_method is true unless code-host.md has exactly one Landing method that its Code host names, in either mode", () => {
+  const codeHost = (host: string, facts: string) => `# Code host\n\n- Host: ${host}\n- Repo: \`o/r\`\n${facts}\n## Operations\n`;
+  const github = "GitHub (`github.com`)";
+  const gitlab = "GitLab (`gitlab.example.com`)";
+  const cases: [string, Record<string, string>, boolean][] = [
+    ["no line", { "code-host.md": codeHost(github, "- Default End state: shipped\n") }, true],
+    ["a GitHub method", { "code-host.md": codeHost(github, "- Landing method: rebase\n") }, false],
+    ["a GitLab-only method on GitHub", { "code-host.md": codeHost(github, "- Landing method: ff\n") }, true],
+    ["a GitLab method", { "code-host.md": codeHost(gitlab, "- Landing method: rebase_merge\n") }, false],
+    ["a GitHub-only method on GitLab", { "code-host.md": codeHost(gitlab, "- Landing method: rebase\n") }, true],
+    ["another host's own method", { "code-host.md": codeHost("Gitea (`git.example.com`)", "- Landing method: fast-forward-only\n") }, false],
+    ["an empty value", { "code-host.md": codeHost(github, "- Landing method: \n") }, true],
+    ["an invalid line beside a valid one", { "code-host.md": codeHost(github, "- Landing method: ff\n- Landing method: rebase\n") }, true],
+    ["two valid lines", { "code-host.md": codeHost(github, "- Landing method: rebase\n- Landing method: squash\n") }, true],
+    ["no code-host.md", { "domain.md": "# Domain\n" }, false],
+  ];
+  for (const [name, files, expected] of cases) {
+    const standard = makeRepo(Object.fromEntries(Object.entries(files).map(([f, c]) => [`docs/vstack/${f}`, c])));
+    expect([name, "standard", state(standard).missing_landing_method]).toEqual([name, "standard", expected]);
+
+    const privateRepo = makeRepo();
+    write(join(privateRepo, ".git", "vstack"), Object.fromEntries(Object.entries(files).map(([f, c]) => [`config/${f}`, c])));
+    expect([name, "private", state(privateRepo).missing_landing_method]).toEqual([name, "private", expected]);
+  }
+});
+
 test("Standard setup refuses to commit without ci.md and preserves the index and HEAD", () => {
   const repo = makeRepo({ ...configFiles(), "CLAUDE.md": BLOCK, "src/a.ts": "original\n" });
   const before = git(repo, "rev-parse", "HEAD");

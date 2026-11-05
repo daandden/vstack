@@ -60,7 +60,7 @@ items:
     tree: f07d230f645fc9ac390cf13a450bbff12ad791a3
     disposition: adapt
     artifacts: [plugin/skills/implement]
-    reason: "Settles End states from user words, the ticket, project default, then ask through live MCP discovery and Code host routing. Confirms Flow test seams before code and goes red per slice (#183, ADR 0035, ADR 0038). Preserves tune-llm-flow kept-round and eval commits (ADR 0041). Shared step 6b independently verifies committed HEAD at every End state and gates reached progress (ADR 0043). It owns Shared checkout briefs, REFUSED and cleanup_error availability checks, and unchanged-clone verification safety. Preserves supplied architecture agreements while leaving coding choices to implementation; consequential departures remain open until the user resolves them (#336, ADR 0053). Frontend tasks and delegated briefs conditionally reach good-css and its shipped UI guidance (#339, ADR 0051)."
+    reason: "Settles End states from user words, the ticket, project default, then ask through live MCP discovery and Code host routing. Confirms Flow test seams before code and goes red per slice (#183, ADR 0035, ADR 0038). Preserves tune-llm-flow kept-round and eval commits (ADR 0041). Shared step 6b independently verifies committed HEAD at every End state and gates reached progress (ADR 0043). It owns Shared checkout briefs, REFUSED and cleanup_error availability checks, and unchanged-clone verification safety. Preserves supplied architecture agreements while leaving coding choices to implementation; consequential departures remain open until the user resolves them (#336, ADR 0053). Frontend tasks and delegated briefs conditionally reach good-css and its shipped UI guidance (#339, ADR 0051). The Conflict owner merges the target in and asks the user before resolving a hunk that chooses between behaviors (ADR 0033)."
   - id: matt/improve-codebase-architecture
     upstream: matt
     kind: skill
@@ -92,7 +92,7 @@ items:
     tree: b1568cde855a189b16e5d7dd8a0fa4c3f156bc2e
     disposition: adapt
     artifacts: [plugin/skills/setup-vstack]
-    reason: "Uses current MCP descriptions, schemas, and recorded tracker and Code host facts. Preserves CI hand edits and confirms CI and Code host drafts together, including the default End state. Lists all eight tracker readers and the final Verifier as a Verify skill consumer. Removes obsolete diagram and visual-judge setup claims (#204, #205, #206, #207, ADR 0035, ADR 0038, ADR 0043)."
+    reason: "Uses current MCP descriptions, schemas, and recorded tracker and Code host facts. Preserves CI hand edits and confirms CI and Code host drafts together, including the default End state and the Landing method that the Code host allows. Lists all eight tracker readers and the final Verifier as a Verify skill consumer. Removes obsolete diagram and visual-judge setup claims (#204, #205, #206, #207, ADR 0035, ADR 0038, ADR 0043, ADR 0055)."
   - id: matt/tdd
     upstream: matt
     kind: skill
@@ -812,7 +812,7 @@ items:
     tree: 0a0c3cfde8948e3aa8ee80c6f3f9ce7e3e64fcba
     disposition: adapt
     artifacts: [plugin/skills/ship]
-    reason: "Uses isolated vstack Verifiers, reuses accepted Verdicts only for matching patch ids, and otherwise verifies through implement END-STATE step 6b. Every brief passes Shared checkout, and shared step 6b preserves REFUSED and cleanup_error as unavailable proof. Publishes validated human summaries while retaining original machine evidence (ADR 0043)."
+    reason: "Uses isolated vstack Verifiers, reuses accepted Verdicts only for matching patch ids, and otherwise verifies through implement END-STATE step 6b. Every brief passes Shared checkout, and shared step 6b preserves REFUSED and cleanup_error as unavailable proof. Publishes validated human summaries while retaining original machine evidence (ADR 0043). Lands each PR by the project's stored Landing method and asks when the Code host cannot use it (ADR 0055)."
   - id: pstack/playbook-trace-forensics
     upstream: pstack
     kind: playbook
