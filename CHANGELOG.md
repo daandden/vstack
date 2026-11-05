@@ -4,6 +4,8 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.4] - 2026-11-05
+
 - Publish approved ticket batches through one durable publish/resume Interface, reconcile uncertain creates, and verify fields and directed relationships before configured readiness across CLI, MCP, and local-file trackers (#352).
 - Resolve shared Private-mode domain canonical references from main and linked checkouts with one `vstack-domain` identity, preserving hashes and history without widening attachment access (#354).
 - Diagnose malformed `revise.add` collections before Result provenance checks, without changing saved Flow state or valid append behavior (#357).
