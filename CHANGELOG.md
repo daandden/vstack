@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.9] - 2026-11-06
+
+- Replace the Flow popup with a Flow panel above the composer (ADR 0055). The panel shows the `Flow page` title and the clickable live URL while a bound interactive question picker or native Ratchet approval is open, and the picker opens without an Enter or Escape step. The panel goes away when the picker returns, the turn ends, or the session switches or shuts down, and a link lookup that finishes after the picker closed shows nothing. Unavailable hosts show their error in the panel. The panel text stays out of session history and model context.
+
 ## [9.0.8] - 2026-11-06
 
 - `/vstack-clean` no longer fails with a JSON parse error when the dry-run listing is larger than 64 KiB, about 200 expired entries. `clean.ts` exited before stdout drained, so a piped reader such as the Command got the listing cut at the pipe buffer. The script now waits for stdout to take every byte before it exits.
