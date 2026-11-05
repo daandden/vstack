@@ -154,6 +154,6 @@ Draw lesson and reference figures through `skill://vstack-figures`. Write each f
 
 ## In-session questions
 
-Every question addressed to the learner during the session goes through `ask` on the bound Stage, following `skill://flow-page`'s "Every ask in a Flow", including Flow CLI publication and a visible current live URL in chat before `ask`, followed by separate answer recording. This covers mission discovery, prior knowledge, topic choices, preferences, and approvals. Keep Quiz attempts separate from these real questions. Quiz feedback and completion persist through the learning-progress contract, including supported offline attempts.
+Every question addressed to the learner during the session goes through `ask` on the bound Stage, following `skill://flow-page`'s "Every ask in a Flow", including Flow CLI publication and separate answer recording. This covers mission discovery, prior knowledge, topic choices, preferences, and approvals. Keep Quiz attempts separate from these real questions. Quiz feedback and completion persist through the learning-progress contract, including supported offline attempts.
 
 A timed-out answer is not the learner's answer. Leave ordinary questions unanswered. For an approval, re-ask once through `ask` with `again`, then stop without acting if it times out again. A subagent returns open questions to its parent. An unavailable or headless run cannot grant approval. Report any recommended choice as an assumption, not the learner's answer.

@@ -14,7 +14,7 @@ afterAll(async () => {
   rmSync(root, { recursive: true, force: true });
 });
 
-function world() {
+function world(hostOff = false) {
   const home = join(root, String(worlds.length));
   const project = join(home, "project");
   mkdirSync(project, { recursive: true });
@@ -24,7 +24,7 @@ function world() {
   listener.stop(true);
   const run = async (args: string[], input?: unknown) => {
     const p = Bun.spawn([process.execPath, script, ...args, "--home", home], {
-      cwd: project, env: { ...ENV, HOME: home, VSTACK_FLOW_PORT: port },
+      cwd: project, env: { ...ENV, HOME: home, VSTACK_FLOW_PORT: port, ...(hostOff ? { VSTACK_FLOW_HOST: "off" } : {}) },
       stdin: input === undefined ? "ignore" : new TextEncoder().encode(JSON.stringify(input)), stdout: "pipe", stderr: "pipe",
     });
     const [stdout, stderr, code] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited]);
@@ -42,7 +42,7 @@ function world() {
   };
   return { home, project, port, run, ok, host };
 }
-function setup() { const w = world(); worlds.push(w); return w; }
+function setup(hostOff = false) { const w = world(hostOff); worlds.push(w); return w; }
 const completedReply = (text = "Done.") => ({
   isTerminal: true,
   messages: [{ role: "assistant", stopReason: "stop", content: [{ type: "text", text }] }],
@@ -151,5 +151,234 @@ test("session and agent bindings keep ticket contributions and hidden authoring 
   expect(worker.content).toContain(`Your bound Flow is ${a.flow}, Stage ${child.stage}.`);
   expect((await w.ok(["bound", "--session", "a"])).stage).toBe(a.stage);
   expect((await w.ok(["bound", "--session", "a", "--agent", "worker-1"])).stage).toBe(child.stage);
+});
+
+test("one bound ask waits for a dismissible UI-only Flow popup before the unchanged picker", async () => {
+  const w = setup();
+  await w.ok(["open", "--title", "Question handoff", "--skill", "implement", "--session", "popup"]);
+  const current = await w.ok(["bound", "--session", "popup"]);
+  const h = w.host("popup");
+  h.ctx.mode = "tui";
+  h.ctx.hasUI = true;
+  let popup: any;
+  let dismiss!: () => void;
+  h.ctx.ui.custom = async (factory: any, options: any) => {
+    expect(options.overlay).toBe(true);
+    return new Promise(resolve => {
+      popup = factory({}, {}, {}, resolve);
+      dismiss = () => popup.handleInput("\r");
+    });
+  };
+  let picked = false;
+  const input = { questions: [{ id: "a" }, { id: "b" }] };
+  const pending = h.emit("tool_call", { toolName: "ask", toolCallId: "ask-1", input }).then(() => { picked = true; });
+  await Bun.sleep(300);
+  expect(popup).toBeDefined();
+  expect(picked).toBe(false);
+  expect(popup.render(120).join("\n")).toContain(current.live.url);
+  expect(popup.describe({})).toBeDefined();
+  dismiss();
+  await pending;
+  expect(picked).toBe(true);
+  expect(input).toEqual({ questions: [{ id: "a" }, { id: "b" }] });
+  expect(h.sent).toEqual([]);
+  expect(h.saved).toEqual([]);
+});
+
+test("native host approval composes with another wrapper and follows session lifecycle", async () => {
+  const w = setup();
+  await w.ok(["open", "--title", "First approval", "--skill", "tune-llm-flow", "--session", "native-a"]);
+  await w.ok(["open", "--title", "Second approval", "--skill", "tune-llm-flow", "--session", "native-b"]);
+  const first = await w.ok(["bound", "--session", "native-a"]);
+  const second = await w.ok(["bound", "--session", "native-b"]);
+  const h = w.host("native-a");
+  h.ctx.mode = "tui";
+  h.ctx.hasUI = true;
+  const order: string[] = [];
+  let component: any;
+  let close!: (value?: any) => void;
+  h.ctx.ui.custom = async (factory: any) => new Promise(resolve => {
+    order.push("popup");
+    close = resolve;
+    component = factory({}, {}, {}, resolve);
+  });
+  const answer = { kind: "submit", results: [] };
+  h.ctx.ui.askDialog = async (...args: any[]) => { order.push("native"); return answer; };
+  await h.emit("session_start");
+  const native = h.ctx.ui.askDialog;
+  h.ctx.ui.askDialog = async (...args: any[]) => { order.push("other-wrapper"); return native(...args); };
+  await h.emit("before_agent_start");
+  const questions = [{ id: "approval", question: "Approve?", options: [{ label: "Approve" }] }];
+  const pending = h.ctx.ui.askDialog(questions);
+  await Bun.sleep(200);
+  expect(order).toEqual(["popup"]);
+  expect(component.render(120).join("\n")).toContain(first.live.url);
+  component.handleInput("\x1b");
+  expect(await pending).toBe(answer);
+  expect(order).toEqual(["popup", "other-wrapper", "native"]);
+  h.ctx.sessionManager = { ...h.ctx.sessionManager, getSessionId: () => "native-b" };
+  await h.emit("session_switch");
+  const again = h.ctx.ui.askDialog(questions);
+  await Bun.sleep(200);
+  expect(component.render(120).join("\n")).toContain(second.live.url);
+  close();
+  expect(await again).toBe(answer);
+  await h.emit("session_shutdown");
+  const count = order.filter(item => item === "popup").length;
+  expect(await h.ctx.ui.askDialog(questions)).toBe(answer);
+  expect(order.filter(item => item === "popup")).toHaveLength(count);
+});
+
+test("turn cancellation aborts a pending native popup without opening its original dialog", async () => {
+  const w = setup();
+  await w.ok(["open", "--title", "Cancelled approval", "--skill", "tune-llm-flow", "--session", "abort"]);
+  const h = w.host("abort");
+  h.ctx.mode = "tui";
+  h.ctx.hasUI = true;
+  let dismissed!: () => void;
+  let shown = false;
+  let picked = false;
+  h.ctx.ui.custom = async (_factory: any, options: any) => new Promise((resolve, reject) => {
+    shown = true;
+    dismissed = () => resolve(undefined);
+    options.signal.addEventListener("abort", () => reject(new Error("Turn cancelled")), { once: true });
+  });
+  h.ctx.ui.askDialog = async () => { picked = true; return {}; };
+  await h.emit("session_start");
+  const pending = h.ctx.ui.askDialog([]);
+  await Bun.sleep(200);
+  expect(shown).toBe(true);
+  await h.emit("agent_end");
+  dismissed();
+  expect(await pending).toBeUndefined();
+  expect(picked).toBe(false);
+});
+
+test("each retry gets a fresh popup and delegated ordinary ask opens no duplicate", async () => {
+  const w = setup();
+  await w.ok(["open", "--title", "Repeated questions", "--skill", "implement", "--session", "retry"]);
+  const h = w.host("retry");
+  h.ctx.mode = "tui";
+  h.ctx.hasUI = true;
+  const popups: any[] = [];
+  h.ctx.ui.custom = async (factory: any) => new Promise(resolve => {
+    popups.push(factory({}, {}, {}, resolve));
+  });
+  let picks = 0;
+  h.ctx.ui.askDialog = async () => { picks++; return undefined; };
+  await h.emit("session_start");
+  for (const [index, key] of ["\r", "\x1b", "\r"].entries()) {
+    const call = { toolName: "ask", toolCallId: `retry-${index}`, input: { questions: [{ id: "same" }] } };
+    const pending = h.emit("tool_call", call);
+    await Bun.sleep(150);
+    expect(popups).toHaveLength(index + 1);
+    expect(picks).toBe(index);
+    popups[index].handleInput("x");
+    expect(picks).toBe(index);
+    popups[index].handleInput(key);
+    await pending;
+    expect(await h.ctx.ui.askDialog(call.input.questions)).toBeUndefined();
+    expect(popups).toHaveLength(index + 1);
+    await h.emit("tool_result", { toolCallId: call.toolCallId });
+  }
+  expect(picks).toBe(3);
+  expect(h.saved).toEqual([]);
+  expect(h.sent).toEqual([]);
+});
+
+test("only this main agent's bound interactive TUI gets a popup", async () => {
+  const w = setup();
+  await w.ok(["open", "--title", "Main binding", "--skill", "implement", "--session", "main"]);
+  await w.ok(["open", "--title", "Child binding", "--skill", "research", "--session", "main", "--agent", "child"]);
+  const child: FakeAgent = { kind: "sub", id: "child", name: "vstack-worker", depth: 0 };
+  for (const [session, agent, mode, hasUI] of [
+    ["unbound", undefined, "tui", true],
+    ["main", child, "tui", true],
+    ["main", undefined, "rpc", true],
+    ["main", undefined, "print", true],
+    ["main", undefined, "json", true],
+    ["main", undefined, "tui", false],
+  ] as const) {
+    const h = w.host(session, agent);
+    h.ctx.mode = mode;
+    h.ctx.hasUI = hasUI;
+    let shown = false;
+    h.ctx.ui.custom = async () => { shown = true; };
+    h.ctx.ui.askDialog = async () => "original";
+    await h.emit("session_start");
+    expect(await h.emit("tool_call", { toolName: "ask", toolCallId: "isolated", input: {} })).toEqual([undefined]);
+    expect(await h.ctx.ui.askDialog([])).toBe("original");
+    expect(shown).toBe(false);
+    expect(h.sent).toEqual([]);
+  }
+});
+
+test("an unavailable bound host warns in the popup and opens questions without host interference", async () => {
+  const w = setup();
+  await w.ok(["open", "--title", "Offline handoff", "--skill", "implement", "--session", "offline"]);
+  await w.ok(["host", "stop"]);
+  const listener = Bun.serve({ port: Number(w.port), fetch: () => new Response("other listener") });
+  try {
+    const bound = await w.ok(["bound", "--session", "offline"]);
+    const h = w.host("offline");
+    h.ctx.mode = "tui";
+    h.ctx.hasUI = true;
+    let component: any;
+    h.ctx.ui.custom = async (factory: any) => new Promise(resolve => { component = factory({}, {}, {}, resolve); });
+    const pending = h.emit("tool_call", { toolName: "ask", toolCallId: "offline", input: {} });
+    await Bun.sleep(150);
+    expect(component.render(100).join("\n")).toContain(bound.live.error);
+    component.handleInput("\x1b");
+    expect(await pending).toEqual([undefined]);
+    expect(await (await fetch(`http://127.0.0.1:${w.port}`)).text()).toBe("other listener");
+    expect(h.sent).toEqual([]);
+    expect(h.saved).toEqual([]);
+  } finally { listener.stop(true); }
+});
+
+test("Ctrl+C cancels the turn while Enter and Escape remain popup dismissal", async () => {
+  const w = setup();
+  await w.ok(["open", "--title", "Turn abort", "--skill", "implement", "--session", "ctrl-c"]);
+  const h = w.host("ctrl-c");
+  h.ctx.mode = "tui";
+  h.ctx.hasUI = true;
+  let component: any;
+  let aborted = false;
+  h.ctx.abort = () => { aborted = true; };
+  h.ctx.ui.custom = async (factory: any, options: any) => new Promise((resolve, reject) => {
+    component = factory({}, {}, {}, resolve);
+    options.signal?.addEventListener("abort", () => reject(options.signal.reason), { once: true });
+  });
+  let picked = false;
+  const pending = h.emit("tool_call", { toolName: "ask", toolCallId: "ctrl-c", input: {} });
+  const outcome = pending.then(() => { picked = true; }, () => {});
+  await Bun.sleep(150);
+  component.handleInput("\x03");
+  expect(aborted).toBe(true);
+  await outcome;
+  expect(picked).toBe(false);
+});
+
+test("a disabled host remains a dismissible warning with no model or session presentation", async () => {
+  const w = setup(true);
+  await w.ok(["open", "--title", "Host off", "--skill", "implement", "--session", "off"]);
+  const h = w.host("off");
+  h.ctx.mode = "tui";
+  h.ctx.hasUI = true;
+  h.ctx.ui.custom = async (factory: any) => {
+    const component = factory({}, {}, {}, () => {});
+    expect(component.render(100).join("\n")).toContain("off");
+  };
+  await h.emit("session_start");
+  const entries = h.ctx.sessionManager.getEntries();
+  await h.emit("before_agent_start");
+  const input = { questions: [{ id: "host-off", question: "Continue?" }] };
+  expect(await h.emit("tool_call", { toolName: "ask", toolCallId: "off", input })).toEqual([undefined]);
+  expect(h.ctx.sessionManager.getEntries()).toEqual(entries);
+  expect(input).toEqual({ questions: [{ id: "host-off", question: "Continue?" }] });
+  expect(h.sent).toEqual([]);
+  expect(h.saved).toEqual([]);
+  const history = [{ role: "user", content: "Continue?" }];
+  expect(await h.emit("context", { messages: history })).toEqual([{ messages: history }]);
 });
 

@@ -4,6 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.4] - 2026-11-05
+
+- Show a UI-only Flow popup before each bound main-agent question picker in interactive omp. Enter or Escape continues to the unchanged picker; turn cancellation does not. Native Ratchet approvals use the same popup, while reused approval opens no gate.
+- Let committed Flow questions continue after an unavailable-host warning. Remove model-written pre-ask chat-link instructions from the central contract and its callers, retain separate answer recording and non-consent, and add real Tern link-click, keyboard, retry, cancellation, and context-isolation proof helpers.
+
 ## [9.0.3] - 2026-11-05
 
 - `clean-wt inventory` no longer crashes when a task clone's parent session ran in a directory that was removed since (#359). It skips that session and takes the clone's source from its alternates instead.

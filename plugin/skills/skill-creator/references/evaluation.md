@@ -31,7 +31,7 @@ Create directories as runs need them.
 
 ## Test Prompts
 
-Write 2–3 realistic requests, phrased the way a user would type them, with the input files they need. When the user's judgment of realism matters, show them the prompts through `ask` on the evaluation Stage before running. Follow `skill://flow-page`'s "Every ask in a Flow", including Flow CLI publication and a visible current live URL in chat before `ask`, followed by separate answer recording. Record each in `evals.json` with the prompt, input files, and a sentence describing the expected result.
+Write 2–3 realistic requests, phrased the way a user would type them, with the input files they need. When the user's judgment of realism matters, show them the prompts through `ask` on the evaluation Stage before running. Follow `skill://flow-page`'s "Every ask in a Flow", including Flow CLI publication and separate answer recording. Record each in `evals.json` with the prompt, input files, and a sentence describing the expected result.
 
 - Mid-workflow turns: to test a later step of a multi-turn skill in one run, prefix the request with a bracketed note stating where the workflow stands and what the user already said, for example `[Discovery is done; asked about stakeholders, the user replied: "just me and a PM"]`.
 - Non-interactive runs: supply the answers the skill would ask for up front, so the run reaches its deliverable without stopping. When a skill cannot proceed without a live answer, that case needs the user in the loop.

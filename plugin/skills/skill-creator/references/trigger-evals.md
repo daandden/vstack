@@ -13,7 +13,7 @@ Should not select (8–10): use near misses, requests that share keywords or con
 
 Make queries substantive enough that consulting a skill would help. An agent may handle a trivial one-step request directly regardless of any description, so such queries measure nothing.
 
-Review the set through `ask` on the evaluation Stage before running it, following `skill://flow-page`'s "Every ask in a Flow", including Flow CLI publication and a visible current live URL in chat before `ask`, followed by separate answer recording. A weak set produces a misleading description.
+Review the set through `ask` on the evaluation Stage before running it, following `skill://flow-page`'s "Every ask in a Flow", including Flow CLI publication and separate answer recording. A weak set produces a misleading description.
 
 ## Hold Out a Test Set
 

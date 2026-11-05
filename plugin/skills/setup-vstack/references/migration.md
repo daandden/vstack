@@ -34,13 +34,13 @@ Show every item id, move, diff, manual hit, destructive flag, and notice in one 
 
 ## 4. Approve
 
-Publish the complete plan and manual diffs as Results with one approval question offering Apply all (Recommended), Choose items, and Cancel. Follow the same live-page, visible-chat-URL, and `ask` contract, then record the observed response separately. On Choose items, publish one round containing one question for the optional item ids and the manual diffs, then call `ask` under that contract. Set `multi: true` on that Flow-authored question. Mandatory ids remain included in the apply set and are not optional choices. On Cancel, write nothing. Go back to step 3 of SKILL.md, as for Set up beside it.
+Publish the complete plan and manual diffs as Results with one approval question offering Apply all (Recommended), Choose items, and Cancel. Follow flow-page's "Every ask in a Flow" contract, then record the observed response separately. On Choose items, publish one round containing one question for the optional item ids and the manual diffs, then call `ask` under that contract. Set `multi: true` on that Flow-authored question. Mandatory ids remain included in the apply set and are not optional choices. On Cancel, write nothing. Go back to step 3 of SKILL.md, as for Set up beside it.
 
 ## 5. Apply
 
 Run `migrate.ts apply --plan <absolute plan path>`, with one `--skip <id>` per declined optional item:
 
-- Exit 2 means that the repo changed since the plan, that the plan was made in another checkout, or that a skip named a mandatory id. Nothing was written. Make a fresh plan in this checkout. Publish it for renewed approval as in steps 3 and 4, with `again` on the Flow-authored question, then show the live URL in chat before `ask`. Apply only the approved fresh plan.
+- Exit 2 means that the repo changed since the plan, that the plan was made in another checkout, or that a skip named a mandatory id. Nothing was written. Make a fresh plan in this checkout. Publish it for renewed approval as in steps 3 and 4, with `again` on the Flow-authored question, then call `ask` under the common contract. Apply only the approved fresh plan.
 - Exit 1 means that the Migration is incomplete: an item failed, or old storage stays. Show `failures` and the remaining work, and stop the run. Setup does not go on.
 - Exit 0 means complete. Apply each approved manual diff only after its parent item applied, at its `after_path`. Leave declined manual diffs as remaining hits.
 

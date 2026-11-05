@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Drive CLI publication, a visible chat link, ordinary ask, and separate answer recording."""
+"""Drive a UI-only Flow popup, ordinary ask, and separate answer recording in native omp."""
 import argparse
 import errno
 import fcntl
@@ -54,7 +54,9 @@ def main():
     parser.add_argument("--checkout", required=True)
     parser.add_argument("--omp-tools", required=True, help="omp-tools checkout or installed plugin link")
     parser.add_argument("--run", required=True, help="new Verify run, with no data directory yet")
-    parser.add_argument("--case", choices=["tui", "timeout", "cancel", "retry"], default="tui")
+    parser.add_argument("--case", choices=["tui", "timeout", "cancel", "retry", "offline", "abort", "ratchet"], default="tui")
+    parser.add_argument("--tern", action="store_true", help="drive a separate real Tern renderer and capture native link clicks")
+    parser.add_argument("--dismiss", choices=["enter", "escape"], default="enter")
     args = parser.parse_args()
     checkout, tools, run = (Path(p).resolve() for p in (args.checkout, args.omp_tools, args.run))
     for root, name in [(checkout / "plugin", "vstack"), (tools, "omp-tools")]:
@@ -63,6 +65,10 @@ def main():
     for binary in ["omp", "bun", "git"]:
         if not shutil.which(binary):
             parser.error(f"missing prerequisite: {binary}")
+    if args.tern:
+        for binary in ["tern", "cwebp"]:
+            if not shutil.which(binary):
+                parser.error(f"missing prerequisite: {binary}")
     out = run / ("flow-questions-" + args.case)
     out.mkdir(parents=True, exist_ok=False)
     data = run / "data"
@@ -86,6 +92,7 @@ def main():
         free.bind(("127.0.0.1", 0))
         env["VSTACK_FLOW_PORT"] = str(free.getsockname()[1])
     cli = checkout / "plugin/skills/flow-page/scripts/flow-page.ts"
+    competing = None
     command_log = []
 
     def flow_folder(flow):
@@ -122,6 +129,17 @@ def main():
              "needs": [{"need": "Explain the fixture concern.", "kind": "prose"}],
              "options": [{"label": "Proceed", "does": "Continue.", "gains": ["Progress"], "costs": ["Unresolved concern"]},
                          {"label": "Pause", "does": "Wait.", "gains": ["Review"], "costs": ["Delay"]}]}]}]}
+    if args.case == "ratchet":
+        contribution["items"][1]["questions"] = [{
+            "ref": "approval", "title": "Approve fixture inputs?",
+            "description": "The complete input set is one disposable case with id fixture. This is UI proof, not tuning approval.",
+            "needs": [{"need": "Review the complete disposable input set.", "kind": "prose"}],
+            "options": [
+                {"label": "Approve", "does": "Approve the fixture inputs.", "gains": ["Exercise native approval"], "costs": ["Fixture only"]},
+                {"label": "Revise", "does": "Return feedback without approval.", "gains": ["Keep feedback"], "costs": ["No approval"]},
+                {"label": "Abort", "does": "Stop the disposable run.", "gains": ["No approval"], "costs": ["No continuation"]},
+            ],
+        }]
     save(out / "contribution.json", contribution)
     session_dir = out / "sessions"
     session_dir.mkdir()
@@ -131,7 +149,8 @@ def main():
                 if entry.get("type") == "message"]
 
     def asks():
-        return [m for m in messages() if m.get("role") == "toolResult" and m.get("toolName") == "ask"]
+        return [m for m in messages() if m.get("role") == "toolResult" and
+                m.get("toolName") == ("eval" if args.case == "ratchet" else "ask")]
 
     q = shlex.quote
     identity = '--session "$PI_SESSION_ID" --agent main'
@@ -168,14 +187,41 @@ def main():
         assert [question["id"] for question in content["questions"]] == [
             question["id"] for question in receipt["ask"]["questions"]], content
         authored = json.dumps(content)
-        for context in ["Disposable picker fixture", "Full authored context retained on Flow.",
-                        "Compare fixture tradeoffs.", "Use Alpha.", "Use Beta."]:
+        required_context = ["Disposable picker fixture", "Fixture evidence, not a real user decision."]
+        if args.case != "ratchet":
+            required_context += ["Full authored context retained on Flow.", "Compare fixture tradeoffs.", "Use Alpha.", "Use Beta."]
+        for context in required_context:
             assert context in authored, context
         save(out / "live-identity.json", {"url": url, "status": status, "content_url": content_url,
              "content_status": content_status, "flow": receipt["flow"],
              "revision": receipt["revision"], "question_ids": [x["id"] for x in receipt["ask"]["questions"]]})
-        return {"text": f"FLOW_QUESTIONS_CHAT_LINK {url}",
-                "tool": "ask", "args": receipt["ask"]}
+        if args.case == "offline":
+            nonlocal competing
+            command(["bun", str(cli), "host", "stop", "--home", str(home)], "stop proof host for offline case")
+            class Occupied(BaseHTTPRequestHandler):
+                def log_message(self, *_):
+                    pass
+                def do_GET(self):
+                    self.send_response(200)
+                    self.end_headers()
+                    self.wfile.write(b"owned competing listener")
+            competing = ThreadingHTTPServer(("127.0.0.1", int(env["VSTACK_FLOW_PORT"])), Occupied)
+            threading.Thread(target=competing.serve_forever, daemon=True).start()
+            bound = json.loads(command(["bun", str(cli), "bound", "--home", str(home),
+                                       "--session", (out / "child-session-id.txt").read_text(), "--agent", "main"], "offline binding"))
+            save(out / "offline-bound.json", bound)
+            assert bound["live"]["state"] == "unavailable"
+        if args.case == "ratchet":
+            (project / "cases.jsonl").write_text('{"id":"fixture"}\n')
+            (project / "harness.ts").write_text("\n")
+            (project / "prompt.md").write_text("Disposable approval proof prompt.\n")
+            approval = f'await r.approve("inputs", question={receipt["ask"]["questions"][0]["question"]!r}, preview="Review this question on the Flow page.")'
+            code = ('import json\nr = ratchet("popup-fixture")\n'
+                    'await r.init(cases=["cases.jsonl"], harness=["harness.ts"], change=["prompt.md"])\n'
+                    f'print("FIRST_APPROVAL", json.dumps({approval}))\n'
+                    f'print("REUSED_APPROVAL", json.dumps({approval}))')
+            return {"tool": "eval", "args": {"language": "py", "code": code, "timeout": 120}}
+        return {"tool": "ask", "args": receipt["ask"]}
     done = threading.Event()
 
     class Model(BaseHTTPRequestHandler):
@@ -217,7 +263,18 @@ def main():
                     committed = published_state()
                     save(out / "committed-before-answers.json", committed)
                     assert not committed["answers"], "Ask delivery must not author Flow answers"
-                    if args.case in ("tui", "retry"):
+                    if args.case == "ratchet":
+                        save(out / "ratchet-results.json", result)
+                        assert not result[-1].get("isError"), result[-1]
+                        output = "\n".join(part.get("text", "") for part in result[-1]["content"])
+                        outcomes = {line.split(" ", 1)[0]: json.loads(line.split(" ", 1)[1])
+                                    for line in output.splitlines() if line.startswith(("FIRST_APPROVAL ", "REUSED_APPROVAL "))}
+                        assert outcomes["FIRST_APPROVAL"] == {"approved": True}, outcomes
+                        assert outcomes["REUSED_APPROVAL"] == {"approved": True, "already": True}, outcomes
+                        save(out / "ratchet-outcomes.json", outcomes)
+                        reply = {"text": "FLOW_QUESTIONS_FIXTURE_COMPLETE"}
+                        done.set()
+                    elif args.case in ("tui", "retry"):
                         assert not result[-1].get("isError"), result[-1]
                         answers = raw["results"]
                         assert [a["id"] for a in answers] == [a["id"] for a in receipt["ask"]["questions"]]
@@ -233,7 +290,7 @@ def main():
                              "reading": {"outcome": "concern", "unresolved": "Scripted fixture concern remains unresolved."}}]}
                         save(out / "normalized-answers.json", normalized)
                         reply = {"tool": "bash", "args": {"command":
-                            f'bun {q(str(cli))} submit {q(str(out / "normalized-answers.json"))} --home "$HOME" {identity}'}}
+                            f'bun {q(str(cli))} submit {q(str(out / "normalized-answers.json"))} --home "$HOME" {identity} > {q(str(out / "answers-receipt.json"))}'}}
                         phase = 4
                     else:
                         assert args.case == "timeout", "Cancellation unexpectedly resumed the model"
@@ -284,17 +341,53 @@ def main():
     config = "startup:\n  setupWizard: false\n  showSplash: false\n"
     if args.case == "timeout":
         config += "ask:\n  timeout: 1\n"
+    if args.case == "ratchet":
+        config += "ratchet:\n  enabled: true\n"
     (home / ".omp/agent/config.yml").write_text(config)
     argv = ["omp", "--no-title", "--model", "stub/stub-model", "--session-dir", str(session_dir),
             "Run the disposable Flow questions fixture through the scripted provider."]
     save(out / "launch.json", {"argv": argv, "cwd": str(project), "case": args.case})
-    master, slave = pty.openpty()
-    fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 55, 180, 0, 0))
-    child = subprocess.Popen(argv, cwd=project, env=env, stdin=slave, stdout=slave, stderr=slave,
-                             start_new_session=True, preexec_fn=lambda: fcntl.ioctl(0, termios.TIOCSCTTY, 0))
-    os.close(slave)
+    master = None
+    tern_control = None
+    tern_log = None
+    if args.tern:
+        with socket.socket() as free:
+            free.bind(("127.0.0.1", 0))
+            tern_control = str(free.getsockname()[1])
+        tern_env = {**os.environ, "TERN_CONFIG_DIR": str(out / "tern-config")}
+        tern_log = (out / "tern.log").open("w")
+        child = subprocess.Popen(["tern", "serve", "--control", tern_control, "--out", str(out), str(project)],
+                                 env=tern_env, stdout=tern_log, stderr=tern_log)
+
+        def ctl(*words):
+            result = subprocess.run(["tern", "ctl", "--control", tern_control, *words],
+                                    capture_output=True, text=True, timeout=30)
+            if result.returncode:
+                raise RuntimeError(f"tern ctl {words}: {result.stdout} {result.stderr}")
+            value = json.loads(result.stdout)
+            if not value.get("ok"):
+                raise RuntimeError(f"tern ctl {words}: {value}")
+            return value
+
+        deadline = time.monotonic() + 30
+        while time.monotonic() < deadline:
+            try:
+                ctl("state")
+                break
+            except (RuntimeError, json.JSONDecodeError):
+                time.sleep(0.1)
+        ctl("size", "1600", "1000")
+        launch = "env -i " + " ".join(q(k + "=" + v) for k, v in env.items()) + " " + shlex.join(argv)
+        ctl("run", json.dumps(launch))
+        save(out / "tern-control.json", {"endpoint": tern_control, "pid": child.pid, "launch": launch})
+    else:
+        master, slave = pty.openpty()
+        fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 55, 180, 0, 0))
+        child = subprocess.Popen(argv, cwd=project, env=env, stdin=slave, stdout=slave, stderr=slave,
+                                 start_new_session=True, preexec_fn=lambda: fcntl.ioctl(0, termios.TIOCSCTTY, 0))
+        os.close(slave)
     with (data / "pids").open("a") as log:
-        log.write(f"{child.pid} omp flow-questions {args.case}\n")
+        log.write(f"{child.pid} {'tern' if args.tern else 'omp'} flow-questions {args.case}\n")
     captured = bytearray()
     inputs, started = [], time.monotonic()
 
@@ -302,12 +395,22 @@ def main():
         inputs.append({"at_seconds": time.monotonic() - started, "label": label, "bytes_hex": value.hex(),
                        "output_byte_offset": len(captured)})
         save(out / "inputs.json", inputs)
-        os.write(master, value)
+        if args.tern:
+            keys = {b"\r": "Enter", b"\x1b": "Escape", b"\x1b[15~": "F5", b" ": "Space", b"\x03": "Ctrl+c"}
+            if value in keys:
+                ctl("key", keys[value])
+            else:
+                ctl("type", json.dumps(value.decode()))
+        else:
+            os.write(master, value)
         deadline = time.monotonic() + 0.15
         while time.monotonic() < deadline:
             read_output(0.03)
 
     def wait_for_text(text, after=0):
+        if args.tern:
+            text = {"n add note": "Add note", "Space/Enter/n type answer": "Type answer",
+                    "n add submit note": "Submit note"}.get(text, text)
         deadline = time.monotonic() + 90
         while time.monotonic() < deadline:
             if text in plain(captured[after:]):
@@ -323,6 +426,15 @@ def main():
         raise RuntimeError(f"timed out waiting for {text!r}; inspect terminal.bin and session records")
 
     def read_output(timeout):
+        if args.tern:
+            time.sleep(timeout)
+            tree = ctl("tree")
+            chunk = (json.dumps(tree) + "\n").encode()
+            captured.extend(chunk)
+            with (out / "terminal.bin").open("ab") as log:
+                log.write(chunk)
+            (out / "terminal.txt").write_text(plain(captured))
+            return
         if select.select([master], [], [], timeout)[0]:
             try:
                 chunk = os.read(master, 65536)
@@ -337,18 +449,66 @@ def main():
 
     summary = {"ok": False, "case": args.case}
     try:
-        wait_for_text("n add note")
-        text = plain(captured)
-        link_text = "FLOW_QUESTIONS_CHAT_LINK " + receipt["live"]["url"]
-        assert 0 <= text.index(link_text) < text.index("n add note"), "chat link did not precede picker"
-        chat = [m for m in messages() if m.get("role") == "assistant" and
-                link_text in "".join(c.get("text", "") for c in m.get("content", []) if isinstance(c, dict))]
-        assert len(chat) == 1, "One question round must have one assistant link message"
-        assert sum(c.get("text", "").count(receipt["live"]["url"])
-                   for m in chat for c in m.get("content", []) if isinstance(c, dict)) == 1, "Several questions share one link"
-        save(out / "before-picker.json", {"link_text_offset": text.index(link_text),
-             "picker_text_offset": text.index("n add note"), "output_bytes": len(captured), "assistant_messages": chat})
-        if args.case in ("cancel", "retry"):
+        wait_for_text("Enter or Esc: continue to the questions")
+        popup_text = plain(captured)
+        if args.case == "offline":
+            unavailable = json.loads((out / "offline-bound.json").read_text())
+            assert unavailable["live"]["error"] in popup_text
+        else:
+            assert receipt["live"]["url"] in popup_text
+        assert not asks(), "Picker returned before popup dismissal"
+        assert ("Add note" if args.tern else "n add note") not in popup_text, "Picker opened before popup dismissal"
+        if args.tern:
+            popup_tree = ctl("tree")
+            save(out / "popup.tree.json", popup_tree)
+            save(out / "popup.state.json", ctl("state"))
+            shot = ctl("shot", "popup")
+            subprocess.run(["cwebp", "-lossless", shot["png"], "-o", str(out / "popup.webp")], check=True,
+                           capture_output=True)
+            if args.case != "offline":
+                save(out / "before-click.system.json", ctl("system"))
+                link = next(node for node in ctl("tree", ".sf-overlay a")["nodes"]
+                            if node.get("tag") == "a" and node.get("text") == receipt["live"]["url"])
+                x, y, _, _ = link["rect"]
+                save(out / "click-target.json", ctl("pick", str(x + 8), str(y + 8)))
+                ctl("click", str(x + 8), str(y + 8))
+                time.sleep(0.3)
+                save(out / "after-click.system.json", ctl("system"))
+                save(out / "after-click.state.json", ctl("state"))
+                save(out / "after-click.tree.json", ctl("tree"))
+                destination = ctl("tree", ".kit-web-url")
+                save(out / "click-destination.json", destination)
+                assert any(node.get("value") == receipt["live"]["url"] for node in destination["nodes"]), "Native click opened no matching live URL"
+                shot = ctl("shot", "clicked-link")
+                subprocess.run(["cwebp", "-lossless", shot["png"], "-o", str(out / "clicked-link.webp")], check=True,
+                               capture_output=True)
+                ctl("close")
+        if args.case == "abort":
+            before_abort = len(captured)
+            send("cancel the whole turn while the popup is open", b"\x03")
+            for _ in range(20):
+                read_output(0.1)
+            assert ("Add note" if args.tern else "n add note") not in plain(captured[before_abort:]), "Cancelled turn opened a picker"
+            if args.tern:
+                after_abort = ctl("tree", ".sf-overlay")
+                save(out / "after-abort.tree.json", after_abort)
+                assert after_abort["count"] == 0, "Turn cancellation left the popup open"
+            done.set()
+        else:
+            send("dismiss Flow popup with " + args.dismiss, b"\r" if args.dismiss == "enter" else b"\x1b")
+            wait_for_text("n add note")
+            save(out / "before-picker.json", {"popup_url": receipt["live"]["url"], "dismiss": args.dismiss,
+                 "picker_after_dismissal": True, "output_bytes": len(captured)})
+            if args.tern:
+                save(out / "picker.tree.json", ctl("tree"))
+                shot = ctl("shot", "picker")
+                subprocess.run(["cwebp", "-lossless", shot["png"], "-o", str(out / "picker.webp")], check=True,
+                               capture_output=True)
+        if args.case == "ratchet":
+            send("pick native Ratchet approval", b"\r")
+            time.sleep(0.2)
+            send("submit native Ratchet approval", b"\r")
+        if args.case in ("cancel", "retry", "offline"):
             send("Escape cancels the actual ordinary ask picker", b"\x1b")
             deadline = time.monotonic() + 20
             while not asks() and time.monotonic() < deadline:
@@ -357,13 +517,15 @@ def main():
             cancelled = published_state()
             save(out / "cancelled-state.json", cancelled)
             assert not cancelled["answers"], "Cancellation must not record consent"
-            if args.case == "cancel":
+            if args.case in ("cancel", "offline"):
                 done.set()
             else:
                 for _ in range(10):
                     read_output(0.1)
                 before_retry = len(captured)
                 send("F5 native retry of the aborted turn", b"\x1b[15~")
+                wait_for_text("Enter or Esc: continue to the questions", after=before_retry)
+                send("dismiss fresh retry popup with Escape", b"\x1b")
                 wait_for_text("n add note", after=before_retry)
         if args.case in ("tui", "retry"):
             send("open Alpha option note", b"n")
@@ -410,20 +572,25 @@ def main():
                          and entry.get("display") is not False]
         save(out / "flow-messages.json", flow_messages)
         assert not flow_messages, "Unsolicited Flow message after question or completion"
-        if args.case != "cancel":
+        if args.case not in ("cancel", "offline", "abort"):
             completion = next(m for m in reversed(messages()) if m.get("role") == "assistant")
             completion_text = "".join(c.get("text", "") for c in completion.get("content", []) if isinstance(c, dict))
             assert "FLOW_QUESTIONS_FIXTURE_COMPLETE" in completion_text, "Missing terminal completion"
             assert receipt["live"]["url"] not in completion_text, "Completion repeats the Flow link"
         save(out / "tool-results.json", result)
+        popup_phrases = ["Questions are on the Flow page:", "Enter or Esc: continue to the questions", receipt["live"]["url"]]
+        for file in session_dir.rglob("*.jsonl"):
+            assert all(phrase not in file.read_text() for phrase in popup_phrases), "Popup leaked into persisted history"
+        assert all(phrase not in json.dumps(requests) for phrase in popup_phrases), "Popup leaked into model requests"
         assert not handler_errors, handler_errors
         assert inventory_error is None, inventory_error
-        assert len(result) == (2 if args.case == "retry" else 1), result
+        if args.case != "abort":
+            assert len(result) == (2 if args.case == "retry" else 1), result
         opened = json.loads((out / "open.json").read_text())
         folder = flow_folder(opened["flow"])
         state = published_state()
         save(out / "persisted-state.json", state)
-        assert len(state["rounds"]) == 1 and len(state["questions"]) == 2, state
+        assert len(state["rounds"]) == 1 and len(state["questions"]) == len(receipt["ask"]["questions"]), state
         assert len(state["results"]) == 1 and state["results"][0]["title"] == "Disposable picker fixture", state
         if args.case in ("tui", "retry"):
             assert len(state["answers"]) == 2, state
@@ -437,14 +604,16 @@ def main():
             assert state["revision"] == receipt["revision"]
             if args.case == "timeout":
                 assert all(item.get("timedOut") is True for item in result[0]["details"]["results"]), result
-            else:
+            elif args.case == "ratchet":
+                assert "FIRST_APPROVAL" in json.dumps(result)
+            elif args.case != "abort":
                 assert result[0].get("isError"), result
         calls = [c for m in messages() if m.get("role") == "assistant"
                  for c in m.get("content", []) if isinstance(c, dict) and c.get("type") == "toolCall"]
         ask_calls = [c for c in calls if c.get("name") == "ask"]
         save(out / "ask-calls.json", ask_calls)
         calls_by_id = {c["id"]: c for c in ask_calls}
-        for outcome in result:
+        for outcome in ([] if args.case in ("ratchet", "abort") else result):
             original = calls_by_id[outcome["toolCallId"]]
             assert original["arguments"] == receipt["ask"], "Retry changed the original question identities"
         if args.case == "retry":
@@ -457,16 +626,28 @@ def main():
         assert any(b["session"] == session_id and b["agent"] == "main" and b["flow"] == opened["flow"] for b in bindings), bindings
         save(out / "bindings.json", bindings)
         shutil.copytree(folder, out / "export")
+        assertions = ["fresh inventory omits flow_ask", "live content matches the committed question identities",
+                      "popup text absent from session entries and model requests", "no automatic Flow message or completion link"]
+        if args.case != "ratchet":
+            assertions.append("ordinary ask retains the receipt's original question identities")
+        if args.case == "abort":
+            assertions.append("Ctrl+C removes the popup and opens no picker")
+        elif args.case == "offline":
+            assertions.append("actual host error appears before dismissal and picker cancellation grants no consent")
+        else:
+            assertions.append("popup URL precedes the original picker after user dismissal")
+            if args.tern:
+                assertions.append("native popup link click opens the exact live URL")
+        if args.case in ("tui", "retry"):
+            assertions.append("explicit picks, option note, Other words and submit note recorded separately through CLI")
+        if args.case == "retry":
+            assertions.append("F5 retry shows a fresh popup and preserves the question identities without republication")
+        if args.case == "timeout":
+            assertions.append("configured timeout remains non-consent")
+        if args.case == "ratchet":
+            assertions.append("native Ratchet approval is reused without a second gate")
         summary.update(ok=True, flow=opened["flow"], folder=str(folder),
-                       session_id=session_id, stub_requests=len(requests), live=receipt["live"],
-                       assertions=["fresh inventory omits flow_ask", "ordinary ask receives original receipt",
-                       "live HTTP content matches flow, revision and question identities",
-                       "assistant chat URL precedes real picker", "separate CLI answer recording",
-                       "no unsolicited Flow message or completion link",
-                       "Escape and F5 preserve unrecorded question identities" if args.case == "retry"
-                       else "Escape remains non-consent" if args.case == "cancel"
-                       else "configured timeout remains non-consent" if args.case == "timeout"
-                       else "multiple picks, option note, Other words and submit note"])
+                       session_id=session_id, stub_requests=len(requests), live=receipt["live"], assertions=assertions)
     except Exception as error:
         summary["error"] = repr(error)
     finally:
@@ -481,7 +662,16 @@ def main():
                     shutil.copytree(folder, out / "export")
             except Exception as error:
                 summary.update(ok=False, export_error=repr(error))
-        os.close(master)
+        if competing:
+            competing.shutdown()
+            competing.server_close()
+        if master is not None:
+            os.close(master)
+        if args.tern:
+            try:
+                ctl("quit")
+            except Exception as error:
+                summary.update(ok=False, tern_cleanup_error=repr(error))
         if child.poll() is None:
             child.terminate()
             try:
@@ -490,6 +680,8 @@ def main():
                 child.kill()
                 child.wait()
         server.shutdown()
+        if tern_log:
+            tern_log.close()
         server.server_close()
         try:
             stop = ["bun", str(cli), "host", "stop", "--home", str(home)]

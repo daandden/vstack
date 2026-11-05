@@ -14,7 +14,7 @@ Accept the caller's chain facts. Follow these rules in skill://implement/END-STA
 - Step 4: Verify discovery and link repair.
 - Step 6b: the Verifier brief, the result and record checks, and the accepted Verdict.
 
-Follow `skill://flow-page`'s "Stage entry/exit line" and "Every ask in a Flow" for all user questions through `ask`, including Flow CLI publication and a visible current live URL in chat before `ask`, followed by separate answer recording. Follow END-STATE.md's "Publish delivery progress" and track verification and landing tasks per PR.
+Follow `skill://flow-page`'s "Stage entry/exit line" and "Every ask in a Flow" for all user questions through `ask`, including Flow CLI publication and separate answer recording. Follow END-STATE.md's "Publish delivery progress" and track verification and landing tasks per PR.
 
 ## 0. Establish the frontier
 

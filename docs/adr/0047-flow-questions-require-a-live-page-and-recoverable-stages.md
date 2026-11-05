@@ -52,3 +52,5 @@ For a question round on a Flow, publish the complete round, verify its current l
 Remove automatic post-reply Flow messages and the separate `/vstack-clean` result link. Result-only replies and completion summaries show no Flow link or path reminder. Do not open a browser automatically. The user chose access at the question handoff over repeated reminders or links on result-only outcomes.
 
 Keep session and agent authoring identity, binding isolation, full Flow history, enrollment rules, and ordinary asking and answer recording. This change neither enrolls unbound questions in a Flow nor introduces a custom picker, delivery queue, or retry gate.
+
+[ADR 0052](0052-flow-questions-show-their-link-in-a-flow-popup.md) replaces the chat link before questions with a Flow popup and lets questions open when the Local Flow host is down.

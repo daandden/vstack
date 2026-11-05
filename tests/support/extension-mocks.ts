@@ -41,6 +41,16 @@ export function judgeAnswers(scores: Record<string, number>): void {
 const judgmentCache = { name: "shared judgment cache" };
 
 mock.module("@oh-my-pi/pi-coding-agent", () => ({ settings: {} }));
+mock.module("@oh-my-pi/pi-tui", () => ({
+  Markdown: class {
+    constructor(readonly source: string) {}
+    render() { return [this.source]; }
+    describe() { return { kind: "md", text: this.source }; }
+    invalidate() {}
+  },
+  matchesKey: (data: string, key: string) => data === ({ enter: "\r", escape: "\x1b", "ctrl+c": "\x03" } as Record<string, string>)[key],
+}));
+mock.module("@oh-my-pi/pi-tui/theme", () => ({ getMarkdownTheme: () => ({}) }));
 mock.module("@oh-my-pi/pi-coding-agent/judgment", () => ({
   hasNativeJudge: (_settings: unknown, registry: any) => registry.nativeJudge,
   journalJudgmentUsage: (sessionManager: unknown) => {
