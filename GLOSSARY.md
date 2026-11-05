@@ -148,6 +148,10 @@ _Avoid_: goal, target, finish line
 The service that holds a repo's remote and its PRs, such as GitHub, GitLab, or Bitbucket. It is a separate choice from the issue tracker: a repo on Bitbucket can track its issues in Jira.
 _Avoid_: git host, VCS host, forge
 
+**Landing method**:
+How ship merges a PR into its target, named as the Code host names it, such as `rebase` or `squash` on GitHub and `ff` on GitLab. The user picks it once per project from the methods the Code host allows.
+_Avoid_: merge method, merge strategy, ship method
+
 **CI service**:
 The service that runs a repo's builds and checks, such as GitHub Actions, GitLab CI, or Jenkins. It is a separate choice from the Code host.
 _Avoid_: CI provider, CI server, build server, CI host

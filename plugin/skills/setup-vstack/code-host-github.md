@@ -26,6 +26,6 @@ Each skill looks up an operation by its id. A row that says `unsupported` means 
 - `resolve-thread`: `gh api graphql` with the `resolveReviewThread` mutation and the thread `id`.
 - `comment-pr`: `gh pr comment <pr> --body-file <absolute-body-path>`
 - `update-branch`: `gh pr update-branch <pr>`. Leave out `--rebase`.
-- `merge-methods`: `gh repo view --json squashMergeAllowed,mergeCommitAllowed,rebaseMergeAllowed`
-- `merge-pr`: `gh pr merge <pr> --squash --match-head-commit <head-sha>`, or `--merge` or `--rebase` in place of `--squash`.
-- `auto-merge`: arm with `gh pr merge <pr> --auto --squash --match-head-commit <head-sha>` (same method flags as `merge-pr`). Disarm with `gh pr merge <pr> --disable-auto`.
+- `merge-methods`: `gh repo view --json squashMergeAllowed,mergeCommitAllowed,rebaseMergeAllowed`. The Landing methods are `squash`, `merge`, and `rebase`, allowed by those three fields in that order.
+- `merge-pr`: `gh pr merge <pr> --<method> --match-head-commit <head-sha>`, where `<method>` is `squash`, `merge`, or `rebase`.
+- `auto-merge`: arm with `gh pr merge <pr> --auto --<method> --match-head-commit <head-sha>` (same method as `merge-pr`). Disarm with `gh pr merge <pr> --disable-auto`.

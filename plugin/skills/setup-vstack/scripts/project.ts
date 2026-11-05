@@ -1,5 +1,5 @@
 //   bun project.ts state                 JSON facts the project section starts from: the config files still missing, and
-//                                        whether code-host.md lacks its default End state line
+//                                        whether code-host.md lacks its default End state or Landing method line
 //   bun project.ts commit --title <t> [--migration-path <repo path>...]
 //                                        Standard mode: commit the setup output and this run's Migration paths, and only
 //                                        them, on the current branch
@@ -14,6 +14,11 @@ const CONFIG = CONFIG_FILES.map((f) => `docs/vstack/${f}`);
 const BLOCK_FILES = ["CLAUDE.md", "AGENTS.md"];
 const BLOCK_HEADING = "## vstack";
 const DEFAULT_END_STATE = /^- Default End state: (commit|merge-ready|shipped)$/;
+const LANDING_METHOD = /^- Landing method: ([a-z][a-z0-9_-]*)$/;
+const HOST_LANDING_METHODS: [RegExp, string[]][] = [
+  [/^- Host: GitHub\b/, ["squash", "merge", "rebase"]],
+  [/^- Host: GitLab\b/, ["squash", "merge", "rebase_merge", "ff"]],
+];
 
 function fail(message: string): never {
   console.error(message);
@@ -55,7 +60,9 @@ function repoState(cwd: string) {
   const configDir = mode === "private" ? join(vstackRoot, "config") : join(root, "docs", "vstack");
   const missingConfig = CONFIG_FILES.filter((f) => !existsSync(join(configDir, f)));
   const codeHost = join(configDir, "code-host.md");
-  const missingDefaultEndState = existsSync(codeHost) && !hasDefaultEndState(readFileSync(codeHost, "utf8"));
+  const codeHostText = existsSync(codeHost) ? readFileSync(codeHost, "utf8") : null;
+  const missingDefaultEndState = codeHostText !== null && !hasDefaultEndState(codeHostText);
+  const missingLandingMethod = codeHostText !== null && !hasLandingMethod(codeHostText);
 
   return {
     root,
@@ -64,6 +71,7 @@ function repoState(cwd: string) {
     mode,
     missing_config: missingConfig,
     missing_default_end_state: missingDefaultEndState,
+    missing_landing_method: missingLandingMethod,
     block_file: blockFile,
     block_exists: blockExists,
     block_file_dirty: blockFileDirty,
@@ -76,6 +84,15 @@ function hasBlock(text: string): boolean {
 
 function hasDefaultEndState(text: string): boolean {
   return text.split("\n").some((line) => DEFAULT_END_STATE.test(line.trimEnd()));
+}
+
+function hasLandingMethod(text: string): boolean {
+  const lines = text.split("\n").map((line) => line.trimEnd());
+  const known = HOST_LANDING_METHODS.find(([host]) => lines.some((line) => host.test(line)))?.[1];
+  return lines.some((line) => {
+    const method = LANDING_METHOD.exec(line)?.[1];
+    return method !== undefined && (known === undefined || known.includes(method));
+  });
 }
 
 function commit(cwd: string, title: string | undefined, migrationPaths: string[]) {

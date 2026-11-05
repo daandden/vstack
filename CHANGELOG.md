@@ -4,6 +4,13 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.9] - 2026-11-06
+
+- ship lands each PR by the project's Landing method, the `- Landing method: <method>` line in `code-host.md`, instead of always squashing. setup-vstack offers the methods that the Code host allows and recommends `rebase` on GitHub and the non-squash project method on GitLab. If the stored method is not allowed or cannot land a PR, ship asks which method to use. A project without the line keeps squash first until a setup-vstack re-run adds it (ADR 0055).
+- The GitLab template sends `squash=false` when it lands with the project's non-squash Landing method, because `glab mr merge` without `--squash` can still squash an MR in a project that turns squash on by default. Its `merge-methods` row reads `squash_option` to decide whether squash, the project method, or both are allowed. A setup-vstack re-run that adds the Landing method to an existing GitLab `code-host.md` also replaces those three rows.
+- `project.ts state` reports `missing_landing_method` when `code-host.md` names no Landing method of its Code host.
+- The End state Conflict owner asks the user before it resolves a conflicting hunk that chooses between two behaviors. babysit no longer lists a conflict as the human's line, because the Conflict owner owns it.
+
 ## [9.0.8] - 2026-11-06
 
 - `/vstack-clean` no longer fails with a JSON parse error when the dry-run listing is larger than 64 KiB, about 200 expired entries. `clean.ts` exited before stdout drained, so a piped reader such as the Command got the listing cut at the pipe buffer. The script now waits for stdout to take every byte before it exits.
