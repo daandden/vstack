@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { refuse } from "./fields.ts";
 
 /** A directory a contribution may read files from, already resolved through every symlink. */
-export type Root = { name: "project" | "scratch"; dir: string };
+export type Root = { name: "project" | "scratch" | "vstack-domain"; dir: string };
 export type Captured = { revision: string; file: string; size: number; name: string; from: { root: string; path: string } };
 
 

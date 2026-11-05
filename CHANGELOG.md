@@ -4,6 +4,8 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+- Resolve shared Private-mode domain canonical references from main and linked checkouts with one `vstack-domain` identity, preserving hashes and history without widening attachment access (#354).
+
 ## [9.0.2] - 2026-11-03
 
 - Merge exact main 274159e0 into the already-pushed UI integration without rewriting history; retain its Nuxt/Vite+ live-only reader, Mermaid sources, reading order, current prototype, dependencies, and shipped reader assets.

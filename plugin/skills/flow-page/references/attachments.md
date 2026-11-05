@@ -14,6 +14,8 @@ Every question figure and option preview also declares `kind`, as [Reader needs 
 
 The script reads an attachment's file once, when you submit it, and stores its bytes in the Flow under their sha256. A `{ file }` canonical link records the file's sha256 at that time. Editing a source file later changes nothing on the page. To show the new content, submit the Result again with `revises`.
 
+In Private mode, `{ file }` can also reference a regular file in the owning project's shared `<git common directory>/vstack/domain/`. Use its absolute path from either the main checkout or a linked worktree. The stored canonical root is `vstack-domain`, with a domain-relative path and sha256. Later `revises` submissions resolve that identity without changing the working directory. This records the path and hash, not the private file's contents. It admits neither other repository metadata nor new attachment paths. Existing approval requirements still apply before publishing private content.
+
 A `path` is relative to the working directory, or absolute, and must be a regular file inside the project or its Scratch dir. A path that leaves both, directly or through a symlink, is refused. An image or video must be one of the formats above, and an SVG with scripts, event handlers, embedded HTML, or script URLs is refused. A `mermaid` file must be UTF-8 Mermaid that the pinned Pele renders. Otherwise the refusal carries Pele's parse error.
 
 The script stores evidence byte for byte. Redact it as the producing skill's contract requires before you attach it, for example with every secret replaced by `<REDACTED>`.
