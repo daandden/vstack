@@ -4,6 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.7] - 2026-11-05
+
+- Integrate the UI-only Flow question popup with main 9.0.6, preserving Stage-tab reading, architecture agreement, register metadata, Pins, and Dispositions. Rename the popup decision to ADR 0054 without changing main ADRs 0052 and 0053.
+- Show the Flow popup before bound interactive question pickers and native Ratchet approvals, including later authored rounds and retries. Enter or Escape continues to the unchanged picker, cancellation aborts it, and unavailable hosts warn without blocking questions. Keep popup text out of session history and model context and retain separate answer recording.
+
 ## [9.0.6] - 2026-11-05
 
 - Publish approved ticket batches through one durable publish/resume Interface, reconcile uncertain creates, and verify fields and directed relationships before configured readiness across CLI, MCP, and local-file trackers (#352).

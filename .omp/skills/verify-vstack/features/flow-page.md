@@ -33,7 +33,7 @@ The flow-page script takes typed contributions for one bound Stage, assigns ids,
 - `flow-artifact`: a prototype Result names an HTML bundle, local app route, or terminal artifact. Captured bundles execute on a separate read-only viewer origin, local routes stay on their own origin, and missing runtimes show launch instructions with an unavailable state.
 - `flow-nav`: `n` cycles through actionable questions newest in-progress Stage first, opening each question's tab; `t` opens a clickable Stage-only tree with states and open-question counts, whose links open Stage tabs; `j` and `k` set fragments and focus within the selected tab, and a focused reading stop shows no visible ring; `h` and `l` move to the previous and next tab without wrapping; editable targets, media controls, and modifier keys ignore shortcuts.
 - `flow-session`: each session and agent restores its own binding and hidden authoring identity. Completed replies, blockers, follow-ups, and live failures add no automatic Flow message. Persisted historical Flow cards stay out of ordinary-turn model context. A native `ask` through `--rpc-ui` returns labels and custom words that normalize into Flow answers.
-- `flow-questions`: the main agent publishes a complete round through the CLI, verifies current live content, displays exactly one clickable live URL in assistant chat, calls ordinary `ask` with receipt identities, and records observed answers separately. Several questions share one link, and each subsequent round gets its own link. Retry an unrecorded failed delivery using the original questions, without republishing. Cancellation, timeout and unavailable delivery remain non-consent.
+- `flow-questions`: complete CLI publication precedes ordinary `ask` with receipt identities, and observed answers are recorded separately. In a bound main-agent interactive TUI, a UI-only popup shows the clickable Flow URL before the picker. Enter or Escape dismisses the popup, then the unchanged picker opens. Every call and retry gets a fresh popup. An unavailable host shows its error and still allows questions; turn abort opens no picker. Ratchet's actual `r.approve()` path gets the same popup through `ui.askDialog`, with no popup for reused approval.
 - `flow-enrollment`: an ordinary description-selected explanation stays in chat without a binding; a fresh typed explanation enters a Flow and publishes a Document. Neither result-only completion gets a Flow link or automatic card.
 - `flow-clean-result`: `/vstack-clean` retains its ordinary confirmation and cleanup outcomes, and publishes a Result when bound, without a separate Flow link.
 - `flow-quiz`: structured choice, text, and numeric quizzes give immediate feedback and explanations. Attempts and completion persist separately from authored work, resume across host restarts, and synchronize browser-local offline attempts idempotently.
@@ -46,7 +46,7 @@ The flow-page script takes typed contributions for one bound Stage, assigns ids,
 
 - A skill runs `bun "$(realpath skill://flow-page/scripts/flow-page.ts)" open|bind|submit|alias|close|reopen|find|move|show|migrate ...`. `bound` looks up only the current session and agent, without creating a Flow.
 - Result-only replies and completion summaries have no Flow link or path reminder. The extension supplies hidden session and agent authoring context without an automatic post-reply message.
-- For each question round, the main agent submits the complete contribution through the CLI, verifies live content, displays exactly one clickable live URL in assistant chat, then calls ordinary `ask` with the receipt's questions. Several questions in one call share that link. A later round gets its own link. Record the actual response through a separate CLI contribution. Stored data alone does not permit opening the picker. Ratchet retains its native approval gate and visible pre-gate link.
+- For each question round, submit the complete contribution through the CLI and call ordinary `ask` under flow-page's "Every ask in a Flow" contract. Code looks up the current session and agent's binding and awaits the separate Flow popup before the picker. No assistant link text or URL in the picker payload is needed. Record the actual response through a separate CLI contribution. Ratchet keeps its native approval gate behind the same popup. RPC, ACP, print, unbound sessions, and subagents get no popup.
 
 ## Driving it with bash and the omp browser
 
@@ -201,59 +201,59 @@ The stub proves delivery and presentation mechanics, not whether a model follows
 8. In a separate fresh process, ask `How does vstack's Addon judge decide which Addons to pick for a session? I just want to understand it.` Confirm that the model actually reads the affected explanation or research guidance, returns a useful cited chat answer, authors no Flow, emits no card, and remains unbound. Do not continue the typed session for this case, because its existing binding would legitimately enroll later work.
 9. Preserve command, environment, source/model provenance, prompt, receipts, binding, absence-of-card, and cleanup evidence. Copy native session histories and submitted contributions into the evidence directory before Cleanup removes `data/`. Close only Flows created by these fresh diagnostic sessions, close their browser tabs, and stop their owned native processes. Leave the maintainer's binding and shared host untouched. Report skipped cases explicitly, and do not replace a failed scenario with repeated unchanged attempts until one passes.
 
-### Ordinary Flow questions through the native TUI (`flow-questions`)
+### Flow question popups through real omp and Tern (`flow-questions`)
 
-Use `scripts/flow-questions-tui.py`, not the RPC `drive.ts`, for this proof. The helper starts a real interactive omp process on a PTY, links both plugins, and stubs only the model provider. It uses the installed ordinary `ask` integration without replacing the UI or injecting routes.
+Use `scripts/flow-questions-tui.py --tern`, not RPC `drive.ts`, for visible native proof. It starts a real interactive omp process in its own headless Tern renderer and stubs only the model provider. Both plugins load normally. The ordinary `ask` integration and Ratchet's host dialog stay unchanged. Its Tern control endpoint and config directory are independent of the user's working window.
 
 Preconditions:
 
-- Use Python 3.9 or newer on macOS or Linux, with standard-library PTY support.
+- Use Python 3.9 or newer on macOS or Linux. Installations must already provide `omp`, Bun, Git, Tern developer controls, and `cwebp` for lossless conversion. Request missing dependencies rather than installing them silently.
 - Pin a real Bun executable on `PATH`, as in `flow-session`.
-- Set `OMP_TOOLS` to the explicit omp-tools checkout or installed plugin link under test. Its ordinary `ask` tool owns picker selection, retry, cancellation, and native delegation. A missing custom route is not a vstack-specific refusal contract.
+- Set `OMP_TOOLS` to the explicit omp-tools checkout or installed plugin path under test.
 - Use a new run directory for each case. The helper refuses existing evidence or `data/` paths. HOME and cwd stay outside the real home.
-
-Run the helper with a fresh run directory:
 
 ```sh
 	CHECKOUT=/absolute/path/to/checkout
 	SKILL_DIR="$CHECKOUT/.omp/skills/verify-vstack"
 	OMP_TOOLS=/absolute/path/to/omp-tools
-	VERIFY_RUN_DIR="<Scratch dir>/verify/vstack-$(date +%Y%m%d-%H%M%S)-flow-questions"
+	VERIFY_RUN_DIR="<Scratch dir>/verify/vstack-$(date +%Y%m%d-%H%M%S)-flow-popup"
 	mkdir -p "$VERIFY_RUN_DIR"
 	bash "$SKILL_DIR/scripts/doctor.sh" "$CHECKOUT" "$VERIFY_RUN_DIR"
 	python3 "$SKILL_DIR/scripts/flow-questions-tui.py" --checkout "$CHECKOUT" \
-		--omp-tools "$OMP_TOOLS" --run "$VERIFY_RUN_DIR" --case tui
-	bash "$SKILL_DIR/scripts/doctor.sh" "$CHECKOUT" "$VERIFY_RUN_DIR"
+		--omp-tools "$OMP_TOOLS" --run "$VERIFY_RUN_DIR" --case tui --tern --dismiss enter
 	jq '{ok,assertions,error,cleanup_error}' "$VERIFY_RUN_DIR/flow-questions-tui/summary.json"
 ```
 
-The first provider request records the fresh runtime tool inventory and requires ordinary `ask` without the removed `flow_ask`. The helper must pass through CLI publication, actual assistant chat, ordinary `ask`, and separate CLI answer recording.
+The provider emits no assistant-chat Flow URL. The fixture binds the actual child session and main agent, submits complete questions through the real CLI, and checks the served read-scoped `content` identity. One ask call contains two questions. Before dismissal, the visible popup has the title `Flow page`, the full URL as a native Markdown link, and the Enter/Escape instruction, while the picker is absent. A real click on the link's text opens that exact URL in a browser pane owned by this isolated Tern instance. The helper records its destination and closes only that new pane before continuing.
 
-The fixture opens one bound Stage using the child session's actual identity. It submits one Document Result and two complete questions through the CLI. Before asking, it fetches the live Nuxt shell and read-scoped `content` endpoint and verifies the content's Flow, revision, generated question ids, and authored context. A successful shell alone does not pass. Its assistant message displays that exact URL once before the ordinary `ask` call. Both questions share that one link. Keyboard input adds an Alpha option note, explicitly selects Alpha and Beta, enters Other words for the second question, adds a submit note, and submits. The fixture records only these observed words and picks. Its scripted concern reading does not authorize real work. After completion settles, the helper requires no displayed `vstack-flow` message and no Flow URL in the terminal assistant completion. The native picker remains unchanged.
+Enter dismisses the popup. The real picker then accepts Alpha and Beta, an option note, Other words, and a submit note. Only a later, separate CLI contribution records those observed answers. The fixture's concern reading grants no real approval. Inspect `popup.webp`, `clicked-link.webp`, and `picker.webp` at full resolution, along with their native trees. A native `a` node or a screenshot alone is not click proof; require `click-target.json`, `click-destination.json`, and the matching live URL.
 
-For a subsequent-round proof, continue a fresh native TUI fixture after the first recorded answers. Publish a new complete round through the same child's binding, verify its live revision, display one assistant link, and call ordinary `ask` again. Capture the second link-before-picker ordering and its own receipt and answer. Each round has one chat link, not one link per question. Preserve both rounds and all answers in the Flow history. Keep this separate from the existing retry case, which repeats delivery of an unrecorded question rather than authoring a later round.
+Run each additional case in a fresh run directory with the same command, changing `--case`:
 
-For `flow-clean-result`, create an expired disposable Scratch entry in that child's isolated HOME, invoke `/vstack-clean`, and approve only that entry through its native Command UI. Capture deletion, the published cleanup Result, the caller binding afterward, and no displayed `vstack-flow` message or separate Flow URL. Also capture a cancelled cleanup retaining the entry and its honest Result. Do not delete or attach the maintainer's real Scratch.
+- `tui --dismiss escape` proves Escape dismisses only the popup, then the normal picker still collects answers.
+- `timeout --dismiss escape` dismisses the popup before `ask.timeout: 1` starts on the actual picker. Every returned question is timed out and Flow answers stay empty.
+- `cancel` dismisses the popup and presses Escape on the picker. The aborted ordinary ask records no consent.
+- `retry` cancels the picker, then sends native F5. A fresh popup appears before the retried picker. Escape dismisses that popup, and the eventual answers retain the original ids with only one publication.
+- `offline --dismiss escape` stops only the proof host and occupies its port with a listener owned by the helper. The popup displays the actual `bound.live.error`; after Escape the picker opens and can be cancelled. Neither delivery nor cancellation records an answer. No host recovery runs during the handoff.
+- `abort` sends Ctrl+C while the popup is open. Require `after-abort.tree.json` with no overlay, no picker after the cancellation, and no Flow answer. A popup that merely ignores Ctrl+C does not pass.
+- `ratchet` enables the actual Ratchet prelude in this disposable profile. It publishes the complete fixture question, calls `r.init()` and `r.approve()`, and drives the real native host gate after the popup. `ratchet-outcomes.json` must show a fresh explicit approval followed by `already: true` on reuse, without another gate or ordinary `ask`.
+
+Run `--case later-round` for a later authored round distinct from retry. The helper records the first round's answers, publishes a new complete round under the same child's binding, then calls ordinary `ask` with its new receipt. Require another popup, a new question id, separate answer recording, and both retained rounds. Inspect `later-publication.json`, `later-popup.tree.json`, `later-picker.tree.json`, `later-tool-result.json`, and `later-answers-receipt.json`. The extension-boundary tests also exercise repeated call ids, mode and binding isolation, host-off warnings, wrapper order, session switching, and abort signals.
 
 Require these evidence files under `flow-questions-<case>/`:
 
-- `runtime-inventory.json`, `identity.json`, `launch.json`, `commands.json`, `child-session-id.txt`, and `bindings.json` identify the tools, binaries, checkout, isolated environment, and child binding.
-- `publication.json`, `live-identity.json`, `live-page.html`, and `live-content.json` establish actual live content identity before asking. Stored files, a generic successful shell, or a later receipt alone do not pass.
-- `terminal.bin` preserves raw PTY bytes. `terminal.txt` strips escape sequences but is not a terminal screen emulator. `inputs.json` records key bytes, timestamps, and output offsets.
-- `before-picker.json` records the actual assistant chat message and the exact live URL's terminal position before the first picker footer. Inspect the adjacent raw terminal output.
-- `flow-messages.json` records displayed automatic Flow messages from persisted native session history and must be empty after completion. The terminal assistant completion must contain no Flow URL.
-- `sessions/*.jsonl`, `model-requests.jsonl`, `ask-calls.json`, and `tool-results.json` preserve real ordinary `ask` calls and outcomes. The passing normal case must retain both explicit picks, option notes, Other words, and the separate `submitNote`.
-- `committed-before-answers.json` proves delivery did not author Flow answers. `normalized-answers.json` is the separate fixture-agent contribution. `persisted-state.json` and `export/` retain the original round, questions, Document Result, and later answers.
+- `identity.json`, `launch.json`, `runtime-inventory.json`, `commands.json`, `child-session-id.txt`, and `bindings.json` pin the binaries, plugin paths, actual child identity, and fixture environment.
+- `publication.json`, `live-identity.json`, `live-page.html`, and `live-content.json` establish committed content identity. `offline-bound.json` retains the real unavailable-host diagnosis.
+- `popup.tree.json`, `popup.state.json`, the lossless WebP shots, and the click target/destination records establish actual native presentation and activation. `before-picker.json` and `inputs.json` establish dismissal before the picker.
+- `terminal.bin` and `terminal.txt` hold native tree snapshots with `--tern`, not raw terminal bytes. Without `--tern`, they retain PTY bytes and stripped text only. Preserve those limits.
+- `sessions/*.jsonl`, `model-requests.jsonl`, `ask-calls.json`, and `tool-results.json` retain the real calls and outcomes. The helper requires the UI-only popup text and its URL to be absent from both persisted entries and model requests. Hidden authoring identity and historical-card filtering keep their existing rules.
+- `committed-before-answers.json`, `normalized-answers.json` when applicable, `persisted-state.json`, and `export/` retain authoring separately from delivery. `flow-messages.json` must remain empty, with no result-only completion link.
 
-Run each additional case in a fresh run directory with the same Doctor and Cleanup steps:
+For compaction and branch-summary isolation, retain a native case's session file, then use `drive.ts --session` with the same run directory and a fresh drive name. Switch to that exact file with RPC `switch_session`, run `compact`, and inspect the summarizer's captured provider request. If the short fixture is below the default retained-history window, set `compaction.keepRecentTokens: 100` only in that run's disposable HOME and use another fresh drive name; retain the original refusal. For branch summaries, use `get_entries` to choose an earlier entry, then `navigate_tree` with that id and `summarize: true`. Require an actual summarizer request and persisted compaction or branch-summary entry, not merely a successful RPC response. Check both requests and summaries for the popup strings and exact URL. Record unavailable summarizers honestly. These are continuation checks on an isolated fixture, never the maintainer's session.
 
-- `--case timeout` sets `ask.timeout: 1` in the disposable home and sends no answer keys. Every returned question must have `timedOut: true`, and Flow answers must remain empty even if the integration returns fallback selections.
-- `--case cancel` sends actual Escape to the open picker. Require an aborted ordinary `ask` result and `cancelled-state.json` with no answers or consent.
-- `--case retry` sends Escape, waits for the aborted result, then sends the terminal's F5 sequence. It must reopen the actual picker through native retry. The eventual explicit answers use the original question ids, and only one question publication exists. The helper fails if F5 does not reopen the picker. A failed or undriven case does not prove native retry.
+For `flow-clean-result`, invoke `/vstack-clean` on an expired entry in the child's isolated HOME. Preserve its unchanged native Command confirmation, a confirmed deletion, a cancelled cleanup that retains the entry, the published Result, the original caller binding, and no separate Flow link.
 
-The installed source inspected while authoring establishes Escape cancellation and draft matching by question identities. It did not establish the installed executable's F5 binding. Until a successful `retry` run records the key, reopened picker and matching ids, report F5 as an unmet proof, not verified behavior.
-
-The helper exports persisted state and tool outcomes before stopping its child, provider, and owned host even after an assertion failure. Preserve each failed run. Write `notes.md` with actual commands and outcomes, then run `bash "$SKILL_DIR/scripts/cleanup.sh" "$VERIFY_RUN_DIR"`. Images and unavailable live hosts need separate drives. Recover committed content through the owned host and `bound` or `show`, never `render` or republishing. This fixture does not claim those cases.
+The helper exports state before stopping its child, provider, and owned host, even on failure. Preserve failed runs and the actual commands/outcomes in `notes.md`. Run Doctor and Cleanup afterward. Native click proof may open a browser only inside this helper's own Tern instance; ordinary reader browser proof still uses `app: { tern: false }`.
 
 ### RPC ordinary ask gates (`flow-session`)
 
@@ -261,7 +261,7 @@ Keep RPC and native PTY evidence distinct. An ordinary `ask` call in `drive.ts` 
 
 Use `--ui-replies` to choose a label or Other, then inspect raw tool details and later Flow answers. State that the stub authored any normalization. Preserve headless non-consent and the separate Ratchet `r.approve` exception.
 
-For presentation regression proof, run the native `tui`, `cancel`, `timeout`, and `retry` cases above. Completed and aborted turns must add no automatic Flow card. Each authored question round still gets one explicit live link before ordinary `ask`. The retry case must reopen the real picker with its original question identities and no republished round. RPC cancellation can establish an aborted event, but cannot prove physical Escape or F5 behavior.
+For presentation regression proof, run the native `tui`, `cancel`, `timeout`, `retry`, and `later-round` cases above. Completed and aborted turns must add no automatic Flow card. Each authored question round gets its popup under flow-page's common contract before ordinary `ask`. The retry case must reopen the real picker with its original question identities and no republished round. RPC cancellation can establish an aborted event, but cannot prove physical Escape or F5 behavior.
 
 ### Combined-product proof (`flow-t4`)
 

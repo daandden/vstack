@@ -28,7 +28,7 @@ Settle the End state once, before any work: commit, merge-ready, or shipped. Com
 
 1. If the user's words or the ticket name an End state, use that. Words that only ask to open a PR settle merge-ready.
 2. Otherwise, if `code-host.md`'s project facts hold the line `- Default End state: <commit|merge-ready|shipped>` with one of those three values exactly, take that project default with no question.
-3. Otherwise use `ask` with the End states on offer and commit recommended, following `skill://flow-page`'s "Every ask in a Flow" contract for publication, the pre-ask live chat link, and separate answer recording.
+3. Otherwise use `ask` with the End states on offer and commit recommended, following `skill://flow-page`'s "Every ask in a Flow" contract for publication and separate answer recording.
 
 Before work, say which End state the run took and where it came from: the words, the ticket, the project default, or the answer.
 

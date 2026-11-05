@@ -28,7 +28,7 @@ Each stub drive gets its own omp home at `$VERIFY_RUN_DIR/data/home` and its own
 
 omp also loads project skills from `.claude/skills` and `.agents/skills` in every parent dir of its working directory. A stub drive's run dir is under the real home, so its working directory is a temp dir outside it. The first drive or load gate makes that dir with `mktemp` as `<os temp dir>/vstack-verify-XXXXXX/`. Its random name is unique, so two run dirs with the same name never share it. `$VERIFY_RUN_DIR/data/outside` links to that dir, later stub drives reuse it, and Cleanup deletes it.
 
-For ordinary Flow questions, use the PTY helper in `features/flow-page.md`. It creates both HOME and cwd in the outside temp dir, links `data/home` to that HOME, and adds only `VSTACK_FLOW_PORT` to the sanitized child env. The explicit omp-tools path supplies its ordinary `ask` picker. RPC dialog replies cannot prove that TUI route.
+For Flow question popups, use the native helper in `features/flow-page.md` with `--tern`. It starts its own headless real Tern renderer, with a separate control endpoint and config directory, outside the user's working window. HOME and cwd stay in the outside temp dir. The explicit omp-tools path supplies its ordinary `ask` picker. The PTY-only mode remains useful for terminal bytes, but neither those bytes nor RPC dialog replies prove native clickable links.
 
 Never use your already-running omp session as proof. It loaded the plugin when it started, so it does not show edits made since then. Stub drives use the throwaway home. The real-model enrollment recipe verifies instruction following with the actual provider in a fresh session, not the shared session.
 
@@ -141,7 +141,7 @@ Never stop a process because of its name. Never delete the run dir itself. The `
 All paths are relative to `SKILL_DIR`.
 
 - `scripts/drive.ts`: one omp RPC session on the run's throwaway home, against the stub model. See Launch.
-- `scripts/flow-questions-tui.py --checkout <checkout> --omp-tools <plugin path> --run <new run> --case tui|timeout|cancel|retry`: drives CLI publication, a visible assistant chat link, ordinary `ask`, and separate CLI answer recording through the real PTY. It retains runtime inventory, live content identity, terminal bytes, keyboard input, real session tool results, and a Flow export. Use `features/flow-page.md`.
+- `scripts/flow-questions-tui.py --checkout <checkout> --omp-tools <plugin path> --run <new run> --case tui|timeout|cancel|retry|later-round|offline|abort|ratchet [--tern] [--dismiss enter|escape]`: drives the UI-only popup before the unchanged picker. `--tern` retains native trees, full-resolution lossless WebP shots, a real popup-link click and its browser destination, keyboard inputs, session history, model requests, and a Flow export. The later-round case publishes and answers a new question after recording the first round's answers. The Ratchet case uses its actual eval prelude and verifies reused approval. Use `features/flow-page.md`.
 - `scripts/load.sh <checkout> <run dir>`: the repo's load gate for one run. See Launch.
 - `scripts/doctor.sh <checkout> <run dir>`: the read-only Doctor check. See Doctor.
 - `scripts/cleanup.sh <run dir>`: stops this run's recorded processes and deletes `data/` and the temp working directory. See Cleanup.

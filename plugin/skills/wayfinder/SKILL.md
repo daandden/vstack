@@ -80,7 +80,7 @@ A map keeps one Flow page across sessions. Follow `skill://flow-page`'s "Stage e
 
 Each ticket run supplies its ticket id to the central Stage protocol and puts the ticket's name in its Background. Nested result-producing grilling, prototype, and domain-modeling runs follow the same protocol. Interviewing or reference helpers contribute to their producer without an independent run. Never rewrite shared Flow records.
 
-Put every ordinary user question through `ask` on the owning Stage, following `skill://flow-page`'s "Every ask in a Flow", including Flow CLI publication and a visible current live URL in chat before `ask`, followed by separate answer recording.
+Put every ordinary user question through `ask` on the owning Stage, following `skill://flow-page`'s "Every ask in a Flow", including Flow CLI publication and separate answer recording.
 
 Publish the map's destination, notes, frontier, decisions, fog, and out-of-scope boundaries as Document and table Results, with named tracker links and observed canonical revisions. Preserve the dependency graph as separate Result content: a table lists every ticket and its blockers, and a captured dependency figure shows the graph when produced. The Stage tree describes continuation, never blocking order. Before finishing charting or a ticket Stage, publish its actual resolution, evidence, outstanding questions, and canonical tracker or findings links. Record raw ask responses and separate readings. A headless recommendation, timeout, or cancellation cannot resolve a HITL ticket or authorize tracker writes.
 

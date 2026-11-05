@@ -176,6 +176,10 @@ _Avoid_: session, Matt run
 The document one Flow keeps across all its Stages, including questions, answers, Result blocks, shared explanations, and workflow progress. It is Scratch.
 _Avoid_: Grilling page, Grilling HTML, question page, round page
 
+**Flow popup**:
+The omp popup that shows the live Flow page link before a question picker in a Flow opens. The user closes it to reach the questions. Its text never reaches the model.
+_Avoid_: Flow card, Flow link note, Flow notification
+
 **Local Flow host**:
 The detached local server for one operating-system user that serves live Flow pages, runs captured prototypes on a separate origin, and observes git, the Code host, and the CI service read-only. The normal host uses the user's home namespace, while an explicit isolated `--home` namespace has its own host identity.
 _Avoid_: Flow server, page server, daemon

@@ -16,7 +16,7 @@ The tickets are not a list of steps. They are a **task graph** with blocking rel
 
 Communication to and from subagents should be sparse. Communicate primarily through **context pointers**: to the spec, tickets, research notes, and previous commits. Don't duplicate information already available via pointers.
 
-**Implementer subagents** run in the background for maximum concurrency. You are the orchestrator. You read the task graph, start subagents, act on their results, and put questions to the user through `ask` under `skill://flow-page`'s "Every ask in a Flow" contract. Publish each complete round through the Flow CLI, verify current live serving, and show the live URL in chat before `ask`. Record the observed response separately. You never build or merge a ticket yourself.
+**Implementer subagents** run in the background for maximum concurrency. You are the orchestrator. You read the task graph, start subagents, act on their results, and put questions to the user through `ask` under `skill://flow-page`'s "Every ask in a Flow" contract. Publish each complete round through the Flow CLI and record the observed response separately. You never build or merge a ticket yourself.
 
 ## Shared steps
 

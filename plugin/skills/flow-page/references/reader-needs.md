@@ -6,7 +6,7 @@ Prepare each new or re-asked question completely before publication through flow
 2. Declare one or more `needs`, each `{ need: "<concrete distinction>", kind: "<id>" }`.
 3. Build the visuals for non-prose needs, with the same `kind` on each question figure or option preview. One concise visual can meet several needs of the same kind.
 4. Cut overlapping description and Today text, retaining what the decision changes and why it matters. Preserve source qualifications, unresolved choices, and evidence limits. Label authored examples hypothetical.
-5. For ordinary main-agent delivery, publish the complete question and its new attachments in one CLI contribution. Verify the current live page and display its URL in chat before calling the existing `ask` tool with the receipt's generated questions. Follow the common owner for publication-only work, failures, answer recording, and Ratchet's native approval exception.
+5. For ordinary main-agent delivery, publish the complete question and its new attachments in one CLI contribution, then call the existing `ask` tool with the receipt's generated questions under flow-page's "Every ask in a Flow" contract. That contract owns current-content checks, publication-only work, failures, answer recording, and Ratchet's native approval exception.
 
 | Visual kind | `kind` | Reader need and safe representation |
 | --- | --- | --- |

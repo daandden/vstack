@@ -18,7 +18,7 @@ The project section first checks this repo for Matt Pocock's config. When it fin
 
 This is a prompt-driven skill with helper scripts. Explore, present what you found, settle each choice through `ask`, then write.
 
-Every question to the user follows `skill://flow-page`'s "Every ask in a Flow", with Flow CLI publication of the complete round, current live serving, and a visible live URL in chat before `ask`, followed by separate recording of the observed response. A timed-out answer is not the user's. Re-ask a gate once through the same contract, setting `again` on the Flow-authored question. If it times out again, stop without acting and say why. Unavailable questioning grants no approval.
+Every question to the user follows `skill://flow-page`'s "Every ask in a Flow", with Flow CLI publication of the complete round and separate recording of the observed response. A timed-out answer is not the user's. Re-ask a gate once through the same contract, setting `again` on the Flow-authored question. If it times out again, stop without acting and say why. Unavailable questioning grants no approval.
 
 ## Flow page and diagnostics
 
@@ -212,7 +212,7 @@ In Private mode, change two drafts so that they point under the vstack root by a
 - `issue-tracker.md` for local markdown: replace every `.scratch/` path, the Wayfinding map, ticket, and frontier paths included, with `<vstack_root>/artifacts/`.
 - `domain.md`: the domain docs live in `<vstack_root>/domain/`, as `GLOSSARY.md` (or `GLOSSARY-MAP.md`) and `adr/`, in place of the repo-root files. Add one line saying that the repo's own tracked `GLOSSARY.md` and `docs/adr/` are read as well when they exist.
 
-Publish each complete draft and, in Standard mode, the `## vstack` block changes (see step 7) as Results with one complete confirmation round for the whole write set. Verify current live serving, show the live URL in chat, then call `ask` with the receipt's generated question. Its question offers Write it (Recommended) and Change something. On Change something, make the user's edits and re-ask with `again`, publishing the revised drafts with the linked round before `ask`. A section choice is not write approval. Until this confirmation, keep the project files unchanged.
+Publish each complete draft and, in Standard mode, the `## vstack` block changes (see step 7) as Results with one complete confirmation round for the whole write set. Call `ask` with the receipt's generated question under flow-page's "Every ask in a Flow" contract. Its question offers Write it (Recommended) and Change something. On Change something, make the user's edits and re-ask with `again`, publishing the revised drafts with the linked round before `ask`. A section choice is not write approval. Until this confirmation, keep the project files unchanged.
 
 ### 7. Write
 

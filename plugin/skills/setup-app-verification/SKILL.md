@@ -10,7 +10,7 @@ A Verify skill drives the app as a user and captures proof. Write it for an agen
 
 Use the vstack root and mode from the Private-mode rule. A subagent uses the root from its prompt. Resolve Scratch through `skill://vstack-tmp` at the top level, or use the Scratch dir from the parent.
 
-Follow `skill://flow-page`'s "Stage entry/exit line" and "Every ask in a Flow" for all user questions through `ask`, including Flow CLI publication and a visible current live URL in chat before `ask`, followed by separate answer recording. Follow skill://implement/END-STATE.md's "Publish delivery progress". Track the steps below as tasks. Preserve the caller's requested End state. Standalone uncommitted setup uses `none`. Keep the generated Verify skill and feature map as real deliverables.
+Follow `skill://flow-page`'s "Stage entry/exit line" and "Every ask in a Flow" for all user questions through `ask`, including Flow CLI publication and separate answer recording. Follow skill://implement/END-STATE.md's "Publish delivery progress". Track the steps below as tasks. Preserve the caller's requested End state. Standalone uncommitted setup uses `none`. Keep the generated Verify skill and feature map as real deliverables.
 
 In Standard mode, this run commits its output in step 5. If the caller states that it commits the output, as implement does, hand the output back uncommitted. Private mode commits nothing. A committing run is a Standard-mode run whose caller does not commit the output. It runs the commit script with the bash tool, from inside the repo:
 

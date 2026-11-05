@@ -13,7 +13,7 @@ A wizard is ephemeral by default: built for one run, saved to a scratch or `scri
 
 ## The Flow page
 
-Follow `skill://flow-page`'s "Stage entry/exit line" before the first question or Result. In a Flow, put scope and approval questions through `ask`, following its "Every ask in a Flow", including Flow CLI publication and a visible current live URL in chat before `ask`, followed by separate answer recording. Outside a Flow, use plain `ask`. Page interactions grant no approval. The generated script's terminal confirmations remain separate.
+Follow `skill://flow-page`'s "Stage entry/exit line" before the first question or Result. In a Flow, put scope and approval questions through `ask`, following its "Every ask in a Flow", including Flow CLI publication and separate answer recording. Outside a Flow, use plain `ask`. Page interactions grant no approval. The generated script's terminal confirmations remain separate.
 
 In a Flow, publish the ordered procedure and each value's destination as a Document Result. Keep secret names and destinations, never their values, in chat, the Flow, attachments, and evidence. The real bash script remains the executable deliverable. In a Flow, capture its redacted source as a file attachment and publish a `prototype` Result naming an artifact with `runtime: "terminal"`, the actual `bash <absolute-script-path>` launch command, and its source revision. State that an interactive terminal and the named external services are required using `unavailable`. The page does not run the script, collect secrets, or claim the procedure has completed.
 
@@ -28,7 +28,7 @@ Work out every manual step the human must take and every value that gets capture
 - For setup: `.env`, `.env.example`, `.env.*`, `README`, `docker-compose*`, framework config, and the CI config (`.github/workflows/*`, `.gitlab-ci.yml`, `bitbucket-pipelines.yml`, and so on; every secret or variable it references is a value the wizard must produce).
 - For a migration or transition: the current state, the target state, and the irreversible actions between them.
 
-Publish the ordered list of stages and the values each produces with one complete confirmation round under the Flow question contract. Verify current live serving, show the live URL in chat, then call `ask` with the receipt's generated question. The user may add, drop, or reorder stages through the picker's custom answer. A timed-out answer is not the user's. Re-ask once with `again`, and if that times out too, stop without writing the wizard and say why. Unavailable questioning grants no approval.
+Publish the ordered list of stages and the values each produces with one complete confirmation round under flow-page's "Every ask in a Flow" contract, then call `ask` with the receipt's generated question. The user may add, drop, or reorder stages through the picker's custom answer. A timed-out answer is not the user's. Re-ask once with `again`, and if that times out too, stop without writing the wizard and say why. Unavailable questioning grants no approval.
 
 **Done when:** every stage is named in order, and for each captured value you know (a) where the human gets it, (b) where it's written (`.env`, a CI service secret or variable, both, or nowhere; some stages are pure actions), and (c) whether it's secret (hidden entry) or public.
 

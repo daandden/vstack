@@ -1,6 +1,6 @@
 ---
 name: flow-page
-description: Publish Flow questions and Results, show the live URL in chat, and record ordinary ask responses.
+description: Publish Flow questions and Results, use ordinary ask, and record observed responses.
 disable-model-invocation: true
 ---
 
@@ -113,14 +113,15 @@ The receipt's `ask` contains the generated questions in declared round order, wi
 This contract applies only to enrolled runs. Outside a Flow, use plain `ask` as the Stage entry rule says. Inside a Flow, every ordinary question follows this sequence:
 
 1. Prepare the complete round and visuals under [Reader needs and Visual kinds](references/reader-needs.md), then publish them once with CLI `submit`.
-2. Require `live.state: "serving"`. Fetch the receipt URL's read-scoped `content` endpoint and verify its Flow id, committed revision, generated question ids, and authored context. A generic successful Nuxt shell response is not proof. If publication or live serving fails, report the actual receipt and error in chat and leave the question unanswered. Stored files are not a server-free reader.
-3. Display exactly one clickable live URL in an assistant chat message before calling `ask`. Several questions in that call share this one link. Each subsequent question round gets its own link. The chat link is sufficient. Do not emit a page-publication notification or replace it with a queued duplicate message.
-4. Call the existing `ask` tool with the receipt's generated questions. Preserve its ordinary retry, cancellation, approval tier, timeout and integration behavior. Vstack adds no picker route, wrapper, delivery queue or retry gate. A repeated publication receipt does not prevent a separate ask call.
-5. Record each observed answer through CLI `submit`, preserving raw words and non-consent separately from interpretation as below.
+2. If `live.state` is `serving`, fetch the receipt URL's read-scoped `content` endpoint and verify its Flow id, committed revision, generated question ids, and authored context. A generic successful Nuxt shell response is not proof. A mismatch needs correction before asking. Publication failure still leaves the question unanswered. Host unavailability or `off` does not block a committed question or authorize an answer.
+3. Call the existing `ask` tool with the receipt's generated questions. Preserve its ordinary retry, cancellation, approval tier, timeout, and integration behavior. A repeated publication receipt does not prevent a separate ask call.
+4. Record each observed answer through CLI `submit`, preserving raw words and non-consent separately from interpretation as below.
 
-If the committed reader is unavailable, recover only the owned Local Flow host, then use `bound` or `show` to retrieve its URL. Verify current content and print the URL before asking, without resubmitting the committed question. A transport failure does not create a new Stage. A subagent never asks; it returns open questions to its coordinator for publication and ordinary `ask`.
+The extension owns link presentation. Before each main-agent `ask` call in an interactive TUI with this session and agent's binding, it awaits a separate Flow popup titled `Flow page`. The popup shows `Questions are on the Flow page:`, the full clickable live URL, and `Enter or Esc: continue to the questions`. Enter or Escape dismisses it before the ordinary picker opens. A cancelled turn opens no picker. Several questions in one call share one popup; each later call or retry gets a fresh popup. The extension looks up the binding and URL itself. Its popup text stays in the UI, outside session entries, model context, compaction, and branch summaries. Write no pre-ask chat link and put no URL in the picker payload. There is no notification, card, delivery queue, or retry gate.
 
-For Ratchet's native approval gate, publish the complete question and review material first, verify current live content as above, and display exactly one clickable live URL before passing its receipt's numbered title and page pointer to `r.approve()` as `skill://tune-llm-flow` says. The native gate, not a second ordinary picker, collects the approval. Preserve reused approval, revision feedback, abort, dismissal, cancellation, and unanswered states separately.
+When the bound host is unavailable or off, the popup shows its actual error or state and dismissal still opens the picker. Do not resubmit committed questions or add host recovery to this handoff. Unbound sessions, subagents, print, RPC, and ACP get no popup. A subagent never asks; it returns open questions to its coordinator for publication and ordinary `ask`.
+
+For Ratchet's native approval gate, publish the complete question and review material first and apply the same current-content check when serving. Pass the receipt's numbered title and page pointer to `r.approve()` as `skill://tune-llm-flow` says. The extension composes with the existing `ui.askDialog` integration and awaits the same popup before its original dialog. Reused current approval opens neither dialog nor popup. Ratchet's `ui.select` fallback when `askDialog` is absent is not covered. The native gate, not a second ordinary picker, collects approval. Preserve reused approval, revision feedback, abort, dismissal, cancellation, and unanswered states separately.
 
 ### Record the raw answer and separate reading
 
