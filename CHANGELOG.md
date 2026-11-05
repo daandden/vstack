@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.3] - 2026-11-05
+
+- `clean-wt inventory` no longer crashes when a task clone's parent session ran in a directory that was removed since (#359). It skips that session and takes the clone's source from its alternates instead.
+
 ## [9.0.2] - 2026-11-03
 
 - Merge exact main 274159e0 into the already-pushed UI integration without rewriting history; retain its Nuxt/Vite+ live-only reader, Mermaid sources, reading order, current prototype, dependencies, and shipped reader assets.
