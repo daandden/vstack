@@ -31,7 +31,7 @@ Start a change with `/skill:grill-with-docs` or `/skill:grill-me`. Confirm the g
 - One session: `/skill:implement`.
 - Multiple sessions: `/skill:to-spec`, `/skill:to-tickets`, then `/skill:implement-spec`.
 
-The [Flow page](plugin/skills/flow-page/SKILL.md) keeps questions, answers, results, and delivery progress in one first-publication sequence across sessions. Answers and revisions stay in place; unprovable historical order has its own boundary. The reader requires the Local Flow host, with no static fallback. Before each bound main-agent question picker in the interactive TUI, the extension shows a dismissible Flow popup with the clickable live link. If the host is unavailable, it shows the error and questions still open after dismissal. Completion summaries do not repeat the link.
+The [Flow page](plugin/skills/flow-page/SKILL.md) keeps questions, answers, results, and delivery progress in one first-publication sequence across sessions. Answers and revisions stay in place; unprovable historical order has its own boundary. The reader requires the Local Flow host, with no static fallback. While a bound main-agent question picker is open in the interactive TUI, the extension shows a Flow panel above the composer with the clickable live link. If the host is unavailable, the panel shows the error and the picker still opens. Completion summaries do not repeat the link.
 
 Run `/vstack-clean [age]` to preview expired Scratch entries. The default is `90d`. Deletion requires UI confirmation. Open Flows stay protected. See the [Scratch guide](plugin/skills/vstack-tmp/SKILL.md).
 

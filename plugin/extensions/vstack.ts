@@ -53,87 +53,87 @@ function registerFlowContext(pi: ExtensionAPI): void {
 function registerFlowQuestions(pi: ExtensionAPI): void {
   type Bound = { binding: object | null; live?: { state: string; url?: string; error?: string } };
   const interactive = (ctx: ExtensionContext) => ctx.mode === "tui" && ctx.hasUI && ctx.agent.kind === "main";
-  const popup = async (ctx: ExtensionContext, signal?: AbortSignal, custom = ctx.ui.custom.bind(ctx.ui)) => {
-    if (!interactive(ctx) || signal?.aborted) return;
+  const panelKey = "vstack-flow-panel";
+  const pickers = new Set<symbol>();
+  let shownIn: ExtensionContext | undefined;
+  const showPanel = async (ctx: ExtensionContext, picker: symbol) => {
+    pickers.add(picker);
     let text: string;
     try {
       const current = await flowPage<Bound>(pi, ctx, ["bound"]);
       if (!current.binding) return;
       text = current.live?.state === "serving" && current.live.url
-        ? `Questions are on the Flow page:\n\n<${current.live.url}>`
-        : `Flow page unavailable:\n\n${current.live?.error ?? `Local Flow host is ${current.live?.state ?? "unavailable"}`}`;
+        ? `<${current.live.url}>`
+        : `Unavailable: ${current.live?.error ?? `Local Flow host is ${current.live?.state ?? "unavailable"}`}`;
     } catch (error) {
-      text = `Flow binding lookup failed:\n\n${error instanceof Error ? error.message : String(error)}`;
+      text = `Flow binding lookup failed: ${error instanceof Error ? error.message : String(error)}`;
     }
-    if (signal?.aborted) return;
-    const { Markdown, matchesKey } = await import("@oh-my-pi/pi-tui");
+    const { Markdown } = await import("@oh-my-pi/pi-tui");
+    const { OverlayPanel } = await import("@oh-my-pi/pi-tui/chrome");
     const { getMarkdownTheme } = await import("@oh-my-pi/pi-tui/theme");
-    const cancelled = new AbortController();
-    await custom<void>((_tui, _theme, _keys, done) => {
-      const markdown = new Markdown(`# Flow page\n\n${text}\n\nEnter or Esc: continue to the questions`, 1, 1, getMarkdownTheme());
-      return {
-        render: width => markdown.render(width),
-        describe: cx => markdown.describe(cx),
-        invalidate: () => markdown.invalidate(),
-        handleInput: data => {
-          if (matchesKey(data, "enter") || matchesKey(data, "escape")) done();
-          else if (matchesKey(data, "ctrl+c")) {
-            ctx.abort();
-            cancelled.abort(new DOMException("Turn cancelled", "AbortError"));
-          }
-        },
-      };
-    }, { overlay: true, signal: signal ? AbortSignal.any([signal, cancelled.signal]) : cancelled.signal });
+    if (!pickers.has(picker)) return;
+    shownIn = ctx;
+    ctx.ui.setWidget(panelKey, () => {
+      const panel = new OverlayPanel("Flow page", "vstack.flow-panel");
+      panel.addChild(new Markdown(text, 0, 0, getMarkdownTheme()));
+      return panel;
+    }, { placement: "aboveEditor" });
   };
-  pi.on("tool_call", async (event, ctx) => {
+  const hidePanel = (picker?: symbol) => {
+    if (picker === undefined) pickers.clear();
+    else if (!pickers.delete(picker) || pickers.size) return;
+    shownIn?.ui.setWidget(panelKey, undefined);
+    shownIn = undefined;
+  };
+  const ordinary = new Map<string, symbol>();
+  pi.on("tool_execution_start", (event, ctx) => {
     if (event.toolName !== "ask" || !interactive(ctx)) return;
-    await popup(ctx);
-    ordinary.add(event.toolCallId);
+    const picker = Symbol(event.toolCallId);
+    ordinary.set(event.toolCallId, picker);
+    void showPanel(ctx, picker);
   });
-  const ordinary = new Set<string>();
-  pi.on("tool_result", event => { ordinary.delete(event.toolCallId); });
-  pi.on("agent_end", () => { ordinary.clear(); active?.controller.abort(); });
+  pi.on("tool_execution_end", event => {
+    const picker = ordinary.get(event.toolCallId);
+    ordinary.delete(event.toolCallId);
+    if (picker) hidePanel(picker);
+  });
+  pi.on("agent_end", () => { ordinary.clear(); hidePanel(); });
   type Dialog = NonNullable<ExtensionContext["ui"]["askDialog"]>;
-  type Route = { ctx: ExtensionContext; controller: AbortController; depth: number; enabled: boolean; wrappers: Set<Dialog> };
+  type Route = { ctx: ExtensionContext; depth: number; enabled: boolean; wrappers: Set<Dialog> };
   const routeKey = Symbol("vstack.flow-questions");
   let active: Route | undefined;
   const install = (_event: unknown, ctx: ExtensionContext) => {
     const own = (key: PropertyKey) => Object.getOwnPropertyDescriptor(ctx.ui, key)?.value;
     let route = own(routeKey) as Route | undefined;
     if (!route) {
-      route = { ctx, controller: new AbortController(), depth: 0, enabled: true, wrappers: new Set() };
+      route = { ctx, depth: 0, enabled: true, wrappers: new Set() };
       Object.defineProperty(ctx.ui, routeKey, { value: route, configurable: true });
     }
     route.ctx = ctx;
     route.enabled = true;
-    if (route.controller.signal.aborted) route.controller = new AbortController();
     active = route;
     const original = own("askDialog") as Dialog | undefined;
-    const custom = own("custom") as ExtensionContext["ui"]["custom"] | undefined;
-    if (typeof original !== "function" || typeof custom !== "function" || route.wrappers.has(original)) return;
+    if (typeof original !== "function" || route.wrappers.has(original)) return;
     const state = route;
     const wrapped: Dialog = async (questions, options) => {
       if (!state.enabled || state.depth || ordinary.size || !interactive(state.ctx)) return original.call(ctx.ui, questions, options);
-      const signal = options?.signal
-        ? AbortSignal.any([options.signal, state.controller.signal])
-        : state.controller.signal;
-      if (signal.aborted) return;
+      const picker = Symbol("askDialog");
       state.depth++;
+      void showPanel(state.ctx, picker);
       try {
-        await popup(state.ctx, signal, custom.bind(ctx.ui));
-        if (signal.aborted) return;
         return await original.call(ctx.ui, questions, options);
-      } catch (error) {
-        if (!signal.aborted) throw error;
-        return undefined;
-      } finally { state.depth--; }
+      } finally {
+        state.depth--;
+        hidePanel(picker);
+      }
     };
     state.wrappers.add(wrapped);
     ctx.ui.askDialog = wrapped;
   };
   const stop = () => {
     ordinary.clear();
-    if (active) { active.enabled = false; active.controller.abort(); }
+    hidePanel();
+    if (active) active.enabled = false;
   };
   pi.on("session_start", install);
   pi.on("before_agent_start", install);

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Drive a UI-only Flow popup, ordinary ask, and separate answer recording in native omp."""
+"""Drive the UI-only Flow panel beside ordinary ask, and separate answer recording, in native omp."""
 import argparse
 import errno
 import fcntl
@@ -21,6 +21,8 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.request import urlopen
+
+PANEL = '[data-role="vstack.flow-panel"]'
 
 
 def save(path, value):
@@ -263,7 +265,6 @@ def main():
     parser.add_argument("--run", required=True, help="new Verify run, with no data directory yet")
     parser.add_argument("--case", choices=["tui", "timeout", "cancel", "retry", "offline", "abort", "ratchet", "cancelled", "empty", "later-round"], default="tui")
     parser.add_argument("--tern", action="store_true", help="drive a separate real Tern renderer and capture native link clicks")
-    parser.add_argument("--dismiss", choices=["enter", "escape"], default="enter")
     parser.add_argument("--prompt", help="Scenario file selects actual Session-model mode, without a stub provider")
     parser.add_argument("--config", help="Actual-model isolation overlay")
     parser.add_argument("--session-source", help="Persistent caller session for model and thinking discovery")
@@ -433,7 +434,7 @@ def main():
             (project / "harness.ts").write_text("\n")
             (project / "prompt.md").write_text("Disposable approval proof prompt.\n")
             approval = f'await r.approve("inputs", question={receipt["ask"]["questions"][0]["question"]!r}, preview="Review this question on the Flow page.")'
-            code = ('import json\nr = ratchet("popup-fixture")\n'
+            code = ('import json\nr = ratchet("panel-fixture")\n'
                     'await r.init(cases=["cases.jsonl"], harness=["harness.ts"], change=["prompt.md"])\n'
                     f'print("FIRST_APPROVAL", json.dumps({approval}))\n'
                     f'print("REUSED_APPROVAL", json.dumps({approval}))')
@@ -707,62 +708,71 @@ def main():
             (out / "terminal.txt").write_text(plain(captured))
 
     summary = {"ok": False, "case": args.case}
-    try:
-        wait_for_text("Enter or Esc: continue to the questions")
-        popup_text = plain(captured)
-        if args.case == "offline":
-            unavailable = json.loads((out / "offline-bound.json").read_text())
-            assert unavailable["live"]["error"] in popup_text
-        else:
-            assert receipt["live"]["url"] in popup_text
-        assert not asks(), "Picker returned before popup dismissal"
-        assert ("Add note" if args.tern else "n add note") not in popup_text, "Picker opened before popup dismissal"
+
+    def panel_nodes():
+        return [node for node in ctl("tree", PANEL)["nodes"] if node.get("tag") != "a"] if args.tern else []
+
+    def panel_with_picker(name, after=0):
+        wait_for_text("n add note", after=after)
+        expected = (json.loads((out / "offline-bound.json").read_text())["live"]["error"]
+                    if args.case == "offline" else receipt["live"]["url"])
+        wait_for_text(expected, after=after)
         if args.tern:
-            popup_tree = ctl("tree")
-            save(out / "popup.tree.json", popup_tree)
-            save(out / "popup.state.json", ctl("state"))
-            shot = ctl("shot", "popup")
-            subprocess.run(["cwebp", "-lossless", shot["png"], "-o", str(out / "popup.webp")], check=True,
-                           capture_output=True)
-            if args.case != "offline":
-                save(out / "before-click.system.json", ctl("system"))
-                link = next(node for node in ctl("tree", ".sf-overlay a")["nodes"]
-                            if node.get("tag") == "a" and node.get("text") == receipt["live"]["url"])
-                x, y, _, _ = link["rect"]
-                save(out / "click-target.json", ctl("pick", str(x + 8), str(y + 8)))
-                ctl("click", str(x + 8), str(y + 8))
-                time.sleep(0.3)
-                save(out / "after-click.system.json", ctl("system"))
-                save(out / "after-click.state.json", ctl("state"))
-                save(out / "after-click.tree.json", ctl("tree"))
-                destination = ctl("tree", ".kit-web-url")
-                save(out / "click-destination.json", destination)
-                assert any(node.get("value") == receipt["live"]["url"] for node in destination["nodes"]), "Native click opened no matching live URL"
-                shot = ctl("shot", "clicked-link")
-                subprocess.run(["cwebp", "-lossless", shot["png"], "-o", str(out / "clicked-link.webp")], check=True,
-                               capture_output=True)
-                ctl("close")
-        if args.case == "abort":
-            before_abort = len(captured)
-            send("cancel the whole turn while the popup is open", b"\x03")
-            for _ in range(20):
+            for _ in range(50):
+                if expected in json.dumps(ctl("tree", PANEL)):
+                    break
                 read_output(0.1)
-            assert ("Add note" if args.tern else "n add note") not in plain(captured[before_abort:]), "Cancelled turn opened a picker"
+            panel = ctl("tree", PANEL)
+            save(out / f"{name}.panel.json", panel)
+            assert "Flow page" in json.dumps(panel) and expected in json.dumps(panel), "No Flow panel holds the link"
+            assert "Add note" in json.dumps(ctl("tree")), "The picker is not open beside the Flow panel"
+            save(out / f"{name}.tree.json", ctl("tree"))
+            save(out / f"{name}.state.json", ctl("state"))
+            shot = ctl("shot", name)
+            subprocess.run(["cwebp", "-lossless", shot["png"], "-o", str(out / f"{name}.webp")], check=True,
+                           capture_output=True)
+        return expected
+
+    def panel_gone(label):
+        if not args.tern:
+            return
+        for _ in range(50):
+            read_output(0.1)
+            if not panel_nodes():
+                save(out / f"after-{label}.panel.json", ctl("tree", PANEL))
+                return
+        raise AssertionError(f"Flow panel still shown after {label}")
+
+    try:
+        panel_with_picker("panel")
+        if args.case != "timeout":
+            assert not asks(), "Picker returned before it was shown"
+        if args.tern and args.case not in ("offline", "timeout"):
+            save(out / "before-click.system.json", ctl("system"))
+            link = next(node for node in ctl("tree", PANEL + " a")["nodes"]
+                        if node.get("tag") == "a" and node.get("text") == receipt["live"]["url"])
+            x, y, _, _ = link["rect"]
+            save(out / "click-target.json", ctl("pick", str(x + 8), str(y + 8)))
+            ctl("click", str(x + 8), str(y + 8))
+            time.sleep(0.3)
+            save(out / "after-click.system.json", ctl("system"))
+            save(out / "after-click.state.json", ctl("state"))
+            save(out / "after-click.tree.json", ctl("tree"))
+            destination = ctl("tree", ".kit-web-url")
+            save(out / "click-destination.json", destination)
+            assert any(node.get("value") == receipt["live"]["url"] for node in destination["nodes"]), "Native click opened no matching live URL"
+            shot = ctl("shot", "clicked-link")
+            subprocess.run(["cwebp", "-lossless", shot["png"], "-o", str(out / "clicked-link.webp")], check=True,
+                           capture_output=True)
+            ctl("close")
+        if args.case == "abort":
+            send("cancel the whole turn while the picker and panel are open", b"\x03")
+            panel_gone("abort")
             if args.tern:
-                after_abort = ctl("tree", ".sf-overlay")
+                after_abort = ctl("tree")
                 save(out / "after-abort.tree.json", after_abort)
-                assert after_abort["count"] == 0, "Turn cancellation left the popup open"
+                assert "Add note" not in json.dumps(after_abort), "Turn cancellation left the picker open"
             done.set()
-        else:
-            send("dismiss Flow popup with " + args.dismiss, b"\r" if args.dismiss == "enter" else b"\x1b")
-            wait_for_text("n add note")
-            save(out / "before-picker.json", {"popup_url": receipt["live"]["url"], "dismiss": args.dismiss,
-                 "picker_after_dismissal": True, "output_bytes": len(captured)})
-            if args.tern:
-                save(out / "picker.tree.json", ctl("tree"))
-                shot = ctl("shot", "picker")
-                subprocess.run(["cwebp", "-lossless", shot["png"], "-o", str(out / "picker.webp")], check=True,
-                               capture_output=True)
         if args.case == "ratchet":
             send("pick native Ratchet approval", b"\r")
             time.sleep(0.2)
@@ -776,6 +786,7 @@ def main():
             cancelled = published_state()
             save(out / "cancelled-state.json", cancelled)
             assert not cancelled["answers"], "Cancellation must not record consent"
+            panel_gone("cancel")
             if args.case in ("cancel", "offline"):
                 done.set()
             else:
@@ -783,9 +794,7 @@ def main():
                     read_output(0.1)
                 before_retry = len(captured)
                 send("F5 native retry of the aborted turn", b"\x1b[15~")
-                wait_for_text("Enter or Esc: continue to the questions", after=before_retry)
-                send("dismiss fresh retry popup with Escape", b"\x1b")
-                wait_for_text("n add note", after=before_retry)
+                panel_with_picker("retry-panel", after=before_retry)
         if args.case in ("tui", "retry", "later-round"):
             send("open Alpha option note", b"n")
             wait_for_text("Note for")
@@ -819,25 +828,8 @@ def main():
             before_submit = len(captured)
             send("submit real picker", b"\r")
         if args.case == "later-round":
-            wait_for_text("Enter or Esc: continue to the questions", after=before_submit)
-            assert len(asks()) == 1, "Later picker returned before its popup was dismissed"
-            time.sleep(0.3)
-            if args.tern:
-                later_popup = ctl("tree", ".sf-overlay")
-                assert "Add note" not in json.dumps(later_popup), "Later picker opened before popup dismissal"
-                save(out / "later-popup.tree.json", ctl("tree"))
-                shot = ctl("shot", "later-popup")
-                subprocess.run(["cwebp", "-lossless", shot["png"], "-o", str(out / "later-popup.webp")], check=True,
-                               capture_output=True)
-                assert ctl("tree", ".sf-overlay a")["count"] == 1
-            before_later_dismiss = len(captured)
-            send("dismiss later authored round popup with Escape", b"\x1b")
-            wait_for_text("n add note", after=before_later_dismiss)
-            if args.tern:
-                save(out / "later-picker.tree.json", ctl("tree"))
-                shot = ctl("shot", "later-picker")
-                subprocess.run(["cwebp", "-lossless", shot["png"], "-o", str(out / "later-picker.webp")], check=True,
-                               capture_output=True)
+            panel_with_picker("later-panel", after=before_submit)
+            assert len(asks()) == 1, "Later picker returned before it was shown"
             before_later_pick = len(captured)
             send("pick Continue in later round", b"\r")
             deadline = time.monotonic() + 20
@@ -854,6 +846,7 @@ def main():
         assert done.is_set(), "provider never reached completion; inspect repeated picker or missing tool result"
         for _ in range(15):
             read_output(0.1)
+        panel_gone("completion")
         result = asks()
         flow_messages = [entry for file in session_dir.rglob("*.jsonl") for entry in lines(file)
                          if entry.get("type") == "custom_message" and entry.get("customType") == "vstack-flow"
@@ -866,10 +859,10 @@ def main():
             assert "FLOW_QUESTIONS_FIXTURE_COMPLETE" in completion_text, "Missing terminal completion"
             assert receipt["live"]["url"] not in completion_text, "Completion repeats the Flow link"
         save(out / "tool-results.json", result)
-        popup_phrases = ["Questions are on the Flow page:", "Enter or Esc: continue to the questions", receipt["live"]["url"]]
+        panel_phrases = ["vstack.flow-panel", receipt["live"]["url"]]
         for file in session_dir.rglob("*.jsonl"):
-            assert all(phrase not in file.read_text() for phrase in popup_phrases), "Popup leaked into persisted history"
-        assert all(phrase not in json.dumps(requests) for phrase in popup_phrases), "Popup leaked into model requests"
+            assert all(phrase not in file.read_text() for phrase in panel_phrases), "Flow panel leaked into persisted history"
+        assert all(phrase not in json.dumps(requests) for phrase in panel_phrases), "Flow panel leaked into model requests"
         assert not handler_errors, handler_errors
         assert inventory_error is None, inventory_error
         if args.case != "abort":
@@ -922,23 +915,25 @@ def main():
         save(out / "bindings.json", bindings)
         shutil.copytree(folder, out / "export")
         assertions = ["fresh inventory omits flow_ask", "live content matches the committed question identities",
-                      "popup text absent from session entries and model requests", "no automatic Flow message or completion link"]
+                      "Flow panel text absent from session entries and model requests", "no automatic Flow message or completion link"]
         if args.case != "ratchet":
             assertions.append("ordinary ask retains the receipt's original question identities")
         if args.case == "abort":
-            assertions.append("Ctrl+C removes the popup and opens no picker")
+            assertions.append("Ctrl+C closes the picker and removes the Flow panel")
         elif args.case == "offline":
-            assertions.append("actual host error appears before dismissal and picker cancellation grants no consent")
+            assertions.append("actual host error appears in the Flow panel beside the picker and cancellation grants no consent")
         else:
-            assertions.append("popup URL precedes the original picker after user dismissal")
-            if args.tern:
-                assertions.append("native popup link click opens the exact live URL")
+            assertions.append("Flow panel URL is on screen while the picker is open, with no dismissal step")
+            if args.tern and args.case != "timeout":
+                assertions.append("native Flow panel link click opens the exact live URL")
+        if args.tern:
+            assertions.append("Flow panel is gone once the picker closes")
         if args.case in ("tui", "retry", "later-round"):
             assertions.append("explicit picks, option note, Other words and submit note recorded separately through CLI")
         if args.case == "retry":
-            assertions.append("F5 retry shows a fresh popup and preserves the question identities without republication")
+            assertions.append("F5 retry shows a fresh Flow panel and preserves the question identities without republication")
         if args.case == "later-round":
-            assertions.append("a new authored round gets a fresh popup and separate answer while preserving earlier history")
+            assertions.append("a new authored round gets a fresh Flow panel and separate answer while preserving earlier history")
         if args.case == "timeout":
             assertions.append("configured timeout remains non-consent")
         if args.case == "ratchet":

@@ -153,140 +153,204 @@ test("session and agent bindings keep ticket contributions and hidden authoring 
   expect((await w.ok(["bound", "--session", "a", "--agent", "worker-1"])).stage).toBe(child.stage);
 });
 
-test("one bound ask waits for a dismissible UI-only Flow popup before the unchanged picker", async () => {
-  const w = setup();
-  await w.ok(["open", "--title", "Question handoff", "--skill", "implement", "--session", "popup"]);
-  const current = await w.ok(["bound", "--session", "popup"]);
-  const h = w.host("popup");
+
+function panelUI(h: ReturnType<typeof fakeHost>) {
   h.ctx.mode = "tui";
   h.ctx.hasUI = true;
-  let popup: any;
-  let dismiss!: () => void;
-  h.ctx.ui.custom = async (factory: any, options: any) => {
-    expect(options.overlay).toBe(true);
-    return new Promise(resolve => {
-      popup = factory({}, {}, {}, resolve);
-      dismiss = () => popup.handleInput("\r");
-    });
+  const widgets: { key: string; content: any; options: any }[] = [];
+  h.ctx.ui.setWidget = (key: string, content: any, options?: any) => { widgets.push({ key, content, options }); };
+  h.ctx.ui.custom = async () => { throw new Error("The Flow panel opens no custom dialog"); };
+  const panel = () => {
+    const last = widgets.at(-1);
+    return last?.content ? (last.content({}, {}).render(120) as string[]).join("\n") : undefined;
   };
-  let picked = false;
+  const shown = () => widgets.filter(widget => widget.content !== undefined).length;
+  return { widgets, panel, shown };
+}
+
+function holdLookups(h: ReturnType<typeof fakeHost>) {
+  const exec = h.pi.exec;
+  const held: (() => void)[] = [];
+  let finished = 0;
+  h.pi.exec = async (...args: any[]) => {
+    await new Promise<void>(resolve => held.push(resolve));
+    try { return await exec(...args); } finally { finished++; }
+  };
+  return {
+    release: (index?: number) => (index === undefined ? held : [held[index]!]).forEach(resolve => resolve()),
+    held: () => held.length,
+    finished: () => finished,
+  };
+}
+
+async function until(condition: () => boolean, timeout = 10_000) {
+  const end = Date.now() + timeout;
+  while (!condition()) {
+    if (Date.now() > end) throw new Error("Timed out waiting for the Flow panel");
+    await Bun.sleep(20);
+  }
+}
+
+const returnsBefore = (pending: Promise<unknown>, ms = 500) =>
+  Promise.race([pending.then(() => "returned"), Bun.sleep(ms).then(() => "held")]);
+
+test("a bound ask shows the Flow panel above the composer while it runs, without holding the picker", async () => {
+  const w = setup();
+  await w.ok(["open", "--title", "Question handoff", "--skill", "implement", "--session", "panel"]);
+  const current = await w.ok(["bound", "--session", "panel"]);
+  const h = w.host("panel");
+  const ui = panelUI(h);
+  const lookups = holdLookups(h);
   const input = { questions: [{ id: "a" }, { id: "b" }] };
-  const pending = h.emit("tool_call", { toolName: "ask", toolCallId: "ask-1", input }).then(() => { picked = true; });
+  expect(await h.emit("tool_call", { toolName: "ask", toolCallId: "ask-1", input })).toEqual([undefined]);
+  lookups.release();
   await Bun.sleep(300);
-  expect(popup).toBeDefined();
-  expect(picked).toBe(false);
-  expect(popup.render(120).join("\n")).toContain(current.live.url);
-  expect(popup.describe({})).toBeDefined();
-  dismiss();
-  await pending;
-  expect(picked).toBe(true);
+  expect(ui.shown()).toBe(0);
+  const start = { toolName: "ask", toolCallId: "ask-1", args: input };
+  expect(await returnsBefore(h.emit("tool_execution_start", start))).toBe("returned");
+  expect(ui.panel()).toBeUndefined();
+  await until(() => lookups.held() === 1);
+  lookups.release();
+  await until(() => ui.panel() !== undefined);
+  const panel = ui.panel()!;
+  expect(panel).toContain("Flow page");
+  expect(panel).toContain(current.live.url);
+  expect(panel).not.toContain("Enter or Esc");
+  expect(ui.widgets.filter(widget => widget.content).map(widget => widget.options)).toEqual([{ placement: "aboveEditor" }]);
+  await h.emit("tool_execution_end", { toolName: "ask", toolCallId: "ask-1", isError: false });
+  expect(ui.panel()).toBeUndefined();
+  expect(new Set(ui.widgets.map(widget => widget.key)).size).toBe(1);
   expect(input).toEqual({ questions: [{ id: "a" }, { id: "b" }] });
   expect(h.sent).toEqual([]);
   expect(h.saved).toEqual([]);
 });
 
-test("native host approval composes with another wrapper and follows session lifecycle", async () => {
+test("a picker that closes before its link lookup finishes leaves no panel behind", async () => {
+  const w = setup();
+  await w.ok(["open", "--title", "Fast answer", "--skill", "implement", "--session", "fast"]);
+  const h = w.host("fast");
+  const ui = panelUI(h);
+  const lookups = holdLookups(h);
+  await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "fast", args: {} });
+  await h.emit("tool_execution_end", { toolName: "ask", toolCallId: "fast", isError: true });
+  lookups.release();
+  await until(() => lookups.finished() === 1);
+  await Bun.sleep(100);
+  expect(ui.shown()).toBe(0);
+  expect(ui.panel()).toBeUndefined();
+});
+
+test("a late lookup from a closed picker never replaces the panel of a call that reuses its id", async () => {
+  const w = setup();
+  await w.ok(["open", "--title", "Old Flow", "--skill", "implement", "--session", "reuse-a"]);
+  await w.ok(["open", "--title", "New Flow", "--skill", "implement", "--session", "reuse-b"]);
+  const old = await w.ok(["bound", "--session", "reuse-a"]);
+  const current = await w.ok(["bound", "--session", "reuse-b"]);
+  const h = w.host("reuse-a");
+  const ui = panelUI(h);
+  const lookups = holdLookups(h);
+  const call = { toolName: "ask", toolCallId: "same", args: {} };
+  await h.emit("tool_execution_start", call);
+  await h.emit("tool_execution_end", { ...call, isError: true });
+  h.ctx.sessionManager = { ...h.ctx.sessionManager, getSessionId: () => "reuse-b" };
+  await h.emit("session_switch");
+  await h.emit("tool_execution_start", call);
+  await until(() => lookups.held() === 2);
+  lookups.release(1);
+  await until(() => ui.panel()?.includes(current.live.url) ?? false);
+  lookups.release(0);
+  await until(() => lookups.finished() === 2);
+  await Bun.sleep(100);
+  expect(ui.panel()).toContain(current.live.url);
+  expect(ui.panel()).not.toContain(old.live.url);
+});
+
+test("native host approval shows the panel while its dialog is open and follows session lifecycle", async () => {
   const w = setup();
   await w.ok(["open", "--title", "First approval", "--skill", "tune-llm-flow", "--session", "native-a"]);
   await w.ok(["open", "--title", "Second approval", "--skill", "tune-llm-flow", "--session", "native-b"]);
   const first = await w.ok(["bound", "--session", "native-a"]);
   const second = await w.ok(["bound", "--session", "native-b"]);
   const h = w.host("native-a");
-  h.ctx.mode = "tui";
-  h.ctx.hasUI = true;
+  const ui = panelUI(h);
   const order: string[] = [];
-  let component: any;
-  let close!: (value?: any) => void;
-  h.ctx.ui.custom = async (factory: any) => new Promise(resolve => {
-    order.push("popup");
-    close = resolve;
-    component = factory({}, {}, {}, resolve);
-  });
   const answer = { kind: "submit", results: [] };
-  h.ctx.ui.askDialog = async (...args: any[]) => { order.push("native"); return answer; };
+  let finish!: (value: unknown) => void;
+  h.ctx.ui.askDialog = async () => { order.push("native"); return new Promise(resolve => { finish = resolve; }); };
   await h.emit("session_start");
   const native = h.ctx.ui.askDialog;
   h.ctx.ui.askDialog = async (...args: any[]) => { order.push("other-wrapper"); return native(...args); };
   await h.emit("before_agent_start");
   const questions = [{ id: "approval", question: "Approve?", options: [{ label: "Approve" }] }];
   const pending = h.ctx.ui.askDialog(questions);
-  await Bun.sleep(200);
-  expect(order).toEqual(["popup"]);
-  expect(component.render(120).join("\n")).toContain(first.live.url);
-  component.handleInput("\x1b");
+  await until(() => order.includes("native"));
+  await until(() => ui.panel()?.includes(first.live.url) ?? false);
+  finish(answer);
   expect(await pending).toBe(answer);
-  expect(order).toEqual(["popup", "other-wrapper", "native"]);
+  expect(ui.panel()).toBeUndefined();
+  expect(order).toEqual(["other-wrapper", "native"]);
   h.ctx.sessionManager = { ...h.ctx.sessionManager, getSessionId: () => "native-b" };
   await h.emit("session_switch");
   const again = h.ctx.ui.askDialog(questions);
-  await Bun.sleep(200);
-  expect(component.render(120).join("\n")).toContain(second.live.url);
-  close();
+  await until(() => ui.panel()?.includes(second.live.url) ?? false);
+  finish(answer);
   expect(await again).toBe(answer);
+  expect(ui.panel()).toBeUndefined();
   await h.emit("session_shutdown");
-  const count = order.filter(item => item === "popup").length;
-  expect(await h.ctx.ui.askDialog(questions)).toBe(answer);
-  expect(order.filter(item => item === "popup")).toHaveLength(count);
+  const shown = ui.shown();
+  const late = h.ctx.ui.askDialog(questions);
+  await Bun.sleep(300);
+  finish(answer);
+  expect(await late).toBe(answer);
+  expect(ui.shown()).toBe(shown);
 });
 
-test("turn cancellation aborts a pending native popup without opening its original dialog", async () => {
+test("a failed, cancelled, or abandoned picker removes the panel", async () => {
   const w = setup();
-  await w.ok(["open", "--title", "Cancelled approval", "--skill", "tune-llm-flow", "--session", "abort"]);
-  const h = w.host("abort");
-  h.ctx.mode = "tui";
-  h.ctx.hasUI = true;
-  let dismissed!: () => void;
-  let shown = false;
-  let picked = false;
-  h.ctx.ui.custom = async (_factory: any, options: any) => new Promise((resolve, reject) => {
-    shown = true;
-    dismissed = () => resolve(undefined);
-    options.signal.addEventListener("abort", () => reject(new Error("Turn cancelled")), { once: true });
-  });
-  h.ctx.ui.askDialog = async () => { picked = true; return {}; };
+  await w.ok(["open", "--title", "Abandoned questions", "--skill", "implement", "--session", "gone"]);
+  const h = w.host("gone");
+  const ui = panelUI(h);
+  let fail!: (error: Error) => void;
+  h.ctx.ui.askDialog = async () => new Promise((_resolve, reject) => { fail = reject; });
   await h.emit("session_start");
-  const pending = h.ctx.ui.askDialog([]);
-  await Bun.sleep(200);
-  expect(shown).toBe(true);
-  await h.emit("agent_end");
-  dismissed();
-  expect(await pending).toBeUndefined();
-  expect(picked).toBe(false);
+  const failing = h.ctx.ui.askDialog([]);
+  await until(() => ui.panel() !== undefined);
+  fail(new Error("dialog broke"));
+  await expect(failing).rejects.toThrow("dialog broke");
+  expect(ui.panel()).toBeUndefined();
+  for (const end of ["agent_end", "session_switch", "session_shutdown"]) {
+    await h.emit("session_start");
+    await h.emit("tool_execution_start", { toolName: "ask", toolCallId: end, args: {} });
+    await until(() => ui.panel() !== undefined);
+    await h.emit(end);
+    expect(ui.panel()).toBeUndefined();
+  }
 });
 
-test("each retry gets a fresh popup and delegated ordinary ask opens no duplicate", async () => {
+test("each retry gets a fresh panel and delegated ordinary ask adds no second one", async () => {
   const w = setup();
   await w.ok(["open", "--title", "Repeated questions", "--skill", "implement", "--session", "retry"]);
   const h = w.host("retry");
-  h.ctx.mode = "tui";
-  h.ctx.hasUI = true;
-  const popups: any[] = [];
-  h.ctx.ui.custom = async (factory: any) => new Promise(resolve => {
-    popups.push(factory({}, {}, {}, resolve));
-  });
+  const ui = panelUI(h);
   let picks = 0;
   h.ctx.ui.askDialog = async () => { picks++; return undefined; };
   await h.emit("session_start");
-  for (const [index, key] of ["\r", "\x1b", "\r"].entries()) {
+  for (const index of [0, 1, 2]) {
     const call = { toolName: "ask", toolCallId: `retry-${index}`, input: { questions: [{ id: "same" }] } };
-    const pending = h.emit("tool_call", call);
-    await Bun.sleep(150);
-    expect(popups).toHaveLength(index + 1);
-    expect(picks).toBe(index);
-    popups[index].handleInput("x");
-    expect(picks).toBe(index);
-    popups[index].handleInput(key);
-    await pending;
+    await h.emit("tool_execution_start", { toolName: call.toolName, toolCallId: call.toolCallId, args: call.input });
     expect(await h.ctx.ui.askDialog(call.input.questions)).toBeUndefined();
-    expect(popups).toHaveLength(index + 1);
-    await h.emit("tool_result", { toolCallId: call.toolCallId });
+    await until(() => ui.panel() !== undefined);
+    await Bun.sleep(300);
+    expect(ui.shown()).toBe(index + 1);
+    await h.emit("tool_execution_end", { toolName: call.toolName, toolCallId: call.toolCallId, isError: false });
+    expect(ui.panel()).toBeUndefined();
   }
   expect(picks).toBe(3);
   expect(h.saved).toEqual([]);
   expect(h.sent).toEqual([]);
 });
 
-test("only this main agent's bound interactive TUI gets a popup", async () => {
+test("only this main agent's bound interactive TUI gets a panel", async () => {
   const w = setup();
   await w.ok(["open", "--title", "Main binding", "--skill", "implement", "--session", "main"]);
   await w.ok(["open", "--title", "Child binding", "--skill", "research", "--session", "main", "--agent", "child"]);
@@ -300,20 +364,20 @@ test("only this main agent's bound interactive TUI gets a popup", async () => {
     ["main", undefined, "tui", false],
   ] as const) {
     const h = w.host(session, agent);
+    const ui = panelUI(h);
     h.ctx.mode = mode;
     h.ctx.hasUI = hasUI;
-    let shown = false;
-    h.ctx.ui.custom = async () => { shown = true; };
     h.ctx.ui.askDialog = async () => "original";
     await h.emit("session_start");
-    expect(await h.emit("tool_call", { toolName: "ask", toolCallId: "isolated", input: {} })).toEqual([undefined]);
+    expect(await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "isolated", args: {} })).toEqual([undefined]);
     expect(await h.ctx.ui.askDialog([])).toBe("original");
-    expect(shown).toBe(false);
+    await Bun.sleep(300);
+    expect(ui.shown()).toBe(0);
     expect(h.sent).toEqual([]);
   }
 });
 
-test("an unavailable bound host warns in the popup and opens questions without host interference", async () => {
+test("an unavailable bound host shows its error in the panel without host interference", async () => {
   const w = setup();
   await w.ok(["open", "--title", "Offline handoff", "--skill", "implement", "--session", "offline"]);
   await w.ok(["host", "stop"]);
@@ -321,59 +385,29 @@ test("an unavailable bound host warns in the popup and opens questions without h
   try {
     const bound = await w.ok(["bound", "--session", "offline"]);
     const h = w.host("offline");
-    h.ctx.mode = "tui";
-    h.ctx.hasUI = true;
-    let component: any;
-    h.ctx.ui.custom = async (factory: any) => new Promise(resolve => { component = factory({}, {}, {}, resolve); });
-    const pending = h.emit("tool_call", { toolName: "ask", toolCallId: "offline", input: {} });
-    await Bun.sleep(150);
-    expect(component.render(100).join("\n")).toContain(bound.live.error);
-    component.handleInput("\x1b");
-    expect(await pending).toEqual([undefined]);
+    const ui = panelUI(h);
+    expect(await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "offline", args: {} })).toEqual([undefined]);
+    await until(() => ui.panel() !== undefined);
+    expect(ui.panel()).toContain(bound.live.error);
     expect(await (await fetch(`http://127.0.0.1:${w.port}`)).text()).toBe("other listener");
     expect(h.sent).toEqual([]);
     expect(h.saved).toEqual([]);
   } finally { listener.stop(true); }
 });
 
-test("Ctrl+C cancels the turn while Enter and Escape remain popup dismissal", async () => {
-  const w = setup();
-  await w.ok(["open", "--title", "Turn abort", "--skill", "implement", "--session", "ctrl-c"]);
-  const h = w.host("ctrl-c");
-  h.ctx.mode = "tui";
-  h.ctx.hasUI = true;
-  let component: any;
-  let aborted = false;
-  h.ctx.abort = () => { aborted = true; };
-  h.ctx.ui.custom = async (factory: any, options: any) => new Promise((resolve, reject) => {
-    component = factory({}, {}, {}, resolve);
-    options.signal?.addEventListener("abort", () => reject(options.signal.reason), { once: true });
-  });
-  let picked = false;
-  const pending = h.emit("tool_call", { toolName: "ask", toolCallId: "ctrl-c", input: {} });
-  const outcome = pending.then(() => { picked = true; }, () => {});
-  await Bun.sleep(150);
-  component.handleInput("\x03");
-  expect(aborted).toBe(true);
-  await outcome;
-  expect(picked).toBe(false);
-});
-
-test("a disabled host remains a dismissible warning with no model or session presentation", async () => {
+test("a disabled host shows its state in the panel with no model or session presentation", async () => {
   const w = setup(true);
   await w.ok(["open", "--title", "Host off", "--skill", "implement", "--session", "off"]);
   const h = w.host("off");
-  h.ctx.mode = "tui";
-  h.ctx.hasUI = true;
-  h.ctx.ui.custom = async (factory: any) => {
-    const component = factory({}, {}, {}, () => {});
-    expect(component.render(100).join("\n")).toContain("off");
-  };
+  const ui = panelUI(h);
   await h.emit("session_start");
   const entries = h.ctx.sessionManager.getEntries();
   await h.emit("before_agent_start");
   const input = { questions: [{ id: "host-off", question: "Continue?" }] };
   expect(await h.emit("tool_call", { toolName: "ask", toolCallId: "off", input })).toEqual([undefined]);
+  expect(await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "off", args: input })).toEqual([undefined]);
+  await until(() => ui.panel() !== undefined);
+  expect(ui.panel()).toContain("off");
   expect(h.ctx.sessionManager.getEntries()).toEqual(entries);
   expect(input).toEqual({ questions: [{ id: "host-off", question: "Continue?" }] });
   expect(h.sent).toEqual([]);
@@ -381,4 +415,3 @@ test("a disabled host remains a dismissible warning with no model or session pre
   const history = [{ role: "user", content: "Continue?" }];
   expect(await h.emit("context", { messages: history })).toEqual([{ messages: history }]);
 });
-

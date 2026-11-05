@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.11] - 2026-11-06
+
+- Replace the Flow popup with a Flow panel above the composer (ADR 0056). The panel shows the `Flow page` title and the clickable live URL while a bound interactive question picker or native Ratchet approval is open, and the picker opens without an Enter or Escape step. The panel goes away when the picker returns, the turn ends, or the session switches or shuts down, and a link lookup that finishes after the picker closed shows nothing. Unavailable hosts show their error in the panel. The panel text stays out of session history and model context.
+
 ## [9.0.10] - 2026-11-06
 
 - `code-host.md` holds exactly one Landing method. `project.ts state` reports `missing_landing_method` when the file has an invalid line beside a valid one or two lines, and a setup-vstack re-run removes every existing `- Landing method:` line before it adds the chosen one. ship treats several lines as a missing line, because none of them takes precedence (#366).
