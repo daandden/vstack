@@ -1,6 +1,6 @@
 {
   "name": "vstack",
-  "version": "9.0.3",
+  "version": "9.0.4",
   "description": "Matt Pocock's skills plus selected pstack, CSS, and UI guidance as one linked omp plugin.",
   "private": true,
   "type": "module",

@@ -388,6 +388,18 @@ test("a task clone that copied the source repo's git dir is compared with the ch
   expect(c).toMatchObject({ kind: "task-isolation", verdict: "unused", state: "clean", unique_history: [] });
 });
 
+test("a task clone whose parent session's directory was removed takes its source from alternates", () => {
+  const dead = Bun.spawnSync(["true"]).pid;
+  const sandbox = taskSandbox("t-orphaned", { pid: dead, id: "Orphan1" });
+  const removed = join(dir, "removed-checkout");
+  mkdirSync(removed);
+  const parent = session("parent-session-2", removed, "-removed/2026-10-21T00-00-00-000Z_parent-session-2.jsonl");
+  session("task-session-2", join(sandbox, "m"), `${parent.slice(sessions.length + 1, -".jsonl".length)}/Orphan1.jsonl`);
+  rmSync(removed, { recursive: true });
+  const c = inventory()[join(sandbox, "m")];
+  expect(c).toMatchObject({ kind: "task-isolation", verdict: "unused", source_git_dir: join(repo, ".git") });
+});
+
 test("a base dir that does not exist yet is an empty inventory", () => {
   rmSync(base, { recursive: true });
   const r = cleanWt(["inventory"]);

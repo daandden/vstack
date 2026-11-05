@@ -4,7 +4,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
-## [9.0.3] - 2026-11-03
+## [9.0.4] - 2026-11-05
 
 - Merge pinned published main 3f880076 with architecture PR #358 without rewriting pushed history. Preserve all UI guidance, callers, Pins, register and package metadata. Published UI policy remains ADR 0051; move the unchanged architecture policy and its references to ADR 0052 (#333).
 - Fix the Flow identity test's Git fault injection on Linux by discarding anonymous regular-file captures as well as pipes and sockets, while preserving linked capture-file bytes. Remove the fixture-only self-test and retain real CLI namespace, ordering, refusal, and cleanup coverage (#333).
@@ -16,6 +16,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 - Reconcile architecture questions and proof with published main's native `ask`, live-only Nuxt reader, chronological publications, and captured Mermaid source. Publish complete rounds through the CLI, verify live content, display exactly one clickable live URL before each `ask` round, and record observed responses separately. Completion summaries do not repeat the link. Keep cancellation, timeout and automated picks distinct from consent.
 - Preserve concurrent Flow project identity and the real Git pipe-loss regression alongside main's failure refusals, regular-file CLI capture, chronological ordering tests, and genuine outside-repository behavior (#333).
 - Isolate actual-model architecture proof through the CLI's explicit owned `--home` while retaining real HOME for Session credentials. Keep the normal-HOME extension unbound and normal-HOME binding acceptance unproven. Record launch provenance and normal-HOME non-mutation checks without replacing shared discovery or hosts.
+
+## [9.0.3] - 2026-11-05
+
+- `clean-wt inventory` no longer crashes when a task clone's parent session ran in a directory that was removed since (#359). It skips that session and takes the clone's source from its alternates instead.
 
 ## [9.0.2] - 2026-11-03
 
