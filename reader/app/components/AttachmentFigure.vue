@@ -5,8 +5,6 @@ import type { Attachment } from "~/utils/flow";
 const props = defineProps<{ a: Attachment; anchor: string }>();
 const f = computed(() => flow.value!);
 const src = computed(() => `assets/${props.a.file}`);
-const state = computed(() => (props.a.availability === "unavailable" ? "Unavailable" : props.a.availability === "external" ? "Runs outside this page" : "Captured"));
-const revision = computed(() => (props.a.revision ? (props.a.availability === "captured" ? props.a.revision.slice(0, 12) : props.a.revision) : undefined));
 
 const video = ref<HTMLVideoElement>();
 onMounted(() => {
@@ -34,19 +32,8 @@ onMounted(() => {
 
 <template>
   <ArtifactView v-if="a.type === 'artifact'" :a="a" :runtime="f.runtimes[a.id]" :anchor="anchor" />
-  <figure v-else :id="anchor" class="attachment" :data-type="a.type" :data-availability="a.availability">
-    <figcaption class="figure-caption prose">
-      <p v-html="inline(a.caption)" />
-      <p class="meta">
-        <span class="kind">{{ TYPE_LABELS[a.type] }}</span>
-        <span>{{ state }}</span>
-        <span v-if="revision">Revision <code>{{ revision }}</code></span>
-        <span v-if="a.from">From <code>{{ a.from.path }}</code></span>
-        <time :datetime="a.time">{{ formatTime(a.time) }}</time>
-      </p>
-      <p class="quiet">Origin: <span v-html="inline(a.origin)" /></p>
-      <p v-if="a.type === 'image' || a.type === 'svg'" class="quiet">Unrecorded example identity, theme, or viewport: unknown.</p>
-    </figcaption>
+  <figure v-else :id="anchor" class="figure attachment" :data-type="a.type" :data-availability="a.availability">
+    <FigureCaption :a="a" />
     <p v-if="a.availability === 'unavailable'" class="unavailable"><span class="label">Not captured</span> <span v-html="inline(a.reason ?? '')" /></p>
     <div v-else-if="a.availability === 'external'" class="labelled">
       <p class="label">How to run it</p>

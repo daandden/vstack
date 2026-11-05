@@ -98,9 +98,10 @@ export const ATTACHMENT_TYPES = ["image", "video", "svg", "mermaid", "file", "tr
 export type AttachmentType = (typeof ATTACHMENT_TYPES)[number];
 /** A typed attachment. `captured` ones hold stored bytes named by their sha256 `revision`; `unavailable` ones say why
  *  there are none; an `artifact` is a runnable thing that runs outside the page, at the `revision` its producer names.
- *  A `mermaid` attachment is diagram source that the reader renders with Pele; `focus` names its focal Mermaid ids. */
+ *  A `mermaid` attachment is diagram source that the reader renders with Pele; `focus` names its focal Mermaid ids.
+ *  `caption` is the figure's one-line title and accessible name; `description` holds everything else about it. */
 export type Attachment = {
-  id: string; stage: string; type: AttachmentType; caption: string; origin: string; time: string;
+  id: string; stage: string; type: AttachmentType; caption: string; description?: string; origin: string; time: string;
   availability: "captured" | "unavailable" | "external";
   revision?: string; file?: string; size?: number; name?: string; from?: { root: string; path: string };
   reason?: string; launch?: string; url?: string; focus?: string[];
@@ -1177,12 +1178,23 @@ function parseMetrics(o: Obj, where: string): MetricsBody {
   return { workload: safeText(o, "workload", where), ...(environment !== undefined ? { environment } : {}), outcome: safeText(o, "outcome", where), series, measurements };
 }
 
+const CAPTION_LIMIT = 80;
+const graphemes = new Intl.Segmenter();
+function caption(o: Obj, where: string): string {
+  const t = safeText(o, "caption", where);
+  if (/[\r\n]/.test(t) || [...graphemes.segment(t)].length > CAPTION_LIMIT) {
+    refuse(where, `caption is the figure's title: one line of at most ${CAPTION_LIMIT} characters; put the rest in description`);
+  }
+  return t;
+}
+
 function parseAttachment(o: Obj, where: string, stage: string, id: string, time: string, io: Io): Attachment {
   const type = o.type as AttachmentType;
   if (!ATTACHMENT_TYPES.includes(type)) refuse(where, `type must be ${listed([...ATTACHMENT_TYPES])}, got ${JSON.stringify(o.type)}`);
-  const base = { id, stage, type, time };
+  const description = optSafeText(o, "description", where);
+  const base = { id, stage, type, time, caption: caption(o, where), ...(description !== undefined ? { description } : {}), origin: safeText(o, "origin", where) };
   if (type === "artifact") {
-    fields(o, where, ["kind", "type", "caption", "origin", "launch", "revision"], ["ref", "url", "runtime", "bundle", "unavailable"]);
+    fields(o, where, ["kind", "type", "caption", "origin", "launch", "revision"], ["ref", "description", "url", "runtime", "bundle", "unavailable"]);
     const revision = text(o, "revision", where);
     const runtime = o.runtime as Attachment["runtime"];
     if (runtime !== undefined && !["html", "local-app", "terminal"].includes(runtime)) refuse(where, "runtime must be html, local-app, or terminal");
@@ -1211,23 +1223,21 @@ function parseAttachment(o: Obj, where: string, stage: string, id: string, time:
       bundle = { entry, files };
     } else if (o.bundle !== undefined) refuse(where, "bundle belongs only to runtime html");
     return {
-      ...base, caption: safeLinks(text(o, "caption", where), where), origin: safeLinks(text(o, "origin", where), where),
+      ...base,
       availability: o.unavailable !== undefined ? "unavailable" : bundle ? "captured" : "external",
       launch: safeLinks(text(o, "launch", where), where), revision: bundle ? createHash("sha256").update(stableJson(bundle)).digest("hex") : revision,
       ...(runtime ? { runtime } : {}), ...(bundle ? { bundle } : {}), ...(o.url !== undefined ? { url: o.url as string } : {}),
       ...(o.unavailable !== undefined ? { reason: text(o, "unavailable", where) } : {}),
     };
   }
-  fields(o, where, ["kind", "type", "caption", "origin"], ["ref", "path", "unavailable", ...(type === "mermaid" ? ["focus"] : [])]);
-  const caption = safeLinks(text(o, "caption", where), where);
-  const origin = safeLinks(text(o, "origin", where), where);
+  fields(o, where, ["kind", "type", "caption", "origin"], ["ref", "description", "path", "unavailable", ...(type === "mermaid" ? ["focus"] : [])]);
   if ((o.path === undefined) === (o.unavailable === undefined)) refuse(where, "needs exactly one of path, the file to capture, or unavailable, the reason there is none");
   const focus = o.focus === undefined ? undefined : texts(o, "focus", where);
   if (focus && (focus.length > 2 || focus.some((f) => !/^[A-Za-z0-9_][A-Za-z0-9_.:-]*$/.test(f)))) refuse(where, "focus must list one or two Mermaid ids, each of letters, digits, _, ., :, or -");
   const marked = focus ? { focus } : {};
-  if (o.unavailable !== undefined) return { ...base, caption, origin, availability: "unavailable", reason: text(o, "unavailable", where), ...marked };
+  if (o.unavailable !== undefined) return { ...base, availability: "unavailable", reason: text(o, "unavailable", where), ...marked };
   const c = io.capture(text(o, "path", where), type, where);
-  return { ...base, caption, origin, availability: "captured", revision: c.revision, file: c.file, size: c.size, name: c.name, from: c.from, ...marked };
+  return { ...base, availability: "captured", revision: c.revision, file: c.file, size: c.size, name: c.name, from: c.from, ...marked };
 }
 
 export function visualKind(raw: unknown, where: string): Exclude<VisualKind, "prose"> {

@@ -14,7 +14,7 @@ This is a rendering helper, not a result-producing run. It opens no Stage. The c
 
 1. Choose the Mermaid type from the [Mermaid type reference](references/mermaid-types.md). Read it when choosing a type or writing its syntax.
 2. Write the Mermaid to `<slug>.mmd` in the caller's Scratch entry. The slug is a basename that is unique on the page. Follow every rule in [Make Pele figures look good](#make-pele-figures-look-good).
-3. Capture the source through a typed `attachment` with `type: "mermaid"`, its actual `path`, a meaningful `caption`, and provenance in `origin`. Add `focus` with the one or two focal Mermaid ids, as [Mark one or two focal elements](#mark-one-or-two-focal-elements) says. The capture refuses Mermaid that Pele cannot render and prints Pele's parse error. The Flow commits nothing then.
+3. Capture the source through a typed `attachment` with `type: "mermaid"`, its actual `path`, a `caption` that titles the figure in one line of at most 80 characters, and provenance in `origin`. Put what the reader needs to know beyond the title in `description`. Add `focus` with the one or two focal Mermaid ids, as [Mark one or two focal elements](#mark-one-or-two-focal-elements) says. The capture refuses Mermaid that Pele cannot render and prints Pele's parse error. The Flow commits nothing then.
 4. If the capture is refused, fix the Mermaid and submit again. If it still fails, place no figure, and say in one line which figure was not drawn and why. Never show a hand-built figure, a Mermaid code block, or a generated image in its place.
 
 ## Place the figure
@@ -124,4 +124,4 @@ A page scales a wide figure down to fit, and its text shrinks with it. A 2880px 
 
 ### Put what Mermaid cannot say in the text
 
-Mermaid has no reference lines or annotations in `xychart`, no value labels on bars, no blocked state in `kanban`, and no label for a set's own region in `venn-beta`. When a figure needs one of these, write it in the caption or the text beside the figure.
+Mermaid has no reference lines or annotations in `xychart`, no value labels on bars, no blocked state in `kanban`, and no label for a set's own region in `venn-beta`. When a figure needs one of these, write it in the attachment's `description` or the text beside the figure.
