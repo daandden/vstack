@@ -156,6 +156,7 @@ All paths are relative to `SKILL_DIR`.
 
 - A drive starts a new omp process, so it sees the plugin files as they are on disk now, uncommitted edits included. Your own session does not.
 - `omp plugin link` in the run's home replaces the link each drive. To compare two checkouts, use two run dirs.
+- Run tests with `bun run test`, or pass `--timeout 30000` when naming files. Bun's default 5000 ms timeout fails slow tests such as `tests/clean-wt.test.ts` that pass under the repo's declared command.
 - The stub model does not think. It answers with `--replies` in order, one per model request. A tool call needs a second reply for the turn after the tool result.
 - Startup tool-routing compression requests are logged but do not consume `--replies`. The helper recognizes only tool-less requests whose user text starts with `Compress into one routing hint`.
 - `get_state` holds the whole system prompt (about 40 KB). The summary shows only its size. Read fields from `rpc.jsonl` with `jq`.
