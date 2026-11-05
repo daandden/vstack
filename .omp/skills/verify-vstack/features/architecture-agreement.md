@@ -2,7 +2,7 @@
 
 The grill assesses each change, expands only consequential unsettled choices, records visual agreement, and stops before implementation. This recipe evaluates the actual reasoning at the user-visible Matt-run seam. It does not use the scripted model driver as proof of those decisions.
 
-The canonical policy is [ADR 0052](../../../../docs/adr/0052-architecture-agreement-belongs-in-the-grill.md). Its renumbering preserves the accepted policy bytes and leaves published UI guidance under ADR 0051.
+The canonical policy is [ADR 0053](../../../../docs/adr/0053-architecture-agreement-belongs-in-the-grill.md). Its renumbering preserves the accepted policy bytes. Published main owns ADR 0051 (UI guidance) and ADR 0052 (Stage-tab reading).
 
 ## Sub-features
 

@@ -69,9 +69,9 @@ The executing caller chooses visuals from each question's reader needs and choos
 
 At the current pstack Pin, `pstack/architect` contributes grounding, visual alternatives, screening, and rationale to `grill-with-docs` and shared `codebase-design`. Its merged register row does not ship a standalone architect command or its implementation phase. The Matt rows retain their existing owners, and DESIGN-IT-TWICE keeps its detailed-interface workflow. This feature moves no Pin.
 
-[Architecture agreement belongs in the grill](adr/0052-architecture-agreement-belongs-in-the-grill.md) is the canonical architecture policy. The [research note](research/architecture-design-in-grilling.md) supports it without defining another policy. Published main owns ADRs 0047 through 0051, so the architecture record moves to 0052 without changing its accepted bytes. [A Flow starts only on request](adr/0046-a-flow-starts-only-on-request.md) retains the separate enrollment policy.
+[Architecture agreement belongs in the grill](adr/0053-architecture-agreement-belongs-in-the-grill.md) is the canonical architecture policy. The [research note](research/architecture-design-in-grilling.md) supports it without defining another policy. Published main owns ADRs 0047 through 0052, so the architecture record moves to 0053 without changing its accepted bytes. [A Flow starts only on request](adr/0046-a-flow-starts-only-on-request.md) retains the separate enrollment policy.
 
-Published main's release notes through 9.0.2 remain intact. The architecture feature and reconciliation notes belong to 9.0.3, a compatibility Hand edit above both branch tips. The reconciliation preserves the UI upstream's Pin, register rows, and package metadata. It changes no approved target action or Disposition, and updates architecture references only for the ADR's number.
+Published main's release notes through 9.0.4 remain intact. The architecture feature and reconciliation notes belong to 9.0.5, a compatibility Hand edit above both branch tips. The reconciliation preserves the UI upstream's Pin, register rows, and package metadata. It changes no approved target action or Disposition, and updates architecture references only for the ADR's number.
 
 ## Pins and Upstream clones
 

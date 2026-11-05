@@ -28,7 +28,7 @@ items:
     tree: 07ba1cd60efc12d0d3a083005c1d9651cf15e39a
     disposition: merge
     artifacts: [plugin/skills/codebase-design]
-    reason: "DESIGN-IT-TWICE runs a Fan-out of vstack agents (#36), and improve-codebase-architecture runs it after every pick. Adds proportionate visual grounding, screening and rationale for grill-with-docs without weakening that detailed-design workflow (#334, ADR 0052)."
+    reason: "DESIGN-IT-TWICE runs a Fan-out of vstack agents (#36), and improve-codebase-architecture runs it after every pick. Adds proportionate visual grounding, screening and rationale for grill-with-docs without weakening that detailed-design workflow (#334, ADR 0053)."
   - id: matt/diagnosing-bugs
     upstream: matt
     kind: skill
@@ -52,7 +52,7 @@ items:
     tree: eedaf2562c83155115e9c649fa3ecaac2e10e81d
     disposition: merge
     artifacts: [plugin/skills/grill-with-docs]
-    reason: "Names skill://grilling and skill://domain-modeling where Matt calls the Skill tool, adds a grill-with-docs Stage to the Flow page, and names the next skill after the summary (#165, ADR 0032). Integrates architect assessment and visual agreement before implementation while preserving the Matt flow and implementation-owned coding details (#334, ADR 0052)."
+    reason: "Names skill://grilling and skill://domain-modeling where Matt calls the Skill tool, adds a grill-with-docs Stage to the Flow page, and names the next skill after the summary (#165, ADR 0032). Integrates architect assessment and visual agreement before implementation while preserving the Matt flow and implementation-owned coding details (#334, ADR 0053)."
   - id: matt/implement
     upstream: matt
     kind: skill
@@ -60,7 +60,7 @@ items:
     tree: f07d230f645fc9ac390cf13a450bbff12ad791a3
     disposition: adapt
     artifacts: [plugin/skills/implement]
-    reason: "Settles End states from user words, the ticket, project default, then ask through live MCP discovery and Code host routing. Confirms Flow test seams before code and goes red per slice (#183, ADR 0035, ADR 0038). Preserves tune-llm-flow kept-round and eval commits (ADR 0041). Shared step 6b independently verifies committed HEAD at every End state and gates reached progress (ADR 0043). It owns Shared checkout briefs, REFUSED and cleanup_error availability checks, and unchanged-clone verification safety. Preserves supplied architecture agreements while leaving coding choices to implementation; consequential departures remain open until the user resolves them (#336, ADR 0052). Frontend tasks and delegated briefs conditionally reach good-css and its shipped UI guidance (#339, ADR 0051)."
+    reason: "Settles End states from user words, the ticket, project default, then ask through live MCP discovery and Code host routing. Confirms Flow test seams before code and goes red per slice (#183, ADR 0035, ADR 0038). Preserves tune-llm-flow kept-round and eval commits (ADR 0041). Shared step 6b independently verifies committed HEAD at every End state and gates reached progress (ADR 0043). It owns Shared checkout briefs, REFUSED and cleanup_error availability checks, and unchanged-clone verification safety. Preserves supplied architecture agreements while leaving coding choices to implementation; consequential departures remain open until the user resolves them (#336, ADR 0053). Frontend tasks and delegated briefs conditionally reach good-css and its shipped UI guidance (#339, ADR 0051)."
   - id: matt/improve-codebase-architecture
     upstream: matt
     kind: skill
@@ -284,7 +284,7 @@ items:
     tree: 29891f4b7ff7e4824d0742b15cf920bd428e12e8
     disposition: merge
     artifacts: [ plugin/skills/grill-with-docs ,  plugin/skills/codebase-design ]
-    reason: "Integrate architecture agreement before implementation inside grill-with-docs while preserving the Matt flow, visual trade-offs and implementation-owned coding details. Grounding, visual alternatives, screening and rationale contribute to grill-with-docs and shared codebase-design, not a standalone architect command (#334, ADR 0052)."
+    reason: "Integrate architecture agreement before implementation inside grill-with-docs while preserving the Matt flow, visual trade-offs and implementation-owned coding details. Grounding, visual alternatives, screening and rationale contribute to grill-with-docs and shared codebase-design, not a standalone architect command (#334, ADR 0053)."
   - id: pstack/arena
     upstream: pstack
     kind: skill
@@ -877,7 +877,7 @@ items:
     tree: 0cfefc751d0cb64f0c948ffcb17e13b94e778f08
     disposition: adapt
     artifacts: [plugin/skills/implement-spec]
-    reason: "Runs isolated ticket implementers and mergers, preserving one commit per ticket and final review fixes. Uses one Flow Stage for coordinator asks and Results. Resolves the MCP task graph through current descriptions, schemas, directional blockers, and close transition. Tickets and spec close only after shared step 6b accepts the committed-head Verdict (ADR 0019, ADR 0022, ADR 0035, ADR 0038, ADR 0043, #167, #207). Carries agreed architecture through existing spec and ticket pointers, holding consequential departures through the existing open-question path (#336, ADR 0052)."
+    reason: "Runs isolated ticket implementers and mergers, preserving one commit per ticket and final review fixes. Uses one Flow Stage for coordinator asks and Results. Resolves the MCP task graph through current descriptions, schemas, directional blockers, and close transition. Tickets and spec close only after shared step 6b accepts the committed-head Verdict (ADR 0019, ADR 0022, ADR 0035, ADR 0038, ADR 0043, #167, #207). Carries agreed architecture through existing spec and ticket pointers, holding consequential departures through the existing open-question path (#336, ADR 0053)."
   - id: matt/pr
     upstream: matt
     kind: skill
