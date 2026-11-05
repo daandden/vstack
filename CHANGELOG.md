@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.10] - 2026-11-06
+
+- `code-host.md` holds exactly one Landing method. `project.ts state` reports `missing_landing_method` when the file has an invalid line beside a valid one or two lines, and a setup-vstack re-run removes every existing `- Landing method:` line before it adds the chosen one. ship treats several lines as a missing line, because none of them takes precedence (#366).
+
 ## [9.0.9] - 2026-11-06
 
 - ship lands each PR by the project's Landing method, the `- Landing method: <method>` line in `code-host.md`, instead of always squashing. setup-vstack offers the methods that the Code host allows and recommends `rebase` on GitHub and the non-squash project method on GitLab. If the stored method is not allowed or cannot land a PR, ship asks which method to use. A project without the line keeps squash first until a setup-vstack re-run adds it (ADR 0055).

@@ -89,10 +89,10 @@ function hasDefaultEndState(text: string): boolean {
 function hasLandingMethod(text: string): boolean {
   const lines = text.split("\n").map((line) => line.trimEnd());
   const known = HOST_LANDING_METHODS.find(([host]) => lines.some((line) => host.test(line)))?.[1];
-  return lines.some((line) => {
-    const method = LANDING_METHOD.exec(line)?.[1];
-    return method !== undefined && (known === undefined || known.includes(method));
-  });
+  const facts = lines.filter((line) => line.startsWith("- Landing method:"));
+  if (facts.length !== 1) return false;
+  const method = LANDING_METHOD.exec(facts[0]!)?.[1];
+  return method !== undefined && (known === undefined || known.includes(method));
 }
 
 function commit(cwd: string, title: string | undefined, migrationPaths: string[]) {
