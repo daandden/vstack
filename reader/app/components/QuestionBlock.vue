@@ -92,7 +92,7 @@ const lines = computed(() => {
       <p class="label">Example</p>
       <p class="example" v-html="inline(q.example)" />
     </div>
-    <FigureList :figures="q.figures" :question="q.q" />
+    <FigureList :figures="q.figures" />
     <ol class="options">
       <li v-for="o in q.options" :key="o.label" class="option" :data-recommended="o.recommended ? '' : undefined" :data-picked="picks.has(o.label) ? '' : undefined">
         <h3>
@@ -100,7 +100,7 @@ const lines = computed(() => {
           <span v-if="o.recommended" class="star" aria-hidden="true">*</span><span v-if="o.recommended" class="sr-only"> (recommended)</span>
           <span v-if="picks.has(o.label)" class="sr-only"> (your answer)</span>
         </h3>
-        <FigureList v-if="o.preview" :figures="[o.preview]" :question="q.q" />
+        <FigureList v-if="o.preview" :figures="[o.preview]" />
         <p v-html="inline(o.does)" />
         <ul class="trade">
           <li v-for="(g, i) in o.gains" :key="`g${i}`" class="gain" v-html="inline(g)" />

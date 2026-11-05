@@ -4,6 +4,12 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.12] - 2026-11-06
+
+- The Flow reader draws Mermaid diagrams at the page's body text size, 13px by default, instead of Pele's 16px. A diagram still keeps its drawn size and scrolls when it is wider than the column. The Flow page column grows from 54rem to 64rem (ADR 0050).
+- An attachment's `caption` is the figure's title: one line of at most 80 characters. The flow-page script refuses a longer caption or one with a line break. A new optional `description` holds the rest, with paragraphs, bullets, code, and links (ADR 0057).
+- Every figure shows its caption as a title in the slab font, then its description, then a closed `Source` disclosure with the origin and the attachment's type, availability, revision, source path, and capture time. The caption and description sit above the media, and only the media has a background box. The reader no longer adds a `Q<n> ·` prefix to figure titles and drops one that an earlier caption carries.
+
 ## [9.0.11] - 2026-11-06
 
 - Replace the Flow popup with a Flow panel above the composer (ADR 0056). The panel shows the `Flow page` title and the clickable live URL while a bound interactive question picker or native Ratchet approval is open, and the picker opens without an Enter or Escape step. The panel goes away when the picker returns, the turn ends, or the session switches or shuts down, and a link lookup that finishes after the picker closed shows nothing. Unavailable hosts show their error in the panel. The panel text stays out of session history and model context.

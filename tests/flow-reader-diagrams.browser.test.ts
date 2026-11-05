@@ -238,29 +238,24 @@ test.each(["mermaid", "svg"] as const)("narrow readers preserve %s label size an
   }
 }, 120_000);
 
-test("image titles keep one current question prefix and reuse exact adjacent pretitles", async () => {
-  const opened = cli(["open", "--skill", "grill-me", "--title", "Image title projection"]);
+test("every figure shows its caption as a title, a formatted description, and a closed Source, above a media box sized to the media", async () => {
+  const opened = cli(["open", "--skill", "grill-me", "--title", "Figure captions"]);
   const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64");
-  const path = join(root, "caption.png");
-  writeFileSync(path, png);
-  const caption = "Q1 · With-skill example · Light · 1280 × 900 CSS px";
-  const options = [{ label: "Inspect", does: "Reads the example", gains: ["Context"], costs: ["Reading"] }];
+  writeFileSync(join(root, "caption.png"), png);
+  writeFileSync(join(root, "narrow.mmd"), "flowchart TD\n  a[Start] --> b[End]\n");
+  const description = "Two steps:\n\n- `Start` comes first\n- [End](https://example.com/end) comes last";
+  const options = [{ label: "Inspect", does: "Reads the figure", gains: ["Context"], costs: ["Reading"] }];
   cli(["submit"], { version: 1, items: [
-    { kind: "attachment", ref: "qualified", type: "image", path, caption, origin: "Recorded image fixture" },
-    { kind: "attachment", ref: "unqualified", type: "image", path, caption: "No-skill example", origin: "Recorded image fixture" },
-    { kind: "round", questions: [
-      { title: "Exact adjacent title", description: "Keep the authored title once.", options,
-        needs: [{ need: "Read the title.", kind: "source-excerpt" }, { need: "Inspect the image.", kind: "source-view" }],
-        figures: [{ text: caption, kind: "source-excerpt" }, { attachment: "qualified", kind: "source-view" }] },
-      { title: "Reused image", description: "Use this question's identity.", options,
-        needs: [{ need: "Inspect the image.", kind: "source-view" }], figures: [{ attachment: "qualified", kind: "source-view" }] },
-      { title: "Option preview", description: "Use this question's identity.",
-        needs: [{ need: "Inspect the preview.", kind: "option-preview" }],
-        options: [{ ...options[0], preview: { attachment: "qualified", kind: "option-preview" } }] },
-      { title: "Unqualified caption", description: "Add the owning question's identity.", options,
-        needs: [{ need: "Inspect the image.", kind: "source-view" }], figures: [{ attachment: "unqualified", kind: "source-view" }] },
-    ] },
-    { kind: "result", shape: "document", title: "Recorded Result caption", sections: [{ heading: "Example", blocks: [{ figure: "qualified" }] }] },
+    { kind: "attachment", ref: "flow", type: "mermaid", path: "narrow.mmd", caption: "Narrow flow", description, origin: "Mermaid source narrow.mmd" },
+    { kind: "attachment", ref: "shot", type: "image", path: "caption.png", caption: "Q1 · Legacy screenshot", origin: "Recorded image fixture" },
+    { kind: "background", title: "Context", summary: "Why these figures exist.", sections: [{ heading: "Today", body: "Two figures." }], sources: ["fixture"], figures: [{ attachment: "shot" }] },
+    { kind: "round", questions: [{
+      title: "Which figure reads better?", description: "Compare them.",
+      needs: [{ need: "Read the label.", kind: "source-excerpt" }, { need: "Follow the flow.", kind: "context-diagram" }, { need: "See the screenshot.", kind: "option-preview" }],
+      figures: [{ text: "Narrow flow", kind: "source-excerpt" }, { attachment: "flow", kind: "context-diagram" }],
+      options: [{ ...options[0], preview: { attachment: "shot", kind: "option-preview" } }],
+    }] },
+    { kind: "result", shape: "document", title: "Figures in a Result", sections: [{ heading: "Flow", blocks: [{ figure: "flow" }] }], attachments: ["shot"] },
   ] });
   const historical = join(home, ".vstack", "tmp", "_global", "caption-history");
   mkdirSync(historical, { recursive: true });
@@ -274,31 +269,73 @@ test("image titles keep one current question prefix and reuse exact adjacent pre
       options: [{ ...options[0], label: "A. Inspect" }], visual: { html: `<p>${pretitle}</p><img src="caption.png" alt="${pretitle}">` } },
   ].map((row) => JSON.stringify(row)).join("\n") + "\n");
   const migrated = cli(["migrate", historical]);
-  for (const width of [1280, 360]) {
-    const context = await browser.newContext({ viewport: { width, height: 900 } });
-    try {
-      const page = await context.newPage();
-      for (const theme of ["Light", "Dark"]) {
-        await page.goto(opened.live.url);
-        await page.getByRole("button", { name: theme, exact: true }).click();
-        const figures = page.locator("figure.visual, figure.attachment");
-        expect(await figures.count()).toBe(5);
-        const expected = [caption, "Q2 · With-skill example · Light · 1280 × 900 CSS px", "Q3 · With-skill example · Light · 1280 × 900 CSS px", "Q4 · No-skill example", caption];
-        for (let i = 0; i < expected.length; i++) {
-          const figure = figures.nth(i);
-          await figure.locator("img").evaluate((img: HTMLImageElement) => img.decode());
-          expect(await figure.evaluate((el) => el.querySelector(".label")?.textContent ?? (el.classList.contains("attachment") ? el.querySelector("figcaption p")?.textContent : el.previousElementSibling?.textContent))).toBe(expected[i]);
-          expect(await figure.locator("figcaption").innerText()).toContain("Origin: Recorded image fixture");
-        }
-        expect(await figures.first().locator(".label").count()).toBe(0);
-        await page.goto(migrated.live.url);
-        const old = page.locator("#historical-caption");
-        await old.locator("img").evaluate((img: HTMLImageElement) => img.decode());
-        expect((await old.innerText()).split(pretitle).length - 1).toBe(1);
-        expect(await old.locator(".figure-caption .label").count()).toBe(0);
-      }
-    } finally {
-      await context.close();
+
+  const context = await browser.newContext({ colorScheme: "light", viewport: { width: 1440, height: 900 } });
+  try {
+    const page = await context.newPage();
+    await page.goto(opened.live.url);
+    await page.getByRole("img", { name: "Narrow flow" }).first().locator("svg").waitFor();
+    expect(await page.locator("main").evaluate((m) => m.getBoundingClientRect().width)).toBe(1024);
+
+    const figures = page.locator("figure");
+    expect(await figures.count()).toBe(5);
+    const body = await page.evaluate(() => {
+      const probe = document.body.appendChild(document.createElement("span"));
+      probe.style.background = "var(--mantle)";
+      const mantle = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      return { color: getComputedStyle(document.body).color, size: parseFloat(getComputedStyle(document.body).fontSize), mantle };
+    });
+    for (let i = 0; i < 5; i++) {
+      const figure = figures.nth(i);
+      await figure.scrollIntoViewIfNeeded();
+      const title = figure.locator(".figure-title");
+      expect(["Narrow flow", "Legacy screenshot"]).toContain(await title.innerText());
+      const look = await title.evaluate((t) => ({ family: getComputedStyle(t).fontFamily, weight: getComputedStyle(t).fontWeight, color: getComputedStyle(t).color }));
+      expect(look.family).toContain("Slab");
+      expect(look).toMatchObject({ weight: "650", color: body.color });
+      expect(await figure.evaluate((f) => getComputedStyle(f).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
+
+      const source = figure.locator("details.source");
+      expect(await source.locator("summary").innerText()).toBe("Source");
+      expect(await source.evaluate((d: HTMLDetailsElement) => d.open)).toBe(false);
+      const origin = (await title.innerText()) === "Narrow flow" ? "Mermaid source narrow.mmd" : "Recorded image fixture";
+      expect(await figure.getByText(origin).isVisible()).toBe(false);
+      await source.locator("summary").click();
+      expect(await figure.getByText(origin).isVisible()).toBe(true);
+
+      if ((await title.innerText()) !== "Narrow flow") continue;
+      const text = figure.locator(".figure-description");
+      expect(await text.locator("li").count()).toBe(2);
+      expect(await text.locator("code").innerText()).toBe("Start");
+      expect(await text.locator("a").getAttribute("href")).toBe("https://example.com/end");
+      const drawn = await figure.locator(".diagram").evaluate((host) => {
+        const svg = host.shadowRoot!.querySelector("svg")!;
+        return {
+          background: getComputedStyle(host).backgroundColor,
+          host: host.getBoundingClientRect().width, svg: svg.getBoundingClientRect().width,
+          fonts: [...svg.querySelectorAll("text")].filter((t) => t.textContent?.trim()).map((t) => parseFloat(getComputedStyle(t).fontSize) * Math.hypot(t.getScreenCTM()!.a, t.getScreenCTM()!.b)),
+        };
+      });
+      expect(drawn.background).toBe(body.mantle);
+      expect(drawn.host).toBeLessThan(drawn.svg + 32);
+      expect(drawn.fonts.length).toBeGreaterThan(0);
+      for (const size of drawn.fonts) expect(size).toBeCloseTo(body.size, 1);
     }
+    expect(await page.locator("figcaption").filter({ hasText: /Q\d+ ·/ }).count()).toBe(0);
+
+    await page.goto(migrated.live.url);
+    const old = page.locator("#historical-caption");
+    await old.locator("img").evaluate((img: HTMLImageElement) => img.decode());
+    expect(await old.locator(".figure-title").innerText()).toBe("Historical example");
+    expect((await old.innerText()).split("Historical example").length - 1).toBe(1);
+    expect(await old.innerText()).not.toContain("Q7 ·");
+    expect(await old.evaluate((el) => getComputedStyle(el.querySelector(".figure-title")!.closest("[id]")!).backgroundColor)).toBe("rgba(0, 0, 0, 0)");
+    expect(await old.locator("details.source summary").innerText()).toBe("Source");
+    await old.locator("details.source summary").click();
+    const source = await old.locator("details.source").innerText();
+    for (const field of ["Image", "Captured", "Revision", "Origin: Grilling page"]) expect(source).toContain(field);
+  } finally {
+    await context.close();
   }
-});
+}, 120_000);

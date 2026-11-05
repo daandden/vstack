@@ -728,6 +728,50 @@ test("every attachment type keeps its caption, origin, captured revision, and av
 });
 
 test.each([
+  ["81 characters", "Đ".repeat(81)],
+  ["a line break", "Ba seam kiểm thử\nđề xuất"],
+])("a caption with %s is refused for every attachment type, and nothing commits", (_name, caption) => {
+  const opened = openFlow("s-1");
+  put("media/seams.mmd", "flowchart TD\n  A --> B\n");
+  for (const item of [
+    attachment("fig", "mermaid", { path: "media/seams.mmd", caption }),
+    attachment("gone", "image", { unavailable: "No screenshot.", caption }),
+    attachment("app", "artifact", { launch: "Run it.", revision: "abc1234", caption }),
+  ]) {
+    const r = submit("s-1", item, { kind: "result", shape: "table", title: "Proof", columns: ["Check"], rows: [{ cells: ["ok"] }], attachments: [item.ref] });
+    expect(r.code).toBe(1);
+    expect(r.stderr).toContain("caption");
+    expect(r.stderr).toContain("80");
+  }
+  expect(show(opened.flow).revision).toBe(opened.revision);
+});
+
+test("an 80-character caption is accepted, and the description keeps the author's text", () => {
+  const opened = openFlow("s-1");
+  put("media/seams.mmd", "flowchart TD\n  A --> B\n");
+  const caption = "Ba seam kiểm thử đề xuất ".padEnd(80, "ệ");
+  const description = "Mỗi seam là một chỗ test chạm vào hệ thống thật:\n\n- RPC của `typst-gate`\n- [Playwright](https://playwright.dev/) trên `wrangler dev`";
+  const r = submit("s-1",
+    attachment("fig", "mermaid", { path: "media/seams.mmd", caption, description }),
+    attachment("bare", "mermaid", { path: "media/seams.mmd" }),
+    { kind: "result", shape: "table", title: "Proof", columns: ["Check"], rows: [{ cells: ["ok"] }], attachments: ["fig", "bare"] });
+  expect(r.stderr).toBe("");
+  const byId = new Map(JSON.parse(readFileSync(join(storedFolder(home, opened.flow), "data", "state.json"), "utf8")).attachments.map((a: any) => [a.id, a]));
+  const fig: any = byId.get(r.json.refs.fig);
+  expect([fig.caption, fig.description]).toEqual([caption, description]);
+  expect((byId.get(r.json.refs.bare) as any).description).toBeUndefined();
+});
+
+test("a description with a link that leaves the page is refused", () => {
+  const opened = openFlow("s-1");
+  const r = submit("s-1",
+    attachment("gone", "image", { unavailable: "No screenshot.", description: "See [the file](file:///etc/passwd)." }),
+    { kind: "result", shape: "table", title: "Proof", columns: ["Check"], rows: [{ cells: ["ok"] }], attachments: ["gone"] });
+  expect(r.code).toBe(1);
+  expect(show(opened.flow).revision).toBe(opened.revision);
+});
+
+test.each([
   ["plain", ""],
   ["declaration", '<?xml version="1.0" encoding="UTF-8"?>\r\n'],
   ["comments", "<!-- Figure provenance: measured checkout, not a simulation. -->\n<!-- Rendered by fixture. -->\n"],

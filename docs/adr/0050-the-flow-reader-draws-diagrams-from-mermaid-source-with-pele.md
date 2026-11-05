@@ -22,6 +22,12 @@ The #316 candidate proof uses the real CLI, production Bun host, installed reade
 
 Use the Verify recipe's `flow-diagram-reading` and `flow-t4` procedures to repeat these checks, and the authoring evaluation's `PROCEDURE.md` to freeze and review first publications. A general readability fix can change an over-wide judging control; record that later rendering separately rather than carry an obsolete tiny-label verdict forward. This candidate run does not repeat the earlier WebKit and Firefox probes above or certify the final integrated commit.
 
+## Diagram text matches the page text
+
+The user chose this in the `flow-diagram-fit-width-d865de` interview on 2026-11-06. The reader passes Pele a `fontSize` equal to the page's computed body font size, 13px at the default size, instead of leaving Pele at its 16px default. Pele keeps its own ratio for smaller text, so sequence message labels draw at about 11px. A diagram still keeps the size it is drawn at and scrolls when it is wider than the column. The Flow page column grows from 54rem to 64rem. [ADR 0057](0057-figure-captions-are-short-titles-with-source-behind-a-disclosure.md) records the caption and background box that sit around the diagram.
+
+The user again rejected scaling every diagram down to the column width. In the typst Flow, a 1747px sequence diagram would draw its labels at about 6.7px in an 840px column, and a 2592px flowchart at about 5px. The user also rejected a middle option that shrinks a diagram to at most 85% before it scrolls. Captured Pele SVGs from earlier Flows keep the layout and font size they were captured with.
+
 ## Cost
 
 - The captured bytes are the source, not the figure. The figure a reader sees depends on the pinned Pele, the reader's fonts, and the browser. A Pele upgrade redraws every source-based figure, and a font change can rewrap labels. Spec #309's frozen first-publication evidence keeps its captured bytes, but a diagram's screenshot is evidence of one reader revision in one browser, not of the bytes alone.
