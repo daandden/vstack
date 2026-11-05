@@ -4,6 +4,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+- Publish approved ticket batches through one durable publish/resume Interface, reconcile uncertain creates, and verify fields and directed relationships before configured readiness across CLI, MCP, and local-file trackers (#352).
 - Resolve shared Private-mode domain canonical references from main and linked checkouts with one `vstack-domain` identity, preserving hashes and history without widening attachment access (#354).
 - Diagnose malformed `revise.add` collections before Result provenance checks, without changing saved Flow state or valid append behavior (#357).
 - State the required ledger fields and nonempty-text rules, and validate the published proof-gap example through the Flow-authoring command with atomic refusal coverage (#356).
