@@ -2,9 +2,10 @@
 // rows and rules apply (house-style.ts `inScope`/`selectRows`). Text-lint checks (House style, spawn lints,
 // later page checks) start from lintTargets(ctx) so every lint sees artifacts the same way.
 
-import { readdirSync, readFileSync, lstatSync } from "node:fs";
-import { basename, join, relative } from "node:path";
+import { readFileSync, lstatSync } from "node:fs";
+import { join } from "node:path";
 import type { TextDisposition } from "../house-style.ts";
+import { artifactFiles } from "../vstack-repo.ts";
 import type { CheckContext } from "./types.ts";
 
 export interface TextFile {
@@ -28,29 +29,24 @@ export interface LintTarget {
 /** Prose files: the asking and wording lints read only these. */
 export const isMarkdown = (path: string) => /\.(md|mdc|markdown)$/i.test(path);
 
-const IGNORED = new Set([".DS_Store"]);
 const decoder = new TextDecoder("utf-8", { fatal: true });
 
 /** UTF-8 text files under one path; binary files and symlinks are left out. */
 export function textFiles(root: string, artifact: string): TextFile[] {
   const out: TextFile[] = [];
-  const add = (abs: string) => {
+  const add = (abs: string, path: string) => {
     const bytes = readFileSync(abs);
     if (bytes.includes(0)) return;
     try {
-      out.push({ path: relative(root, abs), text: decoder.decode(bytes) });
+      out.push({ path, text: decoder.decode(bytes) });
     } catch {
       // not UTF-8 text
     }
   };
-  const walk = (abs: string) => {
-    if (IGNORED.has(basename(abs))) return;
-    const st = lstatSync(abs);
-    if (st.isSymbolicLink()) return;
-    if (st.isDirectory()) for (const e of readdirSync(abs)) walk(join(abs, e));
-    else add(abs);
-  };
-  walk(join(root, artifact));
+  for (const file of artifactFiles(root, artifact)) {
+    const abs = join(root, file);
+    if (!lstatSync(abs).isSymbolicLink()) add(abs, file);
+  }
   return out.sort((a, b) => a.path.localeCompare(b.path));
 }
 

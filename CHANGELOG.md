@@ -8,6 +8,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 - Diagnose malformed `revise.add` collections before Result provenance checks, without changing saved Flow state or valid append behavior (#357).
 - State the required ledger fields and nonempty-text rules, and validate the published proof-gap example through the Flow-authoring command with atomic refusal coverage (#356).
 - Accept safe SVG declaration and provenance-comment prologs without changing captured bytes or hashes; refuse external resources and active content atomically through Flow authoring (#355).
+- Ignore empty plugin remnants and recognized Python caches through a shared, read-only artifact inventory while retaining untracked source and bundled reader assets (#353).
 
 ## [9.0.2] - 2026-11-03
 
