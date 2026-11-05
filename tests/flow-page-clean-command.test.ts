@@ -53,17 +53,17 @@ test("confirmed Scratch cleanup records its outcome in the bound Flow without lo
   const opened = await w.ok(["open", "--title", "Cleanup proof", "--skill", "implement", "--session", "cleanup"]);
   const h = w.host(["Apply all"]);
   await h.callCommand("vstack-clean");
+  expect(h.sent).toEqual([]);
   expect(existsSync(w.expired)).toBe(false);
   expect(existsSync(storedFolder(w.home, opened.flow))).toBe(true);
+  const bound = await w.ok(["bound", "--session", "cleanup"]);
+  expect(bound.binding).toMatchObject({ flow: opened.flow, stage: opened.stage });
   const snapshot = await w.ok(["show", "--flow", opened.flow]);
   const cleanup = snapshot.stages.find((stage: any) => stage.skill === "vstack-clean");
   expect(cleanup).toBeDefined();
   expect(cleanup.state).toBe("finished");
   expect(cleanup.results).toHaveLength(1);
-  const bound = await w.ok(["bound", "--session", "cleanup"]);
-  expect(bound.binding).toMatchObject({ flow: opened.flow, stage: opened.stage });
   expect(stored(w.home, opened.flow)).toContain(w.expired);
-  expect(h.sent).toEqual([]);
 });
 
 test("unbound cleanup retains confirmation and creates no administrative Flow", async () => {

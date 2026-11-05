@@ -49,13 +49,235 @@ def plain(data):
     return re.sub(r"\x1b[^\n]", "", text).replace("\r", "")
 
 
+def actual_model(args):
+    """Observe a fresh Session-model TUI; keyboard policy is never scenario input."""
+    import hashlib
+
+    checkout, tools, run = (Path(p).resolve() for p in (args.checkout, args.omp_tools, args.run))
+    source = Path(args.session_source or os.environ.get("PI_SESSION_FILE", ""))
+    records = lines(source)
+    model = next((r["model"] for r in reversed(records) if r.get("type") == "model_change"), None)
+    thinking = next((r["thinkingLevel"] for r in reversed(records) if r.get("type") == "thinking_level_change"), None)
+    if not model or not thinking:
+        raise RuntimeError("Session source lacks the last model or thinking record")
+    run.mkdir(parents=True, exist_ok=False)
+    prompt, config = Path(args.prompt).resolve(), Path(args.config).resolve()
+    env = {k: v for k, v in os.environ.items() if not k.startswith(("PI_", "OMP_"))}
+    env.update(PI_CONFIG_FILES=str(config), TERM="xterm-256color")
+    with socket.socket() as free:
+        free.bind(("127.0.0.1", 0))
+        env["VSTACK_FLOW_PORT"] = str(free.getsockname()[1])
+    flow_home = run / "flow-home"
+    scenario = prompt.read_text()
+    guidance = (
+        f"\n\nRuntime isolation for this disposable evaluation: retain real HOME for credentials, "
+        f"but use the checkout CLI at {checkout / 'plugin/skills/flow-page/scripts/flow-page.ts'} "
+        f"with explicit --home {shlex.quote(str(flow_home))} on every Flow command, "
+        "including publication, recovery, export, closure, and host cleanup. "
+        "Use your own fresh session and agent identity. Let the CLI start its owned host on demand "
+        "using VSTACK_FLOW_PORT. The normal-HOME native extension is intentionally unbound; "
+        "this proves explicit isolated CLI publication plus ordinary native ask, not automatic "
+        "binding or Flow-card acceptance. VSTACK_FLOW_PORT cannot override an existing discovery "
+        "record. Do not launch host.ts directly or alter normal-HOME discovery, secrets, bindings, "
+        "or hosts. Do not stop foreign listeners, including port 51417. "
+        "Write scenario outputs only in this run directory."
+    )
+    effective_prompt = scenario + guidance
+    sessions = run / "sessions"
+    argv = ["omp", "--no-title", "--model", model, "--thinking", thinking,
+            "--approval-mode", "yolo", "--no-rules", "--no-context-files",
+            "--no-extensions", "-e", str(checkout / "plugin"), "-e", str(tools),
+            "--config", str(config), "--session-dir", str(sessions),
+            "--cwd", str(run), effective_prompt]
+    save(run / "launch.json", {"argv": argv, "session_source": str(source), "model": model,
+         "thinking": thinking, "checkout": str(checkout), "omp_tools": str(tools),
+         "prompt_sha256": hashlib.sha256(prompt.read_bytes()).hexdigest(),
+         "config_sha256": hashlib.sha256(config.read_bytes()).hexdigest(),
+         "effective_prompt_sha256": hashlib.sha256(effective_prompt.encode()).hexdigest(),
+         "flow_home": str(flow_home), "flow_cli_guidance": guidance.strip(),
+         "normal_home_extension_bound": False, "normal_home_binding_card_proven": False,
+         "cleared_variables": [k for k in os.environ if k.startswith(("PI_", "OMP_"))],
+         "home": env.get("HOME"), "port": env["VSTACK_FLOW_PORT"],
+         "automated_controller": args.case, "human_consent": False})
+    master, slave = pty.openpty()
+    fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack("HHHH", 55, 180, 0, 0))
+    child = subprocess.Popen(argv, cwd=run, env=env, stdin=slave, stdout=slave, stderr=slave,
+                             start_new_session=True, preexec_fn=lambda: fcntl.ioctl(0, termios.TIOCSCTTY, 0))
+    os.close(slave)
+    captured, inputs, started = bytearray(), [], time.monotonic()
+    summary = {"transport_complete": False, "human_consent": False, "case": args.case}
+
+    message_sessions = {}
+
+    def messages():
+        current = []
+        for session_file in sessions.rglob("*.jsonl"):
+            for record in lines(session_file):
+                if record.get("type") == "message":
+                    message = record["message"]
+                    if message.get("role") == "toolResult":
+                        message_sessions[message["toolCallId"]] = session_file
+                    current.append(message)
+        return current
+
+    def send(label, value):
+        inputs.append({"at_seconds": time.monotonic() - started, "label": label,
+                       "bytes_hex": value.hex(), "output_byte_offset": len(captured)})
+        save(run / "inputs.json", inputs)
+        os.write(master, value)
+
+    def verify_picker(current, text):
+        ask_calls = [block for message in current if message.get("role") == "assistant"
+                     for block in message.get("content", []) if isinstance(block, dict)
+                     and block.get("type") == "toolCall" and block.get("name") == "ask"]
+        if not ask_calls:
+            raise RuntimeError("Visible picker has no ordinary ask call in the native session")
+        def identities(payload):
+            return [{"id": question.get("id"), "question": question.get("question"),
+                     "labels": [option.get("label") for option in question.get("options", [])],
+                     "multi": question.get("multi", False)}
+                    for question in payload.get("questions", [])]
+
+        expected = identities(ask_calls[-1].get("arguments", {}))
+        receipts = []
+        decoder = json.JSONDecoder()
+        for message in current:
+            if message.get("role") != "toolResult":
+                continue
+            values = [block.get("text", "") for block in message.get("content", [])
+                      if isinstance(block, dict)]
+            column_truncation = (message.get("details", {}).get("meta", {})
+                                 .get("limits", {}).get("columnTruncated", {}))
+            artifact_id = column_truncation.get("artifactId")
+            if artifact_id is not None and re.fullmatch(r"\d+", str(artifact_id)):
+                # omp stores full outputs beside the owning session's JSONL file.
+                artifact_dir = message_sessions[message["toolCallId"]].with_suffix("")
+                artifacts = list(artifact_dir.glob(f"{artifact_id}.*.log"))
+                if len(artifacts) == 1:
+                    values.append(artifacts[0].read_text())
+            for value in values:
+                for match in re.finditer(r"\{", value):
+                    try:
+                        receipt, _ = decoder.raw_decode(value[match.start():])
+                    except json.JSONDecodeError:
+                        continue
+                    if (isinstance(receipt, dict) and isinstance(receipt.get("ask"), dict)
+                            and identities(receipt["ask"]) == expected):
+                        receipts.append(receipt)
+        if not receipts:
+            raise RuntimeError("Ordinary ask has no matching CLI publication receipt")
+        receipt = receipts[-1]
+        if receipt.get("live", {}).get("state") != "serving":
+            raise RuntimeError(f"Question reader is unavailable: {receipt.get('live')}")
+        url = receipt["live"]["url"]
+        chat = [message for message in current if message.get("role") == "assistant"
+                and any(url in block.get("text", "") for block in message.get("content", [])
+                        if isinstance(block, dict))]
+        if not chat or not 0 <= text.find(url) < text.find("n add note"):
+            raise RuntimeError("Actual assistant chat URL did not precede the native picker")
+        with urlopen(url.rstrip("/") + "/content", timeout=10) as response:
+            content = json.loads(response.read())
+        ids = [question["id"] for question in receipt["ask"]["questions"]]
+        visible = {question["id"]: question for question in content["questions"]}
+        if (content["flow"]["id"] != receipt["flow"] or content["revision"] != receipt["revision"]
+                or any(identity not in visible for identity in ids)):
+            raise RuntimeError("Live question identity differs from its publication receipt")
+        save(run / "live-content.json", content)
+        save(run / "publication.json", receipt)
+        save(run / "ask-call.json", ask_calls[-1])
+        save(run / "before-picker.json", {"elapsed_seconds": time.monotonic() - started,
+             "link_text_offset": text.find(url), "picker_text_offset": text.find("n add note"),
+             "output_bytes": len(captured), "assistant_messages": chat,
+             "question_context": [visible[identity] for identity in ids]})
+
+    try:
+        controlled, submitted_empty, completed_calls, terminal_reply = False, False, 0, False
+        deadline = time.monotonic() + args.deadline_seconds
+        while time.monotonic() < deadline:
+            if select.select([master], [], [], 0.15)[0]:
+                try:
+                    chunk = os.read(master, 65536)
+                except OSError as error:
+                    if error.errno == errno.EIO:
+                        chunk = b""
+                    else:
+                        raise
+                captured.extend(chunk)
+                with (run / "terminal.bin").open("ab") as log:
+                    log.write(chunk)
+                (run / "terminal.txt").write_text(plain(captured))
+            current = messages()
+            calls = [m for m in current if m.get("role") == "toolResult" and m.get("toolName") == "ask"]
+            save(run / "tool-results.json", calls)
+            text = plain(captured)
+            if not controlled and "n add note" in text:
+                verify_picker(current, text)
+                if args.case == "cancelled":
+                    send("cancel actual picker", b"\x1b")
+                elif args.case == "empty":
+                    # Shift+Tab reaches the submit review without selecting an option.
+                    send("open picker submit review without a selection", b"\x1b[Z")
+                controlled = True
+            if args.case == "empty" and controlled and not submitted_empty and "n add submit note" in text:
+                send("submit actual picker with no selection", b"\r")
+                submitted_empty = True
+            if calls and len(calls) != completed_calls:
+                completed_calls = len(calls)
+                summary["attempts"] = [{"isError": m.get("isError", False), "details": m.get("details"),
+                                        "content": m.get("content")} for m in calls]
+                if calls[-1].get("isError"):
+                    summary.update(transport_complete=True, aborted_tool_result=True,
+                                   model_continuation_observed=False)
+                    break
+            if calls:
+                last = current[-1] if current else {}
+                content = last.get("content", [])
+                terminal_reply = (last.get("role") == "assistant" and
+                                  not any(b.get("type") == "toolCall" for b in content if isinstance(b, dict)))
+                if terminal_reply:
+                    summary["transport_complete"] = True
+                    break
+            if child.poll() is not None:
+                raise RuntimeError(f"omp exited {child.returncode} before the scenario completed")
+        else:
+            raise RuntimeError("Controller deadline reached without a terminal scenario result; this is not a picker timeout")
+        summary.update(picker_observed=controlled, ask_results=completed_calls,
+                       elapsed_seconds=time.monotonic() - started,
+                       note="Inspect actual raw results and Flow behavior. Transport completion is not acceptance.")
+    except Exception as error:
+        summary["error"] = repr(error)
+    finally:
+        os.close(master)
+        if child.poll() is None:
+            child.terminate()
+            try:
+                child.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                child.kill()
+                child.wait()
+        summary["exit_code"] = child.returncode
+        save(run / "summary.json", summary)
+        print(json.dumps(summary, indent=2))
+    return 0 if summary["transport_complete"] and not summary.get("unavailable") else 1
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--checkout", required=True)
     parser.add_argument("--omp-tools", required=True, help="omp-tools checkout or installed plugin link")
     parser.add_argument("--run", required=True, help="new Verify run, with no data directory yet")
-    parser.add_argument("--case", choices=["tui", "timeout", "cancel", "retry"], default="tui")
+    parser.add_argument("--case", choices=["tui", "timeout", "cancel", "retry", "cancelled", "empty"], default="tui")
+    parser.add_argument("--prompt", help="Scenario file selects actual Session-model mode, without a stub provider")
+    parser.add_argument("--config", help="Actual-model isolation overlay")
+    parser.add_argument("--session-source", help="Persistent caller session for model and thinking discovery")
+    parser.add_argument("--deadline-seconds", type=int, default=1800)
     args = parser.parse_args()
+    if args.prompt:
+        if not args.config or args.case not in ("cancelled", "timeout", "empty"):
+            parser.error("--prompt requires --config and --case cancelled|timeout|empty")
+        return actual_model(args)
+    if args.case in ("cancelled", "empty"):
+        parser.error("--case cancelled|empty requires an actual-model --prompt and --config")
     checkout, tools, run = (Path(p).resolve() for p in (args.checkout, args.omp_tools, args.run))
     for root, name in [(checkout / "plugin", "vstack"), (tools, "omp-tools")]:
         if json.loads((root / "package.json").read_text())["name"] != name:

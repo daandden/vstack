@@ -7,13 +7,13 @@ This directory maps the user-facing features of the vstack omp plugin. Read this
 - `VERIFY_RUN_DIR` is a new run entry under `<Scratch dir>/verify/`, made as `../SKILL.md` Evidence step 1 says. Proof and notes go at its top level, and throwaway data goes in `data/`.
 - `CHECKOUT` is the vstack checkout or worktree under test, and `$CHECKOUT/plugin/package.json` names `vstack`.
 - `omp`, `bun`, `jq`, and `git` are on `PATH`.
-- `bash "$SKILL_DIR/scripts/doctor.sh" "$CHECKOUT" "$VERIFY_RUN_DIR"` prints no `FAIL` line.
-- Never drive your already-running omp session. Stub session drives run on `$VERIFY_RUN_DIR/data/home`. The real-model enrollment recipe in `flow-page.md` uses a fresh native process and its documented real-HOME exception.
+- For stub-driver recipes, `bash "$SKILL_DIR/scripts/doctor.sh" "$CHECKOUT" "$VERIFY_RUN_DIR"` prints no `FAIL` line.
+- Never drive your already-running omp session. Stub session drives run on `$VERIFY_RUN_DIR/data/home`. Actual reasoning evaluations use skill-creator's Session model and real-credential isolation. The real-model enrollment and architecture recipes document their fresh-process real-HOME exceptions.
 
 ## Driving conventions
 
 - Start every recipe from the baseline. A recipe that needs earlier state names it under `Preconditions:`.
-- Run scripted session behavior through `scripts/drive.ts`. Use the feature ID as `--name`, so each drive has its own evidence dir. drive.ts refuses a name that the run already used. Retry with a new name such as `<feature>-retry1`, and read the proof from that new dir. For model instruction following, use `flow-page.md`'s real-model enrollment recipe instead of the stub.
+- Run scripted session behavior through `scripts/drive.ts`. Use the feature ID as `--name`, so each drive has its own evidence dir. drive.ts refuses a name that the run already used. Retry with a new name such as `<feature>-retry1`, and read the proof from that new dir. For model instruction following, use the real-model enrollment or architecture-agreement recipe rather than the stub.
 - Run a skill's Bun CLI from `$CHECKOUT/plugin/skills/<skill>/scripts/`, not through `skill://...`.
 - Pass `--home "$VERIFY_RUN_DIR/data/<name>"` to direct isolated CLI fixtures. In a native enrollment run, keep the model's CLI and the extension in the same normal HOME namespace, as `flow-page.md` specifies.
 - In the browser, open tabs with a name, `app: { tern: false }`, and a 1280 by 900 `viewport`. Apply the parent skill's browser policy on every open, including diagnostics, retries, recovery, and delegated verification. Act by ARIA role and name.
@@ -53,6 +53,7 @@ Keep implementation details out of the map. Name only user paths, stable handles
 - [Figure render](./figure-render.md): the caller writes Mermaid. The Flow captures the source and the reader draws it with Pele in Catppuccin Latte or Mocha, safely, with reader needs and Visual kinds. For exports, the render script writes literal Mocha SVG with fixed roles, keyed source bindings, intrinsic kinds, native C4, source-selected Sankey endpoint and gradient paints, and fill-preserving Mauve focus. Refusals preserve old output without publishing it. Standalone and shared-id inline proof inspect actual computed paints, while the Flow captures exact SVG bytes and displays an isolated image.
 - [Clean worktrees](./clean-wt.md): `/skill:clean-wt` checks ownership before inactive contents, removes unused clean checkouts and verified integrated drafts, keeps their branches, and protects stale, unique, unverified, or unapproved unresolved work.
 - [Isolated-worker lifecycle](./worker-lifecycle.md): a parent preserves useful work, retains workers with unresolved needs, releases settled children through omp, and proves clone disappearance without deleting unrelated owned work.
+- [Architecture agreement](./architecture-agreement.md): actual isolated grill evaluations cover assessment, grounding, visual alternatives, agreement provenance, the brief, and the stop. A separate live human checkpoint proves consent. Whole-feature evaluation consumes the other Matt entry points' separate proof.
 
 ## Not mapped yet
 
