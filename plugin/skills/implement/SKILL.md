@@ -16,6 +16,16 @@ Before task-specific items, open the todo list as END-STATE.md says, with the sh
 
 Run shared steps 0a–0b once.
 
+## Work within the agreement
+
+Read the supplied spec and tickets, including their context pointers, testing decisions, and decision-coverage records. Carry their agreed responsibilities, interactions, observable guarantees, constraints, and rationale into each slice. Use the existing inputs; a separate Architecture brief is not a prerequisite. Build sessions select Addons fresh rather than inheriting Addon pointers from those inputs.
+
+Choose signatures, local types, private decomposition, file layout, and ordinary algorithms within that agreement. A parameter adjustment or private helper extraction needs no new architecture approval when it preserves the agreed behavior. Judge consequences, not signatures or visibility: a matching provider interface can still change residency, security, durability, or failure guarantees.
+
+If repository evidence shows that a slice requires a consequential departure from an agreed responsibility, contract, or guarantee, pause the affected work. Record the governing decision, evidence, affected behavior, viable options with trade-offs and a recommendation, and the missing decision as an open question. In a direct run, use ordinary `ask` in the existing Stage under `skill://flow-page`'s "Every ask in a Flow" contract, including CLI publication, verified live content, a visible chat URL, and separate answer recording. In a subagent, return it to the orchestrator with the held work and evidence paths. Preserve useful partial work, but commit no affected slice and claim no completed delivery while its decision is unresolved.
+
+Resume affected work only after the user's own answer resolves the departure. A recommendation, Headless automatic pick, timeout, cancellation, or absent answer is not approval. Keep unresolved questions and held work visible in the existing run record and reply. Reuse agreed test seams; architecture preservation does not reopen them or authorize tests at a new, unconfirmed seam.
+
 ## 1. Settle the seams
 
 Before the first code change, settle the seams that skill://tdd tests at. Reuse each agreed seam: one that the spec's testing decisions name, one that the ticket's own text names, or one that the user picked through `ask` in a seam question on the Flow page. Only the user's own pick of a seam agrees it. A headless answer, an unanswered or timed-out question, and a no-test pick leave the seam open. Ask tdd's seam question once through `ask` under `skill://flow-page`'s "Every ask in a Flow" contract, including its pre-ask live chat link. Author one question covering every slice with no agreed seam in implement's Stage.

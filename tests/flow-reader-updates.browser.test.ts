@@ -53,7 +53,7 @@ test("eight parked readers release HTTP/1.1 capacity and retain their place thro
     for (let i = 0; i < 8; i++) {
       const page = await context.newPage();
       readers.push(page);
-      await page.goto(opened.live.url, { waitUntil: "domcontentloaded", timeout: 5000 });
+      await page.goto(`${opened.live.url}#${seed.refs.before}`, { waitUntil: "domcontentloaded", timeout: 5000 });
       await page.locator(`#${seed.refs.selected}`).waitFor({ timeout: 5000 });
     }
     const selected = readers[6]!;

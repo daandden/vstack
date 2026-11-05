@@ -5,7 +5,6 @@ import type { ReadingBlock } from "~/utils/flow";
 const props = defineProps<{ block: ReadingBlock; position?: number }>();
 const f = computed(() => flow.value!);
 const st = computed(() => (props.block.stage ? f.value.stage.get(props.block.stage) : undefined));
-const parent = computed(() => (st.value?.parent ? f.value.stage.get(st.value.parent) : undefined));
 const question = computed(() => (props.block.kind === "question" ? f.value.question.get(props.block.id) : undefined));
 const round = computed(() => {
   const q = question.value;
@@ -26,11 +25,6 @@ const ordinal = computed(() => (props.position === undefined ? undefined : Strin
   <div class="entry" data-block :data-reading="block.id" :data-position="position" :data-historical="position === undefined ? '' : undefined">
     <p class="entry-meta">
       <span v-if="ordinal" class="ordinal" :title="`First published at position ${position}`">{{ ordinal }}</span>
-      <template v-if="st">
-        <a :href="`#${st.id}`">{{ st.label }}</a>
-        <span class="state" :data-state="st.state">{{ STATE_LABELS[st.state] }}</span>
-        <span v-if="parent">Parent <a :href="`#${parent.id}`">{{ parent.label }}</a></span>
-      </template>
       <span v-if="round" :id="round.first ? round.round.id : undefined">
         <template v-if="round.round.session !== undefined">Session {{ round.round.session }}, </template>Round {{ round.round.n }}
         <time v-if="round.round.time" :datetime="round.round.time">{{ formatTime(round.round.time) }}</time>
