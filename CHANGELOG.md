@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.12] - 2026-11-06
+
+- The Flow panel now goes away when an `ask` picker's `ui.askDialog` closes, not when the tool ends. omp's built-in `ask` keeps running after its dialog to process answer images, so the panel stayed on screen, and a late link lookup could show it, with no picker open (ADR 0056).
+
 ## [9.0.11] - 2026-11-06
 
 - Replace the Flow popup with a Flow panel above the composer (ADR 0056). The panel shows the `Flow page` title and the clickable live URL while a bound interactive question picker or native Ratchet approval is open, and the picker opens without an Enter or Escape step. The panel goes away when the picker returns, the turn ends, or the session switches or shuts down, and a link lookup that finishes after the picker closed shows nothing. Unavailable hosts show their error in the panel. The panel text stays out of session history and model context.

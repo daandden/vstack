@@ -327,27 +327,70 @@ test("a failed, cancelled, or abandoned picker removes the panel", async () => {
   }
 });
 
-test("each retry gets a fresh panel and delegated ordinary ask adds no second one", async () => {
+test("each retry gets one fresh panel that leaves when its delegated dialog closes, before the tool ends", async () => {
   const w = setup();
   await w.ok(["open", "--title", "Repeated questions", "--skill", "implement", "--session", "retry"]);
   const h = w.host("retry");
   const ui = panelUI(h);
   let picks = 0;
-  h.ctx.ui.askDialog = async () => { picks++; return undefined; };
+  let close!: () => void;
+  h.ctx.ui.askDialog = async () => { picks++; return new Promise<undefined>(resolve => { close = () => resolve(undefined); }); };
   await h.emit("session_start");
   for (const index of [0, 1, 2]) {
-    const call = { toolName: "ask", toolCallId: `retry-${index}`, input: { questions: [{ id: "same" }] } };
-    await h.emit("tool_execution_start", { toolName: call.toolName, toolCallId: call.toolCallId, args: call.input });
-    expect(await h.ctx.ui.askDialog(call.input.questions)).toBeUndefined();
+    const call = { toolName: "ask", toolCallId: `retry-${index}`, args: { questions: [{ id: "same" }] } };
+    await h.emit("tool_execution_start", call);
+    const dialog = h.ctx.ui.askDialog(call.args.questions);
     await until(() => ui.panel() !== undefined);
     await Bun.sleep(300);
     expect(ui.shown()).toBe(index + 1);
+    close();
+    expect(await dialog).toBeUndefined();
+    expect(ui.panel()).toBeUndefined();
     await h.emit("tool_execution_end", { toolName: call.toolName, toolCallId: call.toolCallId, isError: false });
     expect(ui.panel()).toBeUndefined();
   }
   expect(picks).toBe(3);
   expect(h.saved).toEqual([]);
   expect(h.sent).toEqual([]);
+});
+
+test("a lookup that finishes after the delegated dialog closed shows no panel while the tool still runs", async () => {
+  const w = setup();
+  await w.ok(["open", "--title", "Slow answer images", "--skill", "implement", "--session", "images"]);
+  const h = w.host("images");
+  const ui = panelUI(h);
+  h.ctx.ui.askDialog = async () => "answered";
+  await h.emit("session_start");
+  const lookups = holdLookups(h);
+  await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "images", args: {} });
+  expect(await h.ctx.ui.askDialog([])).toBe("answered");
+  lookups.release();
+  await until(() => lookups.finished() === 1);
+  await Bun.sleep(100);
+  expect(ui.shown()).toBe(0);
+  await h.emit("tool_execution_end", { toolName: "ask", toolCallId: "images", isError: false });
+  expect(ui.shown()).toBe(0);
+});
+
+test("a dialog from an earlier ask never clears the panel of a newer ask", async () => {
+  const w = setup();
+  await w.ok(["open", "--title", "Earlier ask", "--skill", "implement", "--session", "owner-a"]);
+  await w.ok(["open", "--title", "Newer ask", "--skill", "implement", "--session", "owner-b"]);
+  const newer = await w.ok(["bound", "--session", "owner-b"]);
+  const h = w.host("owner-a");
+  const ui = panelUI(h);
+  let close!: () => void;
+  h.ctx.ui.askDialog = async () => new Promise<undefined>(resolve => { close = () => resolve(undefined); });
+  await h.emit("session_start");
+  await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "earlier", args: {} });
+  const earlier = h.ctx.ui.askDialog([]);
+  h.ctx.sessionManager = { ...h.ctx.sessionManager, getSessionId: () => "owner-b" };
+  await h.emit("session_switch");
+  await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "newer", args: {} });
+  await until(() => ui.panel()?.includes(newer.live.url) ?? false);
+  close();
+  await earlier;
+  expect(ui.panel()).toContain(newer.live.url);
 });
 
 test("only this main agent's bound interactive TUI gets a panel", async () => {
