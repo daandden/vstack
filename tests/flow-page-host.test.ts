@@ -198,64 +198,47 @@ test("the host exposes the same cross-Stage publication sequence with in-place h
   expect(current.stages[1].results[0].history[0].anchor).toBe(`${second.refs.research}-r1`);
 });
 
-test("an open reader receives answers, Results, task changes, and new Stages at the same live URL", async () => {
+test("a reader polls finite versions and reads answers, Results, task changes, and new Stages at the same live URL", async () => {
   const w = world();
   const opened = ok(open(w));
   const seed = ok(run(["submit"], w, { session: "s-1", stdin: contribution(
     round(question("choice")),
     { kind: "task", ref: "work", title: "Inspect the update", state: "active" },
   ) }));
-  const abort = new AbortController();
-  const timeout = setTimeout(() => abort.abort(), 20000);
-  const events = await fetch(new URL("events", opened.live.url), { signal: abort.signal });
-  const reader = events.body!.getReader();
-  const decoder = new TextDecoder();
-  let buffered = "";
   async function received(revision: number) {
-    for (;;) {
-      let boundary: number;
-      while ((boundary = buffered.indexOf("\n\n")) >= 0) {
-        const frame = buffered.slice(0, boundary);
-        buffered = buffered.slice(boundary + 2);
-        const data = frame.split("\n").find((l) => l.startsWith("data: "));
-        if (data && JSON.parse(data.slice(6)).revision >= revision) return;
-      }
-      const chunk = await reader.read();
-      if (chunk.done) throw new Error("The live page disconnected before the authored update arrived");
-      buffered += decoder.decode(chunk.value, { stream: true });
-    }
+    const response = await fetch(new URL("versions", opened.live.url), { signal: AbortSignal.timeout(2000) });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toContain("application/json");
+    const versions = await response.json() as any;
+    expect(versions.revision).toBe(revision);
+    expect(versions.observationVersion).toMatch(/^[a-f0-9]{64}$/);
   }
-  try {
-    await received(seed.revision);
-    const answer = ok(run(["submit"], w, { session: "s-1", stdin: contribution(
-      { kind: "answer", question: seed.refs.choice, response: { status: "answered", picks: ["B"] } },
-    ) }));
-    await received(answer.revision);
-    const answered = await contentOf(opened.live.url);
-    expect(answered.revision).toBe(answer.revision);
-    expect(askedIn(answered, seed.refs.choice).answer.state).toBe("picked");
-    const result = ok(run(["submit"], w, { session: "s-1", stdin: contribution(
-      { kind: "result", ref: "report", shape: "table", title: "Update proof", columns: ["Outcome"], rows: [{ cells: ["Observed"] }] },
-    ) }));
-    await received(result.revision);
-    expect((await contentOf(opened.live.url)).stages[0].results.map((r: any) => r.id)).toContain(result.refs.report);
-    const task = ok(run(["submit"], w, { session: "s-1", stdin: contribution(
-      { kind: "task", task: seed.refs.work, state: "done", evidence: ["The open reader received the update"] },
-    ) }));
-    await received(task.revision);
-    const snapshot = ok(run(["show", "--flow", opened.flow], w));
-    expect(snapshot.progress.tasks.find((t: any) => t.id === seed.refs.work).state).toBe("done");
-    const completed = await contentOf(opened.live.url);
-    expect(completed.revision).toBe(task.revision);
-    expect(completed.progress.tasks.find((t: any) => t.id === seed.refs.work).state).toBe("done");
-    const stage = ok(run(["open", "--flow", opened.flow, "--skill", "research"], w, { session: "s-2" }));
-    await received(stage.revision);
-    expect((await contentOf(opened.live.url)).stages.map((s: any) => s.id)).toContain(stage.stage);
-    expect(stage.live.url).toBe(opened.live.url);
-  } finally {
-    clearTimeout(timeout);
-    abort.abort();
-  }
+  await received(seed.revision);
+  const answer = ok(run(["submit"], w, { session: "s-1", stdin: contribution(
+    { kind: "answer", question: seed.refs.choice, response: { status: "answered", picks: ["B"] } },
+  ) }));
+  await received(answer.revision);
+  const answered = await contentOf(opened.live.url);
+  expect(answered.revision).toBe(answer.revision);
+  expect(askedIn(answered, seed.refs.choice).answer.state).toBe("picked");
+  const result = ok(run(["submit"], w, { session: "s-1", stdin: contribution(
+    { kind: "result", ref: "report", shape: "table", title: "Update proof", columns: ["Outcome"], rows: [{ cells: ["Observed"] }] },
+  ) }));
+  await received(result.revision);
+  expect((await contentOf(opened.live.url)).stages[0].results.map((r: any) => r.id)).toContain(result.refs.report);
+  const task = ok(run(["submit"], w, { session: "s-1", stdin: contribution(
+    { kind: "task", task: seed.refs.work, state: "done", evidence: ["The open reader received the update"] },
+  ) }));
+  await received(task.revision);
+  const snapshot = ok(run(["show", "--flow", opened.flow], w));
+  expect(snapshot.progress.tasks.find((t: any) => t.id === seed.refs.work).state).toBe("done");
+  const completed = await contentOf(opened.live.url);
+  expect(completed.revision).toBe(task.revision);
+  expect(completed.progress.tasks.find((t: any) => t.id === seed.refs.work).state).toBe("done");
+  const stage = ok(run(["open", "--flow", opened.flow, "--skill", "research"], w, { session: "s-2" }));
+  await received(stage.revision);
+  expect((await contentOf(opened.live.url)).stages.map((s: any) => s.id)).toContain(stage.stage);
+  expect(stage.live.url).toBe(opened.live.url);
 });
 
 test("live read-only observations respect separate providers without replacing authored delivery facts", async () => {
@@ -429,12 +412,13 @@ test("the host stops once idle, while an open reader or a publication in flight 
   const opened = ok(open(w));
   expect(hostPids(w)).toHaveLength(1);
 
-  const reader = new AbortController();
-  const events = await fetch(new URL("events", opened.live.url), { signal: reader.signal });
-  expect(events.status).toBe(200);
-  await Bun.sleep(2500);
+  for (let i = 0; i < 6; i++) {
+    const response = await fetch(new URL("versions", opened.live.url), { signal: AbortSignal.timeout(1000) });
+    expect(response.status).toBe(200);
+    await response.json();
+    await Bun.sleep(400);
+  }
   expect(hostPids(w)).toHaveLength(1);
-  reader.abort();
   expect(await until(() => hostPids(w).length === 0)).toBe(true);
 
   const p = Bun.spawn(argv(["submit"], w, {}), { cwd: w.cwd, env: envOf(w, { session: "s-1" }), stdin: "pipe", stdout: "pipe", stderr: "pipe" });
@@ -625,7 +609,7 @@ test("the host serves a Flow only to its own read capability, from its own origi
     expect((await raw(w.port, [`GET ${path} HTTP/1.1`, ...headers])).status).toBe(403);
   }
   for (const method of ["POST", "PUT", "PATCH", "DELETE"]) {
-    for (const p of [path, `${path}events`, `${path}${file}`, "/run", "/merge", "/command"]) {
+    for (const p of [path, `${path}versions`, `${path}${file}`, "/run", "/merge", "/command"]) {
       const r = await raw(w.port, [`${method} ${p} HTTP/1.1`, `Host: 127.0.0.1:${w.port}`, "Content-Length: 0"]);
       expect([method, p, r.status >= 400]).toEqual([method, p, true]);
     }
