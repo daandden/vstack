@@ -1,7 +1,7 @@
 // check-register run as a process over temp-dir fixtures (spec #63, Testing Decisions, Seam 1).
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { rmSync } from "node:fs";
+import { mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { join } from "node:path";
 import { fakeGitHub } from "./support/fake-github.ts";
 import {
@@ -129,6 +129,105 @@ test("the passing fixture passes: held, moved-and-held, removed-and-held rows an
   const r = await checkout(up, passingSpec(up)).run();
   expect(r.json!.failures).toEqual([]);
   expect(r.code).toBe(0);
+});
+
+test("empty and Python-cache-only remnants do not become shipped artifacts or Addons", async () => {
+  const spec = clone(passingSpec(up));
+  const caches = {
+    "plugin/skills/retired-cache/scripts/__pycache__/probe.cpython-313.pyc": "/skill:fixture-addon\n",
+    "plugin/skills/retired-cache/scripts/__pycache__/probe.cpython-313.opt-1.pyc": "cache\n",
+    "plugin/skills/retired-cache/scripts/__pycache__/legacy.pyo": "cache\n",
+    "plugin/skills/retired-cache/.DS_Store": "Finder metadata\n",
+    "plugin/skills/keep/refs/__pycache__/notes.cpython-313.pyc": "cache\n",
+    "plugin/skills/fixture-helper/scripts/__pycache__/probe.cpython-313.pyc": "Open a todolist. /skill:fixture-addon\n",
+  };
+  const c = checkout(up, spec);
+  for (const [path, content] of Object.entries(caches)) c.write(path, content);
+  mkdirSync(join(c.root, "plugin/skills/retired-empty/nested/empty"), { recursive: true });
+  mkdirSync(join(c.root, "plugin/agents/retired-empty"), { recursive: true });
+  const before = readdirSync(join(c.root, "plugin"), { recursive: true }).sort();
+
+  const r = await c.run();
+
+  expect(r.json!.failures).toEqual([]);
+  expect(r.code).toBe(0);
+  expect(readdirSync(join(c.root, "plugin"), { recursive: true }).sort()).toEqual(before);
+  for (const [path, content] of Object.entries(caches)) expect(readFileSync(join(c.root, path), "utf8")).toBe(content);
+});
+
+test("registered empty and cache-only remnants are missing from the shipped inventory", async () => {
+  const spec = clone(passingSpec(up));
+  delete spec.files[GONE];
+  spec.register.originals.push("plugin/skills/retired-registered");
+  spec.files["plugin/skills/retired-registered/__pycache__/probe.cpython-313.pyc"] = "cache\n";
+  const c = checkout(up, spec);
+  mkdirSync(join(c.root, "plugin/skills/gone/empty"), { recursive: true });
+
+  const r = await c.run();
+
+  expect(r.code).toBe(1);
+  expect(failuresOf(r)).toEqual([
+    "missing-artifact alpha/gone",
+    "missing-artifact plugin/skills/retired-registered",
+  ]);
+  expect(readFileSync(join(c.root, "plugin/skills/retired-registered/__pycache__/probe.cpython-313.pyc"), "utf8")).toBe("cache\n");
+});
+
+test.each([
+  "SKILL.md",
+  "scripts/main.ts",
+  "scripts/__pycache__/source.py",
+  "scripts/__pycache__/README.md",
+  "scripts/cache.pyc",
+  ".cache/source.ts",
+  ".nuxt/source.ts",
+  ".output/source.ts",
+  "dist/index.js",
+  "build/main.js",
+  "reader/index.html",
+  "reader/_flow-reader/entry.js",
+])("untracked substantive content is detected without an entry-document gate: %s", async (relativePath: string) => {
+  const spec = passingSpec(up);
+  const c = checkout(up, spec);
+  const path = `plugin/skills/new-source/${relativePath}`;
+  const content = "Substantive local content.\n";
+  c.write(path, content);
+  c.write("plugin/package.json", JSON.stringify({ ...spec.manifest, version: "0.1.1" }));
+  const before = readdirSync(join(c.root, "plugin"), { recursive: true }).sort();
+
+  const r = await c.run();
+
+  expect(r.code).toBe(1);
+  expect(failuresOf(r)).toEqual([
+    "unregistered-artifact plugin/skills/new-source",
+    "addon-question-mismatch new-source",
+  ]);
+  expect(readFileSync(join(c.root, path), "utf8")).toBe(content);
+  expect(readdirSync(join(c.root, "plugin"), { recursive: true }).sort()).toEqual(before);
+});
+
+test("scope and Addon checks retain source beside caches and bundled reader distribution assets", async () => {
+  const spec = clone(passingSpec(up));
+  const files = {
+    "plugin/skills/fixture-helper/scripts/__pycache__/source.md": "Open a todolist.\n",
+    "plugin/skills/fixture-helper/reader/index.html": "<!doctype html><p>/skill:fixture-addon</p>\n",
+    "plugin/skills/fixture-helper/reader/_flow-reader/entry.js": 'const guidance = "Open a todolist.";\n',
+  };
+  Object.assign(spec.files, files);
+  const c = checkout(up, spec);
+  const before = readdirSync(join(c.root, "plugin"), { recursive: true }).sort();
+
+  const r = await c.run();
+
+  expect(r.code).toBe(1);
+  expect(failuresOf(r)).toEqual([
+    "house-style-leftover plugin/skills/fixture-helper",
+    "addon-slash-route plugin/skills/fixture-helper/reader/index.html",
+  ]);
+  expect(r.json!.failures[0].message).toContain("reader/_flow-reader/entry.js");
+  expect(r.json!.failures[0].message).toContain("__pycache__/source.md");
+  for (const [path, content] of Object.entries(files)) expect(readFileSync(join(c.root, path), "utf8")).toBe(content);
+  expect(readdirSync(join(c.root, "plugin"), { recursive: true }).sort()).toEqual(before);
 });
 
 test("text output ends with OK on a pass", async () => {

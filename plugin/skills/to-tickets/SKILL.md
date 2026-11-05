@@ -10,7 +10,7 @@ Break a plan, spec, or conversation into a set of **tickets**: tracer-bullet ver
 
 Read the project's `issue-tracker.md` and `triage-labels.md` under `<vstack root>/docs/vstack/` in Standard mode or `<vstack root>/config/` in Private mode. If they have not been provided and are missing, tell the user to run `/skill:setup-vstack`.
 
-For an MCP tracker such as Jira, read the named server's current tool list, descriptions, and parameter schemas. Select search, full issue and comment reads, creation, labeling, and blocking-link tools using the recorded project facts. No per-operation config rows or assumed tool names are needed. If discovery or a needed capability is unavailable, name the server and gap and leave the affected publication undone. CLI, local-markdown, and no-tool prose configs keep their configured workflows.
+The ticket publisher owns tracker discovery, writes, readback, and readiness. Read [the publication Interface](references/publication.md) before preparing or resuming a batch. Use the configured CLI command rows or the named MCP server and project facts. A missing capability or no-tool configuration leaves a durable blocked publication, not a manual publication path.
 
 ## Process
 
@@ -68,28 +68,25 @@ Iterate until the user approves the breakdown with an explicit pick or resolved 
 
 ### 5. Publish the tickets to the configured tracker
 
-Publish the approved tickets. **How** depends on the tracker `/skill:setup-vstack` configured; the tickets are the same either way, only the shape of the blocking edges changes:
+Save the approved structured description and publish it through `scripts/publish.ts`, as [the publication Interface](references/publication.md) describes. Keep stable local keys, approved bodies and labels, parent membership, directed `blockedBy` edges, tracker facts, and the configured readiness value in that description. Use numbered local keys such as `01-foundation` for local files. In Private mode, save the input, durable record, and local tickets under `<vstack root>/artifacts/<feature-slug>/`. In Standard mode, use `.scratch/<feature-slug>/`.
 
-- **Local files** → write one file per ticket under `.scratch/<feature-slug>/issues/<NN>-<slug>.md`, numbered from `01` in dependency order (blockers first). Each file's "Blocked by" lists the numbers/titles it depends on. Use the per-ticket file template below: one ticket per file, never a single combined file.
-- **A real issue tracker (GitHub, Linear, …)** → publish one issue per ticket in dependency order (blockers first) so each ticket's blocking edges can reference real identifiers. Use the platform's native blocking / sub-issue relationship where it has one; otherwise set each ticket's "Blocked by" to the blocking issues. Apply the `ready-for-agent` triage label unless instructed otherwise; the tickets are agent-grabbable by construction.
+The publisher creates tickets without readiness, installs the approved graph, reads back fields and relationships, then activates verified tickets. The readiness value comes from the configured canonical-role mapping. Remote trackers use a label. Local tickets use `Status:`. A parent relationship is separate from a blocking edge. Body references explain the work. Only `blockedBy` declares an edge.
 
-For an MCP tracker, create each approved ticket with the recorded project key and ticket issue type. Translate `ready-for-agent` through the configured canonical-role label mapping. Use the recorded blocking link type and its direction with the selected tool's schema, so the blocker blocks the dependent, not the reverse. A parent or sub-issue relation alone does not establish a blocking edge.
+Use the receipt's saved identities to link tracker tickets or `<directory>/<key>.md` files. If publication is blocked or interrupted, use `resume` with the same durable record. Report its category and candidate state when reconciliation is ambiguous. Keep approved content unchanged during recovery. The publisher owns activation. Do not create tickets, add relationships, or apply readiness separately.
 
-Work the **frontier**: any ticket whose blockers are all done. For a purely linear chain that means top to bottom.
+Work the **frontier**: any ready ticket whose blockers are all done. Verified tickets may be ready while a blocker remains open. The existing frontier still excludes them.
 
-Do NOT close or modify any parent issue.
+Parent membership is the only authorized parent effect. Keep the parent's content, labels, and open state unchanged.
 
 After publishing, add each `ticket:<id>` alias to the Flow without resending existing aliases. Publish the full ticket bodies as Document Results with their canonical tracker revisions or local file links, and update the breakdown to use named published links. Preserve the blocking graph as Result content: attach a dependency figure when produced, and keep every blocking edge in the table regardless. The Stage tree is navigation, not a dependency graph.
+
+The publisher writes local `Status:` and `Blocked by:` headers before the approved body. It changes `Status: draft` to the configured readiness value after graph readback. Keep these generated fields out of the body template.
 
 <local-ticket-template>
 
 # <NN>: <Ticket title>
 
 **What to build:** the end-to-end behaviour this ticket makes work, from the user's perspective, not a layer-by-layer implementation list.
-
-**Blocked by:** the numbers/titles of the tickets that gate this one, or "None (can start immediately)".
-
-**Status:** ready-for-agent
 
 - [ ] Acceptance criterion 1
 - [ ] Acceptance criterion 2

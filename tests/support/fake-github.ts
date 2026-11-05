@@ -3,6 +3,7 @@
 
 import { join } from "node:path";
 import { git } from "./fixture.ts";
+export { fakeTicketGitHub, fakeGhProgram } from "./fake-ticket-github.ts";
 
 export function fakeGitHub(dir: string) {
   return Bun.serve({

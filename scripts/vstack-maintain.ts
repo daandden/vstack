@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { parseArgs } from "node:util";
 import { randomUUID } from "node:crypto";
-import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readlinkSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, readlinkSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { buildPlan, PLAN_SCHEMA, type PlanBody, type UpstreamRun } from "./lib/update-plan.ts";
@@ -457,8 +457,96 @@ function shippedNames(doc: any): Set<string> {
   }
   return names;
 }
-async function prepare(root: string, file: string, p: Plan | undefined, opts: UpstreamOptions) {
-  const d = decisionsAt(file), registerFile = yamlHead(root, "decision-register.yaml"), pinsFile = yamlHead(root, "pins.yaml"), styleFile = yamlHead(root, "house-style.yaml");
+
+function checkoutInput(root: string, artifact: string): string {
+  const entries: string[] = [];
+  function visit(path: string, relative: string) {
+    let stat;
+    try { stat = lstatSync(path); } catch (error) { if ((error as NodeJS.ErrnoException).code === "ENOENT") return; throw error; }
+    if (stat.isSymbolicLink()) entries.push(`120000 ${gitBlobSha(Buffer.from(readlinkSync(path)))} ${relative}`);
+    else if (stat.isFile()) entries.push(`${stat.mode & 0o111 ? "100755" : "100644"} ${gitBlobSha(readFileSync(path))} ${relative}`);
+    else if (stat.isDirectory()) {
+      const names = readdirSync(path).sort();
+      if (!names.length) entries.push(`empty ${relative}`);
+      for (const name of names) visit(join(path, name), relative ? `${relative}/${name}` : name);
+    } else throw new Refusal(`Cannot replace non-regular input ${artifact}`, { category: "input-conflict", conflicts: [artifact] });
+  }
+  let parent = dirname(join(root, artifact));
+  while (parent !== root) {
+    if (existsSync(parent) && lstatSync(parent).isSymbolicLink()) throw new Refusal(`Reconcile symlink parent of ${artifact}`, { category: "input-conflict", conflicts: [artifact] });
+    parent = dirname(parent);
+  }
+  visit(join(root, artifact), "");
+  return JSON.stringify(entries.sort());
+}
+
+function headInput(root: string, artifact: string): string {
+  const output = git(root, "ls-tree", "-rz", "HEAD", "--", artifact);
+  const entries = output.split("\0").filter(Boolean).map(line => {
+    const [header, path] = line.split("\t"), [mode, , sha] = header!.split(" ");
+    return `${mode} ${sha} ${path === artifact ? "" : path!.slice(artifact.length + 1)}`;
+  });
+  return JSON.stringify(entries.sort());
+}
+
+function requireInputs(root: string, expected: Map<string, string>) {
+  const conflicts = [...expected].filter(([path, input]) => checkoutInput(root, path) !== input).map(([path]) => path);
+  if (conflicts.length) throw new Refusal(`Reconcile independently changed content before prepare: ${conflicts.join(", ")}`, { category: "input-conflict", conflicts });
+}
+
+type PrepareDecisions = ReturnType<typeof decisionsAt>;
+interface PreparationReceipt {
+  head: string;
+  root: string;
+  decisions: PrepareDecisions;
+  plan?: Plan;
+  outputs: Record<string, string>;
+}
+
+function combineDecisions(previous: PrepareDecisions | undefined, next: PrepareDecisions): PrepareDecisions {
+  const merge = <T>(old: T[], fresh: T[], key: (value: T) => string) => [...new Map([...old, ...fresh].map(value => [key(value), value])).values()];
+  return {
+    rows: merge(previous?.rows ?? [], next.rows, row => row.id),
+    targets: merge(previous?.targets ?? [], next.targets, target => target.artifact),
+    drops: merge(previous?.drops ?? [], next.drops, drop => drop.upstream),
+    changelog: [...new Set([...(previous?.changelog ?? []), ...next.changelog])],
+  };
+}
+
+async function prepare(root: string, file: string, plan: Plan | undefined, opts: UpstreamOptions) {
+  const store = git(root, "rev-parse", "--path-format=absolute", "--git-path", "vstack-maintain");
+  mkdirSync(store, { recursive: true });
+  const lock = join(store, "prepare.lock"), receiptPath = join(store, "prepared.json");
+  try { mkdirSync(lock); }
+  catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
+    throw new Refusal(`Another preparation owns ${lock}; retry after it finishes.`, { category: "preparation-busy", lock });
+  }
+  try {
+    writeFileSync(join(lock, "owner.json"), JSON.stringify({ pid: process.pid, root }));
+    const head = git(root, "rev-parse", "HEAD");
+    const saved = existsSync(receiptPath) ? readJson(receiptPath) as PreparationReceipt : undefined;
+    const previous = saved?.head === head && saved.root === root ? saved : undefined;
+    if (previous?.plan && plan && JSON.stringify(previous.plan) !== JSON.stringify(plan)) throw new Refusal("Reconcile the earlier uncommitted Update before using another plan.", { category: "input-conflict", conflicts: ["plan"] });
+    const d = combineDecisions(previous?.decisions, decisionsAt(file));
+    const p = plan ?? previous?.plan;
+    const result = await prepareOwned(root, d, p, opts, previous, head);
+    const receipt: PreparationReceipt = { head, root, decisions: d, plan: p, outputs: { ...previous?.outputs, ...result.outputs } };
+    const temporary = join(store, `${randomUUID()}.json`);
+    try {
+      writeFileSync(temporary, JSON.stringify(receipt));
+      renameSync(temporary, receiptPath);
+    } catch (error) {
+      throw new Refusal(`Checkout prepared, but ownership receipt could not be saved: ${(error as Error).message}`, { category: "receipt-write-failure", written: Object.keys(result.outputs) });
+    } finally { rmSync(temporary, { force: true }); }
+    return result.receipt;
+  } finally { rmSync(lock, { recursive: true, force: true }); }
+}
+async function prepareOwned(root: string, d: PrepareDecisions, p: Plan | undefined, opts: UpstreamOptions, previous: PreparationReceipt | undefined, head: string) {
+  const bookkeeping = ["decision-register.yaml", "pins.yaml", "house-style.yaml", "plugin/package.json", "CHANGELOG.md"];
+  const expected = new Map(bookkeeping.map(path => [path, previous?.outputs[path] ?? headInput(root, path)]));
+  requireInputs(root, expected);
+  const registerFile = yamlHead(root, "decision-register.yaml"), pinsFile = yamlHead(root, "pins.yaml"), styleFile = yamlHead(root, "house-style.yaml");
   const doc = registerFile.value, pins = pinsFile.value, style = styleFile.value;
   const { taken, renames } = await validateTargets(root, d.targets, opts);
   const copies: { source: string; artifact: string }[] = [];
@@ -566,17 +654,45 @@ async function prepare(root: string, file: string, p: Plan | undefined, opts: Up
   const shipped = shippedNames(doc), breaking = [...shippedAtHead].some(name => !shipped.has(name));
   const version = nextVersion(root, breaking, !!p?.moved);
   const log = changelog(atHead(root, "CHANGELOG.md"), version, d.changelog);
-  for (const c of copies) { rmSync(join(root, c.artifact), { recursive: true, force: true }); mkdirSync(dirname(join(root, c.artifact)), { recursive: true }); cpSync(c.source, join(root, c.artifact), { recursive: true, dereference: false }); }
-  for (const t of taken) if (t.disposition === "adopt" || !existsSync(join(root, t.artifact))) {
-    if (t.disposition === "adopt") rmSync(join(root, t.artifact), { recursive: true, force: true });
-    for (const f of t.files) writeEntry(join(root, f.file), f.entry, f.bytes);
+  const replacements = [...copies.map(c => c.artifact), ...taken.filter(t => t.disposition === "adopt" || !existsSync(join(root, t.artifact))).map(t => t.artifact)];
+  for (const path of replacements) expected.set(path, previous?.outputs[path] ?? headInput(root, path));
+  const files = [
+    ["decision-register.yaml", registerFile.text()],
+    ["pins.yaml", pinsFile.text()],
+    ["house-style.yaml", styleFile.text()],
+    ["plugin/package.json", manifestVersion(atHead(root, "plugin/package.json"), version)],
+    ["CHANGELOG.md", log],
+  ] as const;
+  if (git(root, "rev-parse", "HEAD") !== head) throw new Refusal("HEAD changed during preparation; rerun with the current branch.", { category: "input-conflict", conflicts: ["HEAD"] });
+  requireInputs(root, expected);
+  const written: string[] = [];
+  let attempted: string | undefined;
+  try {
+    for (const c of copies) {
+      attempted = c.artifact;
+      rmSync(join(root, c.artifact), { recursive: true, force: true });
+      mkdirSync(dirname(join(root, c.artifact)), { recursive: true });
+      cpSync(c.source, join(root, c.artifact), { recursive: true, dereference: false });
+      written.push(c.artifact);
+    }
+    for (const t of taken) if (t.disposition === "adopt" || !existsSync(join(root, t.artifact))) {
+      attempted = t.artifact;
+      if (t.disposition === "adopt") rmSync(join(root, t.artifact), { recursive: true, force: true });
+      for (const f of t.files) writeEntry(join(root, f.file), f.entry, f.bytes);
+      written.push(t.artifact);
+    }
+    for (const [path, content] of files) {
+      attempted = path;
+      writeFileSync(join(root, path), content);
+      written.push(path);
+    }
+  } catch (error) {
+    throw new Refusal(`Preparation write failed at ${attempted}: ${(error as Error).message}`, { category: "write-failure", written, attempted, outcome: "checkout-may-be-partially-written" });
   }
-  writeFileSync(join(root, "decision-register.yaml"), registerFile.text());
-  writeFileSync(join(root, "pins.yaml"), pinsFile.text());
-  writeFileSync(join(root, "house-style.yaml"), styleFile.text());
-  writeFileSync(join(root, "plugin/package.json"), manifestVersion(atHead(root, "plugin/package.json"), version));
-  writeFileSync(join(root, "CHANGELOG.md"), log);
-  return { version, rows: d.rows, targets: d.targets, taken: taken.map(t => ({ id: t.id, disposition: t.disposition })) };
+  return {
+    outputs: Object.fromEntries([...expected.keys()].map(path => [path, checkoutInput(root, path)])),
+    receipt: { version, rows: d.rows, targets: d.targets, taken: taken.map(t => ({ id: t.id, disposition: t.disposition })) },
+  };
 }
 
 function changedSkills(root: string): string[] {

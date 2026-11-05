@@ -3,7 +3,9 @@
 // Base choice: --base / VSTACK_BASE_REF when set (an all-zero SHA counts as unset, as GitHub sends for a new
 // branch); else the merge base of HEAD and origin/HEAD; else HEAD, so only uncommitted changes count.
 
-import { ConfigError, readManifest } from "../vstack-repo.ts";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { artifactFiles, ConfigError, readManifest } from "../vstack-repo.ts";
 import type { Check, CheckContext, Failure } from "./types.ts";
 
 const SEMVER = /^(\d+)\.(\d+)\.(\d+)$/;
@@ -53,11 +55,15 @@ export const versionChecks: Check = {
     ctx.notes.push(`version base: ${base.sha ?? "-"} ${base.label}`);
     if (!base.sha || out.length > 0) return out;
 
+    const content = new Set(artifactFiles(ctx.root, "plugin"));
     const changed = new Set([
       ...git(ctx.root, ["diff", "--name-only", base.sha, "--", "plugin"]).out.split("\n"),
       ...git(ctx.root, ["ls-files", "--others", "--exclude-standard", "--", "plugin"]).out.split("\n"),
     ]);
     changed.delete("");
+    for (const path of changed) {
+      if (existsSync(join(ctx.root, path)) && !content.has(path)) changed.delete(path);
+    }
     if (changed.size === 0) return out;
 
     const shown = git(ctx.root, ["show", `${base.sha}:plugin/package.json`]);

@@ -7,7 +7,7 @@ import { attest, capability, originOf, readerBundle, record, recordPath, same, s
 import { SLUG, view, type State } from "./model.ts";
 import { learning } from "./learning.ts";
 import { assetsDir, folderOfId, readState, writeAtomic } from "./store.ts";
-import { observations, observationVersion, observing, type Observations } from "./observations.ts";
+import { observations, observationVersion, observing } from "./observations.ts";
 
 const { values } = parseArgs({ args: Bun.argv.slice(2), options: { home: { type: "string" }, port: { type: "string" }, idle: { type: "string" } }, strict: true });
 const home = values.home!;
@@ -97,7 +97,7 @@ function prototype(req: Request): Response {
   });
 }
 
-function eventStream(req: Request, revision?: () => { revision: number; observations: Observations } | undefined): Response {
+function hold(req: Request): Response {
   active++;
   let done = false;
   let timer: ReturnType<typeof setInterval>;
@@ -113,31 +113,10 @@ function eventStream(req: Request, revision?: () => { revision: number; observat
     start(controller) {
       const encode = (s: string) => new TextEncoder().encode(s);
       controller.enqueue(encode(": connected\n\n"));
-      let sent: number | undefined;
-      let observed: string | undefined;
-      let heartbeat = Date.now();
-      const publish = () => {
-        try {
-          const next = revision?.();
-          if (next !== undefined && next.revision !== sent) {
-            controller.enqueue(encode(`event: revision\ndata: ${JSON.stringify({ revision: next.revision })}\n\n`));
-            sent = next.revision;
-          }
-          if (next !== undefined && observationVersion(next.observations) !== observed) {
-            observed = observationVersion(next.observations);
-            controller.enqueue(encode(`event: observations\ndata: ${JSON.stringify({ version: observed })}\n\n`));
-          }
-          if (Date.now() - heartbeat >= 15000) {
-            controller.enqueue(encode(": alive\n\n"));
-            heartbeat = Date.now();
-          }
-        } catch (e) {
-          release();
-          controller.error(e);
-        }
-      };
-      timer = setInterval(publish, revision ? 500 : 15000);
-      if (revision) publish();
+      timer = setInterval(() => {
+        try { controller.enqueue(encode(": alive\n\n")); }
+        catch (e) { release(); controller.error(e); }
+      }, 15000);
     },
     cancel: release,
   }), 200, { "Content-Type": "text/event-stream", "X-Accel-Buffering": "no" });
@@ -154,7 +133,7 @@ async function route(req: Request): Promise<Response> {
       return response(JSON.stringify({ app: "vstack-flow-host", version: hostVersion, instance, proof: attest(secret.control, nonce, hostVersion, instance) }), 200, { "Content-Type": "application/json" });
     }
     if (!controlled(req)) return response("Not authorized.", 401);
-    if (url.pathname === "/.host/hold" && req.method === "GET") return eventStream(req);
+    if (url.pathname === "/.host/hold" && req.method === "GET") return hold(req);
     if (url.pathname === "/.host/stop" && req.method === "POST") {
       setTimeout(shutdown, 50);
       return response("Stopping.");
@@ -202,11 +181,9 @@ async function route(req: Request): Promise<Response> {
     return response(req.method === "HEAD" ? null : JSON.stringify({ ...content, questions: [...content.questions.values()], runtimes: await runtimes(s, key) }), 200, { "Content-Type": "application/json" });
   }
   if (m[4] === "/observations") return response(req.method === "HEAD" ? null : JSON.stringify(observations(folder, key, s)), 200, { "Content-Type": "application/json" });
-  if (m[4] === "/events" && req.method === "GET") return eventStream(req, () => {
-    const current = folderOfId(dir, id);
-    const state = current ? readState(current) : undefined;
-    return state ? { revision: state.revision, observations: observations(current!, key, state) } : undefined;
-  });
+  if (m[4] === "/versions") return response(req.method === "HEAD" ? null : JSON.stringify({
+    revision: s.revision, observationVersion: observationVersion(observations(folder, key, s)),
+  }), 200, { "Content-Type": "application/json" });
   if (!m[4].startsWith("/assets/")) return missing();
   let file: string;
   try { file = decodeURIComponent(m[4].slice(8)); } catch { return missing(); }

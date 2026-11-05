@@ -4,6 +4,17 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.6] - 2026-11-05
+
+- Publish approved ticket batches through one durable publish/resume Interface, reconcile uncertain creates, and verify fields and directed relationships before configured readiness across CLI, MCP, and local-file trackers (#352).
+- Resolve shared Private-mode domain canonical references from main and linked checkouts with one `vstack-domain` identity, preserving hashes and history without widening attachment access (#354).
+- Diagnose malformed `revise.add` collections before Result provenance checks, without changing saved Flow state or valid append behavior (#357).
+- State the required ledger fields and nonempty-text rules, and validate the published proof-gap example through the Flow-authoring command with atomic refusal coverage (#356).
+- Accept safe SVG declaration and provenance-comment prologs without changing captured bytes or hashes; refuse external resources and active content atomically through Flow authoring (#355).
+- Ignore empty plugin remnants and recognized Python caches through a shared, read-only artifact inventory while retaining untracked source and bundled reader assets (#353).
+- Preserve independently owned maintenance inputs, retain accepted uncommitted preparation across repeats, and refuse conflicting or competing replacements before checkout writes (#351).
+- Keep Flow navigation responsive with many readers by polling authored and observation versions without overlapping requests or persistent reader streams; retain reading position, focus, selected stops, and captured evidence (#330).
+
 ## [9.0.5] - 2026-11-05
 
 - Merge published main through 3f8da00b with architecture PR #358 without rewriting pushed history. Preserve the UI guidance, clean-wt fix, and Stage-tab reader with their callers, Pins, register and package metadata. Published main owns ADRs 0051 and 0052; move the unchanged architecture policy and its references to ADR 0053 (#333).

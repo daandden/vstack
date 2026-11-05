@@ -1,6 +1,6 @@
 // Reads the repo-level files of a vstack checkout: pins.yaml, decision-register.yaml, house-style.yaml, and the plugin tree.
 
-import { join, relative } from "node:path";
+import { basename, dirname, join, relative } from "node:path";
 import { lstatSync, readdirSync, readFileSync, readlinkSync, existsSync } from "node:fs";
 import { gitBlobSha, type TreeEntry, type UpstreamRef, type UpstreamTree } from "./upstreams.ts";
 import { HouseStyleError, parseHouseStyle, type HouseStyle, type HouseStyleProblem } from "./house-style.ts";
@@ -14,7 +14,6 @@ export type PinKind = (typeof PIN_KINDS)[number];
 /** The only Upstream file an adopt artifact never ships (ADR 0001). */
 export const NEVER_SHIPPED = "agents/openai.yaml";
 
-/** Files never treated as content (macOS Finder noise). */
 const IGNORED_NAMES = new Set([".DS_Store"]);
 
 export class ConfigError extends Error {}
@@ -171,9 +170,25 @@ export function isHeld(row: Row): boolean {
   return row.held_at !== undefined;
 }
 
+/** Source and distribution files, including symlinks, but not recognized local cache files. */
+export function* artifactFiles(root: string, artifact: string): Generator<string> {
+  function* walk(abs: string): Generator<string> {
+    const st = lstatSync(abs);
+    if (st.isDirectory()) {
+      for (const entry of readdirSync(abs)) yield* walk(join(abs, entry));
+    } else if (
+      !IGNORED_NAMES.has(basename(abs)) &&
+      !(st.isFile() && basename(dirname(abs)) === "__pycache__" && /\.py[co]$/.test(basename(abs)))
+    ) {
+      yield relative(root, abs);
+    }
+  }
+  yield* walk(join(root, artifact));
+}
+
 /**
- * Artifact units under `plugin/`: each child of a top-level directory (`plugin/skills/<name>`,
- * `plugin/agents/<file>`, `plugin/rules/<file>`, ...) and each top-level file except the manifest.
+ * Source-bearing units under `plugin/`: each child of a top-level directory
+ * and each top-level file except the manifest. Empty and cache-only trees are not units.
  */
 export function listPluginArtifacts(root: string): string[] {
   const plugin = join(root, "plugin");
@@ -183,10 +198,12 @@ export function listPluginArtifacts(root: string): string[] {
     if (IGNORED_NAMES.has(top.name)) continue;
     if (top.isDirectory()) {
       for (const child of readdirSync(join(plugin, top.name))) {
-        if (!IGNORED_NAMES.has(child)) units.push(`plugin/${top.name}/${child}`);
+        const artifact = `plugin/${top.name}/${child}`;
+        if (!artifactFiles(root, artifact).next().done) units.push(artifact);
       }
     } else if (top.name !== "package.json") {
-      units.push(`plugin/${top.name}`);
+      const artifact = `plugin/${top.name}`;
+      if (!artifactFiles(root, artifact).next().done) units.push(artifact);
     }
   }
   return units.sort();
@@ -201,20 +218,11 @@ export function artifactBlobs(root: string, artifact: string): Map<string, strin
     const bytes = st.isSymbolicLink() ? new TextEncoder().encode(readlinkSync(file)) : readFileSync(file);
     return gitBlobSha(bytes);
   };
-  const st = lstatSync(abs);
-  if (!st.isDirectory()) {
-    out.set(artifact.slice(artifact.lastIndexOf("/") + 1), hash(abs));
-    return out;
+  const directory = lstatSync(abs).isDirectory();
+  for (const file of artifactFiles(root, artifact)) {
+    const path = join(root, file);
+    out.set(directory ? relative(abs, path) : basename(path), hash(path));
   }
-  const walk = (dir: string) => {
-    for (const e of readdirSync(dir, { withFileTypes: true })) {
-      if (IGNORED_NAMES.has(e.name)) continue;
-      const p = join(dir, e.name);
-      if (e.isDirectory()) walk(p);
-      else out.set(relative(abs, p), hash(p));
-    }
-  };
-  walk(abs);
   return out;
 }
 

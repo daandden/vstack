@@ -727,6 +727,81 @@ test("every attachment type keeps its caption, origin, captured revision, and av
   expect(after.snap.attachments).toEqual(before.snap.attachments);
 });
 
+test.each([
+  ["plain", ""],
+  ["declaration", '<?xml version="1.0" encoding="UTF-8"?>\r\n'],
+  ["comments", "<!-- Figure provenance: measured checkout, not a simulation. -->\n<!-- Rendered by fixture. -->\n"],
+  ["declaration and comments", '\uFEFF<?xml version="1.0" encoding="UTF-8"?>\r\n<!-- Figure provenance: café, measured checkout. -->\r\n'],
+])("a safe SVG with %s retains its original captured bytes and hash", (_, prolog) => {
+  openFlow("s-1");
+  const source = Buffer.from(`${prolog}${SVG}\r\n`);
+  put("media/provenance.svg", source);
+  const r = submit("s-1", attachment("figure", "svg", { path: "media/provenance.svg" }), {
+    kind: "result", shape: "table", title: "Captured figure", columns: ["Check"],
+    rows: [{ cells: ["Original source"] }], attachments: ["figure"],
+  });
+  expect(r.stderr).toBe("");
+  expect(r.code).toBe(0);
+  const snap = show(r.json.flow);
+  const captured = snap.attachments.find((a: any) => a.id === r.json.refs.figure);
+  expect(captured.revision).toBe(sha(source));
+  expect(captured.availability).toBe("captured");
+  expect(snap.stages[0].results[0].attachments).toEqual([captured.id]);
+  expect(bytesOf(r.json.flow, captured.id)).toEqual(source);
+});
+
+test("a captured SVG retains local paint and shape references without external resources", () => {
+  openFlow("s-1");
+  const source = `<?xml version="1.0"?>\n<!-- Local definitions only. -->\n<svg xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="paint"><stop offset="0" stop-color="#a6e3a1"/></linearGradient><rect id="shape" width="40" height="20"/></defs><style><![CDATA[use{fill:url("#paint")}]]></style><use href="#shape" fill="url(#paint)"/></svg>`;
+  put("media/local.svg", source);
+  const r = submit("s-1", attachment("local", "svg", { path: "media/local.svg" }), {
+    kind: "result", shape: "table", title: "Local references", columns: ["Check"],
+    rows: [{ cells: ["Local paint"] }], attachments: ["local"],
+  });
+  expect(r.code).toBe(0);
+  expect(r.stderr).toBe("");
+  expect(bytesOf(r.json.flow, r.json.refs.local)).toEqual(Buffer.from(source));
+});
+
+test.each([
+  ["script inside the root", `<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>`, /script/i],
+  ["script after the root", `${SVG}<script>alert(1)</script>`, /script/i],
+  ["root event handler", `<svg xmlns="http://www.w3.org/2000/svg" onload="alert(1)"/>`, /onload/i],
+  ["entity-encoded script URL", `<svg xmlns="http://www.w3.org/2000/svg"><a href="java&#x73;cript:alert(1)">Go</a></svg>`, /javascript/i],
+  ["data URL", `<svg xmlns="http://www.w3.org/2000/svg"><image href="data:image/svg+xml,active"/></svg>`, /data/i],
+  ["embedded HTML", `<svg xmlns="http://www.w3.org/2000/svg"><foreignObject><div>HTML</div></foreignObject></svg>`, /foreignobject/i],
+  ["external image", `<svg xmlns="http://www.w3.org/2000/svg"><image href="https://example.com/image.png"/></svg>`, /external|reference/i],
+  ["external use", `<svg xmlns="http://www.w3.org/2000/svg"><use xlink:href="&#x2f;&#x2f;example.com/figure.svg#shape"/></svg>`, /external|reference/i],
+  ["relative external reference", `<svg xmlns="http://www.w3.org/2000/svg"><use href="other.svg#shape"/></svg>`, /external|reference/i],
+  ["external base", `<svg xmlns="http://www.w3.org/2000/svg" xml:base="https://example.com/"><use href="#shape"/></svg>`, /external|reference/i],
+  ["CSS import", `<svg xmlns="http://www.w3.org/2000/svg"><style>@import "https://example.com/style.css";</style></svg>`, /style|import/i],
+  ["CSS external URL", `<svg xmlns="http://www.w3.org/2000/svg"><style>rect{fill:url(https://example.com/paint.svg#paint)}</style></svg>`, /style|external|reference/i],
+  ["CSS escaped external URL", String.raw`<svg xmlns="http://www.w3.org/2000/svg"><style>rect{fill:\75rl(//example.com/paint.svg#paint)}</style></svg>`, /style|external|reference/i],
+  ["entity-encoded external paint", `<svg xmlns="http://www.w3.org/2000/svg"><rect fill="u&#x72;l(https://example.com/paint.svg#paint)"/></svg>`, /style|external|reference/i],
+  ["inline external style", `<svg xmlns="http://www.w3.org/2000/svg"><rect style="fill:url('other.svg#paint')"/></svg>`, /style|external|reference/i],
+  ["external presentation attribute", `<svg xmlns="http://www.w3.org/2000/svg"><rect fill="url(//example.com/paint.svg#paint)"/></svg>`, /style|external|reference/i],
+  ["CSS expression", `<svg xmlns="http://www.w3.org/2000/svg"><style>rect{width:expression(alert(1))}</style></svg>`, /style|script/i],
+  ["stylesheet instruction after the root", `${SVG}<?xml-stylesheet href="https://example.com/style.css"?>`, /instruction|declaration|style/i],
+  ["external entity declaration", `<!DOCTYPE svg SYSTEM "https://example.com/svg.dtd">${SVG}`, /document|declaration|doctype/i],
+  ["HTML document", "<html><body>Not an SVG</body></html>", /document/i],
+])("an SVG prolog does not admit %s or commit its surrounding contribution", (_, body, category) => {
+  const opened = openFlow("s-1");
+  put("media/unsafe.svg", `<?xml version="1.0" encoding="UTF-8"?>\n<!-- Provenance: security fixture. -->\n${body}`);
+  const before = tree();
+  const beforeState = show(opened.flow);
+  const r = submit("s-1",
+    { kind: "result", shape: "table", title: "Must not be saved", columns: ["Check"], rows: [{ cells: ["Pending capture"] }] },
+    round(question("pending")),
+    attachment("unsafe", "svg", { path: "media/unsafe.svg" }),
+    { kind: "result", shape: "table", title: "Unsafe capture", columns: ["Check"], rows: [{ cells: ["Pending capture"] }], attachments: ["unsafe"] },
+  );
+  expect(r.code).toBe(1);
+  expect(r.stdout).toBe("");
+  expect(r.stderr).toMatch(category);
+  expect(tree()).toEqual(before);
+  expect(show(opened.flow)).toEqual(beforeState);
+});
+
 const GIF = Buffer.from("R0lGODlhAQABAIAAAP///wAAACH5BAEAAAAALAAAAAABAAEAAAICRAEAOw==", "base64");
 
 test("a Result keeps what it captured when its sources change, until a new revision is published from the same canonical file", () => {
@@ -1364,6 +1439,102 @@ test("a Timeline keeps its events in the given order, with times only where know
   expect(res.entries[1].questions).toEqual([refs.why]);
 });
 
+test("an object-valued append reports the add collection shape without changing an existing Result", () => {
+  openFlow("s-1");
+  const first = submit("s-1", timeline("run", event("build")));
+  expect(first.code).toBe(0);
+  const before = tree();
+  const refused = submit("s-1", { kind: "revise", result: first.json.refs.run, add: event("test") });
+  expect(refused.code).toBe(1);
+  expect(refused.stdout).toBe("");
+  expect(tree()).toEqual(before);
+  expect(refused.stderr).toMatch(/add.*(?:array|list|collection)/i);
+  expect(refused.stderr).not.toMatch(/earlier contribution|belongs to/i);
+});
+
+test.each([
+  ["null", null],
+  ["a string", "test"],
+  ["a number", 42],
+  ["a boolean", false],
+  ["an empty array", []],
+])("an append with %s is refused as an add collection error without saving a simultaneous edit", (_name, add) => {
+  openFlow("s-1");
+  const first = submit("s-1", timeline("run", event("build"))).json;
+  const before = tree();
+  const refused = submit("s-1", { kind: "revise", result: first.refs.run, base: first.revision, set: { title: "Not saved" }, add });
+  expect(refused.code).toBe(1);
+  expect(refused.stdout).toBe("");
+  expect(refused.stderr).toMatch(/add.*(?:array|list|collection)/i);
+  expect(tree()).toEqual(before);
+});
+
+test("valid appends preserve Result and entry identities, reciprocal links, evidence, and prior revisions", () => {
+  openFlow("s-1");
+  const first = submit("s-1", timeline("run", event("build")), round(question("build", { results: ["run/build"] })));
+  expect(first.code).toBe(0);
+  const { refs, flow, revision } = first.json;
+  const original = show(flow).stages[0].results[0];
+  put("out/test.log", "suite passed\n");
+  const appended = submit("s-1",
+    attachment("log", "evidence", { path: "out/test.log" }),
+    { kind: "revise", result: refs.run, add: [event("test", { attachments: ["log"] }), event("finish")] },
+    round(question("test", { results: [`${refs.run}/test`] })),
+  );
+  expect(appended.code).toBe(0);
+  expect(appended.stderr).toBe("");
+  expect(appended.json.revision).toBeGreaterThan(revision);
+  const snapshot = show(flow);
+  const result = snapshot.stages[0].results[0];
+  expect(snapshot.stages[0].results).toHaveLength(1);
+  expect(result.id).toBe(refs.run);
+  expect(result.entries[0]).toEqual(original.entries[0]);
+  expect(result.entries.map((entry: any) => entry.title)).toEqual(["Event build", "Event test", "Event finish"]);
+  const testId = appended.json.refs[`${refs.run}/test`];
+  expect(result.entries[1].id).toBe(testId);
+  expect(new Set(result.entries.map((entry: any) => entry.id)).size).toBe(3);
+  expect(result.entries[1].changed).toBe(appended.json.revision);
+  expect(questionOf(snapshot, refs.build).results).toEqual([refs["run/build"]]);
+  expect(questionOf(snapshot, appended.json.refs.test).results).toEqual([testId]);
+  expect(result.entries[1].questions).toEqual([appended.json.refs.test]);
+  expect(result.entries[1].attachments).toEqual([appended.json.refs.log]);
+  expect(snapshot.attachments[0].used_by).toEqual([refs.run]);
+  expect(bytesOf(flow, appended.json.refs.log).toString()).toBe("suite passed\n");
+  expect(result.history).toHaveLength(1);
+  expect(result.history[0]).toMatchObject({ anchor: `${refs.run}-r${original.revision}`, revision: original.revision });
+  expect(result.history[0].edit).toBeUndefined();
+});
+
+test.each([
+  ["a non-object entry", null],
+  ["an incomplete event", {}],
+  ["an unknown outcome", event("test", { outcome: "invented" })],
+])("an append containing %s keeps entry validation and refuses the whole contribution", (_name, entry) => {
+  openFlow("s-1");
+  const first = submit("s-1", timeline("run", event("build"))).json;
+  const before = tree();
+  const refused = submit("s-1", { kind: "revise", result: first.refs.run, add: [event("valid"), entry] });
+  expect(refused.code).toBe(1);
+  expect(refused.stdout).toBe("");
+  expect(refused.stderr).toMatch(/add 2/);
+  expect(tree()).toEqual(before);
+});
+
+test("an entry array cannot bypass Result ownership or append to a Result in the same contribution", () => {
+  const opened = openFlow("s-1");
+  const first = submit("s-1", timeline("run", event("build"))).json;
+  expect(run(["open", "--flow", opened.flow, "--skill", "implement"], { session: "s-2" }).code).toBe(0);
+  const before = tree();
+  const foreign = submit("s-2", { kind: "revise", result: first.refs.run, add: [event("test")] });
+  expect(foreign.code).toBe(1);
+  expect(foreign.stderr).toMatch(/belongs to Stage|bound Stage/);
+  expect(tree()).toEqual(before);
+  const fresh = submit("s-1", timeline("new", event("start")), { kind: "revise", result: "new", add: [event("end")] });
+  expect(fresh.code).toBe(1);
+  expect(fresh.stderr).toMatch(/earlier contribution/);
+  expect(tree()).toEqual(before);
+});
+
 test("a Timeline grows by focused revisions: add appends later events, and set records a known outcome against its base", () => {
   openFlow("s-1");
   const first = submit("s-1", timeline("run", event("build", { outcome: "unknown" }))).json;
@@ -1453,4 +1624,76 @@ test("the Stage tree data carries every Stage with its actionable question count
   expect(snap.topics.map((t: any) => [t.id, t.questions])).toEqual([[r.json.refs.money, [r.json.refs["left-again"]]]]);
   expect(questionOf(snap, r.json.refs["left-again"]).again).toBe(q.left);
   expect(questionOf(snap, q.left).asked_again_by).toEqual([r.json.refs["left-again"]]);
+});
+
+function publishedLedgerExamples(): any[] {
+  const reference = readFileSync(join(import.meta.dir, "..", "plugin", "skills", "flow-page", "references", "results.md"), "utf8");
+  return [...reference.matchAll(/```json\n([\s\S]*?)\n```/g)]
+    .map((block) => JSON.parse(block[1]))
+    .filter((example) => example.items?.some((item: any) => item.kind === "result" && item.shape === "ledger"));
+}
+
+test("published ledger examples pass the authoring command and retain their claims and proof limits", () => {
+  const examples = publishedLedgerExamples();
+  expect(examples.length).toBeGreaterThan(0);
+  const opened = openFlow();
+  for (const example of examples) {
+    const published = run(["submit"], { session: "s-1", stdin: example });
+    expect(published.stderr).toBe("");
+    expect(published.code).toBe(0);
+    expect(published.json.revision).toBeGreaterThan(opened.revision);
+  }
+  const results = show(opened.flow).stages[0].results;
+  const expected = examples.flatMap((example) => example.items.filter((item: any) => item.kind === "result" && item.shape === "ledger"));
+  expect(results).toHaveLength(expected.length);
+  for (const [index, result] of results.entries()) {
+    expect(result.shape).toBe("ledger");
+    expect(result.entries).toHaveLength(expected[index].entries.length);
+    for (const [entryIndex, entry] of result.entries.entries()) {
+      const { ref: _, ...authored } = expected[index].entries[entryIndex];
+      expect(entry).toMatchObject(authored);
+      expect(entry.changed).toBeGreaterThan(opened.revision);
+    }
+  }
+});
+
+const ledgerFields = ["claim", "status", "evidence", "missing_proof", "consequence"];
+test.each(ledgerFields.flatMap((field) => [
+  [field, "missing", undefined],
+  [field, "empty", ""],
+  [field, "whitespace-only", " \n\t"],
+  [field, "null", null],
+  [field, "non-string", 7],
+] as const))("a ledger refuses a %s field that is %s without changing saved state", (field, _label, value) => {
+  const opened = openFlow();
+  const [example] = publishedLedgerExamples();
+  const accepted = run(["submit"], { session: "s-1", stdin: example });
+  expect(accepted.code).toBe(0);
+  const before = tree();
+  const malformed = structuredClone(example);
+  const entry = malformed.items[0].entries[0];
+  if (value === undefined) delete entry[field];
+  else entry[field] = value;
+  const refused = run(["submit"], { session: "s-1", stdin: malformed });
+  expect(refused.code).toBe(1);
+  expect(refused.stdout).toBe("");
+  expect(refused.stderr).toContain(field);
+  expect(tree()).toEqual(before);
+  expect(show(opened.flow).revision).toBe(accepted.json.revision);
+});
+
+test.each([
+  ["an unsupported status", { status: "passed" }, "status"],
+  ["an unknown field", { proof: "No attached proof." }, "proof"],
+])("a ledger refuses %s without changing the earlier ledger", (_label, fields, diagnostic) => {
+  openFlow();
+  const [example] = publishedLedgerExamples();
+  expect(run(["submit"], { session: "s-1", stdin: example }).code).toBe(0);
+  const before = tree();
+  const malformed = structuredClone(example);
+  Object.assign(malformed.items[0].entries[0], fields);
+  const refused = run(["submit"], { session: "s-1", stdin: malformed });
+  expect(refused.code).toBe(1);
+  expect(refused.stderr).toContain(diagnostic);
+  expect(tree()).toEqual(before);
 });
