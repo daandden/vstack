@@ -4,6 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.4] - 2026-11-05
+
+- The Flow page reads by Stage tab again ([ADR 0052](docs/adr/0052-the-flow-page-reads-by-stage-tab-in-first-publication-order.md)). A sticky header holds the Overview, Stage, and Topics tabs and the selected tab's Jump row, and both rows wrap on narrow screens. Each Stage tab lists its own content in first-publication order. With no fragment the page opens on the tab of the first open question, or on Overview. A fragment, `n`, and Stage links open the tab that holds their target, and `h` and `l` switch tabs. The On this page outline is gone, a focused reading stop has no visible ring, and Overview shows each Stage's open-question count.
+- `bun run test` runs each browser test file in its own Bun process after the other tests. Bun 1.3.14 closed Playwright's Chromium stdio descriptors twice, and on Linux a later test's subprocess failed with `EBADF` or hung.
+
 ## [9.0.3] - 2026-11-05
 
 - `clean-wt inventory` no longer crashes when a task clone's parent session ran in a directory that was removed since (#359). It skips that session and takes the clone's source from its alternates instead.
