@@ -1,4 +1,4 @@
-
+import type { Attachment } from "#flow/model.ts";
 export type Cites = Map<string, { anchor: string; n: number }>;
 
 export const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -25,6 +25,16 @@ export function prose(s: string, cites?: Cites): string {
       return `<p>${inline(lines.join(" "), cites)}</p>`;
     })
     .join("");
+}
+
+export const withoutQuestionNumber = (caption: string) => caption.replace(/^Q\d+ · /, "");
+export const UNKNOWN_EXAMPLE = "Unrecorded example identity, theme, or viewport: unknown.";
+
+/** The attachment facts a figure's `Source` disclosure lists after its kind. */
+export function sourceFacts(a: Attachment): { state: string; revision?: string; from?: string } {
+  const state = a.availability === "unavailable" ? "Unavailable" : a.availability === "external" ? "Runs outside this page" : "Captured";
+  const revision = a.revision && (a.availability === "captured" ? a.revision.slice(0, 12) : a.revision);
+  return { state, ...(revision ? { revision } : {}), ...(a.from ? { from: a.from.path } : {}) };
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];

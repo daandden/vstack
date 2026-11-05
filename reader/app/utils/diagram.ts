@@ -87,7 +87,6 @@ function pageMeasurer(probe: HTMLElement) {
   };
 }
 
-/** Draws Mermaid source with the pinned Pele, without links or images. */
 export async function drawMermaid(source: string, focus: string[]): Promise<Drawn> {
   await document.fonts.ready;
   const { renderAsync } = await import("pele/lazy");
@@ -96,7 +95,8 @@ export async function drawMermaid(source: string, focus: string[]): Promise<Draw
   probe.setAttribute("aria-hidden", "true");
   document.body.append(probe);
   try {
-    const { svg } = await renderAsync(source, { measurer: pageMeasurer(probe), fontFamily: DIAGRAM_FONT, fontFamilyMono: DIAGRAM_FONT, links: false, images: false });
+    const fontSize = parseFloat(getComputedStyle(document.body).fontSize);
+    const { svg } = await renderAsync(source, { measurer: pageMeasurer(probe), fontFamily: DIAGRAM_FONT, fontFamilyMono: DIAGRAM_FONT, fontSize, links: false, images: false });
     const root = parse(svg);
     if (!root) throw new Error("Pele returned no SVG");
     return { svg: clean(root), css: focusRules(focus) };
