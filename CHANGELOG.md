@@ -9,6 +9,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 - State the required ledger fields and nonempty-text rules, and validate the published proof-gap example through the Flow-authoring command with atomic refusal coverage (#356).
 - Accept safe SVG declaration and provenance-comment prologs without changing captured bytes or hashes; refuse external resources and active content atomically through Flow authoring (#355).
 - Ignore empty plugin remnants and recognized Python caches through a shared, read-only artifact inventory while retaining untracked source and bundled reader assets (#353).
+- Preserve independently owned maintenance inputs, retain accepted uncommitted preparation across repeats, and refuse conflicting or competing replacements before checkout writes (#351).
 
 ## [9.0.2] - 2026-11-03
 

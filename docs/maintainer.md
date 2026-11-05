@@ -285,9 +285,22 @@ Each Hand edit target has `action` (`add`, `edit`, `take`, `rename`, or `remove`
 
 An `edit` target can also carry an optional, nonempty, one-line `reason`. `prepare` applies it to every adapt row that lists the artifact. Other Dispositions keep their reasons, and an adopt flip still uses `flip.reason`.
 
-`prepare` validates decisions before its first checkout write. It reads bookkeeping from HEAD, not from earlier uncommitted bookkeeping. Its version exceeds HEAD's version, with at most one major bump per branch. Hold preserves the old contribution while current Pins and item identities move. The grill records moved refs and confirmed decisions. implement reruns `plan` at those refs and stops with a report if the row set differs.
+`prepare` validates decisions before its first checkout write. It derives bookkeeping from HEAD and replays accepted decisions recorded for that same HEAD. Its version exceeds HEAD's version, with at most one major bump per branch. Hold preserves the old contribution while current Pins and item identities move. The grill records moved refs and confirmed decisions. implement reruns `plan` at those refs and stops with a report if the row set differs.
 
 `prepare` uses the `yaml` package's Document and source-token APIs to keep comments, quoting, flow style, key order, and untouched text. It changes only the version value in `plugin/package.json`.
+
+### Preparation ownership
+
+Before replacement, `prepare` requires each bookkeeping file, release-metadata file, and selected adopt or take destination to match HEAD or its last recorded prepared output. Added files, removed files, symlinks, executable modes, and untracked files inside replacement directories participate in this comparison. Existing adapt takes remain agent-owned and are not replaced.
+
+Successful preparation saves its accepted decisions, plan, and output identities at the checkout's Git path `vstack-maintain/prepared.json`. This receipt stays outside the product files. Repeats combine accepted decisions by row id, target artifact, and dropped Upstream key. A new decision replaces the earlier decision for that key; omitted keys stay accepted. CHANGELOG entries accumulate without duplicates. A new HEAD starts a new preparation baseline. A different plan at the same HEAD refuses while an earlier Update remains uncommitted.
+
+An `input-conflict` refusal lists `conflicts` paths and changes no checkout content. Reconcile the named differences; a dirty file alone grants no replacement permission. Keep the receipt for repeats and review-fix handoffs, including the original confirmed decisions for revised targets. Losing the receipt does not authorize replacement of dirty content.
+
+Preparation holds a checkout-specific Git-path lock through validation, input rechecking, writes, and receipt persistence. A cooperating invocation receives `preparation-busy` and the lock path rather than overwriting the owner's work. Retry after that owner finishes. If the owner died, inspect the lock's `owner.json` and confirm its process has ended before removing only that abandoned lock. Inputs and HEAD are checked again immediately before replacement. This does not provide a filesystem-wide transaction against arbitrary external editors.
+
+An unexpected `write-failure` reports the completed `written` paths, the `attempted` path, and a possibly partially written checkout. Inspect those files before recovery. A `receipt-write-failure` means checkout preparation completed but ownership persistence failed. Neither outcome claims an unchanged checkout or permits a blind retry.
+
 
 ### Plan JSON
 
