@@ -1550,3 +1550,75 @@ test("the Stage tree data carries every Stage with its actionable question count
   expect(questionOf(snap, r.json.refs["left-again"]).again).toBe(q.left);
   expect(questionOf(snap, q.left).asked_again_by).toEqual([r.json.refs["left-again"]]);
 });
+
+function publishedLedgerExamples(): any[] {
+  const reference = readFileSync(join(import.meta.dir, "..", "plugin", "skills", "flow-page", "references", "results.md"), "utf8");
+  return [...reference.matchAll(/```json\n([\s\S]*?)\n```/g)]
+    .map((block) => JSON.parse(block[1]))
+    .filter((example) => example.items?.some((item: any) => item.kind === "result" && item.shape === "ledger"));
+}
+
+test("published ledger examples pass the authoring command and retain their claims and proof limits", () => {
+  const examples = publishedLedgerExamples();
+  expect(examples.length).toBeGreaterThan(0);
+  const opened = openFlow();
+  for (const example of examples) {
+    const published = run(["submit"], { session: "s-1", stdin: example });
+    expect(published.stderr).toBe("");
+    expect(published.code).toBe(0);
+    expect(published.json.revision).toBeGreaterThan(opened.revision);
+  }
+  const results = show(opened.flow).stages[0].results;
+  const expected = examples.flatMap((example) => example.items.filter((item: any) => item.kind === "result" && item.shape === "ledger"));
+  expect(results).toHaveLength(expected.length);
+  for (const [index, result] of results.entries()) {
+    expect(result.shape).toBe("ledger");
+    expect(result.entries).toHaveLength(expected[index].entries.length);
+    for (const [entryIndex, entry] of result.entries.entries()) {
+      const { ref: _, ...authored } = expected[index].entries[entryIndex];
+      expect(entry).toMatchObject(authored);
+      expect(entry.changed).toBeGreaterThan(opened.revision);
+    }
+  }
+});
+
+const ledgerFields = ["claim", "status", "evidence", "missing_proof", "consequence"];
+test.each(ledgerFields.flatMap((field) => [
+  [field, "missing", undefined],
+  [field, "empty", ""],
+  [field, "whitespace-only", " \n\t"],
+  [field, "null", null],
+  [field, "non-string", 7],
+] as const))("a ledger refuses a %s field that is %s without changing saved state", (field, _label, value) => {
+  const opened = openFlow();
+  const [example] = publishedLedgerExamples();
+  const accepted = run(["submit"], { session: "s-1", stdin: example });
+  expect(accepted.code).toBe(0);
+  const before = tree();
+  const malformed = structuredClone(example);
+  const entry = malformed.items[0].entries[0];
+  if (value === undefined) delete entry[field];
+  else entry[field] = value;
+  const refused = run(["submit"], { session: "s-1", stdin: malformed });
+  expect(refused.code).toBe(1);
+  expect(refused.stdout).toBe("");
+  expect(refused.stderr).toContain(field);
+  expect(tree()).toEqual(before);
+  expect(show(opened.flow).revision).toBe(accepted.json.revision);
+});
+
+test.each([
+  ["an unsupported status", { status: "passed" }, "status"],
+  ["an unknown field", { proof: "No attached proof." }, "proof"],
+])("a ledger refuses %s without changing the earlier ledger", (_label, fields, diagnostic) => {
+  openFlow();
+  const [example] = publishedLedgerExamples();
+  expect(run(["submit"], { session: "s-1", stdin: example }).code).toBe(0);
+  const before = tree();
+  const malformed = structuredClone(example);
+  Object.assign(malformed.items[0].entries[0], fields);
+  const refused = run(["submit"], { session: "s-1", stdin: malformed });
+  expect(refused.code).toBe(1);
+  expect(refused.stderr).toContain(diagnostic);
+  expect(tree()).toEqual(before);
+});
