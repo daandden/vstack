@@ -118,7 +118,8 @@ function retentionDecision(kind: string, entry: string, path: string, st: Stats)
   return { due: now - newest > ttl, age: now - newest, newest, size, reason: "newer than the TTL" };
 }
 
-const print = (v: unknown) => process.stdout.write(`${JSON.stringify(v, null, 2)}\n`);
+// Resolves once stdout has taken every byte, so a following process.exit cannot cut a piped listing at the pipe buffer.
+const print = (v: unknown) => new Promise<void>((done, fail) => process.stdout.write(`${JSON.stringify(v, null, 2)}\n`, (e) => (e ? fail(e) : done())));
 
 if (!values.delete) {
   const entries = [];
@@ -142,7 +143,7 @@ if (!values.delete) {
       }
     }
   }
-  print({ root, older_than: olderThan, entries, kept });
+  await print({ root, older_than: olderThan, entries, kept });
   process.exit(0);
 }
 
@@ -206,4 +207,4 @@ for (const { path, kind, entry } of targets) {
     pruned.push(dir);
   }
 }
-print({ root, deleted, skipped, pruned });
+await print({ root, deleted, skipped, pruned });

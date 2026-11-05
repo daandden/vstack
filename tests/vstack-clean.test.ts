@@ -217,6 +217,14 @@ test("a delete path that is not an entry under the Scratch root exits 2 and dele
   expect(existsSync(p)).toBe(true);
 });
 
+test("a listing larger than a pipe buffer reaches a reader that starts after the script exits", async () => {
+  for (let i = 0; i < 400; i++) file(`shop-aaaaaa/explain/entry-${String(i).padStart(3, "0")}.html`, "x", 30);
+  const proc = Bun.spawn(["sh", "-c", 'bun "$0" --home "$1" --older-than 14d | (sleep 1; cat)', CLEAN, home], { cwd: dir, env: ENV, stdout: "pipe" });
+  const stdout = await new Response(proc.stdout).text();
+  expect(await proc.exited).toBe(0);
+  expect(JSON.parse(stdout).entries).toHaveLength(400);
+});
+
 test("--home is required and --older-than must be a duration", () => {
   expect(clean("--older-than", "14d").code).toBe(2);
   expect(clean("--home", home, "--older-than", "soon").code).toBe(2);

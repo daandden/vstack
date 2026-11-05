@@ -387,7 +387,9 @@ function registerCleanCommand(pi: ExtensionAPI): void {
           }, { triggerTurn: false });
           return;
         }
-        const args = [script, "--home", homedir(), "--older-than", age.trim() || "90d"];
+        const olderThan = age.trim() || "90d";
+        const args = [script, "--home", homedir(), "--older-than", olderThan];
+        ctx.ui.notify(`Scanning Scratch for entries older than ${olderThan}…`, "info");
         const preview = await pi.exec("bun", args);
         record("Dry run diagnostics", preview);
         if (preview.code !== 0) throw new Error(preview.stderr.trim() || `clean.ts exited with code ${preview.code}`);

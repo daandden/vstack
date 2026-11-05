@@ -4,6 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.8] - 2026-11-06
+
+- `/vstack-clean` no longer fails with a JSON parse error when the dry-run listing is larger than 64 KiB, about 200 expired entries. `clean.ts` exited before stdout drained, so a piped reader such as the Command got the listing cut at the pipe buffer. The script now waits for stdout to take every byte before it exits.
+- `/vstack-clean` shows `Scanning Scratch for entries older than <age>…` before its dry run. A large Scratch dir takes tens of seconds to measure, and the Command used to show nothing until the table was ready.
+
 ## [9.0.7] - 2026-11-05
 
 - Integrate the UI-only Flow question popup with main 9.0.6, preserving Stage-tab reading, architecture agreement, register metadata, Pins, and Dispositions. Rename the popup decision to ADR 0054 without changing main ADRs 0052 and 0053.
