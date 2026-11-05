@@ -8,6 +8,7 @@ This repo's remote and its PRs live on GitHub. Skills run every Code host operat
 - Check: `gh auth status`
 - Review reference in commit titles: `(#<number>)`
 - Default End state: shipped
+- Landing method: rebase
 
 ## Operations
 
