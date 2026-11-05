@@ -66,6 +66,7 @@ These are automated controller cases at the same Matt-run seam, not live human a
 
 ## Gotchas
 
+- Keep the persistent session's artifact directory beside its JSONL file. When omp truncates a CLI receipt inline, the helper reads the full stored output named by its `artifactId` metadata and applies the same question-identity checks.
 - Skill-load and trigger checks prove selection, not architecture reasoning. A stub model's scripted answer proves neither the assessment nor human consent.
 - A Headless run has no human answer even when it reaches a summary. An Architecture brief cannot convert its substituted picks into agreement.
 - A prior explicit answer can drive a continuation evaluation, but does not substitute for the live confirmation-and-stop smoke.

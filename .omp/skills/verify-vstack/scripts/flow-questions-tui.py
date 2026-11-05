@@ -107,8 +107,18 @@ def actual_model(args):
     captured, inputs, started = bytearray(), [], time.monotonic()
     summary = {"transport_complete": False, "human_consent": False, "case": args.case}
 
+    message_sessions = {}
+
     def messages():
-        return [r["message"] for f in sessions.rglob("*.jsonl") for r in lines(f) if r.get("type") == "message"]
+        current = []
+        for session_file in sessions.rglob("*.jsonl"):
+            for record in lines(session_file):
+                if record.get("type") == "message":
+                    message = record["message"]
+                    if message.get("role") == "toolResult":
+                        message_sessions[message["toolCallId"]] = session_file
+                    current.append(message)
+        return current
 
     def send(label, value):
         inputs.append({"at_seconds": time.monotonic() - started, "label": label,
@@ -134,8 +144,18 @@ def actual_model(args):
         for message in current:
             if message.get("role") != "toolResult":
                 continue
-            for block in message.get("content", []):
-                value = block.get("text", "") if isinstance(block, dict) else ""
+            values = [block.get("text", "") for block in message.get("content", [])
+                      if isinstance(block, dict)]
+            column_truncation = (message.get("details", {}).get("meta", {})
+                                 .get("limits", {}).get("columnTruncated", {}))
+            artifact_id = column_truncation.get("artifactId")
+            if artifact_id is not None and re.fullmatch(r"\d+", str(artifact_id)):
+                # omp stores full outputs beside the owning session's JSONL file.
+                artifact_dir = message_sessions[message["toolCallId"]].with_suffix("")
+                artifacts = list(artifact_dir.glob(f"{artifact_id}.*.log"))
+                if len(artifacts) == 1:
+                    values.append(artifacts[0].read_text())
+            for value in values:
                 for match in re.finditer(r"\{", value):
                     try:
                         receipt, _ = decoder.raw_decode(value[match.start():])
