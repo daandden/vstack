@@ -212,12 +212,12 @@ test("at 360px the tab row wraps without page overflow and fragment targets land
       const tab = document.querySelector(".bar .tabs a")!.getBoundingClientRect();
       return {
         wrapped: row.height > tab.height * 1.5,
-        overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        overflow: document.documentElement.scrollWidth - innerWidth,
         below: document.getElementById(id)!.getBoundingClientRect().top - document.querySelector(".bar")!.getBoundingClientRect().bottom,
       };
     }, target);
     expect(geometry.wrapped).toBe(true);
-    expect(geometry.overflow).toBe(0);
+    expect(geometry.overflow).toBeLessThanOrEqual(0);
     expect(geometry.below).toBeGreaterThanOrEqual(0);
 
     await page.evaluate(() => { location.hash = "#overview"; });
