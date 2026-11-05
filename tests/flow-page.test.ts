@@ -1364,6 +1364,102 @@ test("a Timeline keeps its events in the given order, with times only where know
   expect(res.entries[1].questions).toEqual([refs.why]);
 });
 
+test("an object-valued append reports the add collection shape without changing an existing Result", () => {
+  openFlow("s-1");
+  const first = submit("s-1", timeline("run", event("build")));
+  expect(first.code).toBe(0);
+  const before = tree();
+  const refused = submit("s-1", { kind: "revise", result: first.json.refs.run, add: event("test") });
+  expect(refused.code).toBe(1);
+  expect(refused.stdout).toBe("");
+  expect(tree()).toEqual(before);
+  expect(refused.stderr).toMatch(/add.*(?:array|list|collection)/i);
+  expect(refused.stderr).not.toMatch(/earlier contribution|belongs to/i);
+});
+
+test.each([
+  ["null", null],
+  ["a string", "test"],
+  ["a number", 42],
+  ["a boolean", false],
+  ["an empty array", []],
+])("an append with %s is refused as an add collection error without saving a simultaneous edit", (_name, add) => {
+  openFlow("s-1");
+  const first = submit("s-1", timeline("run", event("build"))).json;
+  const before = tree();
+  const refused = submit("s-1", { kind: "revise", result: first.refs.run, base: first.revision, set: { title: "Not saved" }, add });
+  expect(refused.code).toBe(1);
+  expect(refused.stdout).toBe("");
+  expect(refused.stderr).toMatch(/add.*(?:array|list|collection)/i);
+  expect(tree()).toEqual(before);
+});
+
+test("valid appends preserve Result and entry identities, reciprocal links, evidence, and prior revisions", () => {
+  openFlow("s-1");
+  const first = submit("s-1", timeline("run", event("build")), round(question("build", { results: ["run/build"] })));
+  expect(first.code).toBe(0);
+  const { refs, flow, revision } = first.json;
+  const original = show(flow).stages[0].results[0];
+  put("out/test.log", "suite passed\n");
+  const appended = submit("s-1",
+    attachment("log", "evidence", { path: "out/test.log" }),
+    { kind: "revise", result: refs.run, add: [event("test", { attachments: ["log"] }), event("finish")] },
+    round(question("test", { results: [`${refs.run}/test`] })),
+  );
+  expect(appended.code).toBe(0);
+  expect(appended.stderr).toBe("");
+  expect(appended.json.revision).toBeGreaterThan(revision);
+  const snapshot = show(flow);
+  const result = snapshot.stages[0].results[0];
+  expect(snapshot.stages[0].results).toHaveLength(1);
+  expect(result.id).toBe(refs.run);
+  expect(result.entries[0]).toEqual(original.entries[0]);
+  expect(result.entries.map((entry: any) => entry.title)).toEqual(["Event build", "Event test", "Event finish"]);
+  const testId = appended.json.refs[`${refs.run}/test`];
+  expect(result.entries[1].id).toBe(testId);
+  expect(new Set(result.entries.map((entry: any) => entry.id)).size).toBe(3);
+  expect(result.entries[1].changed).toBe(appended.json.revision);
+  expect(questionOf(snapshot, refs.build).results).toEqual([refs["run/build"]]);
+  expect(questionOf(snapshot, appended.json.refs.test).results).toEqual([testId]);
+  expect(result.entries[1].questions).toEqual([appended.json.refs.test]);
+  expect(result.entries[1].attachments).toEqual([appended.json.refs.log]);
+  expect(snapshot.attachments[0].used_by).toEqual([refs.run]);
+  expect(bytesOf(flow, appended.json.refs.log).toString()).toBe("suite passed\n");
+  expect(result.history).toHaveLength(1);
+  expect(result.history[0]).toMatchObject({ anchor: `${refs.run}-r${original.revision}`, revision: original.revision });
+  expect(result.history[0].edit).toBeUndefined();
+});
+
+test.each([
+  ["a non-object entry", null],
+  ["an incomplete event", {}],
+  ["an unknown outcome", event("test", { outcome: "invented" })],
+])("an append containing %s keeps entry validation and refuses the whole contribution", (_name, entry) => {
+  openFlow("s-1");
+  const first = submit("s-1", timeline("run", event("build"))).json;
+  const before = tree();
+  const refused = submit("s-1", { kind: "revise", result: first.refs.run, add: [event("valid"), entry] });
+  expect(refused.code).toBe(1);
+  expect(refused.stdout).toBe("");
+  expect(refused.stderr).toMatch(/add 2/);
+  expect(tree()).toEqual(before);
+});
+
+test("an entry array cannot bypass Result ownership or append to a Result in the same contribution", () => {
+  const opened = openFlow("s-1");
+  const first = submit("s-1", timeline("run", event("build"))).json;
+  expect(run(["open", "--flow", opened.flow, "--skill", "implement"], { session: "s-2" }).code).toBe(0);
+  const before = tree();
+  const foreign = submit("s-2", { kind: "revise", result: first.refs.run, add: [event("test")] });
+  expect(foreign.code).toBe(1);
+  expect(foreign.stderr).toMatch(/belongs to Stage|bound Stage/);
+  expect(tree()).toEqual(before);
+  const fresh = submit("s-1", timeline("new", event("start")), { kind: "revise", result: "new", add: [event("end")] });
+  expect(fresh.code).toBe(1);
+  expect(fresh.stderr).toMatch(/earlier contribution/);
+  expect(tree()).toEqual(before);
+});
+
 test("a Timeline grows by focused revisions: add appends later events, and set records a known outcome against its base", () => {
   openFlow("s-1");
   const first = submit("s-1", timeline("run", event("build", { outcome: "unknown" }))).json;

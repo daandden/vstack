@@ -5,6 +5,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 ## [Unreleased]
 
 - Resolve shared Private-mode domain canonical references from main and linked checkouts with one `vstack-domain` identity, preserving hashes and history without widening attachment access (#354).
+- Diagnose malformed `revise.add` collections before Result provenance checks, without changing saved Flow state or valid append behavior (#357).
 
 ## [9.0.2] - 2026-11-03
 

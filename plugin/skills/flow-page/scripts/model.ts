@@ -452,12 +452,13 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
     },
     revise: {
       plan(o, where, ids) {
-        if (Array.isArray(o.add) && typeof o.result === "string" && !o.result.includes("/")) {
+        const adds = o.add === undefined ? undefined : list(o, "add", where);
+        if (adds && typeof o.result === "string" && !o.result.includes("/")) {
           const rid = kinds[o.result] === "result" ? refs[o.result] : o.result;
           const r = s.results.find((x) => x.id === rid);
           if (r) {
             const next = nextEntry.get(rid) ?? Math.max(0, ...r.entries.map((e) => /^e\d+$/.test(e.id) ? Number(e.id.slice(1)) : 0)) + 1;
-            ids.entries = o.add.map((e, j) => {
+            ids.entries = adds.map((e, j) => {
               const eid = `${rid}/e${next + j}`;
               if (isObj(e)) {
                 const er = ref(e, `${where}: entry ${j + 1}`);
@@ -465,7 +466,7 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
               }
               return eid;
             });
-            nextEntry.set(rid, next + o.add.length);
+            nextEntry.set(rid, next + adds.length);
           }
         }
       },
