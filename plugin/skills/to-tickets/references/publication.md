@@ -1,6 +1,6 @@
 # Ticket publication Interface
 
-The publisher consumes approved structured data. It creates tickets without readiness, installs relationships, reads back approved fields and relationships, and then adds the configured readiness label. All tickets in the batch pass relationship readback before activation starts. Open blockers stay open. The frontier still excludes a ticket with an open blocker.
+The publisher consumes approved structured data. It creates tickets without readiness, installs relationships, reads back approved fields and relationships, and then applies readiness. Remote trackers use the configured label. Local tickets use the configured `Status:` value. All tickets in the batch pass relationship readback before activation starts. Open blockers stay open. The frontier still excludes a ticket with an open blocker.
 
 ## Commands and receipts
 
@@ -50,9 +50,9 @@ The description has version `1`, `tracker`, and a nonempty `tickets` array. This
 
 Each ticket has a unique lowercase `key` made of letters, digits, and hyphens, starting with a letter or digit. `title` and `body` are nonempty strings. `labels` is an array of distinct nonempty strings that excludes the configured readiness label. Unsupported ticket fields are refused rather than discarded.
 
-`parent` is optional. It names either another batch ticket with `{ "local": "01-foundation" }` or an existing tracker identity with `{ "external": "100" }`. `blockedBy` is an optional array of distinct local keys. Each named ticket blocks this ticket. Unknown keys, self-relationships, and cyclic relationships are refused. Neither parent membership nor explanatory body references become blocking edges.
+`parent` is optional. It names either another batch ticket with `{ "local": "01-foundation" }` or an existing tracker identity with `{ "external": "100" }`. `blockedBy` is an optional array of distinct local keys. Each named ticket blocks this ticket. Unknown keys and self-relationships are refused. The publisher checks parent cycles and blocking cycles separately. A parent may be blocked by its own child. Neither parent membership nor explanatory body references become blocking edges.
 
-`tracker.readiness` is the actual label from the project's canonical `ready-for-agent` role mapping. Record it before approval. Ticket bodies remain byte-for-byte approved content. Native relationships or local metadata carry the resolved identities, so publication does not patch body prose with guessed references or recovery markers.
+`tracker.readiness` is the actual value from the project's canonical `ready-for-agent` role mapping. Remote trackers use it as a label. Local tickets use it as their ready status. Record it before approval. Ticket bodies remain byte-for-byte approved content. Native relationships or local headers carry the resolved identities, so publication does not patch body prose with guessed references or recovery markers.
 
 ## Tracker modes
 
@@ -89,7 +89,13 @@ A tool that advertises provider idempotency and accepts an `idempotencyKey` rece
 
 Use `mode: "local"` and an absolute `directory`. Each ticket is `<directory>/<key>.md`. Number keys before approval when the configured workflow needs numbered filenames.
 
-A local file starts with a JSON metadata fence followed by its exact approved body. Metadata stores title, labels, identity, parent, directed blockers, author, and creation time. The readiness label appears only after all required files and relationships exist and read back. File creation is exclusive and atomic. Existing unrelated tickets are not overwritten. Parents may be local ticket keys or existing Markdown file paths. An external parent path resolves relative to the ticket directory unless it is absolute. Parent content stays unchanged. A missing or non-regular parent prevents activation.
+A local file starts with a JSON metadata fence, followed by `Status:` and `Blocked by:` lines, a blank line, and its exact approved body. Metadata stores title, non-readiness labels, identity, parent, author, and creation time. `Status: draft` excludes an unfinished publication from the frontier. Activation sets `Status:` to the configured readiness value only after every ticket's required files and relationships read back.
+
+`Blocked by:` contains comma-separated full ticket keys, such as `01-foundation, 02-schema`, or `None`. The Adapter reads blockers and status from these lines, not JSON copies. The existing workflow claims a ready, unblocked ticket by setting `Status: claimed`. It resolves the ticket by appending an `## Answer` and setting `Status: resolved`. A dependent becomes unblocked when every listed ticket is resolved. Publication leaves blockers open.
+
+Discovery recognizes publisher-owned metadata through `author: "local-publisher"`. It skips unrelated Markdown, including convention-format tickets and ordinary parent documents. An occupied approved filename or a publisher-owned identity that differs from its filename blocks publication with `local-identity-conflict`. Discovery does not adopt existing tickets.
+
+File creation is exclusive and atomic. Existing unrelated tickets are not overwritten. Parents may be local ticket keys or existing Markdown file paths. An external parent path resolves relative to the ticket directory unless it is absolute. Parent content stays unchanged. A missing or non-regular parent prevents activation.
 
 ### No tool
 

@@ -17,7 +17,7 @@ test("eight parked readers release HTTP/1.1 capacity and retain their place thro
   const port = socket.port;
   socket.stop(true);
   function cli(args: string[], input?: object): any {
-    const p = Bun.spawnSync([process.execPath, SCRIPT, ...args, "--home", home, "--session", "01a1aab9-cf0b-7748-8926-cbabe7deb9b8", "--agent", "Merge330"], {
+    const p = Bun.spawnSync([process.execPath, SCRIPT, ...args, "--home", home, "--session", "reader-updates", "--agent", "fixture"], {
       cwd: root, env: { ...ENV, HOME: home, VSTACK_FLOW_PORT: String(port) },
       stdin: input ? new TextEncoder().encode(JSON.stringify(input)) : "ignore", stdout: "pipe", stderr: "pipe",
     });
@@ -54,7 +54,7 @@ test("eight parked readers release HTTP/1.1 capacity and retain their place thro
       const page = await context.newPage();
       readers.push(page);
       await page.goto(opened.live.url, { waitUntil: "domcontentloaded", timeout: 5000 });
-      await page.getByRole("heading", { name: "Selected evidence", exact: true }).waitFor({ timeout: 5000 });
+      await page.locator(`#${seed.refs.selected}`).waitFor({ timeout: 5000 });
     }
     const selected = readers[6]!;
     await selected.route(/\/(versions|content|observations)$/, async (route) => {
@@ -67,34 +67,44 @@ test("eight parked readers release HTTP/1.1 capacity and retain their place thro
       + parseFloat(getComputedStyle(document.documentElement).scrollPaddingBlockStart) + 6,
     ));
     await selected.setViewportSize({ width: 1280, height: endViewport });
-    await selected.getByText("On this page", { exact: true }).click();
-    await selected.locator(`.jump-row a[href="#${seed.refs.selected}"]`).click();
+    const selectedLink = selected.getByRole("link", { includeHidden: true }).and(selected.locator(`[href="#${seed.refs.selected}"]`));
+    await selected.evaluate((id) => { location.hash = id; }, seed.refs.selected);
     await selected.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
-    expect(await selected.locator(`.jump-row a[href="#${seed.refs.selected}"]`).getAttribute("aria-current")).toBe("location");
-    await selected.waitForFunction((id) => document.querySelector(`.jump-row a[href="#${id}"]`)?.getAttribute("aria-current") === "location", seed.refs.selected);
+    expect(await selectedLink.getAttribute("aria-current")).toBe("location");
     const position = await selected.locator(`#${seed.refs.selected}`).evaluate((el) => el.getBoundingClientRect().top);
     const address = selected.url();
     const focus = await selected.evaluate(() => document.activeElement?.id);
-    const captured = await readers[7]!.evaluate(async () => {
+    const scroll = await selected.evaluate(() => scrollY);
+    const captured = await readers[7]!.evaluate(async (attachmentId) => {
       const model = await (await fetch(new URL("content", location.href))).json();
-      const file = model.attachments.find((a: any) => a.caption === "Capacity evidence").file;
+      const file = model.attachments.find((a: any) => a.id === attachmentId).file;
       return await (await fetch(new URL(`assets/${file}`, location.href))).text();
-    });
+    }, seed.refs.capture);
     expect(captured).toBe("Captured capacity evidence\n");
     const unchangedReads = contentReads;
+    const observations = readers.map((p) => p.waitForResponse(async (response) =>
+      new URL(response.url()).pathname.endsWith("/observations") && (await response.json())["code-host"]?.records[0]?.state === "merged", { timeout: 6000 }));
     remote = "merged";
-    await Promise.all(readers.map((p) => p.waitForFunction(() => document.querySelector("#observation-code-host")?.textContent?.includes("merged"), undefined, { timeout: 6000 })));
+    await Promise.all(observations);
     expect(contentReads).toBe(unchangedReads);
     const saved = await (await fetch(new URL("content", opened.live.url))).json() as any;
     expect(saved.revision).toBe(seed.revision);
     expect(saved.flow.id).toBe(opened.flow);
+    const updates = readers.map((p) => p.waitForResponse(async (response) =>
+      new URL(response.url()).pathname.endsWith("/content") && (await response.json()).revision > seed.revision, { timeout: 6000 }));
     const updated = cli(["submit"], { version: 1, items: [
       { kind: "result", revises: seed.refs.before, shape: "document", title: "Expanded earlier evidence", sections: [{ heading: "Context", blocks: [{ prose: "Expanded reading context. ".repeat(400) }] }] },
     ] });
-    await Promise.all(readers.map((p) => p.getByRole("heading", { name: "Expanded earlier evidence", exact: true }).waitFor({ state: "attached", timeout: 6000 })));
+    const responses = await Promise.all(updates);
+    for (const response of responses) {
+      const model = await response.json();
+      expect(model.revision).toBe(updated.revision);
+      expect(model.stages.flatMap((stage: any) => stage.results).find((result: any) => result.id === seed.refs.before).title).toBe("Expanded earlier evidence");
+    }
+    await selected.waitForFunction((previous) => scrollY > previous, scroll);
     expect(selected.url()).toBe(address);
     expect(await selected.evaluate(() => document.activeElement?.id)).toBe(focus);
-    expect(await selected.locator(`.jump-row a[href="#${seed.refs.selected}"]`).getAttribute("aria-current")).toBe("location");
+    expect(await selectedLink.getAttribute("aria-current")).toBe("location");
     expect(Math.abs(await selected.locator(`#${seed.refs.selected}`).evaluate((el) => el.getBoundingClientRect().top) - position)).toBeLessThan(2);
     expect((await (await fetch(new URL("versions", opened.live.url))).json() as any).revision).toBe(updated.revision);
     expect(methods.length).toBeGreaterThan(0);

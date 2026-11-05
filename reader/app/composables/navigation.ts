@@ -27,7 +27,7 @@ export function goTo(id: string, focus: boolean) {
   const el = resolve(id);
   if (!el) return;
   el.scrollIntoView({ block: "start", behavior: "instant" });
-  retainedScroll = scrollY;
+  keepSelectionAtCurrentScroll();
   const stop = el.closest<HTMLElement>("[data-stop]");
   if (stop) current.value = stop.id;
   if (focus) focusOn(el);
@@ -36,7 +36,7 @@ export function goTo(id: string, focus: boolean) {
 function select(el: HTMLElement | undefined) {
   if (!el) return;
   el.scrollIntoView({ block: "start", behavior: "instant" });
-  retainedScroll = scrollY;
+  keepSelectionAtCurrentScroll();
   current.value = el.id;
   history.replaceState(null, "", `#${el.id}`);
   focusOn(el);
@@ -48,10 +48,13 @@ function step(list: HTMLElement[], by: number) {
   select(list[at < 0 ? (by > 0 ? 0 : list.length - 1) : Math.min(Math.max(at + by, 0), list.length - 1)]);
 }
 
-let retainedScroll: number | undefined;
+let scrollThatKeepsSelection: number | undefined;
+function keepSelectionAtCurrentScroll() {
+  scrollThatKeepsSelection = scrollY;
+}
 export function markFromScroll() {
-  if (retainedScroll === scrollY) return;
-  retainedScroll = undefined;
+  if (scrollThatKeepsSelection === scrollY) return;
+  scrollThatKeepsSelection = undefined;
   let id: string | undefined;
   const edge = (parseFloat(getComputedStyle(document.documentElement).scrollPaddingBlockStart) || 0) + 2;
   for (const el of stops()) if (el.getBoundingClientRect().top <= edge) id = el.id;
@@ -75,8 +78,7 @@ export function restoreReadingAnchor(anchor: ReturnType<typeof readingAnchor>) {
   if (Math.abs(moved) >= 0.5) {
     scrollBy({ top: moved, behavior: "instant" });
   }
-  // Layout and explicit correction can both scroll without selecting a different reading stop.
-  retainedScroll = scrollY;
+  keepSelectionAtCurrentScroll();
 }
 
 export function keepPlaceNow(change: () => void) {

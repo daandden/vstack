@@ -47,7 +47,6 @@ export function startReader() {
       if (!flow.value) failure.value = (e as Error).message;
       if (connection.value !== "reconnecting") await keepPlace(() => { connection.value = "reconnecting"; });
     } finally {
-      // Schedule only after the complete poll, including content reads, has released its connection.
       setTimeout(poll, connection.value === "live" ? 500 : 2000);
     }
   };

@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
-import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fakeTicketGitHub, fakeGhProgram } from "./support/fake-github.ts";
@@ -20,7 +20,9 @@ async function run(args: string[], env: Record<string, string> = {}) {
   return { stdout, stderr, exit };
 }
 function metadata(content: string) {
-  return JSON.parse(content.match(/^```json\n([\s\S]*?)\n```\n/)![1]);
+  const fields = JSON.parse(content.match(/^```json\n([\s\S]*?)\n```\n/)![1]);
+  const blockers = content.match(/^Blocked by: (.*)$/m)![1];
+  return { ...fields, blockedBy: blockers === "None" ? [] : blockers.split(", "), status: content.match(/^Status: (.+)$/m)![1] };
 }
 const tickets = [
   { key: "foundation", title: "Create the foundation", body: "Approved foundation. Reference dependent for context only.", labels: ["task"] },
@@ -42,12 +44,131 @@ test("local publish saves the approved graph before declaring tickets ready and 
   expect(metadata(foundation).blockedBy).toEqual([]);
   expect(metadata(dependent).blockedBy).toEqual(["foundation"]);
   expect(metadata(dependent).parent).toBe("foundation");
-  expect(metadata(dependent).labels).toContain("available");
+  expect(metadata(dependent).status).toBe("available");
   await writeFile(f.input, "not approved anymore");
   expect((await run(["resume", "--record", f.record])).exit).toBe(0);
   expect(await readFile(join(f.root, "issues/dependent.md"), "utf8")).toBe(dependent);
   expect(await readFile(join(f.root, "issues/foundation.md"), "utf8")).toBe(foundation);
 });
+
+test("local tickets can be claimed and resolved through the configured Status and Blocked by workflow", async () => {
+  const f = await fixture(), directory = join(f.root, "issues");
+  const batch = [
+    { ...tickets[0], key: "01-foundation" },
+    { ...tickets[1], key: "02-dependent", parent: { local: "01-foundation" }, blockedBy: ["01-foundation"] },
+  ];
+  await writeFile(f.input, JSON.stringify({ version: 1, tracker: { mode: "local", directory, readiness: "available" }, tickets: batch }));
+  expect((await run(["publish", "--input", f.input, "--record", f.record])).exit).toBe(0);
+  await writeFile(join(directory, "03-question.md"), "# Investigate the next question\n\nType: research\nBlocked by: None\n");
+  const draft = await publish({ version: 1, tracker: { mode: "local", directory, readiness: "available" }, tickets: [
+    { ...tickets[0], key: "04-draft", parent: { external: "missing-parent.md" } },
+  ] }, join(f.root, "draft-publication.json"));
+  expect(draft.status).toBe("blocked");
+  const file = (key: string) => join(directory, `${key}.md`);
+  const status = (text: string) => text.match(/^Status: (.+)$/m)?.[1];
+  const blockers = (text: string) => text.match(/^Blocked by: (.*)$/m)?.[1].split(", ").filter(id => id !== "None");
+  const foundation = await readFile(file("01-foundation"), "utf8");
+  const dependent = await readFile(file("02-dependent"), "utf8");
+  expect(status(foundation)).toBe("available");
+  expect(status(dependent)).toBe("available");
+  expect(status(await readFile(file("04-draft"), "utf8"))).toBe("draft");
+  expect(blockers(foundation)).toEqual([]);
+  expect(blockers(dependent)).toEqual(["01-foundation"]);
+  const frontier = async () => {
+    const open: string[] = [];
+    for (const name of (await readdir(directory)).filter(name => name.endsWith(".md")).sort()) {
+      const key = name.slice(0, -3);
+      const text = await readFile(file(key), "utf8");
+      if (["draft", "claimed", "resolved"].includes(status(text) ?? "")) continue;
+      if ((await Promise.all(blockers(text)!.map(async id => status(await readFile(file(id), "utf8"))))).every(state => state === "resolved")) open.push(key);
+    }
+    return open;
+  };
+  expect(await frontier()).toEqual(["01-foundation", "03-question"]);
+  await writeFile(file("01-foundation"), foundation.replace(/^Status: .+$/m, "Status: claimed"));
+  expect(await frontier()).toEqual(["03-question"]);
+  const claimed = await readFile(file("01-foundation"), "utf8");
+  await writeFile(file("01-foundation"), claimed.replace(/^Status: claimed$/m, "Status: resolved") + "\n## Answer\n\nFoundation delivered.\n");
+  expect(status(await readFile(file("01-foundation"), "utf8"))).toBe("resolved");
+  expect(await frontier()).toEqual(["02-dependent", "03-question"]);
+  const journal = JSON.parse(await readFile(f.record, "utf8"));
+  const firstActivation = journal.operations.findIndex((op: any) => op.kind === "activate");
+  for (const ticket of batch) expect(journal.operations.findIndex((op: any) => op.ticket === ticket.key && op.kind === "readback")).toBeLessThan(firstActivation);
+});
+
+test("local discovery preserves convention tickets and an ordinary Markdown parent in a populated destination", async () => {
+  const f = await fixture(), directory = join(f.root, "issues");
+  await mkdir(directory);
+  const existing = "# Existing ticket\n\nStatus: available\nBlocked by: None\n\nApproved earlier work.\n";
+  const parent = "# Parent\n\nOrdinary Markdown without publisher metadata.\n";
+  await writeFile(join(directory, "00-existing.md"), existing);
+  await writeFile(join(directory, "parent.md"), parent);
+  const result = await publish({ version: 1, tracker: { mode: "local", directory, readiness: "available" }, tickets: [{ ...tickets[0], parent: { external: "parent.md" } }] }, f.record);
+  expect(result.status).toBe("complete");
+  expect(result.tickets.foundation).toMatchObject({ id: "foundation", verified: true, ready: true });
+  expect(await readFile(join(directory, "00-existing.md"), "utf8")).toBe(existing);
+  expect(await readFile(join(directory, "parent.md"), "utf8")).toBe(parent);
+  expect((await resume(f.record)).status).toBe("complete");
+});
+
+test("local discovery refuses an occupied approved identity without overwriting or adopting it", async () => {
+  const f = await fixture(), directory = join(f.root, "issues");
+  await mkdir(directory);
+  const existing = "# Existing ticket\n\nStatus: claimed\nBlocked by: None\n\nSomeone else's work.\n";
+  await writeFile(join(directory, "foundation.md"), existing);
+  const result = await publish({ version: 1, tracker: { mode: "local", directory, readiness: "available" }, tickets: [tickets[0]] }, f.record);
+  expect(result.status).toBe("blocked");
+  expect(result.problem).toMatchObject({ category: "local-identity-conflict" });
+  expect(result.tickets.foundation.id).toBeUndefined();
+  expect(await readFile(join(directory, "foundation.md"), "utf8")).toBe(existing);
+});
+
+test("local discovery refuses a publisher ticket whose saved identity conflicts with its filename", async () => {
+  const f = await fixture(), directory = join(f.root, "issues");
+  const intent = { version: 1, tracker: { mode: "local", directory, readiness: "available" }, tickets: [tickets[0]] };
+  expect((await publish(intent, f.record)).status).toBe("complete");
+  const file = join(directory, "foundation.md");
+  const conflicting = (await readFile(file, "utf8")).replace('"id": "foundation"', '"id": "another-ticket"');
+  await writeFile(file, conflicting);
+  const result = await publish({ ...intent, tickets: [{ ...tickets[0], key: "another-ticket" }] }, join(f.root, "another-publication.json"));
+  expect(result.status).toBe("blocked");
+  expect(result.problem).toMatchObject({ category: "local-identity-conflict" });
+  expect(result.tickets["another-ticket"].id).toBeUndefined();
+  expect(await readFile(file, "utf8")).toBe(conflicting);
+  expect((await readdir(directory)).sort()).toEqual(["foundation.md"]);
+});
+
+test("a parent blocked by its own child publishes and resumes as two separate relationships", async () => {
+  const f = await fixture(), directory = join(f.root, "issues");
+  const intent = { version: 1, tracker: { mode: "local", directory, readiness: "available" }, tickets: [
+    { ...tickets[0], key: "01-parent", blockedBy: ["02-child"] },
+    { ...tickets[1], key: "02-child", parent: { local: "01-parent" }, blockedBy: [] },
+  ] };
+  const result = await publish(intent, f.record);
+  expect(result.status).toBe("complete");
+  const parent = metadata(await readFile(join(directory, "01-parent.md"), "utf8"));
+  const child = metadata(await readFile(join(directory, "02-child.md"), "utf8"));
+  expect(parent.blockedBy).toEqual(["02-child"]);
+  expect(parent.parent).toBeUndefined();
+  expect(child.parent).toBe("01-parent");
+  expect(child.blockedBy).toEqual([]);
+  expect((await resume(f.record)).status).toBe("complete");
+});
+
+for (const relationship of ["parent", "blocking"] as const) {
+  test(`a ${relationship} cycle is invalid intent and saves no tracker effects`, async () => {
+    const f = await fixture(), directory = join(f.root, "issues");
+    const edge = (target: string) => relationship === "parent" ? { parent: { local: target } } : { blockedBy: [target] };
+    await writeFile(f.input, JSON.stringify({ version: 1, tracker: { mode: "local", directory, readiness: "available" }, tickets: [
+      { ...tickets[0], key: "one", ...edge("two") },
+      { ...tickets[0], key: "two", ...edge("one") },
+    ] }));
+    const result = await run(["publish", "--input", f.input, "--record", f.record]);
+    expect(result.exit).toBe(1);
+    expect(JSON.parse(result.stderr).category).toBe("invalid-intent");
+    expect(await readdir(f.root)).toEqual(["approved.json"]);
+  });
+}
 
 test("GitHub publication reads back the approved directed graph before mapped readiness and leaves the parent unchanged", async () => {
   const f = await fixture(), github = fakeTicketGitHub(f.record);
@@ -326,8 +447,8 @@ test("a local parent must exist before any approved ticket becomes ready", async
   const f = await fixture();
   const result = await publish({ version: 1, tracker: { mode: "local", directory: join(f.root, "issues"), readiness: "available" }, tickets }, f.record);
   expect(result.status).toBe("blocked");
-  expect(metadata(await readFile(join(f.root, "issues/foundation.md"), "utf8")).labels).not.toContain("available");
-  expect(metadata(await readFile(join(f.root, "issues/dependent.md"), "utf8")).labels).not.toContain("available");
+  expect(metadata(await readFile(join(f.root, "issues/foundation.md"), "utf8")).status).toBe("draft");
+  expect(metadata(await readFile(join(f.root, "issues/dependent.md"), "utf8")).status).toBe("draft");
 });
 
 test("MCP readback checks the configured project and ticket type before readiness", async () => {

@@ -68,27 +68,25 @@ Iterate until the user approves the breakdown with an explicit pick or resolved 
 
 ### 5. Publish the tickets to the configured tracker
 
-Save the approved structured description and publish it through `scripts/publish.ts`, as [the publication Interface](references/publication.md) describes. Keep stable local keys, approved bodies and labels, parent membership, directed `blockedBy` edges, tracker facts, and the configured readiness label in that description. Use numbered local keys such as `01-foundation` for local files. In Private mode, save the input, durable record, and local tickets under `<vstack root>/artifacts/<feature-slug>/`. In Standard mode, use `.scratch/<feature-slug>/`.
+Save the approved structured description and publish it through `scripts/publish.ts`, as [the publication Interface](references/publication.md) describes. Keep stable local keys, approved bodies and labels, parent membership, directed `blockedBy` edges, tracker facts, and the configured readiness value in that description. Use numbered local keys such as `01-foundation` for local files. In Private mode, save the input, durable record, and local tickets under `<vstack root>/artifacts/<feature-slug>/`. In Standard mode, use `.scratch/<feature-slug>/`.
 
-The publisher creates tickets without readiness, installs the approved graph, reads back fields and relationships, then activates verified tickets. The readiness label comes from the configured canonical-role mapping. A parent relationship is separate from a blocking edge. Body references explain the work. Only `blockedBy` declares an edge.
+The publisher creates tickets without readiness, installs the approved graph, reads back fields and relationships, then activates verified tickets. The readiness value comes from the configured canonical-role mapping. Remote trackers use a label. Local tickets use `Status:`. A parent relationship is separate from a blocking edge. Body references explain the work. Only `blockedBy` declares an edge.
 
 Use the receipt's saved identities to link tracker tickets or `<directory>/<key>.md` files. If publication is blocked or interrupted, use `resume` with the same durable record. Report its category and candidate state when reconciliation is ambiguous. Keep approved content unchanged during recovery. The publisher owns activation. Do not create tickets, add relationships, or apply readiness separately.
 
-Work the **frontier**: any ticket whose blockers are all done. Verified tickets may have the readiness label while a blocker remains open. The existing frontier still excludes them.
+Work the **frontier**: any ready ticket whose blockers are all done. Verified tickets may be ready while a blocker remains open. The existing frontier still excludes them.
 
 Parent membership is the only authorized parent effect. Keep the parent's content, labels, and open state unchanged.
 
 After publishing, add each `ticket:<id>` alias to the Flow without resending existing aliases. Publish the full ticket bodies as Document Results with their canonical tracker revisions or local file links, and update the breakdown to use named published links. Preserve the blocking graph as Result content: attach a dependency figure when produced, and keep every blocking edge in the table regardless. The Stage tree is navigation, not a dependency graph.
 
-Readiness is recorded in the publisher's local metadata after graph readback, not in the approved body.
+The publisher writes local `Status:` and `Blocked by:` headers before the approved body. It changes `Status: draft` to the configured readiness value after graph readback. Keep these generated fields out of the body template.
 
 <local-ticket-template>
 
 # <NN>: <Ticket title>
 
 **What to build:** the end-to-end behaviour this ticket makes work, from the user's perspective, not a layer-by-layer implementation list.
-
-**Blocked by:** the numbers/titles of the tickets that gate this one, or "None (can start immediately)".
 
 - [ ] Acceptance criterion 1
 - [ ] Acceptance criterion 2

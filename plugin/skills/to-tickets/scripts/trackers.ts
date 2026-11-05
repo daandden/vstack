@@ -11,7 +11,7 @@ export class KnownFailure extends Error {
   constructor(message: string, public category = "known-failure") { super(message); }
 }
 export type Tracker = { idempotentCreate?: boolean; check(): Promise<void>; owner(): Promise<string>; search(ticket: Ticket): Promise<Issue[]>; create(ticket: Ticket, key: string): Promise<{ id: string }>; read(id: string): Promise<Issue>; parent(id: string, parent: string): Promise<unknown>; block(id: string, blocker: string): Promise<unknown>; activate(id: string, readiness: string): Promise<unknown> };
-function local(directory: string): Tracker {
+function local(directory: string, readiness: string): Tracker {
   const root = resolve(directory);
   const path = (id: string) => {
     if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) throw new KnownFailure("Invalid local ticket identity");
@@ -21,18 +21,24 @@ function local(directory: string): Tracker {
     const target = parent.includes("/") || parent.endsWith(".md") ? resolve(root, parent) : path(parent);
     if (!(await stat(target)).isFile()) throw new KnownFailure(`Local parent is not a regular file: ${parent}`);
   };
-  const read = async (id: string): Promise<Issue> => {
+  type LocalIssue = Issue & { status: string };
+  const read = async (id: string): Promise<LocalIssue> => {
     const content = await readFile(path(id), "utf8");
-    const match = content.match(/^```json\n([\s\S]*?)\n```\n/);
+    const match = content.match(/^```json\n([\s\S]*?)\n```\nStatus: ([^\n]+)\nBlocked by: ([^\n]+)\n\n/);
     if (!match) throw new KnownFailure(`Invalid local ticket metadata: ${id}`);
     const metadata = JSON.parse(match[1]);
+    if (metadata.id !== id) throw new KnownFailure(`Local ticket identity differs from its filename: ${id}`, "local-identity-conflict");
+    const status = match[2], blockedBy = match[3] === "None" ? [] : match[3].split(", ");
     if (metadata.parent) await parentExists(metadata.parent);
-    for (const target of metadata.blockedBy) await readFile(path(target), "utf8");
-    return { ...metadata, body: content.slice(match[0].length) };
+    for (const target of blockedBy) await readFile(path(target), "utf8");
+    const labels = metadata.labels.filter((label: string) => label !== readiness);
+    if ([readiness, "claimed", "resolved"].includes(status)) labels.push(readiness);
+    return { ...metadata, status, labels, blockedBy, body: content.slice(match[0].length) };
   };
-  const write = async (issue: Issue, create = false) => {
-    const { body, ...metadata } = issue;
-    const contents = `\`\`\`json\n${JSON.stringify(metadata, null, 2)}\n\`\`\`\n${body}`;
+  const write = async (issue: LocalIssue, create = false) => {
+    const { body, status, blockedBy, ...metadata } = issue;
+    metadata.labels = metadata.labels.filter(label => label !== readiness);
+    const contents = `\`\`\`json\n${JSON.stringify(metadata, null, 2)}\n\`\`\`\nStatus: ${status}\nBlocked by: ${blockedBy.length ? blockedBy.join(", ") : "None"}\n\n${body}`;
     const temporary = join(root, `.${randomUUID()}.tmp`);
     const file = await open(temporary, "wx", 0o600);
     try {
@@ -40,7 +46,7 @@ function local(directory: string): Tracker {
       if (create) {
         try { await link(temporary, path(issue.id)); }
         catch (error) {
-          if ((error as NodeJS.ErrnoException).code === "EEXIST") throw new KnownFailure(`Local ticket already exists: ${issue.id}`);
+          if ((error as NodeJS.ErrnoException).code === "EEXIST") throw new KnownFailure(`Local ticket already exists: ${issue.id}`, "local-identity-conflict");
           throw error;
         }
       } else await rename(temporary, path(issue.id));
@@ -51,12 +57,26 @@ function local(directory: string): Tracker {
   return {
     async check() { await mkdir(root, { recursive: true }); },
     async owner() { return "local-publisher"; },
-    async search() { return Promise.all((await readdir(root)).filter(name => name.endsWith(".md")).map(name => read(name.slice(0, -3)))); },
-    async create(ticket) { const issue = { id: ticket.key, title: ticket.title, body: ticket.body, labels: ticket.labels, blockedBy: [], author: "local-publisher", createdAt: new Date().toISOString() }; await write(issue, true); return issue; },
+    async search(ticket) {
+      const issues: Issue[] = [];
+      for (const name of (await readdir(root)).filter(name => name.endsWith(".md"))) {
+        const content = await readFile(join(root, name), "utf8");
+        const fence = content.match(/^```json\n([\s\S]*?)\n```\n/);
+        let metadata;
+        try { metadata = fence && JSON.parse(fence[1]); }
+        catch {
+          if (name === `${ticket.key}.md` || /"author"\s*:\s*"local-publisher"/.test(fence![1])) throw new KnownFailure(`Invalid local ticket metadata: ${name}`, "local-identity-conflict");
+        }
+        if (metadata?.author === "local-publisher") issues.push(await read(name.slice(0, -3)));
+        else if (name === `${ticket.key}.md`) throw new KnownFailure(`Local ticket already exists: ${ticket.key}`, "local-identity-conflict");
+      }
+      return issues;
+    },
+    async create(ticket) { const issue = { id: ticket.key, title: ticket.title, body: ticket.body, labels: ticket.labels, blockedBy: [], status: "draft", author: "local-publisher", createdAt: new Date().toISOString() }; await write(issue, true); return issue; },
     read,
     async parent(id, parent) { await parentExists(parent); const issue = await read(id); issue.parent = parent; await write(issue); },
     async block(id, blocker) { await read(blocker); const issue = await read(id); issue.blockedBy = [...new Set([...issue.blockedBy, blocker])]; await write(issue); },
-    async activate(id, readiness) { const issue = await read(id); issue.labels = [...new Set([...issue.labels, readiness])]; await write(issue); },
+    async activate(id) { const issue = await read(id); issue.status = readiness; await write(issue); },
   };
 }
 async function command(argv: string[], input?: unknown, knownFailure: (exit: number, stderr: string) => boolean = () => false): Promise<unknown> {
@@ -151,7 +171,7 @@ function cli(config: Record<string, unknown>): Tracker {
   };
 }
 export async function trackerFor(config: Record<string, unknown>, connection?: Connection): Promise<Tracker> {
-  if (config.mode === "local" && typeof config.directory === "string" && config.directory) return local(config.directory);
+  if (config.mode === "local" && typeof config.directory === "string" && config.directory && typeof config.readiness === "string") return local(config.directory, config.readiness);
   if (config.mode === "github") return github(config);
   if (config.mode === "mcp") return mcpTracker(config, connection);
   if (config.mode === "cli") return cli(config);

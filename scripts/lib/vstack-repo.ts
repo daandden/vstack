@@ -14,7 +14,6 @@ export type PinKind = (typeof PIN_KINDS)[number];
 /** The only Upstream file an adopt artifact never ships (ADR 0001). */
 export const NEVER_SHIPPED = "agents/openai.yaml";
 
-/** Finder metadata is not shipped content. */
 const IGNORED_NAMES = new Set([".DS_Store"]);
 
 export class ConfigError extends Error {}

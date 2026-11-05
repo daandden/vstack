@@ -27,17 +27,19 @@ function description(value: unknown): Description {
     if (t.blockedBy !== undefined && (!Array.isArray(t.blockedBy) || t.blockedBy.some(k => typeof k !== "string") || new Set(t.blockedBy).size !== t.blockedBy.length)) throw new PublicationError("invalid-intent", `Invalid blocking collection for ${t.key}`);
     if (t.parent !== undefined && (!t.parent || typeof t.parent !== "object" || Object.keys(t.parent).length !== 1 || !("local" in t.parent && typeof t.parent.local === "string" || "external" in t.parent && typeof t.parent.external === "string" && t.parent.external.trim()))) throw new PublicationError("invalid-intent", `Invalid parent for ${t.key}`);
   }
-  const visiting = new Set<string>(), visited = new Set<string>();
-  const visit = (key: string) => {
-    if (!keys.has(key) || visiting.has(key)) throw new PublicationError("invalid-intent", `Unknown or cyclic relationship at ${key}`);
-    if (visited.has(key)) return;
-    visiting.add(key);
-    const t = d.tickets.find(t => t.key === key)!;
-    for (const blocker of t.blockedBy ?? []) visit(blocker);
-    if (t.parent && "local" in t.parent) visit(t.parent.local);
-    visiting.delete(key); visited.add(key);
-  };
-  for (const key of keys) visit(key);
+  for (const relationship of ["parent", "blocking"] as const) {
+    const visiting = new Set<string>(), visited = new Set<string>();
+    const visit = (key: string) => {
+      if (!keys.has(key) || visiting.has(key)) throw new PublicationError("invalid-intent", `Unknown or cyclic ${relationship} relationship at ${key}`);
+      if (visited.has(key)) return;
+      visiting.add(key);
+      const t = d.tickets.find(t => t.key === key)!;
+      if (relationship === "blocking") for (const blocker of t.blockedBy ?? []) visit(blocker);
+      if (relationship === "parent" && t.parent && "local" in t.parent) visit(t.parent.local);
+      visiting.delete(key); visited.add(key);
+    };
+    for (const key of keys) visit(key);
+  }
   return structuredClone(d);
 }
 async function durable(path: string, value: unknown) {
