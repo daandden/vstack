@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.16] - 2026-11-06
+
+- diagnosing-bugs runs cost-free hypotheses alone on the same loop before choosing a lasting-cost fix, requires measured comparisons and an explicit user pick through `ask`, and reports actual hypothesis execution order and approved hypotheses never run alone (#258).
+
 ## [9.0.15] - 2026-11-06
 
 - diagnosing-bugs rejects a green loop run when the fix removes or disables the channel its assertion watches. Re-point the assertion at the user's symptom, show red on unfixed code and green on fixed code, and name the assertion and both runs at hand-back. Phase 6 requires the matching Phase 5 proof (#259).
