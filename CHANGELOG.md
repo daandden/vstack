@@ -4,11 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
-## [9.0.21] - 2026-11-06
+## [9.0.21] - 2026-11-07
 
-- Make Flow questions self-contained, move shared session-review boundaries into the Background, and replace the findings table with a linked index (#347).
-- Fold Today sources behind one disclosure and refuse new rounds with repeated descriptions, reader needs, or option explanations, ignoring finding numbers while preserving stored questions (#347).
-- flow-page keeps reading the Flow host's publication hold, so the host stays up while a publication waits on Bun 1.4, which closes an unread fetch response after about a second.
+- triage decides roles, grills when needed, and posts its outcome without confirmation gates. Grill questions and reconsidering a prior rejection still ask through `ask` (ADR 0061).
+- The Flow host stays up while a publication is in flight: the publisher now reads its host hold stream, so an idle host no longer stops mid-publication.
 
 ## [9.0.20] - 2026-11-07
 
