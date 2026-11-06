@@ -28,6 +28,8 @@ Edit only the Verify skill's directory: SKILL.md, features, and owned helpers. T
 
 Drift is a failure in the Verify skill's instructions while its Doctor check passes. A missing command, route, selector, or fixture can be Drift. If Doctor's own instructions are wrong, correct those instructions within this scope, then require Doctor to pass before classifying the drive. A broken instance is not Drift merely because the run failed.
 
+A server Launch without a named bash service is Drift, even if a manual launch works and Doctor passes. A missing `ready` check, a name not unique to the run, or Cleanup that does not stop that service through `proc://<name>/kill` is also Drift. Repair Launch and Cleanup to the server contract in skill://setup-app-verification step 2, using the run id of the run's Scratch entry. Re-drive the repaired instructions live.
+
 ## 0. Locate the target
 
 Find project skills named `verify-*` whose bodies have Launch and Drive sections and a feature map. In Private mode, also look under `<vstack root>/skills/verify-*/`. Use the root and mode from the Private-mode rule, or the parent's prompt. Treat a link and its target as one candidate.
@@ -60,7 +62,7 @@ Require a summary for every feature in scope. Merge overlapping recipes into as 
 
 ## 4. Live pass
 
-Run the live pass even when source looks clean. The coordinator owns all driving, serially. Follow the Verify skill's Launch model. Servers and UIs use one long-lived instance. Short-lived CLIs use a fresh isolated session per drive. Exercise every feature in this entry's scope at least once.
+Run the live pass even when source looks clean. The coordinator owns all driving, serially. Follow the Verify skill's Launch model. A long-lived server uses one named bash service for this run. Short-lived CLIs and TUIs use a fresh isolated PTY session per drive. Exercise every feature in this entry's scope at least once.
 
 Keep these invariants throughout the pass:
 

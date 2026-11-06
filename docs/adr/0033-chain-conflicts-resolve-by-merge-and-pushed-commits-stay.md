@@ -1,6 +1,6 @@
 # Chain conflicts resolve by merge, and pushed commits stay
 
-> [ADR 0055](0055-prs-land-by-a-stored-landing-method-rebase-by-default.md) amends the squash consequence below. PRs now land by the project's stored Landing method, which [ADR 0059](0059-github-prs-land-by-merge-commit-by-default.md) recommends as `merge` on GitHub. Branch updates still merge the target in.
+> [ADR 0055](0055-prs-land-by-a-stored-landing-method-rebase-by-default.md) amends the squash consequence below. PRs now land by the project's stored Landing method, which [ADR 0060](0060-github-prs-land-by-merge-commit-by-default.md) recommends as `merge` on GitHub. Branch updates still merge the target in.
 
 The End state chain never rewrites a commit that it has pushed. The Conflict owner in implement's shared End state block resolves a conflict, a stale base, and ship's step 2 move by merging the target branch into the reported branch. It resolves each conflict once and pushes a fast-forward. It can update any branch of the run's stack. open-pr rebases only commits after the remote tip, so a stack child with pushed commits merges its parent's tip instead of rebasing onto it. Before any history edit, step 0b reads the remote tip, so that the run knows which commits are pushed.
 

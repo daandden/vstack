@@ -1,6 +1,6 @@
 # Clean worktrees
 
-`/skill:clean-wt` removes unused omp worktrees, clones, and task sandboxes under the omp worktree base. Its script checks ownership before inspecting inactive checkouts and reports work state, unique history, integration evidence, and a fingerprint. Its `remove` command removes unused clean checkouts and verified integrated drafts without unique or unverified artifacts. It keeps linked-worktree branches and skips stale, owned, uncertain, unique-history, and unapproved unresolved work.
+`/skill:clean-wt` removes the current Git project's omp ovnfs leftovers and legacy worktrees, clones, and task sandboxes under the omp worktree base. Its script checks ownership before inspecting inactive checkouts and reports work state, unique history, integration evidence, and a fingerprint. Its `remove` command removes unused clean checkouts and verified integrated drafts without unique or unverified artifacts. It keeps linked-worktree branches and skips stale, owned, uncertain, unique-history, and unapproved unresolved work.
 
 ## Sub-features
 
@@ -15,6 +15,7 @@
 - `cwt-integrated` targeted inventory can qualify dirty tracked contents and untracked files or links for automatic removal when their bytes and modes match the fetched remote HEAD commit, including squash-equivalent changes. Unique or unverified artifacts remain protected. Remote HEAD can differ from the branch checked out in the source repository.
 - `cwt-phases` plain inventory discovers inactive work without remote comparisons. Clean automatic removal finishes before source-fact preparation. Separate targeted comparisons share the same prepared source facts.
 - `cwt-hidden-index` skip-worktree and assume-unchanged cannot hide unique tracked bytes or post-inventory replacements from inspection or fingerprints. Unavailable verification protects the checkout.
+- `cwt-ovnfs` inventories `omp-` ovnfs checkouts from this project's main checkout, worktrees, and isolated sources. Unknown origins remain uncertain. Private Git state and history override an empty ovnfs diff. Removal uses `ovnfs rm`.
 
 ## How to get to it (user POV)
 
@@ -79,6 +80,21 @@ Run these commands through the session's bash tool with the fixture's explicit `
 For stale-source evidence, change the remote's advertised HEAD after targeted comparison. Removal with that old fingerprint must skip the target, even with `--approve`. Passing source facts to inventory never replaces removal's independent remote check.
 
 For hidden-index safety, make ordinary shared clones with tracked configuration, set each flag on that configuration, and leave a separate integrated tracked draft. Obtain targeted fingerprints while configuration still matches its index. Replace the flagged bytes afterward. Automatic removal must skip both clones and preserve those unique bytes. Repeat initial inventory with unique hidden bytes and with unreadable hidden contents. They must remain nonautomatic or unknown, respectively.
+
+## Drive real ovnfs leftovers
+
+Preconditions: real omp 18.17, an installed ovnfs with its daemon running, and Doctor passing. Start a fresh omp process for this proof. A session started before ovnfs was installed can still use APFS for isolation.
+
+Use a disposable source Git repository under `$VERIFY_RUN_DIR/data/`, with a committed tracked file and a separate empty omp base. Create a checkout with `ovnfs --json new <source> --name omp-cwt-<run-id>` and save the returned name and path. This fixture uses omp's naming without creating or deleting another run's checkout. Keep the checkout after creation and write an untracked `draft.txt` there.
+
+Drive the checkout's clean-wt CLI through `drive.ts --session` in a new omp process. Give each bash call `cwd` set to the disposable source repository, an explicit `--base`, and `timeout: 0`. Prefix the CLI commands with `OVNFS_STATE=<real-daemon-state> OVNFS_MOUNT=<real-mount>`, so the throwaway HOME uses the installed daemon rather than starting another one.
+
+1. Run `inventory` and save its JSON. The kept checkout is `kind: ovnfs`, `verdict: unused`, `state: dirty`, and `automatic: false`. Its `changes.untracked` contains `draft.txt`, and its `source_git_dir` identifies the disposable source. Confirm its `.git` file resolves to a private Git directory.
+2. Run `remove <path>=<fingerprint>` without approval. It reports no removal and skips the dirty checkout. Read `draft.txt` separately to prove its bytes remain.
+3. For this disposable fixture only, run `remove --approve <path> <path>=<fingerprint>` with the same fingerprint. This scripted flag proves the removal command, not human consent or the skill's picker.
+4. Save a final inventory, a real `ovnfs --json ls`, and a directory-existence check. The checkout is absent from all three, and removal reports method `ovnfs rm`. Leave unrelated checkouts, snapshots, and session archives unchanged.
+
+The common CLI suite covers legacy APFS copies and linked worktrees alongside these ovnfs cases. Keep the legacy live recipe above. Never use `omp worktree clear` for this proof.
 
 ## Gotchas
 
