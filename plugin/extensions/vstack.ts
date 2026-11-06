@@ -116,15 +116,16 @@ function registerFlowQuestions(pi: ExtensionAPI): void {
     if (typeof original !== "function" || route.wrappers.has(original)) return;
     const state = route;
     const wrapped: Dialog = async (questions, options) => {
-      if (!state.enabled || state.depth || ordinary.size || !interactive(state.ctx)) return original.call(ctx.ui, questions, options);
-      const picker = Symbol("askDialog");
+      if (!state.enabled || state.depth || !interactive(state.ctx)) return original.call(ctx.ui, questions, options);
+      const picker = ordinary.size ? undefined : Symbol("askDialog");
+      const owned = picker ? [picker] : [...ordinary.values()];
       state.depth++;
-      void showPanel(state.ctx, picker);
+      if (picker) void showPanel(state.ctx, picker);
       try {
         return await original.call(ctx.ui, questions, options);
       } finally {
         state.depth--;
-        hidePanel(picker);
+        for (const token of owned) hidePanel(token);
       }
     };
     state.wrappers.add(wrapped);

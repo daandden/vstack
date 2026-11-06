@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.13] - 2026-11-06
+
+- The Flow panel now goes away when an `ask` picker's `ui.askDialog` closes, not when the tool ends. omp's built-in `ask` keeps running after its dialog to process answer images, so the panel stayed on screen, and a late link lookup could show it, with no picker open (ADR 0056).
+
 ## [9.0.12] - 2026-11-06
 
 - The Flow reader draws Mermaid diagrams at the page's body text size, 13px by default, instead of Pele's 16px. A diagram still keeps its drawn size and scrolls when it is wider than the column. The Flow page column grows from 54rem to 64rem (ADR 0050).
