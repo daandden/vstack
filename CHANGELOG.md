@@ -4,6 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.21] - 2026-11-06
+
+- Make Flow questions self-contained, move shared session-review boundaries into the Background, and replace the findings table with a linked index (#347).
+- Fold Today sources behind one disclosure and refuse new rounds with repeated descriptions, reader needs, or option explanations, ignoring finding numbers while preserving stored questions (#347).
+
 ## [9.0.20] - 2026-11-07
 
 - setup-vstack recommends the `merge` Landing method on GitHub instead of `rebase`. GitHub refused `gh pr merge --rebase` on PRs whose branches had merged the default branch in, which the End state chain does on every branch update, so ship stopped to ask for another method. Projects that already store `rebase` keep it (ADR 0060).
