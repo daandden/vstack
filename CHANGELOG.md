@@ -4,6 +4,8 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+- babysit and ship run `watch-checks` with `timeout: 0`, and with `async: true` when other work remains, so long CI runs finish in one watch. GitHub and GitLab Code host templates carry the same rule. A returned watch still requires a fresh PR and review-thread read (#383).
+
 ## [9.0.13] - 2026-11-06
 
 - The Flow panel now goes away when an `ask` picker's `ui.askDialog` closes, not when the tool ends. omp's built-in `ask` keeps running after its dialog to process answer images, so the panel stayed on screen, and a late link lookup could show it, with no picker open (ADR 0056).
