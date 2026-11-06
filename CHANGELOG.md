@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.15] - 2026-11-06
+
+- diagnosing-bugs rejects a green loop run when the fix removes or disables the channel its assertion watches. Re-point the assertion at the user's symptom, show red on unfixed code and green on fixed code, and name the assertion and both runs at hand-back. Phase 6 requires the matching Phase 5 proof (#259).
+
 ## [9.0.14] - 2026-11-06
 
 - Require option costs in tokens or money per use, with recurrence and input-size growth, and restate sized costs inherited from earlier picks. Grilling measures costs or reads usage records before asking in Flow and chat rounds, and reports unsized costs with the missing facts (#257).
