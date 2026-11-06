@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.14] - 2026-11-06
+
+- diagnosing-bugs runs cost-free hypotheses alone on the same loop before choosing a lasting-cost fix, requires measured comparisons and an explicit user pick through `ask`, and reports actual hypothesis execution order and approved hypotheses never run alone (#258).
+
 ## [9.0.13] - 2026-11-06
 
 - The Flow panel now goes away when an `ask` picker's `ui.askDialog` closes, not when the tool ends. omp's built-in `ask` keeps running after its dialog to process answer images, so the panel stayed on screen, and a late link lookup could show it, with no picker open (ADR 0056).

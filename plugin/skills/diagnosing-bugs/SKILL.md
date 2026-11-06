@@ -15,6 +15,8 @@ For a frontend animation that stutters or drops frames, read skill://good-css an
 
 Follow `skill://flow-page`'s "Stage entry/exit line" before the first probe or ask. Use `ask` under its "Every ask in a Flow" contract when enrolled, or plain `ask` outside a Flow, for every question below.
 
+Record the hypotheses that actually ran and their outcomes in execution order, plus each approved hypothesis that never ran alone. Use the Timeline and ledger below in a Flow, or chat outside a Flow. Base the hand-back on this record, not the planned order.
+
 In a Flow, publish the repro command and redacted observed output as Code Results with source paths. Keep the ranked hypotheses and their falsifiable predictions in a Document Result, and the probes and their outcomes in a Timeline. A ledger distinguishes confirmed, cleared, and unproven claims and names missing proof. A hypothesis becomes confirmed only when the executed evidence establishes it. Add Metrics for timing or reproduction rates, with workload, environment, numeric values, units, samples, and uncertainty.
 
 In a Flow, attach redacted repros, captures, raw outputs, and regression evidence before publishing their Results. Redact the files themselves because attachments retain their bytes. Update focused findings or publish a new captured Result revision as evidence changes. At hand-back, publish the cause, red and green evidence, cleanup, and remaining gaps in the Document. The reply summarizes the Results. Keep canonical regression tests and scripts at their required paths, and use the Flow page rather than a separate report page.
@@ -110,6 +112,8 @@ If you cannot state the prediction, the hypothesis is a vibe: discard or sharpen
 ## Phase 4: Instrument
 
 Each probe must map to a specific prediction from Phase 3. **Change one variable at a time.**
+
+If a candidate fix has a lasting cost, such as lost cache reuse, money per use, or latency, first run each cost-free hypothesis alone on the same Phase 1 loop. Before choosing the costly fix, show each cost-free run's measured result beside the costly run's result from that loop. Ask the user through `ask` which fix to keep. A timed-out, cancelled, empty, or unavailable answer is not a pick. Re-ask once through `ask`, using `again` in a Flow. If no user pick follows, stop without choosing and say why.
 
 Tool preference:
 

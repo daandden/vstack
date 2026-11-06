@@ -36,7 +36,7 @@ items:
     tree: de4236cf34757c4e9ea7afe78d46c023213ff254
     disposition: adapt
     artifacts: [plugin/skills/diagnosing-bugs]
-    reason: "Its user questions go through ask (ask-tool, #58). Flow publication is conditional and chat keeps the full output (#321, ADR 0046)."
+    reason: "Its user questions go through ask (ask-tool, #58). Flow publication is conditional and chat keeps the full output (#321, ADR 0046). Cost-free hypotheses run alone before a lasting-cost fix is chosen through ask, and the hand-back reports actual hypothesis runs (#258)."
   - id: matt/domain-modeling
     upstream: matt
     kind: skill
