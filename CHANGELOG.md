@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.17] - 2026-11-06
+
+- setup-vstack recommends the `merge` Landing method on GitHub instead of `rebase`. GitHub refused `gh pr merge --rebase` on PRs whose branches had merged the default branch in, which the End state chain does on every branch update, so ship stopped to ask for another method. Projects that already store `rebase` keep it (ADR 0059).
+
 ## [9.0.16] - 2026-11-06
 
 - Publish MCP ticket batches through an agent-drafted binding approved with the tickets and validated against live schemas on publish and resume. Decode schema-declared FastMCP envelopes, exhaust approved search pagination, and check every same-project issue type for duplicate risk. Map flattened readbacks and directed links explicitly, preserve unrelated custom readiness values, and normalize MCP body comparisons (#369).

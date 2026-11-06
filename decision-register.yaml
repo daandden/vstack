@@ -92,7 +92,7 @@ items:
     tree: b1568cde855a189b16e5d7dd8a0fa4c3f156bc2e
     disposition: adapt
     artifacts: [plugin/skills/setup-vstack]
-    reason: "Uses current MCP descriptions, schemas, and recorded tracker and Code host facts. Preserves CI hand edits and confirms CI and Code host drafts together, including the default End state and the Landing method that the Code host allows. Lists all eight tracker readers and the final Verifier as a Verify skill consumer. Removes obsolete diagram and visual-judge setup claims (#204, #205, #206, #207, ADR 0035, ADR 0038, ADR 0043, ADR 0055)."
+    reason: "Uses current MCP descriptions, schemas, and recorded tracker and Code host facts. Preserves CI hand edits and confirms CI and Code host drafts together, including the default End state and the Landing method that the Code host allows, recommending `merge` on GitHub. Lists all eight tracker readers and the final Verifier as a Verify skill consumer. Removes obsolete diagram and visual-judge setup claims (#204, #205, #206, #207, ADR 0035, ADR 0038, ADR 0043, ADR 0055, ADR 0059)."
   - id: matt/tdd
     upstream: matt
     kind: skill

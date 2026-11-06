@@ -1,5 +1,7 @@
 # PRs land by a stored Landing method, rebase by default
 
+> [ADR 0059](0059-github-prs-land-by-merge-commit-by-default.md) amends the GitHub recommendation below. setup-vstack now recommends `merge` on GitHub, because GitHub can refuse to rebase a PR branch that has merged the default branch in.
+
 ship used squash whenever the repo allowed it, so every PR reached the default branch as one commit and its own commits were lost. Now setup-vstack asks for the project's Landing method once, offers only the methods that the Code host's `merge-methods` reports, and writes the pick to `code-host.md` as `- Landing method: <value>` beside the default End state. On GitHub it recommends `rebase`. On other hosts it recommends landing without squash, which uses the project's own method, such as GitLab's `merge`, `rebase_merge`, or `ff`. The value is the Code host's own name, because GitHub picks a method for each PR while GitLab sets one for the project and each MR can only add squash. A shared vstack name would mean different things on the two hosts.
 
 ## Considered Options
