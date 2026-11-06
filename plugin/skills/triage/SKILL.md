@@ -10,13 +10,13 @@ Move issues on the project issue tracker through a small state machine of triage
 
 If this repo treats external pull requests as a request surface (see the issue-tracker config), triage covers them too: **a PR is an issue with attached code**, using the same roles, same states, and same machine, with a few deltas marked "for a PR" below. Resolve a bare `#42` to an issue or PR per the tracker config.
 
-Read `issue-tracker.md` and `triage-labels.md` under `<vstack root>/docs/vstack/` in Standard mode or `<vstack root>/config/` in Private mode. For an MCP tracker such as Jira, read the named server's current tool list, descriptions, and parameter schemas. Select query, full issue and comment reads, creation, comment, label, and close tools using the recorded facts, without per-operation config rows or assumed tool names. Create issues with the recorded project key and ticket issue type, translate canonical roles through the configured label mapping, and close through the recorded close transition. Tool discovery grants no mutation approval; keep the confirmations below. If discovery or a needed capability is unavailable, name the server and gap and leave that operation undone. CLI, local-markdown, and no-tool prose configs keep their configured workflows.
+Read `issue-tracker.md` and `triage-labels.md` under `<vstack root>/docs/vstack/` in Standard mode or `<vstack root>/config/` in Private mode. For an MCP tracker such as Jira, read the named server's current tool list, descriptions, and parameter schemas. Select query, full issue and comment reads, creation, comment, label, and close tools using the recorded facts, without per-operation config rows or assumed tool names. Create issues with the recorded project key and ticket issue type, translate canonical roles through the configured label mapping, and close through the recorded close transition. Apply triage's decisions through these tools without an extra confirmation. If discovery or a needed capability is unavailable, name the server and gap and leave that operation undone. CLI, local-markdown, and no-tool prose configs keep their configured workflows.
 
-Every question to the maintainer in bound discovery or selected or named item work goes through `ask`, following `skill://flow-page`'s "Every ask in a Flow", including Flow CLI publication and separate answer recording. This covers picks, confirmations, "ask before proceeding", and "wait for direction" in this file and its reference docs. Only genuinely unbound discovery uses plain `ask`. Questions for a reporter go into tracker comments. A timed-out answer is not the maintainer's. Re-ask once with `again` on the bound path, then stop without acting. Unavailable questioning grants no approval.
+Every question to the maintainer in bound discovery or selected or named item work goes through `ask`, following `skill://flow-page`'s "Every ask in a Flow", including Flow CLI publication and separate answer recording. The remaining questions are the discovery pick, the grill's own questions, and reconsidering an earlier `.out-of-scope/` rejection. Category and state decisions, entering a grill, and applying the outcome need no confirmation. Only genuinely unbound discovery uses plain `ask`. Questions for a reporter go into tracker comments. A timed-out answer is not the maintainer's. Re-ask an unanswered question once with `again` on the bound path, then stop dependent actions if it remains unanswered through timeout, cancellation, or an empty response. Unavailable questioning grants no answer.
 
 Follow `skill://flow-page`'s "Stage entry/exit line" for bound discovery and selected or named item work. Unbound discovery retains chat and plain `ask`, creating no Flow, host, or administrative Stage. When an item needs work, discover it by `ticket:<item id>` before starting a Flow. On a continued Flow, add the item alias. Bound discovery includes a table Result for the three buckets, counts, and named item links in the Flow CLI contribution with its complete pick round before `ask`.
 
-Publish item recommendations, redundancy and prior-rejection evidence, verification outcomes, resume summaries, and actual role or publication outcomes as Document, ledger, or Timeline Results. Capture the full brief, needs-info notes, or rejection with the posted comment's canonical tracker revision when one exists. Tracker comments and `.out-of-scope/` files remain canonical and retain their AI disclaimer. Keep raw ask responses separate from readings. A note that settles a decision needs no invented pick. Questions or concerns remain unresolved. A finished grill summary still waits for the user's next-prompt confirmation before tracker writes.
+Publish item decisions, redundancy and prior-rejection evidence, verification outcomes, resume summaries, and actual role or publication outcomes as Document, ledger, or Timeline Results. Capture the full brief, needs-info notes, or rejection with the posted comment's canonical tracker revision when one exists. Tracker comments and `.out-of-scope/` files remain canonical and retain their AI disclaimer. Keep raw ask responses separate from readings. A note that settles a decision needs no invented pick. Questions or concerns remain unresolved. Follow step 5, "Apply the outcome without confirmation", for posting.
 
 Every comment or issue posted to the issue tracker during triage **must** start with this disclaimer:
 
@@ -46,11 +46,11 @@ Five **state** roles:
 
 For a PR, the same states read against the attached code: `ready-for-agent` means a brief is attached and an agent should take the next step on the diff; `ready-for-human` means it's ready for a human to merge.
 
-Every triaged issue should carry exactly one category role and one state role. If state roles conflict, flag it and ask the maintainer before doing anything else.
+Every triaged issue should carry exactly one category role and one state role. If state roles conflict, choose one state. When applying the outcome, remove the conflicting roles and explain the choice in the comment without asking.
 
 These are canonical role names. The actual label strings used in the issue tracker may differ. The mapping should have been provided to you. If not, tell the user to run `/skill:setup-vstack`.
 
-State transitions: an unlabeled issue normally goes to `needs-triage` first; from there it moves to `needs-info`, `ready-for-agent`, `ready-for-human`, or `wontfix`. `needs-info` returns to `needs-triage` once the reporter replies. The maintainer can override at any time; flag transitions that look unusual and ask before proceeding.
+State transitions: an unlabeled issue normally goes to `needs-triage` first; from there it moves to `needs-info`, `ready-for-agent`, `ready-for-human`, or `wontfix`. `needs-info` returns to `needs-triage` once the reporter replies. The maintainer can override at any time. For an unusual transition, choose the appropriate state and explain the transition in the comment without asking.
 
 ## Invocation
 
@@ -77,25 +77,25 @@ Show counts and a one-line summary per item. Let the maintainer pick.
 
 1. **Gather context.** Read the full issue or PR (body, comments, labels, author, dates; for a PR, the diff too). Parse any prior triage notes so you don't re-ask resolved questions. Explore the codebase using the project's domain glossary, respecting ADRs in the area. Run two checks against the codebase: (a) **redundancy**: search for an existing implementation of the requested behavior by domain concept (not just the request's wording), and report where you looked. If found, it's an already-implemented `wontfix` (step 5). (b) **prior rejection**: read `.out-of-scope/*.md` and surface any that resembles this request.
 
-2. **Recommend.** Tell the maintainer your category and state recommendation with reasoning, plus a brief codebase summary relevant to the request (including whether it's already implemented). Wait for direction.
+2. **Decide.** Choose the category and state with reasoning, plus a brief codebase summary relevant to the request (including whether it's already implemented). Publish the pick and reasoning as a Result and continue without waiting for direction.
 
 3. **Verify the claim.** Before any grilling, check that the claim holds up. For a bug, reproduce it from the reporter's steps. For a PR, fetch and validate its exact full head SHA, then create a detached head worktree through skill://vstack-worktree with purpose `triage-<first 12 characters of the head SHA>`. Leave the user's checkout, index, and current branch unchanged. Refuse a path collision; never reuse or remove an existing path. Run the relevant tests or commands only inside the new worktree. Require stdout's `Cloned from <main checkout> via <backend>` line. If absent, remove the new worktree, skip the PR runtime check, and report that ignored inputs could not be cloned, naming `worktree.clone` and `/skill:setup-vstack`. Never install dependencies as a plain-checkout fallback. Remove this run's worktree with `git worktree remove --force <path>` on every completion and early stop. Report what happened: confirmed with its code path, failed, insufficient detail, or the explicit skipped-runtime reason. A confirmed verification makes a much stronger agent brief.
 
-4. **Grill (if needed).** If the request needs fleshing out, run `skill://grilling` and `skill://domain-modeling` together, and grill it into shape a round of questions at a time, sharpening domain terms and updating `GLOSSARY.md`/ADRs inline as decisions land.
+4. **Grill (if needed).** If the request needs fleshing out, enter the grill without asking whether to proceed. Run `skill://grilling` and `skill://domain-modeling` together, and grill it into shape a round of questions at a time, sharpening domain terms and updating `GLOSSARY.md`/ADRs inline as decisions land. The grill's questions use `ask` on the item's Flow page.
 
-5. **Apply the outcome:**
+5. **Apply the outcome without confirmation.** Apply the chosen category and state roles, removing conflicting roles. Post comments, briefs, and closes in the same turn as the grill's close, or at once when no grill is needed, without waiting for a next-prompt confirmation (ADR 0059). If a grill question stays unanswered after its single re-ask, or the run is headless, write nothing from that grill. Report the open questions and what you would have posted.
    - `ready-for-agent`: post an agent brief comment ([AGENT-BRIEF.md](AGENT-BRIEF.md)).
    - `ready-for-human`: same structure as an agent brief, but note why it can't be delegated (judgment calls, external access, design decisions, manual testing).
    - `needs-info`: post triage notes (template below).
    - For `wontfix`, close the issue, with the comment depending on *why*:
      - **Already implemented**: the change already exists in the codebase. Point to where it lives; do **not** write to `.out-of-scope/` (that KB is for *rejected* requests, not built ones).
-     - **Rejected (bug)**: give a polite explanation, then close.
+     - **Rejected (bug)**: give a polite explanation, then close. Do not write to `.out-of-scope/`.
      - **Rejected (enhancement)**: write to `.out-of-scope/`, link to it from a comment, then close ([OUT-OF-SCOPE.md](OUT-OF-SCOPE.md)).
    - `needs-triage`: apply the role. Optional comment if there's partial progress.
 
 ## Quick state override
 
-If the maintainer says "move #42 to ready-for-agent", trust them and apply the role directly. Confirm what you're about to do (role changes, comment, close), then act. Skip grilling. If moving to `ready-for-agent` without a grilling session, ask whether they want to write an agent brief.
+If the maintainer says "move #42 to ready-for-agent", apply the requested role at once without confirmation and remove conflicting state roles. Skip grilling. If moving to `ready-for-agent` without a grilling session, write and post the agent brief. Explain any conflict resolution or unusual transition in the comment.
 
 ## Needs-info template
 

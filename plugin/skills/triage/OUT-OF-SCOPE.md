@@ -73,13 +73,11 @@ During triage (Step 1: Gather context), read all files in `.out-of-scope/`. When
 
 - Check if the request matches an existing out-of-scope concept
 - Matching is by concept similarity, not keyword: "night theme" matches `dark-mode.md`
-- If there's a match, surface it to the maintainer: "This is similar to `.out-of-scope/dark-mode.md`. We rejected this before because [reason]. Do you still feel the same way?"
+- If there's a possible match, publish the prior rejection and its reason as a Result, then decide which case applies:
 
-The maintainer may:
-
-- **Confirm**: the new issue gets added to the existing file's "Prior requests" list, then closed
-- **Reconsider**: the out-of-scope file gets deleted or updated, and the issue proceeds through normal triage
-- **Disagree**: the issues are related but distinct, proceed with normal triage
+- **Confirm**: triage decides the request matches, adds the new issue to the existing file's "Prior requests" list, then comments and closes without asking.
+- **Reconsider**: triage uses `ask` on the item's Flow page to ask the maintainer whether to reverse the earlier rejection. Follow the maintainer's answer as described below.
+- **Disagree**: triage decides the issues are related but distinct and proceeds with normal triage without asking.
 
 ## When to write to `.out-of-scope/`
 
@@ -89,7 +87,7 @@ Do **not** write here when something is closed as `wontfix` because it's **alrea
 
 The flow:
 
-1. Maintainer decides a feature request is out of scope
+1. Triage decides a feature request is out of scope
 2. Check if a matching `.out-of-scope/` file already exists
 3. If yes: append the new issue to the "Prior requests" list
 4. If no: create a new file with the concept name, decision, reason, and first prior request
@@ -98,8 +96,10 @@ The flow:
 
 ## Updating or removing out-of-scope files
 
-If the maintainer changes their mind about a previously rejected concept:
+When reconsidering a previously rejected concept, follow the maintainer's answer to `ask`:
 
-- Delete the `.out-of-scope/` file
-- The skill does not need to reopen old issues; they're historical records
-- The new issue that triggered the reconsideration proceeds through normal triage
+- If they reverse the rejection, delete or update the `.out-of-scope/` file as their answer requires. The new issue proceeds through normal triage.
+- If they retain the rejection, add a matching new issue to "Prior requests", post the explanation, and close it.
+- If the question remains unanswered after its single re-ask, leave the file and issue unchanged and report the open question.
+
+Old issues remain historical records. Reconsideration does not require reopening them.
