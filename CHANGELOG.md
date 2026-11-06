@@ -4,9 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+- diagnosing-bugs runs cost-free hypotheses alone on the same loop before choosing a lasting-cost fix, requires measured comparisons and an explicit user pick through `ask`, and reports actual hypothesis execution order and approved hypotheses never run alone (#258).
+
 ## [9.0.14] - 2026-11-06
 
-- diagnosing-bugs runs cost-free hypotheses alone on the same loop before choosing a lasting-cost fix, requires measured comparisons and an explicit user pick through `ask`, and reports actual hypothesis execution order and approved hypotheses never run alone (#258).
+- Require option costs in tokens or money per use, with recurrence and input-size growth, and restate sized costs inherited from earlier picks. Grilling measures costs or reads usage records before asking in Flow and chat rounds, and reports unsized costs with the missing facts (#257).
 
 ## [9.0.13] - 2026-11-06
 
