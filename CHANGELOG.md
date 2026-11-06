@@ -6,7 +6,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [9.0.16] - 2026-11-06
 
-- diagnosing-bugs runs cost-free hypotheses alone on the same loop before choosing a lasting-cost fix, requires measured comparisons and an explicit user pick through `ask`, and reports actual hypothesis execution order and approved hypotheses never run alone (#258).
+- Publish MCP ticket batches through an agent-drafted binding approved with the tickets and validated against live schemas on publish and resume. Decode schema-declared FastMCP envelopes, exhaust approved search pagination, and check every same-project issue type for duplicate risk. Map flattened readbacks and directed links explicitly, preserve unrelated custom readiness values, and normalize MCP body comparisons (#369).
 
 ## [9.0.15] - 2026-11-06
 
