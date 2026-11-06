@@ -136,6 +136,9 @@ If a correct seam exists:
 3. Apply the fix.
 4. Watch it pass.
 5. Re-run the Phase 1 feedback loop against the original (un-minimised) scenario.
+   If the fix removes or disables the channel watched by the assertion, a green run passes by construction and proves nothing.
+   Re-point the assertion at the user's symptom. Show it go red on unfixed code, then green on fixed code before accepting the loop as proof.
+   At hand-back, name the assertion and show both runs.
 
 For a race or ordering bug, add regression coverage of the counterpart ordering that the guard must preserve, and pass both orderings before publication.
 
@@ -143,7 +146,7 @@ For a race or ordering bug, add regression coverage of the counterpart ordering 
 
 Required before declaring done:
 
-- [ ] Original repro no longer reproduces (re-run the Phase 1 loop)
+- [ ] Original repro no longer reproduces, with the matching assertion and run evidence required by Phase 5
 - [ ] Regression test passes (or absence of seam is documented)
 - [ ] All `[DEBUG-...]` instrumentation removed (`grep` the prefix)
 - [ ] Throwaway prototypes deleted (or moved to a clearly-marked debug location)
