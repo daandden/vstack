@@ -4,9 +4,13 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
-## [9.0.16] - 2026-11-06
+## [9.0.17] - 2026-11-06
 
 - Correct #257 and merged PR #374. Grilling and Flow options present material trade-offs accurately and concretely, including qualitative downsides. Give approximate sizes for decision-relevant costs when they can be estimated, say when they cannot, and include significant costs carried over from earlier decisions. This replaces blanket per-use, recurrence, input-growth, and measurement-before-question rules.
+
+## [9.0.16] - 2026-11-06
+
+- Publish MCP ticket batches through an agent-drafted binding approved with the tickets and validated against live schemas on publish and resume. Decode schema-declared FastMCP envelopes, exhaust approved search pagination, and check every same-project issue type for duplicate risk. Map flattened readbacks and directed links explicitly, preserve unrelated custom readiness values, and normalize MCP body comparisons (#369).
 
 ## [9.0.15] - 2026-11-06
 

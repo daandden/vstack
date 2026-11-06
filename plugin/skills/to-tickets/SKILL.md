@@ -10,7 +10,7 @@ Break a plan, spec, or conversation into a set of **tickets**: tracer-bullet ver
 
 Read the project's `issue-tracker.md` and `triage-labels.md` under `<vstack root>/docs/vstack/` in Standard mode or `<vstack root>/config/` in Private mode. If they have not been provided and are missing, tell the user to run `/skill:setup-vstack`.
 
-The ticket publisher owns tracker discovery, writes, readback, and readiness. Read [the publication Interface](references/publication.md) before preparing or resuming a batch. Use the configured CLI command rows or the named MCP server and project facts. A missing capability or no-tool configuration leaves a durable blocked publication, not a manual publication path.
+The ticket publisher owns tracker writes, readback, and readiness. Read [the publication Interface](references/publication.md) before preparing or resuming a batch. Use the configured CLI command rows. For MCP, draft a binding from the named server's live tool descriptions and schemas, using the recorded project facts. The user approves that binding with the tickets. A missing capability or no-tool configuration leaves a durable blocked publication, not a manual publication path.
 
 ## Process
 
@@ -50,6 +50,8 @@ Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the close d
 
 Fix the draft and show the coverage table as DRIFT-CHECK.md's "Fix and show" says.
 
+For MCP, read the configured server's live tool list, descriptions, and input schemas. Draft `tracker.binding` in the structured description as [the MCP binding contract](references/publication.md#mcp-binding) specifies. Include argument templates, result paths, issue readback paths, directed blocking semantics, and the readiness field. Keep tool names in this approved input, not per-operation rows in `issue-tracker.md`.
+
 ### 4. Quiz the user
 
 Submit the proposed breakdown on the to-tickets Stage as a table Result. Its columns are Ticket, Blocked by, and Size, with one row per ticket:
@@ -57,6 +59,8 @@ Submit the proposed breakdown on the to-tickets Stage as a table Result. Its col
 - Ticket: the ticket's number and short title, then one sentence on the end-to-end behavior that it delivers.
 - Blocked by: the numbers of the tickets that must complete first, or "None".
 - Size: small, medium, or large.
+
+For MCP, publish the complete proposed binding beside the breakdown and include it in the same approval question. Explain the ownership identity, parent handling, blocking direction, and readiness field. The user's approval covers both the binding and the tickets.
 
 After the table Result, deliver one complete approval question through flow-page's "Every ask in a Flow" contract with `ask`. Use the options Approve and Change something, with `results` naming every row. Code links the question and rows both ways. Record the raw response with a separate reading where needed. Its description asks these questions:
 
@@ -68,11 +72,11 @@ Iterate until the user approves the breakdown with an explicit pick or resolved 
 
 ### 5. Publish the tickets to the configured tracker
 
-Save the approved structured description and publish it through `scripts/publish.ts`, as [the publication Interface](references/publication.md) describes. Keep stable local keys, approved bodies and labels, parent membership, directed `blockedBy` edges, tracker facts, and the configured readiness value in that description. Use numbered local keys such as `01-foundation` for local files. In Private mode, save the input, durable record, and local tickets under `<vstack root>/artifacts/<feature-slug>/`. In Standard mode, use `.scratch/<feature-slug>/`.
+Save the approved structured description and invoke the publisher as [the publication Interface](references/publication.md) describes. Use `scripts/publish.ts` for CLI and local publication, or the public Bun `publish` and `resume` functions with a live connection for MCP. Keep stable local keys, approved bodies and labels, parent membership, directed `blockedBy` edges, tracker facts, the MCP binding when applicable, and configured readiness in that description. Use numbered local keys such as `01-foundation` for local files. In Private mode, save the input, durable record, and local tickets under `<vstack root>/artifacts/<feature-slug>/`. In Standard mode, use `.scratch/<feature-slug>/`.
 
-The publisher creates tickets without readiness, installs the approved graph, reads back fields and relationships, then activates verified tickets. The readiness value comes from the configured canonical-role mapping. Remote trackers use a label. Local tickets use `Status:`. A parent relationship is separate from a blocking edge. Body references explain the work. Only `blockedBy` declares an edge.
+The publisher creates tickets without readiness, installs the approved graph, reads back fields and relationships, then activates verified tickets. The readiness value comes from the configured canonical-role mapping. GitHub uses labels. MCP reads approved labels and readiness separately, even when readiness lives in a custom field. Local tickets use `Status:`. A parent relationship is separate from a blocking edge. Body references explain the work. Only `blockedBy` declares an edge.
 
-Use the receipt's saved identities to link tracker tickets or `<directory>/<key>.md` files. If publication is blocked or interrupted, use `resume` with the same durable record. Report its category and candidate state when reconciliation is ambiguous. Keep approved content unchanged during recovery. The publisher owns activation. Do not create tickets, add relationships, or apply readiness separately.
+Use the receipt's saved identities to link tracker tickets or `<directory>/<key>.md` files. If publication is blocked or interrupted, use `resume` with the same durable record. Report its category and candidate state when reconciliation is ambiguous. Keep approved content unchanged during recovery. If anyone published tickets outside the publisher, inspect that state before resuming. A record without saved identities does not establish ownership of external tickets. Matching tickets stop creation with `duplicate-risk`, not automatic adoption. The publisher owns activation. Do not create tickets, add relationships, or apply readiness separately.
 
 Work the **frontier**: any ready ticket whose blockers are all done. Verified tickets may be ready while a blocker remains open. The existing frontier still excludes them.
 

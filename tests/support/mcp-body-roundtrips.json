@@ -1,0 +1,54 @@
+{
+  "package": "mcp-atlassian",
+  "version": "0.23.1",
+  "samples": [
+    {
+      "name": "paragraph",
+      "approved": "First line.\r\n\r\nSecond paragraph.  \r\n",
+      "wiki": "First line.\r\n\r\nSecond paragraph.  \r\n",
+      "readback": "First line.\r\n\r\nSecond paragraph.  \r\n"
+    },
+    {
+      "name": "emphasis",
+      "approved": "A **bold** word, an *italic* word, and __another bold__ word.\n",
+      "wiki": "A *bold* word, an _italic_ word, and *another bold* word.\n",
+      "readback": "A **bold** word, an *italic* word, and **another bold** word.\n"
+    },
+    {
+      "name": "lists",
+      "approved": "- First\n- Second\n\n1. Ordered first\n2. Ordered second\n",
+      "wiki": "* First\n* Second\n# Ordered first\n# Ordered second\n",
+      "readback": "- First\n- Second\n1. Ordered first\n1. Ordered second\n"
+    },
+    {
+      "name": "headings",
+      "approved": "# Heading\n\n## Details\n\nBuild the feature.\n",
+      "wiki": "h1. Heading\n\nh2. Details\n\nBuild the feature.\n",
+      "readback": "# Heading\n\n## Details\n\nBuild the feature.\n"
+    },
+    {
+      "name": "code",
+      "approved": "Use `item_name` and `**literal**`.\n\n```python\n# keep this comment  \nvalue = \"*unchanged*\"\n```\n",
+      "wiki": "Use {{item_name}} and {{**literal**}}.\n\n{code:python}# keep this comment  \nvalue = \"*unchanged*\"\n{code}\n",
+      "readback": "Use `item_name` and `**literal**`.\n\n```python\n# keep this comment  \nvalue = \"*unchanged*\"\n\n```\n"
+    },
+    {
+      "name": "link",
+      "approved": "Read [the guide](https://example.test/docs?q=one&two=three).\n",
+      "wiki": "Read [the guide|https://example.test/docs?q=one&two=three].\n",
+      "readback": "Read [the guide](https://example.test/docs?q=one&two=three).\n"
+    },
+    {
+      "name": "nested",
+      "approved": "- Parent\n  - Child\n  - Other\n- End\n",
+      "wiki": "* Parent\n** Child\n** Other\n* End\n",
+      "readback": "- Parent\n      - Child\n      - Other\n- End\n"
+    },
+    {
+      "name": "table",
+      "approved": "| Name | Value |\n| --- | --- |\n| alpha | 42 |\n",
+      "wiki": "||Name||Value||\n|alpha|42|\n",
+      "readback": "|Name|Value|\n|---|---|\n|alpha|42|\n"
+    }
+  ]
+}
