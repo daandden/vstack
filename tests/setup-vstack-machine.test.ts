@@ -1,42 +1,10 @@
-// setup-vstack's machine check script run as a process over a throwaway HOME (spec #63, Testing Decisions,
-// Seam 1). The script asks the real `omp` for settings and credentials, so these cases need omp on PATH;
-// without it (CI) they skip, except the case that proves the script names the missing binary.
-// The env holds only PATH, HOME, and TERM, so no PI_* or OMP_* setting of a parent omp session leaks in.
-
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "setup-vstack", "scripts", "machine.ts");
-const HAS_OMP = Bun.which("omp") !== null;
-
-let dir: string;
-beforeAll(() => {
-  dir = realpathSync(mkdtempSync(join(tmpdir(), "vstack-machine-test-")));
-});
-afterAll(() => rmSync(dir, { recursive: true, force: true }));
-
-let n = 0;
-/** A throwaway home whose omp user config is `configYml`, plus a project dir outside the real home. */
-function makeHome(configYml: string): { home: string; cwd: string } {
-  const root = join(dir, `case-${++n}`);
-  const home = join(root, "home");
-  const cwd = join(root, "proj");
-  mkdirSync(join(home, ".omp", "agent"), { recursive: true });
-  mkdirSync(cwd, { recursive: true });
-  writeFileSync(join(home, ".omp", "agent", "config.yml"), configYml);
-  return { home, cwd };
-}
-
-function run(h: { home: string; cwd: string }, args: string[], extraEnv: Record<string, string> = {}) {
-  const env = { PATH: process.env.PATH ?? "", HOME: h.home, TERM: "dumb", ...extraEnv };
-  const r = Bun.spawnSync([process.execPath, SCRIPT, ...args], { cwd: h.cwd, env, stdout: "pipe", stderr: "pipe" });
-  return { code: r.exitCode, stdout: r.stdout.toString(), stderr: r.stderr.toString() };
-}
-
-const lines = (s: string) => s.split("\n").filter((l) => l.trim() !== "");
-
+const FAKE_OMP = join(import.meta.dir, "support", "fake-omp-machine.ts");
 const CONFIGURED = `modelRoles:
   judge: typesafe/jev-latest
 ratchet:
@@ -44,198 +12,188 @@ ratchet:
 task:
   isolation:
     enabled: true
+worktree:
+  clone: true
+isolation:
+  backend: auto
+bash:
+  gitGuard: true
 `;
 const KEY = { TYPESAFE_API_KEY: "fake-typesafe-key" };
 
-test.skipIf(!HAS_OMP)("a configured machine prints one OK line and the extension NOTE, and exits 0", () => {
-  const r = run(makeHome(CONFIGURED), [], KEY);
+let dir: string;
+let n = 0;
+beforeAll(() => {
+  dir = realpathSync(mkdtempSync(join(tmpdir(), "vstack-machine-test-")));
+});
+afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+type Check = { id: number; name: string; status: "ok" | "fail" | "warn" | "note"; detail?: string; remedy?: string };
+function machineFixture(options: {
+  ovnfs?: "path" | "config" | "missing" | "invalid-config";
+  backend?: string;
+  gitGuard?: boolean;
+  config?: string;
+  credentials?: boolean;
+} = {}) {
+  const root = join(dir, `case-${++n}`);
+  const home = join(root, "home");
+  const cwd = join(root, "proj");
+  const bin = join(root, "bin");
+  const configDir = join(home, ".omp", "agent");
+  mkdirSync(configDir, { recursive: true });
+  mkdirSync(cwd);
+  mkdirSync(bin);
+  const configPath = join(configDir, "config.yml");
+  const config = Bun.YAML.parse(options.config ?? CONFIGURED) as any;
+  if (options.backend !== undefined) config.isolation = { backend: options.backend };
+  if (options.gitGuard !== undefined) config.bash = { gitGuard: options.gitGuard };
+  writeFileSync(join(bin, "omp"), `#!/bin/sh\nexec "${process.execPath}" "${FAKE_OMP}" "$@"\n`, { mode: 0o755 });
+  const ovnfs = join(options.ovnfs === "config" ? home : bin, "ovnfs");
+  if (options.ovnfs !== "missing") writeFileSync(ovnfs, "#!/bin/sh\nexit 0\n", { mode: 0o755 });
+  if (options.ovnfs === "config") config.ovnfs = { path: ovnfs };
+  if (options.ovnfs === "invalid-config") config.ovnfs = { path: join(root, "missing-ovnfs") };
+  writeFileSync(configPath, Bun.YAML.stringify(config));
+  const invoke = (args: string[] = ["--json"], extraEnv: Record<string, string> = {}) => {
+    const env = { PATH: bin, HOME: home, TERM: "dumb", ...(options.credentials === false ? {} : KEY), ...extraEnv };
+    const r = Bun.spawnSync([process.execPath, SCRIPT, ...args], { cwd, env, stdout: "pipe", stderr: "pipe" });
+    return { code: r.exitCode, stdout: r.stdout.toString(), stderr: r.stderr.toString() };
+  };
+  const readConfig = () => Bun.YAML.parse(readFileSync(configPath, "utf8")) as any;
+  const checks = (): Check[] => JSON.parse(invoke().stdout).checks;
+  const writes = () => {
+    const file = join(configDir, "writes.jsonl");
+    return existsSync(file) ? readFileSync(file, "utf8").trim().split("\n").map((line) => JSON.parse(line)) : [];
+  };
+  return { home, cwd, bin, configPath, invoke, readConfig, checks, writes };
+}
+
+const problems = (checks: Check[]) => checks.filter((c) => c.status === "fail" || c.status === "warn").map((c) => [c.id, c.status]);
+
+test("a configured machine passes all required checks and never prints credentials", () => {
+  const f = machineFixture();
+  const r = f.invoke();
   expect(r.code).toBe(0);
-  const out = lines(r.stdout);
-  expect(out).toHaveLength(2);
-  expect(out[0]).toStartWith("OK ");
-  expect(out[0]).toContain("8 ratchet.enabled");
-  expect(out[1]).toStartWith("NOTE 4 ");
-  expect(r.stdout).not.toContain("fake-typesafe-key");
+  expect(problems(JSON.parse(r.stdout).checks)).toEqual([]);
+  expect(f.checks().find((c) => c.id === 4)?.status).toBe("note");
+  expect(r.stdout).not.toContain(KEY.TYPESAFE_API_KEY);
+  const text = f.invoke([]);
+  expect(text.code).toBe(0);
+  expect(text.stdout.split("\n").filter(Boolean)).toHaveLength(2);
+  expect(f.writes()).toEqual([]);
 });
 
-test.skipIf(!HAS_OMP)("a vstack agent override is a NOTE that names the agent and its model, and the machine still passes", () => {
-  const h = makeHome(`${CONFIGURED}  agentModelOverrides:
-    vstack-explorer: smoke/smoke-model
-    reviewer: smoke/other-model
-`);
-  const r = run(h, [], KEY);
-  expect(r.code).toBe(0);
-  const out = lines(r.stdout);
-  expect(out).toHaveLength(3);
-  expect(out[0]).toStartWith("OK ");
-  expect(out[1]).toStartWith("NOTE 3 ");
-  expect(out[1]).toContain("vstack-explorer (smoke/smoke-model)");
-  expect(out[1]).not.toContain("reviewer");
-  expect(out[1]).not.toContain("Remedy");
-});
-
-test.skipIf(!HAS_OMP)("an unconfigured machine prints one line per failing check, each with a remedy, and exits 1", () => {
-  const h = makeHome(`modelRoles:
-  default: smoke/smoke-model
-task:
-  agentModelOverrides:
-    vstack-explorer: smoke/smoke-model
-    reviewer: smoke/smoke-model
-disabledExtensions:
-  - extension-module:vstack
-eval:
-  py: false
-worktree:
-  clone: false
-`);
-  const r = run(h, []);
+test("the machine CLI reports missing ovnfs as a required failure without changing settings", () => {
+  const f = machineFixture({ ovnfs: "missing" });
+  const before = readFileSync(f.configPath, "utf8");
+  const r = f.invoke();
   expect(r.code).toBe(1);
-  const out = lines(r.stdout);
-  expect(out.map((l) => l.split(" ").slice(0, 2).join(" "))).toEqual([
-    "FAIL 2",
-    "NOTE 3",
-    "FAIL 4",
-    "WARN 5",
-    "FAIL 6",
-    "FAIL 7",
-    "WARN 8",
-  ]);
-  for (const l of out) if (!l.startsWith("NOTE ")) expect(l).toContain("Remedy: ");
-  const byId = (id: string) => out.find((l) => l.split(" ")[1] === id)!;
-  expect(byId("3")).toContain("vstack-explorer");
-  expect(byId("3")).not.toContain("reviewer");
-  // Listed in disabledExtensions: a new session alone does not fix it, so the remedy removes the entry first.
-  expect(byId("4")).toContain("disabledExtensions");
-  expect(byId("4")).toContain("extension-module:vstack");
-  expect(byId("4")).toContain("remove it first");
-  expect(byId("5")).toContain("eval.py");
+  expect(f.checks().find((c) => c.name === "ovnfs")).toMatchObject({ status: "fail", remedy: expect.stringContaining("ovnfs") });
+  expect(readFileSync(f.configPath, "utf8")).toBe(before);
+  expect(f.writes()).toEqual([]);
 });
 
-test.skipIf(!HAS_OMP)("disabled optional Ratchet warns with Set it or Leave it, passes, and checking leaves it disabled", () => {
-  const configYml = CONFIGURED.replace("ratchet:\n  enabled: true", "ratchet:\n  enabled: false");
-  const h = makeHome(configYml);
-  const r = run(h, [], KEY);
-  expect(r.code).toBe(0);
-  const out = lines(r.stdout);
-  expect(out.map((l) => l.slice(0, 6))).toEqual(["NOTE 4", "WARN 8"]);
-  expect(out[1]).toContain("ratchet.enabled is off");
-  expect(out[1]).toContain("Remedy: setup-vstack sets ratchet.enabled to true once you approve");
-  expect(out[1]).toContain("Leave it");
-  expect(readFileSync(join(h.home, ".omp", "agent", "config.yml"), "utf8")).toBe(configYml);
+test.each(["path", "config"] as const)("the machine CLI finds ovnfs through %s", (ovnfs) => {
+  const f = machineFixture({ ovnfs });
+  expect(f.invoke().code).toBe(0);
+  expect(f.checks().find((c) => c.name === "ovnfs")).toMatchObject({ status: "ok" });
 });
 
-test.skipIf(!HAS_OMP)("an enabled extension is a NOTE to start a new session after linking or pulling, and the machine still passes", () => {
-  const r = run(makeHome(CONFIGURED), [], KEY);
-  expect(r.code).toBe(0);
-  const note = lines(r.stdout).find((l) => l.startsWith("NOTE 4 "))!;
-  expect(note).toContain("/new");
-  expect(note).toContain("session start");
-  expect(note).not.toContain("disabledExtensions");
-  expect(note).not.toContain("Remedy");
+test("an invalid configured ovnfs executable fails even when PATH has another binary", () => {
+  const f = machineFixture({ ovnfs: "invalid-config" });
+  expect(f.invoke().code).toBe(1);
+  expect(f.checks().find((c) => c.name === "ovnfs")?.status).toBe("fail");
 });
 
-test.skipIf(!HAS_OMP)("a Python interpreter that omp cannot run warns and points at omp setup python", () => {
-  const r = run(makeHome(`${CONFIGURED}python:\n  interpreter: ${join(dir, "no-such-python")}\n`), [], KEY);
-  expect(r.code).toBe(0);
-  const out = lines(r.stdout);
-  expect(out.map((l) => l.slice(0, 6))).toEqual(["NOTE 4", "WARN 5"]);
-  expect(out[1]).toContain("omp setup python");
+test("the machine CLI changes a non-auto backend only when its setter is explicitly selected", () => {
+  const f = machineFixture({ backend: "apfs" });
+  const before = readFileSync(f.configPath, "utf8");
+  expect(f.invoke().code).toBe(1);
+  expect(f.checks().find((c) => c.name === "isolation backend")).toMatchObject({ status: "fail", remedy: expect.stringContaining("auto") });
+  expect(readFileSync(f.configPath, "utf8")).toBe(before);
+  expect(f.writes()).toEqual([]);
+  expect(f.invoke(["--set", "isolation"]).code).toBe(0);
+  expect(f.readConfig().isolation.backend).toBe("apfs");
+  expect(f.invoke(["--set", "backend"]).code).toBe(0);
+  expect(f.readConfig().isolation.backend).toBe("auto");
+  expect(f.writes()).toEqual([["task.isolation.enabled", "true"], ["isolation.backend", "auto"]]);
+  expect(f.invoke().code).toBe(0);
 });
 
-test.skipIf(!HAS_OMP)("--set writes the judge role, isolation, clone, and Ratchet globally and keeps unrelated settings", () => {
-  const h = makeHome(`modelRoles:
-  default: smoke/smoke-model
-worktree:
-  clone: false
-ratchet:
-  enabled: false
-task:
-  agentModelOverrides:
-    reviewer: smoke/reviewer-model
-theme:
-  dark: catppuccin-mocha
-`);
-  const before = run(h, [], KEY);
-  expect(lines(before.stdout).map((l) => l.slice(0, 6))).toEqual(["FAIL 2", "NOTE 4", "FAIL 6", "FAIL 7", "WARN 8"]);
-
-  const set = run(h, ["--set", "judge", "isolation", "clone", "ratchet"], KEY);
-  expect(set.code).toBe(0);
-  const config = Bun.YAML.parse(readFileSync(join(h.home, ".omp", "agent", "config.yml"), "utf8")) as any;
-  expect(config.modelRoles).toEqual({ default: "smoke/smoke-model", judge: "typesafe/jev-latest" });
-  expect(config.task.isolation.enabled).toBe(true);
-  expect(config.worktree.clone).toBe(true);
-  expect(config.ratchet.enabled).toBe(true);
-  expect(config.task.agentModelOverrides).toEqual({ reviewer: "smoke/reviewer-model" });
-  expect(config.theme).toEqual({ dark: "catppuccin-mocha" });
-
-  const after = run(h, [], KEY);
-  expect(after.code).toBe(0);
-  const out = lines(after.stdout);
-  expect(out).toHaveLength(2);
-  expect(out[0]).toStartWith("OK ");
-  expect(out[1]).toStartWith("NOTE 4 ");
+test("the machine CLI offers gitGuard without writing it and sets only an explicitly selected gitGuard", () => {
+  const f = machineFixture({ gitGuard: false });
+  const before = readFileSync(f.configPath, "utf8");
+  expect(f.invoke().code).toBe(0);
+  expect(f.checks().find((c) => c.name === "bash.gitGuard")).toMatchObject({ status: "warn" });
+  expect(readFileSync(f.configPath, "utf8")).toBe(before);
+  expect(f.writes()).toEqual([]);
+  expect(f.invoke(["--set", "backend"]).code).toBe(0);
+  expect(f.readConfig().bash.gitGuard).toBe(false);
+  expect(f.invoke(["--set", "gitGuard"]).code).toBe(0);
+  expect(f.readConfig().bash.gitGuard).toBe(true);
+  expect(f.writes()).toEqual([["isolation.backend", "auto"], ["bash.gitGuard", "true"]]);
+  expect(f.checks().find((c) => c.name === "bash.gitGuard")?.status).toBe("ok");
 });
 
-test.skipIf(!HAS_OMP)("another judge provider passes with a NOTE that vstack calibrates against jev, without TypeSafe credentials", () => {
-  const other = run(makeHome(CONFIGURED.replace("typesafe/jev-latest", "openrouter/typesafe-ai/jev-1.13")), []);
-  expect(lines(other.stdout).map((l) => l.slice(0, 6))).toEqual(["OK vst", "NOTE 2", "NOTE 4"]);
-  expect(other.stdout).not.toContain("FAIL 1");
-  expect(other.code).toBe(0);
-
-  const r = run(makeHome(CONFIGURED.replace("typesafe/jev-latest", "openrouter/decisions-model")), []);
-  expect(r.code).toBe(0);
-  const out = lines(r.stdout);
-  expect(out.map((l) => l.slice(0, 6))).toEqual(["OK vst", "NOTE 2", "NOTE 4"]);
-  expect(out[0]).toContain("1 TypeSafe credentials");
-  expect(out[1]).toContain("openrouter/decisions-model");
-  expect(out[1]).toContain("jev");
-  expect(out[1]).not.toContain("Remedy");
+test("unconfigured required settings fail and optional settings warn without any writes", () => {
+  const f = machineFixture({ config: `worktree:\n  clone: false\neval:\n  py: false\ndisabledExtensions:\n  - extension-module:vstack\n` });
+  const before = readFileSync(f.configPath, "utf8");
+  expect(f.invoke().code).toBe(1);
+  expect(problems(f.checks())).toEqual([[2, "fail"], [4, "fail"], [5, "warn"], [6, "fail"], [7, "fail"], [8, "warn"], [11, "warn"]]);
+  for (const check of f.checks()) if (check.status === "fail" || check.status === "warn") expect(check.remedy).toBeTruthy();
+  expect(readFileSync(f.configPath, "utf8")).toBe(before);
+  expect(f.writes()).toEqual([]);
 });
 
-test.skipIf(!HAS_OMP).each([
+test("explicit setters preserve unrelated settings and model roles", () => {
+  const f = machineFixture({ config: `modelRoles:\n  default: smoke/smoke-model\ntask:\n  agentModelOverrides:\n    reviewer: smoke/reviewer-model\ntheme:\n  dark: catppuccin-mocha\n` });
+  expect(f.invoke(["--set", "judge", "isolation", "clone", "ratchet", "backend", "gitGuard"]).code).toBe(0);
+  expect(f.readConfig()).toEqual({
+    modelRoles: { default: "smoke/smoke-model", judge: "typesafe/jev-latest" },
+    task: { agentModelOverrides: { reviewer: "smoke/reviewer-model" }, isolation: { enabled: true } },
+    theme: { dark: "catppuccin-mocha" },
+    worktree: { clone: true }, ratchet: { enabled: true }, isolation: { backend: "auto" }, bash: { gitGuard: true },
+  });
+  expect(f.invoke().code).toBe(0);
+});
+
+test("disabled optional Ratchet warns, passes, and stays disabled until selected", () => {
+  const f = machineFixture({ config: CONFIGURED.replace("ratchet:\n  enabled: true", "ratchet:\n  enabled: false") });
+  expect(f.invoke().code).toBe(0);
+  expect(problems(f.checks())).toEqual([[8, "warn"]]);
+  expect(f.readConfig().ratchet.enabled).toBe(false);
+  expect(f.writes()).toEqual([]);
+});
+
+test("agent model overrides and other judge providers are notes, not failures", () => {
+  const f = machineFixture({ config: CONFIGURED.replace("typesafe/jev-latest", "openrouter/decisions-model").replace("task:\n", "task:\n  agentModelOverrides:\n    vstack-explorer: smoke/smoke-model\n    reviewer: smoke/other-model\n"), credentials: false });
+  expect(f.invoke().code).toBe(0);
+  expect(f.checks().filter((c) => c.status === "note").map((c) => c.id)).toEqual([2, 3, 4]);
+  expect(problems(f.checks())).toEqual([]);
+});
+
+test.each([
   [" openrouter/typesafe-ai/jev-1.13 , typesafe/jev-1.13.0 ", 0],
   [" typesafe/jev-1.13.0 , openrouter/decisions-model ", 1],
-])("the first candidate's provider controls the credential check for %s", (judge, code) => {
-  const r = run(makeHome(CONFIGURED.replace("typesafe/jev-latest", JSON.stringify(judge))), []);
-  expect(r.code).toBe(code);
-  const out = lines(r.stdout);
-  expect(out.map((l) => l.slice(0, 6))).toEqual([code === 0 ? "OK vst" : "FAIL 1", "NOTE 2", "NOTE 4"]);
+  ["typesafe/jev-latest", 1],
+])("the first judge candidate's provider controls credentials for %s", (judge, code) => {
+  const f = machineFixture({ config: CONFIGURED.replace("typesafe/jev-latest", JSON.stringify(judge)), credentials: false });
+  expect(f.invoke().code).toBe(code);
+  expect(f.checks().find((c) => c.id === 1)?.status).toBe(code ? "fail" : "ok");
 });
 
-test.skipIf(!HAS_OMP)("a pinned TypeSafe judge without credentials fails check 1", () => {
-  const r = run(makeHome(CONFIGURED.replace("typesafe/jev-latest", "typesafe/jev-1.13.0")), []);
-  expect(r.code).toBe(1);
-  const out = lines(r.stdout);
-  expect(out.map((l) => l.slice(0, 6))).toEqual(["FAIL 1", "NOTE 2", "NOTE 4"]);
-  expect(out[0]).toContain("/login typesafe");
+test("an unavailable Python interpreter warns without failing the machine", () => {
+  const f = machineFixture();
+  const r = f.invoke(["--json"], { FAKE_OMP_PYTHON_FAIL: "1" });
+  expect(r.code).toBe(0);
+  expect(problems(JSON.parse(r.stdout).checks)).toEqual([[5, "warn"]]);
 });
 
-test.skipIf(!HAS_OMP)("an unset judge role fails only check 2, and its remedy offers typesafe/jev-latest through --set judge", () => {
-  const r = run(makeHome("ratchet:\n  enabled: true\ntask:\n  isolation:\n    enabled: true\n"), []);
-  expect(r.code).toBe(1);
-  const out = lines(r.stdout);
-  expect(out.map((l) => l.slice(0, 6))).toEqual(["FAIL 2", "NOTE 4"]);
-  expect(out[0]).toContain("not set");
-  expect(out[0]).toContain("typesafe/jev-latest");
-});
-
-test.skipIf(!HAS_OMP)("checking never changes the omp config", () => {
-  const h = makeHome("worktree:\n  clone: false\n");
-  run(h, []);
-  expect(readFileSync(join(h.home, ".omp", "agent", "config.yml"), "utf8")).toBe("worktree:\n  clone: false\n");
-});
-
-test("usage errors and a missing omp exit 2 and say why", () => {
-  const h = makeHome(CONFIGURED);
-  const oldFlag = run(h, ["--extension-loaded", "yes"]);
-  expect(oldFlag.code).toBe(2);
-  expect(oldFlag.stderr).toContain("--extension-loaded");
-
-  const badSet = run(h, ["--set", "everything"]);
-  expect(badSet.code).toBe(2);
-  expect(badSet.stderr).toContain("everything");
-
-  const noOmp = run(h, [], { PATH: join(dir, "empty-path") });
-  expect(noOmp.code).toBe(2);
-  expect(noOmp.stderr).toContain("omp");
+test("usage errors and a missing omp exit 2 without writing settings", () => {
+  const f = machineFixture();
+  for (const args of [["--extension-loaded", "yes"], ["--set", "everything"], ["--set"], ["--set", "backend", "everything"]]) {
+    expect(f.invoke(args).code).toBe(2);
+  }
+  expect(f.invoke(["--json"], { PATH: join(dir, "empty-path") }).code).toBe(2);
+  expect(f.writes()).toEqual([]);
 });

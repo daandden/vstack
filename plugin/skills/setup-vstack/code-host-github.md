@@ -20,7 +20,7 @@ Each skill looks up an operation by its id. A row that says `unsupported` means 
 - `read-pr`: `gh pr view <pr> --repo <owner>/<repo> --json number,url,title,body,author,createdAt,labels,isDraft,state,headRefName,headRefOid,baseRefName,baseRefOid,mergeStateStatus,reviewDecision,statusCheckRollup,mergedAt,mergeCommit,autoMergeRequest,closingIssuesReferences,comments,reviews`. The PR can merge when `mergeStateStatus` is `CLEAN`. A reviewer requests changes when `reviewDecision` is `CHANGES_REQUESTED`. The PR merged when `mergedAt` is set or `state` is `MERGED`.
 - `mark-ready`: `gh pr ready <pr>`
 - `required-checks`: `gh pr checks <pr> --repo <owner>/<repo> --required`
-- `watch-checks`: `gh pr checks <pr> --repo <owner>/<repo> --required --watch`
+- `watch-checks`: `gh pr checks <pr> --repo <owner>/<repo> --required --watch`. Run through bash with `timeout: 0`, and with `async: true` when other work remains. The result arrives automatically. After it returns, re-read the PR and all review threads.
 - `review-threads`: `gh api graphql` on the PR's `reviewThreads`, with the owner, name, and PR number as variables. Read `id`, `isResolved`, and each comment's `id`, `databaseId`, `path`, `body`, `author`, and `commit`. Follow the thread and comment cursors to the last page.
 - `reply-thread`: `gh api --method POST "repos/<owner>/<repo>/pulls/<pr>/comments/<comment-database-id>/replies" --input <payload.json>`, where the payload is `{"body": "..."}`.
 - `resolve-thread`: `gh api graphql` with the `resolveReviewThread` mutation and the thread `id`.

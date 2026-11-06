@@ -1,0 +1,68 @@
+{
+  "package": "mcp-atlassian",
+  "version": "0.23.1",
+  "raw": {
+    "id": "10001",
+    "key": "DEMO-1",
+    "fields": {
+      "summary": "Foundation",
+      "description": "Build the foundation.",
+      "labels": [
+        "task"
+      ],
+      "customfield_10010": [
+        "unrelated"
+      ],
+      "creator": {
+        "name": "creator-is-dropped"
+      },
+      "reporter": {
+        "name": "publisher",
+        "displayName": "Publisher"
+      },
+      "created": "2026-11-06T00:00:00.000+0000",
+      "project": {
+        "id": "10000",
+        "key": "DEMO",
+        "name": "Demo"
+      },
+      "issuetype": {
+        "id": "10002",
+        "name": "Task"
+      },
+      "issuelinks": []
+    }
+  },
+  "readback": {
+    "id": "10001",
+    "key": "DEMO-1",
+    "summary": "Foundation",
+    "description": "Build the foundation.",
+    "issue_type": {
+      "name": "Task"
+    },
+    "project": {
+      "key": "DEMO",
+      "name": "Demo"
+    },
+    "assignee": {
+      "display_name": "Unassigned"
+    },
+    "reporter": {
+      "account_id": null,
+      "display_name": "Publisher",
+      "name": "publisher",
+      "email": null,
+      "avatar_url": null
+    },
+    "labels": [
+      "task"
+    ],
+    "created": "2026-11-06 07:00:00 +07",
+    "customfield_10010": {
+      "value": [
+        "unrelated"
+      ]
+    }
+  }
+}

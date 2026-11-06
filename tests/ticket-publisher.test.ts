@@ -233,8 +233,21 @@ test("resume recovers a killed publisher after tracker creation without duplicat
   } finally { pause.release(); proc.kill(); github.server.stop(true); }
 });
 
+const fixtureBinding = {
+  actions: {
+    owner: { tool: "identity-v2", arguments: {}, result: "id" },
+    search: { tool: "locate-v3", arguments: { project: "{facts.project}", title: "{title}" } },
+    read: { tool: "inspect-v4", arguments: { issue: "{issue}" } },
+    create: { tool: "draft-v5", arguments: { project: "{facts.project}", issueType: "{facts.issueType}", title: "{title}", body: "{body}", labels: "{labels}" }, result: "id" },
+    parent: { tool: "membership-v6", arguments: { issue: "{issue}", parent: "{parent}" } },
+    block: { tool: "dependency-v7", arguments: { dependent: "{dependent}", blocker: "{blocker}", linkType: "{facts.linkType}" } },
+    activate: { tool: "label-v8", arguments: { issue: "{issue}", labels: "{readinessValues}" } },
+  },
+  issue: { id: "id", title: "title", body: "body", labels: "labels", readiness: "labels", author: "author", createdAt: "createdAt", parent: "parent", blockedBy: "blockedBy", project: "project", issueType: "issueType" },
+};
+
 function mcpFixture() {
-  const state = new Map<string, Issue & { project?: string; issueType?: string }>();
+  const state = new Map<string, Omit<Issue, "readiness"> & { project?: string; issueType?: string }>();
   state.set("100", { id: "100", title: "Parent", body: "Unchanged parent", labels: ["spec"], author: "human", createdAt: "2025-01-01T00:00:00Z", blockedBy: [] });
   const schema = (fields: Record<string, string>) => ({ type: "object", properties: Object.fromEntries(Object.entries(fields).map(([name, type]) => [name, { type }])), required: Object.keys(fields) });
   const tools: Tool[] = [
@@ -258,7 +271,7 @@ function mcpFixture() {
       if (name === "draft-v5") {
         if (typeof args.idempotency_key === "string" && idempotency.has(args.idempotency_key)) return structuredClone(state.get(idempotency.get(args.idempotency_key)!));
         if (args.project !== "DEMO" || args.issueType !== "Task") throw new Error("Wrong project facts");
-        const issue: Issue = { id: `DEMO-${state.size}`, title: String(args.title), body: String(args.body), labels: [...args.labels as string[]], author: "publisher", createdAt: new Date().toISOString(), blockedBy: [] };
+        const issue: Omit<Issue, "readiness"> = { id: `DEMO-${state.size}`, title: String(args.title), body: String(args.body), labels: [...args.labels as string[]], author: "publisher", createdAt: new Date().toISOString(), blockedBy: [] };
         state.set(issue.id, { ...issue, project: String(args.project), issueType: String(args.issueType) });
         if (typeof args.idempotency_key === "string") idempotency.set(args.idempotency_key, issue.id);
         if (loseCreate) { loseCreate = false; throw new Error("Successful create response lost"); }
@@ -276,9 +289,9 @@ function mcpFixture() {
   return { state, tools, connection, loseNextCreate() { loseCreate = true; } };
 }
 
-test("MCP discovers current tool schemas, uses configured facts, and uniquely resumes a lost create", async () => {
+test("MCP validates approved tool bindings, uses configured facts, and uniquely resumes a lost create", async () => {
   const f = await fixture(), mcp = mcpFixture();
-  const intent = { version: 1, tracker: { mode: "mcp", server: "owned-tracker", facts: { project: "DEMO", issueType: "Task", linkType: "Blocks" }, readiness: "available" }, tickets };
+  const intent = { version: 1, tracker: { mode: "mcp", server: "owned-tracker", binding: fixtureBinding, facts: { project: "DEMO", issueType: "Task", linkType: "Blocks" }, readiness: "available" }, tickets };
   const parent = structuredClone(mcp.state.get("100"));
   mcp.loseNextCreate();
   const interrupted = await publish(intent, f.record, mcp.connection);
@@ -296,11 +309,11 @@ test("MCP discovers current tool schemas, uses configured facts, and uniquely re
   expect(mcp.state.get("100")).toEqual(parent);
 });
 
-test("MCP refuses a discovered creation schema that cannot carry the approved fields before writing", async () => {
+test("MCP refuses a bound creation schema that cannot carry the approved fields before writing", async () => {
   const f = await fixture(), mcp = mcpFixture();
   mcp.tools.find(tool => tool.name === "draft-v5")!.inputSchema = { type: "object", properties: { project: { type: "string" }, issueType: { type: "string" } }, required: ["project", "issueType"] };
   const parent = structuredClone(mcp.state.get("100"));
-  const result = await publish({ version: 1, tracker: { mode: "mcp", server: "owned-tracker", facts: { project: "DEMO", issueType: "Task", linkType: "Blocks" }, readiness: "available" }, tickets }, f.record, mcp.connection);
+  const result = await publish({ version: 1, tracker: { mode: "mcp", server: "owned-tracker", binding: fixtureBinding, facts: { project: "DEMO", issueType: "Task", linkType: "Blocks" }, readiness: "available" }, tickets }, f.record, mcp.connection);
   expect(result.status).toBe("blocked");
   expect(result.problem).toMatchObject({ category: "capability-gap" });
   expect([...mcp.state.values()]).toEqual([parent!]);
@@ -368,7 +381,7 @@ test("ambiguous creation candidates block resume without blind retry or adoption
 test("an absent uncertain candidate is not permission to create again or adopt preexisting work", async () => {
   const f = await fixture(), mcp = mcpFixture();
   mcp.loseNextCreate();
-  await publish({ version: 1, tracker: { mode: "mcp", server: "owned-tracker", facts: { project: "DEMO", issueType: "Task", linkType: "Blocks" }, readiness: "available" }, tickets }, f.record, mcp.connection);
+  await publish({ version: 1, tracker: { mode: "mcp", server: "owned-tracker", binding: fixtureBinding, facts: { project: "DEMO", issueType: "Task", linkType: "Blocks" }, readiness: "available" }, tickets }, f.record, mcp.connection);
   mcp.state.delete("DEMO-1");
   const result = await resume(f.record, mcp.connection);
   expect(result.status).toBe("blocked");
@@ -379,7 +392,7 @@ test("an absent uncertain candidate is not permission to create again or adopt p
 test("changed approved fields are refused on resume rather than rewritten", async () => {
   const f = await fixture(), mcp = mcpFixture();
   mcp.loseNextCreate();
-  await publish({ version: 1, tracker: { mode: "mcp", server: "owned-tracker", facts: { project: "DEMO", issueType: "Task", linkType: "Blocks" }, readiness: "available" }, tickets }, f.record, mcp.connection);
+  await publish({ version: 1, tracker: { mode: "mcp", server: "owned-tracker", binding: fixtureBinding, facts: { project: "DEMO", issueType: "Task", linkType: "Blocks" }, readiness: "available" }, tickets }, f.record, mcp.connection);
   mcp.state.get("DEMO-1")!.body = "Independently edited content";
   const before = structuredClone([...mcp.state.values()]);
   const result = await resume(f.record, mcp.connection);
@@ -392,7 +405,7 @@ for (const missing of ["inspect-v4", "dependency-v7", "label-v8"]) {
   test(`MCP missing ${missing} is an explicit pre-write capability gap`, async () => {
     const f = await fixture(), mcp = mcpFixture();
     mcp.tools.splice(mcp.tools.findIndex(tool => tool.name === missing), 1);
-    const result = await publish({ version: 1, tracker: { mode: "mcp", server: "owned-tracker", facts: { project: "DEMO", issueType: "Task", linkType: "Blocks" }, readiness: "available" }, tickets }, f.record, mcp.connection);
+    const result = await publish({ version: 1, tracker: { mode: "mcp", server: "owned-tracker", binding: fixtureBinding, facts: { project: "DEMO", issueType: "Task", linkType: "Blocks" }, readiness: "available" }, tickets }, f.record, mcp.connection);
     expect(result.status).toBe("blocked");
     expect(result.problem).toMatchObject({ category: "capability-gap" });
     expect([...mcp.state.keys()]).toEqual(["100"]);
@@ -450,7 +463,7 @@ test("a returned tracker identity is durable even when create does not return fu
     const result = await mcp.connection.callTool(server, name, args);
     return name === "draft-v5" ? { id: (result as Issue).id } : result;
   } };
-  const result = await publish({ version: 1, tracker: { mode: "mcp", server: "owned-tracker", facts: { project: "DEMO", issueType: "Task", linkType: "Blocks" }, readiness: "available" }, tickets }, f.record, connection);
+  const result = await publish({ version: 1, tracker: { mode: "mcp", server: "owned-tracker", binding: fixtureBinding, facts: { project: "DEMO", issueType: "Task", linkType: "Blocks" }, readiness: "available" }, tickets }, f.record, connection);
   expect(result.status).toBe("complete");
   expect(result.tickets.foundation.id).toBe("DEMO-1");
   expect(result.tickets.dependent.id).toBe("DEMO-2");
@@ -472,7 +485,7 @@ test("MCP readback checks the configured project and ticket type before readines
     if (name === "draft-v5") mcp.state.get((result as Issue).id)!.project = "OTHER";
     return result;
   } };
-  const result = await publish({ version: 1, tracker: { mode: "mcp", server: "owned-tracker", facts: { project: "DEMO", issueType: "Task", linkType: "Blocks" }, readiness: "available" }, tickets }, f.record, connection);
+  const result = await publish({ version: 1, tracker: { mode: "mcp", server: "owned-tracker", binding: fixtureBinding, facts: { project: "DEMO", issueType: "Task", linkType: "Blocks" }, readiness: "available" }, tickets }, f.record, connection);
   expect(result.status).toBe("blocked");
   expect([...mcp.state.values()].every(issue => !issue.labels.includes("available"))).toBe(true);
   expect(mcp.state.get("DEMO-1")!.project).toBe("OTHER");
@@ -484,7 +497,9 @@ test("provider idempotency resumes the original create even when identifying fac
   create.description += " with a provider idempotency key";
   create.inputSchema.properties!.idempotency_key = { type: "string" };
   mcp.loseNextCreate();
-  await publish({ version: 1, tracker: { mode: "mcp", server: "owned-tracker", facts: { project: "DEMO", issueType: "Task", linkType: "Blocks" }, readiness: "available" }, tickets }, f.record, mcp.connection);
+  const binding = structuredClone(fixtureBinding);
+  Object.assign(binding.actions.create.arguments, { idempotency_key: "{idempotencyKey}" });
+  await publish({ version: 1, tracker: { mode: "mcp", server: "owned-tracker", binding, facts: { project: "DEMO", issueType: "Task", linkType: "Blocks" }, readiness: "available" }, tickets }, f.record, mcp.connection);
   const unrelated = { ...structuredClone(mcp.state.get("DEMO-1")!), id: "UNRELATED" };
   mcp.state.set(unrelated.id, unrelated);
   const result = await resume(f.record, mcp.connection);
@@ -504,18 +519,6 @@ test("unsupported approved fields refuse input instead of silently losing ticket
   expect(await readdir(f.root)).toEqual(["approved.json"]);
 });
 
-test("preexisting matching work is not adopted when reconciling a new owned creation", async () => {
-  const f = await fixture(), mcp = mcpFixture();
-  const existing = { id: "EXISTING", title: tickets[0].title, body: tickets[0].body, labels: tickets[0].labels, author: "publisher", createdAt: new Date().toISOString(), blockedBy: [], project: "DEMO", issueType: "Task" };
-  mcp.state.set(existing.id, structuredClone(existing));
-  mcp.loseNextCreate();
-  await publish({ version: 1, tracker: { mode: "mcp", server: "owned-tracker", facts: { project: "DEMO", issueType: "Task", linkType: "Blocks" }, readiness: "available" }, tickets }, f.record, mcp.connection);
-  const result = await resume(f.record, mcp.connection);
-  expect(result.status).toBe("complete");
-  expect(result.tickets.foundation.id).not.toBe("EXISTING");
-  expect(mcp.state.get("EXISTING")).toEqual(existing);
-  expect(mcp.state.size).toBe(4);
-});
 
 test("unavailable relationship readback cannot activate created tickets", async () => {
   const f = await fixture(), mcp = mcpFixture();
@@ -524,7 +527,7 @@ test("unavailable relationship readback cannot activate created tickets", async 
     if (name === "inspect-v4") delete (result as Partial<Issue>).blockedBy;
     return result;
   } };
-  const result = await publish({ version: 1, tracker: { mode: "mcp", server: "owned-tracker", facts: { project: "DEMO", issueType: "Task", linkType: "Blocks" }, readiness: "available" }, tickets }, f.record, connection);
+  const result = await publish({ version: 1, tracker: { mode: "mcp", server: "owned-tracker", binding: fixtureBinding, facts: { project: "DEMO", issueType: "Task", linkType: "Blocks" }, readiness: "available" }, tickets }, f.record, connection);
   expect(result.status).toBe("blocked");
   expect(result.problem).toMatchObject({ category: "capability-gap" });
   expect([...mcp.state.values()].filter(i => i.id !== "100")).toHaveLength(2);

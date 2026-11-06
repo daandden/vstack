@@ -25,7 +25,9 @@ Before starting, check the session's active workers and ownership records for th
 
 ## Read the state
 
-Use `read-pr` and `required-checks`. In drive mode, use `watch-checks` only after the fixes below. A watch returning is not proof of readiness: re-read the PR and threads. If `watch-checks` is unsupported, poll `required-checks` instead.
+Use `read-pr` and `required-checks`. In drive mode, use `watch-checks` only after the fixes below. If `watch-checks` is unsupported, poll `required-checks` instead.
+
+Run the bash `watch-checks` call with `timeout: 0`. Set `async: true` when other work remains. A backgrounded watch delivers its result automatically. Keep working and never poll its job. Use `wait` only when no other work remains. After the watch returns, re-read the PR and all review threads. A watch returning is not proof of readiness.
 
 Read every page of `review-threads`, including thread IDs, resolved state, and comments with IDs, paths, bodies, authors, and commit references. A truncated first page cannot establish that all threads are resolved. Read requested changes even when there is no unresolved inline thread.
 

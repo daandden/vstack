@@ -1,28 +1,50 @@
 ---
 name: vstack-worktree
-description: How vstack creates a git worktree with omp wt add, tells a clone from a plain checkout, and removes it.
+description: Open and remove vstack checkouts through ovnfs, with an omp wt fallback when an installed ovnfs fails.
 disable-model-invocation: true
 ---
 
 # vstack-worktree
 
-Every git worktree vstack makes goes through `omp wt add`. omp clones the checkout, so ignored and excluded files (deps, env files, the Private-mode Verify skill link) carry over. A skill that needs a worktree follows these steps; its own contract names the purpose and says what to do on a plain checkout.
+Every separate checkout vstack makes goes through `scripts/worktree.ts`. The script uses omp's configured `ovnfs.path`, or PATH when unset. A missing or invalid executable stops at `/skill:setup-vstack`. A failed `ovnfs new` permits the `omp wt add` fallback only for a source outside ovnfs. An ovnfs source never falls back to a checkout that could share its private Git directory (ADR 0059).
 
-Not covered here:
+omp owns isolated subagent checkouts and PR checkouts created by its GitHub tool. For the user's own session, use `/wt`. To inventory leftovers, use `/skill:clean-wt`.
 
-- A parallel worker's tree is an isolated agent (ADR 0007), not a worktree.
-- omp task isolation and the `github` tool's `pr_checkout` already go through omp.
-- When the user wants their own session moved into a new worktree, tell them to type `/wt`.
-- Checkouts that runs left behind under the base, task sandboxes included: the user removes them with `/skill:clean-wt`.
+## Open a checkout
 
-## Steps
+Choose a purpose slug and a new absolute record path in the run's Scratch entry, outside the checkout. A prototype that must survive sessions keeps the record with its artifacts instead. Run the script from the source repo with one revision selection:
 
-1. Base. Use `$OMP_WORKTREE_DIR` when it is set. Else run `omp config get worktree.base` and use what it prints, unless it prints `(not set)`. Else use `~/.omp/wt`. Expand the base to an absolute path.
-2. Path. Use `<base>/vstack-<repo>-<purpose>`. `<repo>` is the dir name of the main checkout, the path on the first `worktree` line of `git worktree list --porcelain`. `<purpose>` is the slug the calling skill names, such as `research-<name>`.
-3. Create. Run one of these from the repo, and never add `-q`: it hides the line that step 4 reads.
-   - A new branch: `omp wt add -b <branch> <path> <ref>`
-   - An existing branch: `omp wt add <path> <branch>`
-   - A detached checkout: `omp wt add --detach <path> <commit>`
-4. Check. A stdout line `Cloned from <main checkout> via <backend>` means omp cloned the tree. With no such line, the worktree is a plain checkout that holds tracked files only. Every outcome exits 0, and the stderr warning appears only when a clone was tried and failed, so read stdout, not the exit code or stderr.
-5. Plain checkout. If the work needs ignored or excluded files from the main checkout, run `git worktree remove --force <path>`, stop, and tell the user that omp could not clone the checkout. Name omp's `worktree.clone` setting and `/skill:setup-vstack`. Otherwise go on with tracked files only, and install deps first if the work needs them. The calling skill's contract says which case applies to it.
-6. Remove. When the work is done, run `git worktree remove --force <path>`. Delete the branch only if this run created it.
+```sh
+bun "$(realpath skill://vstack-worktree/scripts/worktree.ts)" open --repo <source-repo> --purpose <slug> --commit <commit> --record <record.json>
+bun "$(realpath skill://vstack-worktree/scripts/worktree.ts)" open --repo <source-repo> --purpose <slug> --new-branch <branch> --ref <start> --record <record.json>
+bun "$(realpath skill://vstack-worktree/scripts/worktree.ts)" open --repo <source-repo> --purpose <slug> --branch <existing-branch> --record <record.json>
+```
+
+`--new-branch` defaults its start to HEAD. It creates the branch without moving the source checkout. `--commit` opens an independent checkout through `ovnfs new`, then forces and validates the requested detached revision while keeping ignored build inputs. This also works when the source is an ovnfs checkout. Names are lowercase, backend-valid, and at most 64 characters, including a unique suffix. An existing record or new-branch collision is refused.
+
+Each command prints one JSON record and saves it at `--record`. Use its `path`, not a computed path. The record includes:
+
+- `repo`, `purpose`, `name`, and `path` identify the checkout and its source.
+- `backend` is `ovnfs` or `omp-wt`.
+- `fallback` is true only after `ovnfs new` fails. `fallbackReason` contains that failure, or null without fallback.
+- `cloned` is null for ovnfs. For `omp-wt`, true means omp printed its `Cloned from ... via ...` signal. False means a plain checkout with tracked files only.
+- `branch` is null for a detached checkout. `branchCreated` says whether this open created the source branch.
+- `removed` is false after open and true after successful removal.
+
+A failed command exits 2 and prints one JSON object with `error`. If open fails after creating a checkout, it removes that checkout and any source branch it created. Its `cleanup` object reports their identities, removal outcomes, and errors. Report any cleanup failure with those identities instead of using the source checkout. Keep a successful open's record until removal succeeds.
+
+## Handle a fallback
+
+The fallback uses `$OMP_WORKTREE_DIR`, else omp's `worktree.base`, else `~/.omp/wt`. Report `fallbackReason`. Only the fallback can be a plain checkout. The calling skill decides whether tracked files alone are enough.
+
+If ignored or excluded inputs are required and `backend` is `omp-wt` with `cloned: false`, remove the checkout through the script, stop, and name `worktree.clone` and `/skill:setup-vstack`. Otherwise use the checkout under the caller's existing dependency rules.
+
+## Remove a checkout
+
+Run this on every completion and early stop, except a prototype deliberately retained until its verdict:
+
+```sh
+bun "$(realpath skill://vstack-worktree/scripts/worktree.ts)" remove --record <record.json>
+```
+
+The script uses `ovnfs rm` for ovnfs and `git worktree remove --force` for the fallback. It deletes a branch only when this open created it. Keep and report a removal failure. Opening a checkout starts no session-bound process, so its path and record remain usable across sessions until removal.

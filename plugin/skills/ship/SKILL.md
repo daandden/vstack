@@ -74,7 +74,9 @@ After step 7 observes a merge, fetch the default branch. Read the PR's merge com
 
 Step 4's preparation of the current bottom PR is the only change to a branch or base, because a merge lands whatever its branch and base hold at that moment, verdict or not. A base that moves to the default branch when its parent merges is expected, not damage to repair.
 
-Poll `read-pr` for state, merged state, merge state, checks, and any auto-merge request while the current PR waits. Use `required-checks` to identify checks that block merge. Keep pending or queued states pending. Readiness and an armed request are not a merge. Advance only when `read-pr` reports the PR merged.
+While the current PR waits, use `required-checks` to identify checks that block merge. For pending checks, run `watch-checks` through bash with `timeout: 0`, and with `async: true` when other work remains. A backgrounded watch delivers its result automatically. Keep working and never poll its job. Use `wait` only when no other work remains. If `watch-checks` is unsupported, poll `required-checks` instead.
+
+After the watch returns, re-read the PR and all review threads. A watch returning is not proof of readiness. Poll `read-pr` for state, merged state, merge state, checks, and any auto-merge request while the current PR waits to merge. Keep pending or queued states pending. Readiness and an armed request are not a merge. Advance only when `read-pr` reports the PR merged.
 
 Stop on these hard failures:
 
