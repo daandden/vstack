@@ -4,6 +4,8 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.14] - 2026-11-06
+
 - The Verifier opens and removes its head checkout through the vstack-worktree script. Head preparation validates ovnfs checkouts with private Git directories and cloned fallback worktrees, refuses plain or unvalidated checkouts, and preserves the isolation and cleanup-error guards (#378).
 - babysit and ship run `watch-checks` with `timeout: 0`, and with `async: true` when other work remains, so long CI runs finish in one watch. GitHub and GitLab Code host templates carry the same rule. A returned watch still requires a fresh PR and review-thread read (#383).
 - vstack-worktree opens and removes checkouts through one script, using ovnfs with revision-specific tracked files and ignored build inputs. An installed ovnfs that fails falls back to `omp wt add` with its reason and clone status recorded. Missing ovnfs stops at setup-vstack. code-review, triage, and prototype use the script, and prototypes keep their checkout record across sessions until the verdict (#377).
@@ -14,6 +16,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 - wayfinder lands Standard-mode findings in a checkout opened and removed by the vstack-worktree script. It exports the research branch from the checkout's private git dir before pushing, keeps the cited branch after cleanup, and leaves the Shared checkout's working tree and index unchanged (#379).
 - Worker status locates ovnfs checkouts through omp's run record and the ovnfs listing. Removal proof requires saved pre-release identity, an observed release, and both the checkout and record gone. Unknown workers stay retained. Isolated roles stop without ovnfs and point at setup-vstack (#380).
 - clean-wt inventories this project's omp ovnfs checkouts, protects live owners, unknown origins, dirty contents, stashes, and unique commits, and removes eligible checkouts through `ovnfs rm`. Legacy APFS and Git worktree cleanup keeps its guards (#381).
+- Checkout scripts prefer the configured `ovnfs.path` over PATH, support revision checkouts from ovnfs parents without sharing Git directories, bound checkout names to ovnfs limits, and roll back a failed open with cleanup diagnostics (#373).
 
 ## [9.0.13] - 2026-11-06
 

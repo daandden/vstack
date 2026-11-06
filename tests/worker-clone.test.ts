@@ -22,7 +22,7 @@ beforeEach(() => {
   mkdirSync(base);
   git(repo, "init", "-q");
   mkdirSync(join(dir, "bin"));
-  for (const name of ["ovnfs", "omp"]) writeFileSync(join(dir, "bin", name), `#!/bin/sh\nexec bun ${JSON.stringify(FAKE)} "$@"\n`, { mode: 0o755 });
+  for (const name of ["ovnfs", "omp"]) writeFileSync(join(dir, "bin", name), `#!${process.execPath}\nimport ${JSON.stringify(FAKE)};\n`, { mode: 0o755 });
   entries = [];
 });
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
@@ -56,6 +56,16 @@ test("status finds the ovnfs checkout named by the worker run record without tou
   expect(status(["Implementer"])).toMatchObject({ repo, base, listing: { ok: true }, workers: [{ id: "Implementer", clone: identity.path, identity, state: "present" }] });
   expect(readFileSync(join(identity.path, "useful.patch"), "utf8")).toBe("keep this work\n");
   expect(existsSync(other.path)).toBe(true);
+});
+
+test("status keeps a worker present when a different ovnfs is on PATH", () => {
+  const identity = worker("Configured");
+  const configured = join(dir, "configured-ovnfs");
+  writeFileSync(configured, `#!${process.execPath}\nimport ${JSON.stringify(FAKE)};\n`, { mode: 0o755 });
+  writeFileSync(join(dir, "bin/ovnfs"), `#!${process.execPath}\nconsole.log('{"checkouts":[]}');\n`, { mode: 0o755 });
+  expect(status(["Configured"], undefined, { FAKE_OVNFS_PATH: configured })).toMatchObject({
+    listing: { ok: true, command: configured }, workers: [{ state: "present", identity }],
+  });
 });
 
 test("status proves absence only against a saved present identity after both items disappear", () => {

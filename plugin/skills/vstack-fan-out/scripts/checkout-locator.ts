@@ -1,6 +1,7 @@
 import { lstatSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join, resolve, sep } from "node:path";
+import { resolveOvnfs } from "../../vstack-worktree/scripts/ovnfs.ts";
 
 const TASK_MARKER = ".omp-isolation-owner.json";
 const TASK_MOUNTS = ["m", "merged"];
@@ -53,12 +54,7 @@ export interface OvnfsCheckout {
 
 export function ovnfsListing(): { ok: boolean; checkouts: OvnfsCheckout[]; command?: string; reason?: string } {
   try {
-    let binary = Bun.which("ovnfs");
-    if (!binary) {
-      const configured = run(["omp", "config", "get", "ovnfs.path"]).replace(/^"|"$/g, "");
-      if (configured && configured !== "(not set)") binary = Bun.which(configured.replace(/^~(?=$|\/)/, homedir()));
-    }
-    if (!binary) throw new Error("ovnfs is required. Run /skill:setup-vstack to install and configure it.");
+    const binary = resolveOvnfs();
     const value = JSON.parse(run([binary, "--json", "ls"]));
     if (!Array.isArray(value?.checkouts) || !value.checkouts.every((entry: OvnfsCheckout) =>
       entry && typeof entry.name === "string" && entry.name.length > 0 &&
@@ -137,8 +133,7 @@ const realpath = (path: string) => {
   try { return realpathSync(path); } catch { return ""; }
 };
 
-/** The entries that `omp worktree list --json` reports for the base. Nothing else under the base is a checkout of this run. */
-export function cleanupListing(base: string): { ok: boolean; reason?: string; paths: Set<string> } {
+export function ompWorktreeListing(base: string): { ok: boolean; reason?: string; paths: Set<string> } {
   const r = Bun.spawnSync(["omp", "worktree", "list", "--json"], { env: { ...process.env, OMP_WORKTREE_DIR: base }, stdout: "pipe", stderr: "pipe" });
   try {
     if (r.exitCode !== 0) throw new Error(r.stderr.toString().trim() || `exit ${r.exitCode}`);

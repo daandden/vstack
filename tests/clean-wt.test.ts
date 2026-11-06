@@ -916,6 +916,22 @@ test("clean unused ovnfs checkouts are removed through ovnfs rm", () => {
   expect(git(repo, "status", "--porcelain")).toBe("");
 });
 
+test("ovnfs inventory and removal use the configured executable despite a different PATH binary", () => {
+  const path = ovnfsCheckout("omp-configured-123");
+  const configured = join(dir, "configured-ovnfs");
+  writeFileSync(configured, `#!${process.execPath}\nimport ${JSON.stringify(FAKE_OVNFS)};\n`, { mode: 0o755 });
+  writeFileSync(join(dir, "bin/ovnfs"), `#!${process.execPath}\nconsole.log('{"checkouts":[]}');\n`, { mode: 0o755 });
+  const env = { FAKE_OVNFS_PATH: configured };
+  const c = inventory(env)[path];
+  expect(c).toMatchObject({ kind: "ovnfs", verdict: "unused", automatic: true });
+  const out = cleanWt(["remove", `${path}=${c.fingerprint}`], env);
+  expect(out.code).toBe(0);
+  expect(out.json).toEqual({ removed: [{ path, method: "ovnfs rm" }], skipped: [], failed: [] });
+  expect(existsSync(path)).toBe(false);
+  const calls = readFileSync(join(ovnfsRoot, "calls.jsonl"), "utf8").trim().split("\n").map(line => JSON.parse(line));
+  expect(calls.find(call => call.args.includes("rm"))).toMatchObject({ cli: "configured-ovnfs" });
+});
+
 test("ovnfs origin follows project worktrees and archived isolated sources, not other projects", () => {
   const linked = linkedWorktree("source-worktree");
   const fromWorktree = ovnfsCheckout("omp-from-worktree", linked);

@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # vstack-worktree
 
-Every separate checkout vstack makes goes through `scripts/worktree.ts`. The script uses ovnfs on PATH or at omp's `ovnfs.path`. Without ovnfs it stops and points at `/skill:setup-vstack`. Only a failed `ovnfs new` permits the `omp wt add` fallback (ADR 0058).
+Every separate checkout vstack makes goes through `scripts/worktree.ts`. The script uses omp's configured `ovnfs.path`, or PATH when unset. A missing or invalid executable stops at `/skill:setup-vstack`. A failed `ovnfs new` permits the `omp wt add` fallback only for a source outside ovnfs. An ovnfs source never falls back to a checkout that could share its private Git directory (ADR 0058).
 
 omp owns isolated subagent checkouts and PR checkouts created by its GitHub tool. For the user's own session, use `/wt`. To inventory leftovers, use `/skill:clean-wt`.
 
@@ -20,7 +20,7 @@ bun "$(realpath skill://vstack-worktree/scripts/worktree.ts)" open --repo <sourc
 bun "$(realpath skill://vstack-worktree/scripts/worktree.ts)" open --repo <source-repo> --purpose <slug> --branch <existing-branch> --record <record.json>
 ```
 
-`--new-branch` defaults its start to HEAD. It creates the branch without moving the source checkout. `--commit` opens a detached checkout through `ovnfs new --rev`, with that commit's tracked files and the source's ignored build inputs. Checkout names have a unique suffix, so concurrent runs do not share paths. An existing record or new-branch collision is refused.
+`--new-branch` defaults its start to HEAD. It creates the branch without moving the source checkout. `--commit` opens an independent checkout through `ovnfs new`, then forces and validates the requested detached revision while keeping ignored build inputs. This also works when the source is an ovnfs checkout. Names are lowercase, backend-valid, and at most 64 characters, including a unique suffix. An existing record or new-branch collision is refused.
 
 Each command prints one JSON record and saves it at `--record`. Use its `path`, not a computed path. The record includes:
 
@@ -31,7 +31,7 @@ Each command prints one JSON record and saves it at `--record`. Use its `path`, 
 - `branch` is null for a detached checkout. `branchCreated` says whether this open created the source branch.
 - `removed` is false after open and true after successful removal.
 
-A failed command exits 2 and prints one JSON object with `error`. Report that failure instead of using the source checkout. Keep the record until cleanup succeeds.
+A failed command exits 2 and prints one JSON object with `error`. If open fails after creating a checkout, it removes that checkout and any source branch it created. Its `cleanup` object reports their identities, removal outcomes, and errors. Report any cleanup failure with those identities instead of using the source checkout. Keep a successful open's record until removal succeeds.
 
 ## Handle a fallback
 

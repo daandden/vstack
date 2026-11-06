@@ -4,6 +4,10 @@ import { lstatSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 
 const args = process.argv.slice(2);
+if (args.join(" ") === "config get ovnfs.path") {
+  console.log(process.env.FAKE_OVNFS_PATH ?? "(not set)");
+  process.exit(0);
+}
 if (args.join(" ") === "config get worktree.base" && process.env.FAKE_OMP_BASE !== undefined) {
   console.log(process.env.FAKE_OMP_BASE);
   process.exit(0);

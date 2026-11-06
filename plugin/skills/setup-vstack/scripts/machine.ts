@@ -1,12 +1,9 @@
-//   bun machine.ts [--json]                      check; text diagnostics or one JSON record
-//   bun machine.ts --set judge|isolation|clone|ratchet|backend|gitGuard…  write approved settings
-//
 // Every fact comes from the `omp` on PATH, so the checks see what omp itself resolves for this HOME and cwd.
 // Exit codes: 0 no FAIL line (OK, WARN, or NOTE only) or `--set` done; 1 a FAIL line; 2 usage error or omp missing.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { homedir } from "node:os";
+import { resolveOvnfs } from "../../vstack-worktree/scripts/ovnfs.ts";
 
 const JUDGE = "typesafe/jev-latest";
 /** The id omp gives the vstack extension module (`plugin/extensions/vstack.ts`) in `disabledExtensions`. */
@@ -204,17 +201,17 @@ async function check(): Promise<Result[]> {
   );
 
   const configuredOvnfs = cfg.get("ovnfs.path");
-  const ovnfs = typeof configuredOvnfs === "string" && configuredOvnfs.trim()
-    ? configuredOvnfs.replace(/^~(?=\/)/, homedir())
-    : "ovnfs";
+  let ovnfsError = "";
+  try { resolveOvnfs(typeof configuredOvnfs === "string" ? configuredOvnfs : null); }
+  catch (error) { ovnfsError = (error as Error).message; }
   results.push(
-    Bun.which(ovnfs)
+    !ovnfsError
       ? { id: 9, name: "ovnfs", status: "ok" }
       : {
           id: 9,
           name: "ovnfs",
           status: "fail",
-          detail: `ovnfs is not executable at ${ovnfs}, so vstack cannot run isolated roles or open separate checkouts`,
+          detail: `${ovnfsError} vstack cannot run isolated roles or open separate checkouts`,
           remedy: "install ovnfs and put it on PATH or set omp config set ovnfs.path /absolute/path/to/ovnfs, then run /skill:setup-vstack again",
         },
   );

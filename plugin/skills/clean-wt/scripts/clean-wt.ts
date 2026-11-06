@@ -3,7 +3,7 @@ import { homedir, tmpdir } from "node:os";
 import { basename, dirname, join, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
 import { createHash } from "node:crypto";
-import { checkoutEntry, checkoutLocations, cleanupListing, cleanupOvnfsLocations, defaultCheckoutBase, ovnfsListing, scanCheckoutLocations, taskMarker, type CheckoutLocation, type OvnfsCleanupLocation } from "../../vstack-fan-out/scripts/checkout-locator.ts";
+import { checkoutEntry, checkoutLocations, cleanupOvnfsLocations, defaultCheckoutBase, ompWorktreeListing, ovnfsListing, scanCheckoutLocations, taskMarker, type CheckoutLocation, type OvnfsCleanupLocation } from "../../vstack-fan-out/scripts/checkout-locator.ts";
 
 function usage(message: string): never {
   process.stderr.write(`clean-wt: ${message}\n`);
@@ -234,7 +234,7 @@ function leaseDetectionGap(): string | undefined {
 }
 
 function gatherEvidence() {
-  listing = cleanupListing(base);
+  listing = ompWorktreeListing(base);
   sessionHeaders = readSessions();
   leases = heldLeases([...sessionHeaders.map((s) => s.id), ...(ownSession ? [ownSession] : [])]);
   const buf = Buffer.alloc(1 << 16);

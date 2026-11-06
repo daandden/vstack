@@ -1,4 +1,4 @@
-import { appendFileSync, cpSync, existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { appendFileSync, cpSync, existsSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 
 const args = process.argv.slice(2);
@@ -25,10 +25,18 @@ if (basename(process.argv[1]) === "omp") {
   if (rest[0] === "new") {
     if (process.env.FAKE_OVNFS_FAIL) { console.error("fixture daemon unavailable"); process.exit(1); }
     const source = rest[1]; const name = rest[rest.indexOf("--name") + 1];
+    if (!/^[a-z0-9][a-z0-9._-]{0,63}$/.test(name)) {
+      console.error("invalid checkout name"); process.exit(1);
+    }
+    if (rest.includes("--rev") && entries.some(entry => realpathSync(entry.path) === realpathSync(source))) {
+      console.error("--rev and --from apply only to folders"); process.exit(1);
+    }
     const path = join(root, name);
     git(root, "clone", "--no-hardlinks", source, path);
     if (rest.includes("--rev")) git(path, "checkout", "--detach", rest[rest.indexOf("--rev") + 1]);
-    else cpSync(join(source, "tracked"), join(path, "tracked"));
+    else for (const entry of readdirSync(source)) {
+      if (entry !== ".git") cpSync(join(source, entry), join(path, entry), { recursive: true });
+    }
     if (existsSync(join(source, "node_modules"))) cpSync(join(source, "node_modules"), join(path, "node_modules"), { recursive: true });
     const checkout = { name, path, source, dirty: false }; entries.push(checkout); save();
     console.log(JSON.stringify({ checkout }));
