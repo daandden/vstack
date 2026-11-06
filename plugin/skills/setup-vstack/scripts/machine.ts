@@ -1,11 +1,9 @@
-//   bun machine.ts                              check; prints one OK line or one line per failing check, plus NOTE lines
-//   bun machine.ts --set judge|isolation|clone|ratchet…  write those settings to the user's omp config
-//
 // Every fact comes from the `omp` on PATH, so the checks see what omp itself resolves for this HOME and cwd.
 // Exit codes: 0 no FAIL line (OK, WARN, or NOTE only) or `--set` done; 1 a FAIL line; 2 usage error or omp missing.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { resolveOvnfs } from "../../vstack-worktree/scripts/ovnfs.ts";
 
 const JUDGE = "typesafe/jev-latest";
 /** The id omp gives the vstack extension module (`plugin/extensions/vstack.ts`) in `disabledExtensions`. */
@@ -22,7 +20,7 @@ type Problem = Extract<Result, { status: "fail" | "warn" }>;
 const isProblem = (r: Result): r is Problem => r.status === "fail" || r.status === "warn";
 
 function usage(message: string): never {
-  console.error(`${message}\nUsage: machine.ts\n       machine.ts --set judge|isolation|clone|ratchet...`);
+  console.error(`${message}\nUsage: machine.ts [--json]\n       machine.ts --set judge|isolation|clone|ratchet|backend|gitGuard...`);
   process.exit(2);
 }
 
@@ -202,6 +200,44 @@ async function check(): Promise<Result[]> {
           },
   );
 
+  const configuredOvnfs = cfg.get("ovnfs.path");
+  let ovnfsError = "";
+  try { resolveOvnfs(typeof configuredOvnfs === "string" ? configuredOvnfs : null); }
+  catch (error) { ovnfsError = (error as Error).message; }
+  results.push(
+    !ovnfsError
+      ? { id: 9, name: "ovnfs", status: "ok" }
+      : {
+          id: 9,
+          name: "ovnfs",
+          status: "fail",
+          detail: `${ovnfsError} vstack cannot run isolated roles or open separate checkouts`,
+          remedy: "install ovnfs and put it on PATH or set omp config set ovnfs.path /absolute/path/to/ovnfs, then run /skill:setup-vstack again",
+        },
+  );
+  results.push(
+    cfg.get("isolation.backend") === "auto"
+      ? { id: 10, name: "isolation backend", status: "ok" }
+      : {
+          id: 10,
+          name: "isolation backend",
+          status: "fail",
+          detail: `isolation.backend is ${String(cfg.get("isolation.backend"))}, so omp does not use ovnfs for isolated subagents`,
+          remedy: "setup-vstack sets isolation.backend to auto once you approve",
+        },
+  );
+  results.push(
+    cfg.get("bash.gitGuard") === true
+      ? { id: 11, name: "bash.gitGuard", status: "ok" }
+      : {
+          id: 11,
+          name: "bash.gitGuard",
+          status: "warn",
+          detail: "bash.gitGuard is off, so a non-isolated subagent can stash, reset, or switch away work in a main checkout",
+          remedy: "setup-vstack sets bash.gitGuard to true once you approve; this machine-wide setting also refuses those git commands in non-vstack sessions in a main checkout, or choose Leave it to keep it unchanged",
+        },
+  );
+
   return results;
 }
 
@@ -220,12 +256,14 @@ const SETTERS: Record<string, () => Promise<[key: string, value: string]>> = {
   isolation: async () => ["task.isolation.enabled", "true"],
   clone: async () => ["worktree.clone", "true"],
   ratchet: async () => ["ratchet.enabled", "true"],
+  backend: async () => ["isolation.backend", "auto"],
+  gitGuard: async () => ["bash.gitGuard", "true"],
 };
 
 async function main(argv: string[]) {
   if (argv[0] === "--set") {
     const names = argv.slice(1);
-    if (names.length === 0) usage("--set needs at least one of: judge, isolation, clone, ratchet");
+    if (names.length === 0) usage(`--set needs at least one of: ${Object.keys(SETTERS).join(", ")}`);
     for (const name of names) if (!(name in SETTERS)) usage(`unknown setting for --set: ${name}`);
     if (!OMP) usage("omp is not on PATH; setup-vstack needs the omp CLI");
     if (names.includes("ratchet") && !(await settings()).has("ratchet.enabled")) {
@@ -240,11 +278,16 @@ async function main(argv: string[]) {
     return 0;
   }
 
-  if (argv.length !== 0) usage(`unknown arguments: ${argv.join(" ")}`);
+  const json = argv.length === 1 && argv[0] === "--json";
+  if (argv.length !== 0 && !json) usage(`unknown arguments: ${argv.join(" ")}`);
   if (!OMP) usage("omp is not on PATH; setup-vstack needs the omp CLI");
 
   const results = await check();
   const problems = results.filter(isProblem);
+  if (json) {
+    console.log(JSON.stringify({ checks: results }));
+    return problems.some((r) => r.status === "fail") ? 1 : 0;
+  }
   if (problems.length === 0) {
     console.log(`OK vstack machine checks pass: ${results.map((r) => `${r.id} ${r.name}`).join(", ")}.`);
   }

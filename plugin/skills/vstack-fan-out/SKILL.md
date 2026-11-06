@@ -20,7 +20,7 @@ A subagent at its own Fan-out step runs its line the same way. Each subagent ret
 
 ## Account for Isolated clones
 
-For every isolated child, single or Fan-out, read [WORKER-LIFECYCLE.md](WORKER-LIFECYCLE.md) before starting it. The parent records retention or releases its own settled child after preservation, then observes clone disappearance. Apply the contract on normal and early exits. Each caller supplies its role-specific safe trigger. The FORMS.md lines stay unchanged.
+For every isolated child, single or Fan-out, read [WORKER-LIFECYCLE.md](WORKER-LIFECYCLE.md) before starting it. Require ovnfs before starting an isolated role. Stop without it and point at `/skill:setup-vstack`. omp owns checkout creation and fails an isolated task if ovnfs fails; vstack adds no fallback. The parent saves the checkout and run-record identity, preserves useful work, releases its own settled child, then proves both items gone. Apply the contract on normal and early exits. Each caller supplies its role-specific safe trigger. The FORMS.md isolated arguments stay unchanged.
 
 ## When a subagent cannot start
 
@@ -29,6 +29,7 @@ If a subagent cannot start, follow the line's stop clause: stop the step, and na
 - No eval tool, or no `task` tool: name the missing tool.
 - omp refuses the agent because the session is at its depth limit: name omp's `task.maxRecursionDepth` setting, which the user can raise.
 - A role that runs in its own clone (an isolated eval agent) needs omp's `task.isolation.enabled`. When it is off, point the user at `/skill:setup-vstack`. Never run that role in the shared checkout.
+- An isolated role also needs ovnfs installed and `isolation.backend` set to `auto`. Check PATH or `omp config get ovnfs.path`. If ovnfs is missing, stop and point at `/skill:setup-vstack`; do not accept omp's APFS isolation as a substitute.
 
 ## What every subagent prompt carries
 

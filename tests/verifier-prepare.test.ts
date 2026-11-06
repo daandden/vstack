@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -21,15 +21,57 @@ function fixture() {
   writeFileSync(join(shared, "app.ts"), "head\n"); git(shared, "commit", "-qam", "head");
   const head = git(shared, "rev-parse", "HEAD");
   const clone = join(dir, "clone"); git(shared, "clone", "--no-hardlinks", shared, clone);
-  const worktree = join(dir, "verify-head");
-  const args = ["--repo", clone, "--shared", shared, "--head", head, "--base", base, "--worktree", worktree];
+  let worktree = join(dir, "verify-head");
+  const recordPath = join(dir, "checkout-record.json");
+  const args = ["--repo", clone, "--shared", shared, "--head", head, "--base", base, "--record", recordPath];
   function run(command: string, options = args) {
     const p = Bun.spawnSync(["bun", script, command, ...options], { cwd: clone, env: { ...process.env, GIT_CONFIG_NOSYSTEM: "1", GIT_CONFIG_GLOBAL: "/dev/null" } });
     return { code: p.exitCode, record: JSON.parse(p.stdout.toString()) };
   }
+  function create(revision = head, cloned = true) {
+    const bin = join(dir, "bin"); mkdirSync(bin);
+    const fake = resolve(import.meta.dir, "support/fake-ovnfs.ts");
+    for (const name of ["ovnfs", "omp"]) writeFileSync(join(bin, name), `#!${process.execPath}\nimport ${JSON.stringify(fake)};\n`, { mode: 0o755 });
+    symlinkSync(Bun.which("git")!, join(bin, "git"));
+    const p = Bun.spawnSync([process.execPath, resolve(import.meta.dir, "../plugin/skills/vstack-worktree/scripts/worktree.ts"), "open",
+      "--repo", clone, "--purpose", "verify", "--commit", revision, "--record", recordPath], {
+      env: { ...process.env, PATH: bin, FAKE_OVNFS_ROOT: dir, FAKE_GIT: Bun.which("git")!, OMP_WORKTREE_DIR: dir,
+        FAKE_OVNFS_FAIL: "1", FAKE_OMP_CLONED: cloned ? "1" : "", GIT_CONFIG_GLOBAL: "/dev/null" },
+    });
+    if (p.exitCode) throw new Error(p.stdout.toString() + p.stderr.toString());
+    worktree = JSON.parse(p.stdout.toString()).path;
+  }
   const snapshot = (repo: string) => [git(repo, "rev-parse", "HEAD"), git(repo, "status", "--porcelain=v1", "--untracked-files=all"), readFileSync(join(repo, ".git/index"))];
-  return { dir, shared, clone, worktree, base, head, args, run, snapshot };
+  return { dir, shared, clone, get worktree() { return worktree; }, recordPath, base, head, args, run, create, snapshot };
 }
+
+test("validates an ovnfs head checkout opened and removed through the worktree CLI", () => {
+  const f = fixture();
+  const bin = join(f.dir, "bin"); mkdirSync(bin);
+  const fake = resolve(import.meta.dir, "support/fake-ovnfs.ts");
+  for (const name of ["ovnfs", "omp"]) writeFileSync(join(bin, name), `#!${process.execPath}\nimport ${JSON.stringify(fake)};\n`, { mode: 0o755 });
+  symlinkSync(Bun.which("git")!, join(bin, "git"));
+  mkdirSync(join(f.clone, "node_modules"));
+  writeFileSync(join(f.clone, "node_modules/input"), "ignored dependency");
+  const env = { ...process.env, PATH: bin, FAKE_OVNFS_ROOT: f.dir, FAKE_GIT: Bun.which("git")!, GIT_CONFIG_GLOBAL: "/dev/null" };
+  const record = join(f.dir, "checkout.json");
+  const checkoutScript = resolve(import.meta.dir, "../plugin/skills/vstack-worktree/scripts/worktree.ts");
+  const before = [f.snapshot(f.shared), f.snapshot(f.clone)];
+  const open = Bun.spawnSync([process.execPath, checkoutScript, "open", "--repo", f.clone, "--purpose", "verify", "--commit", f.head, "--record", record], { env });
+  expect(open.exitCode).toBe(0);
+  const checkout = JSON.parse(open.stdout.toString());
+  expect(checkout.backend).toBe("ovnfs");
+  const args = ["--repo", f.clone, "--shared", f.shared, "--head", f.head, "--base", f.base, "--record", record, "--require-input", "node_modules/input"];
+  const result = f.run("clean-head", args);
+  expect(result.code).toBe(0);
+  expect(result.record.worktree).toBe(realpathSync(checkout.path));
+  expect(readFileSync(join(checkout.path, "app.ts"), "utf8")).toBe("head\n");
+  expect(git(f.clone, "worktree", "list", "--porcelain")).not.toContain(checkout.path);
+  expect([f.snapshot(f.shared), f.snapshot(f.clone)]).toEqual(before);
+  const removal = Bun.spawnSync([process.execPath, checkoutScript, "remove", "--record", record], { env });
+  expect(removal.exitCode).toBe(0);
+  expect(existsSync(checkout.path)).toBe(false);
+});
 
 test("preflight refuses missing or same Shared checkout without mutation", () => {
   const f = fixture(); const before = f.snapshot(f.clone);
@@ -42,15 +84,15 @@ test("preflight refuses missing or same Shared checkout without mutation", () =>
   }
 });
 
-test("preflight canonicalizes aliases and refuses worktree collisions and invalid commits", () => {
+test("preflight canonicalizes aliases and refuses record collisions and invalid commits", () => {
   const f = fixture(); const before = f.snapshot(f.clone);
   const alias = join(f.dir, "alias"); symlinkSync(f.clone, alias);
   const aliased = f.run("preflight", f.args.map(x => x === f.shared ? alias : x));
   expect(aliased.code).toBe(2); expect(aliased.record.notes.join(" ")).toContain("Shared checkout");
-  mkdirSync(f.worktree); writeFileSync(join(f.worktree, "mine"), "keep");
+  writeFileSync(f.recordPath, "mine");
   expect(f.run("preflight").code).toBe(2);
-  expect(readFileSync(join(f.worktree, "mine"), "utf8")).toBe("keep");
-  rmSync(f.worktree, { recursive: true });
+  expect(readFileSync(f.recordPath, "utf8")).toBe("mine");
+  rmSync(f.recordPath);
   const invalid = f.run("preflight", f.args.map(x => x === f.head ? "bad-head" : x));
   expect(invalid.code).toBe(2); expect(invalid.record.verdict).toBe("REFUSED");
   expect(invalid.record.notes.join(" ")).toContain("head");
@@ -66,7 +108,7 @@ test("cleanup leaves only the head tracked tree and ignored inputs, including Sh
   const parentBefore = f.snapshot(f.shared); const cloneBefore = f.snapshot(f.clone);
   const preflight = f.run("preflight");
   expect(preflight.code).toBe(0); expect(preflight.record.patch_id).toMatch(/^[a-f0-9]{40}$/);
-  git(f.clone, "worktree", "add", "--detach", f.worktree, f.head);
+  f.create();
   mkdirSync(join(f.worktree, "cache/deps"), { recursive: true });
   mkdirSync(join(f.worktree, "node_modules/pkg"), { recursive: true });
   mkdirSync(join(f.worktree, ".omp/skills"), { recursive: true });
@@ -95,13 +137,13 @@ test("cleanup refuses wrong head, dirty tracked files, and unregistered trees be
   for (const kind of ["wrong-head", "dirty", "unregistered"]) {
     const f = fixture();
     if (kind === "unregistered") git(f.clone, "clone", f.clone, f.worktree);
-    else git(f.clone, "worktree", "add", "--detach", f.worktree, kind === "wrong-head" ? f.base : f.head);
+    else f.create(kind === "wrong-head" ? f.base : f.head);
     if (kind === "dirty") writeFileSync(join(f.worktree, "app.ts"), "dirty");
     writeFileSync(join(f.worktree, "extra.ts"), "keep on refusal");
     const parentBefore = f.snapshot(f.shared); const cloneBefore = f.snapshot(f.clone);
     const result = f.run("clean-head");
     expect(result.code).toBe(2); expect(result.record.verdict).toBe("REFUSED");
-    expect(result.record.notes.join(" ")).toMatch(/head|tracked|registered/i);
+    expect(result.record.notes.join(" ")).toMatch(/head|tracked|registered|record/i);
     expect(readFileSync(join(f.worktree, "extra.ts"), "utf8")).toBe("keep on refusal");
     expect(f.snapshot(f.shared)).toEqual(parentBefore); expect(f.snapshot(f.clone)).toEqual(cloneBefore);
   }
@@ -113,7 +155,7 @@ test("cleanup honors global excludes and the original common-dir exclusions of a
   writeFileSync(join(f.shared, ".git/info/exclude"), "private-link\n");
   const global = join(f.dir, "global-excludes"); writeFileSync(global, "global-input\n");
   git(f.clone, "config", "core.excludesFile", global);
-  git(f.clone, "worktree", "add", "--detach", f.worktree, f.head);
+  f.create();
   writeFileSync(join(f.worktree, "private-link"), "private");
   writeFileSync(join(f.worktree, "global-input"), "global");
   writeFileSync(join(f.worktree, "extra.ts"), "remove");
@@ -131,7 +173,7 @@ test("cleanup refuses nonignored nested repositories and submodules without sile
       git(f.clone, "update-index", "--add", "--cacheinfo", `160000,${f.head},nested`);
       git(f.clone, "commit", "-qm", "gitlink"); head = git(f.clone, "rev-parse", "HEAD");
     }
-    git(f.clone, "worktree", "add", "--detach", f.worktree, head);
+    f.create(head);
     if (kind === "nested") git(f.worktree, "clone", f.shared, "nested");
     const result = f.run("clean-head", f.args.map(x => x === f.head ? head : x));
     expect(result.code).toBe(2); expect(result.record.verdict).toBe("REFUSED");
@@ -141,7 +183,7 @@ test("cleanup refuses nonignored nested repositories and submodules without sile
 });
 
 test("cleanup refuses a changed tracked file even when Git marks it assume-unchanged", () => {
-  const f = fixture(); git(f.clone, "worktree", "add", "--detach", f.worktree, f.head);
+  const f = fixture(); f.create();
   git(f.worktree, "update-index", "--assume-unchanged", "app.ts");
   writeFileSync(join(f.worktree, "app.ts"), "hidden dirty\n");
   const result = f.run("clean-head");
@@ -149,7 +191,7 @@ test("cleanup refuses a changed tracked file even when Git marks it assume-uncha
 });
 
 test("cleanup refuses untracked ignore rules that could hide carried source", () => {
-  const f = fixture(); git(f.clone, "worktree", "add", "--detach", f.worktree, f.head);
+  const f = fixture(); f.create();
   mkdirSync(join(f.worktree, "carried"));
   writeFileSync(join(f.worktree, "carried/.gitignore"), "*\n");
   writeFileSync(join(f.worktree, "carried/source.ts"), "must not reach verification");
@@ -162,7 +204,7 @@ test("clone-local exclusions cannot mask untracked ignore rules that hide carrie
   const f = fixture();
   const excludes = join(f.clone, ".git/info/exclude");
   writeFileSync(excludes, "carried/\n");
-  git(f.clone, "worktree", "add", "--detach", f.worktree, f.head);
+  f.create();
   mkdirSync(join(f.worktree, "carried"));
   writeFileSync(join(f.worktree, "carried/.gitignore"), "*\n");
   writeFileSync(join(f.worktree, "carried/test.ts"), "must not reach verification");
@@ -183,10 +225,19 @@ test("cleanup refuses when cloning lost a required Shared-excluded Verify link",
   writeFileSync(join(f.shared, ".git/info/exclude"), ".omp/skills/verify-app\n");
   const target = join(f.dir, "verify-app"); mkdirSync(target); writeFileSync(join(target, "SKILL.md"), "Drive");
   mkdirSync(join(f.clone, ".omp/skills"), { recursive: true }); symlinkSync(target, join(f.clone, ".omp/skills/verify-app"));
-  git(f.clone, "worktree", "add", "--detach", f.worktree, f.head);
+  f.create();
   const result = f.run("clean-head", [...f.args, "--require-input", ".omp/skills/verify-app"]);
   expect(result.code).toBe(2); expect(result.record.verdict).toBe("REFUSED");
   expect(result.record.notes.join(" ")).toContain("worktree.clone");
   expect(result.record.notes.join(" ")).toContain("/skill:setup-vstack");
   expect(readFileSync(join(f.clone, ".omp/skills/verify-app/SKILL.md"), "utf8")).toBe("Drive");
+});
+
+test("refuses a plain fallback even when its tracked tree is valid", () => {
+  const f = fixture(); f.create(f.head, false);
+  writeFileSync(join(f.worktree, "extra.ts"), "keep on refusal");
+  const result = f.run("clean-head");
+  expect(result.code).toBe(2); expect(result.record.verdict).toBe("REFUSED");
+  expect(result.record.notes.join(" ")).toContain("worktree.clone");
+  expect(readFileSync(join(f.worktree, "extra.ts"), "utf8")).toBe("keep on refusal");
 });
