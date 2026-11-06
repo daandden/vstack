@@ -124,7 +124,7 @@ items:
     tree: 4cb951d62ecccaed601cdc5f9a1b7b3d8a799635
     disposition: adapt
     artifacts: [plugin/skills/triage]
-    reason: "Questions after item selection use ask on the item's Flow page. MCP operations use current descriptions, schemas, recorded creation facts, canonical-role labels, and close transition. Discovery creates no administrative Flow by default (#58, #170, #207, ADR 0035)."
+    reason: "Questions after item selection use ask on the item's Flow page. Triage picks roles, grills, and writes its outcome without confirmation gates; only unanswered grill questions and reconsidering a prior rejection stop it. MCP operations use current descriptions, schemas, recorded creation facts, canonical-role labels, and close transition. Discovery creates no administrative Flow by default (#58, #170, #207, ADR 0035, ADR 0061)."
   - id: matt/wayfinder
     upstream: matt
     kind: skill
