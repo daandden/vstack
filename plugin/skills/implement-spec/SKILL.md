@@ -16,7 +16,7 @@ The tickets are not a list of steps. They are a **task graph** with blocking rel
 
 Communication to and from subagents should be sparse. Communicate primarily through **context pointers**: to the spec, tickets, research notes, and previous commits. Don't duplicate information already available via pointers.
 
-**Implementer subagents** run in the background for maximum concurrency. You are the orchestrator. You read the task graph, start subagents, act on their results, and put questions to the user through `ask` under `skill://flow-page`'s "Every ask in a Flow" contract. Publish each complete round through the Flow CLI and record the observed response separately. You never build or merge a ticket yourself.
+**Implementer subagents** run in the background for maximum concurrency. You are the orchestrator. You read the task graph, start subagents, act on their results, and route questions by END-STATE.md's "Question timing". Put questions to the user through `ask` under `skill://flow-page`'s "Every ask in a Flow" contract. Publish each complete round through the Flow CLI and record the observed response separately. You never build or merge a ticket yourself.
 
 ## Shared steps
 
@@ -82,7 +82,7 @@ Once an **implementer subagent** completes, merge its work to the integration br
 
 A handle has no `patchPath` field. Recover that path from omp's completion notice: `Isolation: changes captured at <absolute patch path> (apply=false). Not applied.` If structured output hides the notice, read the full completion through the handle's `output()` or `agent://<id>`. A failed worker, an unavailable notice, or an empty patch leaves its ticket open. Report it, and never guess a patch path.
 
-If the implementer returned an open question, start no merger for it. Hold its patch, record the path, and put the question and its evidence to the user through `ask` under the Flow publication contract above. This includes a necessary consequential departure from the supplied architecture agreement. A ticket whose question the user's own answer resolves goes back on the frontier once, with the answer and the held patch path in its brief. A recommendation, Headless automatic pick, timeout, cancellation, absent answer, or unavailable picker resolves no approval gate. Leave that ticket open and its patch unapplied.
+Classify each implementer question by END-STATE.md's "Question timing". Hold non-gating questions in the run record without blocking the merger. If a question is gating, start no merger for that ticket. Hold its patch, record the path, and put the question and its evidence to the user through `ask` under the Flow publication contract above. This includes a necessary consequential departure from the supplied architecture agreement. A ticket whose gating question the user's own answer resolves goes back on the frontier once, with the answer and the held patch path in its brief. A recommendation, Headless automatic pick, timeout, cancellation, absent answer, or unavailable picker resolves no approval gate. Leave that ticket open and its patch unapplied.
 
 Keep the questioned worker available until the answer and required follow-up resolve. Save a stable Scratch copy of its held patch before any later release. A fresh retry gets that copy and the answer; preserve the superseded worker's useful work and evidence before deciding its lifecycle.
 
@@ -96,7 +96,7 @@ If the merger returns a branch guard failure, stop the run with that blocker, as
 
 Preserve the failed attempt's useful patch, retry inputs, and evidence outside its clone. Retain it while conflict resolution or the retry still needs it; otherwise release it through the shared lifecycle contract. A second failure leaves the ticket open, not its worker unaccounted for.
 
-A ticket is complete when its commit is on the integration branch and no question about it is unanswered. Only a complete ticket satisfies a blocker, counts toward the spec, and becomes a closing reference. Record each ticket's handle, changed paths, open questions, patch path, and commit SHA or held patch in the run record.
+A ticket is complete when its commit is on the integration branch and no gating question about it is unanswered. Only a complete ticket satisfies a blocker, counts toward the spec, and becomes a closing reference. Record each ticket's handle, changed paths, open questions, patch path, and commit SHA or held patch in the run record.
 
 Once that integration commit has landed and nothing still needs its implementer, release the implementer and verify disappearance through the shared contract. Record the observed outcome beside the commit and preserved patch.
 
@@ -108,7 +108,7 @@ If this changes the **frontier** of available tickets, kick off more **implement
 
 After each merge, held patch, or answered question, recompute the frontier. A ticket is ready when every blocker is complete or was closed before this run. Settle each newly ready ticket's seam as step 1 says. Then run the step 4 line at once for the newly ready tickets.
 
-A ticket that already failed in this run is not ready again: a failed worker, a missing or empty patch, a second failed merge, or a second open question. Only the two once-only returns in step 5 put a ticket back. Report each ticket that stays open, with its reason: a failed worker, a missing patch, a failed merge, an unanswered question with its held patch, or an open blocker.
+A ticket that already failed in this run is not ready again: a failed worker, a missing or empty patch, a second failed merge, or a second gating question. Only the two once-only returns in step 5 put a ticket back. Report each ticket that stays open, with its reason: a failed worker, a missing patch, a failed merge, an unanswered gating question with its held patch, or an open blocker.
 
 ### 7. Review
 
@@ -122,7 +122,7 @@ Take the fixer's patch path from its completion notice as step 5 says, never fro
 
 Give each fixer its own lifecycle entry, including fresh retries. Keep held questions and follow-up workers available as in step 5. After the merger or vstack-maintain landing rule has applied the accepted review-fix hunks and no need remains, release the fixer through the shared contract. Preserve useful failed or superseded work before release; an unavailable patch or failed apply never bypasses that accounting.
 
-With no open question, choose the landing rule by whether skill://vstack-maintain is loaded.
+Hold non-gating fixer questions by END-STATE.md's "Question timing". With no open gating question, choose the landing rule by whether skill://vstack-maintain is loaded.
 
 When it is not loaded, use step 5's merger to inspect and land the patch on the integration branch. Reuse its patch application, conflict resolution, checks, and rollback behavior against the spec and code-review's result. The merger leaves the accepted review-fix hunks staged and uncommitted for shared step 6 instead of making a ticket commit.
 

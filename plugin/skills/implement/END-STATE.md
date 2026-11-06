@@ -2,6 +2,14 @@
 
 implement, implement-spec, and hillclimb read this file before work. Reuse these steps by reference. Do not maintain a second copy in a caller. The caller inserts its work steps between 0b and 3b. Before task-specific todo items, add one todo item per step to its todo list in execution order, for the steps below and the caller's own steps. An item holds the step's id with its source, `shared` for a step in this file and `local` for a step in the caller's file, then the step's heading, such as `shared 0a. Settle the End state` or `local 5. Merge each result`. The source keeps apart a shared and a local step with the same number. Keep the ids as each file numbers them. The item also carries its status, as `skip: <reason>` for a step the run does not finish, and any blocker. The full text of a `shared` step stays in this file and the text of a `local` step stays in the caller's file. Do not copy step paragraphs into the todo list.
 
+## Question timing
+
+When a question arises, the run's agent classifies it as gating if its answer can change the committed patch, its proof, or the End state. Resolve gating questions before advancing the affected work. Verifier open questions and CI-failure waivers remain gating.
+
+Hold non-gating questions in the run record and continue delivery, including through chained skills. Examples include approval to post an optional external report or to clean up a disposable resource. Keep the resource until its held cleanup question is answered. Holding a question grants no approval for its action.
+
+Ask every held question after reaching the effective End state or when the run stops at a blocker. Use `ask` under `skill://flow-page`'s "Every ask in a Flow" contract, including CLI publication and separate answer recording. Preserve unanswered questions and their pending actions in the run record and reply.
+
 ## 0a. Settle the End state
 
 If the caller supplies a vstack root, reuse it. Otherwise, resolve the vstack root once through the Private-mode rule. If the caller supplies a Scratch dir, reuse it. Otherwise, resolve the absolute project Scratch dir once through skill://vstack-tmp with its path script and no kind argument. The project's config directory is `<vstack root>/docs/vstack/` in Standard mode or `<vstack root>/config/` in Private mode. Run Code host operations through `code-host.md` there. Run `ci-logs`, `rerun-ci`, `set-secret`, and `set-variable` through `ci.md` there. Operation ids name the steps; CLI configs supply command rows, while MCP configs supply the server, project facts, and pins. Use git for local history and pushes. Chained skills use the paths that the run passes them. They never resolve these paths again.
@@ -21,6 +29,7 @@ Keep one run record across every ticket. It holds the requested End state and th
 - The final-diff Blast radius findings (step 5)
 - The development check evidence paths from step 4
 - The accepted Verdict from step 6b, with Verifier identity, base and head SHAs, patch id, and evidence paths
+- Held non-gating questions and their pending actions
 
 Follow `skill://flow-page`'s "Stage entry/exit line" for the caller's implement or implement-spec run. Record the Flow id, Stage id, and URL in the run record and chain facts. Follow [Publish delivery progress](#publish-delivery-progress) throughout the run.
 
@@ -150,6 +159,8 @@ Then run skill://babysit in drive mode with the chain facts and PR frontier. Aft
 Publish `reached: "merge-ready"` only after both current-head readiness and accepted proof cover the final patch. For shipped, run skill://ship with those facts and accepted Verdicts. open-pr and babysit return to this caller. Neither starts the next link. Stop at the effective End state or a reported blocker and report what was actually reached.
 
 Conflict owner: babysit reports each conflict and each stale base here. ship reports each branch that `update-branch` cannot update and each step 2 move. The reported branch can be any branch of the run's stack. Fetch it and check it out, and fetch its target: the PR's base branch from `read-pr`, or the default branch for a step 2 move. For a step 2 move, first retarget the PR to the default branch through `retarget-pr`. Pass step 0b's branch guard against the reported branch before running `git merge <remote>/<target>`, because the merge can commit automatically. Resolve each conflict once. Resolve a mechanical conflict yourself against the ticket and spec. If a conflicting hunk chooses between two behaviors, for example when both sides change the same rule, run `git merge --abort` and ask the user which behavior to keep through `ask` under `skill://flow-page`'s "Every ask in a Flow" contract. Then merge again and apply the answer. In a worker, return the question to the parent instead. Without the user's answer, leave the merge aborted and record a blocker. Reconcile the reported caller drift, and pass the same guard before an explicit merge commit. Record the resulting commit through step 0b's post-commit check. Push it as a fast-forward to the PR's head branch with the step 0b push. Then check out the recorded local branch again. If the reported branch is the run's remote branch, record the new last pushed SHA, and record the merged target tip as the new base SHA. Then run babysit again, or return a moved PR to ship for its fresh verdict. If the diff changed, re-establish the affected proof and Blast radius findings.
+
+At either stop, ask the held non-gating questions under [Question timing](#question-timing) before finishing the caller's Stage.
 
 When the run stops, at the effective End state, at commit, or at a blocker, publish a table Result on the caller's Stage with the columns Ticket, Status, Commit, and Proof. Write one row per ticket, or one row for unticketed work. Add a row for step 6 review fixes and for each step 6b Verifier repair commit:
 
