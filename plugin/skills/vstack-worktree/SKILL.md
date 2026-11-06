@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # vstack-worktree
 
-Every separate checkout vstack makes goes through `scripts/worktree.ts`. The script uses omp's configured `ovnfs.path`, or PATH when unset. A missing or invalid executable stops at `/skill:setup-vstack`. A failed `ovnfs new` permits the `omp wt add` fallback only for a source outside ovnfs. An ovnfs source never falls back to a checkout that could share its private Git directory (ADR 0058).
+Every separate checkout vstack makes goes through `scripts/worktree.ts`. The script uses omp's configured `ovnfs.path`, or PATH when unset. A missing or invalid executable stops at `/skill:setup-vstack`. A failed `ovnfs new` permits the `omp wt add` fallback only for a source outside ovnfs. An ovnfs source never falls back to a checkout that could share its private Git directory (ADR 0059).
 
 omp owns isolated subagent checkouts and PR checkouts created by its GitHub tool. For the user's own session, use `/wt`. To inventory leftovers, use `/skill:clean-wt`.
 

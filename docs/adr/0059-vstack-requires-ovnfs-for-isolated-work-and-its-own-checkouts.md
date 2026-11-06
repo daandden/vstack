@@ -1,4 +1,4 @@
-# vstack requires ovnfs for isolated work and its own separate checkouts
+# ADR 0059: vstack requires ovnfs for isolated work and its own separate checkouts
 
 Starting with omp 18.17, isolated subagents run in ovnfs checkouts whenever the `ovnfs` binary is found and `isolation.backend` is `auto`, and omp tells agents to open ovnfs checkouts instead of running `git worktree add`. In the `omp-bash-wt-update` interview on 2026-11-06, the user chose ovnfs as vstack's only isolation backend. setup-vstack checks for ovnfs, isolated roles stop without it, and the worker locator drops the APFS clone layout that [ADR 0007](0007-isolated-subagents-write-artifacts-through-the-vstack-root.md) assumed.
 

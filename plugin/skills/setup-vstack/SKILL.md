@@ -51,7 +51,7 @@ Below, `machine.ts`, `project.ts`, and `migrate.ts` stand for these commands.
    - 6, `task.isolation.enabled` is on (ADR 0007). Skills that need an isolated subagent stop without it.
    - 7, `worktree.clone` is on. It serves the `omp wt add` fallback, `/wt`, and PR checkouts.
    - 8, `ratchet.enabled` is on (ADR 0041). Ratchet optionally improves an LLM flow against approved cases. Disabled Ratchet only warns, so Leave it still passes a machine with no other failures. An unavailable setting also warns with an omp 18.4.5-or-later upgrade remedy, not a setting change.
-   - 9, an executable `ovnfs` is available through omp's `ovnfs.path`, or on PATH when that setting is unset (ADR 0058). Without it, isolated roles and vstack's separate checkouts stop. The remedy installs ovnfs or corrects its configured path.
+   - 9, an executable `ovnfs` is available through omp's `ovnfs.path`, or on PATH when that setting is unset (ADR 0059). Without it, isolated roles and vstack's separate checkouts stop. The remedy installs ovnfs or corrects its configured path.
    - 10, `isolation.backend` is `auto`, so omp uses ovnfs for isolated subagents. Another backend fails even when ovnfs is installed.
    - 11, `bash.gitGuard` is on. This optional check warns when it is off. Before offering Set it, explain that it is machine-wide: it also refuses git commands that discard or move work in main checkouts in the user's non-vstack sessions.
 
