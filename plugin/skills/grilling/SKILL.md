@@ -11,7 +11,7 @@ Follow `skill://flow-page`'s "Stage entry/exit line" for a grilling run. When a 
 
 Facts from files and tools are your job, not the user's. Resolve the vstack root using the project mode before assigning exploration. A running exploration is an unsettled prerequisite: only its downstream decisions wait; the rest of the frontier proceeds.
 
-Size each decision's costs before asking its question, as you would any environment fact. Measure them or read records such as session usage. For each option in Flow and chat rounds, state tokens or money per use, how often each cost recurs, and how it grows with input size. Restate inherited costs with their size when an option depends on an earlier pick. If a cost cannot be sized, report it as unsized and say what is missing, rather than as none.
+Apply this principle to options in Flow and chat rounds. Present material trade-offs accurately and concretely. When a cost matters to the decision and can be estimated, state its approximate size in appropriate units. If it cannot be estimated, say so. Include significant costs carried over from earlier decisions when they affect the option.
 
 For frontend motion audits or planning, read skill://good-css and its conditional audit references before gathering findings. Pass that requirement in delegated frontend exploration briefs. Keep source analysis read-only, separate defects from additive opportunities and rejected candidates, and use this owner's existing Flow round for explicit selection. Headless recommendations never authorize a selected change.
 
