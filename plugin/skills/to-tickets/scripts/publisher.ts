@@ -2,11 +2,12 @@ import { createHash, randomUUID } from "node:crypto";
 import { open, mkdir, readFile, rename, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { trackerFor, type Connection, type Issue, KnownFailure } from "./trackers.ts";
+import { normalizedBody, bodyDiff } from "./body.ts";
 
 export type Ticket = { key: string; title: string; body: string; labels: string[]; parent?: { local: string } | { external: string }; blockedBy?: string[] };
 export type Description = { version: 1; tracker: Record<string, unknown> & { mode: string; readiness: string }; tickets: Ticket[] };
 type Operation = { ticket: string; kind: string; state: "pending" | "succeeded" | "failed" | "uncertain"; detail?: unknown; at: string };
-type SavedTicket = { id?: string; baseline?: string[]; attemptedAt?: string; verified?: boolean; ready?: boolean };
+type SavedTicket = { id?: string; baseline?: string[]; attemptedAt?: string; verified?: boolean; ready?: boolean; readinessBefore?: string[] };
 type RecordFile = { version: 1; digest: string; intent: Description; tickets: Record<string, SavedTicket>; operations: Operation[]; owner?: string; status: string; problem?: unknown };
 export type Receipt = { status: string; record: string; tickets: Record<string, SavedTicket>; problem?: unknown };
 export class PublicationError extends Error {
@@ -72,14 +73,25 @@ async function locked<T>(path: string, run: () => Promise<T>): Promise<T> {
   try { await lock.writeFile(String(process.pid)); await lock.sync(); return await run(); }
   finally { await lock.close(); await rm(`${path}.lock`); }
 }
-function approvedFields(issue: Issue, ticket: Ticket, readiness: string) {
-  return issue.title === ticket.title && issue.body === ticket.body && same(sorted(issue.labels.filter(l => l !== readiness)), sorted(ticket.labels));
-}
 async function execute(path: string, record: RecordFile, connection?: Connection): Promise<Receipt> {
   const save = () => durable(path, record);
+  const approvedBodies = new Map<string, string>();
+  const matchesBody = (body: string, ticket: Ticket) => {
+    if (body === ticket.body) return true;
+    if (record.intent.tracker.mode !== "mcp") return false;
+    let expected = approvedBodies.get(ticket.key);
+    if (expected === undefined) { expected = normalizedBody(ticket.body); approvedBodies.set(ticket.key, expected); }
+    return normalizedBody(body) === expected;
+  };
+  const approvedFields = (issue: Issue, ticket: Ticket) =>
+    issue.title === ticket.title && matchesBody(issue.body, ticket) && same(sorted(issue.labels), sorted(ticket.labels));
+  const mismatch = (issue: Issue, ticket: Ticket) => ({
+    actual: issue,
+    ...(!matchesBody(issue.body, ticket) ? { bodyDiff: bodyDiff(ticket.body, issue.body) } : {}),
+  });
   try {
     const tracker = await trackerFor(record.intent.tracker, connection);
-    await tracker.check();
+    await tracker.check(record.intent.tickets);
     const owner = await tracker.owner();
     if (record.owner && record.owner !== owner) throw new PublicationError("ownership", "Resume must use the original tracker identity");
     record.owner = owner; await save();
@@ -89,46 +101,62 @@ async function execute(path: string, record: RecordFile, connection?: Connection
       try { const result = await effect(); op.state = "succeeded"; op.detail = result; await save(); return result; }
       catch (error) { op.state = error instanceof KnownFailure ? "failed" : "uncertain"; op.detail = String(error); await save(); throw error; }
     };
-    for (const ticket of record.intent.tickets) {
+    const parentFor = (ticket: Ticket) => ticket.parent ? "local" in ticket.parent ? record.tickets[ticket.parent.local].id : ticket.parent.external : undefined;
+    const byKey = new Map(record.intent.tickets.map(ticket => [ticket.key, ticket]));
+    const creationOrder: Ticket[] = [], ordered = new Set<string>();
+    const order = (ticket: Ticket) => {
+      if (ordered.has(ticket.key)) return;
+      if (ticket.parent && "local" in ticket.parent) order(byKey.get(ticket.parent.local)!);
+      ordered.add(ticket.key);
+      creationOrder.push(ticket);
+    };
+    for (const ticket of record.intent.tickets) order(ticket);
+    for (const ticket of creationOrder) {
       const saved = record.tickets[ticket.key];
       if (saved.id) continue;
       const lastCreate = record.operations.findLast(op => op.ticket === ticket.key && op.kind === "create");
       if (lastCreate && lastCreate.state !== "failed") {
         if (tracker.idempotentCreate) {
           await operation(ticket.key, "idempotent-create", async () => {
-            const issue = await tracker.create(ticket, `${record.digest}:${ticket.key}`);
+            const issue = await tracker.create(ticket, `${record.digest}:${ticket.key}`, parentFor(ticket));
             saved.id = issue.id;
             return { id: issue.id };
           });
           continue;
         }
-        const candidates = (await tracker.search(ticket)).filter(issue => !saved.baseline?.includes(issue.id) && issue.author === record.owner && Date.parse(issue.createdAt) >= Date.parse(saved.attemptedAt!) && approvedFields(issue, ticket, record.intent.tracker.readiness) && !issue.labels.includes(record.intent.tracker.readiness));
+        const candidates = (await tracker.search(ticket, "reconciliation")).filter(issue => !saved.baseline?.includes(issue.id) && issue.author === record.owner && Date.parse(issue.createdAt) >= Date.parse(saved.attemptedAt!) && approvedFields(issue, ticket) && !issue.readiness.includes(record.intent.tracker.readiness));
         if (candidates.length !== 1) throw new PublicationError("reconciliation", "Uncertain creation requires exactly one owned matching candidate; no create was retried", { ticket: ticket.key, candidates });
         saved.id = candidates[0].id;
         record.operations.push({ ticket: ticket.key, kind: "reconcile", state: "succeeded", detail: { id: saved.id }, at: new Date().toISOString() });
         await save(); continue;
       }
-      saved.baseline = (await tracker.search(ticket)).map(issue => issue.id);
+      const existing = await tracker.search(ticket);
+      if (record.intent.tracker.mode === "mcp") {
+        const duplicates = existing.filter(issue => issue.title === ticket.title && matchesBody(issue.body, ticket));
+        if (duplicates.length) throw new PublicationError("duplicate-risk", `Approved ticket already exists for ${ticket.key}; no create was attempted`, { ticket: ticket.key, candidates: duplicates });
+      }
+      saved.baseline = existing.map(issue => issue.id);
       saved.attemptedAt = new Date(Math.floor(Date.now() / 1000) * 1000).toISOString(); await save();
       await operation(ticket.key, "create", async () => {
-        const issue = await tracker.create(ticket, `${record.digest}:${ticket.key}`);
+        const issue = await tracker.create(ticket, `${record.digest}:${ticket.key}`, parentFor(ticket));
         saved.id = issue.id;
         return { id: issue.id };
       });
     }
     const required = (ticket: Ticket) => ({
-      parent: ticket.parent ? "local" in ticket.parent ? record.tickets[ticket.parent.local].id! : ticket.parent.external : undefined,
+      parent: parentFor(ticket),
       blockedBy: (ticket.blockedBy ?? []).map(key => record.tickets[key].id!),
     });
     const verify = (issue: Issue, ticket: Ticket) => {
       const expected = required(ticket);
-      if (!approvedFields(issue, ticket, record.intent.tracker.readiness) || issue.parent !== expected.parent || !same(sorted(issue.blockedBy), sorted(expected.blockedBy))) throw new PublicationError("readback", `Tracker state does not match approved content and relationships for ${ticket.key}`, { expected: { ...ticket, ...expected }, actual: issue });
+      if (!approvedFields(issue, ticket) || issue.parent !== expected.parent || !same(sorted(issue.blockedBy), sorted(expected.blockedBy))) throw new PublicationError("readback", `Tracker state does not match approved content and relationships for ${ticket.key}`, { expected: { ...ticket, ...expected }, ...mismatch(issue, ticket) });
     };
     for (const ticket of record.intent.tickets) {
       const saved = record.tickets[ticket.key], id = saved.id!, expected = required(ticket);
       let actual = await tracker.read(id);
-      if (!approvedFields(actual, ticket, record.intent.tracker.readiness)) throw new PublicationError("readback", `Approved fields changed for ${ticket.key}`, actual);
-      if (actual.labels.includes(record.intent.tracker.readiness) && !saved.ready && !record.operations.some(op => op.ticket === ticket.key && op.kind === "activate")) throw new PublicationError("premature-readiness", `Readiness appeared outside the publisher for ${ticket.key}`);
+      if (!approvedFields(actual, ticket)) throw new PublicationError("readback", `Approved fields changed for ${ticket.key}`, mismatch(actual, ticket));
+      if (record.intent.tracker.mode === "mcp" && actual.author !== record.owner) throw new PublicationError("ownership", `Created issue belongs to a different tracker identity for ${ticket.key}`, actual);
+      if (actual.readiness.includes(record.intent.tracker.readiness) && !saved.ready && !record.operations.some(op => op.ticket === ticket.key && op.kind === "activate")) throw new PublicationError("premature-readiness", `Readiness appeared outside the publisher for ${ticket.key}`);
       if (actual.parent && actual.parent !== expected.parent || actual.blockedBy.some(id => !expected.blockedBy.includes(id))) throw new PublicationError("readback", `Unapproved relationships for ${ticket.key}`, actual);
       if (expected.parent && !actual.parent) await operation(ticket.key, "parent", () => tracker.parent(id, expected.parent!));
       for (const blocker of expected.blockedBy) if (!actual.blockedBy.includes(blocker)) await operation(ticket.key, `blocked-by:${blocker}`, () => tracker.block(id, blocker));
@@ -139,9 +167,13 @@ async function execute(path: string, record: RecordFile, connection?: Connection
     for (const ticket of record.intent.tickets) {
       const saved = record.tickets[ticket.key], id = saved.id!;
       const actual = await tracker.read(id); verify(actual, ticket);
-      if (!actual.labels.includes(record.intent.tracker.readiness)) await operation(ticket.key, "activate", () => tracker.activate(id, record.intent.tracker.readiness));
+      if (saved.readinessBefore?.some(value => !actual.readiness.includes(value))) throw new PublicationError("readback", `Readiness field lost prior values for ${ticket.key}`, actual);
+      if (!actual.readiness.includes(record.intent.tracker.readiness)) {
+        saved.readinessBefore = [...actual.readiness]; await save();
+        await operation(ticket.key, "activate", () => tracker.activate(id, record.intent.tracker.readiness));
+      }
       const activated = await tracker.read(id); verify(activated, ticket);
-      if (!activated.labels.includes(record.intent.tracker.readiness)) throw new PublicationError("readback", `Readiness was not applied for ${ticket.key}`);
+      if (!activated.readiness.includes(record.intent.tracker.readiness) || saved.readinessBefore?.some(value => !activated.readiness.includes(value))) throw new PublicationError("readback", `Readiness was not applied or prior values were lost for ${ticket.key}`);
       saved.ready = true; await save();
     }
     record.status = "complete"; delete record.problem; await save();

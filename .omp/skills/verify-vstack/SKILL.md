@@ -141,6 +141,7 @@ Never stop a process because of its name. Never delete the run dir itself. The `
 All paths are relative to `SKILL_DIR`.
 
 - `scripts/drive.ts`: one omp RPC session on the run's throwaway home, against the stub model. See Launch.
+- `scripts/ticket-publication.ts <source checkout> <new evidence dir> [fixture checkout] [complete|blocked]`: drives the public publisher API with the documented MCP binding and captured provider fixtures. Use `features/ticket-publication.md`.
 - `scripts/flow-questions-tui.py --checkout <checkout> --omp-tools <plugin path> --run <new run> --case tui|timeout|cancel|retry|later-round|offline|abort|ratchet [--tern]`: drives the UI-only Flow panel beside the unchanged picker. `--tern` retains native trees, full-resolution lossless WebP shots, a real panel-link click and its browser destination, the panel's removal, keyboard inputs, session history, model requests, and a Flow export. The later-round case publishes and answers a new question after recording the first round's answers. The Ratchet case uses its actual eval prelude and verifies reused approval. Use `features/flow-page.md`.
 - `scripts/load.sh <checkout> <run dir>`: the repo's load gate for one run. See Launch.
 - `scripts/doctor.sh <checkout> <run dir>`: the read-only Doctor check. See Doctor.

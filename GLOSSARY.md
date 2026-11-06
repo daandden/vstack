@@ -148,6 +148,10 @@ _Avoid_: goal, target, finish line
 The service that holds a repo's remote and its PRs, such as GitHub, GitLab, or Bitbucket. It is a separate choice from the issue tracker: a repo on Bitbucket can track its issues in Jira.
 _Avoid_: git host, VCS host, forge
 
+**MCP binding**:
+Which tool of an MCP issue tracker to-tickets uses for each tracker action, what each call receives from the approved tickets and project facts, and where a read finds each issue field. The agent drafts it from the server's live tool descriptions, and the user approves it with the ticket breakdown. The publisher checks it against the live server before it publishes or resumes.
+_Avoid_: tool discovery, tool map, route (routes belong to CLI trackers)
+
 **Landing method**:
 How ship merges a PR into its target, named as the Code host names it, such as `rebase` or `squash` on GitHub and `ff` on GitLab. The user picks it once per project from the methods the Code host allows.
 _Avoid_: merge method, merge strategy, ship method
