@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.21] - 2026-11-06
+
+- grill-with-docs specifies the Architecture brief's provenance syntax: link each explicit answer by its question anchor and cite each applicable ADR as a Document citation of its file. The Flow page already supported these links, but the skill did not name the syntax.
+
 ## [9.0.20] - 2026-11-07
 
 - setup-vstack recommends the `merge` Landing method on GitHub instead of `rebase`. GitHub refused `gh pr merge --rebase` on PRs whose branches had merged the default branch in, which the End state chain does on every branch update, so ship stopped to ask for another method. Projects that already store `rebase` keep it (ADR 0060).
