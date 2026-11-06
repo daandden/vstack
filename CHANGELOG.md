@@ -8,6 +8,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 - Make Flow questions self-contained, move shared session-review boundaries into the Background, and replace the findings table with a linked index (#347).
 - Fold Today sources behind one disclosure and refuse new rounds with repeated descriptions, reader needs, or option explanations, ignoring finding numbers while preserving stored questions (#347).
+- flow-page keeps reading the Flow host's publication hold, so the host stays up while a publication waits on Bun 1.4, which closes an unread fetch response after about a second.
 
 ## [9.0.20] - 2026-11-07
 
