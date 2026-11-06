@@ -51,7 +51,7 @@ export interface OvnfsCheckout {
   source: string;
 }
 
-export function ovnfsListing(): { ok: boolean; checkouts: OvnfsCheckout[]; reason?: string } {
+export function ovnfsListing(): { ok: boolean; checkouts: OvnfsCheckout[]; command?: string; reason?: string } {
   try {
     let binary = Bun.which("ovnfs");
     if (!binary) {
@@ -69,7 +69,7 @@ export function ovnfsListing(): { ok: boolean; checkouts: OvnfsCheckout[]; reaso
       name: entry.name, path: canonical(entry.path), source: canonical(entry.source),
     }));
     if (new Set(checkouts.map((entry) => entry.name)).size !== checkouts.length) throw new Error("duplicate ovnfs checkout names");
-    return { ok: true, checkouts };
+    return { ok: true, checkouts, command: binary };
   } catch (error) {
     return { ok: false, checkouts: [], reason: String(error) };
   }
@@ -223,4 +223,64 @@ export function checkoutEntry(path: string, base: string, listing: { ok: boolean
   const relative = entry.slice(base.length + 1).split(sep);
   if (relative.length > 2 || !lstat(entry)?.isDirectory() || (listing.ok && !listing.paths.has(entry))) return undefined;
   return lstat(join(path, ".git")) ? entry : undefined;
+}
+
+export interface OvnfsCleanupLocation {
+  path: string;
+  entry: string;
+  kind: "ovnfs";
+  gaps: string[];
+  name: string;
+  source: string;
+  record?: string;
+}
+
+export function cleanupOvnfsLocations(
+  base: string,
+  listing: ReturnType<typeof ovnfsListing>,
+  projectPaths: Set<string>,
+): OvnfsCleanupLocation[] {
+  const records = new Map<string, { file: string; gap?: string }>();
+  if (lstat(base)?.isDirectory()) {
+    for (const name of readdirSync(base)) {
+      const file = join(base, name, ".omp-ovnfs-checkout.json");
+      if (!lstat(file)?.isFile()) continue;
+      try {
+        const value = JSON.parse(readFileSync(file, "utf8"));
+        if (typeof value.checkout !== "string") continue;
+        const gap = typeof value.command !== "string" || !value.command ? `invalid ovnfs run record: ${file}` : undefined;
+        records.set(value.checkout, { file, gap });
+      } catch {}
+    }
+  }
+  const known = new Set([...projectPaths].map(canonical));
+  let changed: boolean;
+  do {
+    changed = false;
+    for (const checkout of listing.checkouts) {
+      if (known.has(checkout.source) && !known.has(checkout.path)) {
+        known.add(checkout.path);
+        changed = true;
+      }
+    }
+  } while (changed);
+  return listing.checkouts.filter((checkout) => checkout.name.startsWith("omp-")).flatMap((checkout) => {
+    const record = records.get(checkout.name);
+    const belongs = known.has(checkout.source);
+    if (!belongs && lstat(checkout.source)?.isDirectory()) {
+      try {
+        const paths = run(["git", "-C", checkout.source, "worktree", "list", "--porcelain"]);
+        if (paths.split("\n").some((line) => line.startsWith("worktree ")) && projectPaths.size) return [];
+      } catch {}
+    }
+    return [{
+      path: checkout.path, entry: checkout.path, kind: "ovnfs" as const, name: checkout.name,
+      source: checkout.source, record: record?.file,
+      gaps: [
+        ...(!belongs ? [`cannot establish ovnfs checkout origin: ${checkout.source}`] : []),
+        ...(!lstat(checkout.path)?.isDirectory() ? [`ovnfs checkout directory is missing: ${checkout.path}`] : []),
+        ...(record?.gap ? [record.gap] : []),
+      ],
+    }];
+  });
 }

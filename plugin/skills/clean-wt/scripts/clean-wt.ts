@@ -3,7 +3,7 @@ import { homedir, tmpdir } from "node:os";
 import { basename, dirname, join, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
 import { createHash } from "node:crypto";
-import { checkoutEntry, checkoutLocations, cleanupListing, defaultCheckoutBase, scanCheckoutLocations, taskMarker, type CheckoutLocation } from "../../vstack-fan-out/scripts/checkout-locator.ts";
+import { checkoutEntry, checkoutLocations, cleanupListing, cleanupOvnfsLocations, defaultCheckoutBase, ovnfsListing, scanCheckoutLocations, taskMarker, type CheckoutLocation, type OvnfsCleanupLocation } from "../../vstack-fan-out/scripts/checkout-locator.ts";
 
 function usage(message: string): never {
   process.stderr.write(`clean-wt: ${message}\n`);
@@ -217,6 +217,8 @@ let sessionHeaders: SessionHeader[] = [];
 let leases: Leases = { ok: false, held: new Map(), unknown: new Map() };
 let cwds: { ok: boolean; reason?: string; list: ProcessCwd[] } = { ok: false, list: [] };
 let listing: { ok: boolean; reason?: string; paths: Set<string> } = { ok: false, paths: new Set() };
+let ovnfs: ReturnType<typeof ovnfsListing> = { ok: false, checkouts: [] };
+let ovnfsLocations: OvnfsCleanupLocation[] = [];
 let evidenceGaps: string[] = [];
 
 /** Why the run cannot trust a free lease: it must see its own session's held lease and session file, and every held lease's session. */
@@ -255,7 +257,23 @@ function gatherEvidence() {
     }
   }
   cwds = processCwds();
-  evidenceGaps = [leaseDetectionGap(), cwds.ok ? undefined : cwds.reason, listing.ok ? undefined : listing.reason].filter((g): g is string => !!g);
+  ovnfs = ovnfsListing();
+  const projectPaths = new Set(run(["git", "worktree", "list", "--porcelain"]).out.split("\n").filter((line) => line.startsWith("worktree ")).map((line) => realpath(line.slice(9)) || resolve(line.slice(9))));
+  let added: boolean;
+  do {
+    added = false;
+    for (const header of sessionHeaders) {
+      if (projectPaths.has(header.cwd)) continue;
+      const parentFile = `${dirname(header.file)}.jsonl`;
+      const parent = sessionHeaders.find((candidate) => candidate.file === parentFile);
+      if (parent && projectPaths.has(parent.cwd)) {
+        projectPaths.add(header.cwd);
+        added = true;
+      }
+    }
+  } while (added);
+  ovnfsLocations = cleanupOvnfsLocations(base, ovnfs, projectPaths);
+  evidenceGaps = [leaseDetectionGap(), cwds.ok ? undefined : cwds.reason, listing.ok ? undefined : listing.reason, ovnfs.ok ? undefined : ovnfs.reason].filter((g): g is string => !!g);
 }
 
 interface Owner {
@@ -266,7 +284,7 @@ interface Owner {
   command?: string;
 }
 
-type Kind = "linked-worktree" | "orphaned-worktree" | "task-isolation" | "standalone-clone";
+type Kind = "linked-worktree" | "orphaned-worktree" | "task-isolation" | "standalone-clone" | "ovnfs";
 type Verdict = "owned" | "uncertain" | "unused";
 type State = "clean" | "dirty" | "unknown" | "not checked";
 
@@ -287,6 +305,7 @@ interface Checkout {
   integration?: Integration;
   automatic?: boolean;
   source_git_dir?: string;
+  ovnfs?: { name: string; source: string; record?: string };
 }
 
 /** An owner keeps a checkout. Without one, any missing evidence keeps it as uncertain. */
@@ -378,6 +397,17 @@ function mainCheckout(commonDir: string): string | null {
 }
 
 function sourceOf(path: string, entry: string, kind: Kind): Source | null {
+  if (kind === "ovnfs") {
+    const location = ovnfsLocations.find((location) => location.path === path);
+    if (!location) return null;
+    const candidates = [location.source, ...run(["git", "worktree", "list", "--porcelain"]).out.split("\n").filter((line) => line.startsWith("worktree ")).map((line) => line.slice(9))];
+    for (const checkout of candidates) {
+      if (!lstat(checkout)?.isDirectory()) continue;
+      const result = run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], checkout);
+      if (result.code === 0) return { commonDir: result.out.trim(), checkout };
+    }
+    return null;
+  }
   if (kind === "linked-worktree") {
     const commonDir = run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], path).out.trim();
     const main = commonDir ? mainCheckout(commonDir) : null;
@@ -769,8 +799,16 @@ function removeTree(entry: string) {
   rmSync(entry, { recursive: true });
 }
 
-function inspectLocation(location: CheckoutLocation): Checkout {
+function inspectLocation(location: CheckoutLocation | OvnfsCleanupLocation): Checkout {
   const { path, entry, kind, gaps } = location;
+  if (kind === "ovnfs") {
+    const recordEntry = location.record ? dirname(location.record) : undefined;
+    const task = recordEntry && lstat(join(recordEntry, ".omp-isolation-owner.json")) ? taskOwner(recordEntry) : {};
+    const checkout = inspect(path, entry, kind, task.owner ? [task.owner] : [], [...gaps, ...(task.gap ? [task.gap] : [])]);
+    checkout.ovnfs = { name: location.name, source: location.source, record: location.record };
+    if (checkout.fingerprint) checkout.fingerprint = createHash("sha256").update(JSON.stringify([checkout.fingerprint, checkout.ovnfs, location.record ? contentStamp(location.record) : null])).digest("hex");
+    return checkout;
+  }
   if (kind === "worktree") {
     const { gitdir, exists } = registeredGitDir(path);
     return exists ? inspect(path, entry, "linked-worktree", [], gaps) : inspectOrphan(path, gitdir);
@@ -783,10 +821,12 @@ function inspectLocation(location: CheckoutLocation): Checkout {
 }
 
 function scan(): Checkout[] {
-  return scanCheckoutLocations(base, listing).map(inspectLocation);
+  return [...scanCheckoutLocations(base, listing), ...ovnfsLocations].map(inspectLocation);
 }
 
 function rescan(entry: string, path: string): Checkout | undefined {
+  const ovnfsLocation = ovnfsLocations.find((location) => location.path === path && location.entry === entry);
+  if (ovnfsLocation) return inspectLocation(ovnfsLocation);
   if (listing.ok && !listing.paths.has(entry)) return undefined;
   if (!lstat(entry)?.isDirectory()) return undefined;
   const location = checkoutLocations(entry)?.find((location) => location.path === path);
@@ -794,6 +834,7 @@ function rescan(entry: string, path: string): Checkout | undefined {
 }
 
 function entryFor(path: string): string | undefined {
+  if (ovnfsLocations.some((location) => location.path === path)) return path;
   return checkoutEntry(path, base, listing);
 }
 
@@ -843,7 +884,14 @@ function removeAll() {
     }
     try {
       let method: string;
-      if (c.kind === "linked-worktree") {
+      if (c.kind === "ovnfs") {
+        if (!ovnfs.ok || !ovnfs.command || !c.ovnfs) throw new Error("ovnfs identity is unavailable");
+        method = "ovnfs rm";
+        const result = run([ovnfs.command, "--json", "rm", c.ovnfs.name]);
+        if (result.code !== 0) throw new Error(result.err.trim() || `ovnfs rm exit ${result.code}`);
+        const after = ovnfsListing();
+        if (!after.ok || after.checkouts.some((checkout) => checkout.name === c.ovnfs!.name || checkout.path === c.path)) throw new Error("ovnfs removal could not be verified");
+      } else if (c.kind === "linked-worktree") {
         const commonDir = run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], c.path).out.trim();
         const force = c.state !== "clean";
         method = force ? "git worktree remove --force" : "git worktree remove";

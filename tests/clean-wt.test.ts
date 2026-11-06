@@ -7,6 +7,7 @@ import { ENV, git } from "./support/fixture.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "clean-wt", "scripts", "clean-wt.ts");
 const FAKE_OMP = join(import.meta.dir, "support", "fake-omp-worktree.ts");
+const FAKE_OVNFS = join(import.meta.dir, "support", "fake-ovnfs.ts");
 const OWN = "own-session-0001";
 
 let dir: string;
@@ -15,6 +16,7 @@ let sessions: string;
 let owners: string;
 let repo: string;
 let holders: Subprocess[];
+let ovnfsRoot: string;
 
 beforeEach(async () => {
   dir = realpathSync(mkdtempSync(join(tmpdir(), "clean-wt-test-")));
@@ -34,6 +36,10 @@ beforeEach(async () => {
   git(repo, "commit", "-q", "-m", "init");
   mkdirSync(join(dir, "bin"));
   writeFileSync(join(dir, "bin", "omp"), `#!/bin/sh\nexec bun ${JSON.stringify(FAKE_OMP)} "$@"\n`, { mode: 0o755 });
+  ovnfsRoot = join(dir, "checkouts");
+  mkdirSync(ovnfsRoot);
+  writeFileSync(join(ovnfsRoot, "checkouts.json"), "[]");
+  writeFileSync(join(dir, "bin", "ovnfs"), `#!/bin/sh\nexec bun ${JSON.stringify(FAKE_OVNFS)} "$@"\n`, { mode: 0o755 });
   session(OWN, dir);
   await holdLease(OWN);
 });
@@ -78,13 +84,13 @@ function session(id: string, cwd: string, rel = `-${id}/2026-10-21T00-00-00-000Z
 }
 
 function cleanWt(args: string[], env: Record<string, string | undefined> = {}) {
-  const merged: Record<string, string> = { ...ENV, PI_SESSION_ID: OWN, PATH: `${join(dir, "bin")}:${ENV.PATH}` };
+  const merged: Record<string, string> = { ...ENV, PI_SESSION_ID: OWN, PATH: `${join(dir, "bin")}:${ENV.PATH}`, FAKE_OVNFS_ROOT: ovnfsRoot, FAKE_GIT: Bun.which("git")! };
   for (const [k, v] of Object.entries(env)) {
     if (v === undefined) delete merged[k];
     else merged[k] = v;
   }
   const r = Bun.spawnSync(["bun", SCRIPT, ...args, "--base", base, "--sessions", sessions, "--session-owners", owners], {
-    cwd: dir,
+    cwd: repo,
     env: merged,
     stdout: "pipe",
     stderr: "pipe",
@@ -875,4 +881,144 @@ test("shared prepared source facts support separate target comparisons but never
   } finally {
     chmodSync(join(unrelated, ".git"), 0o644);
   }
+});
+
+function ovnfsCheckout(name: string, source = repo) {
+  const path = join(ovnfsRoot, name);
+  const gitDir = join(ovnfsRoot, `${name}.git-private`);
+  git(dir, "clone", "-q", "--no-hardlinks", "--separate-git-dir", gitDir, repo, path);
+  const file = join(ovnfsRoot, "checkouts.json");
+  const entries = JSON.parse(readFileSync(file, "utf8"));
+  entries.push({ name, path, source, dirty: false, git: gitDir });
+  writeFileSync(file, JSON.stringify(entries));
+  return path;
+}
+
+test("inventory finds omp ovnfs checkouts outside the base and protects unknown origins", () => {
+  const path = ovnfsCheckout("omp-kept-123");
+  const unknown = ovnfsCheckout("omp-unknown-456", join(dir, "missing-source"));
+  const custom = ovnfsCheckout("personal-checkout");
+  const inv = inventory();
+  expect(inv[path]).toMatchObject({ kind: "ovnfs", entry: path, verdict: "unused", state: "clean", automatic: true });
+  expect(inv[unknown]).toMatchObject({ kind: "ovnfs", verdict: "uncertain", state: "not checked" });
+  expect(inv[custom]).toBeUndefined();
+});
+
+test("clean unused ovnfs checkouts are removed through ovnfs rm", () => {
+  const path = ovnfsCheckout("omp-clean-123");
+  const c = inventory()[path];
+  const out = remove(`${path}=${c.fingerprint}`);
+  expect(out).toEqual({ removed: [{ path, method: "ovnfs rm" }], skipped: [], failed: [] });
+  expect(existsSync(path)).toBe(false);
+  expect(JSON.parse(readFileSync(join(ovnfsRoot, "checkouts.json"), "utf8"))).toEqual([]);
+  const calls = readFileSync(join(ovnfsRoot, "calls.jsonl"), "utf8").trim().split("\n").map((line) => JSON.parse(line));
+  expect(calls.some((call) => call.args.join(" ") === "--json rm omp-clean-123")).toBe(true);
+  expect(git(repo, "status", "--porcelain")).toBe("");
+});
+
+test("ovnfs origin follows project worktrees and archived isolated sources, not other projects", () => {
+  const linked = linkedWorktree("source-worktree");
+  const fromWorktree = ovnfsCheckout("omp-from-worktree", linked);
+  const ancestor = ovnfsCheckout("omp-old-worker");
+  const nested = ovnfsCheckout("omp-nested", ancestor);
+  const oldPath = join(ovnfsRoot, "omp-removed-source");
+  const parentFile = session("project-session", repo);
+  session("old-worker", oldPath, `${parentFile.slice(sessions.length + 1, -6)}/worker.jsonl`);
+  const fromRemoved = ovnfsCheckout("omp-from-removed", oldPath);
+  rmSync(linked, { recursive: true });
+  const other = join(dir, "other");
+  mkdirSync(other);
+  git(other, "init", "-q", "-b", "main");
+  const foreign = ovnfsCheckout("omp-foreign", other);
+  const inv = inventory();
+  for (const path of [fromWorktree, nested, fromRemoved]) expect(inv[path]).toMatchObject({ kind: "ovnfs", verdict: "unused", state: "clean" });
+  expect(inv[foreign]).toBeUndefined();
+});
+
+test("ovnfs removal binds its checkout identity as well as work bytes", () => {
+  const path = ovnfsCheckout("omp-original");
+  const c = inventory()[path];
+  const state = join(ovnfsRoot, "checkouts.json");
+  const entries = JSON.parse(readFileSync(state, "utf8"));
+  entries[0].name = "omp-replacement";
+  writeFileSync(state, JSON.stringify(entries));
+  const out = remove(`${path}=${c.fingerprint}`);
+  expect(out.removed).toEqual([]);
+  expect(out.skipped).toEqual([{ path, reason: "it changed since the inventory" }]);
+  expect(existsSync(path)).toBe(true);
+});
+
+test("ovnfs guards protect live owners, private Git work, ignored files, stashes and unique commits despite an empty diff", async () => {
+  const owned = ovnfsCheckout("omp-owned");
+  session("ovnfs-live", owned);
+  await holdLease("ovnfs-live");
+  const dirty = ovnfsCheckout("omp-dirty");
+  writeFileSync(join(dirty, "README.md"), "unstaged\n");
+  writeFileSync(join(dirty, "staged.txt"), "staged\n");
+  git(dirty, "add", "staged.txt");
+  writeFileSync(join(dirty, "draft.txt"), "untracked\n");
+  writeFileSync(join(dirty, ".env"), "unique ignored\n");
+  const gitDir = git(dirty, "rev-parse", "--absolute-git-dir");
+  writeFileSync(join(gitDir, "info", "exclude"), "private.txt\n");
+  writeFileSync(join(dirty, "private.txt"), "unique excluded\n");
+  const history = ovnfsCheckout("omp-history");
+  writeFileSync(join(history, "only.txt"), "commit\n");
+  git(history, "add", "only.txt");
+  git(history, "commit", "-qm", "unique");
+  const commit = git(history, "rev-parse", "HEAD");
+  writeFileSync(join(history, "README.md"), "stash\n");
+  git(history, "stash", "-q");
+  const stash = git(history, "rev-parse", "stash@{0}");
+  const diff = Bun.spawnSync(["bun", FAKE_OVNFS, "--json", "diff", "omp-dirty"], { env: { ...ENV, FAKE_OVNFS_ROOT: ovnfsRoot } });
+  expect(JSON.parse(diff.stdout.toString())).toEqual({ changes: [] });
+  const inv = inventory();
+  expect(inv[owned]).toMatchObject({ verdict: "owned", state: "not checked" });
+  expect(inv[dirty]).toMatchObject({ verdict: "unused", state: "dirty", automatic: false, changes: {
+    staged: ["staged.txt"], unstaged: ["README.md"], untracked: ["draft.txt"], ignored_unique: [".env", "private.txt"],
+  } });
+  expect(inv[history].unique_history).toEqual([{ ref: "refs/heads/main", sha: commit }, { ref: "stash@{0}", sha: stash }]);
+  const blocked = remove(`${dirty}=${inv[dirty].fingerprint}`, "--approve", history, `${history}=${inv[history].fingerprint}`);
+  expect(blocked.removed).toEqual([]);
+  expect(blocked.skipped.map((entry) => entry.path)).toEqual([dirty, history]);
+  expect(existsSync(owned) && existsSync(dirty) && existsSync(history)).toBe(true);
+  const approved = remove("--approve", dirty, `${dirty}=${inv[dirty].fingerprint}`);
+  expect(approved.removed).toEqual([{ path: dirty, method: "ovnfs rm" }]);
+  expect(existsSync(gitDir)).toBe(false);
+});
+
+test("ovnfs ownership and byte guards are refreshed before removal", () => {
+  const owned = ovnfsCheckout("omp-late-owner");
+  const changed = ovnfsCheckout("omp-late-edit");
+  const inv = inventory();
+  const owner = Bun.spawn(["sleep", "600"], { cwd: owned });
+  holders.push(owner);
+  writeFileSync(join(changed, "README.md"), "new bytes\n");
+  const out = remove("--approve", changed, `${owned}=${inv[owned].fingerprint}`, `${changed}=${inv[changed].fingerprint}`);
+  expect(out.removed).toEqual([]);
+  expect(out.skipped[0]).toMatchObject({ path: owned });
+  expect(out.skipped[0].reason).toContain("in use");
+  expect(out.skipped[1]).toEqual({ path: changed, reason: "it changed since the inventory" });
+  expect(readFileSync(join(changed, "README.md"), "utf8")).toBe("new bytes\n");
+});
+
+test("ovnfs reports missing checkout directories as uncertain instead of trusting the listing", () => {
+  const path = ovnfsCheckout("omp-stale-listing");
+  rmSync(path, { recursive: true });
+  expect(inventory()[path]).toMatchObject({ kind: "ovnfs", verdict: "uncertain", state: "not checked" });
+});
+
+test("ovnfs unmerged contents remain protected even with approval and an empty diff", () => {
+  const path = ovnfsCheckout("omp-unmerged");
+  git(path, "checkout", "-qb", "side");
+  writeFileSync(join(path, "README.md"), "side\n");
+  git(path, "commit", "-qam", "side");
+  git(path, "checkout", "-q", "main");
+  writeFileSync(join(path, "README.md"), "main\n");
+  git(path, "commit", "-qam", "main");
+  Bun.spawnSync(["git", "merge", "side"], { cwd: path, env: ENV, stdout: "pipe", stderr: "pipe" });
+  const c = inventory()[path];
+  expect(c.changes.unmerged).toEqual(["README.md"]);
+  expect(c.automatic).toBe(false);
+  expect(remove("--approve", path, `${path}=${c.fingerprint}`).removed).toEqual([]);
+  expect(existsSync(path)).toBe(true);
 });
