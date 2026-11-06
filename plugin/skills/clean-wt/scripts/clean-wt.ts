@@ -3,6 +3,7 @@ import { homedir, tmpdir } from "node:os";
 import { basename, dirname, join, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
 import { createHash } from "node:crypto";
+import { checkoutEntry, checkoutLocations, cleanupListing, defaultCheckoutBase, scanCheckoutLocations, taskMarker, type CheckoutLocation } from "../../vstack-fan-out/scripts/checkout-locator.ts";
 
 function usage(message: string): never {
   process.stderr.write(`clean-wt: ${message}\n`);
@@ -55,15 +56,8 @@ const realpath = (p: string) => {
   }
 };
 
-function defaultBase(): string {
-  if (process.env.OMP_WORKTREE_DIR) return process.env.OMP_WORKTREE_DIR;
-  const r = run(["omp", "config", "get", "worktree.base"]);
-  const v = r.out.trim();
-  if (r.code === 0 && v && v !== "(not set)") return v.replace(/^~(?=$|\/)/, homedir());
-  return join(homedir(), ".omp", "wt");
-}
 
-const requestedBase = resolve(values.base ?? defaultBase());
+const requestedBase = resolve(values.base ?? defaultCheckoutBase(0));
 const base = realpath(requestedBase) || requestedBase;
 const ownersDir = resolve(values["session-owners"] ?? join(homedir(), ".omp", "run", "session-owners"));
 const sessionRoots = (values.sessions ?? [join(process.env.PI_CODING_AGENT_DIR ?? join(homedir(), ".omp", "agent"), "sessions")]).map((p) => resolve(p));
@@ -217,18 +211,6 @@ function heldLeases(ids: string[]): Leases {
   return { ok: true, held, unknown };
 }
 
-/** The entries that `omp worktree list --json` reports for the base. Nothing else under the base is a checkout of this run. */
-function ompListing(): { ok: boolean; reason?: string; paths: Set<string> } {
-  const r = run(["omp", "worktree", "list", "--json"], undefined, { ...process.env, OMP_WORKTREE_DIR: base });
-  try {
-    if (r.code !== 0) throw new Error(r.err.trim() || `exit ${r.code}`);
-    const entries: unknown = JSON.parse(r.out);
-    if (!Array.isArray(entries) || !entries.every((e) => typeof e?.path === "string")) throw new Error("unrecognized output");
-    return { ok: true, paths: new Set(entries.map((e: { path: string }) => realpath(e.path) || resolve(e.path))) };
-  } catch (e) {
-    return { ok: false, reason: `cannot read omp worktree list --json for ${base}: ${(e as Error).message}`, paths: new Set() };
-  }
-}
 
 const ownSession = process.env.PI_SESSION_ID;
 let sessionHeaders: SessionHeader[] = [];
@@ -250,7 +232,7 @@ function leaseDetectionGap(): string | undefined {
 }
 
 function gatherEvidence() {
-  listing = ompListing();
+  listing = cleanupListing(base);
   sessionHeaders = readSessions();
   leases = heldLeases([...sessionHeaders.map((s) => s.id), ...(ownSession ? [ownSession] : [])]);
   const buf = Buffer.alloc(1 << 16);
@@ -371,18 +353,10 @@ function pidAlive(pid: number): boolean {
   }
 }
 
-const TASK_MARKER = ".omp-isolation-owner.json";
-
 /** The live task that owns a sandbox, as omp's marker records it. A pid wearing a different start token is recycled. */
 function taskOwner(entry: string): { owner?: Owner; gap?: string } {
-  const file = join(entry, TASK_MARKER);
-  if (!lstat(file)) return { gap: `${file} is missing, so the run cannot tell whether a task still owns the sandbox` };
-  let marker: { pid?: unknown; id?: unknown; startToken?: unknown };
-  try {
-    marker = JSON.parse(readFileSync(file, "utf8"));
-  } catch (e) {
-    return { gap: `${file} is unreadable or malformed (${(e as Error).message})` };
-  }
+  const { file, marker, gap } = taskMarker(entry);
+  if (gap) return { gap };
   const { pid, id, startToken } = marker ?? {};
   if (typeof pid !== "number" || !Number.isInteger(pid) || pid <= 0) return { gap: `${file} names no valid pid` };
   if (!pidAlive(pid)) return {};
@@ -789,88 +763,38 @@ function inspect(path: string, entry: string, kind: Kind, entryOwners: Owner[], 
   return { ...common, state: work.state, changes: work.changes, unique_history, fingerprint, integration, automatic, source_git_dir };
 }
 
-const TASK_MOUNTS = ["m", "merged"];
-
-/** A retained task workspace on a mount backend needs omp's native teardown, which a plain removal would break. */
-function retainedMountGap(entry: string): string | undefined {
-  const file = join(entry, ".omp-retained-backend.json");
-  if (!lstat(file)) return undefined;
-  try {
-    const backend = JSON.parse(readFileSync(file, "utf8"))?.backend;
-    if (!Number.isInteger(backend)) return `${file} is malformed`;
-    // omp's IsoBackendKind: Btrfs 1, Overlayfs 4, Projfs 6.
-    if ([1, 4, 6].includes(backend)) return `${file} records a mount backend that needs omp's native teardown; remove it with omp worktree clear`;
-    return undefined;
-  } catch (e) {
-    return `${file} is unreadable (${(e as Error).message})`;
-  }
-}
-
 function removeTree(entry: string) {
   const st = lstat(entry);
   if (!st?.isDirectory() || !inside(entry, base) || entry === base) throw new Error(`refusing to remove ${entry}: not a dir under ${base}`);
   rmSync(entry, { recursive: true });
 }
 
-function classify(path: string, out: Checkout[]): boolean {
-  const git = lstat(join(path, ".git"));
-  if (git?.isFile()) {
+function inspectLocation(location: CheckoutLocation): Checkout {
+  const { path, entry, kind, gaps } = location;
+  if (kind === "worktree") {
     const { gitdir, exists } = registeredGitDir(path);
-    out.push(exists ? inspect(path, path, "linked-worktree", [], []) : inspectOrphan(path, gitdir));
-    return true;
+    return exists ? inspect(path, entry, "linked-worktree", [], gaps) : inspectOrphan(path, gitdir);
   }
-  const mounts = TASK_MOUNTS.filter((m) => lstat(join(path, m))?.isDirectory());
-  if (lstat(join(path, TASK_MARKER)) || mounts.length > 0) {
-    const { owner, gap } = taskOwner(path);
-    // Removal deletes the whole sandbox, so a sandbox is removable only when it holds a single checkout.
-    const multiMount = mounts.length > 1 ? `${path} holds both m and merged, and removing one would delete the other; check both before removing the sandbox by hand` : undefined;
-    const known = new Set([...TASK_MOUNTS, TASK_MARKER, ".omp-retained-backend.json"]);
-    const artifacts = readdirSync(path).filter((name) => !known.has(name));
-    const wrapperGap = artifacts.length > 0 ? `${path} holds unverified files outside its checkout (${artifacts.join(", ")})` : undefined;
-    const gaps = [gap, retainedMountGap(path), multiMount, wrapperGap].filter((g): g is string => !!g);
-    for (const m of mounts) out.push(inspect(join(path, m), path, "task-isolation", owner ? [owner] : [], gaps));
-    return true;
+  if (kind === "task-isolation") {
+    const { owner, gap } = taskOwner(entry);
+    return inspect(path, entry, kind, owner ? [owner] : [], [...(gap ? [gap] : []), ...gaps]);
   }
-  if (git?.isDirectory()) {
-    out.push(inspect(path, path, "standalone-clone", [], []));
-    return true;
-  }
-  return false;
+  return inspect(path, entry, kind, [], gaps);
 }
 
-/**
- * Inspects every checkout among the entries omp lists for the base, including omp's legacy layout one level down:
- * <base>/<encoded-project>/<branch-or-id>. Without omp's listing every dir is inspected, and the evidence gap keeps each one uncertain.
- */
 function scan(): Checkout[] {
-  const out: Checkout[] = [];
-  if (!lstat(base)?.isDirectory()) return out;
-  const listed = (p: string) => !listing.ok || listing.paths.has(p);
-  for (const name of readdirSync(base).sort()) {
-    const path = join(base, name);
-    if (!lstat(path)?.isDirectory()) continue;
-    if (listed(path) && classify(path, out)) continue;
-    for (const child of readdirSync(path).sort()) {
-      const childPath = join(path, child);
-      if (listed(childPath) && lstat(childPath)?.isDirectory()) classify(childPath, out);
-    }
-  }
-  return out;
+  return scanCheckoutLocations(base, listing).map(inspectLocation);
 }
 
 function rescan(entry: string, path: string): Checkout | undefined {
-  const out: Checkout[] = [];
   if (listing.ok && !listing.paths.has(entry)) return undefined;
-  if (lstat(entry)?.isDirectory()) classify(entry, out);
-  return out.find((c) => c.path === path);
+  if (!lstat(entry)?.isDirectory()) return undefined;
+  const location = checkoutLocations(entry)?.find((location) => location.path === path);
+  return location ? inspectLocation(location) : undefined;
 }
 
 function entryFor(path: string): string | undefined {
-  if (!inside(path, base) || path === base) return undefined;
-  const entry = TASK_MOUNTS.includes(basename(path)) && listing.paths.has(dirname(path)) ? dirname(path) : path;
-  const relative = entry.slice(base.length + 1).split(sep);
-  if (relative.length > 2 || !lstat(entry)?.isDirectory() || (listing.ok && !listing.paths.has(entry))) return undefined;
-  return lstat(join(path, ".git")) ? entry : undefined;
+  return checkoutEntry(path, base, listing);
 }
 
 function print(v: unknown) {
