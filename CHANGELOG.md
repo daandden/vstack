@@ -4,7 +4,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
-## [9.0.14] - 2026-11-06
+## [9.0.17] - 2026-11-06
 
 - The Verifier opens and removes its head checkout through the vstack-worktree script. Head preparation validates ovnfs checkouts with private Git directories and cloned fallback worktrees, refuses plain or unvalidated checkouts, and preserves the isolation and cleanup-error guards (#378).
 - babysit and ship run `watch-checks` with `timeout: 0`, and with `async: true` when other work remains, so long CI runs finish in one watch. GitHub and GitLab Code host templates carry the same rule. A returned watch still requires a fresh PR and review-thread read (#383).
@@ -17,6 +17,18 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 - Worker status locates ovnfs checkouts through omp's run record and the ovnfs listing. Removal proof requires saved pre-release identity, an observed release, and both the checkout and record gone. Unknown workers stay retained. Isolated roles stop without ovnfs and point at setup-vstack (#380).
 - clean-wt inventories this project's omp ovnfs checkouts, protects live owners, unknown origins, dirty contents, stashes, and unique commits, and removes eligible checkouts through `ovnfs rm`. Legacy APFS and Git worktree cleanup keeps its guards (#381).
 - Checkout scripts prefer the configured `ovnfs.path` over PATH, support revision checkouts from ovnfs parents without sharing Git directories, bound checkout names to ovnfs limits, and roll back a failed open with cleanup diagnostics (#373).
+
+## [9.0.16] - 2026-11-06
+
+- Publish MCP ticket batches through an agent-drafted binding approved with the tickets and validated against live schemas on publish and resume. Decode schema-declared FastMCP envelopes, exhaust approved search pagination, and check every same-project issue type for duplicate risk. Map flattened readbacks and directed links explicitly, preserve unrelated custom readiness values, and normalize MCP body comparisons (#369).
+
+## [9.0.15] - 2026-11-06
+
+- diagnosing-bugs rejects a green loop run when the fix removes or disables the channel its assertion watches. Re-point the assertion at the user's symptom, show red on unfixed code and green on fixed code, and name the assertion and both runs at hand-back. Phase 6 requires the matching Phase 5 proof (#259).
+
+## [9.0.14] - 2026-11-06
+
+- Require option costs in tokens or money per use, with recurrence and input-size growth, and restate sized costs inherited from earlier picks. Grilling measures costs or reads usage records before asking in Flow and chat rounds, and reports unsized costs with the missing facts (#257).
 
 ## [9.0.13] - 2026-11-06
 

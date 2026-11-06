@@ -36,7 +36,7 @@ items:
     tree: de4236cf34757c4e9ea7afe78d46c023213ff254
     disposition: adapt
     artifacts: [plugin/skills/diagnosing-bugs]
-    reason: "Its user questions go through ask (ask-tool, #58). Flow publication is conditional and chat keeps the full output (#321, ADR 0046)."
+    reason: "Its user questions go through ask (ask-tool, #58). Flow publication is conditional and chat keeps the full output (#321, ADR 0046). Reject vacuous loop passes and require symptom-based red and green proof when a fix removes the assertion's observation channel (#259)."
   - id: matt/domain-modeling
     upstream: matt
     kind: skill
@@ -116,7 +116,7 @@ items:
     tree: b32c94e5a51c24ee9c41fcb7fe9ea9fff9af6369
     disposition: adapt
     artifacts: [plugin/skills/to-tickets]
-    reason: "Finds the Flow by spec alias and publishes the ticket breakdown as a table Result before approval. Checks draft drift against close decisions, Assumed picks, and the spec through DRIFT-CHECK.md. MCP publication uses current descriptions, schemas, creation facts, labels, and directional blocking links. Tickets contain no inherited Addon pointers (#166, #223, #226, #263, #267, #207, ADR 0035)."
+    reason: "Publishes approved MCP bindings validated against live schemas, with field-path readback, separate readiness, owner facts, normalized bodies, and duplicate-risk checks (#369, ADR 0035, ADR 0058). Keeps Flow approval and drift coverage."
   - id: matt/triage
     upstream: matt
     kind: skill
@@ -156,7 +156,7 @@ items:
     tree: f0732035b8b1b60ae39454e4191caef32fa91903
     disposition: adapt
     artifacts: [plugin/skills/grilling]
-    reason: "Sub-agent spawn names a vstack agent; one round is one ask; the Flow page lives in flow-page (#267); pushback reopens its decision; a session writes into its flow's page as a Stage, and ask options carry labels only; the grill closes with its summary and no ask, and the caller waits for the user's next prompt; reversible, non-taste, cited decisions are settled in an Assumed table that a note can reopen (#42, #58, #145, #165, #225, ADR 0032, ADR 0037). Flow publication is conditional and chat keeps the full output (#321, ADR 0046)."
+    reason: "Sub-agent spawn names a vstack agent; one round is one ask; the Flow page lives in flow-page (#267); pushback reopens its decision; a session writes into its flow's page as a Stage, and ask options carry labels only; the grill closes with its summary and no ask, and the caller waits for the user's next prompt; reversible, non-taste, cited decisions are settled in an Assumed table that a note can reopen (#42, #58, #145, #165, #225, ADR 0032, ADR 0037). Flow publication is conditional and chat keeps the full output (#321, ADR 0046). Size costs before asking in Flow and chat rounds, restate sized inherited costs, and identify unsized costs and missing facts (#257)."
   - id: matt/handoff
     upstream: matt
     kind: skill

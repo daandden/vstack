@@ -44,6 +44,7 @@ Keep implementation details out of the map. Name only user paths, stable handles
 
 - [Plugin load](./plugin-load.md): a new omp session loads every skill, agent, and rule from the checkout, and the extension's `/vstack-clean` Command.
 - [Skill commands](./skill-command.md): `/skill:<name>` puts that skill's text from the checkout into the prompt the model gets.
+- [Ticket publication](./ticket-publication.md): the public publisher API validates approved MCP bindings, publishes and resumes a directed graph, preserves labels and custom readiness, and refuses duplicate or changed content using provider fixtures only.
 - [Addon tools](./addon-tools.md): typed Matt runs display intent-gathering instructions, and agent-called tools select Addons. The stub proves tool completion without a native judge, not native selection.
 - [Frontend guidance](./frontend-guidance.md): fresh native main and delegated frontend builds apply conditional UI knowledge, native motion review preserves evidence-backed blocking decisions and browser-qualified exceptions, an unrelated task leaves guidance unloaded, and public maintenance and packaging interfaces retain source accounting and notices.
 - [Mobile-web guidance](./frontend-mobile.md): Apple-derived web feedback and mobile touch, viewport, safe-area, hover, and input behavior through the existing native main and worker paths, with actual browser and dependency limits.

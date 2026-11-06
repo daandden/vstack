@@ -135,7 +135,9 @@ The GitHub and GitLab templates carry a "PRs as a request surface" flag, off by 
 
 For Other with an MCP server, follow MCP discovery. Draft `issue-tracker.md` with the tracker and one pin, Check.
 
-For Jira, the project facts are the project key, the issue type for tickets, the transition that closes an issue, the blocking link type, and the mapping from the five canonical triage roles to Jira labels. Use the settled Section D names or the existing `triage-labels.md` for that mapping. Collect missing facts without guessing defaults. Keep create, comment, label, close, and blocking tools out of the config. Jira uses Other; there is no Jira template.
+For Jira, collect the project key, ticket issue type, closing transition, blocking link type and direction, and the five canonical triage-role values. Use the settled Section D names or the existing `triage-labels.md`. Record which field carries readiness separately from system `labels`, including its custom field id when applicable. Use the issue type name when the live create schema requires a name, such as `issue_type: "Task"`, rather than substituting an id.
+
+When the server has no tool that returns the authenticated user's identity, collect the token owner's tracker username and draft it as the `owner` project fact. It becomes `facts.owner` in to-tickets' approved input. A project listing or assignee lookup does not establish the authenticated identity. Collect missing facts without guessing defaults. Keep per-operation tool names out of the config. To-tickets drafts and obtains approval for its MCP binding from the live tools when it prepares a batch. Jira uses Other; there is no Jira template.
 
 For Other with a CLI, read its `--help` for the relevant command groups. Draft the tracker workflow, project facts, and a read-only Check command from that help. Invent no command. For Other with no MCP server or CLI, collect the user's workflow in one paragraph through `ask` and keep it as prose, with no invented tool or Check call.
 
