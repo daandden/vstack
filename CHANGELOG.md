@@ -4,10 +4,9 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
-## [9.0.22] - 2026-11-06
+## [9.0.22] - 2026-11-07
 
-- Make Flow questions self-contained, move shared session-review boundaries into the Background, and replace the findings table with a linked index (#347).
-- Fold Today sources behind one disclosure and refuse new rounds with repeated descriptions, reader needs, or option explanations, ignoring finding numbers while preserving stored questions (#347).
+- grill-with-docs specifies the Architecture brief's provenance syntax: link each explicit answer by its question anchor and cite each applicable ADR as a Document citation of its file. The Flow page already supported these links, but the skill did not name the syntax.
 
 ## [9.0.21] - 2026-11-07
 
