@@ -140,6 +140,14 @@ _Avoid_: sync, upgrade
 A change to a vstack skill, agent, or rule made outside an Update: adding one, editing one, taking an Upstream item at its current Pin, or renaming or removing one.
 _Avoid_: update (for this), manual edit, patch
 
+**Change note**:
+One small file that an Update or Hand edit adds to describe its own change and its version level, until a Plugin release folds it into the CHANGELOG.
+_Avoid_: changeset, changelog fragment, Unreleased line
+
+**Plugin release**:
+The maintainer-run step that folds the Change notes pending when it is prepared into the CHANGELOG under a dated heading and raises the plugin version once. It is vstack's own release, not the deploys and releases of a user's project that the End state excludes.
+_Avoid_: release (unqualified), version bump, cutting a version
+
 **End state**:
 How far a flow that produces a commit goes before it stops: commit, merge-ready, or shipped. Commit stays on the run's branch. Merge-ready opens a PR and drives it until it can merge. Shipped means every PR in the run is merged into the default branch; deploys and releases are not part of it. The flow settles it once, before it starts: from the user's words or the ticket, else from the project's default End state, which the user chose once for the project.
 _Avoid_: goal, target, finish line

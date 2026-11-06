@@ -8,9 +8,10 @@ import { buildPlan, PLAN_SCHEMA, type PlanBody, type UpstreamRun } from "./lib/u
 import { loadGate, run } from "./lib/update-gates.ts";
 import { applyRows, findRow, parseHouseStyle, selectRows, type MatchKind, type Replacement, type TextDisposition } from "./lib/house-style.ts";
 import { asText, cloneSource, githubSource, defaultUpstreamRemote, defaultUpstreamsDir, fetchRefs, readBlobs, writeEntry, syncClone, newestTag, newestCommit, compareSemverTags, hasTag, resolveRef, isAncestor, gitBlobSha, type UpstreamSource, type UpstreamTree } from "./lib/upstreams.ts";
-import { loadPins, loadRegister, loadHouseStyle, NEVER_SHIPPED, parseRegister, upstreamItems, type Pin, type Register } from "./lib/vstack-repo.ts";
+import { artifactFiles, loadPins, loadRegister, loadHouseStyle, NEVER_SHIPPED, parseRegister, upstreamItems, type Pin, type Register } from "./lib/vstack-repo.ts";
 import { repoKey, scratchRoot } from "../plugin/skills/vstack-tmp/scripts/scratch.ts";
-import { manifestVersion, yamlBookkeeping } from "./lib/bookkeeping.ts";
+import { yamlBookkeeping } from "./lib/bookkeeping.ts";
+import { CHANGE_NOTES, noteText, type VersionLevel } from "./lib/change-notes.ts";
 
 const scriptRoot = resolve(import.meta.dir, "..");
 const HEAD = "HEAD";
@@ -419,23 +420,6 @@ function defaultBase(root: string): string {
   const ref = process.env.VSTACK_BASE_REF ?? (remote.exitCode === 0 ? remote.stdout.toString().trim() : "main");
   return git(root, "merge-base", "HEAD", ref);
 }
-function nextVersion(root: string, breaking: boolean, update: boolean): string {
-  const [major, minor, patch] = readJsonVersion(atHead(root, "plugin/package.json"));
-  const [baseMajor] = readJsonVersion(git(root, "show", `${defaultBase(root)}:plugin/package.json`));
-  if (breaking && major <= baseMajor) return `${major + 1}.0.0`;
-  return update && !breaking ? `${major}.${minor + 1}.0` : `${major}.${minor}.${patch + 1}`;
-}
-function readJsonVersion(text: string): number[] {
-  const value = JSON.parse(text).version;
-  if (!/^\d+\.\d+\.\d+$/.test(value)) throw new Error(`version must be major.minor.patch: ${value}`);
-  return value.split(".").map(Number);
-}
-function changelog(text: string, version: string, entries: string[]): string {
-  const lines = text.split("\n"), start = lines.findIndex(l => l.startsWith("## [Unreleased]"));
-  if (start < 0) throw new Error("HEAD:CHANGELOG.md needs ## [Unreleased]");
-  let end = lines.findIndex((l, i) => i > start && l.startsWith("## ")); if (end < 0) end = lines.length;
-  return [...lines.slice(0, start + 1), "", `## [${version}] - ${new Date().toISOString().slice(0, 10)}`, "", ...lines.slice(start + 1, end).filter(l => l.trim()), ...entries.map(e => `- ${e}`), "", ...lines.slice(end)].join("\n").replace(/\n*$/, "\n");
-}
 async function stageAdopt(root: string, p: Plan, upstream: string, path: string, opts: UpstreamOptions): Promise<string> {
   const pin = loadPins(root).get(upstream)!;
   const dir = cacheOutsideCheckout(opts), source = cloneSource(dir);
@@ -454,6 +438,17 @@ function shippedNames(doc: any): Set<string> {
   for (const artifact of [...doc.items.filter((row: any) => row.disposition !== "reject").flatMap((row: any) => row.artifacts), ...doc.originals]) {
     const match = /^plugin\/(?:skills|agents)\/[^/]+/.exec(artifact);
     if (match) names.add(match[0]);
+  }
+  return names;
+}
+
+function commandNames(root: string, ref?: string): Set<string> {
+  const files = ref ? git(root, "ls-tree", "-r", "--name-only", ref, "--", "plugin/extensions").split("\n") : existsSync(join(root, "plugin/extensions")) ? [...artifactFiles(root, "plugin/extensions")] : [];
+  const names = new Set<string>();
+  for (const file of files.filter(file => /\.[cm]?[jt]s$/.test(file))) {
+    const source = ref ? git(root, "show", `${ref}:${file}`) : readFileSync(join(root, file), "utf8");
+    const text = new Bun.Transpiler({ loader: "ts" }).transformSync(source);
+    for (const match of text.matchAll(/\.registerCommand\(\s*["']([^"']+)["']/g)) names.add(match[1]!);
   }
   return names;
 }
@@ -498,6 +493,7 @@ type PrepareDecisions = ReturnType<typeof decisionsAt>;
 interface PreparationReceipt {
   head: string;
   root: string;
+  note: string;
   decisions: PrepareDecisions;
   plan?: Plan;
   outputs: Record<string, string>;
@@ -530,8 +526,9 @@ async function prepare(root: string, file: string, plan: Plan | undefined, opts:
     if (previous?.plan && plan && JSON.stringify(previous.plan) !== JSON.stringify(plan)) throw new Refusal("Reconcile the earlier uncommitted Update before using another plan.", { category: "input-conflict", conflicts: ["plan"] });
     const d = combineDecisions(previous?.decisions, decisionsAt(file));
     const p = plan ?? previous?.plan;
-    const result = await prepareOwned(root, d, p, opts, previous, head);
-    const receipt: PreparationReceipt = { head, root, decisions: d, plan: p, outputs: { ...previous?.outputs, ...result.outputs } };
+    const note = previous?.note ?? `${CHANGE_NOTES}/${randomUUID()}.json`;
+    const result = await prepareOwned(root, d, p, opts, previous, head, note);
+    const receipt: PreparationReceipt = { head, root, note, decisions: d, plan: p, outputs: { ...previous?.outputs, ...result.outputs } };
     const temporary = join(store, `${randomUUID()}.json`);
     try {
       writeFileSync(temporary, JSON.stringify(receipt));
@@ -542,8 +539,8 @@ async function prepare(root: string, file: string, plan: Plan | undefined, opts:
     return result.receipt;
   } finally { rmSync(lock, { recursive: true, force: true }); }
 }
-async function prepareOwned(root: string, d: PrepareDecisions, p: Plan | undefined, opts: UpstreamOptions, previous: PreparationReceipt | undefined, head: string) {
-  const bookkeeping = ["decision-register.yaml", "pins.yaml", "house-style.yaml", "plugin/package.json", "CHANGELOG.md"];
+async function prepareOwned(root: string, d: PrepareDecisions, p: Plan | undefined, opts: UpstreamOptions, previous: PreparationReceipt | undefined, head: string, note: string) {
+  const bookkeeping = ["decision-register.yaml", "pins.yaml", "house-style.yaml", "plugin/package.json", "CHANGELOG.md", note];
   const expected = new Map(bookkeeping.map(path => [path, previous?.outputs[path] ?? headInput(root, path)]));
   requireInputs(root, expected);
   const registerFile = yamlHead(root, "decision-register.yaml"), pinsFile = yamlHead(root, "pins.yaml"), styleFile = yamlHead(root, "house-style.yaml");
@@ -651,17 +648,16 @@ async function prepareOwned(root: string, d: PrepareDecisions, p: Plan | undefin
     if (row) { Object.assign(row, values); delete row.held_at; delete row.held_path; } else doc.items.push({ id: t.id, ...values });
   }
   for (const t of renames) { if (style.replacements.some((r: any) => r.id === t.house_style_row.id)) throw new Error(`House style row already exists: ${t.house_style_row.id}`); style.replacements.push(t.house_style_row); }
-  const shipped = shippedNames(doc), breaking = [...shippedAtHead].some(name => !shipped.has(name));
-  const version = nextVersion(root, breaking, !!p?.moved);
-  const log = changelog(atHead(root, "CHANGELOG.md"), version, d.changelog);
+  const shipped = shippedNames(doc), commands = commandNames(root);
+  const breaking = [...shippedAtHead].some(name => !shipped.has(name)) || [...commandNames(root, head)].some(name => !commands.has(name));
+  const level: VersionLevel = breaking ? "major" : p?.moved ? "minor" : "patch";
   const replacements = [...copies.map(c => c.artifact), ...taken.filter(t => t.disposition === "adopt" || !existsSync(join(root, t.artifact))).map(t => t.artifact)];
   for (const path of replacements) expected.set(path, previous?.outputs[path] ?? headInput(root, path));
   const files = [
     ["decision-register.yaml", registerFile.text()],
     ["pins.yaml", pinsFile.text()],
     ["house-style.yaml", styleFile.text()],
-    ["plugin/package.json", manifestVersion(atHead(root, "plugin/package.json"), version)],
-    ["CHANGELOG.md", log],
+    [note, noteText(level, d.changelog)],
   ] as const;
   if (git(root, "rev-parse", "HEAD") !== head) throw new Refusal("HEAD changed during preparation; rerun with the current branch.", { category: "input-conflict", conflicts: ["HEAD"] });
   requireInputs(root, expected);
@@ -683,6 +679,7 @@ async function prepareOwned(root: string, d: PrepareDecisions, p: Plan | undefin
     }
     for (const [path, content] of files) {
       attempted = path;
+      mkdirSync(dirname(join(root, path)), { recursive: true });
       writeFileSync(join(root, path), content);
       written.push(path);
     }
@@ -691,7 +688,7 @@ async function prepareOwned(root: string, d: PrepareDecisions, p: Plan | undefin
   }
   return {
     outputs: Object.fromEntries([...expected.keys()].map(path => [path, checkoutInput(root, path)])),
-    receipt: { version, rows: d.rows, targets: d.targets, taken: taken.map(t => ({ id: t.id, disposition: t.disposition })) },
+    receipt: { note, level, rows: d.rows, targets: d.targets, taken: taken.map(t => ({ id: t.id, disposition: t.disposition })) },
   };
 }
 

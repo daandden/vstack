@@ -1,8 +1,6 @@
 # Changelog
 
-Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide](docs/maintainer.md#versions-and-changelog) for when to raise each part of the version.
-
-## [Unreleased]
+Plugin releases of vstack (`plugin/package.json`). Each delivery carries a Change note; a maintainer-run Plugin release folds pending notes into a dated heading and raises the version once. See the [maintainer guide](docs/maintainer.md#versions-and-changelog).
 
 ## [9.0.20] - 2026-11-07
 

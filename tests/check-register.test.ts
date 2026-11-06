@@ -192,7 +192,7 @@ test.each([
   const path = `plugin/skills/new-source/${relativePath}`;
   const content = "Substantive local content.\n";
   c.write(path, content);
-  c.write("plugin/package.json", JSON.stringify({ ...spec.manifest, version: "0.1.1" }));
+  c.write("change-notes/substantive.json", JSON.stringify({ schema: 1, level: "patch", entries: ["Add shipped content."] }));
   const before = readdirSync(join(c.root, "plugin"), { recursive: true }).sort();
 
   const r = await c.run();
@@ -630,6 +630,12 @@ const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expecte
     expected: ["invalid-manifest plugin/package.json", "invalid-manifest plugin/package.json"],
   },
   {
+    cls: "invalid-manifest",
+    name: "a manifest version that is not x.y.z",
+    mutate: (s) => (s.manifest.version = "9.0"),
+    expected: ["invalid-manifest plugin/package.json"],
+  },
+  {
     cls: "invalid-house-style",
     name: "a row with an unknown match kind",
     mutate: (s) => (s.houseStyle.replacements[0].match = "fuzzy"),
@@ -977,50 +983,65 @@ test("exit 2 when house-style.yaml is missing", async () => {
   expect(r.stderr).toContain("house-style.yaml");
 });
 
-describe("no-version-bump", () => {
+describe("missing-change-note", () => {
   const changed = "plugin/skills/shared/SKILL.md";
+  const note = "change-notes/fixture.json";
+  const text = JSON.stringify({ schema: 1, level: "patch", entries: ["Document the edit."] });
 
-  test("plugin/ changed in the working tree without a bump fails", async () => {
+  test("plugin text changed without a Change note fails", async () => {
     const co = checkout(up, passingSpec(up));
     co.write(changed, "edited\n");
     const r = await co.run();
-    expect(failuresOf(r)).toEqual(["no-version-bump plugin/package.json"]);
+    expect(failuresOf(r)).toEqual(["missing-change-note change-notes"]);
     expect(r.code).toBe(1);
   });
 
-  test("an untracked file under plugin/ counts as a change", async () => {
+  test("an untracked shipped file needs a Change note", async () => {
     const spec = clone(passingSpec(up));
     spec.register.originals.push("plugin/rules/new.md");
     const co = checkout(up, spec);
     co.write("plugin/rules/new.md", "new\n");
-    const r = await co.run();
-    expect(failuresOf(r)).toEqual(["no-version-bump plugin/package.json"]);
+    expect(failuresOf(await co.run())).toEqual(["missing-change-note change-notes"]);
   });
 
-  test("the same change with a patch bump passes", async () => {
-    const spec = passingSpec(up);
-    const co = checkout(up, spec);
+  test("the same change with a Change note passes without a version bump", async () => {
+    const co = checkout(up, passingSpec(up));
     co.write(changed, "edited\n");
-    co.write("plugin/package.json", JSON.stringify({ ...spec.manifest, version: "0.1.1" }));
-    const r = await co.run();
-    expect(r.json!.failures).toEqual([]);
+    co.write(note, text);
+    expect((await co.run()).json!.failures).toEqual([]);
   });
 
-  test("a version that goes down fails even with a change", async () => {
-    const spec = clone(passingSpec(up));
-    spec.manifest.version = "0.2.0";
-    const co = checkout(up, spec);
-    co.write(changed, "edited\n");
-    co.write("plugin/package.json", JSON.stringify({ ...spec.manifest, version: "0.1.9" }));
-    expect(failuresOf(await co.run())).toEqual(["no-version-bump plugin/package.json"]);
+  test("a review-fix push reuses the branch's existing note", async () => {
+    const co = checkout(up, passingSpec(up));
+    git(co.root, "update-ref", "refs/remotes/origin/main", "HEAD");
+    git(co.root, "symbolic-ref", "refs/remotes/origin/HEAD", "refs/remotes/origin/main");
+    co.write(changed, "first edit\n"); co.write(note, text);
+    git(co.root, "add", "-A"); git(co.root, "commit", "-qm", "first push with note");
+    co.write(changed, "review correction\n");
+    git(co.root, "commit", "-qam", "review fix");
+    expect((await co.run()).json!.failures).toEqual([]);
+  });
+
+  test("a note already on the base does not document a new change", async () => {
+    const co = checkout(up, passingSpec(up));
+    co.write(note, text);
+    git(co.root, "add", "-A"); git(co.root, "commit", "-qm", "existing note");
+    co.write(changed, "unrelated edit\n");
+    expect(failuresOf(await co.run())).toEqual(["missing-change-note change-notes"]);
+  });
+
+  test("CHANGELOG is not shipped plugin text", async () => {
+    const co = checkout(up, passingSpec(up));
+    co.write("CHANGELOG.md", "# Changelog\n\nDocumentation only.\n");
+    expect((await co.run()).json!.failures).toEqual([]);
   });
 
   test("--base compares committed changes; the default base (HEAD without origin/HEAD) does not see them", async () => {
     const co = checkout(up, passingSpec(up));
     co.write(changed, "edited\n");
     git(co.root, "commit", "-qam", "edit without bump");
-    expect(failuresOf(await co.run(["--base", "HEAD~1"]))).toEqual(["no-version-bump plugin/package.json"]);
-    expect(failuresOf(await co.run([], { env: { VSTACK_BASE_REF: "HEAD~1" } }))).toEqual(["no-version-bump plugin/package.json"]);
+    expect(failuresOf(await co.run(["--base", "HEAD~1"]))).toEqual(["missing-change-note change-notes"]);
+    expect(failuresOf(await co.run([], { env: { VSTACK_BASE_REF: "HEAD~1" } }))).toEqual(["missing-change-note change-notes"]);
     expect((await co.run()).json!.failures).toEqual([]);
   });
 
@@ -1031,7 +1052,7 @@ describe("no-version-bump", () => {
     co.write(changed, "edited\n");
     git(co.root, "commit", "-qam", "edit without bump");
     const r = await co.run();
-    expect(failuresOf(r)).toEqual(["no-version-bump plugin/package.json"]);
+    expect(failuresOf(r)).toEqual(["missing-change-note change-notes"]);
     expect(r.json!.notes.join("\n")).toContain("merge base of HEAD and origin/HEAD");
   });
 
@@ -1056,7 +1077,7 @@ describe("no-version-bump", () => {
 test("--list-classes lists every class, and every class has a fixture above", async () => {
   const p = Bun.spawnSync(["bun", SCRIPT, "--list-classes"], { env: ENV });
   const listed = p.stdout.toString().trim().split("\n");
-  const covered = new Set([...cases.map((c) => c.cls), "no-version-bump"]);
+  const covered = new Set([...cases.map((c) => c.cls), "missing-change-note"]);
   expect(listed.filter((c) => !covered.has(c))).toEqual([]);
   expect(listed.length).toBeGreaterThan(0);
 });

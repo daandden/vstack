@@ -18,7 +18,7 @@ const USAGE = `Usage: bun scripts/check-register.ts [options]
                      GitHub Actions, else clones)
   --upstreams <dir>  clone cache for --source clones (default: $VSTACK_UPSTREAMS,
                      else ~/.cache/vstack/upstreams)
-  --base <ref>       commit the version-bump check compares plugin/ with (default:
+  --base <ref>       commit the Change-note check compares plugin/ with (default:
                      $VSTACK_BASE_REF, else the merge base of HEAD and origin/HEAD, else HEAD)
   --json             print {"ok", "notes", "failures": [{"class", "item", "message"}]}
   --list-classes     print every failure class, one per line, and exit
