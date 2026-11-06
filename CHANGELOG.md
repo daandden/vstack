@@ -4,6 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.14] - 2026-11-06
+
+- Make Flow questions self-contained, move shared session-review boundaries into the Background, and replace the findings table with a linked index (#347).
+- Fold Today sources behind one disclosure and refuse new rounds with repeated descriptions, reader needs, or option explanations, ignoring finding numbers while preserving stored questions (#347).
+
 ## [9.0.13] - 2026-11-06
 
 - The Flow panel now goes away when an `ask` picker's `ui.askDialog` closes, not when the tool ends. omp's built-in `ask` keeps running after its dialog to process answer images, so the panel stayed on screen, and a late link lookup could show it, with no picker open (ADR 0056).

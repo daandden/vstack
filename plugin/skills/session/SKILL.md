@@ -103,7 +103,13 @@ If filing or commenting fails, move the row to Backlog with its proposed text an
 
 Follow `skill://flow-page`'s "Stage entry/exit line" before session selection or finding approval. A session review remains its own result-producing run inside a grill.
 
-Publish the synthesis as Results before approval: a table of accepted findings with Problem, Proposal, Home, and Route, and a Document containing Rejected reasons, Backlog, and evidence limits. Rank findings most severe first by harm, rework, and recurrence. Deliver one complete round through flow-page's "Every ask in a Flow" contract with `ask`, with one question per finding in that order. Each question names its Result row in `results` and carries the evidence, proposed change, resolved home, and route. Class 4 and 5 rows name a matching open vstack issue when present; environment rows carry the ladder level, reasons higher levels did not work, and the past mistake a new check must fail on. Preserve raw responses and separate readings. A timeout, cancellation, or headless recommendation authorizes no edit or issue.
+Publish a compact accepted-findings index as a table Result with only Number, Title, and Home columns. Give each row a reference for its question's `results` link. Keep Problem, Proposal, evidence, and Route out of this index. Publish a separate Document Result containing Rejected reasons, Backlog, and evidence limits. Rank accepted findings most severe first by harm, rework, and recurrence.
+
+Put the review scope and shared approval, publication, and routing boundaries once in the Stage Background. Define the shared choices there. Include approves the finding's proposed route for implement. Backlog retains the proposal without filing or posting it. Drop declines the finding. Put any local routing exception beside the affected question.
+
+Deliver one complete round through flow-page's "Every ask in a Flow" contract with `ask`, with one question per finding in index order. Apply flow-page's [Reader needs and Visual kinds checklist](../flow-page/references/reader-needs.md) so each question explains the decision without consulting the index. Link its index row through `results`. Keep the finding's proposed text, resolved home, route, evidence limits, and option tradeoffs beside that question. Class 4 and 5 findings name a matching open vstack issue when present and explain that approval continues it with a comment rather than creating another issue. Environment findings carry the ladder level, reasons higher levels did not work, and the past mistake a new check must fail on.
+
+Preserve raw responses and separate readings. A timeout, cancellation, or headless recommendation authorizes no edit or issue.
 
 If there are no accepted findings, state that in the Document Result instead of submitting an empty table or asking an approval question. Preserve the Rejected and Backlog outcomes and evidence limits even when they are empty.
 

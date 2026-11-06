@@ -40,7 +40,10 @@ const question = (ref: string, extra: object = {}) => ({
   title: `Which ${ref}?`,
   description: `Why ${ref} matters.`,
   needs: [{ need: `Understand why ${ref} changes the decision.`, kind: "prose" }],
-  options: [option("First", { recommended: "it is first" }), option("Second")],
+  options: ["First", "Second"].map((label) => option(label, {
+    does: `${ref}: ${label} does`, gains: [`${ref}: ${label} gain`], costs: [`${ref}: ${label} cost`],
+    ...(label === "First" ? { recommended: "it is first" } : {}),
+  })),
   ...extra,
 });
 const contribution = (...items: object[]) => ({ version: 1, items });
@@ -55,6 +58,46 @@ function openFlow(session = "s-1", skill = "grill-me"): any {
 const submit = (session: string | undefined, ...items: object[]) => run(["submit"], { session, stdin: contribution(...items) });
 const show = (flow: string) => run(["show", "--flow", flow]).json;
 
+
+const distinctQuestion = (ref: string, extra: object = {}) => question(ref, {
+  options: [option(`${ref} first`), option(`${ref} second`)],
+  ...extra,
+});
+
+test.each([
+  ["description", { description: "Choose whether F01 changes the plan." }, { description: "Choose whether F02 changes the plan." }],
+  ["needs", { needs: [{ need: "Compare Q3 ownership.", kind: "prose" }] }, { needs: [{ need: "Compare Q4 ownership.", kind: "prose" }] }],
+  ["does", { options: [option("One", { does: "Carry this proposal forward." })] }, { options: [option("Two", { does: "Carry this proposal forward." })] }],
+  ["gains", { options: [option("One", { gains: ["Defines the next scope."] })] }, { options: [option("Two", { gains: ["Defines the next scope."] })] }],
+  ["costs", { options: [option("One", { costs: ["The problem remains unplanned."] })] }, { options: [option("Two", { costs: ["The problem remains unplanned."] })] }],
+] as const)("a round refuses repeated %s across questions without committing any item", (field, first, second) => {
+  openFlow();
+  const before = tree();
+  const refused = submit("s-1",
+    { kind: "topic", title: "Unpublished", summary: "Atomic refusal.", body: "Must not land.", sources: ["fixture"] },
+    round(distinctQuestion("transport", first), distinctQuestion("safety", second)));
+  expect(refused.code).toBe(1);
+  expect(refused.stderr).toContain("question 1");
+  expect(refused.stderr).toContain("question 2");
+  expect(refused.stderr).toContain(field);
+  expect(tree()).toEqual(before);
+});
+
+test("a round preserves distinct costs and allows repeated labels, sources, and text in later rounds", () => {
+  const opened = openFlow();
+  const first = distinctQuestion("transport", {
+    options: [option("Include", { does: "Replace the update transport.", gains: ["A seventh page can load."], costs: ["Preserve revision delivery."] })],
+    today: [{ text: "Six streams block a seventh request.", source: "host.ts:94" }],
+  });
+  const second = distinctQuestion("safety", {
+    options: [option("Include", { does: "Recognize valid SVG prologs.", gains: ["Valid SVGs can be captured."], costs: ["Keep script and URL restrictions."] })],
+    today: [{ text: "XML prologs are refused.", source: "host.ts:94" }],
+  });
+  expect(submit("s-1", round(first, second)).code).toBe(0);
+  expect(submit("s-1", round(first)).code).toBe(0);
+  const questions = show(opened.flow).stages[0].questions;
+  expect(questions).toHaveLength(3);
+});
 
 const finding = (axis = "standards", extra: object = {}) => ({
   ref: "lost-answer", axis, title: "An answer disappears", label: "issue", blocking: true,

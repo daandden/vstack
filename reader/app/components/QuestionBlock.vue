@@ -85,8 +85,14 @@ const lines = computed(() => {
     <div v-if="q.today?.length" class="labelled">
       <p class="label">Today</p>
       <ul class="bullets">
-        <li v-for="(fact, i) in q.today" :key="i"><span v-html="inline(fact.text)" /> <span class="quiet" v-html="inline(sourceText(f, fact.source))" /></li>
+        <li v-for="(fact, i) in q.today" :key="i"><span v-html="inline(fact.text)" /></li>
       </ul>
+      <details class="disclosure">
+        <summary>Sources ({{ q.today.length }})</summary>
+        <ol class="bullets">
+          <li v-for="(fact, i) in q.today" :key="i" v-html="inline(sourceText(f, fact.source))" />
+        </ol>
+      </details>
     </div>
     <div v-if="q.example" class="labelled">
       <p class="label">Example</p>
