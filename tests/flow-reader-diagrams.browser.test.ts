@@ -99,7 +99,7 @@ test.each(["mermaid", "svg"] as const)("Flow diagrams draw safely in the reader'
     ref: `${ref}-question`, title, description: `Look at the ${title} diagram.`,
     needs: [{ need: `Follow the ${title} steps.`, kind: "context-diagram" }],
     figures: [{ attachment: ref, kind: "context-diagram" }],
-    options: [{ label: "Fine", does: "Accepts it", gains: ["Clarity"], costs: ["None"] }],
+    options: [{ label: "Fine", does: `Accepts the ${title} drawing`, gains: [`Clarity for ${title}`], costs: [`No revision of ${title}`] }],
   });
   cli(["submit"], { version: 1, items: [
     { kind: "attachment", ref: "hostile", type: "mermaid", caption: "Hostile labels", origin: "Mermaid source hostile.mmd", path: "hostile.mmd", focus: ["h1"] },

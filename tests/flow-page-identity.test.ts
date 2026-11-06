@@ -58,8 +58,8 @@ const ok = (r: Run): any => {
   return r.json;
 };
 
-const option = (label: string) => ({ label, does: `${label} does`, gains: [`${label} gain`], costs: [`${label} cost`] });
-const question = (ref: string) => ({ ref, title: `Which ${ref}?`, description: `Why ${ref} matters.`, needs: [{ need: `Understand why ${ref} changes the decision.`, kind: "prose" }], options: [option("First"), option("Second")] });
+const option = (label: string, ref: string) => ({ label, does: `${ref}: ${label} does`, gains: [`${ref}: ${label} gain`], costs: [`${ref}: ${label} cost`] });
+const question = (ref: string) => ({ ref, title: `Which ${ref}?`, description: `Why ${ref} matters.`, needs: [{ need: `Understand why ${ref} changes the decision.`, kind: "prose" }], options: [option("First", ref), option("Second", ref)] });
 const contribution = (...items: object[]) => ({ version: 1, items });
 const round = (...questions: object[]) => ({ kind: "round", questions });
 const card = (ref: string) => ({ ref, title: `Finding ${ref}`, label: "issue", blocking: true, impact: `Users see ${ref}.`, action: `Fix ${ref}.`, evidence: `${ref}.ts:1` });

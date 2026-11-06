@@ -318,9 +318,16 @@ export function checkout(up: Upstreams, spec: RepoSpec): Checkout {
       if (opts.json !== false) args.push("--json");
       const p = Bun.spawn(args, { cwd: root, env: { ...ENV, ...opts.env }, stdout: "pipe", stderr: "pipe" });
       const [stdout, stderr, code] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited]);
-      let json;
-      if (opts.json !== false && code !== 2) json = JSON.parse(stdout);
-      return { code, stdout, stderr, json };
+      if (opts.json === false) return { code, stdout, stderr };
+      if (code !== 2) return { code, stdout, stderr, json: JSON.parse(stdout) };
+      return {
+        code,
+        stdout,
+        stderr,
+        get json(): Run["json"] {
+          throw new Error(`check-register exited 2 and printed no JSON: ${stderr.trim()}`);
+        },
+      };
     },
   };
 }
