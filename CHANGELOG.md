@@ -4,6 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.22] - 2026-11-06
+
+- Make Flow questions self-contained, move shared session-review boundaries into the Background, and replace the findings table with a linked index (#347).
+- Fold Today sources behind one disclosure and refuse new rounds with repeated descriptions, reader needs, or option explanations, ignoring finding numbers while preserving stored questions (#347).
+
 ## [9.0.21] - 2026-11-07
 
 - triage decides roles, grills when needed, and posts its outcome without confirmation gates. Grill questions and reconsidering a prior rejection still ask through `ask` (ADR 0061).
