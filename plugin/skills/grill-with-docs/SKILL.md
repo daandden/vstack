@@ -39,7 +39,7 @@ For expanded design, publish an Architecture brief as a Flow Document Result wit
 - Module responsibilities and ownership, interactions, and dependency direction.
 - Relevant observable guarantees, constraints, failure and recovery behavior, and quality requirements.
 - Accepted trade-offs, the rationale for the direction, and important rejected alternatives.
-- The decision provenance, with links to the explicit answers or existing applicable decisions that settle each consequential choice.
+- The decision provenance, with links to the explicit answers or existing applicable decisions that settle each consequential choice. Link each explicit answer as `[Stage N QM](#<question id>)`, using the question id from the submit receipt or `show`. Cite each applicable existing decision (ADR) as a Document citation of its file.
 - Material assumptions, evidence limitations, and any unresolved choice, clearly separate from agreement.
 
 Record only the precision needed to preserve the agreement. Function signatures, local types, private decomposition, file layout, ordinary algorithms, and other coding details belong to implementing agents within those guarantees. Produce no executable sketches, placeholder bodies, source scaffolds, or scaffold commits.

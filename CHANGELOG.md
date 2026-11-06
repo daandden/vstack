@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.22] - 2026-11-07
+
+- grill-with-docs specifies the Architecture brief's provenance syntax: link each explicit answer by its question anchor and cite each applicable ADR as a Document citation of its file. The Flow page already supported these links, but the skill did not name the syntax.
+
 ## [9.0.21] - 2026-11-07
 
 - triage decides roles, grills when needed, and posts its outcome without confirmation gates. Grill questions and reconsidering a prior rejection still ask through `ask` (ADR 0061).
