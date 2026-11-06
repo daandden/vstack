@@ -9,6 +9,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 - setup-vstack requires an executable ovnfs and `isolation.backend: auto`, and offers `bash.gitGuard` with approval. The offer explains that gitGuard also affects main checkouts in non-vstack sessions. Machine checks support JSON output, and the existing isolation and clone checks stay (ADR 0058, #376).
 - Generated Verify skills start servers as named bash services `verify-<app>-<run-id>` with a readiness check and stop only that service through `proc://<name>/kill`. maintain-app-verification repairs unnamed server launches and unsafe teardown (#382).
 - Flow attachments captured from bash must include the producing call's `PI_TOOL_CALL_ID` in `origin`, so the reader's Source disclosure points back to the exact transcript call (#384).
+- Long runs without a Flow page post interim progress through `out://` only from the main agent's foreground calls. Refused or unavailable writes leave the run going, stop further progress posts, and move progress to the final reply. Enrolled runs keep progress on the Flow page (#385).
 
 ## [9.0.13] - 2026-11-06
 
