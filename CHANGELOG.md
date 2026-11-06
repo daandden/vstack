@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.16] - 2026-11-06
+
+- Publish MCP ticket batches through an agent-drafted binding approved with the tickets and validated against live schemas on publish and resume. Decode schema-declared FastMCP envelopes, exhaust approved search pagination, and check every same-project issue type for duplicate risk. Map flattened readbacks and directed links explicitly, preserve unrelated custom readiness values, and normalize MCP body comparisons (#369).
+
 ## [9.0.15] - 2026-11-06
 
 - diagnosing-bugs rejects a green loop run when the fix removes or disables the channel its assertion watches. Re-point the assertion at the user's symptom, show red on unfixed code and green on fixed code, and name the assertion and both runs at hand-back. Phase 6 requires the matching Phase 5 proof (#259).

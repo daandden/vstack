@@ -116,7 +116,7 @@ items:
     tree: b32c94e5a51c24ee9c41fcb7fe9ea9fff9af6369
     disposition: adapt
     artifacts: [plugin/skills/to-tickets]
-    reason: "Finds the Flow by spec alias and publishes the ticket breakdown as a table Result before approval. Checks draft drift against close decisions, Assumed picks, and the spec through DRIFT-CHECK.md. MCP publication uses current descriptions, schemas, creation facts, labels, and directional blocking links. Tickets contain no inherited Addon pointers (#166, #223, #226, #263, #267, #207, ADR 0035)."
+    reason: "Publishes approved MCP bindings validated against live schemas, with field-path readback, separate readiness, owner facts, normalized bodies, and duplicate-risk checks (#369, ADR 0035, ADR 0058). Keeps Flow approval and drift coverage."
   - id: matt/triage
     upstream: matt
     kind: skill

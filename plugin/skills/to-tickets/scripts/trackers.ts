@@ -3,14 +3,15 @@ import { join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import type { Ticket } from "./publisher.ts";
 import { mcpTracker } from "./mcp.ts";
+import type { Schema } from "./mcp-binding.ts";
 
-export type Issue = { id: string; title: string; body: string; labels: string[]; parent?: string; blockedBy: string[]; author: string; createdAt: string };
+export type Issue = { id: string; title: string; body: string; labels: string[]; readiness: string[]; parent?: string; blockedBy: string[]; author: string; createdAt: string };
 export type Connection = { listTools(server: string): Promise<Tool[]>; callTool(server: string, name: string, arguments_: Record<string, unknown>): Promise<unknown> };
-export type Tool = { name: string; description: string; inputSchema: { type?: string; properties?: Record<string, { type?: string; description?: string; enum?: unknown[] }>; required?: string[] } };
+export type Tool = { name: string; description: string; inputSchema: Exclude<Schema, boolean>; outputSchema?: Exclude<Schema, boolean> & { "x-fastmcp-wrap-result"?: boolean } };
 export class KnownFailure extends Error {
   constructor(message: string, public category = "known-failure") { super(message); }
 }
-export type Tracker = { idempotentCreate?: boolean; check(): Promise<void>; owner(): Promise<string>; search(ticket: Ticket): Promise<Issue[]>; create(ticket: Ticket, key: string): Promise<{ id: string }>; read(id: string): Promise<Issue>; parent(id: string, parent: string): Promise<unknown>; block(id: string, blocker: string): Promise<unknown>; activate(id: string, readiness: string): Promise<unknown> };
+export type Tracker = { idempotentCreate?: boolean; check(tickets?: Ticket[]): Promise<void>; owner(): Promise<string>; search(ticket: Ticket, scope?: "reconciliation"): Promise<Issue[]>; create(ticket: Ticket, key: string, parent?: string): Promise<{ id: string }>; read(id: string): Promise<Issue>; parent(id: string, parent: string): Promise<unknown>; block(id: string, blocker: string): Promise<unknown>; activate(id: string, readiness: string): Promise<unknown> };
 function local(directory: string, readiness: string): Tracker {
   const root = resolve(directory);
   const path = (id: string) => {
@@ -32,11 +33,10 @@ function local(directory: string, readiness: string): Tracker {
     if (metadata.parent) await parentExists(metadata.parent);
     for (const target of blockedBy) await readFile(path(target), "utf8");
     const labels = metadata.labels.filter((label: string) => label !== readiness);
-    if ([readiness, "claimed", "resolved"].includes(status)) labels.push(readiness);
-    return { ...metadata, status, labels, blockedBy, body: content.slice(match[0].length) };
+    return { ...metadata, status, labels, readiness: [readiness, "claimed", "resolved"].includes(status) ? [readiness] : [], blockedBy, body: content.slice(match[0].length) };
   };
   const write = async (issue: LocalIssue, create = false) => {
-    const { body, status, blockedBy, ...metadata } = issue;
+    const { body, status, blockedBy, readiness: _readiness, ...metadata } = issue;
     metadata.labels = metadata.labels.filter(label => label !== readiness);
     const contents = `\`\`\`json\n${JSON.stringify(metadata, null, 2)}\n\`\`\`\nStatus: ${status}\nBlocked by: ${blockedBy.length ? blockedBy.join(", ") : "None"}\n\n${body}`;
     const temporary = join(root, `.${randomUUID()}.tmp`);
@@ -72,7 +72,7 @@ function local(directory: string, readiness: string): Tracker {
       }
       return issues;
     },
-    async create(ticket) { const issue = { id: ticket.key, title: ticket.title, body: ticket.body, labels: ticket.labels, blockedBy: [], status: "draft", author: "local-publisher", createdAt: new Date().toISOString() }; await write(issue, true); return issue; },
+    async create(ticket) { const issue = { id: ticket.key, title: ticket.title, body: ticket.body, labels: ticket.labels, readiness: [], blockedBy: [], status: "draft", author: "local-publisher", createdAt: new Date().toISOString() }; await write(issue, true); return issue; },
     read,
     async parent(id, parent) { await parentExists(parent); const issue = await read(id); issue.parent = parent; await write(issue); },
     async block(id, blocker) { await read(blocker); const issue = await read(id); issue.blockedBy = [...new Set([...issue.blockedBy, blocker])]; await write(issue); },
@@ -102,7 +102,8 @@ function github(config: Record<string, unknown>): Tracker {
   };
   const fields = (raw: any): Issue => {
     if (!raw || !Number.isInteger(raw.number) || typeof raw.title !== "string" || typeof raw.body !== "string" || !Array.isArray(raw.labels) || typeof raw.user?.login !== "string" || typeof raw.created_at !== "string") throw new Error("GitHub issue readback is incomplete");
-    return { id: String(raw.number), title: raw.title, body: raw.body, labels: raw.labels.map((l: any) => typeof l === "string" ? l : l.name), author: raw.user.login, createdAt: raw.created_at, blockedBy: [] };
+    const labels = raw.labels.map((l: any) => typeof l === "string" ? l : l.name);
+    return { id: String(raw.number), title: raw.title, body: raw.body, labels: labels.filter((label: string) => label !== config.readiness), readiness: labels, author: raw.user.login, createdAt: raw.created_at, blockedBy: [] };
   };
   const issuePath = (id: string) => {
     if (!/^\d+$/.test(id)) throw new KnownFailure("GitHub ticket identities must be issue numbers");
@@ -152,7 +153,7 @@ function cli(config: Record<string, unknown>): Tracker {
   };
   const issue = (raw: any): Issue => {
     if (!raw || typeof raw.id !== "string" || typeof raw.title !== "string" || typeof raw.body !== "string" || !Array.isArray(raw.labels) || !Array.isArray(raw.blockedBy) || typeof raw.author !== "string" || typeof raw.createdAt !== "string") throw new Error("Configured CLI returned incomplete issue readback");
-    return raw;
+    return { ...raw, labels: raw.labels.filter((label: string) => label !== config.readiness), readiness: raw.labels };
   };
   return {
     idempotentCreate: config.idempotentCreate === true,

@@ -1,110 +1,197 @@
 import { KnownFailure, type Connection, type Issue, type Tool, type Tracker } from "./trackers.ts";
 import type { Ticket } from "./publisher.ts";
+import { actions, argumentsFor, at, bindingFor, gap, placeholders, type Action, type ActionBinding } from "./mcp-binding.ts";
 
-type Action = "owner" | "search" | "read" | "create" | "parent" | "block" | "activate";
-const meanings: Record<Action, RegExp> = {
-  owner: /(?:authenticated|current) user|who am i/i,
-  search: /search.*(?:issues?|tickets?)/i,
-  read: /(?:read|get|fetch).*(?:full issue|issue details|issue including|full ticket)/i,
-  create: /create (?:an? |new )?(?:issue|ticket)/i,
-  parent: /(?:set|add|link|assign).*parent|parent.*(?:child|membership)/i,
-  block: /(?:add|create|link).*blocking relationship|blocker.*dependent/i,
-  activate: /add labels? (?:to|on) (?:an? )?(?:issue|ticket)/i,
-};
-const normalized = (name: string) => name.toLowerCase().replace(/[_\s-]/g, "");
-function valueFor(name: string, action: Action, values: Record<string, unknown>, facts: Record<string, unknown>): unknown {
-  const key = normalized(name);
-  if (/^(?:issue|ticket)(?:key|id)?$/.test(key) || key === "id") return values.issue;
-  if (/^parent(?:key|id)?$/.test(key)) return values.parent;
-  if (/^blocker(?:key|id)?$/.test(key)) return values.blocker;
-  if (/^dependent(?:key|id)?$/.test(key)) return values.dependent;
-  if (["title", "summary"].includes(key)) return values.title;
-  if (["body", "description"].includes(key)) return values.body;
-  if (key === "labels") return values.labels;
-  if (["idempotencykey", "requestid"].includes(key)) return values.idempotencyKey;
-  if (action === "search" && ["query", "jql"].includes(key)) {
-    const project = facts.project ?? facts.projectKey;
-    if (typeof project !== "string") return undefined;
-    return `project = ${JSON.stringify(project)} AND summary ~ ${JSON.stringify(values.title)}`;
-  }
-  const aliases: Record<string, string[]> = { project: ["project", "projectKey", "projectId"], projectkey: ["projectKey", "project"], projectid: ["projectId"], issuetype: ["issueType"], issuetypeid: ["issueTypeId"], linktype: ["linkType", "blockingLinkType"] };
-  for (const alias of aliases[key] ?? [name]) if (facts[alias] !== undefined) return facts[alias];
+function decoded(value: unknown): unknown {
+  if (typeof value !== "string" || !/^\s*[\[{\"]/.test(value)) return value;
+  try { return JSON.parse(value); } catch { return value; }
 }
-function argumentsFor(tool: Tool, action: Action, values: Record<string, unknown>, facts: Record<string, unknown>) {
-  const args: Record<string, unknown> = {};
-  for (const [name, schema] of Object.entries(tool.inputSchema.properties ?? {})) {
-    const value = valueFor(name, action, values, facts);
-    if (value === undefined) {
-      if (tool.inputSchema.required?.includes(name)) throw new KnownFailure(`MCP capability ${action}: cannot bind required parameter ${name} of ${tool.name}`, "capability-gap");
-      continue;
-    }
-    const valid = schema.type === "array" ? Array.isArray(value) : schema.type === "string" ? typeof value === "string" : schema.type === "number" || schema.type === "integer" ? typeof value === "number" : schema.type === "boolean" ? typeof value === "boolean" : schema.type === undefined;
-    if (!valid || schema.enum && !schema.enum.includes(value)) throw new KnownFailure(`MCP capability ${action}: incompatible schema for ${name} of ${tool.name}`, "capability-gap");
-    args[name] = value;
-  }
-  const roles: Record<Action, string[]> = { owner: [], search: [], read: ["issue"], create: ["title", "body", "labels"], parent: ["issue", "parent"], block: ["dependent", "blocker"], activate: ["issue", "labels"] };
-  const bound = Object.values(args);
-  for (const role of roles[action]) if (values[role] === undefined || !bound.includes(values[role])) throw new KnownFailure(`MCP capability ${action}: schema cannot carry approved ${role}`, "capability-gap");
-  if (action === "search" && !bound.includes(values.title) && !Object.keys(args).some(name => ["query", "jql"].includes(normalized(name)))) throw new KnownFailure("MCP search schema cannot constrain approved title", "capability-gap");
-  const requiredFacts = action === "create" ? [facts.project ?? facts.projectKey ?? facts.projectId, facts.issueType ?? facts.issueTypeId] : action === "block" ? [facts.linkType ?? facts.blockingLinkType] : [];
-  if (requiredFacts.some(value => value === undefined || !bound.includes(value))) throw new KnownFailure(`MCP capability ${action}: schema cannot carry configured project facts`, "capability-gap");
-  return args;
-}
-function unpack(result: any): any {
+function unpack(result: any, tool: Tool): unknown {
   if (result?.isError) throw new Error(`MCP tool returned an error: ${JSON.stringify(result.content)}`);
-  if (result?.structuredContent !== undefined) return result.structuredContent;
+  if (result?.structuredContent !== undefined) {
+    const structured = decoded(result.structuredContent);
+    const resultSchema = tool.outputSchema?.properties?.result;
+    if (tool.outputSchema?.["x-fastmcp-wrap-result"] === true && typeof resultSchema === "object" && resultSchema.type === "string") return decoded(at(structured, "result"));
+    return structured;
+  }
   if (Array.isArray(result?.content)) {
     const text = result.content.filter((entry: any) => entry.type === "text").map((entry: any) => entry.text).join("\n");
-    return JSON.parse(text);
+    return decoded(text);
   }
-  return result;
+  return decoded(result);
 }
+const nonempty = (value: unknown): value is string => typeof value === "string" && !!value.trim();
+const strings = (value: unknown): value is string[] => Array.isArray(value) && value.every(nonempty);
+const dynamicRoles = new Set(["issue", "parent", "blocker", "dependent", "title", "body", "labels", "idempotencyKey"]);
+const requiredRoles: Record<Action, string[]> = { owner: [], search: ["title"], read: ["issue"], create: ["title", "body", "labels"], parent: ["issue", "parent"], block: ["blocker", "dependent"], activate: ["issue"] };
+const availableRoles: Record<Action, string[]> = { owner: [], search: ["title", "body", "labels"], read: ["issue"], create: ["title", "body", "labels", "parent", "idempotencyKey"], parent: ["issue", "parent"], block: ["blocker", "dependent"], activate: ["issue", "readiness", "readinessValues"] };
+
 export async function mcpTracker(config: Record<string, unknown>, connection?: Connection): Promise<Tracker> {
   const server = config.server;
-  if (typeof server !== "string" || !server || !connection) throw new KnownFailure(`MCP server ${server ?? "(not configured)"}: live discovery connection unavailable`, "capability-gap");
-  const tools = await connection.listTools(server), facts = (config.facts ?? {}) as Record<string, unknown>;
-  const bindings = {} as Record<Action, Tool>;
-  const example = { issue: "TICKET-1", parent: "PARENT-1", blocker: "BLOCKER-1", dependent: "DEPENDENT-1", title: "Approved title", body: "Approved body", labels: ["label"], idempotencyKey: "publication-key" };
-  for (const action of Object.keys(meanings) as Action[]) {
-    const candidates = tools.filter(tool => meanings[action].test(tool.description));
-    const compatible = candidates.filter(tool => { try { argumentsFor(tool, action, example, facts); return true; } catch { return false; } });
-    if (compatible.length !== 1) throw new KnownFailure(`MCP server ${server}: ${action} capability has ${compatible.length} unambiguous compatible tools`, "capability-gap");
-    bindings[action] = compatible[0];
-  }
-  const call = async (action: Action, values: Record<string, unknown> = {}) => unpack(await connection.callTool(server, bindings[action].name, argumentsFor(bindings[action], action, values, facts)));
-  const issue = (raw: any, relationships = false): Issue => {
-    if (raw?.fields) {
-      const fields = raw.fields;
-      let blockers = raw.blockedBy;
-      if (blockers === undefined && Array.isArray(fields.issuelinks) && ["inwardIssue", "outwardIssue"].includes(String(facts.blockingSide))) {
-        blockers = fields.issuelinks.filter((link: any) => link.type?.name === (facts.linkType ?? facts.blockingLinkType) && link[String(facts.blockingSide)]).map((link: any) => link[String(facts.blockingSide)].key);
-      }
-      raw = { id: raw.key, title: fields.summary, body: fields.description, labels: fields.labels, author: fields.creator?.accountId ?? fields.creator?.name, createdAt: fields.created, parent: fields.parent?.key, blockedBy: blockers, project: facts.projectId !== undefined ? fields.project?.id : fields.project?.key, issueType: facts.issueTypeId !== undefined ? fields.issuetype?.id : fields.issuetype?.name };
+  if (!nonempty(server) || !connection) throw new KnownFailure(`MCP server ${server ?? "(not configured)"}: live discovery connection unavailable`, "capability-gap");
+  const binding = bindingFor(server, config.binding);
+  const facts = config.facts;
+  if (!facts || typeof facts !== "object" || Array.isArray(facts)) gap(server, "configured project facts unavailable");
+  const configured = facts as Record<string, unknown>;
+  const project = configured.project ?? configured.projectKey ?? configured.projectId;
+  const issueType = configured.issueType ?? configured.issueTypeId;
+  const linkType = configured.linkType ?? configured.blockingLinkType;
+  if (!nonempty(project) || !nonempty(issueType) || !nonempty(linkType)) gap(server, "configured project, ticket issue type, or blocking link type unavailable");
+  if (typeof binding.issue.blockedBy !== "string" && !["inwardIssue", "outwardIssue"].includes(String(configured.blockingSide))) gap(server, "configured blocking side unavailable");
+  if (!binding.actions.owner && !nonempty(configured.owner)) gap(server, "ownership identity unavailable: bind owner or configure facts.owner");
+  if (!nonempty(config.readiness)) gap(server, "configured readiness value unavailable");
+  const tools = await connection.listTools(server);
+  const labelsPath = typeof binding.issue.labels === "string" ? binding.issue.labels : binding.issue.labels.path;
+  const readinessPath = typeof binding.issue.readiness === "string" ? binding.issue.readiness : binding.issue.readiness.path;
+  const bound = new Map<Action, { binding: ActionBinding; tool: Tool; roles: Set<string> }>();
+  const example = { issue: "TICKET-1", parent: "PARENT-1", blocker: "BLOCKER-1", dependent: "DEPENDENT-1", title: "Approved title", body: "Approved body", labels: ["label"], readiness: config.readiness, readinessValues: [config.readiness], idempotencyKey: "publication-key" };
+  for (const action of actions) {
+    const actionBinding = binding.actions[action];
+    if (!actionBinding) continue;
+    const matches = tools.filter(tool => tool.name === actionBinding.tool);
+    if (matches.length !== 1) gap(server, `${action} bound tool ${actionBinding.tool} is missing or ambiguous`);
+    const tool = matches[0], roles = placeholders(server, actionBinding.arguments);
+    for (const role of roles) if (!role.startsWith("facts.") && !availableRoles[action].includes(role)) gap(server, `${action} cannot supply argument placeholder {${role}}`);
+    for (const role of requiredRoles[action]) if (!roles.has(role)) gap(server, `${action} arguments cannot carry approved {${role}}`);
+    if (action === "create") {
+      for (const family of [["facts.project", "facts.projectKey", "facts.projectId"], ["facts.issueType", "facts.issueTypeId"]]) if (!family.some(role => roles.has(role))) gap(server, "create arguments cannot carry configured project or ticket issue type");
     }
-    if (!raw || typeof raw.id !== "string" || typeof raw.title !== "string" || typeof raw.body !== "string" || !Array.isArray(raw.labels) || raw.labels.some((label: unknown) => typeof label !== "string") || typeof raw.author !== "string" || typeof raw.createdAt !== "string" || relationships && !Array.isArray(raw.blockedBy)) throw new KnownFailure(`MCP server ${server}: full issue field or relationship readback unavailable`, "capability-gap");
-    if (relationships && (raw.project !== (facts.project ?? facts.projectKey ?? facts.projectId) || raw.issueType !== (facts.issueType ?? facts.issueTypeId))) throw new KnownFailure(`MCP server ${server}: configured project or ticket issue type does not match readback`, "readback");
-    return { ...raw, blockedBy: raw.blockedBy ?? [] };
+    if (action === "block" && !["facts.linkType", "facts.blockingLinkType"].some(role => roles.has(role))) gap(server, "block arguments cannot carry configured blocking link type");
+    if (action === "activate" && (actionBinding.replace ? !roles.has("readinessValues") : !roles.has("readiness") && !roles.has("readinessValues"))) gap(server, "activate arguments cannot carry approved readiness values");
+    if (!tool.inputSchema || typeof tool.inputSchema !== "object") gap(server, `${action} live parameter schema unavailable`);
+    if (actionBinding.pagination) {
+      for (const parameter of [actionBinding.pagination.offset, actionBinding.pagination.limit]) {
+        const schema = tool.inputSchema.properties?.[parameter];
+        if (!schema || typeof schema !== "object" || schema.type !== "integer" && schema.type !== "number") gap(server, `search pagination parameter ${parameter} requires a numeric live schema`);
+      }
+    }
+    argumentsFor(server, action, actionBinding.arguments, tool.inputSchema, example, configured, dynamicRoles);
+    bound.set(action, { binding: actionBinding, tool, roles });
+  }
+  if (!bound.has("parent") && !bound.get("create")!.roles.has("parent")) gap(server, "parent capability requires a parent action or a create {parent} argument");
+  const args = (action: Action, values: Record<string, unknown>, deferred = new Set<string>(), offset?: number) => {
+    const selected = bound.get(action);
+    if (!selected) return gap(server, `${action} action binding unavailable`);
+    const pagination = selected.binding.pagination;
+    const template = pagination && offset !== undefined ? { ...selected.binding.arguments, [pagination.offset]: offset } : selected.binding.arguments;
+    return argumentsFor(server, action, template, selected.tool.inputSchema, values, configured, deferred);
+  };
+  const callRaw = async (action: Action, values: Record<string, unknown> = {}, offset?: number) => {
+    const arguments_ = args(action, values, new Set(), offset);
+    const selected = bound.get(action)!;
+    return unpack(await connection.callTool(server, selected.tool.name, arguments_), selected.tool);
+  };
+  const select = (action: Action, raw: unknown) => {
+    const selected = bound.get(action)!;
+    if (selected.binding.result === undefined || selected.binding.result === "") return raw;
+    const result = at(raw, selected.binding.result);
+    if (result === undefined) {
+      if (action === "create") throw new Error(`MCP server ${server}: create result path ${selected.binding.result} is unavailable; outcome uncertain`);
+      return gap(server, `${action} result path ${selected.binding.result} is unavailable`);
+    }
+    return decoded(result);
+  };
+  const call = async (action: Action, values: Record<string, unknown> = {}) => select(action, await callRaw(action, values));
+  const issue = (raw: unknown, strictProject = false): Issue => {
+    const mapped = Object.fromEntries(Object.entries(binding.issue).filter(([name]) => name !== "blockedBy").map(([name, selector]) => {
+      const path = typeof selector === "string" ? selector : selector.path;
+      const value = at(raw, path);
+      return [name, value == null && typeof selector !== "string" && selector.empty ? [] : value];
+    }));
+    for (const name of ["id", "title", "author", "createdAt", "project", "issueType"]) if (!nonempty(mapped[name])) gap(server, `issue.${name} readback unavailable at ${binding.issue[name as keyof typeof binding.issue]}`);
+    if (typeof mapped.body !== "string" || !strings(mapped.labels) || !strings(mapped.readiness)) gap(server, "full issue body, labels, or readiness array readback unavailable");
+    if (labelsPath === readinessPath) mapped.labels = mapped.labels.filter(label => label !== config.readiness);
+    if (mapped.parent === null) mapped.parent = undefined;
+    if (mapped.parent !== undefined && !nonempty(mapped.parent)) gap(server, "issue.parent identity readback is invalid");
+    const projection = binding.issue.blockedBy;
+    const path = typeof projection === "string" ? projection : projection.path;
+    const value = at(raw, path);
+    const links = value == null && typeof projection !== "string" && projection.empty ? [] : value;
+    if (!Array.isArray(links)) gap(server, `blockedBy array readback unavailable at ${path}`);
+    const blockedBy: string[] = [];
+    if (typeof projection === "string") {
+      if (!strings(links)) gap(server, `blockedBy identity array readback invalid at ${path}`);
+      blockedBy.push(...links);
+    } else {
+      const side = configured.blockingSide as "inwardIssue" | "outwardIssue";
+      for (const link of links) {
+        const type = at(link, projection.type);
+        if (!nonempty(type)) gap(server, `blockedBy link type readback unavailable at ${projection.type}`);
+        if (type !== linkType) continue;
+        const blocker = at(link, projection.sides[side]);
+        if (blocker === undefined || blocker === null) continue;
+        if (!nonempty(blocker)) gap(server, `blockedBy identity readback unavailable on ${side}`);
+        blockedBy.push(blocker);
+      }
+    }
+    if (strictProject && (mapped.project !== project || mapped.issueType !== issueType)) throw new KnownFailure(`MCP server ${server}: configured project or ticket issue type does not match readback`, "readback");
+    return { ...mapped, blockedBy } as Issue;
+  };
+  const read = async (id: string) => {
+    const result = issue(await call("read", { issue: id }), true);
+    if (result.id !== id) throw new KnownFailure(`MCP server ${server}: read returned a different issue identity`, "readback");
+    return result;
   };
   return {
-    idempotentCreate: /idempotenc/i.test(bindings.create.description) && Object.keys(bindings.create.inputSchema.properties ?? {}).some(name => normalized(name) === "idempotencykey"),
-    async check() {
-      if (typeof (facts.project ?? facts.projectKey ?? facts.projectId) !== "string" || typeof (facts.issueType ?? facts.issueTypeId) !== "string" || typeof (facts.linkType ?? facts.blockingLinkType) !== "string") throw new KnownFailure(`MCP server ${server}: configured project, ticket issue type, or blocking link type unavailable`, "capability-gap");
+    idempotentCreate: bound.get("create")!.roles.has("idempotencyKey"),
+    async check(tickets: Ticket[] = []) {
+      for (const ticket of tickets) {
+        const values = { ...example, title: ticket.title, body: ticket.body, labels: ticket.labels, parent: ticket.parent && "external" in ticket.parent ? ticket.parent.external : ticket.parent ? example.parent : undefined };
+        const deferred = new Set(["issue", "blocker", "dependent", "idempotencyKey", ...(ticket.parent && "local" in ticket.parent ? ["parent"] : [])]);
+        args("search", values, deferred);
+        args("create", values, deferred);
+      }
     },
-    async owner() { const raw = await call("owner"); const id = raw?.id ?? raw?.accountId ?? raw?.login; if (typeof id !== "string") throw new KnownFailure(`MCP server ${server}: ownership identity unavailable`, "capability-gap"); return id; },
-    async search(ticket: Ticket) {
-      const raw = await call("search", { title: ticket.title }), results = Array.isArray(raw) ? raw : raw?.issues;
-      if (!Array.isArray(results)) throw new KnownFailure(`MCP server ${server}: search readback unavailable`, "capability-gap");
-      return results.map(entry => issue(entry)).filter((entry: any) => entry.project === (facts.project ?? facts.projectKey ?? facts.projectId) && entry.issueType === (facts.issueType ?? facts.issueTypeId));
+    async owner() {
+      if (!binding.actions.owner) return configured.owner as string;
+      const identity = await call("owner");
+      if (!nonempty(identity)) return gap(server, "ownership result is not an identity string");
+      return identity;
     },
-    async create(ticket, idempotencyKey) {
-      const raw = await call("create", { title: ticket.title, body: ticket.body, labels: ticket.labels, idempotencyKey });
-      const id = raw?.key ?? raw?.id;
-      if (typeof id !== "string" || !id) throw new Error(`MCP server ${server}: create returned no identity; outcome uncertain`);
+    async search(ticket, scope) {
+      const values = { title: ticket.title, body: ticket.body, labels: ticket.labels };
+      const pagination = bound.get("search")!.binding.pagination;
+      const candidates: Issue[] = [], seen = new Set<string>();
+      let offset = 0, total: number | undefined;
+      do {
+        const response = await callRaw("search", values, pagination ? offset : undefined);
+        const metadata = at(response, pagination?.total ?? "total");
+        if (pagination || metadata !== undefined) {
+          if (typeof metadata !== "number" || !Number.isSafeInteger(metadata) || metadata < 0) gap(server, "search pagination total is missing or invalid");
+          if (total !== undefined && total !== metadata) gap(server, "search pagination total changed between pages");
+          total = metadata;
+        }
+        const raw = select("search", response);
+        if (!Array.isArray(raw)) return gap(server, "search result is not an issue array");
+        if (!pagination && total !== undefined && total !== raw.length) gap(server, "search results are incomplete without an approved pagination declaration");
+        if (pagination && (raw.length > Number(bound.get("search")!.binding.arguments[pagination.limit]) || offset + raw.length > total! || raw.length === 0 && offset < total!)) gap(server, "search pagination returned an empty or non-progressing page");
+        for (const entry of raw) {
+          const candidate = issue(entry);
+          if (pagination && seen.has(candidate.id)) gap(server, "search pagination repeated an issue identity");
+          seen.add(candidate.id);
+          candidates.push(candidate);
+        }
+        offset += raw.length;
+      } while (pagination && offset < total!);
+      return candidates.filter(entry => (entry as Issue & { project: string }).project === project && (scope !== "reconciliation" || (entry as Issue & { issueType: string }).issueType === issueType));
+    },
+    async create(ticket, idempotencyKey, parent) {
+      const id = await call("create", { title: ticket.title, body: ticket.body, labels: ticket.labels, idempotencyKey, parent });
+      if (!nonempty(id)) throw new Error(`MCP server ${server}: create returned no identity string; outcome uncertain`);
       return { id };
     },
-    async read(id) { return issue(await call("read", { issue: id }), true); },
+    read,
     async parent(id, parent) { return call("parent", { issue: id, parent }); },
     async block(id, blocker) { return call("block", { dependent: id, blocker }); },
-    async activate(id, readiness) { return call("activate", { issue: id, labels: [readiness] }); },
+    async activate(id, readiness) {
+      const replace = binding.actions.activate!.replace;
+      if (!replace) return call("activate", { issue: id, readiness, readinessValues: [readiness] });
+      const before = await read(id);
+      const readinessValues = [...new Set([...before.readiness, readiness])];
+      await call("activate", { issue: id, readiness, readinessValues });
+      const after = await read(id);
+      if (readinessValues.some(value => !after.readiness.includes(value))) throw new KnownFailure(`MCP server ${server}: replace-style activation did not preserve readiness field values`, "readback");
+      return after;
+    },
   };
 }
