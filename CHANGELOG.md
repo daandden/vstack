@@ -8,6 +8,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 - vstack-worktree opens and removes checkouts through one script, using ovnfs with revision-specific tracked files and ignored build inputs. An installed ovnfs that fails falls back to `omp wt add` with its reason and clone status recorded. Missing ovnfs stops at setup-vstack. code-review, triage, and prototype use the script, and prototypes keep their checkout record across sessions until the verdict (#377).
 - setup-vstack requires an executable ovnfs and `isolation.backend: auto`, and offers `bash.gitGuard` with approval. The offer explains that gitGuard also affects main checkouts in non-vstack sessions. Machine checks support JSON output, and the existing isolation and clone checks stay (ADR 0058, #376).
 - Generated Verify skills start servers as named bash services `verify-<app>-<run-id>` with a readiness check and stop only that service through `proc://<name>/kill`. maintain-app-verification repairs unnamed server launches and unsafe teardown (#382).
+- Flow attachments captured from bash must include the producing call's `PI_TOOL_CALL_ID` in `origin`, so the reader's Source disclosure points back to the exact transcript call (#384).
 
 ## [9.0.13] - 2026-11-06
 
