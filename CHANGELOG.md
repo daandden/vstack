@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.20] - 2026-11-07
+
+- setup-vstack recommends the `merge` Landing method on GitHub instead of `rebase`. GitHub refused `gh pr merge --rebase` on PRs whose branches had merged the default branch in, which the End state chain does on every branch update, so ship stopped to ask for another method. Projects that already store `rebase` keep it (ADR 0060).
+
 ## [9.0.19] - 2026-11-07
 
 - The Verifier opens and removes its head checkout through the vstack-worktree script. Head preparation validates ovnfs checkouts with private Git directories and cloned fallback worktrees, refuses plain or unvalidated checkouts, and preserves the isolation and cleanup-error guards (#378).
