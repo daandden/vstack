@@ -83,7 +83,7 @@ Show counts and a one-line summary per item. Let the maintainer pick.
 
 4. **Grill (if needed).** If the request needs fleshing out, enter the grill without asking whether to proceed. Run `skill://grilling` and `skill://domain-modeling` together, and grill it into shape a round of questions at a time, sharpening domain terms and updating `GLOSSARY.md`/ADRs inline as decisions land. The grill's questions use `ask` on the item's Flow page.
 
-5. **Apply the outcome without confirmation.** Apply the chosen category and state roles, removing conflicting roles. Post comments, briefs, and closes in the same turn as the grill's close, or at once when no grill is needed, without waiting for a next-prompt confirmation (ADR 0060). If a grill question stays unanswered after its single re-ask, or the run is headless, write nothing from that grill. Report the open questions and what you would have posted.
+5. **Apply the outcome without confirmation.** Apply the chosen category and state roles, removing conflicting roles. Post comments, briefs, and closes in the same turn as the grill's close, or at once when no grill is needed, without waiting for a next-prompt confirmation (ADR 0061). If a grill question stays unanswered after its single re-ask, or the run is headless, write nothing from that grill. Report the open questions and what you would have posted.
    - `ready-for-agent`: post an agent brief comment ([AGENT-BRIEF.md](AGENT-BRIEF.md)).
    - `ready-for-human`: same structure as an agent brief, but note why it can't be delegated (judgment calls, external access, design decisions, manual testing).
    - `needs-info`: post triage notes (template below).

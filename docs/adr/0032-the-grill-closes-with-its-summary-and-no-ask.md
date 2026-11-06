@@ -4,7 +4,7 @@
 
 > This supersedes [ADR 0031](0031-a-closing-pick-gets-addon-picks-through-an-extension-tool.md).
 
-> [ADR 0060](0060-triage-acts-without-confirmation-gates.md) amends this for triage: triage writes to the tracker in the same turn as the grill's close. wayfinder and other callers still wait for the next prompt.
+> [ADR 0061](0061-triage-acts-without-confirmation-gates.md) amends this for triage: triage writes to the tracker in the same turn as the grill's close. wayfinder and other callers still wait for the next prompt.
 
 When the frontier is empty, grilling writes the closing summary on the Grilling page, marks its Stage finished, and ends the turn. It makes no closing `ask`. The user's next prompt either confirms the summary or pushes back, and a pushback reopens the tree. A caller that acts after the grill, such as triage or wayfinder with their tracker writes, acts only after that prompt. grill-with-docs offers no next-step options. After the summary, it names in one line the skill to type next: to-spec for a change that needs more than one session, or implement for one that fits one session. The user wants the grill to state its understanding and stop, and to object in a normal prompt instead of answering a gate.
 
