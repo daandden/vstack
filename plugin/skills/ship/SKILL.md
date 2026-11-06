@@ -52,7 +52,9 @@ A verdict covers a patch, not its commits, and a merge of a base into a branch m
 
 ## 4. Prepare only the bottom PR
 
-Fetch the exact current default-branch tip. Prepare only the lowest PR in the verified run. If it is behind, use `update-branch`, which merges the base into the branch. If `update-branch` reports a conflict, or the Code host cannot update the branch, stop and report the branch to the caller's Conflict owner in END-STATE step 7. If `update-branch` is unsupported, report the gap and continue only when `read-pr` says that the PR can merge.
+Fetch the exact current default-branch tip. Prepare only the lowest PR in the verified run. Re-read its merge state and required checks through `read-pr`. When the merge state is clean, required checks pass on the current head, and the accepted Verdict's stable patch id matches the current three-dot diff from step 3, leave the branch as it is and proceed to landing, even when it is behind the default branch. The combination of newer default-branch changes and this PR is first tested by the default branch's push CI after landing.
+
+Use `update-branch`, which merges the base into the branch, only when the Code host reports a conflict or that the PR cannot merge. Under strict branch protection, GitHub reports a PR that needs an update as `BEHIND` rather than `CLEAN`, so update it there. If `update-branch` reports a conflict, or the Code host cannot update the branch, stop and report the branch to the caller's Conflict owner in END-STATE step 7. If `update-branch` is unsupported, report the gap and continue only when `read-pr` says that the PR can merge.
 
 If this PR's base is not the default branch, retarget only this PR to the default branch through `retarget-pr`, because a PR whose base is still its parent's branch merges into that branch, not the default branch. Re-read its SHAs, checks, and merge state. Repeat step 3 after every update or retarget. Leave descendants untouched until this PR merges.
 
