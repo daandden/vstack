@@ -4,6 +4,11 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.21] - 2026-11-07
+
+- triage decides roles, grills when needed, and posts its outcome without confirmation gates. Grill questions and reconsidering a prior rejection still ask through `ask` (ADR 0061).
+- The Flow host stays up while a publication is in flight: the publisher now reads its host hold stream, so an idle host no longer stops mid-publication.
+
 ## [9.0.20] - 2026-11-07
 
 - setup-vstack recommends the `merge` Landing method on GitHub instead of `rebase`. GitHub refused `gh pr merge --rebase` on PRs whose branches had merged the default branch in, which the End state chain does on every branch update, so ship stopped to ask for another method. Projects that already store `rebase` keep it (ADR 0060).
