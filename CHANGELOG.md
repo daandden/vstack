@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.14] - 2026-11-06
+
+- Require option costs in tokens or money per use, with recurrence and input-size growth, and restate sized costs inherited from earlier picks. Grilling measures costs or reads usage records before asking in Flow and chat rounds, and reports unsized costs with the missing facts (#257).
+
 ## [9.0.13] - 2026-11-06
 
 - The Flow panel now goes away when an `ask` picker's `ui.askDialog` closes, not when the tool ends. omp's built-in `ask` keeps running after its dialog to process answer images, so the panel stayed on screen, and a late link lookup could show it, with no picker open (ADR 0056).
