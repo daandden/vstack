@@ -36,7 +36,10 @@ if (basename(process.argv[1]) === "omp") {
     const i = entries.findIndex(e => e.name === rest[1]);
     if (i < 0) process.exit(1);
     rmSync(entries[i].path, { recursive: true }); entries.splice(i, 1); save(); console.log("{}");
-  } else if (rest[0] === "ls") console.log(JSON.stringify({ checkouts: entries, snapshots: [] }));
+  } else if (rest[0] === "ls") {
+    if (process.env.FAKE_OVNFS_LIST_FAIL) { console.error("fixture listing unavailable"); process.exit(1); }
+    console.log(process.env.FAKE_OVNFS_LISTING ?? JSON.stringify({ checkouts: entries, snapshots: [] }));
+  }
   else if (rest[0] === "diff") console.log(JSON.stringify({ changes: [] }));
   else process.exit(1);
 }

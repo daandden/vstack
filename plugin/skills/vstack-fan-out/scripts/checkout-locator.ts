@@ -45,70 +45,86 @@ export function defaultCheckoutBase(timeout = 15_000) {
   return value && value !== "(not set)" ? value.replace(/^~(?=$|\/)/, homedir()) : join(homedir(), ".omp", "wt");
 }
 
-export function locateWorkers(repo: string, ids: string[]) {
-  const sourceRepo = ompSourceRoot(repo);
-  let base = resolve(defaultCheckoutBase());
-  let baseError: unknown;
-  try { base = canonical(base); } catch (e) { baseError = e; }
-  let listing: { ok: boolean; paths: string[]; reason?: string };
-  let tasks: string[] = [];
+export interface OvnfsCheckout {
+  name: string;
+  path: string;
+  source: string;
+}
+
+export function ovnfsListing(): { ok: boolean; checkouts: OvnfsCheckout[]; reason?: string } {
   try {
-    const entries: unknown = JSON.parse(run(["omp", "worktree", "list", "--json"], { ...process.env, OMP_WORKTREE_DIR: base }));
-    if (baseError) throw baseError;
-    if (!Array.isArray(entries) || !entries.every((entry) =>
-      typeof entry?.path === "string" && entry.path.startsWith("/") &&
-      typeof entry.kind === "string" && entry.kind.length > 0
-    )) throw new Error("invalid listing");
-    listing = { ok: true, paths: entries.map((entry) => canonical(entry.path)) };
-    tasks = entries.filter((entry) => entry.kind === "task-isolation").map((entry) => canonical(entry.path));
-  } catch (e) {
-    listing = { ok: false, paths: [], reason: String(e) };
+    let binary = Bun.which("ovnfs");
+    if (!binary) {
+      const configured = run(["omp", "config", "get", "ovnfs.path"]).replace(/^"|"$/g, "");
+      if (configured && configured !== "(not set)") binary = Bun.which(configured.replace(/^~(?=$|\/)/, homedir()));
+    }
+    if (!binary) throw new Error("ovnfs is required. Run /skill:setup-vstack to install and configure it.");
+    const value = JSON.parse(run([binary, "--json", "ls"]));
+    if (!Array.isArray(value?.checkouts) || !value.checkouts.every((entry: OvnfsCheckout) =>
+      entry && typeof entry.name === "string" && entry.name.length > 0 &&
+      typeof entry.path === "string" && entry.path.startsWith("/") &&
+      typeof entry.source === "string" && entry.source.startsWith("/")
+    )) throw new Error("invalid ovnfs listing");
+    const checkouts: OvnfsCheckout[] = value.checkouts.map((entry: OvnfsCheckout) => ({
+      name: entry.name, path: canonical(entry.path), source: canonical(entry.source),
+    }));
+    if (new Set(checkouts.map((entry) => entry.name)).size !== checkouts.length) throw new Error("duplicate ovnfs checkout names");
+    return { ok: true, checkouts };
+  } catch (error) {
+    return { ok: false, checkouts: [], reason: String(error) };
   }
+}
+
+export interface WorkerIdentity {
+  name: string;
+  path: string;
+  record: string;
+}
+
+interface WorkerSnapshot {
+  repo: string;
+  base: string;
+  listing: { ok: boolean };
+  workers: { id: string; state: string; identity: WorkerIdentity | null }[];
+}
+
+export function locateWorkers(repo: string, ids: string[], before?: WorkerSnapshot) {
+  const sourceRepo = ompSourceRoot(repo);
+  const base = canonical(resolve(defaultCheckoutBase()));
+  const listing = ovnfsListing();
   const workers = ids.map((id) => {
-    const wrapper = join(base, `t${Bun.hash(`${sourceRepo}\0${id}`).toString(16).padStart(16, "0").slice(-9)}`);
-    const clone = join(wrapper, "m");
-    const worker = { id, clone, state: "unknown", retained: [] as string[], reason: "" };
+    const record = join(base, `t${Bun.hash(`${sourceRepo}\0${id}`).toString(16).padStart(16, "0").slice(-9)}`, ".omp-ovnfs-checkout.json");
+    const worker = { id, clone: null as string | null, identity: null as WorkerIdentity | null, state: "unknown", reason: "" };
     try {
       if (!listing.ok) throw new Error(listing.reason);
-      let names: string[];
-      try { names = readdirSync(base); }
-      catch (e) {
-        if ((e as NodeJS.ErrnoException).code !== "ENOENT") throw e;
-        names = [];
+      if (before) {
+        const previous = before.workers?.find((entry) => entry.id === id);
+        const identity = previous?.identity;
+        if (before.repo !== repo || before.base !== base || before.listing?.ok !== true || previous?.state !== "present" ||
+          !identity || typeof identity.name !== "string" || !identity.name.startsWith("omp-") ||
+          typeof identity.path !== "string" || !identity.path.startsWith("/") || identity.record !== record) {
+          throw new Error("saved status does not prove this worker was present");
+        }
+        worker.identity = identity;
+        worker.clone = identity.path;
+        const survivors = listing.checkouts.filter((entry) => entry.name === identity.name || entry.path === identity.path);
+        if (!survivors.length && !stat(identity.record)) {
+          worker.state = "absent";
+          return worker;
+        }
+        throw new Error("worker checkout or run record survives release; retain the worker");
       }
-      worker.retained = names.filter((name) => name.startsWith(wrapper.slice(base.length + 1) + ".retained-")).sort().map((name) => join(base, name));
-      const original = stat(wrapper);
-      for (const path of [...(original ? [wrapper] : []), ...worker.retained]) {
-        if (!stat(path)?.isDirectory() || !stat(join(path, "m"))?.isDirectory()) throw new Error(`clone is not a directory: ${path}`);
-        const owner = JSON.parse(readFileSync(join(path, TASK_MARKER), "utf8"));
-        if (owner?.id !== id) throw new Error(`owner identity does not match: ${path}`);
-      }
-      for (const name of names) {
-        const path = join(base, name);
-        if (path === wrapper || worker.retained.includes(path)) continue;
-        const marker = join(path, TASK_MARKER);
-        if (!stat(path)?.isDirectory() || !stat(marker)) continue;
-        const owner = JSON.parse(readFileSync(marker, "utf8"));
-        if (typeof owner?.id !== "string" || !owner.id) throw new Error(`unrecognized owner: ${path}`);
-        if (owner.id === id) throw new Error(`worker found under unsupported naming: ${path}`);
-      }
-      for (const task of tasks) {
-        const path = basename(task) === "m" ? dirname(task) : task;
-        const owner = JSON.parse(readFileSync(join(path, TASK_MARKER), "utf8"));
-        if (typeof owner?.id !== "string" || !owner.id) throw new Error(`unrecognized listed owner: ${path}`);
-        if (owner.id === id && path !== wrapper && !worker.retained.includes(path)) throw new Error(`listed worker uses unsupported naming: ${path}`);
-      }
-      const listed = listing.paths.some((path) => path === wrapper || path === clone || path.startsWith(wrapper + ".retained-"));
-      if (worker.retained.length) {
-        worker.state = "retained";
-      } else if (original && listed) {
-        worker.state = "present";
-      } else if (!original && !listed) {
-        worker.state = "absent";
-      } else {
-        throw new Error("disk and listing disagree");
-      }
-    } catch (e) { worker.reason = String(e); }
+      if (!stat(record)?.isFile()) throw new Error(`worker run record is missing or not a file: ${record}`);
+      const value = JSON.parse(readFileSync(record, "utf8"));
+      if (typeof value?.checkout !== "string" || !value.checkout.startsWith("omp-") || typeof value.command !== "string" || !value.command) throw new Error(`invalid worker run record: ${record}`);
+      const checkout = listing.checkouts.find((entry) => entry.name === value.checkout);
+      if (!checkout) throw new Error(`worker checkout is not listed: ${value.checkout}`);
+      if (checkout.source !== canonical(repo)) throw new Error(`worker checkout source does not match: ${checkout.source}`);
+      if (!stat(checkout.path)?.isDirectory()) throw new Error(`worker checkout is not a directory: ${checkout.path}`);
+      worker.clone = checkout.path;
+      worker.identity = { name: checkout.name, path: checkout.path, record };
+      worker.state = "present";
+    } catch (error) { worker.reason = String(error); }
     return worker;
   });
   return { repo, base, listing, workers };

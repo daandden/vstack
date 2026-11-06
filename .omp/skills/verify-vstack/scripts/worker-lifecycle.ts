@@ -9,8 +9,13 @@ const evidence = join(run, "lifecycle");
 const base = join(run, "data", "wt");
 const home = join(run, "data", "home");
 mkdirSync(evidence, { recursive: true });
+mkdirSync(home, { recursive: true });
 const env = { PATH: process.env.PATH ?? "", HOME: home, TERM: "dumb" };
-for (const [key, value] of [["task.isolation.enabled", "true"], ["worktree.base", base], ["async.enabled", "false"], ["eval.js", "true"], ["tools.approvalMode", "yolo"]]) {
+const ovnfs = Bun.which("ovnfs");
+if (!ovnfs) throw new Error("ovnfs is required. Run /skill:setup-vstack.");
+const ovnfsWrapper = join(run, "data", "ovnfs");
+writeFileSync(ovnfsWrapper, `#!/bin/sh\nexport OVNFS_STATE=${JSON.stringify(process.env.OVNFS_STATE ?? join(process.env.HOME!, ".local/state/ovnfs"))}\nexport OVNFS_MOUNT=${JSON.stringify(process.env.OVNFS_MOUNT ?? join(process.env.HOME!, "checkouts"))}\nexec ${JSON.stringify(ovnfs)} "$@"\n`, { mode: 0o755 });
+for (const [key, value] of [["task.isolation.enabled", "true"], ["isolation.backend", "auto"], ["ovnfs.path", ovnfsWrapper], ["worktree.base", base], ["async.enabled", "false"], ["eval.js", "true"], ["tools.approvalMode", "yolo"]]) {
   const configured = Bun.spawnSync(["omp", "config", "set", key!, value!], { env, stdout: "pipe", stderr: "pipe" });
   if (configured.exitCode !== 0) throw new Error(configured.stderr.toString());
 }
@@ -48,7 +53,7 @@ function cmd(a){var r=Bun.spawnSync(a,{cwd:repo,stdout:"pipe",stderr:"pipe"});if
 function save(n,data){fs.writeFileSync(E+"/"+n+".json",JSON.stringify(data,null,2));}
 function check(ok,msg){if(!ok)throw new Error(msg);}
 function patchOf(result){var text=typeof result==="string"?result:JSON.stringify(result);var m=text.match(/Isolation: changes captured at \\x60?([^\\x60\\n]+?)\\x60? \\(apply=false\\)\\. Not applied\\./);check(m,"missing omp patch notice: "+text);check(fs.statSync(m[1]).size>0,"empty patch");return m[1];}
-function status(id,name){var r=Bun.spawnSync(["bun",CLI,"status",id],{cwd:repo,env:{...process.env,OMP_WORKTREE_DIR:WT},stdout:"pipe",stderr:"pipe"});save(name,{exit:r.exitCode,stdout:r.stdout.toString(),stderr:r.stderr.toString()});check(r.exitCode===0,"status command failed: "+r.stderr);return JSON.parse(r.stdout.toString()).workers[0];}
+function status(id,name,before){var r=Bun.spawnSync(["bun",CLI,"status",id,...(before?["--before",E+"/"+before+".status.json"]:[])],{cwd:repo,env:{...process.env,OMP_WORKTREE_DIR:WT,OVNFS_STATE:${JSON.stringify(process.env.OVNFS_STATE ?? join(process.env.HOME!, ".local/state/ovnfs"))},OVNFS_MOUNT:${JSON.stringify(process.env.OVNFS_MOUNT ?? join(process.env.HOME!, "checkouts"))}},stdout:"pipe",stderr:"pipe"});save(name,{exit:r.exitCode,stdout:r.stdout.toString(),stderr:r.stderr.toString()});check(r.exitCode===0,"status command failed: "+r.stderr);var parsed=JSON.parse(r.stdout.toString());save(name+".status",parsed);return parsed.workers[0];}
 function handoff(role,result,expected){var p=patchOf(result);fs.copyFileSync(p,E+"/"+role+".patch");save(role+"-completion",{result,patch:p});save(role+"-handoff",{patch:p,repo,expected,branch:"integration"});return p;}
 cmd(["git","init","-q","-b","integration"]);cmd(["git","config","user.name","Verify"]);cmd(["git","config","user.email","verify@example.invalid"]);
 fs.writeFileSync(repo+"/lifecycle.txt","base\\n");cmd(["git","add","lifecycle.txt"]);
@@ -69,7 +74,8 @@ mergeCell("implementer");
 cell(`var implCommit=cmd(["git","rev-parse","integration"]).trim();check(cmd(["git","show","integration:lifecycle.txt"])==="implemented\\n","implementation commit missing");
 var implHash=Bun.hash(fs.readFileSync(implPatch)).toString(16);
 var implRelease=await tool.write({path:"proc://"+implementer.id+"/kill"});
-var implAfter=status(implementer.id,"implementer-after");check(implAfter.state==="absent","implementer survived release");check(!fs.existsSync(implBefore.clone),"implementer clone survives on disk");check(Bun.hash(fs.readFileSync(implPatch)).toString(16)===implHash,"implementation patch changed");
+save("implementer-release-reply",{id:implementer.id,release:implRelease});
+var implAfter=status(implementer.id,"implementer-after","implementer-before");check(implAfter.state==="absent","implementer survived release");check(Bun.hash(fs.readFileSync(implPatch)).toString(16)===implHash,"implementation patch changed");
 check(status(protectedWorker.id,"protected-after-implementer").state==="present","unrelated owned work was removed");
 save("implementer-release",{id:implementer.id,commit:implCommit,release:implRelease,before:implBefore,after:implAfter,patch:implPatch,patch_hash:implHash,parent_alive:true});
 var fixer=${spawn("Fix323", "Review fixer: change lifecycle.txt to reviewed. Return question: accept reviewed wording? Keep the worker available until that question is settled.")};
@@ -83,16 +89,18 @@ save("fixer-answer",{answer:fixtureAnswer,source:"scripted fixture answer, not m
 mergeCell("fixer");
 cell(`var fixCommit=cmd(["git","rev-parse","integration"]).trim();check(cmd(["git","show","integration:lifecycle.txt"])==="reviewed\\n","fixer commit missing");
 var fixRelease=await tool.write({path:"proc://"+fixer.id+"/kill"});
-var fixerAfter=status(fixer.id,"fixer-after");check(fixerAfter.state==="absent","fixer survived release");check(!fs.existsSync(fixerBefore.clone),"fixer clone survives on disk");
+save("fixer-release-reply",{id:fixer.id,release:fixRelease});
+var fixerAfter=status(fixer.id,"fixer-after","fixer-held");check(fixerAfter.state==="absent","fixer survived release");
 check(status(protectedWorker.id,"protected-after-fixer").state==="present","unrelated retained worker was deleted");
 check(fs.existsSync(fixerPatch)&&fs.existsSync(E+"/fixer.patch"),"fixer patch evidence missing");
 save("fixer-release",{id:fixer.id,commit:fixCommit,release:fixRelease,before:fixerBefore,after:fixerAfter,patch:fixerPatch,parent_alive:true});
 var protectedRelease=await tool.write({path:"proc://"+protectedWorker.id+"/kill"});
-var protectedAfter=status(protectedWorker.id,"protected-after-preservation");check(protectedAfter.state==="absent","protected worker not released after preserving useful work");
+save("protected-release-reply",{id:protectedWorker.id,release:protectedRelease});
+var protectedAfter=status(protectedWorker.id,"protected-after-preservation","protected-retained");check(protectedAfter.state==="absent","protected worker not released after preserving useful work");
 check(fs.readFileSync(E+"/protected.patch","utf8").includes("preserve this unfinished work"),"useful early-stop work lost");
 check(cmd(["git","show",implCommit+":lifecycle.txt"])==="implemented\\n","integration commit disappeared");
 check(fs.readFileSync(implPatch).length>0&&fs.existsSync(E+"/implementer.patch"),"implementation patch evidence missing");
-var listing=cmd(["omp","worktree","list","--json"]);save("final-listing",JSON.parse(listing));
+var listing=cmd([${JSON.stringify(ovnfsWrapper)},"--json","ls"]);save("final-listing",JSON.parse(listing));
 save("passed",{implementer:implCommit,review_fixer:fixCommit,retained_then_released:true,early_stop:"retained with useful patch preserved",all_probe_clones_removed:true,parent_alive:true,protected_release:protectedRelease,repo});
 print("LIFECYCLE_PROOF_PASSED "+E);`);
 replies.push({ text: "Lifecycle proof complete. Implementer and review fixer removed while this parent is alive; early-stop work is preserved." });
