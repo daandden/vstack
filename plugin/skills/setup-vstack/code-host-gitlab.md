@@ -20,7 +20,7 @@ Each skill looks up an operation by its id. A row that says `unsupported` means 
 - `read-pr`: `glab mr view <iid> -F json`, and `glab api projects/:id/merge_requests/<iid>/approvals` for approvals. The head SHA is `sha` and the base SHA is `diff_refs.base_sha`. The MR can merge when `detailed_merge_status` is `mergeable`. A reviewer requests changes when `detailed_merge_status` is `requested_changes`. The MR merged when `state` is `merged`, and its merge commit is `merge_commit_sha` or `squash_commit_sha`.
 - `mark-ready`: `glab mr update <iid> --ready --yes`
 - `required-checks`: `glab api projects/:id/merge_requests/<iid>/pipelines` for the newest pipeline, then `glab api projects/:id/pipelines/<pipeline-id>/jobs`. Every job with `allow_failure` false is required.
-- `watch-checks`: `glab ci status --branch <branch> --wait`
+- `watch-checks`: `glab ci status --branch <branch> --wait`. Run through bash with `timeout: 0`, and with `async: true` when other work remains. The result arrives automatically. After it returns, re-read the PR and all review threads.
 - `review-threads`: `glab api --paginate projects/:id/merge_requests/<iid>/discussions`. Read each discussion's `id` and each note's `id`, `body`, `author`, `resolvable`, `resolved`, and `position.new_path`.
 - `reply-thread`: `glab api --method POST projects/:id/merge_requests/<iid>/discussions/<discussion-id>/notes --input <payload.json>`, where the payload is `{"body": "..."}`.
 - `resolve-thread`: `glab api --method PUT projects/:id/merge_requests/<iid>/discussions/<discussion-id> -f resolved=true`

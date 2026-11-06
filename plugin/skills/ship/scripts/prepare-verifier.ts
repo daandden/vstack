@@ -1,5 +1,5 @@
-import { existsSync, lstatSync, readlinkSync, realpathSync, unlinkSync } from "node:fs";
-import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
+import { existsSync, lstatSync, readFileSync, readlinkSync, realpathSync, unlinkSync } from "node:fs";
+import { dirname, isAbsolute, resolve, sep } from "node:path";
 import { homedir } from "node:os";
 
 const record = { verdict: "REFUSED", head_sha: null as string | null, base_sha: null as string | null, patch_id: null as string | null, evidence: [] as string[], notes: [] as string[] };
@@ -8,12 +8,6 @@ function git(repo: string, args: string[], stdin?: Uint8Array): string {
   const p = Bun.spawnSync(["git", "-C", repo, ...args], { stdin, env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } });
   if (p.exitCode) throw new Error(p.stderr.toString().trim() || `git ${args[0]} failed`);
   return new TextDecoder("utf-8", { fatal: true }).decode(p.stdout);
-}
-function canonical(path: string): string {
-  if (existsSync(path)) return realpathSync(path);
-  const parent = dirname(path);
-  if (parent === path) throw new Error(`Cannot canonicalize ${path}`);
-  return resolve(canonical(parent), relative(parent, path));
 }
 function inside(path: string, parent: string): boolean {
   return path === parent || path.startsWith(parent + sep);
@@ -37,7 +31,7 @@ try {
       requiredInputs.push(input);
       continue;
     }
-    if (!["--repo", "--shared", "--head", "--base", "--worktree"].includes(args[i]) || !args[i + 1] || options.has(args[i])) throw new Error("Use preflight or clean-head with --repo, --shared, --head, --base, --worktree.");
+    if (!["--repo", "--shared", "--head", "--base", "--record"].includes(args[i]) || !args[i + 1] || options.has(args[i])) throw new Error("Use preflight or clean-head with --repo, --shared, --head, --base, and --record.");
     options.set(args[i], args[i + 1]);
   }
   const repo = realpathSync(options.get("--repo") ?? process.cwd());
@@ -48,17 +42,15 @@ try {
   if (repo !== top || shared === top) throw new Error("Shared checkout must differ from the verifier's own Git toplevel. Use an isolated eval agent and /skill:setup-vstack.");
   if (realpathSync(git(shared, ["rev-parse", "--show-toplevel"]).trim()) !== shared) throw new Error("Shared checkout must name its Git toplevel.");
   if (command !== "preflight" && command !== "clean-head") throw new Error("Unknown command. Use preflight or clean-head.");
-  const path = options.get("--worktree");
-  if (!path || !isAbsolute(path)) throw new Error("Head worktree absolute path is required.");
-  const worktree = canonical(path);
-  if (inside(worktree, repo) || inside(worktree, shared) || inside(repo, worktree) || inside(shared, worktree)) throw new Error("Head worktree must be outside the isolated clone and Shared checkout.");
-  if (command === "preflight") {
-    let collision = false;
-    try { lstatSync(path); collision = true; } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-    }
-    if (collision) throw new Error("Head worktree path collision. Never reuse or remove an existing path.");
-  }
+  const recordPath = options.get("--record");
+  if (!recordPath || !isAbsolute(recordPath)) throw new Error("Checkout record absolute path is required.");
+  const checkout = command === "clean-head" ? JSON.parse(readFileSync(recordPath, "utf8")) : null;
+  if (command === "clean-head" && (!checkout || checkout.removed !== false || checkout.branch !== null ||
+      typeof checkout.repo !== "string" || realpathSync(checkout.repo) !== repo ||
+      typeof checkout.path !== "string" || !isAbsolute(checkout.path))) throw new Error("A live detached checkout record from vstack-worktree is required.");
+  if (command === "preflight" && existsSync(recordPath)) throw new Error("Checkout record collision. Never reuse an existing record.");
+  const worktree = checkout ? realpathSync(checkout.path) : null;
+  if (worktree && (inside(worktree, repo) || inside(worktree, shared) || inside(repo, worktree) || inside(shared, worktree))) throw new Error("Head worktree must be outside the isolated clone and Shared checkout.");
   for (const [key, field] of [["--head", "head_sha"], ["--base", "base_sha"]] as const) {
     const sha = options.get(key);
     if (!sha || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(sha) || git(repo, ["rev-parse", "--verify", `${sha}^{commit}`]).trim() !== sha) throw new Error(`A full valid ${key.slice(2)} commit SHA is required.`);
@@ -70,10 +62,17 @@ try {
   const sharedCommon = realpathSync(git(shared, ["rev-parse", "--path-format=absolute", "--git-common-dir"]).trim());
   const excludes = resolve(sharedCommon, "info/exclude");
   if (command === "clean-head") {
-    const registered = git(repo, ["worktree", "list", "--porcelain", "-z"]).split("\0").includes(`worktree ${worktree}`);
-    if (!registered || !existsSync(worktree) || realpathSync(git(worktree, ["rev-parse", "--path-format=absolute", "--git-common-dir"]).trim()) !== common) throw new Error("Head worktree is not registered in the verifier repository.");
+    if (!worktree || !existsSync(worktree) || realpathSync(git(worktree, ["rev-parse", "--show-toplevel"]).trim()) !== worktree) throw new Error("Head checkout is not a Git toplevel.");
+    const headCommon = realpathSync(git(worktree, ["rev-parse", "--path-format=absolute", "--git-common-dir"]).trim());
+    if (checkout.backend === "omp-wt") {
+      if (checkout.cloned !== true) throw new Error("Fallback is a plain checkout. Check worktree.clone and /skill:setup-vstack; do not install dependencies as a fallback.");
+      const registered = git(repo, ["worktree", "list", "--porcelain", "-z"]).split("\0").includes(`worktree ${worktree}`);
+      if (!registered || headCommon !== common) throw new Error("Head worktree is not registered in the verifier repository.");
+    } else if (checkout.backend === "ovnfs") {
+      if (headCommon === common || headCommon === sharedCommon) throw new Error("ovnfs head checkout must have a private Git directory.");
+    } else throw new Error("Unknown checkout backend.");
     if (git(worktree, ["rev-parse", "HEAD"]).trim() !== record.head_sha || git(worktree, ["rev-parse", "--abbrev-ref", "HEAD"]).trim() !== "HEAD") throw new Error("Head worktree must be detached at the requested head SHA.");
-    function validateTracked() {
+    function validateTracked(worktree: string) {
       git(worktree, ["diff", "--exit-code", "--no-ext-diff", "--no-textconv", "--cached", record.head_sha!, "--"]);
       for (const entry of git(worktree, ["ls-files", "--stage", "-z"]).split("\0").filter(Boolean)) {
         const match = /^(\d+) ([a-f0-9]+) 0\t([\s\S]+)$/.exec(entry);
@@ -94,7 +93,7 @@ try {
     const globalExcludes = resolve(worktree, git(worktree, ["config", "--path", "--default", globalDefault, "--get", "core.excludesFile"]).trim());
     const excludeArgs = ["--exclude-per-directory=.gitignore", ...[globalExcludes, excludes].filter(existsSync).map(path => `--exclude-from=${path}`)];
     const others = () => git(worktree, ["ls-files", "--others", ...excludeArgs, "-z"]).split("\0").filter(Boolean);
-    validateTracked();
+    validateTracked(worktree);
     const tracked = new Set(git(worktree, ["ls-files", "-z"]).split("\0").filter(Boolean));
     const rawOthers = git(worktree, ["ls-files", "--others", "-z"]);
     if (rawOthers) {
@@ -107,7 +106,7 @@ try {
         const source = matches[i];
         const name = matches[i + 3];
         const cloneExcludedIgnore = (name === ".gitignore" || name.endsWith("/.gitignore")) &&
-          (source === ".git/info/exclude" || resolve(worktree, source) === resolve(common, "info/exclude"));
+          (source === ".git/info/exclude" || resolve(worktree, source) === resolve(headCommon, "info/exclude"));
         if (cloneExcludedIgnore) throw new Error(`Untracked ignore rules in ${JSON.stringify(name)} are masked by clone-local exclusions. Establish a head tree without those rules.`);
         if (source && !isAbsolute(source) && source !== ".git/info/exclude" && !tracked.has(source)) throw new Error(`Untracked ignore rules in ${JSON.stringify(source)} could hide carried source. Establish a head tree without those rules.`);
       }
@@ -118,7 +117,7 @@ try {
       if (!stat.isFile() && !stat.isSymbolicLink()) throw new Error(`Untracked nested repository or directory ${JSON.stringify(name)} cannot be cleaned safely.`);
     }
     for (const name of unwanted) { unlinkSync(safeLeaf(worktree, name)); removed.push(name); }
-    validateTracked();
+    validateTracked(worktree);
     if (others().length) throw new Error("Untracked nonignored inputs remain in the head worktree.");
     for (const input of requiredInputs) {
       if (!existsSync(resolve(worktree, input))) throw new Error(`Required head-worktree input ${JSON.stringify(input)} is missing. Check worktree.clone and /skill:setup-vstack; do not install a plain-checkout fallback.`);

@@ -40,6 +40,8 @@ Only compare-attempts' cross-judge ends another way: `If it cannot be spawned, s
 
 A role that runs in its own clone uses the eval form. If `task.isolation.enabled` is off, the skill stops and points at `/skill:setup-vstack` (ADR 0007).
 
+Before either isolated form, follow skill://vstack-fan-out's ovnfs prerequisite and WORKER-LIFECYCLE proof. Missing ovnfs stops the role at `/skill:setup-vstack`. Keep the isolated arguments below unchanged. omp creates the checkout and supplies no fallback when ovnfs fails.
+
 ```
 Spawn one `vstack-<role>` via eval `agent(<prompt>, agent="vstack-<role>", isolated=True, apply=False, merge=False)`: <role brief>, the vstack root. <Wait for its result. | Do not wait; keep working.> If it cannot be spawned, stop: <reason>.
 ```

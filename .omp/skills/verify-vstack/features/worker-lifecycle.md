@@ -4,15 +4,15 @@ Parents own their isolated workers after completion. They preserve useful work, 
 
 ## Sub-features
 
-- `worker-status` reports present, absent, retained, or unknown through the read-only worker-clone CLI. A pre-release absent state cannot prove removal.
-- `worker-implementer` returns a real patch, lands it through a non-isolated merger, releases the implementer, and checks disk and listing absence while the parent remains alive.
+- `worker-status` reports present, absent, or unknown through the read-only worker-clone CLI. The parent records retention separately. Absence requires a saved present identity.
+- `worker-implementer` returns a real patch, lands it through a non-isolated merger, releases the implementer, and checks the ovnfs listing and saved run-record absence while the parent remains alive.
 - `worker-fixer` holds a review-fixer patch while its question is unresolved. After a scripted answer resolves the question, a merger lands the fix and the parent releases the fixer.
 - `worker-early-stop` retains a separate child with useful unlanded work. Both target releases leave this child intact. The fixture preserves its patch before releasing it at teardown.
 
 ## How to get to it (user POV)
 
 - Run `/skill:implement-spec` for a spec whose tickets need isolated implementers and review fixes.
-- At each release trigger, run `bun plugin/skills/vstack-fan-out/scripts/worker-clone.ts status <agent-id>...` from the original source checkout, issue `write proc://<agent-id>/kill`, then run status again. Preserve both outputs and the release result.
+- At each release trigger, run `bun plugin/skills/vstack-fan-out/scripts/worker-clone.ts status <agent-id>...` from the original source checkout and save its complete JSON outside the checkout. Require `present` with checkout name, path, and run-record path. Issue `write proc://<agent-id>/kill`, then run `status <agent-id>... --before <saved-status.json>`. Preserve both outputs and the release result. Removal requires `absent`; `unknown` stays retained.
 
 ## Driving it with worker-lifecycle.ts
 
@@ -21,6 +21,7 @@ Preconditions:
 - Follow the baseline and Doctor steps in `README.md`.
 - Use a new `VERIFY_RUN_DIR`. The helper configures isolation only in that run's throwaway omp home.
 - The checkout contains the status CLI. The helper invokes that checkout's script, not the installed plugin's script.
+- Use real omp 18.17 and an installed real ovnfs daemon. The helper points its throwaway omp home at the caller's ovnfs state and mount through a wrapper, without changing machine settings. `OVNFS_STATE` and `OVNFS_MOUNT` override the caller's default paths.
 
 Run:
 
@@ -32,7 +33,7 @@ The helper uses `drive.ts` with one serialized provider-reply queue. It starts a
 
 A successful command prints `lifecycle: passed`. Check these files before Cleanup:
 
-- `lifecycle/implementer-before.json` reports present, and `implementer-after.json` reports absent. `implementer-release.json` preserves the observed release result and integration commit. `implementer.patch` preserves the patch outside the clone.
+- `lifecycle/implementer-before.status.json` reports present and saves `identity: {name, path, record}`. `implementer-after.status.json` reports absent against that saved status. `implementer-release.json` preserves the observed release result and integration commit. `implementer.patch` preserves the patch outside the checkout.
 - `lifecycle/fixer-question.json` records retention with its unanswered question. `fixer-answer.json` records the scripted fixture answer separately. `fixer-release.json` records the later landing and release. `fixer-after.json` reports absent.
 - `lifecycle/early-stop-retained.json` records the unfinished child's reason and preserved patch. `protected-after-implementer.json` and `protected-after-fixer.json` both report present. `protected-after-preservation.json` reports absent only after its useful work is preserved.
 - `lifecycle/passed.json` names both integration commits and the final fixture repository. Inspect the repository with `git show <commit>:lifecycle.txt`: the implementer commit contains `implemented`, and the review-fixer commit contains `reviewed`.
@@ -40,13 +41,13 @@ A successful command prints `lifecycle: passed`. Check these files before Cleanu
 
 Run Doctor again and then Cleanup as the Verify skill says. Cleanup removes the disposable repository and home, not the patch copies, raw RPC proof, or lifecycle records. Confirm those evidence files survive.
 
-Compare against the parent revision by reading its status-command availability and lifecycle contract. The old revision has no status CLI. The CLI regression tests supply red/green evidence. There is no meaningful executable red test for prose. This scripted drive proves real lifecycle operations, not autonomous compliance with every implement-spec instruction.
+Compare against the parent revision by reading its status command and lifecycle contract. The old status command locates APFS task copies, not ovnfs checkouts. The CLI regression tests supply red/green evidence. There is no meaningful executable red test for prose. This scripted drive proves real lifecycle operations, not autonomous compliance with every implement-spec instruction.
 
 ## Gotchas
 
 - `process.execPath` inside omp's JavaScript eval is the omp executable, not Bun. Invoke the status script with `bun`.
 - Eval-spawned workers submit with `yield`; the nonstructured `task` merger ends with text. Mixing those completions desynchronizes the reply queue.
-- omp standardizes equivalent `/private/var` and `/var` source paths on macOS before computing clone identity. The status CLI must match that spelling while keeping listing paths canonical.
-- On omp 18.15.0, a settled child's expired job row can make `proc://<id>/kill` report not found even while the clone survives. Record the failed operation and surviving clone, preserve useful work, and report the host prerequisite for settled-agent release after job-row expiry. Do not revive a child just to kill it or delete the clone directly.
+- omp standardizes equivalent `/private/var` and `/var` source paths on macOS before computing run-record identity. The status CLI must match that spelling while keeping listing paths canonical.
+- On omp 18.15.0 and 18.17.0, a settled child's expired job row can make `proc://<id>/kill` report not found even while its checkout survives. Record the failed operation and surviving checkout, preserve useful work, and report the host prerequisite for settled-agent release after job-row expiry. Do not revive a child just to kill it or delete the checkout directly.
 - The early-stop path is exercised here. A real teardown timeout or backend cleanup failure is not injected by this recipe and must not be reported as tested.
 - A failed drive may still have a successful RPC prompt result. Missing `lifecycle/passed.json`, a failed tool frame, or a failed assertion means the lifecycle proof failed. Preserve diagnostics and run Cleanup before starting a new run.

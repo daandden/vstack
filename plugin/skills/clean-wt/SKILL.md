@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # clean-wt
 
-Typing `/skill:clean-wt` authorizes removal of unused clean checkouts and verified integrated drafts that hold no unique or unverified artifacts or history. Other uncommitted work needs the user's explicit selection through `ask`. Remove only checkouts under the omp worktree base. Preserve branches, session archives, Scratch, shared skills, and external artifacts.
+Typing `/skill:clean-wt` authorizes removal of unused clean checkouts and verified integrated drafts that hold no unique or unverified artifacts or history. Other uncommitted work needs the user's explicit selection through `ask`. Inventory includes the current Git project's omp ovnfs checkouts and legacy checkouts under the omp worktree base. Preserve branches, session archives, Scratch, shared skills, and external artifacts.
 
 ## Flow page and diagnostics
 
@@ -29,11 +29,11 @@ Run the script with this omp session's bash tool, which sets `PI_SESSION_ID`:
 
 **Deadline rule.** Run every command above, including step 5's verification `inventory`, with a long or disabled bash tool deadline (`timeout: 0` disables it). Inspecting ignored and untracked contents can take many minutes. A host deadline that ends a command with no process exit code, such as `[Command timed out after N seconds]`, is not a nonzero script exit. For every actual nonzero script exit, including an `inventory` retry, stop the run and report stderr. If a deadline interrupts any `inventory` form, save its diagnostics in this run's `clean-wt` Scratch entry and rerun that command once with a longer or disabled deadline. If the rerun is interrupted again, report the failure. If it exits nonzero, follow the stop rule above. If a deadline interrupts `remove`, its outcome is unknown. Save its diagnostics, report its targets as unknown, and never rerun that removal automatically. A fresh `inventory` decides what happens to those targets next.
 
-Plain `inventory` starts with `omp worktree list --json` for the configured base. It checks live ownership before checkout contents and discovers inactive work without network or integration comparisons. Historical session headers are metadata, not liveness proof. Removal refreshes leases, live session workspace lists, task process identities and start tokens, process working directories, and omp's listing. It discovers new session files without rereading every historical header for each target.
+Plain `inventory` gets checkout locations from vstack-fan-out's shared `scripts/checkout-locator.ts`. It joins `ovnfs --json ls` with omp's run records when available, and keeps `omp-` checkouts whose source belongs to this project's main checkout, worktrees, or isolated checkouts. Unknown origins stay uncertain. Legacy APFS task copies, linked worktrees, PR checkouts, and orphaned worktrees still come from `omp worktree list --json` under the configured base. clean-wt checks live ownership before checkout contents and discovers inactive work without network or integration comparisons. Historical session headers are metadata, not liveness proof. Removal refreshes leases, live session workspace lists, task process identities and start tokens, process working directories, and both listings.
 
 The JSON contains `base`, `evidence_gaps`, and `checkouts`. Each checkout has:
 
-- `path`, `entry`, and `kind`. Kinds are `linked-worktree`, `standalone-clone`, `task-isolation`, and `orphaned-worktree`. Removing a task checkout deletes its wrapper `entry`. Multiple mounts, unverified wrapper artifacts, missing task identity, and unsupported mount teardown protect the whole wrapper.
+- `path`, `entry`, and `kind`. Kinds are `ovnfs`, `linked-worktree`, `standalone-clone`, `task-isolation`, and `orphaned-worktree`. An ovnfs record also has `ovnfs.name`, `ovnfs.source`, and the run-record path when found. Removing a legacy task checkout deletes its wrapper `entry`. Multiple mounts, unverified wrapper artifacts, missing task identity, and unsupported mount teardown protect the whole wrapper.
 - `verdict`, `owners`, and `reasons`. An `owned` checkout has a live session, task, or cwd owner. Idle sessions and recorded extra workspace directories count. An `uncertain` checkout lacks ownership or teardown evidence. Keep both groups without content inspection. Global `evidence_gaps` protect every unowned checkout.
 - `state` and `changes`. States are `clean`, `dirty`, `unknown`, and `not checked`. Changes list staged, unstaged, unmerged, untracked, unique ignored, and unverified ignored paths. Ignored or excluded contents are preserved copies only when the source checkout has the same bytes or link target. Names and age prove nothing.
 - `unique_history`. The independent guard protects commits and stashes that would exist nowhere else. A linked worktree keeps its branch. A detached tip must be reachable elsewhere. A clone's history must be reachable outside the clone.
@@ -42,6 +42,8 @@ The JSON contains `base`, `evidence_gaps`, and `checkouts`. Each checkout has:
 - `automatic`. True only for unused clean checkouts without unique history, or verified integrated drafts without unique or unverified artifacts, unmerged contents, or unique history. Untracked files and links may qualify when their contents and modes match the remote default tree. Integration does not override the other guards.
 - `sessions` and `moved_sessions`. These are leads for unresolved provenance, not instructions or proof that work shipped.
 - `fingerprint`. This binds the inspected bytes, link text, modes, branch, history, and applicable integration evidence. Tracked files hidden by skip-worktree or assume-unchanged are checked against their index entries and fingerprinted even when Git status omits them. Unavailable hidden-file verification protects the checkout. Keep the fingerprint that an investigation or selection saw.
+
+ovnfs checkouts pass the same Git work-state and history guards inside their checkout and private Git directory. ovnfs's dirty flag or `diff` output never proves a checkout clean. An inactive ovnfs checkout is removed only through `ovnfs rm`, followed by listing and directory checks. Keep using these guards for legacy APFS copies. `omp worktree clear` is not a substitute.
 
 `inventory --prepare-source` prepares source facts once per distinct source Git directory without scanning checkout contents. Save its raw JSON as `source-facts.json` in this run's Scratch entry. Its `source_facts` array contains `{source_git_dir, remote, url, ref, sha}` records, or `{source_git_dir, reason}` when verification fails. These are per-run evidence, not a persistent cache or deletion authority.
 
@@ -89,6 +91,6 @@ Run `remove` with `--approve <path>` only for selected unresolved checkouts. Pas
 
 ## 5. Verify and summarize
 
-Run `inventory` again under the Script contract's deadline rule. Check that removed checkouts are absent from the inventory and disk. For removed linked worktrees, check that Git no longer registers their paths and that their branches remain. Check that every kept checkout remains. If evidence is missing or a checkout changed ownership, report that outcome rather than claiming verification.
+Run `inventory` again under the Script contract's deadline rule. Check that removed checkouts are absent from the inventory and disk, including the ovnfs listing for ovnfs removals. For removed linked worktrees, check that Git no longer registers their paths and that their branches remain. Check that every kept checkout remains. If evidence is missing or a checkout changed ownership, report that outcome rather than claiming verification.
 
 Report removed checkouts, protected owners by owner type, uncertain checkouts with their missing evidence, kept work with its classification and reason, and failures. Account for every original inventory record and attach the verification diagnostics.
