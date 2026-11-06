@@ -5,6 +5,7 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 ## [Unreleased]
 
 - babysit and ship run `watch-checks` with `timeout: 0`, and with `async: true` when other work remains, so long CI runs finish in one watch. GitHub and GitLab Code host templates carry the same rule. A returned watch still requires a fresh PR and review-thread read (#383).
+- vstack-worktree opens and removes checkouts through one script, using ovnfs with revision-specific tracked files and ignored build inputs. An installed ovnfs that fails falls back to `omp wt add` with its reason and clone status recorded. Missing ovnfs stops at setup-vstack. code-review, triage, and prototype use the script, and prototypes keep their checkout record across sessions until the verdict (#377).
 
 ## [9.0.13] - 2026-11-06
 
