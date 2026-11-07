@@ -52,7 +52,7 @@ items:
     tree: eedaf2562c83155115e9c649fa3ecaac2e10e81d
     disposition: merge
     artifacts: [plugin/skills/grill-with-docs]
-    reason: "Names skill://grilling and skill://domain-modeling where Matt calls the Skill tool, adds a grill-with-docs Stage to the Flow page, and names the next skill after the summary (#165, ADR 0032). Integrates architect assessment and visual agreement before implementation while preserving the Matt flow and implementation-owned coding details (#334, ADR 0053)."
+    reason: "Names skill://grilling and skill://domain-modeling where Matt calls the Skill tool and adds a grill-with-docs Stage to the Flow page; replies name no next skill because the Flow page shows the Matt flow path (#165, ADR 0032, ADR 0063). Integrates architect assessment and visual agreement before implementation while preserving the Matt flow and implementation-owned coding details (#334, ADR 0053)."
   - id: matt/implement
     upstream: matt
     kind: skill
