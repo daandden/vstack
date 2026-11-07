@@ -13,7 +13,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # Change-note checks compare the whole branch with its merge base.
           fetch-depth: 0
 
       - uses: oven-sh/setup-bun@v2
@@ -44,8 +43,6 @@ jobs:
       - name: Test
         run: bun run test
 
-      # Feature pushes compare the whole branch, so review fixes reuse its note.
-      # Default-branch pushes check each newly landed delivery against the old tip.
       - name: Pick the change-note base
         id: base
         env:

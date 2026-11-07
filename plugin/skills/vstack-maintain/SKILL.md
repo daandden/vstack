@@ -129,9 +129,9 @@ Run `gates` after the last change in your clone. It validates changed skill fold
 
 ## Plugin release
 
-The maintainer runs `bun scripts/vstack-maintain.ts release` from a commit with pending Change notes. It folds that commit's notes into a dated CHANGELOG heading, raises the version once by their highest level, removes those notes, and records the prepared commit in `plugin-release.json`. It leaves working-tree changes for a normal PR. Notes added later on main stay pending without preparing the release again. ship does not cut releases.
+The maintainer runs `bun scripts/vstack-maintain.ts release` from a commit with pending Change notes. It folds that commit's notes into a dated CHANGELOG heading, raises the version once by their highest level, removes those notes, and records the prepared commit in `plugin-release.json`. It leaves working-tree changes for a normal PR. Notes added later on main stay pending without preparing the Plugin release again. ship does not cut Plugin releases.
 
-Keep the receipt with the release's manifest, CHANGELOG, and note removals. Reconcile changed release inputs before retrying `input-conflict`. See [Change notes and Plugin releases](../../../docs/maintainer.md#versions-and-changelog) for CI validation and command guarantees.
+Keep the receipt with the Plugin release's manifest, CHANGELOG, and note removals. Reconcile changed Plugin release inputs before retrying `input-conflict`. See [Change notes and Plugin releases](../../../docs/maintainer.md#versions-and-changelog) for CI validation and command guarantees.
 
 ## Extra criteria in implement's one code-review pass
 

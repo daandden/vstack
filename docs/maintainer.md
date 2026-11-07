@@ -173,7 +173,7 @@ Other files count even when an artifact lacks `SKILL.md`. Source inside `__pycac
 | `unregistered-upstream-item` | an item at a Pin (per `pins.yaml` `items:`) that no row's `path` names |
 | `invalid-manifest` | `plugin/package.json` lacks `name: vstack`, an `x.y.z` version, or the `omp` field |
 | `missing-change-note` | shipped `plugin/` text changed since the comparison base without a Change note added by the branch |
-| `invalid-plugin-release` | a version change or consumed note lacks a new release receipt, the version is not exactly the highest prepared level, a prepared note remains, an unrelated note is removed, or CHANGELOG does not keep every prepared entry under the dated heading |
+| `invalid-plugin-release` | a version change or consumed note lacks a new Plugin release receipt, the version is not exactly the highest prepared level, a prepared note remains, an unrelated note is removed, or CHANGELOG does not keep every prepared entry under the dated heading |
 | `invalid-house-style` | a row or rule in `house-style.yaml` lacks a field or has a bad one, a row comes after a row that rewrites its `from`, or a linted rule is missing; the item is `house-style.yaml:<id>` |
 | `house-style-leftover` | a row's `from` still matches text the row covers (see "House style" below; adopt text only against `required` rows) |
 | `migration-house-style` | setup-vstack is present but its `references/house-style.yaml` copy is missing, has invalid row fields, or differs from the root `uses: migration` rows in content or order |
@@ -367,7 +367,7 @@ The extension tests use `tests/support/extension-host.ts` and `extension-mocks.t
 
 ## Versions and CHANGELOG
 
-A plugin change carries a Change note instead of changing the version or dated CHANGELOG headings. `prepare` writes `change-notes/<uuid>.json` with `schema: 1`, a `level` of `patch`, `minor`, or `major`, and an `entries` array of nonempty, one-line CHANGELOG entries. The shared module `scripts/lib/change-notes.ts` owns this format, reads pending notes at a ref, reports their highest level, writes notes, and folds a prepared set into CHANGELOG.
+A plugin change carries a Change note instead of changing the version or dated CHANGELOG headings. `prepare` writes `change-notes/<uuid>.json` with `schema: 1`, a `level` of `patch`, `minor`, or `major`, and an `entries` array of nonempty, one-line CHANGELOG entries. The shared module `scripts/lib/change-notes.ts` owns this format, reads pending notes at a ref, reports their highest level, and folds a prepared set into CHANGELOG.
 
 Patch means a Hand edit, minor means an Update, and major means a shipped skill, agent, or command name was removed or renamed. Repeated preparations at the same HEAD reuse one note and combine entries without duplicates. Review fixes on a branch with a note need no further note or version change.
 
@@ -377,10 +377,10 @@ A Plugin release is a separate maintainer-run change, landed through a normal PR
 bun scripts/vstack-maintain.ts release
 ```
 
-The command folds every Change note at HEAD under one `## [x.y.z] - <date>` heading, keeps each entry's text, and raises `plugin/package.json` once by their highest level. It removes only those notes. It writes working-tree changes without committing or opening a PR. Commit the manifest, CHANGELOG, note removals, and `plugin-release.json` together, then land them through a normal PR. ship does not cut releases.
+The command folds every Change note at HEAD under one `## [x.y.z] - <date>` heading, keeps each entry's text, and raises `plugin/package.json` once by their highest level. It removes only those notes. It writes working-tree changes without committing or opening a PR. Commit the manifest, CHANGELOG, note removals, and `plugin-release.json` together, then land them through a normal PR. ship does not cut Plugin releases.
 
-The release receipt records HEAD's full SHA, the version, and the UTC date. `check-register` reads that commit's note set rather than newer main's set. It checks the exact version increase, removal of every prepared note, and the dated CHANGELOG entries. It rejects a version change without a new receipt and refuses to consume the same prepared release against an already raised base version.
+The Plugin release receipt records HEAD's full SHA, the version, and the UTC date. `check-register` reads that commit's note set rather than newer main's set. It checks the exact version increase, removal of every prepared note, and the dated CHANGELOG entries. It rejects a version change without a new receipt and refuses to consume the same prepared Plugin release against an already raised base version.
 
-Notes added on main while the release PR is open stay pending for the next Plugin release. CI compares release-only plugin changes with the branch's common ancestor so newer main's independent edits do not require another note on the release branch. The release command refuses changed release inputs and reports `input-conflict` before writing. Notes outside its committed set remain untouched, including untracked notes. With no notes at HEAD, it refuses without writing.
+Notes added on main while the Plugin release PR is open stay pending for the next Plugin release. CI compares plugin changes limited to the Plugin release with the branch's common ancestor so newer main's independent edits do not require another note on the Plugin release branch. The Plugin release command refuses changed Plugin release inputs and reports `input-conflict` before writing. Notes outside its committed set remain untouched, including untracked notes. With no notes at HEAD, it refuses without writing.
 
-Add new entries through Change notes rather than an Unreleased section. [ADR 0061](adr/0061-change-notes-replace-per-pr-plugin-versions.md) records why delivery PRs leave shared release files alone.
+Add new entries through Change notes rather than an Unreleased section. [ADR 0061](adr/0061-change-notes-replace-per-pr-plugin-versions.md) records why delivery PRs leave shared Plugin release files alone.

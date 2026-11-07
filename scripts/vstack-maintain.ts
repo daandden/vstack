@@ -699,12 +699,12 @@ function release(root: string) {
   const inputs = ["plugin/package.json", "CHANGELOG.md", PLUGIN_RELEASE, ...notes.map(note => note.path)];
   const expected = new Map(inputs.map(path => [path, headInput(root, path)]));
   const conflicts = inputs.filter(path => checkoutInput(root, path) !== expected.get(path));
-  if (conflicts.length) throw new Refusal(`Reconcile changed release inputs before release: ${conflicts.join(", ")}`, { category: "input-conflict", conflicts });
+  if (conflicts.length) throw new Refusal(`Reconcile changed Plugin release inputs before Plugin release: ${conflicts.join(", ")}`, { category: "input-conflict", conflicts });
   const manifest = JSON.parse(atHead(root, "plugin/package.json"));
   const version = releaseVersion(manifest.version, level);
   const receipt: PluginRelease = { schema: 1, prepared, version, date: new Date().toISOString().slice(0, 10) };
   const changelog = foldNotes(atHead(root, "CHANGELOG.md"), version, notes, receipt.date);
-  if (git(root, "rev-parse", "HEAD") !== prepared) throw new Error("HEAD changed during release; rerun at the current commit.");
+  if (git(root, "rev-parse", "HEAD") !== prepared) throw new Error("HEAD changed during Plugin release; rerun at the current commit.");
   writeFileSync(join(root, "plugin/package.json"), `${JSON.stringify({ ...manifest, version }, null, 2)}\n`);
   writeFileSync(join(root, "CHANGELOG.md"), changelog);
   writeFileSync(join(root, PLUGIN_RELEASE), `${JSON.stringify(receipt, null, 2)}\n`);

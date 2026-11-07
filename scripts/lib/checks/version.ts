@@ -1,5 +1,3 @@
-// Plugin manifest and branch Change-note checks.
-
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { artifactFiles, ConfigError, readManifest } from "../vstack-repo.ts";
@@ -54,11 +52,11 @@ function checkRelease(root: string, base: string, version: string): { attempted:
     const left = notes.filter(note => current.some(now => now.path === note.path));
     if (left.length) throw new Error(`Prepared Change notes remain pending: ${left.map(note => note.path).join(", ")}`);
     const extra = removed.filter(note => !notes.some(prepared => prepared.path === note.path));
-    if (extra.length) throw new Error(`The release removed notes outside its prepared set: ${extra.map(note => note.path).join(", ")}`);
+    if (extra.length) throw new Error(`The Plugin release removed notes outside its prepared set: ${extra.map(note => note.path).join(", ")}`);
     const section = foldNotes("", expected, notes, release.date).trim();
     const changelog = readFileSync(join(root, "CHANGELOG.md"), "utf8");
     const headings = changelog.split(/(?=^## )/m).filter(block => block.startsWith(`## [${expected}]`));
-    if (headings.length !== 1 || headings[0]!.trim() !== section) throw new Error("CHANGELOG must contain the dated release heading and every prepared entry, unchanged and once.");
+    if (headings.length !== 1 || headings[0]!.trim() !== section) throw new Error("CHANGELOG must contain the dated Plugin release heading and every prepared entry, unchanged and once.");
     return { attempted: true };
   } catch (error) {
     return { attempted: true, error: (error as Error).message };

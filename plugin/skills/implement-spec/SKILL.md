@@ -100,7 +100,7 @@ A ticket is complete when its commit is on the integration branch and no gating 
 
 Once that integration commit has landed and nothing still needs its implementer, release the implementer and verify disappearance through the shared contract. Record the observed outcome beside the commit and preserved patch.
 
-Update the ticket's task only after its integration commit lands with no open question. Append a Timeline event with that SHA and the worker's captured red, green, and live proof. A held patch, failed worker, or failed merge stays visible with its blocker and evidence; none completes the ticket. Update the delivery table as each result arrives, not only at the final reply.
+Update the ticket's task only after its integration commit lands with no open gating question. Append a Timeline event with that SHA and the worker's captured red, green, and live proof. A held patch, failed worker, or failed merge stays visible with its blocker and evidence; none completes the ticket. Update the delivery table as each result arrives, not only at the final reply.
 
 ### 6. Start newly ready tickets
 

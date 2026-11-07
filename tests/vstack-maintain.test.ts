@@ -25,7 +25,7 @@ function choices(f: ReturnType<typeof fixture>, plan?: any, targets: any[] = [],
 }
 const own = (name: string) => ({ action: "add", kind: "rule", artifact: `plugin/rules/${name}.md` });
 
-test("release folds the committed notes once at their highest level and leaves later notes pending", async () => {
+test("Plugin release folds the committed notes once at their highest level and leaves later notes pending", async () => {
   const f = fixture();
   writeFiles(f.root, {
     "change-notes/patch.json": JSON.stringify({ schema: 1, level: "patch", entries: ["Keep the patch text."] }),
@@ -43,14 +43,14 @@ test("release folds the committed notes once at their highest level and leaves l
   expect(existsSync(join(f.root, "change-notes/patch.json"))).toBe(false);
   expect(existsSync(join(f.root, "change-notes/minor.json"))).toBe(false);
   expect(JSON.parse(read(f.root, "change-notes/uncommitted.json")).entries).toEqual(["Not committed yet."]);
-  writeFiles(f.root, { "change-notes/later.json": JSON.stringify({ schema: 1, level: "major", entries: ["Next release only."] }) });
+  writeFiles(f.root, { "change-notes/later.json": JSON.stringify({ schema: 1, level: "major", entries: ["Next Plugin release only."] }) });
   const before = state(f.root);
   expect((await f.run(f.root, ["release"])).code).toBe(2);
   expect(state(f.root)).toEqual(before);
-  expect(JSON.parse(read(f.root, "change-notes/later.json")).entries).toEqual(["Next release only."]);
+  expect(JSON.parse(read(f.root, "change-notes/later.json")).entries).toEqual(["Next Plugin release only."]);
 }, 30000);
 
-test("release refuses changed inputs and an empty pending set without writing", async () => {
+test("Plugin release refuses changed inputs and an empty pending set without writing", async () => {
   const f = fixture();
   let before = state(f.root);
   const empty = await f.run(f.root, ["release"]);
@@ -66,6 +66,7 @@ test("release refuses changed inputs and an empty pending set without writing", 
     const r = await f.run(f.root, ["release"]);
     expect(r.code).toBe(2);
     expect(JSON.parse(r.stdout)).toMatchObject({ category: "input-conflict", conflicts: [path] });
+    expect(JSON.parse(r.stdout).reason).toContain("Reconcile changed Plugin release inputs before Plugin release");
     expect(state(f.root)).toEqual(before);
     writeFiles(f.root, { [path]: original });
   }
@@ -151,7 +152,7 @@ test("check reads a rejected take through fake GitHub at the current Pin", async
   finally { server.stop(true); }
 }, 30000);
 
-test("prepare writes a patch Change note and leaves release files and unchanged bookkeeping byte-identical", async () => {
+test("prepare writes a patch Change note and leaves Plugin release files and unchanged bookkeeping byte-identical", async () => {
   const f = fixture();
   const pins = `# Pins keep their comments.\nupstreams: ${JSON.stringify((Bun.YAML.parse(read(f.root, "pins.yaml")) as any).upstreams)} # Flow map\n`;
   const style = `# House style keeps its comments.\n${read(f.root, "house-style.yaml")}`;
@@ -387,7 +388,7 @@ test("prepare reports completed writes and the failing path after an unexpected 
   } finally { chmodSync(style, 0o644); }
 }, 30000);
 
-test("prepare keeps earlier committed ticket rows and notes without editing release files", async () => {
+test("prepare keeps earlier committed ticket rows and notes without editing Plugin release files", async () => {
   const f = fixture(); git(f.root, "checkout", "-qb", "feature");
   writeFiles(f.root, { "plugin/rules/first.md": "First rule.\n" });
   expect((await f.run(f.root, ["prepare", "--decisions", choices(f, undefined, [own("first")], { changelog: ["First ticket line."] })])).code).toBe(0);

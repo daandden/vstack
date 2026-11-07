@@ -407,7 +407,6 @@ test("after the host stops or dies, the next command starts it again and earlier
   expect(hostPids(w)).toHaveLength(1);
 });
 
-// Reader polling, a held publication, and two idle expirations exceed Bun's default 5-second test timeout.
 test("the host stops once idle, while an open reader or a publication in flight keeps it running", async () => {
   const w = world({ idle: 1 });
   const opened = ok(open(w));

@@ -4,14 +4,14 @@ Every change under `plugin/` used to raise `plugin/package.json` and move its CH
 
 ## Considered Options
 
-- Keep a release in every PR and make collisions cheaper with a scripted re-bump and Verdict reuse for release-only differences. Each collision would still rerun gates and CI, and the merge commits stay.
+- Keep a Plugin release in every PR and make collisions cheaper with a scripted version change and Verdict reuse for differences limited to Plugin releases. Each collision would still rerun gates and CI, and the merge commits stay.
 - Append to `## [Unreleased]` with a `merge=union` attribute. GitHub's server-side merge ignores `.gitattributes` merge drivers, so adjacent appends still conflict.
-- Cut a Plugin release in a GitHub Actions job on every push to main. Rejected for a bot commit per landing, a job with `contents: write`, and a release commit that `check-register` never checks.
+- Cut a Plugin release in a GitHub Actions job on every push to main. Rejected for a bot commit per landing, a job with `contents: write`, and a Plugin release commit that `check-register` never checks.
 - Fold notes only into the next Update. Hand edits would have no version until an Update, whose cadence is not fixed.
-- Let ship cut the release after landing. ship serves every project that installs vstack, and this rule belongs to the vstack repo alone.
+- Let ship cut the Plugin release after landing. ship serves every project that installs vstack, and this rule belongs to the vstack repo alone.
 
 ## Consequences
 
-- `check-register`'s `no-version-bump` class is replaced by a check that a `plugin/` change carries a Change note. A Plugin release consumes exactly the notes pending at the commit it was prepared on, once, and raises the version by the highest level among them. A note that lands while the release PR is open stays pending for the next release, so a release never needs preparing again and never deletes a note it did not fold.
+- `check-register`'s `no-version-bump` class is replaced by a check that a `plugin/` change carries a Change note. A Plugin release consumes exactly the notes pending at the commit it was prepared on, once, and raises the version by the highest level among them. A note that lands while the Plugin release PR is open stays pending for the next Plugin release, so a Plugin release never needs preparing again and never deletes a note it did not fold.
 - `vstack-maintain prepare` writes a Change note instead of the version and CHANGELOG heading. `docs/maintainer.md` describes the Plugin release command.
 - Source conflicts and concurrent ADR numbers still collide; they are resolved when they happen.

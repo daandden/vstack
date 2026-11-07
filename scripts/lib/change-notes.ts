@@ -1,5 +1,5 @@
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 
 export const CHANGE_NOTES = "change-notes";
 export type VersionLevel = "patch" | "minor" | "major";
@@ -20,7 +20,6 @@ function parseNote(path: string, text: string): ChangeNote {
   return { path, level: note.level, entries: note.entries };
 }
 
-/** Reads the pending set in a commit, or the working tree when ref is omitted. */
 export function pendingNotes(root: string, ref?: string): ChangeNote[] {
   const paths = ref
     ? git(root, ["ls-tree", "-r", "--name-only", ref, "--", CHANGE_NOTES]).trim().split("\n").filter(Boolean)
@@ -41,15 +40,6 @@ export function noteText(level: VersionLevel, entries: string[]): string {
   return text;
 }
 
-export function writeNote(root: string, note: ChangeNote): void {
-  const text = noteText(note.level, note.entries);
-  parseNote(note.path, text);
-  if (!/^change-notes\/[a-zA-Z0-9-]+\.json$/.test(note.path)) throw new Error(`Invalid Change note path: ${note.path}`);
-  mkdirSync(dirname(join(root, note.path)), { recursive: true });
-  writeFileSync(join(root, note.path), text);
-}
-
-/** Folds the caller's prepared set without re-reading newer pending notes. */
 export function foldNotes(changelog: string, version: string, notes: readonly ChangeNote[], date = new Date().toISOString().slice(0, 10)): string {
   const lines = changelog.split("\n");
   const first = lines.findIndex(line => line.startsWith("## "));

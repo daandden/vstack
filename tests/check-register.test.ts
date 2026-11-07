@@ -1004,7 +1004,7 @@ describe("missing-change-note", () => {
     expect(failuresOf(await co.run())).toEqual(["missing-change-note change-notes"]);
   });
 
-  test("the same change with a Change note passes without a version bump", async () => {
+  test("the same change with a Change note passes without a version change", async () => {
     const co = checkout(up, passingSpec(up));
     co.write(changed, "edited\n");
     co.write(note, text);
@@ -1077,7 +1077,7 @@ describe("missing-change-note", () => {
 describe("Plugin releases", () => {
   function preparedRelease() {
     const spec = clone(passingSpec(up));
-    spec.files["CHANGELOG.md"] = "# Changelog\n\n## [0.1.0] - 2026-01-01\n\n- Previous release.\n";
+    spec.files["CHANGELOG.md"] = "# Changelog\n\n## [0.1.0] - 2026-01-01\n\n- Previous Plugin release.\n";
     const co = checkout(up, spec);
     co.write("change-notes/patch.json", JSON.stringify({ schema: 1, level: "patch", entries: ["Patch text."] }));
     co.write("change-notes/major.json", JSON.stringify({ schema: 1, level: "major", entries: ["Breaking text."] }));
@@ -1114,10 +1114,10 @@ describe("Plugin releases", () => {
     expect(r.json!.failures[0]!.message).toContain("Prepared Change notes remain pending");
   });
 
-  test("a release prepared at A checks and lands after B without consuming B's later note", async () => {
+  test("a Plugin release prepared at A checks and lands after B without consuming B's later note", async () => {
     const { co, prepared } = preparedRelease();
     git(co.root, "checkout", "-qb", "release");
-    git(co.root, "add", "-A"); git(co.root, "commit", "-qm", "release prepared at A");
+    git(co.root, "add", "-A"); git(co.root, "commit", "-qm", "Plugin release prepared at A");
     git(co.root, "checkout", "-q", "main");
     co.write("change-notes/later.json", JSON.stringify({ schema: 1, level: "minor", entries: ["Later note stays pending."] }));
     co.write("plugin/rules/fx-rule.md", "---\nalwaysApply: true\n---\nLater independent edit.\n");
@@ -1126,7 +1126,7 @@ describe("Plugin releases", () => {
     git(co.root, "checkout", "-q", "release");
     expect((await co.run(["--base", later])).json!.failures).toEqual([]);
     git(co.root, "checkout", "-q", "main");
-    git(co.root, "merge", "--no-ff", "-qm", "land release", "release");
+    git(co.root, "merge", "--no-ff", "-qm", "land Plugin release", "release");
     expect((await co.run(["--base", later])).json!.failures).toEqual([]);
     expect(JSON.parse(readFileSync(join(co.root, "plugin/package.json"), "utf8")).version).toBe("1.0.0");
     expect(readdirSync(join(co.root, "change-notes"))).toEqual(["later.json"]);
@@ -1146,10 +1146,12 @@ describe("Plugin releases", () => {
     const { co } = preparedRelease();
     const changelog = readFileSync(join(co.root, "CHANGELOG.md"), "utf8");
     co.write("CHANGELOG.md", changelog.replace("Breaking text.", "Changed text."));
-    expect(failuresOf(await co.run())).toEqual(["invalid-plugin-release plugin-release.json"]);
+    const r = await co.run();
+    expect(failuresOf(r)).toEqual(["invalid-plugin-release plugin-release.json"]);
+    expect(r.json!.failures[0]!.message).toContain("dated Plugin release heading");
   });
 
-  test("a consumed note or raised version without a release receipt fails", async () => {
+  test("a consumed note or raised version without a Plugin release receipt fails", async () => {
     const { co } = preparedRelease();
     rmSync(join(co.root, "plugin-release.json"));
     expect(failuresOf(await co.run())).toEqual(["invalid-plugin-release plugin-release.json"]);
@@ -1158,19 +1160,21 @@ describe("Plugin releases", () => {
   test("a Plugin release cannot consume a note outside its prepared set", async () => {
     const { co } = preparedRelease();
     git(co.root, "checkout", "-qb", "release");
-    git(co.root, "add", "-A"); git(co.root, "commit", "-qm", "release");
+    git(co.root, "add", "-A"); git(co.root, "commit", "-qm", "Plugin release");
     git(co.root, "checkout", "-q", "main");
-    co.write("change-notes/later.json", JSON.stringify({ schema: 1, level: "patch", entries: ["Next release."] }));
+    co.write("change-notes/later.json", JSON.stringify({ schema: 1, level: "patch", entries: ["Next Plugin release."] }));
     git(co.root, "add", "-A"); git(co.root, "commit", "-qm", "later note");
     const base = git(co.root, "rev-parse", "HEAD");
-    git(co.root, "merge", "--no-ff", "-qm", "land release", "release");
+    git(co.root, "merge", "--no-ff", "-qm", "land Plugin release", "release");
     rmSync(join(co.root, "change-notes/later.json"));
-    expect(failuresOf(await co.run(["--base", base]))).toEqual(["invalid-plugin-release plugin-release.json"]);
+    const r = await co.run(["--base", base]);
+    expect(failuresOf(r)).toEqual(["invalid-plugin-release plugin-release.json"]);
+    expect(r.json!.failures[0]!.message).toContain("The Plugin release removed notes outside its prepared set");
   });
 
   test("a prepared Plugin release cannot be consumed a second time", async () => {
     const { co } = preparedRelease();
-    git(co.root, "add", "-A"); git(co.root, "commit", "-qm", "land first release");
+    git(co.root, "add", "-A"); git(co.root, "commit", "-qm", "land first Plugin release");
     const base = git(co.root, "rev-parse", "HEAD");
     const receipt = JSON.parse(readFileSync(join(co.root, "plugin-release.json"), "utf8"));
     co.write("plugin-release.json", JSON.stringify({ ...receipt, date: "2027-01-01", version: "2.0.0" }));
