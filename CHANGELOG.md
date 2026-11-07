@@ -2,6 +2,24 @@
 
 Plugin releases of vstack (`plugin/package.json`). Each delivery carries a Change note. Run `bun scripts/vstack-maintain.ts release` to fold pending notes into a dated heading and raise the version once, then land the working-tree changes through a normal PR. See the [maintainer guide](docs/maintainer.md#versions-and-changelog).
 
+## [9.0.24] - 2026-11-07
+
+- The agent picks test seams itself by Matt's rule with a small footprint, records each pick with what it catches and misses, and asks only before a Costly seam: a real service beyond localhost, a real credential, account, or paid quota, or a test command over 180 seconds (ADR 0062).
+
+## [9.0.23] - 2026-11-06
+
+- Make Flow questions self-contained, move shared session-review boundaries into the Background, and replace the findings table with a linked index (#347).
+- Fold Today sources behind one disclosure and refuse new rounds with repeated descriptions, reader needs, or option explanations, ignoring finding numbers while preserving stored questions (#347).
+
+## [9.0.22] - 2026-11-07
+
+- grill-with-docs specifies the Architecture brief's provenance syntax: link each explicit answer by its question anchor and cite each applicable ADR as a Document citation of its file. The Flow page already supported these links, but the skill did not name the syntax.
+
+## [9.0.21] - 2026-11-07
+
+- triage decides roles, grills when needed, and posts its outcome without confirmation gates. Grill questions and reconsidering a prior rejection still ask through `ask` (ADR 0061).
+- The Flow host stays up while a publication is in flight: the publisher now reads its host hold stream, so an idle host no longer stops mid-publication.
+
 ## [9.0.20] - 2026-11-07
 
 - setup-vstack recommends the `merge` Landing method on GitHub instead of `rebase`. GitHub refused `gh pr merge --rebase` on PRs whose branches had merged the default branch in, which the End state chain does on every branch update, so ship stopped to ask for another method. Projects that already store `rebase` keep it (ADR 0060).

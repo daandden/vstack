@@ -26,8 +26,8 @@ function cli(args: string[], input?: object) {
 
 const submit = (flow: string, stage: string, items: object[]) => cli(["submit", "--flow", flow, "--stage", stage], { version: 1, items });
 const question = (ref: string, title: string) => ({
-  ref, title, description: "Pick one.", needs: [{ need: "Know the choice.", kind: "prose" }],
-  options: [{ label: "Keep", does: "Keeps it", gains: ["Stable"], costs: ["None"] }, { label: "Change", does: "Changes it", gains: ["New"], costs: ["Work"] }],
+  ref, title, description: `Choose the ${title} route.`, needs: [{ need: `Understand the ${title} consequence.`, kind: "prose" }],
+  options: [{ label: "Keep", does: `${title}: keeps it`, gains: [`${title}: stability`], costs: [`${title}: no new behavior`] }, { label: "Change", does: `${title}: changes it`, gains: [`${title}: new behavior`], costs: [`${title}: work`] }],
 });
 const doc = (ref: string, title: string, sections = 1) => ({ kind: "result", ref, shape: "document", title, sections: Array.from({ length: sections }, (_, i) => ({ heading: `Finding ${i + 1}`, blocks: [{ prose: "One finding." }] })) });
 

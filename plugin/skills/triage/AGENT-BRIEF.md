@@ -140,7 +140,7 @@ checked for matches.
       when a new issue matches a prior rejection
 
 **Out of scope:**
-- Automated matching (human confirms the match)
+- Reversing a prior rejection (the maintainer decides)
 - Reopening previously rejected features
 - Bug reports (only enhancement rejections go to `.out-of-scope/`)
 ```

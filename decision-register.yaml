@@ -60,7 +60,7 @@ items:
     tree: f07d230f645fc9ac390cf13a450bbff12ad791a3
     disposition: adapt
     artifacts: [plugin/skills/implement]
-    reason: "Settles End states from user words, the ticket, project default, then ask through live MCP discovery and Code host routing. Confirms Flow test seams before code and goes red per slice (#183, ADR 0035, ADR 0038). Preserves tune-llm-flow kept-round and eval commits (ADR 0041). Shared step 6b independently verifies committed HEAD at every End state and gates reached progress (ADR 0043). It owns Shared checkout briefs, REFUSED and cleanup_error availability checks, and unchanged-clone verification safety. Preserves supplied architecture agreements while leaving coding choices to implementation; consequential departures remain open until the user resolves them (#336, ADR 0053). Frontend tasks and delegated briefs conditionally reach good-css and its shipped UI guidance (#339, ADR 0051). The Conflict owner merges the target in and asks the user before resolving a hunk that chooses between behaviors (ADR 0033)."
+    reason: "Settles End states from user words, the ticket, project default, then ask through live MCP discovery and Code host routing. The agent picks test seams by tdd's rule and asks only for a Costly seam (ADR 0062), and goes red per slice (#183, ADR 0035, ADR 0038). Preserves tune-llm-flow kept-round and eval commits (ADR 0041). Shared step 6b independently verifies committed HEAD at every End state and gates reached progress (ADR 0043). It owns Shared checkout briefs, REFUSED and cleanup_error availability checks, and unchanged-clone verification safety. Preserves supplied architecture agreements while leaving coding choices to implementation; consequential departures remain open until the user resolves them (#336, ADR 0053). Frontend tasks and delegated briefs conditionally reach good-css and its shipped UI guidance (#339, ADR 0051). The Conflict owner merges the target in and asks the user before resolving a hunk that chooses between behaviors (ADR 0033)."
   - id: matt/improve-codebase-architecture
     upstream: matt
     kind: skill
@@ -100,7 +100,7 @@ items:
     tree: bf1bf5ffcd63aa8abce830f2955a853c121fb463
     disposition: adapt
     artifacts: [plugin/skills/tdd]
-    reason: "Asks the seam question through the shared Flow publication and ordinary ask contract and points at `skill://codebase-design` and `skill://code-review` (#209). Flow publication is conditional and chat keeps the full output (#321, ADR 0046)."
+    reason: "The agent picks test seams by tdd's rule and asks only for a Costly seam through the shared Flow publication and ordinary ask contract (ADR 0062). Points at `skill://codebase-design` and `skill://code-review` (#209). Flow publication is conditional and chat keeps the full output (#321, ADR 0046)."
   - id: matt/to-spec
     upstream: matt
     kind: skill
@@ -108,7 +108,7 @@ items:
     tree: 136b9651747cfccbfbb7c50a6b0dfb757e7547d2
     disposition: adapt
     artifacts: [plugin/skills/to-spec]
-    reason: "Publishes the self-contained agreed architecture and necessary visuals from Flow Results and canonical domain records, preserves seam and capability-map confirmations and drift provenance, and pauses consequential gaps for user-invoked grilling. MCP publication uses current schemas and mapped labels; specs carry no inherited Addon pointers (#166, #223, #226, #230, #263, #267, #207, #335, ADR 0035)."
+    reason: "Publishes the self-contained agreed architecture and necessary visuals from Flow Results and canonical domain records, preserves capability-map confirmations and drift provenance, and pauses consequential gaps for user-invoked grilling. The agent picks test seams by tdd's rule and asks only for a Costly seam (ADR 0062). MCP publication uses current schemas and mapped labels; specs carry no inherited Addon pointers (#166, #223, #226, #230, #263, #267, #207, #335, ADR 0035)."
   - id: matt/to-tickets
     upstream: matt
     kind: skill
@@ -124,7 +124,7 @@ items:
     tree: 4cb951d62ecccaed601cdc5f9a1b7b3d8a799635
     disposition: adapt
     artifacts: [plugin/skills/triage]
-    reason: "Questions after item selection use ask on the item's Flow page. MCP operations use current descriptions, schemas, recorded creation facts, canonical-role labels, and close transition. Discovery creates no administrative Flow by default (#58, #170, #207, ADR 0035)."
+    reason: "Questions after item selection use ask on the item's Flow page. Triage picks roles, grills, and writes its outcome without confirmation gates; only unanswered grill questions and reconsidering a prior rejection stop it. MCP operations use current descriptions, schemas, recorded creation facts, canonical-role labels, and close transition. Discovery creates no administrative Flow by default (#58, #170, #207, ADR 0035, ADR 0061)."
   - id: matt/wayfinder
     upstream: matt
     kind: skill
@@ -877,7 +877,7 @@ items:
     tree: 0cfefc751d0cb64f0c948ffcb17e13b94e778f08
     disposition: adapt
     artifacts: [plugin/skills/implement-spec]
-    reason: "Runs isolated ticket implementers and mergers, preserving one commit per ticket and final review fixes. Uses one Flow Stage for coordinator asks and Results. Resolves the MCP task graph through current descriptions, schemas, directional blockers, and close transition. Tickets and spec close only after shared step 6b accepts the committed-head Verdict (ADR 0019, ADR 0022, ADR 0035, ADR 0038, ADR 0043, #167, #207). Carries agreed architecture through existing spec and ticket pointers, holding consequential departures through the existing open-question path (#336, ADR 0053)."
+    reason: "Runs isolated ticket implementers and mergers, preserving one commit per ticket and final review fixes. Uses one Flow Stage for coordinator asks and Results. The agent picks test seams by tdd's rule and asks only for a Costly seam, without holding non-costly patches and with approved costly tests added by a follow-up implementer (ADR 0062). Resolves the MCP task graph through current descriptions, schemas, directional blockers, and close transition. Tickets and spec close only after shared step 6b accepts the committed-head Verdict (ADR 0019, ADR 0022, ADR 0035, ADR 0038, ADR 0043, #167, #207). Carries agreed architecture through existing spec and ticket pointers, holding consequential departures through the existing open-question path (#336, ADR 0053)."
   - id: matt/pr
     upstream: matt
     kind: skill

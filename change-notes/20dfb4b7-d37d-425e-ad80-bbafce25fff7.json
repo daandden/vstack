@@ -1,7 +1,0 @@
-{
-  "schema": 1,
-  "level": "patch",
-  "entries": [
-    "Keep the Flow host alive during in-flight publications by owning the streaming hold response until release."
-  ]
-}

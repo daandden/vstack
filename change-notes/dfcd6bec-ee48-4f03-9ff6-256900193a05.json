@@ -3,6 +3,6 @@
   "level": "patch",
   "entries": [
     "ship lands a clean, green PR as it is when its accepted Verdict matches the patch, and merges the base in only on a conflict or when the Code host says it cannot merge (#395).",
-    "implement and implement-spec hold questions that cannot change the committed patch, its proof, or the End state until the End state is reached or the run stops at a blocker (#396)."
+    "implement and implement-spec hold questions that cannot change the committed patch, its proof, or the End state until the End state is reached or the run stops at a blocker, including Costly seam approval when the test is optional for that End state rather than required for its proof (#396)."
   ]
 }

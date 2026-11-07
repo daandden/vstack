@@ -17,13 +17,20 @@ See [tests.md](tests.md) for examples and [mocking.md](mocking.md) for mocking g
 
 ## Seams: where tests go
 
-A **seam** is the public boundary you test at: the interface where you observe behavior without reaching inside. Tests live at seams, never against internals.
+A seam is an existing public interface where a caller sees the changed behavior. Pick seams yourself, reusing those named by the spec's testing decisions, the ticket, or an earlier record. Prefer an existing seam to a new one, the highest seam that shows the behavior, and as few seams as possible, ideally one. For a bug, use skill://diagnosing-bugs to find where the real bug pattern happens and test there.
 
-**Test only at pre-agreed seams.** Reuse a seam confirmed by the spec, ticket, or the user's own answer. For missing seams, write down the proposed boundaries and confirm them through one question before writing any test there. When bound to a Flow, use `ask` under `skill://flow-page`'s "Every ask in a Flow" contract in the owning producer's Stage. Outside a Flow, a reference-only helper uses the existing omp-tools `ask` override. No test is written at an unconfirmed seam. Agreeing the seams up front puts testing effort on the critical paths and complex logic instead of every edge case.
+Run real code behind the seam. Replace only system boundaries with stand-ins, local before remote, following the dependency categories in skill://codebase-design/DEEPENING.md.
 
-Use this question: "What's the public interface, and which seams should we test?" Cover every missing seam in that one question, reusing the caller's seam question rather than asking a second time. A timed-out answer is not the user's, so the seam stays unconfirmed. Cancellation, a headless recommendation, or an unavailable picker also leaves it unconfirmed.
+Record every pick with what it catches and misses: an `assumed` item in the owning Stage in a Flow, or a line in chat outside one. The user's pushback reopens that seam.
 
-Follow `skill://flow-page`'s "Stage entry/exit line" for a standalone result-producing tdd run. A test cycle within implement or implement-spec is part of that existing run. Reuse seams already confirmed by the spec, ticket, or user. Ask only about a missing seam.
+Ask only before writing a test at a Costly seam. Its test reaches a real service beyond localhost, needs a real credential, account, or paid quota, or its test command runs over 180 seconds, measured on the first run or estimated before writing the test. Ask once through `ask` under skill://flow-page's "Every ask in a Flow" contract, or plain `ask` outside a Flow. Reuse an earlier explicit approval for that costly use. In a subagent, return the costly seam as a question to the coordinator.
+Inside implement or implement-spec, END-STATE.md's "Question timing" decides when the Costly seam question is asked.
+
+Without the user's answer, including timeout, cancellation, headless operation, or an unavailable picker, do not use the Costly seam. Test at the best seam that is not costly, or prove the change another way, and name the gap. A first run that reveals the time limit stops further use until approval.
+
+A seam that needs a new production interface, such as a port, an adapter, or an export only tests use, is a consequential architecture departure. Follow skill://implement's "Work within the agreement" rule before introducing it.
+
+Follow skill://flow-page's "Stage entry/exit line" for a standalone result-producing tdd run. A test cycle within implement or implement-spec belongs to that existing run.
 
 When the shape of that interface is itself in question (how deep the module is, where the seam belongs, what the interface should expose), use `skill://codebase-design` for the vocabulary. It is the shared source of the module, interface, depth, seam, adapter, leverage and locality terms, and it is a reference to consult, not a session to run.
 
@@ -41,4 +48,4 @@ When the shape of that interface is itself in question (how deep the module is, 
 
 ## Record the loop
 
-In a Flow, follow skill://implement/END-STATE.md's "Publish delivery progress" in the caller's Stage, or the standalone tdd Stage. Append red then green commands and observed outcomes to its Timeline, attach the captured outputs, and record checks against the tested revision. Outside a Flow, report the commands and observed outcomes in chat and keep the captured outputs. State a missing red, unconfirmed seam, skipped check, or unavailable live proof explicitly. A green test reaches no delivery End state.
+In a Flow, follow skill://implement/END-STATE.md's "Publish delivery progress" in the caller's Stage, or the standalone tdd Stage. Append red then green commands and observed outcomes to its Timeline, attach the captured outputs, and record checks against the tested revision. Outside a Flow, report the commands and observed outcomes in chat and keep the captured outputs. State a missing red, a Costly seam not used, a skipped check, or unavailable live proof explicitly. A green test reaches no delivery End state.

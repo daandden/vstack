@@ -8,6 +8,8 @@ When a question arises, the run's agent classifies it as gating if its answer ca
 
 Hold non-gating questions in the run record and continue delivery, including through chained skills. Examples include approval to post an optional external report or to clean up a disposable resource. Keep the resource until its held cleanup question is answered. Holding a question grants no approval for its action.
 
+A Costly seam test optional for the requested End state has a non-gating approval question, held until that End state is reached or the run stops at a blocker. If the test is required to establish proof for the End state, its approval question is gating, so claim neither that proof nor the End state without it. Never run the test without explicit approval, and record each unrun test and its proof gap.
+
 Ask every held question after reaching the effective End state or when the run stops at a blocker. Use `ask` under `skill://flow-page`'s "Every ask in a Flow" contract, including CLI publication and separate answer recording. Preserve unanswered questions and their pending actions in the run record and reply.
 
 ## 0a. Settle the End state

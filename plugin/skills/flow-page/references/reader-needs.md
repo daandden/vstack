@@ -1,12 +1,17 @@
 # Reader needs and Visual kinds
 
-Prepare each new or re-asked question completely before publication through flow-page's "Every ask in a Flow" contract. This applies to the executing author, including a subagent assigned publication without asking. List what the reader must recognize, know, or compare to choose between the options, not a generic instruction to read the page.
+Prepare each new or re-asked question with this checklist before publication through flow-page's "Every ask in a Flow" contract. This applies to the executing author, including a subagent assigned publication without asking.
 
-1. Write the title, description, options, and sourced Today facts.
-2. Declare one or more `needs`, each `{ need: "<concrete distinction>", kind: "<id>" }`.
-3. Build the visuals for non-prose needs, with the same `kind` on each question figure or option preview. One concise visual can meet several needs of the same kind.
-4. Cut overlapping description and Today text, retaining what the decision changes and why it matters. Preserve source qualifications, unresolved choices, and evidence limits. Label authored examples hypothetical.
-5. For ordinary main-agent delivery, publish the complete question and its new attachments in one CLI contribution, then call the existing `ask` tool with the receipt's generated questions under flow-page's "Every ask in a Flow" contract. That contract owns current-content checks, publication-only work, failures, answer recording, and Ratchet's native approval exception.
+1. Put shared scope, boundaries, and option meanings once in the Stage Background. Put concepts used across rounds or Stages in Topic notes and one-line definitions in Term notes. Keep a question's local exceptions beside that question.
+2. Draft the title, description, options, and sourced Today facts. The reader must be able to choose from the question and shared Background without consulting a findings table, another question, or the source transcript:
+   - Explain today's behavior in plain words and what it means for the user. Define the role of a named file, check, or tool when that role matters to the choice.
+   - State the observed evidence, what it establishes, and its limits. Keep qualifications beside the claims they limit. Distinguish observed facts from inference and label authored examples hypothetical. Retain traceable sources in Today facts or the question's evidence.
+   - Describe the proposed change and its target. Explain local routing or approval exceptions where they affect the choice. Finding numbers, file names, and Result links identify the work but do not explain it.
+   - Make each option's `does`, `gains`, and `costs` specific to this decision. Name the work or behavior it changes, the benefit, and the meaningful cost or risk. Reuse labels for shared choices, but explain their consequences for this question rather than repeating the Background's meanings.
+3. Declare one or more `needs`, each `{ need: "<concrete distinction>", kind: "<id>" }`. Name what the reader must recognize, know, or compare to choose between these options. A generic instruction to read the page is not a need.
+4. Build the visuals for non-prose needs, with the same `kind` on each question figure or option preview. One concise visual can meet several needs of the same kind.
+5. Cut overlapping description and Today text without removing the evidence or qualifications the reader needs. Check that each option's consequences remain clear without opening the linked Results.
+6. For ordinary main-agent delivery, publish the complete question and its new attachments in one CLI contribution, then call the existing `ask` tool with the receipt's generated questions under flow-page's "Every ask in a Flow" contract. That contract owns current-content checks, publication-only work, failures, answer recording, and Ratchet's native approval exception.
 
 | Visual kind | `kind` | Reader need and safe representation |
 | --- | --- | --- |

@@ -501,6 +501,7 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
         const round: Round = { id: newId(s, "round"), stage: stage.id, n: Math.max(0, ...s.rounds.filter((r) => r.stage === stage.id).map((r) => r.n)) + 1, seq: ++s.seq, time };
         s.rounds.push(round);
         const parsed = qs.map((q, j) => parseQuestion(q, `${where}: question ${j + 1}`, ids.questions![j], stage.id, round.id, resolve, figure));
+        refuseRepeatedQuestionText(parsed, where);
         assignQNumbers(s, parsed, stage.id, where);
         s.questions.push(...parsed);
         for (const q of parsed) publish("question", q.id);
@@ -1298,6 +1299,31 @@ function parseQuestion(raw: unknown, where: string, id: string, stage: string, r
   }
   for (const n of q.needs!) if (n.kind !== "prose" && !shown.some(({ f }) => f.kind === n.kind)) refuse(where, `no visual or option preview on this question is a ${n.kind}`);
   return q;
+}
+
+function refuseRepeatedQuestionText(questions: Question[], where: string): void {
+  if (questions.length < 2) return;
+  const seen = new Map<string, { question: number; field: string }>();
+  const repeated: string[] = [];
+  for (let i = 0; i < questions.length; i++) {
+    const q = questions[i];
+    const check = (kind: string, field: string, value: string) => {
+      const key = `${kind}:${value.replace(/\b([FQ])\d+\b/g, "$1#")}`;
+      const earlier = seen.get(key);
+      if (!earlier) seen.set(key, { question: i, field });
+      else if (earlier.question !== i)
+        repeated.push(`question ${earlier.question + 1} (${questions[earlier.question].title}) ${earlier.field} and question ${i + 1} (${q.title}) ${field}`);
+    };
+    check("description", "description", q.description);
+    for (let j = 0; j < q.needs!.length; j++) check("needs", `needs ${j + 1}`, q.needs![j].need);
+    for (let j = 0; j < q.options.length; j++) {
+      const option = q.options[j];
+      check("does", `option ${j + 1} does`, option.does);
+      for (const kind of ["gains", "costs"] as const)
+        for (let k = 0; k < option[kind].length; k++) check(kind, `option ${j + 1} ${kind} ${k + 1}`, option[kind][k]);
+    }
+  }
+  if (repeated.length) refuse(where, `repeated question text (ignoring F/Q finding numbers): ${repeated.join("; ")}. Put shared context in the Background and write each question's own situation and tradeoffs.`);
 }
 
 function assignQNumbers(s: State, qs: Question[], stage: string, where: string): void {

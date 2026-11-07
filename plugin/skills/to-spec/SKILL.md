@@ -20,15 +20,13 @@ Read the source Flow's Results and decision provenance, including any Architectu
 
 Before dependent synthesis, investigate missing repository facts and distinguish them from an unsettled choice. If proceeding would commit to a new consequential structure, shared contract, or quality trade-off, follow "Consequential gaps" below. Arranging agreed material is not a new fork.
 
-2. Sketch out the seams at which you're going to test the feature. Existing seams should be preferred to new ones. Use the highest seam possible. If new seams are needed, propose them at the highest point you can. The fewer seams across the codebase, the better - the ideal number is one.
+2. Pick and record test seams by skill://tdd's "Seams: where tests go" rule. Carry those records into the spec's Testing decisions.
 
-Confirm that these seams match the user's expectations through flow-page's "Every ask in a Flow" contract. Publish one complete question round through the Flow CLI, then call `ask` with the receipt's generated questions and record the observed response separately. Automatic picks and unavailable questioning never confirm a seam.
+When the change spans more than one module, draft a capability map before writing the spec, so that you weigh the module split before the spec fixes it. Use skill://codebase-design's vocabulary. Publish the map as a table Result with the columns Module, Responsibility, Depends on, and Build order, one row per module. Depends on gives the dependency direction: the modules that this module uses. A change inside one module gets no map.
 
-When the change spans more than one module, draft a capability map before that call, so that you weigh the module split before the spec fixes it. Use `skill://codebase-design`'s vocabulary. Include the map in the same contribution as a table Result with the columns Module, Responsibility, Depends on, and Build order, one row per module. Depends on gives the dependency direction: the modules that this module uses. A change inside one module gets no map.
+Combine any question required by tdd's seam rule with any real map fork: two module splits that differ in a way the user would care about. Put those questions together in one round through `ask` under skill://flow-page's "Every ask in a Flow" contract, or plain `ask` outside a Flow. Name each map fork's rows in the question's `results`; code makes the reciprocal links. A map with no fork adds no question. Carry tdd's resulting seam record into Testing decisions.
 
-Ask about the map only at a real fork: two module splits that differ in a way the user would care about. Add each fork to the seams round and name its map rows in the question's `results`; code makes the reciprocal links. A map with no fork adds no question.
-
-Keep these confirmations within the agreed architecture. If a map fork would change an agreed responsibility or guarantee, treat it as a consequential gap rather than using the seams round to choose a new architecture.
+Keep map confirmations within the agreed architecture. If a map fork would change an agreed responsibility or guarantee, treat it as a consequential gap rather than using this round to choose a new architecture.
 
 3. Write the spec draft using the template below.
 
@@ -102,6 +100,7 @@ A list of testing decisions that were made. Include:
 
 - A description of what makes a good test (only test external behavior, not implementation details)
 - Which modules will be tested
+- Seam picks and proof gaps recorded under skill://tdd's seam rule
 - Prior art for the tests (i.e. similar types of tests in the codebase)
 
 ## Out of Scope
