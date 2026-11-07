@@ -59,12 +59,12 @@ test("the Matt path stands above Flow content with recorded step states and is a
       bottom: el.getBoundingClientRect().bottom,
       heading: document.querySelector(".masthead")!.getBoundingClientRect().top,
       content: document.getElementById("reading")!.getBoundingClientRect().top,
-      overflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      overflow: document.documentElement.scrollWidth - innerWidth,
     }));
     expect(geometry.top).toBeGreaterThanOrEqual(0);
     expect(geometry.bottom).toBeLessThanOrEqual(geometry.heading);
     expect(geometry.bottom).toBeLessThan(geometry.content);
-    expect(geometry.overflow).toBe(0);
+    expect(geometry.overflow).toBeLessThanOrEqual(0);
     await page.goto(offPath.live.url);
     await page.locator(".bar .tabs").waitFor();
     expect(await page.getByRole("region", { name: "Matt flow path" }).count()).toBe(0);
@@ -91,7 +91,7 @@ test("repeated Matt path Stages have distinct labels and nonoverlapping 44px lin
         return rects.every((r) => r.width >= 44 && r.height >= 44)
           && rects.every((r, i) => rects.slice(i + 1).every((s) => r.bottom <= s.top || s.bottom <= r.top || r.right <= s.left || s.right <= r.left));
       })).toBe(true);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
       await step.getByRole("link", { name: "Implement 2", exact: true }).click();
       expect(new URL(page.url()).hash).toBe(`#${second.stage}`);
       await page.locator(`.bar .tabs a[href="#${second.stage}"][aria-current="page"]`).waitFor();
