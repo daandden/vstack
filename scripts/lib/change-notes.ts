@@ -56,3 +56,12 @@ export function foldNotes(changelog: string, version: string, notes: readonly Ch
   const insertion = first < 0 ? lines.length : first;
   return [...lines.slice(0, insertion).join("\n").trimEnd().split("\n"), "", `## [${version}] - ${date}`, "", ...notes.flatMap(note => note.entries.map(entry => `- ${entry}`)), "", ...lines.slice(insertion)].join("\n").replace(/\n*$/, "\n");
 }
+
+export const PLUGIN_RELEASE = "plugin-release.json";
+export interface PluginRelease { schema: 1; prepared: string; version: string; date: string }
+
+export function releaseVersion(version: string, level: VersionLevel): string {
+  if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error(`Plugin version ${version} is not x.y.z`);
+  const [major, minor, patch] = version.split(".").map(BigInt) as [bigint, bigint, bigint];
+  return level === "major" ? `${major + 1n}.0.0` : level === "minor" ? `${major}.${minor + 1n}.0` : `${major}.${minor}.${patch + 1n}`;
+}

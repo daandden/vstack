@@ -25,6 +25,52 @@ function choices(f: ReturnType<typeof fixture>, plan?: any, targets: any[] = [],
 }
 const own = (name: string) => ({ action: "add", kind: "rule", artifact: `plugin/rules/${name}.md` });
 
+test("release folds the committed notes once at their highest level and leaves later notes pending", async () => {
+  const f = fixture();
+  writeFiles(f.root, {
+    "change-notes/patch.json": JSON.stringify({ schema: 1, level: "patch", entries: ["Keep the patch text."] }),
+    "change-notes/minor.json": JSON.stringify({ schema: 1, level: "minor", entries: ["Keep the Update text.", "Keep its second entry."] }),
+  });
+  git(f.root, "add", "-A"); git(f.root, "commit", "-qm", "pending notes");
+  const head = git(f.root, "rev-parse", "HEAD");
+  writeFiles(f.root, { "change-notes/uncommitted.json": JSON.stringify({ schema: 1, level: "major", entries: ["Not committed yet."] }) });
+  const r = await f.run(f.root, ["release"]);
+  expect(r.code).toBe(0);
+  expect(r.plan).toMatchObject({ ok: true, prepared: head, version: "0.2.0", level: "minor" });
+  expect(git(f.root, "rev-parse", "HEAD")).toBe(head);
+  expect(JSON.parse(read(f.root, "plugin/package.json")).version).toBe("0.2.0");
+  expect(read(f.root, "CHANGELOG.md")).toMatch(/^# Changelog\n\n## \[0\.2\.0\] - \d{4}-\d{2}-\d{2}\n\n- Keep the Update text\.\n- Keep its second entry\.\n- Keep the patch text\.\n/);
+  expect(existsSync(join(f.root, "change-notes/patch.json"))).toBe(false);
+  expect(existsSync(join(f.root, "change-notes/minor.json"))).toBe(false);
+  expect(JSON.parse(read(f.root, "change-notes/uncommitted.json")).entries).toEqual(["Not committed yet."]);
+  writeFiles(f.root, { "change-notes/later.json": JSON.stringify({ schema: 1, level: "major", entries: ["Next release only."] }) });
+  const before = state(f.root);
+  expect((await f.run(f.root, ["release"])).code).toBe(2);
+  expect(state(f.root)).toEqual(before);
+  expect(JSON.parse(read(f.root, "change-notes/later.json")).entries).toEqual(["Next release only."]);
+}, 30000);
+
+test("release refuses changed inputs and an empty pending set without writing", async () => {
+  const f = fixture();
+  let before = state(f.root);
+  const empty = await f.run(f.root, ["release"]);
+  expect(empty.code).toBe(2);
+  expect(empty.stdout).toContain("No pending Change notes");
+  expect(state(f.root)).toEqual(before);
+  writeFiles(f.root, { "change-notes/note.json": JSON.stringify({ schema: 1, level: "patch", entries: ["Committed entry."] }) });
+  git(f.root, "add", "-A"); git(f.root, "commit", "-qm", "pending note");
+  for (const path of ["plugin/package.json", "CHANGELOG.md", "change-notes/note.json"]) {
+    const original = read(f.root, path);
+    writeFiles(f.root, { [path]: `${original}\n` });
+    before = state(f.root);
+    const r = await f.run(f.root, ["release"]);
+    expect(r.code).toBe(2);
+    expect(JSON.parse(r.stdout)).toMatchObject({ category: "input-conflict", conflicts: [path] });
+    expect(state(f.root)).toEqual(before);
+    writeFiles(f.root, { [path]: original });
+  }
+}, 30000);
+
 test("fact-finding leaves dirty checkouts, branches, and worktrees unchanged", async () => {
   const f = fixture(); writeFiles(f.root, { "plugin/skills/wording/SKILL.md": "Local text.\n" });
   const before = state(f.root);

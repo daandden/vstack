@@ -1,6 +1,6 @@
 # Changelog
 
-Plugin releases of vstack (`plugin/package.json`). Each delivery carries a Change note; a maintainer-run Plugin release folds pending notes into a dated heading and raises the version once. See the [maintainer guide](docs/maintainer.md#versions-and-changelog).
+Plugin releases of vstack (`plugin/package.json`). Each delivery carries a Change note. Run `bun scripts/vstack-maintain.ts release` to fold pending notes into a dated heading and raise the version once, then land the working-tree changes through a normal PR. See the [maintainer guide](docs/maintainer.md#versions-and-changelog).
 
 ## [9.0.20] - 2026-11-07
 

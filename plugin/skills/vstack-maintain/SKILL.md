@@ -127,6 +127,12 @@ The Change note records patch for a Hand edit, minor for an Update, and major wh
 
 Run `gates` after the last change in your clone. It validates changed skill folders with skill-creator's quick_validate, runs check-register, runs `bun test`, and runs the load smoke. The smoke runs outside the home directory. The gate always deletes its temporary output directory. On failure, it copies the evidence into one Scratch entry of kind `maintain` and prints that path in the smoke stage output. Any failure blocks the patch. Fix its cause. Rerun `gates` after the final fix. No judge or sample corpus runs in this gate.
 
+## Plugin release
+
+The maintainer runs `bun scripts/vstack-maintain.ts release` from a commit with pending Change notes. It folds that commit's notes into a dated CHANGELOG heading, raises the version once by their highest level, removes those notes, and records the prepared commit in `plugin-release.json`. It leaves working-tree changes for a normal PR. Notes added later on main stay pending without preparing the release again. ship does not cut releases.
+
+Keep the receipt with the release's manifest, CHANGELOG, and note removals. Reconcile changed release inputs before retrying `input-conflict`. See [Change notes and Plugin releases](../../../docs/maintainer.md#versions-and-changelog) for CI validation and command guarantees.
+
 ## Extra criteria in implement's one code-review pass
 
 Use these criteria in the existing pass, not a second review or a separate closing gate:

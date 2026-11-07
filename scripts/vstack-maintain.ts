@@ -11,7 +11,7 @@ import { asText, cloneSource, githubSource, defaultUpstreamRemote, defaultUpstre
 import { artifactFiles, loadPins, loadRegister, loadHouseStyle, NEVER_SHIPPED, parseRegister, upstreamItems, type Pin, type Register } from "./lib/vstack-repo.ts";
 import { repoKey, scratchRoot } from "../plugin/skills/vstack-tmp/scripts/scratch.ts";
 import { yamlBookkeeping } from "./lib/bookkeeping.ts";
-import { CHANGE_NOTES, noteText, type VersionLevel } from "./lib/change-notes.ts";
+import { CHANGE_NOTES, PLUGIN_RELEASE, foldNotes, highestLevel, noteText, pendingNotes, releaseVersion, type PluginRelease, type VersionLevel } from "./lib/change-notes.ts";
 
 const scriptRoot = resolve(import.meta.dir, "..");
 const HEAD = "HEAD";
@@ -692,6 +692,26 @@ async function prepareOwned(root: string, d: PrepareDecisions, p: Plan | undefin
   };
 }
 
+function release(root: string) {
+  const prepared = git(root, "rev-parse", "HEAD");
+  const notes = pendingNotes(root, prepared), level = highestLevel(notes);
+  if (!level) throw new Error("No pending Change notes at HEAD.");
+  const inputs = ["plugin/package.json", "CHANGELOG.md", PLUGIN_RELEASE, ...notes.map(note => note.path)];
+  const expected = new Map(inputs.map(path => [path, headInput(root, path)]));
+  const conflicts = inputs.filter(path => checkoutInput(root, path) !== expected.get(path));
+  if (conflicts.length) throw new Refusal(`Reconcile changed release inputs before release: ${conflicts.join(", ")}`, { category: "input-conflict", conflicts });
+  const manifest = JSON.parse(atHead(root, "plugin/package.json"));
+  const version = releaseVersion(manifest.version, level);
+  const receipt: PluginRelease = { schema: 1, prepared, version, date: new Date().toISOString().slice(0, 10) };
+  const changelog = foldNotes(atHead(root, "CHANGELOG.md"), version, notes, receipt.date);
+  if (git(root, "rev-parse", "HEAD") !== prepared) throw new Error("HEAD changed during release; rerun at the current commit.");
+  writeFileSync(join(root, "plugin/package.json"), `${JSON.stringify({ ...manifest, version }, null, 2)}\n`);
+  writeFileSync(join(root, "CHANGELOG.md"), changelog);
+  writeFileSync(join(root, PLUGIN_RELEASE), `${JSON.stringify(receipt, null, 2)}\n`);
+  for (const note of notes) rmSync(join(root, note.path));
+  return { ok: true, ...receipt, level, notes: notes.map(note => note.path) };
+}
+
 function changedSkills(root: string): string[] {
   const files = [...git(root, "diff", "--name-only", defaultBase(root), "--", "plugin/skills").split("\n"), ...git(root, "ls-files", "--others", "--exclude-standard", "--", "plugin/skills").split("\n")];
   return [...new Set(files.filter(Boolean).map(f => f.split("/").slice(0, 3).join("/")))].filter(p => existsSync(join(root, p))).sort();
@@ -731,6 +751,7 @@ const USAGE = `Usage: bun scripts/vstack-maintain.ts <command> [options]
   check [--plan <path>] [<artifact> ...]  Find clashes, adopt flips, and callers.
         [--take <upstream>:<path>] [--rename <artifact>=<to>] [--remove <artifact>]
   prepare --decisions <file> [--plan <path>]  Write bookkeeping from HEAD.
+  release                                Fold HEAD's Change notes into a Plugin release.
   gates                                  Run validation, checks, tests, and load smoke.
   --scratch <dir>                        Absolute Scratch dir for plan and gates entries.
   --root <dir> --upstreams <cache> --remote <url> --source clones|github
@@ -755,6 +776,7 @@ try {
       const artifacts = [...new Set([...positionals, ...(p?.rows.flatMap(r => r.artifacts) ?? [])])];
       result = await checkTargets(root, artifacts, opts.take ?? [], opts.rename ?? [], opts.remove ?? [], opts);
     } else if (command === "prepare") { if (!opts.decisions) throw new Error("prepare needs --decisions"); result = await prepare(root, opts.decisions, p, opts); }
+    else if (command === "release") result = release(root);
     else if (command === "gates") { result = await gates(root, opts, scratch); if (!(result as any).ok) process.exitCode = 2; }
     else throw new Error(USAGE);
     console.log(typeof result === "string" ? result : JSON.stringify(result, null, 2));
