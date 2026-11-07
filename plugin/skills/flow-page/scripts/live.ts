@@ -135,7 +135,9 @@ export async function connect(home: string): Promise<Connection> {
       r = await fetch(`${originOf(port)}/.host/hold`, { headers: { authorization: `Bearer ${secret.control}` }, signal: abort.signal });
     } finally { clearTimeout(deadline); }
     if (!r.ok) { abort.abort(); throw new Error(`Flow host refused publication hold (${r.status})`); }
-    return { state: "serving", port, secret, release: () => abort.abort() };
+    // Own the streaming body until publication finishes so collection cannot close the hold early.
+    const body = r.body!.getReader();
+    return { state: "serving", port, secret, release: () => { body.releaseLock(); abort.abort(); } };
   } catch (e) { return { state: "unavailable", error: (e as Error).message }; }
 }
 
