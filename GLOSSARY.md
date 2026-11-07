@@ -264,6 +264,10 @@ _Avoid_: graph (unqualified)
 A Visual kind that runs one concrete case through each option, step by step, to show where the options part.
 _Avoid_: example (when a run through the options is meant)
 
+**Costly seam**:
+A test seam whose test reaches a real service beyond localhost, needs a real credential, account, or paid quota, or whose test command runs for more than 180 seconds. It is the only kind of test seam the agent asks the user about before it tests there.
+_Avoid_: expensive test, heavy seam
+
 **Verify skill**:
 A project-local skill named `verify-<app>` that drives the project's app the way a user does and captures proof that a change works. setup-app-verification creates it, and maintain-app-verification keeps it accurate.
 _Avoid_: control skill, verification skill
