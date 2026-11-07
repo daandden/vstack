@@ -1471,9 +1471,55 @@ export type StageView = Stage & {
   asked: QuestionView[];
   open_questions: number;
 };
+type PathState = "finished" | "in-progress" | "to-come" | "not-run";
+type PathStep = { id: string; skills: string[]; state: PathState; stages: Pick<Stage, "id" | "skill" | "state">[] };
+type MattPath = { grill: PathStep; branches: { id: string; steps: PathStep[] }[] };
+
+const MATT_FLOW = {
+  grill: { id: "grill", skills: ["grill-with-docs", "grill-me"] },
+  branches: [
+    { id: "one-session", steps: [{ id: "implement", skills: ["implement"] }] },
+    { id: "multi-session", steps: [
+      { id: "to-spec", skills: ["to-spec"] },
+      { id: "to-tickets", skills: ["to-tickets"] },
+      { id: "implement-spec", skills: ["implement-spec"] },
+    ] },
+  ],
+};
+
+function mattPath(stages: Stage[]): MattPath | undefined {
+  const matching = (step: { skills: string[] }) => stages.filter((st) => step.skills.includes(st.skill));
+  const branchRan = (branch: typeof MATT_FLOW.branches[number]) => branch.steps.some((step) => matching(step).length);
+  const selected = MATT_FLOW.branches.filter(branchRan);
+  if (!matching(MATT_FLOW.grill).length && !selected.length) return;
+  let latestBranch: string | undefined;
+  let latestOrder = -1;
+  for (const stage of stages) {
+    if (stage.order <= latestOrder) continue;
+    const branch = selected.find((b) => b.steps.some((step) => step.skills.includes(stage.skill)));
+    if (branch) { latestBranch = branch.id; latestOrder = stage.order; }
+  }
+  const stepView = (step: { id: string; skills: string[] }, skipped: boolean): PathStep => {
+    const recorded = matching(step).map(({ id, skill, state }) => ({ id, skill, state }));
+    const state: PathState = recorded.some((st) => st.state === "in-progress") ? "in-progress"
+      : recorded.length ? recorded.every((st) => st.state === "finished") ? "finished" : "not-run"
+      : skipped ? "not-run" : "to-come";
+    return { id: step.id, skills: recorded.length ? [...new Set(recorded.map((st) => st.skill))] : step.skills, state, stages: recorded };
+  };
+  const grill = stepView(MATT_FLOW.grill, selected.length > 0);
+  const branches = (selected.length ? selected : MATT_FLOW.branches).map((branch) => ({
+    id: branch.id,
+    steps: branch.steps.flatMap((step, i) => {
+      if (selected.length && branch.id !== latestBranch && !matching(step).length) return [];
+      return [stepView(step, branch.steps.slice(i + 1).some((later) => matching(later).length > 0))];
+    }),
+  }));
+  return { grill, branches };
+}
 export type View = {
   flow: State["flow"]; revision: number; stages: StageView[]; lifecycle: Lifecycle[];
   reading: ReadingOrder;
+  path?: MattPath;
   next: string[];
   topics: (Topic & { sourceTexts: string[]; questions: string[] })[];
   sources: (Source & { cited_by: string[] })[];
@@ -1635,6 +1681,7 @@ export function view(s: State): View {
   return {
     flow: s.flow, revision: s.revision, stages, questions, progress: progressView(s), lifecycle: s.lifecycle, ...(s.migrated ? { migrated: s.migrated } : {}),
     reading: s.reading,
+    path: mattPath(s.stages),
     next: stages.filter((st) => st.state === "in-progress").reverse().flatMap((st) => st.asked.filter((q) => q.open).map((q) => q.id)),
     topics: s.topics.map((t) => ({ ...t, sourceTexts: t.sources.map((x) => sourceText.get(x)!), questions: s.questions.filter((q) => q.topics?.includes(t.id)).map((q) => q.id) })),
     sources: s.sources.map((x) => ({ ...x, cited_by: citers(x.id) })),
@@ -1654,6 +1701,7 @@ export function snapshot(v: View) {
     flow: v.flow, revision: v.revision, open: v.lifecycle.at(-1)?.event !== "closed", lifecycle: v.lifecycle, ...(v.migrated ? { migrated: { from: v.migrated.from, sha256: v.migrated.sha256, time: v.migrated.time, anchors: v.migrated.anchors } } : {}),
     next: v.next,
     reading: v.reading,
+    ...(v.path ? { path: v.path } : {}),
     stages: v.stages.map((st) => ({
       id: st.id, label: st.label, skill: st.skill, ...(st.ticket ? { ticket: st.ticket } : {}), ...(st.parent ? { parent: st.parent } : {}), children: st.children,
       state: st.state, order: st.order, opened: st.opened, ...(st.finished ? { finished: st.finished } : {}),

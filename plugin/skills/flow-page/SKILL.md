@@ -61,6 +61,8 @@ Parallel callers and callers outside an omp session name `--flow <flow> --stage 
 
 `show [--flow <flow>]` prints the Flow's structure: Stages with their labels, states, and open-question counts, rounds, Q numbers, answer states, Results with each entry and the revision that last `changed` it, every link and backlink, its aliases, and its `live` status. Its `reading` separates retained historical references from durable publications with immutable `position` and committing `publication` revision. Its `next` lists actionable questions in navigation order, newest in-progress Stage first, independently of reading order.
 
+When the Flow has a Matt flow path, `show` also prints its path and current position, derived from the recorded Stages.
+
 `bound` returns this session and agent's binding with its `live` status. When none exists, it returns `{"binding":null}` without starting a host or creating a Flow. Bindings persist across session continuation. A different session or agent gets only its own binding, never the last active Stage.
 
 Present Flow links only at question handoffs under "Every ask in a Flow", including Ratchet's native approval exception. Result-only replies and completion summaries have no Flow link or path reminder. The extension supplies hidden authoring context without a post-reply message, and `/vstack-clean` publishes its Result without a separate Flow link. Never open a browser automatically.

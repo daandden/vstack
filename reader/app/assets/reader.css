@@ -27,6 +27,7 @@
   --gutter: clamp(0.75rem, 0.25rem + 2vw, 1.5rem);
   --content: 64rem;
   --entry-space: clamp(1.25rem, 1rem + 1vw, 2rem);
+  --path-padding: clamp(0.75rem, 0.5rem + 1vw, 1.25rem);
   scrollbar-gutter: stable;
   scroll-padding-block-start: calc(var(--bar, 0px) + 0.75rem);
   text-wrap: pretty;
@@ -86,6 +87,34 @@ img, svg, video { display: block; max-inline-size: 100%; block-size: auto; }
 .prose, .labelled { display: grid; gap: 0.375rem; }
 .bullets { display: grid; gap: 0.125rem; padding-inline-start: 1.25rem; }
 .bullets > li::marker { color: var(--overlay0); }
+
+.matt-path {
+  display: grid;
+  gap: 0.625rem;
+  padding: var(--path-padding);
+  border-block-start: 3px solid var(--blue);
+  border-block-end: 1px solid color-mix(in oklch, var(--blue) 35%, var(--line));
+  background: color-mix(in oklch, var(--blue) 7%, var(--base));
+}
+.matt-path h2 { color: var(--blue); }
+.path-branches { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: 1rem; }
+.path-branch { display: grid; align-content: start; gap: 0.375rem; }
+.path-steps { display: grid; gap: 0.625rem; padding-inline-start: 1.5rem; }
+.path-steps > li { padding-inline-start: 0.25rem; }
+.path-steps > li::marker { color: var(--state, var(--subtext0)); font-weight: 650; }
+.path-step-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.125rem 0.75rem; }
+.path-step-heading > :first-child { font-weight: 650; }
+.path-state { color: var(--state, var(--subtext0)); font-size: var(--fs-small); }
+.path-steps > [aria-current="step"] {
+  padding-block: 0.375rem;
+  padding-inline: 0.5rem;
+  border: 1px solid var(--peach);
+  border-radius: 0.25rem;
+  background: color-mix(in oklch, var(--peach) 9%, var(--base));
+}
+.path-stages { display: grid; gap: 0.125rem; padding: 0; list-style: none; }
+.path-stages > li { display: flex; flex-wrap: wrap; gap: 0.125rem 0.75rem; align-items: center; }
+.path-stages a { display: inline-flex; align-items: center; min-block-size: 44px; min-inline-size: 44px; padding-inline: 0.25rem; overflow-wrap: anywhere; font-size: var(--fs-small); }
 
 .masthead { display: grid; gap: 0.375rem; padding-block: 0.75rem 0.5rem; }
 .lifecycle { color: var(--state); font-weight: 600; }

@@ -58,6 +58,70 @@ function openFlow(session = "s-1", skill = "grill-me"): any {
 const submit = (session: string | undefined, ...items: object[]) => run(["submit"], { session, stdin: contribution(...items) });
 const show = (flow: string) => run(["show", "--flow", flow]).json;
 
+test.each([
+  ["fork after grill", [["grill-with-docs", "finished"]], [
+    ["grill", "finished"], ["implement", "to-come"], ["to-spec", "to-come"], ["to-tickets", "to-come"], ["implement-spec", "to-come"],
+  ]],
+  ["multi-session", [["grill-me", "finished"], ["to-spec", "finished"], ["to-tickets", "in-progress"]], [
+    ["grill", "finished"], ["to-spec", "finished"], ["to-tickets", "in-progress"], ["implement-spec", "to-come"],
+  ]],
+  ["one-session", [["grill-me", "finished"], ["implement", "in-progress"]], [
+    ["grill", "finished"], ["implement", "in-progress"],
+  ]],
+  ["off-path", [["code-review", "finished"], ["research", "in-progress"]], []],
+  ["both branches ran", [["grill-me", "finished"], ["to-spec", "finished"], ["to-tickets", "finished"], ["implement", "in-progress"]], [
+    ["grill", "finished"], ["implement", "in-progress"], ["to-spec", "finished"], ["to-tickets", "finished"],
+  ]],
+  ["to-spec then implement", [["grill-me", "finished"], ["to-spec", "finished"], ["implement", "in-progress"]], [
+    ["grill", "finished"], ["implement", "in-progress"], ["to-spec", "finished"],
+  ]],
+  ["return to multi-session", [["grill-me", "finished"], ["to-spec", "finished"], ["implement", "finished"], ["to-tickets", "in-progress"]], [
+    ["grill", "finished"], ["implement", "finished"], ["to-spec", "finished"], ["to-tickets", "in-progress"], ["implement-spec", "to-come"],
+  ]],
+  ["skipped grill", [["to-spec", "in-progress"]], [
+    ["grill", "not-run"], ["to-spec", "in-progress"], ["to-tickets", "to-come"], ["implement-spec", "to-come"],
+  ]],
+] as const)("show derives the Matt path for %s", (_name, stages, expected) => {
+  let flow = "";
+  for (const [i, [skill, state]] of stages.entries()) {
+    const session = `path-${i}`;
+    const opened = run(["open", "--skill", skill, ...(flow ? ["--flow", flow] : ["--title", "Matt path"])], { session });
+    expect(opened.code).toBe(0);
+    flow = opened.json.flow;
+    if (state === "finished") expect(submit(session, { kind: "stage", state }).code).toBe(0);
+  }
+  const snapshot = show(flow);
+  if (!expected.length) {
+    expect(snapshot.path ?? null).toBeNull();
+    expect(snapshot.stages.map((s: any) => s.skill)).toEqual(["code-review", "research"]);
+    return;
+  }
+  expect(snapshot.path).toBeDefined();
+  expect(snapshot.path.position).toBeUndefined();
+  expect(snapshot.path.grill.skills).toEqual(stages.some(([skill]) => skill === "grill-me") ? ["grill-me"] : stages.some(([skill]) => skill === "grill-with-docs") ? ["grill-with-docs"] : ["grill-with-docs", "grill-me"]);
+  const steps = [snapshot.path.grill, ...snapshot.path.branches.flatMap((b: any) => b.steps)];
+  expect(steps.map((s: any) => [s.id, s.state])).toEqual(expected);
+  expect(steps.flatMap((s: any) => s.stages)).toEqual(expect.arrayContaining(
+    snapshot.stages.map((s: any) => ({ id: s.id, skill: s.skill, state: s.state })),
+  ));
+  expect(show(flow).path).toEqual(snapshot.path);
+});
+
+test("show counts repeated skills, parent continuations, and reopened Stages in the Matt path", () => {
+  const first = openFlow("path-first", "implement");
+  expect(submit("path-first", { kind: "stage", state: "finished" }).code).toBe(0);
+  expect(run(["close", "--flow", first.flow]).code).toBe(0);
+  const continued = run(["reopen", "--flow", first.flow, "--skill", "implement", "--parent", first.stage], { session: "path-again" });
+  expect(continued.code).toBe(0);
+  const path = show(first.flow).path;
+  expect(path).toBeDefined();
+  expect(path.grill.state).toBe("not-run");
+  expect(path.branches[0].steps[0]).toMatchObject({
+    id: "implement", state: "in-progress",
+    stages: [{ id: first.stage, skill: "implement", state: "finished" }, { id: continued.json.stage, skill: "implement", state: "in-progress" }],
+  });
+});
+
 
 const distinctQuestion = (ref: string, extra: object = {}) => question(ref, {
   options: [option(`${ref} first`), option(`${ref} second`)],
