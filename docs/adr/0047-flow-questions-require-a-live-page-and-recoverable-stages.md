@@ -54,3 +54,5 @@ Remove automatic post-reply Flow messages and the separate `/vstack-clean` resul
 Keep session and agent authoring identity, binding isolation, full Flow history, enrollment rules, and ordinary asking and answer recording. This change neither enrolls unbound questions in a Flow nor introduces a custom picker, delivery queue, or retry gate.
 
 [ADR 0054](0054-flow-questions-show-their-link-in-a-flow-popup.md) replaces the chat link before questions with a Flow popup and lets questions open when the Local Flow host is down.
+
+[ADR 0062](0062-the-agent-picks-test-seams-and-asks-only-for-costly-ones.md) lets the agent pick test seams itself. The rule above that silence and headless picks do not approve a missing test seam now applies only to a Costly seam.
