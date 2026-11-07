@@ -4,6 +4,10 @@ Versions of the vstack plugin (`plugin/package.json`). See the [maintainer guide
 
 ## [Unreleased]
 
+## [9.0.24] - 2026-11-07
+
+- The agent picks test seams itself by Matt's rule with a small footprint, records each pick with what it catches and misses, and asks only before a Costly seam: a real service beyond localhost, a real credential, account, or paid quota, or a test command over 180 seconds (ADR 0062).
+
 ## [9.0.23] - 2026-11-06
 
 - Make Flow questions self-contained, move shared session-review boundaries into the Background, and replace the findings table with a linked index (#347).
