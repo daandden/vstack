@@ -2,6 +2,6 @@
   "schema": 1,
   "level": "patch",
   "entries": [
-    "Plugin deliveries carry Change notes with their version level instead of raising the version or editing dated CHANGELOG headings. vstack-maintain prepare reuses its note at the same HEAD, and CI accepts review-fix pushes with the branch's existing note (ADR 0063, #393)."
+    "Plugin deliveries carry Change notes with their version level instead of raising the version or editing dated CHANGELOG headings. vstack-maintain prepare reuses its note at the same HEAD, and CI accepts review-fix pushes with the branch's existing note (ADR 0064, #393)."
   ]
 }

@@ -383,4 +383,4 @@ The Plugin release receipt records HEAD's full SHA, the version, and the UTC dat
 
 Notes added on main while the Plugin release PR is open stay pending for the next Plugin release. CI compares plugin changes limited to the Plugin release with the branch's common ancestor so newer main's independent edits do not require another note on the Plugin release branch. The Plugin release command refuses changed Plugin release inputs and reports `input-conflict` before writing. Notes outside its committed set remain untouched, including untracked notes. With no notes at HEAD, it refuses without writing.
 
-Add new entries through Change notes rather than an Unreleased section. [ADR 0063](adr/0063-change-notes-replace-per-pr-plugin-versions.md) records why delivery PRs leave shared Plugin release files alone.
+Add new entries through Change notes rather than an Unreleased section. [ADR 0064](adr/0064-change-notes-replace-per-pr-plugin-versions.md) records why delivery PRs leave shared Plugin release files alone.
