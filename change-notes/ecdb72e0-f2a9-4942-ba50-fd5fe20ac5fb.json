@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "The maintainer runs vstack-maintain release to fold the committed Change notes into one dated Plugin release at their highest version level. A tracked prepared-commit receipt lets check-register validate the Plugin release once while notes added later on main stay pending (#394)."
+  ]
+}

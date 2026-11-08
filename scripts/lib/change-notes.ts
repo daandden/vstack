@@ -1,0 +1,57 @@
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
+export const CHANGE_NOTES = "change-notes";
+export type VersionLevel = "patch" | "minor" | "major";
+export interface ChangeNote { path: string; level: VersionLevel; entries: string[] }
+const levels: VersionLevel[] = ["patch", "minor", "major"];
+
+function git(root: string, args: string[]): string {
+  const result = Bun.spawnSync(["git", "-C", root, ...args], { stdout: "pipe", stderr: "pipe" });
+  if (result.exitCode !== 0) throw new Error(result.stderr.toString().trim());
+  return result.stdout.toString();
+}
+
+function parseNote(path: string, text: string): ChangeNote {
+  const note = JSON.parse(text);
+  if (note.schema !== 1 || !levels.includes(note.level) || !Array.isArray(note.entries) || !note.entries.length || note.entries.some((entry: unknown) => typeof entry !== "string" || !entry.trim() || entry.includes("\n"))) {
+    throw new Error(`${path}: expected schema 1, a patch, minor, or major level, and nonempty one-line entries`);
+  }
+  return { path, level: note.level, entries: note.entries };
+}
+
+export function pendingNotes(root: string, ref?: string): ChangeNote[] {
+  const paths = ref
+    ? git(root, ["ls-tree", "-r", "--name-only", ref, "--", CHANGE_NOTES]).trim().split("\n").filter(Boolean)
+    : existsSync(join(root, CHANGE_NOTES)) ? readdirSync(join(root, CHANGE_NOTES)).map(name => `${CHANGE_NOTES}/${name}`) : [];
+  return paths.sort().map(path => {
+    if (!/^change-notes\/[a-zA-Z0-9-]+\.json$/.test(path)) throw new Error(`Invalid Change note path: ${path}`);
+    return parseNote(path, ref ? git(root, ["show", `${ref}:${path}`]) : readFileSync(join(root, path), "utf8"));
+  });
+}
+
+export function highestLevel(notes: readonly Pick<ChangeNote, "level">[]): VersionLevel | undefined {
+  return notes.reduce<VersionLevel | undefined>((highest, note) => highest === undefined || levels.indexOf(note.level) > levels.indexOf(highest) ? note.level : highest, undefined);
+}
+
+export function noteText(level: VersionLevel, entries: string[]): string {
+  const text = `${JSON.stringify({ schema: 1, level, entries: [...new Set(entries)] }, null, 2)}\n`;
+  parseNote(`${CHANGE_NOTES}/note.json`, text);
+  return text;
+}
+
+export function foldNotes(changelog: string, version: string, notes: readonly ChangeNote[], date = new Date().toISOString().slice(0, 10)): string {
+  const lines = changelog.split("\n");
+  const first = lines.findIndex(line => line.startsWith("## "));
+  const insertion = first < 0 ? lines.length : first;
+  return [...lines.slice(0, insertion).join("\n").trimEnd().split("\n"), "", `## [${version}] - ${date}`, "", ...notes.flatMap(note => note.entries.map(entry => `- ${entry}`)), "", ...lines.slice(insertion)].join("\n").replace(/\n*$/, "\n");
+}
+
+export const PLUGIN_RELEASE = "plugin-release.json";
+export interface PluginRelease { schema: 1; prepared: string; version: string; date: string }
+
+export function releaseVersion(version: string, level: VersionLevel): string {
+  if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error(`Plugin version ${version} is not x.y.z`);
+  const [major, minor, patch] = version.split(".").map(BigInt) as [bigint, bigint, bigint];
+  return level === "major" ? `${major + 1n}.0.0` : level === "minor" ? `${major}.${minor + 1n}.0` : `${major}.${minor}.${patch + 1n}`;
+}

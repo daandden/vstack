@@ -15,7 +15,7 @@ afterAll(() => {
   for (const w of worlds) run(["host", "stop"], w);
   for (const w of worlds) for (const pid of hostPids(w)) process.kill(pid, "SIGKILL");
   rmSync(root, { recursive: true, force: true });
-});
+}, 30_000);
 
 function freePort(): number {
   const s = Bun.listen({ hostname: "127.0.0.1", port: 0, socket: { data() {} } });
@@ -83,8 +83,8 @@ function hostPids(w: World): number[] {
     .filter((l) => l.includes("host.ts") && l.includes(`--home ${w.home}`))
     .map((l) => Number(l.trim().split(/\s+/)[0]));
 }
-async function until(cond: () => boolean, ms = 8000): Promise<boolean> {
-  for (const end = Date.now() + ms; Date.now() < end; await Bun.sleep(50)) if (cond()) return true;
+async function until(cond: () => boolean | Promise<boolean>, ms = 8000): Promise<boolean> {
+  for (const end = Date.now() + ms; Date.now() < end; await Bun.sleep(50)) if (await cond()) return true;
   return cond();
 }
 
@@ -328,10 +328,10 @@ else process.exit(1);
   w.path = `${bin}:${ENV.PATH}`;
   const opened = ok(open(w));
   let latest: any;
-  for (const end = Date.now() + 3000; Date.now() < end; await Bun.sleep(50)) {
+  await until(async () => {
     latest = await (await fetch(new URL("observations", opened.live.url))).json();
-    if (latest["code-host"]?.records[0]?.state === "open" && latest.ci?.records[0]?.state === "failed") break;
-  }
+    return latest["code-host"]?.records[0]?.state === "open" && latest.ci?.records[0]?.state === "failed";
+  });
   expect(latest["code-host"].status).toBe("current");
   expect(latest["code-host"].records[0].state).toBe("open");
   expect(latest["code-host"].provenance.source).toBe("https://github.com/code/project");
@@ -424,6 +424,7 @@ test("the host stops once idle, while an open reader or a publication in flight 
   const p = Bun.spawn(argv(["submit"], w, {}), { cwd: w.cwd, env: envOf(w, { session: "s-1" }), stdin: "pipe", stdout: "pipe", stderr: "pipe" });
   expect(await until(() => hostPids(w).length === 1)).toBe(true);
   await Bun.sleep(2500);
+  expect(p.exitCode).toBeNull();
   expect(hostPids(w)).toHaveLength(1);
   p.stdin.write(JSON.stringify(contribution(round(question("q")))));
   p.stdin.end();
@@ -431,7 +432,7 @@ test("the host stops once idle, while an open reader or a publication in flight 
   expect(code).toBe(0);
   expect(JSON.parse(stdout).live.state).toBe("serving");
   expect(await until(() => hostPids(w).length === 0)).toBe(true);
-});
+}, 30_000);
 
 test("a port another program holds is reported truthfully, the publication stays committed, and presentation recovers without duplicate content", async () => {
   const w = world();

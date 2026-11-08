@@ -16,7 +16,7 @@ The tickets are not a list of steps. They are a **task graph** with blocking rel
 
 Communication to and from subagents should be sparse. Communicate primarily through **context pointers**: to the spec, tickets, research notes, and previous commits. Don't duplicate information already available via pointers.
 
-**Implementer subagents** run in the background for maximum concurrency. You are the orchestrator. You read the task graph, start subagents, act on their results, and put questions to the user through `ask` under `skill://flow-page`'s "Every ask in a Flow" contract. Publish each complete round through the Flow CLI and record the observed response separately. You never build or merge a ticket yourself.
+**Implementer subagents** run in the background for maximum concurrency. You are the orchestrator. You read the task graph, start subagents, act on their results, and route questions by END-STATE.md's "Question timing". Put questions to the user through `ask` under `skill://flow-page`'s "Every ask in a Flow" contract. Publish each complete round through the Flow CLI and record the observed response separately. You never build or merge a ticket yourself.
 
 ## Shared steps
 
@@ -38,7 +38,7 @@ Read the spec and tickets to understand the task graph. List the ready frontier:
 
 Reuse the Flow's existing ticket tasks or create one per ticket. Publish the frontier and blocking relationships as a table Result, separate from the Stage tree. Keep ticket completion, spec completion, tracker closure, and delivery End state distinct.
 
-Read the spec's Testing decisions. Before assignment, pick and record any missing seams by skill://tdd's "Seams: where tests go" rule. A Costly seam question under that rule does not hold assignment.
+Read the spec's Testing decisions. Before assignment, pick and record any missing seams by skill://tdd's "Seams: where tests go" rule. Route any Costly seam approval question by END-STATE.md's "Question timing".
 
 Read the agreed responsibilities, interactions, observable guarantees, constraints, and rationale through the spec, tickets, and their existing decision-coverage and context pointers. Pass those pointers to each implementer, including the decisions its slice must preserve. Reuse supplied agreements without requiring a separate Architecture brief. Module build order does not replace vertical ticket slices or genuine blocking links. Build sessions select Addons fresh; discard inherited Addon pointers rather than passing them into briefs.
 
@@ -74,7 +74,7 @@ Fan-out (skill://vstack-fan-out): parts: one per ready ticket. One eval cell: pe
 
 Record each handle's `agent://<id>` with its ticket and lifecycle entry in the run record. Act on each result in step 5 when it arrives. When nothing else needs you while implementers run, call the `wait` tool. It returns on the first result, so a slow ticket holds back no other ticket.
 
-Implementer brief: build one ticket in your own clone. Read the spec, the ticket, and the exploration notes through their context pointers. Follow skill://implement's "Work within the agreement" contract using those inputs and their decision-coverage records. Choose coding details within the agreement. If evidence requires a consequential departure, pause affected work and return the governing decision, evidence, affected behavior, viable options with trade-offs and a recommendation, and the missing decision as an open question, with held-work paths. Use skill://tdd to build the ticket and follow its seam rule. Return its required seam records for the coordinator to record in the owning Stage. Return any Costly seam requiring approval as a non-blocking question; that question does not hold the patch. Prose-only work states its no-test limit instead of adding guidance-string assertions. Run typechecking and the single test files you touch regularly, and the full test suite once at the end. Write product changes at real target paths, so that they enter the patch. Commit nothing, merge nothing, and push nothing. Save evidence under `<Scratch dir>/implement-spec/<run-id>/<ticket>/`. Return the ticket, changed paths, seam records, red and green evidence, checks with their outcomes, and open questions, marking costly-seam questions as non-blocking.
+Implementer brief: build one ticket in your own clone. Read the spec, the ticket, and the exploration notes through their context pointers. Follow skill://implement's "Work within the agreement" contract using those inputs and their decision-coverage records. Choose coding details within the agreement. If evidence requires a consequential departure, pause affected work and return the governing decision, evidence, affected behavior, viable options with trade-offs and a recommendation, and the missing decision as an open question, with held-work paths. Use skill://tdd to build the ticket and follow its seam rule. Return its required seam records for the coordinator to record in the owning Stage. Return any Costly seam requiring approval as a question classified by END-STATE.md's "Question timing", with each unrun test and its proof gap. Prose-only work states its no-test limit instead of adding guidance-string assertions. Run typechecking and the single test files you touch regularly, and the full test suite once at the end. Write product changes at real target paths, so that they enter the patch. Commit nothing, merge nothing, and push nothing. Save evidence under `<Scratch dir>/implement-spec/<run-id>/<ticket>/`. Return the ticket, changed paths, seam records, red and green evidence, checks with their outcomes, and open questions with their gating classification.
 
 ### 5. Merge each result
 
@@ -82,11 +82,11 @@ Once an **implementer subagent** completes, merge its work to the integration br
 
 A handle has no `patchPath` field. Recover that path from omp's completion notice: `Isolation: changes captured at <absolute patch path> (apply=false). Not applied.` If structured output hides the notice, read the full completion through the handle's `output()` or `agent://<id>`. A failed worker, an unavailable notice, or an empty patch leaves its ticket open. Report it, and never guess a patch path.
 
-Record returned seam picks in this Stage under skill://tdd's seam rule. Queue any Costly seam question for after this ticket's integration commit lands; it does not hold the patch or ticket completion.
+Record returned seam picks in this Stage under skill://tdd's seam rule. Route Costly seam approval questions by END-STATE.md's "Question timing", recording each unrun test and its proof gap.
 
-If the implementer returned another open question, start no merger for it. Hold its patch, record the path, and put the question and its evidence to the user through `ask` under the Flow publication contract above. This includes a necessary consequential departure from the supplied architecture agreement. A ticket whose question the user's own answer resolves goes back on the frontier once, with the answer and the held patch path in its brief. A recommendation, Headless automatic pick, timeout, cancellation, absent answer, or unavailable picker resolves no approval gate. Leave that ticket open and its patch unapplied.
+Classify each implementer question by END-STATE.md's "Question timing". Hold non-gating questions in the run record without blocking the merger. If a question is gating, start no merger for that ticket. Hold its patch, record the path, and put the question and its evidence to the user through `ask` under the Flow publication contract above. This includes a necessary consequential departure from the supplied architecture agreement. A ticket whose gating question the user's own answer resolves goes back on the frontier once, with the answer and the held patch path in its brief. A recommendation, Headless automatic pick, timeout, cancellation, absent answer, or unavailable picker resolves no approval gate. Leave that ticket open and its patch unapplied.
 
-Keep a worker with a blocking question available until the answer and required follow-up resolve. Save a stable Scratch copy of its held patch before any later release. A fresh retry gets that copy and the answer; preserve the superseded worker's useful work and evidence before deciding its lifecycle.
+Keep a worker with a gating question available until the answer and required follow-up resolve. Save a stable Scratch copy of its held patch before any later release. A fresh retry gets that copy and the answer; preserve the superseded worker's useful work and evidence before deciding its lifecycle.
 
 Otherwise, land the patch with one merger. Only one merger runs at a time.
 
@@ -98,13 +98,11 @@ If the merger returns a branch guard failure, stop the run with that blocker, as
 
 Preserve the failed attempt's useful patch, retry inputs, and evidence outside its clone. Retain it while conflict resolution or the retry still needs it; otherwise release it through the shared lifecycle contract. A second failure leaves the ticket open, not its worker unaccounted for.
 
-After the merger confirms that the ticket's integration commit has landed, put any queued Costly seam question through `ask` under the Flow publication contract above, or plain `ask` outside a Flow. Only after that landing and the user's approval, start one follow-up implementer using step 4's line with one part, from the current integration tip containing the implementation. Its brief adds only the approved tests, with the approval and original ticket as context. Land its patch through this step's merger, recording it as a test follow-up rather than reopening the completed ticket.
-
-A ticket is complete when its commit is on the integration branch and no blocking question about it is unanswered. A Costly seam question returned under tdd's rule does not block completion. Only a complete ticket satisfies a blocker, counts toward the spec, and becomes a closing reference. Record each ticket's handle, changed paths, seam picks, open questions, patch path, and commit SHA or held patch in the run record.
+A ticket is complete when its commit is on the integration branch and no gating question about it is unanswered. Only a complete ticket satisfies a blocker, counts toward the spec, and becomes a closing reference. Record each ticket's handle, changed paths, seam picks, open questions, patch path, and commit SHA or held patch in the run record.
 
 Once that integration commit has landed and nothing still needs its implementer, release the implementer and verify disappearance through the shared contract. Record the observed outcome beside the commit and preserved patch.
 
-Update the ticket's task only after its integration commit lands with no blocking question. Append a Timeline event with that SHA, the worker's captured red, green, and live proof, and its seam record. A held patch, failed worker, or failed merge stays visible with its blocker and evidence; none completes the ticket. Update the delivery table as each result arrives, not only at the final reply.
+Update the ticket's task only after its integration commit lands with no open gating question. Append a Timeline event with that SHA, the worker's captured red, green, and live proof, and its seam record. A held patch, failed worker, or failed merge stays visible with its blocker and evidence; none completes the ticket. Update the delivery table as each result arrives, not only at the final reply.
 
 ### 6. Start newly ready tickets
 
@@ -112,7 +110,7 @@ If this changes the **frontier** of available tickets, kick off more **implement
 
 After each merge, held patch, or answered question, recompute the frontier. A ticket is ready when every blocker is complete or was closed before this run. Pick each newly ready ticket's seams as step 1 says. Then run the step 4 line at once for the newly ready tickets.
 
-A ticket that already failed in this run is not ready again: a failed worker, a missing or empty patch, a second failed merge, or a second blocking question. Only the two once-only returns in step 5 put a ticket back. Report each ticket that stays open, with its reason: a failed worker, a missing patch, a failed merge, an unanswered blocking question with its held patch, or an open blocker. Approved costly-test follow-ups use step 5's separate path.
+A ticket that already failed in this run is not ready again: a failed worker, a missing or empty patch, a second failed merge, or a second gating question. Only the two once-only returns in step 5 put a ticket back. Report each ticket that stays open, with its reason: a failed worker, a missing patch, a failed merge, an unanswered gating question with its held patch, or an open blocker.
 
 ### 7. Review
 
@@ -120,13 +118,13 @@ Once no ticket is ready and no implementer or merger runs, run shared step 3b, t
 
 When skill://vstack-maintain is loaded, include its drafting brief and review-fix-wave rule under "Knowledge for implement" in the fixer brief. State whether the branch was pushed. That rule owns the `prepare` and `gates` conditions for each wave.
 
-Spawn one `vstack-worker` via eval `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`: make every review fix in your own clone from code-review's result and the integration branch tip, with skill://tdd where a fix changes behavior. Follow tdd's seam rule and return its required seam records for the coordinator to record in the owning Stage. Return any Costly seam requiring approval as a non-blocking question. Follow skill://implement's "Work within the agreement" rule for consequential departures. Prose-only work states its no-test limit instead of adding guidance-string assertions. Commit nothing, merge nothing, and push nothing. Return changed paths, seam records, checks with their outcomes, and open questions, marking costly-seam questions as non-blocking, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: the main agent only orchestrates, so report each review fix as open and point at `/skill:setup-vstack` when isolation is off.
+Spawn one `vstack-worker` via eval `agent(<prompt>, agent="vstack-worker", isolated=True, apply=False, merge=False)`: make every review fix in your own clone from code-review's result and the integration branch tip, with skill://tdd where a fix changes behavior. Follow tdd's seam rule and return its required seam records for the coordinator to record in the owning Stage. Return any Costly seam requiring approval as a question classified by END-STATE.md's "Question timing", with each unrun test and its proof gap. Follow skill://implement's "Work within the agreement" rule for consequential departures. Prose-only work states its no-test limit instead of adding guidance-string assertions. Commit nothing, merge nothing, and push nothing. Return changed paths, seam records, checks with their outcomes, open questions with their gating classification, the vstack root, the Scratch dir. Wait for its result. If it cannot be spawned, stop: the main agent only orchestrates, so report each review fix as open and point at `/skill:setup-vstack` when isolation is off.
 
-Take the fixer's patch path from its completion notice as step 5 says, never from an inferred path. Reuse step 5's worker-failure, blocking-question, and once-only retry handling for the review-fix wave instead of a ticket. Record its seam picks as step 5 says. Queue any Costly seam question until shared step 6 commits the accepted fix hunks in step 8; neither that question nor its approved-test follow-up delays landing the fixes. Other open questions hold the affected fixes and patch until the user's own answer resolves them.
+Take the fixer's patch path from its completion notice as step 5 says, never from an inferred path. Reuse step 5's worker-failure, gating-question, and once-only retry handling for the review-fix wave instead of a ticket. Record its seam picks as step 5 says. Route Costly seam approval questions by END-STATE.md's "Question timing", recording each unrun test and its proof gap.
 
 Give each fixer its own lifecycle entry, including fresh retries. Keep held questions and follow-up workers available as in step 5. After the merger or vstack-maintain landing rule has applied the accepted review-fix hunks and no need remains, release the fixer through the shared contract. Preserve useful failed or superseded work before release; an unavailable patch or failed apply never bypasses that accounting.
 
-With no blocking question, choose the landing rule by whether skill://vstack-maintain is loaded.
+Hold non-gating fixer questions by END-STATE.md's "Question timing". With no open gating question, choose the landing rule by whether skill://vstack-maintain is loaded.
 
 When it is not loaded, use step 5's merger to inspect and land the patch on the integration branch. Reuse its patch application, conflict resolution, checks, and rollback behavior against the spec and code-review's result. The merger leaves the accepted review-fix hunks staged and uncommitted for shared step 6 instead of making a ticket commit.
 
@@ -136,7 +134,7 @@ Draft review fixes only in the isolated worker, never directly in the parent che
 
 ### 8. Commit and close
 
-Update the affected development checks. Then run shared step 6. It commits the review fixes after the ticket commits. After that commit lands, relay any queued review-fixer Costly seam question through step 5's post-landing question and approved-test follow-up path. Start any approved follow-up from the current integration tip containing the fixes. Then run shared step 6b on the committed head.
+Update the affected development checks. Then run shared step 6. It commits the review fixes after the ticket commits. Then run shared step 6b on the committed head.
 
 Resolve tickets and the spec only after shared step 6b accepts the Verdict. Resolve each complete ticket the way the issue tracker closes work. The spec is done only when every one of its tickets is complete in this run or was closed before this run. Resolve a done spec the same way. A ticket that stays open keeps the spec open. If the tracker closes work through PRs, pass the complete tickets to open-pr in shared step 7 as the PR's closing references instead, and add the spec only when it is done. At End state commit, those tickets and the spec stay open.
 

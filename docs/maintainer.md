@@ -17,7 +17,9 @@ The repo scripts need Bun. Run `bun run test` and `bun scripts/check-register.ts
 | `.omp/skills/verify-vstack/` | no | The Verify skill, feature recipes, and omp driver. |
 | `tests/` | no | Test suites, run with `bun run test`. Each script is run as a process over temp-dir fixtures (`tests/support/`). |
 | `.github/workflows/` | no | CI: the tests and `check-register` on every push and pull request. |
-| `CHANGELOG.md` | no | Unreleased section plus one entry per plugin version. |
+| `change-notes/` | no | Pending Change notes, one JSON file per change, with its version level and CHANGELOG entries. |
+| `plugin-release.json` | no | The latest Plugin release receipt, with its prepared commit, version, and date. |
+| `CHANGELOG.md` | no | Dated Plugin releases. |
 | `docs/adr/`, `GLOSSARY.md` | no | Decisions and vocabulary. |
 
 Only `plugin/` ships. Upstreams are fetched when needed, never stored in this repo.
@@ -141,7 +143,7 @@ It proves that the register, `pins.yaml`, `plugin/`, and the Upstreams agree. Op
 | `--root <dir>` | | the repo that holds the script |
 | `--source clones\|github` | `VSTACK_UPSTREAM_SOURCE` | `github` when `GITHUB_ACTIONS=true`, else `clones` |
 | `--upstreams <dir>` | `VSTACK_UPSTREAMS` | `~/.cache/vstack/upstreams` |
-| `--base <ref>` | `VSTACK_BASE_REF` | see "Version base" below |
+| `--base <ref>` | `VSTACK_BASE_REF` | see "Change-note base" below |
 | `--json` | | text output |
 | `--list-classes` | | prints every failure class and exits |
 
@@ -170,7 +172,8 @@ Other files count even when an artifact lacks `SKILL.md`. Source inside `__pycac
 | `adopt-not-identical` | an adopt artifact's files differ from the item at its reconciled version, `(held_at, held_path)` on a held row and `(pin, path)` otherwise, minus `agents/openai.yaml` |
 | `unregistered-upstream-item` | an item at a Pin (per `pins.yaml` `items:`) that no row's `path` names |
 | `invalid-manifest` | `plugin/package.json` lacks `name: vstack`, an `x.y.z` version, or the `omp` field |
-| `no-version-bump` | `plugin/` changed since the version base and the version is not higher than the base's |
+| `missing-change-note` | shipped `plugin/` text changed since the comparison base without a Change note added by the branch |
+| `invalid-plugin-release` | a version change or consumed note lacks a new Plugin release receipt, the version is not exactly the highest prepared level, a prepared note remains, an unrelated note is removed, or CHANGELOG does not keep every prepared entry under the dated heading |
 | `invalid-house-style` | a row or rule in `house-style.yaml` lacks a field or has a bad one, a row comes after a row that rewrites its `from`, or a linted rule is missing; the item is `house-style.yaml:<id>` |
 | `house-style-leftover` | a row's `from` still matches text the row covers (see "House style" below; adopt text only against `required` rows) |
 | `migration-house-style` | setup-vstack is present but its `references/house-style.yaml` copy is missing, has invalid row fields, or differs from the root `uses: migration` rows in content or order |
@@ -193,21 +196,21 @@ Rows with an `invalid-row` or `invalid-disposition` failure are skipped by the c
 
 A House style failure names the register row behind the artifact, or the artifact path when several rows or `originals:` name it. Its message lists the first file lines that break the row or rule.
 
-### Version base
+### Change-note base
 
-The version-bump check compares `plugin/` in the working tree, tracked and untracked files, with one commit:
+The Change-note check compares shipped `plugin/` text in the working tree, including tracked and untracked files, with one commit:
 
-1. `--base <ref>` or `VSTACK_BASE_REF`, when set. An all-zero SHA, which GitHub sends for a new branch, counts as unset.
-2. Else the merge base of `HEAD` and `origin/HEAD`. On a branch this covers every change the branch makes; on the default branch it covers unpushed and uncommitted changes.
+1. `--base <ref>` or `VSTACK_BASE_REF`, when set. An all-zero SHA counts as unset.
+2. Else the merge base of `HEAD` and `origin/HEAD`. This covers all changes on a feature branch.
 3. Else `HEAD`, so only uncommitted changes count.
 
-Existing recognized cache files do not require a version bump. Removed paths still count as changes.
+Recognized cache files do not count as shipped text. Removed paths count as changes. CHANGELOG and Change notes are not shipped text.
 
-The note line `version base: <sha> <how it was chosen>` shows the choice. When the base has no `plugin/package.json`, the plugin is new and needs no bump. A branch that is not based on `origin/HEAD` passes its own base, for example `--base feat/vstack-build`. CI passes the pull request's base on a pull request and the push's `before` commit on a push, falling back to the merge base with the default branch.
+The output line `change-note base: <sha> <how it was chosen>` reports the choice. A plugin new since the base needs no note. A Change note already present at the base does not cover a new change. A branch-added note covers subsequent review fixes, so each push needs no new bookkeeping. CI uses the merge base with the PR's target branch for pull requests and with the default branch for feature pushes. Default-branch pushes use the preceding tip to check the newly landed delivery.
 
 ### Adding a failure class
 
-Each check is a module in `scripts/lib/checks/` that exports a `Check`: the list of classes it reports and a `run(ctx)` that returns `{ class, item, message }` failures. `ctx` holds the root, the Pins, the register (`rows`, and `validRows` that passed the row checks), the plugin artifacts, the House style, the Upstream source, and the version base. To add a class, emit it from the check it belongs to and add it to that check's `classes`, or write a new module and append it to the list in `scripts/lib/checks/index.ts`. Then add a row to the class table above and a failing fixture to `tests/check-register.test.ts`. A test fails when `--list-classes` prints a class that has no fixture.
+Each check is a module in `scripts/lib/checks/` that exports a `Check`: the list of classes it reports and a `run(ctx)` that returns `{ class, item, message }` failures. `ctx` holds the root, the Pins, the register (`rows`, and `validRows` that passed the row checks), the plugin artifacts, the House style, the Upstream source, and the comparison base. To add a class, emit it from the check it belongs to and add it to that check's `classes`, or write a new module and append it to the list in `scripts/lib/checks/index.ts`. Then add a row to the class table above and a failing fixture to `tests/check-register.test.ts`. A test fails when `--list-classes` prints a class that has no fixture.
 
 A lint over shipped text starts from `lintTargets(ctx)` in `scripts/lib/checks/scope.ts`: every registered artifact with its Disposition (adopt, adapt, merge, or original), its Upstreams, and its text files. Whether a lint covers a Disposition comes from the `scope` of its row or rule in `house-style.yaml`, through `inScope` in `scripts/lib/house-style.ts`; do not test Dispositions anywhere else.
 
@@ -263,7 +266,7 @@ bun scripts/vstack-maintain.ts gates [--scratch <dir>]
 | `plan` | Prints the absolute path of `plan.json` in one Scratch entry under `~/.vstack/tmp/<repo-key>/maintain/`, or under `<dir>/maintain/` with `--scratch <dir>`. It reads the checkout's Pins, register, and House style. It clones or fetches each selected Upstream in the external cache, finds its next Pin, and writes staged adopt copies and normalized sides in Scratch. With no arguments, it selects all Upstreams. `<upstream>@<ref>` fixes the chosen ref. An automatic Pin never moves backwards. A run with no moved Pin still writes a full plan with `moved: false`. |
 | `merge` | Prints JSON `{rows}` with `id`, `effective_old`, `overlaps`, and `changes` for rows with normalized sides. Each change names its path, binary status, overlapping regions, and local and Upstream edits. It previews overlaps without writing drafts or checkout files. `--decisions` can supply `file_maps: {<row id>: {<Upstream file>: <local suffix>}}`. |
 | `check` | Prints JSON `{targets}` for named artifacts and artifacts in `--plan`. It classifies additions and edits, reports register rows, dispositions, callers, and name clashes, and previews takes. Renames and removals also report adopt callers. Repeat `--take`, `--rename`, or `--remove` for multiple targets. A name clash refuses with the Upstream item and a possible take or another-name remedy. At least one target is required. |
-| `prepare` | Prints JSON `{version, rows, targets, taken}`. It rebuilds bookkeeping from branch HEAD: the register, Pins, Hold fields, House style, version, and CHANGELOG. It copies adopt items and taken items from the selected Pin. implement must write adapt and merge text, move renamed artifacts, remove deleted artifacts, and update callers first. |
+| `prepare` | Prints JSON `{note, level, rows, targets, taken}`. It rebuilds the register, Pins, Hold fields, House style, adopt copies, and takes from branch HEAD, then writes one Change note. Version and CHANGELOG stay unchanged. implement must write adapt and merge text, move renamed artifacts, remove deleted artifacts, and update callers first. |
 | `gates` | Prints JSON `{ok, stages}`. It runs quick_validate for changed skills, check-register, `bun test`, and the load smoke. Each stage reports its name, result, output, and process exit code when available. The smoke runs outside the home directory. The gate always deletes its temporary output directory. On failure, it copies the evidence into one Scratch entry of kind `maintain` and prints that path in the smoke stage output. It does not run the live Addon judge. |
 
 `plan`, `merge`, and `check` are read-only fact-finding for the grill. They make no branch, worktree, or write in any checkout. Scratch and the Upstream cache must stay outside every checkout. The script refuses a `--scratch` dir or an `--upstreams` cache inside a checkout. `prepare` and `gates` serve implement. implement drafts every Update and Hand edit in one isolated drafting worker and applies the gated patch.
@@ -293,15 +296,15 @@ Each Hand edit target has `action` (`add`, `edit`, `take`, `rename`, or `remove`
 
 An `edit` target can also carry an optional, nonempty, one-line `reason`. `prepare` applies it to every adapt row that lists the artifact. Other Dispositions keep their reasons, and an adopt flip still uses `flip.reason`.
 
-`prepare` validates decisions before its first checkout write. It derives bookkeeping from HEAD and replays accepted decisions recorded for that same HEAD. Its version exceeds HEAD's version, with at most one major bump per branch. Hold preserves the old contribution while current Pins and item identities move. The grill records moved refs and confirmed decisions. implement reruns `plan` at those refs and stops with a report if the row set differs.
+`prepare` validates decisions before its first checkout write. It derives bookkeeping from HEAD and replays accepted decisions recorded for that same HEAD. Its Change note records patch for a Hand edit, minor for an Update, and major when a shipped skill, agent, or command name is removed or renamed. Hold preserves the old contribution while current Pins and item identities move. The grill records moved refs and confirmed decisions. implement reruns `plan` at those refs and stops with a report if the row set differs.
 
-`prepare` uses the `yaml` package's Document and source-token APIs to keep comments, quoting, flow style, key order, and untouched text. It changes only the version value in `plugin/package.json`.
+`prepare` uses the `yaml` package's Document and source-token APIs to keep comments, quoting, flow style, key order, and untouched text. It leaves `plugin/package.json` and CHANGELOG unchanged.
 
 ### Preparation ownership
 
 Before replacement, `prepare` requires each bookkeeping file, release-metadata file, and selected adopt or take destination to match HEAD or its last recorded prepared output. Added files, removed files, symlinks, executable modes, and untracked files inside replacement directories participate in this comparison. Existing adapt takes remain agent-owned and are not replaced.
 
-Successful preparation saves its accepted decisions, plan, and output identities at the checkout's Git path `vstack-maintain/prepared.json`. This receipt stays outside the product files. Repeats combine accepted decisions by row id, target artifact, and dropped Upstream key. A new decision replaces the earlier decision for that key; omitted keys stay accepted. CHANGELOG entries accumulate without duplicates. A new HEAD starts a new preparation baseline. A different plan at the same HEAD refuses while an earlier Update remains uncommitted.
+Successful preparation saves its accepted decisions, plan, Change-note path, and output identities at the checkout's Git path `vstack-maintain/prepared.json`. This receipt stays outside the product files. Repeats combine accepted decisions by row id, target artifact, and dropped Upstream key. A new decision replaces the earlier decision for that key; omitted keys stay accepted. Entries accumulate without duplicates in that same Change note. A new HEAD starts a new preparation baseline. A different plan at the same HEAD refuses while an earlier Update remains uncommitted.
 
 An `input-conflict` refusal lists `conflicts` paths and changes no checkout content. Reconcile the named differences; a dirty file alone grants no replacement permission. Keep the receipt for repeats and review-fix handoffs, including the original confirmed decisions for revised targets. Losing the receipt does not authorize replacement of dirty content.
 
@@ -364,4 +367,20 @@ The extension tests use `tests/support/extension-host.ts` and `extension-mocks.t
 
 ## Versions and CHANGELOG
 
-Every change under `plugin/` raises the version in `plugin/package.json`: patch for a hand edit, minor for an Update, major when a shipped skill, agent, or command name is removed or renamed. Add a line under `## [Unreleased]` in `CHANGELOG.md` with each change, and when you raise the version, move those lines under a new `## [x.y.z] - <date>` heading.
+A plugin change carries a Change note instead of changing the version or dated CHANGELOG headings. `prepare` writes `change-notes/<uuid>.json` with `schema: 1`, a `level` of `patch`, `minor`, or `major`, and an `entries` array of nonempty, one-line CHANGELOG entries. The shared module `scripts/lib/change-notes.ts` owns this format, reads pending notes at a ref, reports their highest level, and folds a prepared set into CHANGELOG.
+
+Patch means a Hand edit, minor means an Update, and major means a shipped skill, agent, or command name was removed or renamed. Repeated preparations at the same HEAD reuse one note and combine entries without duplicates. Review fixes on a branch with a note need no further note or version change.
+
+A Plugin release is a separate maintainer-run change, landed through a normal PR. Run it from a commit that contains the pending notes:
+
+```sh
+bun scripts/vstack-maintain.ts release
+```
+
+The command folds every Change note at HEAD under one `## [x.y.z] - <date>` heading, keeps each entry's text, and raises `plugin/package.json` once by their highest level. It removes only those notes. It writes working-tree changes without committing or opening a PR. Commit the manifest, CHANGELOG, note removals, and `plugin-release.json` together, then land them through a normal PR. ship does not cut Plugin releases.
+
+The Plugin release receipt records HEAD's full SHA, the version, and the UTC date. `check-register` reads that commit's note set rather than newer main's set. It checks the exact version increase, removal of every prepared note, and the dated CHANGELOG entries. It rejects a version change without a new receipt and refuses to consume the same prepared Plugin release against an already raised base version.
+
+Notes added on main while the Plugin release PR is open stay pending for the next Plugin release. CI compares plugin changes limited to the Plugin release with the branch's common ancestor so newer main's independent edits do not require another note on the Plugin release branch. The Plugin release command refuses changed Plugin release inputs and reports `input-conflict` before writing. Notes outside its committed set remain untouched, including untracked notes. With no notes at HEAD, it refuses without writing.
+
+Add new entries through Change notes rather than an Unreleased section. [ADR 0064](adr/0064-change-notes-replace-per-pr-plugin-versions.md) records why delivery PRs leave shared Plugin release files alone.

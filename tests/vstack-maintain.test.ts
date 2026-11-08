@@ -25,6 +25,53 @@ function choices(f: ReturnType<typeof fixture>, plan?: any, targets: any[] = [],
 }
 const own = (name: string) => ({ action: "add", kind: "rule", artifact: `plugin/rules/${name}.md` });
 
+test("Plugin release folds the committed notes once at their highest level and leaves later notes pending", async () => {
+  const f = fixture();
+  writeFiles(f.root, {
+    "change-notes/patch.json": JSON.stringify({ schema: 1, level: "patch", entries: ["Keep the patch text."] }),
+    "change-notes/minor.json": JSON.stringify({ schema: 1, level: "minor", entries: ["Keep the Update text.", "Keep its second entry."] }),
+  });
+  git(f.root, "add", "-A"); git(f.root, "commit", "-qm", "pending notes");
+  const head = git(f.root, "rev-parse", "HEAD");
+  writeFiles(f.root, { "change-notes/uncommitted.json": JSON.stringify({ schema: 1, level: "major", entries: ["Not committed yet."] }) });
+  const r = await f.run(f.root, ["release"]);
+  expect(r.code).toBe(0);
+  expect(r.plan).toMatchObject({ ok: true, prepared: head, version: "0.2.0", level: "minor" });
+  expect(git(f.root, "rev-parse", "HEAD")).toBe(head);
+  expect(JSON.parse(read(f.root, "plugin/package.json")).version).toBe("0.2.0");
+  expect(read(f.root, "CHANGELOG.md")).toMatch(/^# Changelog\n\n## \[0\.2\.0\] - \d{4}-\d{2}-\d{2}\n\n- Keep the Update text\.\n- Keep its second entry\.\n- Keep the patch text\.\n/);
+  expect(existsSync(join(f.root, "change-notes/patch.json"))).toBe(false);
+  expect(existsSync(join(f.root, "change-notes/minor.json"))).toBe(false);
+  expect(JSON.parse(read(f.root, "change-notes/uncommitted.json")).entries).toEqual(["Not committed yet."]);
+  writeFiles(f.root, { "change-notes/later.json": JSON.stringify({ schema: 1, level: "major", entries: ["Next Plugin release only."] }) });
+  const before = state(f.root);
+  expect((await f.run(f.root, ["release"])).code).toBe(2);
+  expect(state(f.root)).toEqual(before);
+  expect(JSON.parse(read(f.root, "change-notes/later.json")).entries).toEqual(["Next Plugin release only."]);
+}, 30000);
+
+test("Plugin release refuses changed inputs and an empty pending set without writing", async () => {
+  const f = fixture();
+  let before = state(f.root);
+  const empty = await f.run(f.root, ["release"]);
+  expect(empty.code).toBe(2);
+  expect(empty.stdout).toContain("No pending Change notes");
+  expect(state(f.root)).toEqual(before);
+  writeFiles(f.root, { "change-notes/note.json": JSON.stringify({ schema: 1, level: "patch", entries: ["Committed entry."] }) });
+  git(f.root, "add", "-A"); git(f.root, "commit", "-qm", "pending note");
+  for (const path of ["plugin/package.json", "CHANGELOG.md", "change-notes/note.json"]) {
+    const original = read(f.root, path);
+    writeFiles(f.root, { [path]: `${original}\n` });
+    before = state(f.root);
+    const r = await f.run(f.root, ["release"]);
+    expect(r.code).toBe(2);
+    expect(JSON.parse(r.stdout)).toMatchObject({ category: "input-conflict", conflicts: [path] });
+    expect(JSON.parse(r.stdout).reason).toContain("Reconcile changed Plugin release inputs before Plugin release");
+    expect(state(f.root)).toEqual(before);
+    writeFiles(f.root, { [path]: original });
+  }
+}, 30000);
+
 test("fact-finding leaves dirty checkouts, branches, and worktrees unchanged", async () => {
   const f = fixture(); writeFiles(f.root, { "plugin/skills/wording/SKILL.md": "Local text.\n" });
   const before = state(f.root);
@@ -105,7 +152,7 @@ test("check reads a rejected take through fake GitHub at the current Pin", async
   finally { server.stop(true); }
 }, 30000);
 
-test("prepare leaves unchanged bookkeeping byte-identical and changes only the manifest version", async () => {
+test("prepare writes a patch Change note and leaves Plugin release files and unchanged bookkeeping byte-identical", async () => {
   const f = fixture();
   const pins = `# Pins keep their comments.\nupstreams: ${JSON.stringify((Bun.YAML.parse(read(f.root, "pins.yaml")) as any).upstreams)} # Flow map\n`;
   const style = `# House style keeps its comments.\n${read(f.root, "house-style.yaml")}`;
@@ -113,12 +160,17 @@ test("prepare leaves unchanged bookkeeping byte-identical and changes only the m
   const manifest = '{\n  "name": "vstack", "version" : "0.1.0",\n  "omp": {"extensions": ["./extensions/vstack.ts"]}\n}\n';
   writeFiles(f.root, { "pins.yaml": pins, "house-style.yaml": style, "decision-register.yaml": reg, "plugin/package.json": manifest });
   git(f.root, "add", "-A"); git(f.root, "commit", "-qm", "formatted bookkeeping");
+  const changelog = read(f.root, "CHANGELOG.md");
   const r = await f.run(f.root, ["prepare", "--decisions", choices(f, undefined, [{ action: "edit", kind: "skill", artifact: "plugin/skills/wording" }])]);
   expect(r.code).toBe(0);
   expect(read(f.root, "decision-register.yaml")).toBe(reg);
   expect(read(f.root, "pins.yaml")).toBe(pins);
   expect(read(f.root, "house-style.yaml")).toBe(style);
-  expect(read(f.root, "plugin/package.json")).toBe(manifest.replace('"0.1.0"', '"0.1.1"'));
+  expect(read(f.root, "plugin/package.json")).toBe(manifest);
+  expect(read(f.root, "CHANGELOG.md")).toBe(changelog);
+  expect(r.plan.level).toBe("patch");
+  expect(JSON.parse(read(f.root, r.plan.note))).toEqual({ schema: 1, level: "patch", entries: ["Keep the chosen changes."] });
+  expect(readdirSync(join(f.root, "change-notes"))).toHaveLength(1);
 }, 30000);
 
 test("prepare changes only an adapt reason inside a flow row", async () => {
@@ -194,18 +246,33 @@ test("prepare carries accepted uncommitted work across repeats and review-fix ha
   const second = choices(f, undefined, [own("second"), { action: "edit", kind: "skill", artifact: "plugin/skills/wording", reason: "Keep the review correction." }], { changelog: ["Second ticket line."] });
   const result = await f.run(f.root, ["prepare", "--decisions", second]);
   expect(result.code).toBe(0);
-  expect(result.plan.version).toBe("0.1.1");
+  expect(result.plan.level).toBe("patch");
+  expect(result.plan.note).toBe(prepared.plan.note);
+  expect(readdirSync(join(f.root, "change-notes"))).toHaveLength(1);
   expect(register(f.root).originals).toEqual(["plugin/rules/first.md", "plugin/rules/second.md"]);
   expect(register(f.root).items.find((row: any) => row.id === "matt/wording").reason).toBe("Keep the review correction.");
   expect(read(f.root, "plugin/skills/wording/SKILL.md")).toBe("Reviewed agent text.\n");
-  expect(read(f.root, "CHANGELOG.md").match(/First ticket line\./g)).toHaveLength(1);
-  expect(read(f.root, "CHANGELOG.md")).toContain("Second ticket line.");
+  expect(JSON.parse(read(f.root, result.plan.note)).entries).toEqual(["First ticket line.", "Second ticket line."]);
+  expect(read(f.root, "CHANGELOG.md")).toBe("# Changelog\n\n## [Unreleased]\n");
   const independent = `# Another task.\n${read(f.root, "decision-register.yaml")}`;
   writeFiles(f.root, { "decision-register.yaml": independent });
   const before = state(f.root);
   const refused = await f.run(f.root, ["prepare", "--decisions", second]);
   expect(refused.code).toBe(2);
   expect(JSON.parse(refused.stdout).conflicts).toContain("decision-register.yaml");
+  expect(state(f.root)).toEqual(before);
+}, 30000);
+
+test("prepare refuses independent edits to its previously prepared Change note", async () => {
+  const f = fixture();
+  const file = choices(f, undefined, [{ action: "edit", kind: "skill", artifact: "plugin/skills/wording" }]);
+  const prepared = await f.run(f.root, ["prepare", "--decisions", file]);
+  expect(prepared.code).toBe(0);
+  writeFiles(f.root, { [prepared.plan.note]: JSON.stringify({ schema: 1, level: "major", entries: ["Another editor's decision."] }) });
+  const before = state(f.root);
+  const refused = await f.run(f.root, ["prepare", "--decisions", file]);
+  expect(refused.code).toBe(2);
+  expect(JSON.parse(refused.stdout)).toMatchObject({ category: "input-conflict", conflicts: [prepared.plan.note] });
   expect(state(f.root)).toEqual(before);
 }, 30000);
 
@@ -245,7 +312,7 @@ async function pauseBeforeReplacement(f: ReturnType<typeof fixture>) {
   writeFileSync(join(bin, "git"), `#!${process.execPath}
 import { existsSync, writeFileSync } from "node:fs";
 const args = process.argv.slice(2);
-if (args[0] === "show" && args[1] === "HEAD:CHANGELOG.md") {
+if (args[0] === "show" && args[1] === "HEAD:decision-register.yaml") {
   writeFileSync(${JSON.stringify(ready)}, "ready");
   while (!existsSync(${JSON.stringify(release)})) await Bun.sleep(10);
 }
@@ -278,11 +345,13 @@ test("cooperating preparations refuse competing ownership and preserve accepted 
     expect(JSON.parse(competing.stdout).category).toBe("preparation-busy");
     expect(state(f.root)).toEqual(before);
     pause.release();
-    expect((await pending).code).toBe(0);
-    expect((await f.run(f.root, ["prepare", "--decisions", second])).code).toBe(0);
+    const prepared = await pending;
+    expect(prepared.code).toBe(0);
+    const result = await f.run(f.root, ["prepare", "--decisions", second]);
+    expect(result.code).toBe(0);
+    expect(result.plan.note).toBe(prepared.plan.note);
     expect(register(f.root).originals).toEqual(["plugin/rules/first.md", "plugin/rules/second.md"]);
-    expect(read(f.root, "CHANGELOG.md")).toContain("First accepted change.");
-    expect(read(f.root, "CHANGELOG.md")).toContain("Second accepted change.");
+    expect(JSON.parse(read(f.root, result.plan.note)).entries).toEqual(["First accepted change.", "Second accepted change."]);
   } finally { pause.release(); await pending; }
 }, 30000);
 
@@ -305,28 +374,34 @@ test("prepare rechecks inputs after planning before it replaces checkout content
 test("prepare reports completed writes and the failing path after an unexpected write failure", async () => {
   const f = fixture();
   const file = choices(f, undefined, [{ action: "edit", kind: "skill", artifact: "plugin/skills/wording", reason: "A changed reason." }]);
-  const manifest = join(f.root, "plugin/package.json");
-  chmodSync(manifest, 0o444);
+  const style = join(f.root, "house-style.yaml");
+  chmodSync(style, 0o444);
   try {
     const result = await f.run(f.root, ["prepare", "--decisions", file]);
     expect(result.code).toBe(2);
     const report = JSON.parse(result.stdout);
-    expect(report).toMatchObject({ category: "write-failure", attempted: "plugin/package.json", outcome: "checkout-may-be-partially-written" });
-    expect(report.written).toEqual(["decision-register.yaml", "pins.yaml", "house-style.yaml"]);
+    expect(report).toMatchObject({ category: "write-failure", attempted: "house-style.yaml", outcome: "checkout-may-be-partially-written" });
+    expect(report.written).toEqual(["decision-register.yaml", "pins.yaml"]);
     expect(register(f.root).items.find((row: any) => row.id === "matt/wording").reason).toBe("A changed reason.");
     expect(JSON.parse(read(f.root, "plugin/package.json")).version).toBe("0.1.0");
     expect(read(f.root, "CHANGELOG.md")).toBe("# Changelog\n\n## [Unreleased]\n");
-  } finally { chmodSync(manifest, 0o644); }
+  } finally { chmodSync(style, 0o644); }
 }, 30000);
 
-test("prepare keeps earlier ticket rows and CHANGELOG lines and raises the version above HEAD", async () => {
+test("prepare keeps earlier committed ticket rows and notes without editing Plugin release files", async () => {
   const f = fixture(); git(f.root, "checkout", "-qb", "feature");
   writeFiles(f.root, { "plugin/rules/first.md": "First rule.\n" });
   expect((await f.run(f.root, ["prepare", "--decisions", choices(f, undefined, [own("first")], { changelog: ["First ticket line."] })])).code).toBe(0);
   git(f.root, "add", "-A"); git(f.root, "commit", "-qm", "first ticket");
   writeFiles(f.root, { "plugin/rules/second.md": "Second rule.\n" });
   const r = await f.run(f.root, ["prepare", "--decisions", choices(f, undefined, [own("second")])]); expect(r.code).toBe(0);
-  expect(r.plan.version).toBe("0.1.2"); expect(register(f.root).originals).toContain("plugin/rules/first.md"); expect(read(f.root, "CHANGELOG.md")).toContain("First ticket line.");
+  expect(r.plan.level).toBe("patch");
+  expect(register(f.root).originals).toContain("plugin/rules/first.md");
+  const notes = readdirSync(join(f.root, "change-notes"));
+  expect(notes).toHaveLength(2);
+  expect(notes.flatMap(note => JSON.parse(read(f.root, `change-notes/${note}`)).entries)).toContain("First ticket line.");
+  expect(JSON.parse(read(f.root, "plugin/package.json")).version).toBe("0.1.0");
+  expect(read(f.root, "CHANGELOG.md")).toBe("# Changelog\n\n## [Unreleased]\n");
 }, 30000);
 
 test("prepare combines Update rows and Hand edit targets and keeps existing Hold fields and text", async () => {
@@ -335,6 +410,8 @@ test("prepare combines Update rows and Hand edit targets and keeps existing Hold
   const heldText = read(f.root, "plugin/skills/held/SKILL.md");
   const file = choices(f, plan, [own("local")]); const d = JSON.parse(readFileSync(file, "utf8")); d.decisions.find((x: any) => x.id === "matt/wording").action = "accept"; d.decisions.find((x: any) => x.id === "matt/grow").action = "accept"; writeFileSync(file, JSON.stringify(d));
   const r = await f.run(f.root, ["prepare", "--plan", path, "--decisions", file]); expect(r.code).toBe(0);
+  expect(r.plan.level).toBe("minor");
+  expect(JSON.parse(read(f.root, r.plan.note)).level).toBe("minor");
   expect(read(f.root, "plugin/skills/wording/SKILL.md")).toBe("Agent merged this text.\n");
   expect(read(f.root, "plugin/skills/grow/SKILL.md")).toContain("grow 2");
   expect(read(f.root, "plugin/skills/held/SKILL.md")).toBe(heldText);
@@ -342,26 +419,37 @@ test("prepare combines Update rows and Hand edit targets and keeps existing Hold
   expect(register(f.root).originals).toContain("plugin/rules/local.md"); expect(read(f.root, "pins.yaml")).toContain("v1.2.0");
 }, 30000);
 
-test("prepare makes at most one major bump per branch across shipped-name removals", async () => {
+test("prepare records major for each change removing a shipped name", async () => {
   const f = fixture(); git(f.root, "checkout", "-qb", "feature");
-  for (const [name, version] of [["gone", "1.0.0"], ["drift", "1.0.1"]]) {
+  for (const name of ["gone", "drift"]) {
     rmSync(join(f.root, `plugin/skills/${name}`), { recursive: true });
     const file = choices(f, undefined, [{ action: "remove", kind: "skill", artifact: `plugin/skills/${name}`, reason: "Not needed." }]);
-    const r = await f.run(f.root, ["prepare", "--decisions", file]); expect(r.code).toBe(0); expect(r.plan.version).toBe(version);
+    const r = await f.run(f.root, ["prepare", "--decisions", file]); expect(r.code).toBe(0); expect(r.plan.level).toBe("major");
     git(f.root, "add", "-A"); git(f.root, "commit", "-qm", `remove ${name}`);
   }
 }, 30000);
 
-test("prepare makes a major bump when an Update rejects or renames a shipped skill", async () => {
+test("prepare records major when an Update rejects or renames a shipped skill", async () => {
   for (const change of [{ disposition: "reject", reason: "Not needed." }, { artifacts: ["plugin/skills/phrasing"] }] as any[]) {
     const f = fixture(); git(f.root, "checkout", "-qb", "feature");
     const { plan, path } = await planned(f);
     if (change.artifacts) writeFiles(f.root, { "plugin/skills/phrasing/SKILL.md": "Renamed local text.\n" });
     const file = choices(f, plan); const d = JSON.parse(readFileSync(file, "utf8"));
     Object.assign(d.decisions.find((x: any) => x.id === "matt/wording"), { action: "accept", ...change }); writeFileSync(file, JSON.stringify(d));
-    const r = await f.run(f.root, ["prepare", "--plan", path, "--decisions", file]); expect(r.code).toBe(0); expect(r.plan.version).toBe("1.0.0");
+    const r = await f.run(f.root, ["prepare", "--plan", path, "--decisions", file]); expect(r.code).toBe(0); expect(r.plan.level).toBe("major");
   }
 }, 60000);
+
+test("prepare records major when a shipped extension command is renamed", async () => {
+  const f = fixture();
+  writeFiles(f.root, { "plugin/extensions/commands.ts": 'export default pi => { pi.registerCommand("old-command", {}); };\n' });
+  git(f.root, "add", "-A"); git(f.root, "commit", "-qm", "shipped command");
+  writeFiles(f.root, { "plugin/extensions/commands.ts": 'export default pi => { pi.registerCommand("new-command", {}); };\n' });
+  const result = await f.run(f.root, ["prepare", "--decisions", choices(f, undefined, [{ action: "edit", kind: "skill", artifact: "plugin/skills/wording" }])]);
+  expect(result.code).toBe(0);
+  expect(result.plan.level).toBe("major");
+  expect(JSON.parse(read(f.root, result.plan.note)).level).toBe("major");
+}, 30000);
 
 test("prepare takes from the Pin and requires confirmed adopt flips before any write", async () => {
   const f = fixture(); const before = state(f.root);
@@ -493,7 +581,7 @@ test("prepare preserves a rename's callers, confirmed adopt flip, and House styl
   const { renameSync } = await import("node:fs"); renameSync(join(f.root, "plugin/skills/wording"), join(f.root, "plugin/skills/phrasing"));
   writeFiles(f.root, { "plugin/skills/phrasing/SKILL.md": "---\nname: phrasing\ndescription: Phrase notes\n---\nPhrase the notes.\n", "plugin/skills/keep/SKILL.md": "---\nname: keep\ndescription: Keep notes\n---\nRun skill://phrasing after.\n" });
   const file = choices(f, undefined, [{ action: "rename", kind: "skill", artifact: "plugin/skills/wording", to: "plugin/skills/phrasing" }, { action: "edit", kind: "skill", artifact: "plugin/skills/keep", flip: { confirmed: true, reason: "The caller uses the new name." } }]);
-  const r = await f.run(f.root, ["prepare", "--decisions", file]); expect(r.code).toBe(0); expect(r.plan.version).toBe("1.0.0");
+  const r = await f.run(f.root, ["prepare", "--decisions", file]); expect(r.code).toBe(0); expect(r.plan.level).toBe("major");
   expect(register(f.root).items.find((x: any) => x.id === "matt/wording").artifacts).toEqual(["plugin/skills/phrasing"]);
   expect(read(f.root, "decision-register.yaml")).toContain('"plugin/skills/phrasing" # Keep the artifact annotation.');
   expect(read(f.root, "house-style.yaml")).toContain("rename-wording"); expect(read(f.root, "plugin/skills/keep/SKILL.md")).toContain("skill://phrasing");
@@ -526,13 +614,13 @@ test("prepare drops a whole Upstream with its Pin, rows, and House style rows, a
     const refused = await f.run(c.root, ["prepare", "--decisions", file]);
     expect(refused.code).toBe(2); expect(JSON.parse(refused.stdout).reason).toContain("delete plugin/skills/solo before prepare"); expect(state(c.root)).toEqual(before);
     rmSync(join(c.root, "plugin/skills/solo"), { recursive: true });
-    const r = await f.run(c.root, ["prepare", "--decisions", file]); expect(r.code).toBe(0); expect(r.plan.version).toBe("1.0.0");
+    const r = await f.run(c.root, ["prepare", "--decisions", file]); expect(r.code).toBe(0); expect(r.plan.level).toBe("major");
     expect(Object.keys((Bun.YAML.parse(read(c.root, "pins.yaml")) as any).upstreams)).toEqual(["alpha"]);
     expect(register(c.root).items.filter((row: any) => row.upstream === "beta")).toEqual([]);
     expect(register(c.root).items.find((row: any) => row.id === "alpha/shared-a").artifacts).toEqual(["plugin/skills/shared"]);
     const style = Bun.YAML.parse(read(c.root, "house-style.yaml")) as any;
     expect(style.replacements.map((row: any) => row.id)).not.toContain("fx-beta"); expect(style.rules.map((rule: any) => rule.id)).not.toContain("fx-beta-rule");
-    expect(read(c.root, "CHANGELOG.md")).toContain("- Drop the beta Upstream.");
+    expect(JSON.parse(read(c.root, r.plan.note)).entries).toEqual(["Drop the beta Upstream."]);
     const checked = await c.run(); expect(checked.json!.failures).toEqual([]); expect(checked.code).toBe(0);
   } finally { rmSync(up.dir, { recursive: true, force: true }); rmSync(c.root, { recursive: true, force: true }); }
 }, 30000);
