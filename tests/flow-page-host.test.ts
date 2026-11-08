@@ -83,8 +83,8 @@ function hostPids(w: World): number[] {
     .filter((l) => l.includes("host.ts") && l.includes(`--home ${w.home}`))
     .map((l) => Number(l.trim().split(/\s+/)[0]));
 }
-async function until(cond: () => boolean, ms = 8000): Promise<boolean> {
-  for (const end = Date.now() + ms; Date.now() < end; await Bun.sleep(50)) if (cond()) return true;
+async function until(cond: () => boolean | Promise<boolean>, ms = 8000): Promise<boolean> {
+  for (const end = Date.now() + ms; Date.now() < end; await Bun.sleep(50)) if (await cond()) return true;
   return cond();
 }
 
@@ -328,10 +328,10 @@ else process.exit(1);
   w.path = `${bin}:${ENV.PATH}`;
   const opened = ok(open(w));
   let latest: any;
-  for (const end = Date.now() + 3000; Date.now() < end; await Bun.sleep(50)) {
+  await until(async () => {
     latest = await (await fetch(new URL("observations", opened.live.url))).json();
-    if (latest["code-host"]?.records[0]?.state === "open" && latest.ci?.records[0]?.state === "failed") break;
-  }
+    return latest["code-host"]?.records[0]?.state === "open" && latest.ci?.records[0]?.state === "failed";
+  });
   expect(latest["code-host"].status).toBe("current");
   expect(latest["code-host"].records[0].state).toBe("open");
   expect(latest["code-host"].provenance.source).toBe("https://github.com/code/project");
