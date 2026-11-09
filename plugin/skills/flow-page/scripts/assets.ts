@@ -3,6 +3,7 @@ import { basename, extname, relative, resolve, sep } from "node:path";
 import { createHash } from "node:crypto";
 import { refuse } from "./fields.ts";
 import { palette } from "../../vstack-figures/scripts/palette.ts";
+import { DIAGRAM_CONFIG } from "../../vstack-figures/scripts/presentation.ts";
 
 /** A directory a contribution may read files from, already resolved through every symlink. */
 export type Root = { name: "project" | "scratch" | "vstack-domain"; dir: string };
@@ -119,11 +120,10 @@ export function capture(path: string, type: string, roots: Root[], cwd: string, 
     try { source = new TextDecoder("utf-8", { fatal: true }).decode(bytes); } catch { return refuse(where, `${path} is not UTF-8 text`); }
     const { parse, render } = require("pele") as typeof import("pele");
     try {
-      const config = { flowchart: { curve: "step" as const } };
-      const model = parse(source.replace(/^\uFEFF/, ""), { config });
+      const model = parse(source.replace(/^\uFEFF/, ""), { config: DIAGRAM_CONFIG });
       const scope = "pele-capture";
-      const { svg } = render(model, { links: false, images: false, config, ...(model.type === "sankey" ? { idPrefix: scope } : {}) });
-      palette(svg, model, [], focus, scope);
+      const { svg } = render(model, { links: false, images: false, config: DIAGRAM_CONFIG, ...(model.type === "sankey" ? { idPrefix: scope } : {}) });
+      palette(svg, model, [], focus, scope, source);
     } catch (e) { refuse(where, `${path} is not Mermaid that Pele renders: ${(e as Error).message}`); }
     ext = "mmd";
   } else {

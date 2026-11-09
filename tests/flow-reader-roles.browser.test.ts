@@ -28,12 +28,17 @@ afterAll(async () => {
   rmSync(root, { recursive: true, force: true });
 });
 
-// Official Catppuccin accents in role order: ok, warn, bad, changed, actor, store, external.
+const ROLES = ["ok", "warn", "bad", "changed", "actor", "store", "external"] as const;
 const ACCENTS = {
-  Light: [[64, 160, 43], [223, 142, 29], [210, 15, 57], [30, 102, 245], [234, 118, 203], [23, 146, 153], [254, 100, 11]],
-  Dark: [[166, 227, 161], [249, 226, 175], [243, 139, 168], [137, 180, 250], [245, 194, 231], [148, 226, 213], [250, 179, 135]],
+  Light: {
+    ok: [64, 160, 43], warn: [223, 142, 29], bad: [210, 15, 57], changed: [30, 102, 245],
+    actor: [234, 118, 203], store: [23, 146, 153], external: [254, 100, 11],
+  },
+  Dark: {
+    ok: [166, 227, 161], warn: [249, 226, 175], bad: [243, 139, 168], changed: [137, 180, 250],
+    actor: [245, 194, 231], store: [148, 226, 213], external: [250, 179, 135],
+  },
 };
-const ROLES = ["ok", "warn", "bad", "changed", "actor", "store", "external"];
 const near = (actual: number[], expected: number[]) => actual.every((n, i) => Math.abs(n - expected[i]!) <= 3);
 const luminance = (rgb: number[]) => rgb.map((n) => n / 255).map((n) => n <= 0.04045 ? n / 12.92 : ((n + 0.055) / 1.055) ** 2.4)
   .reduce((sum, n, i) => sum + n * [0.2126, 0.7152, 0.0722][i]!, 0);
@@ -87,9 +92,9 @@ test("the reader applies all shared Color roles and intrinsic kinds, with readab
     for (const theme of ["Light", "Dark", "Light"] as const) {
       await page.getByRole("button", { name: theme, exact: true }).click();
       const seen = await paints(figure);
-      for (const [i, role] of ROLES.entries()) {
+      for (const role of ROLES) {
         const node = seen[role]!;
-        expect(near(node.fill, ACCENTS[theme][i]!), `${theme} ${role}: ${node.fill}`).toBe(true);
+        expect(near(node.fill, ACCENTS[theme][role]), `${theme} ${role}: ${node.fill}`).toBe(true);
         expect(node.opacity).toBe(0.22);
         expect(node.stroke).toEqual(node.fill);
         expect(node.label).toEqual(seen.plain!.label);
@@ -117,7 +122,6 @@ test.each([
   const context = await browser.newContext({ colorScheme: "light" });
   try {
     const page = await context.newPage();
-    // The asset boundary supplies source captured before submit added its role check.
     await page.route("**/assets/**/roles.mmd", (route) => route.fulfill({ contentType: "text/plain", body: historical }));
     await page.goto(opened.live.url);
     const figure = page.getByRole("img", { name: `Historical ${reason}`, exact: true });
@@ -130,8 +134,35 @@ test.each([
       expect(seen.a!.label).toEqual(reason === "authored paint" ? theme === "Light" ? [239, 241, 245] : [205, 214, 244] : seen.b!.label);
       expect(seen.a!.opacity).toBe(1);
       expect(seen.b!.opacity).toBe(1);
-      expect(near(seen.b!.fill, ACCENTS[theme][0]!)).toBe(false);
+      expect(near(seen.b!.fill, ACCENTS[theme].ok)).toBe(false);
       if (reason === "authored paint") expect(seen.a!.fill).toEqual([18, 52, 86]);
+    }
+  } finally { await context.close(); }
+}, 120_000);
+
+test.each(["source", "target"] as const)("Sankey %s links match the selected endpoint in both reader themes", async (mode) => {
+  const source = `---\nconfig:\n  sankey:\n    linkColor: ${mode}\n---\nsankey\n\nOrders,Other,3\n`;
+  const caption = `Sankey ${mode} endpoint`;
+  const opened = capture(source, [], caption);
+  const context = await browser.newContext({ colorScheme: "light" });
+  try {
+    const page = await context.newPage();
+    await page.goto(opened.live.url);
+    const figure = page.getByRole("img", { name: caption, exact: true });
+    await figure.locator("svg").waitFor();
+    for (const theme of ["Light", "Dark"] as const) {
+      await page.getByRole("button", { name: theme, exact: true }).click();
+      const seen = await figure.evaluate((host) => {
+        const svg = host.shadowRoot!.querySelector("svg")!;
+        const fill = (selector: string) => getComputedStyle(svg.querySelector(selector)!).fill;
+        return {
+          link: fill(".pele-sankey-link"),
+          source: fill('.pele-sankey-node[data-id="Orders"]'),
+          target: fill('.pele-sankey-node[data-id="Other"]'),
+        };
+      });
+      expect(seen.source).not.toBe(seen.target);
+      expect(seen.link).toBe(seen[mode]);
     }
   } finally { await context.close(); }
 }, 120_000);

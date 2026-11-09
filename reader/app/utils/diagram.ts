@@ -104,7 +104,7 @@ export async function drawMermaid(source: string, focus: string[]): Promise<Draw
     let painted = svg;
     let css = "";
     try {
-      painted = palette(svg, model, [], focus, "pele-reader").svg;
+      painted = palette(svg, model, [], focus, "pele-reader", source).svg;
       css = "svg { background: var(--pele-bg); }";
     } catch {
       css = focusRules(focus);

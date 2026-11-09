@@ -71,7 +71,7 @@ try {
 	const painted = palette(render(model, {
 		fontFamily: FONT, fontFamilyMono: FONT, measurer: fontMeasurer, config: DIAGRAM_CONFIG,
 		...(model.type === "sankey" ? { idPrefix: scope } : {}),
-	}).svg, model, bindings, focus, scope);
+	}).svg, model, bindings, focus, scope, source);
 	svg = painted.svg;
 	style = `<style>\n${painted.css}\n${readabilityRules(`.${scope}`)}\n</style>`;
 } catch (e) {

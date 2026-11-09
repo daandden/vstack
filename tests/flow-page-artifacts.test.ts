@@ -207,6 +207,9 @@ test("a Mermaid diagram source is captured once, satisfies diagram needs, and is
 test.each([
   ["unknown role", "flowchart LR\n A:::green --> B\n", [], "Unknown color role: green"],
   ["unknown role with click", 'flowchart LR\n A:::okk --> B\n click A href "https://example.com"\n', [], "Unknown color role: okk"],
+  ["authored clickable shorthand", "flowchart LR\n A:::clickable --> B\n", [], "Unknown color role: clickable"],
+  ["authored clickable class", "flowchart LR\n A --> B\n class A clickable\n", [], "Unknown color role: clickable"],
+  ["authored clickable beside a clicked node", 'flowchart LR\n A:::clickable --> B\n click B href "https://example.com"\n', [], "Unknown color role: clickable"],
   ["conflicting roles", "flowchart LR\n A:::ok --> B\n class A bad\n", [], "Element A has more than one color role"],
   ["classDef paint", "flowchart LR\n A:::ok --> B\n classDef ok fill:#a6e3a1\n", [], "The Mermaid sets its own color"],
   ["unused classDef paint", "flowchart LR\n A --> B\n classDef unused fill:red\n", [], "The Mermaid sets its own color"],
@@ -228,12 +231,6 @@ test.each([
     const state = readFileSync(join(folder, "data/state.json"), "utf8");
     const assets = readdirSync(join(folder, "assets"), { recursive: true });
     writeFileSync(join(root, "refused.mmd"), source);
-    const exported = Bun.spawnSync([
-      process.execPath, join(import.meta.dir, "../plugin/skills/vstack-figures/scripts/render.ts"),
-      join(root, "refused.mmd"), join(root, "refused.svg"), ...focus.flatMap((id) => ["--focus", id]),
-    ], { stdout: "pipe", stderr: "pipe" });
-    expect(exported.exitCode).toBe(1);
-    expect(exported.stderr.toString()).toContain(message);
     const refused = submit(home,
       document(["valid", "invalid"]),
       { ...attachment, ref: "valid", path: "valid.mmd", focus: ["Done"] },
@@ -241,6 +238,12 @@ test.each([
     );
     expect(refused.code).toBe(1);
     expect(refused.stdout).toBe("");
+    const exported = Bun.spawnSync([
+      process.execPath, join(import.meta.dir, "../plugin/skills/vstack-figures/scripts/render.ts"),
+      join(root, "refused.mmd"), join(root, "refused.svg"), ...focus.flatMap((id) => ["--focus", id]),
+    ], { stdout: "pipe", stderr: "pipe" });
+    expect(exported.exitCode).toBe(1);
+    expect(exported.stderr.toString()).toContain(message);
     expect(refused.stderr).toContain(exported.stderr.toString().trim());
     expect(ok(run(home, ["show"]))).toEqual(before);
     expect(readFileSync(join(folder, "data/state.json"), "utf8")).toBe(state);

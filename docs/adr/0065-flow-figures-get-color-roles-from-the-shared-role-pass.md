@@ -26,7 +26,13 @@ Submit runs the export's full check on `mermaid` attachments: unknown roles, two
 
 ## Consequences
 
-- The reader bundle ships the role pass: 20.0 KB minified, 7.3 KB gzipped, measured with `bun build --minify`.
+- The reader bundle ships the role pass. With Bun 1.4.4, it measures 20,781 bytes minified and 7,645 bytes gzipped. Reproduce both byte counts from the repository root:
+
+	```sh
+	bun build plugin/skills/vstack-figures/scripts/palette.ts --minify --target browser --external pele | wc -c
+	bun build plugin/skills/vstack-figures/scripts/palette.ts --minify --target browser --external pele | gzip -9c | wc -c
+	```
+
 - The reader depends on a module that vstack-figures also uses, so a role rule changes the page and exports together.
 - ADR 0045's "Focus replaces the border and text" and its solid accent fills no longer hold. Its Color role accents and category rules stay.
 - vstack-figures' statement that the role rules apply to SVG exports only changes with this decision.

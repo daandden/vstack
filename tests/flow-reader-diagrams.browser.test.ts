@@ -30,6 +30,19 @@ function cli(args: string[], input?: object) {
   return JSON.parse(p.stdout.toString());
 }
 
+function seedHistoricalMermaidCapture(flow: string, attachmentId: string, source: Buffer, name: string) {
+  const folder = storedFolder(home, flow);
+  const statePath = join(folder, "data", "state.json");
+  const state = JSON.parse(readFileSync(statePath, "utf8"));
+  const revision = new Bun.CryptoHasher("sha256").update(source).digest("hex");
+  const file = `${revision}/${name}`;
+  mkdirSync(join(folder, "assets", revision), { recursive: true });
+  writeFileSync(join(folder, "assets", file), source);
+  Object.assign(state.attachments.find((a: any) => a.id === attachmentId), { revision, file, size: source.length });
+  state.revision++;
+  writeFileSync(statePath, JSON.stringify(state));
+}
+
 let browser: Browser;
 beforeAll(async () => {
   try {
@@ -186,20 +199,7 @@ test.each(["mermaid", "svg"] as const)("Flow diagrams draw safely in the reader'
     { kind: "attachment", ref: "styled", type: "svg", caption: "Styled historical design", origin: "Pele render of styled-mocha.mmd", path: "styled.svg" },
     { kind: "round", questions: [figure("hostile", "hostile"), figure("reading", "reading"), figure("captured", "captured"), figure("styled", "styled")] },
   ] });
-  if (type === "mermaid") {
-    // Historical captures predate submit's paint check and must still draw unchanged.
-    const folder = storedFolder(home, submitted.flow);
-    const statePath = join(folder, "data", "state.json");
-    const state = JSON.parse(readFileSync(statePath, "utf8"));
-    const source = readFileSync(STYLED_SOURCE);
-    const revision = new Bun.CryptoHasher("sha256").update(source).digest("hex");
-    const file = `${revision}/reading.mmd`;
-    mkdirSync(join(folder, "assets", revision), { recursive: true });
-    writeFileSync(join(folder, "assets", file), source);
-    Object.assign(state.attachments.find((a: any) => a.id === submitted.refs.reading), { revision, file, size: source.length });
-    state.revision++;
-    writeFileSync(statePath, JSON.stringify(state));
-  }
+  if (type === "mermaid") seedHistoricalMermaidCapture(submitted.flow, submitted.refs.reading, readFileSync(STYLED_SOURCE), "reading.mmd");
 
   const context = await browser.newContext({ colorScheme: "light", viewport: { width: 1280, height: 900 } });
   const page = await context.newPage();

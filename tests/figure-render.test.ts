@@ -56,6 +56,20 @@ test("a click directive does not hide an unknown authored Color role", async () 
 });
 
 test.each([
+  "flowchart LR\n A:::clickable --> B\n",
+  "flowchart LR\n A --> B\n class A clickable\n",
+  'flowchart LR\n A:::clickable --> B\n click B href "https://example.com"\n',
+  "flowchart LR\n A[Ready\nclick A callback]:::clickable --> B\n",
+  'flowchart LR\n A["Ready\nclick A callback"]:::clickable --> B\n',
+  "flowchart LR\n A:::clickable --> B\n %% click A callback\n",
+])("an authored clickable class without its own click directive is an unknown Color role", async (source) => {
+  const r = await renderFigure(workdir(), source);
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain("Unknown color role: clickable");
+  expect(existsSync(r.out)).toBe(false);
+});
+
+test.each([
   ["ok", "#a6e3a1"], ["warn", "#f9e2af"], ["bad", "#f38ba8"], ["changed", "#89b4fa"],
   ["actor", "#f5c2e7"], ["store", "#94e2d5"], ["external", "#fab387"],
 ])("the %s role uses its fixed accent at 22% with ordinary labels", async (role, color) => {

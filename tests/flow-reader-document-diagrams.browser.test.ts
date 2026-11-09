@@ -117,3 +117,31 @@ test("Document Mermaid draws through the figure reader with accessible naming, a
     await context.close();
   }
 }, 120_000);
+
+test("Document Sankey keeps authored node paints when the shared role pass refuses them", async () => {
+  const opened = cli(["open", "--skill", "implement", "--title", "Document Sankey paint"]);
+  const source = '---\nconfig:\n  sankey:\n    linkColor: target\n    nodeColors:\n      Orders: "#123456"\n      Other: "#654321"\n---\nsankey\n\nOrders,Other,3\n';
+  const submitted = cli(["submit"], { version: 1, items: [{
+    kind: "result", ref: "doc", shape: "document", title: "Authored Sankey", sections: [{ heading: "Authored endpoints", blocks: [{ code: source, language: "mermaid" }] }],
+  }] });
+  const context = await browser.newContext({ colorScheme: "light" });
+  try {
+    const page = await context.newPage();
+    await page.goto(`${opened.live.url}#${submitted.refs.doc}`);
+    const diagram = page.getByRole("img", { name: "Authored endpoints diagram 1", exact: true });
+    await diagram.locator("svg").waitFor();
+    for (const theme of ["Light", "Dark"] as const) {
+      await page.getByRole("button", { name: theme, exact: true }).click();
+      const seen = await diagram.evaluate((host) => {
+        const svg = host.shadowRoot!.querySelector("svg")!;
+        const fill = (selector: string) => getComputedStyle(svg.querySelector(selector)!).fill;
+        return {
+          source: fill('.pele-sankey-node[data-id="Orders"]'),
+          target: fill('.pele-sankey-node[data-id="Other"]'),
+          link: fill(".pele-sankey-link"),
+        };
+      });
+      expect(seen).toEqual({ source: "rgb(18, 52, 86)", target: "rgb(101, 67, 33)", link: "rgb(101, 67, 33)" });
+    }
+  } finally { await context.close(); }
+}, 120_000);
