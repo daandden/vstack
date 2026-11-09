@@ -45,7 +45,7 @@ A vstack skill that has at least one Base upstream row in the Decision register,
 _Avoid_: core skill, base skill
 
 **Matt flow**:
-Every Matt skill that only the user can start, such as grill-with-docs, grill-me, teach, implement, and implement-spec. A change takes one path through it, with the grill first and a build skill last. After the grill, the user picks the path and types the next skill. A change that fits one session goes to implement. A bigger change goes through to-spec and to-tickets to implement-spec.
+Every Matt skill that only the user can start, such as grill-with-docs, grill-me, teach, implement, and implement-spec. A change takes one path through it, with the grill first and a build skill last. grill-with-docs continues into to-spec on its own once the grill agrees. After to-spec, the user types implement for a change that fits one session, or to-tickets and then implement-spec for a bigger one. grill-me never continues on its own, so the user types the next skill.
 _Avoid_: main flow, pipeline, workflow (unqualified)
 
 **Matt run**:
@@ -157,7 +157,7 @@ The service that holds a repo's remote and its PRs, such as GitHub, GitLab, or B
 _Avoid_: git host, VCS host, forge
 
 **MCP binding**:
-Which tool of an MCP issue tracker to-tickets uses for each tracker action, what each call receives from the approved tickets and project facts, and where a read finds each issue field. The agent drafts it from the server's live tool descriptions, and the user approves it with the ticket breakdown. The publisher checks it against the live server before it publishes or resumes.
+Which tool of an MCP issue tracker to-tickets uses for each tracker action, what each call receives from the drafted tickets and project facts, and where a read finds each issue field. The agent drafts it from the server's live tool descriptions and publishes it beside the ticket breakdown without an approval question. The publisher checks it against the live server before it publishes or resumes.
 _Avoid_: tool discovery, tool map, route (routes belong to CLI trackers)
 
 **Landing method**:
@@ -203,6 +203,10 @@ _Avoid_: current Stage, active Stage, followed Stage
 **Picker presence**:
 The Local Flow host's short-lived record that one omp session has a question picker open, with its Stage and asked questions. It is not Flow content and is gone when the picker closes, the host restarts, or it expires.
 _Avoid_: open ask, asking state, active ask
+
+**Map panel**:
+The Flow page panel that the `m` key opens, with one tab for the Matt flow path, one for the Stage tree, and, in a Flow with a wayfinder map, one for the ticket graph.
+_Avoid_: Stage tree (for the whole panel), Stages popup, path banner
 
 **Local Flow host**:
 The detached local server for one operating-system user that serves live Flow pages, runs captured prototypes on a separate origin, and observes git, the Code host, and the CI service read-only. The normal host uses the user's home namespace, while an explicit isolated `--home` namespace has its own host identity.
@@ -283,6 +287,10 @@ _Avoid_: example (when a run through the options is meant)
 **Costly seam**:
 A test seam whose test reaches a real service beyond localhost, needs a real credential, account, or paid quota, or whose test command runs for more than 180 seconds. It is the only kind of test seam the agent asks the user about before it tests there.
 _Avoid_: expensive test, heavy seam
+
+**Bookkeeping list**:
+The fixed kinds of decision that the agent settles without asking in a grill, on top of reversible decisions it can cite: behavior-preserving refactors and cleanup, recording a decision the user already made as an ADR, and carrying settled terms into the glossary. Each one is still listed as an Assumed pick.
+_Avoid_: auto decisions, agent-owned list, trust list
 
 **Verify skill**:
 A project-local skill named `verify-<app>` that drives the project's app the way a user does and captures proof that a change works. setup-app-verification creates it, and maintain-app-verification keeps it accurate.

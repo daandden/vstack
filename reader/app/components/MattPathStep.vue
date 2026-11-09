@@ -9,7 +9,7 @@ const label = (id: string) => f.value.stage.get(id)?.label ?? id;
 </script>
 
 <template>
-  <li :data-path-step="step.id" :data-state="step.state" :aria-current="step.state === 'in-progress' ? 'step' : undefined">
+  <li :data-path-step="step.id" :data-state="step.state" :aria-current="step.state === 'in-progress' ? 'step' : undefined" data-map-item tabindex="-1">
     <div class="path-step-heading"><span>{{ step.skills.join(" or ") }}</span><span class="path-state">{{ states[step.state] }}</span></div>
     <ul v-if="step.stages.length" class="path-stages">
       <li v-for="stage in step.stages" :key="stage.id" :data-state="stage.state">

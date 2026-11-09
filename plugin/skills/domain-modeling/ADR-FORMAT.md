@@ -26,7 +26,7 @@ Only include these when they add genuine value. Most ADRs won't need them.
 
 Scan `docs/adr/` for the highest existing number and increment by one.
 
-## When to offer an ADR
+## When to record an ADR
 
 All three of these must be true:
 

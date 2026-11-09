@@ -94,11 +94,11 @@ When `mode` is set, or Migration settled the mode, tell the user the mode and ke
 - `missing_config` is empty, `missing_default_end_state` and `missing_landing_method` are false, and this run's Migration changed nothing: tell the user that every config file exists and that they can edit any of them directly. Skip to step 8.
 - `missing_config` is empty, `missing_default_end_state` and `missing_landing_method` are false, and this run's Migration changed files, in Standard mode: skip steps 4 and 5. Draft only the `## vstack` block in step 6. Go on to the commit in step 7.
 - `missing_config` is empty, `missing_default_end_state` and `missing_landing_method` are false, and this run's Migration changed files, in Private mode: skip to step 8.
-- Otherwise: run only the sections for the missing files in step 5. Draft and write only those files, except for the CI cutover, the default End state, and the Landing method below. When `ci.md` is missing and `code-host.md` exists, follow Section C's re-setup branch and include its revised `code-host.md` in the same confirmation. When `missing_default_end_state` is true, ask only Section B's default End state question for the existing `code-host.md` and add its one line there. When `missing_landing_method` is true, do the same with Section B's Landing method question. Leave every other existing config file unchanged.
+- Otherwise: run only the sections for the missing files in step 5. Draft and write only those files, except for the CI cutover, the default End state, and the Landing method below. When `ci.md` is missing and `code-host.md` exists, follow Section C's re-setup branch and include its revised `code-host.md` in the same write set. When `missing_default_end_state` is true, ask only Section B's default End state question for the existing `code-host.md` and add its one line there. When `missing_landing_method` is true, do the same with Section B's Landing method question. Leave every other existing config file unchanged.
 
 When `mode` is null, call `ask` with one question and two options:
 
-- Standard (Recommended): the config is tracked in `docs/vstack/`, with a `## vstack` block in `CLAUDE.md` or `AGENTS.md`, and setup-vstack commits it.
+- Standard (Recommended): the config is tracked in `docs/vstack/`, with a `## vstack` block in `CLAUDE.md` or `AGENTS.md`, and setup-vstack commits and pushes it.
 - Private: the config lives in `<vstack_root>/config/`, inside the git common dir, so every worktree of this repo shares it and git never tracks it. Nothing is committed. The `vstack-private-mode` rule then sends every vstack skill there.
 
 ### 4. Explore
@@ -119,7 +119,7 @@ Look at the repo to understand its starting state. Read whatever exists; do not 
 
 Summarize what is present and what is missing. Then take the missing-file sections in order, one round through `ask` per section. When there is a recommendation, put it first and mark it Recommended. Otherwise keep the listed order with no recommendation. Add a one-line explainer only when the choice really branches.
 
-MCP discovery, shared by Sections A, B, and C. Use this rule when the user names an MCP server for an Other choice. Read that server's current tool list, descriptions, and parameter schemas. If discovery fails or the server is unreachable, name the server and the failure, tell the user to connect it, and stop before writing or committing project config. Draft the section's config with its service, the named MCP server, its project facts, and its pins, and with no operation rows. A Check pin is one tool whose description establishes a read-only connection check. Name a tool only when this server's list contains it, and derive its arguments from that tool's schema. If no tool fits a pin, mark that pin `unsupported`; invent no pin or replacement. Project facts hold values that the tool descriptions cannot supply. Collect missing facts through `ask`. Tell the config's reader to select every unpinned operation from the named server's current descriptions and parameter schemas, using these facts. Show the draft for confirmation in step 6.
+MCP discovery, shared by Sections A, B, and C. Use this rule when the user names an MCP server for an Other choice. Read that server's current tool list, descriptions, and parameter schemas. If discovery fails or the server is unreachable, name the server and the failure, tell the user to connect it, and stop before writing or committing project config. Draft the section's config with its service, the named MCP server, its project facts, and its pins, and with no operation rows. A Check pin is one tool whose description establishes a read-only connection check. Name a tool only when this server's list contains it, and derive its arguments from that tool's schema. If no tool fits a pin, mark that pin `unsupported`; invent no pin or replacement. Project facts hold values that the tool descriptions cannot supply. Collect missing facts through `ask`. Tell the config's reader to select every unpinned operation from the named server's current descriptions and parameter schemas, using these facts. Publish the draft in step 6.
 
 Section A, issue tracker.
 
@@ -138,7 +138,7 @@ For Other with an MCP server, follow MCP discovery. Draft `issue-tracker.md` wit
 
 For Jira, collect the project key, ticket issue type, closing transition, blocking link type and direction, and the five canonical triage-role values. Use the settled Section D names or the existing `triage-labels.md`. Record which field carries readiness separately from system `labels`, including its custom field id when applicable. Use the issue type name when the live create schema requires a name, such as `issue_type: "Task"`, rather than substituting an id.
 
-When the server has no tool that returns the authenticated user's identity, collect the token owner's tracker username and draft it as the `owner` project fact. It becomes `facts.owner` in to-tickets' approved input. A project listing or assignee lookup does not establish the authenticated identity. Collect missing facts without guessing defaults. Keep per-operation tool names out of the config. To-tickets drafts and obtains approval for its MCP binding from the live tools when it prepares a batch. Jira uses Other; there is no Jira template.
+When the server has no tool that returns the authenticated user's identity, collect the token owner's tracker username and draft it as the `owner` project fact. It becomes `facts.owner` in to-tickets' input. A project listing or assignee lookup does not establish the authenticated identity. Collect missing facts without guessing defaults. Keep per-operation tool names out of the config. To-tickets drafts its MCP binding from the live tools and publishes it with the breakdown without an approval question. Jira uses Other; there is no Jira template.
 
 For Other with a CLI, read its `--help` for the relevant command groups. Draft the tracker workflow, project facts, and a read-only Check command from that help. Invent no command. For Other with no MCP server or CLI, collect the user's workflow in one paragraph through `ask` and keep it as prose, with no invented tool or Check call.
 
@@ -166,7 +166,7 @@ Then ask the project's Landing method in its own round, because its options depe
 
 > Explainer: ship lands each PR with this method. Squash puts one commit on the default branch. A rebase puts each of the PR's commits there with new SHAs. A merge commit keeps the PR's commits and adds one commit that joins them.
 
-Add the answer to the drafted `code-host.md`'s facts list, under the default End state, as the line `- Landing method: <method>`. When `code-host.md` already exists and `missing_landing_method` is true, ask this question alone and draft the existing file with only that line changed: remove every existing `- Landing method:` line and add the one chosen line. On a GitLab Code host, that draft also replaces the existing `merge-methods`, `merge-pr`, and `auto-merge` rows with the rows in [code-host-gitlab.md](./code-host-gitlab.md). Earlier GitLab rows do not read `squash_option` or send `squash=false`, so a non-squash pick could still squash. Show the replaced rows in the confirmation. If Section C's cutover or the default End state question also revises `code-host.md`, make these changes in that draft.
+Add the answer to the drafted `code-host.md`'s facts list, under the default End state, as the line `- Landing method: <method>`. When `code-host.md` already exists and `missing_landing_method` is true, ask this question alone and draft the existing file with only that line changed: remove every existing `- Landing method:` line and add the one chosen line. On a GitLab Code host, that draft also replaces the existing `merge-methods`, `merge-pr`, and `auto-merge` rows with the rows in [code-host-gitlab.md](./code-host-gitlab.md). Earlier GitLab rows do not read `squash_option` or send `squash=false`, so a non-squash pick could still squash. Show the replaced rows in step 6's Results. If Section C's cutover or the default End state question also revises `code-host.md`, make these changes in that draft.
 
 Section C, CI service.
 
@@ -177,9 +177,9 @@ When `ci.md` is missing and `code-host.md` exists, read that file before present
 - For a CLI source, copy the four rows that exist verbatim, including hand-edited arguments, input handling, and policy notes. The exception is a `rerun-ci` row that does not rerun the linked failed build in full, such as the earlier GitLab template's `glab api --method POST projects/:id/merge_requests/<iid>/pipelines`, which starts a new pipeline. Draft that operation as `unsupported` with the reason, as [ci-gitlab.md](./ci-gitlab.md) does. Draft `code-host.md` with only those rows removed. Keep every other row and note unchanged, including `required-checks` and `watch-checks`.
 - For an MCP source, carry the rows' user-specific values, arguments, and policies into `ci.md`'s project facts. Follow MCP discovery and draft `ci.md` with Section C's MCP pins. Select `ci-logs`, `set-secret`, and `set-variable` from current tool descriptions, not copied pins. Draft `code-host.md` in Section B's short shape, keeping its server, project facts, and read-only Check pin, with no operation rows. Preserve Code host facts embedded in the old rows, such as exact-commit fetching and the review reference.
 
-Include both complete drafts together as Results with step 6's write-confirmation round in the Flow CLI contribution before `ask`. Write neither file before that confirmation. The agent drafts this cutover; `project.ts` has no row-move command. Skip the service-choice question below when the old rows already supply that choice. Collect only a missing fact needed for these drafts through `ask`, not unrelated setup sections.
+Include both complete drafts together as Results in step 6 before writing either file. The agent drafts this cutover; `project.ts` has no row-move command. Skip the service-choice question below when the old rows already supply that choice. Collect only a missing fact needed for these drafts through `ask`, not unrelated setup sections.
 
-If the existing `code-host.md` has no CI rows, use the normal CI choices below. Still include an MCP Code host's short-shape draft in the same confirmation. A CLI Code host with no CI rows stays unchanged.
+If the existing `code-host.md` has no CI rows, use the normal CI choices below. Still include an MCP Code host's short-shape draft in the same write set. A CLI Code host with no CI rows stays unchanged.
 
 Recommend from the CI signals found in step 4, not from the remote or the Code host. Exactly one signal gives a recommendation: `.github/workflows/` means GitHub Actions, `.gitlab-ci.yml` means GitLab CI, and `Jenkinsfile` means Other. With none or several, recommend nothing. The question's options:
 
@@ -200,7 +200,7 @@ Section D, triage labels. This section runs whenever `triage-labels.md` is missi
 
 Section E, domain docs. Default to single-context: one `GLOSSARY.md` plus `docs/adr/` at the repo root. This fits almost every repo; write it without a question. Only when exploration found monorepo signals, call `ask` with single-context and multi-context (a root `GLOSSARY-MAP.md` that points to one `GLOSSARY.md` per context).
 
-### 6. Draft and confirm
+### 6. Publish the drafts
 
 Write the drafts from the seed templates in this skill's directory:
 
@@ -226,14 +226,14 @@ In Private mode, change two drafts so that they point under the vstack root by a
 - `issue-tracker.md` for local markdown: replace every `.scratch/` path, the Wayfinding map, ticket, and frontier paths included, with `<vstack_root>/artifacts/`.
 - `domain.md`: the domain docs live in `<vstack_root>/domain/`, as `GLOSSARY.md` (or `GLOSSARY-MAP.md`) and `adr/`, in place of the repo-root files. Add one line saying that the repo's own tracked `GLOSSARY.md` and `docs/adr/` are read as well when they exist.
 
-Publish each complete draft and, in Standard mode, the `## vstack` block changes (see step 7) as Results with one complete confirmation round for the whole write set. Call `ask` with the receipt's generated question under flow-page's "Every ask in a Flow" contract. Its question offers Write it (Recommended) and Change something. On Change something, make the user's edits and re-ask with `again`, publishing the revised drafts with the linked round before `ask`. A section choice is not write approval. Until this confirmation, keep the project files unchanged.
+Publish each complete draft and, in Standard mode, the `## vstack` block changes (see step 7) as Results before writing. Once the section choices are settled, continue to step 7 without a separate write-approval question. An unanswered section choice remains unresolved; a timeout, cancellation, or headless recommendation cannot supply it.
 
 ### 7. Write
 
 Standard mode:
 
 1. When `block_file_dirty` from step 1 is true, tell the user that `<block_file>` has uncommitted changes and that the setup commit is going to include them. Call `ask` with the options Go on and include them, and Stop so I can commit them first. On Stop, stop.
-2. Write each config file that this run drafted: `docs/vstack/issue-tracker.md`, `docs/vstack/code-host.md`, `docs/vstack/ci.md`, `docs/vstack/triage-labels.md`, and `docs/vstack/domain.md`, or only the missing ones on a re-run plus Section C's confirmed `code-host.md` cutover and the confirmed default End state line and Landing method changes in an existing `code-host.md`.
+2. Write each config file that this run drafted: `docs/vstack/issue-tracker.md`, `docs/vstack/code-host.md`, `docs/vstack/ci.md`, `docs/vstack/triage-labels.md`, and `docs/vstack/domain.md`, or only the missing ones on a re-run plus Section C's `code-host.md` cutover and the chosen default End state line and Landing method changes in an existing `code-host.md`.
 3. Pick the file for the block. When `CLAUDE.md` exists, edit it. Else when `AGENTS.md` exists, edit it. When neither exists, call `ask` with the options `CLAUDE.md` and `AGENTS.md` and no recommended option, and create the one the user picks. Never create `AGENTS.md` when `CLAUDE.md` exists, or the other way round.
 4. When the file already has a `## vstack` block, update it in place instead of adding a second one, and leave the other sections as they are. On a CI-only re-run, preserve its existing subsections and add only a missing CI service subsection. A re-run that only adds the default End state or the Landing method leaves the block unchanged. The block:
 
@@ -262,11 +262,12 @@ Standard mode:
    ```
 
 5. Commit. Take the title from the repo's convention: read `git log --format=%s -n 20` on the default branch (`git symbolic-ref --short refs/remotes/origin/HEAD`, else the current branch) and follow the pattern you see there. When no convention is visible, use Conventional Commits: `chore: set up vstack config`. Run `project.ts commit --title "<title>"`, with one `--migration-path <path>` per Migration path from step 2. It stages the five config files, the block file, and the Migration paths, deletions and both sides of a move included, never `-A` on the whole repo. It commits them alone on the current branch; anything else the user had staged stays staged. It prints `commit`, `title`, and `paths` as JSON, with `commit` null when nothing changed since the last setup commit. Exit 2 means it refused: show its message.
+6. When the commit receipt names a setup commit, push it on the current branch to its configured upstream without another approval question. When there is no upstream, use the repo's remote and the current branch's name with `git push -u <remote> <branch>`. With no remote, report the local-only commit and the push gap. A rejected push remains incomplete; report the actual failure and preserve the commit without forcing it.
 
 Private mode:
 
-1. Write each drafted config file to `<vstack_root>/config/`: `issue-tracker.md`, `code-host.md`, `ci.md`, `triage-labels.md`, and `domain.md`, or only the missing ones on a re-run plus Section C's confirmed `code-host.md` cutover and the confirmed default End state line and Landing method changes in an existing `code-host.md`. Creating that directory turns Private mode on for every worktree of this repo.
-2. Write no `## vstack` block, change no tracked file and no ignore file, and commit nothing.
+1. Write each drafted config file to `<vstack_root>/config/`: `issue-tracker.md`, `code-host.md`, `ci.md`, `triage-labels.md`, and `domain.md`, or only the missing ones on a re-run plus Section C's `code-host.md` cutover and the chosen default End state line and Landing method changes in an existing `code-host.md`. Creating that directory turns Private mode on for every worktree of this repo.
+2. Write no `## vstack` block, change no tracked file and no ignore file, and commit or push nothing.
 
 In both modes, check each config that this run or its Migration wrote. For a CLI config, run its read-only Check command once. For an MCP config, call its pinned read-only Check tool exactly once with the recorded arguments. A config with no tool or an unsupported Check gets a reported gap, not an invented call.
 
@@ -284,6 +285,6 @@ List the skills that read the config:
 - `triage-labels.md`: triage, to-spec, and to-tickets.
 - `domain.md` and the domain docs: domain-modeling, grill-with-docs, improve-codebase-architecture, codebase-design, diagnosing-bugs, tdd, and wait-what.
 
-Say that the user can edit these files directly later. Re-running this skill adds only missing config files, with one cutover when `ci.md` is missing: it also removes the moved CI rows from `code-host.md` and reduces an MCP Code host to its short shape after confirmation. When `code-host.md` has no default End state or no Landing method, a re-run asks only the missing questions and adds their lines after confirmation. Every other existing config stays unchanged. To switch a choice, edit its file, or delete the file and run this skill again.
+Say that the user can edit these files directly later. Re-running this skill adds only missing config files, with one cutover when `ci.md` is missing: it also removes the moved CI rows from `code-host.md` and reduces an MCP Code host to its short shape. When `code-host.md` has no default End state or no Landing method, a re-run asks only the missing questions and adds their chosen lines. Every other existing config stays unchanged. To switch a choice, edit its file, or delete the file and run this skill again.
 
 Then name the next step. setup-app-verification creates this project's Verify skill. implement, hillclimb, and forensics use it for their own checks, and the final Verifier drives it at every End state. Tell the user to start a new session (`/new`) and run `/skill:grill-with-docs` to plan verification. implement uses `skill://setup-app-verification` to create the Verify skill in that run.

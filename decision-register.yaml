@@ -44,7 +44,7 @@ items:
     tree: ea30ee454ba264543dbe40737973b1a5afb9f0e6
     disposition: adapt
     artifacts: [plugin/skills/domain-modeling]
-    reason: "Its user questions use the shared Flow publication and ordinary ask contract (ask-tool, #58, #165). Flow publication is conditional and chat keeps the full output (#321, ADR 0046)."
+    reason: "Its user questions use the shared Flow publication and ordinary ask contract (ask-tool, #58, #165). Flow publication is conditional and chat keeps the full output (#321, ADR 0046). Record qualifying decisions already made without an ADR offer, carry settled terms into the glossary, and keep new choices and terminology conflicts explicit (#423, ADR 0069)."
   - id: matt/grill-with-docs
     upstream: matt
     kind: skill
@@ -60,7 +60,7 @@ items:
     tree: f07d230f645fc9ac390cf13a450bbff12ad791a3
     disposition: adapt
     artifacts: [plugin/skills/implement]
-    reason: "Settles End states from user words, the ticket, project default, then ask through live MCP discovery and Code host routing. The agent picks test seams by tdd's rule and asks only for a Costly seam (ADR 0062), and goes red per slice (#183, ADR 0035, ADR 0038). Preserves tune-llm-flow kept-round and eval commits (ADR 0041). Shared step 6b independently verifies committed HEAD at every End state and gates reached progress (ADR 0043). It owns Shared checkout briefs, REFUSED and cleanup_error availability checks, and unchanged-clone verification safety. Preserves supplied architecture agreements while leaving coding choices to implementation; consequential departures remain open until the user resolves them (#336, ADR 0053). Frontend tasks and delegated briefs conditionally reach good-css and its shipped UI guidance (#339, ADR 0051). The Conflict owner merges the target in and asks the user before resolving a hunk that chooses between behaviors (ADR 0033)."
+    reason: "Settles End states from user words, the ticket, project default, then ask through live MCP discovery and Code host routing. The agent picks test seams by tdd's rule and asks only for a Costly seam (ADR 0062), and goes red per slice (#183, ADR 0035, ADR 0038). Preserves tune-llm-flow kept-round and eval commits (ADR 0041). Shared step 6b independently verifies committed HEAD at every End state and gates reached progress (ADR 0043). It owns Shared checkout briefs, REFUSED and cleanup_error availability checks, and unchanged-clone verification safety. Preserves supplied architecture agreements while leaving coding choices to implementation; consequential departures remain open until the user resolves them (#336, ADR 0053). Frontend tasks and delegated briefs conditionally reach good-css and its shipped UI guidance (#339, ADR 0051). The Conflict owner merges the target in and asks the user before resolving a hunk that chooses between behaviors (ADR 0033). Recovers run-owned clone preparation and stale branch state once while preserving proof, SHA guards, and the existing FAIL or DRIFT limit (#424, ADR 0070)."
   - id: matt/improve-codebase-architecture
     upstream: matt
     kind: skill
@@ -92,7 +92,7 @@ items:
     tree: b1568cde855a189b16e5d7dd8a0fa4c3f156bc2e
     disposition: adapt
     artifacts: [plugin/skills/setup-vstack]
-    reason: "Uses current MCP descriptions, schemas, and recorded tracker and Code host facts. Preserves CI hand edits and confirms CI and Code host drafts together, including the default End state and the Landing method that the Code host allows, recommending `merge` on GitHub. Lists all eight tracker readers and the final Verifier as a Verify skill consumer. Removes obsolete diagram and visual-judge setup claims (#204, #205, #206, #207, ADR 0035, ADR 0038, ADR 0043, ADR 0055, ADR 0060)."
+    reason: "Write, commit, and push Standard-mode config after section choices without Write it, preserving Private-mode and dirty-file boundaries."
   - id: matt/tdd
     upstream: matt
     kind: skill
@@ -108,7 +108,7 @@ items:
     tree: 136b9651747cfccbfbb7c50a6b0dfb757e7547d2
     disposition: adapt
     artifacts: [plugin/skills/to-spec]
-    reason: "Publishes the self-contained agreed architecture and necessary visuals from Flow Results and canonical domain records, preserves capability-map confirmations and drift provenance, and pauses consequential gaps for user-invoked grilling. The agent picks test seams by tdd's rule and asks only for a Costly seam (ADR 0062). MCP publication uses current schemas and mapped labels; specs carry no inherited Addon pointers (#166, #223, #226, #230, #263, #267, #207, #335, ADR 0035)."
+    reason: "Synthesize agreed context, resolve consequential gaps in a nested grill, and stop at spec publication."
   - id: matt/to-tickets
     upstream: matt
     kind: skill
@@ -116,7 +116,7 @@ items:
     tree: b32c94e5a51c24ee9c41fcb7fe9ea9fff9af6369
     disposition: adapt
     artifacts: [plugin/skills/to-tickets]
-    reason: "Publishes approved MCP bindings validated against live schemas, with field-path readback, separate readiness, owner facts, normalized bodies, and duplicate-risk checks (#369, ADR 0035, ADR 0058). Keeps Flow approval and drift coverage, and saves Standard-mode publication records in Scratch (ADR 0066)."
+    reason: "Publish the drift-checked breakdown and drafted MCP binding without approval, retaining publisher guards under ADR 0068. Save Standard-mode publication records in Scratch (ADR 0066)."
   - id: matt/triage
     upstream: matt
     kind: skill
@@ -132,7 +132,7 @@ items:
     tree: 8ec0462658381bd1606d3f9db14ffc67df6a2a43
     disposition: adapt
     artifacts: [plugin/skills/wayfinder]
-    reason: "Charting research fans out and user questions use the Flow page with one Stage per ticket. MCP operations use current descriptions, schemas, directional blockers, and close transition. Tracker keys retain their original spelling and underscores, with case-insensitive lookup (#171, #207, ADR 0035)."
+    reason: "Publish complete ticket graph snapshots during charting and each claimed ticket Stage."
   - id: matt/wizard
     upstream: matt
     kind: skill
@@ -156,7 +156,7 @@ items:
     tree: f0732035b8b1b60ae39454e4191caef32fa91903
     disposition: adapt
     artifacts: [plugin/skills/grilling]
-    reason: "Sub-agent spawn names a vstack agent; one round is one ask; the Flow page lives in flow-page (#267); pushback reopens its decision; a session writes into its flow's page as a Stage, and ask options carry labels only; the grill closes with its summary and no ask, and the caller waits for the user's next prompt; reversible, non-taste, cited decisions are settled in an Assumed table that a note can reopen (#42, #58, #145, #165, #225, ADR 0032, ADR 0037). Flow publication is conditional and chat keeps the full output (#321, ADR 0046). Present material trade-offs accurately and concretely in Flow and chat rounds, give approximate sizes for decision-relevant costs when estimable, state when they cannot be estimated, and include significant inherited costs (#257, correction of #374)."
+    reason: "Sub-agent spawn names a vstack agent; one round is one ask; the Flow page lives in flow-page (#267); pushback reopens its decision; a session writes into its flow's page as a Stage, and ask options carry labels only; the grill keeps the default summary-only close while honoring caller-owned same-turn continuations and their consent guards (#420, ADR 0067); reversible, non-taste, cited decisions are settled in an Assumed table that a note can reopen (#42, #58, #145, #165, #225, ADR 0032, ADR 0037). Flow publication is conditional and chat keeps the full output (#321, ADR 0046). Present material trade-offs accurately and concretely in Flow and chat rounds, give approximate sizes for decision-relevant costs when estimable, state when they cannot be estimated, and include significant inherited costs (#257, correction of #374). The fixed Bookkeeping list settles without a cited repo fact, records reopenable Assumed picks, and preserves ADR 0037 for every other decision (#423, ADR 0069). Recovers run-owned publication and picker failures once without treating non-consent as infrastructure failure (#424, ADR 0070)."
   - id: matt/handoff
     upstream: matt
     kind: skill
@@ -812,7 +812,7 @@ items:
     tree: 0a0c3cfde8948e3aa8ee80c6f3f9ce7e3e64fcba
     disposition: adapt
     artifacts: [plugin/skills/ship]
-    reason: "Uses isolated vstack Verifiers, reuses accepted Verdicts only for matching patch ids, and otherwise verifies through implement END-STATE step 6b. Every brief passes Shared checkout, and shared step 6b preserves REFUSED and cleanup_error as unavailable proof. Publishes validated human summaries while retaining original machine evidence (ADR 0043). Lands each PR by the project's stored Landing method and asks when the Code host cannot use it (ADR 0055)."
+    reason: "Uses isolated vstack Verifiers, reuses accepted Verdicts only for matching patch ids, and otherwise verifies through implement END-STATE step 6b. Every brief passes Shared checkout, and shared step 6b preserves REFUSED and cleanup_error as unavailable proof. Publishes validated human summaries while retaining original machine evidence (ADR 0043). Lands each PR by the project's stored Landing method and asks when the Code host cannot use it (ADR 0055). Uses the shared once-only infrastructure recovery before applying the verification ceiling, without adding behavioral retries (#424, ADR 0070)."
   - id: pstack/playbook-trace-forensics
     upstream: pstack
     kind: playbook
@@ -1132,6 +1132,8 @@ originals:
   - plugin/skills/tune-llm-flow
   - plugin/agents/vstack-wt-investigator.md
   - plugin/tern/vstack-flow
+  - plugin/rules/vstack-posting.md
+  - plugin/rules/vstack-recovery.md
 utility:
   - plugin/skills/unslop
   - plugin/skills/technical-writing

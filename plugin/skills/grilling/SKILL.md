@@ -25,7 +25,13 @@ Fan-out (skill://vstack-fan-out): parts: one per independent fact question. One 
 
 ## Settle or ask
 
-Settle a frontier decision yourself only when all three hold:
+Settle frontier decisions on the Bookkeeping list without asking or requiring a cited repo fact (ADR 0069):
+
+- Behavior-preserving refactors and cleanup, including removing code proven unused, merging duplicate instructions, and choosing not to merge look-alike code. Behavior, public contracts, scope, and proof must stay the same.
+- Recording a decision the user already made as an ADR, including its placement and supersession links. Recording never settles a new fallback, guarantee, or policy.
+- Carrying settled terms into the glossary and reusing existing definitions. Ask about a new product concept or a preferred public name.
+
+Internal names, file locations, and investigation order are not on the Bookkeeping list. For every other frontier decision, settle it yourself only when all three of ADR 0037's conditions hold:
 
 - A later edit can undo it, with no migration and no change to published text.
 - It is not a matter of the user's taste. Names, wording, and looks are always the user's.
@@ -33,7 +39,7 @@ Settle a frontier decision yourself only when all three hold:
 
 Ask every other decision, including one where any of the three is in doubt.
 
-Record each settled decision with its decision, pick, and why, citing its repo fact with file and line, ADR, or convention. In a Flow, put it as an `assumed` item before the round in the contribution. Code owns the Assumed list and includes its current picks in the close. Outside a Flow, show the Assumed list in chat before asking.
+Record each settled decision with its decision, pick, and why. For a Bookkeeping-list pick, give its kind and reason. For a pick under the three-part test, cite its repo fact with file and line, ADR, or convention. In a Flow, put it as an `assumed` item before the round in the contribution. Code owns the Assumed list and includes its current picks in the close. Outside a Flow, show the Assumed list in chat before asking.
 
 A note, Other text, or pushback that names an Assumed decision reopens it, whatever else the answer picks. Ask it in the next round. In a Flow, use `reopens` naming the Assumed item's id. Code links the records and removes that pick from the current Assumed list.
 
@@ -53,8 +59,8 @@ Outside a Flow, present newly settled decisions and the full context for the rem
 
 ## Close
 
-An empty frontier means every branch was visited and no decision remains silently assumed. Each one was asked or is Assumed in the open. In a Flow, follow flow-page's "Close the Stage" for the summary. Outside a Flow, give the complete summary and standing Assumed picks in chat. The close asks nothing, so the turn ends after the producer's own close steps.
+An empty frontier means every branch was visited and no decision remains silently assumed. Each one was asked or is Assumed in the open. In a Flow, follow flow-page's "Close the Stage" for the summary. Outside a Flow, give the complete summary and standing Assumed picks in chat. The close asks nothing. Follow the producer's own close steps, including any explicit same-turn continuation.
 
-The user's next prompt confirms the summary or pushes back. A pushback reopens the named decisions. In a Flow, open a new Stage with `--parent` when the earlier Stage is finished, and use `again` for its named questions or `reopens` for its Assumed picks. Keep the earlier record intact. wayfinder and other callers that act after the grill still act only after a next prompt confirms the summary. triage is the exception and follows its "Apply the outcome without confirmation" step (ADR 0061). Finishing a Stage is not authorization.
+By default, the turn ends after the summary and the user's next prompt confirms it or pushes back. grill-me keeps this summary-only close and never chains. A pushback reopens the named decisions. In a Flow, open a new Stage with `--parent` when the earlier Stage is finished, and use `again` for its named questions or `reopens` for its Assumed picks. Keep the earlier record intact. grill-with-docs owns its same-turn to-spec continuation under ADR 0067. wayfinder and triage own their same-run writes under ADR 0068 and ADR 0061 respectively, including their unanswered and headless guards. Other callers that act after the grill still wait for a next prompt to confirm the summary. Finishing a Stage is not authorization.
 
-When publication or `ask` is unavailable in a Flow, preserve the actual receipt and error, report the reason, and stop actions that need user confirmation, such as a tracker write. Host unavailability follows flow-page's warn-and-open question contract; only an observed user answer grants consent. Leave recoverable work in progress until it completes or is deliberately abandoned. In a headless run, record any substituted recommendation as headless non-consent, not as the user's answer. In a Flow, use `response: { status: "headless", picks: [...] }`, add "Headless, not user-confirmed" to the close's `extra`, and finish with a `retire` reason for each unresolved question. Outside a Flow, state "Headless, not user-confirmed" and name every unresolved question in chat. Report each action not taken. A subagent returns open decisions to the top-level agent and never claims user confirmation.
+When publication or `ask` is unavailable in a Flow, preserve the actual receipt and error. Apply the own-run recovery rule before stopping, with one retry for an infrastructure failure this run owns. A question the picker lost or never showed qualifies; a recorded cancellation, timeout, or empty response follows flow-page's existing re-ask rules instead. While an answer is pending, wait. If recovery needs shared-state changes, would weaken proof, or fails, report what was tried and stop actions that need user confirmation. Host unavailability follows flow-page's warn-and-open question contract; only an observed user answer grants consent. Leave recoverable work in progress until it completes or is deliberately abandoned. In a headless run, record any substituted recommendation as headless non-consent, not as the user's answer. In a Flow, use `response: { status: "headless", picks: [...] }`, add "Headless, not user-confirmed" to the close's `extra`, and finish with a `retire` reason for each unresolved question. Outside a Flow, state "Headless, not user-confirmed" and name every unresolved question in chat. Report each action not taken. A subagent returns open decisions to the top-level agent and never claims user confirmation.

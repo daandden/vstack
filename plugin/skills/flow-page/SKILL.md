@@ -98,12 +98,13 @@ Scratch cleanup never deletes an open Flow. It offers a closed Flow for deletion
 
 The script applies all items to the bound Stage, or refuses all of them. Give a new question, Topic note, Result, or Result entry a `ref` (lowercase letters, digits, and hyphens) when another item names it. An item can name a ref from the same contribution, or an id from an earlier receipt. Name a Result entry as `<result ref or id>/<entry ref or id>`.
 
-Submitting the Stage's latest contribution again, for example after a lost receipt, applies nothing and prints its first receipt with `repeated: true`. This deduplicates publication, not asking. If the published question has no recorded response, a failed or cancelled ask can be retried with the same generated payload without publishing it again. Once a non-consent response is recorded, author a linked round with `again` before asking it again; preserve the earlier attempt and Q number.
+Submitting the Stage's latest contribution again, for example after a lost receipt, applies nothing and prints its first receipt with `repeated: true`. This deduplicates publication, not asking. If the picker lost or never showed a question and no response is recorded, apply the own-run recovery rule: resubmit the same contribution to recover its receipt, then retry `ask` once with the same generated payload. A recorded cancellation, timeout, or empty response is not an infrastructure failure. Once a non-consent response is recorded, author a linked round with `again` before asking it again; preserve the earlier attempt and Q number.
 
 Read only the field contract for the kind you are about to publish:
 
 - Before a Background, Topic note, round, answer, Assumed pick, close, Stage state, or progress item, read the relevant section of [Contribution fields, version 1](references/contributions.md).
 - Before publishing or revising a Result, read [Result fields, version 1](references/results.md). It includes cards, review, ledger, table, Document, Code/diff, and Timeline.
+- Before a wayfinder ticket graph, read the `wayfinder` item in [Contribution fields, version 1](references/contributions.md).
 - Before Comparison or Metrics, also read [Comparison and Metrics fields](references/comparison-metrics.md).
 - Before a prototype demo, runnable-artifact Result, or Quiz, also read [Interactive Result fields](references/interactive-results.md).
 - Before capturing attachments, canonical file revisions, question/Background figures, option previews, or real HTML/app/terminal artifacts, read [Captured attachments](references/attachments.md). Capture actual redacted evidence and preserve canonical deliverables.
@@ -127,7 +128,7 @@ This contract applies only to enrolled runs. Outside a Flow, use plain `ask` as 
 
 The extension owns link presentation. While a main-agent `ask` picker is open in an interactive TUI with this session and agent's binding, it shows a Flow panel above the composer. The panel's title is `Flow page` and its body is the full clickable live URL ending in the first asked Flow question's fragment. For several questions, it follows their order in the picker. When no question id belongs to the bound Flow, the link targets the bound Stage instead. The picker opens at once, with no dismissal step, and the panel goes away when the picker returns, whether answered, cancelled, timed out, or failed. Several questions in one call share one panel; each later call or retry gets a fresh one. The extension looks up the binding and URL itself. The panel text stays in the UI, outside session entries, model context, compaction, and branch summaries. Write no pre-ask chat link and put no URL in the picker payload. There is no notification, card, delivery queue, or retry gate.
 
-When the bound host is unavailable or off, the panel shows its actual error or state beside the picker. Do not resubmit committed questions or add host recovery to this handoff. Unbound sessions, subagents, print, RPC, and ACP get no panel. A subagent never asks; it returns open questions to its coordinator for publication and ordinary `ask`.
+When the bound host is unavailable or off, the panel shows its actual error or state beside the picker. Apply the own-run recovery rule to host failures, without resubmitting a committed question just to repair its host. A shared-host restart needs the maintainer; host unavailability alone still does not block asking a committed question. Unbound sessions, subagents, print, RPC, and ACP get no panel. A subagent never asks; it returns open questions to its coordinator for publication and ordinary `ask`.
 
 For Ratchet's native approval gate, publish the complete question and review material first and apply the same current-content check when serving. Pass the receipt's numbered title and page pointer to `r.approve()` as `skill://tune-llm-flow` says. The extension composes with the existing `ui.askDialog` integration and shows the same panel while its original dialog is open. Ratchet supplies no Flow question ids, so its panel link ends in the bound Stage's fragment. Reused current approval opens neither dialog nor panel. Ratchet's `ui.select` fallback when `askDialog` is absent is not covered. The native gate, not a second ordinary picker, collects approval. Preserve reused approval, revision feedback, abort, cancellation, and unanswered states separately.
 
@@ -156,7 +157,7 @@ Only a pick or a resolved reading is the user's answer. Everything else keeps th
 
 Submit a `close`. Write each decision as what is now true, in one or two plain sentences, not as the option label. Add `extra` bullets only when they apply: "Unchanged from earlier: ...", "Glossary: ...", and "Headless, not user-confirmed" for a close in a headless run. Then submit `{ "kind": "stage", "state": "finished" }` with its `retire` reasons when the Stage's skill finishes. If a retired question still matters later, ask it in the current Stage with `again`.
 
-Finishing a Stage authorizes nothing. An action that needs the user's confirmation of the summary, such as a tracker write, still waits for the user's next prompt, as the calling skill says.
+Finishing a Stage authorizes nothing. Follow the calling skill's action policy. A required explicit user pick still gates its action, while tracker and config writes that the calling skill authorizes proceed without a next-prompt confirmation.
 
 ## Record progress
 

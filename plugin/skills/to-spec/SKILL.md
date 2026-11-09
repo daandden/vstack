@@ -1,10 +1,10 @@
 ---
 name: to-spec
-description: "Turn the current conversation into a spec and publish it to the project issue tracker: no interview, just synthesis of what you've already discussed."
+description: "Synthesize the current conversation into a published spec, asking only about consequential gaps."
 disable-model-invocation: true
 ---
 
-This skill takes the current conversation context and codebase understanding and produces a spec. Do NOT interview the user; just synthesize what you already know.
+Synthesize the current conversation and codebase understanding into a spec. Reuse the existing agreement without an interview, except for new consequential gaps handled below.
 
 Read the project's `issue-tracker.md` and `triage-labels.md` under `<vstack root>/docs/vstack/` in Standard mode or `<vstack root>/config/` in Private mode. If either is missing, tell the user to run `/skill:setup-vstack`.
 
@@ -48,11 +48,19 @@ Then publish the spec to the project issue tracker. Apply the `ready-for-agent` 
 
 Publish the full spec as a Document Result, with `canonical: { tracker, revision }` naming the published issue and its observed revision, or `{ file }` for a local-markdown spec. If publication fails, put the full draft and observed failure on the Stage as a Document Result, explicitly not published. After successful publication, add `alias spec:<original-number-or-tracker-key>` to the existing Flow, or the feature slug for a local spec. Keep the original tracker spelling and underscores. Also add `ticket:<source issue>` when applicable. Identity and the live URL stay unchanged, so no folder rename is required. The tracker or local file remains canonical.
 
+After successful publication, finish the to-spec Stage and end the run. Reply with the published spec and a brief outcome. Name no next Matt skill and start none.
+
 ## Consequential gaps
 
 Expose the evidence, the missing choice, why dependent work needs it, and which synthesis is affected on the current to-spec Stage. Keep settled decisions intact and distinguish them from the gap. Preserve a useful partial draft as explicitly not published, with the affected decision open rather than a recommended design presented as agreement.
 
-Pause affected synthesis and publish no canonical spec that commits to the unresolved choice. A recommendation, Assumed pick, timeout, cancellation, headless selection, or close cannot supply missing architecture consent. Return the missing choice for user-invoked `/skill:grill-with-docs`, then stop. Do not invoke that skill or another Matt skill automatically. Resume synthesis from the resulting agreement when the user invokes `/skill:to-spec` again.
+Pause affected synthesis and publish no canonical spec that commits to the unresolved choice. A recommendation, Assumed pick, timeout, cancellation, empty response, headless selection, or close cannot supply missing architecture consent.
+
+1. Save the running to-spec Stage and its binding. Read `skill://grill-with-docs` and open `--skill grill-with-docs --flow <flow> --parent <to-spec-stage>` on the same Flow. This is the nested grill's Stage entry, not an extra Stage before its run. Use the receipt's Flow and Stage ids for its contributions and asks.
+2. Publish the gap's evidence and affected synthesis on the nested Stage. Run grill-with-docs inline for that gap, carrying the settled agreement, decision provenance, vstack root, and Scratch dir. Publish and ask its questions through flow-page's "Every ask in a Flow" contract, preserving raw answers and separate readings. Wait while an answer is pending.
+3. Once explicit answers settle every consequential choice needed by the affected synthesis, publish the nested grill's agreement and summary close, then finish its Stage. The nested grill returns to this running to-spec, not to a new to-spec run. Restore the saved binding with `bind --flow <flow> --stage <to-spec-stage>` and resume synthesis from those answers. Keep the drift check before publication.
+
+If evidence or an answer remains unavailable, keep the affected draft explicitly not published and report the actual blocker. Leave recoverable Stages in progress and restore the to-spec binding on return. Resume the existing runs when the blocker clears.
 
 ## Spec template
 
