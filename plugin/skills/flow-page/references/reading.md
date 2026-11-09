@@ -14,6 +14,8 @@ Historical content whose exact publication order was not recorded sits at the to
 
 The Focused Stage is the Stage tab the page shows. On a Stage tab, `n` cycles only that Stage's actionable questions in Stage order and wraps to its first. When the Stage has no open questions, `n` stays put and the page says so. A tab click, a fragment, or `h` and `l` changes the Focused Stage.
 
+When a content update publishes a new open question in the Focused Stage, the page selects it and scrolls to it without a key press, even if you are reading another block. Questions in other Stages and questions becoming answered, retired, or superseded do not move the page. While focus is in an input, textarea, select, or editable content, the page holds navigation, including fragment changes from outside the page. When focus leaves editable content, the page applies only the latest held move.
+
 On Overview and Topics, `n` uses the Flow-wide order: newest in-progress Stage first, then older in-progress Stages. Once it opens a question's Stage tab, the next `n` stays in that Stage. Finished Stages, retired questions, settled answers, and superseded asks are excluded in both cases. Stage labels include ticket ids when known. Unticketed repeats get distinct labels.
 
 `t` or the Stages button opens a clickable Stage-only tree with each Stage's state and open-question count. A continued Stage sits under its parent. This tree does not describe ticket dependencies. Stage links open the Stage's tab.

@@ -125,3 +125,228 @@ test("eight parked readers release HTTP/1.1 capacity and retain their place thro
     rmSync(root, { recursive: true, force: true });
   }
 }, 60_000);
+
+const question = (ref: string, title = ref) => ({
+  ref, title, description: `Choose the ${title} route.`,
+  needs: [{ need: `Understand the ${title} consequence.`, kind: "prose" }],
+  options: [
+    { label: "Keep", does: `${title}: keeps the route.`, gains: [`${title}: stability`], costs: [`${title}: no change`] },
+    { label: "Change", does: `${title}: changes the route.`, gains: [`${title}: new behavior`], costs: [`${title}: work`] },
+  ],
+});
+const documentResult = (ref: string, paragraphs = 1) => ({
+  kind: "result", ref, shape: "document", title: ref,
+  sections: [{ heading: "Reading context", blocks: [{ prose: "Keep reading this evidence. ".repeat(paragraphs) }] }],
+});
+
+async function liveReader() {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-reader-follow-")));
+  const home = join(root, "home");
+  mkdirSync(home);
+  git(root, "init", "-q");
+  git(root, "commit", "-q", "--allow-empty", "-m", "seed");
+  const socket = Bun.listen({ hostname: "127.0.0.1", port: 0, socket: { data() {} } });
+  const port = socket.port;
+  socket.stop(true);
+  function cli(args: string[], input?: object): any {
+    const p = Bun.spawnSync([process.execPath, SCRIPT, ...args, "--home", home, "--session", "reader-follow", "--agent", "fixture"], {
+      cwd: root, env: { ...ENV, HOME: home, VSTACK_FLOW_PORT: String(port) },
+      stdin: input ? new TextEncoder().encode(JSON.stringify(input)) : "ignore", stdout: "pipe", stderr: "pipe",
+    });
+    if (p.exitCode !== 0) throw new Error(`flow-page ${args.join(" ")}: ${p.stderr}`);
+    return JSON.parse(p.stdout.toString());
+  }
+  const opened = cli(["open", "--skill", "grill-me", "--title", "Follow the Focused Stage"]);
+  const submit = (stage: string, items: object[]) => cli(["submit", "--flow", opened.flow, "--stage", stage], { version: 1, items });
+  const seed = submit(opened.stage, [
+    documentResult("reading", 300),
+    { kind: "round", questions: [question("existing")] },
+    { kind: "result", ref: "lesson", shape: "quiz", title: "Learning while questions arrive", questions: [
+      { ref: "word", prompt: "Type Flow", answer: { text: ["Flow"] }, explanation: "A learning answer does not settle a real ask." },
+    ] },
+    documentResult("tail", 300),
+  ]);
+  const other = cli(["open", "--skill", "research", "--flow", opened.flow]);
+  const browser = await chromium.launch({ headless: true });
+  const page = await browser.newPage({ viewport: { width: 1280, height: 700 } });
+  await page.goto(`${opened.live.url}#${seed.refs.reading}`);
+  await page.locator(`#${seed.refs.reading}`).waitFor();
+  return {
+    page, opened, other, seed, submit,
+    async close() {
+      await browser.close();
+      cli(["host", "stop"]);
+      rmSync(root, { recursive: true, force: true });
+    },
+  };
+}
+
+const selectedStop = (page: Page) => page.locator(".bar .jump-row a[aria-current]").getAttribute("href");
+const pagePosition = (page: Page) => page.evaluate(() => ({
+  tab: document.querySelector(".bar .tabs a[aria-current]")?.getAttribute("href"),
+  stop: document.querySelector(".bar .jump-row a[aria-current]")?.getAttribute("href"),
+  scroll: scrollY,
+}));
+const renderedUpdate = (page: Page, stage: string, title: string) => page.locator(`[data-tab="${stage}"]`).getByRole("heading", { name: title, includeHidden: true }).waitFor({ state: "attached" });
+
+test("live questions select and reveal only the Focused Stage, even from another reading block", async () => {
+  const f = await liveReader();
+  const { page, opened, other, seed, submit } = f;
+  try {
+    const before = await pagePosition(page);
+    submit(other.stage, [{ kind: "round", questions: [question("parallel", "Parallel ticket question")] }]);
+    await renderedUpdate(page, other.stage, "Parallel ticket question");
+    expect(await pagePosition(page)).toEqual(before);
+
+    const fresh = submit(opened.stage, [{ kind: "round", questions: [question("new", "New focused question")] }]);
+    await renderedUpdate(page, opened.stage, "New focused question");
+    await page.waitForFunction((id) => document.querySelector(".bar .jump-row a[aria-current]")?.getAttribute("href") === `#${id}`, fresh.refs.new, { timeout: 5000 });
+    expect(await selectedStop(page)).toBe(`#${fresh.refs.new}`);
+    expect(await page.evaluate((id) => {
+      const box = document.getElementById(id)!.getBoundingClientRect();
+      return box.top >= document.querySelector(".bar")!.getBoundingClientRect().bottom - 1 && box.top < innerHeight;
+    }, fresh.refs.new)).toBe(true);
+    expect(await page.evaluate(() => scrollY)).toBeGreaterThan(before.scroll);
+    expect(await page.getByText(/asking now/i).count()).toBe(0);
+
+    await page.goto(`${opened.live.url}#${seed.refs.reading}`);
+    await page.locator(`#${seed.refs.reading}`).waitFor();
+    const onOverview = await pagePosition(page);
+    await page.goto(`${opened.live.url}#overview`);
+    await page.locator("#overview").waitFor();
+    const overview = await pagePosition(page);
+    submit(opened.stage, [{ kind: "round", questions: [question("offstage", "Question while on Overview")] }]);
+    await renderedUpdate(page, opened.stage, "Question while on Overview");
+    expect(await pagePosition(page)).toEqual(overview);
+    expect(onOverview.tab).toBe(`#${opened.stage}`);
+  } finally {
+    await f.close();
+  }
+}, 60_000);
+
+test("typing holds new questions and outside fragment navigation, then applies only the latest move", async () => {
+  const f = await liveReader();
+  const { page, opened, other, seed, submit } = f;
+  try {
+    const parallel = submit(other.stage, [documentResult("parallel-target")]).refs["parallel-target"];
+    await page.goto(`${opened.live.url}#${seed.refs.lesson}`);
+    await page.getByRole("textbox").fill("My draft");
+    const before = await pagePosition(page);
+    const input = page.getByRole("textbox", { includeHidden: true });
+    const fresh = submit(opened.stage, [{ kind: "round", questions: [question("held", "Held while typing")] }]).refs.held;
+    await renderedUpdate(page, opened.stage, "Held while typing");
+    expect(await pagePosition(page)).toEqual(before);
+    expect(await input.inputValue()).toBe("My draft");
+    expect(await input.evaluate((el) => document.activeElement === el)).toBe(true);
+    await input.blur();
+    await page.waitForFunction((id) => location.hash === `#${id}`, fresh);
+    expect(await selectedStop(page)).toBe(`#${fresh}`);
+
+    await page.goto(`${opened.live.url}#${seed.refs.lesson}`);
+    await input.fill("My longer draft");
+    submit(opened.stage, [{ ...documentResult("expanded-reading", 500), revises: seed.refs.reading }]);
+    await renderedUpdate(page, opened.stage, "expanded-reading");
+    const typing = await pagePosition(page);
+    submit(opened.stage, [{ kind: "round", questions: [question("before-fragment", "Question before outside fragment")] }]);
+    await renderedUpdate(page, opened.stage, "Question before outside fragment");
+    expect(await pagePosition(page)).toEqual(typing);
+    // A browser navigation to the same URL with another fragment is Tern's goto boundary.
+    await page.goto(`${opened.live.url}#${seed.refs.existing}`);
+    await page.waitForFunction((id) => location.hash === `#${id}`, seed.refs.existing);
+    expect(await pagePosition(page)).toEqual(typing);
+    expect(await input.evaluate((el) => document.activeElement === el)).toBe(true);
+    await page.goto(`${opened.live.url}#${fresh}`);
+    expect(await pagePosition(page)).toEqual(typing);
+    expect(await input.evaluate((el) => document.activeElement === el)).toBe(true);
+    await page.goto(`${opened.live.url}#${parallel}`);
+    expect(await pagePosition(page)).toEqual(typing);
+    await input.blur();
+    await page.locator(`[data-tab="${other.stage}"]:not([hidden])`).waitFor();
+    expect(await selectedStop(page)).toBe(`#${parallel}`);
+    expect(await input.inputValue()).toBe("My longer draft");
+  } finally {
+    await f.close();
+  }
+}, 60_000);
+
+for (const field of ["textarea", "select", "contenteditable"]) {
+  test(`${field} holds all navigation until leaving editable content and the latest request wins`, async () => {
+    const f = await liveReader();
+    const { page, opened, other, seed, submit } = f;
+    try {
+      const parallel = submit(other.stage, [documentResult("parallel-target")]).refs["parallel-target"];
+      await page.goto(`${opened.live.url}#${seed.refs.lesson}`);
+      // The reader currently ships an input. Other editable controls exercise the page-wide browser contract.
+      await page.locator(`#${seed.refs.lesson}`).evaluate((lesson, tag) => {
+        const editor = document.createElement(tag === "contenteditable" ? "div" : tag);
+        editor.id = "draft-editor";
+        if (tag === "select") editor.innerHTML = "<option>Keep this draft</option><option>Another draft</option>";
+        else if (tag === "contenteditable") {
+          editor.contentEditable = "true";
+          editor.innerHTML = "<span>Keep this draft</span>";
+        } else (editor as HTMLTextAreaElement).value = "Keep this draft";
+        lesson.prepend(editor);
+        editor.focus();
+      }, field);
+      await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+      const before = await pagePosition(page);
+      const input = page.locator("#draft-editor");
+      submit(opened.stage, [{ kind: "round", questions: [question("first", "First held question")] }]);
+      await renderedUpdate(page, opened.stage, "First held question");
+      const latest = submit(opened.stage, [{ kind: "round", questions: [question("latest", "Latest held question")] }]).refs.latest;
+      await renderedUpdate(page, opened.stage, "Latest held question");
+      expect(await pagePosition(page)).toEqual(before);
+      expect(await input.evaluate((el) => document.activeElement === el)).toBe(true);
+      const realInput = page.getByRole("textbox").filter({ visible: true }).last();
+      await realInput.focus();
+      expect(await selectedStop(page)).toBe(before.stop);
+      await realInput.blur();
+      await page.waitForFunction((id) => location.hash === `#${id}`, latest);
+      expect(await selectedStop(page)).toBe(`#${latest}`);
+
+      await page.goto(`${opened.live.url}#${seed.refs.lesson}`);
+      await input.focus();
+      const typing = await pagePosition(page);
+      await page.goto(`${opened.live.url}#${parallel}`);
+      expect(await pagePosition(page)).toEqual(typing);
+      const newest = submit(opened.stage, [{ kind: "round", questions: [question("newest", "New question after outside fragment")] }]).refs.newest;
+      await renderedUpdate(page, opened.stage, "New question after outside fragment");
+      expect(await pagePosition(page)).toEqual(typing);
+      await input.blur();
+      await page.waitForFunction((id) => location.hash === `#${id}`, newest);
+      expect(await selectedStop(page)).toBe(`#${newest}`);
+      expect((await pagePosition(page)).tab).toBe(`#${opened.stage}`);
+    } finally {
+      await f.close();
+    }
+  }, 60_000);
+}
+
+test("answers, superseded asks, and retirement updates leave the reading place unchanged", async () => {
+  const f = await liveReader();
+  const { page, opened, seed, submit } = f;
+  try {
+    const before = await pagePosition(page);
+    const readingTop = () => page.locator(`#${seed.refs.reading}`).evaluate((el) => el.getBoundingClientRect().top);
+    const top = await readingTop();
+    submit(opened.stage, [{ kind: "answer", question: seed.refs.existing, response: { status: "answered", picks: ["A"] } }]);
+    await page.locator(`#${seed.refs.existing}[data-state="picked"]`).waitFor();
+    expect(await pagePosition(page)).toMatchObject({ tab: before.tab, stop: before.stop });
+    expect(Math.abs(await readingTop() - top)).toBeLessThan(1);
+    const settled = submit(opened.stage, [
+      { kind: "round", questions: [{ ...question("superseding", "Reconsidered and settled"), again: seed.refs.existing }, question("retired", "Deferred question")] },
+      { kind: "answer", question: "superseding", response: { status: "answered", picks: ["B"] } },
+      { kind: "close", decisions: [
+        { question: "superseding", text: "The changed route holds." },
+        { question: "retired", text: "Deferred until another ticket." },
+      ] },
+      { kind: "stage", state: "finished", retire: [{ question: "retired", reason: "Deferred until another ticket." }] },
+    ]);
+    await page.locator(`#${settled.refs.retired}[data-retired]`).waitFor();
+    expect(await page.locator(`#${seed.refs.existing} a[href="#${settled.refs.superseding}"]`).count()).toBe(1);
+    expect(await pagePosition(page)).toMatchObject({ tab: before.tab, stop: before.stop });
+    expect(Math.abs(await readingTop() - top)).toBeLessThan(1);
+  } finally {
+    await f.close();
+  }
+}, 60_000);

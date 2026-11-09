@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { connection, failure, flow, startReader } from "~/composables/reader";
-import { goTo, onClick, onKey, onScroll, openFirstOpenQuestionTab, tab } from "~/composables/navigation";
+import { goTo, onClick, onFocusIn, onFocusOut, onHashChange, onKey, onScroll, openFirstOpenQuestionTab, tab } from "~/composables/navigation";
 import { startTheme } from "~/composables/theme";
 import { startLearning } from "~/composables/learning";
 
@@ -13,7 +13,9 @@ onMounted(() => {
   addEventListener("keydown", onKey);
   addEventListener("click", onClick);
   addEventListener("scroll", onScroll, { passive: true });
-  addEventListener("hashchange", () => void goTo(fragment(), true));
+  addEventListener("hashchange", onHashChange);
+  addEventListener("focusin", onFocusIn);
+  addEventListener("focusout", onFocusOut);
 });
 
 let arrived = false;
