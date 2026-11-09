@@ -2,6 +2,8 @@
 
 > This decision amends [ADR 0040](0040-figures-are-mermaid-rendered-by-pele.md).
 
+> [ADR 0065](0065-flow-figures-get-color-roles-from-the-shared-role-pass.md) amends this decision. Role fills become tinted accents with a solid accent border and the ordinary label color, and focus becomes a Mauve border that never recolors the label. The Flow reader applies Color roles through the same role pass as the renderer.
+
 > The palette and mapping policy below is confirmed by the grill. Flowchart, sequence, state, swimlane, agent-flow, and event-model bindings, literal role fills, native C4 and entity-family mappings, schedule and work-history mappings, mindmap, Ishikawa, Wardley, Cynefin, quantitative and set charts, and neutral packet and railroad limits are integrated. This completes the documented family mappings within their source-identity and visible-geometry limits, not the prototype corpus or every possible target.
 
 Every authored paint color comes directly from the [Catppuccin Mocha palette](https://raw.githubusercontent.com/catppuccin/palette/main/palette.json). The renderer adds no mixed, lightened, or darkened colors. Neutral node backing uses Surface0, the background uses Base, and ordinary text uses Text. Text on a solid accent uses Base.

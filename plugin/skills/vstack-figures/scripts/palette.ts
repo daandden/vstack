@@ -480,18 +480,19 @@ export function palette(svg: string, model: DiagramModel, bindings: Binding[], f
     const icon = ownClasses.includes("pele-icon") || (parent?.target === target && (parent?.icon ?? false));
     if (chart) loose = ownClasses.includes("pele-legend-item") || ownClasses.includes("pele-section") || model.type === "sankey" || model.type === "venn" || model.type === "quadrantChart" && (ownClasses.includes("pele-point") || parent?.classes.includes("pele-point-labels")) || parent?.loose === true;
     const accent = targetColor(target, !target?.iconOnly || icon);
+    const rolePaint = !!(target?.role || target?.category === undefined && target?.intrinsic && (!target.iconOnly || icon));
     const invisible = attrs.get("fill") === "none" && attrs.get("stroke") === "none";
     const neutral = target && ["wardley", "cynefin"].includes(model.type) && ["rect", "circle"].includes(name) && attrs.get("fill") === "var(--_bg)";
     if (chart && target && !invisible && (SHAPE.has(name) || name === "text")) chartVisible.add(target);
-    if (focused && target && !invisible && (SHAPE.has(name) || name === "text")) focusedVisible.add(target.id);
+    if (focused && target && !invisible && SHAPE.has(name)) focusedVisible.add(target.id);
     if (!invisible && (accent || focused || target?.neutral || neutral || chart && target) && (SHAPE.has(name) || name === "text")) {
       const line = target?.line || ownClasses.includes("pele-edge") || ownClasses.includes("pele-lane") || ownClasses.includes("pele-lifeline") || parent?.name === "line" || chart && attrs.get("fill") === "none";
       const open = (model.type === "flowchart" || interaction) && attrs.get("fill") === "none";
       const fill = open || icon || (line && (!spatial || ["path", "line", "polyline"].includes(name)) && !ownClasses.includes("pele-marker")) ? "none" : model.type === "gitGraph" && attrs.get("fill") === "var(--_bg)" ? BASE : accent ?? SURFACE;
-      const stroke = model.type === "gitGraph" && attrs.get("stroke") === "var(--_bg)" ? BASE : focused ? MAUVE : icon && !line ? BASE : accent ?? BORDER;
+      const stroke = model.type === "gitGraph" && attrs.get("stroke") === "var(--_bg)" ? BASE : focused ? MAUVE : icon && !line ? rolePaint ? TEXT : BASE : accent ?? BORDER;
       const paint = name === "text"
-        ? `fill:${focused ? MAUVE : !accent ? TEXT : line || loose || target?.loose || target?.looseLabel || model.type === "gantt" && attrs.get("fill") === "var(--_m)" ? accent : BASE}`
-        : `${!["line", "polyline"].includes(name) ? `fill:${fill};${accent && ["mindmap", "cynefin"].includes(model.type) && attrs.has("fill-opacity") ? "fill-opacity:1;" : ""}` : ""}stroke:${stroke}${focused ? ";stroke-width:2.5px" : ""}${model.type === "agentflow" && accent && fill !== "none" ? ";fill-opacity:1" : ""}`;
+        ? `fill:${rolePaint || !accent ? TEXT : line || loose || target?.loose || target?.looseLabel || model.type === "gantt" && attrs.get("fill") === "var(--_m)" ? accent : BASE}`
+        : `${!["line", "polyline"].includes(name) ? `fill:${fill};${accent && !rolePaint && ["mindmap", "cynefin"].includes(model.type) && attrs.has("fill-opacity") ? "fill-opacity:1;" : ""}` : ""}stroke:${stroke}${focused ? ";stroke-width:2.5px" : ""}${rolePaint && fill !== "none" ? ";fill-opacity:0.22" : model.type === "agentflow" && accent && fill !== "none" ? ";fill-opacity:1" : ""}`;
       if (attrs.has("style")) tag = tag.replace(/\bstyle="([^"]*)"/, (_, style) => `style="${style};${paint}"`);
       else tag = tag.replace(/\/?\s*>$/, (end) => ` style="${paint}"${end}`);
     }

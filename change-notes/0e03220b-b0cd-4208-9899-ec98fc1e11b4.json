@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Figure Color roles use 22% accent tints with ordinary labels, and focus changes only the Mauve border. Category colors and literal Mocha export paints stay unchanged (#405)."
+  ]
+}
