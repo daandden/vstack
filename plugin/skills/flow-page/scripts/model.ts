@@ -87,9 +87,10 @@ export type Demo = {
 };
 export type QuizRule = { choice: string } | { text: string[]; case_sensitive: boolean } | { number: number; tolerance: number };
 export type Quiz = { questions: { ref: string; prompt: string; explanation: string; choices?: { ref: string; label: string }[]; answer: QuizRule }[] };
+export type TableColumn = string | { label: string; type?: "text" | "number" | "status" };
 /** `revision` counts whole republications of the Result with `revises`; `captured` is when this one was submitted. */
 export type Result = {
-  id: string; stage: string; shape: Shape; title: string; summary?: string; columns?: string[]; entries: Entry[]; changed: number;
+  id: string; stage: string; shape: Shape; title: string; summary?: string; columns?: TableColumn[]; entries: Entry[]; changed: number;
   axes?: ReviewAxis[];
   edit?: number;
   document?: DocumentBody; demo?: Demo; artifact?: string; quiz?: Quiz; comparison?: ComparisonBody; metrics?: MetricsBody; attachments?: string[]; canonical?: Canonical; revision?: number; captured?: string; jump?: string;
@@ -675,7 +676,11 @@ function parseResult(o: Obj, where: string, stage: string, id: string, entryIds:
     return head({ axes, entries });
   }
   fields(o, where, ["kind", "shape", "title", table ? "columns" : "entries", ...(table ? ["rows"] : [])], shared);
-  const columns = table ? texts(o, "columns", where) : undefined;
+  const columns = table ? list(o, "columns", where).map((column, j): TableColumn => {
+    if (typeof column === "string") return text({ label: column }, "label", `${where}: column ${j + 1}`);
+    const c = fields(column, `${where}: column ${j + 1}`, ["label"], ["type"]);
+    return { label: text(c, "label", `${where}: column ${j + 1}`), ...(c.type !== undefined ? { type: c.type as "text" | "number" | "status" } : {}) };
+  }) : undefined;
   const entries = validatedMap(list(o, table ? "rows" : "entries", where), (e, j) => parseEntry(shape, columns, e, `${where}: ${table ? "row" : "entry"} ${j + 1}`, entryIds[j].split("/")[1], rev, attachment));
   return head({ ...(columns ? { columns } : {}), entries });
 }
@@ -721,7 +726,7 @@ function parseQuiz(o: Obj, where: string): Quiz {
   return { questions };
 }
 
-function parseEntry(shape: Shape, columns: string[] | undefined, e: unknown, ew: string, id: string, changed: number, attachment: (v: unknown, where: string) => string): Entry {
+function parseEntry(shape: Shape, columns: TableColumn[] | undefined, e: unknown, ew: string, id: string, changed: number, attachment: (v: unknown, where: string) => string): Entry {
   if (shape === "cards" || shape === "review") {
     const c = fields(e, ew, ["title", "label", "blocking", "impact", "action", "evidence", ...(shape === "review" ? ["axis", "location"] : [])], ["ref"]);
     if (typeof c.blocking !== "boolean") reject(ew, "blocking must be true or false")
@@ -1743,6 +1748,7 @@ export function snapshot(v: View) {
         ...(r.demo ? { demo: { start: r.demo.start, states: r.demo.states.map((x) => x.name), actions: r.demo.actions.map((x) => x.name), values: r.demo.values.map((x) => x.name) } } : {}),
         ...(r.artifact ? { artifact: r.artifact } : {}),
         ...(r.review ? { review: r.review } : {}),
+        ...(r.columns ? { columns: r.columns } : {}),
         revisions: [...r.history, r].filter((x, i, all) => !all.slice(i + 1).some((later) => later.revision === x.revision)).map((x) => ({ revision: x.revision, ...(x.captured ? { captured: x.captured } : {}), ...(x.canonical ? { canonical: x.canonical } : {}), attachments: x.shown.map((a) => a.id) })),
         history: r.history.map((x) => ({ anchor: x.anchor, revision: x.revision, ...(x.edit === undefined ? {} : { edit: x.edit }), ...(x.canonical ? { canonical: x.canonical } : {}), attachments: x.shown.map((a) => a.id) })),
         attachments: r.shown.map((a) => a.id),

@@ -149,7 +149,7 @@ test("prototype discovery includes conditional fields and recursive condition co
 test("describe exposes exclusive required content and validate diagnoses its omission", () => {
   expect(run(["open", "--skill", "implement", "--title", "Exclusive fields"]).code).toBe(0);
   expect(run(["describe", "code"]).json.contract.fields.entries.items.oneOf).toEqual(["code", "diff"]);
-  expect(run(["describe", "table", "--compact"]).stdout).toContain("$.columns type=array<string> required=true");
+  expect(run(["describe", "table", "--compact"]).stdout).toContain("$.columns type=array<union> required=true");
   for (const item of [
     { kind: "result", shape: "prototype", title: "Missing runnable content" },
     { kind: "result", shape: "code", title: "Missing excerpt", entries: [{ file: "example.ts" }] },

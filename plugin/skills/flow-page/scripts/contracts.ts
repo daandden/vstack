@@ -61,7 +61,7 @@ const result = (purpose: string, fields: Record<string, Contract>, extra: Record
 export const resultContracts: Record<string, Contract> = {
   cards: result("Present findings or actions as individual cards.", { entries: array(entryContracts.cards) }),
   ledger: result("Track claims, evidence, missing proof, and consequences.", { entries: array(entryContracts.ledger) }),
-  table: result("Compare rows under shared columns.", { columns: strings, rows: array(entryContracts.table) }),
+  table: result("Compare rows under shared columns.", { columns: array({ ...union({ text: string, column: optional({ label: string }, { type: enumeration("text", "number", "status") }) }), expected: "string or column object" }), rows: array(entryContracts.table) }),
   document: result("Explain a topic in ordered sections with text, code, and figures.", { sections: array(object({ heading: string, blocks: array(block) })) }, { citations: array(object({ ref, source: string })), limitations: strings, sources: strings }),
   prototype: { ...result("Let readers try a state demo or a captured runnable artifact.", {}, { demo, artifact: ref }), oneOf: ["demo", "artifact"] },
   comparison: result("Assess alternatives against criteria and record a verdict.", { alternatives: array(optional({ ref, name: string }, { summary: string, attachments: strings }), 2), criteria: array(optional({ ref, name: string }, { description: string })), assessments: array(optional({ alternative: ref, criterion: ref, finding: string }, { evidence: string })), verdict: optional({ outcome: enumeration("chosen", "tie", "inconclusive"), reason: string }, { alternative: ref }) }),

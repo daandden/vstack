@@ -1,32 +1,16 @@
 <script setup lang="ts">
 import type { Figure } from "#flow/model.ts";
-import { flow } from "~/composables/reader";
 import type { ResultView } from "~/utils/flow";
 
 const props = defineProps<{ r: ResultView }>();
-const f = computed(() => flow.value!);
 const shown = computed(() => new Map(props.r.shown.map((a) => [a.id, a])));
-const linked = computed(() => props.r.entries.some((e) => e.questions.length));
-const ask = (id: string) => f.value.question.get(id);
 const str = (v: unknown) => v as string;
 const figures = (v: unknown) => v as Figure[] | undefined;
 const attachments = (v: unknown) => ((v as string[] | undefined) ?? []).map((id) => shown.value.get(id)).filter((a) => a !== undefined);
 </script>
 
 <template>
-  <div v-if="r.shape === 'table'" class="relative overflow-x-auto">
-    <table class="border-collapse tabular-nums [&_th]:text-small [&_th]:font-semibold [&_th]:text-muted [&_th]:px-2 [&_th]:py-1 [&_th]:border-be [&_th]:border-flow-line [&_th]:text-start [&_th]:align-top [&_td]:px-2 [&_td]:py-1 [&_td]:border-be [&_td]:border-flow-line [&_td]:text-start [&_td]:align-top [&_tr:target]:bg-accented">
-      <thead>
-        <tr><th v-for="(c, i) in r.columns" :key="i" scope="col" v-html="inline(c)" /><th v-if="linked" scope="col">Asked in</th></tr>
-      </thead>
-      <tbody>
-        <tr v-for="e in r.entries" :id="e.anchor" :key="e.anchor">
-          <td v-for="(c, i) in e.cells as string[]" :key="i"><span v-html="inline(c)" /></td>
-          <td v-if="linked"><template v-for="(id, i) in e.questions" :key="id">{{ i ? "; " : "" }}<a :href="`#${id}`">Q{{ ask(id)?.q }}</a>: <span v-html="inline(ask(id)?.title ?? '')" /></template></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+  <ResultTable v-if="r.shape === 'table'" :r="r" />
   <ol v-else-if="r.shape === 'code'" class="grid list-none gap-3 ps-0">
     <CodeEntry v-for="e in r.entries" :key="e.anchor" :e="e" />
   </ol>

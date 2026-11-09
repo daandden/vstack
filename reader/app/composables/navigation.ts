@@ -57,6 +57,8 @@ export async function goTo(id: string, focus: boolean, replaceFragment = false):
     heldMove = { id, focus, replaceFragment };
     return true;
   }
+  document.dispatchEvent(new CustomEvent("flow-reveal", { detail: id }));
+  await nextTick();
   const el = resolve(id);
   if (!el) return false;
   await reveal(el);
