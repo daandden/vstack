@@ -207,7 +207,7 @@ test("live questions select and reveal only the Focused Stage, even from another
       return box.top >= document.querySelector(".bar")!.getBoundingClientRect().bottom - 1 && box.top < innerHeight;
     }, fresh.refs.new)).toBe(true);
     expect(await page.evaluate(() => scrollY)).toBeGreaterThan(before.scroll);
-    expect(await page.getByText(/asking now/i).count()).toBe(0);
+    expect(await page.locator("#picker-presence").count()).toBe(0);
 
     await page.goto(`${opened.live.url}#${seed.refs.reading}`);
     await page.locator(`#${seed.refs.reading}`).waitFor();
@@ -250,7 +250,6 @@ test("typing holds new questions and outside fragment navigation, then applies o
     submit(opened.stage, [{ kind: "round", questions: [question("before-fragment", "Question before outside fragment")] }]);
     await renderedUpdate(page, opened.stage, "Question before outside fragment");
     expect(await pagePosition(page)).toEqual(typing);
-    // A browser navigation to the same URL with another fragment is Tern's goto boundary.
     await page.goto(`${opened.live.url}#${seed.refs.existing}`);
     await page.waitForFunction((id) => location.hash === `#${id}`, seed.refs.existing);
     expect(await pagePosition(page)).toEqual(typing);
@@ -276,7 +275,6 @@ for (const field of ["textarea", "select", "contenteditable"]) {
     try {
       const parallel = submit(other.stage, [documentResult("parallel-target")]).refs["parallel-target"];
       await page.goto(`${opened.live.url}#${seed.refs.lesson}`);
-      // The reader currently ships an input. Other editable controls exercise the page-wide browser contract.
       await page.locator(`#${seed.refs.lesson}`).evaluate((lesson, tag) => {
         const editor = document.createElement(tag === "contenteditable" ? "div" : tag);
         editor.id = "draft-editor";

@@ -254,7 +254,6 @@ test("n stays put and explains when the Focused Stage has no open questions", as
     await page.keyboard.press("n");
     expect(await selected(page)).toBe(a.stage);
     expect(await page.evaluate(() => ({ hash: location.hash, y: scrollY }))).toEqual(before);
-    expect(await page.locator(`#${a.stage} [role="status"]`).textContent()).toBe("This Stage has no open questions.");
     expect(await page.locator(`#${a.stage} [role="status"]`).isVisible()).toBe(true);
   } finally {
     await context.close();

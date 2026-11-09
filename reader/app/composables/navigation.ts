@@ -175,16 +175,20 @@ export function onFocusOut() {
   }, 0);
 }
 
+function restoreTypingPositionAfterFragmentNavigation() {
+  if (!typing) return;
+  typing.field.focus({ preventScroll: true });
+  scrollTo({ top: typing.scroll, behavior: "instant" });
+  current.value = typing.stop;
+  typing.hash = location.hash;
+  keepSelectionAtCurrentScroll();
+}
+
 export function onHashChange() {
   const id = decodeURIComponent(location.hash.slice(1));
   if (typing?.field.isConnected) {
     heldMove = { id, focus: true, replaceFragment: false };
-    // Native fragment navigation scrolls before hashchange, even without our handler.
-    typing.field.focus({ preventScroll: true });
-    scrollTo({ top: typing.scroll, behavior: "instant" });
-    current.value = typing.stop;
-    typing.hash = location.hash;
-    keepSelectionAtCurrentScroll();
+    restoreTypingPositionAfterFragmentNavigation();
     return;
   }
   void goTo(id, true);

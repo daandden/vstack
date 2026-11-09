@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "level": "minor",
+  "level": "patch",
   "entries": [
     "The Flow page selects and reveals new questions only in the Focused Stage. Typing holds new-question and outside fragment moves until you leave the field, then applies the latest move."
   ]

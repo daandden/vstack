@@ -36,6 +36,8 @@ Following remembers the most recently focused omp pane per tab. `targets.ts` run
 
 The window plugin polls selected sessions every 500 ms without overlapping processes. It navigates only on a selected-session change or a new non-null picker token, not on token refresh, picker closure, expiry, or a binding change alone. Browser and non-omp focus preserve selection. Navigation reuses only the matching Flow page in that tab and never focuses it. The reader holds fragment-driven moves while a field has focus and applies the latest move on blur. ACP conversation selection is not observed. The Verify recipe proves the native behavior locally; there is no Luau typecheck or automated Tern test.
 
+Failed polls retain pending pane focus until a poll succeeds. A selected-session transition is acknowledged only after its target query succeeds, so recovery without a picker still reaches the bound Stage.
+
 When the target already equals the page's URL, following dispatches the browser's standard `hashchange` event instead of asking Tern to load that URL again. An exact-URL load reloads the document and discards drafts. Replaying the event lets the reader reselect the question or hold it until blur without adding a reader-specific interface.
 
 ### Flow reader delivery

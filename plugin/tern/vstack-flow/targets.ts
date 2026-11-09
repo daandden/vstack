@@ -1,4 +1,3 @@
-// Runs outside Tern's UI thread. Only Tern's reported session file identifies an omp pane.
 import { openSync, readSync, closeSync } from "node:fs";
 import { resolve } from "node:path";
 

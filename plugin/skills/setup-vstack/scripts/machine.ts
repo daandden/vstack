@@ -1,4 +1,3 @@
-// omp settings come from the `omp` on PATH; the optional Tern check reads its plugin link.
 // Exit codes: 0 no FAIL line (OK, WARN, or NOTE only) or `--set` done; 1 a FAIL line; 2 usage error or omp missing.
 
 import { existsSync, readFileSync, realpathSync } from "node:fs";

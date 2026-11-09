@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "level": "minor",
+  "level": "patch",
   "entries": [
     "Track expiring Picker presence on the Local Flow host and expose a session target query for Tern."
   ]
