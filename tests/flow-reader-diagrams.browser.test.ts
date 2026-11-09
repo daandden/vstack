@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium, type Browser, type Locator, type Page } from "playwright-core";
 import { ENV } from "./support/fixture.ts";
+import { storedFolder } from "./support/flow-store.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
 const CAPTURED_SVG = join(import.meta.dir, "fixtures", "flow-page-diagrams", "captured-pele-mocha.svg");
@@ -90,7 +91,8 @@ test.each(["mermaid", "svg"] as const)("Flow diagrams draw safely in the reader'
     '  click h3 href "https://example.com/beacon"',
     "",
   ].join("\n"));
-  copyFileSync(type === "mermaid" ? STYLED_SOURCE : STYLED_SVG, join(root, "reading"));
+  if (type === "mermaid") writeFileSync(join(root, "reading"), "flowchart TD\n a1[Read the page] --> a2[Answer the question]:::ok\n");
+  else copyFileSync(STYLED_SVG, join(root, "reading"));
   copyFileSync(CAPTURED_SVG, join(root, "captured.svg"));
   copyFileSync(STYLED_SVG, join(root, "styled.svg"));
   const captured = readFileSync(CAPTURED_SVG);
@@ -101,13 +103,27 @@ test.each(["mermaid", "svg"] as const)("Flow diagrams draw safely in the reader'
     figures: [{ attachment: ref, kind: "context-diagram" }],
     options: [{ label: "Fine", does: `Accepts the ${title} drawing`, gains: [`Clarity for ${title}`], costs: [`No revision of ${title}`] }],
   });
-  cli(["submit"], { version: 1, items: [
+  const submitted = cli(["submit"], { version: 1, items: [
     { kind: "attachment", ref: "hostile", type: "mermaid", caption: "Hostile labels", origin: "Mermaid source hostile.mmd", path: "hostile.mmd", focus: ["h1"] },
     { kind: "attachment", ref: "reading", type, caption: "Reading then answering", origin: `Styled ${type} capture`, path: "reading", ...(type === "mermaid" ? { focus: ["a2"] } : {}) },
     { kind: "attachment", ref: "captured", type: "svg", caption: "Captured design review", origin: "Pele render of design-review-sequence.mmd", path: "captured.svg" },
     { kind: "attachment", ref: "styled", type: "svg", caption: "Styled historical design", origin: "Pele render of styled-mocha.mmd", path: "styled.svg" },
     { kind: "round", questions: [figure("hostile", "hostile"), figure("reading", "reading"), figure("captured", "captured"), figure("styled", "styled")] },
   ] });
+  if (type === "mermaid") {
+    // Historical captures predate submit's paint check and must still draw unchanged.
+    const folder = storedFolder(home, submitted.flow);
+    const statePath = join(folder, "data", "state.json");
+    const state = JSON.parse(readFileSync(statePath, "utf8"));
+    const source = readFileSync(STYLED_SOURCE);
+    const revision = new Bun.CryptoHasher("sha256").update(source).digest("hex");
+    const file = `${revision}/reading.mmd`;
+    mkdirSync(join(folder, "assets", revision), { recursive: true });
+    writeFileSync(join(folder, "assets", file), source);
+    Object.assign(state.attachments.find((a: any) => a.id === submitted.refs.reading), { revision, file, size: source.length });
+    state.revision++;
+    writeFileSync(statePath, JSON.stringify(state));
+  }
 
   const context = await browser.newContext({ colorScheme: "light", viewport: { width: 1280, height: 900 } });
   const page = await context.newPage();

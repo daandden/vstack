@@ -37,6 +37,25 @@ test("stdin, nested groups, and focal roles keep their own geometry and fill", a
 });
 
 test.each([
+  ["flowchart link", 'flowchart LR\n A:::ok --> B\n click A href "https://example.com"\n', "A"],
+  ["flowchart callback", "flowchart LR\n A:::ok --> B\n click A callback\n", "A"],
+  ["class link", 'classDiagram\n class Order:::ok\n click Order href "https://example.com"\n', "Order"],
+  ["Gantt link", 'gantt\n dateFormat YYYY-MM-DD\n Task :done, task, 2026-11-09, 1d\n click task href "https://example.com"\n', "task"],
+])("Pele-generated clickable classes in a %s are not Color roles", async (_, source, id) => {
+  const r = await renderFigure(workdir(), source, { focus: [id] });
+  expect({ code: r.code, stderr: r.stderr }).toEqual({ code: 0, stderr: "" });
+  expect(shape(r.svg!, id).style).toContain("fill:#a6e3a1");
+  expect(shape(r.svg!, id).style).toContain("stroke:#cba6f7;stroke-width:2.5px");
+});
+
+test("a click directive does not hide an unknown authored Color role", async () => {
+  const r = await renderFigure(workdir(), 'flowchart LR\n A:::okk --> B\n click A href "https://example.com"\n');
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain("Unknown color role: okk");
+  expect(existsSync(r.out)).toBe(false);
+});
+
+test.each([
   ["ok", "#a6e3a1"], ["warn", "#f9e2af"], ["bad", "#f38ba8"], ["changed", "#89b4fa"],
   ["actor", "#f5c2e7"], ["store", "#94e2d5"], ["external", "#fab387"],
 ])("the %s role uses its fixed accent at 22% with ordinary labels", async (role, color) => {

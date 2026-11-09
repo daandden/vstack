@@ -11,7 +11,7 @@ const ACCENTS = ["#f5e0dc", "#f2cdcd", "#f5c2e7", "#f38ba8", "#eba0ac", "#fab387
 const CHARTS = new Set(["quadrantChart", "xychart", "pie", "sankey", "radar", "treemap", "venn"]);
 export type Binding = { id: string; role?: string; category?: string };
 type Target = { id: string; role?: string; category?: string; categorical?: string; intrinsic?: string; key?: string; sourceCategory?: string; neutral?: boolean; line?: boolean; loose?: boolean; labelOnly?: boolean; unsupported?: boolean; iconOnly?: boolean; looseLabel?: boolean; edge?: boolean };
-const PELE_CLASS = /^(?:pele|usecase-|system-boundary)|^highlight$/;
+const PELE_CLASS = /^(?:pele|usecase-|system-boundary)|^(?:highlight|clickable)$/;
 const SHAPE = new Set(["rect", "path", "polygon", "circle", "ellipse", "line", "polyline"]);
 const PAINT = new Set(["fill", "stroke", "color", "stop-color", "background", "background-color"]);
 const decode = (s: string) => s.replace(/&(?:quot|apos|amp|lt|gt|#\d+|#x[\da-f]+);/gi, (s) => ({ "&quot;": '"', "&apos;": "'", "&amp;": "&", "&lt;": "<", "&gt;": ">" })[s] ?? String.fromCodePoint(parseInt(s.slice(s[2] === "x" ? 3 : 2, -1), s[2] === "x" ? 16 : 10)));
@@ -56,7 +56,7 @@ function flowTargets(model: FlowchartModel | Extract<DiagramModel, { type: "agen
   const targets = new Map<string, Target[]>();
   const add = (id: string, names: string[], intrinsic?: string, line = false) => {
     const t: Target = { id, intrinsic, line };
-    for (const name of names) assign(t, "role", name);
+    for (const name of names) if (name !== "clickable") assign(t, "role", name);
     targets.set(id, [...(targets.get(id) ?? []), t]);
     return t;
   };
@@ -102,7 +102,7 @@ function entityTargets(model: DiagramModel): Map<string, Target[]> | undefined {
   const targets = new Map<string, Target[]>();
   const add = (id: string, names: string[] = [], intrinsic?: string, line = false) => {
     const target: Target = { id, intrinsic, line };
-    for (const name of names) if (name && name !== "default") assign(target, "role", name);
+    for (const name of names) if (name && name !== "default" && name !== "clickable") assign(target, "role", name);
     targets.set(id, [...(targets.get(id) ?? []), target]);
     return target;
   };

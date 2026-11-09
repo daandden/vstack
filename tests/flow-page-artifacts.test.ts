@@ -169,7 +169,7 @@ test("captured figures and option previews survive source changes and serve only
 test("a Mermaid diagram source is captured once, satisfies diagram needs, and is served as the stored text", async () => {
   const home = world();
   const opened = ok(run(home, ["open", "--skill", "grill-me", "--title", "Diagram source"]));
-  const source = 'flowchart TD\n  a1["Read the page"]:::actor --> a2["Answer the question"]:::ok\n  class a2 ok\n';
+  const source = 'flowchart TD\n  a1["Read the page"]:::actor --> a2["Answer the question"]:::ok\n  class a2 ok\n  click a1 callback\n  click a2 href "https://example.com"\n';
   writeFileSync(join(root, "reading.mmd"), source);
   const diagram = { kind: "attachment", ref: "flow", type: "mermaid", caption: "Reading then answering", origin: "Mermaid source reading.mmd", path: "reading.mmd", focus: ["a2"] };
   const round = (figure: object) => ({ kind: "round", questions: [{ ref: "order", title: "Which order?", description: "Compare the reading order.", needs: [{ need: "Follow today's reading steps.", kind: "context-diagram" }, { need: "Compare where each option answers.", kind: "option-diagram" }], figures: [{ ...figure, kind: "context-diagram" }, { ...figure, kind: "option-diagram" }], options: [{ label: "Read first", does: "Reads before answering", gains: ["Context"], costs: ["Time"] }] }] });
@@ -206,6 +206,7 @@ test("a Mermaid diagram source is captured once, satisfies diagram needs, and is
 
 test.each([
   ["unknown role", "flowchart LR\n A:::green --> B\n", [], "Unknown color role: green"],
+  ["unknown role with click", 'flowchart LR\n A:::okk --> B\n click A href "https://example.com"\n', [], "Unknown color role: okk"],
   ["conflicting roles", "flowchart LR\n A:::ok --> B\n class A bad\n", [], "Element A has more than one color role"],
   ["classDef paint", "flowchart LR\n A:::ok --> B\n classDef ok fill:#a6e3a1\n", [], "The Mermaid sets its own color"],
   ["unused classDef paint", "flowchart LR\n A --> B\n classDef unused fill:red\n", [], "The Mermaid sets its own color"],
