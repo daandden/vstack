@@ -5,7 +5,18 @@ const args = process.argv.slice(2);
 const root = process.env.FAKE_OVNFS_ROOT!;
 const stateFile = join(root, "checkouts.json");
 const entries: { name: string; path: string; source: string; dirty: boolean; git?: string }[] = existsSync(stateFile) ? JSON.parse(readFileSync(stateFile, "utf8")) : [];
-const save = () => writeFileSync(stateFile, JSON.stringify(entries));
+const snapshotFile = join(root, "snapshots.json");
+const snapshots: { id: string; checkout: string }[] = existsSync(snapshotFile) ? JSON.parse(readFileSync(snapshotFile, "utf8")) : [];
+const save = () => { writeFileSync(stateFile, JSON.stringify(entries)); writeFileSync(snapshotFile, JSON.stringify(snapshots)); };
+const remove = (name: string, sticky: boolean) => {
+  const i = entries.findIndex(e => e.name === name);
+  if (i < 0) process.exit(1);
+  rmSync(entries[i].path, { recursive: true });
+  if (entries[i].git) rmSync(entries[i].git!, { recursive: true, force: true });
+  entries.splice(i, 1);
+  if (!sticky && !process.env.FAKE_OVNFS_OLD_DAEMON) snapshots.splice(0, snapshots.length, ...snapshots.filter(s => s.checkout !== name));
+  save(); console.log("{}");
+};
 const git = (cwd: string, ...args: string[]) => {
   const p = Bun.spawnSync([process.env.FAKE_GIT!, ...args], { cwd });
   if (p.exitCode) throw new Error(p.stderr.toString());
@@ -40,15 +51,16 @@ if (basename(process.argv[1]) === "omp") {
     if (existsSync(join(source, "node_modules"))) cpSync(join(source, "node_modules"), join(path, "node_modules"), { recursive: true });
     const checkout = { name, path, source, dirty: false }; entries.push(checkout); save();
     console.log(JSON.stringify({ checkout }));
-  } else if (rest[0] === "rm") {
-    const i = entries.findIndex(e => e.name === rest[1]);
-    if (i < 0) process.exit(1);
-    rmSync(entries[i].path, { recursive: true });
-    if (entries[i].git) rmSync(entries[i].git!, { recursive: true, force: true });
-    entries.splice(i, 1); save(); console.log("{}");
+  } else if (rest[0] === "rm") remove(rest[1], false);
+  else if (rest[0] === "ctl" && rest[1] === "rm") {
+    const request = JSON.parse(rest[2]);
+    if (process.env.FAKE_OVNFS_OLD_DAEMON && "sticky_snapshots" in request) {
+      console.error('invalid: json: unknown field "sticky_snapshots"'); process.exit(1);
+    }
+    remove(request.checkout, request.sticky_snapshots === true);
   } else if (rest[0] === "ls") {
     if (process.env.FAKE_OVNFS_LIST_FAIL) { console.error("fixture listing unavailable"); process.exit(1); }
-    console.log(process.env.FAKE_OVNFS_LISTING ?? JSON.stringify({ checkouts: entries, snapshots: [] }));
+    console.log(process.env.FAKE_OVNFS_LISTING ?? JSON.stringify({ checkouts: entries, snapshots }));
   }
   else if (rest[0] === "diff") console.log(process.env.FAKE_OVNFS_DIFF ?? JSON.stringify({ changes: [] }));
   else process.exit(1);
