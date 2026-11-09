@@ -1473,14 +1473,14 @@ export type StageView = Stage & {
 };
 type PathState = "finished" | "in-progress" | "to-come" | "not-run";
 type PathStep = { id: string; skills: string[]; state: PathState; stages: Pick<Stage, "id" | "skill" | "state">[] };
-type MattPath = { grill: PathStep; branches: { id: string; steps: PathStep[] }[] };
+type MattPath = { grill: PathStep; spec: PathStep; branches: { id: string; steps: PathStep[] }[] };
 
 const MATT_FLOW = {
   grill: { id: "grill", skills: ["grill-with-docs", "grill-me"] },
+  spec: { id: "to-spec", skills: ["to-spec"] },
   branches: [
     { id: "one-session", steps: [{ id: "implement", skills: ["implement"] }] },
     { id: "multi-session", steps: [
-      { id: "to-spec", skills: ["to-spec"] },
       { id: "to-tickets", skills: ["to-tickets"] },
       { id: "implement-spec", skills: ["implement-spec"] },
     ] },
@@ -1491,7 +1491,8 @@ function mattPath(stages: Stage[]): MattPath | undefined {
   const matching = (step: { skills: string[] }) => stages.filter((st) => step.skills.includes(st.skill));
   const branchRan = (branch: typeof MATT_FLOW.branches[number]) => branch.steps.some((step) => matching(step).length);
   const selected = MATT_FLOW.branches.filter(branchRan);
-  if (!matching(MATT_FLOW.grill).length && !selected.length) return;
+  const specRan = matching(MATT_FLOW.spec).length > 0;
+  if (!matching(MATT_FLOW.grill).length && !specRan && !selected.length) return;
   let latestBranch: string | undefined;
   let latestOrder = -1;
   for (const stage of stages) {
@@ -1506,7 +1507,8 @@ function mattPath(stages: Stage[]): MattPath | undefined {
       : skipped ? "not-run" : "to-come";
     return { id: step.id, skills: recorded.length ? [...new Set(recorded.map((st) => st.skill))] : step.skills, state, stages: recorded };
   };
-  const grill = stepView(MATT_FLOW.grill, selected.length > 0);
+  const grill = stepView(MATT_FLOW.grill, specRan || selected.length > 0);
+  const spec = stepView(MATT_FLOW.spec, selected.length > 0);
   const branches = (selected.length ? selected : MATT_FLOW.branches).map((branch) => ({
     id: branch.id,
     steps: branch.steps.flatMap((step, i) => {
@@ -1514,7 +1516,7 @@ function mattPath(stages: Stage[]): MattPath | undefined {
       return [stepView(step, branch.steps.slice(i + 1).some((later) => matching(later).length > 0))];
     }),
   }));
-  return { grill, branches };
+  return { grill, spec, branches };
 }
 export type View = {
   flow: State["flow"]; revision: number; stages: StageView[]; lifecycle: Lifecycle[];
