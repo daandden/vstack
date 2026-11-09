@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Agents repair infrastructure failures owned by their run and retry once, preserving consent, branch guards, and verification proof. Shared-service recovery still asks (#424, ADR 0068)."
+  ]
+}

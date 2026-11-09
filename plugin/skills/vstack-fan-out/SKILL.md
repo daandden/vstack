@@ -24,7 +24,7 @@ For every isolated child, single or Fan-out, read [WORKER-LIFECYCLE.md](WORKER-L
 
 ## When a subagent cannot start
 
-If a subagent cannot start, follow the line's stop clause: stop the step, and name the parts that were not done and the reason. A single-subagent line that ends `skip it:` skips that subagent and reports what the clause names instead. Never do the subagent's work in its place.
+If a subagent cannot start, apply the own-run recovery rule before the line's stop or skip clause. Repair run-owned infrastructure and retry the failed start once, without restarting shared services, changing global settings, or weakening isolation. If recovery is unavailable, unsafe, or fails, follow the line's clause: stop the step and name the parts that were not done and the reason. A single-subagent line that ends `skip it:` skips that subagent and reports what the clause names instead. Never do the subagent's work in its place.
 
 - No eval tool, or no `task` tool: name the missing tool.
 - omp refuses the agent because the session is at its depth limit: name omp's `task.maxRecursionDepth` setting, which the user can raise.
