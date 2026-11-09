@@ -7,7 +7,7 @@ import { ENV } from "./support/fixture.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
 
-test("question context, choices, answers and figures keep their layout without legacy component rules", async () => {
+test("question context, choices, answers and figures keep their compact themed layout", async () => {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-reader-questions-")));
   const home = join(root, "home");
   mkdirSync(home);
@@ -15,7 +15,7 @@ test("question context, choices, answers and figures keep their layout without l
   const port = socket.port;
   socket.stop(true);
   function cli(args: string[], items?: object[]): any {
-    const p = Bun.spawnSync([process.execPath, SCRIPT, ...args, "--home", home, "--session", "01a1c229-a432-72c7-8e1b-03ce9f58bdfc", "--agent", "impl-432"], {
+    const p = Bun.spawnSync([process.execPath, SCRIPT, ...args, "--home", home, "--session", "01a1c243-9218-7214-af2f-363af599ca19", "--agent", "impl-434"], {
       cwd: root, env: { ...ENV, HOME: home, VSTACK_FLOW_PORT: String(port) },
       stdin: items ? new TextEncoder().encode(JSON.stringify({ version: 1, items })) : "ignore", stdout: "pipe", stderr: "pipe",
     });
@@ -50,17 +50,6 @@ test("question context, choices, answers and figures keep their layout without l
         writeFileSync(join(proof, `${theme.toLowerCase()}.aria.txt`), await page.locator("body").ariaSnapshot());
       }
     }
-    // Simulate the final stylesheet cutover while exercising the actual shipped reader.
-    await page.evaluate(() => {
-      const owned = /\.(?:question|qnum|refs|terms|example|visual|figure(?:-caption|-title|-description)?|diagram-measure|source|unavailable|download|options|option|star|trade|gain|cost|why|answer|background|topic|assumed|summary-block|summary|fields)(?![\w-])/;
-      function strip(rules: CSSRuleList) {
-        for (const rule of [...rules]) {
-          if (rule instanceof CSSStyleRule && owned.test(rule.selectorText)) rule.style.cssText = "";
-          else if ("cssRules" in rule) strip((rule as CSSGroupingRule).cssRules);
-        }
-      }
-      for (const sheet of document.styleSheets) strip(sheet.cssRules);
-    });
     const question = page.locator(`#${published.refs.first}`);
     expect(await question.evaluate((el) => ({ display: getComputedStyle(el).display, gap: getComputedStyle(el).gap }))).toEqual({ display: "grid", gap: "10px" });
     expect(await question.locator(".options").evaluate((el) => ({ display: getComputedStyle(el).display, list: getComputedStyle(el).listStyleType }))).toEqual({ display: "grid", list: "none" });

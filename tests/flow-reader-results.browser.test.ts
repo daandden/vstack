@@ -16,7 +16,7 @@ async function capture(page: Page, name: string) {
 }
 const finding = { ref: "finding", title: "Keep saved answers", label: "issue", blocking: true, impact: "A reader loses an answer.", action: "Keep it after reconnecting.", evidence: "Reconnect proof.", location: "answers.ts:42" };
 
-test("all Results retain compact themed rendering, learning progress and isolated prototypes without legacy Result styles", async () => {
+test("all Results retain compact themed rendering, learning progress and isolated prototypes", async () => {
   const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-reader-results-")));
   const home = join(root, "home");
   mkdirSync(home);
@@ -24,7 +24,7 @@ test("all Results retain compact themed rendering, learning progress and isolate
   const port = socket.port;
   socket.stop(true);
   function cli(args: string[], items?: object[]): any {
-    const p = Bun.spawnSync([process.execPath, SCRIPT, ...args, "--home", home, "--session", "01a1c229-a486-74b8-a62d-03524f4b218c", "--agent", "impl-433"], {
+    const p = Bun.spawnSync([process.execPath, SCRIPT, ...args, "--home", home, "--session", "01a1c243-9218-7214-af2f-363af599ca19", "--agent", "impl-434"], {
       cwd: root, env: { ...ENV, HOME: home, VSTACK_FLOW_PORT: String(port) },
       stdin: items ? new TextEncoder().encode(JSON.stringify({ version: 1, items })) : "ignore", stdout: "pipe", stderr: "pipe",
     });
@@ -60,21 +60,17 @@ test("all Results retain compact themed rendering, learning progress and isolate
     await page.locator(`#${seeded.refs.artifact} iframe`).waitFor();
     for (const theme of ["Light", "Dark"]) {
       await page.getByRole("button", { name: theme, exact: true }).click();
-      await capture(page, `${theme.toLowerCase()}-results`);
-    }
-    const retirement = await page.evaluate(() => {
-      let removed = 0;
-      const retire = (parent: CSSStyleSheet | CSSGroupingRule, legacy = false) => {
-        for (let i = parent.cssRules.length - 1; i >= 0; i--) {
-          const rule = parent.cssRules[i]!;
-          if (legacy && rule instanceof CSSStyleRule && /\.(?:result|entries|card|claim|tag|asks|table|revisions|doc-section|limitations|cite|backlink|code|tok-|timeline|event|verdict|compare|measurement|bar-cell|demo|quiz|viewer|runnable)(?:[\s.:[>#-]|$)/.test(rule.selectorText)) { parent.deleteRule(i); removed++; }
-          else if ("cssRules" in rule) retire(rule as CSSGroupingRule, legacy || ("name" in rule && rule.name === "components"));
+      for (const width of [360, 1280]) {
+        await page.setViewportSize({ width, height: 900 });
+        expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+        await capture(page, `${theme.toLowerCase()}-${width}-results`);
+        if (proof) {
+          for (const ref of ["cards", "review", "ledger", "table", "document", "code", "timeline", "comparison", "metrics", "quiz", "demo", "artifact"]) {
+            await page.locator(`#${seeded.refs[ref]}`).screenshot({ path: join(proof, `${theme.toLowerCase()}-${width}-${ref}.png`) });
+          }
         }
-      };
-      for (const sheet of document.styleSheets) retire(sheet);
-      return removed;
-    });
-    if (proof) writeFileSync(join(proof, "retired-rules.json"), JSON.stringify({ removed: retirement }));
+      }
+    }
     expect(await page.locator(`#${seeded.refs.cards}`).evaluate((el) => getComputedStyle(el).rowGap)).toBe("10px");
     expect(await page.locator(`#${seeded.refs.quiz} form`).first().evaluate((el) => getComputedStyle(el).display)).toBe("grid");
     for (const ref of ["cards", "review", "ledger", "table", "document", "code", "timeline", "comparison", "metrics", "quiz", "demo", "artifact"]) expect(await page.locator(`#${seeded.refs[ref]}`).isVisible()).toBe(true);

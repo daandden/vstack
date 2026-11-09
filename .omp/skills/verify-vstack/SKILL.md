@@ -39,7 +39,7 @@ The Tern plugin recipe uses `scripts/tern-verify`, ported from `tern-plugins`. I
 
 ## Launch
 
-Nothing builds at launch: the Flow reader is committed prebuilt. When the change touches `reader/`, run `./node_modules/.bin/vp run reader:build` in `CHECKOUT` first and check that the committed output under `plugin/skills/flow-page/reader/` matches. For scripted smoke proof, a launch is one drive: `scripts/drive.ts` links the plugin into the run's home, starts a stub model, starts `omp --mode rpc` (or `--mode rpc-ui` with `--rpc-ui`), sends the RPC commands you give it, and stops both processes before it exits. The real-model enrollment recipe launches its own fresh native process from `CHECKOUT`.
+Nothing builds at launch: the Flow reader is committed prebuilt. When the change touches `reader/`, run `bun run reader:build` in `CHECKOUT` first. It generates and ships the bundle under `plugin/skills/flow-page/reader/`. The reader uses Nuxt UI, Tailwind utilities, and Catppuccin theme tokens, with base typography in Tailwind's base layer and no separate `reader.css`. For scripted smoke proof, a launch is one drive: `scripts/drive.ts` links the plugin into the run's home, starts a stub model, starts `omp --mode rpc` (or `--mode rpc-ui` with `--rpc-ui`), sends the RPC commands you give it, and stops both processes before it exits. The real-model enrollment recipe launches its own fresh native process from `CHECKOUT`.
 
 ```sh
 bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN_DIR" --name <drive> \

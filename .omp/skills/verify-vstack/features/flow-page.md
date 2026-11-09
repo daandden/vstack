@@ -94,7 +94,7 @@ Steps:
   - Open the live page and clear `localStorage`. The demo shows its start state, starting values, and one button per action plus Reset; an action with no applicable transition has `aria-disabled="true"`.
   - Click through each transition and read the state and values after each click. Press Enter and Space on focused buttons: each works the same as a click, and focus stays on the button.
   - Reload: the demo comes back where it was. Click Reset: it returns to the start, and its `localStorage` key is gone. Play the video for a few seconds, pause, and reload: `currentTime` comes back.
-  - `show --flow <id>` gives the same `revision` before and after all of these steps. `tab.requests()` lists only the page, its `_flow-reader/` assets, its content and event routes, and its captured assets.
+  - `show --flow <id>` gives the same `revision` before and after all of these steps. `tab.requests()` lists only the page, its `_flow-reader/` assets, its version, content, observation and learning routes, and its captured assets. Captured runnable artifacts use their own isolated loopback origin.
   - At 360px, the demo has no horizontal overflow.
 - Quiz (`flow-quiz`): publish a `quiz` Result through `submit` with choice, numeric-tolerance, and text rules and explanations. Submit an invalid choice reference and confirm refusal without a domain change.
   - Open its live page in Chromium. Submit a wrong choice and then a correct retry. Use Enter for numeric and text answers. Observe immediate feedback, attempt counts, explanations, and lesson completion.
@@ -261,6 +261,14 @@ Keep RPC and native PTY evidence distinct. An ordinary `ask` call in `drive.ts` 
 Use `--ui-replies` to choose a label or Other, then inspect raw tool details and later Flow answers. State that the stub authored any normalization. Preserve headless non-consent and the separate Ratchet `r.approve` exception.
 
 For presentation regression proof, run the native `tui`, `cancel`, `timeout`, `retry`, and `later-round` cases above. Completed and aborted turns must add no automatic Flow card. Each authored question round gets its panel under flow-page's common contract while ordinary `ask` is open. The retry case must reopen the real picker with its original question identities and no republished round. RPC cancellation can establish an aborted event, but cannot prove physical Escape or F5 behavior.
+
+### Reader styling migration
+
+After changing reader styles, rebuild with `bun run reader:build` before starting the proof host. Run the existing `tests/flow-reader-*.browser.test.ts` files against the built reader. The Results fixture accepts `FLOW_READER_EVIDENCE=<new directory>` to retain full-page PNGs, ARIA, and individual Result captures at 1280 and 360px in both themes. Convert the PNGs to lossless WebP as the parent recipe requires, then inspect every Result capture. A passing layout assertion alone does not establish readability.
+
+Repeat the keyboard checks in the reading procedure and `flow-diagram-reading` on this bundle. Inspect the Matt flow path, Stage tree, Overview, questions, and Topics too. Check the body and heading fonts, compact spacing, state colors, focus marks, and wide-content scrolling. The theme tokens map both Nuxt UI and Pele. There is no legacy stylesheet to disable or legacy component-class cascade to preserve.
+
+Record the browser engine, action, theme, viewport, ARIA, and observed result beside each proof. Preserve earlier failed proof separately. Repeat the combined-product procedure below for changes that affect its behavior beyond styling.
 
 ### Combined-product proof (`flow-t4`)
 

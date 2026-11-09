@@ -1,10 +1,42 @@
 @import "tailwindcss";
 @import "@nuxt/ui";
 @import "./theme.css";
-@import "./reader.css" layer(components);
 
 @custom-variant hover {
   @media (hover: hover) and (pointer: fine) {
     &:hover { @slot; }
   }
+}
+
+@layer base {
+  *, *::before, *::after { min-inline-size: 0; }
+  body { @apply [min-block-size:100svh] bg-default text-default text-body leading-[1.55] font-sans; }
+  h1, h2, h3 { @apply font-heading text-default text-balance leading-[1.35]; }
+  h1 { @apply text-title font-bold; }
+  h2 { @apply text-title font-[650]; }
+  h3 { @apply text-body font-[650]; }
+  a { @apply text-info underline-offset-[0.2em] touch-manipulation hover:text-flow-lavender active:text-flow-lavender; }
+  :focus-visible { @apply outline-2 outline-info outline-offset-[0.2em]; }
+  [tabindex="-1"]:focus-visible { @apply outline-transparent; }
+  code, pre, kbd, button, input { font: inherit; }
+  code { @apply [padding-inline:0.25em] rounded-[0.2rem] bg-accented; }
+  kbd { @apply [padding-inline:0.3em] rounded-[0.2rem] border border-default text-toned text-small; }
+  pre { @apply whitespace-pre-wrap text-small; }
+  img, svg, video { @apply block [max-inline-size:100%] [block-size:auto]; }
+  time { @apply text-small text-muted; }
+  details > summary { @apply [inline-size:fit-content] text-toned font-semibold cursor-pointer touch-manipulation hover:text-flow-lavender active:text-flow-lavender motion-safe:transition-[color,background-color] motion-safe:duration-[130ms] motion-safe:ease-out; }
+  li:target { @apply bg-accented; }
+}
+
+@utility quiet { @apply text-small text-muted; }
+@utility label { @apply text-muted font-semibold; }
+@utility eyebrow { @apply text-small text-muted font-[650] uppercase tracking-[0.04em]; }
+@utility meta { @apply flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 text-small text-muted; }
+@utility labelled { @apply grid gap-1.5; }
+@utility bullets { @apply grid gap-0.5 ps-5 list-disc marker:text-dimmed; }
+@utility notice { @apply [padding-block:0.5rem] [padding-inline:0.75rem] border-s-2 border-warning rounded bg-muted; }
+@utility entry-id { @apply me-2 font-bold tabular-nums uppercase; }
+@utility disclosure {
+  @apply text-small open:grid open:gap-1.5;
+  > :not(summary) { @apply text-body; }
 }

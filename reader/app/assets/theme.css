@@ -90,3 +90,16 @@
   --pele-font: "IosevkaTerm Nerd Font Mono", ui-monospace, monospace;
   --pele-font-mono: "IosevkaTerm Nerd Font Mono", ui-monospace, monospace;
 }
+
+@layer base {
+  [data-state="picked"], [data-state="written"] { --state: var(--yellow); }
+  [data-state="resolved"] { --state: var(--teal); }
+  [data-state="unresolved"] { --state: var(--red); }
+  [data-state="open"], [data-state="retired"], [data-state="not-started"] { --state: var(--overlay0); }
+  [data-state="finished"], [data-state="closed"] { --state: var(--green); }
+  [data-state="in-progress"], [data-state="reopened"] { --state: var(--peach); }
+  [data-task="done"], [data-check="passed"], [data-pr="merged"] { --state: var(--green); }
+  [data-task="active"], [data-check="pending"], [data-pr="open"] { --state: var(--peach); }
+  [data-task="pending"], [data-task="skipped"], [data-task="inapplicable"], [data-pr="closed"] { --state: var(--overlay0); }
+  [data-check="failed"], [data-blocked] { --state: var(--red); }
+}
