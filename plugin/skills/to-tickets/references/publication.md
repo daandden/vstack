@@ -1,13 +1,13 @@
 # Ticket publication Interface
 
-The publisher consumes approved structured data. It creates tickets without readiness, installs relationships, reads back approved fields and relationships, and then applies readiness. GitHub uses the configured label. MCP maps labels and readiness separately, so readiness can live in a custom field. Local tickets use the configured `Status:` value. All tickets in the batch pass relationship readback before activation starts. Open blockers stay open. The frontier still excludes a ticket with an open blocker.
+The publisher consumes the agent's drafted structured data after to-tickets publishes the breakdown and any MCP binding as Results, without an approval question. It creates tickets without readiness, installs relationships, reads back submitted fields and relationships, and then applies readiness. GitHub uses the configured label. MCP maps labels and readiness separately, so readiness can live in a custom field. Local tickets use the configured `Status:` value. All tickets in the batch pass relationship readback before activation starts. Open blockers stay open. The frontier still excludes a ticket with an open blocker.
 
 ## Commands and receipts
 
 `<to-tickets>` is this installed skill's directory.
 
 ```sh
-bun <to-tickets>/scripts/publish.ts publish --input approved.json --record publication.json
+bun <to-tickets>/scripts/publish.ts publish --input input.json --record publication.json
 bun <to-tickets>/scripts/publish.ts resume --record publication.json
 ```
 
@@ -15,9 +15,9 @@ bun <to-tickets>/scripts/publish.ts resume --record publication.json
 
 The equivalent Bun Interface is `publish(input, recordPath, connection?)` and `resume(recordPath, connection?)` from `scripts/publisher.ts`. It returns the same receipt. Invalid input, an existing record, a corrupt record, or a held lock rejects before tracker effects. An MCP caller supplies the live transport connection described below. Both entry points use the same publisher. Tracker Adapters are internal.
 
-Keep the approved input and record together under `.scratch/<feature-slug>/` in Standard mode or `<vstack root>/artifacts/<feature-slug>/` in Private mode. The record contains the approved bodies and tracker facts. It is not a public tracker attachment.
+Keep the submitted input and record together under `.scratch/<feature-slug>/` in Standard mode or `<vstack root>/artifacts/<feature-slug>/` in Private mode. The record contains the submitted bodies and tracker facts. It is not a public tracker attachment.
 
-## Approved description
+## Structured description
 
 The description has version `1`, `tracker`, and a nonempty `tickets` array. This example declares one blocking edge. The foundation's body reference to the dependent declares no reverse edge.
 
@@ -33,13 +33,13 @@ The description has version `1`, `tracker`, and a nonempty `tickets` array. This
 		{
 			"key": "01-foundation",
 			"title": "Create the foundation",
-			"body": "Build the approved foundation. The dependent provides context.",
+			"body": "Build the foundation. The dependent provides context.",
 			"labels": ["task"]
 		},
 		{
 			"key": "02-dependent",
 			"title": "Use the foundation",
-			"body": "Deliver the approved dependent behavior.",
+			"body": "Deliver the dependent behavior.",
 			"labels": ["task"],
 			"parent": { "external": "100" },
 			"blockedBy": ["01-foundation"]
@@ -52,13 +52,13 @@ Each ticket has a unique lowercase `key` made of letters, digits, and hyphens, s
 
 `parent` is optional. It names either another batch ticket with `{ "local": "01-foundation" }` or an existing tracker identity with `{ "external": "100" }`. `blockedBy` is an optional array of distinct local keys. Each named ticket blocks this ticket. Unknown keys and self-relationships are refused. The publisher checks parent cycles and blocking cycles separately. A parent may be blocked by its own child. Neither parent membership nor explanatory body references become blocking edges.
 
-`tracker.readiness` is the actual value from the project's canonical `ready-for-agent` role mapping. Record it before approval. Approved ticket labels and readiness are separate concepts even when they share a tracker field. The approved bodies remain unchanged in the input and record. MCP body comparisons use the fixed normalization described below. Other modes compare the approved bytes. Native relationships or local headers carry resolved identities, so publication does not patch body prose with guessed references or recovery markers.
+`tracker.readiness` is the actual value from the project's canonical `ready-for-agent` role mapping. Record it before publication. Submitted ticket labels and readiness are separate concepts even when they share a tracker field. The submitted bodies remain unchanged in the input and record. MCP body comparisons use the fixed normalization described below. Other modes compare the submitted bytes. Native relationships or local headers carry resolved identities, so publication does not patch body prose with guessed references or recovery markers.
 
 ## Tracker modes
 
 ### GitHub CLI
 
-Use `mode: "github"` and the configured `repo` as `owner/repo`. `command` is an optional argv prefix and defaults to `["gh"]`. The Adapter uses that CLI's authenticated `api` route, including paginated reads. It creates issues with the approved title, body, and non-readiness labels. Parent membership uses the native sub-issue relationship. A dependent's `dependencies/blocked_by` endpoint receives the blocker's database identity. These are separate relationships.
+Use `mode: "github"` and the configured `repo` as `owner/repo`. `command` is an optional argv prefix and defaults to `["gh"]`. The Adapter uses that CLI's authenticated `api` route, including paginated reads. It creates issues with the submitted title, body, and non-readiness labels. Parent membership uses the native sub-issue relationship. A dependent's `dependencies/blocked_by` endpoint receives the blocker's database identity. These are separate relationships.
 
 Readback requires issue fields, parent membership, dependency listing, and labels. Unavailable native capabilities stop publication. The publisher does not replace a missing capability with a parent-body edit or an inferred text edge.
 
@@ -72,7 +72,7 @@ Use the CLI's JSON output or its configured JSON projection to produce this shap
 
 ### MCP binding
 
-Use `mode: "mcp"`, the configured `server`, project `facts`, and an approved `binding`. The agent drafts the binding from the named server's live tool descriptions and schemas. The user approves it with the ticket breakdown. Per-operation tool names belong only in this approved input, not in `issue-tracker.md`.
+Use `mode: "mcp"`, the configured `server`, project `facts`, and a drafted `binding`. The agent drafts the binding from the named server's live tool descriptions and schemas and publishes it with the ticket breakdown as Results before publication, without asking for approval. Per-operation tool names belong only in this input, not in `issue-tracker.md`.
 
 The public Bun Interface accepts a live `connection` with two transport methods:
 
@@ -89,9 +89,9 @@ Search can declare `pagination` with `offset` and `limit` argument names and a `
 
 Templates use `{issue}`, `{parent}`, `{blocker}`, `{dependent}`, `{title}`, `{body}`, `{labels}`, and `{readiness}`, plus recorded facts such as `{facts.projectKey}`. An exact whole placeholder retains its value's type, so `{labels}` supplies an array. Placeholders embedded in a search string receive JSON-quoted strings. Write `project = {facts.projectKey}`, not `project = "{facts.projectKey}"`. When an object is supplied for a string-typed parameter, the publisher JSON-encodes it after substitution. This supports JSON-string fields such as `additional_fields` without hand-escaped JSON.
 
-The publisher resolves an approved parent before creation and creates local parents before their children. In a create template, an exact `{parent}` value is omitted when the ticket has no approved parent. A create-time parent binding needs no separate `parent` action. If a later parent operation is required but no action binds it, the publisher reports a parent capability gap rather than treating the write as successful.
+The publisher resolves a submitted parent before creation and creates local parents before their children. In a create template, an exact `{parent}` value is omitted when the ticket has no submitted parent. A create-time parent binding needs no separate `parent` action. If a later parent operation is required but no action binds it, the publisher reports a parent capability gap rather than treating the write as successful.
 
-`binding.issue` maps `id`, `title`, `body`, `labels`, `readiness`, `author`, `createdAt`, `parent`, `project`, and `issueType` to dot paths in each decoded issue. These paths cover flattened responses as well as nested `fields` responses. Labels and readiness each resolve to string arrays. When the provider omits an empty collection, an explicit `{ "path": "...", "empty": true }` mapping treats missing or null as an empty array. Without that declaration, absent collection readback is a capability gap. A missing optional parent means no parent. Project, issue type, and the mapped author identity must match the approved facts.
+`binding.issue` maps `id`, `title`, `body`, `labels`, `readiness`, `author`, `createdAt`, `parent`, `project`, and `issueType` to dot paths in each decoded issue. These paths cover flattened responses as well as nested `fields` responses. Labels and readiness each resolve to string arrays. When the provider omits an empty collection, an explicit `{ "path": "...", "empty": true }` mapping treats missing or null as an empty array. Without that declaration, absent collection readback is a capability gap. A missing optional parent means no parent. Project, issue type, and the mapped author identity must match the submitted facts.
 
 `blockedBy` can be a path to a string identity array. For directed link arrays, it contains `path`, `type`, and `sides`. `path` selects the link array. `type` selects each link's type. `sides.inwardIssue` and `sides.outwardIssue` select the issue identity on each side of a link. The publisher filters by `facts.linkType` and reads the side named by `facts.blockingSide`. Record that side as `inwardIssue` or `outwardIssue` according to the server's actual semantics as seen from the dependent. Add `"empty": true` only when the provider omits empty link arrays. Parent membership and body references establish no blocking direction.
 
@@ -99,7 +99,7 @@ Tool results can be JSON values, MCP `structuredContent`, or JSON in text conten
 
 #### mcp-atlassian example
 
-This `tracker` uses captured `mcp-atlassian` schemas and flattened issue results, with server-reported version `3.4.11` and package version `0.23.1`. Substitute the project's approved facts and custom field id. The example has no identity tool, so `facts.owner` is the token owner's tracker username. The required `issue_type` receives the name "Task", not an issue type id.
+This `tracker` uses captured `mcp-atlassian` schemas and flattened issue results, with server-reported version `3.4.11` and package version `0.23.1`. Substitute the project's recorded facts and custom field id. The example has no identity tool, so `facts.owner` is the token owner's tracker username. The required `issue_type` receives the name "Task", not an issue type id.
 
 ```json
 {
@@ -189,19 +189,19 @@ This `tracker` uses captured `mcp-atlassian` schemas and flattened issue results
 }
 ```
 
-`jira_search` requires `jql`. In the example, a title of `Create the foundation` renders as `project = "DEMO" AND summary ~ "Create the foundation"`. Search returns `issues`, `total`, `start_at`, and `max_results`. The approved pagination exhausts the results before creation. The publisher checks candidates across all issue types in the configured project, with exact title and normalized body comparison. Uncertain-create reconciliation still requires the configured issue type, as does created-issue readback.
+`jira_search` requires `jql`. In the example, a title of `Create the foundation` renders as `project = "DEMO" AND summary ~ "Create the foundation"`. Search returns `issues`, `total`, `start_at`, and `max_results`. The binding's pagination exhausts the results before creation. The publisher checks candidates across all issue types in the configured project, with exact title and normalized body comparison. Uncertain-create reconciliation still requires the configured issue type, as does created-issue readback.
 
-The create call receives `additional_fields` as a JSON string containing approved labels and, when present, the resolved parent. The activation call receives `fields` as the JSON string `{}` and `additional_fields` as a JSON string containing the readiness values. It changes neither system labels nor other fields.
+The create call receives `additional_fields` as a JSON string containing submitted labels and, when present, the resolved parent. The activation call receives `fields` as the JSON string `{}` and `additional_fields` as a JSON string containing the readiness values. It changes neither system labels nor other fields.
 
 #### Ownership, readiness, and body comparison
 
 When `owner` is bound, its selected result establishes the authenticated identity. Otherwise `facts.owner` supplies that identity. Missing both is a capability gap. A created issue whose mapped author differs from that identity blocks publication. A search result or project listing is not evidence of the authenticated user.
 
-The example maps `author` to `reporter.name` because mcp-atlassian's simplified issue result omits creator even with `fields: "*all"`. This is an explicitly approved weaker ownership check. Reporter is mutable and does not prove creator identity. Reconciliation still requires baseline exclusion, the creation window, title, normalized body, labels, and absence of readiness. Bind creator instead when the server exposes it.
+The example maps `author` to `reporter.name` because mcp-atlassian's simplified issue result omits creator even with `fields: "*all"`. This is a weaker ownership check. Reporter is mutable and does not prove creator identity. Reconciliation still requires baseline exclusion, the creation window, title, normalized body, labels, and absence of readiness. Bind creator instead when the server exposes it.
 
-Approved-field readback compares normalized `labels` exactly with the approved labels. When the label and readiness mappings select the same field, normalization removes only the configured readiness value from labels. When they select different fields, every system label must match, including any label equal to the readiness value. Premature-readiness detection, activation, and reconciliation read the complete `readiness` collection, not a substitute system-label field. Unrelated values in a separate readiness field do not fail approved-label readback. Readiness present before activation still blocks publication.
+Submitted-field readback compares normalized `labels` exactly with the submitted labels. When the label and readiness mappings select the same field, normalization removes only the configured readiness value from labels. When they select different fields, every system label must match, including any label equal to the readiness value. Premature-readiness detection, activation, and reconciliation read the complete `readiness` collection, not a substitute system-label field. Unrelated values in a separate readiness field do not fail submitted-label readback. Readiness present before activation still blocks publication.
 
-For additive activation, bind the authorized readiness addition. For replacement activation, set `replace: true` and bind `{readinessValues}` to the readiness field. The publisher reads that field's current values and unions them with the approved readiness value. Activation readback must contain readiness and every earlier value. It journals the earlier values before activation, so resume cannot forget a loss after an interrupted or failed write. In the example, `["unrelated"]` becomes `["unrelated", "available"]`. Copying system labels into the custom field does not preserve the readiness field.
+For additive activation, bind the authorized readiness addition. For replacement activation, set `replace: true` and bind `{readinessValues}` to the readiness field. The publisher reads that field's current values and unions them with the submitted readiness value. Activation readback must contain readiness and every earlier value. It journals the earlier values before activation, so resume cannot forget a loss after an interrupted or failed write. In the example, `["unrelated"]` becomes `["unrelated", "available"]`. Copying system labels into the custom field does not preserve the readiness field.
 
 MCP readback, uncertain-create reconciliation, and duplicate detection use one fixed body comparison. The fixtures in `tests/support/mcp-body-roundtrips.json` come from package `mcp-atlassian==0.23.1`'s offline Markdown-to-wiki and wiki-to-Markdown converters. The server-reported version `3.4.11` is not the package version.
 
@@ -209,17 +209,17 @@ The publisher normalizes CRLF line endings and removes trailing blank lines only
 
 Equivalent emphasis, list numbering, spacing, and table formatting can compare equal. Lost list hierarchy does not. The offline nested-list fixture changes two-space indentation to six spaces and must block rather than discard that difference. Unsupported lossy conversions remain readback gaps. A body mismatch blocks with a diff. Titles, labels, and relationships remain exact. This comparison does not change CLI, GitHub, or local behavior.
 
-Before each MCP create, a search result in the configured project with the approved title and a normalized-equal body stops that create with `duplicate-risk` and lists the candidates. It does not adopt external tickets or create another copy, including when a resumed record has no saved identities or operations.
+Before each MCP create, a search result in the configured project with the submitted title and a normalized-equal body stops that create with `duplicate-risk` and lists the candidates. It does not adopt external tickets or create another copy, including when a resumed record has no saved identities or operations.
 
 ### Local Markdown
 
-Use `mode: "local"` and an absolute `directory`. Each ticket is `<directory>/<key>.md`. Number keys before approval when the configured workflow needs numbered filenames.
+Use `mode: "local"` and an absolute `directory`. Each ticket is `<directory>/<key>.md`. Number keys before publication when the configured workflow needs numbered filenames.
 
-A local file starts with a JSON metadata fence, followed by `Status:` and `Blocked by:` lines, a blank line, and its exact approved body. Metadata stores title, non-readiness labels, identity, parent, author, and creation time. `Status: draft` excludes an unfinished publication from the frontier. Activation sets `Status:` to the configured readiness value only after every ticket's required files and relationships read back.
+A local file starts with a JSON metadata fence, followed by `Status:` and `Blocked by:` lines, a blank line, and its exact submitted body. Metadata stores title, non-readiness labels, identity, parent, author, and creation time. `Status: draft` excludes an unfinished publication from the frontier. Activation sets `Status:` to the configured readiness value only after every ticket's required files and relationships read back.
 
 `Blocked by:` contains comma-separated full ticket keys, such as `01-foundation, 02-schema`, or `None`. The Adapter reads blockers and status from these lines, not JSON copies. The existing workflow claims a ready, unblocked ticket by setting `Status: claimed`. It resolves the ticket by appending an `## Answer` and setting `Status: resolved`. A dependent becomes unblocked when every listed ticket is resolved. Publication leaves blockers open.
 
-Discovery recognizes publisher-owned metadata through `author: "local-publisher"`. It skips unrelated Markdown, including convention-format tickets and ordinary parent documents. An occupied approved filename or a publisher-owned identity that differs from its filename blocks publication with `local-identity-conflict`. Discovery does not adopt existing tickets.
+Discovery recognizes publisher-owned metadata through `author: "local-publisher"`. It skips unrelated Markdown, including convention-format tickets and ordinary parent documents. An occupied submitted filename or a publisher-owned identity that differs from its filename blocks publication with `local-identity-conflict`. Discovery does not adopt existing tickets.
 
 File creation is exclusive and atomic. Existing unrelated tickets are not overwritten. Parents may be local ticket keys or existing Markdown file paths. An external parent path resolves relative to the ticket directory unless it is absolute. Parent content stays unchanged. A missing or non-regular parent prevents activation.
 
@@ -231,12 +231,12 @@ File creation is exclusive and atomic. Existing unrelated tickets are not overwr
 
 The record is synced before tracker writes. Each write first saves a pending operation. Returned identities and outcomes are synced as soon as they are available. The journal distinguishes succeeded operations, known failures, and uncertain outcomes. A killed publisher can leave an operation pending, which resume treats as uncertain.
 
-Resume preserves approved intent and checks the authenticated ownership identity. It reads existing relationships before adding a missing approved relationship. It never removes an unrelated relationship to force a match. Changed content or extra relationships block readback rather than trigger a rewrite. It neither closes nor edits a parent's fields.
+Resume preserves submitted intent and checks the authenticated ownership identity. It reads existing relationships before adding a missing submitted relationship. It never removes an unrelated relationship to force a match. Changed content or extra relationships block readback rather than trigger a rewrite. It neither closes nor edits a parent's fields.
 
-MCP records created before the approved-binding format cannot resume transparently. Resume requires a valid binding in the original approved intent and does not migrate older records or adopt their tickets. Keep the original intent and record intact, and inspect saved identities and operations before deciding how to recover.
+MCP records created before the binding format cannot resume transparently. Resume requires a valid binding in the original submitted intent and does not migrate older records or adopt their tickets. Keep the original intent and record intact, and inspect saved identities and operations before deciding how to recover.
 
-For an uncertain create, provider idempotency takes precedence when available. Otherwise reconciliation compares tracker candidates with the pre-create identity set, mapped author matched against the recorded owner, creation window, approved content, labels, and absence of readiness. The [ownership limitation](#ownership-readiness-and-body-comparison) applies when the approved MCP binding maps mutable reporter rather than creator. MCP compares normalized bodies. Other modes require the approved bytes. Only one new owned matching candidate establishes the outcome. Zero candidates or several candidates block publication and report the candidate state. Resume does not blindly create again or adopt preexisting work. GitHub timestamps use second precision, so the saved window starts at the attempted second. Identity-set exclusion still applies.
+For an uncertain create, provider idempotency takes precedence when available. Otherwise reconciliation compares tracker candidates with the pre-create identity set, mapped author matched against the recorded owner, creation window, submitted content, labels, and absence of readiness. The [ownership limitation](#ownership-readiness-and-body-comparison) applies when the submitted MCP binding maps mutable reporter rather than creator. MCP compares normalized bodies. Other modes require the submitted bytes. Only one new owned matching candidate establishes the outcome. Zero candidates or several candidates block publication and report the candidate state. Resume does not blindly create again or adopt preexisting work. GitHub timestamps use second precision, so the saved window starts at the attempted second. Identity-set exclusion still applies.
 
 If tickets were published outside the publisher, inspect their identities and the saved operations before attempting recovery. A blocked record without identities or operations cannot adopt those tickets. For MCP, the duplicate-risk guard stops matching tickets from being created again. Keep the record intact and report the candidates. External publication is not permission to resume blindly, fabricate saved operations, or discard the record.
 
-A record lock excludes another publisher. Resume recovers a lock whose recorded process no longer exists. A live or unknown owner is refused. If lock recovery itself was interrupted and left `<record>.recover`, establish that no publisher or recovery process owns it before removing that recovery directory. Keep the durable record and approved input intact. Do not remove the record to bypass uncertain reconciliation or use a changed input to redesign approved work.
+A record lock excludes another publisher. Resume recovers a lock whose recorded process no longer exists. A live or unknown owner is refused. If lock recovery itself was interrupted and left `<record>.recover`, establish that no publisher or recovery process owns it before removing that recovery directory. Keep the durable record and submitted input intact. Do not remove the record to bypass uncertain reconciliation or use a changed input to redesign submitted work.

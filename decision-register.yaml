@@ -92,7 +92,7 @@ items:
     tree: b1568cde855a189b16e5d7dd8a0fa4c3f156bc2e
     disposition: adapt
     artifacts: [plugin/skills/setup-vstack]
-    reason: "Uses current MCP descriptions, schemas, and recorded tracker and Code host facts. Preserves CI hand edits and confirms CI and Code host drafts together, including the default End state and the Landing method that the Code host allows, recommending `merge` on GitHub. Lists all eight tracker readers and the final Verifier as a Verify skill consumer. Removes obsolete diagram and visual-judge setup claims (#204, #205, #206, #207, ADR 0035, ADR 0038, ADR 0043, ADR 0055, ADR 0060)."
+    reason: "Write, commit, and push Standard-mode config after section choices without Write it, preserving Private-mode and dirty-file boundaries."
   - id: matt/tdd
     upstream: matt
     kind: skill
@@ -116,7 +116,7 @@ items:
     tree: b32c94e5a51c24ee9c41fcb7fe9ea9fff9af6369
     disposition: adapt
     artifacts: [plugin/skills/to-tickets]
-    reason: "Publishes approved MCP bindings validated against live schemas, with field-path readback, separate readiness, owner facts, normalized bodies, and duplicate-risk checks (#369, ADR 0035, ADR 0058). Keeps Flow approval and drift coverage."
+    reason: "Publish the drift-checked breakdown and drafted MCP binding without approval, retaining publisher guards under ADR 0066."
   - id: matt/triage
     upstream: matt
     kind: skill
@@ -132,7 +132,7 @@ items:
     tree: 8ec0462658381bd1606d3f9db14ffc67df6a2a43
     disposition: adapt
     artifacts: [plugin/skills/wayfinder]
-    reason: "Charting research fans out and user questions use the Flow page with one Stage per ticket. MCP operations use current descriptions, schemas, directional blockers, and close transition. Tracker keys retain their original spelling and underscores, with case-insensitive lookup (#171, #207, ADR 0035)."
+    reason: "Post a resolved ticket and update its map in the same run without next-prompt confirmation, retaining live HITL answers."
   - id: matt/wizard
     upstream: matt
     kind: skill
@@ -1130,6 +1130,7 @@ originals:
   - plugin/skills/vstack-figures
   - plugin/skills/clean-wt
   - plugin/skills/tune-llm-flow
+  - plugin/rules/vstack-posting.md
 utility:
   - plugin/skills/unslop
   - plugin/skills/technical-writing

@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Tracker and config writes proceed without approval in to-tickets, wayfinder, and setup-vstack. Posts on work the user does not own remain draft-first (#422)."
+  ]
+}

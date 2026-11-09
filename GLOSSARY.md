@@ -157,7 +157,7 @@ The service that holds a repo's remote and its PRs, such as GitHub, GitLab, or B
 _Avoid_: git host, VCS host, forge
 
 **MCP binding**:
-Which tool of an MCP issue tracker to-tickets uses for each tracker action, what each call receives from the approved tickets and project facts, and where a read finds each issue field. The agent drafts it from the server's live tool descriptions, and the user approves it with the ticket breakdown. The publisher checks it against the live server before it publishes or resumes.
+Which tool of an MCP issue tracker to-tickets uses for each tracker action, what each call receives from the drafted tickets and project facts, and where a read finds each issue field. The agent drafts it from the server's live tool descriptions and publishes it beside the ticket breakdown without an approval question. The publisher checks it against the live server before it publishes or resumes.
 _Avoid_: tool discovery, tool map, route (routes belong to CLI trackers)
 
 **Landing method**:

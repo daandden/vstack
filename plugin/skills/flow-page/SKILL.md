@@ -154,7 +154,7 @@ Only a pick or a resolved reading is the user's answer. Everything else keeps th
 
 Submit a `close`. Write each decision as what is now true, in one or two plain sentences, not as the option label. Add `extra` bullets only when they apply: "Unchanged from earlier: ...", "Glossary: ...", and "Headless, not user-confirmed" for a close in a headless run. Then submit `{ "kind": "stage", "state": "finished" }` with its `retire` reasons when the Stage's skill finishes. If a retired question still matters later, ask it in the current Stage with `again`.
 
-Finishing a Stage authorizes nothing. An action that needs the user's confirmation of the summary, such as a tracker write, still waits for the user's next prompt, as the calling skill says.
+Finishing a Stage authorizes nothing. Follow the calling skill's action policy. A required explicit user pick still gates its action, while tracker and config writes that the calling skill authorizes proceed without a next-prompt confirmation.
 
 ## Record progress
 
