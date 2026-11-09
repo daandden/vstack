@@ -18,6 +18,10 @@ You need omp, Bun, git, and working HTTPS credentials for github.com. This repo 
 
 The Flow reader ships prebuilt under `plugin/skills/flow-page/reader/`. Installation needs no reader build.
 
+The package also ships the `vstack-flow` Tern window plugin at `plugin/tern/vstack-flow`. To link it, run `tern plugin link <clone>/plugin/tern/vstack-flow`. A Cmd-click on a local Flow link opens its page beside the opener pane or navigates the tab's open page of that Flow. Cmd+Option-click and other web links keep Tern's own behavior. The link points into vstack, so updates need no separate plugin copy.
+
+After vstack ships this plugin, remove the old `vstack-flow/` directory, README row, AGENTS.md section, and Verify recipe from `daandden/tern-plugins` in a separate change.
+
 Setup handles existing Matt configurations through Migration. See the [setup guide](plugin/skills/setup-vstack/SKILL.md) for configuration, CI, and optional capabilities.
 
 To update, run `git pull` and `bun install --frozen-lockfile` in the clone, then start a new omp session.

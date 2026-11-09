@@ -24,6 +24,14 @@ The repo scripts need Bun. Run `bun run test` and `bun scripts/check-register.ts
 
 Only `plugin/` ships. Upstreams are fetched when needed, never stored in this repo.
 
+### Tern Flow links
+
+`plugin/tern/vstack-flow/` is the separately linked Tern window plugin. Run `tern plugin link <installed vstack>/tern/vstack-flow` to load it in Tern. Its Luau source and manifest ship with the omp package. The [Tern routing Verify recipe](../.omp/skills/verify-vstack/features/vstack-flow.md) drives an isolated Tern instance.
+
+The window plugin claims only local HTTP Flow URLs on `127.0.0.1` or `localhost`, with `/f/<project>/<flow>/<64 hex>/` followed by an optional fragment. User information, queries, and extra path segments stay with Tern. Tern applies `link_click` before calling the route. The route leaves clicks with `mods.alt` to Tern too.
+
+Page reuse matches the URL through the capability segment and stays within the opener's tab. A floating opener uses the tiled pane underneath it. The plugin opens pages with the browser operation `open`, then `release`s them so they do not stay under automation. Tern gives those pages the `agent` website data store. Tern's own page opens use its shared store. `cx.layout:open` is not a substitute because it follows `link_target`, which may open an external browser.
+
 ### Flow reader delivery
 
 The reader source lives under `reader/`. Its production bundle ships prebuilt under `plugin/skills/flow-page/reader/`. Installation and normal launch require no build or development server.

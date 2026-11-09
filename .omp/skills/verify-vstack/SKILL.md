@@ -1,6 +1,6 @@
 ---
 name: verify-vstack
-description: Drives the vstack omp plugin from a checkout as a user and captures proof. Covers fresh omp sessions, skills, agents, rules, model-free Commands, Bun CLIs, Pele figures, the Flow page served by the Local Flow host, and maintainer scripts. Use before reporting plugin/ or scripts/ changes done.
+description: Drives the vstack omp plugin from a checkout as a user and captures proof. Covers fresh omp sessions, skills, agents, rules, model-free Commands, Bun CLIs, Pele figures, the Flow page served by the Local Flow host, the vstack-flow Tern plugin, and maintainer scripts. Use before reporting plugin/ or scripts/ changes done.
 ---
 
 # Verify vstack
@@ -13,6 +13,7 @@ The user-facing parts:
 - Bun CLIs that skills run through `bun "$(realpath skill://<skill>/scripts/<script>.ts)"`, such as the Scratch scripts under vstack-tmp and the flow-page script.
 - The HTML pages those scripts serve, such as the Flow page at its live `http://127.0.0.1` URL. You view them in a browser. The Flow page needs the host; it has no `file://` form.
 - The maintainer CLIs in `scripts/` (`check-register.ts`, `vstack-maintain.ts`, `addon-judge-check.ts`, `load-smoke.sh`), documented in the repo `docs/maintainer.md`.
+- The `vstack-flow` Tern window plugin in `plugin/tern/vstack-flow/`, linked and driven in its own isolated native Tern instance.
 
 `features/README.md` indexes the feature map. Read it, then the feature file for the change, before you drive anything.
 
@@ -33,6 +34,8 @@ For the Flow question panel, use the native helper in `features/flow-page.md` wi
 Never use your already-running omp session as proof. It loaded the plugin when it started, so it does not show edits made since then. Stub drives use the throwaway home. The real-model enrollment recipe verifies instruction following with the actual provider in a fresh session, not the shared session.
 
 Reasoning-led skill behavior is an exception to the stub-model isolation below. For architecture assessment and agreement, use `features/architecture-agreement.md` and skill-creator's actual isolated evaluations with the Session model and real `HOME`. Keep their Flow homes and outputs disposable and separate. Scripted replies prove tool plumbing, never the model's reasoning or a human's consent.
+
+The Tern plugin recipe uses `scripts/tern-verify`, ported from `tern-plugins`. It links only the checkout's `plugin/tern/vstack-flow` into a new config directory, with separate daemon and control sockets. Read `features/README.md`'s Tern baseline and `features/vstack-flow.md` for Launch, Doctor, Drive, Evidence, and Cleanup. Every Tern command uses the helper. A bare `tern` command can act on the user's working window.
 
 ## Launch
 
@@ -99,7 +102,7 @@ Each feature file in `features/` gives the exact commands and the proof for one 
 - Pages: open the page's URL in the omp `browser` with `app: { tern: false }` and a `viewport` of `{ width: 1280, height: 900 }`. For the Flow page, that is the receipt's `live.url`. Read state with `tab.ariaSnapshot()` and act by role and name.
 - Maintainer CLIs: run them with the bash tool's `cwd` set to `CHECKOUT`, as `docs/maintainer.md` documents. Capture the command, stdout, stderr, and exit code.
 
-Keep every verification browser open outside the user's working Tern window. Apply the explicit non-Tern backend selection on each open, including diagnostics, retries, recovery, and delegated verification. An earlier open's backend flags do not constrain later calls or workers. Pass this policy in verification handoffs and inspect each open result to confirm the actual backend.
+Keep every verification browser outside the user's working Tern window. Ordinary page checks use the explicit non-Tern backend on every open, including diagnostics, retries, recovery, and delegated verification. The Tern plugin recipe instead uses only its helper-owned isolated Tern window. Pass this policy in verification handoffs and inspect each open result to confirm the actual backend.
 
 Opening a browser, capturing a screenshot, and reading an image are separate operations. Image inspection is not evidence that a browser pane opened.
 
@@ -141,6 +144,7 @@ Never stop a process because of its name. Never delete the run dir itself. The `
 All paths are relative to `SKILL_DIR`.
 
 - `scripts/drive.ts`: one omp RPC session on the run's throwaway home, against the stub model. See Launch.
+- `scripts/tern-verify start|doctor|ctl|tern|type|shot|lens|stop <run> [args...]`: owns and drives one isolated Tern instance. `VSTACK_CHECKOUT=<checkout>` chooses the packaged Tern plugin. Use `features/vstack-flow.md` and its baseline in `features/README.md`. The `lens` command installs a disposable native-link fixture only in that instance.
 - `scripts/ticket-publication.ts <source checkout> <new evidence dir> [fixture checkout] [complete|blocked]`: drives the public publisher API with the documented MCP binding and captured provider fixtures. Use `features/ticket-publication.md`.
 - `scripts/flow-questions-tui.py --checkout <checkout> --omp-tools <plugin path> --run <new run> --case tui|timeout|cancel|retry|later-round|offline|abort|ratchet [--tern]`: drives the UI-only Flow panel beside the unchanged picker. `--tern` retains native trees, full-resolution lossless WebP shots, a real panel-link click and its browser destination, the panel's removal, keyboard inputs, session history, model requests, and a Flow export. The later-round case publishes and answers a new question after recording the first round's answers. The Ratchet case uses its actual eval prelude and verifies reused approval. Use `features/flow-page.md`.
 - `scripts/load.sh <checkout> <run dir>`: the repo's load gate for one run. See Launch.
