@@ -4,7 +4,7 @@ Read this reference when navigating the page or explaining its keyboard controls
 
 A sticky header stays at the top of the page. Its first row has the tabs: Overview, one tab per Stage in the order the Stages opened, and Topics when the Flow has Topic notes, then the Stages button. Its second row is the selected tab's Jump row. On a narrow screen both rows wrap. The Flow heading and the theme control sit below the header and scroll away. The theme control follows the system light or dark preference until the reader picks Light or Dark, and the page remembers that choice.
 
-When the Flow has a Matt flow path, a banner above the Flow heading shows the path and current position from the recorded Stages.
+When the Flow has a Matt flow path, the Map panel shows the path and current position from the recorded Stages.
 
 A link with no fragment opens the tab of the first open question in `n` order, or Overview when no question is open. A fragment opens the tab that holds its target.
 
@@ -14,9 +14,9 @@ Historical content whose exact publication order was not recorded sits at the to
 
 `n` cycles through actionable questions, newest in-progress Stage first, then older in-progress Stages. Finished Stages, retired questions, settled answers, and superseded asks are excluded. Stage labels include ticket ids when known. Unticketed repeats get distinct labels.
 
-`t` or the Stages button opens a clickable Stage-only tree with each Stage's state and open-question count. A continued Stage sits under its parent. This tree does not describe ticket dependencies. Stage links open the Stage's tab.
+`m` opens the Map panel. It has a Matt flow path tab when the Flow has a path, and a Stages tab with each Stage's state and open-question count. A continued Stage sits under its parent. The Stages button opens the panel at its Stages tab. Inside the panel, `h` and `l` switch tabs, `j` and `k` select path steps or Stages, and Enter opens the selected item's Stage tab when one is recorded. A path step with repeated Stages also has a link to each Stage. Arrow keys pan a graph larger than the panel without changing the page's tab or selection. Escape, Close, a click outside the panel, or `m` closes it. The `t` key does nothing.
 
-`j` and `k`, or the down and up arrows, select reading stops in the selected tab, update the URL fragment, and move focus to the target. The Jump row marks the block that holds the stop; the stop itself has no focus ring. `h` and `l`, or the left and right arrows, select the previous and next tab and stop at the first and last. Content links open the tab that holds their destination, including earlier revisions inside disclosures. Old fragment links from migrated pages and earlier tab links still reach their content. Shortcuts do nothing while typing in an input, textarea, select, or editable content, inside media controls, or with a modifier key held.
+With the Map panel closed, `j` and `k`, or the down and up arrows, select reading stops in the selected tab, update the URL fragment, and move focus to the target. The Jump row marks the block that holds the stop; the stop itself has no focus ring. `h` and `l`, or the left and right arrows, select the previous and next tab and stop at the first and last. Content links open the tab that holds their destination, including earlier revisions inside disclosures. Old fragment links from migrated pages and earlier tab links still reach their content. Shortcuts do nothing while typing in an input, textarea, select, or editable content, inside media controls, or with a modifier key held.
 
 Diagrams keep their intrinsic label size rather than shrinking to fit a narrow screen. Swipe or scroll inside a wide diagram to read the rest. For keyboard panning, Tab to the diagram and use the arrow keys; those keys do not move the page's reading stop while the diagram has focus. Tab out to resume reading navigation. Captured Mermaid source and historical Pele SVGs follow the same rule in both themes.
 

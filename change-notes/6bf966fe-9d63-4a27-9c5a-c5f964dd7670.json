@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "#426: Move the Matt flow path and Stage tree into the Map panel on m, with tab and item navigation; remove the path banner and t shortcut."
+  ]
+}

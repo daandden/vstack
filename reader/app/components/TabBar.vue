@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { flow } from "~/composables/reader";
-import { current, measureHeader, tab, treeOpen } from "~/composables/navigation";
+import { current, mapOpen, mapTab, measureHeader, tab } from "~/composables/navigation";
 import { blockLabel } from "~/utils/flow";
 
 const f = computed(() => flow.value!);
@@ -36,7 +36,7 @@ onBeforeUnmount(() => sizing?.disconnect());
       </li>
       <li v-if="f.topics.length"><a href="#topics" :aria-current="tab === 'topics' ? 'page' : undefined">Topics</a></li>
       <li v-if="f.stages.length">
-        <button type="button" class="link" aria-haspopup="dialog" aria-keyshortcuts="t" @click="treeOpen = true">Stages <kbd>t</kbd></button>
+        <button type="button" class="link" aria-haspopup="dialog" aria-keyshortcuts="m" @click="mapTab = 'stages'; mapOpen = true">Stages <kbd>m</kbd></button>
       </li>
     </ul>
     <nav v-if="jumps.length" class="jump-row" aria-label="In this tab">

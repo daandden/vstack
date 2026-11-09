@@ -229,3 +229,116 @@ test("at 360px the tab row wraps without page overflow and fragment targets land
     await context.close();
   }
 }, 120_000);
+
+test("Map keys select Stages without moving page tabs, arrows pan, and dismissal restores page navigation", async () => {
+  const a = cli(["open", "--skill", "grill-me", "--title", "Map keyboard controls"]);
+  const pending = submit(a.flow, a.stage, [{ kind: "round", questions: [question("map-q", "Keep the map controls?")] }]);
+  const children = Array.from({ length: 24 }, () => cli(["open", "--skill", "research", "--flow", a.flow, "--parent", a.stage]));
+  const context = await browser.newContext({ viewport: { width: 320, height: 700 } });
+  try {
+    const page = await context.newPage();
+    await page.goto(a.live.url);
+    await page.locator(".bar .tabs").waitFor();
+    const map = page.getByRole("dialog", { name: "Map", exact: true });
+    const pageTab = await selected(page);
+    const initialHash = await hash(page);
+    await page.keyboard.press("t");
+    expect(await map.isVisible()).toBe(false);
+    for (const key of ["Control+m", "Meta+m", "Alt+m", "Shift+m"]) {
+      await page.keyboard.press(key);
+      expect(await map.isVisible()).toBe(false);
+    }
+    await page.keyboard.press("m");
+    await map.waitFor();
+    expect(await map.getByRole("tab", { name: "Matt flow path", exact: true }).getAttribute("aria-selected")).toBe("true");
+    await page.keyboard.press("l");
+    expect(await map.getByRole("tab", { name: "Stages", exact: true }).getAttribute("aria-selected")).toBe("true");
+    const stageLinks = map.locator(".tree a");
+    expect(await stageLinks.count()).toBe(25);
+    expect(await stageLinks.first().evaluate((el) => el === document.activeElement)).toBe(true);
+    expect(await map.locator(".tree > li > .quiet").textContent()).toContain("In progress · 1 open");
+    expect(await map.locator(".tree > li > ul > li").count()).toBe(24);
+    await page.keyboard.press("j");
+    expect(await stageLinks.nth(1).evaluate((el) => el === document.activeElement)).toBe(true);
+    await page.keyboard.press("k");
+    expect(await stageLinks.first().evaluate((el) => el === document.activeElement)).toBe(true);
+    const pane = map.getByRole("tabpanel", { name: "Stages", exact: true });
+    await page.keyboard.press("ArrowDown");
+    const panned = await pane.evaluate((el) => el.scrollTop);
+    expect(panned).toBeGreaterThan(0);
+    await page.keyboard.press("ArrowUp");
+    expect(await pane.evaluate((el) => el.scrollTop)).toBeLessThan(panned);
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowLeft");
+    expect(await selected(page)).toBe(pageTab);
+    expect(await hash(page)).toBe(initialHash);
+    await page.keyboard.press("h");
+    expect(await map.getByRole("tab", { name: "Matt flow path", exact: true }).getAttribute("aria-selected")).toBe("true");
+    await page.keyboard.press("Escape");
+    await map.waitFor({ state: "hidden" });
+    const stagesButton = page.getByRole("button", { name: "Stages m", exact: true });
+    await stagesButton.click();
+    await map.waitFor();
+    expect(await map.getByRole("tab", { name: "Stages", exact: true }).getAttribute("aria-selected")).toBe("true");
+    await page.keyboard.press("j");
+    await page.keyboard.press("Enter");
+    await map.waitFor({ state: "hidden" });
+    await page.locator(`.bar .tabs a[href="#${children[0].stage}"][aria-current="page"]`).waitFor();
+    await stagesButton.click();
+    await map.getByRole("button", { name: "Close", exact: true }).click();
+    await map.waitFor({ state: "hidden" });
+    expect(await stagesButton.evaluate((el) => el === document.activeElement)).toBe(true);
+    await page.keyboard.press("m");
+    await map.waitFor();
+    await page.mouse.click(1, 1);
+    await map.waitFor({ state: "hidden" });
+    await page.keyboard.press("h");
+    expect(await selected(page)).toBe(a.stage);
+    await page.keyboard.press("n");
+    expect(await hash(page)).toBe(pending.refs["map-q"]);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
+  } finally {
+    await context.close();
+  }
+}, 120_000);
+
+test("Map shortcuts ignore editable controls and modified keys", async () => {
+  const a = cli(["open", "--skill", "research", "--title", "Typing with Map"]);
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    await page.goto(a.live.url);
+    await page.locator(".bar .tabs").waitFor();
+    const map = page.getByRole("dialog", { name: "Map", exact: true });
+    for (const inside of [false, true]) {
+      if (inside) {
+        await page.keyboard.press("m");
+        await map.waitFor();
+      }
+      for (const tag of ["input", "textarea", "select", "div"]) {
+        await page.evaluate(({ tag, inside }) => {
+          const el = document.createElement(tag);
+          el.id = "typing-probe";
+          if (tag === "div") el.contentEditable = "true";
+          (inside ? document.querySelector("#map-stages")! : document.body).append(el);
+          el.focus();
+        }, { tag, inside });
+        const before = page.url();
+        for (const key of ["m", "h", "l", "j", "k", "n", "t", "ArrowDown", "ArrowRight"]) await page.keyboard.press(key);
+        expect(await map.isVisible()).toBe(inside);
+        expect(page.url()).toBe(before);
+        expect(await page.locator("#typing-probe").evaluate((el) => el === document.activeElement)).toBe(true);
+        await page.locator("#typing-probe").evaluate((el) => el.remove());
+      }
+      if (inside) {
+        for (const key of ["Control+m", "Meta+m", "Alt+m", "Shift+m", "Control+j", "Alt+l"]) {
+          await page.keyboard.press(key);
+          expect(await map.isVisible()).toBe(true);
+          expect(await map.getByRole("tab", { name: "Stages", exact: true }).getAttribute("aria-selected")).toBe("true");
+        }
+      }
+    }
+  } finally {
+    await context.close();
+  }
+}, 120_000);

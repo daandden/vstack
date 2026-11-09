@@ -1,7 +1,8 @@
 import { flow } from "~/composables/reader";
 
 export const current = ref<string>();
-export const treeOpen = ref(false);
+export const mapOpen = ref(false);
+export const mapTab = ref("path");
 export const tab = ref("overview");
 
 const shown = (el: Element) => el.getClientRects().length > 0;
@@ -143,12 +144,12 @@ const editable = (el: EventTarget | null) => el instanceof Element && ((el as HT
 
 export function onKey(e: KeyboardEvent) {
   if (e.defaultPrevented || e.isComposing || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey || editable(e.target)) return;
-  if (e.key === "t") {
+  if (e.key === "m") {
     e.preventDefault();
-    treeOpen.value = !treeOpen.value;
+    mapOpen.value = !mapOpen.value;
     return;
   }
-  if (treeOpen.value) return;
+  if (mapOpen.value) return;
   if (e.key === "n") {
     const queue = (flow.value?.next ?? []).map((id) => document.getElementById(id)).filter((el): el is HTMLElement => !!el);
     if (!queue.length) return;
@@ -179,5 +180,5 @@ export function onClick(e: MouseEvent) {
     if (location.hash !== `#${id}`) history.pushState(null, "", `#${id}`);
     void goTo(id, true);
   }
-  treeOpen.value = false;
+  mapOpen.value = false;
 }
