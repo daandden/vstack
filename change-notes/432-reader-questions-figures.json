@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Move Flow questions, answers, Assumed picks, summaries, Backgrounds, Topic notes, Term notes, and figures to themed Tailwind utilities while preserving Catppuccin colors, Source disclosures, diagram focus and keyboard panning."
+  ]
+}

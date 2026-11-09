@@ -30,10 +30,10 @@ const ask = (id: string) => f.value.question.get(id);
       </section>
       <section v-if="terms.length" aria-labelledby="context-terms">
         <h2 id="context-terms" class="eyebrow">Term notes</h2>
-        <dl class="terms">
+        <dl class="grid gap-0.5 [&_dt]:font-semibold [&_dt]:text-flow-teal [&_dd+dt]:mbs-1.5">
           <template v-for="{ q, t } in terms" :key="`${q.id}:${t.term}`">
             <dt><span v-html="inline(t.term)" /> <a class="quiet" :href="`#${q.id}`">on Q{{ q.q }}</a></dt>
-            <dd v-html="inline(t.text)" />
+            <dd class="ms-0" v-html="inline(t.text)" />
           </template>
         </dl>
       </section>

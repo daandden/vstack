@@ -53,7 +53,7 @@ watch(() => `${props.a.file}\n${props.a.focus?.join("\n") ?? ""}`, draw);
 </script>
 
 <template>
-  <img v-if="mode === 'image'" :src="src" :alt="a.caption">
-  <p v-else-if="mode === 'failed'" class="unavailable"><span class="label">Diagram unavailable</span> {{ error }}</p>
-  <div v-else ref="host" class="diagram" role="img" :aria-label="a.caption" :aria-busy="mode === 'pending'" :data-render="mode" tabindex="0" @keydown.stop="pan" />
+  <img v-if="mode === 'image'" class="rounded bg-accented" :src="src" :alt="a.caption">
+  <p v-else-if="mode === 'failed'" class="flex flex-wrap items-baseline gap-x-3 gap-y-1"><span class="font-semibold text-error">Diagram unavailable</span> {{ error }}</p>
+  <div v-else ref="host" class="diagram rounded-md bg-elevated px-3 py-2.5" role="img" :aria-label="a.caption" :aria-busy="mode === 'pending'" :data-render="mode" tabindex="0" @keydown.stop="pan" />
 </template>

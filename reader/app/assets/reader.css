@@ -16,10 +16,10 @@ body {
   color: var(--text);
   font: var(--fs-body)/1.55 var(--font-sans);
 }
-h1, h2, h3, .figure-title { margin: 0; color: var(--text); text-wrap: balance; font-family: var(--font-heading); line-height: 1.35; }
+h1, h2, h3 { margin: 0; color: var(--text); text-wrap: balance; font-family: var(--font-heading); line-height: 1.35; }
 h1 { font-size: var(--fs-title); font-weight: 700; }
 h2 { font-size: var(--fs-title); font-weight: 650; }
-h3, .figure-title { font-size: var(--fs-body); font-weight: 650; }
+h3 { font-size: var(--fs-body); font-weight: 650; }
 p, ul, ol, dl, dd, figure, pre { margin: 0; }
 a { color: var(--blue); text-underline-offset: 0.2em; touch-action: manipulation; }
 a:active { color: var(--lavender); }
@@ -35,11 +35,11 @@ img, svg, video { display: block; max-inline-size: 100%; block-size: auto; }
 
 
 .quiet, .label, time { color: var(--subtext0); }
-.quiet, time, .eyebrow, .meta, .entry-meta, .why { font-size: var(--fs-small); }
+.quiet, time, .eyebrow, .meta, .entry-meta { font-size: var(--fs-small); }
 .label { font-weight: 600; }
 .eyebrow { color: var(--subtext0); font-weight: 650; text-transform: uppercase; letter-spacing: 0.04em; }
 .notice { padding-block: 0.5rem; padding-inline: 0.75rem; border-inline-start: 2px solid var(--peach); border-radius: 0.25rem; background: var(--mantle); }
-.meta, .entry-meta, .refs { display: flex; flex-wrap: wrap; gap: 0.125rem 0.875rem; align-items: baseline; color: var(--subtext0); }
+.meta, .entry-meta { display: flex; flex-wrap: wrap; gap: 0.125rem 0.875rem; align-items: baseline; color: var(--subtext0); }
 .prose, .labelled { display: grid; gap: 0.375rem; }
 .bullets { display: grid; gap: 0.125rem; padding-inline-start: 1.25rem; list-style: disc; }
 .bullets > li::marker { color: var(--overlay0); }
@@ -109,56 +109,20 @@ details > summary:active { color: var(--lavender); }
 .entry-meta .state { color: var(--state); font-weight: 600; }
 .ordinal { color: var(--subtext1); font-weight: 700; font-variant-numeric: tabular-nums; }
 
-.question, .result, .background, .topic, .assumed, .summary-block, .document, .doc-section, .comparison, .metrics, .measurement, .attachments { display: grid; gap: 0.625rem; }
-.question > h2 { color: var(--mauve); }
-.qnum { margin-inline-end: 0.625rem; font-variant-numeric: tabular-nums; }
+.result, .document, .doc-section, .comparison, .metrics, .measurement, .attachments { display: grid; gap: 0.625rem; }
 .summary { color: var(--subtext1); }
-.refs { font-size: var(--fs-small); }
-.refs a { text-decoration: none; }
 .entry-id { margin-inline-end: 0.5rem; font-weight: 700; font-variant-numeric: tabular-nums; text-transform: uppercase; }
-.terms { display: grid; gap: 0.125rem; }
-.terms dt { color: var(--teal); font-weight: 600; }
-.terms dd { margin-inline-start: 0; }
-.terms dd + dt { margin-block-start: 0.375rem; }
 .fields { display: grid; grid-template-columns: fit-content(12rem) 1fr; gap: 0.25rem 1rem; align-items: baseline; }
 .fields dt { color: var(--subtext1); font-size: var(--fs-small); font-weight: 600; }
 .fields dd { margin-inline-start: 0; }
-.example { white-space: pre-wrap; }
 .labelled > .label { color: var(--pink); }
 
-.visual, .demo, .runnable { display: grid; gap: 0.375rem; justify-items: start; padding-block: 0.625rem; padding-inline: 0.75rem; border-radius: 0.375rem; background: var(--mantle); }
-.visual { grid-template-columns: minmax(0, 1fr); position: relative; overflow-x: auto; }
-.figure { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.375rem; justify-items: start; }
-.figure-caption { display: grid; gap: 0.25rem; justify-self: stretch; }
-.figure-description { color: var(--subtext1); }
-.figure img, .figure video { border-radius: 0.25rem; background: var(--surface0); }
-.figure > .diagram { padding-block: 0.625rem; padding-inline: 0.75rem; border-radius: 0.375rem; background: var(--mantle); }
-.figure > .runnable { justify-self: stretch; }
-.diagram-measure { position: fixed; inset-block-start: 0; inset-inline-start: 0; visibility: hidden; pointer-events: none; white-space: pre; letter-spacing: normal; word-spacing: normal; font-kerning: normal; font-variant-ligatures: none; }
-.source .kind { color: var(--teal); font-weight: 600; }
-.attachment[data-availability="unavailable"] .kind { color: var(--red); }
-.attachment[data-availability="external"] .kind { color: var(--peach); }
-.unavailable, .download { display: flex; flex-wrap: wrap; gap: 0.25rem 0.75rem; align-items: baseline; }
-.unavailable > .label { color: var(--red); }
+.demo, .runnable { display: grid; gap: 0.375rem; justify-items: start; padding-block: 0.625rem; padding-inline: 0.75rem; border-radius: 0.375rem; background: var(--mantle); }
 .viewer { display: block; inline-size: 100%; aspect-ratio: 16 / 9; border: 1px solid var(--line); background: var(--base); }
 .runnable { justify-items: stretch; }
 .runnable [data-availability="available"] { color: var(--green); font-weight: 600; }
 .runnable [data-availability="unavailable"] { color: var(--peach); font-weight: 600; }
 
-.options { display: grid; padding-inline-start: 0; list-style: none; }
-.option { display: grid; gap: 0.25rem; padding-block: 0.5rem; border-block-start: 1px solid var(--line); }
-.option h3 { color: var(--blue); font-weight: 600; }
-.option[data-picked] h3 { color: var(--yellow); font-weight: 700; }
-.star { margin-inline-start: 0.5rem; color: var(--yellow); font-weight: 700; }
-.trade { display: grid; padding-inline-start: 0; list-style: none; }
-.trade > li { position: relative; padding-inline-start: 1.25rem; }
-.gain::before, .cost::before { position: absolute; inset-inline-start: 0; font-weight: 700; }
-.gain::before { content: "+"; color: var(--green); }
-.cost::before { content: "\2212"; color: var(--red); }
-.why { color: var(--subtext0); }
-.answer { display: grid; gap: 0.25rem; padding-block: 0.375rem; padding-inline-start: 0.75rem; border-inline-start: 2px solid var(--state, var(--overlay0)); }
-.answer .label { color: var(--state, var(--subtext0)); }
-.answer [data-state="retired"] .label { color: var(--overlay0); }
 
 .result > header { display: grid; gap: 0.25rem; }
 .entries { display: grid; gap: 0.75rem; padding-inline-start: 0; list-style: none; }
