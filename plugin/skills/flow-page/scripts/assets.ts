@@ -2,6 +2,7 @@ import { readFileSync, realpathSync, statSync } from "node:fs";
 import { basename, extname, relative, resolve, sep } from "node:path";
 import { createHash } from "node:crypto";
 import { refuse } from "./fields.ts";
+import { palette } from "../../vstack-figures/scripts/palette.ts";
 
 /** A directory a contribution may read files from, already resolved through every symlink. */
 export type Root = { name: "project" | "scratch" | "vstack-domain"; dir: string };
@@ -99,7 +100,7 @@ function locate(path: string, roots: Root[], cwd: string, where: string): { real
 }
 
 /** Reads and checks the file an attachment of `type` names, without writing anything. */
-export function capture(path: string, type: string, roots: Root[], cwd: string, where: string): Captured & { bytes: Uint8Array } {
+export function capture(path: string, type: string, roots: Root[], cwd: string, where: string, focus: string[] = []): Captured & { bytes: Uint8Array } {
   const { real, root } = locate(path, roots, cwd, where);
   const bytes = new Uint8Array(readFileSync(real));
   let ext: string;
@@ -116,8 +117,14 @@ export function capture(path: string, type: string, roots: Root[], cwd: string, 
   } else if (type === "mermaid") {
     let source: string;
     try { source = new TextDecoder("utf-8", { fatal: true }).decode(bytes); } catch { return refuse(where, `${path} is not UTF-8 text`); }
-    const { render } = require("pele") as typeof import("pele");
-    try { render(source.replace(/^\uFEFF/, ""), { links: false, images: false }); } catch (e) { refuse(where, `${path} is not Mermaid that Pele renders: ${(e as Error).message}`); }
+    const { parse, render } = require("pele") as typeof import("pele");
+    try {
+      const config = { flowchart: { curve: "step" as const } };
+      const model = parse(source.replace(/^\uFEFF/, ""), { config });
+      const scope = "pele-capture";
+      const { svg } = render(model, { links: false, images: false, config, ...(model.type === "sankey" ? { idPrefix: scope } : {}) });
+      palette(svg, model, [], focus, scope);
+    } catch (e) { refuse(where, `${path} is not Mermaid that Pele renders: ${(e as Error).message}`); }
     ext = "mmd";
   } else {
     const own = extname(real).slice(1).toLowerCase();

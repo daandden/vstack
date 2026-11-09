@@ -1,5 +1,5 @@
 import { afterAll, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ENV } from "./support/fixture.ts";
@@ -169,7 +169,7 @@ test("captured figures and option previews survive source changes and serve only
 test("a Mermaid diagram source is captured once, satisfies diagram needs, and is served as the stored text", async () => {
   const home = world();
   const opened = ok(run(home, ["open", "--skill", "grill-me", "--title", "Diagram source"]));
-  const source = 'flowchart TD\n  a1["Read the page"] --> a2["Answer the question"]\n';
+  const source = 'flowchart TD\n  a1["Read the page"]:::actor --> a2["Answer the question"]:::ok\n  class a2 ok\n';
   writeFileSync(join(root, "reading.mmd"), source);
   const diagram = { kind: "attachment", ref: "flow", type: "mermaid", caption: "Reading then answering", origin: "Mermaid source reading.mmd", path: "reading.mmd", focus: ["a2"] };
   const round = (figure: object) => ({ kind: "round", questions: [{ ref: "order", title: "Which order?", description: "Compare the reading order.", needs: [{ need: "Follow today's reading steps.", kind: "context-diagram" }, { need: "Compare where each option answers.", kind: "option-diagram" }], figures: [{ ...figure, kind: "context-diagram" }, { ...figure, kind: "option-diagram" }], options: [{ label: "Read first", does: "Reads before answering", gains: ["Context"], costs: ["Time"] }] }] });
@@ -202,6 +202,51 @@ test("a Mermaid diagram source is captured once, satisfies diagram needs, and is
     expect(ok(run(home, ["show"]))).toEqual(before);
   }
   ok(run(home, ["host", "stop"]));
+});
+
+test.each([
+  ["unknown role", "flowchart LR\n A:::green --> B\n", [], "Unknown color role: green"],
+  ["conflicting roles", "flowchart LR\n A:::ok --> B\n class A bad\n", [], "Element A has more than one color role"],
+  ["classDef paint", "flowchart LR\n A:::ok --> B\n classDef ok fill:#a6e3a1\n", [], "The Mermaid sets its own color"],
+  ["unused classDef paint", "flowchart LR\n A --> B\n classDef unused fill:red\n", [], "The Mermaid sets its own color"],
+  ["style paint", "flowchart LR\n A --> B\n style B stroke:#f00\n", [], "The Mermaid sets its own color"],
+  ["linkStyle paint", "flowchart LR\n A --> B\n linkStyle 0 stroke:red\n", [], "The Mermaid sets its own color"],
+  ["missing focus", "flowchart LR\n A --> B\n", ["Missing"], "Missing focus target: Missing"],
+  ["ambiguous focus", "flowchart LR\n A A@--> B\n", ["A"], "Ambiguous focus target: A"],
+  ["hidden focus", 'agentflow-beta LR\n flow G[Group]@{ view: collapsed }\n C[Child]\n end\n', ["C"], "No visible geometry"],
+] as const)("submit refuses %s with the export's message and commits none of the contribution", (name, source, focus, message) => {
+  const home = world();
+  ok(run(home, ["open", "--skill", "grill-me", "--title", `Figure refusal: ${name}`]));
+  try {
+    writeFileSync(join(root, "valid.mmd"), "flowchart LR\n Start:::actor --> Done:::ok\n");
+    const attachment = { kind: "attachment", ref: "invalid", type: "mermaid", caption: "Figure validation", origin: "Fixture", path: "refused.mmd", ...(focus.length ? { focus } : {}) };
+    const document = (attachments: string[]) => ({ kind: "result", shape: "document", title: "Atomic contribution", sections: [{ heading: "Figures", blocks: attachments.map((figure) => ({ figure })) }] });
+    ok(submit(home, { ...attachment, ref: "seed", path: "valid.mmd", focus: ["Done"] }, document(["seed"])));
+    const before = ok(run(home, ["show"]));
+    const folder = storedFolder(home, before.flow.id);
+    const state = readFileSync(join(folder, "data/state.json"), "utf8");
+    const assets = readdirSync(join(folder, "assets"), { recursive: true });
+    writeFileSync(join(root, "refused.mmd"), source);
+    const exported = Bun.spawnSync([
+      process.execPath, join(import.meta.dir, "../plugin/skills/vstack-figures/scripts/render.ts"),
+      join(root, "refused.mmd"), join(root, "refused.svg"), ...focus.flatMap((id) => ["--focus", id]),
+    ], { stdout: "pipe", stderr: "pipe" });
+    expect(exported.exitCode).toBe(1);
+    expect(exported.stderr.toString()).toContain(message);
+    const refused = submit(home,
+      document(["valid", "invalid"]),
+      { ...attachment, ref: "valid", path: "valid.mmd", focus: ["Done"] },
+      attachment,
+    );
+    expect(refused.code).toBe(1);
+    expect(refused.stdout).toBe("");
+    expect(refused.stderr).toContain(exported.stderr.toString().trim());
+    expect(ok(run(home, ["show"]))).toEqual(before);
+    expect(readFileSync(join(folder, "data/state.json"), "utf8")).toBe(state);
+    expect(readdirSync(join(folder, "assets"), { recursive: true })).toEqual(assets);
+  } finally {
+    ok(run(home, ["host", "stop"]));
+  }
 });
 
 test("the reader shell allows only its own scripts and same-origin resources", async () => {

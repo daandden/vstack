@@ -110,7 +110,7 @@ export type Attachment = {
   bundle?: { entry: string; files: { path: string; file: string; size: number }[] };
 };
 export type Io = {
-  capture(path: string, type: AttachmentType, where: string): { revision: string; file: string; size: number; name: string; from: { root: string; path: string } };
+  capture(path: string, type: AttachmentType, where: string, focus?: string[]): { revision: string; file: string; size: number; name: string; from: { root: string; path: string } };
   /** The canonical file `path` names, resolved from the working directory, or from the named `root` when given. */
   canonical(path: string, where: string, root?: string): { file: string; root: string; sha256: string };
 };
@@ -1242,7 +1242,7 @@ function parseAttachment(o: Obj, where: string, stage: string, id: string, time:
   if (focus && (focus.length > 2 || focus.some((f) => !/^[A-Za-z0-9_][A-Za-z0-9_.:-]*$/.test(f)))) refuse(where, "focus must list one or two Mermaid ids, each of letters, digits, _, ., :, or -");
   const marked = focus ? { focus } : {};
   if (o.unavailable !== undefined) return { ...base, availability: "unavailable", reason: text(o, "unavailable", where), ...marked };
-  const c = io.capture(text(o, "path", where), type, where);
+  const c = io.capture(text(o, "path", where), type, where, focus);
   return { ...base, availability: "captured", revision: c.revision, file: c.file, size: c.size, name: c.name, from: c.from, ...marked };
 }
 

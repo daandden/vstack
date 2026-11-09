@@ -485,6 +485,7 @@ function copiedPlugin(): string {
   const skills = join(root, `copy-${n++}`, "skills");
   cpSync(join(SKILLS, "flow-page"), join(skills, "flow-page"), { recursive: true });
   cpSync(join(SKILLS, "vstack-tmp"), join(skills, "vstack-tmp"), { recursive: true });
+  cpSync(join(SKILLS, "vstack-figures"), join(skills, "vstack-figures"), { recursive: true });
   return skills;
 }
 

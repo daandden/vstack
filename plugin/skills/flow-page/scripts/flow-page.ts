@@ -164,8 +164,8 @@ function roots(canonical = false): Root[] {
 
 const captured = new Map<string, Uint8Array>();
 const io: Io = {
-  capture(path, type, where) {
-    const { bytes, ...c } = capture(path, type, roots(), process.cwd(), where);
+  capture(path, type, where, focus) {
+    const { bytes, ...c } = capture(path, type, roots(), process.cwd(), where, focus);
     captured.set(c.file, bytes);
     return c;
   },
@@ -222,7 +222,7 @@ async function main(): Promise<object> {
       const path = join(from, "page.jsonl");
       if (!existsSync(path)) refuse("migrate: this page has no structured page.jsonl state; its handwritten page stays untouched");
       const historical = parseHistorical(readFileSync(path, "utf8"));
-      const migrationIo: Io = { ...io, capture: (path, type, where) => io.capture(resolve(from, path), type, where) };
+      const migrationIo: Io = { ...io, capture: (path, type, where, focus) => io.capture(resolve(from, path), type, where, focus) };
       const migrated = migrateHistorical(historical, "probe", from, time, migrationIo);
       mkdirSync(dir, { recursive: true });
       return withLock(dir, () => {
