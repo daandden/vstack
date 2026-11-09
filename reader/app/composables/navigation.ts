@@ -150,7 +150,9 @@ export function onKey(e: KeyboardEvent) {
   }
   if (treeOpen.value) return;
   if (e.key === "n") {
-    const queue = (flow.value?.next ?? []).map((id) => document.getElementById(id)).filter((el): el is HTMLElement => !!el);
+    const focusedStage = flow.value?.stage.has(tab.value) ? tab.value : undefined;
+    const queue = (flow.value?.next ?? []).map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => !!el && (!focusedStage || tabOf(el) === focusedStage));
     if (!queue.length) return;
     e.preventDefault();
     const at = queue.findIndex((el) => el.id === current.value);

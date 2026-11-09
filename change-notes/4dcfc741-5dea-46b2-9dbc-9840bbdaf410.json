@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Keep the Flow page's n key within the Focused Stage's open questions, with wrapping and an empty-Stage message. Overview and Topics retain Flow-wide navigation."
+  ]
+}

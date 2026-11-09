@@ -6,13 +6,15 @@ A sticky header stays at the top of the page. Its first row has the tabs: Overvi
 
 When the Flow has a Matt flow path, a banner above the Flow heading shows the path and current position from the recorded Stages.
 
-A link with no fragment opens the tab of the first open question in `n` order, or Overview when no question is open. A fragment opens the tab that holds its target.
+A link with no fragment opens the tab of the first open question in Flow-wide order, or Overview when no question is open. A fragment opens the tab that holds its target.
 
 A Stage tab starts with the Stage's state, parent, and children, then lists that Stage's content in first-publication order. Backgrounds, Topic notes, questions, Results, Assumed picks, and summaries keep their original positions. Each published block shows its position in the whole Flow, so gaps in the numbers mark content published in other Stages meanwhile. Answers and Result revisions update those blocks in place, and earlier Result revisions remain available in disclosures. Overview holds progress, read-only observations, and the Stage list. Topics lists every Topic note.
 
 Historical content whose exact publication order was not recorded sits at the top of its Stage tab behind an explicit retained-order boundary. That section is not a claim of cross-type chronology. New contributions follow it in durable publication order.
 
-`n` cycles through actionable questions, newest in-progress Stage first, then older in-progress Stages. Finished Stages, retired questions, settled answers, and superseded asks are excluded. Stage labels include ticket ids when known. Unticketed repeats get distinct labels.
+The Focused Stage is the Stage tab the page shows. On a Stage tab, `n` cycles only that Stage's actionable questions in Stage order and wraps to its first. When the Stage has no open questions, `n` stays put and the page says so. A tab click, a fragment, or `h` and `l` changes the Focused Stage.
+
+On Overview and Topics, `n` uses the Flow-wide order: newest in-progress Stage first, then older in-progress Stages. Once it opens a question's Stage tab, the next `n` stays in that Stage. Finished Stages, retired questions, settled answers, and superseded asks are excluded in both cases. Stage labels include ticket ids when known. Unticketed repeats get distinct labels.
 
 `t` or the Stages button opens a clickable Stage-only tree with each Stage's state and open-question count. A continued Stage sits under its parent. This tree does not describe ticket dependencies. Stage links open the Stage's tab.
 
