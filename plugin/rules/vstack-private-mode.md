@@ -7,7 +7,7 @@ alwaysApply: true
 
 The vstack root is `<git common dir>/vstack` when `<git common dir>/vstack/config/` exists (Private mode), else the main checkout's root (first `worktree` line of `git worktree list --porcelain`). The git common dir is `git rev-parse --path-format=absolute --git-common-dir`. The top-level agent resolves the vstack root once and passes it as an absolute path in every subagent prompt; a subagent uses the path from its prompt and never re-resolves the git common dir (in an isolated clone that resolves to the clone's own copy, and what it writes there is lost).
 
-In Standard mode, vstack skills use the tracked paths they name (`docs/vstack/`, `GLOSSARY.md`, `docs/adr/`, `.omp/skills/verify-<app>/`). A `.scratch/` path a skill names is in the checkout the session runs in, never under the vstack root. In Private mode, the vstack root is shared by every worktree of the repo, and git never tracks it.
+In Standard mode, vstack skills use the tracked paths they name (`docs/vstack/`, `GLOSSARY.md`, `docs/adr/`, `.omp/skills/verify-<app>/`). Resolve a `.scratch/` path a skill names against the checkout the session runs in, not through the vstack root. It lands in the main checkout only when the session runs there. In Private mode, the vstack root is shared by every worktree of the repo, and git never tracks it.
 
 In Private mode:
 
