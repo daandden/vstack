@@ -24,6 +24,13 @@ const stop = computed(() => (props.historical ? undefined : ""));
         <component :is="b.ordered ? 'ol' : 'ul'" v-else-if="'list' in b" class="grid list-disc gap-0.5 ps-5 marker:text-dimmed">
           <li v-for="(t, j) in b.list" :key="j" v-html="inline(t, cites)" />
         </component>
+        <ol v-else-if="'steps' in b" aria-label="Procedure steps" role="list" class="list-none ps-3">
+          <li v-for="(step, j) in b.steps" :key="j" class="relative grid gap-1.5 border-s border-flow-line ps-5 pbe-4 last:border-s-transparent last:pbe-0">
+            <UBadge color="primary" variant="soft" class="absolute -inset-s-3 inset-bs-0 flex size-6 justify-center rounded-full p-0 tabular-nums">{{ j + 1 }}</UBadge>
+            <h4 class="font-semibold" v-html="inline(step.title, cites)" />
+            <div class="grid gap-1.5" v-html="prose(step.text, cites)" />
+          </li>
+        </ol>
         <CodeFrame v-else-if="'code' in b" :html="code(b.code, b.language)" :language="b.language">
           <template v-if="b.language || b.source" #caption>{{ [b.language, b.source].filter(Boolean).join(" · ") }}</template>
         </CodeFrame>

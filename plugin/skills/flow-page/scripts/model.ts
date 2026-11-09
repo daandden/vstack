@@ -48,8 +48,8 @@ type ReviewAxis = { axis: (typeof REVIEW_AXES)[number]; status: (typeof REVIEW_S
 type ReviewRow = ReviewAxis & { finding?: string; impact?: string; location?: string; blocking?: boolean; target?: string };
 /** `changed` is the Flow revision that last changed a Result's header or an entry, which a focused revision checks. */
 export type Entry = Record<string, unknown> & { id: string; changed: number };
-/** One block of a Document section. Prose and list items can cite with `[@<citation ref>]`. */
-export type Block = { prose: string } | { list: string[]; ordered: boolean } | { code: string; language?: string; source?: string } | { figure: string };
+/** One block of a Document section. Prose, list items, and steps can cite with `[@<citation ref>]`. */
+export type Block = { prose: string } | { list: string[]; ordered: boolean } | { steps: { title: string; text: string }[] } | { code: string; language?: string; source?: string } | { figure: string };
 export type DocSection = { heading: string; blocks: Block[] };
 export type DocumentBody = { sections: DocSection[]; citations: { ref: string; source: string }[]; limitations: string[]; sources: string[] };
 /** Alternatives side by side on shared criteria. A pair with no assessment stays a gap. Refs are local to the Result. */
@@ -928,8 +928,8 @@ function parseDocument(o: Obj, where: string, attachment: (v: unknown, where: st
     const so = fields(sec, sw, ["heading", "blocks"]);
     const blocks = validatedMap(list(so, "blocks", sw), (b, k): Block => {
       const bw = `${sw}: block ${k + 1}`;
-      const forms = isObj(b) ? ["prose", "list", "code", "figure"].filter((x) => b[x] !== undefined) : [];
-      if (forms.length !== 1) refuse(bw, "must have exactly one of prose, list, code, or figure");
+      const forms = isObj(b) ? ["prose", "list", "steps", "code", "figure"].filter((x) => b[x] !== undefined) : [];
+      if (forms.length !== 1) refuse(bw, "must have exactly one of prose, list, steps, code, or figure");
       switch (forms[0]) {
         case "prose": {
           const bo = fields(b, bw, ["prose"]);
@@ -939,6 +939,14 @@ function parseDocument(o: Obj, where: string, attachment: (v: unknown, where: st
           const bo = fields(b, bw, ["list"], ["ordered"]);
           if (bo.ordered !== undefined && typeof bo.ordered !== "boolean") refuse(bw, "ordered must be true or false");
           return { list: texts(bo, "list", bw).map((t) => cited(t, bw)), ordered: bo.ordered === true };
+        }
+        case "steps": {
+          const bo = fields(b, bw, ["steps"]);
+          return { steps: validatedMap(list(bo, "steps", bw), (step, l) => {
+            const tw = `${bw}: step ${l + 1}`;
+            const st = fields(step, tw, ["title", "text"]);
+            return { title: cited(text(st, "title", tw), `${tw}: title`), text: cited(text(st, "text", tw), `${tw}: text`) };
+          }) };
         }
         case "code": {
           const bo = fields(b, bw, ["code"], ["language", "source"]);
@@ -1658,7 +1666,7 @@ export function view(s: State): View {
     });
     if (d) {
       const sections = d.sections.map((sec, i) => ({ ...sec, anchor: `${anchor}-s${i + 1}` }));
-      const citesIn = (ref: string) => sections.filter((sec) => sec.blocks.some((b) => ("prose" in b ? [b.prose] : "list" in b ? b.list : []).some((t) => [...t.matchAll(CITE)].some((m) => m[1] === ref)))).map((sec) => sec.anchor);
+      const citesIn = (ref: string) => sections.filter((sec) => sec.blocks.some((b) => ("prose" in b ? [b.prose] : "list" in b ? b.list : "steps" in b ? b.steps.flatMap((step) => [step.title, step.text]) : []).some((t) => [...t.matchAll(CITE)].some((m) => m[1] === ref)))).map((sec) => sec.anchor);
       rv.doc = {
         sections,
         citations: d.citations.map((c, i) => ({ anchor: `${anchor}-c${i + 1}`, n: i + 1, ref: c.ref, source: c.source, text: sourceText.get(c.source)!, cited_in: citesIn(c.ref) })), citationsAnchor: `${anchor}-citations`,

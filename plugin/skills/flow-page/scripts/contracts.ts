@@ -42,7 +42,7 @@ const entryContracts: Record<string, Contract> = {
   timeline: optional({ title: string, outcome: enumeration("succeeded", "failed", "blocked", "skipped", "unknown", "noted") }, { ref, time: string, detail: string, evidence: string, attachments: strings }),
 };
 entryContracts.review.required = [...card.required!, "axis", "location"];
-const block = union({ prose: object({ prose: string }), list: optional({ list: strings }, { ordered: boolean }), code: optional({ code: string }, { language: string, source: string }), figure: object({ figure: ref }) });
+const block = union({ prose: object({ prose: string }), list: optional({ list: strings }, { ordered: boolean }), steps: object({ steps: array(object({ title: string, text: string })) }), code: optional({ code: string }, { language: string, source: string }), figure: object({ figure: ref }) });
 const uncertainty = union({ plusminus: object({ plusminus: { ...number, min: 0 }, of: string }), low: object({ low: number, high: number, of: string }) });
 const measured = union({ value: optional({ series: ref, value: number }, { samples: { ...number, integer: true, min: 1 }, uncertainty }), missing: object({ series: ref, missing: string }) });
 const condition: Contract = { type: "union", select: value => condition.variants!["all" in value ? "all" : "any" in value ? "any" : "not" in value ? "not" : "value"] };
@@ -189,7 +189,7 @@ export class ContributionRefusal extends Refusal {
   }
 }
 
-const collectionNames: Record<string, string> = { item: "items", question: "questions", option: "options", entry: "entries", row: "rows", section: "sections", block: "blocks", citation: "citations", alternative: "alternatives", criterion: "criteria", assessment: "assessments", measurement: "measurements", value: "values", figure: "figures", decision: "decisions", axis: "axes", transition: "transitions", state: "states", action: "actions" };
+const collectionNames: Record<string, string> = { item: "items", question: "questions", option: "options", entry: "entries", row: "rows", section: "sections", block: "blocks", step: "steps", citation: "citations", alternative: "alternatives", criterion: "criteria", assessment: "assessments", measurement: "measurements", value: "values", figure: "figures", decision: "decisions", axis: "axes", transition: "transitions", state: "states", action: "actions" };
 
 export function contributionPath(input: unknown, where: string): string {
   let path = "$";
