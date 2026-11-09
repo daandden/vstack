@@ -46,6 +46,11 @@ start)
 	[ -d "$run" ] || die "$run does not exist: make it with mktemp -d"
 	mkdir "$data" 2>/dev/null || die "$data exists: another run owns $run, so do not stop it"
 	mkdir "$cfg"
+	if [ -n "${TERN_VERIFY_HOME:-}" ]; then
+		[ "$TERN_VERIFY_HOME" = "$data/home" ] || die "TERN_VERIFY_HOME must be exactly RUN/data/home"
+		mkdir "$TERN_VERIFY_HOME"
+		jq -n --arg run "$run" '{run:$run}' >"$data/tern-fixture.json"
+	fi
 	if [ -f "$HOME/.config/tern/settings.json" ]; then
 		cp "$HOME/.config/tern/settings.json" "$cfg/settings.json"
 	else
@@ -75,6 +80,11 @@ start)
 	ctl ready >/dev/null || die "no shell prompt, see $run/window.log"
 	socket_owner "$daemon_sock" >"$data/daemon.pid"
 	[ -s "$data/daemon.pid" ] || die "no session daemon on $daemon_sock, see $run/window.log"
+	if [ -n "${TERN_VERIFY_HOME:-}" ]; then
+		if ctl tree | jq -e '[.. | objects | .class? // "" | select(test("(^| )tn-signin-x( |$)"))] | length > 0' >/dev/null; then
+			ctl click '".tn-signin-x"' >/dev/null
+		fi
+	fi
 	printf 'ready: window pid %s, daemon pid %s, repo %s\n' \
 		"$(cat "$data/window.pid")" "$(cat "$data/daemon.pid")" "$repo"
 	;;
@@ -133,6 +143,15 @@ doctor)
 	else
 		printf 'account check: skipped for isolated HOME; local plugin drives need no account\n'
 	fi
+	if ! ctl tree >"$data/doctor-tree.json"; then
+		printf 'overlay:    could not inspect window\n'
+		status=1
+	elif jq -e '[.. | objects | .class? // "" | select(test("(^| )tn-signin-x( |$)"))] | length > 0' "$data/doctor-tree.json" >/dev/null; then
+		printf 'SIGN-IN OVERLAY OPEN: close .tn-signin-x in this isolated window, then rerun Doctor\n'
+		status=1
+	else
+		printf 'overlay:    none\n'
+	fi
 	alerts=$(ctl system | jq -r '.dialogs[] | "\(.message) \(.buttons)"')
 	if [ -n "$alerts" ]; then
 		printf 'NATIVE ALERT OPEN: %s\n' "$alerts"
@@ -150,8 +169,7 @@ tern)
 	;;
 type)
 	[ $# -eq 1 ] || die "usage: tern-verify type RUN 'command line'"
-	case $1 in *'"'*) die "the command line cannot hold a double quote" ;; esac
-	ctl run "\"$1\""
+	with_isolated_tern_env tern run @focused "$1"
 	;;
 shot)
 	[ $# -eq 1 ] || die "usage: tern-verify shot RUN NAME"
