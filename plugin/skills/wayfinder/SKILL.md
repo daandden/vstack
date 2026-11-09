@@ -84,6 +84,10 @@ Put every ordinary user question through `ask` on the owning Stage, following `s
 
 Publish the map's destination, notes, frontier, decisions, fog, and out-of-scope boundaries as Document and table Results, with named tracker links and observed canonical revisions. Preserve the dependency graph as separate Result content: a table lists every ticket and its blockers, and a captured dependency figure shows the graph when produced. The Stage tree describes continuation, never blocking order. Before finishing charting or a ticket Stage, publish its actual resolution, evidence, outstanding questions, and canonical tracker or findings links. Record raw ask responses and separate readings. A headless recommendation, timeout, or cancellation cannot resolve a HITL ticket or authorize tracker writes.
 
+Publish structured graph data alongside those dependency Results with a `wayfinder` contribution. Read `skill://flow-page/references/contributions.md` for its fields. Include every charted ticket's tracker id, full title, tracker URL, blocker ids, and current map state. Use `resolved`, `frontier`, `blocked`, `claimed`, or `out-of-scope`. Determine those states from the tracker and the map's scope decisions, not from a captured figure. Preserve blocker edges to resolved and out-of-scope tickets. A parent-child relationship alone is not a blocker.
+
+Each contribution is a complete snapshot, including an empty ticket list when only fog remains. Publish after charting, after claiming a ticket, and after refreshing the map at the end of each ticket Stage, including research tickets. Read the tracker again before the final snapshot so another session's claims and resolutions appear. The Map panel uses the latest snapshot; earlier snapshots retain their Stage and revision. The dependency table and figure remain separate Results.
+
 ## Ticket Types
 
 Every ticket is either HITL (human in the loop, worked _with_ a human who speaks for themselves) or AFK, driven by the agent alone. A HITL ticket only resolves through that live exchange; the agent never stands in for the human's side of it (a grilling agent that answers its own questions has broken this).

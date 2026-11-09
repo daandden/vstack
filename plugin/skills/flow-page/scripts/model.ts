@@ -120,6 +120,46 @@ type ReadingBlock = { id: string; kind: "background" | "topic" | "question" | "r
 type Publication = ReadingBlock & { position: number; publication: number };
 type ReadingOrder = { historical: ReadingBlock[]; publications: Publication[] };
 
+const MAP_STATES = ["resolved", "frontier", "blocked", "claimed", "out-of-scope"] as const;
+export type WayfinderTicket = { id: string; title: string; url: string; state: (typeof MAP_STATES)[number]; blockers: string[] };
+export type WayfinderMap = { stage: string; revision: number; tickets: WayfinderTicket[] };
+
+function wayfinderTickets(o: Obj, where: string): WayfinderTicket[] {
+  if (!Array.isArray(o.tickets)) refuse(where, "tickets must be an array, which may be empty");
+  const tickets = (o.tickets as unknown[]).map((raw, i): WayfinderTicket => {
+    const w = `${where}: ticket ${i + 1}`;
+    const t = fields(raw, w, ["id", "title", "url", "state", "blockers"]);
+    const id = text(t, "id", w), title = text(t, "title", w), url = text(t, "url", w);
+    try {
+      if (!/^https?:\/\//i.test(url)) throw new Error();
+      const parsed = new URL(url);
+      if (!["https:", "http:"].includes(parsed.protocol)) throw new Error();
+    } catch { refuse(w, "url must be an absolute http:// or https:// tracker link"); }
+    if (!MAP_STATES.includes(t.state as WayfinderTicket["state"])) refuse(w, `state must be ${listed(MAP_STATES)}`);
+    if (!Array.isArray(t.blockers) || t.blockers.some((b) => typeof b !== "string" || !b.trim())) refuse(w, "blockers must be an array of ticket ids");
+    const blockers = t.blockers as string[];
+    if (new Set(blockers).size !== blockers.length) refuse(w, "duplicate blocker");
+    if (blockers.includes(id)) refuse(w, "a ticket cannot block itself");
+    return { id, title, url, state: t.state as WayfinderTicket["state"], blockers };
+  });
+  const byId = new Map(tickets.map((t) => [t.id, t]));
+  if (byId.size !== tickets.length) refuse(where, "duplicate ticket id");
+  const dependents = new Map(tickets.map((t) => [t.id, [] as string[]]));
+  const remaining = new Map(tickets.map((t) => [t.id, t.blockers.length]));
+  for (const t of tickets) for (const b of t.blockers) {
+    if (!byId.has(b)) refuse(where, `ticket ${t.id} names unknown blocker ${b}`);
+    dependents.get(b)!.push(t.id);
+  }
+  const ready = tickets.filter((t) => !t.blockers.length).map((t) => t.id);
+  for (let i = 0; i < ready.length; i++) for (const id of dependents.get(ready[i])!) {
+    const left = remaining.get(id)! - 1;
+    remaining.set(id, left);
+    if (!left) ready.push(id);
+  }
+  if (ready.length !== tickets.length) refuse(where, "blockers contain a cycle");
+  return tickets;
+}
+
 export type State = {
   schema: number;
   flow: { id: string; slug: string; title: string; created: string; crumb?: string };
@@ -145,6 +185,7 @@ export type State = {
   /** Earlier revisions of republished Results, oldest first. */
   history: Result[];
   progress?: Progress;
+  wayfinder?: WayfinderMap[];
   /** Closes and reopens, oldest first. A Flow with none, or whose latest is a reopen, is open. */
   lifecycle: Lifecycle[];
   reading: ReadingOrder;
@@ -314,7 +355,7 @@ function ref(o: Obj, where: string): string | undefined {
 
 export type Receipt = { refs: Record<string, string>; ask?: { questions: { id: string; question: string; options: { label: string }[]; multi?: boolean; recommended?: number }[] } };
 
-const KINDS = ["background", "topic", "attachment", "result", "revise", "assumed", "round", "answer", "close", "stage", ...PROGRESS_KINDS] as const;
+const KINDS = ["background", "topic", "attachment", "result", "revise", "assumed", "round", "answer", "close", "stage", "wayfinder", ...PROGRESS_KINDS] as const;
 type ContributionKind = (typeof KINDS)[number];
 type PlannedIds = { id?: string; entries?: string[]; questions?: string[] };
 type ContributionHandler = { plan?: (o: Obj, where: string, ids: PlannedIds) => void; apply: (o: Obj, where: string, ids: PlannedIds) => void };
@@ -375,6 +416,13 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
   const receipt: Receipt = { refs };
   let rounds = 0;
   const handlers: Record<ContributionKind, ContributionHandler> = {
+    wayfinder: {
+      apply(o, where) {
+        fields(o, where, ["kind", "tickets"]);
+        const tickets = wayfinderTickets(o, where);
+        (s.wayfinder ??= []).push({ stage: stage.id, revision: rev, tickets });
+      },
+    },
     background: {
       apply(o, where, ids) {
         fields(o, where, ["kind", "title", "summary", "sections", "sources"], ["figures"]);
@@ -1522,6 +1570,7 @@ export type View = {
   flow: State["flow"]; revision: number; stages: StageView[]; lifecycle: Lifecycle[];
   reading: ReadingOrder;
   path?: MattPath;
+  wayfinder?: WayfinderMap & { history: WayfinderMap[] };
   next: string[];
   topics: (Topic & { sourceTexts: string[]; questions: string[] })[];
   sources: (Source & { cited_by: string[] })[];
@@ -1684,6 +1733,7 @@ export function view(s: State): View {
     flow: s.flow, revision: s.revision, stages, questions, progress: progressView(s), lifecycle: s.lifecycle, ...(s.migrated ? { migrated: s.migrated } : {}),
     reading: s.reading,
     path: mattPath(s.stages),
+    ...(s.wayfinder?.length ? { wayfinder: { ...s.wayfinder.at(-1)!, history: s.wayfinder.slice(0, -1) } } : {}),
     next: stages.filter((st) => st.state === "in-progress").reverse().flatMap((st) => st.asked.filter((q) => q.open).map((q) => q.id)),
     topics: s.topics.map((t) => ({ ...t, sourceTexts: t.sources.map((x) => sourceText.get(x)!), questions: s.questions.filter((q) => q.topics?.includes(t.id)).map((q) => q.id) })),
     sources: s.sources.map((x) => ({ ...x, cited_by: citers(x.id) })),
@@ -1704,6 +1754,7 @@ export function snapshot(v: View) {
     next: v.next,
     reading: v.reading,
     ...(v.path ? { path: v.path } : {}),
+    ...(v.wayfinder ? { wayfinder: v.wayfinder } : {}),
     stages: v.stages.map((st) => ({
       id: st.id, label: st.label, skill: st.skill, ...(st.ticket ? { ticket: st.ticket } : {}), ...(st.parent ? { parent: st.parent } : {}), children: st.children,
       state: st.state, order: st.order, opened: st.opened, ...(st.finished ? { finished: st.finished } : {}),

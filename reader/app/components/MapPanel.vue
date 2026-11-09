@@ -7,6 +7,7 @@ const roots = computed(() => f.value.stages.filter((st) => !st.parent));
 const tabs = computed(() => [
   ...(f.value.path ? [{ id: "path", label: "Matt flow path" }] : []),
   { id: "stages", label: "Stages" },
+  ...(f.value.wayfinder ? [{ id: "wayfinder", label: "Wayfinder map" }] : []),
 ]);
 const dialog = ref<HTMLDialogElement>();
 const items = () => [...dialog.value!.querySelectorAll<HTMLElement>("[data-map-item]")].filter((el) => el.getClientRects().length > 0);
@@ -79,6 +80,9 @@ function onKey(e: KeyboardEvent) {
         <StageTreeNode v-for="st in roots" :key="st.id" :stage="st" />
       </ul>
       <p v-else class="quiet">No Stages recorded.</p>
+    </div>
+    <div v-if="f.wayfinder" id="map-wayfinder" class="map-content" role="tabpanel" aria-labelledby="map-tab-wayfinder" :hidden="mapTab !== 'wayfinder'">
+      <WayfinderMap :tickets="f.wayfinder.tickets" />
     </div>
     <p class="map-help quiet"><kbd>h</kbd> <kbd>l</kbd> tabs · <kbd>j</kbd> <kbd>k</kbd> items · Enter opens · arrows pan</p>
   </dialog>

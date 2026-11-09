@@ -132,7 +132,7 @@ items:
     tree: 8ec0462658381bd1606d3f9db14ffc67df6a2a43
     disposition: adapt
     artifacts: [plugin/skills/wayfinder]
-    reason: "Post a resolved ticket and update its map in the same run without next-prompt confirmation, retaining live HITL answers."
+    reason: "Publish complete ticket graph snapshots during charting and each claimed ticket Stage."
   - id: matt/wizard
     upstream: matt
     kind: skill

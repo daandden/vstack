@@ -102,6 +102,7 @@ Read only the field contract for the kind you are about to publish:
 
 - Before a Background, Topic note, round, answer, Assumed pick, close, Stage state, or progress item, read the relevant section of [Contribution fields, version 1](references/contributions.md).
 - Before publishing or revising a Result, read [Result fields, version 1](references/results.md). It includes cards, review, ledger, table, Document, Code/diff, and Timeline.
+- Before a wayfinder ticket graph, read the `wayfinder` item in [Contribution fields, version 1](references/contributions.md).
 - Before Comparison or Metrics, also read [Comparison and Metrics fields](references/comparison-metrics.md).
 - Before a prototype demo, runnable-artifact Result, or Quiz, also read [Interactive Result fields](references/interactive-results.md).
 - Before capturing attachments, canonical file revisions, question/Background figures, option previews, or real HTML/app/terminal artifacts, read [Captured attachments](references/attachments.md). Capture actual redacted evidence and preserve canonical deliverables.
