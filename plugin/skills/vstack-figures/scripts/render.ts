@@ -4,6 +4,7 @@ import { dirname, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { parse, render } from "pele";
 import { bindingsDocument, FONT, palette, type Binding } from "./palette.ts";
+import { DIAGRAM_CONFIG, readabilityRules } from "./presentation.ts";
 
 const GRAPHEMES = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 const WIDE = /[\u1100-\u115f\u2e80-\ua4cf\uac00-\ud7a3\uf900-\ufaff\ufe30-\ufe4f\uff00-\uff60\uffe0-\uffe6]/u;
@@ -20,13 +21,6 @@ const USAGE = "Usage: bun render.ts <source.mmd | -> <out.svg> [--focus <mermaid
 function usage(message: string): never {
 	console.error(`${message}\n${USAGE}`);
 	process.exit(2);
-}
-
-function readabilityRules(scope: string) {
-	return `.${scope} tspan[baseline-shift] { font-size: 75%; }
-.${scope}:is(.pele-wardley, .pele-venn) text, .${scope} .pele-edge-label text, .${scope} .pele-cluster-label {
-	paint-order: stroke fill; stroke: #1e1e2e; stroke-width: 0.12em; stroke-linejoin: round;
-}`;
 }
 
 function rootTagEnd(svg: string): number {
@@ -73,14 +67,13 @@ const scope = `pele-f${new Bun.CryptoHasher("sha256").update(out).digest("hex").
 let svg: string;
 let style: string;
 try {
-	const config = { flowchart: { curve: "step" as const } };
-	const model = parse(source, { config });
+	const model = parse(source, { config: DIAGRAM_CONFIG });
 	const painted = palette(render(model, {
-		fontFamily: FONT, fontFamilyMono: FONT, measurer: fontMeasurer, config,
+		fontFamily: FONT, fontFamilyMono: FONT, measurer: fontMeasurer, config: DIAGRAM_CONFIG,
 		...(model.type === "sankey" ? { idPrefix: scope } : {}),
-	}).svg, model, bindings, focus, scope);
+	}).svg, model, bindings, focus, scope, source);
 	svg = painted.svg;
-	style = `<style>\n${painted.css}\n${readabilityRules(scope)}\n</style>`;
+	style = `<style>\n${painted.css}\n${readabilityRules(`.${scope}`)}\n</style>`;
 } catch (e) {
 	console.error((e as Error).message);
 	process.exit(1);

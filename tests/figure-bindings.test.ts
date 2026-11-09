@@ -14,6 +14,7 @@ test("a caller binds a flowchart source id to a literal role without changing th
   const r = await renderFigure(setup(), SOURCE, { bindings: elements({ id: "A", role: "bad" }) });
   expect({ code: r.code, stderr: r.stderr }).toEqual({ code: 0, stderr: "" });
   expect(r.stdout.trim()).toBe(r.out); expect(shape(r.svg!, "A").style).toContain("fill:#f38ba8;stroke:#f38ba8");
+  expect(shape(r.svg!, "A").style).toContain("fill-opacity:0.22"); expect(text(r.svg!, "A").style).toContain("fill:#cdd6f4");
   expect(r.svg).toContain("Cache"); expect(r.svg).not.toContain("color-mix");
 });
 
@@ -22,6 +23,7 @@ test("meaningful shapes establish kinds, labels do not, and an explicit state ov
   const plain = await renderFigure(dir, source);
   expect(plain.code).toBe(0); expect(shape(plain.svg!, "P").style).toContain("fill:#f5c2e7");
   expect(shape(plain.svg!, "A").style).toContain("fill:#94e2d5"); expect(shape(plain.svg!, "Q").style).not.toContain("fill:#");
+  for (const id of ["P", "A"]) expect(shape(plain.svg!, id).style).toContain("fill-opacity:0.22");
   const bound = await renderFigure(dir, source, { name: "bound", bindings: elements({ id: "P", role: "bad" }, { id: "A", category: "orders" }) });
   expect(bound.code).toBe(0); expect(shape(bound.svg!, "P").style).toContain("fill:#f38ba8");
   expect(shape(bound.svg!, "A").style).not.toContain("fill:#94e2d5");
@@ -35,6 +37,7 @@ test("category colors depend only on exact keys across order, insertion, ids, an
     const r = await renderFigure(dir, `flowchart LR\n${list.map((key, i) => `N${i}[${key}]`).join("\n")}\n`, { name: `run-${run}`, bindings: elements(...list.map((key, i) => ({ id: `N${i}`, category: key }))) });
     expect(r.code).toBe(0);
     colors.push(keys.map((key) => /fill:(#[\da-f]+)/.exec(shape(r.svg!, `N${list.indexOf(key)}`).style)![1]!));
+    for (const key of keys) expect(shape(r.svg!, `N${list.indexOf(key)}`).style).not.toContain("fill-opacity");
     for (const key of keys) expect(r.svg).toContain(key);
   }
   expect(colors[1]).toEqual(colors[0]); expect(colors[2]).toEqual(colors[0]);
@@ -57,7 +60,7 @@ test("identical explicit assignments repeat, and an explicit role wins a categor
     [{ id: "A", category: "cache" }, { id: "A", role: "ok" }],
   ]) {
     const r = await renderFigure(dir, "flowchart LR\n A:::ok --> B\n", { bindings: elements(...entries) });
-    expect(r.code).toBe(0); expect(shape(r.svg!, "A").style).toContain("fill:#a6e3a1"); expect(text(r.svg!, "A").style).toContain("fill:#1e1e2e");
+    expect(r.code).toBe(0); expect(shape(r.svg!, "A").style).toContain("fill:#a6e3a1"); expect(text(r.svg!, "A").style).toContain("fill:#cdd6f4");
   }
 });
 
@@ -88,9 +91,9 @@ test("explicit edge ids color their route, marker, and label without filling the
   expect(r.code).toBe(0); expect(shape(r.svg!, "edge").style).toContain("fill:none;stroke:#a6e3a1");
 });
 
-test("a text-only node retains visible accent text without inventing a backing", async () => {
+test("a text-only role keeps ordinary label paint without inventing a backing", async () => {
   const r = await renderFigure(setup(), "flowchart LR\n A@{ shape: text, label: Label }\n", { bindings: elements({ id: "A", role: "ok" }) });
-  expect(r.code).toBe(0); expect(text(r.svg!, "A").style).toContain("fill:#a6e3a1");
+  expect(r.code).toBe(0); expect(text(r.svg!, "A").style).toContain("fill:#cdd6f4");
   expect(shape(r.svg!, "A").tag).toContain('fill="none" stroke="none"');
   expect(shape(r.svg!, "A").style).not.toContain("#a6e3a1");
 });

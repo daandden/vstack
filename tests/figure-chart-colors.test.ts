@@ -16,7 +16,8 @@ test("a pie category binds its slice and legend without guessing percentage owne
   const owned = marks(r.svg!, "Orders");
   expect(owned.filter((m) => !m.text)).toHaveLength(2);
   for (const m of owned.filter((m) => !m.text)) expect(m.style).toContain("fill:#f38ba8;stroke:#cba6f7");
-  expect(owned.find((m) => m.text)!.style).toContain("fill:#cba6f7");
+  for (const m of owned.filter((m) => !m.text)) expect(m.style).toContain("fill-opacity:0.22");
+  expect(owned.find((m) => m.text)!.style).toContain("fill:#cdd6f4");
   expect(r.svg).toContain(">75%</text>");
 });
 
@@ -33,6 +34,7 @@ test("exact category names stay stable across pie, repeated Sankey endpoints, an
       expect({ family, code: r.code, stderr: r.stderr }).toEqual({ family, code: 0, stderr: "" });
       const paints = keys.map((key) => fill(r.svg!, key));
       expect(paints.every(Boolean)).toBe(true);
+      for (const key of keys) expect(shape(r.svg!, key).style).not.toContain("fill-opacity:0.22");
       colors.push(paints as string[]);
       for (const key of keys) expect(r.svg).toContain(key);
     }
@@ -113,7 +115,7 @@ test("Venn intersections color visible text but do not invent a fillable region"
   expect(r.code).toBe(0);
   const intersection = marks(r.svg!, "Orders|Other");
   expect(intersection.filter((m) => !m.text)).toHaveLength(0);
-  expect(intersection.find((m) => m.text)?.style).toContain("fill:#f9e2af");
+  expect(intersection.find((m) => m.text)?.style).toContain("fill:#cdd6f4");
 });
 
 test("unnamed xy bars use exact band categories, but do not acquire fabricated focus or binding ids", async () => {

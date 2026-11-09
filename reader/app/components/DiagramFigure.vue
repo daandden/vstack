@@ -3,8 +3,9 @@ import { keepPlaceNow } from "~/composables/navigation";
 import { derivePele, drawMermaid, type Drawn } from "~/utils/diagram";
 import type { Attachment } from "~/utils/flow";
 
-const props = defineProps<{ a: Attachment }>();
-const src = computed(() => `assets/${props.a.file}`);
+const props = defineProps<{ a: Attachment; source?: never; name?: never } | { a?: never; source: string; name: string }>();
+const src = computed(() => props.a ? `assets/${props.a.file}` : undefined);
+const name = computed(() => props.a?.caption ?? props.name);
 const mode = ref<"pending" | "drawn" | "image" | "failed">("pending");
 const error = ref("");
 const host = ref<HTMLElement>();
@@ -15,10 +16,13 @@ async function draw() {
   const run = ++drawing;
   mode.value = "pending";
   try {
-    const r = await fetch(new URL(src.value, location.href), { cache: "no-store", credentials: "same-origin" });
-    if (!r.ok) throw new Error(`the Local Flow host answered ${r.status} for the diagram`);
-    const text = await r.text();
-    const drawn: Drawn | undefined = props.a.type === "mermaid" ? await drawMermaid(text, props.a.focus ?? []) : derivePele(text);
+    let text = props.source;
+    if (props.a) {
+      const r = await fetch(new URL(src.value!, location.href), { cache: "no-store", credentials: "same-origin" });
+      if (!r.ok) throw new Error(`the Local Flow host answered ${r.status} for the diagram`);
+      text = await r.text();
+    }
+    const drawn: Drawn | undefined = !props.a || props.a.type === "mermaid" ? await drawMermaid(text!, props.a?.focus ?? []) : derivePele(text!);
     if (run !== drawing) return;
     if (!drawn) {
       mode.value = "image";
@@ -49,11 +53,11 @@ function pan(event: KeyboardEvent) {
   el.scrollLeft += direction * 40;
 }
 onMounted(draw);
-watch(() => `${props.a.file}\n${props.a.focus?.join("\n") ?? ""}`, draw);
+watch(() => [props.source, props.a?.file, props.a?.focus?.join("\n")], draw);
 </script>
 
 <template>
-  <img v-if="mode === 'image'" :src="src" :alt="a.caption">
+  <img v-if="mode === 'image'" :src="src" :alt="name">
   <p v-else-if="mode === 'failed'" class="unavailable"><span class="label">Diagram unavailable</span> {{ error }}</p>
-  <div v-else ref="host" class="diagram" role="img" :aria-label="a.caption" :aria-busy="mode === 'pending'" :data-render="mode" tabindex="0" @keydown.stop="pan" />
+  <div v-else ref="host" class="diagram" role="img" :aria-label="name" :aria-busy="mode === 'pending'" :data-render="mode" tabindex="0" @keydown.stop="pan" />
 </template>

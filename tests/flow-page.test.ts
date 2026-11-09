@@ -791,6 +791,42 @@ test("a Document Result keeps ordered sections, citations, figures, limitations,
   for (const src of res.document.sources) expect(sources.find((x: any) => x.id === src).cited_by).toContain(refs.doc);
 });
 
+test("a Document Mermaid parse error refuses the whole contribution without a partial write", () => {
+  openFlow("s-1");
+  const before = tree();
+  const invalid = "flowchart LR\n  a[Unclosed";
+  const r = submit("s-1",
+    { kind: "topic", ref: "pending", title: "Not committed", summary: "Part of the refused contribution.", body: "Nothing is stored.", sources: ["fixture"] },
+    doc("doc", { sections: [{ heading: "Broken diagram", blocks: [{ code: invalid, language: "mermaid" }] }], citations: undefined }));
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain("section 1: block 1");
+  expect(r.stderr).toContain("Expecting 'SQE', 'UNICODE_TEXT', 'TEXT', 'TAGSTART', got '$end'");
+  expect(r.stdout).toBe("");
+  expect(tree()).toEqual(before);
+});
+
+test("Document Mermaid blocks accept authored paints and unchecked roles while other languages stay plain", () => {
+  openFlow("s-1");
+  const code = [
+    "flowchart LR",
+    "  a[Start]:::unknown --> b[End]:::ok",
+    "  classDef ok fill:#a6e3a1,stroke:#cba6f7,color:#cdd6f4",
+    "  style a fill:#123456",
+    "  linkStyle 0 stroke:#eba0ac",
+  ].join("\n");
+  const r = submit("s-1", doc("doc", { sections: [{ heading: "Styled diagram", blocks: [
+    { code, language: "mermaid" },
+    { code: "flowchart LR\n  a[Unclosed", language: "text" },
+  ] }], citations: undefined }));
+  expect(r.code).toBe(0);
+  expect(r.stderr).toBe("");
+  const state = JSON.parse(readFileSync(join(storedFolder(home, r.json.flow), "data", "state.json"), "utf8"));
+  expect(state.results[0].document.sections[0].blocks).toEqual([
+    { code, language: "mermaid" },
+    { code: "flowchart LR\n  a[Unclosed", language: "text" },
+  ]);
+});
+
 const MP4 = Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from("ftypisom"), Buffer.alloc(12)]);
 const SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><style>rect{fill:#a6e3a1}</style><rect width="40" height="20"/></svg>`;
 

@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { parse as parseMermaid } from "pele";
 import { linesOf, parseDiff, type Hunk } from "./code.ts";
 import { progressHandlers, type Progress, PROGRESS_KINDS, type ProgressKind, type ProgressView, progressSnapshot, progressView } from "./progress.ts";
 import { CODE_ID, fields, isObj, list, listed, newId, type Obj, REF, refuse, text, texts, VISUAL_KINDS } from "./fields.ts";
@@ -109,7 +110,7 @@ export type Attachment = {
   bundle?: { entry: string; files: { path: string; file: string; size: number }[] };
 };
 export type Io = {
-  capture(path: string, type: AttachmentType, where: string): { revision: string; file: string; size: number; name: string; from: { root: string; path: string } };
+  capture(path: string, type: AttachmentType, where: string, focus?: string[]): { revision: string; file: string; size: number; name: string; from: { root: string; path: string } };
   /** The canonical file `path` names, resolved from the working directory, or from the named `root` when given. */
   canonical(path: string, where: string, root?: string): { file: string; root: string; sha256: string };
 };
@@ -973,6 +974,10 @@ function parseDocument(o: Obj, where: string, attachment: (v: unknown, where: st
           const bo = fields(b, bw, ["code"], ["language", "source"]);
           const code = text(bo, "code", bw);
           if (bo.language !== undefined && (typeof bo.language !== "string" || !LANGUAGE.test(bo.language))) refuse(bw, "language must be a language name such as ts or python");
+          if (bo.language === "mermaid") {
+            try { parseMermaid(code); }
+            catch (e) { refuse(bw, `is not Mermaid that Pele parses: ${(e as Error).message}`); }
+          }
           return { code, ...(bo.language !== undefined ? { language: bo.language as string } : {}), ...(bo.source !== undefined ? { source: text(bo, "source", bw) } : {}) };
         }
         default: {
@@ -1287,7 +1292,7 @@ function parseAttachment(o: Obj, where: string, stage: string, id: string, time:
   if (focus && (focus.length > 2 || focus.some((f) => !/^[A-Za-z0-9_][A-Za-z0-9_.:-]*$/.test(f)))) refuse(where, "focus must list one or two Mermaid ids, each of letters, digits, _, ., :, or -");
   const marked = focus ? { focus } : {};
   if (o.unavailable !== undefined) return { ...base, availability: "unavailable", reason: text(o, "unavailable", where), ...marked };
-  const c = io.capture(text(o, "path", where), type, where);
+  const c = io.capture(text(o, "path", where), type, where, focus);
   return { ...base, availability: "captured", revision: c.revision, file: c.file, size: c.size, name: c.name, from: c.from, ...marked };
 }
 

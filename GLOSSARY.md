@@ -265,7 +265,7 @@ A Visual kind that shows how a question's options differ in shape.
 _Avoid_: comparison figure
 
 **Color role**:
-What an element in a figure is or what happened to it, established by source kind, Mermaid role, or an explicit caller binding, such as `ok`, `store`, or `external`. vstack-figures draws each Color role in one fixed Catppuccin Mocha accent. Category colors encode identity instead of role and can reuse those accents.
+What an element in a figure is or what happened to it, established by source kind, Mermaid role, or an explicit caller binding, such as `ok`, `store`, or `external`. Each Color role has one fixed Catppuccin accent, drawn as a tinted fill with an accent border in the reader's Latte or Mocha theme and in exported figures alike. Category colors encode identity instead of role and can reuse those accents.
 _Avoid_: color class, highlight color
 
 **Source view**:
