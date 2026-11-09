@@ -10,7 +10,7 @@ const ask = (id: string) => f.value.question.get(id);
 </script>
 
 <template>
-  <details class="outline">
+  <details class="context-outline [padding-block:0.25rem] border-be border-muted open:grid open:gap-2 open:[padding-block-end:0.75rem]">
     <summary>Context and related notes</summary>
     <div class="context">
       <section v-if="backgrounds.length" aria-labelledby="context-backgrounds">

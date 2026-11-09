@@ -1,0 +1,10 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+@import "./theme.css";
+@import "./reader.css" layer(components);
+
+@custom-variant hover {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover { @slot; }
+  }
+}

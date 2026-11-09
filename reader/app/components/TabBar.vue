@@ -17,30 +17,25 @@ watch([current, jumps], ([id]) => {
   at.value = owner ?? jumps.value.find((j) => el && document.getElementById(j.id)?.contains(el))?.id;
 });
 
-const bar = ref<HTMLElement>();
-let sizing: ResizeObserver | undefined;
-onMounted(() => {
-  measureHeader();
-  sizing = new ResizeObserver(measureHeader);
-  sizing.observe(bar.value!);
-});
-onBeforeUnmount(() => sizing?.disconnect());
+const bar = useTemplateRef<HTMLElement>("bar");
+useResizeObserver(bar, measureHeader);
+onMounted(measureHeader);
 </script>
 
 <template>
-  <nav ref="bar" class="bar" aria-label="Flow tabs">
-    <ul class="tabs">
-      <li><a href="#overview" :aria-current="tab === 'overview' ? 'page' : undefined">Overview</a></li>
+  <nav ref="bar" class="bar sticky [inset-block-start:0] z-1 grid [grid-column:1/-1]! [grid-template-columns:subgrid] gap-y-1.5 [padding-block:0.5rem] border-be border-default bg-default [&>*]:[grid-column:2]" aria-label="Flow tabs">
+    <ul class="tabs flex flex-wrap items-center gap-x-2 gap-y-1 m-0 p-0 list-none">
+      <li><ULink raw href="#overview" external :aria-current="tab === 'overview' ? 'page' : undefined" class="inline-flex items-center gap-1.5 [padding-block:0.125rem] [padding-inline:0.375rem] rounded font-semibold no-underline text-toned aria-[current]:bg-accented aria-[current]:text-primary active:text-secondary hover:text-secondary">Overview</ULink></li>
       <li v-for="st in f.stages" :key="st.id" :data-state="st.state">
-        <a :href="`#${st.id}`" :aria-current="tab === st.id ? 'page' : undefined"><span class="dot" />{{ st.label }}</a>
+        <ULink raw :href="`#${st.id}`" external :aria-current="tab === st.id ? 'page' : undefined" class="inline-flex items-center gap-1.5 [padding-block:0.125rem] [padding-inline:0.375rem] rounded font-semibold no-underline text-toned aria-[current]:bg-accented aria-[current]:text-primary active:text-secondary hover:text-secondary"><span class="dot" />{{ st.label }}</ULink>
       </li>
-      <li v-if="f.topics.length"><a href="#topics" :aria-current="tab === 'topics' ? 'page' : undefined">Topics</a></li>
+      <li v-if="f.topics.length"><ULink raw href="#topics" external :aria-current="tab === 'topics' ? 'page' : undefined" class="inline-flex items-center gap-1.5 [padding-block:0.125rem] [padding-inline:0.375rem] rounded font-semibold no-underline text-toned aria-[current]:bg-accented aria-[current]:text-primary active:text-secondary hover:text-secondary">Topics</ULink></li>
       <li v-if="f.stages.length">
-        <button type="button" class="link" aria-haspopup="dialog" aria-keyshortcuts="t" @click="treeOpen = true">Stages <kbd>t</kbd></button>
+        <UButton class="link" :ui="{ base: () => 'inline-flex items-center gap-1 [padding-block:0] [padding-inline:0] border-0 bg-transparent font-normal text-info underline underline-offset-[0.2em] cursor-pointer touch-manipulation active:text-secondary hover:text-secondary' }" aria-haspopup="dialog" aria-keyshortcuts="t" @click="treeOpen = true">Stages <kbd>t</kbd></UButton>
       </li>
     </ul>
-    <nav v-if="jumps.length" class="jump-row" aria-label="In this tab">
-      <a v-for="j in jumps" :key="j.id" :href="`#${j.id}`" :aria-current="at === j.id ? 'location' : undefined" v-html="inline(j.label)" />
+    <nav v-if="jumps.length" class="jump-row flex flex-wrap gap-x-3 gap-y-0.5 [padding-block-start:0.375rem] [padding-inline:0.375rem] border-bs border-muted" aria-label="In this tab">
+      <ULink v-for="j in jumps" :key="j.id" raw :href="`#${j.id}`" external :aria-current="at === j.id ? 'location' : undefined" class="text-toned no-underline tabular-nums aria-[current]:text-primary aria-[current]:underline active:text-secondary hover:text-secondary" v-html="inline(j.label)" />
     </nav>
   </nav>
 </template>

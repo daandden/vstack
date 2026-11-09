@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { connection, failure, flow, startReader } from "~/composables/reader";
 import { goTo, onClick, onFocusIn, onFocusOut, onHashChange, onKey, onScroll, openFirstOpenQuestionTab, tab } from "~/composables/navigation";
-import { startTheme } from "~/composables/theme";
 import { startLearning } from "~/composables/learning";
 
 useHead(() => ({ title: flow.value ? `Flow: ${flow.value.flow.title}` : "Flow" }));
 
 const fragment = () => decodeURIComponent(location.hash.slice(1));
 onMounted(() => {
-  startTheme();
   startReader();
   addEventListener("keydown", onKey);
   addEventListener("click", onClick);
@@ -31,7 +29,8 @@ const stageless = computed(() => flow.value?.reading.historical.filter((b) => !b
 </script>
 
 <template>
-  <div class="reader">
+  <UApp :toaster="null">
+  <div class="reader grid [grid-template-columns:minmax(var(--gutter),1fr)_min(100%_-_var(--gutter)*2,var(--content))_minmax(var(--gutter),1fr)] gap-y-3 [padding-block:0_4rem] [&>*]:[grid-column:2]">
     <p v-if="!flow && failure" class="notice" role="alert">
       This Flow could not be read: {{ failure }}. The reader needs the running Local Flow host; run any flow-page command, such as
       <code>bound</code>, to start it, then reload.
@@ -46,7 +45,7 @@ const stageless = computed(() => flow.value?.reading.historical.filter((b) => !b
       </p>
       <ContextNotes />
       <main id="reading" aria-label="Flow content">
-        <section id="overview" class="panel reference" data-tab="overview" :hidden="tab !== 'overview'" aria-labelledby="overview-title">
+        <section id="overview" class="panel grid gap-3 [padding-block:var(--entry-space)] border-bs border-default" data-tab="overview" :hidden="tab !== 'overview'" aria-labelledby="overview-title">
           <h2 id="overview-title">Overview</h2>
           <ProgressPanel />
           <StageOverview />
@@ -68,4 +67,5 @@ const stageless = computed(() => flow.value?.reading.historical.filter((b) => !b
       <StageTree />
     </template>
   </div>
+  </UApp>
 </template>

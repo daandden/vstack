@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Move the Flow reader shell to Nuxt UI, Tailwind, and VueUse with shared Catppuccin Latte/Mocha tokens, local-only assets, and the existing compact layout, theme preference, navigation, and Pele colors."
+  ]
+}

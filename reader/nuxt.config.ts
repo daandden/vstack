@@ -7,7 +7,12 @@ export default defineNuxtConfig({
   devtools: { enabled: false },
   buildId: "flow-reader",
   experimental: { appManifest: false },
-  css: ["~/assets/reader.css"],
+  modules: ["@nuxt/ui", "@vueuse/nuxt"],
+  ui: { theme: { transitions: false }, experimental: { componentDetection: true } },
+  fonts: { provider: "local" },
+  icon: { provider: "none", serverBundle: false, fallbackToApi: false, clientBundle: { scan: true } },
+  colorMode: { preference: "system", fallback: "light", classSuffix: "", dataValue: "theme", storageKey: "flow-reader:theme" },
+  css: ["~/assets/main.css"],
   alias: { "#flow": fileURLToPath(new URL("../plugin/skills/flow-page/scripts", import.meta.url)) },
   app: {
     buildAssetsDir: "/_flow-reader/",

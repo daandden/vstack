@@ -71,6 +71,10 @@ The reader source lives under `reader/`. Its production bundle ships prebuilt un
 
 When reader source changes, run `./node_modules/.bin/vp run reader:build` and commit its shipped output with the source. Compare the source and shipped file inventories against the prior commit to establish freshness. An integration that changes neither source nor shipped files needs no rebuild.
 
+The page shell uses Nuxt UI 4, Tailwind 4, and VueUse. `reader/app/assets/main.css` loads them, and `theme.css` owns the Catppuccin Latte/Mocha palette, compact sizing, IosevkaTerm font stacks, Nuxt UI semantic colors, and Pele variables. The remaining question and Result styles load in Tailwind's component layer so utilities can override them during migration. Do not add another palette.
+
+Nuxt's font provider is local-only, and icons come from the installed Lucide collection with API fallback disabled. Color mode keeps the browser's existing `flow-reader:theme` preference. The prebuilt reader runs under the host's existing CSP without external font, icon, or color-mode requests.
+
 The Local Flow host loads its reader bytes at startup. A changed bundle makes a running host incompatible. Stop only the owned host with `bun plugin/skills/flow-page/scripts/flow-page.ts host stop`, then use `bound` or `show` to start the current host and retrieve the live URL. Stored Flow data is not a static reader. Committed content stays committed when the host is unavailable.
 
 ## Addon judge
