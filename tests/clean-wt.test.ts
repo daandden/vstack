@@ -904,15 +904,19 @@ test("inventory finds omp ovnfs checkouts outside the base and protects unknown 
   expect(inv[custom]).toBeUndefined();
 });
 
-test("clean unused ovnfs checkouts are removed through ovnfs rm", () => {
+test.each([
+  ["ovnfs v0.3.0, whose rm deletes snapshots by default", {}],
+  ["an older daemon that rejects the keep-snapshots field", { FAKE_OVNFS_OLD_DAEMON: "1" }],
+])("clean unused ovnfs checkouts are removed through ovnfs rm and keep their snapshots on %s", (_, env: Record<string, string>) => {
   const path = ovnfsCheckout("omp-clean-123");
-  const c = inventory()[path];
-  const out = remove(`${path}=${c.fingerprint}`);
-  expect(out).toEqual({ removed: [{ path, method: "ovnfs rm" }], skipped: [], failed: [] });
+  const snapshot = { id: "s1", checkout: "omp-clean-123" };
+  writeFileSync(join(ovnfsRoot, "snapshots.json"), JSON.stringify([snapshot]));
+  const c = inventory(env)[path];
+  const out = cleanWt(["remove", `${path}=${c.fingerprint}`], env);
+  expect(out.json).toEqual({ removed: [{ path, method: "ovnfs rm" }], skipped: [], failed: [] });
   expect(existsSync(path)).toBe(false);
   expect(JSON.parse(readFileSync(join(ovnfsRoot, "checkouts.json"), "utf8"))).toEqual([]);
-  const calls = readFileSync(join(ovnfsRoot, "calls.jsonl"), "utf8").trim().split("\n").map((line) => JSON.parse(line));
-  expect(calls.some((call) => call.args.join(" ") === "--json rm omp-clean-123")).toBe(true);
+  expect(JSON.parse(readFileSync(join(ovnfsRoot, "snapshots.json"), "utf8"))).toEqual([snapshot]);
   expect(git(repo, "status", "--porcelain")).toBe("");
 });
 

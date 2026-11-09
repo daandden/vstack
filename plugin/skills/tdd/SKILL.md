@@ -24,6 +24,7 @@ Run real code behind the seam. Replace only system boundaries with stand-ins, lo
 Record every pick with what it catches and misses: an `assumed` item in the owning Stage in a Flow, or a line in chat outside one. The user's pushback reopens that seam.
 
 Ask only before writing a test at a Costly seam. Its test reaches a real service beyond localhost, needs a real credential, account, or paid quota, or its test command runs over 180 seconds, measured on the first run or estimated before writing the test. Ask once through `ask` under skill://flow-page's "Every ask in a Flow" contract, or plain `ask` outside a Flow. Reuse an earlier explicit approval for that costly use. In a subagent, return the costly seam as a question to the coordinator.
+Inside implement or implement-spec, END-STATE.md's "Question timing" decides when the Costly seam question is asked.
 
 Without the user's answer, including timeout, cancellation, headless operation, or an unavailable picker, do not use the Costly seam. Test at the best seam that is not costly, or prove the change another way, and name the gap. A first run that reveals the time limit stops further use until approval.
 

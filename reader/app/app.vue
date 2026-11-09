@@ -37,6 +37,7 @@ const stageless = computed(() => flow.value?.reading.historical.filter((b) => !b
     <p v-else-if="!flow" class="notice" role="status">Loading the Flow from the Local Flow host…</p>
     <template v-else>
       <TabBar />
+      <MattPath />
       <FlowMasthead />
       <p v-if="connection === 'reconnecting'" class="notice" role="status">
         The Local Flow host stopped answering. This page keeps what it showed and reconnects when the host is back.

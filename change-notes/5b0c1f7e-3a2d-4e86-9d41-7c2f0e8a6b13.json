@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "clean-wt keeps an ovnfs checkout's snapshots when it removes the checkout. ovnfs v0.3.0's `rm` deletes them by default, and a snapshot can hold work that clean-wt's Git guards never see. A daemon older than v0.3.0 still gets plain `ovnfs rm` (ADR 0059)."
+  ]
+}

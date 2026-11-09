@@ -13,7 +13,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # The version-bump check diffs plugin/ against an earlier commit, so it needs the history.
           fetch-depth: 0
 
       - uses: oven-sh/setup-bun@v2
@@ -44,19 +43,18 @@ jobs:
       - name: Test
         run: bun run test
 
-      # Version base: the PR base on a pull request; the commit before the push on a push; the merge base
-      # with the default branch for a new branch or a force push whose old tip is gone.
-      - name: Pick the version base
+      - name: Pick the change-note base
         id: base
         env:
           EVENT: ${{ github.event_name }}
-          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_BRANCH: ${{ github.event.pull_request.base.ref }}
           BEFORE: ${{ github.event.before }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          BRANCH: ${{ github.ref_name }}
         run: |
           if [ "$EVENT" = pull_request ]; then
-            base="$PR_BASE"
-          elif [ -n "$BEFORE" ] && ! [[ "$BEFORE" =~ ^0+$ ]] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            base=$(git merge-base HEAD "origin/$PR_BRANCH")
+          elif [ "$BRANCH" = "$DEFAULT_BRANCH" ] && [ -n "$BEFORE" ] && ! [[ "$BEFORE" =~ ^0+$ ]] && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
             base="$BEFORE"
           else
             base=$(git merge-base HEAD "origin/$DEFAULT_BRANCH" 2>/dev/null || true)
