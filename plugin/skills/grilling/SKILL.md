@@ -25,7 +25,13 @@ Fan-out (skill://vstack-fan-out): parts: one per independent fact question. One 
 
 ## Settle or ask
 
-Settle a frontier decision yourself only when all three hold:
+Settle frontier decisions on the Bookkeeping list without asking or requiring a cited repo fact (ADR 0067):
+
+- Behavior-preserving refactors and cleanup, including removing code proven unused, merging duplicate instructions, and choosing not to merge look-alike code. Behavior, public contracts, scope, and proof must stay the same.
+- Recording a decision the user already made as an ADR, including its placement and supersession links. Recording never settles a new fallback, guarantee, or policy.
+- Carrying settled terms into the glossary and reusing existing definitions. Ask about a new product concept or a preferred public name.
+
+Internal names, file locations, and investigation order are not on the Bookkeeping list. For every other frontier decision, settle it yourself only when all three of ADR 0037's conditions hold:
 
 - A later edit can undo it, with no migration and no change to published text.
 - It is not a matter of the user's taste. Names, wording, and looks are always the user's.
@@ -33,7 +39,7 @@ Settle a frontier decision yourself only when all three hold:
 
 Ask every other decision, including one where any of the three is in doubt.
 
-Record each settled decision with its decision, pick, and why, citing its repo fact with file and line, ADR, or convention. In a Flow, put it as an `assumed` item before the round in the contribution. Code owns the Assumed list and includes its current picks in the close. Outside a Flow, show the Assumed list in chat before asking.
+Record each settled decision with its decision, pick, and why. For a Bookkeeping-list pick, give its kind and reason. For a pick under the three-part test, cite its repo fact with file and line, ADR, or convention. In a Flow, put it as an `assumed` item before the round in the contribution. Code owns the Assumed list and includes its current picks in the close. Outside a Flow, show the Assumed list in chat before asking.
 
 A note, Other text, or pushback that names an Assumed decision reopens it, whatever else the answer picks. Ask it in the next round. In a Flow, use `reopens` naming the Assumed item's id. Code links the records and removes that pick from the current Assumed list.
 
