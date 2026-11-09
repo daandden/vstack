@@ -25,3 +25,13 @@ On Overview and Topics, `n` uses the Flow-wide order: newest in-progress Stage f
 Diagrams keep their intrinsic label size rather than shrinking to fit a narrow screen. Swipe or scroll inside a wide diagram to read the rest. For keyboard panning, Tab to the diagram and use the arrow keys; those keys do not move the page's reading stop while the diagram has focus. Tab out to resume reading navigation. Captured Mermaid source and historical Pele SVGs follow the same rule in both themes.
 
 Follow a question's Background and Topic note links for its context, and open Term notes for its local definitions. Result-entry links lead to the cited finding or evidence, including earlier revisions inside disclosures.
+
+## Reader comments
+
+Each Result revision has a separate Reader comments area. Choose **Add Reader comment**, select the whole Result block or one of its entries, enter a note, and choose **Save comment**. Comments are plain text, up to 4096 characters. The list names the Stage, Result, revision, and block or entry, with the saved time.
+
+Comments are saved to the Flow and appear after a reload, in another browser, and after a Local Flow host restart. They remain on the Result revision they name. Open **Earlier revisions** to read comments on an earlier revision.
+
+The comments endpoint shares Quiz progress's Flow-scoped HttpOnly, SameSite=Strict cookie. Writes require that cookie, the host's own Origin, and `application/json`. Comments are stored separately from authored records. They never change authored content, answers, workflow progress, or the authored Flow revision, and never answer a question or count as consent.
+
+When the user points at Reader comments, `show` lists them separately in `reader_comments`. Each record has `id`, `stage`, `result`, `revision`, `anchor`, `text`, and `time`. An anchor is `{ kind: "block" }` or `{ kind: "entry", entry: "<entry id>" }`. No notification or automatic context injection delivers comments to the agent.

@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "minor",
+  "entries": [
+    "Save Reader comments on Result blocks and entries through a Flow-scoped authenticated endpoint, retain them across browsers and host restarts, and list them separately through show without changing authored content or granting consent."
+  ]
+}

@@ -16,6 +16,7 @@ import { addAliases, aliasesOf, closeFlow, contribute, newFlow, nowIso, openStag
 import { assetsDir, createFlowFolder, flowFolders, flowsDir, folderOfId, migrationIdentity, readBinding, readState, registerFolder, registerMigration, registeredFolder, statePath, withLock, writeAtomic, writeBinding } from "./store.ts";
 import { connect, flowUrl, hostCommand, originOf } from "./live.ts";
 import { captureHistoricalImages, historicalFlows, migrateHistorical, parseHistorical } from "./migrate.ts";
+import { readComments } from "./comments.ts";
 import { Refusal } from "./fields.ts";
 import { ContributionRefusal, refusalDiagnostic, resultContracts } from "./contracts.ts";
 import { describeResult } from "./discovery.ts";
@@ -430,7 +431,7 @@ async function main(): Promise<object> {
     default: {
       const { folder } = locate(flowKey());
       const s = readState(folder)!;
-      return { ...snapshot(view(s)), aliases: aliasesOf(s) };
+      return { ...snapshot(view(s)), aliases: aliasesOf(s), reader_comments: readComments(folder).comments };
     }
   }
 }

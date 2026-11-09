@@ -6,6 +6,7 @@ import { scratchRoot } from "../../vstack-tmp/scripts/scratch.ts";
 import { attest, capability, originOf, readerBundle, record, recordPath, same, secrets, version, type HostRecord, type Runtimes } from "./live.ts";
 import { SLUG, view, type State } from "./model.ts";
 import { learning } from "./learning.ts";
+import { comments } from "./comments.ts";
 import { assetsDir, folderOfId, readState, writeAtomic } from "./store.ts";
 import { observations, observationVersion, observing } from "./observations.ts";
 
@@ -192,12 +193,12 @@ async function route(req: Request): Promise<Response> {
   const s = readState(folder);
   if (!s || s.flow.id !== id) return missing();
   const progressToken = createHmac("sha256", secret.control).update(`flow-learning-v1\n${key}\n${id}`).digest("hex");
-  if (m[4] === "/learning") {
+  if (m[4] === "/learning" || m[4] === "/comments") {
     const token = req.headers.get("cookie")?.split(";").map((x) => x.trim()).find((x) => x.startsWith("flow_learning="))?.slice(14) ?? "";
-    if (!same(token, progressToken)) return response("Learning permission required.", 401);
-    if (req.method === "POST" && req.headers.get("origin") !== origin) return response("Invalid progress origin.", 403);
+    if (!same(token, progressToken)) return response("Reader permission required.", 401);
+    if (req.method === "POST" && req.headers.get("origin") !== origin) return response("Invalid reader origin.", 403);
     if (req.method === "POST" && req.headers.get("content-type") !== "application/json") return response("Use application/json.", 415);
-    const result = await learning(folder, req);
+    const result = await (m[4] === "/comments" ? comments : learning)(folder, req);
     return response(JSON.stringify(result.body), result.status, { "Content-Type": "application/json" });
   }
   if (req.method !== "GET" && req.method !== "HEAD") return response("Read-only host.", 405, { Allow: "GET, HEAD" });
