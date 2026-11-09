@@ -196,6 +196,14 @@ _Avoid_: Grilling page, Grilling HTML, question page, round page
 The omp panel above the composer that shows the live Flow page link while a question picker in a Flow is open. It goes away when the picker closes, and its text never reaches the model.
 _Avoid_: Flow popup, Flow card, Flow link note, Flow notification
 
+**Focused Stage**:
+The Stage whose open questions a Flow page's `n` key cycles and whose new questions the page moves to. In a browser it is the Stage tab the page shows. In Tern, the vstack-flow plugin sets it from the omp session most recently focused in the page's tab.
+_Avoid_: current Stage, active Stage, followed Stage
+
+**Picker presence**:
+The Local Flow host's short-lived record that one omp session has a question picker open, with its Stage and asked questions. It is not Flow content and is gone when the picker closes, the host restarts, or it expires.
+_Avoid_: open ask, asking state, active ask
+
 **Map panel**:
 The Flow page panel that the `m` key opens, with one tab for the Matt flow path, one for the Stage tree, and, in a Flow with a wayfinder map, one for the ticket graph.
 _Avoid_: Stage tree (for the whole panel), Stages popup, path banner

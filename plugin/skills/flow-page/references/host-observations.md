@@ -42,3 +42,17 @@ The script starts one detached Local Flow host per operating-system user in the 
 `host status` reports the host without starting it. `host stop` stops only the host authenticated by this home's private credential. A port held by another program or another home's host stays untouched. The private discovery and secrets live under `<home>/.vstack/host/`. Do not attach these files as evidence.
 
 The host stops after 30 idle minutes with no connected reader, publication, or progress sync. `VSTACK_FLOW_IDLE_SECONDS` changes that duration. `VSTACK_FLOW_HOST=off` turns the host off: authoring still commits, and no reader is available until the host runs. Browser links grant read access to one Flow, never authoring, host control, commands, tracker mutations, or merging.
+
+## Session targets and Picker presence
+
+`target --session <id>` reads the main agent's binding, regardless of `--agent`. It creates no Stage or Flow revision. An unbound session returns `{"target":null}` without starting a host. A bound session returns `binding`, `flow`, `stage`, `revision`, `live`, `target`, and `picker`.
+
+When the host serves the Flow, `target` is its live URL with the first asked question's fragment. Without a live Picker presence, or when Ratchet's presence has no question ids, the fragment is the bound Stage. Presence for another Stage never replaces that binding's target. An unavailable or disabled host returns a null target with its `live` status.
+
+`picker` is an opaque identity for the open picker, or null when none is known. It changes when a new picker opens, even if its URL target is unchanged, and stays the same during lease renewal. Consumers can distinguish a picker opening from its closure without following a closure back to the Stage.
+
+The extension owns `picker open --picker <opaque-id> [<question-id>...]` and `picker clear --picker <opaque-id>`. These commands use the session's main binding and never write Flow content. Subagent writes are ignored. Open retains only question ids present in the bound Flow. Clear removes only the matching picker identity, so an older picker cannot clear a newer one.
+
+The host accepts presence writes only at `/.host/picker`, authenticated with its control secret. A Flow's read capability can read `{presences:[...]}` at the page-relative `presence` route, but cannot write it. Each record contains the project `key`, `flow`, `stage`, `session`, `picker`, ordered `questions`, and an `expires` Unix timestamp in milliseconds.
+
+The extension renews a 30-second lease every 10 seconds while the picker is open and clears it on settlement. Expired records count as absent. Host restart discards all presence. Presence work runs independently of the panel and picker, so failure never holds either.

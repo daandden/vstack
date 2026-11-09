@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Ship the vstack-flow Tern window plugin inside the vstack package, preserving Cmd-click Flow link routing and adding an isolated-Tern Verify recipe."
+  ]
+}

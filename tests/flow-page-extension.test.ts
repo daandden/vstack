@@ -10,6 +10,7 @@ const script = join(import.meta.dir, "../plugin/skills/flow-page/scripts/flow-pa
 const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-extension-")));
 const worlds: ReturnType<typeof world>[] = [];
 afterAll(async () => {
+  for (const w of worlds) await w.shutdown();
   for (const w of worlds) await w.run(["host", "stop"]);
   rmSync(root, { recursive: true, force: true });
 });
@@ -22,13 +23,18 @@ function world(hostOff = false) {
   const listener = Bun.serve({ port: 0, fetch: () => new Response("occupied") });
   const port = String(listener.port);
   listener.stop(true);
+  const hosts: ReturnType<typeof fakeHost>[] = [];
+  let running = 0;
   const run = async (args: string[], input?: unknown) => {
-    const p = Bun.spawn([process.execPath, script, ...args, "--home", home], {
-      cwd: project, env: { ...ENV, HOME: home, VSTACK_FLOW_PORT: port, ...(hostOff ? { VSTACK_FLOW_HOST: "off" } : {}) },
-      stdin: input === undefined ? "ignore" : new TextEncoder().encode(JSON.stringify(input)), stdout: "pipe", stderr: "pipe",
-    });
-    const [stdout, stderr, code] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited]);
-    return { stdout, stderr, code, killed: false };
+    running++;
+    try {
+      const p = Bun.spawn([process.execPath, script, ...args, "--home", home], {
+        cwd: project, env: { ...ENV, HOME: home, VSTACK_FLOW_PORT: port, ...(hostOff ? { VSTACK_FLOW_HOST: "off" } : {}) },
+        stdin: input === undefined ? "ignore" : new TextEncoder().encode(JSON.stringify(input)), stdout: "pipe", stderr: "pipe",
+      });
+      const [stdout, stderr, code] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited]);
+      return { stdout, stderr, code, killed: false };
+    } finally { running--; }
   };
   const ok = async (args: string[], input?: unknown) => {
     const r = await run(args, input);
@@ -38,9 +44,14 @@ function world(hostOff = false) {
   const host = (sessionId: string, agent: FakeAgent = { kind: "main", id: "Main", name: "main", depth: 0 }) => {
     const h = fakeHost({ sessionId, agent, exec: async (_command, args) => run(args.slice(1)) });
     h.ctx.cwd = project;
+    hosts.push(h);
     return h;
   };
-  return { home, project, port, run, ok, host };
+  const shutdown = async () => {
+    for (const h of hosts) await h.emit("session_shutdown");
+    await until(() => running === 0);
+  };
+  return { home, project, port, run, ok, host, shutdown };
 }
 function setup(hostOff = false) { const w = world(hostOff); worlds.push(w); return w; }
 const completedReply = (text = "Done.") => ({
@@ -173,6 +184,7 @@ function holdLookups(h: ReturnType<typeof fakeHost>) {
   const held: (() => void)[] = [];
   let finished = 0;
   h.pi.exec = async (...args: any[]) => {
+    if (args[1]?.[1] !== "bound") return exec(...args);
     await new Promise<void>(resolve => held.push(resolve));
     try { return await exec(...args); } finally { finished++; }
   };
@@ -193,6 +205,81 @@ async function until(condition: () => boolean, timeout = 10_000) {
 
 const returnsBefore = (pending: Promise<unknown>, ms = 500) =>
   Promise.race([pending.then(() => "returned"), Bun.sleep(ms).then(() => "held")]);
+
+async function publishQuestions(w: ReturnType<typeof world>, session: string, ...refs: string[]) {
+  return w.ok(["submit", "--session", session], { version: 1, items: [{
+    kind: "round",
+    questions: refs.map(ref => ({
+      ref, title: `Which ${ref}?`, description: `Choose the ${ref} approach.`,
+      needs: [{ need: `Understand the ${ref} trade-offs.`, kind: "prose" }],
+      options: ["Keep", "Change"].map(label => ({
+        label, does: `${label} the ${ref} approach.`, gains: [`${label} benefits ${ref}.`], costs: [`${label} costs ${ref}.`],
+      })),
+    })),
+  }] });
+}
+
+test("an ordinary ask links to its receipt question rather than the newest Stage", async () => {
+  const w = setup();
+  const opened = await w.ok(["open", "--title", "Asked ticket", "--skill", "implement", "--session", "asked"]);
+  const receipt = await publishQuestions(w, "asked", "asked");
+  await w.ok(["open", "--flow", opened.flow, "--skill", "implement", "--session", "parallel"]);
+  await publishQuestions(w, "parallel", "other");
+  const current = await w.ok(["bound", "--session", "asked"]);
+  const h = w.host("asked");
+  const ui = panelUI(h);
+  const input = structuredClone(receipt.ask);
+  await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "targeted", args: input });
+  await until(() => ui.panel() !== undefined);
+  expect(ui.panel()).toContain(`<${current.live.url}#${receipt.ask.questions[0].id}>`);
+  expect(input).toEqual(receipt.ask);
+  expect(h.sent).toEqual([]);
+  expect(h.saved).toEqual([]);
+  await h.emit("tool_execution_end", { toolName: "ask", toolCallId: "targeted" });
+  expect(ui.panel()).toBeUndefined();
+});
+
+test("a multi-question picker links to its first asked question, not the first or newest published question", async () => {
+  const w = setup();
+  await w.ok(["open", "--title", "Ordered questions", "--skill", "implement", "--session", "ordered"]);
+  await publishQuestions(w, "ordered", "earlier");
+  const receipt = await publishQuestions(w, "ordered", "first", "second");
+  const current = await w.ok(["bound", "--session", "ordered"]);
+  const h = w.host("ordered");
+  const ui = panelUI(h);
+  for (const questions of [receipt.ask.questions, receipt.ask.questions.toReversed()]) {
+    await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "multi", args: { questions } });
+    await until(() => ui.panel() !== undefined);
+    expect(ui.panel()).toContain(`<${current.live.url}#${questions[0].id}>`);
+    expect(ui.panel()).not.toContain(`#${questions[1].id}`);
+    await h.emit("tool_execution_end", { toolName: "ask", toolCallId: "multi" });
+    expect(ui.panel()).toBeUndefined();
+  }
+});
+
+test("an ask with no question id in the bound Flow links to the bound Stage", async () => {
+  const w = setup();
+  const opened = await w.ok(["open", "--title", "Stage fallback", "--skill", "implement", "--session", "fallback"]);
+  const receipt = await publishQuestions(w, "fallback", "local");
+  await w.ok(["open", "--flow", opened.flow, "--skill", "implement", "--session", "newer"]);
+  await w.ok(["open", "--title", "Unrelated Flow", "--skill", "implement", "--session", "foreign"]);
+  const foreign = await publishQuestions(w, "foreign", "foreign-first", "foreign-second");
+  const current = await w.ok(["bound", "--session", "fallback"]);
+  const h = w.host("fallback");
+  const ui = panelUI(h);
+  for (const [index, args] of [
+    {}, { questions: [{ question: "No id" }] }, { questions: [{ id: opened.stage }] },
+    { questions: [{ id: "question-999" }] }, { questions: [foreign.ask.questions[1]] },
+  ].entries()) {
+    const toolCallId = `fallback-${index}`;
+    await h.emit("tool_execution_start", { toolName: "ask", toolCallId, args });
+    await until(() => ui.panel() !== undefined);
+    expect(ui.panel()).toContain(`<${current.live.url}#${opened.stage}>`);
+    expect(ui.panel()).not.toContain(`#${receipt.ask.questions[0].id}`);
+    await h.emit("tool_execution_end", { toolName: "ask", toolCallId });
+    expect(ui.panel()).toBeUndefined();
+  }
+});
 
 test("a bound ask shows the Flow panel above the composer while it runs, without holding the picker", async () => {
   const w = setup();
@@ -284,7 +371,7 @@ test("native host approval shows the panel while its dialog is open and follows 
   const questions = [{ id: "approval", question: "Approve?", options: [{ label: "Approve" }] }];
   const pending = h.ctx.ui.askDialog(questions);
   await until(() => order.includes("native"));
-  await until(() => ui.panel()?.includes(first.live.url) ?? false);
+  await until(() => ui.panel()?.includes(`<${first.live.url}#${first.stage}>`) ?? false);
   finish(answer);
   expect(await pending).toBe(answer);
   expect(ui.panel()).toBeUndefined();
@@ -292,7 +379,7 @@ test("native host approval shows the panel while its dialog is open and follows 
   h.ctx.sessionManager = { ...h.ctx.sessionManager, getSessionId: () => "native-b" };
   await h.emit("session_switch");
   const again = h.ctx.ui.askDialog(questions);
-  await until(() => ui.panel()?.includes(second.live.url) ?? false);
+  await until(() => ui.panel()?.includes(`<${second.live.url}#${second.stage}>`) ?? false);
   finish(answer);
   expect(await again).toBe(answer);
   expect(ui.panel()).toBeUndefined();
@@ -457,4 +544,149 @@ test("a disabled host shows its state in the panel with no model or session pres
   expect(h.saved).toEqual([]);
   const history = [{ role: "user", content: "Continue?" }];
   expect(await h.emit("context", { messages: history })).toEqual([{ messages: history }]);
+});
+
+test("a main picker publishes presence and clears it on answer, cancellation, timeout, and failure", async () => {
+  const w = setup();
+  const opened = await w.ok(["open", "--title", "Picker presence", "--skill", "implement", "--session", "present"]);
+  const receipt = await publishQuestions(w, "present", "first", "second");
+  const h = w.host("present");
+  const ui = panelUI(h);
+  let finish!: (value: unknown) => void;
+  let fail!: (error: Error) => void;
+  h.ctx.ui.askDialog = async () => new Promise((resolve, reject) => { finish = resolve; fail = reject; });
+  await h.emit("session_start");
+  const read = async () => {
+    const r = await fetch(new URL("presence", opened.live.url));
+    expect(r.status).toBe(200);
+    return (await r.json() as any).presences as any[];
+  };
+  const waitPresence = async (count: number) => {
+    let records: any[] = [];
+    const end = Date.now() + 10_000;
+    do {
+      records = await read();
+      if (records.length === count) return records;
+      await Bun.sleep(20);
+    } while (Date.now() < end);
+    expect(records).toHaveLength(count);
+    return records;
+  };
+  for (const outcome of ["answer", "cancel", "timeout", "failure", "ratchet"]) {
+    const call = { toolName: "ask", toolCallId: outcome, args: receipt.ask };
+    if (outcome !== "ratchet") await h.emit("tool_execution_start", call);
+    const pending = h.ctx.ui.askDialog(outcome === "ratchet" ? [] : receipt.ask.questions);
+    const [presence] = await waitPresence(1);
+    expect(presence).toMatchObject({
+      session: "present", flow: opened.flow, stage: opened.stage,
+      questions: outcome === "ratchet" ? [] : receipt.ask.questions.map((q: any) => q.id),
+    });
+    expect(presence.expires).toBeGreaterThan(Date.now());
+    const target = await w.ok(["target", "--session", "present"]);
+    expect(target.target).toBe(`${opened.live.url}#${outcome === "ratchet" ? opened.stage : receipt.refs.first}`);
+    await until(() => ui.panel() !== undefined);
+    if (outcome === "failure") {
+      void pending.catch(() => {});
+      fail(new Error("picker failed"));
+      await expect(pending).rejects.toThrow("picker failed");
+    } else {
+      finish(outcome === "answer" ? { kind: "submit", results: [] } : outcome === "timeout" ? { kind: "timeout" } : undefined);
+      await pending;
+    }
+    expect(ui.panel()).toBeUndefined();
+    await waitPresence(0);
+    expect((await w.ok(["target", "--session", "present"])).target).toBe(`${opened.live.url}#${opened.stage}`);
+    if (outcome !== "ratchet") await h.emit("tool_execution_end", call);
+  }
+});
+
+test("a failed presence write never holds the picker or the panel", async () => {
+  const w = setup();
+  const opened = await w.ok(["open", "--title", "Independent picker", "--skill", "implement", "--session", "independent"]);
+  const h = w.host("independent");
+  const ui = panelUI(h);
+  const exec = h.pi.exec;
+  let reject!: (error: Error) => void;
+  let attempted = false;
+  h.pi.exec = async (...args: any[]) => {
+    if (args[1][1] === "picker" && args[1][2] === "open") {
+      attempted = true;
+      return new Promise((_resolve, fail) => { reject = fail; });
+    }
+    return exec(...args);
+  };
+  let finish!: () => void;
+  let openedPicker = false;
+  h.ctx.ui.askDialog = async () => {
+    openedPicker = true;
+    return new Promise<undefined>(resolve => { finish = () => resolve(undefined); });
+  };
+  await h.emit("session_start");
+  const pending = h.ctx.ui.askDialog([]);
+  expect(openedPicker).toBe(true);
+  await until(() => attempted && ui.panel() !== undefined);
+  expect(ui.panel()).toContain(opened.live.url);
+  finish();
+  expect(await returnsBefore(pending)).toBe("returned");
+  expect(ui.panel()).toBeUndefined();
+  reject(new Error("presence write failed"));
+});
+
+test("a down host never holds the native picker, and subagents write no presence", async () => {
+  const w = setup();
+  const opened = await w.ok(["open", "--title", "Main only", "--skill", "implement", "--session", "main-only"]);
+  await w.ok(["open", "--flow", opened.flow, "--skill", "research", "--session", "main-only", "--agent", "child"]);
+  const child = w.host("main-only", { kind: "sub", id: "child", name: "vstack-worker", depth: 1 });
+  panelUI(child);
+  child.ctx.ui.askDialog = async () => "child";
+  await child.emit("session_start");
+  await child.emit("tool_execution_start", { toolName: "ask", toolCallId: "child", args: {} });
+  expect(await child.ctx.ui.askDialog([])).toBe("child");
+  await Bun.sleep(100);
+  expect(await (await fetch(new URL("presence", opened.live.url))).json()).toEqual({ presences: [] });
+  await w.ok(["host", "stop"]);
+  const listener = Bun.serve({ port: Number(w.port), fetch: () => new Response("foreign listener") });
+  try {
+    const h = w.host("main-only");
+    const ui = panelUI(h);
+    h.ctx.ui.askDialog = async () => "answered";
+    await h.emit("session_start");
+    expect(await returnsBefore(h.ctx.ui.askDialog([]))).toBe("returned");
+    expect(ui.panel()).toBeUndefined();
+    expect(await (await fetch(`http://127.0.0.1:${w.port}`)).text()).toBe("foreign listener");
+  } finally { listener.stop(true); }
+});
+
+test("a delayed old presence write never replaces a newer picker's presence", async () => {
+  const w = setup();
+  const opened = await w.ok(["open", "--title", "Presence ownership", "--skill", "implement", "--session", "owner"]);
+  const receipt = await publishQuestions(w, "owner", "old", "new");
+  const h = w.host("owner");
+  const ui = panelUI(h);
+  const exec = h.pi.exec;
+  let release!: () => void;
+  let held = false;
+  let inFlight = 0;
+  h.pi.exec = async (...args: any[]) => {
+    inFlight++;
+    try {
+      if (!held && args[1][1] === "picker" && args[1][2] === "open") {
+        held = true;
+        await new Promise<void>(resolve => { release = resolve; });
+      }
+      return await exec(...args);
+    } finally { inFlight--; }
+  };
+  await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "old", args: { questions: [receipt.ask.questions[0]] } });
+  await until(() => held && ui.panel() !== undefined);
+  await h.emit("tool_execution_end", { toolName: "ask", toolCallId: "old" });
+  await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "new", args: { questions: [receipt.ask.questions[1]] } });
+  await until(() => ui.panel() !== undefined);
+  await Bun.sleep(100);
+  release();
+  await until(() => inFlight === 0);
+  const target = await w.ok(["target", "--session", "owner"]);
+  expect(target.target).toBe(`${opened.live.url}#${receipt.refs.new}`);
+  expect(target.picker).not.toBeNull();
+  await h.emit("tool_execution_end", { toolName: "ask", toolCallId: "new" });
 });

@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "setup-vstack checks Tern's vstack-flow link when Tern is installed and links vstack's copy only after the user selects the setter."
+  ]
+}

@@ -5,6 +5,8 @@ import { join } from "node:path";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "setup-vstack", "scripts", "machine.ts");
 const FAKE_OMP = join(import.meta.dir, "support", "fake-omp-machine.ts");
+const FAKE_TERN = join(import.meta.dir, "support", "fake-tern-machine.ts");
+const TERN_PLUGIN = realpathSync(join(import.meta.dir, "..", "plugin", "tern", "vstack-flow"));
 const CONFIGURED = `modelRoles:
   judge: typesafe/jev-latest
 ratchet:
@@ -35,6 +37,7 @@ function machineFixture(options: {
   gitGuard?: boolean;
   config?: string;
   credentials?: boolean;
+  tern?: "missing" | "foreign" | "correct";
 } = {}) {
   const root = join(dir, `case-${++n}`);
   const home = join(root, "home");
@@ -54,6 +57,15 @@ function machineFixture(options: {
   if (options.ovnfs === "config") config.ovnfs = { path: ovnfs };
   if (options.ovnfs === "invalid-config") config.ovnfs = { path: join(root, "missing-ovnfs") };
   writeFileSync(configPath, Bun.YAML.stringify(config));
+  const ternDir = join(home, ".config", "tern", "plugins");
+  if (options.tern) {
+    writeFileSync(join(bin, "tern"), `#!/bin/sh\nexec "${process.execPath}" "${FAKE_TERN}" "$@"\n`, { mode: 0o755 });
+    mkdirSync(ternDir, { recursive: true });
+    writeFileSync(join(ternDir, "other-plugin.path"), "/other/plugin\n");
+    if (options.tern !== "missing") {
+      writeFileSync(join(ternDir, "vstack-flow.path"), `${options.tern === "correct" ? TERN_PLUGIN : "/old/tern-plugins/vstack-flow"}\n`);
+    }
+  }
   const invoke = (args: string[] = ["--json"], extraEnv: Record<string, string> = {}) => {
     const env = { PATH: bin, HOME: home, TERM: "dumb", ...(options.credentials === false ? {} : KEY), ...extraEnv };
     const r = Bun.spawnSync([process.execPath, SCRIPT, ...args], { cwd, env, stdout: "pipe", stderr: "pipe" });
@@ -65,7 +77,16 @@ function machineFixture(options: {
     const file = join(configDir, "writes.jsonl");
     return existsSync(file) ? readFileSync(file, "utf8").trim().split("\n").map((line) => JSON.parse(line)) : [];
   };
-  return { home, cwd, bin, configPath, invoke, readConfig, checks, writes };
+  const ternWrites = () => {
+    const file = join(ternDir, "writes.jsonl");
+    return existsSync(file) ? readFileSync(file, "utf8").trim().split("\n").map(line => JSON.parse(line)) : [];
+  };
+  const ternPlugins = () => {
+    const r = Bun.spawnSync([process.execPath, FAKE_TERN, "plugin", "list", "--json"], { env: { HOME: home } });
+    expect(r.exitCode).toBe(0);
+    return JSON.parse(r.stdout.toString()).plugins;
+  };
+  return { home, cwd, bin, configPath, invoke, readConfig, checks, writes, ternWrites, ternPlugins };
 }
 
 const problems = (checks: Check[]) => checks.filter((c) => c.status === "fail" || c.status === "warn").map((c) => [c.id, c.status]);
@@ -196,4 +217,61 @@ test("usage errors and a missing omp exit 2 without writing settings", () => {
   }
   expect(f.invoke(["--json"], { PATH: join(dir, "empty-path") }).code).toBe(2);
   expect(f.writes()).toEqual([]);
+});
+
+test("a missing Tern vstack-flow link warns with a link remedy without writing", () => {
+  const f = machineFixture({ tern: "missing" });
+  const r = f.invoke();
+  expect(r.code).toBe(0);
+  expect(JSON.parse(r.stdout).checks.find((c: Check) => c.name === "Tern vstack-flow")).toMatchObject({
+    id: 12,
+    status: "warn",
+    remedy: expect.stringContaining(`tern plugin link '${TERN_PLUGIN}'`),
+  });
+  expect(f.ternWrites()).toEqual([]);
+  expect(f.ternPlugins()).toEqual([{ id: "other-plugin", path: "/other/plugin" }]);
+});
+
+test.each(["missing", "foreign"] as const)("the Tern setter replaces a %s link only when selected and preserves other plugins", (tern) => {
+  const f = machineFixture({ tern });
+  const before = f.ternPlugins();
+  expect(f.checks().find(c => c.id === 12)?.status).toBe("warn");
+  expect(f.ternWrites()).toEqual([]);
+  expect(f.invoke(["--set", "backend"]).code).toBe(0);
+  expect(f.ternPlugins()).toEqual(before);
+  expect(f.ternWrites()).toEqual([]);
+  const r = f.invoke(["--set", "tern", "tern"]);
+  expect(r.code).toBe(0);
+  expect(r.stdout).toContain("SET Tern vstack-flow");
+  expect(f.ternPlugins()).toEqual([
+    { id: "other-plugin", path: "/other/plugin" },
+    { id: "vstack-flow", path: TERN_PLUGIN },
+  ]);
+  expect(f.ternWrites()).toEqual([
+    ...(tern === "foreign" ? [["unlink", "vstack-flow"]] : []),
+    ["link", TERN_PLUGIN],
+  ]);
+  expect(f.checks().find(c => c.id === 12)?.status).toBe("ok");
+});
+
+test("Tern passes when vstack-flow links the installed vstack copy and changes nothing", () => {
+  const f = machineFixture({ tern: "correct" });
+  expect(f.invoke().code).toBe(0);
+  expect(f.checks().find(c => c.id === 12)).toMatchObject({ name: "Tern vstack-flow", status: "ok" });
+  expect(f.ternPlugins()).toContainEqual({ id: "vstack-flow", path: TERN_PLUGIN });
+  expect(f.ternWrites()).toEqual([]);
+  expect(f.writes()).toEqual([]);
+});
+
+test("without Tern the machine CLI omits the plugin check and refuses its setter before writing", () => {
+  const f = machineFixture();
+  const r = f.invoke();
+  expect(r.code).toBe(0);
+  expect(JSON.parse(r.stdout).checks.some((c: Check) => c.id === 12 || c.name.includes("Tern"))).toBe(false);
+  expect(f.invoke([]).stdout).not.toContain("Tern");
+  const setter = f.invoke(["--set", "backend", "tern"]);
+  expect(setter.code).toBe(2);
+  expect(setter.stderr).toContain("tern is not on PATH");
+  expect(f.writes()).toEqual([]);
+  expect(f.ternWrites()).toEqual([]);
 });

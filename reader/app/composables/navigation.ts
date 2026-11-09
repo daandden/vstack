@@ -53,7 +53,11 @@ function bringIntoView(el: HTMLElement) {
   if (!isWholeTab || startHiddenUnderHeader) place(el);
 }
 
-export async function goTo(id: string, focus: boolean): Promise<boolean> {
+export async function goTo(id: string, focus: boolean, replaceFragment = false): Promise<boolean> {
+  if (typingField(document.activeElement)) {
+    heldMove = { id, focus, replaceFragment };
+    return true;
+  }
   const el = resolve(id);
   if (!el) return false;
   await reveal(el);
@@ -62,6 +66,7 @@ export async function goTo(id: string, focus: boolean): Promise<boolean> {
   if (stop) current.value = stop.id;
   else markFromScroll();
   if (focus) focusOn(el);
+  if (replaceFragment) history.replaceState(null, "", `#${id}`);
   return true;
 }
 
@@ -99,12 +104,21 @@ function switchTab(by: number) {
 let scrollThatKeepsSelection: number | undefined;
 function keepSelectionAtCurrentScroll() {
   scrollThatKeepsSelection = scrollY;
+  if (typing) {
+    typing.scroll = scrollY;
+    typing.stop = current.value;
+  }
 }
 export function markFromScroll() {
+  if (typing) {
+    if (location.hash !== typing.hash) return;
+    typing.scroll = scrollY;
+  }
   let id: string | undefined;
   const edge = (parseFloat(getComputedStyle(document.documentElement).scrollPaddingBlockStart) || 0) + 2;
   for (const el of stops()) if (el.getBoundingClientRect().top <= edge) id = el.id;
   if (id) current.value = id;
+  if (typing) typing.stop = current.value;
 }
 
 /** A stop near the end of a tab cannot scroll to the top, so the scroll that placed it must not hand the selection to an earlier stop. */
@@ -142,6 +156,45 @@ export function keepPlaceNow(change: () => void) {
 
 const editable = (el: EventTarget | null) => el instanceof Element && ((el as HTMLElement).isContentEditable || el.closest("input, textarea, select, video, audio") !== null);
 
+const typingField = (el: EventTarget | null): el is HTMLElement => el instanceof HTMLElement && (el.isContentEditable || el.closest("input, textarea, select") !== null);
+type Move = { id: string; focus: boolean; replaceFragment: boolean };
+let heldMove: Move | undefined;
+let typing: { field: HTMLElement; scroll: number; stop: string | undefined; hash: string } | undefined;
+
+export function onFocusIn(e: FocusEvent) {
+  if (!typingField(e.target) || typing?.field === e.target) return;
+  typing = { field: e.target, scroll: scrollY, stop: current.value, hash: location.hash };
+}
+
+export function onFocusOut() {
+  setTimeout(() => {
+    if (typingField(document.activeElement)) return;
+    typing = undefined;
+    const move = heldMove;
+    heldMove = undefined;
+    if (move) void goTo(move.id, move.focus, move.replaceFragment);
+  }, 0);
+}
+
+function restoreTypingPositionAfterFragmentNavigation() {
+  if (!typing) return;
+  typing.field.focus({ preventScroll: true });
+  scrollTo({ top: typing.scroll, behavior: "instant" });
+  current.value = typing.stop;
+  typing.hash = location.hash;
+  keepSelectionAtCurrentScroll();
+}
+
+export function onHashChange() {
+  const id = decodeURIComponent(location.hash.slice(1));
+  if (typing?.field.isConnected) {
+    heldMove = { id, focus: true, replaceFragment: false };
+    restoreTypingPositionAfterFragmentNavigation();
+    return;
+  }
+  void goTo(id, true);
+}
+
 export function onKey(e: KeyboardEvent) {
   if (e.defaultPrevented || e.isComposing || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey || editable(e.target)) return;
   if (e.key === "m") {
@@ -151,7 +204,9 @@ export function onKey(e: KeyboardEvent) {
   }
   if (mapOpen.value) return;
   if (e.key === "n") {
-    const queue = (flow.value?.next ?? []).map((id) => document.getElementById(id)).filter((el): el is HTMLElement => !!el);
+    const focusedStage = flow.value?.stage.has(tab.value) ? tab.value : undefined;
+    const queue = (flow.value?.next ?? []).map((id) => document.getElementById(id))
+      .filter((el): el is HTMLElement => !!el && (!focusedStage || tabOf(el) === focusedStage));
     if (!queue.length) return;
     e.preventDefault();
     const at = queue.findIndex((el) => el.id === current.value);

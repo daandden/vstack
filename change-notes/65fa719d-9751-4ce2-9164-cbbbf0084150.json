@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Delegate clean-wt checkout investigations, singly or in parallel, to the read-only vstack-wt-investigator agent. Preserve investigation diagnostics and document the opt-in @smol model override."
+  ]
+}

@@ -193,6 +193,135 @@ test("n and k keep their place at the end of a Stage tab that cannot scroll its 
   }
 }, 120_000);
 
+test("n stays in the Focused Stage and wraps after tab clicks, fragments, h, and l", async () => {
+  const a = cli(["open", "--skill", "wayfinder", "--ticket", "410", "--title", "Parallel tickets"]);
+  const first = submit(a.flow, a.stage, [{ kind: "round", questions: [question("q1", "First route?"), question("q2", "Second route?")] }]).refs;
+  const b = cli(["open", "--skill", "wayfinder", "--ticket", "411", "--flow", a.flow]);
+  const second = submit(b.flow, b.stage, [{ kind: "round", questions: [question("q1", "Newer first route?"), question("q2", "Newer second route?")] }]).refs;
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  try {
+    const page = await context.newPage();
+    await page.goto(a.live.url);
+    await page.locator(".bar .tabs").waitFor();
+    expect(await selected(page)).toBe(b.stage);
+
+    await page.locator(`.bar .tabs a[href="#${a.stage}"]`).click();
+    await page.waitForFunction((id) => document.querySelector(`.bar .tabs a[href="#${id}"]`)?.getAttribute("aria-current") === "page", a.stage);
+    const visits: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      await page.keyboard.press("n");
+      visits.push(await hash(page));
+      expect(await selected(page)).toBe(a.stage);
+    }
+    expect(visits).toEqual([first.q1, first.q2, first.q1]);
+
+    await page.keyboard.press("l");
+    expect(await selected(page)).toBe(b.stage);
+    await page.keyboard.press("n");
+    expect(await hash(page)).toBe(second.q1);
+    await page.keyboard.press("h");
+    expect(await selected(page)).toBe(a.stage);
+    await page.keyboard.press("n");
+    expect(await hash(page)).toBe(first.q1);
+
+    await page.goto(`${a.live.url}#${second.q2}`);
+    await page.locator(`#${second.q2}`).waitFor();
+    expect(await selected(page)).toBe(b.stage);
+    await page.keyboard.press("n");
+    expect(await hash(page)).toBe(second.q1);
+
+    await page.evaluate((id) => { location.hash = `#${id}`; }, first.q2);
+    await page.waitForFunction((id) => document.querySelector(`.bar .tabs a[href="#${id}"]`)?.getAttribute("aria-current") === "page", a.stage);
+    await page.keyboard.press("n");
+    expect(await hash(page)).toBe(first.q1);
+  } finally {
+    await context.close();
+  }
+}, 120_000);
+
+test("n stays put and explains when the Focused Stage has no open questions", async () => {
+  const a = cli(["open", "--skill", "wayfinder", "--title", "Settled ticket"]);
+  const settled = submit(a.flow, a.stage, [doc("doc", "Settled findings"), { kind: "round", questions: [question("q", "Settled route?")] }]).refs;
+  submit(a.flow, a.stage, [{ kind: "answer", question: settled.q, response: { status: "answered", picks: ["A"] } }]);
+  const b = cli(["open", "--skill", "wayfinder", "--flow", a.flow]);
+  submit(b.flow, b.stage, [{ kind: "round", questions: [question("q", "Other ticket route?")] }]);
+  const context = await browser.newContext({ viewport: { width: 360, height: 800 } });
+  try {
+    const page = await context.newPage();
+    await page.goto(`${a.live.url}#${settled.doc}`);
+    await page.locator(`#${settled.doc}`).waitFor();
+    const before = await page.evaluate(() => ({ hash: location.hash, y: scrollY }));
+    await page.keyboard.press("n");
+    expect(await selected(page)).toBe(a.stage);
+    expect(await page.evaluate(() => ({ hash: location.hash, y: scrollY }))).toEqual(before);
+    expect(await page.locator(`#${a.stage} [role="status"]`).isVisible()).toBe(true);
+  } finally {
+    await context.close();
+  }
+}, 120_000);
+
+test("Overview and Topics use Flow-wide n order while Stage tabs keep the existing eligibility rules", async () => {
+  const a = cli(["open", "--skill", "wayfinder", "--title", "Eligible ticket questions"]);
+  const first = submit(a.flow, a.stage, [{ kind: "round", questions: [
+    question("open", "First open route?"), question("settled", "Settled route?"), question("stale", "Earlier route?"),
+  ] }]).refs;
+  const again = submit(a.flow, a.stage, [
+    { kind: "answer", question: first.settled, response: { status: "answered", picks: ["A"] } },
+    { kind: "round", questions: [{ ...question("again", "Revised route?"), again: first.stale }] },
+  ]).refs.again;
+  const b = cli(["open", "--skill", "wayfinder", "--flow", a.flow]);
+  const newest = submit(b.flow, b.stage, [
+    { kind: "topic", title: "Navigation context", summary: "Parallel tickets.", body: "Each ticket has its own Stage.", sources: ["GLOSSARY.md"] },
+    { kind: "round", questions: [question("q", "Newest route?")] },
+  ]).refs.q;
+  const finished = cli(["open", "--skill", "research", "--flow", a.flow]);
+  const retired = submit(finished.flow, finished.stage, [{ kind: "round", questions: [question("q", "Deferred route?")] }]).refs.q;
+  submit(finished.flow, finished.stage, [
+    { kind: "close", decisions: [{ question: retired, text: "Deferred until another ticket." }] },
+    { kind: "stage", state: "finished", retire: [{ question: retired, reason: "Deferred until another ticket." }] },
+  ]);
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  try {
+    const page = await context.newPage();
+    await page.goto(a.live.url);
+    await page.locator(".bar .tabs").waitFor();
+    expect(await selected(page)).toBe(b.stage);
+    for (const tab of ["overview", "topics"]) {
+      await page.goto(`${a.live.url}#${tab}`);
+      await page.reload();
+      await page.locator(`#${tab}`).waitFor();
+      expect(await selected(page)).toBe(tab);
+      await page.keyboard.press("n");
+      expect(await hash(page)).toBe(newest);
+      expect(await selected(page)).toBe(b.stage);
+    }
+    for (const tab of ["overview", "topics"]) {
+      await page.goto(`${a.live.url}#${newest}`);
+      await page.locator(`#${newest}`).waitFor();
+      await page.locator(`.bar .tabs a[href="#${tab}"]`).click();
+      await page.waitForFunction((id) => document.querySelector(`.bar .tabs a[href="#${id}"]`)?.getAttribute("aria-current") === "page", tab);
+      await page.keyboard.press("n");
+      expect(await hash(page)).toBe(first.open);
+    }
+
+    await page.goto(`${a.live.url}#${first.open}`);
+    await page.locator(`#${first.open}`).waitFor();
+    const visits: string[] = [];
+    for (let i = 0; i < 3; i++) {
+      await page.keyboard.press("n");
+      visits.push(await hash(page));
+    }
+    expect(visits).toEqual([again, first.open, again]);
+    await page.goto(`${a.live.url}#${retired}`);
+    await page.locator(`#${retired}`).waitFor();
+    await page.keyboard.press("n");
+    expect(await hash(page)).toBe(retired);
+    expect(await selected(page)).toBe(finished.stage);
+  } finally {
+    await context.close();
+  }
+}, 120_000);
+
 test("at 360px the tab row wraps without page overflow and fragment targets land below the header", async () => {
   const a = cli(["open", "--skill", "grill-me", "--title", "Many Stages"]);
   let last = a;

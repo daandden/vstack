@@ -116,7 +116,7 @@ items:
     tree: b32c94e5a51c24ee9c41fcb7fe9ea9fff9af6369
     disposition: adapt
     artifacts: [plugin/skills/to-tickets]
-    reason: "Publish the drift-checked breakdown and drafted MCP binding without approval, retaining publisher guards under ADR 0068."
+    reason: "Publish the drift-checked breakdown and drafted MCP binding without approval, retaining publisher guards under ADR 0068. Save Standard-mode publication records in Scratch (ADR 0066)."
   - id: matt/triage
     upstream: matt
     kind: skill
@@ -1130,6 +1130,8 @@ originals:
   - plugin/skills/vstack-figures
   - plugin/skills/clean-wt
   - plugin/skills/tune-llm-flow
+  - plugin/agents/vstack-wt-investigator.md
+  - plugin/tern/vstack-flow
   - plugin/rules/vstack-posting.md
   - plugin/rules/vstack-recovery.md
 utility:
