@@ -431,6 +431,43 @@ test("Map keys select Stages without moving page tabs, arrows pan, and dismissal
   }
 }, 120_000);
 
+test("Map stays open when m reopens it before the previous native close event", async () => {
+  const a = cli(["open", "--skill", "research", "--title", "Rapid Map reopening"]);
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    await page.goto(a.live.url);
+    const stagesButton = page.getByRole("button", { name: "Stages m", exact: true });
+    const map = page.getByRole("dialog", { name: "Map", exact: true });
+    for (const reopenBeforeCloseEvent of [true, false]) {
+      await stagesButton.click();
+      await map.waitFor();
+      const state = await map.evaluate(async (el, rapid) => {
+        const dialog = el as HTMLDialogElement;
+        const opener = document.querySelector<HTMLButtonElement>(".bar button[aria-haspopup='dialog']")!;
+        const closed = new Promise<boolean>((resolve) => dialog.addEventListener("close", (e) => resolve(e.isTrusted), { once: true }));
+        dialog.querySelector<HTMLButtonElement>("header button")!.click();
+        await Promise.resolve();
+        const dismissed = !dialog.open;
+        const openerRestored = document.activeElement === opener;
+        // Keep the rapid reopen in the same task, ahead of the browser's queued close event.
+        if (!rapid) await closed;
+        document.activeElement!.dispatchEvent(new KeyboardEvent("keydown", { key: "m", bubbles: true, cancelable: true }));
+        await Promise.resolve();
+        const reopened = dialog.open;
+        const nativeClose = await closed;
+        await new Promise(requestAnimationFrame);
+        return { dismissed, openerRestored, reopened, nativeClose, stayedOpen: dialog.open, focusInside: dialog.contains(document.activeElement) };
+      }, reopenBeforeCloseEvent);
+      expect(state).toEqual({ dismissed: true, openerRestored: true, reopened: true, nativeClose: true, stayedOpen: true, focusInside: true });
+      await page.keyboard.press("Escape");
+      await map.waitFor({ state: "hidden" });
+    }
+  } finally {
+    await context.close();
+  }
+}, 120_000);
+
 test("Map shortcuts ignore editable controls and modified keys", async () => {
   const a = cli(["open", "--skill", "research", "--title", "Typing with Map"]);
   const context = await browser.newContext();

@@ -35,6 +35,8 @@ watch(flow, () => {
   focusItem(items()[0] ?? d.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]') ?? d);
 }, { flush: "post" });
 function closed() {
+  // A queued native close event can arrive after the dialog has reopened.
+  if (dialog.value?.open) return;
   mapOpen.value = false;
   if (opener instanceof HTMLElement && opener.isConnected && location.hash === openingHash) opener.focus({ preventScroll: true });
 }
