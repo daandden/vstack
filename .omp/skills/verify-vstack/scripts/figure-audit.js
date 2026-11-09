@@ -4,14 +4,24 @@
   const color = (e, property = 'fill') => getComputedStyle(e)[property];
   const shape = (s, id) => own(s, id).find(e => e.tagName !== 'text');
   const text = (s, id) => own(s, id).find(e => e.tagName === 'text');
-  const mauve = 'rgb(203, 166, 247)', red = 'rgb(243, 139, 168)', green = 'rgb(166, 227, 161)', peach = 'rgb(250, 179, 135)', teal = 'rgb(148, 226, 213)';
+  const mauve = 'rgb(203, 166, 247)', red = 'rgb(243, 139, 168)', green = 'rgb(166, 227, 161)', peach = 'rgb(250, 179, 135)', teal = 'rgb(148, 226, 213)', ordinary = 'rgb(205, 214, 244)';
   assert(color(shape('one', 'G')) === peach && color(shape('one', 'G'), 'stroke') === mauve, 'Group lost its fill or focus');
   assert(color(shape('two', 'G')) === red && color(shape('two', 'G'), 'stroke') === red, 'Group focus leaked to second figure');
   assert(color(shape('one', 'A')) === red && color(shape('two', 'A')) === green, 'Exact-key category or role leaked');
   assert(color(shape('one', 'B')) === teal && color(shape('one', 'B'), 'stroke') === teal, 'Group focus leaked to child');
   const sequence = own('sequence', 'A');
   assert(sequence.filter(e => e.tagName === 'rect').length === 2, 'Sequence lost header/footer ownership');
-  assert(sequence.filter(e => e.tagName === 'text').every(e => color(e) === mauve), 'Participant multi-mark focus failed');
+  assert(sequence.filter(e => e.tagName === 'text').every(e => color(e) === ordinary), 'Participant focus recolored ordinary text');
+  assert(sequence.filter(e => e.tagName === 'rect').every(e => color(e, 'stroke') === mauve && getComputedStyle(e).strokeWidth === '2.5px' && getComputedStyle(e).fillOpacity === '0.22'), 'Participant multi-mark border focus or role tint failed');
+  const roles = { cart: green, stock: 'rgb(249, 226, 175)', retry: red, payment: 'rgb(137, 180, 250)', reader: 'rgb(245, 194, 231)', database: teal, service: peach };
+  const roleProof = Object.entries(roles).map(([id, accent]) => {
+    const mark = shape('roles', id), label = text('roles', id), style = getComputedStyle(mark);
+    assert(color(mark) === accent && style.fillOpacity === '0.22', `${id} lost its 22% role fill`);
+    assert(style.stroke === (id === 'cart' ? mauve : accent), `${id} lost its role or focal border`);
+    assert(color(label) === ordinary, `${id} lost ordinary label text`);
+    if (id === 'cart') assert(style.strokeWidth === '2.5px', 'Focus border width changed');
+    return { id, fill: style.fill, fillOpacity: style.fillOpacity, stroke: style.stroke, strokeWidth: style.strokeWidth, text: color(label) };
+  });
   assert(own('pie', 'Orders').filter(e => e.tagName !== 'text').every(e => color(e) === red), 'Pie slice and legend disagree with exact category key');
   const stops = [...document.querySelectorAll('#sankey-gradient stop')].map(e => getComputedStyle(e).stopColor);
   assert(JSON.stringify(stops) === JSON.stringify([green, red, green, teal, red, peach, teal, peach]), 'Gradient endpoint stops differ');
@@ -52,5 +62,5 @@
       }
     }
   }
-  return { ok: true, paints, scripts, stops, categories: new Set(reference).size, font: getComputedStyle(text('readability', 'Plain')).fontFamily, checks: ['group and figure isolation', 'multi-mark ownership', 'native Sankey modes', 'category reorder/insertion/process/family stability', '13 accents and collisions', 'geometry and 75% sizing', 'outline independence', 'computed Mocha paints'] };
+  return { ok: true, paints, scripts, stops, roles: roleProof, categories: new Set(reference).size, font: getComputedStyle(text('readability', 'Plain')).fontFamily, checks: ['group and figure isolation', 'border-only multi-mark focus', 'seven 22% role fills and ordinary labels', 'native Sankey modes', 'category reorder/insertion/process/family stability', '13 accents and collisions', 'geometry and 75% sizing', 'outline independence', 'computed Mocha paints'] };
 })()

@@ -1,12 +1,12 @@
 # Figure render
 
-vstack-figures has callers write Mermaid. Flow authoring captures the Mermaid source, and the reader draws it with the pinned Pele inside the page, in Catppuccin Latte on light and Mocha on dark, with theme-mauve focal marks. For exports outside the Flow, the render script writes a Catppuccin Mocha SVG with its embedded theme and scoped mauve focal rules. A captured Pele SVG from an earlier Flow keeps its bytes and shows in the reader's theme (ADR 0050).
+vstack-figures has callers write Mermaid. Flow authoring captures the source, and the reader draws it with the pinned Pele in Catppuccin Latte on light and Mocha on dark. The reader and export share Color roles, step edges, and outlined edge and cluster labels. A Document `mermaid` code block uses that same reader pipeline and retains its text in a Source disclosure. Exports outside the Flow embed the Mocha theme. A captured Pele SVG from an earlier Flow keeps its bytes and follows the reader theme (ADRs 0050 and 0065).
 
 ## Sub-features
 
 - `figure-render`: file or stdin input writes an SVG, prints its absolute path, and exits 0.
-- `figure-focus`: one stable source identity owns its visible marks. Mauve borders and text preserve the target's fill without affecting children or other figures.
-- `figure-roles`: seven fixed roles override explicit categories, eligible intrinsic kinds, and genuine source categories in that order. Labels establish no role.
+- `figure-focus`: one stable source identity owns its visible borders. Focus paints a 2.5px Mauve border, preserves the fill and ordinary label text, and leaves children and other figures unchanged. A text-only target without a visible border refuses focus.
+- `figure-roles`: seven fixed roles override explicit categories, eligible intrinsic kinds, and genuine source categories in that order. Role fills use the accent at `fill-opacity: 0.22`, with a solid accent border and ordinary Text labels. Focus changes only that border. Labels establish no role.
 - `figure-bindings`: supported source ids accept roles or exact category keys. Identical repeats succeed. Conflicting assignments refuse even behind a higher-precedence role.
 - `figure-chart-colors`: category keys retain their accent across types, order, insertion, and processes. Labels distinguish collisions among the 13 non-Mauve accents. Sankey source, target, and gradient modes use actual endpoints.
 - `figure-entities`: native C4, ER, class, architecture, block, requirement, use-case, and tree identities retain their documented kind and geometry limits.
@@ -15,11 +15,12 @@ vstack-figures has callers write Mermaid. Flow authoring captures the Mermaid so
 - `figure-workflows`: sequence headers and footers share one participant identity. State, swimlane, visible agent-flow, and event-model targets keep documented generated-id and collapsed-child limits.
 - `figure-refuse`: semantic failures exit 1. Malformed bindings, usage, and unreadable input exit 2. Neither failure creates or replaces output.
 - `figure-readability`: fixed-cell labels preserve common wide and combining text. Sub/Sup use explicit 75% sizing. Step edges and a light Base outline improve presentation without claiming fewer crossings or fixing text overlap.
-- `figure-page`: a `mermaid` attachment retains source bytes by SHA-256. The reader draws it in a caption-named shadow root, with labels inside nodes, theme changes in place, no script, and no outside requests. Historical Pele SVGs keep captured bytes while following the reader theme; other SVGs remain isolated images. Exported SVG bytes and embedded styles survive source edits.
+- `figure-page`: a `mermaid` attachment retains source bytes by SHA-256. The reader draws it in a caption-named shadow root with Color roles, step edges, outlined labels, theme changes in place, no script, and no outside requests. Document `mermaid` code blocks also draw and expose their exact text through Source. Historical Pele SVGs keep captured bytes while following the reader theme; other SVGs remain isolated images. Exported SVG bytes and embedded styles survive source edits.
 
 ## How to get to it (user POV)
 
 - A result-producing caller such as explain, how, architecture improvement, or teach writes Mermaid and captures it as a `mermaid` attachment. teach also runs vstack-figures' render script for its offline lesson.
+- A Document author supplies a code block with language `mermaid`. The reader draws it and keeps the code and optional source attribution in a keyboard-operable Source disclosure.
 - The caller owns the Flow Stage and captures the source. The rendering helper opens no empty Stage.
 
 ## Driving it with bash and the omp browser
@@ -64,11 +65,11 @@ Preconditions:
    const audit = await tab.evaluate(await Bun.file(`${SKILL_DIR}/scripts/figure-audit.js`).text());
    ```
 
-   Expect `ok: true`, 13 category accents, literal computed Mocha paints, and 12px Sub/Sup at a 16px base. Save the returned JSON. The audit checks group and figure isolation, multi-mark participant ownership, all three native Sankey modes, cross-family category stability under reorder and insertion, fixed-cell geometry, wrapping, and outline independence. It removes the first figure's style temporarily and restores it before returning.
+   Expect `ok: true`, 13 category accents, literal computed Mocha paints, and 12px Sub/Sup at a 16px base. Save the returned JSON. The audit checks all seven role fills at opacity 0.22, ordinary label text, 2.5px border-only focus, group and figure isolation, multi-mark participant ownership, all three native Sankey modes, cross-family category stability, fixed-cell geometry, wrapping, and outline independence. It removes the first figure's style temporarily and restores it before returning.
 
-   Inspect the named sections `one`, `two`, `sequence`, `pie`, `sankey-source`, `sankey-target`, `sankey-gradient`, `readability`, and each `*-plain`/`*-bound` pair. Inspect ordinary node text separately from loose outlined text. In the tree pair, the icon-disabled `README.md` gains no icon; the existing `index.ts` icon keeps its source-kind distinction. Inspect architecture icon contrast, Gantt outside labels, journey dots and legend, Git cutouts, Wardley open routes and loose labels, Venn text-only intersections, and child meanings in spatial and workflow groups. All example SVGs also remain available as standalone files. Open representative files in their own SVG context, not only the inline page.
+   Inspect the named sections `one`, `two`, `sequence`, `roles`, `pie`, `sankey-source`, `sankey-target`, `sankey-gradient`, `readability`, and each `*-plain`/`*-bound` pair. Inspect ordinary node text separately from loose outlined text. In the tree pair, `README.md` receives its role without gaining an icon, and the existing `index.ts` icon receives the focal border. The text-only `README.md` focus refusal preserves old output and creates no new SVG. Inspect architecture icon contrast, Gantt outside labels, journey dots and legend, Git cutouts, Wardley open routes and loose labels, Venn text-only intersections, and child meanings in spatial and workflow groups. Open representative SVG files in their own context, not only the inline page.
 
-4. Read `figures/revisions.json`. The historical comparison starts at `9a3a54bbb269732d548c0cc00af18497657d6933`. The after revision is the recorded checkout HEAD plus the recorded working renderer SHA-256. For this feature's review-fix wave, the parent is `da4dea5027f0871b7c97a652ed735a4dabddf481` plus the review patch. Compare `before-9a3a54b.svg` with `after-working-tree.svg` using their identical retained `comparison.mmd` input. This comparison includes intentional typography, step routing, outline, and palette changes. It does not prove any one change caused all visible differences.
+4. Read `figures/revisions.json`. The historical comparison starts at `9a3a54bbb269732d548c0cc00af18497657d6933`. The after revision is the recorded checkout HEAD plus the recorded working renderer SHA-256. Compare `before-9a3a54b.svg` with `after-working-tree.svg` using their identical retained `comparison.mmd` input. This comparison includes intentional typography, step routing, outline, and palette changes. It does not prove any one change caused all visible differences.
 
    Palette-only comparisons instead use each `*-plain.svg` and `*-bound.svg` pair from the same current renderer and unchanged source. The helper compares coordinates, path data, dimensions, and viewBox for those pairs. Do not demand layout equality across the historical typography/routing change. Compare explicit source configurations or temporarily remove only the outline in the browser when judging routing or outline alone. Native Pele `smaller` previously displayed about 13.33px at a 16px base. The confirmed output is explicitly 12px, not a promise to retain native keyword sizing. Record fallback-font and unverified Unicode limits.
 
@@ -79,7 +80,15 @@ Preconditions:
    bun "$SKILL_DIR/scripts/figure-flow.ts" "$CHECKOUT" "$VERIFY_RUN_DIR" "$FLOW_SESSION" "$FLOW_AGENT"
    ```
 
-   Expect `ok: true` in `figure-flow/summary.json`. This uses only `data/figure-home`, creates a disposable Stage, captures `figures/one.svg` in both a Document and a question with reader needs, and saves receipts and raw commands. The captured bytes and SHA-256 remain unchanged after the original source changes. A second copy of the valid question, with only its required figure omitted, refuses with empty success stdout and unchanged stored state. Inspect the raw refusal to confirm it reached the missing-visual check. Open the summary's live URL, select the question, and inspect Reader needs and the visible focused group. Inspect the saved `figure-flow/captured.svg` in its own browser tab for computed export paints. Historical Pele SVGs are drawn in the page; other SVGs remain isolated images.
+   Expect `ok: true` in `figure-flow/summary.json`. This uses only `data/figure-home` and a labelled disposable Stage. It captures `figures/one.svg` as a historical Pele attachment, the retained seven-role Mermaid source with `cart` focus, and that same source as a Document `mermaid` code block. Both attachments appear on a question with Reader needs. Source and SVG hashes remain unchanged after the originals change. The missing-visual question, unknown role, authored paint, and text-only focus refuse with empty success stdout and unchanged stored state. Inspect their raw refusals. Open the live URL and inspect the question's Reader needs. Inspect `figure-flow/captured.svg` separately for export paints.
+
+   Select Light, Dark, then Light. Evaluate the complete text of `scripts/figure-reader-audit.js` after each selection and save its returned JSON:
+
+   ```js
+   const readerAudit = await tab.evaluate(await Bun.file(`${SKILL_DIR}/scripts/figure-reader-audit.js`).text());
+   ```
+
+   Expect `ok: true`. Captured Mermaid and Document code show all seven 22% role fills and ordinary Text labels in both themes. Only the attachment's `cart` border is 2.5px Mauve. Edges use step segments and rounded corners, not cubic curves. Edge and cluster labels have a Base outline. Keep references to the SVG nodes across the theme toggles and confirm they survive without a redraw. Open the Document's Source disclosure by pointer, then close and reopen it with keyboard Enter. Its code matches `figure-flow/roles.mmd` and its source attribution remains visible. At narrow widths, use ArrowRight on a focused diagram and confirm local scrolling, not page overflow. Historical Pele SVGs follow the theme without changing their captured bytes. Do not infer source-kind or role behavior from the historical attachment alone.
 
 6. Save ARIA and full-resolution lossless WebP proof at 1280 and 360px. Capture PNG silently, convert losslessly, and read the resulting WebP as the parent skill requires. Record page overflow and visible readability separately from the computed-paint audit. Keep the raw outputs and revision record beside the screenshots.
 
@@ -108,9 +117,10 @@ Preconditions:
 
 - Run checkout scripts, not the plugin already loaded in the current omp session.
 - A missing Pele import is a dependency failure, not a Mermaid parse error.
-- Focus is case-sensitive and requires one stable source identity with visible owned marks. Multiple SVG marks can belong to one semantic target.
-- Timeline events, Ishikawa causes, and individual xy bars have no supported focus id. Generated ids, hidden children, and missing geometry remain unsupported.
+- Focus is case-sensitive and requires one stable source identity with a visible owned border. Multiple borders can belong to one semantic target. Text-only targets refuse even when their labels accept a role.
+- Timeline events, Ishikawa causes, and individual xy bars have no supported focus id. Generated ids, hidden children, and missing borders remain unsupported.
 - Used or unused paint declarations are refused, including theme-variable paints and Sankey `nodeColors`. Empty color configuration remains valid.
 - Authored palette values differ from pixels blended by opacity, gradients, and antialiasing. Audit gradient stops rather than sampling interpolated pixels.
+- Document Mermaid code blocks receive parser validation at submit, not the attachment's full role and authored-paint check. If the shared role pass refuses a stored source, the reader still draws it without role paints.
 - Browser `paint-order: stroke fill` can serialize as `stroke`; both mean the outline precedes the fill.
 - A combined historical before/after is not palette-only evidence. Keep intended typography and routing differences separate.
