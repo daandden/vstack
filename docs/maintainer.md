@@ -22,7 +22,32 @@ The repo scripts need Bun. Run `bun run test` and `bun scripts/check-register.ts
 | `CHANGELOG.md` | no | Dated Plugin releases. |
 | `docs/adr/`, `GLOSSARY.md` | no | Decisions and vocabulary. |
 
-Only `plugin/` ships. Upstreams are fetched when needed, never stored in this repo.
+Only `plugin/` ships. Plugin Upstreams are fetched when needed, never stored in this repo. The repo-only reader development skills below are tracked copies.
+
+### Reader development skills
+
+Six repo-only skills live under `.omp/skills/`: `nuxt-ui` from `nuxt/ui`, `vue-best-practices`, `vue-debug-guides`, `vue-testing-best-practices`, and `create-adaptable-composable` from `vuejs-ai/skills`, and `vueuse-functions` from `vueuse/skills`. `skills-lock.json` records their upstream paths and content hashes. They do not ship in `plugin/` and have no Pin or Decision register row.
+
+The skills CLI 1.7.6 has no `omp` agent target. Its `pi` target installs project skills into `.agents/skills/`. The initial installation used these commands, then moved the six directories into `.omp/skills/`:
+
+```sh
+npx --yes skills@1.7.6 add nuxt/ui --skill nuxt-ui --agent pi --copy --yes
+npx --yes skills@1.7.6 add vuejs-ai/skills --skill vue-best-practices vue-debug-guides vue-testing-best-practices create-adaptable-composable --agent pi --copy --yes
+npx --yes skills@1.7.6 add vueuse/skills --skill vueuse-functions --agent pi --copy --yes
+mv .agents/skills/nuxt-ui .agents/skills/vue-best-practices .agents/skills/vue-debug-guides .agents/skills/vue-testing-best-practices .agents/skills/create-adaptable-composable .agents/skills/vueuse-functions .omp/skills/
+rmdir .agents/skills .agents
+```
+
+The skill files are tracked, so a normal checkout already has them. To restore missing skill directories from only the lock file, run this in a clean directory containing `skills-lock.json`:
+
+```sh
+npx --yes skills@1.7.6 experimental_install --frozen-lockfile --agent pi
+mkdir -p .omp/skills
+mv .agents/skills/nuxt-ui .agents/skills/vue-best-practices .agents/skills/vue-debug-guides .agents/skills/vue-testing-best-practices .agents/skills/create-adaptable-composable .agents/skills/vueuse-functions .omp/skills/
+rmdir .agents/skills .agents
+```
+
+Frozen restoration refuses upstream content that no longer matches the recorded hash. To update, rerun the relevant `add` command in a clean directory, review the new skill files and lock entry, and replace the corresponding tracked copies together. Keep imported guidance unchanged. Repo-specific runtime and testing decisions still govern the reader.
 
 ### Tern Flow links
 
