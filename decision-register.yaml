@@ -1130,6 +1130,7 @@ originals:
   - plugin/skills/vstack-figures
   - plugin/skills/clean-wt
   - plugin/skills/tune-llm-flow
+  - plugin/agents/vstack-wt-investigator.md
 utility:
   - plugin/skills/unslop
   - plugin/skills/technical-writing
