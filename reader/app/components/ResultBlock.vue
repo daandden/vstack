@@ -3,6 +3,7 @@ import { flow } from "~/composables/reader";
 import type { ResultView } from "~/utils/flow";
 
 const props = withDefaults(defineProps<{ r: ResultView; historical?: boolean }>(), { historical: false });
+const content = useTemplateRef<HTMLElement>("content");
 const f = computed(() => flow.value!);
 const shown = computed(() => new Map(props.r.shown.map((a) => [a.id, a])));
 const embedded = computed(() => new Set([...(props.r.doc?.figures ?? []), ...(props.r.comparison?.alternatives.flatMap((a) => a.attachments ?? []) ?? [])]));
@@ -20,6 +21,7 @@ const earlier = computed(() => [...props.r.history].reverse());
 <template>
   <component :is="historical ? 'article' : 'section'" :id="r.anchor" class="result grid gap-2.5" :class="historical ? 'border-s-2 border-default ps-3' : undefined" :data-shape="r.shape" :aria-labelledby="`${r.anchor}-title`" :data-stop="historical ? undefined : ''">
     <span v-if="r.review && !historical" :id="`${r.stage}-review`" />
+    <div ref="content" class="grid min-w-0 gap-2.5">
     <header class="grid gap-1">
       <h2 :id="`${r.anchor}-title`" v-html="inline(r.title)" />
       <p v-if="r.summary" class="text-toned" v-html="inline(r.summary)" />
@@ -37,7 +39,8 @@ const earlier = computed(() => [...props.r.history].reverse());
       <p class="font-semibold text-muted">Attachments</p>
       <AttachmentFigure v-for="a in listed" :key="a.id" :a="a" :anchor="`${r.anchor}-${a.id}`" />
     </div>
-    <ResultComments :r="r" />
+    </div>
+    <ResultComments :r="r" :content="content" />
     <details v-if="r.history.length" class="text-small open:grid open:gap-4 [&>:not(summary)]:text-body">
       <summary>Earlier revisions ({{ r.history.length }})</summary>
       <ResultBlock v-for="h in earlier" :key="h.anchor" :r="h" historical />

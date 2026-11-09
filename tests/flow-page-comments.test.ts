@@ -19,7 +19,7 @@ function world() {
   return w;
 }
 function cli(w: ReturnType<typeof world>, args: string[], items?: object[]) {
-  const p = Bun.spawnSync([process.execPath, script, ...args, "--home", w.home, "--session", "01a1c256-253b-7669-8fec-323a138f5d94", "--agent", "impl-440"], {
+  const p = Bun.spawnSync([process.execPath, script, ...args, "--home", w.home, "--session", "01a1c282-0e63-7477-9c2a-df76da2174f4", "--agent", "impl-441-retry"], {
     cwd: w.cwd, env: { ...ENV, HOME: w.home, VSTACK_FLOW_PORT: String(w.port) },
     stdin: items ? new TextEncoder().encode(JSON.stringify({ version: 1, items })) : "ignore", stdout: "pipe", stderr: "pipe",
   });
@@ -71,4 +71,38 @@ test("Reader comments authenticate, persist independently, and show their captur
   const freshPage = await fetch(url);
   const freshCookie = freshPage.headers.get("set-cookie")!.split(";")[0];
   expect((await (await fetch(endpoint, { headers: { cookie: freshCookie } })).json() as any).comments).toEqual([saved]);
+});
+
+test("text comments retain their quote and revision through edits, Result revisions, and removal", async () => {
+  const w = world();
+  cli(w, ["open", "--title", "Text comments", "--skill", "implement"]);
+  const sent = cli(w, ["submit"], [table]);
+  const url = new URL(sent.live.url);
+  const endpoint = new URL("comments", url);
+  const cookie = (await fetch(url)).headers.get("set-cookie")!.split(";")[0];
+  const post = (body: object) => fetch(endpoint, { method: "POST", headers: { cookie, origin: url.origin, "content-type": "application/json" }, body: JSON.stringify(body) });
+  const input = { version: 1, result: sent.refs.proof, revision: 1, anchor: { kind: "text", quote: "Host restart" }, text: "Explain this passage." };
+  const created = await post(input);
+  expect(created.status).toBe(200);
+  const original = (await created.json() as any).comments[0];
+  expect(original.anchor).toEqual(input.anchor);
+  const revised = cli(w, ["submit"], [{ ...table, ref: "replacement", revises: sent.refs.proof, rows: [{ cells: ["Different evidence"] }] }]);
+  expect(revised.revision).toBeGreaterThan(sent.revision);
+  const statePath = statePathOf(w.home, sent.flow);
+  const authored = readFileSync(statePath, "utf8");
+  expect((await post({ ...input, anchor: { kind: "text", quote: " " } })).status).toBe(400);
+  const editedResponse = await post({ version: 1, action: "edit", id: original.id, text: "Keep the original quote." });
+  expect(editedResponse.status).toBe(200);
+  const edited = (await editedResponse.json() as any).comments[0];
+  expect(edited).toEqual({ ...original, text: "Keep the original quote." });
+  expect(cli(w, ["show"]).reader_comments).toEqual([edited]);
+  cli(w, ["host", "stop"]);
+  cli(w, ["show"]);
+  const freshCookie = (await fetch(url)).headers.get("set-cookie")!.split(";")[0];
+  expect((await (await fetch(endpoint, { headers: { cookie: freshCookie } })).json() as any).comments).toEqual([edited]);
+  const removed = await fetch(endpoint, { method: "POST", headers: { cookie: freshCookie, origin: url.origin, "content-type": "application/json" }, body: JSON.stringify({ version: 1, action: "remove", id: original.id }) });
+  expect(removed.status).toBe(200);
+  expect((await removed.json() as any).comments).toEqual([]);
+  expect((await fetch(endpoint, { headers: { cookie: freshCookie } }).then((r) => r.json()) as any).comments).toEqual([]);
+  expect(readFileSync(statePath, "utf8")).toBe(authored);
 });

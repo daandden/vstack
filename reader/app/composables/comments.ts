@@ -14,9 +14,21 @@ export async function refreshComments() {
 }
 
 export async function saveComment(result: string, revision: number, anchor: CommentAnchor, text: string) {
+  await changeComment({ version: 1, result, revision, anchor, text });
+}
+
+export async function editComment(id: string, text: string) {
+  await changeComment({ version: 1, action: "edit", id, text });
+}
+
+export async function removeComment(id: string) {
+  await changeComment({ version: 1, action: "remove", id });
+}
+
+async function changeComment(input: object) {
   const response = await fetch(new URL("comments", location.href), {
     method: "POST", credentials: "same-origin", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ version: 1, result, revision, anchor, text }), signal: AbortSignal.timeout(5000),
+    body: JSON.stringify(input), signal: AbortSignal.timeout(5000),
   });
   if (!response.ok) {
     const body = await response.json() as { error?: string };

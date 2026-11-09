@@ -30,5 +30,6 @@ const themes = [
     <div class="theme flex flex-wrap gap-1 justify-self-start" role="group" aria-label="Color theme">
       <UButton v-for="t in themes" :key="t.value" :aria-pressed="colorMode.preference === t.value" :ui="{ base: () => 'inline-flex items-center rounded border border-default bg-accented text-toned [padding-block:0.125rem] [padding-inline:0.5rem] text-[length:var(--fs-small)] font-semibold cursor-pointer touch-manipulation active:bg-[var(--surface1)] active:text-secondary aria-pressed:border-primary aria-pressed:text-primary hover:text-secondary motion-safe:transition-[color,background-color] motion-safe:duration-[130ms] motion-safe:ease-out' }" @click="colorMode.preference = t.value">{{ t.label }}</UButton>
     </div>
+    <CopyFeedback />
   </header>
 </template>

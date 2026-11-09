@@ -28,10 +28,14 @@ Follow a question's Background and Topic note links for its context, and open Te
 
 ## Reader comments
 
-Each Result revision has a separate Reader comments area. Choose **Add Reader comment**, select the whole Result block or one of its entries, enter a note, and choose **Save comment**. Comments are plain text, up to 4096 characters. The list names the Stage, Result, revision, and block or entry, with the saved time.
+Each Result revision has a separate Reader comments area. Choose **Add Reader comment**, select the whole Result block or one of its entries, enter a note, and choose **Save comment**. Comments are plain text, up to 4096 characters. The list names the Stage, Result, revision, and anchor, with the saved time.
 
-Comments are saved to the Flow and appear after a reload, in another browser, and after a Local Flow host restart. They remain on the Result revision they name. Open **Earlier revisions** to read comments on an earlier revision.
+To comment on a passage, select text in the Result and choose **Comment on selected text**. For keyboard selection, choose **Select text to comment**, select a passage in the read-only **Result text for selection** field with Shift and the arrow keys, then Tab to **Comment on selected text**. The comment form and saved comment show the exact quote. **Edit comment** changes only the note, preserving its anchor and revision. **Remove comment**, followed by **Confirm removal**, removes the saved note. These controls work with Tab and Enter.
+
+Comments are saved to the Flow and appear after a reload, in another browser, and after a Local Flow host restart. Edits and removals also synchronize across browsers. A comment remains attached to the Result revision on which the reader opened its form, even if the Result changes before saving. Open **Earlier revisions** to read its original revision and quote. Comments never move onto a later revision's text.
+
+**Copy feedback**, below the Flow heading, copies every saved Reader comment across all Stages and revisions as one plain-text prompt. Each comment names its Stage, Result, revision, target, quoted passage, and note. Block and entry comments quote the Result title or entry label. Copying feedback does not send it to the agent.
 
 The comments endpoint shares Quiz progress's Flow-scoped HttpOnly, SameSite=Strict cookie. Writes require that cookie, the host's own Origin, and `application/json`. Comments are stored separately from authored records. They never change authored content, answers, workflow progress, or the authored Flow revision, and never answer a question or count as consent.
 
-When the user points at Reader comments, `show` lists them separately in `reader_comments`. Each record has `id`, `stage`, `result`, `revision`, `anchor`, `text`, and `time`. An anchor is `{ kind: "block" }` or `{ kind: "entry", entry: "<entry id>" }`. No notification or automatic context injection delivers comments to the agent.
+When the user points at Reader comments, `show` lists them separately in `reader_comments`. Each record has `id`, `stage`, `result`, `revision`, `anchor`, `text`, and `time`. An anchor is `{ kind: "block" }`, `{ kind: "entry", entry: "<entry id>" }`, or `{ kind: "text", quote: "<selected passage>" }`. No notification or automatic context injection delivers comments to the agent.
