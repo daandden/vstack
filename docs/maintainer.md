@@ -24,6 +24,22 @@ The repo scripts need Bun. Run `bun run test` and `bun scripts/check-register.ts
 
 Only `plugin/` ships. Upstreams are fetched when needed, never stored in this repo.
 
+### Tern Flow links
+
+`plugin/tern/vstack-flow/` is the separately linked Tern window plugin. Run `tern plugin link <installed vstack>/tern/vstack-flow` to load it in Tern. Its Luau source and manifest ship with the omp package. The [Tern routing Verify recipe](../.omp/skills/verify-vstack/features/vstack-flow.md) drives an isolated Tern instance.
+
+The window plugin claims only local HTTP Flow URLs on `127.0.0.1` or `localhost`, with `/f/<project>/<flow>/<64 hex>/` followed by an optional fragment. User information, queries, and extra path segments stay with Tern. Tern applies `link_click` before calling the route. The route leaves clicks with `mods.alt` to Tern too.
+
+Page reuse matches the URL through the capability segment and stays within the opener's tab. A floating opener uses the tiled pane underneath it. The plugin opens pages with the browser operation `open`, then `release`s them so they do not stay under automation. Tern gives those pages the `agent` website data store. Tern's own page opens use its shared store. `cx.layout:open` is not a substitute because it follows `link_target`, which may open an external browser.
+
+Following remembers the most recently focused omp pane per tab. `targets.ts` runs outside Tern's UI thread, reads that pane's `omp_session_file` from `tern inspect --json`, and uses the session header's id and working directory for the packaged `flow-page.ts target` query. It never associates a pane through inherited `TERN_PANE`. On macOS the plugin starts Bun through `/bin/zsh -lc`; other desktop platforms use the login shell named by `SHELL`.
+
+The window plugin polls selected sessions every 500 ms without overlapping processes. It navigates only on a selected-session change or a new non-null picker token, not on token refresh, picker closure, expiry, or a binding change alone. Browser and non-omp focus preserve selection. Navigation reuses only the matching Flow page in that tab and never focuses it. The reader holds fragment-driven moves while a field has focus and applies the latest move on blur. ACP conversation selection is not observed. The Verify recipe proves the native behavior locally; there is no Luau typecheck or automated Tern test.
+
+Failed polls retain pending pane focus until a poll succeeds. A selected-session transition is acknowledged only after its target query succeeds, so recovery without a picker still reaches the bound Stage.
+
+When the target already equals the page's URL, following dispatches the browser's standard `hashchange` event instead of asking Tern to load that URL again. An exact-URL load reloads the document and discards drafts. Replaying the event lets the reader reselect the question or hold it until blur without adding a reader-specific interface.
+
 ### Flow reader delivery
 
 The reader source lives under `reader/`. Its production bundle ships prebuilt under `plugin/skills/flow-page/reader/`. Installation and normal launch require no build or development server.

@@ -9,6 +9,7 @@ import { cleanBrief, preprocessTinyMessage } from "./prompt-cleaner.ts";
 import * as fs from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { randomUUID } from "node:crypto";
 
 export default function vstack(pi: ExtensionAPI): void {
   registerAddonSelection(pi);
@@ -23,8 +24,8 @@ const flowIdentity = (ctx: ExtensionContext) => [
   "--agent", ctx.agent.kind === "main" ? "main" : ctx.agent.id,
 ];
 
-async function flowPage<T>(pi: ExtensionAPI, ctx: ExtensionContext, args: string[]): Promise<T> {
-  const result = await pi.exec("bun", [flowScript, ...args, ...flowIdentity(ctx)], { cwd: ctx.cwd });
+async function flowPage<T>(pi: ExtensionAPI, ctx: ExtensionContext, args: string[], identity = flowIdentity(ctx)): Promise<T> {
+  const result = await pi.exec("bun", [flowScript, ...args, ...identity], { cwd: ctx.cwd });
   if (result.code !== 0) throw new Error(result.stderr.trim() || `Flow command exited ${result.code}`);
   return JSON.parse(result.stdout);
 }
@@ -51,20 +52,58 @@ function registerFlowContext(pi: ExtensionAPI): void {
 }
 
 function registerFlowQuestions(pi: ExtensionAPI): void {
-  type Bound = { binding: object | null; live?: { state: string; url?: string; error?: string } };
+  type Bound = { binding: { flow: string; stage: string } | null; live?: { state: string; url?: string; error?: string } };
   const interactive = (ctx: ExtensionContext) => ctx.mode === "tui" && ctx.hasUI && ctx.agent.kind === "main";
   const panelKey = "vstack-flow-panel";
   const pickers = new Set<symbol>();
+  const presence = new Map<symbol, () => void>();
+  let presenceWrites: Promise<unknown> = Promise.resolve();
+  const writePresence = (write: () => Promise<unknown>) => {
+    presenceWrites = presenceWrites.then(write).catch(() => {});
+    return presenceWrites;
+  };
+  const startPresence = (ctx: ExtensionContext, picker: symbol, questions?: readonly { id?: string }[]) => {
+    const identity = flowIdentity(ctx);
+    const token = randomUUID();
+    const ids = Array.isArray(questions) ? questions.flatMap(q => typeof q?.id === "string" ? [q.id] : []) : [];
+    let closed = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let pending: Promise<unknown>;
+    const write = () => {
+      pending = writePresence(async () => {
+        if (!closed) await flowPage(pi, ctx, ["picker", "open", "--picker", token, ...ids], identity);
+      });
+      void pending.then(() => {
+        if (!closed) { timer = setTimeout(write, 10_000); timer.unref(); }
+      });
+    };
+    presence.set(picker, () => {
+      closed = true;
+      clearTimeout(timer);
+      void writePresence(() => flowPage(pi, ctx, ["picker", "clear", "--picker", token], identity));
+    });
+    write();
+  };
   let shownIn: ExtensionContext | undefined;
-  const showPanel = async (ctx: ExtensionContext, picker: symbol) => {
+  const showPanel = async (ctx: ExtensionContext, picker: symbol, questions?: readonly { id?: string }[]) => {
     pickers.add(picker);
+    startPresence(ctx, picker, questions);
     let text: string;
     try {
       const current = await flowPage<Bound>(pi, ctx, ["bound"]);
       if (!current.binding) return;
-      text = current.live?.state === "serving" && current.live.url
-        ? `<${current.live.url}>`
-        : `Unavailable: ${current.live?.error ?? `Local Flow host is ${current.live?.state ?? "unavailable"}`}`;
+      if (current.live?.state === "serving" && current.live.url) {
+        let target = current.binding.stage;
+        if (Array.isArray(questions) && questions.some(question => typeof question?.id === "string")) {
+          const response = await fetch(new URL("content", current.live.url));
+          if (!response.ok) throw new Error(`Flow content lookup failed: HTTP ${response.status}`);
+          const content = await response.json() as { questions: { id: string }[] };
+          target = questions.find(question => content.questions.some(saved => saved.id === question?.id))?.id ?? target;
+        }
+        text = `<${current.live.url}#${target}>`;
+      } else {
+        text = `Unavailable: ${current.live?.error ?? `Local Flow host is ${current.live?.state ?? "unavailable"}`}`;
+      }
     } catch (error) {
       text = `Flow binding lookup failed: ${error instanceof Error ? error.message : String(error)}`;
     }
@@ -80,8 +119,13 @@ function registerFlowQuestions(pi: ExtensionAPI): void {
     }, { placement: "aboveEditor" });
   };
   const hidePanel = (picker?: symbol) => {
-    if (picker === undefined) pickers.clear();
-    else if (!pickers.delete(picker) || pickers.size) return;
+    const tokens = picker === undefined ? [...pickers] : [picker];
+    for (const token of tokens) {
+      presence.get(token)?.();
+      presence.delete(token);
+      pickers.delete(token);
+    }
+    if (pickers.size) return;
     shownIn?.ui.setWidget(panelKey, undefined);
     shownIn = undefined;
   };
@@ -90,7 +134,7 @@ function registerFlowQuestions(pi: ExtensionAPI): void {
     if (event.toolName !== "ask" || !interactive(ctx)) return;
     const picker = Symbol(event.toolCallId);
     ordinary.set(event.toolCallId, picker);
-    void showPanel(ctx, picker);
+    void showPanel(ctx, picker, event.args?.questions);
   });
   pi.on("tool_execution_end", event => {
     const picker = ordinary.get(event.toolCallId);

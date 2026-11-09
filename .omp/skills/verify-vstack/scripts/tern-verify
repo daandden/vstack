@@ -1,0 +1,251 @@
+#!/bin/sh
+
+set -eu
+
+die() {
+	printf 'tern-verify: %s\n' "$*" >&2
+	exit 1
+}
+
+[ $# -ge 2 ] || die "usage: tern-verify start|doctor|ctl|tern|type|shot|lens|stop RUN [ARGS...]"
+cmd=$1
+case $2 in
+/*) run=$2 ;;
+*) run=$(pwd)/$2 ;;
+esac
+shift 2
+
+data=$run/data
+cfg=$data/config
+ctl_sock=$data/ctl.sock
+daemon_sock=$data/daemon.sock
+script_dir=$(cd "$(dirname "$0")" && pwd -P)
+repo=${VSTACK_CHECKOUT:-$(git -C "$script_dir" rev-parse --show-toplevel)}
+
+with_isolated_tern_env() {
+	env -u TERN_PANE -u TERN_PANE_SOCKET -u TERN_WINDOW_KEY -u TERN_WINDOW_SOCKET \
+		-u TERN_IDENTITY -u TERN_EXE -u TERN_BLOB_DIR -u TERN_LENSES -u TERN_COMPLETE \
+		TERN_CONFIG_DIR="$cfg" TERN_DAEMON_SOCKET="$daemon_sock" "$@"
+}
+
+ctl() {
+	with_isolated_tern_env tern ctl --control "$ctl_sock" "$@"
+}
+
+socket_owner() {
+	[ -S "$1" ] && lsof -t "$1" 2>/dev/null | head -n 1 || true
+}
+
+omp_session_dir() {
+	rel=${data#"$HOME"/}
+	printf '%s/.omp/agent/sessions/-%s\n' "$HOME" "$(printf %s "$rel" | tr / -)"
+}
+
+case $cmd in
+start)
+	[ -d "$run" ] || die "$run does not exist: make it with mktemp -d"
+	mkdir "$data" 2>/dev/null || die "$data exists: another run owns $run, so do not stop it"
+	mkdir "$cfg"
+	if [ -n "${TERN_VERIFY_HOME:-}" ]; then
+		[ "$TERN_VERIFY_HOME" = "$data/home" ] || die "TERN_VERIFY_HOME must be exactly RUN/data/home"
+		mkdir "$TERN_VERIFY_HOME"
+		jq -n --arg run "$run" '{run:$run}' >"$data/tern-fixture.json"
+	fi
+	if [ -f "$HOME/.config/tern/settings.json" ]; then
+		cp "$HOME/.config/tern/settings.json" "$cfg/settings.json"
+	else
+		echo '{}' >"$cfg/settings.json"
+	fi
+	jq '.shell = "/opt/homebrew/bin/fish"' "$cfg/settings.json" >"$cfg/settings.json.new"
+	mv "$cfg/settings.json.new" "$cfg/settings.json"
+	mkdir "$cfg/omp"
+	printf '{"managed":false,"checked":0,"no_build":false,"offered":true}\n' >"$cfg/omp/state.json"
+	with_isolated_tern_env tern plugin link "$repo/plugin/tern/vstack-flow" >>"$run/start.log" 2>&1 ||
+		die "plugin link failed for $repo/plugin/tern/vstack-flow, see $run/start.log"
+	/usr/bin/caffeinate -u -t 2
+	tern_exe=$(command -v tern) || die "tern is not on PATH"
+	cd "$data"
+	env -u TERN_PANE -u TERN_PANE_SOCKET -u TERN_WINDOW_KEY -u TERN_WINDOW_SOCKET \
+		-u TERN_IDENTITY -u TERN_EXE -u TERN_BLOB_DIR -u TERN_LENSES -u TERN_COMPLETE \
+		HOME="${TERN_VERIFY_HOME:-$HOME}" PATH=/usr/bin:/bin:/usr/sbin:/sbin TERN_CONFIG_DIR="$cfg" TERN_DAEMON_SOCKET="$daemon_sock" \
+		"$tern_exe" --control "$ctl_sock" "$data" >"$run/window.log" 2>&1 </dev/null &
+	echo $! >"$data/window.pid"
+	/usr/bin/caffeinate -d -w "$!" >/dev/null 2>&1 &
+	tries=0
+	until [ -S "$ctl_sock" ] && ctl state >/dev/null 2>&1; do
+		tries=$((tries + 1))
+		[ $tries -le 60 ] || die "no window control after 30 s, see $run/window.log"
+		sleep 0.5
+	done
+	ctl ready >/dev/null || die "no shell prompt, see $run/window.log"
+	socket_owner "$daemon_sock" >"$data/daemon.pid"
+	[ -s "$data/daemon.pid" ] || die "no session daemon on $daemon_sock, see $run/window.log"
+	if [ -n "${TERN_VERIFY_HOME:-}" ]; then
+		if ctl tree | jq -e '[.. | objects | .class? // "" | select(test("(^| )tn-signin-x( |$)"))] | length > 0' >/dev/null; then
+			ctl click '".tn-signin-x"' >/dev/null
+		fi
+	fi
+	printf 'ready: window pid %s, daemon pid %s, repo %s\n' \
+		"$(cat "$data/window.pid")" "$(cat "$data/daemon.pid")" "$repo"
+	;;
+doctor)
+	status=0
+	window_pid=$(cat "$data/window.pid" 2>/dev/null || true)
+	printf 'run:        %s\n' "$run"
+	printf 'repo:       %s (%s)\n' "$repo" "$(git -C "$repo" rev-parse --short HEAD)"
+	printf 'tern:       %s\n' "$(with_isolated_tern_env tern --version)"
+	if [ -n "$window_pid" ] && kill -0 "$window_pid" 2>/dev/null; then
+		printf 'window:     pid %s alive\n' "$window_pid"
+	else
+		printf 'window:     NOT RUNNING (pid %s)\n' "${window_pid:-none}"
+		status=1
+	fi
+	printf 'ctl.sock:   owner %s\n' "$(socket_owner "$ctl_sock")"
+	daemon_pid=$(socket_owner "$daemon_sock")
+	if [ -n "$daemon_pid" ]; then
+		printf 'daemon:     pid %s (started as %s)\n' "$daemon_pid" "$(cat "$data/daemon.pid" 2>/dev/null || echo none)"
+	else
+		printf 'daemon:     NOT RUNNING (started as %s)\n' "$(cat "$data/daemon.pid" 2>/dev/null || echo none)"
+		status=1
+	fi
+	if ! ctl state >"$data/doctor-state.json" 2>&1; then
+		printf 'ctl state:  FAILED: %s\n' "$(cat "$data/doctor-state.json")"
+		status=1
+	else
+		printf 'sessions:   %s\n' "$(jq -c '[.sessions[] | {name, tabs}]' "$data/doctor-state.json")"
+		printf 'focused:    %s\n' "$(jq -c '.focused | {id, label}' "$data/doctor-state.json")"
+	fi
+	daemon_sessions=$(with_isolated_tern_env tern ls 2>&1) || status=1
+	if [ "$daemon_sessions" = "no sessions" ]; then
+		printf 'daemon sessions: NONE\n'
+		status=1
+	fi
+	printf 'plugins:\n'
+	with_isolated_tern_env tern plugin list | sed 's/^/  /'
+	if with_isolated_tern_env tern plugin list | grep -qv ' ready$'; then status=1; fi
+	for link in "$cfg"/plugins/*.path; do
+		target=$(cat "$link")
+		case $target in
+		"$repo"/*) ;;
+		"$run"/link-lens) printf 'run lens:   %s\n' "$target" ;;
+		*)
+			printf 'LINK OUTSIDE REPO: %s -> %s\n' "$link" "$target"
+			status=1
+			;;
+		esac
+	done
+	printf 'sheets:     %s\n' "$(ctl css | jq -r '[.sheets[].name | select(startswith("plugin:"))] | join(" ")')"
+	account=$(ctl a11y | jq -r '[.. | objects | select(.role == "Button") | .name // empty
+		| select(startswith("Signed in to Stencil"))][0] // "NOT SIGNED IN"')
+	printf 'account:    %s\n' "$account"
+	if [ -z "${TERN_VERIFY_HOME:-}" ]; then
+		[ "$account" != "NOT SIGNED IN" ] || status=1
+	else
+		printf 'account check: skipped for isolated HOME; local plugin drives need no account\n'
+	fi
+	if ! ctl tree >"$data/doctor-tree.json"; then
+		printf 'overlay:    could not inspect window\n'
+		status=1
+	elif jq -e '[.. | objects | .class? // "" | select(test("(^| )tn-signin-x( |$)"))] | length > 0' "$data/doctor-tree.json" >/dev/null; then
+		printf 'SIGN-IN OVERLAY OPEN: close .tn-signin-x in this isolated window, then rerun Doctor\n'
+		status=1
+	else
+		printf 'overlay:    none\n'
+	fi
+	alerts=$(ctl system | jq -r '.dialogs[] | "\(.message) \(.buttons)"')
+	if [ -n "$alerts" ]; then
+		printf 'NATIVE ALERT OPEN: %s\n' "$alerts"
+		status=1
+	else
+		printf 'alerts:     none\n'
+	fi
+	exit $status
+	;;
+ctl)
+	ctl "$@"
+	;;
+tern)
+	with_isolated_tern_env tern "$@"
+	;;
+type)
+	[ $# -eq 1 ] || die "usage: tern-verify type RUN 'command line'"
+	with_isolated_tern_env tern run @focused "$1"
+	;;
+shot)
+	[ $# -eq 1 ] || die "usage: tern-verify shot RUN NAME"
+	name=$1
+	reply=$(ctl shot "$name")
+	png=$data/$(printf %s "$reply" | jq -r .png)
+	layout=$data/$(printf %s "$reply" | jq -r .layout)
+	bun -e 'const [png, out] = process.argv.slice(1);
+await Bun.write(out, await new Bun.Image(await Bun.file(png).bytes()).webp({ lossless: true }).bytes());' \
+		"$png" "$run/$name.webp"
+	mv "$layout" "$run/$name.layout.json"
+	rm -f "$png"
+	printf '%s\n%s\n' "$run/$name.webp" "$run/$name.layout.json"
+	;;
+lens)
+	lens=$run/link-lens
+	mkdir -p "$lens"
+	cat >"$lens/plugin.toml" <<'EOF'
+schema = 1
+id = "verify-link-lens"
+name = "Verify link lens"
+version = "0.1.0"
+host = "host.luau"
+
+[[lenses]]
+id = "link"
+match = ["echo PROBE_LINK *"]
+EOF
+	cat >"$lens/host.luau" <<'EOF'
+tern.lens.define("link", {
+	open = function(run, cx)
+		return { url = run.args[#run.args] }
+	end,
+	line = function(state, line) end,
+	finish = function(state, status) end,
+	view = function(state)
+		return tern.ui.text({ tern.ui.link("PROBE_LINK " .. state.url, state.url) })
+	end,
+})
+EOF
+	[ -f "$cfg/plugins/verify-link-lens.path" ] || with_isolated_tern_env tern plugin link "$lens" >>"$run/start.log" 2>&1 ||
+		die "plugin link failed for $lens, see $run/start.log"
+	with_isolated_tern_env tern plugin reload
+	;;
+stop)
+	window_pid=$(cat "$data/window.pid" 2>/dev/null || true)
+	daemon_pid=$(socket_owner "$daemon_sock")
+	[ -n "$daemon_pid" ] || daemon_pid=$(cat "$data/daemon.pid" 2>/dev/null || true)
+	if [ -S "$ctl_sock" ]; then ctl quit >/dev/null 2>&1 || true; fi
+	for pid in $window_pid $daemon_pid; do
+		[ "$pid" = "$daemon_pid" ] && kill "$pid" 2>/dev/null || true
+		tries=0
+		while kill -0 "$pid" 2>/dev/null && [ $tries -lt 20 ]; do
+			if [ $tries -eq 8 ]; then kill "$pid" 2>/dev/null || true; fi
+			tries=$((tries + 1))
+			sleep 0.25
+		done
+		if kill -0 "$pid" 2>/dev/null; then
+			printf 'pid %s still runs after SIGTERM, sending SIGKILL\n' "$pid"
+			kill -9 "$pid" 2>/dev/null || true
+		fi
+	done
+	leftovers() { pgrep -f "$data/" || true; }
+	pids=$(leftovers)
+	if [ -n "$pids" ]; then
+		printf 'ending leftover processes of this run: %s\n' "$pids"
+		for pid in $pids; do kill "$pid" 2>/dev/null || true; done
+		sleep 1
+		pids=$(leftovers)
+		for pid in $pids; do kill -9 "$pid" 2>/dev/null || true; done
+	fi
+	rm -rf "$(omp_session_dir)" "$data"
+	printf 'stopped window %s and daemon %s; kept:\n' "${window_pid:-none}" "${daemon_pid:-none}"
+	ls -1 "$run"
+	;;
+*)
+	die "unknown command: $cmd"
+	;;
+esac

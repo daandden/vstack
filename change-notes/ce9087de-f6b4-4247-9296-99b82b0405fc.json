@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "The vstack private-mode rule says a Standard-mode `.scratch/` path resolves against the checkout the session runs in, not through the vstack root, so it lands in the main checkout only when the session runs there (ADR 0066)."
+  ]
+}

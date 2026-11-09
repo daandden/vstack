@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { ENV, git } from "./support/fixture.ts";
 import { storedFolder } from "./support/flow-store.ts";
 
+import { secrets } from "../plugin/skills/flow-page/scripts/live.ts";
 const SKILLS = join(import.meta.dir, "..", "plugin", "skills");
 const SCRIPT = join(SKILLS, "flow-page", "scripts", "flow-page.ts");
 const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-page-host-")));
@@ -666,4 +667,68 @@ test("a shared Flow observes the current authoring worktree and recovers when it
   expect(observation.git.status).toBe("current");
   expect(observation.git.records[0].name).toBe("feat-b");
   expect(observation.git.provenance).toMatchObject({ source: realpathSync(b.cwd), stage: joined.stage, branch: "release/267" });
+});
+
+test("Picker presence is control-only, read-scoped runtime state that expires and disappears on restart", async () => {
+  const w = world();
+  const opened = ok(open(w));
+  const other = ok(open(w, "other", "Another Flow"));
+  const key = decodeURIComponent(new URL(opened.live.url).pathname.split("/")[2]);
+  const endpoint = `http://127.0.0.1:${w.port}/.host/picker`;
+  const presence = { key, flow: opened.flow, stage: opened.stage, session: "s-1", picker: "picker-one", questions: ["question-1", "question-2"], expires: Date.now() + 60_000 };
+  const write = (token?: string, value = presence, method = "PUT") => fetch(endpoint, {
+    method, headers: { "content-type": "application/json", ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(value),
+  });
+  const read = async (url = opened.live.url) => {
+    const response = await fetch(new URL("presence", url));
+    expect(response.status).toBe(200);
+    return response.json();
+  };
+  expect((await write()).status).toBe(401);
+  const readCapability = new URL(opened.live.url).pathname.split("/").at(-2)!;
+  expect((await write(readCapability)).status).toBe(401);
+  expect((await fetch(new URL("presence", opened.live.url), { method: "POST", body: JSON.stringify(presence) })).status).toBe(405);
+  const control = secrets(w.home).control;
+  expect((await write(control)).status).toBe(200);
+  expect(await read()).toEqual({ presences: [presence] });
+  expect(await read(other.live.url)).toEqual({ presences: [] });
+  expect((await contentOf(opened.live.url)).revision).toBe(opened.revision);
+  expect(await contentOf(opened.live.url)).not.toHaveProperty("presences");
+  expect((await write(control, { ...presence, picker: "older" }, "DELETE")).status).toBe(200);
+  expect(await read()).toEqual({ presences: [presence] });
+  expect((await write(control, presence, "DELETE")).status).toBe(200);
+  expect(await read()).toEqual({ presences: [] });
+  expect((await write(control, { ...presence, expires: Date.now() + 150 })).status).toBe(200);
+  expect(await until(async () => (await read() as any).presences.length === 0)).toBe(true);
+  expect((await write(control)).status).toBe(200);
+  ok(run(["host", "stop"], w));
+  ok(run(["bound", "--session", "s-1"], w));
+  expect(await read()).toEqual({ presences: [] });
+  expect((await contentOf(opened.live.url)).revision).toBe(opened.revision);
+});
+
+test("the session target query follows the main binding, the first asked question, Ratchet, and expiry", async () => {
+  const w = world();
+  expect(ok(run(["target", "--session", "unbound"], w))).toEqual({ target: null });
+  const opened = ok(open(w, "selected"));
+  ok(run(["open", "--flow", opened.flow, "--skill", "research", "--session", "selected", "--agent", "child"], w));
+  const receipt = ok(run(["submit", "--session", "selected"], w, { stdin: contribution(round(question("first"), question("second"))) }));
+  const target = () => ok(run(["target", "--session", "selected", "--agent", "child"], w));
+  expect(target().target).toBe(`${opened.live.url}#${opened.stage}`);
+  expect(target().picker).toBeNull();
+  ok(run(["picker", "open", "--picker", "ask-one", ...receipt.ask.questions.toReversed().map((q: any) => q.id), "--session", "selected"], w));
+  expect(target().target).toBe(`${opened.live.url}#${receipt.refs.second}`);
+  expect(target().picker).toBe("ask-one");
+  ok(run(["picker", "clear", "--picker", "ask-one", "--session", "selected"], w));
+  expect(target().target).toBe(`${opened.live.url}#${opened.stage}`);
+  ok(run(["picker", "open", "--picker", "ratchet", "--session", "selected"], w));
+  expect(target().target).toBe(`${opened.live.url}#${opened.stage}`);
+  expect(target().picker).toBe("ratchet");
+  const key = decodeURIComponent(new URL(opened.live.url).pathname.split("/")[2]);
+  await fetch(`http://127.0.0.1:${w.port}/.host/picker`, {
+    method: "PUT", headers: { authorization: `Bearer ${secrets(w.home).control}`, "content-type": "application/json" },
+    body: JSON.stringify({ key, flow: opened.flow, stage: opened.stage, session: "selected", picker: "expired", questions: [receipt.refs.first], expires: Date.now() - 1 }),
+  });
+  expect(target().target).toBe(`${opened.live.url}#${opened.stage}`);
+  expect((await contentOf(opened.live.url)).revision).toBe(receipt.revision);
 });

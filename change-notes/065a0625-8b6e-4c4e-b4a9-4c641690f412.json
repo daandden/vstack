@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "The Flow panel link opens the first asked question in the picker instead of the newest Stage. Pickers without a question id in the bound Flow and Ratchet's native approval gate link to the bound Stage."
+  ]
+}

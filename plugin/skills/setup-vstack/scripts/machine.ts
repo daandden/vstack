@@ -1,7 +1,6 @@
-// Every fact comes from the `omp` on PATH, so the checks see what omp itself resolves for this HOME and cwd.
 // Exit codes: 0 no FAIL line (OK, WARN, or NOTE only) or `--set` done; 1 a FAIL line; 2 usage error or omp missing.
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 import { resolveOvnfs } from "../../vstack-worktree/scripts/ovnfs.ts";
 
@@ -20,11 +19,28 @@ type Problem = Extract<Result, { status: "fail" | "warn" }>;
 const isProblem = (r: Result): r is Problem => r.status === "fail" || r.status === "warn";
 
 function usage(message: string): never {
-  console.error(`${message}\nUsage: machine.ts [--json]\n       machine.ts --set judge|isolation|clone|ratchet|backend|gitGuard...`);
+  console.error(`${message}\nUsage: machine.ts [--json]\n       machine.ts --set judge|isolation|clone|ratchet|backend|gitGuard|tern...`);
   process.exit(2);
 }
 
 const OMP = Bun.which("omp");
+
+const TERN = Bun.which("tern");
+const TERN_PLUGIN = join(import.meta.dir, "..", "..", "..", "tern", "vstack-flow");
+const ternLinkCommand = `tern plugin link '${TERN_PLUGIN.replaceAll("'", "'\\''")}'`;
+
+async function tern(...args: string[]): Promise<string> {
+  if (!TERN) throw new Error("tern is not on PATH");
+  const p = Bun.spawn([TERN, "plugin", ...args, "--json"], { stdout: "pipe", stderr: "pipe", stdin: "ignore" });
+  const [stdout, stderr, code] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited]);
+  if (code !== 0) throw new Error(`tern plugin ${args.join(" ")} failed (exit ${code}): ${stderr.trim() || stdout.trim()}`);
+  return stdout;
+}
+
+async function ternLinkFile(): Promise<string> {
+  const { dir } = JSON.parse(await tern("dir")) as { dir: string };
+  return join(dir, "vstack-flow.path");
+}
 
 async function omp(...args: string[]): Promise<{ code: number; stdout: string; stderr: string }> {
   const p = Bun.spawn([OMP!, ...args], { stdout: "pipe", stderr: "pipe", stdin: "ignore" });
@@ -238,6 +254,19 @@ async function check(): Promise<Result[]> {
         },
   );
 
+  if (TERN) {
+    let detail = "";
+    try {
+      const target = readFileSync(await ternLinkFile(), "utf8").trim();
+      if (realpathSync(target) !== realpathSync(TERN_PLUGIN)) detail = `vstack-flow links to ${target}, not vstack's copy`;
+    } catch (error) {
+      detail = `vstack-flow has no readable link to vstack's copy: ${(error as Error).message}`;
+    }
+    results.push(detail
+      ? { id: 12, name: "Tern vstack-flow", status: "warn", detail, remedy: `run ${ternLinkCommand} through setup-vstack's tern setter once you approve` }
+      : { id: 12, name: "Tern vstack-flow", status: "ok" });
+  }
+
   return results;
 }
 
@@ -263,14 +292,26 @@ const SETTERS: Record<string, () => Promise<[key: string, value: string]>> = {
 async function main(argv: string[]) {
   if (argv[0] === "--set") {
     const names = argv.slice(1);
-    if (names.length === 0) usage(`--set needs at least one of: ${Object.keys(SETTERS).join(", ")}`);
-    for (const name of names) if (!(name in SETTERS)) usage(`unknown setting for --set: ${name}`);
+    if (names.length === 0) usage(`--set needs at least one of: ${Object.keys(SETTERS).join(", ")}, tern`);
+    for (const name of names) if (name !== "tern" && !(name in SETTERS)) usage(`unknown setting for --set: ${name}`);
     if (!OMP) usage("omp is not on PATH; setup-vstack needs the omp CLI");
+    if (names.includes("tern") && !TERN) usage("tern is not on PATH; no settings were written");
     if (names.includes("ratchet") && !(await settings()).has("ratchet.enabled")) {
       console.error("Ratchet requires omp 18.4.5 or later. Upgrade omp, then run /skill:setup-vstack again; no settings were written.");
       return 2;
     }
     for (const name of new Set(names)) {
+      if (name === "tern") {
+        try {
+          if (existsSync(await ternLinkFile())) await tern("unlink", "vstack-flow");
+          await tern("link", TERN_PLUGIN);
+        } catch (error) {
+          console.error((error as Error).message);
+          return 2;
+        }
+        console.log(`SET Tern vstack-flow = ${TERN_PLUGIN}`);
+        continue;
+      }
       const [key, value] = await SETTERS[name]!();
       await ompOrDie("config", "set", key, value);
       console.log(`SET ${key} = ${value}`);
