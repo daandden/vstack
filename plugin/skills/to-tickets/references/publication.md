@@ -15,7 +15,7 @@ bun <to-tickets>/scripts/publish.ts resume --record publication.json
 
 The equivalent Bun Interface is `publish(input, recordPath, connection?)` and `resume(recordPath, connection?)` from `scripts/publisher.ts`. It returns the same receipt. Invalid input, an existing record, a corrupt record, or a held lock rejects before tracker effects. An MCP caller supplies the live transport connection described below. Both entry points use the same publisher. Tracker Adapters are internal.
 
-Keep the approved input and record together under `.scratch/<feature-slug>/` in Standard mode or `<vstack root>/artifacts/<feature-slug>/` in Private mode. The record contains the approved bodies and tracker facts. It is not a public tracker attachment.
+Keep the approved input and record together. In Standard mode, they go under `<feature-slug>/` in the `to-tickets` Scratch kind, outside every checkout, so `resume` finds them from any worktree. In Private mode, they go under `<vstack root>/artifacts/<feature-slug>/`. The record contains the approved bodies and tracker facts. It is not a public tracker attachment.
 
 ## Approved description
 

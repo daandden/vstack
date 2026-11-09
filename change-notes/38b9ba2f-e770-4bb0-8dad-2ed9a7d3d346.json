@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "to-tickets saves its Standard-mode approved input and publication record in the `to-tickets` Scratch kind instead of `.scratch/`, so a run in a worktree no longer leaves untracked files in the main checkout, and `resume` finds the record from any worktree. A local-markdown `.scratch/` path is in the checkout the session runs in (ADR 0066)."
+  ]
+}

@@ -116,7 +116,7 @@ items:
     tree: b32c94e5a51c24ee9c41fcb7fe9ea9fff9af6369
     disposition: adapt
     artifacts: [plugin/skills/to-tickets]
-    reason: "Publishes approved MCP bindings validated against live schemas, with field-path readback, separate readiness, owner facts, normalized bodies, and duplicate-risk checks (#369, ADR 0035, ADR 0058). Keeps Flow approval and drift coverage."
+    reason: "Publishes approved MCP bindings validated against live schemas, with field-path readback, separate readiness, owner facts, normalized bodies, and duplicate-risk checks (#369, ADR 0035, ADR 0058). Keeps Flow approval and drift coverage, and saves Standard-mode publication records in Scratch (ADR 0066)."
   - id: matt/triage
     upstream: matt
     kind: skill
