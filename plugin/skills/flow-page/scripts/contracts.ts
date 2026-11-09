@@ -3,8 +3,10 @@ import { isObj, Refusal, VISUAL_KINDS, type Obj } from "./fields.ts";
 export type Diagnostic = { code: string; path: string; message: string; allowed?: readonly unknown[] | string };
 export type Contract = {
   type: "object" | "array" | "string" | "number" | "boolean" | "literal" | "union" | "record" | "unknown";
+  purpose?: string;
   fields?: Record<string, Contract>;
   required?: readonly string[];
+  oneOf?: readonly string[];
   items?: Contract;
   min?: number;
   max?: number;
@@ -36,42 +38,38 @@ const entryContracts: Record<string, Contract> = {
   review: optional({ ...card.fields!, axis: enumeration("standards", "spec", "blast-radius"), location: string }, {}),
   ledger: optional({ claim: string, status: enumeration("confirmed", "cleared", "unproven"), evidence: string, missing_proof: string, consequence: string }, { ref }),
   table: optional({ cells: { ...array({ type: "string", expected: "string" }, 0) } }, { ref }),
-  code: optional({ file: string }, { ref, line: { ...number, integer: true, min: 1 }, revision: string, language: string, code: string, diff: string, note: string }),
+  code: { ...optional({ file: string }, { ref, line: { ...number, integer: true, min: 1 }, revision: string, language: string, code: string, diff: string, note: string }), oneOf: ["code", "diff"] },
   timeline: optional({ title: string, outcome: enumeration("succeeded", "failed", "blocked", "skipped", "unknown", "noted") }, { ref, time: string, detail: string, evidence: string, attachments: strings }),
 };
 entryContracts.review.required = [...card.required!, "axis", "location"];
 const block = union({ prose: object({ prose: string }), list: optional({ list: strings }, { ordered: boolean }), code: optional({ code: string }, { language: string, source: string }), figure: object({ figure: ref }) });
 const uncertainty = union({ plusminus: object({ plusminus: { ...number, min: 0 }, of: string }), low: object({ low: number, high: number, of: string }) });
 const measured = union({ value: optional({ series: ref, value: number }, { samples: { ...number, integer: true, min: 1 }, uncertainty }), missing: object({ series: ref, missing: string }) });
-const condition: Contract = { type: "object", select: value => {
-  if ("all" in value) return object({ all: array(condition) });
-  if ("any" in value) return object({ any: array(condition) });
-  if ("not" in value) return object({ not: condition });
-  return optional({ value: ref }, Object.fromEntries(["eq", "ne", "lt", "le", "gt", "ge"].map(k => [k, literal])));
-} };
+const condition: Contract = { type: "union", select: value => condition.variants!["all" in value ? "all" : "any" in value ? "any" : "not" in value ? "not" : "value"] };
 const literal: Contract = { type: "union", variants: { string: { type: "string", expected: "string" }, number, boolean }, expected: "string, finite number, or boolean" };
-const effect: Contract = { type: "object", select: value => "add" in value ? object({ add: number }) : object({ toggle: enumeration(true) }) };
+condition.variants = { all: object({ all: array(condition) }), any: object({ any: array(condition) }), not: object({ not: condition }), value: optional({ value: ref }, Object.fromEntries(["eq", "ne", "lt", "le", "gt", "ge"].map(k => [k, literal]))) };
+const effect: Contract = { type: "union", variants: { add: object({ add: number }), toggle: object({ toggle: enumeration(true) }), literal }, select: value => effect.variants!["add" in value ? "add" : "toggle"] };
 const demo = optional({
   states: array(optional({ name: ref, label: string }, { description: string }), 1, 32), start: ref,
   actions: array(object({ name: ref, label: string, transitions: array(optional({}, { from: strings, when: condition, to: ref, set: { type: "record", items: effect, min: 1 } }), 1, 16) }), 1, 32),
 }, { values: array(object({ name: ref, label: string, initial: literal }), 1, 16) });
 const quizAnswer = union({ choice: object({ choice: ref }), text: optional({ text: strings }, { case_sensitive: boolean }), number: optional({ number }, { tolerance: { ...number, min: 0 } }) });
 const shared = { ref, summary: string, attachments: strings, canonical, revises: ref };
-const result = (fields: Record<string, Contract>, extra: Record<string, Contract> = {}) => optional({ kind: enumeration("result"), shape: string, title: string, ...fields }, { ...shared, ...extra });
+const result = (purpose: string, fields: Record<string, Contract>, extra: Record<string, Contract> = {}): Contract => ({ ...optional({ kind: enumeration("result"), shape: string, title: string, ...fields }, { ...shared, ...extra }), purpose });
 
 /** Field metadata used by authoring validation and contract discovery. Stateful rules remain in the contribution planner. */
 export const resultContracts: Record<string, Contract> = {
-  cards: result({ entries: array(entryContracts.cards) }),
-  ledger: result({ entries: array(entryContracts.ledger) }),
-  table: result({ columns: strings, rows: array(entryContracts.table) }),
-  document: result({ sections: array(object({ heading: string, blocks: array(block) })) }, { citations: array(object({ ref, source: string })), limitations: strings, sources: strings }),
-  prototype: result({}, { demo, artifact: ref }),
-  comparison: result({ alternatives: array(optional({ ref, name: string }, { summary: string, attachments: strings }), 2), criteria: array(optional({ ref, name: string }, { description: string })), assessments: array(optional({ alternative: ref, criterion: ref, finding: string }, { evidence: string })), verdict: optional({ outcome: enumeration("chosen", "tie", "inconclusive"), reason: string }, { alternative: ref }) }),
-  metrics: result({ workload: string, outcome: string, series: array(optional({ ref, label: string }, { baseline: enumeration(true) })), measurements: array(optional({ ref, name: string, unit: string, values: array(measured) }, { better: enumeration("lower", "higher"), verdict: enumeration("better", "worse", "no-difference", "inconclusive") })) }, { environment: string }),
-  code: result({ entries: array(entryContracts.code) }),
-  timeline: result({ entries: array(entryContracts.timeline) }),
-  quiz: result({ questions: array(optional({ ref, prompt: string, answer: quizAnswer, explanation: string }, { choices: array(object({ ref, label: string })) })) }),
-  review: result({ axes, entries: array(entryContracts.review, 0) }),
+  cards: result("Present findings or actions as individual cards.", { entries: array(entryContracts.cards) }),
+  ledger: result("Track claims, evidence, missing proof, and consequences.", { entries: array(entryContracts.ledger) }),
+  table: result("Compare rows under shared columns.", { columns: strings, rows: array(entryContracts.table) }),
+  document: result("Explain a topic in ordered sections with text, code, and figures.", { sections: array(object({ heading: string, blocks: array(block) })) }, { citations: array(object({ ref, source: string })), limitations: strings, sources: strings }),
+  prototype: { ...result("Let readers try a state demo or a captured runnable artifact.", {}, { demo, artifact: ref }), oneOf: ["demo", "artifact"] },
+  comparison: result("Assess alternatives against criteria and record a verdict.", { alternatives: array(optional({ ref, name: string }, { summary: string, attachments: strings }), 2), criteria: array(optional({ ref, name: string }, { description: string })), assessments: array(optional({ alternative: ref, criterion: ref, finding: string }, { evidence: string })), verdict: optional({ outcome: enumeration("chosen", "tie", "inconclusive"), reason: string }, { alternative: ref }) }),
+  metrics: result("Report measured values, baselines, and uncertainty.", { workload: string, outcome: string, series: array(optional({ ref, label: string }, { baseline: enumeration(true) })), measurements: array(optional({ ref, name: string, unit: string, values: array(measured) }, { better: enumeration("lower", "higher"), verdict: enumeration("better", "worse", "no-difference", "inconclusive") })) }, { environment: string }),
+  code: result("Show source excerpts or unified diffs with file locations.", { entries: array(entryContracts.code) }),
+  timeline: result("Record events and their outcomes in publication order.", { entries: array(entryContracts.timeline) }),
+  quiz: result("Check understanding with choice, text, or numeric questions.", { questions: array(optional({ ref, prompt: string, answer: quizAnswer, explanation: string }, { choices: array(object({ ref, label: string })) })) }),
+  review: result("Report standards, spec, and blast-radius review findings.", { axes, entries: array(entryContracts.review, 0) }),
 };
 for (const [shape, contract] of Object.entries(resultContracts)) contract.fields!.shape = enumeration(shape);
 resultContracts.table.check = (value, path) => {
@@ -159,6 +157,7 @@ export function contractDiagnostics(input: unknown): Diagnostic[] {
         return;
       }
       for (const key of Object.keys(value)) if (!Object.hasOwn(contract.fields!, key)) diagnostics.push({ code: "unknown_field", path: fieldPath(path, key), message: `${key} is not a field here; the fields are ${Object.keys(contract.fields!).join(", ")}`, allowed: Object.keys(contract.fields!) });
+      if (contract.oneOf && contract.oneOf.filter(key => value[key] !== undefined).length !== 1) report("invalid_union", `must have exactly one of ${contract.oneOf.join(" or ")}`, contract.oneOf);
       for (const key of contract.required!) if (value[key] === undefined) diagnostics.push({ code: "required_field", path: fieldPath(path, key), message: `needs ${key}`, allowed: contract.fields![key].expected ?? contract.fields![key].values ?? contract.fields![key].type });
       for (const [key, c] of Object.entries(contract.fields!)) if (value[key] !== undefined) visit(value[key], c, fieldPath(path, key));
       diagnostics.push(...(contract.check?.(value, path) ?? []));

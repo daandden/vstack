@@ -17,11 +17,12 @@ import { assetsDir, createFlowFolder, flowFolders, flowsDir, folderOfId, migrati
 import { connect, flowUrl, hostCommand, originOf } from "./live.ts";
 import { captureHistoricalImages, historicalFlows, migrateHistorical, parseHistorical } from "./migrate.ts";
 import { Refusal } from "./fields.ts";
-import { ContributionRefusal, refusalDiagnostic } from "./contracts.ts";
+import { ContributionRefusal, refusalDiagnostic, resultContracts } from "./contracts.ts";
+import { describeResult } from "./discovery.ts";
 import { registerObservation } from "./observations.ts";
 import { projectCommonDir } from "../../vstack-tmp/scripts/scratch.ts";
 
-const COMMANDS = ["open", "bind", "submit", "validate", "alias", "close", "reopen", "find", "move", "show", "bound", "target", "picker", "host", "migrate"];
+const COMMANDS = ["open", "bind", "submit", "validate", "catalog", "describe", "alias", "close", "reopen", "find", "move", "show", "bound", "target", "picker", "host", "migrate"];
 
 function usage(message: string): never {
   process.stderr.write(`flow-page.ts: ${message}
@@ -29,6 +30,8 @@ usage: bun flow-page.ts open --skill <name> (--title <text> [--slug <slug>] | --
        bun flow-page.ts bind --flow <flow> --stage <id>
        bun flow-page.ts submit [--flow <flow> --stage <id>] [<contribution.json> | -]
        bun flow-page.ts validate [--flow <flow> --stage <id>] [<contribution.json> | -]
+       bun flow-page.ts catalog
+       bun flow-page.ts describe <shape> [--compact]
        bun flow-page.ts alias [--flow <flow>] <kind>:<value>...
        bun flow-page.ts close [--flow <flow>]
        bun flow-page.ts reopen --skill <name> [--flow <flow>] [--parent <stage>] [--ticket <id>]
@@ -54,7 +57,7 @@ try {
   parsed = parseArgs({
     args: Bun.argv.slice(2),
     allowPositionals: true,
-    options: Object.fromEntries(["skill", "title", "slug", "flow", "stage", "parent", "ticket", "to", "session", "agent", "home", "picker"].map((k) => [k, { type: "string" as const }])),
+    options: { ...Object.fromEntries(["skill", "title", "slug", "flow", "stage", "parent", "ticket", "to", "session", "agent", "home", "picker"].map((k) => [k, { type: "string" as const }])), compact: { type: "boolean" } },
   });
 } catch (e) {
   usage((e as Error).message);
@@ -64,12 +67,13 @@ const [command, ...rest] = positionals;
 if (!COMMANDS.includes(command ?? "")) usage(`give a command: ${COMMANDS.join(", ")}`);
 const allowed: Record<string, string[]> = {
   open: ["skill", "title", "slug", "flow", "parent", "ticket"], bind: ["flow", "stage"], submit: ["flow", "stage"], validate: ["flow", "stage"], alias: ["flow"], close: ["flow"], reopen: ["skill", "flow", "parent", "ticket"],
-  find: [], move: ["flow", "to"], show: ["flow"], bound: [], target: [], picker: ["picker"], host: [], migrate: [],
+  catalog: [], describe: ["compact"], find: [], move: ["flow", "to"], show: ["flow"], bound: [], target: [], picker: ["picker"], host: [], migrate: [],
 };
 for (const k of Object.keys(opt)) if (!["session", "agent", "home", ...allowed[command]].includes(k)) usage(`${command} takes no --${k}`);
 const positional: Record<string, [number, number, string]> = {
   submit: [0, 1, "takes no more than one contribution file"], alias: [1, Infinity, "needs one or more <kind>:<value> aliases"], find: [1, 1, "needs exactly one <kind>:<value> alias or Flow id"],
   validate: [0, 1, "takes no more than one contribution file"],
+  describe: [1, 1, "needs exactly one Result shape"],
   host: [1, 1, "needs status or stop"],
   migrate: [1, 1, "needs exactly one Grilling page folder"],
   picker: [1, Infinity, "needs open or clear, and optional question ids"],
@@ -77,6 +81,15 @@ const positional: Record<string, [number, number, string]> = {
 const [least, most, says] = positional[command] ?? [0, 0, "takes no positional arguments"];
 if (rest.length < least || rest.length > most) usage(`${command} ${says}`);
 if (command === "picker" && (!["open", "clear"].includes(rest[0]) || !opt.picker)) usage("picker needs open or clear and --picker <id>");
+if (command === "catalog") {
+  process.stdout.write(`${JSON.stringify({ shapes: Object.entries(resultContracts).map(([shape, contract]) => ({ shape, purpose: contract.purpose })) })}\n`);
+  process.exit(0);
+}
+if (command === "describe") {
+  if (!Object.hasOwn(resultContracts, rest[0])) usage(`unknown Result shape ${JSON.stringify(rest[0])}; choose ${Object.keys(resultContracts).join(", ")}`);
+  process.stdout.write(`${describeResult(rest[0], resultContracts[rest[0]], opt.compact === true)}\n`);
+  process.exit(0);
+}
 
 const home = resolve((opt.home as string | undefined) ?? homedir());
 const dir = flowsDir(home, process.cwd());

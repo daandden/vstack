@@ -16,7 +16,7 @@ Run the script from inside the repo the work is about. The extension supplies yo
 bun "$(realpath skill://flow-page/scripts/flow-page.ts)" <command> ...
 ```
 
-Every command prints JSON on stdout. `validate` returns `{ "ok": true, "diagnostics": [] }` on success. A refused `validate` or `submit` returns `{ "ok": false, "diagnostics": [...] }`, prints a readable refusal on stderr, and exits 1 without committing Flow content. Other commands print their receipt on success and their refusal on stderr. Exit 2 is a usage error.
+Commands print JSON on stdout, except `describe --compact`, which prints field lines. `validate` returns `{ "ok": true, "diagnostics": [] }` on success. A refused `validate` or `submit` returns `{ "ok": false, "diagnostics": [...] }`, prints a readable refusal on stderr, and exits 1 without committing Flow content. Other commands print their receipt on success and their refusal on stderr. Exit 2 is a usage error.
 
 A successful submit receipt means the content is committed. Its `live` says whether the reader can show it: `serving` with the Flow `url`, `unavailable` with the `error` the host reported, or `off` when `VSTACK_FLOW_HOST=off`. The reader needs the Local Flow host. There is no static file to open instead. When the host is unavailable, never resubmit committed content: fix what `error` names, then run `bound` or `show` for the URL.
 
@@ -114,7 +114,18 @@ For example, an invalid option's gains can produce:
 
 The codes are `required_field`, `unknown_field`, `invalid_type`, `invalid_enum`, `invalid_union`, `too_few_items`, `too_many_items`, `invalid_length`, `out_of_range`, `invalid_value`, `invalid_reference`, and `invalid_json`. Correct every reported field, validate again, then submit the unchanged contribution. `submit` uses the same validator and returns the same diagnostics if the Flow and files have not changed.
 
-Read only the field contract for the kind you are about to publish:
+## Discover Result fields
+
+Run `catalog` to list every Result shape and its one-line purpose. Run `describe <shape>` for its JSON field contract, or `describe <shape> --compact` for one line per field. These commands need no Flow binding, start no host, and write no Flow content.
+
+Discovery reads the same field metadata as `validate` and `submit`. JSON includes nested `fields`, `required`, enum `values`, array bounds, and `variants`. `oneOf` requires exactly one of the named fields. Recursive contracts use `$ref` paths within `contract`.
+
+Compact lines show the field path, type, `required=true` or `required=false`, enum values, and applicable bounds. `[]` means an array item, `[*]` a record value, and `<name>` a union variant. A variant's required fields apply when that variant is selected. A field marked `oneOf` belongs to an exclusive required group even if its individual required flag is false.
+
+Use discovery for field shapes. Read the references below for semantics, references between records, and rules beyond field metadata.
+
+
+Read the semantic rules for the kind you are about to publish:
 
 - Before a Background, Topic note, round, answer, Assumed pick, close, Stage state, or progress item, read the relevant section of [Contribution fields, version 1](references/contributions.md).
 - Before publishing or revising a Result, read [Result fields, version 1](references/results.md). It includes cards, review, ledger, table, Document, Code/diff, and Timeline.

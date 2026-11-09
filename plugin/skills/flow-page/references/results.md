@@ -2,6 +2,8 @@
 
 Read this reference before publishing or revising a Result block. Result is its authoring short form.
 
+Use `catalog` to choose a Result shape and `describe <shape> --compact` for its current fields, types, required flags, and enum values. Both read the validator's metadata. This reference covers meaning, revisions, and rules beyond field shapes.
+
 - `result`: optional `ref`, `shape`, `title`, and an optional `summary` line. A Result shows a Stage's output, such as review findings, candidates, a ticket breakdown, run results, or a report. Submit it before a question when the reader needs it to decide. The reader preserves publication order rather than moving Results ahead of questions.
 
   - Any shape takes optional `attachments`, the attachments it shows, and `canonical`, the canonical record it was made from: `{ file }` (a path in the project), `{ commit }` (a hash), or `{ tracker, revision }` (such as `daandden/vstack#267` and the issue's updated time).
