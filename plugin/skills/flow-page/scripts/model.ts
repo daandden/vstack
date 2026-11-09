@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { parse as parseMermaid } from "pele";
 import { linesOf, parseDiff, type Hunk } from "./code.ts";
 import { progressHandlers, type Progress, PROGRESS_KINDS, type ProgressKind, type ProgressView, progressSnapshot, progressView } from "./progress.ts";
 import { CODE_ID, fields, isObj, list, listed, newId, type Obj, REF, refuse, text, texts, VISUAL_KINDS } from "./fields.ts";
@@ -923,6 +924,10 @@ function parseDocument(o: Obj, where: string, attachment: (v: unknown, where: st
           const bo = fields(b, bw, ["code"], ["language", "source"]);
           const code = text(bo, "code", bw);
           if (bo.language !== undefined && (typeof bo.language !== "string" || !LANGUAGE.test(bo.language))) refuse(bw, "language must be a language name such as ts or python");
+          if (bo.language === "mermaid") {
+            try { parseMermaid(code); }
+            catch (e) { refuse(bw, `is not Mermaid that Pele parses: ${(e as Error).message}`); }
+          }
           return { code, ...(bo.language !== undefined ? { language: bo.language as string } : {}), ...(bo.source !== undefined ? { source: text(bo, "source", bw) } : {}) };
         }
         default: {

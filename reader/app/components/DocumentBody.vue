@@ -24,6 +24,14 @@ const stop = computed(() => (props.historical ? undefined : ""));
         <component :is="b.ordered ? 'ol' : 'ul'" v-else-if="'list' in b" class="bullets">
           <li v-for="(t, j) in b.list" :key="j" v-html="inline(t, cites)" />
         </component>
+        <figure v-else-if="'code' in b && b.language === 'mermaid'" class="figure">
+          <DiagramFigure :source="b.code" :name="`${sec.heading} diagram ${i + 1}`" />
+          <details class="disclosure source code">
+            <summary>Source</summary>
+            <pre data-language="mermaid"><code>{{ b.code }}</code></pre>
+            <p v-if="b.source" class="quiet">{{ b.source }}</p>
+          </details>
+        </figure>
         <figure v-else-if="'code' in b" class="code">
           <pre :data-language="b.language"><code v-html="code(b.code, b.language)" /></pre>
           <figcaption v-if="b.language || b.source" class="quiet">{{ [b.language, b.source].filter(Boolean).join(" · ") }}</figcaption>

@@ -201,6 +201,7 @@ details > summary:active { color: var(--lavender); }
 .visual { grid-template-columns: minmax(0, 1fr); position: relative; overflow-x: auto; }
 .figure { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.375rem; justify-items: start; }
 .figure-caption { display: grid; gap: 0.25rem; justify-self: stretch; }
+.figure > .source.code { justify-self: stretch; min-inline-size: 0; grid-template-columns: minmax(0, 1fr); }
 .figure-description { color: var(--subtext1); }
 .figure img, .figure video { border-radius: 0.25rem; background: var(--surface0); }
 .figure > .diagram { padding-block: 0.625rem; padding-inline: 0.75rem; border-radius: 0.375rem; background: var(--mantle); }
