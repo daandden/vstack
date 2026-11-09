@@ -51,20 +51,29 @@ function registerFlowContext(pi: ExtensionAPI): void {
 }
 
 function registerFlowQuestions(pi: ExtensionAPI): void {
-  type Bound = { binding: object | null; live?: { state: string; url?: string; error?: string } };
+  type Bound = { binding: { flow: string; stage: string } | null; live?: { state: string; url?: string; error?: string } };
   const interactive = (ctx: ExtensionContext) => ctx.mode === "tui" && ctx.hasUI && ctx.agent.kind === "main";
   const panelKey = "vstack-flow-panel";
   const pickers = new Set<symbol>();
   let shownIn: ExtensionContext | undefined;
-  const showPanel = async (ctx: ExtensionContext, picker: symbol) => {
+  const showPanel = async (ctx: ExtensionContext, picker: symbol, questions?: readonly { id?: string }[]) => {
     pickers.add(picker);
     let text: string;
     try {
       const current = await flowPage<Bound>(pi, ctx, ["bound"]);
       if (!current.binding) return;
-      text = current.live?.state === "serving" && current.live.url
-        ? `<${current.live.url}>`
-        : `Unavailable: ${current.live?.error ?? `Local Flow host is ${current.live?.state ?? "unavailable"}`}`;
+      if (current.live?.state === "serving" && current.live.url) {
+        let target = current.binding.stage;
+        if (Array.isArray(questions) && questions.some(question => typeof question?.id === "string")) {
+          const response = await fetch(new URL("content", current.live.url));
+          if (!response.ok) throw new Error(`Flow content lookup failed: HTTP ${response.status}`);
+          const content = await response.json() as { questions: { id: string }[] };
+          target = questions.find(question => content.questions.some(saved => saved.id === question?.id))?.id ?? target;
+        }
+        text = `<${current.live.url}#${target}>`;
+      } else {
+        text = `Unavailable: ${current.live?.error ?? `Local Flow host is ${current.live?.state ?? "unavailable"}`}`;
+      }
     } catch (error) {
       text = `Flow binding lookup failed: ${error instanceof Error ? error.message : String(error)}`;
     }
@@ -90,7 +99,7 @@ function registerFlowQuestions(pi: ExtensionAPI): void {
     if (event.toolName !== "ask" || !interactive(ctx)) return;
     const picker = Symbol(event.toolCallId);
     ordinary.set(event.toolCallId, picker);
-    void showPanel(ctx, picker);
+    void showPanel(ctx, picker, event.args?.questions);
   });
   pi.on("tool_execution_end", event => {
     const picker = ordinary.get(event.toolCallId);

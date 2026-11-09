@@ -194,6 +194,81 @@ async function until(condition: () => boolean, timeout = 10_000) {
 const returnsBefore = (pending: Promise<unknown>, ms = 500) =>
   Promise.race([pending.then(() => "returned"), Bun.sleep(ms).then(() => "held")]);
 
+async function publishQuestions(w: ReturnType<typeof world>, session: string, ...refs: string[]) {
+  return w.ok(["submit", "--session", session], { version: 1, items: [{
+    kind: "round",
+    questions: refs.map(ref => ({
+      ref, title: `Which ${ref}?`, description: `Choose the ${ref} approach.`,
+      needs: [{ need: `Understand the ${ref} trade-offs.`, kind: "prose" }],
+      options: ["Keep", "Change"].map(label => ({
+        label, does: `${label} the ${ref} approach.`, gains: [`${label} benefits ${ref}.`], costs: [`${label} costs ${ref}.`],
+      })),
+    })),
+  }] });
+}
+
+test("an ordinary ask links to its receipt question rather than the newest Stage", async () => {
+  const w = setup();
+  const opened = await w.ok(["open", "--title", "Asked ticket", "--skill", "implement", "--session", "asked"]);
+  const receipt = await publishQuestions(w, "asked", "asked");
+  await w.ok(["open", "--flow", opened.flow, "--skill", "implement", "--session", "parallel"]);
+  await publishQuestions(w, "parallel", "other");
+  const current = await w.ok(["bound", "--session", "asked"]);
+  const h = w.host("asked");
+  const ui = panelUI(h);
+  const input = structuredClone(receipt.ask);
+  await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "targeted", args: input });
+  await until(() => ui.panel() !== undefined);
+  expect(ui.panel()).toContain(`<${current.live.url}#${receipt.ask.questions[0].id}>`);
+  expect(input).toEqual(receipt.ask);
+  expect(h.sent).toEqual([]);
+  expect(h.saved).toEqual([]);
+  await h.emit("tool_execution_end", { toolName: "ask", toolCallId: "targeted" });
+  expect(ui.panel()).toBeUndefined();
+});
+
+test("a multi-question picker links to its first asked question, not the first or newest published question", async () => {
+  const w = setup();
+  await w.ok(["open", "--title", "Ordered questions", "--skill", "implement", "--session", "ordered"]);
+  await publishQuestions(w, "ordered", "earlier");
+  const receipt = await publishQuestions(w, "ordered", "first", "second");
+  const current = await w.ok(["bound", "--session", "ordered"]);
+  const h = w.host("ordered");
+  const ui = panelUI(h);
+  for (const questions of [receipt.ask.questions, receipt.ask.questions.toReversed()]) {
+    await h.emit("tool_execution_start", { toolName: "ask", toolCallId: "multi", args: { questions } });
+    await until(() => ui.panel() !== undefined);
+    expect(ui.panel()).toContain(`<${current.live.url}#${questions[0].id}>`);
+    expect(ui.panel()).not.toContain(`#${questions[1].id}`);
+    await h.emit("tool_execution_end", { toolName: "ask", toolCallId: "multi" });
+    expect(ui.panel()).toBeUndefined();
+  }
+});
+
+test("an ask with no question id in the bound Flow links to the bound Stage", async () => {
+  const w = setup();
+  const opened = await w.ok(["open", "--title", "Stage fallback", "--skill", "implement", "--session", "fallback"]);
+  const receipt = await publishQuestions(w, "fallback", "local");
+  await w.ok(["open", "--flow", opened.flow, "--skill", "implement", "--session", "newer"]);
+  await w.ok(["open", "--title", "Unrelated Flow", "--skill", "implement", "--session", "foreign"]);
+  const foreign = await publishQuestions(w, "foreign", "foreign-first", "foreign-second");
+  const current = await w.ok(["bound", "--session", "fallback"]);
+  const h = w.host("fallback");
+  const ui = panelUI(h);
+  for (const [index, args] of [
+    {}, { questions: [{ question: "No id" }] }, { questions: [{ id: opened.stage }] },
+    { questions: [{ id: "question-999" }] }, { questions: [foreign.ask.questions[1]] },
+  ].entries()) {
+    const toolCallId = `fallback-${index}`;
+    await h.emit("tool_execution_start", { toolName: "ask", toolCallId, args });
+    await until(() => ui.panel() !== undefined);
+    expect(ui.panel()).toContain(`<${current.live.url}#${opened.stage}>`);
+    expect(ui.panel()).not.toContain(`#${receipt.ask.questions[0].id}`);
+    await h.emit("tool_execution_end", { toolName: "ask", toolCallId });
+    expect(ui.panel()).toBeUndefined();
+  }
+});
+
 test("a bound ask shows the Flow panel above the composer while it runs, without holding the picker", async () => {
   const w = setup();
   await w.ok(["open", "--title", "Question handoff", "--skill", "implement", "--session", "panel"]);
@@ -284,7 +359,7 @@ test("native host approval shows the panel while its dialog is open and follows 
   const questions = [{ id: "approval", question: "Approve?", options: [{ label: "Approve" }] }];
   const pending = h.ctx.ui.askDialog(questions);
   await until(() => order.includes("native"));
-  await until(() => ui.panel()?.includes(first.live.url) ?? false);
+  await until(() => ui.panel()?.includes(`<${first.live.url}#${first.stage}>`) ?? false);
   finish(answer);
   expect(await pending).toBe(answer);
   expect(ui.panel()).toBeUndefined();
@@ -292,7 +367,7 @@ test("native host approval shows the panel while its dialog is open and follows 
   h.ctx.sessionManager = { ...h.ctx.sessionManager, getSessionId: () => "native-b" };
   await h.emit("session_switch");
   const again = h.ctx.ui.askDialog(questions);
-  await until(() => ui.panel()?.includes(second.live.url) ?? false);
+  await until(() => ui.panel()?.includes(`<${second.live.url}#${second.stage}>`) ?? false);
   finish(answer);
   expect(await again).toBe(answer);
   expect(ui.panel()).toBeUndefined();
