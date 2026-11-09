@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium, type Browser, type Locator, type Page } from "playwright-core";
 import { ENV } from "./support/fixture.ts";
+import { storedFolder } from "./support/flow-store.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin", "skills", "flow-page", "scripts", "flow-page.ts");
 const CAPTURED_SVG = join(import.meta.dir, "fixtures", "flow-page-diagrams", "captured-pele-mocha.svg");
@@ -27,6 +28,19 @@ function cli(args: string[], input?: object) {
   const stderr = p.stderr.toString();
   if (p.exitCode !== 0) throw new Error(`flow-page ${args.join(" ")} exited ${p.exitCode}: ${stderr}`);
   return JSON.parse(p.stdout.toString());
+}
+
+function seedHistoricalMermaidCapture(flow: string, attachmentId: string, source: Buffer, name: string) {
+  const folder = storedFolder(home, flow);
+  const statePath = join(folder, "data", "state.json");
+  const state = JSON.parse(readFileSync(statePath, "utf8"));
+  const revision = new Bun.CryptoHasher("sha256").update(source).digest("hex");
+  const file = `${revision}/${name}`;
+  mkdirSync(join(folder, "assets", revision), { recursive: true });
+  writeFileSync(join(folder, "assets", file), source);
+  Object.assign(state.attachments.find((a: any) => a.id === attachmentId), { revision, file, size: source.length });
+  state.revision++;
+  writeFileSync(statePath, JSON.stringify(state));
 }
 
 let browser: Browser;
@@ -80,6 +94,82 @@ async function drawnIn(figure: Locator, decoder: Page, scheme: "latte" | "mocha"
   throw new Error(`the figure did not show ${scheme}: ${JSON.stringify(seen)}`);
 }
 
+test("stored flowcharts redraw with export step routes and theme-colored label outlines", async () => {
+  const opened = cli(["open", "--skill", "grill-me", "--title", "Stored flowchart readability"]);
+  const historical = readFileSync(join(import.meta.dir, "fixtures", "flow-page-diagrams", "release-cascade.mmd"), "utf8");
+  const grouped = "flowchart TD\n subgraph Run[Review run]\n A[Read] -->|continue| B[Answer]\n A --> C[Inspect]\n C --> B\n end\n";
+  const sources = { historical, grouped };
+  const exported: Record<string, string[]> = {};
+  const commands = (svg: string) => [...svg.matchAll(/<g class="pele-edge"[^>]*><path d="([^"]+)"/g)].map((m) => m[1]!.replace(/[^a-z]/gi, ""));
+  for (const [name, source] of Object.entries(sources)) {
+    writeFileSync(join(root, `${name}.mmd`), source);
+    const output = join(root, `${name}.svg`);
+    const rendered = Bun.spawnSync([process.execPath, join(import.meta.dir, "..", "plugin", "skills", "vstack-figures", "scripts", "render.ts"), "-", output], {
+      stdin: Buffer.from(source), stdout: "pipe", stderr: "pipe",
+    });
+    expect({ exit: rendered.exitCode, stderr: rendered.stderr.toString() }).toEqual({ exit: 0, stderr: "" });
+    exported[name] = commands(readFileSync(output, "utf8"));
+  }
+  cli(["submit"], { version: 1, items: [
+    ...Object.keys(sources).map((name) => ({ kind: "attachment", ref: name, type: "mermaid", caption: name, origin: "Stored flowchart source", path: `${name}.mmd` })),
+    { kind: "result", shape: "document", title: "Stored flowcharts", sections: [{ heading: "Drawings", blocks: Object.keys(sources).map((figure) => ({ figure })) }] },
+  ] });
+  const context = await browser.newContext({ colorScheme: "light", viewport: { width: 1280, height: 900 } });
+  try {
+    const page = await context.newPage();
+    await page.goto(opened.live.url);
+    await page.reload();
+    await page.locator(`nav[aria-label="Flow tabs"] a[href="#${opened.stage}"]`).click();
+    for (const [theme, background] of [["Light", [239, 241, 245]], ["Dark", [30, 30, 46]]] as const) {
+      await page.getByRole("button", { name: theme, exact: true }).click();
+      for (const name of Object.keys(sources)) {
+        const figure = page.getByRole("img", { name, exact: true });
+        await figure.locator("svg").waitFor();
+        const drawing = await figure.evaluate((host) => {
+          const svg = host.shadowRoot!.querySelector("svg")!;
+          const previous = (host as HTMLElement & { readabilitySVG?: Element }).readabilitySVG;
+          (host as HTMLElement & { readabilitySVG?: Element }).readabilitySVG = svg;
+          const canvas = document.createElement("canvas");
+          canvas.width = canvas.height = 1;
+          const paint = canvas.getContext("2d")!;
+          return {
+            sameDrawing: !previous || previous === svg,
+            edges: [...svg.querySelectorAll(".pele-edge > path:first-child")].map((p) => p.getAttribute("d")!.replace(/[^a-z]/gi, "")),
+            labels: [...svg.querySelectorAll(".pele-edge-label text, .pele-cluster-label")].map((label) => {
+              const style = getComputedStyle(label);
+              paint.fillStyle = style.stroke;
+              paint.fillRect(0, 0, 1, 1);
+              return { stroke: [...paint.getImageData(0, 0, 1, 1).data].slice(0, 3), width: parseFloat(style.strokeWidth), fontSize: parseFloat(style.fontSize), order: style.paintOrder, join: style.strokeLinejoin };
+            }),
+            clusters: svg.querySelectorAll(".pele-cluster-label").length,
+            boxes: [...svg.querySelectorAll(".pele-edge-label > rect")].map((box) => getComputedStyle(box).display),
+          };
+        });
+        expect(drawing.sameDrawing).toBe(true);
+        expect(drawing.edges.length).toBeGreaterThan(0);
+        expect(drawing.edges.every((d) => !/[CSA]/i.test(d))).toBe(true);
+        expect(drawing.edges.some((d) => /[LHV].*[LHV].*[LHV]/i.test(d))).toBe(true);
+        expect(exported[name]!.length).toBe(drawing.edges.length);
+        expect(exported[name]!.every((d) => !/[CSA]/i.test(d))).toBe(true);
+        expect(exported[name]!.some((d) => /[LHV].*[LHV].*[LHV]/i.test(d))).toBe(true);
+        expect(drawing.labels.length).toBeGreaterThan(0);
+        for (const label of drawing.labels) {
+          expect(label).toMatchObject({ stroke: background, order: "stroke", join: "round" });
+          expect(label.width).toBeCloseTo(label.fontSize * 0.12, 3);
+        }
+        expect(drawing.boxes.length).toBeGreaterThan(0);
+        expect(drawing.boxes.every((display) => display === "none")).toBe(true);
+        if (name === "grouped") expect(drawing.clusters).toBeGreaterThan(0);
+      }
+    }
+    const model = await (await fetch(new URL("content", opened.live.url))).json() as any;
+    const attachment = model.attachments.find((a: any) => a.caption === "historical");
+    expect(await (await fetch(new URL(`assets/${attachment.file}`, opened.live.url))).text()).toBe(historical);
+  } finally {
+    await context.close();
+  }
+}, 120_000);
+
 test.each(["mermaid", "svg"] as const)("Flow diagrams draw safely in the reader's Latte or Mocha theme with styled %s, and captured bytes stay unchanged", async (type) => {
   const opened = cli(["open", "--skill", "grill-me", "--title", "Diagrams in the reader"]);
   writeFileSync(join(root, "hostile.mmd"), [
@@ -90,7 +180,8 @@ test.each(["mermaid", "svg"] as const)("Flow diagrams draw safely in the reader'
     '  click h3 href "https://example.com/beacon"',
     "",
   ].join("\n"));
-  copyFileSync(type === "mermaid" ? STYLED_SOURCE : STYLED_SVG, join(root, "reading"));
+  if (type === "mermaid") writeFileSync(join(root, "reading"), "flowchart TD\n a1[Read the page] --> a2[Answer the question]:::ok\n");
+  else copyFileSync(STYLED_SVG, join(root, "reading"));
   copyFileSync(CAPTURED_SVG, join(root, "captured.svg"));
   copyFileSync(STYLED_SVG, join(root, "styled.svg"));
   const captured = readFileSync(CAPTURED_SVG);
@@ -101,13 +192,14 @@ test.each(["mermaid", "svg"] as const)("Flow diagrams draw safely in the reader'
     figures: [{ attachment: ref, kind: "context-diagram" }],
     options: [{ label: "Fine", does: `Accepts the ${title} drawing`, gains: [`Clarity for ${title}`], costs: [`No revision of ${title}`] }],
   });
-  cli(["submit"], { version: 1, items: [
+  const submitted = cli(["submit"], { version: 1, items: [
     { kind: "attachment", ref: "hostile", type: "mermaid", caption: "Hostile labels", origin: "Mermaid source hostile.mmd", path: "hostile.mmd", focus: ["h1"] },
     { kind: "attachment", ref: "reading", type, caption: "Reading then answering", origin: `Styled ${type} capture`, path: "reading", ...(type === "mermaid" ? { focus: ["a2"] } : {}) },
     { kind: "attachment", ref: "captured", type: "svg", caption: "Captured design review", origin: "Pele render of design-review-sequence.mmd", path: "captured.svg" },
     { kind: "attachment", ref: "styled", type: "svg", caption: "Styled historical design", origin: "Pele render of styled-mocha.mmd", path: "styled.svg" },
     { kind: "round", questions: [figure("hostile", "hostile"), figure("reading", "reading"), figure("captured", "captured"), figure("styled", "styled")] },
   ] });
+  if (type === "mermaid") seedHistoricalMermaidCapture(submitted.flow, submitted.refs.reading, readFileSync(STYLED_SOURCE), "reading.mmd");
 
   const context = await browser.newContext({ colorScheme: "light", viewport: { width: 1280, height: 900 } });
   const page = await context.newPage();

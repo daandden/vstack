@@ -22,7 +22,7 @@ test("mindmap branches use exact category names and node roles do not color desc
   expect({ code: bound.code, stderr: bound.stderr }).toEqual({ code: 0, stderr: "" });
   expect(shape(bound.svg!, "a").style).toContain("fill:#f38ba8");
   expect(shape(bound.svg!, "a").style).toContain("stroke:#cba6f7");
-  expect(text(bound.svg!, "a").style).toContain("fill:#cba6f7");
+  expect(text(bound.svg!, "a").style).toContain("fill:#cdd6f4");
   expect(shape(bound.svg!, "child").style).toBe(shape(plain.svg!, "child").style);
 });
 
@@ -32,7 +32,7 @@ test.each(["ishikawa-beta", "ishikawa"])("%s colors only the category header, no
   const owned = marks(r.svg!, "Orders");
   expect(owned.find((m) => m.tag.startsWith("<rect"))!.style).toContain("fill:#f9e2af;stroke:#cba6f7");
   expect(owned.filter((m) => m.tag.startsWith("<path")).every((m) => !m.style.includes("#"))).toBe(true);
-  expect(owned.filter((m) => m.text).map((m) => m.style)).toEqual(["fill:#cba6f7", ""]);
+  expect(owned.filter((m) => m.text).map((m) => m.style)).toEqual(["fill:#cdd6f4", ""]);
 });
 
 test("Wardley source strategies, anchors, labels, and evolution imply no role", async () => {
@@ -46,7 +46,7 @@ test("Wardley source strategies, anchors, labels, and evolution imply no role", 
   const database = marks(bound.svg!, "Database");
   expect(database.some((m) => m.tag.startsWith("<circle") && m.style.includes("fill:#f38ba8;stroke:#cba6f7"))).toBe(true);
   expect(database.some((m) => m.tag.startsWith("<path") && m.style.includes("fill:none;stroke:#cba6f7"))).toBe(true);
-  expect(text(bound.svg!, "User").style).toContain("fill:#f5c2e7");
+  expect(text(bound.svg!, "User").style).toContain("fill:#cdd6f4");
   expect(marks(bound.svg!, "User").every((m) => m.text)).toBe(true);
 });
 
@@ -55,7 +55,7 @@ test("Cynefin domains own regions and labels while item backing stays neutral", 
   expect(r.code).toBe(0);
   expect(shape(r.svg!, "clear").style).toContain("fill:#a6e3a1");
   expect(shape(r.svg!, "clear").style).toContain("stroke:#cba6f7");
-  expect(text(r.svg!, "clear").style).toContain("fill:#cba6f7");
+  expect(text(r.svg!, "clear").style).toContain("fill:#cdd6f4");
   expect(shape(r.svg!, "Failed database").style).toContain("fill:#313244");
   expect(text(r.svg!, "Failed database").style).not.toContain("#cba6f7");
   expect(shape(r.svg!, "Orders").style).toContain("fill:#94e2d5");
@@ -104,11 +104,11 @@ test("mindmap text-only roles and Wardley market bindings add no geometry or str
   const dir = setup();
   const mindmap = await renderFigure(dir, "mindmap\n root((Root))\n  Plain\n   :::actor\n");
   expect(mindmap.code).toBe(0);
-  expect(text(mindmap.svg!, "Plain").style).toContain("fill:#f5c2e7");
+  expect(text(mindmap.svg!, "Plain").style).toContain("fill:#cdd6f4");
   expect(marks(mindmap.svg!, "Plain").every((m) => m.text)).toBe(true);
   const market = await renderFigure(dir, "wardley-beta\n component Market [0.4, 0.6] (market)\n", { name: "market", bindings: elements({ id: "Market", role: "external" }) });
   expect(market.code).toBe(0);
-  expect(text(market.svg!, "Market").style).toContain("fill:#fab387");
+  expect(text(market.svg!, "Market").style).toContain("fill:#cdd6f4");
   expect(marks(market.svg!, "Market").filter((m) => !m.text).every((m) => !m.style.includes("#fab387"))).toBe(true);
 });
 

@@ -19,7 +19,7 @@ test("Gantt source states distinguish done and critical from active and words in
   const bound = await renderFigure(dir, GANTT, { name: "bound", bindings: elements({ id: "d", role: "bad" }, { id: "c", category: "orders" }), focus: ["d"] });
   expect(bound.code).toBe(0);
   expect(shape(bound.svg!, "d").style).toContain("fill:#f38ba8;stroke:#cba6f7");
-  expect(text(bound.svg!, "d").style).toContain("fill:#cba6f7");
+  expect(text(bound.svg!, "d").style).toContain("fill:#cdd6f4");
   expect(shape(bound.svg!, "c").style).not.toContain("fill:#f9e2af");
 });
 
@@ -48,7 +48,7 @@ test("journey people keep associated marks while scores and task names imply no 
   expect(r.code).toBe(0);
   for (const id of ["Failed", "Accepted"]) expect(shape(r.svg!, id).style).toContain("fill:#313244");
   expect(marks(r.svg!, "Customer").filter((mark) => !mark.text)).toHaveLength(3);
-  for (const mark of marks(r.svg!, "Customer")) expect(mark.style).toContain("fill:#f38ba8");
+  for (const mark of marks(r.svg!, "Customer")) expect(mark.style).toContain(mark.text ? "fill:#cdd6f4" : "fill:#f38ba8");
 });
 
 test.each([
@@ -115,7 +115,7 @@ test("Kanban priority identifies only the existing indicator and adds no label o
 test("Gantt labels placed outside short bars keep readable light paint", async () => {
   const r = await renderFigure(setup(), "gantt\n dateFormat YYYY-MM-DD\n Long completed task label outside its bar :done, short, 2026-01-01, 1d\n Long range :range, 2026-01-02, 40d\n");
   expect(r.code).toBe(0);
-  expect(text(r.svg!, "short").style).toContain("fill:#a6e3a1");
+  expect(text(r.svg!, "short").style).toContain("fill:#cdd6f4");
 });
 
 test("Git histories keep branch identity beyond Pele's repeated series slots and retain colliding labels", async () => {

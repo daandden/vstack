@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Flow figures apply the export's shared Color role pass before mapping paints to Latte or Mocha. Explicit roles and intrinsic person and database kinds now appear in existing captures without recapture. Focus changes only the border. Historical figures refused by the role pass still draw with their focus, and Document Mermaid keeps its authored paints."
+  ]
+}

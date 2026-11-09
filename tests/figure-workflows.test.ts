@@ -15,18 +15,20 @@ test("sequence source kinds distinguish people and data from software, and bindi
   expect({ code: plain.code, stderr: plain.stderr }).toEqual({ code: 0, stderr: "" });
   expect(marks(plain.svg!, "P").filter((m) => !m.text).every((m) => m.style.includes("#f5c2e7"))).toBe(true);
   expect(marks(plain.svg!, "D").filter((m) => !m.text).every((m) => m.style.includes("#94e2d5"))).toBe(true);
+  expect(marks(plain.svg!, "P").some((m) => !m.text && m.style.includes("fill-opacity:0.22"))).toBe(true);
+  expect(marks(plain.svg!, "D").some((m) => !m.text && m.style.includes("fill-opacity:0.22"))).toBe(true);
   expect(shape(plain.svg!, "S").style).not.toContain("#f5c2e7");
   expect(shape(plain.svg!, "Q").style).not.toContain("#94e2d5");
   const bound = await renderFigure(dir, SEQUENCE, { name: "bound", focus: ["S"], bindings: elements({ id: "P", role: "bad" }, { id: "S", role: "external" }, { id: "D", category: "orders" }) });
   expect({ code: bound.code, stderr: bound.stderr }).toEqual({ code: 0, stderr: "" });
   const labels = marks(bound.svg!, "S").filter((m) => m.text);
   expect(labels).toHaveLength(2);
-  expect(labels.every((m) => m.style.includes("fill:#cba6f7"))).toBe(true);
+  expect(labels.every((m) => m.style.includes("fill:#cdd6f4"))).toBe(true);
   expect(marks(bound.svg!, "S").filter((m) => !m.text && m.tag.startsWith("<rect")).every((m) => m.style.includes("fill:#fab387;stroke:#cba6f7"))).toBe(true);
   expect(shape(bound.svg!, "P").style).toContain("#f38ba8");
   expect(bound.svg).toContain("Failed person");
-  expect(text(plain.svg!, "P").style).toContain("fill:#f5c2e7");
-  expect(text(plain.svg!, "D").style).toContain("fill:#94e2d5");
+  expect(text(plain.svg!, "P").style).toContain("fill:#cdd6f4");
+  expect(text(plain.svg!, "D").style).toContain("fill:#cdd6f4");
   expect(marks(plain.svg!, "P").find((m) => m.tag.startsWith("<path") && m.tag.includes('fill="none"') && !m.tag.includes("pele-lifeline"))!.style).toContain("fill:none");
 });
 
@@ -57,8 +59,8 @@ test("agent flows preserve source kind categories and failure relations, not lab
   expect(shape(bound.svg!, "G").style).toContain("fill:#fab387;stroke:#cba6f7");
   expect(shape(bound.svg!, "A").style).toContain("fill:#a6e3a1;stroke:#a6e3a1");
   expect(shape(bound.svg!, "B").style).toContain("fill:#f38ba8;stroke:#f38ba8");
-  expect(shape(bound.svg!, "A").style).toContain("fill-opacity:1");
-  expect(shape(bound.svg!, "B").style).toContain("fill-opacity:1");
+  expect(shape(bound.svg!, "A").style).toContain("fill-opacity:0.22");
+  expect(shape(bound.svg!, "B").style).toContain("fill-opacity:0.22");
   expect(marks(bound.svg!, "C")).toHaveLength(0);
 });
 
@@ -72,7 +74,7 @@ test("event frames keep source kind categories and stored data distinct from ass
   expect({ code: r.code, stderr: r.stderr }).toEqual({ code: 0, stderr: "" });
   expect(marks(r.svg!, "3").filter((m) => !m.text).every((m) => m.style.includes("#f38ba8"))).toBe(true);
   expect(shape(r.svg!, "4").style).toContain("stroke:#cba6f7");
-  expect(text(r.svg!, "4").style).toContain("fill:#cba6f7");
+  expect(text(r.svg!, "4").style).toContain("fill:#1e1e2e");
   expect(shape(r.svg!, "5").style).toContain("fill:#fab387");
 });
 

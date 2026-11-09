@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Flow flowcharts draw with the export's step routes and background-colored label outlines in Latte and Mocha. The reader and export share their presentation rules, and stored Mermaid figures update on their next view without recapture (#407)."
+  ]
+}

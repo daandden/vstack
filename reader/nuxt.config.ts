@@ -8,7 +8,10 @@ export default defineNuxtConfig({
   buildId: "flow-reader",
   experimental: { appManifest: false },
   css: ["~/assets/reader.css"],
-  alias: { "#flow": fileURLToPath(new URL("../plugin/skills/flow-page/scripts", import.meta.url)) },
+  alias: {
+    "#flow": fileURLToPath(new URL("../plugin/skills/flow-page/scripts", import.meta.url)),
+    "#figures": fileURLToPath(new URL("../plugin/skills/vstack-figures/scripts", import.meta.url)),
+  },
   app: {
     buildAssetsDir: "/_flow-reader/",
     head: {

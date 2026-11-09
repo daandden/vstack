@@ -2,6 +2,8 @@
 
 > This decision amends [ADR 0040](0040-figures-are-mermaid-rendered-by-pele.md) and [ADR 0044](0044-structured-flow-data-drives-server-rendered-pages.md) for diagrams. It reverses the Mocha-only figure palette that [ADR 0027](0027-diagram-design-ships-one-fixed-catppuccin-style.md) recorded and ADR 0040 kept.
 
+> [ADR 0065](0065-flow-figures-get-color-roles-from-the-shared-role-pass.md) amends this decision. The reader runs the shared role pass, draws step edges and outlined labels like the export, and draws `mermaid` code blocks in Documents. Submit runs the export's full check on `mermaid` attachments.
+
 The user chose this design in Flow questions 26 to 28 of spec #309 on 2026-11-01, after the #315 review found the prototype-review diagram unreadable in the light theme (question 25). The user knowingly accepts that a drawn diagram's layout can change with the pinned Pele version.
 
 An author captures a diagram as its Mermaid source: an attachment with `type: "mermaid"`, an optional `focus` of one or two Mermaid ids, and the usual `caption` and `origin`. The script stores the source bytes under their sha256 like any attachment. It refuses source that is not UTF-8 or that the pinned Pele cannot render, with Pele's parse error, and commits nothing. A question figure, Background figure, option preview, or Document figure may name a `mermaid` attachment, so it meets the Context diagram, Option diagram, Data chart, and Scenario walkthrough reader needs. This is an attachment type, not a Result kind. Captured `svg` attachments stay supported for existing Flows and for figures that Pele did not draw.

@@ -10,7 +10,7 @@ const ROLES: Record<string, string> = {
 const ACCENTS = ["#f5e0dc", "#f2cdcd", "#f5c2e7", "#f38ba8", "#eba0ac", "#fab387", "#f9e2af", "#a6e3a1", "#94e2d5", "#89dceb", "#74c7ec", "#89b4fa", "#b4befe"];
 const CHARTS = new Set(["quadrantChart", "xychart", "pie", "sankey", "radar", "treemap", "venn"]);
 export type Binding = { id: string; role?: string; category?: string };
-type Target = { id: string; role?: string; category?: string; categorical?: string; intrinsic?: string; key?: string; sourceCategory?: string; neutral?: boolean; line?: boolean; loose?: boolean; labelOnly?: boolean; unsupported?: boolean; iconOnly?: boolean; looseLabel?: boolean; edge?: boolean };
+type Target = { id: string; role?: string; category?: string; categorical?: string; intrinsic?: string; key?: string; sourceCategory?: string; neutral?: boolean; line?: boolean; loose?: boolean; labelOnly?: boolean; unsupported?: boolean; iconOnly?: boolean; looseLabel?: boolean; edge?: boolean; clickable?: boolean };
 const PELE_CLASS = /^(?:pele|usecase-|system-boundary)|^highlight$/;
 const SHAPE = new Set(["rect", "path", "polygon", "circle", "ellipse", "line", "polyline"]);
 const PAINT = new Set(["fill", "stroke", "color", "stop-color", "background", "background-color"]);
@@ -35,14 +35,32 @@ function assign(target: Target, key: "role" | "category", value: string) {
   target[key] = value;
 }
 function classes(target: Target, names: string[]) {
-  for (const name of names) if (name && !PELE_CLASS.test(name)) assign(target, "role", name);
+  for (const name of names) if (name && !PELE_CLASS.test(name) && !(name === "clickable" && target.clickable)) assign(target, "role", name);
 }
 function categoryColor(key: string) {
   let hash = 2166136261;
   for (const byte of new TextEncoder().encode(key)) hash = Math.imul(hash ^ byte, 16777619) >>> 0;
   return ACCENTS[hash % ACCENTS.length]!;
 }
-function flowTargets(model: FlowchartModel | Extract<DiagramModel, { type: "agentflow" }>) {
+
+// Callback click directives leave only a generated class in Pele's model, unlike href links.
+function clickTargets(source: string): Set<string> {
+  const ids = new Set<string>();
+  const text = source.replace(/^\uFEFF?---[\s\S]*?\n---[^\n]*\n/, "").replace(/"(?:\\.|[^"\\])*"|%%[^\n]*/g, '""');
+  let depth = 0, start = 0;
+  for (let i = 0; i <= text.length; i++) {
+    const char = text[i];
+    if (char === "[" || char === "(" || char === "{") depth++;
+    else if (char === "]" || char === ")" || char === "}") depth = Math.max(0, depth - 1);
+    if (i === text.length || !depth && (char === "\n" || char === ";")) {
+      const match = /^\s*click[ \t]+([^\s;]+)[ \t]+/.exec(text.slice(start, i));
+      if (match) for (const id of match[1]!.split(",")) ids.add(id);
+      start = i + 1;
+    }
+  }
+  return ids;
+}
+function flowTargets(model: FlowchartModel | Extract<DiagramModel, { type: "agentflow" }>, clicked: Set<string>) {
   const declarations = [
     ...[...model.classes.values()].flatMap((c) => [...c.styles, ...c.textStyles]),
     ...[...model.nodes.values()].flatMap((n) => n.styles),
@@ -54,9 +72,9 @@ function flowTargets(model: FlowchartModel | Extract<DiagramModel, { type: "agen
     if (colon > 0) refusePaint(declaration.slice(0, colon).trim(), declaration.slice(colon + 1), true);
   }
   const targets = new Map<string, Target[]>();
-  const add = (id: string, names: string[], intrinsic?: string, line = false) => {
-    const t: Target = { id, intrinsic, line };
-    for (const name of names) assign(t, "role", name);
+  const add = (id: string, names: string[], intrinsic?: string, line = false, clickable = false) => {
+    const t: Target = { id, intrinsic, line, clickable };
+    for (const name of names) if (name !== "clickable" || !clickable) assign(t, "role", name);
     targets.set(id, [...(targets.get(id) ?? []), t]);
     return t;
   };
@@ -64,7 +82,7 @@ function flowTargets(model: FlowchartModel | Extract<DiagramModel, { type: "agen
   for (const n of model.nodes.values()) {
     if (groups.has(n.id)) continue;
     const intrinsic = n.type === "person" ? "actor" : ["cylinder", "cyl", "database", "db", "disk", "lin-cyl"].includes(n.type ?? "") ? "store" : undefined;
-    add(n.id, n.classes, intrinsic, n.type === "text");
+    add(n.id, n.classes, intrinsic, n.type === "text", clicked.has(n.id));
   }
   for (const g of model.subgraphs) add(g.id, g.classes);
   for (const e of model.edges) if (e.id && (e.isUserDefinedId || model.type === "agentflow")) {
@@ -85,7 +103,7 @@ function flowTargets(model: FlowchartModel | Extract<DiagramModel, { type: "agen
   return targets;
 }
 
-function entityTargets(model: DiagramModel): Map<string, Target[]> | undefined {
+function entityTargets(model: DiagramModel, clicked: Set<string>): Map<string, Target[]> | undefined {
   if (model.type === "class" || model.type === "er" || model.type === "block") {
     const definitions = model.type === "class" ? model.styleClasses : model.classes;
     const declarations = [...definitions.values()].flatMap((definition) => [...definition.styles, ...definition.textStyles]);
@@ -100,9 +118,9 @@ function entityTargets(model: DiagramModel): Map<string, Target[]> | undefined {
     }
   }
   const targets = new Map<string, Target[]>();
-  const add = (id: string, names: string[] = [], intrinsic?: string, line = false) => {
-    const target: Target = { id, intrinsic, line };
-    for (const name of names) if (name && name !== "default") assign(target, "role", name);
+  const add = (id: string, names: string[] = [], intrinsic?: string, line = false, clickable = false) => {
+    const target: Target = { id, intrinsic, line, clickable };
+    for (const name of names) if (name && name !== "default" && (name !== "clickable" || !clickable)) assign(target, "role", name);
     targets.set(id, [...(targets.get(id) ?? []), target]);
     return target;
   };
@@ -119,7 +137,7 @@ function entityTargets(model: DiagramModel): Map<string, Target[]> | undefined {
       for (const group of model.subgraphs) add(group.id, group.classes);
       break;
     case "class":
-      for (const node of model.classes.values()) add(node.id, node.cssClasses.split(/\s+/));
+      for (const node of model.classes.values()) add(node.id, node.cssClasses.split(/\s+/), undefined, false, clicked.has(node.id) || !!node.link || node.haveCallback);
       for (const group of model.namespaces.values()) if (group.explicit) add(group.id);
       break;
     case "architecture":
@@ -159,7 +177,7 @@ function entityTargets(model: DiagramModel): Map<string, Target[]> | undefined {
   return targets;
 }
 
-function workTargets(model: DiagramModel) {
+function workTargets(model: DiagramModel, clicked: Set<string>) {
   const targets = new Map<string, Target[]>();
   const add = (id: string, options: Partial<Target> = {}) => {
     const target: Target = { id, neutral: true, ...options };
@@ -169,7 +187,7 @@ function workTargets(model: DiagramModel) {
   switch (model.type) {
     case "gantt":
       for (const task of model.tasks) {
-        const target = add(task.id, { intrinsic: task.done ? "ok" : task.crit ? "warn" : undefined, loose: task.milestone || task.vert });
+        const target = add(task.id, { intrinsic: task.done ? "ok" : task.crit ? "warn" : undefined, loose: task.milestone || task.vert, clickable: clicked.has(task.id) });
         classes(target, task.classes);
         target.unsupported = !task.raw.data.slice(1).split(",").some((part) => part.trim() === task.id);
       }
@@ -269,6 +287,7 @@ function targetColor(target: Target | undefined, intrinsicEligible = true): stri
 }
 
 function sankeyPaint(svg: string, model: Extract<DiagramModel, { type: "sankey" }>, targets: Map<string, Target[]>, scope: string) {
+  const mode = sankeyMode(model);
   const templates = new Map([...svg.matchAll(/<linearGradient\b[^>]*\bid="([^"]+)"[^>]*>[\s\S]*?<\/linearGradient>/g)].map((m) => [m[1]!, m[0]]));
   const gradients: string[] = [];
   let index = 0;
@@ -285,13 +304,13 @@ function sankeyPaint(svg: string, model: Extract<DiagramModel, { type: "sankey" 
       gradients.push(template.replace(/\bid="[^"]*"/, `id="${id}"`).replace(/stop-color="[^"]*"/g, () => `stop-color="${stop++ === 0 ? source : destination}"`));
       return tag.replace(/\bfill="[^"]*"/, `fill="url(#${id}) ${source}"`);
     }
-    return tag.replace(/\bfill="[^"]*"/, `fill="${sankeyMode(model) === "target" ? destination : source}"`);
+    return tag.replace(/\bfill="[^"]*"/, `fill="${mode === "target" ? destination : source}"`);
   });
   if (gradients.length) svg = svg.replace(/<linearGradient\b[^>]*>[\s\S]*?<\/linearGradient>/g, "").replace("</defs>", `${gradients.join("")}</defs>`);
   return svg;
 }
 
-function interactionTargets(model: DiagramModel) {
+function interactionTargets(model: DiagramModel, clicked: Set<string>) {
   if (model.type === "eventmodeling") {
     const targets = new Map<string, Target[]>();
     for (const box of model.boxes) {
@@ -302,7 +321,7 @@ function interactionTargets(model: DiagramModel) {
     }
     return targets;
   }
-  if (model.type === "agentflow") return flowTargets(model);
+  if (model.type === "agentflow") return flowTargets(model, clicked);
   if (model.type === "state") {
     const targets = new Map<string, Target[]>();
     const add = (state: { id: string; start?: boolean; classes?: string[] }) => {
@@ -342,12 +361,13 @@ function refusePaint(prop: string, value: string, authored = false) {
   if (PAINT.has(prop) && (authored || !themed(value))) throw new Error(`The Mermaid sets its own color (${prop}:${value.trim()}). Remove the classDef, style, or linkStyle line, or the color in a sequence rect or box, and mark the element with a color role.`);
 }
 
-export function palette(svg: string, model: DiagramModel, bindings: Binding[], focus: string[], scope: string): { svg: string; css: string } {
+export function palette(svg: string, model: DiagramModel, bindings: Binding[], focus: string[], scope: string, source: string): { svg: string; css: string } {
   const work = ["timeline", "gantt", "journey", "kanban", "gitGraph"].includes(model.type);
   const spatial = ["mindmap", "ishikawa", "wardley", "cynefin"].includes(model.type);
   const chart = CHARTS.has(model.type);
-  const interaction = interactionTargets(model);
-  const resolved = model.type === "flowchart" ? flowTargets(model) : interaction ?? (work ? workTargets(model) : spatial ? spatialTargets(model) : chart ? chartTargets(model) : entityTargets(model));
+  const clicked = clickTargets(source);
+  const interaction = interactionTargets(model, clicked);
+  const resolved = model.type === "flowchart" ? flowTargets(model, clicked) : interaction ?? (work ? workTargets(model, clicked) : spatial ? spatialTargets(model) : chart ? chartTargets(model) : entityTargets(model, clicked));
   const targets = resolved ?? new Map<string, Target[]>();
   const visible = spatial ? new Set([...svg.matchAll(/\bdata-id="([^"]*)"/g)].map((m) => decode(m[1]!))) : undefined;
   const ownsIdentity = (names: string[]) => model.type === "sequence"
@@ -480,18 +500,19 @@ export function palette(svg: string, model: DiagramModel, bindings: Binding[], f
     const icon = ownClasses.includes("pele-icon") || (parent?.target === target && (parent?.icon ?? false));
     if (chart) loose = ownClasses.includes("pele-legend-item") || ownClasses.includes("pele-section") || model.type === "sankey" || model.type === "venn" || model.type === "quadrantChart" && (ownClasses.includes("pele-point") || parent?.classes.includes("pele-point-labels")) || parent?.loose === true;
     const accent = targetColor(target, !target?.iconOnly || icon);
+    const rolePaint = !!(target?.role || target?.category === undefined && target?.intrinsic && (!target.iconOnly || icon));
     const invisible = attrs.get("fill") === "none" && attrs.get("stroke") === "none";
     const neutral = target && ["wardley", "cynefin"].includes(model.type) && ["rect", "circle"].includes(name) && attrs.get("fill") === "var(--_bg)";
     if (chart && target && !invisible && (SHAPE.has(name) || name === "text")) chartVisible.add(target);
-    if (focused && target && !invisible && (SHAPE.has(name) || name === "text")) focusedVisible.add(target.id);
+    if (focused && target && !invisible && SHAPE.has(name)) focusedVisible.add(target.id);
     if (!invisible && (accent || focused || target?.neutral || neutral || chart && target) && (SHAPE.has(name) || name === "text")) {
       const line = target?.line || ownClasses.includes("pele-edge") || ownClasses.includes("pele-lane") || ownClasses.includes("pele-lifeline") || parent?.name === "line" || chart && attrs.get("fill") === "none";
       const open = (model.type === "flowchart" || interaction) && attrs.get("fill") === "none";
       const fill = open || icon || (line && (!spatial || ["path", "line", "polyline"].includes(name)) && !ownClasses.includes("pele-marker")) ? "none" : model.type === "gitGraph" && attrs.get("fill") === "var(--_bg)" ? BASE : accent ?? SURFACE;
-      const stroke = model.type === "gitGraph" && attrs.get("stroke") === "var(--_bg)" ? BASE : focused ? MAUVE : icon && !line ? BASE : accent ?? BORDER;
+      const stroke = model.type === "gitGraph" && attrs.get("stroke") === "var(--_bg)" ? BASE : focused ? MAUVE : icon && !line ? rolePaint ? TEXT : BASE : accent ?? BORDER;
       const paint = name === "text"
-        ? `fill:${focused ? MAUVE : !accent ? TEXT : line || loose || target?.loose || target?.looseLabel || model.type === "gantt" && attrs.get("fill") === "var(--_m)" ? accent : BASE}`
-        : `${!["line", "polyline"].includes(name) ? `fill:${fill};${accent && ["mindmap", "cynefin"].includes(model.type) && attrs.has("fill-opacity") ? "fill-opacity:1;" : ""}` : ""}stroke:${stroke}${focused ? ";stroke-width:2.5px" : ""}${model.type === "agentflow" && accent && fill !== "none" ? ";fill-opacity:1" : ""}`;
+        ? `fill:${rolePaint || !accent ? TEXT : line || loose || target?.loose || target?.looseLabel || model.type === "gantt" && attrs.get("fill") === "var(--_m)" ? accent : BASE}`
+        : `${!["line", "polyline"].includes(name) ? `fill:${fill};${accent && !rolePaint && ["mindmap", "cynefin"].includes(model.type) && attrs.has("fill-opacity") ? "fill-opacity:1;" : ""}` : ""}stroke:${stroke}${focused ? ";stroke-width:2.5px" : ""}${rolePaint && fill !== "none" ? ";fill-opacity:0.22" : model.type === "agentflow" && accent && fill !== "none" ? ";fill-opacity:1" : ""}`;
       if (attrs.has("style")) tag = tag.replace(/\bstyle="([^"]*)"/, (_, style) => `style="${style};${paint}"`);
       else tag = tag.replace(/\/?\s*>$/, (end) => ` style="${paint}"${end}`);
     }

@@ -36,6 +36,8 @@ const flow = "flowchart LR\n subgraph G[Group]\n A[Orders]\n B[(Data)]:::store\n
 await run("one", flow, { elements: [{ id: "G", role: "external" }, { id: "A", category: "Orders" }], focus: ["G"] });
 await run("two", flow, { elements: [{ id: "G", role: "bad" }, { id: "A", role: "ok" }] });
 await run("sequence", "sequenceDiagram\n actor P as Person\n participant A as Human\n participant D@{ \"type\": \"database\", \"alias\": \"Data\" }\n P->>A: read\n A->>D: load\n", { elements: [{ id: "A", role: "external" }], focus: ["A"] });
+const roles = "flowchart TD\n subgraph Checkout[Order checkout]\n cart[Cart accepted]:::ok -->|available| stock{Stock check}:::warn\n stock -->|yes| payment[Payment captured]:::changed\n stock -->|no| retry[Stock unavailable]:::bad\n reader[Reader]:::actor --> cart\n payment --> database[(Captured order)]:::store\n database --> service[Carrier API]:::external\n retry --> service\n end\n";
+await run("roles", roles, { focus: ["cart"] });
 await run("pie", 'pie\n "Orders": 3\n "Other": 1\n');
 for (const mode of ["source", "target", "gradient"]) {
   await run(`sankey-${mode}`, `---\nconfig:\n sankey:\n  linkColor: ${mode}\n---\nsankey\n\nOrders,Other,3\nOrders,Archive,1\nOther,Final,2\nArchive,Final,1\n`, { elements: [{ id: "Orders", role: "ok" }, { id: "Other", role: "bad" }, { id: "Archive", role: "store" }, { id: "Final", role: "external" }] });
@@ -68,7 +70,7 @@ const curated: [string, string, string][] = [
 ];
 for (const [name, source, id] of curated) {
   const plain = await run(`${name}-plain`, source);
-  const colored = await run(`${name}-bound`, source, { elements: [{ id, category: "Orders" }, { id, role: "bad" }, { id, role: "bad" }], focus: [id] });
+  const colored = await run(`${name}-bound`, source, { elements: [{ id, category: "Orders" }, { id, role: "bad" }, { id, role: "bad" }], focus: [name === "tree" ? "index.ts" : id] });
   assert.deepEqual(geometry(colored!), geometry(plain!), name);
 }
 const letters = "M".repeat(20), words = Array(30).fill("WWW").join(" ");
@@ -77,6 +79,7 @@ const refusals: [string, string, Options, number][] = [
   ["missing-focus", flow, { focus: ["Absent"] }, 1],
   ["ambiguous-focus", "flowchart LR\n A A@--> B\n", { focus: ["A"] }, 1],
   ["empty-focus", 'treemap\n "Empty": 0\n "Visible": 1\n', { focus: ["Empty"] }, 1],
+  ["text-only-focus", curated.find(c => c[0] === "tree")![1], { focus: ["README.md"] }, 1],
   ["invalid", "flowchart LR\n A[", {}, 1],
   ["unknown", flow, { elements: [{ id: "A", role: "green" }] }, 1],
   ["conflict", flow, { elements: [{ id: "A", role: "ok" }, { id: "A", role: "bad" }] }, 1],

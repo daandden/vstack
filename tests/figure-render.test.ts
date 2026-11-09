@@ -20,7 +20,7 @@ test("source files and repeatable focus render literal Mocha with an absolute ou
   const svg = readFileSync(out, "utf8");
   expect(svg).toContain("'IosevkaTerm Nerd Font Mono', ui-monospace, monospace");
   expect(svg).toContain("--pele-bg: #1e1e2e"); expect(svg).toContain("--pele-surface: #313244");
-  for (const id of ["Stock", "Split"]) { expect(shape(svg, id).style).toContain("stroke:#cba6f7"); expect(text(svg, id).style).toContain("fill:#cba6f7"); }
+  for (const id of ["Stock", "Split"]) { expect(shape(svg, id).style).toContain("stroke:#cba6f7;stroke-width:2.5px"); expect(text(svg, id).style).toContain("fill:#cdd6f4"); }
   expect(shape(svg, "Pay").style).not.toContain("#cba6f7");
   for (const color of svg.match(/#[\da-fA-F]{3,8}\b/g) ?? []) expect(MOCHA.has(color.toLowerCase())).toBe(true);
   expect(svg).not.toContain("color-mix");
@@ -32,17 +32,97 @@ test("stdin, nested groups, and focal roles keep their own geometry and fill", a
   expect(shape(r.svg!, "Inner").style).toContain("fill:#94e2d5;stroke:#cba6f7");
   expect(shape(r.svg!, "Split").style).toContain("fill:#f9e2af;stroke:#f9e2af");
   expect(shape(r.svg!, "Pay").style).toContain("fill:#a6e3a1;stroke:#cba6f7");
-  expect(text(r.svg!, "Split").style).toContain("fill:#1e1e2e");
+  expect(text(r.svg!, "Split").style).toContain("fill:#cdd6f4");
   expect(r.svg).not.toContain("color-mix");
+});
+
+test.each([
+  ["flowchart link", 'flowchart LR\n A:::ok --> B\n click A href "https://example.com"\n', "A"],
+  ["flowchart callback", "flowchart LR\n A:::ok --> B\n click A callback\n", "A"],
+  ["class link", 'classDiagram\n class Order:::ok\n click Order href "https://example.com"\n', "Order"],
+  ["Gantt link", 'gantt\n dateFormat YYYY-MM-DD\n Task :done, task, 2026-11-09, 1d\n click task href "https://example.com"\n', "task"],
+])("Pele-generated clickable classes in a %s are not Color roles", async (_, source, id) => {
+  const r = await renderFigure(workdir(), source, { focus: [id] });
+  expect({ code: r.code, stderr: r.stderr }).toEqual({ code: 0, stderr: "" });
+  expect(shape(r.svg!, id).style).toContain("fill:#a6e3a1");
+  expect(shape(r.svg!, id).style).toContain("stroke:#cba6f7;stroke-width:2.5px");
+});
+
+test("a click directive does not hide an unknown authored Color role", async () => {
+  const r = await renderFigure(workdir(), 'flowchart LR\n A:::okk --> B\n click A href "https://example.com"\n');
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain("Unknown color role: okk");
+  expect(existsSync(r.out)).toBe(false);
+});
+
+test.each([
+  "flowchart LR\n A:::clickable --> B\n",
+  "flowchart LR\n A --> B\n class A clickable\n",
+  'flowchart LR\n A:::clickable --> B\n click B href "https://example.com"\n',
+  "flowchart LR\n A[Ready\nclick A callback]:::clickable --> B\n",
+  'flowchart LR\n A["Ready\nclick A callback"]:::clickable --> B\n',
+  "flowchart LR\n A:::clickable --> B\n %% click A callback\n",
+])("an authored clickable class without its own click directive is an unknown Color role", async (source) => {
+  const r = await renderFigure(workdir(), source);
+  expect(r.code).toBe(1);
+  expect(r.stderr).toContain("Unknown color role: clickable");
+  expect(existsSync(r.out)).toBe(false);
 });
 
 test.each([
   ["ok", "#a6e3a1"], ["warn", "#f9e2af"], ["bad", "#f38ba8"], ["changed", "#89b4fa"],
   ["actor", "#f5c2e7"], ["store", "#94e2d5"], ["external", "#fab387"],
-])("the %s role uses its fixed solid accent", async (role, color) => {
+])("the %s role uses its fixed accent at 22% with ordinary labels", async (role, color) => {
   const r = await renderFigure(workdir(), `flowchart LR\n A:::${role} --> B\n`);
   expect(r.code).toBe(0); expect(shape(r.svg!, "A").style).toContain(`fill:${color};stroke:${color}`);
-  expect(text(r.svg!, "A").style).toContain("fill:#1e1e2e");
+  expect(shape(r.svg!, "A").style).toContain("fill-opacity:0.22");
+  expect(text(r.svg!, "A").style).toContain("fill:#cdd6f4");
+});
+
+test.each(["plain", "role", "category"])("focus keeps the fill and label paint on a %s node", async (kind) => {
+  const dir = workdir(), source = `flowchart LR\n A[Selected]${kind === "role" ? ":::ok" : ""}\n`;
+  const bindings = kind === "category" ? { elements: [{ id: "A", category: "orders" }] } : undefined;
+  const plain = await renderFigure(dir, source, { bindings });
+  const focused = await renderFigure(dir, source, { name: "focused", focus: ["A"], bindings });
+  expect(plain.code).toBe(0); expect(focused.code).toBe(0);
+  const fill = (svg: string) => /fill:([^;]+)/.exec(shape(svg, "A").style)?.[1] ?? /fill="([^"]+)"/.exec(shape(svg, "A").tag)?.[1];
+  const label = (svg: string) => /fill:([^;]+)/.exec(text(svg, "A").style)?.[1] ?? "#cdd6f4";
+  const normalize = (paint: string | undefined) => paint === "var(--_s)" ? "#313244" : paint;
+  expect(normalize(fill(focused.svg!))).toBe(normalize(fill(plain.svg!)));
+  expect(label(focused.svg!)).toBe(label(plain.svg!));
+  expect(shape(focused.svg!, "A").style).toContain("stroke:#cba6f7;stroke-width:2.5px");
+});
+
+test("role tints keep normal text above 4.5:1 in Mocha and mapped Latte", async () => {
+  const roles = ["ok", "warn", "bad", "changed", "actor", "store", "external"];
+  const r = await renderFigure(workdir(), `flowchart LR\n${roles.map((role) => ` ${role}[${role}]:::${role}`).join("\n")}\n`);
+  expect(r.code).toBe(0);
+  const latte: Record<string, string> = {
+    "#1e1e2e": "#eff1f5", "#cdd6f4": "#4c4f69",
+    "#a6e3a1": "#40a02b", "#f9e2af": "#df8e1d", "#f38ba8": "#d20f39",
+    "#89b4fa": "#1e66f5", "#f5c2e7": "#ea76cb", "#94e2d5": "#179299", "#fab387": "#fe640b",
+  };
+  const rgb = (hex: string) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const luminance = (channels: number[]) => channels.map((v) => v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4)
+    .reduce((sum, v, i) => sum + v * [0.2126, 0.7152, 0.0722][i]!, 0);
+  for (const role of roles) {
+    const fill = /fill:(#[\da-f]+)/.exec(shape(r.svg!, role).style)![1]!;
+    const label = /fill:(#[\da-f]+)/.exec(text(r.svg!, role).style)![1]!;
+    const alpha = Number(/fill-opacity:([\d.]+)/.exec(shape(r.svg!, role).style)?.[1] ?? 1);
+    for (const theme of ["mocha", "latte"]) {
+      const map = (hex: string) => theme === "latte" ? latte[hex]! : hex;
+      const base = rgb(map("#1e1e2e")), accent = rgb(map(fill));
+      const background = luminance(accent.map((v, i) => v * alpha + base[i]! * (1 - alpha)));
+      const foreground = luminance(rgb(map(label)));
+      expect({ role, theme, contrast: (Math.max(background, foreground) + 0.05) / (Math.min(background, foreground) + 0.05) }.contrast).toBeGreaterThanOrEqual(4.5);
+    }
+  }
+});
+
+test("border-only focus refuses a text-only target with no visible border", async () => {
+  const r = await renderFigure(workdir(), "flowchart LR\n A@{ shape: text, label: Label }\n", { focus: ["A"] });
+  expect(r.code).toBe(1); expect(r.stderr).toContain("Unsupported focus target A: no visible owned marks");
+  expect(existsSync(r.out)).toBe(false);
 });
 
 test.each([
@@ -95,9 +175,10 @@ test.each([
   ["ER", "erDiagram\n CUSTOMER:::ok ||--o{ ORDER : places\n", "CUSTOMER"],
   ["class", "classDiagram\n class Order:::ok {\n +submit()\n }\n", "Order"],
   ["mindmap", "mindmap\n root((Order))\n  a[Payment]\n  :::ok\n", "a"],
-])("existing %s authored roles retain solid literal role paint", async (_, source, id) => {
+])("existing %s authored roles retain literal role tints", async (_, source, id) => {
   const r = await renderFigure(workdir(), source);
   expect({ code: r.code, stderr: r.stderr }).toEqual({ code: 0, stderr: "" });
   expect(shape(r.svg!, id).style).toContain("fill:#a6e3a1");
-  expect(text(r.svg!, id).style).toContain("fill:#1e1e2e");
+  expect(shape(r.svg!, id).style).toContain("fill-opacity:0.22");
+  expect(text(r.svg!, id).style).toContain("fill:#cdd6f4");
 });

@@ -1,0 +1,12 @@
+flowchart TD
+  Ready[PR open with a PASS Verdict] --> Moved{Did main move since the branch point?}
+  Moved -->|no| Land[Land the PR]:::ok
+  Moved -->|yes| Conflict[Both PRs bumped the same version and CHANGELOG heading]:::bad
+  Conflict --> MergeIn[Merge main in, bump the version again]:::warn
+  MergeIn --> Patch[Stable patch id changes]:::changed
+  Patch --> Reverify[Fresh isolated Verifier]:::warn
+  Reverify --> CI[CI reruns on push and pull_request]:::warn
+  CI --> Method{Rebase landing allowed?}
+  Method -->|yes| Moved
+  Method -->|refused: merge commits conflict on replay| Ask[Ask the user for another method]:::bad
+  Ask --> Moved
