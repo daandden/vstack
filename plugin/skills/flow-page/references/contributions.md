@@ -2,6 +2,8 @@
 
 Read the relevant section before publishing a Background, Topic note, round, answer, Assumed pick, close, Stage state, or progress item. These are fields of the version 1 envelope described in flow-page. Result and attachment branches have separate triggered references below.
 
+`validate [<file> | -]` checks these fields against the bound or explicitly named Flow and Stage without publishing. It leaves the contribution, Stages, assets, and Flow revision unchanged. `submit` runs the same validator before committing. Both commands report independent errors together with stable codes, JSON paths, messages, and allowed values or expected types. See [Validate without publishing](../SKILL.md#validate-without-publishing) for output and exit codes.
+
 Item kinds and their fields:
 
 - `background`: `title`, `summary` (one line), `sections` (one or more `{ heading, body }`), and `sources` (one or more strings, such as `GLOSSARY.md` or `[text](url)`). A Stage has one Background. Submit it before the Stage's first round. Optional `figures` is an array of `{ attachment: "<ref or id>" }` captured figure references.

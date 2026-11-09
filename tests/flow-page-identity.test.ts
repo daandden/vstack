@@ -264,7 +264,7 @@ test("a focused revision changes one Result entry, and a stale edit of the same 
   const before = tree(w.home);
   const stale = run(["submit"], { ...at, session: "s-a", stdin: contribution({ kind: "revise", result: `${rid}/one`, base, set: { impact: "Users see a stale edit." } }) });
   expect(stale.code).toBe(1);
-  expect(stale.stdout).toBe("");
+  expect(JSON.parse(stale.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
   expect(stale.stderr).toContain("conflict");
   expect(tree(w.home)).toEqual(before);
 
@@ -332,14 +332,15 @@ test("projects stay isolated, and worktrees of one project share a Flow", () => 
 
   const before = tree(w.home);
   const there = { cwd: elsewhere, home: w.home };
-  for (const r of [
+  for (const [i, r] of [
     run(["submit", "--flow", a.flow, "--stage", a.stage], { ...there, stdin: contribution(round(question("x"))) }),
     run(["submit"], { ...there, session: "s-a", stdin: contribution(round(question("x"))) }),
     run(["bind", "--flow", a.flow, "--stage", a.stage], { ...there, session: "s-z" }),
     run(["find", "spec:267"], there),
-  ]) {
+  ].entries()) {
     expect(r.code).toBe(1);
-    expect(r.stdout).toBe("");
+    if (i < 2) expect(JSON.parse(r.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
+    else expect(r.stdout).toBe("");
   }
   expect(tree(w.home)).toEqual(before);
 

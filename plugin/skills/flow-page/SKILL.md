@@ -16,9 +16,9 @@ Run the script from inside the repo the work is about. The extension supplies yo
 bun "$(realpath skill://flow-page/scripts/flow-page.ts)" <command> ...
 ```
 
-Every command prints one JSON receipt on stdout. Exit 1 prints the refusal on stderr and commits no Flow content. On-demand startup may still write host lifecycle metadata. Fix what the refusal names and run the command again. Exit 2 is a usage error.
+Every command prints JSON on stdout. `validate` returns `{ "ok": true, "diagnostics": [] }` on success. A refused `validate` or `submit` returns `{ "ok": false, "diagnostics": [...] }`, prints a readable refusal on stderr, and exits 1 without committing Flow content. Other commands print their receipt on success and their refusal on stderr. Exit 2 is a usage error.
 
-A receipt always means the content is committed. Its `live` says whether the reader can show it: `serving` with the Flow `url`, `unavailable` with the `error` the host reported, or `off` when `VSTACK_FLOW_HOST=off`. The reader needs the Local Flow host. There is no static file to open instead. When the host is unavailable, never resubmit committed content: fix what `error` names, then run `bound` or `show` for the URL.
+A successful submit receipt means the content is committed. Its `live` says whether the reader can show it: `serving` with the Flow `url`, `unavailable` with the `error` the host reported, or `off` when `VSTACK_FLOW_HOST=off`. The reader needs the Local Flow host. There is no static file to open instead. When the host is unavailable, never resubmit committed content: fix what `error` names, then run `bound` or `show` for the URL.
 
 ## Continue a historical Grilling page
 
@@ -99,6 +99,20 @@ Scratch cleanup never deletes an open Flow. It offers a closed Flow for deletion
 The script applies all items to the bound Stage, or refuses all of them. Give a new question, Topic note, Result, or Result entry a `ref` (lowercase letters, digits, and hyphens) when another item names it. An item can name a ref from the same contribution, or an id from an earlier receipt. Name a Result entry as `<result ref or id>/<entry ref or id>`.
 
 Submitting the Stage's latest contribution again, for example after a lost receipt, applies nothing and prints its first receipt with `repeated: true`. This deduplicates publication, not asking. If the published question has no recorded response, a failed or cancelled ask can be retried with the same generated payload without publishing it again. Once a non-consent response is recorded, author a linked round with `again` before asking it again; preserve the earlier attempt and Q number.
+
+## Validate without publishing
+
+`validate [<file> | -]` checks the same contribution that `submit` accepts, from a file or stdin. Both commands use the bound Stage, or an explicit `--flow <flow> --stage <id>`. Validation checks against the current Flow, including references, captured files, and revision conflicts. A later concurrent write can change that context before submission.
+
+Validation starts no Stage or host, publishes no assets or content, and leaves the Flow revision and the contribution file unchanged. It returns all independent diagnostics with stable `code`, JSON `path`, `message`, and `allowed` values or an expected type where applicable. Dependent checks wait until their containing field has a valid shape.
+
+For example, an invalid option's gains can produce:
+
+```json
+{ "ok": false, "diagnostics": [{ "code": "invalid_type", "path": "$.items[0].questions[0].options[0].gains", "message": "must be array of non-empty strings", "allowed": "array of non-empty strings" }] }
+```
+
+The codes are `required_field`, `unknown_field`, `invalid_type`, `invalid_enum`, `invalid_union`, `too_few_items`, `too_many_items`, `invalid_length`, `out_of_range`, `invalid_value`, `invalid_reference`, and `invalid_json`. Correct every reported field, validate again, then submit the unchanged contribution. `submit` uses the same validator and returns the same diagnostics if the Flow and files have not changed.
 
 Read only the field contract for the kind you are about to publish:
 
