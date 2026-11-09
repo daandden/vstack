@@ -14,13 +14,13 @@ import { parseArgs } from "node:util";
 import { canonicalFile, capture, type Root } from "./assets.ts";
 import { addAliases, aliasesOf, closeFlow, contribute, newFlow, nowIso, openStage, parseAlias, reopenFlow, SLUG, slugOf, snapshot, stageOf, view, type Io, type State } from "./model.ts";
 import { assetsDir, createFlowFolder, flowFolders, flowsDir, folderOfId, migrationIdentity, readBinding, readState, registerFolder, registerMigration, registeredFolder, statePath, withLock, writeAtomic, writeBinding } from "./store.ts";
-import { connect, flowUrl, hostCommand } from "./live.ts";
+import { connect, flowUrl, hostCommand, originOf } from "./live.ts";
 import { captureHistoricalImages, historicalFlows, migrateHistorical, parseHistorical } from "./migrate.ts";
 import { Refusal } from "./fields.ts";
 import { registerObservation } from "./observations.ts";
 import { projectCommonDir } from "../../vstack-tmp/scripts/scratch.ts";
 
-const COMMANDS = ["open", "bind", "submit", "alias", "close", "reopen", "find", "move", "show", "bound", "host", "migrate"];
+const COMMANDS = ["open", "bind", "submit", "alias", "close", "reopen", "find", "move", "show", "bound", "target", "picker", "host", "migrate"];
 
 function usage(message: string): never {
   process.stderr.write(`flow-page.ts: ${message}
@@ -34,6 +34,8 @@ usage: bun flow-page.ts open --skill <name> (--title <text> [--slug <slug>] | --
        bun flow-page.ts move [--flow <flow>] --to <folder-key>
        bun flow-page.ts show [--flow <flow>]
        bun flow-page.ts bound
+       bun flow-page.ts target --session <id>
+       bun flow-page.ts picker open|clear --picker <id> [<question-id>...]
        bun flow-page.ts host status|stop
        bun flow-page.ts migrate <grilling-folder>
 <flow> is a Flow id or a qualified alias such as spec:267
@@ -50,7 +52,7 @@ try {
   parsed = parseArgs({
     args: Bun.argv.slice(2),
     allowPositionals: true,
-    options: Object.fromEntries(["skill", "title", "slug", "flow", "stage", "parent", "ticket", "to", "session", "agent", "home"].map((k) => [k, { type: "string" as const }])),
+    options: Object.fromEntries(["skill", "title", "slug", "flow", "stage", "parent", "ticket", "to", "session", "agent", "home", "picker"].map((k) => [k, { type: "string" as const }])),
   });
 } catch (e) {
   usage((e as Error).message);
@@ -60,16 +62,18 @@ const [command, ...rest] = positionals;
 if (!COMMANDS.includes(command ?? "")) usage(`give a command: ${COMMANDS.join(", ")}`);
 const allowed: Record<string, string[]> = {
   open: ["skill", "title", "slug", "flow", "parent", "ticket"], bind: ["flow", "stage"], submit: ["flow", "stage"], alias: ["flow"], close: ["flow"], reopen: ["skill", "flow", "parent", "ticket"],
-  find: [], move: ["flow", "to"], show: ["flow"], bound: [], host: [], migrate: [],
+  find: [], move: ["flow", "to"], show: ["flow"], bound: [], target: [], picker: ["picker"], host: [], migrate: [],
 };
 for (const k of Object.keys(opt)) if (!["session", "agent", "home", ...allowed[command]].includes(k)) usage(`${command} takes no --${k}`);
 const positional: Record<string, [number, number, string]> = {
   submit: [0, 1, "takes no more than one contribution file"], alias: [1, Infinity, "needs one or more <kind>:<value> aliases"], find: [1, 1, "needs exactly one <kind>:<value> alias or Flow id"],
   host: [1, 1, "needs status or stop"],
   migrate: [1, 1, "needs exactly one Grilling page folder"],
+  picker: [1, Infinity, "needs open or clear, and optional question ids"],
 };
 const [least, most, says] = positional[command] ?? [0, 0, "takes no positional arguments"];
 if (rest.length < least || rest.length > most) usage(`${command} ${says}`);
+if (command === "picker" && (!["open", "clear"].includes(rest[0]) || !opt.picker)) usage("picker needs open or clear and --picker <id>");
 
 const home = resolve((opt.home as string | undefined) ?? homedir());
 const dir = flowsDir(home, process.cwd());
@@ -365,13 +369,34 @@ async function main(): Promise<object> {
         return { flow: s.flow.id, revision: s.revision, moved_from: from };
       });
     }
+    case "picker": {
+      if (!session || agent !== "main") return { presence: false };
+      const key = basename(dirname(dir));
+      const b = readBinding(dir, session, "main");
+      if (rest[0] === "open" && !b) return { binding: null, presence: false };
+      const s = b ? readState(locate(b.flow).folder)! : undefined;
+      const questions = s ? rest.slice(1).filter(id => view(s).questions.has(id)) : [];
+      const p = { key, session, picker: opt.picker, ...(b ? { flow: b.flow, stage: b.stage } : {}), questions, expires: Date.now() + 30_000 };
+      let presence = false;
+      if (live?.state === "serving") {
+        try {
+          presence = (await fetch(`${originOf(live.port)}/.host/picker`, {
+            method: rest[0] === "open" ? "PUT" : "DELETE",
+            headers: { authorization: `Bearer ${live.secret.control}`, "content-type": "application/json" },
+            body: JSON.stringify(p), signal: AbortSignal.timeout(500),
+          })).ok;
+        } catch {}
+      }
+      return { binding: b ?? null, ...(b ? { flow: b.flow, stage: b.stage } : {}), presence };
+    }
+    case "target":
     case "bound": {
-      const b = session ? readBinding(dir, session, agent) : undefined;
-      if (!b) return { binding: null };
+      const b = session ? readBinding(dir, session, command === "target" ? "main" : agent) : undefined;
+      if (!b) return command === "target" ? { target: null } : { binding: null };
       const { folder } = locate(b.flow);
       const s = readState(folder)!;
       stageOf(s, b.stage, "bound");
-      return { binding: b, flow: s.flow.id, stage: b.stage, revision: s.revision };
+      return { binding: b, flow: s.flow.id, stage: b.stage, revision: s.revision, ...(command === "target" ? { target: null, picker: null } : {}) };
     }
     default: {
       const { folder } = locate(flowKey());
@@ -381,16 +406,29 @@ async function main(): Promise<object> {
   }
 }
 
-const unbound = command === "bound" && (!session || !readBinding(dir, session, agent));
+const unbound = ["bound", "target", "picker"].includes(command) && (!session || !readBinding(dir, session, command === "bound" ? agent : "main")) && !(command === "picker" && rest[0] === "clear");
 const live = command === "host" || unbound ? undefined : await connect(home);
 try {
-  const result = await main() as { flow?: string | { id: string } };
+  const result = await main() as { flow?: string | { id: string }; stage?: string; target?: string | null; picker?: string | null };
   if (live && result.flow) {
     const id = typeof result.flow === "string" ? result.flow : result.flow.id;
     const presentation = live.state === "serving"
       ? { state: "serving", url: flowUrl(live.port, live.secret.read, basename(dirname(dir)), id) }
       : live;
     Object.assign(result, { live: presentation });
+    if (command === "target" && presentation.state === "serving" && "url" in presentation) {
+      let fragment = result.stage!;
+      try {
+        const response = await fetch(new URL("presence", presentation.url), { signal: AbortSignal.timeout(500) });
+        if (response.ok) {
+          const { presences } = await response.json() as { presences: { session: string; stage: string; questions: string[]; picker: string }[] };
+          const presence = presences.find(p => p.session === session && p.stage === result.stage);
+          fragment = presence?.questions[0] ?? fragment;
+          result.picker = presence?.picker ?? null;
+        }
+      } catch {}
+      result.target = `${presentation.url}#${fragment}`;
+    }
     if (live.state === "unavailable") process.stderr.write(`flow-page.ts: the Flow reader needs the Local Flow host, which is not serving (${live.error}). The Flow content is stored; do not resubmit it. Fix the host, then run bound or show for the reader URL.\n`);
   }
   process.stdout.write(`${JSON.stringify(result)}\n`);

@@ -65,6 +65,8 @@ When the Flow has a Matt flow path, `show` also prints its path and current posi
 
 `bound` returns this session and agent's binding with its `live` status. When none exists, it returns `{"binding":null}` without starting a host or creating a Flow. Bindings persist across session continuation. A different session or agent gets only its own binding, never the last active Stage.
 
+`target --session <id>` returns that session's main-agent page target for Tern. [Session targets and Picker presence](references/host-observations.md#session-targets-and-picker-presence) defines its runtime query and extension-owned presence commands.
+
 Present Flow links only at question handoffs under "Every ask in a Flow", including Ratchet's native approval exception. Result-only replies and completion summaries have no Flow link or path reminder. The extension supplies hidden authoring context without a post-reply message, and `/vstack-clean` publishes its Result without a separate Flow link. Never open a browser automatically.
 
 ## Find a Flow
