@@ -21,6 +21,7 @@ const publications = computed(() => f.value.reading.publications.filter((b) => b
         <span v-if="stage.children.length">Continued in <template v-for="(id, i) in stage.children" :key="id">{{ i ? ", " : "" }}<a :href="`#${id}`">{{ label(id) }}</a></template></span>
       </p>
     </header>
+    <p v-if="stage.open_questions === 0" class="quiet" role="status">This Stage has no open questions.</p>
     <section v-if="historical.length" class="boundary" :aria-labelledby="`${stage.id}-historical`">
       <h3 :id="`${stage.id}-historical`" class="eyebrow">Historical content in retained order</h3>
       <p class="quiet">Exact publication order across content types was not recorded. This retained order is not a proved chronology.</p>

@@ -1131,6 +1131,7 @@ originals:
   - plugin/skills/clean-wt
   - plugin/skills/tune-llm-flow
   - plugin/agents/vstack-wt-investigator.md
+  - plugin/tern/vstack-flow
 utility:
   - plugin/skills/unslop
   - plugin/skills/technical-writing

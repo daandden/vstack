@@ -22,6 +22,17 @@ const origin = originOf(port);
 let active = 0;
 let last = Date.now();
 let stopping = false;
+type PickerPresence = { key: string; flow: string; stage: string; session: string; picker: string; questions: string[]; expires: number };
+const pickers = new Map<string, PickerPresence>();
+const pickerKey = (p: Pick<PickerPresence, "key" | "session">) => JSON.stringify([p.key, p.session]);
+function presences(key: string, flow: string): PickerPresence[] {
+  const live: PickerPresence[] = [];
+  for (const [id, p] of pickers) {
+    if (p.expires <= Date.now()) pickers.delete(id);
+    else if (p.key === key && p.flow === flow) live.push(p);
+  }
+  return live;
+}
 const headers = {
   "Cache-Control": "no-store",
   "Referrer-Policy": "no-referrer",
@@ -134,6 +145,24 @@ async function route(req: Request): Promise<Response> {
     }
     if (!controlled(req)) return response("Not authorized.", 401);
     if (url.pathname === "/.host/hold" && req.method === "GET") return hold(req);
+    if (url.pathname === "/.host/picker" && ["PUT", "DELETE"].includes(req.method)) {
+      let p: PickerPresence;
+      try { p = await req.json(); } catch { return response("Invalid Picker presence.", 400); }
+      if (!p || typeof p.key !== "string" || typeof p.session !== "string" || !p.session ||
+        typeof p.picker !== "string" || !p.picker) return response("Invalid Picker presence.", 400);
+      const key = pickerKey(p);
+      if (req.method === "DELETE") {
+        if (pickers.get(key)?.picker === p.picker) pickers.delete(key);
+        return response(JSON.stringify({ ok: true }), 200, { "Content-Type": "application/json" });
+      }
+      if (typeof p.flow !== "string" || !SLUG.test(p.flow) || typeof p.stage !== "string" ||
+        !Array.isArray(p.questions) || !p.questions.every(q => typeof q === "string") ||
+        !Number.isFinite(p.expires)) return response("Invalid Picker presence.", 400);
+      const folder = flowFolder(p.key, p.flow);
+      if (!folder || !readState(folder)?.stages.some(stage => stage.id === p.stage)) return missing();
+      pickers.set(key, p);
+      return response(JSON.stringify({ ok: true }), 200, { "Content-Type": "application/json" });
+    }
     if (url.pathname === "/.host/stop" && req.method === "POST") {
       setTimeout(shutdown, 50);
       return response("Stopping.");
@@ -181,6 +210,7 @@ async function route(req: Request): Promise<Response> {
     return response(req.method === "HEAD" ? null : JSON.stringify({ ...content, questions: [...content.questions.values()], runtimes: await runtimes(s, key) }), 200, { "Content-Type": "application/json" });
   }
   if (m[4] === "/observations") return response(req.method === "HEAD" ? null : JSON.stringify(observations(folder, key, s)), 200, { "Content-Type": "application/json" });
+  if (m[4] === "/presence") return response(req.method === "HEAD" ? null : JSON.stringify({ presences: presences(key, id) }), 200, { "Content-Type": "application/json" });
   if (m[4] === "/versions") return response(req.method === "HEAD" ? null : JSON.stringify({
     revision: s.revision, observationVersion: observationVersion(observations(folder, key, s)),
   }), 200, { "Content-Type": "application/json" });

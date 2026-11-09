@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Tern Flow pages follow the selected omp session within their own tab, switching to its bound Stage or newly asked question without interrupting typing or moving other tabs."
+  ]
+}

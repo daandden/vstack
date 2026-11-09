@@ -1,5 +1,5 @@
 import { flowOf, type Content, type Flow, type Observations } from "~/utils/flow";
-import { readingAnchor, restoreReadingAnchor } from "~/composables/navigation";
+import { goTo, readingAnchor, restoreReadingAnchor, tab } from "~/composables/navigation";
 
 export const flow = shallowRef<Flow>();
 export const observations = shallowRef<Observations>();
@@ -33,7 +33,11 @@ export function startReader() {
       if (!flow.value || versions.revision > flow.value.revision) {
         const next = await fetchJson<Content>("content");
         if (!flow.value || next.revision >= flow.value.revision) {
-          await keepPlace(() => { flow.value = flowOf(next); });
+          const previous = flow.value;
+          const updated = flowOf(next);
+          const question = previous && updated.next.findLast((id) => !previous.question.has(id) && updated.question.get(id)?.stage === tab.value);
+          await keepPlace(() => { flow.value = updated; });
+          if (question) await goTo(question, true, true);
         }
       }
       if (versions.observationVersion !== seenObservations) {
