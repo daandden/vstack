@@ -6,10 +6,6 @@ Plugin releases of vstack (`plugin/package.json`). Each delivery carries a Chang
 
 - The Flow page shows the Matt flow path and the current position at the top, derived from the Stages that ran, and `show` prints it. grill-with-docs no longer names the next skill after its summary (ADR 0063).
 
-## [9.0.25] - 2026-11-07
-
-- Delegate every clean-wt checkout investigation, including a single checkout, to the read-only vstack-wt-investigator agent. Preserve investigation diagnostics and document the opt-in model override.
-
 ## [9.0.24] - 2026-11-07
 
 - The agent picks test seams itself by Matt's rule with a small footprint, records each pick with what it catches and misses, and asks only before a Costly seam: a real service beyond localhost, a real credential, account, or paid quota, or a test command over 180 seconds (ADR 0062).
