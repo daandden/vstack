@@ -72,30 +72,30 @@ function rule(t: Transition): string {
 </script>
 
 <template>
-  <div :id="id" class="demo">
-    <div class="demo-now" aria-live="polite">
-      <p class="demo-state"><span class="label">State</span> <strong :id="`${id}-state`">{{ stateLabel }}</strong></p>
+  <div :id="id" class="demo grid justify-items-start gap-1.5 rounded-md bg-muted px-3 py-2.5">
+    <div class="grid gap-1.5" aria-live="polite">
+      <p class="flex flex-wrap items-baseline gap-x-3 gap-y-1"><span class="font-semibold text-muted">State</span> <strong :id="`${id}-state`" class="text-title text-primary">{{ stateLabel }}</strong></p>
       <template v-for="s in demo.states" :key="s.name">
-        <div v-if="s.description && s.name === now.state" class="prose" v-html="prose(s.description)" />
+        <div v-if="s.description && s.name === now.state" class="grid gap-1.5" v-html="prose(s.description)" />
       </template>
-      <dl v-if="demo.values.length" class="fields demo-values">
-        <template v-for="v in demo.values" :key="v.name"><dt>{{ v.label }}</dt><dd :id="`${id}-v-${v.name}`">{{ demoValue(now.values[v.name]!) }}</dd></template>
+      <dl v-if="demo.values.length" class="grid grid-cols-[fit-content(12rem)_1fr] items-baseline gap-x-4 gap-y-1">
+        <template v-for="v in demo.values" :key="v.name"><dt class="text-small font-semibold text-toned">{{ v.label }}</dt><dd :id="`${id}-v-${v.name}`" class="ms-0 text-flow-teal tabular-nums">{{ demoValue(now.values[v.name]!) }}</dd></template>
       </dl>
     </div>
-    <div class="demo-actions" role="group" aria-label="Actions">
-      <button v-for="a in demo.actions" :key="a.name" type="button" :data-action="a.name" :aria-disabled="!next(a, now)" @click="run(a)">{{ a.label }}</button>
-      <button type="button" class="quiet-button" data-reset @click="reset">Reset</button>
+    <div class="flex flex-wrap gap-2" role="group" aria-label="Actions">
+      <UButton v-for="a in demo.actions" :key="a.name" type="button" :data-action="a.name" :aria-disabled="!next(a, now)" class="rounded border border-default bg-accented px-2.5 py-1 text-[length:var(--fs-body)] font-semibold text-default ring-0 hover:text-secondary active:bg-[var(--surface1)] active:text-secondary aria-disabled:cursor-not-allowed aria-disabled:border-dashed aria-disabled:text-dimmed aria-disabled:opacity-100" @click="run(a)">{{ a.label }}</UButton>
+      <UButton type="button" class="rounded border border-default bg-transparent px-2.5 py-1 text-[length:var(--fs-body)] font-semibold text-toned ring-0 hover:text-secondary active:bg-[var(--surface1)] active:text-secondary" data-reset @click="reset">Reset</UButton>
     </div>
-    <p class="quiet">Runs in this browser only. What you do here stays here: it answers no question and records no work.</p>
-    <details class="disclosure">
+    <p class="text-small text-muted">Runs in this browser only. What you do here stays here: it answers no question and records no work.</p>
+    <details class="text-small open:grid open:gap-1.5 [&>:not(summary)]:text-body">
       <summary>How it works</summary>
-      <dl class="fields">
+      <dl class="grid grid-cols-[fit-content(12rem)_1fr] items-baseline gap-x-4 gap-y-1 [&_dt]:text-small [&_dt]:font-semibold [&_dt]:text-toned [&_dd]:ms-0">
         <template v-for="a in demo.actions" :key="a.name">
           <dt>{{ a.label }}</dt>
-          <dd><ul class="bullets"><li v-for="(t, i) in a.transitions" :key="i">{{ rule(t) }}</li></ul></dd>
+          <dd><ul class="grid list-disc gap-0.5 ps-5 marker:text-dimmed"><li v-for="(t, i) in a.transitions" :key="i">{{ rule(t) }}</li></ul></dd>
         </template>
       </dl>
-      <p class="quiet">The first line that applies runs; with none, the action is unavailable. Reset returns to {{ label.get(demo.start) }} with every starting value.</p>
+      <p class="text-small text-muted">The first line that applies runs; with none, the action is unavailable. Reset returns to {{ label.get(demo.start) }} with every starting value.</p>
     </details>
   </div>
 </template>
