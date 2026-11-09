@@ -1,4 +1,5 @@
 import { palette } from "#figures/palette";
+import { DIAGRAM_CONFIG, readabilityRules } from "../../../plugin/skills/vstack-figures/scripts/presentation.ts";
 
 /** The font Pele measures each label in, and the font the label is drawn in. */
 export const DIAGRAM_FONT = "'IosevkaTerm Nerd Font Mono', ui-monospace, monospace";
@@ -98,8 +99,8 @@ export async function drawMermaid(source: string, focus: string[]): Promise<Draw
   document.body.append(probe);
   try {
     const fontSize = parseFloat(getComputedStyle(document.body).fontSize);
-    const model = parseModel(source);
-    const { svg } = render(model, { measurer: pageMeasurer(probe), fontFamily: DIAGRAM_FONT, fontFamilyMono: DIAGRAM_FONT, fontSize, links: false, images: false });
+    const model = parseModel(source, { config: DIAGRAM_CONFIG });
+    const { svg } = render(model, { config: DIAGRAM_CONFIG, measurer: pageMeasurer(probe), fontFamily: DIAGRAM_FONT, fontFamilyMono: DIAGRAM_FONT, fontSize, links: false, images: false });
     let painted = svg;
     let css = "";
     try {
@@ -110,7 +111,7 @@ export async function drawMermaid(source: string, focus: string[]): Promise<Draw
     }
     const root = parse(painted);
     if (!root) throw new Error("Pele returned no SVG");
-    return { svg: clean(root), css };
+    return { svg: clean(root), css: `${readabilityRules(".pele", "var(--pele-bg)")}\n${css}` };
   } finally {
     probe.remove();
   }
