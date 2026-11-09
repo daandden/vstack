@@ -6,6 +6,8 @@ vstack-worktree opens each checkout with `ovnfs new`, then forces and validates 
 
 clean-wt inventories the ovnfs checkouts omp made and applies its owner, dirty-work, and unique-history guards before calling `ovnfs rm`. It keeps recognizing legacy APFS task copies until they are gone.
 
+Amended on 2026-11-09 for ovnfs v0.3.0, whose `rm` also deletes the checkout's snapshots. clean-wt's Git guards cannot see work that exists only in a snapshot, so clean-wt keeps snapshots through `ovnfs ctl rm` with `sticky_snapshots`. It runs plain `ovnfs rm` only when the daemon rejects that field, because a daemon older than v0.3.0 never deletes snapshots. Inspecting snapshot contents before removal was rejected because it would add a second, ovnfs-specific uniqueness guard. vstack-worktree keeps plain `ovnfs rm` for the checkouts it opened, so their snapshots go with them.
+
 ## Considered Options
 
 - **Support both backends and detect which one each run used**: rejected. The user chose one layout to support over keeping vstack working on machines without ovnfs.

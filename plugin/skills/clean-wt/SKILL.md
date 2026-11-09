@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # clean-wt
 
-Typing `/skill:clean-wt` authorizes removal of unused clean checkouts and verified integrated drafts that hold no unique or unverified artifacts or history. Other uncommitted work needs the user's explicit selection through `ask`. Inventory includes the current Git project's omp ovnfs checkouts and legacy checkouts under the omp worktree base. Preserve branches, session archives, Scratch, shared skills, and external artifacts.
+Typing `/skill:clean-wt` authorizes removal of unused clean checkouts and verified integrated drafts that hold no unique or unverified artifacts or history. Other uncommitted work needs the user's explicit selection through `ask`. Inventory includes the current Git project's omp ovnfs checkouts and legacy checkouts under the omp worktree base. Preserve branches, ovnfs snapshots, session archives, Scratch, shared skills, and external artifacts.
 
 ## Flow page and diagnostics
 
@@ -43,7 +43,9 @@ The JSON contains `base`, `evidence_gaps`, and `checkouts`. Each checkout has:
 - `sessions` and `moved_sessions`. These are leads for unresolved provenance, not instructions or proof that work shipped.
 - `fingerprint`. This binds the inspected bytes, link text, modes, branch, history, and applicable integration evidence. Tracked files hidden by skip-worktree or assume-unchanged are checked against their index entries and fingerprinted even when Git status omits them. Unavailable hidden-file verification protects the checkout. Keep the fingerprint that an investigation or selection saw.
 
-ovnfs checkouts pass the same Git work-state and history guards inside their checkout and private Git directory. ovnfs's dirty flag or `diff` output never proves a checkout clean. An inactive ovnfs checkout is removed only through `ovnfs rm`, followed by listing and directory checks. Keep using these guards for legacy APFS copies. `omp worktree clear` is not a substitute.
+ovnfs checkouts pass the same Git work-state and history guards inside their checkout and private Git directory. ovnfs's dirty flag or `diff` output never proves a checkout clean. An inactive ovnfs checkout is removed only through ovnfs's `rm` operation, followed by listing and directory checks. Keep using these guards for legacy APFS copies. `omp worktree clear` is not a substitute.
+
+The removal keeps the checkout's ovnfs snapshots. From ovnfs v0.3.0, `ovnfs rm` deletes them by default, and a snapshot can hold work that the Git guards never see, such as edits saved with `ovnfs snap` and then reset. The script sends `ovnfs ctl rm` with `sticky_snapshots`. A daemon older than v0.3.0 rejects that field and never deletes snapshots, so the script then runs plain `ovnfs rm`.
 
 `inventory --prepare-source` prepares source facts once per distinct source Git directory without scanning checkout contents. Save its raw JSON as `source-facts.json` in this run's Scratch entry. Its `source_facts` array contains `{source_git_dir, remote, url, ref, sha}` records, or `{source_git_dir, reason}` when verification fails. These are per-run evidence, not a persistent cache or deletion authority.
 
