@@ -76,6 +76,83 @@ test("the wayfinder Map tab draws blocking links and states, and Enter opens the
   } finally { await context.close(); }
 }, 120_000);
 
+test("local ticket paths are selectable text and Enter does not navigate", async () => {
+  const url = ".scratch/storage/issues/01-storage.md";
+  const opened = publish([ticket("scope"), { ...ticket("storage"), url }, ticket("reader")]);
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    await page.goto(opened.live.url);
+    await page.locator(".bar .tabs").waitFor();
+    await page.keyboard.press("m");
+    await page.getByRole("tab", { name: "Wayfinder map", exact: true }).click();
+    const local = page.locator('[data-ticket-node="storage"] [data-map-item]');
+    expect(await local.getAttribute("href")).toBeNull();
+    expect(await local.locator("a").count()).toBe(0);
+    expect(await local.getByText(url, { exact: true }).isVisible()).toBe(true);
+    await page.keyboard.press("j");
+    expect(await local.evaluate((el) => document.activeElement === el)).toBe(true);
+    const before = page.url();
+    await page.keyboard.press("Enter");
+    expect(page.url()).toBe(before);
+    expect(context.pages().length).toBe(1);
+    expect(await local.evaluate((el) => document.activeElement === el)).toBe(true);
+    await page.keyboard.press("j");
+    expect(await page.evaluate(() => document.activeElement?.textContent)).toBe("Decide reader");
+    await page.keyboard.press("k");
+    expect(await local.evaluate((el) => document.activeElement === el)).toBe(true);
+  } finally { await context.close(); }
+}, 120_000);
+
+test("live snapshots recover lost Map focus without stealing retained or closed-panel focus", async () => {
+  const opened = publish([ticket("scope"), ticket("storage"), ticket("reader")]);
+  const submit = (tickets: object[]) => cli(["submit", "--flow", opened.flow, "--stage", opened.stage], [{ kind: "wayfinder", tickets }]);
+  const context = await browser.newContext();
+  try {
+    const page = await context.newPage();
+    await page.goto(opened.live.url);
+    await page.locator(".bar .tabs").waitFor();
+    await page.keyboard.press("m");
+    const map = page.getByRole("dialog", { name: "Map", exact: true });
+    const wayfinder = page.getByRole("tab", { name: "Wayfinder map", exact: true });
+    await wayfinder.click();
+    await page.keyboard.press("j");
+    const storage = page.locator('[data-ticket-node="storage"] [data-map-item]');
+    expect(await storage.evaluate((el) => document.activeElement === el)).toBe(true);
+
+    submit([ticket("scope", "resolved"), ticket("storage"), ticket("reader")]);
+    await page.locator('[data-ticket-node="scope"][data-state="resolved"]').waitFor();
+    expect(await storage.evaluate((el) => document.activeElement === el)).toBe(true);
+
+    submit([ticket("scope"), ticket("reader")]);
+    await storage.waitFor({ state: "detached" });
+    expect(await map.evaluate((el) => el.contains(document.activeElement))).toBe(true);
+    expect(await page.evaluate(() => document.activeElement?.textContent)).toBe("Decide scope");
+    await page.keyboard.press("j");
+    expect(await page.evaluate(() => document.activeElement?.textContent)).toBe("Decide reader");
+    await page.keyboard.press("k");
+    expect(await page.evaluate(() => document.activeElement?.textContent)).toBe("Decide scope");
+    await page.keyboard.press("h");
+    expect(await page.getByRole("tab", { name: "Stages", exact: true }).getAttribute("aria-selected")).toBe("true");
+    await page.keyboard.press("l");
+    expect(await wayfinder.getAttribute("aria-selected")).toBe("true");
+
+    submit([]);
+    await page.getByText("No tickets charted yet.", { exact: true }).waitFor();
+    expect(await wayfinder.evaluate((el) => document.activeElement === el)).toBe(true);
+    await page.keyboard.press("h");
+    expect(await page.getByRole("tab", { name: "Stages", exact: true }).getAttribute("aria-selected")).toBe("true");
+    await page.keyboard.press("Escape");
+    await map.waitFor({ state: "hidden" });
+    await page.locator('.bar .tabs a[href="#overview"]').focus();
+    const focus = await page.evaluateHandle(() => document.activeElement);
+    submit([ticket("after-close")]);
+    await page.locator('[data-ticket-node="after-close"]').waitFor({ state: "attached" });
+    expect(await page.evaluate((el) => document.activeElement === el, focus)).toBe(true);
+    await focus.dispose();
+  } finally { await context.close(); }
+}, 120_000);
+
 test("empty and single-ticket maps stay readable at 320px and with enlarged text", async () => {
   const long = "Compare privacy boundaries for enterprise workspace synchronisation and retained investigation evidence ".repeat(8);
   for (const tickets of [[], [ticket("privacy", "frontier", [], long)]]) {

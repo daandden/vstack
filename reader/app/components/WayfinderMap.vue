@@ -62,7 +62,11 @@ watchEffect((cleanup) => {
     </svg>
     <ol class="wayfinder-nodes" :style="{ gridTemplateColumns: `repeat(${columnCount}, 18rem)` }" aria-label="Wayfinder tickets">
       <li v-for="node in layout" :key="node.ticket.id" :data-ticket-node="node.ticket.id" :data-state="node.ticket.state" :style="{ gridColumn: node.column, gridRow: node.row }">
-        <a data-map-item :href="node.ticket.url" target="_blank" rel="noopener noreferrer" dir="auto">{{ node.ticket.title }}</a>
+        <a v-if="/^https?:\/\//i.test(node.ticket.url)" data-map-item :href="node.ticket.url" target="_blank" rel="noopener noreferrer" dir="auto">{{ node.ticket.title }}</a>
+        <div v-else data-map-item tabindex="0" dir="auto">
+          {{ node.ticket.title }}
+          <p class="quiet">{{ node.ticket.url }}</p>
+        </div>
         <p class="wayfinder-state" data-map-state>{{ labels[node.ticket.state] }}</p>
         <p v-if="node.blockers.length" class="quiet" dir="auto">Blocked by {{ node.blockers.join(", ") }}</p>
       </li>

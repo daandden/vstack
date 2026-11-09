@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Accept Local Markdown ticket paths in wayfinder maps, preserve Map keyboard focus after live updates, share shortcut eligibility, and apply own-run host recovery (#419)."
+  ]
+}

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { flow } from "~/composables/reader";
-import { mapOpen, mapTab } from "~/composables/navigation";
+import { mapOpen, mapTab, shortcutEligible } from "~/composables/navigation";
 
 const f = computed(() => flow.value!);
 const roots = computed(() => f.value.stages.filter((st) => !st.parent));
@@ -29,6 +29,11 @@ watch(mapOpen, async (open) => {
     focusItem(items()[0]);
   } else if (!open && d.open) d.close();
 });
+watch(flow, () => {
+  const d = dialog.value;
+  if (!mapOpen.value || !d?.open || d.contains(document.activeElement)) return;
+  focusItem(items()[0] ?? d.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]') ?? d);
+}, { flush: "post" });
 function closed() {
   mapOpen.value = false;
   if (opener instanceof HTMLElement && opener.isConnected && location.hash === openingHash) opener.focus({ preventScroll: true });
@@ -39,9 +44,8 @@ async function switchTab(id: string) {
   focusItem(items()[0]);
 }
 function onKey(e: KeyboardEvent) {
+  if (!shortcutEligible(e)) return;
   const target = e.target instanceof Element ? e.target : null;
-  if (e.defaultPrevented || e.isComposing || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey
-    || (target as HTMLElement | null)?.isContentEditable || target?.closest("input, textarea, select, video, audio")) return;
   if (e.key === "h" || e.key === "l") {
     e.preventDefault();
     const at = tabs.value.findIndex((t) => t.id === mapTab.value);

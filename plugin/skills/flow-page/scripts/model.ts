@@ -130,11 +130,13 @@ function wayfinderTickets(o: Obj, where: string): WayfinderTicket[] {
     const w = `${where}: ticket ${i + 1}`;
     const t = fields(raw, w, ["id", "title", "url", "state", "blockers"]);
     const id = text(t, "id", w), title = text(t, "title", w), url = text(t, "url", w);
-    try {
-      if (!/^https?:\/\//i.test(url)) throw new Error();
-      const parsed = new URL(url);
-      if (!["https:", "http:"].includes(parsed.protocol)) throw new Error();
-    } catch { refuse(w, "url must be an absolute http:// or https:// tracker link"); }
+    if (!/^(?![a-z][a-z\d+.-]*:)(?!\/\/).+\.md$/i.test(url)) {
+      try {
+        if (!/^https?:\/\//i.test(url)) throw new Error();
+        const parsed = new URL(url);
+        if (!["https:", "http:"].includes(parsed.protocol)) throw new Error();
+      } catch { refuse(w, "url must be an absolute http:// or https:// tracker link or a local .md ticket file path"); }
+    }
     if (!MAP_STATES.includes(t.state as WayfinderTicket["state"])) refuse(w, `state must be ${listed(MAP_STATES)}`);
     if (!Array.isArray(t.blockers) || t.blockers.some((b) => typeof b !== "string" || !b.trim())) refuse(w, "blockers must be an array of ticket ids");
     const blockers = t.blockers as string[];

@@ -38,10 +38,28 @@ test("wayfinder graph round-trips every state and preserves charting when a tick
 });
 
 test.each([
+  ".scratch/storage/issues/01-storage.md",
+  "issues/01-storage.md",
+  "/private/vstack/artifacts/storage/issues/01-storage.md",
+])("local ticket path %s round-trips through submit and show", (url) => {
+  const opened = cli(["open", "--skill", "wayfinder", "--title", "Local decision map"]);
+  const tickets = [{ ...ticket("storage"), url }];
+  const submitted = cli(["submit", "--flow", opened.json.flow, "--stage", opened.json.stage], [{ kind: "wayfinder", tickets }]);
+  expect(submitted.error).toBe("");
+  expect(submitted.code).toBe(0);
+  expect(cli(["show", "--flow", opened.json.flow]).json.wayfinder.tickets).toEqual(tickets);
+});
+
+test.each([
   ["unknown state", [ticket("a", "ready")], "state"],
   ["duplicate identity", [ticket("a"), ticket("a")], "duplicate"],
   ["blank title", [{ ...ticket("a"), title: " " }], "title"],
   ["unsafe URL", [{ ...ticket("a"), url: "javascript:alert(1)" }], "url"],
+  ["data URL", [{ ...ticket("a"), url: "data:text/plain,ticket.md" }], "url"],
+  ["file URL", [{ ...ticket("a"), url: "file:///issues/a.md" }], "url"],
+  ["other URL scheme", [{ ...ticket("a"), url: "ftp://tracker.example.test/a.md" }], "url"],
+  ["protocol-relative URL", [{ ...ticket("a"), url: "//tracker.example.test/a.md" }], "url"],
+  ["empty reference", [{ ...ticket("a"), url: " " }], "url"],
   ["relative URL", [{ ...ticket("a"), url: "/issues/a" }], "url"],
   ["malformed URL", [{ ...ticket("a"), url: "https:tracker.example.test/a" }], "url"],
   ["missing blocker", [ticket("a", "blocked", ["missing"])], "blocker"],
