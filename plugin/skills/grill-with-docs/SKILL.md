@@ -50,6 +50,8 @@ On a blocked return, name the missing evidence or decision instead of implying t
 
 ## Continue into to-spec
 
+When the caller is a running to-spec resolving a consequential gap, publish the nested grill's agreement and summary close once that gap is settled, then finish only the nested Stage. Restore the caller's binding through flow-page and return the agreement and answer provenance to that running to-spec. It resumes synthesis in its existing Stage. This nested grill starts no new to-spec run.
+
 When a user-started grill-with-docs reaches an empty frontier and shared understanding, publish grilling's summary close and finish the grill's Stage. Keep the Flow open. Continue into to-spec in the same turn. The close asks nothing. Do not wait for the user's next prompt. The skill the user started selects this continuation, not wording that suggests a small or large change. grill-me never chains.
 
 1. Read `skill://to-spec` and gather its intent from the agreement, conversation, source issue and comments, and applicable domain records.

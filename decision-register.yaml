@@ -108,7 +108,7 @@ items:
     tree: 136b9651747cfccbfbb7c50a6b0dfb757e7547d2
     disposition: adapt
     artifacts: [plugin/skills/to-spec]
-    reason: "Publishes the self-contained agreed architecture and necessary visuals from Flow Results and canonical domain records, preserves capability-map confirmations and drift provenance, and pauses consequential gaps for user-invoked grilling. The agent picks test seams by tdd's rule and asks only for a Costly seam (ADR 0062). MCP publication uses current schemas and mapped labels; specs carry no inherited Addon pointers (#166, #223, #226, #230, #263, #267, #207, #335, ADR 0035)."
+    reason: "Synthesize agreed context, resolve consequential gaps in a nested grill, and stop at spec publication."
   - id: matt/to-tickets
     upstream: matt
     kind: skill
