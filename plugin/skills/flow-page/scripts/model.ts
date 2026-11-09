@@ -61,11 +61,12 @@ export type ComparisonBody = {
   alternatives: Alternative[]; criteria: Criterion[]; assessments: Assessment[];
   verdict: { outcome: (typeof VERDICTS)[number]; alternative?: string; reason: string };
 };
-/** Measured numbers. A value is a number, or `missing` with its reason; code never fills one in or rates it. */
+/** Measurements keep authored scalars, chart data, and reported uncertainty without inventing values. */
 export type Uncertainty = { low: number; high: number; of: string } | { plusminus: number; of: string };
-export type Measured = { series: string; value: number; samples?: number; uncertainty?: Uncertainty } | { series: string; missing: string };
+export type MetricPoint = { x: number; y: number };
+export type Measured = { series: string; value?: number; points?: MetricPoint[]; samples?: number | number[]; uncertainty?: Uncertainty } | { series: string; missing: string };
 export const MEASURE_VERDICTS = ["better", "worse", "no-difference", "inconclusive"] as const;
-export type Measurement = { ref: string; name: string; unit: string; better?: "lower" | "higher"; verdict?: (typeof MEASURE_VERDICTS)[number]; values: Measured[] };
+export type Measurement = { ref: string; name: string; unit: string; chart?: "line" | "scatter" | "histogram"; better?: "lower" | "higher"; verdict?: (typeof MEASURE_VERDICTS)[number]; values: Measured[] };
 export type MetricsBody = { workload: string; environment?: string; outcome: string; series: { ref: string; label: string; baseline?: true }[]; measurements: Measurement[] };
 /** Where a Result's content is canonically kept, and which revision of it the Result captured. */
 export type Canonical = { file: string; root: string; sha256: string } | { commit: string } | { tracker: string; revision: string };
@@ -1167,25 +1168,23 @@ function parseMetrics(o: Obj, where: string): MetricsBody {
   const refs = series.map((x) => x.ref);
   const measurements = localRefs(validatedMap(list(o, "measurements", where), (m, j): Measurement => {
     const mw = `${where}: measurement ${j + 1}`;
-    const mo = fields(m, mw, ["ref", "name", "unit", "values"], ["better", "verdict"]);
+    const mo = fields(m, mw, ["ref", "name", "unit", "values"], ["better", "verdict", "chart"]);
     if (mo.better !== undefined && mo.better !== "lower" && mo.better !== "higher") refuse(mw, `better must be lower or higher, got ${JSON.stringify(mo.better)}`);
     if (mo.verdict !== undefined && !MEASURE_VERDICTS.includes(mo.verdict as never)) refuse(mw, `verdict must be ${listed([...MEASURE_VERDICTS])}, got ${JSON.stringify(mo.verdict)}`);
     const seen = new Set<string>();
     const values = validatedMap(list(mo, "values", mw), (v, k): Measured => {
       const vw = `${mw}: value ${k + 1}`;
-      const forms = isObj(v) ? ["value", "missing"].filter((x) => v[x] !== undefined) : [];
-      if (forms.length !== 1) refuse(vw, "needs exactly one of value, the measured number, or missing, the reason there is none");
+      const missing = isObj(v) && v.missing !== undefined;
       const vo = v as Obj;
       const s = oneOf(vo.series, refs, `${vw}: series`, "series");
       if (seen.has(s)) refuse(vw, `series ${s} already has a value in this measurement`);
       seen.add(s);
-      if (forms[0] === "missing") {
+      if (missing) {
         fields(vo, vw, ["series", "missing"]);
         return { series: s, missing: safeText(vo, "missing", vw) };
       }
-      fields(vo, vw, ["series", "value"], ["samples", "uncertainty"]);
-      const value = num(vo, "value", vw);
-      if (vo.samples !== undefined && (!Number.isInteger(vo.samples) || (vo.samples as number) < 1)) refuse(vw, `samples must be a whole number of 1 or more, got ${JSON.stringify(vo.samples)}`);
+      fields(vo, vw, ["series"], ["value", "points", "samples", "uncertainty"]);
+      const value = vo.value === undefined ? undefined : num(vo, "value", vw);
       let uncertainty: Uncertainty | undefined;
       if (vo.uncertainty !== undefined) {
         const uw = `${vw}: uncertainty`;
@@ -1202,10 +1201,11 @@ function parseMetrics(o: Obj, where: string): MetricsBody {
           uncertainty = { plusminus, of };
         }
       }
-      return { series: s, value, ...(vo.samples !== undefined ? { samples: vo.samples as number } : {}), ...(uncertainty ? { uncertainty } : {}) };
+      return { series: s, ...(value === undefined ? {} : { value }), ...(vo.points !== undefined ? { points: vo.points as MetricPoint[] } : {}), ...(vo.samples !== undefined ? { samples: vo.samples as number | number[] } : {}), ...(uncertainty ? { uncertainty } : {}) };
     });
     return {
       ref: localRef(mo, mw), name: safeText(mo, "name", mw), unit: safeText(mo, "unit", mw), values,
+      ...(mo.chart !== undefined ? { chart: mo.chart as Measurement["chart"] } : {}),
       ...(mo.better !== undefined ? { better: mo.better as "lower" | "higher" } : {}), ...(mo.verdict !== undefined ? { verdict: mo.verdict as Measurement["verdict"] } : {}),
     };
   }), where, "measurement");
@@ -1474,14 +1474,14 @@ export type ComparisonView = {
 /** One series' value of one measurement. `missing` holds the producer's reason, or no reason when it gave no value. */
 export type ValueView = {
   series: string; label: string; baseline: boolean; anchor: string;
-  value?: number; samples?: number; uncertainty?: Uncertainty; missing?: { reason?: string };
+  value?: number; points?: MetricPoint[]; samples?: number | number[]; uncertainty?: Uncertainty; missing?: { reason?: string };
   /** Difference from the baseline series' value, and that difference as a percentage of it, when both were measured. */
   delta?: number; relative?: number; delta_unavailable?: true;
 };
 export type MetricsView = Omit<MetricsBody, "measurements"> & {
   baseline?: string;
-  /** `chart` holds the shared scale of the bars, absent when the values cannot be drawn as bars from zero. */
-  measurements: (Omit<Measurement, "values"> & { anchor: string; chart?: { max: number }; values: ValueView[] })[];
+  /** Legacy scalar bars retain their zero-based shared scale. */
+  measurements: (Omit<Measurement, "values" | "chart"> & { anchor: string; chart?: Measurement["chart"] | { max: number }; values: ValueView[] })[];
 };
 export type ResultView = Omit<Result, "entries" | "document" | "comparison" | "metrics"> & {
   /** The id this rendering of the Result anchors at: the Result id, or `<id>-r<n>` for an earlier revision. */
@@ -1615,8 +1615,8 @@ function metricsView(m: MetricsBody, anchor: string): MetricsView {
       const row = { series: sr.ref, label: sr.label, baseline: sr.baseline === true, anchor: `${at}-s${j + 1}` };
       const v = of(sr.ref);
       if (!v || "missing" in v) return { ...row, missing: v ? { reason: v.missing } : {} };
-      const out: ValueView = { ...row, value: v.value, ...(v.samples !== undefined ? { samples: v.samples } : {}), ...(v.uncertainty ? { uncertainty: v.uncertainty } : {}) };
-      if (b !== undefined && !row.baseline) {
+      const out: ValueView = { ...row, ...(v.value === undefined ? {} : { value: v.value }), ...(v.points ? { points: v.points } : {}), ...(v.samples !== undefined ? { samples: v.samples } : {}), ...(v.uncertainty ? { uncertainty: v.uncertainty } : {}) };
+      if (b !== undefined && v.value !== undefined && !row.baseline) {
         const difference = v.value - b;
         const precision = Math.max(decimalPlaces(v.value), decimalPlaces(b));
         const delta = Number(precision <= 100 ? difference.toFixed(precision) : difference.toPrecision(14));
@@ -1631,7 +1631,7 @@ function metricsView(m: MetricsBody, anchor: string): MetricsView {
     const measured = values.flatMap((v) => (v.value === undefined ? [] : [v.value]));
     const drawable = measured.length > 0 && measured.every((x) => x >= 0);
     const { values: _, ...rest } = me;
-    return { ...rest, anchor: at, values, ...(drawable ? { chart: { max: Math.max(...measured) || 1 } } : {}) };
+    return { ...rest, anchor: at, values, ...(!me.chart && drawable ? { chart: { max: Math.max(...measured) || 1 } } : {}) };
   });
   return { ...m, ...(baseline ? { baseline } : {}), measurements };
 }
@@ -1772,7 +1772,7 @@ export function snapshot(v: View) {
           metrics: {
             ...(r.metrics.baseline ? { baseline: r.metrics.baseline } : {}),
             measurements: r.metrics.measurements.map((me) => ({
-              ref: me.ref, anchor: me.anchor, unit: me.unit, ...(me.better ? { better: me.better } : {}), ...(me.verdict ? { verdict: me.verdict } : {}), chart: me.chart !== undefined,
+              ref: me.ref, anchor: me.anchor, unit: me.unit, ...(me.better ? { better: me.better } : {}), ...(me.verdict ? { verdict: me.verdict } : {}), chart: typeof me.chart === "string" ? me.chart : me.chart !== undefined,
               values: me.values.map(({ label: _, missing, ...x }) => ({ ...x, ...(missing ? { missing: true } : {}) })),
             })),
           },

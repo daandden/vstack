@@ -27,6 +27,7 @@ const change = (v: ValueView, unit: string) => {
         <span v-if="me.better" class="text-small text-muted">{{ me.better === "lower" ? "Lower is better" : "Higher is better" }}</span>
         <span v-if="me.verdict" class="text-small font-semibold data-[verdict=better]:text-success data-[verdict=worse]:text-error data-[verdict=no-difference]:text-warning data-[verdict=inconclusive]:text-warning" :data-verdict="me.verdict">{{ MEASURE_LABELS[me.verdict] }}</span>
       </h3>
+      <MetricsChart v-if="typeof me.chart === 'string'" :measurement="me" />
       <div class="relative overflow-x-auto">
         <table class="border-collapse tabular-nums [&_th]:text-small [&_th]:font-semibold [&_th]:text-muted [&_th]:px-2 [&_th]:py-1 [&_th]:border-be [&_th]:border-flow-line [&_th]:text-start [&_th]:align-top [&_td]:px-2 [&_td]:py-1 [&_td]:border-be [&_td]:border-flow-line [&_td]:text-start [&_td]:align-top [&_td]:whitespace-nowrap [&_tr:target]:bg-accented">
           <thead>
@@ -41,9 +42,9 @@ const change = (v: ValueView, unit: string) => {
               </template>
               <template v-else>
                 <td class="value">
-                  <span class="inline-flex items-center gap-2"><span class="min-w-[7ch] text-end">{{ v.value }} {{ me.unit }}</span><UProgress v-if="me.chart" color="info" :model-value="v.value" :max="me.chart.max" aria-hidden="true" class="w-24" :ui="{ base: 'h-2 rounded bg-accented', indicator: 'rounded transition-none' }" /></span>
+                  <span v-if="v.value !== undefined" class="inline-flex items-center gap-2"><span class="min-w-[7ch] text-end">{{ v.value }} {{ me.unit }}</span><UProgress v-if="me.chart && typeof me.chart === 'object'" color="info" :model-value="v.value" :max="me.chart.max" aria-hidden="true" class="w-24" :ui="{ base: 'h-2 rounded bg-accented', indicator: 'rounded transition-none' }" /></span><span v-else class="text-small text-muted">No scalar reported</span>
                 </td>
-                <td><template v-if="v.samples !== undefined">{{ v.samples }}</template><span v-else class="font-semibold text-dimmed">Not reported</span></td>
+                <td><template v-if="v.samples !== undefined">{{ Array.isArray(v.samples) ? v.samples.length : v.samples }}</template><span v-else class="font-semibold text-dimmed">Not reported</span></td>
                 <td v-html="uncertainty(v)" />
                 <td v-if="hasBaseline" v-html="change(v, me.unit)" />
               </template>

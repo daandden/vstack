@@ -44,7 +44,44 @@ const entryContracts: Record<string, Contract> = {
 entryContracts.review.required = [...card.required!, "axis", "location"];
 const block = union({ prose: object({ prose: string }), list: optional({ list: strings }, { ordered: boolean }), steps: object({ steps: array(object({ title: string, text: string })) }), code: optional({ code: string }, { language: string, source: string }), figure: object({ figure: ref }) });
 const uncertainty = union({ plusminus: object({ plusminus: { ...number, min: 0 }, of: string }), low: object({ low: number, high: number, of: string }) });
-const measured = union({ value: optional({ series: ref, value: number }, { samples: { ...number, integer: true, min: 1 }, uncertainty }), missing: object({ series: ref, missing: string }) });
+const points = array(object({ x: number, y: number }));
+const measuredValue = optional({ series: ref }, {
+  value: number, points,
+  samples: { type: "union", variants: { count: { ...number, integer: true, min: 1 }, raw: array(number) }, expected: "positive integer count or non-empty array of finite numbers" },
+  uncertainty,
+});
+const missingMeasurement = object({ series: ref, missing: string });
+const measured: Contract = { type: "union", variants: { measured: measuredValue, missing: missingMeasurement }, select: value => value.missing !== undefined ? missingMeasurement : measuredValue };
+const measurement = optional({ ref, name: string, unit: string, values: array(measured) }, {
+  chart: enumeration("line", "scatter", "histogram"), better: enumeration("lower", "higher"), verdict: enumeration("better", "worse", "no-difference", "inconclusive"),
+});
+measurement.check = (value, path) => {
+  if (!Array.isArray(value.values)) return [];
+  if (value.chart !== undefined && value.values.every(v => isObj(v) && v.missing !== undefined)) {
+    return [{ code: "invalid_chart_data", path: `${path}.values`, message: "a chart needs at least one measured series", allowed: "at least one series with chart data" }];
+  }
+  return value.values.flatMap((v, i): Diagnostic[] => {
+    if (!isObj(v) || v.missing !== undefined) return [];
+    const at = `${path}.values[${i}]`;
+    const diagnostics: Diagnostic[] = [];
+    const require = (field: string, expected: string) => {
+      if (v[field] === undefined) diagnostics.push({ code: "required_field", path: `${at}.${field}`, message: `needs ${field}`, allowed: expected });
+    };
+    if (value.chart === "line" || value.chart === "scatter") {
+      require("points", "non-empty array of { x: number, y: number }");
+      if (Array.isArray(v.samples)) diagnostics.push({ code: "invalid_type", path: `${at}.samples`, message: "point charts use a sample count", allowed: "positive integer" });
+    } else if (value.chart === "histogram") {
+      require("samples", "non-empty array of finite numbers");
+      if (v.samples !== undefined && !Array.isArray(v.samples)) diagnostics.push({ code: "invalid_type", path: `${at}.samples`, message: "histograms need raw samples", allowed: "non-empty array of finite numbers" });
+      if (v.points !== undefined) diagnostics.push({ code: "invalid_value", path: `${at}.points`, message: "histograms use samples, not points", allowed: "omit points" });
+    } else if (value.chart === undefined) {
+      require("value", "finite number");
+      if (v.points !== undefined) diagnostics.push({ code: "invalid_value", path: `${at}.points`, message: "points need a line or scatter chart", allowed: ["line", "scatter"] });
+      if (Array.isArray(v.samples)) diagnostics.push({ code: "invalid_type", path: `${at}.samples`, message: "scalar measurements use a sample count", allowed: "positive integer" });
+    }
+    return diagnostics;
+  });
+};
 const condition: Contract = { type: "union", select: value => condition.variants!["all" in value ? "all" : "any" in value ? "any" : "not" in value ? "not" : "value"] };
 const literal: Contract = { type: "union", variants: { string: { type: "string", expected: "string" }, number, boolean }, expected: "string, finite number, or boolean" };
 condition.variants = { all: object({ all: array(condition) }), any: object({ any: array(condition) }), not: object({ not: condition }), value: optional({ value: ref }, Object.fromEntries(["eq", "ne", "lt", "le", "gt", "ge"].map(k => [k, literal]))) };
@@ -65,7 +102,7 @@ export const resultContracts: Record<string, Contract> = {
   document: result("Explain a topic in ordered sections with text, code, and figures.", { sections: array(object({ heading: string, blocks: array(block) })) }, { citations: array(object({ ref, source: string })), limitations: strings, sources: strings }),
   prototype: { ...result("Let readers try a state demo or a captured runnable artifact.", {}, { demo, artifact: ref }), oneOf: ["demo", "artifact"] },
   comparison: result("Assess alternatives against criteria and record a verdict.", { alternatives: array(optional({ ref, name: string }, { summary: string, attachments: strings }), 2), criteria: array(optional({ ref, name: string }, { description: string })), assessments: array(optional({ alternative: ref, criterion: ref, finding: string }, { evidence: string })), verdict: optional({ outcome: enumeration("chosen", "tie", "inconclusive"), reason: string }, { alternative: ref }) }),
-  metrics: result("Report measured values, baselines, and uncertainty.", { workload: string, outcome: string, series: array(optional({ ref, label: string }, { baseline: enumeration(true) })), measurements: array(optional({ ref, name: string, unit: string, values: array(measured) }, { better: enumeration("lower", "higher"), verdict: enumeration("better", "worse", "no-difference", "inconclusive") })) }, { environment: string }),
+  metrics: result("Report measured values, baselines, and uncertainty.", { workload: string, outcome: string, series: array(optional({ ref, label: string }, { baseline: enumeration(true) })), measurements: array(measurement) }, { environment: string }),
   code: result("Show source excerpts or unified diffs with file locations.", { entries: array(entryContracts.code) }),
   timeline: result("Record events and their outcomes in publication order.", { entries: array(entryContracts.timeline) }),
   quiz: result("Check understanding with choice, text, or numeric questions.", { questions: array(optional({ ref, prompt: string, answer: quizAnswer, explanation: string }, { choices: array(object({ ref, label: string })) })) }),
