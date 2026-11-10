@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Add clean-adr's independent scout checks, evidence-backed repairs, three-check limit, and unresolved ADR banners and report rows."
+  ]
+}

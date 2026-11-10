@@ -10,6 +10,9 @@
 - `cadr-hold` a holding ADR with no citations remains byte for byte, and a second run does not rewrite settled decisions.
 - `cadr-layout` Standard, Private plus tracked, and multiple contexts keep separate archive locations and number sequences. Git sees no private file changes.
 - `cadr-run` the actual skill uses scouts, asks no question, saves evidence, and leaves HEAD and the index unchanged.
+- `cadr-check-coverage` fresh scouts account for every archived provision and every new statement, detect missing reasons and unsupported statements, and independently test the rewrite against the project.
+- `cadr-check-repair` the parent fixes findings and checks the complete rewrite again, keeping each check's coverage table in Scratch.
+- `cadr-check-limit` a problem surviving check 3 remains in the result, with a banner on the affected new ADR and an open report row. No fourth check or automatic undo occurs.
 
 ## How to get to it (user POV)
 
@@ -88,6 +91,34 @@ Save HEAD, index tree, every ADR's bytes, and an inventory outside `data/` befor
 8. Inspect the transcript for zero question-tool calls, zero stage or commit operations in git, and no modification of fixture application config. Require the report to distinguish tracked and private changes and to name every failure or unavailable phase. Check the actual Flow Result and export without publishing private fixture bodies to any production Flow.
 9. Save all resulting ADR bytes, inventories, relevant git output, and the report outside `data/`. Invoke `/skill:clean-adr` again in the same fixture and save a second before/after inventory. Require no further archive moves, new numbers, or rewording when nothing changed. Treat any extra move as a behavioral failure rather than weakening the expectation.
 10. Record each sub-feature, case, command, observed outcome, and proof path in `$VERIFY_RUN_DIR/notes.md`. Preserve failed attempts and unavailable cases. Export and deliberately finish only owned fixture Flows. Stop only their isolated hosts through the authenticated Flow CLI, then run the Verify skill's Cleanup.
+
+### Independent check loop
+
+Run these cases with real models in both `standard` and `private`. Private cases include both the private and tracked ADR directories. The independent Verifier's ticket-453 End-state proof must exercise the actual skill and scouts in both modes. A stub-model drive or passing maintainer gate does not satisfy that proof.
+
+First inspect the uninterrupted baseline drives above. Require an independent check after the rewrite, with complete coverage of retired ADRs as well as replacements. Compare actual parent and task identities. Every checking scout must be fresh, must have written no replacement draft or fix, and must differ from judging scouts and earlier checking scouts. Require no scout writes. Check every archived provision for a named restatement or the original judge's dropped reason. Check every new statement for an archived source and independently obtained project evidence. Missing evidence cannot count as a passed row.
+
+Locate `check-1/`, and any later check directories, in the actual run's Scratch entry. Preserve each check's briefs, raw returns, identities, checked-file checksums, and combined coverage table outside `data/`. Confirm that the table covers all groups, not only the most recent batch or earlier findings. A large fixture may use several Fan-outs, but those batches share one check number.
+
+Use separate disposable fixtures for fault cases, not the baseline or the delivery checkout. Keep the same seeded ADRs and project settings. Add only this operational checkpoint context to each fresh actual-model session:
+
+> For this disposable fixture drive, save the current phase and check count, then end the turn immediately before the first independent-check task call and after each repair before the next check. Resume the same run when the controller says Continue. Do not request an answer or change the check procedure.
+
+Submit `/skill:clean-adr`. At each observed checkpoint, save the transcript and file inventory before editing the fixture. Send `Continue the current /skill:clean-adr run.` only after saving the injected bytes and their checksums. Never edit while the model or a scout is running. If a checkpoint is not reached, preserve the attempt and report the fault case unavailable rather than fabricate a scout result. These supplementary drives prove recovery from injected faults, not that an uninterrupted run naturally produces them. The uninterrupted baseline alone proves that the normal command needs no further answer.
+
+For the repair case, inject these faults at the first checkpoint into the actual replacement ADRs, leaving their source lists and the original judgments intact:
+
+1. Remove the seven-day retention provision and its rationale from the cache replacement without adding a dropped reason.
+2. Add a new requirement that every deployment needs a 24-hour maintenance window. Neither the archive nor the project supplies that decision.
+3. Change the gzip replacement's payload format to zstd. Keep `settings.json` at gzip and preserve the archived gzip decision.
+
+Require the first real checking scouts to flag all three problems. The retention row must name the missing provision or reason, the maintenance-window row must name the absent archived source, and the format row must cite independently read project evidence. Inspect the parent's repairs at the next checkpoint, then continue without more injection. Require restoration of seven-day retention and its rationale, removal of the maintenance-window requirement, and correction to gzip. Require a later fresh-scout check of the whole result with no open rows, within the three-check limit. Save the red table, repaired bytes, green table, actual tool calls, and report.
+
+For the limit case, start another fresh fixture run. At its first checkpoint, add the same unsupported maintenance-window statement to a new ADR. After each of the first two checks and its repair, reinsert that exact statement at the next checkpoint. Save each repair and reinsertion separately. This controlled competing edit prevents convergence without prescribing any scout's answer or replacing real model judgments.
+
+Require exactly three completed checks for the run, with fresh scouts and three retained coverage tables. The last table must still flag the maintenance-window statement. Its stable row id and problem must appear both in a banner above the affected new ADR and in the final report with evidence and the table path. Require no fourth task batch for checking, no unchecked rewrite after check 3, and no rollback of archive moves, replacements, or earlier completed repairs. HEAD and the index must still equal the fixture baseline. A private banner needs filesystem proof because git does not capture it.
+
+Record `cadr-check-coverage`, `cadr-check-repair`, and `cadr-check-limit` separately for each mode in `$VERIFY_RUN_DIR/notes.md`. Preserve every injected revision, actual scout identity, check count, table, final ADR, and report outside `data/` before the existing Flow export and Cleanup steps. A report that merely says "checked" without this evidence does not prove the loop.
 
 ## Gotchas
 

@@ -81,6 +81,36 @@ Check repaired destinations against the filesystem and preserve the original bod
 
 The archive/rewrite phase hands the original-to-archive-to-replacement link map, verdicts, provision coverage, and written paths to citation repair, then to independent checks, before the final report. Keep these phases separate from judging and file moves. If their procedures are unavailable, record each as `not run` and report only the archive/rewrite outcome, not a completed cleanup.
 
+### Check the rewrite
+
+Count the first independent check as check 1. Run at most three checks for the whole run, not three per group. With no archived ADRs and no replacements, record the check as not needed.
+
+Record the parent and every agent that wrote a replacement draft or a later fix. For every check, use fresh `vstack-scout` agents that wrote none of those drafts or fixes. Do not resume a judging scout or an earlier checking scout. The parent fixes findings, not the scouts.
+
+Group the run's archived ADRs and new ADRs by related decision and source directory. Include retired ADRs with no replacement. Give every archived provision and every new statement an owning group, with cross-group sources available. For a large set, run several Fan-outs of manageable groups within the same numbered check. Finish all groups before deciding that check's outcome.
+
+Check brief: read the assigned archived bodies, replacement ADRs, original judgments, rewrite plan, and current project. Return a coverage table with rows for every archived provision and every new statement. Each row names its source provision and replacement statement by path and section or line, its disposition, the original judge's dropped reason when applicable, independent project evidence, and any problem. Mark each archived provision `restated` in a named new ADR or `dropped` with the judge's reason. A missing provision or dropped reason is a miss, not a reason to invent one. Flag every new statement with no archived source, including unsupported rationale or an inferred constraint. Independently re-test every new statement against the current code, skills, config, and other project evidence. Do not accept the first judgment as proof. Distinguish an accepted but unimplemented constraint from an abandoned decision. Name contradictions, false statements, and evidence gaps, including affected new ADR paths. Return command failures and unresolved rows explicitly. Investigate read-only and write no Scratch.
+
+With two or more groups in a batch, use the Fan-out line. With one group, use the single-subagent line.
+
+Before this step, read skill://vstack-fan-out.
+
+Fan-out (skill://vstack-fan-out): parts: one per group of archived and new ADRs in this check batch. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-scout"`. Each `task`: the check brief above, its assigned paths and context, the complete archive-to-replacement map and relevant project paths, the vstack root. Wait for every result. If they cannot start, stop: retain completed work and report the check number, unchecked groups, and why the check could not finish.
+
+Spawn one `vstack-scout` via `task` (`agent: "vstack-scout"`): the check brief above, its assigned paths and context, the complete archive-to-replacement map and relevant project paths, the vstack root. Wait for its result. If it cannot be spawned, stop: retain completed work and report the check number, unchecked group, and why the check could not finish.
+
+The parent saves each check separately under this run's Scratch entry as `check-1/`, `check-2/`, or `check-3/`. Keep its briefs, scout identities, draft-author identities, raw results, checked-file checksums, and combined coverage table there. Give problem rows stable ids across checks. Preserve earlier tables rather than overwrite them. Account for every assigned provision and statement. Missing coverage or unavailable evidence stays open.
+
+If no row is open, finish the loop. Otherwise, after check 1 or 2, fix each miss, contradiction, or false statement that the evidence settles. Restore omitted holding provisions, remove invented decisions, and correct false restatements. Drop a provision only with an evidence-backed reason. Keep a row open when the evidence cannot settle it. Update the rewrite plan and coverage, and pass changed replacement mappings back through archive banners, links, and citation repair. Then increment the check number and check the complete result again with fresh scouts, including groups that passed earlier.
+
+If a row remains open after check 3, stop rewriting. Keep the result, including every completed fix. Add a banner above each affected new ADR that names its remaining problems and their row ids:
+
+```md
+> Unresolved after clean-adr check 3. Row <id>: <problem>.
+```
+
+List all remaining problems affecting that ADR in its banner. For a missing provision, mark the intended replacement ADR. If no replacement exists, keep that fact in the report rather than invent a new decision to carry a banner. Report every open row with its source, affected new ADRs, problem, evidence, and coverage-table path. Report the number of completed checks and any unchecked groups. Never run a fourth check, undo the run, or describe open rows as settled.
+
 ## 6. Report the run
 
 Account for every inventoried ADR. Report holding ADRs left in place, archived paths and their replacements or retirement reasons, new numbers, unresolved verdicts, operation failures, and pre-existing broken links. Include citation repair and independent-check outcomes, with skipped phases and missing proof explicit. Link the saved raw scout results, provision coverage, link map, and command diagnostics. In a Flow, use table Results for ADR outcomes and a Document Result for failures that have no ADR row.
