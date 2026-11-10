@@ -15,6 +15,12 @@ When naming a domain concept in an issue, refactor proposal, hypothesis, or test
 
 If a concept is missing, reconsider whether it belongs to the project or note the gap for `/domain-modeling`.
 
+## clean-adr citation repair
+
+- clean-adr report-only paths: ["plugin/"]
+
+Paths start at the checkout root and directory entries include descendants. clean-adr reports citations and links under `plugin/` with their file, line, and new target instead of editing them. Plugin text changes only through a gated Hand edit. An absent or empty list permits direct citation repair everywhere.
+
 ## Flag ADR conflicts
 
 If your output contradicts an existing ADR, surface the conflict explicitly rather than silently overriding the decision. Identify the ADR and explain why it is worth reopening.

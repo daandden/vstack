@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "clean-adr repairs live citations, retargets history links into the dated ADR archive, and reports protected paths and live citations without replacements. setup-vstack documents the optional report-only path list in fresh and migrated domain config (#452)."
+  ]
+}

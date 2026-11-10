@@ -21,6 +21,8 @@ Read the project's domain docs config and glossary, including `GLOSSARY-MAP.md` 
 - Standard mode includes `docs/adr/` and each context's ADR directory.
 - Private mode includes `<vstack root>/domain/adr/`, each private context's ADR directory, and the repo's tracked ADR directories.
 
+Read [citation repair's report-only list](references/citations.md#read-the-report-only-list) before changing any citation or link. Apply it to outgoing link repair in archived bodies as well as incoming citations.
+
 Deduplicate directories by their resolved paths without merging their namespaces. Keep each ADR's source directory and context throughout the run. Never move an ADR between contexts or between private and tracked directories.
 
 Inventory the numbered active files outside `archive/`. Read each one. Record its path, number, contents checksum, context, and outgoing relative links. Inventory archived numbers recursively for numbering, but treat archived text as historical evidence, not a current rule. Record the current branch, HEAD, and existing working changes without altering them. An empty active set produces a no-change report.
@@ -75,11 +77,15 @@ List every replacing ADR in the banner. When no part holds, use this form with t
 
 Repair outgoing relative links in archived bodies without rewriting their historical wording or cited numbers. Resolve each link from the file's original parent, then express its actual destination relative to its new parent. If the destination also moved, use its archive path from the complete link map, not its replacement. Preserve fragments, query suffixes, link labels, and image syntax. Cover inline links, reference definitions, and relative HTML link or image destinations. Leave external URLs and absolute paths alone. A same-file fragment remains a same-file fragment.
 
-Check repaired destinations against the filesystem and preserve the original body except for these link destinations. Record pre-existing broken links separately rather than attributing them to this move. Save the written paths and operation failures. On failure, retain completed work and its mapping, stop dependent operations, and report the actual state rather than claiming an atomic run.
+Check repaired destinations outside report-only paths against the filesystem and preserve the original body except for these link destinations. Record pre-existing broken links separately rather than attributing them to this move. Save the written paths and operation failures. On failure, retain completed work and its mapping, stop dependent operations, and report the actual state rather than claiming an atomic run.
 
 ## 5. Continue with citation repair and independent checks
 
-The archive/rewrite phase hands the original-to-archive-to-replacement link map, verdicts, provision coverage, and written paths to citation repair, then to independent checks, before the final report. Keep these phases separate from judging and file moves. If their procedures are unavailable, record each as `not run` and report only the archive/rewrite outcome, not a completed cleanup.
+### Repair citations
+
+Read [Repair citations of archived ADRs](references/citations.md). Use the archive/rewrite phase's link map to repair live citations, retarget history links, and report protected paths without editing them. Finish the occurrence-to-target table and link checks before independent checks. Keep these phases separate from judging and file moves.
+
+Pass the link map, verdicts, provision coverage, written paths, and citation outcomes to independent checks before the final report. If their procedure is unavailable, record independent checks as `not run` and report only the archive/rewrite and citation outcomes, not a completed cleanup.
 
 ### Check the rewrite
 
@@ -114,5 +120,7 @@ List all remaining problems affecting that ADR in its banner. For a missing prov
 ## 6. Report the run
 
 Account for every inventoried ADR. Report holding ADRs left in place, archived paths and their replacements or retirement reasons, new numbers, unresolved verdicts, operation failures, and pre-existing broken links. Include citation repair and independent-check outcomes, with skipped phases and missing proof explicit. Link the saved raw scout results, provision coverage, link map, and command diagnostics. In a Flow, use table Results for ADR outcomes and a Document Result for failures that have no ADR row.
+
+Report every citation or link under report-only paths with its file, line, and new target. List live citations with no replacement and their archived targets separately. Include applied citation repairs, unresolved source or history classifications, and affected link-check failures. Distinguish protected non-edits from failures and pre-existing broken links.
 
 State that no commit was made. Distinguish tracked working-tree changes from private changes that git does not show. Do not stage, commit, push, prune the archive, or automatically restore the run.

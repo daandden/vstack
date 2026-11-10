@@ -10,6 +10,10 @@
 - `cadr-hold` a holding ADR with no citations remains byte for byte, and a second run does not rewrite settled decisions.
 - `cadr-layout` Standard, Private plus tracked, and multiple contexts keep separate archive locations and number sequences. Git sees no private file changes.
 - `cadr-run` the actual skill uses scouts, asks no question, saves evidence, and leaves HEAD and the index unchanged.
+- `cadr-citations` holding ADRs and other live text cite replacements without changing their own ADR numbers.
+- `cadr-history` plain history citations keep their bytes, and history links keep old numbered labels while opening dated archive files.
+- `cadr-retired` live citations with no replacement keep their numbers, link into the archive, and appear in the report.
+- `cadr-report-only` listed paths stay byte for byte and get file, line, and new-target report rows. Omitting the list permits direct repairs.
 - `cadr-check-coverage` fresh scouts account for every archived provision and every new statement, detect missing reasons and unsupported statements, and independently test the rewrite against the project.
 - `cadr-check-repair` the parent fixes findings and checks the complete rewrite again, keeping each check's coverage table in Scratch.
 - `cadr-check-limit` a problem surviving check 3 remains in the result, with a banner on the affected new ADR and an open report row. No fourth check or automatic undo occurs.
@@ -26,7 +30,7 @@ Preconditions:
 - Follow `architecture-agreement.md`'s actual-model runtime isolation and Session model discovery, and the checkout's `plugin/skills/skill-creator/references/evaluation.md` when using its launcher. Obtain explicit approval before a paid Headless run. This recipe itself grants no costly-run authorization.
 - Run only in disposable fixtures under `$VERIFY_RUN_DIR/data/`. Use no production tracker, remote, or real project ADRs. Preserve prompts, overlays, transcripts, source hashes, and actual skill and agent read paths.
 - The typed command enrolls in a Flow. Use the fixture's own identity and a dedicated `--home "$VERIFY_RUN_DIR/data/<case>-flow-home"` on every Flow command. The explicit CLI-home fixture proves report publication, not normal-HOME binding behavior. Never reuse the author's binding. Export the fixture Flow and stop only a host started in that owned namespace.
-- Tickets 452 and 453 supply citation repair and independent post-rewrite checks. At ticket 451 alone, require an explicit `not run` for those phases, not a full-cleanup claim. Once integrated, also drive their feature recipes. This recipe does not substitute for those checks.
+- Drive the citation cases below in Standard and Private mode. Archive/rewrite outcomes alone prove neither citation repair nor independent checks.
 
 Create three new fixtures. Set `F` to `$VERIFY_RUN_DIR/data/cadr-<case>` and run `git init -q "$F"` for each. Set `C` and the list of ADR directories as follows:
 
@@ -70,6 +74,8 @@ for (const [name, text] of Object.entries(files)) writeFileSync(join(adr, name),
 BUN
 ```
 
+For Standard and Private mode, add the citation fixtures under [Citation cases](#citation-cases) before committing the baseline. Keep their bytes and line numbers with the baseline evidence.
+
 Commit the fixture baseline, not any result of the skill:
 
 ```sh
@@ -83,7 +89,7 @@ Save HEAD, index tree, every ADR's bytes, and an inventory outside `data/` befor
 
 1. Launch the fresh actual-model session in `F` with the checkout's plugin, its scouts, and isolated dependency discovery. Submit exactly `/skill:clean-adr` as the user action. Supply only fixture paths and the isolated Flow-home constraint as launcher context, not expected verdicts or replacement content. Capture all actual tool calls and the final report.
 2. Inspect the scout returns. Every active file in every directory must have one verdict with project evidence, and the compression pair must be identified as the same decision. The raw results and the owning run's verdict and provision tables must remain in Scratch. Require a real `vstack-scout` investigation, not a fixed scripted response.
-3. Independently inspect each ADR directory. Require `0001` through `0004` under one new `archive/<run-date>/` folder in that same directory, and no active copies with those numbers. Keep the pre-existing archive file unchanged. Require `0005-retries.md` to match its saved bytes exactly. Each moved file has exactly one added archive banner. `0001` names no holding provision and gives a reason tied to disabled polling. The remaining banners link to the appropriate new ADRs.
+3. Independently inspect each ADR directory. Require `0001` through `0004` under one new `archive/<run-date>/` folder in that same directory, and no active copies with those numbers. Keep the pre-existing archive file unchanged except for incoming link destinations repaired by the citation cases. Require `0005-retries.md` to match its saved bytes exactly. Each moved file has exactly one added archive banner. `0001` names no holding provision and gives a reason tied to disabled polling. The remaining banners link to the appropriate new ADRs.
 4. Inspect replacement meanings, not filenames or phrasing. Require the seven-day retention decision and rationale, with the ten-entry limit dropped. Require one replacement for the two gzip ADRs, retaining receiver compatibility. Every new ADR lists and links all archived sources that it replaces. Reject newly invented decisions such as declaring the current 20-entry setting an accepted architectural constraint without an archived source. Require fresh numbers beginning above `0012`, or above `0020` in the changed context, with no duplicate number in that directory and its archive.
 5. Resolve every relative link in the archived bodies and banners from their new locations. The protocol link must still reach `docs/protocol.md#protocol`. Compare archived bodies against saved originals, allowing only the added banner and repaired relative-link destinations. Add a reference-style link and a link between the two merging files in one fixture before its baseline to prove both move-aware destinations. Historical link labels and numbers must remain unchanged.
 6. For `private`, inspect the private and tracked directories separately. Require each archive inside its source directory, both sets judged, and independent number allocation. Save `git -C "$F" status --short --untracked-files=all`, `git -C "$F" rev-parse HEAD`, and `git -C "$F" write-tree`. Only tracked-domain changes may appear in status. HEAD and the index tree must equal the baseline. The private filesystem inventory, not a clean git status, proves private changes.
@@ -91,6 +97,47 @@ Save HEAD, index tree, every ADR's bytes, and an inventory outside `data/` befor
 8. Inspect the transcript for zero question-tool calls, zero stage or commit operations in git, and no modification of fixture application config. Require the report to distinguish tracked and private changes and to name every failure or unavailable phase. Check the actual Flow Result and export without publishing private fixture bodies to any production Flow.
 9. Save all resulting ADR bytes, inventories, relevant git output, and the report outside `data/`. Invoke `/skill:clean-adr` again in the same fixture and save a second before/after inventory. Require no further archive moves, new numbers, or rewording when nothing changed. Treat any extra move as a behavioral failure rather than weakening the expectation.
 10. Record each sub-feature, case, command, observed outcome, and proof path in `$VERIFY_RUN_DIR/notes.md`. Preserve failed attempts and unavailable cases. Export and deliberately finish only owned fixture Flows. Stop only their isolated hosts through the authenticated Flow CLI, then run the Verify skill's Cleanup.
+
+### Citation cases
+
+Run these cases through the same fresh real-model user action, not a scripted substitute. Use both the Standard fixture and the Private fixture with its private and tracked ADR directories. Add `journalSync: true` to `settings.json` before the baseline.
+
+For each ADR directory `A`, add `0006-journal.md` with this holding decision and an inline link relative to that directory:
+
+```md
+# Flush the journal synchronously
+
+Flush local journal writes synchronously to preserve acknowledged writes after power loss.
+
+Use [ADR 0002](0002-cache.md) for cache retention.
+```
+
+Create these incoming citations before taking the baseline. When one file cites both Private-mode directories, give each directory its own named section so an unlinked number has a source context. Compute all relative destinations from the citing file's parent.
+
+| File | Seed content for each ADR directory | Required result |
+|---|---|---|
+| `docs/live-citations.md` | A live inline link labelled `ADR 0002`, a live reference-style link labelled `ADR-0004`, and a live HTML link labelled `ADR 0002`. | Each number and destination names the appropriate cache or compression replacement. |
+| `src/policy.ts` | A code comment citing plain `ADR 0004` and naming its ADR directory. | The comment names the compression replacement, not the archived number. |
+| `docs/retired.md` | A live link labelled `ADR 0001` and a plain live `ADR 0001` citation. | Keep both numbers. Retarget the link to the retired original in the dated archive. Report both occurrences and their archived targets. |
+| `CHANGELOG.md` | A release entry with an inline link labelled `ADR 0002`. | Keep the old number and entry wording. Only the destination changes to the dated archive. |
+| `research/plain.md` | A past-research statement citing plain `ADR 0004`. | Keep every byte. |
+| `research/links.md` | A past-research statement with a reference-style link labelled `ADR 0004`. | Keep the old number. Retarget its reference definition to the archived original. |
+| `gated/policy.md` | A live link labelled `ADR 0002`, plain live `ADR 0004`, and a historical link labelled `ADR 0001`. | With `gated/` listed as report-only, keep every byte. Report each occurrence with its file, original line, and concrete replacement or archive target. |
+| `gated-other/policy.md` | A live link labelled `ADR 0002`. | Repair it. A `gated/` entry must not protect a similarly named sibling. |
+
+Append a historical link labelled `ADR 0002` to the pre-existing archived `0012` file. Append a link labelled `ADR 0004` to active `0002-cache.md`. Both links must keep their numbered labels and reach the correct archived original after that original moves. New ADRs' `Replaces` links must also reach their archived sources, never loop back to themselves.
+
+In `C/domain.md`, set the report-only line as follows. For Private mode, also seed `<vstack root>/domain/gated.md` with a live link to the private cache ADR, list that file by its absolute path, and require the same byte-preservation and report-row checks.
+
+```md
+- clean-adr report-only paths: ["gated/"]
+```
+
+After the real-model drive, check `0006-journal.md` separately from the byte-for-byte holding `0005` case. Require `0006` to remain active with its original number and journal decision, with only its cache citation changed to the cache replacement. Resolve every affected destination outside report-only paths from its final file location, including archive banners, archived bodies, replacement provenance, reference definitions, and HTML links. Check fragments as well as file existence. Retired links go to the archive, not to an invented replacement.
+
+Compare each protected file with its saved baseline bytes. Match every protected occurrence against the actual report using the baseline line number and the final target file, including the plain citation. In Private mode, require private and tracked citations to resolve within their own ADR namespaces despite identical numbers. Preserve the report, complete citation table, and filesystem link checks outside `data/`.
+
+Repeat from fresh Standard and Private fixtures with the `clean-adr report-only paths` line omitted. Do not remove it only after a protected run, because that would test an already-cleaned ADR set. Require direct live-citation repair and historical-link retargeting in `gated/policy.md` and the private `gated.md` as well. Plain historical citations still keep their bytes. Save the fresh baselines and separate real-model transcripts. An empty list has the same direct-edit meaning.
 
 ### Independent check loop
 

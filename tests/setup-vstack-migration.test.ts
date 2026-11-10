@@ -33,6 +33,31 @@ test.each(["private copy", "private store move"])("%s names the ADR archives in 
   expect(config).toContain("history read for why, never a rule");
   expect(run(r, "plan").json().items).toEqual([]);
 });
+
+test.each([
+  ["private copy", null],
+  ["private store move", null],
+  ["private copy", '["gated/", "src/policy.ts"]'],
+  ["private store move", '["gated/", "src/policy.ts"]'],
+  ["private copy", '["docs/adr/", "GLOSSARY.md"]'],
+  ["private store move", '["docs/adr/", "GLOSSARY.md"]'],
+] as const)("%s seeds missing report-only paths and preserves %s", (source, paths) => {
+  const r = repo();
+  const line = "- clean-adr report-only paths:";
+  const before = `Hand edit: domain notes stay here.\n${paths ? `${line} ${paths}\n` : ""}`;
+  if (source === "private copy") {
+    put(join(r, "docs/agents/domain.md"), before);
+    git(r, "add", ".");
+    git(r, "commit", "-qm", "Matt config");
+  } else {
+    put(join(r, ".git/matt-pocock/docs-agents/domain.md"), before);
+  }
+  expect(apply(r, source === "private copy" ? "private" : "move").code).toBe(0);
+  const config = readFileSync(join(r, ".git/vstack/config/domain.md"), "utf8");
+  expect(config).toStartWith(before);
+  expect(config.split("\n").filter(l => l.startsWith(line))).toEqual([`${line} ${paths ?? "[]"}`]);
+  expect(run(r, "plan").json().items).toEqual([]);
+});
 test("nested domain files, map links and rule hits share one plan",()=>{const r=repo();put(join(r,"CONTEXT-MAP.md"),"[a](packages/a/CONTEXT.md)");put(join(r,"packages/a/CONTEXT.md"),"domain hand edit");put(join(r,".omp/rules/user.md"),"/setup-matt-pocock-skills");expect(apply(r).code).toBe(0);expect(readFileSync(join(r,"GLOSSARY-MAP.md"),"utf8")).toBe("[a](packages/a/GLOSSARY.md)");expect(readFileSync(join(r,"packages/a/GLOSSARY.md"),"utf8")).toBe("domain hand edit");expect(readFileSync(join(r,".omp/rules/user.md"),"utf8")).toBe("/skill:setup-vstack");expect(run(r,"plan").json().items).toEqual([]);});
 test("fallback private storage is mandatory and domain files follow it",()=>{const r=repo();put(join(r,".git/matt-pocock/docs-agents/domain.md"),".git/matt-pocock/domain/CONTEXT.md");put(join(r,".git/matt-pocock/domain/CONTEXT.md"),"hand domain");put(join(r,".git/matt-pocock/claims/claim.json"),"{}");const p=run(r,"plan").json();expect(p.items[0].mandatory).toBe(true);expect(apply(r,"move",[p.items[0].id]).code).toBe(2);expect(apply(r).code).toBe(0);expect(readFileSync(join(r,".git/vstack/domain/GLOSSARY.md"),"utf8")).toBe("hand domain");expect(existsSync(join(r,".git/vstack/claims/claim.json"))).toBe(true);expect(existsSync(join(r,"docs/vstack"))).toBe(false);});
 test("vstack wins conflicts with a diff and optional delete, including private storage",()=>{const r=repo();matt(r);put(join(r,"docs/vstack/domain.md"),"vstack wins");let p=run(r,"plan").json();const old=p.items.find((i:any)=>i.kind==="old-delete");expect(old.destructive).toBe(true);expect(old.changes[0].diff).toContain("+vstack wins");expect(apply(r,"move",[old.id]).code).toBe(0);expect(existsSync(join(r,"docs/agents/domain.md"))).toBe(true);expect(apply(r).code).toBe(0);expect(readFileSync(join(r,"docs/vstack/domain.md"),"utf8")).toBe("vstack wins");put(join(r,".git/matt-pocock/docs-agents/domain.md"),"old");put(join(r,".git/vstack/config/domain.md"),"new");p=run(r,"plan").json();expect(p.items[0].kind).toBe("old-store-delete");expect(p.items[0].changes[0].diff).toContain("+new");expect(apply(r).code).toBe(0);expect(existsSync(join(r,".git/matt-pocock"))).toBe(false);expect(readFileSync(join(r,".git/vstack/config/domain.md"),"utf8")).toBe("new");});

@@ -99,8 +99,9 @@ function codeHostSeed(root: string): { template: string; text: string } | null {
   return { template, text: seeded };
 }
 
-function adrArchiveNote(store: string): string {
-  return `\nThe ADR archive lives in ${store}/domain/adr/archive/<date>/, docs/adr/archive/<date>/, and archive/<date>/ inside each context's ADR directory. It is history read for why, never a rule.\n`;
+function adrArchiveNote(store: string, domain: string): string {
+  const paths = /^- clean-adr report-only paths:/m.test(domain) ? "" : "\n- clean-adr report-only paths: []\n";
+  return `\nThe ADR archive lives in ${store}/domain/adr/archive/<date>/, docs/adr/archive/<date>/, and archive/<date>/ inside each context's ADR directory. It is history read for why, never a rule.\n\n## clean-adr citation repair\n${paths}\nThe optional \`clean-adr report-only paths\` line is a JSON array of literal file or directory paths. Directory entries include descendants. Relative paths start at the checkout root, even in this private config; absolute paths can name private files. clean-adr leaves citations and links under these paths unchanged and reports their file, line, and new target instead. An absent or empty list means direct citation repair everywhere. List text with a separate change process here.\n`;
 }
 
 function privateMovePlan(common: string, worktrees: string[], commonIsOrdinaryGit: boolean, replacements: Replacement[]): Item {
@@ -112,7 +113,7 @@ function privateMovePlan(common: string, worktrees: string[], commonIsOrdinaryGi
     if (before.includes("\0")) continue;
     let after = rewrite(before, common, commonIsOrdinaryGit, replacements);
     const target = join(to, p.slice(from.length + 1).replace(/^docs-agents(?=\/|$)/, "config"));
-    if (target === join(to, "config/domain.md")) after += adrArchiveNote(to);
+    if (target === join(to, "config/domain.md")) after += adrArchiveNote(to, after);
     if (before !== after) item.changes.push(change(p, target, before, after));
     item.manual_hits.push(...hits(target, after, replacements));
   }
@@ -175,9 +176,10 @@ export function projectPlan(cwd: string, mode: Mode = "move"): Plan {
       let after = substitute(before);
       if (privateMode && e.name === "issue-tracker.md") after = after.replaceAll(".scratch/", join(store, "artifacts") + "/");
       if (privateMode && e.name === "domain.md") {
-        after = after.replace(/(?<![\w/-])GLOSSARY(-MAP)?\.md/g, (_, map) => join(store, "domain", `GLOSSARY${map ?? ""}.md`)).replaceAll("docs/adr/", join(store, "domain/adr") + "/");
+        after = after.split("\n").map(line => line.startsWith("- clean-adr report-only paths:") ? line
+          : line.replace(/(?<![\w/-])GLOSSARY(-MAP)?\.md/g, (_, map) => join(store, "domain", `GLOSSARY${map ?? ""}.md`)).replaceAll("docs/adr/", join(store, "domain/adr") + "/")).join("\n");
         after += `\nRead the repo's tracked GLOSSARY.md and docs/adr/ as well when present. Private domain docs live in ${store}/domain/.\n`;
-        after += adrArchiveNote(store);
+        after += adrArchiveNote(store, after);
       }
       add(privateMode ? "config-copy" : "config-move", from, to, before, after);
     }
