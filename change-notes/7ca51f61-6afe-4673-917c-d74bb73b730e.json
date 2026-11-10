@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "The `vstack-posting` rule's draft-first check before posting on a PR or issue the user does not own now applies only inside a run enrolled in a Flow. Plain sessions in other repos no longer open the Flow page to approve a teammate's PR (#446)."
+  ]
+}
