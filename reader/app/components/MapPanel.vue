@@ -70,26 +70,26 @@ function onKey(e: KeyboardEvent) {
 </script>
 
 <template>
-  <dialog ref="dialog" class="map-panel" aria-labelledby="map-title" @close="closed" @keydown="onKey" @click="(e) => e.target === dialog && (mapOpen = false)">
-    <header>
+  <dialog ref="dialog" class="map-panel m-auto [inline-size:min(48rem,100%_-_2rem)] [max-block-size:min(44rem,100%_-_2rem)] overflow-clip rounded-lg border border-default bg-muted p-0 text-default open:flex open:flex-col backdrop:bg-[color-mix(in_oklch,var(--base)_70%,transparent)] [&_[data-map-item]:focus-visible]:outline-2 [&_[data-map-item]:focus-visible]:outline-info [&_[data-map-item]:focus-visible]:-outline-offset-2" aria-labelledby="map-title" @close="closed" @keydown="onKey" @click="(e) => e.target === dialog && (mapOpen = false)">
+    <header class="flex flex-none items-center justify-between gap-3 border-be border-flow-line px-4 py-2">
       <h2 id="map-title">Map</h2>
-      <button type="button" @click="mapOpen = false">Close</button>
+      <UButton color="neutral" variant="outline" class="min-h-11" @click="mapOpen = false">Close</UButton>
     </header>
-    <div class="map-tabs" role="tablist" aria-label="Map views">
-      <button v-for="t in tabs" :id="`map-tab-${t.id}`" :key="t.id" type="button" role="tab" :aria-selected="mapTab === t.id" :aria-controls="`map-${t.id}`" :tabindex="mapTab === t.id ? 0 : -1" @click="switchTab(t.id)">{{ t.label }}</button>
+    <div class="map-tabs flex flex-none flex-wrap gap-2 px-4 py-3" role="tablist" aria-label="Map views">
+      <UButton v-for="t in tabs" :id="`map-tab-${t.id}`" :key="t.id" color="neutral" variant="outline" class="min-h-11 aria-selected:border-info aria-selected:text-info" role="tab" :aria-selected="mapTab === t.id" :aria-controls="`map-${t.id}`" :tabindex="mapTab === t.id ? 0 : -1" @click="switchTab(t.id)">{{ t.label }}</UButton>
     </div>
-    <div v-if="f.path" id="map-path" class="map-content" role="tabpanel" aria-labelledby="map-tab-path" :hidden="mapTab !== 'path'">
+    <div v-if="f.path" id="map-path" class="map-content min-h-0 overflow-auto overscroll-contain [scrollbar-gutter:stable]" role="tabpanel" aria-labelledby="map-tab-path" :hidden="mapTab !== 'path'">
       <MattPath />
     </div>
-    <div id="map-stages" class="map-content" role="tabpanel" aria-labelledby="map-tab-stages" :hidden="mapTab !== 'stages'">
-      <ul v-if="roots.length" class="tree">
+    <div id="map-stages" class="map-content min-h-0 overflow-auto overscroll-contain [scrollbar-gutter:stable]" role="tabpanel" aria-labelledby="map-tab-stages" :hidden="mapTab !== 'stages'">
+      <ul v-if="roots.length" class="tree grid list-none gap-1 px-4 py-3">
         <StageTreeNode v-for="st in roots" :key="st.id" :stage="st" />
       </ul>
       <p v-else class="quiet">No Stages recorded.</p>
     </div>
-    <div v-if="f.wayfinder" id="map-wayfinder" class="map-content" role="tabpanel" aria-labelledby="map-tab-wayfinder" :hidden="mapTab !== 'wayfinder'">
+    <div v-if="f.wayfinder" id="map-wayfinder" class="map-content min-h-0 overflow-auto overscroll-contain [scrollbar-gutter:stable]" role="tabpanel" aria-labelledby="map-tab-wayfinder" :hidden="mapTab !== 'wayfinder'">
       <WayfinderMap :tickets="f.wayfinder.tickets" />
     </div>
-    <p class="map-help quiet"><kbd>h</kbd> <kbd>l</kbd> tabs · <kbd>j</kbd> <kbd>k</kbd> items · Enter opens · arrows pan</p>
+    <p class="map-help quiet flex-none border-bs border-flow-line px-4 py-3"><kbd>h</kbd> <kbd>l</kbd> tabs · <kbd>j</kbd> <kbd>k</kbd> items · Enter opens · arrows pan</p>
   </dialog>
 </template>

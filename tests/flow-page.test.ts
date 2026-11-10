@@ -361,7 +361,7 @@ test("another session cannot write through a binding it does not hold, and nothi
   for (const r of [submit("s-2", round(question("scope"))), submit(undefined, round(question("scope"))), run(["submit", "--agent", "worker"], { session: "s-1", stdin: contribution(round(question("scope"))) })]) {
     expect(r.code).toBe(1);
     expect(r.stderr).not.toBe("");
-    expect(r.stdout).toBe("");
+    expect(JSON.parse(r.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
   }
   expect(tree()).toEqual(before);
 });
@@ -692,7 +692,7 @@ test.each([
   const before = tree();
   const r = run(["submit"], { session: "s-1", stdin: input });
   expect(r.code).toBe(1);
-  expect(r.stdout).toBe("");
+  expect(JSON.parse(r.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
   expect(r.stderr).toContain(names);
   expect(tree()).toEqual(before);
 });
@@ -799,9 +799,10 @@ test("a Document Mermaid parse error refuses the whole contribution without a pa
     { kind: "topic", ref: "pending", title: "Not committed", summary: "Part of the refused contribution.", body: "Nothing is stored.", sources: ["fixture"] },
     doc("doc", { sections: [{ heading: "Broken diagram", blocks: [{ code: invalid, language: "mermaid" }] }], citations: undefined }));
   expect(r.code).toBe(1);
-  expect(r.stderr).toContain("section 1: block 1");
-  expect(r.stderr).toContain("Expecting 'SQE', 'UNICODE_TEXT', 'TEXT', 'TAGSTART', got '$end'");
-  expect(r.stdout).toBe("");
+  expect(r.json).toMatchObject({ ok: false, diagnostics: expect.arrayContaining([expect.objectContaining({
+    path: "$.items[1].sections[0].blocks[0]",
+    message: expect.stringContaining("Expecting 'SQE', 'UNICODE_TEXT', 'TEXT', 'TAGSTART', got '$end'"),
+  })]) });
   expect(tree()).toEqual(before);
 });
 
@@ -990,7 +991,7 @@ test.each([
     { kind: "result", shape: "table", title: "Unsafe capture", columns: ["Check"], rows: [{ cells: ["Pending capture"] }], attachments: ["unsafe"] },
   );
   expect(r.code).toBe(1);
-  expect(r.stdout).toBe("");
+  expect(JSON.parse(r.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
   expect(r.stderr).toMatch(category);
   expect(tree()).toEqual(before);
   expect(show(opened.flow)).toEqual(beforeState);
@@ -1069,7 +1070,7 @@ test.each([
   const r = run(["submit"], { session: "s-1", stdin: contribution(...items()) });
   expect(r.stderr).toContain(names);
   expect(r.code).toBe(1);
-  expect(r.stdout).toBe("");
+  expect(JSON.parse(r.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
   expect(tree()).toEqual(before);
 });
 
@@ -1225,7 +1226,7 @@ test.each([
   const before = tree();
   const r = run(["submit"], { session: "s-1", stdin: contribution(...items) });
   expect(r.code).toBe(1);
-  expect(r.stdout).toBe("");
+  expect(JSON.parse(r.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
   expect(r.stderr).toStartWith("flow-page.ts: ");
   expect(r.stderr).toContain(names);
   expect(tree()).toEqual(before);
@@ -1308,7 +1309,7 @@ test.each([
   expect(r.stderr).toContain(names);
   expect(r.stderr).toContain("item 1");
   expect(r.code).toBe(1);
-  expect(r.stdout).toBe("");
+  expect(JSON.parse(r.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
   expect(tree()).toEqual(before);
 });
 
@@ -1497,7 +1498,7 @@ test.each([
   const r = run(["submit"], { session: "s-1", stdin: contribution(...items()) });
   expect(r.stderr).toContain(names);
   expect(r.code).toBe(1);
-  expect(r.stdout).toBe("");
+  expect(JSON.parse(r.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
   expect(tree()).toEqual(before);
 });
 
@@ -1640,7 +1641,7 @@ test("an object-valued append reports the add collection shape without changing 
   const before = tree();
   const refused = submit("s-1", { kind: "revise", result: first.json.refs.run, add: event("test") });
   expect(refused.code).toBe(1);
-  expect(refused.stdout).toBe("");
+  expect(JSON.parse(refused.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
   expect(tree()).toEqual(before);
   expect(refused.stderr).toMatch(/add.*(?:array|list|collection)/i);
   expect(refused.stderr).not.toMatch(/earlier contribution|belongs to/i);
@@ -1658,7 +1659,7 @@ test.each([
   const before = tree();
   const refused = submit("s-1", { kind: "revise", result: first.refs.run, base: first.revision, set: { title: "Not saved" }, add });
   expect(refused.code).toBe(1);
-  expect(refused.stdout).toBe("");
+  expect(JSON.parse(refused.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
   expect(refused.stderr).toMatch(/add.*(?:array|list|collection)/i);
   expect(tree()).toEqual(before);
 });
@@ -1709,7 +1710,7 @@ test.each([
   const before = tree();
   const refused = submit("s-1", { kind: "revise", result: first.refs.run, add: [event("valid"), entry] });
   expect(refused.code).toBe(1);
-  expect(refused.stdout).toBe("");
+  expect(JSON.parse(refused.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
   expect(refused.stderr).toMatch(/add 2/);
   expect(tree()).toEqual(before);
 });
@@ -1763,7 +1764,7 @@ test.each([
   const before = tree();
   const r = submit("s-1", codeResult("c", { file: "src/a.ts", ...extra }));
   expect(r.code).toBe(1);
-  expect(r.stdout).toBe("");
+  expect(JSON.parse(r.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
   expect(r.stderr).toContain("entry 1");
   expect(r.stderr).toContain(names);
   expect(tree()).toEqual(before);
@@ -1780,7 +1781,7 @@ test.each([
   const before = tree();
   const r = submit("s-1", timeline("t", event("e", extra)));
   expect(r.code).toBe(1);
-  expect(r.stdout).toBe("");
+  expect(JSON.parse(r.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
   expect(r.stderr).toContain(names);
   expect(tree()).toEqual(before);
 });
@@ -1870,7 +1871,7 @@ test.each(ledgerFields.flatMap((field) => [
   else entry[field] = value;
   const refused = run(["submit"], { session: "s-1", stdin: malformed });
   expect(refused.code).toBe(1);
-  expect(refused.stdout).toBe("");
+  expect(JSON.parse(refused.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
   expect(refused.stderr).toContain(field);
   expect(tree()).toEqual(before);
   expect(show(opened.flow).revision).toBe(accepted.json.revision);

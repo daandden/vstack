@@ -75,7 +75,7 @@ test.each([
     { kind: "wayfinder", tickets },
   ]);
   expect(refused.code).toBe(1);
-  expect(refused.error).toContain(message);
+  expect(JSON.stringify(refused.json.diagnostics)).toContain(message);
   expect(cli(["show", "--flow", opened.json.flow]).json).toEqual(before);
 });
 
@@ -84,4 +84,22 @@ test("an empty graph is a published map with no known tickets", () => {
   const submitted = cli(["submit", "--flow", opened.json.flow, "--stage", opened.json.stage], [{ kind: "wayfinder", tickets: [] }]);
   expect(submitted.code).toBe(0);
   expect(cli(["show", "--flow", opened.json.flow]).json.wayfinder.tickets).toEqual([]);
+});
+
+test("wayfinder validate accepts graphs without writes and shares coded submit refusals", () => {
+  const opened = cli(["open", "--skill", "wayfinder", "--title", "Map diagnostics"]);
+  const target = ["--flow", opened.json.flow, "--stage", opened.json.stage];
+  const before = cli(["show", "--flow", opened.json.flow]).json;
+  expect(cli(["validate", ...target], [{ kind: "wayfinder", tickets: [ticket("a")] }]).json).toEqual({ ok: true, diagnostics: [] });
+  expect(cli(["show", "--flow", opened.json.flow]).json).toEqual(before);
+  const invalid = [{ kind: "wayfinder", tickets: [{ ...ticket("a"), state: "ready" }, { ...ticket("b"), title: "" }] }];
+  const checked = cli(["validate", ...target], invalid);
+  const refused = cli(["submit", ...target], invalid);
+  expect(checked.code).toBe(1);
+  expect(refused.json).toEqual(checked.json);
+  expect(checked.json.diagnostics).toEqual(expect.arrayContaining([
+    expect.objectContaining({ code: "invalid_enum", path: "$.items[0].tickets[0].state", allowed: ["resolved", "frontier", "blocked", "claimed", "out-of-scope"] }),
+    expect.objectContaining({ path: "$.items[0].tickets[1].title" }),
+  ]));
+  expect(cli(["show", "--flow", opened.json.flow]).json).toEqual(before);
 });

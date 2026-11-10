@@ -16,9 +16,9 @@ Run the script from inside the repo the work is about. The extension supplies yo
 bun "$(realpath skill://flow-page/scripts/flow-page.ts)" <command> ...
 ```
 
-Every command prints one JSON receipt on stdout. Exit 1 prints the refusal on stderr and commits no Flow content. On-demand startup may still write host lifecycle metadata. Fix what the refusal names and run the command again. Exit 2 is a usage error.
+Commands print JSON on stdout, except `describe --compact`, which prints field lines. `validate` returns `{ "ok": true, "diagnostics": [] }` on success. A refused `validate` or `submit` returns `{ "ok": false, "diagnostics": [...] }`, prints a readable refusal on stderr, and exits 1 without committing Flow content. Other commands print their receipt on success and their refusal on stderr. Exit 2 is a usage error.
 
-A receipt always means the content is committed. Its `live` says whether the reader can show it: `serving` with the Flow `url`, `unavailable` with the `error` the host reported, or `off` when `VSTACK_FLOW_HOST=off`. The reader needs the Local Flow host. There is no static file to open instead. When the host is unavailable, never resubmit committed content: fix what `error` names, then run `bound` or `show` for the URL.
+A successful submit receipt means the content is committed. Its `live` says whether the reader can show it: `serving` with the Flow `url`, `unavailable` with the `error` the host reported, or `off` when `VSTACK_FLOW_HOST=off`. The reader needs the Local Flow host. There is no static file to open instead. When the host is unavailable, never resubmit committed content: fix what `error` names, then run `bound` or `show` for the URL.
 
 ## Continue a historical Grilling page
 
@@ -100,7 +100,32 @@ The script applies all items to the bound Stage, or refuses all of them. Give a 
 
 Submitting the Stage's latest contribution again, for example after a lost receipt, applies nothing and prints its first receipt with `repeated: true`. This deduplicates publication, not asking. If the picker lost or never showed a question and no response is recorded, apply the own-run recovery rule: resubmit the same contribution to recover its receipt, then retry `ask` once with the same generated payload. A recorded cancellation, timeout, or empty response is not an infrastructure failure. Once a non-consent response is recorded, author a linked round with `again` before asking it again; preserve the earlier attempt and Q number.
 
-Read only the field contract for the kind you are about to publish:
+## Validate without publishing
+
+`validate [<file> | -]` checks the same contribution that `submit` accepts, from a file or stdin. Both commands use the bound Stage, or an explicit `--flow <flow> --stage <id>`. Validation checks against the current Flow, including references, captured files, and revision conflicts. A later concurrent write can change that context before submission.
+
+Validation starts no Stage or host, publishes no assets or content, and leaves the Flow revision and the contribution file unchanged. It returns all independent diagnostics with stable `code`, JSON `path`, `message`, and `allowed` values or an expected type where applicable. Dependent checks wait until their containing field has a valid shape.
+
+For example, an invalid option's gains can produce:
+
+```json
+{ "ok": false, "diagnostics": [{ "code": "invalid_type", "path": "$.items[0].questions[0].options[0].gains", "message": "must be array of non-empty strings", "allowed": "array of non-empty strings" }] }
+```
+
+The codes are `required_field`, `unknown_field`, `invalid_type`, `invalid_enum`, `invalid_union`, `too_few_items`, `too_many_items`, `invalid_length`, `out_of_range`, `invalid_value`, `invalid_reference`, and `invalid_json`. Correct every reported field, validate again, then submit the unchanged contribution. `submit` uses the same validator and returns the same diagnostics if the Flow and files have not changed.
+
+## Discover Result fields
+
+Run `catalog` to list every Result shape and its one-line purpose. Run `describe <shape>` for its JSON field contract, or `describe <shape> --compact` for one line per field. These commands need no Flow binding, start no host, and write no Flow content.
+
+Discovery reads the same field metadata as `validate` and `submit`. JSON includes nested `fields`, `required`, enum `values`, array bounds, and `variants`. `oneOf` requires exactly one of the named fields. Recursive contracts use `$ref` paths within `contract`.
+
+Compact lines show the field path, type, `required=true` or `required=false`, enum values, and applicable bounds. `[]` means an array item, `[*]` a record value, and `<name>` a union variant. A variant's required fields apply when that variant is selected. A field marked `oneOf` belongs to an exclusive required group even if its individual required flag is false.
+
+Use discovery for field shapes. Read the references below for semantics, references between records, and rules beyond field metadata.
+
+
+Read the semantic rules for the kind you are about to publish:
 
 - Before a Background, Topic note, round, answer, Assumed pick, close, Stage state, or progress item, read the relevant section of [Contribution fields, version 1](references/contributions.md).
 - Before publishing or revising a Result, read [Result fields, version 1](references/results.md). It includes cards, review, ledger, table, Document, Code/diff, and Timeline.

@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Wrap Reader comment action labels at narrow widths and enlarged text sizes, including when the reader uses a wider fallback font."
+  ]
+}

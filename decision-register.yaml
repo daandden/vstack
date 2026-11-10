@@ -1123,7 +1123,7 @@ originals:
   - plugin/rules/vstack-writing.md
   - plugin/skills/vstack-tmp
   - plugin/skills/vstack-fan-out
-  - plugin/skills/flow-page
+  - plugin/skills/flow-page # Reader stack: ADR 0072. Saved Reader comments: ADR 0073.
   - plugin/skills/vstack-worktree
   - plugin/skills/skill-creator
   - plugin/skills/vstack-maintain

@@ -2,6 +2,8 @@
 
 Read this reference before publishing a `prototype` or `quiz`. Use the common Result and revision fields in [Result fields](results.md).
 
+Use `catalog` to list shapes and `describe prototype --compact` or `describe quiz --compact` for current field contracts. The rules below cover interactions and references between fields.
+
   - `prototype` has exactly one of `demo`, a declarative state demo the reader tries on the page, or `artifact`, the ref or id of a runnable artifact attachment. A `demo` has `states`, `start`, `actions`, and optional `values`:
     - `values` are what the demo shows, each `{ name, label, initial }`. `initial` is a number, `true` or `false`, or a string, and fixes the value's type.
     - `states` are `{ name, label, description }` (`description` is optional). `start` names the state the demo begins in.

@@ -224,6 +224,10 @@ _Avoid_: step, phase, section
 A Stage's output on the Flow page, such as a research document, a prototype comparison, review findings, or run results. Result is its authoring short form.
 _Avoid_: Report block, stage result, report section
 
+**Reader comment**:
+A note a reader attaches to text or a block of one Result revision on the Flow page, saved to the Flow. It is never an answer and never consent.
+_Avoid_: feedback, annotation, Flow comment, review comment
+
 **Architecture assessment**:
 A grill's determination of whether a consequential architecture choice remains unsettled and needs agreement before dependent implementation.
 _Avoid_: architecture gate, complexity score

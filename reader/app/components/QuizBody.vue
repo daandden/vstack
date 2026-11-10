@@ -20,28 +20,30 @@ onMounted(() => void syncLearning());
 </script>
 
 <template>
-  <div class="quiz" @keydown.stop>
-    <form v-for="(q, i) in quiz.questions" :key="q.ref" :data-question="q.ref" @submit.prevent="check(q)">
-      <fieldset>
-        <legend v-html="inline(q.prompt)" />
+  <div class="quiz grid gap-2" @keydown.stop>
+    <form v-for="(q, i) in quiz.questions" :key="q.ref" class="grid gap-2 border-be border-flow-line py-3" :data-question="q.ref" @submit.prevent="check(q)">
+      <fieldset class="m-0 grid gap-2 border-0 p-0">
+        <legend class="mbe-2 font-semibold" v-html="inline(q.prompt)" />
         <template v-if="q.choices">
-          <label v-for="c in q.choices" :key="c.ref"><input v-model="drafts[q.ref]" type="radio" :name="`${r.anchor}-quiz-${i + 1}`" :value="c.ref"> {{ c.label }}</label>
+          <label v-for="c in q.choices" :key="c.ref" class="flex min-h-11 flex-wrap items-center gap-2"><input v-model="drafts[q.ref]" class="accent-[var(--blue)]" type="radio" :name="`${r.anchor}-quiz-${i + 1}`" :value="c.ref"> {{ c.label }}</label>
         </template>
-        <label v-else>Answer <input v-model="drafts[q.ref]" :name="`${r.anchor}-quiz-${i + 1}`" :type="'number' in q.answer ? 'number' : 'text'" :step="'number' in q.answer ? 'any' : undefined" required></label>
+        <UFormField v-else label="Answer" :name="`${r.anchor}-quiz-${i + 1}`" :ui="{ root: 'flex min-h-11 flex-wrap items-center gap-2', label: 'text-[length:var(--fs-body)] font-normal', container: 'mbs-0 w-[min(100%,20rem)]' }">
+          <UInput v-model="drafts[q.ref]" :name="`${r.anchor}-quiz-${i + 1}`" :type="'number' in q.answer ? 'number' : 'text'" :step="'number' in q.answer ? 'any' : undefined" required class="w-full" :ui="{ base: 'rounded border border-accented bg-accented p-2 text-[length:max(16px,1rem)] leading-[1.6] ring-0' }" />
+        </UFormField>
       </fieldset>
-      <button type="submit">Check answer</button>
-      <p class="quiz-feedback" role="status" :data-correct="tries(q.ref).length ? String(grade(q, tries(q.ref).at(-1)!.answer)) : undefined">
+      <UButton type="submit" color="secondary" class="min-h-11 justify-self-start rounded border border-secondary bg-accented px-4 py-0.5 text-[length:var(--fs-body)] font-semibold text-default ring-0 hover:text-secondary active:bg-[var(--surface1)] active:text-secondary">Check answer</UButton>
+      <p class="quiz-feedback data-[correct=true]:text-success data-[correct=false]:text-warning" role="status" :data-correct="tries(q.ref).length ? String(grade(q, tries(q.ref).at(-1)!.answer)) : undefined">
         <template v-if="empty[q.ref]">Enter or choose an answer first.</template>
         <template v-else-if="tries(q.ref).length">{{ grade(q, tries(q.ref).at(-1)!.answer) ? "Correct." : "Not yet." }} {{ q.explanation }} Attempts: {{ tries(q.ref).length }}.</template>
       </p>
     </form>
-    <p class="quiz-completion" role="status">{{ complete ? "Lesson complete." : "Lesson in progress." }}</p>
-    <p class="quiet" role="status">
+    <p class="quiz-completion text-success" role="status">{{ complete ? "Lesson complete." : "Lesson in progress." }}</p>
+    <p class="text-small text-muted" role="status">
       <template v-if="!durableLocal">Browser storage is unavailable. Unsynced attempts may be lost when this page closes.</template>
       <template v-else-if="pending">{{ pending }} attempt(s) saved in this browser, waiting to sync.</template>
       <template v-else-if="syncError">The Local Flow host is unavailable. Saved progress remains in this browser.</template>
       <template v-else>Progress saved with the Flow.</template>
     </p>
-    <p class="quiet">Learning progress only. These answers do not settle real asks or authorize work.</p>
+    <p class="text-small text-muted">Learning progress only. These answers do not settle real asks or authorize work.</p>
   </div>
 </template>

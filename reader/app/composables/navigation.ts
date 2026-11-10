@@ -58,6 +58,8 @@ export async function goTo(id: string, focus: boolean, replaceFragment = false):
     heldMove = { id, focus, replaceFragment };
     return true;
   }
+  document.dispatchEvent(new CustomEvent("flow-reveal", { detail: id }));
+  await nextTick();
   const el = resolve(id);
   if (!el) return false;
   await reveal(el);
@@ -233,10 +235,8 @@ export function onClick(e: MouseEvent) {
   const a = (e.target as Element | null)?.closest?.('a[href^="#"]');
   if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
   const id = decodeURIComponent(a.getAttribute("href")!.slice(1));
-  if (!document.getElementById(id) || location.hash === a.getAttribute("href")) {
-    e.preventDefault();
-    if (location.hash !== `#${id}`) history.pushState(null, "", `#${id}`);
-    void goTo(id, true);
-  }
+  e.preventDefault();
+  if (location.hash !== `#${id}`) history.pushState(null, "", `#${id}`);
+  void goTo(id, true);
   mapOpen.value = false;
 }

@@ -53,16 +53,16 @@ const rendered = computed(() => {
 </script>
 
 <template>
-  <li :id="e.anchor" class="code-entry">
-    <p class="meta">
-      <span class="entry-id">{{ e.id }}</span>
-      <span class="kind">{{ kind }}</span>
+  <li :id="e.anchor" class="grid gap-2">
+    <p class="flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 text-small text-muted">
+      <span class="me-2 font-bold uppercase tabular-nums">{{ e.id }}</span>
+      <span class="font-semibold text-flow-teal">{{ kind }}</span>
       <span><code>{{ loc.file }}</code> <span v-html="rendered.where" /></span>
       <span v-if="loc.revision">at <code>{{ loc.revision }}</code></span>
       <span v-if="language">{{ language }}</span>
     </p>
-    <div v-if="e.note" class="prose" v-html="prose(e.note as string)" />
-    <figure class="code" :data-kind="kind.toLowerCase()" :data-language="language"><pre><code v-html="rendered.html" /></pre></figure>
+    <div v-if="e.note" class="grid gap-1.5" v-html="prose(e.note as string)" />
+    <CodeFrame :html="rendered.html" :kind="kind.toLowerCase()" :language="language" />
     <EntryAsks :questions="e.questions" />
   </li>
 </template>

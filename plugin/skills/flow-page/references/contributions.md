@@ -2,10 +2,12 @@
 
 Read the relevant section before publishing a Background, Topic note, round, answer, Assumed pick, close, Stage state, or progress item. These are fields of the version 1 envelope described in flow-page. Result and attachment branches have separate triggered references below.
 
+`validate [<file> | -]` checks these fields against the bound or explicitly named Flow and Stage without publishing. It leaves the contribution, Stages, assets, and Flow revision unchanged. `submit` runs the same validator before committing. Both commands report independent errors together with stable codes, JSON paths, messages, and allowed values or expected types. See [Validate without publishing](../SKILL.md#validate-without-publishing) for output and exit codes.
+
 Item kinds and their fields:
 
 - `background`: `title`, `summary` (one line), `sections` (one or more `{ heading, body }`), and `sources` (one or more strings, such as `GLOSSARY.md` or `[text](url)`). A Stage has one Background. Submit it before the Stage's first round. Optional `figures` is an array of `{ attachment: "<ref or id>" }` captured figure references.
-- `topic`: optional `ref`, `title`, `summary`, `body`, and `sources`. Each Topic note appears once in publication order and lists the questions that cite it. The outline and related-note links reach these notes without a separate Topics tab.
+- `topic`: optional `ref`, `title`, `summary`, `body`, and `sources`. Each Topic note appears in its Stage's publication order and in the Topics tab, with links to the questions that cite it.
 - Before a `result` or `revise`, read [Result fields](results.md). That reference directs Comparison/Metrics and interactive branches to their own field contracts.
 - Before an `attachment`, figure, option preview, captured revision, or real runnable artifact, read [Captured attachments](attachments.md).
 - `assumed`: optional `ref`, `decision`, `pick`, and `why`, one decision settled without asking. `why` cites its repo fact with file and line, its ADR, or its convention. Submit it before the round when it explains a remaining question. The close lists every Assumed pick no question reopened.

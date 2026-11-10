@@ -201,6 +201,8 @@ test("n stays in the Focused Stage and wraps after tab clicks, fragments, h, and
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   try {
     const page = await context.newPage();
+    const cdp = await context.newCDPSession(page);
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
     await page.goto(a.live.url);
     await page.locator(".bar .tabs").waitFor();
     expect(await selected(page)).toBe(b.stage);
@@ -234,6 +236,34 @@ test("n stays in the Focused Stage and wraps after tab clicks, fragments, h, and
     await page.waitForFunction((id) => document.querySelector(`.bar .tabs a[href="#${id}"]`)?.getAttribute("aria-current") === "page", a.stage);
     await page.keyboard.press("n");
     expect(await hash(page)).toBe(first.q1);
+
+    const repaint = () => page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    await page.goto(`${a.live.url}#${second.q2}`);
+    await page.locator(`#${second.q2}`).waitFor();
+    await repaint();
+    await page.keyboard.press("n");
+    expect(await hash(page)).toBe(second.q1);
+    await repaint();
+    expect(await hash(page)).toBe(second.q1);
+
+    for (let i = 0; i < 100; i++) {
+      await page.locator(`.bar .jump-row a[href="#${second.q1}"]`).click();
+      await page.keyboard.press("n");
+      expect(await hash(page)).toBe(second.q2);
+      expect(await selected(page)).toBe(b.stage);
+      expect(await page.locator(`#${second.q2}`).evaluate((el) => el === document.activeElement)).toBe(true);
+      await repaint();
+      expect(await hash(page)).toBe(second.q2);
+    }
+
+    await page.keyboard.press("n");
+    await page.locator(`.bar .jump-row a[href="#${second.q2}"]`).click();
+    await repaint();
+    expect(await hash(page)).toBe(second.q2);
+    await page.locator(`.bar .jump-row a[href="#${second.q1}"]`).click();
+    await repaint();
+    await page.keyboard.press("n");
+    expect(await hash(page)).toBe(second.q2);
   } finally {
     await context.close();
   }

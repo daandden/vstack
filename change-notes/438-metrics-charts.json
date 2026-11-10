@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "minor",
+  "entries": [
+    "Add line, scatter, and histogram charts to Metrics Results with validated points and raw samples, exact-value tables, baseline marks, keyboard navigation, and live Catppuccin theme colors."
+  ]
+}

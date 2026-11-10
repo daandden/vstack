@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Keep Reader comments on exact Result versions, including focused edits, and recover older comment identities only when recorded data is unambiguous.",
+    "Report independent semantic diagnostics alongside structural contribution errors.",
+    "Restore ordered Document and citation markers, Stage-state dots, singular histogram announcements, and readable touch-sized comment controls."
+  ]
+}

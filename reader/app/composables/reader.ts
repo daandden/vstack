@@ -1,5 +1,6 @@
 import { flowOf, type Content, type Flow, type Observations } from "~/utils/flow";
 import { goTo, readingAnchor, restoreReadingAnchor, tab } from "~/composables/navigation";
+import { refreshComments } from "~/composables/comments";
 
 export const flow = shallowRef<Flow>();
 export const observations = shallowRef<Observations>();
@@ -45,6 +46,7 @@ export function startReader() {
         await keepPlace(() => { observations.value = next; });
         seenObservations = versions.observationVersion;
       }
+      await refreshComments();
       failure.value = undefined;
       if (connection.value !== "live") await keepPlace(() => { connection.value = "live"; });
     } catch (e) {

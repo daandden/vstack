@@ -27,3 +27,17 @@ With the Map panel closed, `j` and `k`, or the down and up arrows, select readin
 Diagrams keep their intrinsic label size rather than shrinking to fit a narrow screen. Swipe or scroll inside a wide diagram to read the rest. For keyboard panning, Tab to the diagram and use the arrow keys; those keys do not move the page's reading stop while the diagram has focus. Tab out to resume reading navigation. Captured Mermaid source and historical Pele SVGs follow the same rule in both themes.
 
 Follow a question's Background and Topic note links for its context, and open Term notes for its local definitions. Result-entry links lead to the cited finding or evidence, including earlier revisions inside disclosures.
+
+## Reader comments
+
+Each Result revision has a separate Reader comments area. Choose **Add Reader comment**, select the whole Result block or one of its entries, enter a note, and choose **Save comment**. Comments are plain text, up to 4096 characters. The list names the Stage, Result, revision, and anchor, with the saved time.
+
+To comment on a passage, select text in the Result and choose **Comment on selected text**. For keyboard selection, choose **Select text to comment**, select a passage in the read-only **Result text for selection** field with Shift and the arrow keys, then Tab to **Comment on selected text**. The comment form and saved comment show the exact quote. **Edit comment** changes only the note, preserving its anchor and revision. **Remove comment**, followed by **Confirm removal**, removes the saved note. These controls work with Tab and Enter.
+
+Comments are saved to the Flow and appear after a reload, in another browser, and after a Local Flow host restart. Edits and removals also synchronize across browsers. A comment remains attached to the exact Result version on which the reader opened its form, even if the Result changes before saving. This includes focused `revise.set` and `revise.add` edits within a whole-Result revision. Open **Earlier revisions** to read its original content and quote. Comments never move onto later text.
+
+**Copy feedback**, below the Flow heading, copies every saved Reader comment across all Stages and revisions as one plain-text prompt. Each comment names its Stage, Result, revision, target, quoted passage, and note. Block and entry comments quote the Result title or entry label. Copying feedback does not send it to the agent.
+
+The comments endpoint shares Quiz progress's Flow-scoped HttpOnly, SameSite=Strict cookie. Writes require that cookie, the host's own Origin, and `application/json`. Comments are stored separately from authored records. They never change authored content, answers, workflow progress, or the authored Flow revision, and never answer a question or count as consent.
+
+When the user points at Reader comments, `show` lists them separately in `reader_comments`. Each record has `id`, `stage`, `result`, `revision`, `edit`, `anchor`, `text`, and `time`. Together, `revision` and `edit` identify the captured version: `edit` is the focused edit's Flow revision, or `null` before a focused edit. An anchor is `{ kind: "block" }`, `{ kind: "entry", entry: "<entry id>" }`, or `{ kind: "text", quote: "<selected passage>" }`. Older comments recover their version from recorded capture times when that identifies it unambiguously. Otherwise they have `version_unknown: true` and no `edit`; Copy feedback labels them as unknown without quoting current content. No notification or automatic context injection delivers comments to the agent.

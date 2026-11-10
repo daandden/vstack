@@ -16,45 +16,51 @@ const stop = computed(() => (props.historical ? undefined : ""));
 </script>
 
 <template>
-  <div class="document">
-    <section v-for="sec in doc.sections" :id="sec.anchor" :key="sec.anchor" class="doc-section" :aria-labelledby="`${sec.anchor}-title`" :data-stop="stop">
-      <h3 :id="`${sec.anchor}-title`" v-html="inline(sec.heading)" />
+  <div class="grid gap-2.5 [&_.cite]:text-small [&_.cite]:font-semibold [&_.cite]:tabular-nums [&_.cite]:no-underline [&_.bullets]:grid [&_.bullets]:list-disc [&_.bullets]:gap-0.5 [&_.bullets]:ps-5 [&_.bullets]:marker:text-dimmed">
+    <section v-for="sec in doc.sections" :id="sec.anchor" :key="sec.anchor" class="doc-section grid gap-2.5 target:bg-accented" :aria-labelledby="`${sec.anchor}-title`" :data-stop="stop">
+      <h3 :id="`${sec.anchor}-title`" class="text-secondary" v-html="inline(sec.heading)" />
       <template v-for="(b, i) in sec.blocks" :key="i">
-        <div v-if="'prose' in b" class="prose" v-html="prose(b.prose, cites)" />
-        <component :is="b.ordered ? 'ol' : 'ul'" v-else-if="'list' in b" class="bullets">
+        <div v-if="'prose' in b" class="grid gap-1.5" v-html="prose(b.prose, cites)" />
+        <component :is="b.ordered ? 'ol' : 'ul'" v-else-if="'list' in b" class="grid gap-0.5 ps-5 marker:text-dimmed" :class="b.ordered ? 'list-decimal' : 'list-disc'">
           <li v-for="(t, j) in b.list" :key="j" v-html="inline(t, cites)" />
         </component>
-        <figure v-else-if="'code' in b && b.language === 'mermaid'" class="figure">
+        <ol v-else-if="'steps' in b" aria-label="Procedure steps" role="list" class="list-none ps-3">
+          <li v-for="(step, j) in b.steps" :key="j" class="relative grid gap-1.5 border-s border-flow-line ps-5 pbe-4 last:border-s-transparent last:pbe-0">
+            <UBadge color="primary" variant="soft" class="absolute -inset-s-3 inset-bs-0 flex size-6 justify-center rounded-full p-0 tabular-nums">{{ j + 1 }}</UBadge>
+            <h4 class="font-semibold" v-html="inline(step.title, cites)" />
+            <div class="grid gap-1.5" v-html="prose(step.text, cites)" />
+          </li>
+        </ol>
+        <figure v-else-if="'code' in b && b.language === 'mermaid'" class="figure grid grid-cols-[minmax(0,1fr)] gap-1.5 justify-items-start">
           <DiagramFigure :source="b.code" :name="`${sec.heading} diagram ${i + 1}`" />
-          <details class="disclosure source code">
+          <details class="disclosure source code grid-cols-[minmax(0,1fr)] justify-self-stretch">
             <summary>Source</summary>
-            <pre data-language="mermaid"><code>{{ b.code }}</code></pre>
+            <CodeFrame :html="esc(b.code)" language="mermaid" />
             <p v-if="b.source" class="quiet">{{ b.source }}</p>
           </details>
         </figure>
-        <figure v-else-if="'code' in b" class="code">
-          <pre :data-language="b.language"><code v-html="code(b.code, b.language)" /></pre>
-          <figcaption v-if="b.language || b.source" class="quiet">{{ [b.language, b.source].filter(Boolean).join(" · ") }}</figcaption>
-        </figure>
+        <CodeFrame v-else-if="'code' in b" :html="code(b.code, b.language)" :language="b.language">
+          <template v-if="b.language || b.source" #caption>{{ [b.language, b.source].filter(Boolean).join(" · ") }}</template>
+        </CodeFrame>
         <AttachmentFigure v-else-if="shown.get(b.figure)" :a="shown.get(b.figure)!" :anchor="`${sec.anchor}-f${i + 1}`" />
       </template>
     </section>
-    <section v-if="doc.limitations.length" :id="doc.limitationsAnchor" class="labelled limitations" :data-stop="stop">
-      <p class="label">Limitations</p>
-      <ul class="bullets"><li v-for="(l, i) in doc.limitations" :key="i" v-html="inline(l)" /></ul>
+    <section v-if="doc.limitations.length" :id="doc.limitationsAnchor" class="grid gap-1.5" :data-stop="stop">
+      <p class="font-semibold text-warning">Limitations</p>
+      <ul class="grid list-disc gap-0.5 ps-5 marker:text-dimmed"><li v-for="(l, i) in doc.limitations" :key="i" v-html="inline(l)" /></ul>
     </section>
-    <section v-if="doc.citations.length" :id="doc.citationsAnchor" class="labelled" aria-label="Citations" :data-stop="stop">
-      <p class="label">Citations</p>
-      <ol class="bullets">
+    <section v-if="doc.citations.length" :id="doc.citationsAnchor" class="grid gap-1.5" aria-label="Citations" :data-stop="stop">
+      <p class="font-semibold text-[var(--pink)]">Citations</p>
+      <ol class="grid list-decimal gap-0.5 ps-5 marker:text-dimmed">
         <li v-for="c in doc.citations" :id="c.anchor" :key="c.anchor">
           <span v-html="inline(c.text)" />
-          <a v-for="s in c.cited_in" :key="s" class="backlink" :href="`#${s}`"> Cited in <span v-html="inline(heading(s))" /></a>
+          <a v-for="s in c.cited_in" :key="s" class="text-small font-semibold tabular-nums no-underline" :href="`#${s}`"> Cited in <span v-html="inline(heading(s))" /></a>
         </li>
       </ol>
     </section>
-    <details v-if="doc.sources.length" :id="doc.sourcesAnchor" class="disclosure">
+    <details v-if="doc.sources.length" :id="doc.sourcesAnchor" class="text-small open:grid open:gap-1.5 [&>:not(summary)]:text-body">
       <summary>Sources ({{ doc.sources.length }})</summary>
-      <ul class="bullets"><li v-for="(x, i) in doc.sourceTexts" :key="i" v-html="inline(x)" /></ul>
+      <ul class="grid list-disc gap-0.5 ps-5 marker:text-dimmed"><li v-for="(x, i) in doc.sourceTexts" :key="i" v-html="inline(x)" /></ul>
     </details>
   </div>
 </template>

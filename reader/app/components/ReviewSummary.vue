@@ -5,8 +5,8 @@ defineProps<{ rows: NonNullable<ResultView["review"]> }>();
 </script>
 
 <template>
-  <div class="table">
-    <table aria-label="Review summary">
+  <div class="relative overflow-x-auto">
+    <table aria-label="Review summary" class="border-collapse tabular-nums [&_th]:text-small [&_th]:font-semibold [&_th]:text-muted [&_th]:px-2 [&_th]:py-1 [&_th]:border-be [&_th]:border-flow-line [&_th]:text-start [&_th]:align-top [&_td]:px-2 [&_td]:py-1 [&_td]:border-be [&_td]:border-flow-line [&_td]:text-start [&_td]:align-top">
       <thead>
         <tr><th scope="col">Axis</th><th scope="col">Status</th><th scope="col">Finding</th><th scope="col">User-visible impact</th><th scope="col">Location</th><th scope="col">Outcome</th></tr>
       </thead>

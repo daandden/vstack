@@ -106,7 +106,7 @@ test("shared canonical access rejects unrelated files, metadata, non-files and e
     const before = tree(w.home);
     const refused = run(w, w.linked, ["submit"], [doc({ ref: "preliminary", title: "Must not commit" }), doc({ canonical: { file: path } })]);
     expect(refused.code).toBe(1);
-    expect(refused.stdout).toBe("");
+    expect(JSON.parse(refused.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
     expect(refused.stderr).toMatch(category);
     expect(tree(w.home)).toEqual(before);
   }
@@ -126,7 +126,7 @@ test("resolving a shared canonical file grants no new attachment capture permiss
       doc({ attachments: ["private-file"] }),
     ]);
     expect(refused.code).toBe(1);
-    expect(refused.stdout).toBe("");
+    expect(JSON.parse(refused.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
     expect(refused.stderr).toMatch(/outside|symlink/);
     expect(tree(w.home)).toEqual(before);
   }

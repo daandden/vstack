@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "minor",
+  "entries": [
+    "Add Flow Result discovery with catalog and describe, including compact field contracts generated from the authoring validator's metadata."
+  ]
+}

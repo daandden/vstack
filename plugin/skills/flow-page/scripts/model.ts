@@ -2,7 +2,8 @@ import { createHash } from "node:crypto";
 import { parse as parseMermaid } from "pele";
 import { linesOf, parseDiff, type Hunk } from "./code.ts";
 import { progressHandlers, type Progress, PROGRESS_KINDS, type ProgressKind, type ProgressView, progressSnapshot, progressView } from "./progress.ts";
-import { CODE_ID, fields, isObj, list, listed, newId, type Obj, REF, refuse, text, texts, VISUAL_KINDS } from "./fields.ts";
+import { CODE_ID, collecting, fields, isObj, list, listed, newId, type Obj, REF, refuse, reject, text, texts, validatedMap, VISUAL_KINDS } from "./fields.ts";
+import { contractDiagnostics, contributionPath, ContributionRefusal, refusalDiagnostic, type Diagnostic } from "./contracts.ts";
 
 export const SCHEMA = 1;
 export const CONTRIBUTION_VERSION = 1;
@@ -48,8 +49,8 @@ type ReviewAxis = { axis: (typeof REVIEW_AXES)[number]; status: (typeof REVIEW_S
 type ReviewRow = ReviewAxis & { finding?: string; impact?: string; location?: string; blocking?: boolean; target?: string };
 /** `changed` is the Flow revision that last changed a Result's header or an entry, which a focused revision checks. */
 export type Entry = Record<string, unknown> & { id: string; changed: number };
-/** One block of a Document section. Prose and list items can cite with `[@<citation ref>]`. */
-export type Block = { prose: string } | { list: string[]; ordered: boolean } | { code: string; language?: string; source?: string } | { figure: string };
+/** One block of a Document section. Prose, list items, and steps can cite with `[@<citation ref>]`. */
+export type Block = { prose: string } | { list: string[]; ordered: boolean } | { steps: { title: string; text: string }[] } | { code: string; language?: string; source?: string } | { figure: string };
 export type DocSection = { heading: string; blocks: Block[] };
 export type DocumentBody = { sections: DocSection[]; citations: { ref: string; source: string }[]; limitations: string[]; sources: string[] };
 /** Alternatives side by side on shared criteria. A pair with no assessment stays a gap. Refs are local to the Result. */
@@ -61,11 +62,11 @@ export type ComparisonBody = {
   alternatives: Alternative[]; criteria: Criterion[]; assessments: Assessment[];
   verdict: { outcome: (typeof VERDICTS)[number]; alternative?: string; reason: string };
 };
-/** Measured numbers. A value is a number, or `missing` with its reason; code never fills one in or rates it. */
 export type Uncertainty = { low: number; high: number; of: string } | { plusminus: number; of: string };
-export type Measured = { series: string; value: number; samples?: number; uncertainty?: Uncertainty } | { series: string; missing: string };
+export type MetricPoint = { x: number; y: number };
+export type Measured = { series: string; value?: number; points?: MetricPoint[]; samples?: number | number[]; uncertainty?: Uncertainty } | { series: string; missing: string };
 export const MEASURE_VERDICTS = ["better", "worse", "no-difference", "inconclusive"] as const;
-export type Measurement = { ref: string; name: string; unit: string; better?: "lower" | "higher"; verdict?: (typeof MEASURE_VERDICTS)[number]; values: Measured[] };
+export type Measurement = { ref: string; name: string; unit: string; chart?: "line" | "scatter" | "histogram"; better?: "lower" | "higher"; verdict?: (typeof MEASURE_VERDICTS)[number]; values: Measured[] };
 export type MetricsBody = { workload: string; environment?: string; outcome: string; series: { ref: string; label: string; baseline?: true }[]; measurements: Measurement[] };
 /** Where a Result's content is canonically kept, and which revision of it the Result captured. */
 export type Canonical = { file: string; root: string; sha256: string } | { commit: string } | { tracker: string; revision: string };
@@ -87,9 +88,10 @@ export type Demo = {
 };
 export type QuizRule = { choice: string } | { text: string[]; case_sensitive: boolean } | { number: number; tolerance: number };
 export type Quiz = { questions: { ref: string; prompt: string; explanation: string; choices?: { ref: string; label: string }[]; answer: QuizRule }[] };
+export type TableColumn = string | { label: string; type?: "text" | "number" | "status" };
 /** `revision` counts whole republications of the Result with `revises`; `captured` is when this one was submitted. */
 export type Result = {
-  id: string; stage: string; shape: Shape; title: string; summary?: string; columns?: string[]; entries: Entry[]; changed: number;
+  id: string; stage: string; shape: Shape; title: string; summary?: string; columns?: TableColumn[]; entries: Entry[]; changed: number;
   axes?: ReviewAxis[];
   edit?: number;
   document?: DocumentBody; demo?: Demo; artifact?: string; quiz?: Quiz; comparison?: ComparisonBody; metrics?: MetricsBody; attachments?: string[]; canonical?: Canonical; revision?: number; captured?: string; jump?: string;
@@ -242,7 +244,7 @@ export type ClaimState = (typeof CLAIM_STATES)[number];
 export const CITE = /\[@([a-z0-9][a-z0-9-]*)\]/g;
 const LINK = /\[[^\]]*\]\(([^)\s]*)\)/g;
 function safeLinks(t: string, where: string): string {
-  for (const m of t.matchAll(LINK)) if (!/^(https?:\/\/|#)/i.test(m[1])) refuse(where, `the link ${JSON.stringify(m[1])} uses an unsafe or unsupported scheme; links must start with https://, http://, or #`);
+  for (const m of t.matchAll(LINK)) if (!/^(https?:\/\/|#)/i.test(m[1])) reject(where, `the link ${JSON.stringify(m[1])} uses an unsafe or unsupported scheme; links must start with https://, http://, or #`, ["https://", "http://", "#"]);
   return t;
 }
 const all = (xs: string[]) => (xs.length === 1 ? xs[0] : `${xs.slice(0, -1).join(", ")} and ${xs.at(-1)}`);
@@ -371,6 +373,17 @@ const stableJson = (v: unknown): string =>
  * A repeat of the Stage's latest contribution changes nothing and returns that contribution's receipt and revision.
  */
 export function contribute(s: State, stageId: string, input: unknown, time: string, io: Io): Receipt & { revision: number; repeated?: true } {
+  const diagnostics = contractDiagnostics(input);
+  if (diagnostics.some(d => !d.path.startsWith("$.items["))) throw new ContributionRefusal(diagnostics);
+  const structural = [...diagnostics];
+  const report = (error: unknown) => {
+    const diagnostic = refusalDiagnostic(error, input);
+    if (!structural.some(d => d.path === diagnostic.path)) diagnostics.push(diagnostic);
+  };
+  return collecting(report, () => applyContribution(s, stageId, input, time, io, diagnostics, report));
+}
+
+function applyContribution(s: State, stageId: string, input: unknown, time: string, io: Io, diagnostics: Diagnostic[], report: (error: unknown) => void): Receipt & { revision: number; repeated?: true } {
   const env = fields(input, "contribution", ["version", "items"]);
   if (env.version !== CONTRIBUTION_VERSION) refuse("contribution", `version ${JSON.stringify(env.version)} is not supported; flow-page reads contribution version ${CONTRIBUTION_VERSION}`);
   const items = list(env, "items", "contribution");
@@ -389,7 +402,9 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
   };
   const refs: Record<string, string> = {};
   const kinds: Record<string, string> = {};
+  const locations = new Map<string, string>();
   const claim = (r: string | undefined, id: string, kind: string, where: string) => {
+    locations.set(id, contributionPath(input, where));
     if (r === undefined) return;
     if (refs[r] !== undefined) refuse(where, `ref ${r} is already used in this contribution`);
     refs[r] = id;
@@ -431,13 +446,13 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
         fields(o, where, ["kind", "title", "summary", "sections", "sources"], ["figures"]);
         const other = s.backgrounds.find((b) => b.stage === stage.id);
         if (other) refuse(where, `Stage ${stage.id} already has ${other.id}; a Stage has one Background`);
-        const sections = list(o, "sections", where).map((sec, j) => {
+        const sections = validatedMap(list(o, "sections", where), (sec, j) => {
           const sw = `${where}: section ${j + 1}`;
           const so = fields(sec, sw, ["heading", "body"]);
           return { heading: text(so, "heading", sw), body: text(so, "body", sw) };
         });
         const id = newId(s, "background");
-        const figures = o.figures === undefined ? undefined : list(o, "figures", where).map((f, j) => figure(f, `${id}-figure-${j + 1}`, `${where}: figure ${j + 1}`));
+        const figures = o.figures === undefined ? undefined : validatedMap(list(o, "figures", where), (f, j) => figure(f, `${id}-figure-${j + 1}`, `${where}: figure ${j + 1}`));
         s.backgrounds.push({ id, stage: stage.id, title: text(o, "title", where), summary: text(o, "summary", where), sections, sources: texts(o, "sources", where).map((t) => sourceId(s, t)), ...(figures ? { figures } : {}) });
         publish("background", id);
       },
@@ -551,7 +566,7 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
         const qs = list(o, "questions", where);
         const round: Round = { id: newId(s, "round"), stage: stage.id, n: Math.max(0, ...s.rounds.filter((r) => r.stage === stage.id).map((r) => r.n)) + 1, seq: ++s.seq, time };
         s.rounds.push(round);
-        const parsed = qs.map((q, j) => parseQuestion(q, `${where}: question ${j + 1}`, ids.questions![j], stage.id, round.id, resolve, figure));
+        const parsed = validatedMap(qs, (q, j) => parseQuestion(q, `${where}: question ${j + 1}`, ids.questions![j], stage.id, round.id, resolve, figure));
         refuseRepeatedQuestionText(parsed, where);
         assignQNumbers(s, parsed, stage.id, where);
         s.questions.push(...parsed);
@@ -606,9 +621,9 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
     stage: {
       apply(o, where, ids) {
         fields(o, where, ["kind", "state"], ["retire"]);
-        if (o.state !== "finished") refuse(where, `a Stage moves only from in-progress to finished; ${JSON.stringify(o.state)} is not a transition from in-progress`);
+        if (o.state !== "finished") refuse(where, `a Stage moves only from in-progress to finished; ${JSON.stringify(o.state)} is not a transition from in-progress`, ["finished"], "state");
         const unresolved = [...latestAsks(s, stage.id).values()].filter((q) => !settled(answerState(s, q.id)));
-        const given = o.retire === undefined ? [] : list(o, "retire", where).map((x, j) => {
+        const given = o.retire === undefined ? [] : validatedMap(list(o, "retire", where), (x, j) => {
           const rw = `${where}: retire ${j + 1}`;
           const r = fields(x, rw, ["question", "reason"]);
           return { question: resolve(r.question, "question", rw), reason: text(r, "reason", rw), rw };
@@ -636,22 +651,33 @@ export function contribute(s: State, stageId: string, input: unknown, time: stri
       }];
     })) as Record<ProgressKind, ContributionHandler>,
   };
-  const planned = items.map((raw, i) => {
+  const planned = items.flatMap((raw, i) => {
     const kind = isObj(raw) ? raw.kind : undefined;
     const where = `item ${i + 1}${typeof kind === "string" ? ` (${kind})` : ""}`;
-    if (typeof kind !== "string" || !KINDS.includes(kind as ContributionKind)) refuse(where, `kind must be ${listed(KINDS)}, got ${JSON.stringify(kind)}`);
-    const o = raw as Obj;
-    const ids: PlannedIds = {};
-    const handler = handlers[kind as ContributionKind];
-    handler.plan?.(o, where, ids);
-    return { o, where, ids, handler };
+    try {
+      if (typeof kind !== "string" || !KINDS.includes(kind as ContributionKind)) refuse(where, `kind must be ${listed(KINDS)}, got ${JSON.stringify(kind)}`);
+      const o = raw as Obj;
+      const ids: PlannedIds = {};
+      const handler = handlers[kind as ContributionKind];
+      handler.plan?.(o, where, ids);
+      return [{ o, where, ids, handler }];
+    } catch (error) {
+      report(error);
+      return [];
+    }
   });
-  for (const { o, where, ids, handler } of planned) handler.apply(o, where, ids);
-  for (const f of authoredFigures) if ("attachment" in f) {
-    const a = s.attachments.find((a) => a.id === f.attachment) ?? refuse(f.id, `attachment ${f.attachment} does not exist`);
-    if (!["image", "svg", "mermaid"].includes(a.type) || a.availability !== "captured") refuse(f.id, `attachment ${a.id} must be a captured image, SVG, or Mermaid figure`);
+  for (const { o, where, ids, handler } of planned) {
+    try { handler.apply(o, where, ids); }
+    catch (error) { report(error); }
   }
-  checkLinks(s);
+  for (const f of authoredFigures) if ("attachment" in f) {
+    const a = s.attachments.find((a) => a.id === f.attachment);
+    if (a && (!["image", "svg", "mermaid"].includes(a.type) || a.availability !== "captured")) diagnostics.push({ code: "invalid_reference", path: locations.get(f.id) ?? "$", message: `attachment ${a.id} must be a captured image, SVG, or Mermaid figure`, allowed: "captured image, SVG, or Mermaid attachment" });
+  }
+  checkLinks(s, (id, suffix, message, allowed) => {
+    diagnostics.push({ code: "invalid_reference", path: (locations.get(id) ?? "$") + suffix, message, ...(allowed ? { allowed } : {}) });
+  });
+  if (diagnostics.length) throw new ContributionRefusal(diagnostics);
   s.revision = rev;
   s.submissions[stage.id] = { digest, revision: rev, receipt };
   return { ...receipt, revision: rev };
@@ -705,14 +731,18 @@ function parseResult(o: Obj, where: string, stage: string, id: string, entryIds:
     return head({ axes, entries });
   }
   fields(o, where, ["kind", "shape", "title", table ? "columns" : "entries", ...(table ? ["rows"] : [])], shared);
-  const columns = table ? texts(o, "columns", where) : undefined;
-  const entries = list(o, table ? "rows" : "entries", where).map((e, j) => parseEntry(shape, columns, e, `${where}: ${table ? "row" : "entry"} ${j + 1}`, entryIds[j].split("/")[1], rev, attachment));
+  const columns = table ? list(o, "columns", where).map((column, j): TableColumn => {
+    if (typeof column === "string") return text({ label: column }, "label", `${where}: column ${j + 1}`);
+    const c = fields(column, `${where}: column ${j + 1}`, ["label"], ["type"]);
+    return { label: text(c, "label", `${where}: column ${j + 1}`), ...(c.type !== undefined ? { type: c.type as "text" | "number" | "status" } : {}) };
+  }) : undefined;
+  const entries = validatedMap(list(o, table ? "rows" : "entries", where), (e, j) => parseEntry(shape, columns, e, `${where}: ${table ? "row" : "entry"} ${j + 1}`, entryIds[j].split("/")[1], rev, attachment));
   return head({ ...(columns ? { columns } : {}), entries });
 }
 
 function parseQuiz(o: Obj, where: string): Quiz {
   const seen = new Set<string>();
-  const questions = list(o, "questions", where).map((raw, i) => {
+  const questions = validatedMap(list(o, "questions", where), (raw, i) => {
     const w = `${where}: quiz question ${i + 1}`;
     const q = fields(raw, w, ["ref", "prompt", "answer", "explanation"], ["choices"]);
     const name = text(q, "ref", w);
@@ -725,7 +755,7 @@ function parseQuiz(o: Obj, where: string): Quiz {
     if (a.choice !== undefined) {
       fields(a, w, ["choice"]);
       const names = new Set<string>();
-      choices = list(q, "choices", w).map((raw) => {
+      choices = validatedMap(list(q, "choices", w), (raw) => {
         const c = fields(raw, w, ["ref", "label"]);
         const name = text(c, "ref", w);
         if (!REF.test(name) || names.has(name)) refuse(w, "choice refs must be unique lowercase letters, digits, and hyphens");
@@ -751,35 +781,35 @@ function parseQuiz(o: Obj, where: string): Quiz {
   return { questions };
 }
 
-function parseEntry(shape: Shape, columns: string[] | undefined, e: unknown, ew: string, id: string, changed: number, attachment: (v: unknown, where: string) => string): Entry {
+function parseEntry(shape: Shape, columns: TableColumn[] | undefined, e: unknown, ew: string, id: string, changed: number, attachment: (v: unknown, where: string) => string): Entry {
   if (shape === "cards" || shape === "review") {
     const c = fields(e, ew, ["title", "label", "blocking", "impact", "action", "evidence", ...(shape === "review" ? ["axis", "location"] : [])], ["ref"]);
-    if (typeof c.blocking !== "boolean") refuse(ew, "blocking must be true or false");
-    if (shape === "review" && !REVIEW_AXES.includes(c.axis as never)) refuse(ew, `axis must be ${listed([...REVIEW_AXES])}`);
+    if (typeof c.blocking !== "boolean") reject(ew, "blocking must be true or false", "boolean", "blocking")
+    if (shape === "review" && !REVIEW_AXES.includes(c.axis as never)) reject(ew, `axis must be ${listed([...REVIEW_AXES])}`, REVIEW_AXES, "axis")
     return { id, ...(c.ref ? { ref: c.ref } : {}), title: text(c, "title", ew), label: text(c, "label", ew), blocking: c.blocking, impact: text(c, "impact", ew), action: text(c, "action", ew), evidence: text(c, "evidence", ew), ...(shape === "review" ? { axis: c.axis, location: text(c, "location", ew) } : {}), changed };
   }
   if (shape === "ledger") {
     const c = fields(e, ew, ["claim", "status", "evidence", "missing_proof", "consequence"], ["ref"]);
-    if (!CLAIM_STATES.includes(c.status as ClaimState)) refuse(ew, `status must be ${listed(CLAIM_STATES)}`);
+    if (!CLAIM_STATES.includes(c.status as ClaimState)) reject(ew, `status must be ${listed(CLAIM_STATES)}`, CLAIM_STATES, "status")
     return { id, ...(c.ref ? { ref: c.ref } : {}), claim: text(c, "claim", ew), status: c.status, evidence: text(c, "evidence", ew), missing_proof: text(c, "missing_proof", ew), consequence: text(c, "consequence", ew), changed };
   }
   if (shape === "code") {
     const c = fields(e, ew, ["file"], ["ref", "line", "revision", "language", "code", "diff", "note"]);
     const file = text(c, "file", ew);
-    if (/[\r\n]/.test(file)) refuse(ew, "file must be one line, the path of the source file");
-    if ((c.code === undefined) === (c.diff === undefined)) refuse(ew, "needs exactly one of code or diff");
-    if (c.language !== undefined && (typeof c.language !== "string" || !LANGUAGE.test(c.language))) refuse(ew, "language must be a language name such as ts or python");
+    if (/[\r\n]/.test(file)) reject(ew, "file must be one line, the path of the source file")
+    if ((c.code === undefined) === (c.diff === undefined)) reject(ew, "needs exactly one of code or diff")
+    if (c.language !== undefined && (typeof c.language !== "string" || !LANGUAGE.test(c.language))) reject(ew, "language must be a language name such as ts or python")
     const revision = optText(c, "revision", ew);
-    if (revision !== undefined && /[\r\n]/.test(revision)) refuse(ew, "revision must be one line, such as a commit hash");
+    if (revision !== undefined && /[\r\n]/.test(revision)) reject(ew, "revision must be one line, such as a commit hash")
     const body: Record<string, unknown> = {};
     if (c.code !== undefined) {
       body.code = text(c, "code", ew);
-      if (c.line !== undefined && (!Number.isInteger(c.line) || (c.line as number) < 1)) refuse(ew, "line must be a positive whole number, the source line of the first line of code");
+      if (c.line !== undefined && (!Number.isInteger(c.line) || (c.line as number) < 1)) reject(ew, "line must be a positive whole number, the source line of the first line of code")
       if (c.line !== undefined) body.line = c.line;
     } else {
-      if (c.line !== undefined) refuse(ew, "line goes with code; a diff's hunk headers give its lines");
+      if (c.line !== undefined) reject(ew, "line goes with code; a diff's hunk headers give its lines")
       const parsed = parseDiff(text(c, "diff", ew));
-      if (typeof parsed === "string") refuse(ew, `diff: ${parsed}`);
+      if (typeof parsed === "string") reject(ew, `diff: ${parsed}`)
       body.diff = c.diff;
     }
     return {
@@ -789,9 +819,9 @@ function parseEntry(shape: Shape, columns: string[] | undefined, e: unknown, ew:
   }
   if (shape === "timeline") {
     const c = fields(e, ew, ["title", "outcome"], ["ref", "time", "detail", "evidence", "attachments"]);
-    if (!OUTCOMES.includes(c.outcome as TimelineOutcome)) refuse(ew, `outcome must be ${listed(OUTCOMES)}, got ${JSON.stringify(c.outcome)}`);
+    if (!OUTCOMES.includes(c.outcome as TimelineOutcome)) reject(ew, `outcome must be ${listed(OUTCOMES)}, got ${JSON.stringify(c.outcome)}`)
     const time = optText(c, "time", ew);
-    if (time !== undefined && !realTime(time)) refuse(ew, `time must be a real ISO 8601 date such as 2026-10-28, or a date-time with its offset such as 2026-10-28T10:05:00+07:00, got ${JSON.stringify(time)}; leave time out when it is not known`);
+    if (time !== undefined && !realTime(time)) reject(ew, `time must be a real ISO 8601 date such as 2026-10-28, or a date-time with its offset such as 2026-10-28T10:05:00+07:00, got ${JSON.stringify(time)}; leave time out when it is not known`)
     const opt = (k: string) => (c[k] !== undefined ? { [k]: safeLinks(text(c, k, ew), ew) } : {});
     return {
       id, ...(c.ref ? { ref: c.ref } : {}), title: safeLinks(text(c, "title", ew), ew), outcome: c.outcome, ...(time !== undefined ? { time } : {}), ...opt("detail"), ...opt("evidence"),
@@ -799,7 +829,7 @@ function parseEntry(shape: Shape, columns: string[] | undefined, e: unknown, ew:
     };
   }
   const c = fields(e, ew, ["cells"], ["ref"]);
-  if (!Array.isArray(c.cells) || c.cells.length !== columns!.length || c.cells.some((x) => typeof x !== "string")) refuse(ew, `cells must list ${columns!.length} strings, one per column`);
+  if (!Array.isArray(c.cells) || c.cells.length !== columns!.length || c.cells.some((x) => typeof x !== "string")) reject(ew, `cells must list ${columns!.length} strings, one per column`, `${columns!.length} strings, one per column`, "cells")
   return { id, ...(c.ref ? { ref: c.ref } : {}), cells: c.cells as string[], changed };
 }
 
@@ -862,7 +892,7 @@ function revise(s: State, o: Obj, where: string, stage: string, entryIds: string
     r.entries.push(...adds.map((e, j) => parseEntry(r.shape, r.columns, e, `${where}: add ${j + 1}`, entryIds![j].split("/")[1], rev, (v, w) => resolve(v, "attachment", w))));
   }
   if (r.shape === "review") checkReview(r.axes!, r.entries, where);
-  s.history.push(previous);
+  if (previous.edit !== rev) s.history.push(previous);
   r.edit = rev;
   r.captured = time;
 }
@@ -938,7 +968,7 @@ function parseCanonical(v: unknown, where: string, io: Io): Canonical {
 }
 
 function parseDocument(o: Obj, where: string, attachment: (v: unknown, where: string) => string, source: (t: string) => string): DocumentBody {
-  const citations = o.citations === undefined ? [] : list(o, "citations", where).map((c, j) => {
+  const citations = o.citations === undefined ? [] : validatedMap(list(o, "citations", where), (c, j) => {
     const cw = `${where}: citation ${j + 1}`;
     const co = fields(c, cw, ["ref", "source"]);
     if (typeof co.ref !== "string" || !REF.test(co.ref)) refuse(cw, "ref must be lowercase letters, digits, and hyphens");
@@ -946,20 +976,20 @@ function parseDocument(o: Obj, where: string, attachment: (v: unknown, where: st
   });
   const seen = new Set<string>();
   for (const [j, c] of citations.entries()) {
-    if (seen.has(c.ref)) refuse(`${where}: citation ${j + 1}`, `ref ${c.ref} is already a citation of this Document`);
+    if (seen.has(c.ref)) reject(`${where}: citation ${j + 1}`, `ref ${c.ref} is already a citation of this Document`);
     seen.add(c.ref);
   }
   const cited = (t: string, w: string) => {
-    for (const m of t.matchAll(CITE)) if (!seen.has(m[1])) refuse(w, `[@${m[1]}] names no citation of this Document; add { ref: "${m[1]}", source } to citations`);
+    for (const m of t.matchAll(CITE)) if (!seen.has(m[1])) reject(w, `[@${m[1]}] names no citation of this Document; add { ref: "${m[1]}", source } to citations`, [...seen]);
     return safeLinks(t, w);
   };
-  const sections = list(o, "sections", where).map((sec, j) => {
+  const sections = validatedMap(list(o, "sections", where), (sec, j) => {
     const sw = `${where}: section ${j + 1}`;
     const so = fields(sec, sw, ["heading", "blocks"]);
-    const blocks = list(so, "blocks", sw).map((b, k): Block => {
+    const blocks = validatedMap(list(so, "blocks", sw), (b, k): Block => {
       const bw = `${sw}: block ${k + 1}`;
-      const forms = isObj(b) ? ["prose", "list", "code", "figure"].filter((x) => b[x] !== undefined) : [];
-      if (forms.length !== 1) refuse(bw, "must have exactly one of prose, list, code, or figure");
+      const forms = isObj(b) ? ["prose", "list", "steps", "code", "figure"].filter((x) => b[x] !== undefined) : [];
+      if (forms.length !== 1) refuse(bw, "must have exactly one of prose, list, steps, code, or figure");
       switch (forms[0]) {
         case "prose": {
           const bo = fields(b, bw, ["prose"]);
@@ -969,6 +999,14 @@ function parseDocument(o: Obj, where: string, attachment: (v: unknown, where: st
           const bo = fields(b, bw, ["list"], ["ordered"]);
           if (bo.ordered !== undefined && typeof bo.ordered !== "boolean") refuse(bw, "ordered must be true or false");
           return { list: texts(bo, "list", bw).map((t) => cited(t, bw)), ordered: bo.ordered === true };
+        }
+        case "steps": {
+          const bo = fields(b, bw, ["steps"]);
+          return { steps: validatedMap(list(bo, "steps", bw), (step, l) => {
+            const tw = `${bw}: step ${l + 1}`;
+            const st = fields(step, tw, ["title", "text"]);
+            return { title: cited(text(st, "title", tw), `${tw}: title`), text: cited(text(st, "text", tw), `${tw}: text`) };
+          }) };
         }
         case "code": {
           const bo = fields(b, bw, ["code"], ["language", "source"]);
@@ -1040,7 +1078,7 @@ function parseDemo(raw: unknown, where: string): Demo {
     for (const k of ["all", "any"] as const)
       if (c[k] !== undefined) {
         fields(c, w, [k]);
-        return { [k]: list(c, k, w).map((x, j) => condition(x, `${w}: ${k} ${j + 1}`, depth + 1)) } as Condition;
+        return { [k]: validatedMap(list(c, k, w), (x, j) => condition(x, `${w}: ${k} ${j + 1}`, depth + 1)) } as Condition;
       }
     if (c.not !== undefined) {
       fields(c, w, ["not"]);
@@ -1116,7 +1154,7 @@ function parseDemo(raw: unknown, where: string): Demo {
 function localRefs<T extends { ref: string }>(xs: T[], where: string, what: string): T[] {
   const seen = new Set<string>();
   xs.forEach((x, j) => {
-    if (seen.has(x.ref)) refuse(`${where}: ${what} ${j + 1}`, `ref ${x.ref} is already a ${what} of this Result`);
+    if (seen.has(x.ref)) reject(`${where}: ${what} ${j + 1}`, `ref ${x.ref} is already a ${what} of this Result`);
     seen.add(x.ref);
   });
   return xs;
@@ -1126,7 +1164,7 @@ function localRef(o: Obj, where: string): string {
   return o.ref as string;
 }
 function oneOf(v: unknown, refs: string[], where: string, what: string): string {
-  if (typeof v !== "string" || !refs.includes(v)) refuse(where, `${JSON.stringify(v)} names no ${what} of this Result; the ${what}s are ${listed(refs)}`);
+  if (typeof v !== "string" || !refs.includes(v)) reject(where, `${JSON.stringify(v)} names no ${what} of this Result; the ${what}s are ${listed(refs)}`, refs);
   return v as string;
 }
 const safeText = (o: Obj, k: string, where: string) => safeLinks(text(o, k, where), where);
@@ -1138,7 +1176,7 @@ function num(o: Obj, k: string, where: string): number {
 }
 
 function parseComparison(o: Obj, where: string, attachment: (v: unknown, where: string) => string): ComparisonBody {
-  const alternatives = localRefs(list(o, "alternatives", where).map((a, j): Alternative => {
+  const alternatives = localRefs(validatedMap(list(o, "alternatives", where), (a, j): Alternative => {
     const aw = `${where}: alternative ${j + 1}`;
     const ao = fields(a, aw, ["ref", "name"], ["summary", "attachments"]);
     const summary = optSafeText(ao, "summary", aw);
@@ -1148,7 +1186,7 @@ function parseComparison(o: Obj, where: string, attachment: (v: unknown, where: 
     };
   }), where, "alternative");
   if (alternatives.length < 2) refuse(where, "alternatives must list two or more alternatives to compare");
-  const criteria = localRefs(list(o, "criteria", where).map((c, j): Criterion => {
+  const criteria = localRefs(validatedMap(list(o, "criteria", where), (c, j): Criterion => {
     const cw = `${where}: criterion ${j + 1}`;
     const co = fields(c, cw, ["ref", "name"], ["description"]);
     const description = optSafeText(co, "description", cw);
@@ -1157,12 +1195,12 @@ function parseComparison(o: Obj, where: string, attachment: (v: unknown, where: 
   const altRefs = alternatives.map((a) => a.ref);
   const critRefs = criteria.map((c) => c.ref);
   const pairs = new Set<string>();
-  const assessments = list(o, "assessments", where).map((x, j): Assessment => {
+  const assessments = validatedMap(list(o, "assessments", where), (x, j): Assessment => {
     const xw = `${where}: assessment ${j + 1}`;
     const xo = fields(x, xw, ["alternative", "criterion", "finding"], ["evidence"]);
     const alternative = oneOf(xo.alternative, altRefs, `${xw}: alternative`, "alternative");
     const criterion = oneOf(xo.criterion, critRefs, `${xw}: criterion`, "criterion");
-    if (pairs.has(`${alternative}/${criterion}`)) refuse(xw, `${alternative} is already assessed on ${criterion}; give each alternative one assessment per criterion`);
+    if (pairs.has(`${alternative}/${criterion}`)) reject(xw, `${alternative} is already assessed on ${criterion}; give each alternative one assessment per criterion`)
     pairs.add(`${alternative}/${criterion}`);
     const evidence = optSafeText(xo, "evidence", xw);
     return { alternative, criterion, finding: safeText(xo, "finding", xw), ...(evidence !== undefined ? { evidence } : {}) };
@@ -1178,35 +1216,35 @@ function parseComparison(o: Obj, where: string, attachment: (v: unknown, where: 
 }
 
 function parseMetrics(o: Obj, where: string): MetricsBody {
-  const series = localRefs(list(o, "series", where).map((x, j) => {
+  const rawSeries = list(o, "series", where);
+  const series = localRefs(validatedMap(rawSeries, (x, j) => {
     const sw = `${where}: series ${j + 1}`;
     const so = fields(x, sw, ["ref", "label"], ["baseline"]);
     if (so.baseline !== undefined && so.baseline !== true) refuse(sw, "baseline must be true, or left out");
     return { ref: localRef(so, sw), label: safeText(so, "label", sw), ...(so.baseline === true ? { baseline: true as const } : {}) };
   }), where, "series");
-  if (series.filter((x) => x.baseline).length > 1) refuse(where, "at most one series is the baseline that deltas are measured from");
-  const refs = series.map((x) => x.ref);
-  const measurements = localRefs(list(o, "measurements", where).map((m, j): Measurement => {
+  if (series.filter((x) => x.baseline).length > 1) reject(where, "at most one series is the baseline that deltas are measured from");
+  const refs = rawSeries.every(x => isObj(x) && typeof x.ref === "string" && REF.test(x.ref))
+    ? rawSeries.map(x => (x as Obj).ref as string) : undefined;
+  const measurements = localRefs(validatedMap(list(o, "measurements", where), (m, j): Measurement => {
     const mw = `${where}: measurement ${j + 1}`;
-    const mo = fields(m, mw, ["ref", "name", "unit", "values"], ["better", "verdict"]);
-    if (mo.better !== undefined && mo.better !== "lower" && mo.better !== "higher") refuse(mw, `better must be lower or higher, got ${JSON.stringify(mo.better)}`);
-    if (mo.verdict !== undefined && !MEASURE_VERDICTS.includes(mo.verdict as never)) refuse(mw, `verdict must be ${listed([...MEASURE_VERDICTS])}, got ${JSON.stringify(mo.verdict)}`);
+    const mo = fields(m, mw, ["ref", "name", "unit", "values"], ["better", "verdict", "chart"]);
+    if (mo.better !== undefined && mo.better !== "lower" && mo.better !== "higher") reject(mw, `better must be lower or higher, got ${JSON.stringify(mo.better)}`, ["lower", "higher"], "better");
+    if (mo.verdict !== undefined && !MEASURE_VERDICTS.includes(mo.verdict as never)) reject(mw, `verdict must be ${listed([...MEASURE_VERDICTS])}, got ${JSON.stringify(mo.verdict)}`, MEASURE_VERDICTS, "verdict");
     const seen = new Set<string>();
-    const values = list(mo, "values", mw).map((v, k): Measured => {
+    const values = validatedMap(list(mo, "values", mw), (v, k): Measured => {
       const vw = `${mw}: value ${k + 1}`;
-      const forms = isObj(v) ? ["value", "missing"].filter((x) => v[x] !== undefined) : [];
-      if (forms.length !== 1) refuse(vw, "needs exactly one of value, the measured number, or missing, the reason there is none");
-      const vo = v as Obj;
-      const s = oneOf(vo.series, refs, `${vw}: series`, "series");
+      const vo = fields(v, vw, ["series"], ["missing", "value", "points", "samples", "uncertainty"]);
+      const missing = vo.missing !== undefined;
+      const s = refs ? oneOf(vo.series, refs, `${vw}: series`, "series") : text(vo, "series", vw);
       if (seen.has(s)) refuse(vw, `series ${s} already has a value in this measurement`);
       seen.add(s);
-      if (forms[0] === "missing") {
+      if (missing) {
         fields(vo, vw, ["series", "missing"]);
         return { series: s, missing: safeText(vo, "missing", vw) };
       }
-      fields(vo, vw, ["series", "value"], ["samples", "uncertainty"]);
-      const value = num(vo, "value", vw);
-      if (vo.samples !== undefined && (!Number.isInteger(vo.samples) || (vo.samples as number) < 1)) refuse(vw, `samples must be a whole number of 1 or more, got ${JSON.stringify(vo.samples)}`);
+      fields(vo, vw, ["series"], ["value", "points", "samples", "uncertainty"]);
+      const value = vo.value === undefined ? undefined : num(vo, "value", vw);
       let uncertainty: Uncertainty | undefined;
       if (vo.uncertainty !== undefined) {
         const uw = `${vw}: uncertainty`;
@@ -1215,18 +1253,19 @@ function parseMetrics(o: Obj, where: string): MetricsBody {
         const of = safeText(uo, "of", uw);
         if (range) {
           const [low, high] = [num(uo, "low", uw), num(uo, "high", uw)];
-          if (low > high) refuse(uw, `low ${low} is above high ${high}`);
+          if (low > high) reject(uw, `low ${low} is above high ${high}`)
           uncertainty = { low, high, of };
         } else {
           const plusminus = num(uo, "plusminus", uw);
-          if (plusminus < 0) refuse(uw, "plusminus must be 0 or more");
+          if (plusminus < 0) reject(uw, "plusminus must be 0 or more")
           uncertainty = { plusminus, of };
         }
       }
-      return { series: s, value, ...(vo.samples !== undefined ? { samples: vo.samples as number } : {}), ...(uncertainty ? { uncertainty } : {}) };
+      return { series: s, ...(value === undefined ? {} : { value }), ...(vo.points !== undefined ? { points: vo.points as MetricPoint[] } : {}), ...(vo.samples !== undefined ? { samples: vo.samples as number | number[] } : {}), ...(uncertainty ? { uncertainty } : {}) };
     });
     return {
       ref: localRef(mo, mw), name: safeText(mo, "name", mw), unit: safeText(mo, "unit", mw), values,
+      ...(mo.chart !== undefined ? { chart: mo.chart as Measurement["chart"] } : {}),
       ...(mo.better !== undefined ? { better: mo.better as "lower" | "higher" } : {}), ...(mo.verdict !== undefined ? { verdict: mo.verdict as Measurement["verdict"] } : {}),
     };
   }), where, "measurement");
@@ -1267,7 +1306,7 @@ function parseAttachment(o: Obj, where: string, stage: string, id: string, time:
         if (!/^[A-Za-z0-9_-][A-Za-z0-9._/-]*$/.test(v) || v.split("/").some((part) => !part || part === "." || part === "..")) refuse(where, "bundle paths must be relative paths with no traversal");
         return v;
       };
-      const files = list(b, "files", where).map((raw, i) => {
+      const files = validatedMap(list(b, "files", where), (raw, i) => {
         const w = `${where}: bundle file ${i + 1}`;
         const f = fields(raw, w, ["path", "source"]);
         const c = io.capture(text(f, "source", w), "artifact", w);
@@ -1303,7 +1342,7 @@ export function visualKind(raw: unknown, where: string): Exclude<VisualKind, "pr
 
 export function readerNeeds(raw: unknown, where: string): ReaderNeed[] {
   const o = { needs: raw };
-  return list(o, "needs", where).map((raw, i) => {
+  return validatedMap(list(o, "needs", where), (raw, i) => {
     const w = `${where}: needs ${i + 1}`;
     const n = fields(raw, w, ["need", "kind"]);
     const kind = text(n, "kind", w);
@@ -1315,24 +1354,24 @@ export function readerNeeds(raw: unknown, where: string): ReaderNeed[] {
 function parseQuestion(raw: unknown, where: string, id: string, stage: string, round: string, resolve: (v: unknown, kind: string, where: string) => string, figure: (raw: unknown, id: string, where: string) => Figure): Question {
   const o = fields(raw, where, ["title", "description", "options", "needs"], ["ref", "again", "reopens", "today", "terms", "topics", "results", "example", "figures", "multi"]);
   if (o.multi !== undefined && typeof o.multi !== "boolean") refuse(where, "multi must be true or false");
-  const options = list(o, "options", where).map((op, i) => {
+  const options = validatedMap(list(o, "options", where), (op, i) => {
     const ow = `${where}: option ${i + 1}`;
     const oo = fields(op, ow, ["label", "does", "gains", "costs"], ["recommended", "preview"]);
     const label = text(oo, "label", ow);
-    if (/^[A-Z]\.\s/.test(label)) refuse(ow, `label starts with "${label.slice(0, 3)}"; give the label alone, the script adds the option letter`);
+    if (/^[A-Z]\.\s/.test(label)) reject(ow, `label starts with "${label.slice(0, 3)}"; give the label alone, the script adds the option letter`)
     return { label: `${letter(i)}. ${label}`, does: text(oo, "does", ow), gains: texts(oo, "gains", ow), costs: texts(oo, "costs", ow), ...(oo.recommended !== undefined ? { recommended: text(oo, "recommended", ow) } : {}), ...(oo.preview !== undefined ? { preview: figure(oo.preview, `${id}-option-${i + 1}-preview`, `${ow}: preview`) } : {}) };
   });
   if (options.length > 26) refuse(where, "options must be 26 or fewer");
-  if (options.filter((op) => op.recommended !== undefined).length > 1) refuse(where, "at most one option can be recommended");
+  if (options.filter((op) => op.recommended !== undefined).length > 1) reject(where, "at most one option can be recommended");
   const pairs = (k: string, a: string, b: string) =>
-    o[k] === undefined ? undefined : list(o, k, where).map((x, j) => {
+    o[k] === undefined ? undefined : validatedMap(list(o, k, where), (x, j) => {
       const xw = `${where}: ${k} ${j + 1}`;
       const xo = fields(x, xw, [a, b]);
       return { [a]: text(xo, a, xw), [b]: text(xo, b, xw) };
     });
   const q: Question = { id, stage, round, q: 0, title: text(o, "title", where), description: text(o, "description", where), options, needs: readerNeeds(o.needs, where) };
   if (o.multi !== undefined) q.multi = o.multi === true;
-  if (o.figures !== undefined) q.figures = list(o, "figures", where).map((f, j) => figure(f, `${id}-figure-${j + 1}`, `${where}: figure ${j + 1}`));
+  if (o.figures !== undefined) q.figures = validatedMap(list(o, "figures", where), (f, j) => figure(f, `${id}-figure-${j + 1}`, `${where}: figure ${j + 1}`));
   if (o.again !== undefined) q.again = resolve(o.again, "question", `${where}: again`);
   if (o.reopens !== undefined) q.reopens = resolve(o.reopens, "assumed pick", `${where}: reopens`);
   const today = pairs("today", "text", "source") as Fact[] | undefined;
@@ -1348,11 +1387,11 @@ function parseQuestion(raw: unknown, where: string, id: string, stage: string, r
     ...q.options.flatMap((o) => o.preview ? [{ f: o.preview, preview: true }] : []),
   ];
   for (const { f, preview } of shown) {
-    if (f.kind === undefined) refuse(where, `figure ${f.id} must declare its Visual kind`);
-    if (f.kind === "option-preview" && !preview) refuse(where, "kind option-preview goes only on an option preview");
-    if (!q.needs!.some((n) => n.kind === f.kind)) refuse(where, `no need names kind ${f.kind}`);
+    if (f.kind === undefined) { reject(where, `figure ${f.id} must declare its Visual kind`); continue; }
+    if (f.kind === "option-preview" && !preview) reject(where, "kind option-preview goes only on an option preview");
+    if (!q.needs!.some((n) => n.kind === f.kind)) reject(where, `no need names kind ${f.kind}`);
   }
-  for (const n of q.needs!) if (n.kind !== "prose" && !shown.some(({ f }) => f.kind === n.kind)) refuse(where, `no visual or option preview on this question is a ${n.kind}`);
+  for (const n of q.needs!) if (n.kind !== "prose" && !shown.some(({ f }) => f.kind === n.kind)) reject(where, `no visual or option preview on this question is a ${n.kind}`);
   return q;
 }
 
@@ -1419,31 +1458,32 @@ export function latestAsks(s: State, stage: string): Map<number, Question> {
   return new Map([...latest].sort(([a], [b]) => a - b));
 }
 
-function checkLinks(s: State): void {
+function checkLinks(s: State, report: (id: string, suffix: string, message: string, allowed?: string[]) => void): void {
   const topics = new Set(s.topics.map((t) => t.id));
   const entries = new Set(s.results.flatMap((r) => r.entries.map((e) => `${r.id}/${e.id}`)));
   for (const q of s.questions) {
-    for (const t of q.topics ?? []) if (!topics.has(t)) refuse(`question ${q.id}`, `topic ${t} does not exist`);
-    for (const e of q.entries ?? []) if (!entries.has(e)) refuse(`question ${q.id}`, `result entry ${e} does not exist; name it <result ref or id>/<entry ref or id>`);
+    for (const [i, t] of (q.topics ?? []).entries()) if (!topics.has(t)) report(q.id, `.topics[${i}]`, `topic ${t} does not exist`, [...topics]);
+    for (const [i, e] of (q.entries ?? []).entries()) if (!entries.has(e)) report(q.id, `.results[${i}]`, `result entry ${e} does not exist; name it <result ref or id>/<entry ref or id>`, [...entries]);
     if (q.reopens === undefined) continue;
-    const a = s.assumed.find((x) => x.id === q.reopens) ?? refuse(`question ${q.id}`, `Assumed pick ${q.reopens} does not exist`);
-    if (a.stage !== q.stage && stageOf(s, a.stage, `question ${q.id}`).state !== "finished") refuse(`question ${q.id}`, `Assumed pick ${a.id} belongs to Stage ${a.stage}, which is still in progress; reopen it from that Stage`);
+    const a = s.assumed.find((x) => x.id === q.reopens);
+    if (!a) { report(q.id, ".reopens", `Assumed pick ${q.reopens} does not exist`, s.assumed.map(a => a.id)); continue; }
+    if (a.stage !== q.stage && stageOf(s, a.stage, `question ${q.id}`).state !== "finished") report(q.id, ".reopens", `Assumed pick ${a.id} belongs to Stage ${a.stage}, which is still in progress; reopen it from that Stage`);
     const other = s.questions.find((x) => x.reopens === a.id && x.id !== q.id);
-    if (other) refuse(`question ${q.id}`, `Assumed pick ${a.id} is already reopened by ${other.id}; ask that question again instead`);
+    if (other) report(q.id, ".reopens", `Assumed pick ${a.id} is already reopened by ${other.id}; ask that question again instead`);
   }
   const attachments = new Set(s.attachments.map((a) => a.id));
   const used = new Set<string>();
   for (const [id, figures] of figureOwners(s)) for (const f of figures) for (const attachment of figureAttachments(f)) {
-    if (!attachments.has(attachment)) refuse(id, `attachment ${attachment} does not exist`);
+    if (!attachments.has(attachment)) report(id, ".figures", `attachment ${attachment} does not exist`, [...attachments]);
     used.add(attachment);
   }
-  for (const r of [...s.results, ...s.history]) if (r.artifact && s.attachments.find((a) => a.id === r.artifact)?.type !== "artifact") refuse(`result ${r.id}`, "artifact must name a runnable artifact attachment");
+  for (const r of [...s.results, ...s.history]) if (r.artifact && s.attachments.find((a) => a.id === r.artifact)?.type !== "artifact") report(r.id, ".artifact", "artifact must name a runnable artifact attachment", s.attachments.filter(a => a.type === "artifact").map(a => a.id));
   for (const r of [...s.results, ...s.history])
     for (const a of attachmentsOf(r)) {
-      if (!attachments.has(a)) refuse(`result ${r.id}`, `attachment ${a} does not exist`);
+      if (!attachments.has(a)) report(r.id, ".attachments", `attachment ${a} does not exist`, [...attachments]);
       used.add(a);
     }
-  for (const a of s.attachments) if (!used.has(a.id)) refuse(`attachment ${a.id}`, "is attached to no Result; name it in a Result's or Timeline event's attachments or a Document figure");
+  for (const a of s.attachments) if (!used.has(a.id)) report(a.id, "", "is attached to no Result; name it in a Result's or Timeline event's attachments or a Document figure");
 }
 
 /** Every attachment a Result shows, including figures, alternatives' evidence, and event evidence. */
@@ -1494,14 +1534,13 @@ export type ComparisonView = {
 /** One series' value of one measurement. `missing` holds the producer's reason, or no reason when it gave no value. */
 export type ValueView = {
   series: string; label: string; baseline: boolean; anchor: string;
-  value?: number; samples?: number; uncertainty?: Uncertainty; missing?: { reason?: string };
+  value?: number; points?: MetricPoint[]; samples?: number | number[]; uncertainty?: Uncertainty; missing?: { reason?: string };
   /** Difference from the baseline series' value, and that difference as a percentage of it, when both were measured. */
   delta?: number; relative?: number; delta_unavailable?: true;
 };
 export type MetricsView = Omit<MetricsBody, "measurements"> & {
   baseline?: string;
-  /** `chart` holds the shared scale of the bars, absent when the values cannot be drawn as bars from zero. */
-  measurements: (Omit<Measurement, "values"> & { anchor: string; chart?: { max: number }; values: ValueView[] })[];
+  measurements: (Omit<Measurement, "values" | "chart"> & { anchor: string; chart?: Measurement["chart"] | { max: number }; values: ValueView[] })[];
 };
 export type ResultView = Omit<Result, "entries" | "document" | "comparison" | "metrics"> & {
   /** The id this rendering of the Result anchors at: the Result id, or `<id>-r<n>` for an earlier revision. */
@@ -1638,8 +1677,8 @@ function metricsView(m: MetricsBody, anchor: string): MetricsView {
       const row = { series: sr.ref, label: sr.label, baseline: sr.baseline === true, anchor: `${at}-s${j + 1}` };
       const v = of(sr.ref);
       if (!v || "missing" in v) return { ...row, missing: v ? { reason: v.missing } : {} };
-      const out: ValueView = { ...row, value: v.value, ...(v.samples !== undefined ? { samples: v.samples } : {}), ...(v.uncertainty ? { uncertainty: v.uncertainty } : {}) };
-      if (b !== undefined && !row.baseline) {
+      const out: ValueView = { ...row, ...(v.value === undefined ? {} : { value: v.value }), ...(v.points ? { points: v.points } : {}), ...(v.samples !== undefined ? { samples: v.samples } : {}), ...(v.uncertainty ? { uncertainty: v.uncertainty } : {}) };
+      if (b !== undefined && v.value !== undefined && !row.baseline) {
         const difference = v.value - b;
         const precision = Math.max(decimalPlaces(v.value), decimalPlaces(b));
         const delta = Number(precision <= 100 ? difference.toFixed(precision) : difference.toPrecision(14));
@@ -1654,7 +1693,7 @@ function metricsView(m: MetricsBody, anchor: string): MetricsView {
     const measured = values.flatMap((v) => (v.value === undefined ? [] : [v.value]));
     const drawable = measured.length > 0 && measured.every((x) => x >= 0);
     const { values: _, ...rest } = me;
-    return { ...rest, anchor: at, values, ...(drawable ? { chart: { max: Math.max(...measured) || 1 } } : {}) };
+    return { ...rest, anchor: at, values, ...(!me.chart && drawable ? { chart: { max: Math.max(...measured) || 1 } } : {}) };
   });
   return { ...m, ...(baseline ? { baseline } : {}), measurements };
 }
@@ -1694,7 +1733,7 @@ export function view(s: State): View {
     });
     if (d) {
       const sections = d.sections.map((sec, i) => ({ ...sec, anchor: `${anchor}-s${i + 1}` }));
-      const citesIn = (ref: string) => sections.filter((sec) => sec.blocks.some((b) => ("prose" in b ? [b.prose] : "list" in b ? b.list : []).some((t) => [...t.matchAll(CITE)].some((m) => m[1] === ref)))).map((sec) => sec.anchor);
+      const citesIn = (ref: string) => sections.filter((sec) => sec.blocks.some((b) => ("prose" in b ? [b.prose] : "list" in b ? b.list : "steps" in b ? b.steps.flatMap((step) => [step.title, step.text]) : []).some((t) => [...t.matchAll(CITE)].some((m) => m[1] === ref)))).map((sec) => sec.anchor);
       rv.doc = {
         sections,
         citations: d.citations.map((c, i) => ({ anchor: `${anchor}-c${i + 1}`, n: i + 1, ref: c.ref, source: c.source, text: sourceText.get(c.source)!, cited_in: citesIn(c.ref) })), citationsAnchor: `${anchor}-citations`,
@@ -1769,10 +1808,11 @@ export function snapshot(v: View) {
       background: st.background?.id,
       ...(st.background?.figures ? { background_figures: st.background.figures } : {}),
       results: st.results.map((r) => ({
-        id: r.id, shape: r.shape, revision: r.revision, ...(r.captured ? { captured: r.captured } : {}), ...(r.canonical ? { canonical: r.canonical } : {}), changed: r.changed,
+        id: r.id, shape: r.shape, revision: r.revision, ...(r.edit === undefined ? {} : { edit: r.edit }), ...(r.captured ? { captured: r.captured } : {}), ...(r.canonical ? { canonical: r.canonical } : {}), changed: r.changed,
         ...(r.demo ? { demo: { start: r.demo.start, states: r.demo.states.map((x) => x.name), actions: r.demo.actions.map((x) => x.name), values: r.demo.values.map((x) => x.name) } } : {}),
         ...(r.artifact ? { artifact: r.artifact } : {}),
         ...(r.review ? { review: r.review } : {}),
+        ...(r.columns ? { columns: r.columns } : {}),
         revisions: [...r.history, r].filter((x, i, all) => !all.slice(i + 1).some((later) => later.revision === x.revision)).map((x) => ({ revision: x.revision, ...(x.captured ? { captured: x.captured } : {}), ...(x.canonical ? { canonical: x.canonical } : {}), attachments: x.shown.map((a) => a.id) })),
         history: r.history.map((x) => ({ anchor: x.anchor, revision: x.revision, ...(x.edit === undefined ? {} : { edit: x.edit }), ...(x.canonical ? { canonical: x.canonical } : {}), attachments: x.shown.map((a) => a.id) })),
         attachments: r.shown.map((a) => a.id),
@@ -1796,7 +1836,7 @@ export function snapshot(v: View) {
           metrics: {
             ...(r.metrics.baseline ? { baseline: r.metrics.baseline } : {}),
             measurements: r.metrics.measurements.map((me) => ({
-              ref: me.ref, anchor: me.anchor, unit: me.unit, ...(me.better ? { better: me.better } : {}), ...(me.verdict ? { verdict: me.verdict } : {}), chart: me.chart !== undefined,
+              ref: me.ref, anchor: me.anchor, unit: me.unit, ...(me.better ? { better: me.better } : {}), ...(me.verdict ? { verdict: me.verdict } : {}), chart: typeof me.chart === "string" ? me.chart : me.chart !== undefined,
               values: me.values.map(({ label: _, missing, ...x }) => ({ ...x, ...(missing ? { missing: true } : {}) })),
             })),
           },
