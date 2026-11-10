@@ -2,6 +2,6 @@
   "schema": 1,
   "level": "patch",
   "entries": [
-    "Keep the Reader's next-question fragment after native fragment navigation by disabling Nuxt's delayed route repaint commit."
+    "Keep next-question navigation in order after fragment links by handling plain clicks in the Reader and disabling Nuxt's delayed route repaint commit."
   ]
 }

@@ -245,6 +245,25 @@ test("n stays in the Focused Stage and wraps after tab clicks, fragments, h, and
     expect(await hash(page)).toBe(second.q1);
     await repaint();
     expect(await hash(page)).toBe(second.q1);
+
+    for (let i = 0; i < 100; i++) {
+      await page.locator(`.bar .jump-row a[href="#${second.q1}"]`).click();
+      await page.keyboard.press("n");
+      expect(await hash(page)).toBe(second.q2);
+      expect(await selected(page)).toBe(b.stage);
+      expect(await page.locator(`#${second.q2}`).evaluate((el) => el === document.activeElement)).toBe(true);
+      await repaint();
+      expect(await hash(page)).toBe(second.q2);
+    }
+
+    await page.keyboard.press("n");
+    await page.locator(`.bar .jump-row a[href="#${second.q2}"]`).click();
+    await repaint();
+    expect(await hash(page)).toBe(second.q2);
+    await page.locator(`.bar .jump-row a[href="#${second.q1}"]`).click();
+    await repaint();
+    await page.keyboard.press("n");
+    expect(await hash(page)).toBe(second.q2);
   } finally {
     await context.close();
   }
