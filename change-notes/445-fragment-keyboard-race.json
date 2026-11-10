@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Keep the Reader's next-question fragment after native fragment navigation by disabling Nuxt's delayed route repaint commit."
+  ]
+}

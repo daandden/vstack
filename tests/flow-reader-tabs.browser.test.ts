@@ -201,6 +201,8 @@ test("n stays in the Focused Stage and wraps after tab clicks, fragments, h, and
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   try {
     const page = await context.newPage();
+    const cdp = await context.newCDPSession(page);
+    await cdp.send("Emulation.setCPUThrottlingRate", { rate: 4 });
     await page.goto(a.live.url);
     await page.locator(".bar .tabs").waitFor();
     expect(await selected(page)).toBe(b.stage);
@@ -234,6 +236,15 @@ test("n stays in the Focused Stage and wraps after tab clicks, fragments, h, and
     await page.waitForFunction((id) => document.querySelector(`.bar .tabs a[href="#${id}"]`)?.getAttribute("aria-current") === "page", a.stage);
     await page.keyboard.press("n");
     expect(await hash(page)).toBe(first.q1);
+
+    const repaint = () => page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    await page.goto(`${a.live.url}#${second.q2}`);
+    await page.locator(`#${second.q2}`).waitFor();
+    await repaint();
+    await page.keyboard.press("n");
+    expect(await hash(page)).toBe(second.q1);
+    await repaint();
+    expect(await hash(page)).toBe(second.q1);
   } finally {
     await context.close();
   }

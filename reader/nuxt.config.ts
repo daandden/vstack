@@ -6,7 +6,8 @@ export default defineNuxtConfig({
   telemetry: false,
   devtools: { enabled: false },
   buildId: "flow-reader",
-  experimental: { appManifest: false },
+  // Fragment navigation belongs to the reader. A delayed router commit can overwrite the next keyboard selection.
+  experimental: { appManifest: false, navigationRepaint: false },
   modules: ["@nuxt/ui", "@vueuse/nuxt"],
   ui: { theme: { transitions: false }, experimental: { componentDetection: true } },
   fonts: { provider: "local" },
