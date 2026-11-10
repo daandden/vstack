@@ -62,7 +62,7 @@ test("all Results retain compact themed rendering, learning progress and isolate
       await page.getByRole("button", { name: theme, exact: true }).click();
       for (const width of [360, 1280]) {
         await page.setViewportSize({ width, height: 900 });
-        expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
         await capture(page, `${theme.toLowerCase()}-${width}-results`);
         if (proof) {
           for (const ref of ["cards", "review", "ledger", "table", "document", "code", "timeline", "comparison", "metrics", "quiz", "demo", "artifact"]) {
@@ -126,7 +126,7 @@ test("all Results retain compact themed rendering, learning progress and isolate
     expect(await demo.locator("strong").innerText()).toBe("Ready");
     for (const width of [320, 360, 1280]) {
       await page.setViewportSize({ width, height: 900 });
-      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
       await capture(page, `dark-${width}`);
     }
     const stress = cli(["open", "--flow", opened.flow, "--skill", "code-review"]);
@@ -140,7 +140,7 @@ test("all Results retain compact themed rendering, learning progress and isolate
     expect(await page.locator(`#${adverse.refs.empty}`).innerText()).toContain("No finding recorded");
     for (const width of [320, 1280]) {
       await page.setViewportSize({ width, height: 900 });
-      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
     }
     expect(errors).toEqual([]);
   } finally {

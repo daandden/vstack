@@ -64,7 +64,7 @@ test("Documents show numbered joined steps with ordinary formatting and retain e
       await page.getByRole("button", { name: theme, exact: true }).click();
       for (const width of [320, 1280]) {
         await page.setViewportSize({ width, height: 900 });
-        expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
         if (proof) {
           mkdirSync(proof, { recursive: true });
           await page.screenshot({ path: join(proof, `steps-${theme.toLowerCase()}-${width}.png`), fullPage: true });

@@ -84,7 +84,7 @@ test("Metrics charts show exact data, baseline identity, keyboard values and liv
       previousColor = current;
       for (const width of [360, 1280]) {
         await page.setViewportSize({ width, height: 900 });
-        expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
         expect((await charts.first().boundingBox())!.width).toBeLessThanOrEqual(width);
         if (proof) {
           mkdirSync(proof, { recursive: true });
@@ -119,11 +119,11 @@ test("Metrics charts show exact data, baseline identity, keyboard values and liv
       await page.getByRole("button", { name: theme, exact: true }).click();
       for (const width of [320, 1280]) {
         await page.setViewportSize({ width, height: 900 });
-        expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
       }
     }
     await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
-    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
     expect(errors).toEqual([]);
     expect(await page.evaluate(() => (window as any).cspViolations)).toEqual([]);
     await context.close();

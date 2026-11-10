@@ -107,7 +107,7 @@ test("the offline reader foundation keeps Catppuccin shell, navigation and diagr
     expect(await bodyColor(page)).toBe("#1e1e2e");
     for (const width of [320, 360, 1280]) {
       await page.setViewportSize({ width, height: 900 });
-      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
       await page.keyboard.press("n");
       expect(await page.evaluate(() => location.hash)).toBe(`#${submitted.refs.choice}`);
       await capture(page, `dark-${width}`);

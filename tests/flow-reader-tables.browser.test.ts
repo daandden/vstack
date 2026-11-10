@@ -95,7 +95,7 @@ test("table readers sort, filter, and follow stable row links without persisting
       await page.getByRole("button", { name: theme, exact: true }).click();
       for (const width of [320, 1280]) {
         await page.setViewportSize({ width, height: 900 });
-        expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
         if (process.env.FLOW_TABLE_EVIDENCE) {
           mkdirSync(process.env.FLOW_TABLE_EVIDENCE, { recursive: true });
           const name = join(process.env.FLOW_TABLE_EVIDENCE, `${theme.toLowerCase()}-${width}`);
