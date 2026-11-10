@@ -54,23 +54,18 @@ test('has increment button', () => {
 import { mount } from '@vue/test-utils'
 import Counter from './Counter.vue'
 
-// CORRECT: Testing behavior like a user would
 test('counter displays updated value after clicking increment', async () => {
   const wrapper = mount(Counter, {
     props: { max: 10 }
   })
 
-  // Assert initial visible state
   expect(wrapper.find('[data-testid="counter-value"]').text()).toContain('0')
 
-  // Simulate user action
   await wrapper.find('[data-testid="increment-button"]').trigger('click')
 
-  // Assert visible result
   expect(wrapper.find('[data-testid="counter-value"]').text()).toContain('1')
 })
 
-// CORRECT: Testing emitted events (public API)
 test('emits change event with new value when incremented', async () => {
   const wrapper = mount(Counter)
 

@@ -32,7 +32,7 @@ const definition = computed(() => {
       const samples = (Array.isArray(v.samples) ? v.samples : []).map(value => ({ value }));
       if (!samples.length) return [];
       const bins = binX(samples, { value: "value", domain: [minimum, maximum === minimum ? minimum + 1 : maximum], thresholds: Math.min(20, Math.ceil(Math.sqrt(allSamples.length))) });
-      const data = bins.map(b => ({ x: b.x, x1: b.x1, x2: b.x2, y: b.value, name: v.name, description: `${v.name}: ${b.x1} to ${b.x2} ${props.measurement.unit}, ${b.value} samples` }));
+      const data = bins.map(b => ({ x: b.x, x1: b.x1, x2: b.x2, y: b.value, name: v.name, description: `${v.name}: ${b.x1} to ${b.x2} ${props.measurement.unit}, ${b.value} ${b.value === 1 ? "sample" : "samples"}` }));
       return [rect(data, { id: v.series, x: "x", x1: "x1", x2: "x2", y: "y", y1: () => 0, y2: "y", fill: v.color, fillOpacity: 0.25, stroke: v.color, strokeWidth: v.baseline ? 2.5 : 1, inset: 1 })];
     }
     const data = [...(v.points ?? [])].sort((a, b) => a.x - b.x).map(p => ({ ...p, x1: p.x, x2: p.x, name: v.name, description: `${v.name}: x ${p.x}, y ${p.y} ${props.measurement.unit}` }));

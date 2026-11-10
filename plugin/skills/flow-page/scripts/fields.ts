@@ -56,8 +56,8 @@ export const listed = (xs: readonly string[]) => (xs.length === 1 ? xs[0] : `${x
 export function fields(v: unknown, where: string, required: string[], optional: string[] = []): Obj {
   if (!isObj(v)) refuse(where, `must be an object with ${listed(required)}`, "object");
   const o = v as Obj;
-  for (const k of Object.keys(o)) if (!required.includes(k) && !optional.includes(k)) refuse(where, `${k} is not a field here; the fields are ${listed([...required, ...optional])}`, [...required, ...optional], k);
-  for (const k of required) if (o[k] === undefined) refuse(where, `needs ${k}`, undefined, k);
+  for (const k of Object.keys(o)) if (!required.includes(k) && !optional.includes(k)) reject(where, `${k} is not a field here; the fields are ${listed([...required, ...optional])}`, [...required, ...optional], k);
+  for (const k of required) if (o[k] === undefined) reject(where, `needs ${k}`, undefined, k);
   return o;
 }
 export function text(o: Obj, k: string, where: string): string {

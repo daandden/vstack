@@ -131,3 +131,41 @@ test("semantic validation collects independent errors inside one Result instead 
   ]);
   expect(checked.json.diagnostics[2].allowed).toEqual(["main", "branch"]);
 });
+
+test("structural errors do not hide independent Metrics references and malformed siblings are safe", () => {
+  const opened = open();
+  const state = statePathOf(home, opened.flow);
+  const before = readFileSync(state, "utf8");
+  const input = envelope({
+    kind: "result", shape: "metrics", title: "Latency", workload: "", outcome: "No claim",
+    series: [{ ref: "main", label: "Main" }],
+    measurements: [null, { ref: "latency", name: "Latency", unit: "ms", values: [
+      null, { series: "absent", value: 4 },
+    ] }],
+  });
+  const checked = run(["validate"], input);
+  expect(checked.code).toBe(1);
+  expect(checked.json.diagnostics.map((d: any) => d.path)).toEqual([
+    "$.items[0].workload", "$.items[0].measurements[0]", "$.items[0].measurements[1].values[0]",
+    "$.items[0].measurements[1].values[1].series",
+  ]);
+  expect(checked.json.diagnostics[3].allowed).toEqual(["main"]);
+  expect(run(["submit"], input)).toMatchObject({ code: 1, json: checked.json });
+  expect(readFileSync(state, "utf8")).toBe(before);
+});
+
+test("Metrics reference diagnostics use valid identities rather than malformed presentation fields", () => {
+  open();
+  const checked = run(["validate"], envelope({
+    kind: "result", shape: "metrics", title: "Latency", workload: "One request", outcome: "No claim",
+    series: [{ ref: "main", label: null }],
+    measurements: [{ ref: "latency", name: "Latency", unit: "ms", better: "sideways", values: [
+      { series: "main", value: 3 }, { series: "absent", value: 4 },
+    ] }],
+  }));
+  expect(checked.code).toBe(1);
+  expect(checked.json.diagnostics.map((d: any) => d.path)).toEqual([
+    "$.items[0].series[0].label", "$.items[0].measurements[0].better", "$.items[0].measurements[0].values[1].series",
+  ]);
+  expect(checked.json.diagnostics[2].allowed).toEqual(["main"]);
+});

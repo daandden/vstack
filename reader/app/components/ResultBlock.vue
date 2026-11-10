@@ -25,7 +25,7 @@ const earlier = computed(() => [...props.r.history].reverse());
     <header class="grid gap-1">
       <h2 :id="`${r.anchor}-title`" v-html="inline(r.title)" />
       <p v-if="r.summary" class="text-toned" v-html="inline(r.summary)" />
-      <p class="text-small text-muted">Revision {{ r.revision }}<template v-if="r.captured">, <time :datetime="r.captured">{{ formatTime(r.captured) }}</time></template><span v-html="canonical" /></p>
+      <p class="text-small text-muted">Revision {{ r.revision }}<template v-if="r.edit !== undefined"> · Edit {{ r.edit }}</template><template v-if="r.captured">, <time :datetime="r.captured">{{ formatTime(r.captured) }}</time></template><span v-html="canonical" /></p>
     </header>
     <ReviewSummary v-if="r.review" :rows="r.review" />
     <DocumentBody v-if="r.doc" :r="r" :doc="r.doc" :historical="historical" />

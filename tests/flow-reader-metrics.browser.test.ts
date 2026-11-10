@@ -16,7 +16,7 @@ test("Metrics charts show exact data, baseline identity, keyboard values and liv
   const port = socket.port;
   socket.stop(true);
   const cli = (args: string[], items?: unknown[]) => {
-    const p = Bun.spawnSync([process.execPath, script, ...args, "--home", home, "--session", "01a1c256-24ed-7201-9841-ae02a7a0e4a2", "--agent", "impl-438"], {
+    const p = Bun.spawnSync([process.execPath, script, ...args, "--home", home, "--session", "01a1c2c0-b8bd-7047-ac1f-33e7ca3c40d6", "--agent", "review-fix-428"], {
       cwd: root, env: { ...ENV, HOME: home, VSTACK_FLOW_PORT: String(port) }, stdin: items ? new TextEncoder().encode(JSON.stringify({ version: 1, items })) : "ignore", stdout: "pipe", stderr: "pipe",
     });
     if (p.exitCode) throw new Error(p.stderr.toString());
@@ -109,6 +109,11 @@ test("Metrics charts show exact data, baseline identity, keyboard values and liv
     const largeTable = result.getByRole("table", { name: "One thousand timing observations chart data", exact: true }).first();
     expect(await largeTable.locator("tbody tr").count()).toBe(1000);
     expect(await result.getByRole("table", { name: "One histogram sample chart data" }).first().locator("tbody tr").count()).toBe(1);
+    const singleHistogram = result.locator('[aria-roledescription="chart"]').nth(1);
+    await singleHistogram.focus();
+    await page.keyboard.press("Home");
+    await page.keyboard.press("ArrowRight");
+    expect(await result.getByRole("status").allTextContents()).toContainEqual(expect.stringMatching(/, 1 sample$/));
     expect(await result.locator("script").count()).toBe(0);
     for (const theme of ["Light", "Dark"]) {
       await page.getByRole("button", { name: theme, exact: true }).click();

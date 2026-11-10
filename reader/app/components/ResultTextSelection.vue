@@ -24,10 +24,10 @@ function choose() {
 
 <template>
   <div class="grid min-w-0 gap-2">
-    <UButton label="Select text to comment" color="neutral" variant="ghost" class="w-fit active:bg-accented" @click="selectable = content?.innerText ?? ''" />
+    <UButton label="Select text to comment" color="neutral" variant="ghost" :ui="{ label: 'whitespace-normal text-start' }" class="w-fit max-w-full whitespace-normal pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px] active:bg-accented" @click="selectable = content?.innerText ?? ''" />
     <UFormField v-if="selectable !== undefined" label="Result text for selection" description="Select a passage with Shift and the arrow keys, then choose Comment on selected text.">
       <UTextarea :model-value="selectable" aria-readonly="true" :rows="5" class="w-full" @beforeinput.prevent @select="selectInField" />
     </UFormField>
-    <UButton label="Comment on selected text" color="neutral" variant="soft" :disabled="!quote.trim()" class="w-fit active:bg-accented" @click="choose" />
+    <UButton label="Comment on selected text" color="neutral" variant="soft" :disabled="!quote.trim()" :ui="{ label: 'whitespace-normal text-start' }" class="w-fit max-w-full whitespace-normal pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px] active:bg-accented" @click="choose" />
   </div>
 </template>

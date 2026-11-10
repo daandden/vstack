@@ -58,11 +58,9 @@ export default {
     const intervalId = ref(null)
 
     const handleResize = () => {
-      // handle resize
     }
 
     const handleMessage = (msg) => {
-      // handle message
     }
 
     onMounted(() => {
@@ -72,7 +70,6 @@ export default {
     })
 
     onUnmounted(() => {
-      // Clean up everything!
       window.removeEventListener('resize', handleResize)
 
       if (intervalId.value) {
@@ -113,7 +110,6 @@ export default {
 ## Using Composable Pattern for Auto-Cleanup
 
 ```javascript
-// Reusable composable with automatic cleanup
 import { onMounted, onUnmounted } from 'vue'
 
 export function useEventListener(target, event, handler) {
@@ -138,14 +134,12 @@ export function useInterval(callback, delay) {
   })
 }
 
-// Usage - cleanup is automatic
 import { useEventListener, useInterval } from './composables'
 
 export default {
   setup() {
     useEventListener(window, 'resize', handleResize)
     useInterval(pollServer, 5000)
-    // No manual cleanup needed!
   }
 }
 ```

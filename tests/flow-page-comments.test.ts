@@ -1,5 +1,5 @@
 import { afterAll, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ENV } from "./support/fixture.ts";
@@ -19,7 +19,7 @@ function world() {
   return w;
 }
 function cli(w: ReturnType<typeof world>, args: string[], items?: object[]) {
-  const p = Bun.spawnSync([process.execPath, script, ...args, "--home", w.home, "--session", "01a1c282-0e63-7477-9c2a-df76da2174f4", "--agent", "impl-441-retry"], {
+  const p = Bun.spawnSync([process.execPath, script, ...args, "--home", w.home, "--session", "01a1c2c0-b8bd-7047-ac1f-33e7ca3c40d6", "--agent", "review-fix-428"], {
     cwd: w.cwd, env: { ...ENV, HOME: w.home, VSTACK_FLOW_PORT: String(w.port) },
     stdin: items ? new TextEncoder().encode(JSON.stringify({ version: 1, items })) : "ignore", stdout: "pipe", stderr: "pipe",
   });
@@ -41,7 +41,7 @@ test("Reader comments authenticate, persist independently, and show their captur
   const cookie = page.headers.get("set-cookie")!.split(";")[0];
   const statePath = statePathOf(w.home, sent.flow);
   const before = readFileSync(statePath, "utf8");
-  const input = { version: 1, result: sent.refs.proof, revision: 1, anchor: { kind: "entry", entry: sent.refs["proof/restart"].split("/")[1] }, text: "Keep the restart proof." };
+  const input = { version: 1, result: sent.refs.proof, revision: 1, edit: null, anchor: { kind: "entry", entry: sent.refs["proof/restart"].split("/")[1] }, text: "Keep the restart proof." };
   const send = (body: unknown = input, headers: Record<string, string> = {}) => fetch(endpoint, { method: "POST", headers: { cookie, origin: url.origin, "content-type": "application/json", ...headers }, body: JSON.stringify(body) });
   expect((await send(input, { cookie: "" })).status).toBe(401);
   expect((await send(input, { origin: "https://evil.example" })).status).toBe(403);
@@ -81,7 +81,7 @@ test("text comments retain their quote and revision through edits, Result revisi
   const endpoint = new URL("comments", url);
   const cookie = (await fetch(url)).headers.get("set-cookie")!.split(";")[0];
   const post = (body: object) => fetch(endpoint, { method: "POST", headers: { cookie, origin: url.origin, "content-type": "application/json" }, body: JSON.stringify(body) });
-  const input = { version: 1, result: sent.refs.proof, revision: 1, anchor: { kind: "text", quote: "Host restart" }, text: "Explain this passage." };
+  const input = { version: 1, result: sent.refs.proof, revision: 1, edit: null, anchor: { kind: "text", quote: "Host restart" }, text: "Explain this passage." };
   const created = await post(input);
   expect(created.status).toBe(200);
   const original = (await created.json() as any).comments[0];
@@ -105,4 +105,49 @@ test("text comments retain their quote and revision through edits, Result revisi
   expect((await removed.json() as any).comments).toEqual([]);
   expect((await fetch(endpoint, { headers: { cookie: freshCookie } }).then((r) => r.json()) as any).comments).toEqual([]);
   expect(readFileSync(statePath, "utf8")).toBe(authored);
+});
+
+test("comments identify each focused set and add capture, including delayed saves and legacy data", async () => {
+  const w = world();
+  cli(w, ["open", "--title", "Focused comment versions", "--skill", "implement"]);
+  const sent = cli(w, ["submit"], [table]);
+  const url = new URL(sent.live.url);
+  const endpoint = new URL("comments", url);
+  const cookie = (await fetch(url)).headers.get("set-cookie")!.split(";")[0];
+  const post = (body: object) => fetch(endpoint, { method: "POST", headers: { cookie, origin: url.origin, "content-type": "application/json" }, body: JSON.stringify(body) });
+  const input = { version: 1, result: sent.refs.proof, revision: 1, edit: null, anchor: { kind: "entry", entry: "e1" }, text: "Original entry." };
+  expect((await post(input)).status).toBe(200);
+  await Bun.sleep(1100);
+  const edited = cli(w, ["submit"], [{ kind: "revise", result: sent.refs["proof/restart"], base: sent.revision, set: { cells: ["Changed entry"] } }]);
+  expect((await post({ ...input, text: "A delayed original comment." })).status).toBe(200);
+  expect((await post({ ...input, edit: edited.revision, text: "Changed entry comment." })).status).toBe(200);
+  expect((await post({ ...input, edit: 999 })).status).toBe(400);
+  const added = cli(w, ["submit"], [
+    { kind: "revise", result: sent.refs.proof, base: edited.revision, set: { title: "Expanded evidence" } },
+    { kind: "revise", result: sent.refs.proof, add: [{ cells: ["Added entry"] }] },
+  ]);
+  expect((await post({ ...input, edit: added.revision, anchor: { kind: "entry", entry: "e2" }, text: "Added entry comment." })).status).toBe(200);
+  expect((await post({ ...input, edit: edited.revision, anchor: { kind: "entry", entry: "e2" } })).status).toBe(400);
+  const shown = cli(w, ["show"]);
+  expect(shown.reader_comments.map((c: any) => c.edit)).toEqual([null, null, edited.revision, added.revision]);
+  expect(shown.stages[0].results[0]).toMatchObject({ revision: 1, edit: added.revision });
+  expect(shown.stages[0].results[0].history.map((r: any) => r.edit ?? null)).toEqual([null, edited.revision]);
+  const stored = statePathOf(w.home, sent.flow);
+  const authored = readFileSync(stored, "utf8");
+  const commentPath = join(stored, "..", "comments.json");
+  const legacy = JSON.parse(readFileSync(commentPath, "utf8"));
+  const original = legacy.comments[0];
+  delete original.edit;
+  const state = JSON.parse(authored);
+  original.time = new Date((Date.parse(state.history[0].captured) + Date.parse(state.history[1].captured)) / 2).toISOString();
+  legacy.comments.push({ ...original, id: "late-legacy-save", time: new Date().toISOString() });
+  legacy.comments.push({ ...original, id: "unknown-capture", time: "not recorded" });
+  writeFileSync(commentPath, JSON.stringify(legacy));
+  const recovered = cli(w, ["show"]).reader_comments;
+  expect(recovered[0].edit).toBe(null);
+  expect(recovered.at(-2).edit).toBeUndefined();
+  expect(recovered.at(-2).version_unknown).toBe(true);
+  expect(recovered.at(-1).edit).toBeUndefined();
+  expect(recovered.at(-1).version_unknown).toBe(true);
+  expect(readFileSync(stored, "utf8")).toBe(authored);
 });

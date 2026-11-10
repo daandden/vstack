@@ -46,11 +46,8 @@ export default defineConfig({
   reporter: 'html',
 
   use: {
-    // Base URL for navigation
     baseURL: 'http://localhost:5173',
-    // Capture trace on first retry
     trace: 'on-first-retry',
-    // Screenshot on failure
     screenshot: 'only-on-failure',
   },
 
@@ -67,14 +64,12 @@ export default defineConfig({
       name: 'webkit',
       use: { ...devices['Desktop Safari'] },
     },
-    // Mobile viewports
     {
       name: 'Mobile Chrome',
       use: { ...devices['Pixel 5'] },
     },
   ],
 
-  // Run local dev server before tests
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:5173',
@@ -91,15 +86,12 @@ import { test, expect } from '@playwright/test'
 
 test.describe('User Authentication', () => {
   test('user can log in and see dashboard', async ({ page }) => {
-    // Navigate to login
     await page.goto('/login')
 
-    // Fill login form
     await page.getByLabel('Email').fill('user@example.com')
     await page.getByLabel('Password').fill('password123')
     await page.getByRole('button', { name: 'Sign In' }).click()
 
-    // Verify redirect to dashboard
     await expect(page).toHaveURL('/dashboard')
     await expect(page.getByRole('heading', { name: 'Welcome' })).toBeVisible()
   })

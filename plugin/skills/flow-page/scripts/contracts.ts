@@ -94,7 +94,6 @@ const quizAnswer = union({ choice: object({ choice: ref }), text: optional({ tex
 const shared = { ref, summary: string, attachments: strings, canonical, revises: ref };
 const result = (purpose: string, fields: Record<string, Contract>, extra: Record<string, Contract> = {}): Contract => ({ ...optional({ kind: enumeration("result"), shape: string, title: string, ...fields }, { ...shared, ...extra }), purpose });
 
-/** Field metadata used by authoring validation and contract discovery. Stateful rules remain in the contribution planner. */
 export const resultContracts: Record<string, Contract> = {
   cards: result("Present findings or actions as individual cards.", { entries: array(entryContracts.cards) }),
   ledger: result("Track claims, evidence, missing proof, and consequences.", { entries: array(entryContracts.ledger) }),

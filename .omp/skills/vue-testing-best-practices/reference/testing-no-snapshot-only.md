@@ -83,24 +83,20 @@ test('UserCard emits select event when clicked', async () => {
 
 ### Regression Detection for Stable Components
 ```javascript
-// ACCEPTABLE: Snapshot as additional check, not the only check
 test('ErrorBoundary renders error message', () => {
   const wrapper = mount(ErrorBoundary, {
     props: { error: new Error('Something went wrong') }
   })
 
-  // Primary assertions - verify behavior
   expect(wrapper.find('.error-title').text()).toBe('Error')
   expect(wrapper.find('.error-message').text()).toContain('Something went wrong')
 
-  // Secondary snapshot - catches unexpected structural changes
   expect(wrapper.find('.error-container').html()).toMatchSnapshot()
 })
 ```
 
 ### Inline Snapshots for Small Structures
 ```javascript
-// ACCEPTABLE: Inline snapshot for small, critical structure
 test('generates correct list markup', () => {
   const wrapper = mount(ListItem, { props: { item: 'Test' } })
 
@@ -112,16 +108,13 @@ test('generates correct list markup', () => {
 
 ### Complex SVG or Icon Output
 ```javascript
-// ACCEPTABLE: Snapshot for complex generated content
 test('renders correct chart SVG', () => {
   const wrapper = mount(PieChart, {
     props: { data: [30, 40, 30] }
   })
 
-  // Verify key behavior
   expect(wrapper.findAll('path').length).toBe(3)
 
-  // Snapshot for full SVG structure
   expect(wrapper.find('svg').html()).toMatchSnapshot()
 })
 ```

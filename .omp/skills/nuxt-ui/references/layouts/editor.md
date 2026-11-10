@@ -83,13 +83,10 @@ const content = ref({
 ## Content types
 
 ```vue
-<!-- JSON (default) -->
 <UEditor v-model="jsonContent" />
 
-<!-- HTML -->
 <UEditor v-model="htmlContent" content-type="html" />
 
-<!-- Markdown -->
 <UEditor v-model="markdownContent" content-type="markdown" />
 ```
 

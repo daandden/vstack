@@ -33,13 +33,10 @@ import { computed, shallowRef } from 'vue'
 
 export const useGlobalState = createGlobalState(
   () => {
-    // state
     const count = shallowRef(0)
 
-    // getters
     const doubleCount = computed(() => count.value * 2)
 
-    // actions
     function increment() {
       count.value++
     }

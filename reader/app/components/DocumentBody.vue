@@ -21,7 +21,7 @@ const stop = computed(() => (props.historical ? undefined : ""));
       <h3 :id="`${sec.anchor}-title`" class="text-secondary" v-html="inline(sec.heading)" />
       <template v-for="(b, i) in sec.blocks" :key="i">
         <div v-if="'prose' in b" class="grid gap-1.5" v-html="prose(b.prose, cites)" />
-        <component :is="b.ordered ? 'ol' : 'ul'" v-else-if="'list' in b" class="grid list-disc gap-0.5 ps-5 marker:text-dimmed">
+        <component :is="b.ordered ? 'ol' : 'ul'" v-else-if="'list' in b" class="grid gap-0.5 ps-5 marker:text-dimmed" :class="b.ordered ? 'list-decimal' : 'list-disc'">
           <li v-for="(t, j) in b.list" :key="j" v-html="inline(t, cites)" />
         </component>
         <ol v-else-if="'steps' in b" aria-label="Procedure steps" role="list" class="list-none ps-3">
@@ -43,7 +43,7 @@ const stop = computed(() => (props.historical ? undefined : ""));
     </section>
     <section v-if="doc.citations.length" :id="doc.citationsAnchor" class="grid gap-1.5" aria-label="Citations" :data-stop="stop">
       <p class="font-semibold text-[var(--pink)]">Citations</p>
-      <ol class="grid list-disc gap-0.5 ps-5 marker:text-dimmed">
+      <ol class="grid list-decimal gap-0.5 ps-5 marker:text-dimmed">
         <li v-for="c in doc.citations" :id="c.anchor" :key="c.anchor">
           <span v-html="inline(c.text)" />
           <a v-for="s in c.cited_in" :key="s" class="text-small font-semibold tabular-nums no-underline" :href="`#${s}`"> Cited in <span v-html="inline(heading(s))" /></a>

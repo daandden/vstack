@@ -121,16 +121,13 @@ const [DefineTemplate, ReuseTemplate] = createReusableTemplate()
 <script setup lang="ts">
 import { createReusableTemplate } from '@vueuse/core'
 
-// Comes with pair of `DefineTemplate` and `ReuseTemplate`
 const [DefineFoo, ReuseFoo] = createReusableTemplate<{ msg: string }>()
 
-// You can create multiple reusable templates
 const [DefineBar, ReuseBar] = createReusableTemplate<{ items: string[] }>()
 </script>
 
 <template>
   <DefineFoo v-slot="{ msg }">
-    <!-- `msg` is typed as `string` -->
     <div>Hello {{ msg.toUpperCase() }}</div>
   </DefineFoo>
 

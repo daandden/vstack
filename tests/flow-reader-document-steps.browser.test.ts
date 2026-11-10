@@ -15,7 +15,7 @@ test("Documents show numbered joined steps with ordinary formatting and retain e
   const port = socket.port;
   socket.stop(true);
   function cli(args: string[], items?: unknown[]): any {
-    const p = Bun.spawnSync([process.execPath, SCRIPT, ...args, "--home", home, "--session", "01a1c256-2555-72b4-9563-1c0a2b7552ad", "--agent", "impl-439"], {
+    const p = Bun.spawnSync([process.execPath, SCRIPT, ...args, "--home", home, "--session", "01a1c2c0-b8bd-7047-ac1f-33e7ca3c40d6", "--agent", "review-fix-428"], {
       cwd: root, env: { ...ENV, HOME: home, VSTACK_FLOW_PORT: String(port) },
       stdin: items ? new TextEncoder().encode(JSON.stringify({ version: 1, items })) : "ignore", stdout: "pipe", stderr: "pipe",
     });
@@ -54,6 +54,11 @@ test("Documents show numbered joined steps with ordinary formatting and retain e
     expect(await legacy.locator("p code").textContent()).toBe("text");
     expect(await legacy.locator("li").allTextContents()).toEqual(["Keep the worker", "Read the log"]);
     expect(await legacy.locator("pre").textContent()).toBe("const saved = true;");
+    expect(await legacy.locator("ol").evaluate(el => getComputedStyle(el).listStyleType)).toBe("decimal");
+    expect(await page.getByRole("region", { name: "Citations", exact: true }).locator("ol").evaluate(el => getComputedStyle(el).listStyleType)).toBe("decimal");
+    const stateDot = page.getByRole("navigation", { name: "Flow tabs", exact: true }).locator('[data-state="in-progress"] a > span');
+    expect(await stateDot.evaluate(el => ({ width: el.getBoundingClientRect().width, color: getComputedStyle(el).backgroundColor }))).toMatchObject({ width: 8 });
+    expect(await stateDot.evaluate(el => getComputedStyle(el).backgroundColor)).not.toBe("rgba(0, 0, 0, 0)");
     const proof = process.env.FLOW_READER_EVIDENCE;
     for (const theme of ["Light", "Dark"]) {
       await page.getByRole("button", { name: theme, exact: true }).click();

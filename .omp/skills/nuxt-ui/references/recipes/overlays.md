@@ -9,7 +9,6 @@ Patterns for modals, slideovers, drawers, and command palettes.
 const isOpen = ref(false)
 
 function confirmDelete() {
-  // perform delete
   isOpen.value = false
 }
 </script>
@@ -53,7 +52,6 @@ const emit = defineEmits<{
 ```
 
 ```ts
-// Usage anywhere
 const overlay = useOverlay()
 const confirm = overlay.create(ConfirmModal)
 
@@ -64,7 +62,6 @@ async function deleteItem(item) {
   })
 
   if (await instance.result) {
-    // user confirmed
   }
 }
 ```
@@ -86,7 +83,6 @@ type Schema = z.output<typeof schema>
 const state = reactive<Partial<Schema>>({})
 
 function onSave() {
-  // save user
   isOpen.value = false
 }
 </script>

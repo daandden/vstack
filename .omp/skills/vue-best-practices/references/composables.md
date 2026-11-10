@@ -127,7 +127,6 @@ A larger feature can compose additional focused capabilities through their relev
 **BAD:**
 ```javascript
 export function useFetch(url, method, headers, timeout, retries, immediate) {
-  // hard to read and easy to misorder
 }
 
 useFetch('/api/users', 'GET', null, 5000, 3, true)
@@ -144,7 +143,6 @@ export function useFetch(url, options = {}) {
     immediate = true
   } = options
 
-  // implementation
   return { method, headers, timeout, retries, immediate }
 }
 
@@ -165,7 +163,6 @@ interface UseCounterOptions {
 
 export function useCounter(options: UseCounterOptions = {}) {
   const { initial = 0, min = -Infinity, max = Infinity, step = 1 } = options
-  // implementation
 }
 ```
 
@@ -176,7 +173,7 @@ export function useCounter(options: UseCounterOptions = {}) {
 export function useCart() {
   const items = ref([])
   const total = computed(() => items.value.reduce((sum, item) => sum + item.price, 0))
-  return { items, total } // any consumer can mutate directly
+  return { items, total }
 }
 
 const { items } = useCart()

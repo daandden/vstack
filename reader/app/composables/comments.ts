@@ -13,8 +13,8 @@ export async function refreshComments() {
   }
 }
 
-export async function saveComment(result: string, revision: number, anchor: CommentAnchor, text: string) {
-  await changeComment({ version: 1, result, revision, anchor, text });
+export async function saveComment(result: string, revision: number, edit: number | null, anchor: CommentAnchor, text: string) {
+  await changeComment({ version: 1, result, revision, edit, anchor, text });
 }
 
 export async function editComment(id: string, text: string) {

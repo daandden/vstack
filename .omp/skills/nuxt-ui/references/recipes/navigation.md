@@ -76,13 +76,10 @@ const items = [{
 <template>
   <UTabs :items="items">
     <template #overview>
-      <!-- Overview content -->
     </template>
     <template #activity>
-      <!-- Activity feed -->
     </template>
     <template #members>
-      <!-- Members list -->
     </template>
   </UTabs>
 </template>

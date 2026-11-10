@@ -77,7 +77,7 @@ useEventListener(document, "flow-reveal", (event: Event) => {
       :ui="{ base: 'border-collapse tabular-nums', th: 'px-2 py-1 text-small text-muted align-top', td: 'px-2 py-1 text-body text-default align-top whitespace-normal [overflow-wrap:anywhere]', tr: 'has-[:target]:bg-accented', tbody: 'divide-flow-line' }"
     >
       <template v-for="c in labels" :key="c.id" #[`${c.id}-header`]="{ column }">
-        <UButton color="neutral" variant="ghost" size="sm" :aria-label="`Sort by ${c.label}`" class="-ms-2 active:bg-accented" @click="column.toggleSorting(column.getIsSorted() === 'asc')">
+        <UButton color="neutral" variant="ghost" size="sm" :aria-label="`Sort by ${c.label}`" class="-ms-2 pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px] active:bg-accented" @click="column.toggleSorting(column.getIsSorted() === 'asc')">
           <span v-html="inline(c.label)" /><span aria-hidden="true">{{ column.getIsSorted() === 'asc' ? '↑' : column.getIsSorted() === 'desc' ? '↓' : '↕' }}</span>
         </UButton>
       </template>

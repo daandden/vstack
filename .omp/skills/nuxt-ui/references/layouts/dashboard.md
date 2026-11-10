@@ -103,7 +103,6 @@ definePageMeta({ layout: 'dashboard' })
     </template>
 
     <template #body>
-      <!-- Page content -->
     </template>
   </UDashboardPanel>
 </template>
@@ -166,7 +165,6 @@ definePageMeta({ layout: 'dashboard' })
       <UDashboardNavbar title="Inbox" />
     </template>
     <template #body>
-      <!-- Email list -->
     </template>
   </UDashboardPanel>
 
@@ -175,7 +173,6 @@ definePageMeta({ layout: 'dashboard' })
       <UDashboardNavbar title="Message" />
     </template>
     <template #body>
-      <!-- Email content -->
     </template>
   </UDashboardPanel>
 </template>
@@ -222,13 +219,11 @@ definePageMeta({ layout: 'dashboard' })
 ```vue
 <UDashboardGroup>
   <UDashboardSidebar collapsible resizable>
-    <!-- Left sidebar -->
   </UDashboardSidebar>
 
   <slot />
 
   <UDashboardSidebar side="right" resizable>
-    <!-- Right sidebar -->
   </UDashboardSidebar>
 </UDashboardGroup>
 ```

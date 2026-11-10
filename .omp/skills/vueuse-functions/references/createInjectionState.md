@@ -14,13 +14,10 @@ import { createInjectionState } from '@vueuse/core'
 import { computed, shallowRef } from 'vue'
 
 const [useProvideCounterStore, useCounterStore] = createInjectionState((initialValue: number) => {
-  // state
   const count = shallowRef(initialValue)
 
-  // getters
   const double = computed(() => count.value * 2)
 
-  // actions
   function increment() {
     count.value++
   }

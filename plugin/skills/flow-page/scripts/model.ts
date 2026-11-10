@@ -61,7 +61,6 @@ export type ComparisonBody = {
   alternatives: Alternative[]; criteria: Criterion[]; assessments: Assessment[];
   verdict: { outcome: (typeof VERDICTS)[number]; alternative?: string; reason: string };
 };
-/** Measurements keep authored scalars, chart data, and reported uncertainty without inventing values. */
 export type Uncertainty = { low: number; high: number; of: string } | { plusminus: number; of: string };
 export type MetricPoint = { x: number; y: number };
 export type Measured = { series: string; value?: number; points?: MetricPoint[]; samples?: number | number[]; uncertainty?: Uncertainty } | { series: string; missing: string };
@@ -332,10 +331,15 @@ const stableJson = (v: unknown): string =>
 export function contribute(s: State, stageId: string, input: unknown, time: string, io: Io): Receipt & { revision: number; repeated?: true } {
   const diagnostics = contractDiagnostics(input);
   if (diagnostics.some(d => !d.path.startsWith("$.items["))) throw new ContributionRefusal(diagnostics);
-  return collecting(error => diagnostics.push(refusalDiagnostic(error, input)), () => applyContribution(s, stageId, input, time, io, diagnostics));
+  const structural = [...diagnostics];
+  const report = (error: unknown) => {
+    const diagnostic = refusalDiagnostic(error, input);
+    if (!structural.some(d => d.path === diagnostic.path)) diagnostics.push(diagnostic);
+  };
+  return collecting(report, () => applyContribution(s, stageId, input, time, io, diagnostics, report));
 }
 
-function applyContribution(s: State, stageId: string, input: unknown, time: string, io: Io, diagnostics: Diagnostic[]): Receipt & { revision: number; repeated?: true } {
+function applyContribution(s: State, stageId: string, input: unknown, time: string, io: Io, diagnostics: Diagnostic[], report: (error: unknown) => void): Receipt & { revision: number; repeated?: true } {
   const env = fields(input, "contribution", ["version", "items"]);
   if (env.version !== CONTRIBUTION_VERSION) refuse("contribution", `version ${JSON.stringify(env.version)} is not supported; flow-page reads contribution version ${CONTRIBUTION_VERSION}`);
   const items = list(env, "items", "contribution");
@@ -566,7 +570,7 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
     stage: {
       apply(o, where, ids) {
         fields(o, where, ["kind", "state"], ["retire"]);
-        if (o.state !== "finished") refuse(where, `a Stage moves only from in-progress to finished; ${JSON.stringify(o.state)} is not a transition from in-progress`);
+        if (o.state !== "finished") refuse(where, `a Stage moves only from in-progress to finished; ${JSON.stringify(o.state)} is not a transition from in-progress`, ["finished"], "state");
         const unresolved = [...latestAsks(s, stage.id).values()].filter((q) => !settled(answerState(s, q.id)));
         const given = o.retire === undefined ? [] : validatedMap(list(o, "retire", where), (x, j) => {
           const rw = `${where}: retire ${j + 1}`;
@@ -598,7 +602,6 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
   };
   const planned = items.flatMap((raw, i) => {
     const kind = isObj(raw) ? raw.kind : undefined;
-    if (diagnostics.some(d => d.path === `$.items[${i}]` || d.path.startsWith(`$.items[${i}].`) || d.path.startsWith(`$.items[${i}][`))) return [];
     const where = `item ${i + 1}${typeof kind === "string" ? ` (${kind})` : ""}`;
     try {
       if (typeof kind !== "string" || !KINDS.includes(kind as ContributionKind)) refuse(where, `kind must be ${listed(KINDS)}, got ${JSON.stringify(kind)}`);
@@ -608,13 +611,13 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
       handler.plan?.(o, where, ids);
       return [{ o, where, ids, handler }];
     } catch (error) {
-      diagnostics.push(refusalDiagnostic(error, input));
+      report(error);
       return [];
     }
   });
   for (const { o, where, ids, handler } of planned) {
     try { handler.apply(o, where, ids); }
-    catch (error) { diagnostics.push(refusalDiagnostic(error, input)); }
+    catch (error) { report(error); }
   }
   for (const f of authoredFigures) if ("attachment" in f) {
     const a = s.attachments.find((a) => a.id === f.attachment);
@@ -730,13 +733,13 @@ function parseQuiz(o: Obj, where: string): Quiz {
 function parseEntry(shape: Shape, columns: TableColumn[] | undefined, e: unknown, ew: string, id: string, changed: number, attachment: (v: unknown, where: string) => string): Entry {
   if (shape === "cards" || shape === "review") {
     const c = fields(e, ew, ["title", "label", "blocking", "impact", "action", "evidence", ...(shape === "review" ? ["axis", "location"] : [])], ["ref"]);
-    if (typeof c.blocking !== "boolean") reject(ew, "blocking must be true or false")
-    if (shape === "review" && !REVIEW_AXES.includes(c.axis as never)) reject(ew, `axis must be ${listed([...REVIEW_AXES])}`)
+    if (typeof c.blocking !== "boolean") reject(ew, "blocking must be true or false", "boolean", "blocking")
+    if (shape === "review" && !REVIEW_AXES.includes(c.axis as never)) reject(ew, `axis must be ${listed([...REVIEW_AXES])}`, REVIEW_AXES, "axis")
     return { id, ...(c.ref ? { ref: c.ref } : {}), title: text(c, "title", ew), label: text(c, "label", ew), blocking: c.blocking, impact: text(c, "impact", ew), action: text(c, "action", ew), evidence: text(c, "evidence", ew), ...(shape === "review" ? { axis: c.axis, location: text(c, "location", ew) } : {}), changed };
   }
   if (shape === "ledger") {
     const c = fields(e, ew, ["claim", "status", "evidence", "missing_proof", "consequence"], ["ref"]);
-    if (!CLAIM_STATES.includes(c.status as ClaimState)) reject(ew, `status must be ${listed(CLAIM_STATES)}`)
+    if (!CLAIM_STATES.includes(c.status as ClaimState)) reject(ew, `status must be ${listed(CLAIM_STATES)}`, CLAIM_STATES, "status")
     return { id, ...(c.ref ? { ref: c.ref } : {}), claim: text(c, "claim", ew), status: c.status, evidence: text(c, "evidence", ew), missing_proof: text(c, "missing_proof", ew), consequence: text(c, "consequence", ew), changed };
   }
   if (shape === "code") {
@@ -775,7 +778,7 @@ function parseEntry(shape: Shape, columns: TableColumn[] | undefined, e: unknown
     };
   }
   const c = fields(e, ew, ["cells"], ["ref"]);
-  if (!Array.isArray(c.cells) || c.cells.length !== columns!.length || c.cells.some((x) => typeof x !== "string")) reject(ew, `cells must list ${columns!.length} strings, one per column`)
+  if (!Array.isArray(c.cells) || c.cells.length !== columns!.length || c.cells.some((x) => typeof x !== "string")) reject(ew, `cells must list ${columns!.length} strings, one per column`, `${columns!.length} strings, one per column`, "cells")
   return { id, ...(c.ref ? { ref: c.ref } : {}), cells: c.cells as string[], changed };
 }
 
@@ -838,7 +841,7 @@ function revise(s: State, o: Obj, where: string, stage: string, entryIds: string
     r.entries.push(...adds.map((e, j) => parseEntry(r.shape, r.columns, e, `${where}: add ${j + 1}`, entryIds![j].split("/")[1], rev, (v, w) => resolve(v, "attachment", w))));
   }
   if (r.shape === "review") checkReview(r.axes!, r.entries, where);
-  s.history.push(previous);
+  if (previous.edit !== rev) s.history.push(previous);
   r.edit = rev;
   r.captured = time;
 }
@@ -1158,25 +1161,27 @@ function parseComparison(o: Obj, where: string, attachment: (v: unknown, where: 
 }
 
 function parseMetrics(o: Obj, where: string): MetricsBody {
-  const series = localRefs(validatedMap(list(o, "series", where), (x, j) => {
+  const rawSeries = list(o, "series", where);
+  const series = localRefs(validatedMap(rawSeries, (x, j) => {
     const sw = `${where}: series ${j + 1}`;
     const so = fields(x, sw, ["ref", "label"], ["baseline"]);
     if (so.baseline !== undefined && so.baseline !== true) refuse(sw, "baseline must be true, or left out");
     return { ref: localRef(so, sw), label: safeText(so, "label", sw), ...(so.baseline === true ? { baseline: true as const } : {}) };
   }), where, "series");
   if (series.filter((x) => x.baseline).length > 1) reject(where, "at most one series is the baseline that deltas are measured from");
-  const refs = series.map((x) => x.ref);
+  const refs = rawSeries.every(x => isObj(x) && typeof x.ref === "string" && REF.test(x.ref))
+    ? rawSeries.map(x => (x as Obj).ref as string) : undefined;
   const measurements = localRefs(validatedMap(list(o, "measurements", where), (m, j): Measurement => {
     const mw = `${where}: measurement ${j + 1}`;
     const mo = fields(m, mw, ["ref", "name", "unit", "values"], ["better", "verdict", "chart"]);
-    if (mo.better !== undefined && mo.better !== "lower" && mo.better !== "higher") refuse(mw, `better must be lower or higher, got ${JSON.stringify(mo.better)}`);
-    if (mo.verdict !== undefined && !MEASURE_VERDICTS.includes(mo.verdict as never)) refuse(mw, `verdict must be ${listed([...MEASURE_VERDICTS])}, got ${JSON.stringify(mo.verdict)}`);
+    if (mo.better !== undefined && mo.better !== "lower" && mo.better !== "higher") reject(mw, `better must be lower or higher, got ${JSON.stringify(mo.better)}`, ["lower", "higher"], "better");
+    if (mo.verdict !== undefined && !MEASURE_VERDICTS.includes(mo.verdict as never)) reject(mw, `verdict must be ${listed([...MEASURE_VERDICTS])}, got ${JSON.stringify(mo.verdict)}`, MEASURE_VERDICTS, "verdict");
     const seen = new Set<string>();
     const values = validatedMap(list(mo, "values", mw), (v, k): Measured => {
       const vw = `${mw}: value ${k + 1}`;
-      const missing = isObj(v) && v.missing !== undefined;
-      const vo = v as Obj;
-      const s = oneOf(vo.series, refs, `${vw}: series`, "series");
+      const vo = fields(v, vw, ["series"], ["missing", "value", "points", "samples", "uncertainty"]);
+      const missing = vo.missing !== undefined;
+      const s = refs ? oneOf(vo.series, refs, `${vw}: series`, "series") : text(vo, "series", vw);
       if (seen.has(s)) refuse(vw, `series ${s} already has a value in this measurement`);
       seen.add(s);
       if (missing) {
@@ -1480,7 +1485,6 @@ export type ValueView = {
 };
 export type MetricsView = Omit<MetricsBody, "measurements"> & {
   baseline?: string;
-  /** Legacy scalar bars retain their zero-based shared scale. */
   measurements: (Omit<Measurement, "values" | "chart"> & { anchor: string; chart?: Measurement["chart"] | { max: number }; values: ValueView[] })[];
 };
 export type ResultView = Omit<Result, "entries" | "document" | "comparison" | "metrics"> & {
@@ -1744,7 +1748,7 @@ export function snapshot(v: View) {
       background: st.background?.id,
       ...(st.background?.figures ? { background_figures: st.background.figures } : {}),
       results: st.results.map((r) => ({
-        id: r.id, shape: r.shape, revision: r.revision, ...(r.captured ? { captured: r.captured } : {}), ...(r.canonical ? { canonical: r.canonical } : {}), changed: r.changed,
+        id: r.id, shape: r.shape, revision: r.revision, ...(r.edit === undefined ? {} : { edit: r.edit }), ...(r.captured ? { captured: r.captured } : {}), ...(r.canonical ? { canonical: r.canonical } : {}), changed: r.changed,
         ...(r.demo ? { demo: { start: r.demo.start, states: r.demo.states.map((x) => x.name), actions: r.demo.actions.map((x) => x.name), values: r.demo.values.map((x) => x.name) } } : {}),
         ...(r.artifact ? { artifact: r.artifact } : {}),
         ...(r.review ? { review: r.review } : {}),

@@ -13,7 +13,7 @@ test("readers select typed-table text and manage revision-bound comments across 
   const port = socket.port;
   socket.stop(true);
   function cli(args: string[], items?: object[]): any {
-    const p = Bun.spawnSync([process.execPath, join(import.meta.dir, "../plugin/skills/flow-page/scripts/flow-page.ts"), ...args, "--home", home, "--session", "01a1c282-0e63-7477-9c2a-df76da2174f4", "--agent", "impl-441-retry"], {
+    const p = Bun.spawnSync([process.execPath, join(import.meta.dir, "../plugin/skills/flow-page/scripts/flow-page.ts"), ...args, "--home", home, "--session", "01a1c2c0-b8bd-7047-ac1f-33e7ca3c40d6", "--agent", "review-fix-428"], {
       cwd: root, env: { ...ENV, HOME: home, VSTACK_FLOW_PORT: String(port) },
       stdin: items ? new TextEncoder().encode(JSON.stringify({ version: 1, items })) : "ignore", stdout: "pipe", stderr: "pipe",
     });
@@ -28,7 +28,7 @@ test("readers select typed-table text and manage revision-bound comments across 
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
     const page = await context.newPage();
     await page.goto(`${sent.live.url}#${sent.stage}`);
-    const comments = page.getByRole("region", { name: "Reader comments on Restart evidence" });
+    let comments = page.getByRole("region", { name: "Reader comments on Restart evidence" });
     await comments.getByRole("button", { name: "Add Reader comment" }).click({ timeout: 5000 });
     await comments.getByRole("textbox", { name: "Comment" }).fill("Keep this evidence <script>literal</script>.");
     await comments.getByRole("button", { name: "Save comment", exact: true }).click();
@@ -45,11 +45,21 @@ test("readers select typed-table text and manage revision-bound comments across 
     expect(await comments.textContent()).toContain("Stage stage-1");
     expect(await comments.textContent()).toContain("Result result-1");
     expect(await comments.textContent()).toContain("Entry e1");
-    const other = await browser.newContext({ viewport: { width: 320, height: 800 }, colorScheme: "dark" });
+    const other = await browser.newContext({ viewport: { width: 320, height: 800 }, colorScheme: "dark", hasTouch: true });
     const otherPage = await other.newPage();
     await otherPage.goto(`${sent.live.url}#${sent.stage}`);
     await otherPage.getByText("Confirm the host restart.", { exact: true }).waitFor();
     expect(await otherPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await otherPage.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
+    expect(await otherPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    const touchButtons = otherPage.getByRole("button").filter({ hasText: /^(Edit comment|Remove comment|Add Reader comment|Select text to comment|Comment on selected text|Check)/ });
+    for (const button of await touchButtons.all()) {
+      const box = await button.boundingBox();
+      expect(box!.height).toBeGreaterThanOrEqual(44);
+      expect(box!.width).toBeGreaterThanOrEqual(44);
+      expect(await button.evaluate(el => [...el.querySelectorAll("span")].every(label => label.scrollWidth <= label.clientWidth))).toBe(true);
+    }
+    await otherPage.evaluate(() => { document.documentElement.style.fontSize = ""; });
     await page.getByRole("button", { name: "Sort by Check", exact: true }).click();
     expect(await page.getByRole("cell").allTextContents()).toEqual(["Earlier check", "Host restart"]);
     await page.getByRole("textbox", { name: "Filter rows", exact: true }).fill("Host restart");
@@ -108,9 +118,33 @@ test("readers select typed-table text and manage revision-bound comments across 
     expect(feedback).toContain("Keep the selected passage.");
     expect(feedback).toContain("Keep this evidence <script>literal</script>.");
     expect(feedback).toContain("Confirm the host restart.");
+    await page.getByRole("textbox", { name: "Filter rows", exact: true }).fill("");
+    await comments.getByRole("button", { name: "Add Reader comment", exact: true }).click();
+    await comments.getByRole("textbox", { name: "Comment" }).fill("Saved after the focused edit.");
+    const focused = cli(["submit"], [{ kind: "revise", result: sent.refs["evidence/restart"], base: sent.revision, set: { cells: ["Changed restart"] } }]);
+    await page.getByRole("cell", { name: "Changed restart", exact: true }).waitFor();
+    await comments.getByRole("button", { name: "Save comment", exact: true }).click();
+    expect(await page.locator(`#${sent.refs.evidence} > section[aria-label]`).innerText()).not.toContain("Confirm the host restart.");
+    await page.getByText("Earlier revisions (1)", { exact: true }).click();
+    comments = page.locator(`#${sent.refs.evidence}-r1`).getByRole("region", { name: "Reader comments on Restart evidence", exact: true });
+    await comments.getByText("Saved after the focused edit.", { exact: true }).waitFor();
+    const added = cli(["submit"], [{ kind: "revise", result: sent.refs.evidence, add: [{ ref: "added", cells: ["New proof"] }] }]);
+    await page.getByRole("cell", { name: "New proof", exact: true }).waitFor();
+    const currentComments = page.locator(`#${sent.refs.evidence} > section[aria-label]`);
+    await currentComments.getByRole("button", { name: "Add Reader comment", exact: true }).click();
+    await currentComments.getByRole("textbox", { name: "Comment" }).fill("Comment on the appended version.");
+    await currentComments.getByRole("button", { name: "Save comment", exact: true }).click();
+    await currentComments.getByText("Comment on the appended version.", { exact: true }).waitFor();
+    await page.getByRole("button", { name: "Copy feedback", exact: true }).click();
+    await page.getByRole("status").filter({ hasText: "Feedback copied" }).waitFor();
+    const focusedFeedback = await page.evaluate(() => navigator.clipboard.readText());
+    expect(focusedFeedback).toContain("> Host restart\nConfirm the host restart.");
+    expect(focusedFeedback).not.toContain("> Changed restart\nConfirm the host restart.");
+    expect(focusedFeedback).toContain(`Revision 1 · Edit ${added.revision}`);
+    expect(focused.revision).not.toBe(added.revision);
     cli(["submit"], [{ ...result, ref: "revised", revises: sent.refs.evidence, title: "Updated restart evidence" }]);
     await page.getByRole("heading", { name: "Updated restart evidence", exact: true }).waitFor();
-    await page.getByText("Earlier revisions (1)", { exact: true }).click();
+    if (!await comments.getByText("Confirm the host restart.", { exact: true }).isVisible()) await page.getByText("Earlier revisions (3)", { exact: true }).click();
     await comments.getByText("Confirm the host restart.", { exact: true }).waitFor();
     expect(await comments.textContent()).toContain("Revision 1");
     expect(await page.getByRole("region", { name: "Reader comments on Updated restart evidence", exact: true }).textContent()).not.toContain("Confirm the host restart.");
@@ -125,6 +159,7 @@ test("readers select typed-table text and manage revision-bound comments across 
     await page.keyboard.press("Enter");
     await historicalText.getByRole("button", { name: "Confirm removal" }).focus();
     await page.keyboard.press("Enter");
+    await historicalText.waitFor({ state: "hidden" });
     await otherPage.getByText("Keep the selected passage.", { exact: true }).waitFor({ state: "hidden" });
     expect(await comments.textContent()).not.toContain("Keep the selected passage.");
     if (process.env.FLOW_READER_EVIDENCE) {

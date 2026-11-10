@@ -13,7 +13,7 @@ Use `catalog` to choose a Result shape and `describe <shape> --compact` for its 
   - `set` replaces only the fields it names: an entry's fields, or a Result's `title` and `summary`. It needs `base`, the revision that `show` printed as that entry's or Result's `changed`. When someone changed it after `base`, the edit is refused as a conflict: run `show` and decide again.
   - `add` appends new entries or rows to a Result, in its shape. It needs no `base`.
 
-Reader comments are separate from Result contributions and answers. They name a captured Result revision and never change it. When the user points at comments, `show` returns their Stage, Result, revision, block, entry, or selected-text anchor, text, and time in the top-level `reader_comments` list, apart from authored Results and answers. See [Reader comments](reading.md#reader-comments) for text selection, editing, removal, revision anchoring, and Copy feedback.
+Reader comments are separate from Result contributions and answers. They name an exact captured Result version and never change it. When the user points at comments, `show` returns their Stage, Result, whole-Result `revision`, focused `edit`, block, entry, or selected-text anchor, text, and time in the top-level `reader_comments` list, apart from authored Results and answers. See [Reader comments](reading.md#reader-comments) for text selection, editing, removal, version anchoring, and Copy feedback.
 
 Before a `prototype` or `quiz`, read [Interactive Result fields](interactive-results.md). Before a `comparison` or `metrics`, read [Comparison and Metrics fields](comparison-metrics.md). Before capturing attachments or canonical file revisions, read [Captured attachments](attachments.md). The remaining shapes are defined below.
 
