@@ -99,6 +99,10 @@ function codeHostSeed(root: string): { template: string; text: string } | null {
   return { template, text: seeded };
 }
 
+function adrArchiveNote(store: string): string {
+  return `\nThe ADR archive lives in ${store}/domain/adr/archive/<date>/, docs/adr/archive/<date>/, and archive/<date>/ inside each context's ADR directory. It is history read for why, never a rule.\n`;
+}
+
 function privateMovePlan(common: string, worktrees: string[], commonIsOrdinaryGit: boolean, replacements: Replacement[]): Item {
   const from = join(common, "matt-pocock"), to = join(common, "vstack");
   const item: Item = { id: `private:${common}`, kind: "private-move", mandatory: true, destructive: true, from, to, changes: [], manual_hits: [], symlinks: [] };
@@ -106,8 +110,9 @@ function privateMovePlan(common: string, worktrees: string[], commonIsOrdinaryGi
     if (!STORE_TEXT.includes(extname(p))) continue;
     const before = text(p);
     if (before.includes("\0")) continue;
-    const after = rewrite(before, common, commonIsOrdinaryGit, replacements);
+    let after = rewrite(before, common, commonIsOrdinaryGit, replacements);
     const target = join(to, p.slice(from.length + 1).replace(/^docs-agents(?=\/|$)/, "config"));
+    if (target === join(to, "config/domain.md")) after += adrArchiveNote(to);
     if (before !== after) item.changes.push(change(p, target, before, after));
     item.manual_hits.push(...hits(target, after, replacements));
   }
@@ -172,6 +177,7 @@ export function projectPlan(cwd: string, mode: Mode = "move"): Plan {
       if (privateMode && e.name === "domain.md") {
         after = after.replace(/(?<![\w/-])GLOSSARY(-MAP)?\.md/g, (_, map) => join(store, "domain", `GLOSSARY${map ?? ""}.md`)).replaceAll("docs/adr/", join(store, "domain/adr") + "/");
         after += `\nRead the repo's tracked GLOSSARY.md and docs/adr/ as well when present. Private domain docs live in ${store}/domain/.\n`;
+        after += adrArchiveNote(store);
       }
       add(privateMode ? "config-copy" : "config-move", from, to, before, after);
     }

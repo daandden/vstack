@@ -44,7 +44,7 @@ items:
     tree: ea30ee454ba264543dbe40737973b1a5afb9f0e6
     disposition: adapt
     artifacts: [plugin/skills/domain-modeling]
-    reason: "Its user questions use the shared Flow publication and ordinary ask contract (ask-tool, #58, #165). Flow publication is conditional and chat keeps the full output (#321, ADR 0046)."
+    reason: "Its user questions use the shared Flow publication and ordinary ask contract (ask-tool, #58, #165). Flow publication is conditional and chat keeps the full output (#321, ADR 0046). Counts the ADR archive when choosing the next ADR number, so no number is reused (ADR 0067, #450)."
   - id: matt/grill-with-docs
     upstream: matt
     kind: skill
@@ -92,7 +92,7 @@ items:
     tree: b1568cde855a189b16e5d7dd8a0fa4c3f156bc2e
     disposition: adapt
     artifacts: [plugin/skills/setup-vstack]
-    reason: "Uses current MCP descriptions, schemas, and recorded tracker and Code host facts. Preserves CI hand edits and confirms CI and Code host drafts together, including the default End state and the Landing method that the Code host allows, recommending `merge` on GitHub. Lists all eight tracker readers and the final Verifier as a Verify skill consumer. Removes obsolete diagram and visual-judge setup claims (#204, #205, #206, #207, ADR 0035, ADR 0038, ADR 0043, ADR 0055, ADR 0060)."
+    reason: "Uses current MCP descriptions, schemas, and recorded tracker and Code host facts. Preserves CI hand edits and confirms CI and Code host drafts together, including the default End state and the Landing method that the Code host allows, recommending `merge` on GitHub. Lists all eight tracker readers and the final Verifier as a Verify skill consumer. Removes obsolete diagram and visual-judge setup claims (#204, #205, #206, #207, ADR 0035, ADR 0038, ADR 0043, ADR 0055, ADR 0060). Names the ADR archive in fresh domain drafts and Private-mode Migration config (ADR 0067, #450)."
   - id: matt/tdd
     upstream: matt
     kind: skill
@@ -652,7 +652,7 @@ items:
     tree: ba549f92c3a8dc1506b21674e8794eb980019bf3
     disposition: adapt
     artifacts: [plugin/skills/why]
-    reason: "Profiles git, Code host, tracker, and MCP evidence. Resolves configured MCP evidence through current descriptions, schemas, and facts, records gaps, and retains fresh-context synthesis (#49, #204, #207, ADR 0035)."
+    reason: "Profiles git, Code host, tracker, and MCP evidence. Resolves configured MCP evidence through current descriptions, schemas, and facts, records gaps, and retains fresh-context synthesis (#49, #204, #207, ADR 0035). Reads active ADRs and the ADR archive as historical evidence for why (ADR 0067, #450)."
   - id: pstack/playbook-authoring-a-skill
     upstream: pstack
     kind: playbook

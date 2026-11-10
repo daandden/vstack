@@ -224,7 +224,7 @@ For Section C's re-setup branch, use the existing rows and facts as directed the
 In Private mode, change two drafts so that they point under the vstack root by absolute path:
 
 - `issue-tracker.md` for local markdown: replace every `.scratch/` path, the Wayfinding map, ticket, and frontier paths included, with `<vstack_root>/artifacts/`.
-- `domain.md`: the domain docs live in `<vstack_root>/domain/`, as `GLOSSARY.md` (or `GLOSSARY-MAP.md`) and `adr/`, in place of the repo-root files. Add one line saying that the repo's own tracked `GLOSSARY.md` and `docs/adr/` are read as well when they exist.
+- `domain.md`: the domain docs live in `<vstack_root>/domain/`, as `GLOSSARY.md` (or `GLOSSARY-MAP.md`) and `adr/`, in place of the repo-root files. Keep the ADR archive at `archive/<date>/` inside every ADR directory, including `<vstack_root>/domain/adr/` and each context's ADR directory. Add one line saying that the repo's own tracked `GLOSSARY.md` and `docs/adr/` are read as well when they exist.
 
 Publish each complete draft and, in Standard mode, the `## vstack` block changes (see step 7) as Results with one complete confirmation round for the whole write set. Call `ask` with the receipt's generated question under flow-page's "Every ask in a Flow" contract. Its question offers Write it (Recommended) and Change something. On Change something, make the user's edits and re-ask with `again`, publishing the revised drafts with the linked round before `ask`. A section choice is not write approval. Until this confirmation, keep the project files unchanged.
 

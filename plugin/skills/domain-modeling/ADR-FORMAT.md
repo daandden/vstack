@@ -24,7 +24,7 @@ Only include these when they add genuine value. Most ADRs won't need them.
 
 ## Numbering
 
-Scan `docs/adr/` for the highest existing number and increment by one.
+Scan the relevant ADR directory and its ADR archive, including every dated folder under `archive/`, for the highest existing number. Increment that number by one. Never reuse an archived number. For example, active ADRs `0001` through `0003` and archived ADR `0004` make the next number `0005`. Apply this within each ADR directory in either mode and each context.
 
 ## When to offer an ADR
 

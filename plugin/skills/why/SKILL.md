@@ -32,7 +32,7 @@ Build the anchor yourself with relevant file paths and line ranges, key symbols,
 
 Read `references/source-playbook.md`. Make a coverage map for all seven categories:
 
-1. Source control history, including git, the profile's review CLI, comments, tests, ADRs, and release notes.
+1. Source control history, including git, the profile's review CLI, comments, tests, active ADRs, the ADR archive, and release notes.
 2. Issue / ticket tracker, through the profile's CLI, files, or MCP.
 3. Long-form documents, through configured MCPs.
 4. Real-time team chat, through configured MCPs.
