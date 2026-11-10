@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Show implement and to-tickets as the Matt flow branches after to-spec, while preserving grill-me's direct implement path (#425)."
+  ]
+}

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { flow } from "~/composables/reader";
-import { current, measureHeader, tab, treeOpen } from "~/composables/navigation";
+import { current, mapOpen, mapTab, measureHeader, tab } from "~/composables/navigation";
 import { blockLabel } from "~/utils/flow";
 
 const f = computed(() => flow.value!);
@@ -31,7 +31,7 @@ onMounted(measureHeader);
       </li>
       <li v-if="f.topics.length"><ULink raw href="#topics" external :aria-current="tab === 'topics' ? 'page' : undefined" class="inline-flex items-center gap-1.5 [padding-block:0.125rem] [padding-inline:0.375rem] rounded font-semibold no-underline text-toned aria-[current]:bg-accented aria-[current]:text-primary active:text-secondary hover:text-secondary">Topics</ULink></li>
       <li v-if="f.stages.length">
-        <UButton class="link" :ui="{ base: () => 'inline-flex items-center gap-1 [padding-block:0] [padding-inline:0] border-0 bg-transparent font-normal text-info underline underline-offset-[0.2em] cursor-pointer touch-manipulation active:text-secondary hover:text-secondary' }" aria-haspopup="dialog" aria-keyshortcuts="t" @click="treeOpen = true">Stages <kbd>t</kbd></UButton>
+        <UButton class="link" :ui="{ base: () => 'inline-flex items-center gap-1 [padding-block:0] [padding-inline:0] border-0 bg-transparent font-normal text-info underline underline-offset-[0.2em] cursor-pointer touch-manipulation active:text-secondary hover:text-secondary' }" aria-haspopup="dialog" aria-keyshortcuts="m" @click="mapTab = 'stages'; mapOpen = true">Stages <kbd>m</kbd></UButton>
       </li>
     </ul>
     <nav v-if="jumps.length" class="jump-row flex flex-wrap gap-x-3 gap-y-0.5 [padding-block-start:0.375rem] [padding-inline:0.375rem] border-bs border-muted" aria-label="In this tab">

@@ -68,6 +68,14 @@ test("default flowchart edges have angular step presentation", async () => {
   expect(paths.every((d) => !/[CSA]/i.test(d))).toBe(true);
 });
 
+test("exports outline edge and cluster labels instead of displaying label boxes", async () => {
+  const svg = await figure("flowchart TD\n subgraph Run[Review run]\n A[Read] -->|continue| B[Answer]\n end\n");
+  expect(svg).toContain('class="pele-edge-label"');
+  expect(svg).toContain('class="pele-cluster-label"');
+  expect(svg).toMatch(/\.pele-edge-label > rect\s*\{\s*display: none;/);
+  expect(svg).toContain("paint-order: stroke fill; stroke: #1e1e2e; stroke-width: 0.12em; stroke-linejoin: round;");
+});
+
 test("a failed render leaves a prior successful SVG unchanged and reports no output", async () => {
   const dir = mkdtempSync(join(tmpdir(), "vstack-readable-"));
   dirs.push(dir);

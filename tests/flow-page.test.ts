@@ -59,27 +59,30 @@ const submit = (session: string | undefined, ...items: object[]) => run(["submit
 const show = (flow: string) => run(["show", "--flow", flow]).json;
 
 test.each([
-  ["fork after grill", [["grill-with-docs", "finished"]], [
-    ["grill", "finished"], ["implement", "to-come"], ["to-spec", "to-come"], ["to-tickets", "to-come"], ["implement-spec", "to-come"],
+  ["before spec", [["grill-with-docs", "finished"]], [
+    ["grill", "finished"], ["to-spec", "to-come"], ["implement", "to-come"], ["to-tickets", "to-come"], ["implement-spec", "to-come"],
+  ]],
+  ["fork after spec", [["grill-with-docs", "finished"], ["to-spec", "finished"]], [
+    ["grill", "finished"], ["to-spec", "finished"], ["implement", "to-come"], ["to-tickets", "to-come"], ["implement-spec", "to-come"],
   ]],
   ["multi-session", [["grill-me", "finished"], ["to-spec", "finished"], ["to-tickets", "in-progress"]], [
     ["grill", "finished"], ["to-spec", "finished"], ["to-tickets", "in-progress"], ["implement-spec", "to-come"],
   ]],
   ["one-session", [["grill-me", "finished"], ["implement", "in-progress"]], [
-    ["grill", "finished"], ["implement", "in-progress"],
+    ["grill", "finished"], ["to-spec", "not-run"], ["implement", "in-progress"],
   ]],
   ["off-path", [["code-review", "finished"], ["research", "in-progress"]], []],
   ["both branches ran", [["grill-me", "finished"], ["to-spec", "finished"], ["to-tickets", "finished"], ["implement", "in-progress"]], [
-    ["grill", "finished"], ["implement", "in-progress"], ["to-spec", "finished"], ["to-tickets", "finished"],
+    ["grill", "finished"], ["to-spec", "finished"], ["implement", "in-progress"], ["to-tickets", "finished"],
   ]],
-  ["to-spec then implement", [["grill-me", "finished"], ["to-spec", "finished"], ["implement", "in-progress"]], [
-    ["grill", "finished"], ["implement", "in-progress"], ["to-spec", "finished"],
+  ["to-spec then implement", [["grill-with-docs", "finished"], ["to-spec", "finished"], ["implement", "in-progress"]], [
+    ["grill", "finished"], ["to-spec", "finished"], ["implement", "in-progress"],
   ]],
   ["return to multi-session", [["grill-me", "finished"], ["to-spec", "finished"], ["implement", "finished"], ["to-tickets", "in-progress"]], [
-    ["grill", "finished"], ["implement", "finished"], ["to-spec", "finished"], ["to-tickets", "in-progress"], ["implement-spec", "to-come"],
+    ["grill", "finished"], ["to-spec", "finished"], ["implement", "finished"], ["to-tickets", "in-progress"], ["implement-spec", "to-come"],
   ]],
   ["skipped grill", [["to-spec", "in-progress"]], [
-    ["grill", "not-run"], ["to-spec", "in-progress"], ["to-tickets", "to-come"], ["implement-spec", "to-come"],
+    ["grill", "not-run"], ["to-spec", "in-progress"], ["implement", "to-come"], ["to-tickets", "to-come"], ["implement-spec", "to-come"],
   ]],
 ] as const)("show derives the Matt path for %s", (_name, stages, expected) => {
   let flow = "";
@@ -98,8 +101,12 @@ test.each([
   }
   expect(snapshot.path).toBeDefined();
   expect(snapshot.path.position).toBeUndefined();
+  if (_name === "fork after spec") {
+    expect(snapshot.path.branches.map((b: any) => b.steps[0].id)).toEqual(["implement", "to-tickets"]);
+  }
+  expect(snapshot.path.spec).toBeDefined();
   expect(snapshot.path.grill.skills).toEqual(stages.some(([skill]) => skill === "grill-me") ? ["grill-me"] : stages.some(([skill]) => skill === "grill-with-docs") ? ["grill-with-docs"] : ["grill-with-docs", "grill-me"]);
-  const steps = [snapshot.path.grill, ...snapshot.path.branches.flatMap((b: any) => b.steps)];
+  const steps = [snapshot.path.grill, snapshot.path.spec, ...snapshot.path.branches.flatMap((b: any) => b.steps)];
   expect(steps.map((s: any) => [s.id, s.state])).toEqual(expected);
   expect(steps.flatMap((s: any) => s.stages)).toEqual(expect.arrayContaining(
     snapshot.stages.map((s: any) => ({ id: s.id, skill: s.skill, state: s.state })),
@@ -782,6 +789,43 @@ test("a Document Result keeps ordered sections, citations, figures, limitations,
   expect(bytesOf(flow, refs.shot)).toEqual(PNG);
   const sources = show(flow).sources;
   for (const src of res.document.sources) expect(sources.find((x: any) => x.id === src).cited_by).toContain(refs.doc);
+});
+
+test("a Document Mermaid parse error refuses the whole contribution without a partial write", () => {
+  openFlow("s-1");
+  const before = tree();
+  const invalid = "flowchart LR\n  a[Unclosed";
+  const r = submit("s-1",
+    { kind: "topic", ref: "pending", title: "Not committed", summary: "Part of the refused contribution.", body: "Nothing is stored.", sources: ["fixture"] },
+    doc("doc", { sections: [{ heading: "Broken diagram", blocks: [{ code: invalid, language: "mermaid" }] }], citations: undefined }));
+  expect(r.code).toBe(1);
+  expect(r.json).toMatchObject({ ok: false, diagnostics: expect.arrayContaining([expect.objectContaining({
+    path: "$.items[1].sections[0].blocks[0]",
+    message: expect.stringContaining("Expecting 'SQE', 'UNICODE_TEXT', 'TEXT', 'TAGSTART', got '$end'"),
+  })]) });
+  expect(tree()).toEqual(before);
+});
+
+test("Document Mermaid blocks accept authored paints and unchecked roles while other languages stay plain", () => {
+  openFlow("s-1");
+  const code = [
+    "flowchart LR",
+    "  a[Start]:::unknown --> b[End]:::ok",
+    "  classDef ok fill:#a6e3a1,stroke:#cba6f7,color:#cdd6f4",
+    "  style a fill:#123456",
+    "  linkStyle 0 stroke:#eba0ac",
+  ].join("\n");
+  const r = submit("s-1", doc("doc", { sections: [{ heading: "Styled diagram", blocks: [
+    { code, language: "mermaid" },
+    { code: "flowchart LR\n  a[Unclosed", language: "text" },
+  ] }], citations: undefined }));
+  expect(r.code).toBe(0);
+  expect(r.stderr).toBe("");
+  const state = JSON.parse(readFileSync(join(storedFolder(home, r.json.flow), "data", "state.json"), "utf8"));
+  expect(state.results[0].document.sections[0].blocks).toEqual([
+    { code, language: "mermaid" },
+    { code: "flowchart LR\n  a[Unclosed", language: "text" },
+  ]);
 });
 
 const MP4 = Buffer.concat([Buffer.from([0, 0, 0, 0x18]), Buffer.from("ftypisom"), Buffer.alloc(12)]);

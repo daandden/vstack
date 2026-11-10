@@ -41,7 +41,7 @@ Create files lazily: only when you have something to write. If no `GLOSSARY.md` 
 
 ## During the session
 
-Follow `skill://flow-page`'s "Stage entry/exit line" for a domain-modeling run. In a Flow, route questions through `ask` under its "Every ask in a Flow" contract. Outside a Flow, use plain `ask`. A timeout, cancellation, or headless recommendation does not settle a term. For an unanswered ADR offer, re-ask once, using `again` in a Flow, then create no ADR without an explicit pick or resolved reading. In a Flow, publish resulting terms, scenarios, and decisions as Document Results linked to the canonical glossary or ADR files.
+Follow `skill://flow-page`'s "Stage entry/exit line" for a domain-modeling run. In a Flow, route questions through `ask` under its "Every ask in a Flow" contract. Outside a Flow, use plain `ask`. A timeout, cancellation, or headless recommendation does not settle a term or a new decision. In a Flow, publish resulting terms, scenarios, and decisions as Document Results linked to the canonical glossary or ADR files.
 
 ### Challenge against the glossary
 
@@ -61,16 +61,16 @@ When the user states how something works, check whether the code agrees. If you 
 
 ### Update GLOSSARY.md inline
 
-When a term is resolved, update `GLOSSARY.md` right there. Don't batch these up: capture them as they happen. Use the format in [GLOSSARY-FORMAT.md](./GLOSSARY-FORMAT.md).
+Reuse existing definitions and carry settled terms into `GLOSSARY.md` without asking again. When a term is resolved, update the glossary right there. Don't batch these up: capture them as they happen. Ask about a new product concept or a preferred public name. Use the format in [GLOSSARY-FORMAT.md](./GLOSSARY-FORMAT.md).
 
 `GLOSSARY.md` should be totally devoid of implementation details. Do not treat `GLOSSARY.md` as a spec, a scratch pad, or a repository for implementation decisions. It is a glossary and nothing else.
 
-### Offer ADRs sparingly
+### Record qualifying decisions
 
-Only offer to create an ADR, through `ask`, when all three are true:
+Record a decision the user already made as an ADR without offering it through `ask`, but only when all three are true:
 
 1. **Hard to reverse**: the cost of changing your mind later is meaningful
 2. **Surprising without context**: a future reader will wonder "why did they do it this way?"
 3. **The result of a real trade-off**: there were genuine alternatives and you picked one for specific reasons
 
-If any of the three is missing, skip the ADR. Use the format in [ADR-FORMAT.md](./ADR-FORMAT.md).
+If any of the three is missing, skip the ADR. Record the settled decision, its placement, and any supersession links. Recording never settles a new fallback, guarantee, or policy. Ask about any such open choice before recording it as decided. In a grill, record the bookkeeping as an Assumed pick with its reason under grilling's Bookkeeping list. Use the format in [ADR-FORMAT.md](./ADR-FORMAT.md).

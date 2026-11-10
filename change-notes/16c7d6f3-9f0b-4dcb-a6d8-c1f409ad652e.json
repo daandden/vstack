@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Document Mermaid code blocks draw as figures in the Flow reader with their exact source in a Source disclosure. Submit checks their syntax with Pele and refuses the whole contribution on a parse error, without checking roles or authored paints (#409)."
+  ]
+}

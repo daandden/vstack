@@ -31,6 +31,14 @@ const stop = computed(() => (props.historical ? undefined : ""));
             <div class="grid gap-1.5" v-html="prose(step.text, cites)" />
           </li>
         </ol>
+        <figure v-else-if="'code' in b && b.language === 'mermaid'" class="figure grid grid-cols-[minmax(0,1fr)] gap-1.5 justify-items-start">
+          <DiagramFigure :source="b.code" :name="`${sec.heading} diagram ${i + 1}`" />
+          <details class="disclosure source code grid-cols-[minmax(0,1fr)] justify-self-stretch">
+            <summary>Source</summary>
+            <CodeFrame :html="esc(b.code)" language="mermaid" />
+            <p v-if="b.source" class="quiet">{{ b.source }}</p>
+          </details>
+        </figure>
         <CodeFrame v-else-if="'code' in b" :html="code(b.code, b.language)" :language="b.language">
           <template v-if="b.language || b.source" #caption>{{ [b.language, b.source].filter(Boolean).join(" · ") }}</template>
         </CodeFrame>

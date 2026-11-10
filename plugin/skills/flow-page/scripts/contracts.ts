@@ -136,6 +136,7 @@ export const contributionKinds: Record<string, Contract> = {
   answer: item({ question: ref, response: optional({ status: enumeration("answered", "empty", "cancelled", "timed-out", "headless") }, { picks: strings, text: string, note_on: string }) }, { reading: { type: "object", select: value => value.outcome === "resolved" ? optional({ outcome: enumeration("resolved"), decision: string, basis: string }, { maps_to: string }) : object({ outcome: enumeration("question", "concern", "ambiguous"), unresolved: string }) } }),
   close: item({ decisions: array(object({ question: ref, text: string }), 0) }, { extra: strings }),
   stage: item({ state: enumeration("finished") }, { retire: array(object({ question: ref, reason: string })) }),
+  wayfinder: item({ tickets: array(object({ id: string, title: string, url: string, state: enumeration("resolved", "frontier", "blocked", "claimed", "out-of-scope"), blockers: array(string, 0) }), 0) }),
   task: update("task", item({ title: string }, { ref, state: taskStates, evidence: strings, reason: string }), item({ task: ref }, { state: taskStates, evidence: strings, reason: string })),
   blocker: update("blocker", item({ text: string }, { ref, tasks: strings }), item({ blocker: ref, resolved: string })),
   "end-state": item({}, { requested: enumeration("commit", "merge-ready", "shipped", "none"), reached: enumeration("commit", "merge-ready", "shipped"), evidence: strings }),
@@ -225,7 +226,7 @@ export class ContributionRefusal extends Refusal {
   }
 }
 
-const collectionNames: Record<string, string> = { item: "items", question: "questions", option: "options", entry: "entries", row: "rows", section: "sections", block: "blocks", step: "steps", citation: "citations", alternative: "alternatives", criterion: "criteria", assessment: "assessments", measurement: "measurements", value: "values", figure: "figures", decision: "decisions", axis: "axes", transition: "transitions", state: "states", action: "actions" };
+const collectionNames: Record<string, string> = { item: "items", ticket: "tickets", question: "questions", option: "options", entry: "entries", row: "rows", section: "sections", block: "blocks", step: "steps", citation: "citations", alternative: "alternatives", criterion: "criteria", assessment: "assessments", measurement: "measurements", value: "values", figure: "figures", decision: "decisions", axis: "axes", transition: "transitions", state: "states", action: "actions" };
 
 export function contributionPath(input: unknown, where: string): string {
   let path = "$";

@@ -1,7 +1,8 @@
 import { flow } from "~/composables/reader";
 
 export const current = ref<string>();
-export const treeOpen = ref(false);
+export const mapOpen = ref(false);
+export const mapTab = ref("path");
 export const tab = ref("overview");
 
 const shown = (el: Element) => el.getClientRects().length > 0;
@@ -156,6 +157,9 @@ export function keepPlaceNow(change: () => void) {
 }
 
 const editable = (el: EventTarget | null) => el instanceof Element && ((el as HTMLElement).isContentEditable || el.closest("input, textarea, select, video, audio") !== null);
+export function shortcutEligible(e: KeyboardEvent): boolean {
+  return !(e.defaultPrevented || e.isComposing || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey || editable(e.target));
+}
 
 const typingField = (el: EventTarget | null): el is HTMLElement => el instanceof HTMLElement && (el.isContentEditable || el.closest("input, textarea, select") !== null);
 type Move = { id: string; focus: boolean; replaceFragment: boolean };
@@ -197,13 +201,13 @@ export function onHashChange() {
 }
 
 export function onKey(e: KeyboardEvent) {
-  if (e.defaultPrevented || e.isComposing || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey || editable(e.target)) return;
-  if (e.key === "t") {
+  if (!shortcutEligible(e)) return;
+  if (e.key === "m") {
     e.preventDefault();
-    treeOpen.value = !treeOpen.value;
+    mapOpen.value = !mapOpen.value;
     return;
   }
-  if (treeOpen.value) return;
+  if (mapOpen.value) return;
   if (e.key === "n") {
     const focusedStage = flow.value?.stage.has(tab.value) ? tab.value : undefined;
     const queue = (flow.value?.next ?? []).map((id) => document.getElementById(id))
@@ -236,5 +240,5 @@ export function onClick(e: MouseEvent) {
     if (location.hash !== `#${id}`) history.pushState(null, "", `#${id}`);
     void goTo(id, true);
   }
-  treeOpen.value = false;
+  mapOpen.value = false;
 }

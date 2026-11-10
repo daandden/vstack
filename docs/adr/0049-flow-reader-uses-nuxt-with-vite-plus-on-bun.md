@@ -4,7 +4,7 @@ status: accepted
 
 # ADR 0049: Flow reader uses Nuxt with Vite+ on Bun
 
-> [ADR 0067](0067-the-flow-reader-uses-nuxt-ui-tailwind-and-vueuse-in-the-catppuccin-look.md) adds Nuxt UI, Tailwind, and VueUse to the reader and moves every component onto them. Nuxt, Vite+, Bun, and the approved Catppuccin look stay as decided below.
+> [ADR 0072](0072-the-flow-reader-uses-nuxt-ui-tailwind-and-vueuse-in-the-catppuccin-look.md) adds Nuxt UI, Tailwind, and VueUse to the reader and moves every component onto them. Nuxt, Vite+, Bun, and the approved Catppuccin look stay as decided below.
 
 This design is implemented by #314. It amends the rendering and static-fallback promises in [ADR 0044](0044-structured-flow-data-drives-server-rendered-pages.md). The Bun host serves the prebuilt Nuxt reader, and a running host is required. The #316 candidate proof exercises a fresh isolated linked-plugin session, actual CLI and native omp presentation, installed assets, a running host's bundle incompatibility, authenticated restart, and committed-content recovery in an already-open Chromium reader. This is not independent verification of the final integrated commit or closure of spec #309.
 

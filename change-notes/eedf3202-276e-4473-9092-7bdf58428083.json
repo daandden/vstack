@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Flow submit checks Mermaid attachments with the export's shared Color role pass, refusing unknown or conflicting roles, authored paints, and focus ids without visible marks without committing any part of the contribution (#408)."
+  ]
+}

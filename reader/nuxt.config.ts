@@ -13,7 +13,10 @@ export default defineNuxtConfig({
   icon: { provider: "none", serverBundle: false, fallbackToApi: false, clientBundle: { scan: true } },
   colorMode: { preference: "system", fallback: "light", classSuffix: "", dataValue: "theme", storageKey: "flow-reader:theme" },
   css: ["~/assets/main.css"],
-  alias: { "#flow": fileURLToPath(new URL("../plugin/skills/flow-page/scripts", import.meta.url)) },
+  alias: {
+    "#flow": fileURLToPath(new URL("../plugin/skills/flow-page/scripts", import.meta.url)),
+    "#figures": fileURLToPath(new URL("../plugin/skills/vstack-figures/scripts", import.meta.url)),
+  },
   app: {
     buildAssetsDir: "/_flow-reader/",
     head: {

@@ -1,3 +1,5 @@
+import { palette } from "#figures/palette";
+import { DIAGRAM_CONFIG, readabilityRules } from "../../../plugin/skills/vstack-figures/scripts/presentation.ts";
 
 /** The font Pele measures each label in, and the font the label is drawn in. */
 export const DIAGRAM_FONT = "'IosevkaTerm Nerd Font Mono', ui-monospace, monospace";
@@ -57,7 +59,7 @@ function parse(markup: string): SVGSVGElement | undefined {
 function focusRules(ids: string[]): string {
   return ids.map((id) => {
     const sel = `[data-id="${CSS.escape(id)}"]`;
-    return `${sel}${SHAPES}, ${sel} ${SHAPES} { stroke: var(--pele-accent); stroke-width: 2.5px; }\n${sel} text { fill: var(--pele-accent); }`;
+    return `${sel}${SHAPES}, ${sel} ${SHAPES} { stroke: var(--pele-accent) !important; stroke-width: 2.5px !important; }`;
   }).join("\n");
 }
 
@@ -89,17 +91,27 @@ function pageMeasurer(probe: HTMLElement) {
 
 export async function drawMermaid(source: string, focus: string[]): Promise<Drawn> {
   await document.fonts.ready;
-  const { renderAsync } = await import("pele/lazy");
+  const { detectType, load, parse: parseModel, render } = await import("pele/lazy");
+  await load(detectType(source));
   const probe = document.createElement("span");
   probe.className = "fixed [inset-block-start:0] [inset-inline-start:0] invisible pointer-events-none whitespace-pre tracking-normal [word-spacing:normal] [font-kerning:normal] [font-variant-ligatures:none]";
   probe.setAttribute("aria-hidden", "true");
   document.body.append(probe);
   try {
     const fontSize = parseFloat(getComputedStyle(document.body).fontSize);
-    const { svg } = await renderAsync(source, { measurer: pageMeasurer(probe), fontFamily: DIAGRAM_FONT, fontFamilyMono: DIAGRAM_FONT, fontSize, links: false, images: false });
-    const root = parse(svg);
+    const model = parseModel(source, { config: DIAGRAM_CONFIG });
+    const { svg } = render(model, { config: DIAGRAM_CONFIG, measurer: pageMeasurer(probe), fontFamily: DIAGRAM_FONT, fontFamilyMono: DIAGRAM_FONT, fontSize, links: false, images: false });
+    let painted = svg;
+    let css = "";
+    try {
+      painted = palette(svg, model, [], focus, "pele-reader", source).svg;
+      css = "svg { background: var(--pele-bg); }";
+    } catch {
+      css = focusRules(focus);
+    }
+    const root = parse(painted);
     if (!root) throw new Error("Pele returned no SVG");
-    return { svg: clean(root), css: focusRules(focus) };
+    return { svg: clean(root), css: `${readabilityRules(".pele", "var(--pele-bg)")}\n${css}` };
   } finally {
     probe.remove();
   }

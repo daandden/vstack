@@ -33,8 +33,8 @@ afterAll(async () => {
   rmSync(root, { recursive: true, force: true });
 });
 
-test("the Matt path stands above Flow content with recorded step states and is absent off-path", async () => {
-  const grill = cli(["open", "--skill", "grill-with-docs", "--title", "Matt path banner"]);
+test("the Matt path lives only in the Map panel with recorded states and is absent off-path", async () => {
+  const grill = cli(["open", "--skill", "grill-with-docs", "--title", "Matt path map"]);
   cli(["submit", "--flow", grill.flow, "--stage", grill.stage], [{ kind: "stage", state: "finished" }]);
   const spec = cli(["open", "--skill", "to-spec", "--flow", grill.flow]);
   cli(["submit", "--flow", spec.flow, "--stage", spec.stage], [{ kind: "stage", state: "finished" }]);
@@ -45,28 +45,34 @@ test("the Matt path stands above Flow content with recorded step states and is a
     const page = await context.newPage();
     await page.goto(grill.live.url);
     await page.locator(".bar .tabs").waitFor();
-    const banner = page.getByRole("region", { name: "Matt flow path" });
-    expect(await banner.count()).toBe(1);
-    expect(await banner.isVisible()).toBe(true);
-    expect(await banner.locator("ol").count()).toBeGreaterThan(0);
-    expect(await banner.locator("[data-path-step]").evaluateAll((els) => els.map((el) => [el.getAttribute("data-path-step"), el.getAttribute("data-state")]))).toEqual([
+    expect(await page.locator(".reader > .matt-path").count()).toBe(0);
+    await page.keyboard.press("m");
+    const map = page.getByRole("dialog", { name: "Map", exact: true });
+    await map.waitFor();
+    expect(await map.getByRole("tab").allTextContents()).toEqual(["Matt flow path", "Stages"]);
+    const path = map.getByRole("region", { name: "Matt flow path" });
+    expect(await path.isVisible()).toBe(true);
+    expect(await path.locator("ol").count()).toBeGreaterThan(0);
+    expect(await path.locator("[data-path-step]").evaluateAll((els) => els.map((el) => [el.getAttribute("data-path-step"), el.getAttribute("data-state")]))).toEqual([
       ["grill", "finished"], ["to-spec", "finished"], ["to-tickets", "in-progress"], ["implement-spec", "to-come"],
     ]);
-    expect(await banner.locator('[aria-current="step"]').getAttribute("data-path-step")).toBe("to-tickets");
-    expect(await banner.locator('[aria-current="step"] .path-step-heading').textContent()).toContain("to-tickets");
-    const geometry = await banner.evaluate((el) => ({
-      top: el.getBoundingClientRect().top,
-      bottom: el.getBoundingClientRect().bottom,
-      heading: document.querySelector(".masthead")!.getBoundingClientRect().top,
-      content: document.getElementById("reading")!.getBoundingClientRect().top,
-      overflow: document.documentElement.scrollWidth - innerWidth,
-    }));
-    expect(geometry.top).toBeGreaterThanOrEqual(0);
-    expect(geometry.bottom).toBeLessThanOrEqual(geometry.heading);
-    expect(geometry.bottom).toBeLessThan(geometry.content);
-    expect(geometry.overflow).toBeLessThanOrEqual(0);
+    expect(await path.locator('[aria-current="step"]').getAttribute("data-path-step")).toBe("to-tickets");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBeLessThanOrEqual(0);
+    const initial = page.url();
+    await page.keyboard.press("j");
+    expect(await page.evaluate(() => document.activeElement?.getAttribute("data-path-step"))).toBe("to-spec");
+    await page.keyboard.press("k");
+    expect(await page.evaluate(() => document.activeElement?.getAttribute("data-path-step"))).toBe("grill");
+    expect(page.url()).toBe(initial);
+    await page.keyboard.press("Enter");
+    await map.waitFor({ state: "hidden" });
+    await page.locator(`.bar .tabs a[href="#${grill.stage}"][aria-current="page"]`).waitFor();
     await page.goto(offPath.live.url);
     await page.locator(".bar .tabs").waitFor();
+    await page.keyboard.press("m");
+    await map.waitFor();
+    expect(await map.getByRole("tab").allTextContents()).toEqual(["Stages"]);
+    expect(await map.getByRole("tab", { name: "Stages", exact: true }).getAttribute("aria-selected")).toBe("true");
     expect(await page.getByRole("region", { name: "Matt flow path" }).count()).toBe(0);
     expect(await page.locator("#overview").textContent()).toContain("Research");
   } finally { await context.close(); }
@@ -76,12 +82,14 @@ test("repeated Matt path Stages have distinct labels and nonoverlapping 44px lin
   const first = cli(["open", "--skill", "implement", "--title", "Repeated implement Stages"]);
   cli(["submit", "--flow", first.flow, "--stage", first.stage], [{ kind: "stage", state: "finished" }]);
   const second = cli(["open", "--skill", "implement", "--flow", first.flow]);
-  for (const width of [360, 1280]) {
+  for (const width of [320, 1280]) {
     const context = await browser.newContext({ viewport: { width, height: 900 } });
     try {
       const page = await context.newPage();
       await page.goto(first.live.url);
       await page.locator(".bar .tabs").waitFor();
+      await page.keyboard.press("m");
+      await page.getByRole("dialog", { name: "Map", exact: true }).waitFor();
       const step = page.locator('[data-path-step="implement"]');
       expect(await step.locator(".path-step-heading > :first-child").textContent()).toBe("implement");
       const links = step.locator(".path-stages a");

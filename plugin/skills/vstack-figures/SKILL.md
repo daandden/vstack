@@ -14,7 +14,7 @@ This is a rendering helper, not a result-producing run. It opens no Stage. The c
 
 1. Choose the Mermaid type from the [Mermaid type reference](references/mermaid-types.md). Read it when choosing a type or writing its syntax.
 2. Write the Mermaid to `<slug>.mmd` in the caller's Scratch entry. The slug is a basename that is unique on the page. Follow every rule in [Make Pele figures look good](#make-pele-figures-look-good).
-3. Capture the source through a typed `attachment` with `type: "mermaid"`, its actual `path`, a `caption` that titles the figure in one line of at most 80 characters, and provenance in `origin`. Put what the reader needs to know beyond the title in `description`. Add `focus` with the one or two focal Mermaid ids, as [Mark one or two focal elements](#mark-one-or-two-focal-elements) says. The capture refuses Mermaid that Pele cannot render and prints Pele's parse error. The Flow commits nothing then.
+3. Capture the source through a typed `attachment` with `type: "mermaid"`, its actual `path`, a `caption` that titles the figure in one line of at most 80 characters, and provenance in `origin`. Put what the reader needs to know beyond the title in `description`. Add `focus` with the one or two focal Mermaid ids, as [Mark one or two focal elements](#mark-one-or-two-focal-elements) says. Capture runs Pele and the export's shared Color role pass. Unknown or conflicting roles, authored paints, and focus ids without visible owned marks are refused with the renderer's message. Nothing in the contribution commits.
 4. If the capture is refused, fix the Mermaid and submit again. If it still fails, place no figure, and say in one line which figure was not drawn and why. Never show a hand-built figure, a Mermaid code block, or a generated image in its place.
 
 ## Place the figure
@@ -43,15 +43,15 @@ The reader sets every `--pele-*` variable to Catppuccin Latte in its light theme
 
 ### Mark one or two focal elements
 
-In the Flow, each attachment's `focus` gives the reader's theme-mauve border and text to its named Mermaid ids. Timeline events, ishikawa causes, and single xychart bars have no usable focal id. Name their focal point in accompanying text. The export command's stricter focus validation and the role, binding, fixed-font measurement, and readability rules below apply to SVG exports. They do not change Flow attachment fields or replace source-based reader drawing.
+In the Flow, each attachment's `focus` gives its named Mermaid ids a 2.5px theme-mauve border without changing their fill or label color. The reader and export apply the same role pass. Bindings and fixed-font measurement stay export options; Flow attachments keep their existing fields and browser-based label measurement.
 
-Pele exposes supported focal identities through case-sensitive `data-id` values. Each `--focus <id>` paints that target's border and text Mauve `#cba6f7`, while keeping its fill. The renderer colors owned marks, not unrelated descendants of a group. Inline figures sharing ids remain isolated. Timeline events, ishikawa causes, and single xychart bars have no usable focal id. Name their focal point in the accompanying text.
+Pele exposes supported focal identities through case-sensitive `data-id` values. Each `--focus <id>` paints that target's border Mauve `#cba6f7` at 2.5px, while keeping its fill and label color. The renderer colors owned marks, not unrelated descendants of a group. Inline figures sharing ids remain isolated. Timeline events, ishikawa causes, and single xychart bars have no usable focal id. Name their focal point in the accompanying text.
 
-Focus requires one supported stable source identity with visible owned marks. Missing, ambiguous, generated, or hidden targets exit 1 without creating or replacing the output. A participant with several header and footer marks is still one target.
+Focus requires one supported stable source identity with visible owned border marks. Missing, ambiguous, generated, hidden, or text-only targets exit 1 without creating or replacing the output. A participant with several header and footer marks is still one target.
 
 ### Color elements by role
 
-Each Color role has one fixed Catppuccin Mocha accent. The renderer uses a solid accent fill and border, with Base text. Neutral backing is Surface0, ordinary labels are Text, and the background is Base. Every authored paint is a literal official Mocha value. Opacity and antialiasing may blend displayed pixels.
+Each Color role has one fixed Catppuccin accent. The role pass draws its fill at 22% opacity over the background, with a solid accent border and ordinary Text-colored labels. The reader maps those paints to Latte or Mocha. Exports use literal official Mocha values, so opacity creates the tint without a mixed paint token. Neutral backing is Surface0, and the background is Base. Category fills keep their existing solid accents and label colors.
 
 | Role | Color | Mark an element that |
 |---|---|---|
@@ -65,9 +65,9 @@ Each Color role has one fixed Catppuccin Mocha accent. The renderer uses a solid
 
 - Mark every element that a role fits, so the same element has the same color in every figure. Leave an element plain when no role fits.
 - Give an element one explicit role. An explicit state such as `bad` overrides an intrinsic store kind. Two different explicit roles are refused, even when one comes from bindings and one from Mermaid. Identical repeats are accepted.
-- Mark a flowchart node with `:::role` (`Pay[Take payment]:::ok`) or a `class` line (`class Pay,Ship ok`). A `class` line also marks a subgraph or a composite state. State, requirement, and `block-beta` diagrams take a `class` line, ER diagrams `ENTITY:::role`, and class diagrams `class Name:::role`. A mindmap node takes `:::role` on the line under it. Shaped nodes receive solid fills, and text-only nodes receive accent text without an invented shape.
+- Mark a flowchart node with `:::role` (`Pay[Take payment]:::ok`) or a `class` line (`class Pay,Ship ok`). A `class` line also marks a subgraph or a composite state. State, requirement, and `block-beta` diagrams take a `class` line, ER diagrams `ENTITY:::role`, and class diagrams `class Name:::role`. A mindmap node takes `:::role` on the line under it. Shaped nodes receive tinted fills. Text-only nodes keep ordinary Text-colored labels without an invented shape.
 - Meaningful source kinds establish intrinsic roles. Flowchart and swimlane person shapes, declared sequence actors, and native C4 people establish `actor`. Database shapes and declared sequence database participants establish `store`. Native C4 outside systems establish `external`. A person takes precedence over external, which takes precedence over store. A UML actor can be software and stays neutral without a binding. Generic participants, software agents, queues, and label words establish no role. Event-model read models and agent-flow reference documents establish stored data. State names do not establish outcomes. Read the type reference for architecture, block, requirement, and tree kinds and their geometry limits.
-- Mauve is focus-only. Focus replaces the border and text, not the underlying role or category fill.
+- Mauve is focus-only. Focus replaces only the border, never the label color or the underlying role or category fill.
 - Write no paint-bearing `classDef`, `style`, or `linkStyle` line, no color in a sequence `rect` or `box`, and no Sankey `nodeColors` paint. The script refuses authored paints with exit 1, even in unused declarations or when a role would mask them. Theme-variable paint values are authored paints too. Empty Sankey color configuration remains valid. Unknown roles also exit 1.
 
 ### Bind source identities

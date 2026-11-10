@@ -16,6 +16,7 @@ test("native C4 kinds distinguish people, outside stores, stores, queues, and so
   expect(shape(r.svg!, "person").style).toContain("#f5c2e7");
   expect(shape(r.svg!, "outside").style).toContain("fill:#fab387");
   expect(shape(r.svg!, "data").style).toContain("fill:#94e2d5");
+  for (const id of ["person", "outside", "data"]) expect(shape(r.svg!, id).style).toContain("fill-opacity:0.22");
   expect(shape(r.svg!, "queue").style).not.toContain("fill:#");
   expect(shape(r.svg!, "app").style).not.toContain("fill:#");
 });
@@ -30,7 +31,8 @@ test.each([
   const r = await renderFigure(setup(), source, { bindings: elements({ id, role: "bad" }), focus: [id] });
   expect({ code: r.code, stderr: r.stderr }).toEqual({ code: 0, stderr: "" });
   expect(shape(r.svg!, id).style).toContain("fill:#f38ba8;stroke:#cba6f7");
-  expect(text(r.svg!, id).style).toContain("fill:#cba6f7");
+  expect(shape(r.svg!, id).style).toContain("fill-opacity:0.22");
+  expect(text(r.svg!, id).style).toContain("fill:#cdd6f4");
 });
 
 test("tree basenames bind uniquely while generated numbers and invented paths do not", async () => {
@@ -41,7 +43,7 @@ test("tree basenames bind uniquely while generated numbers and invented paths do
   expect(text(plain.svg!, "index.ts").style).not.toContain("fill:#");
   expect(marks(plain.svg!, "README.md").filter((m) => !m.text)).toHaveLength(0);
   const bound = await renderFigure(dir, source, { name: "bound", bindings: elements({ id: "README.md", role: "bad" }) });
-  expect(bound.code).toBe(0); expect(text(bound.svg!, "README.md").style).toContain("fill:#f38ba8");
+  expect(bound.code).toBe(0); expect(text(bound.svg!, "README.md").style).toContain("fill:#cdd6f4");
   expect(marks(bound.svg!, "README.md").filter((m) => !m.text)).toHaveLength(0);
   for (const id of ["3", "project/src/index.ts"]) {
     const r = await renderFigure(dir, source, { name: id === "3" ? "number" : "path", bindings: elements({ id, role: "ok" }) });
@@ -57,10 +59,10 @@ test("architecture store icons remain visible on their accent backing", async ()
   const r = await renderFigure(setup(), "architecture-beta\n service db(database)[Data]\n");
   expect(r.code).toBe(0);
   expect(shape(r.svg!, "db").style).toContain("fill:#94e2d5");
-  expect(text(r.svg!, "db").style).toContain("fill:#94e2d5");
+  expect(text(r.svg!, "db").style).toContain("fill:#cdd6f4");
   const iconPaths = marks(r.svg!, "db").filter((m) => m.tag.startsWith("<path"));
   expect(iconPaths.length).toBeGreaterThan(0);
-  for (const path of iconPaths) expect(path.style).toContain("fill:none;stroke:#1e1e2e");
+  for (const path of iconPaths) expect(path.style).toContain("fill:none;stroke:#cdd6f4");
 });
 
 test.each([
@@ -87,7 +89,7 @@ test("a failing C4 store and category-over-kind keep role and focus precedence",
   expect(failed.code).toBe(0);
   for (const mark of marks(failed.svg!, "db").filter((m) => !m.text)) expect(mark.style).toContain("stroke:#cba6f7");
   expect(shape(failed.svg!, "db").style).toContain("fill:#f38ba8");
-  expect(text(failed.svg!, "db").style).toContain("fill:#cba6f7");
+  expect(text(failed.svg!, "db").style).toContain("fill:#cdd6f4");
   for (const entries of [
     [{ id: "db", role: "bad" }, { id: "db", role: "ok" }],
     [{ id: "db", role: "bad" }, { id: "db", category: "one" }, { id: "db", category: "two" }],
