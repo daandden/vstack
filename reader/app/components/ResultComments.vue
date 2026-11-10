@@ -80,12 +80,12 @@ async function save() {
         <p class="whitespace-pre-wrap">{{ c.text }}</p>
         <time :datetime="c.time" class="text-muted">{{ formatTime(c.time) }}</time>
         <div class="flex flex-wrap gap-2">
-          <UButton label="Edit comment" color="neutral" variant="ghost" :disabled="pending" class="max-w-full whitespace-normal pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px] active:bg-accented" @click="begin(c)" />
-          <UButton v-if="removing !== c.id" label="Remove comment" color="neutral" variant="ghost" :disabled="pending" class="max-w-full whitespace-normal pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px] active:bg-accented" @click="removing = c.id" />
+          <UButton label="Edit comment" color="neutral" variant="ghost" :disabled="pending" :ui="{ label: 'whitespace-normal text-start' }" class="max-w-full whitespace-normal pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px] active:bg-accented" @click="begin(c)" />
+          <UButton v-if="removing !== c.id" label="Remove comment" color="neutral" variant="ghost" :disabled="pending" :ui="{ label: 'whitespace-normal text-start' }" class="max-w-full whitespace-normal pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px] active:bg-accented" @click="removing = c.id" />
           <template v-else>
             <span>Remove this Reader comment?</span>
-            <UButton label="Confirm removal" color="error" :loading="pending" class="max-w-full whitespace-normal pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px] active:bg-accented" @click="remove(c.id)" />
-            <UButton label="Keep comment" color="neutral" variant="ghost" :disabled="pending" class="max-w-full whitespace-normal pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px] active:bg-accented" @click="removing = ''" />
+            <UButton label="Confirm removal" color="error" :loading="pending" :ui="{ label: 'whitespace-normal text-start' }" class="max-w-full whitespace-normal pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px] active:bg-accented" @click="remove(c.id)" />
+            <UButton label="Keep comment" color="neutral" variant="ghost" :disabled="pending" :ui="{ label: 'whitespace-normal text-start' }" class="max-w-full whitespace-normal pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px] active:bg-accented" @click="removing = ''" />
           </template>
         </div>
       </li>
@@ -106,8 +106,8 @@ async function save() {
       </UFormField>
       <p v-if="editing" class="text-muted">Editing preserves the original anchor and revision.</p>
       <div class="flex flex-wrap gap-2">
-        <UButton type="submit" label="Save comment" :loading="pending" :disabled="!draft.trim()" class="max-w-full whitespace-normal pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px] active:bg-accented" />
-        <UButton type="button" label="Cancel" color="neutral" variant="ghost" :disabled="pending" class="max-w-full whitespace-normal pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px] active:bg-accented" @click="close" />
+        <UButton type="submit" label="Save comment" :loading="pending" :disabled="!draft.trim()" :ui="{ label: 'whitespace-normal text-start' }" class="max-w-full whitespace-normal pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px] active:bg-accented" />
+        <UButton type="button" label="Cancel" color="neutral" variant="ghost" :disabled="pending" :ui="{ label: 'whitespace-normal text-start' }" class="max-w-full whitespace-normal pointer-coarse:min-h-[44px] pointer-coarse:min-w-[44px] active:bg-accented" @click="close" />
       </div>
     </form>
   </section>

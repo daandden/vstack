@@ -51,15 +51,23 @@ test("readers select typed-table text and manage revision-bound comments across 
     await otherPage.getByText("Confirm the host restart.", { exact: true }).waitFor();
     expect(await otherPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await otherPage.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
-    expect(await otherPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    const touchButtons = otherPage.getByRole("button").filter({ hasText: /^(Edit comment|Remove comment|Add Reader comment|Select text to comment|Comment on selected text|Check)/ });
-    for (const button of await touchButtons.all()) {
-      const box = await button.boundingBox();
-      expect(box!.height).toBeGreaterThanOrEqual(44);
-      expect(box!.width).toBeGreaterThanOrEqual(44);
-      expect(await button.evaluate(el => [...el.querySelectorAll("span")].every(label => label.scrollWidth <= label.clientWidth))).toBe(true);
+    for (const fontFamily of ["", "monospace"]) {
+      await otherPage.evaluate(font => { document.body.style.fontFamily = font; }, fontFamily);
+      expect(await otherPage.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      const touchButtons = otherPage.getByRole("button").filter({ hasText: /^(Edit comment|Remove comment|Add Reader comment|Select text to comment|Comment on selected text|Check)/ });
+      for (const button of await touchButtons.all()) {
+        const box = await button.boundingBox();
+        expect(box!.height).toBeGreaterThanOrEqual(44);
+        expect(box!.width).toBeGreaterThanOrEqual(44);
+        expect(await button.evaluate(el => [...el.querySelectorAll("span")]
+          .filter(label => label.scrollWidth > label.clientWidth)
+          .map(label => ({ text: label.textContent, scrollWidth: label.scrollWidth, clientWidth: label.clientWidth })))).toEqual([]);
+      }
     }
-    await otherPage.evaluate(() => { document.documentElement.style.fontSize = ""; });
+    await otherPage.evaluate(() => {
+      document.documentElement.style.fontSize = "";
+      document.body.style.fontFamily = "";
+    });
     await page.getByRole("button", { name: "Sort by Check", exact: true }).click();
     expect(await page.getByRole("cell").allTextContents()).toEqual(["Earlier check", "Host restart"]);
     await page.getByRole("textbox", { name: "Filter rows", exact: true }).fill("Host restart");
