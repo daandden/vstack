@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Add the name-only clean-adr Utility skill to judge active ADRs with vstack-scout, archive stale or merged decisions inside their source directories, repair archived relative links, and write fresh-numbered ADRs stating what holds (ADR 0067, #451)."
+  ]
+}

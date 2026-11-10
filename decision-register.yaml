@@ -1132,6 +1132,7 @@ originals:
   - plugin/skills/tune-llm-flow
   - plugin/agents/vstack-scout.md
   - plugin/tern/vstack-flow
+  - plugin/skills/clean-adr
 utility:
   - plugin/skills/unslop
   - plugin/skills/technical-writing
@@ -1148,3 +1149,4 @@ utility:
   - plugin/skills/vstack-worktree
   - plugin/skills/in-your-own-words
   - plugin/skills/clean-wt
+  - plugin/skills/clean-adr
