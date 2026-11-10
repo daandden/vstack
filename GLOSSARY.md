@@ -102,6 +102,10 @@ _Avoid_: manifest (for this table), ADR list
 The written rules that turn Upstream text into vstack text: exact replacement rows, plus the spawn, skill-reference, and asking rules. Applying any of it to an item makes that item adapt. An adopt item is touched only by a row or rule that every vstack artifact must follow, and that touch flips it to adapt.
 _Avoid_: substitution list, style guide
 
+**ADR archive**:
+The dated folders inside an ADR directory that hold ADRs that no longer hold or that a newer ADR replaced. It is history that explains why, never a rule to respect.
+_Avoid_: old ADRs, deprecated ADRs, ADR history
+
 ### Behavior
 
 **Session model**:
