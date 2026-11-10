@@ -79,11 +79,11 @@ With two or more checkouts, use the Fan-out line. With one checkout, use the sin
 
 Before this step, read skill://vstack-fan-out.
 
-Fan-out (skill://vstack-fan-out): parts: one per remaining inactive checkout with work. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-wt-investigator"`. Each `task`: the investigation brief above, its discovery record and fingerprint, the shared source-facts file, the vstack root. Wait for every result. If they cannot start, stop: keep the unresolved checkouts and report the uninvestigated parts and why they could not start.
+Fan-out (skill://vstack-fan-out): parts: one per remaining inactive checkout with work. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-scout"`. Each `task`: the investigation brief above, its discovery record and fingerprint, the shared source-facts file, the vstack root. Wait for every result. If they cannot start, stop: keep the unresolved checkouts and report the uninvestigated parts and why they could not start.
 
-Spawn one `vstack-wt-investigator` via `task` (`agent: "vstack-wt-investigator"`): the investigation brief above, its discovery record and fingerprint, the shared source-facts file, the vstack root. Wait for its result. If it cannot be spawned, stop: keep the unresolved checkout and report why its investigation could not start.
+Spawn one `vstack-scout` via `task` (`agent: "vstack-scout"`): the investigation brief above, its discovery record and fingerprint, the shared source-facts file, the vstack root. Wait for its result. If it cannot be spawned, stop: keep the unresolved checkout and report why its investigation could not start.
 
-Investigators use the Session model unless the user configures `task.agentModelOverrides.vstack-wt-investigator: "@smol"` in omp settings. This is an opt-in override, not a model requirement.
+Investigators use the Session model unless the user configures `task.agentModelOverrides.vstack-scout: "@smol"` in omp settings. This is an opt-in override, not a model requirement.
 
 Save every investigator's raw targeted inventory, fingerprint, and returned diagnostics, including interrupted attempts, in this run's `clean-wt` Scratch entry.
 

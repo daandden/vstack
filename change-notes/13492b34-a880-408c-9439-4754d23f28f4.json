@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "major",
+  "entries": [
+    "Rename the read-only vstack-wt-investigator agent to vstack-scout for investigations whose brief supplies the target and required evidence. clean-wt uses vstack-scout without changing its cleanup behavior. Rename task.agentModelOverrides.vstack-wt-investigator to task.agentModelOverrides.vstack-scout in omp settings to keep an existing model override."
+  ]
+}
