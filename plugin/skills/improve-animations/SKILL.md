@@ -7,7 +7,7 @@ description: "Use when auditing existing web animations read-only, vetting defec
 
 Survey existing motion inside the current audit or planning task. This Utility skill supplies judgment, not another executor or planning system. The current vstack owner retains questions, Flow, scope, delegation, implementation hand-off, review, Verify, and evidence.
 
-Adapted from [emilkowalski/skills at the Pin](https://github.com/emilkowalski/skills/tree/a81dbca07f2217b7103e510c0f13f8d5b017afc9/skills/improve-animations). The [MIT notice](LICENSE) ships with the adaptation.
+Adapted from [emilkowalski/skills at the Pin](https://github.com/emilkowalski/skills/tree/7cdf99421429c0a47d2cf9fbf40497b7ee0a3e5c/skills/improve-animations). The [MIT notice](LICENSE) ships with the adaptation.
 
 Read [AUDIT.md](AUDIT.md) before surveying and [PLAN-TEMPLATE.md](PLAN-TEMPLATE.md) when recording selected work. For a single diff, use skill://review-animations through the existing review owner. For additive candidates, use skill://find-animation-opportunities. For selected subtraction, use skill://remove-animations through the existing implementation owner.
 

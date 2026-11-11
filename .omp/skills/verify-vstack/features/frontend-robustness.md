@@ -50,7 +50,7 @@ For each resulting main and delegated app:
 
 ### Source, package, and final gates
 
-Use the public current-Pin planner, register check, packaging command, load smoke, and maintenance gates in `frontend-guidance.md`. Check the break-ui row is adapt with the pinned object identity and `plugin/skills/break-ui` association. Preserve all ten selected adaptations and all six exclusions, with no selected deferrals.
+Use the public current-Pin planner, register check, packaging command, load smoke, and maintenance gates in `frontend-guidance.md`. Check the break-ui row is adapt with the pinned identity and `plugin/skills/break-ui` association. Preserve all twelve selected adaptations and six exclusions across eighteen UI items, with no selected deferrals.
 
 Inspect `package/skills/break-ui/SKILL.md`, `CATALOG.md`, and `LICENSE` in the actual tarball. Compare the notice bytes against the real Pin's MIT license. Check no rejected contribution entered the archive; the existing vstack prototype is expected and must remain byte-unchanged. A fresh load must put break-ui in `listedSkills` and `skillCommands`, not `hiddenSkills`. Run focused catalog positive and negative cases, without broadening principle-only build or Brief selection.
 

@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "minor",
+  "entries": [
+    "Reconcile Matt v1.3.2, pstack c742dd61, and Emil 7cdf9942; add run-proven interrogate, coordinated motion, and gesture Utilities while preserving Session-model isolation and existing review and verification ownership."
+  ]
+}

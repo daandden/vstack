@@ -53,7 +53,7 @@ Preconditions:
 
 ### Distribution and final checks
 
-Use the public maintainer and package interfaces in frontend-guidance to confirm the complete ten-adaptation, six-exclusion accounting with no selected deferrals. The three audit-path rows must retain their pinned object identities and artifact associations. Inspect the actual tarball for all three SKILL.md files, improve-animations/AUDIT.md and PLAN-TEMPLATE.md, and byte-identical pinned MIT notices. Compare vstack prototype bytes rather than rejecting that name alone.
+Use the public maintainer and package interfaces in frontend-guidance to confirm the complete twelve-adaptation, six-exclusion accounting across eighteen UI items, with no selected deferrals. The three audit-path rows retain their pinned identities and artifact associations. Inspect their SKILL.md files, improve-animations/AUDIT.md and PLAN-TEMPLATE.md, and pinned MIT notices in the tarball. Include choreograph/RECIPES.md and gestures in the visible Utility inventory. Compare vstack prototype bytes rather than rejecting that name alone.
 
 Run applicable typecheck, targeted public-interface tests, focused changed catalog cases including unrelated controls, validation, actual load smoke, and final maintenance gates. Record stdout, stderr, argv, and exit durably to files, with at least a 1200s deadline for the final gate. Run the full suite once through those gates, not during drafting. Do not rerun unchanged stochastic corpora to chase unrelated failures.
 

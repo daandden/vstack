@@ -26,6 +26,8 @@ Read the project's domain glossary (`GLOSSARY.md`) and any ADRs in the area you'
 
 Resolve the absolute vstack root once: the git common directory's `vstack/` when its `config/` exists (Private mode), otherwise the main checkout root (Standard mode). Read domain documents and ADRs from that mode's configured paths.
 
+Give the explorer a fresh context window with the scoped brief and its context pointers.
+
 Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): walk the scoped codebase using the brief below and return evidence-backed candidates and open questions without editing or asking, the vstack root. Wait for its result. If it cannot be spawned, stop: report the architecture review as not run, with no candidates.
 
 Don't follow rigid heuristics; explore organically and note where you experience friction:

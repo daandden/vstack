@@ -16,6 +16,8 @@ Before task-specific items, open the todo list as END-STATE.md says, with the sh
 
 Run shared steps 0a–0b once.
 
+If the user passes a ticket reference, fetch its full body and comments through the configured issue tracker and state its title before starting. Resolve an ambiguous reference through `ask` under flow-page's "Every ask in a Flow" contract when enrolled, or plain `ask` otherwise. Load the full instructions for skill://tdd and skill://code-review at their steps below, rather than relying on summaries.
+
 ## Work within the agreement
 
 Read the supplied spec and tickets, including their context pointers, testing decisions, and decision-coverage records. Carry their agreed responsibilities, interactions, observable guarantees, constraints, and rationale into each slice. Use the existing inputs; a separate Architecture brief is not a prerequisite. Build sessions select Addons fresh rather than inheriting Addon pointers from those inputs.

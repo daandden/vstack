@@ -137,17 +137,17 @@ Each entry's `items:` list says which tree entries at the Pin are Upstream items
 
 ### UI upstream
 
-The UI upstream is `emilkowalski/skills`, keyed as `emil`, initially pinned at `a81dbca07f2217b7103e510c0f13f8d5b017afc9`. Its `skills/*` tree pattern discovers sixteen items. Ticket 339 ships `emil-design-eng`; ticket 343 adds `review-animations` with its companion standards; ticket 341 adds `break-ui` with its required adverse-content catalog; ticket 342 adds `animate` with component recipes and `animation-performance`; ticket 340 adds `apple-design` and `mobile-native` with their conditional companion references; ticket 344 adds `improve-animations` with audit and selected-requirements companions, `find-animation-opportunities`, and `remove-animations`. Each is an adapted visible Utility skill with an upstream MIT notice in its skill directory. Break-ui is reference knowledge used by existing implementation and Verify owners, including delegated UI work. Apple-derived guidance is for web interactions; mobile-native is mobile-web guidance, not Expo or Swift development.
+The UI upstream is `emilkowalski/skills`, keyed as `emil`, pinned at `7cdf99421429c0a47d2cf9fbf40497b7ee0a3e5c`. Its `skills/*` pattern discovers eighteen items. Twelve ship as adapted visible Utility skills, each with an upstream MIT notice. The original ten retain their companion references and existing implementation, review, verification, and evidence owners. `choreograph` adds coordinated-motion guidance and recipes; `gestures` adds direct manipulation with Vaul guidance only for projects already using it. Apple-derived guidance and mobile-native cover web work, not Expo or Swift. Break-ui remains reference knowledge for existing implementation and Verify owners.
 
 `code-review` and good-css conditionally reach motion review guidance in the coordinator and delegated Standards reviewers. The existing review owns blocking decisions and evidence. A browser-supported clip-path effect is not blocked by the upstream's broad property preference alone. [ADR 0051](adr/0051-selected-emil-skills-govern-animation-guidance.md) governs applicability.
 
-All ten selected items now ship as adaptations. None remains deferred.
+All twelve selected items ship as adaptations. None remains deferred.
 
 The six permanent exclusions for spec 338 are `animation-vocabulary`, `ask-sonner`, `pick-ui-library`, upstream `prototype`, `animate-expo`, and `write-swift`. Vstack's own prototype remains owned by the default branch; UI integration preserves its current version.
 
 The initial registration is a consistent direct Hand edit, including the Pin, object identities, artifact associations, catalog, version, and changelog. `prepare` and target `check` read the register from HEAD. Before the bootstrap is committed, `check --take emil:skills/emil-design-eng` previews the source item, while `check-register` and `plan emil@<initial Pin>` inspect the working registration. Do not run `prepare` against the pre-bootstrap HEAD: it cannot preserve the new source. After that initial commit, use the existing Hand edit and Update commands normally. No bootstrap API or UI-specific runtime is involved.
 
-The ten existing UI skills load by description in any session or by name. They appear in the Decision register's utility list, without Addon catalog questions or sample-prompt labels. They do not broaden principle-only build or subagent selection. [ADR 0074](adr/0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css.md) records Emil precedence for CSS and animation. Existing good-css pointers remain until ticket #459 removes them.
+The twelve UI skills load by description in any session or by name. They appear in the Decision register's utility list without Addon catalog questions or sample-prompt labels. They do not broaden principle-only build or subagent selection. [ADR 0074](adr/0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css.md) records Emil precedence for CSS and animation. Existing good-css pointers remain until ticket #459 removes them.
 
 Use the [frontend-guidance Verify recipe](../.omp/skills/verify-vstack/features/frontend-guidance.md) for native main and delegated runs, an unrelated-task control, packaged-content inspection, and an isolated future-source planning check. Stub load proof does not establish instruction following or UI quality.
 
@@ -156,6 +156,12 @@ The [motion Verify recipe](../.omp/skills/verify-vstack/features/frontend-motion
 The [mobile-web Verify recipe](../.omp/skills/verify-vstack/features/frontend-mobile.md) adds touch, viewport, safe-area, hover, and input proof to those existing paths. Keep actual engine and dependency scope explicit. Emulation does not establish native-device behavior.
 
 The [audit-to-selected-change recipe](../.omp/skills/verify-vstack/features/frontend-motion-audit.md) covers read-only main and delegated surveys, vetted priorities, rejected additive candidates, explicit diagnostic selection, and safe scoped subtraction through existing implementation and motion review. Audit findings enter the existing Flow owner rather than upstream execute dispatch or another plan-status workflow. Source hashes bracket selection; browser observations cover visibility, unmount, callbacks, focus, and retained useful motion.
+
+The Update to Matt `v1.3.2`, pstack `c742dd61706fbacc1b95f1a20b7b988cf096ce6c`, and the UI Pin above leaves css at `92d436ba1937d1b1407c47e35abb3e199eaace2e`. Motion shorthand performance findings apply before Motion 14.2; layout animations, `onUpdate`, `transformTemplate`, inertia, and motion-value-driven values remain main-thread in every version. Browser acceleration still needs scenario-specific evidence.
+
+`interrogate` is an answer-only Utility skill, not a review axis or End state step. It uses three isolated Session-model adversaries by default, independently reruns findings, merges shared root causes, reports dropped counts, and applies no fix. Failed starts or missing isolation stop its review; only started failures drop out, with at least two substantive candidates required. Existing review and final Verifier ownership remains unchanged.
+
+Selection-only trigger evals across the twelve UI descriptions and interrogate, and live Addon judge checks, remain optional Costly seam tests requiring explicit approval. Unrun evals leave selection overlap unproven without blocking the mechanical Update gates. Do not infer native instruction following from a load smoke.
 
 
 ## Decision register

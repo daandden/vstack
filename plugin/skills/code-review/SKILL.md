@@ -9,7 +9,7 @@ Review the supplied change scope against the fixed point on separate axes:
 - Spec checks the originating issue or spec.
 - Blast radius runs blast-radius only in a run when the diff touches what outside code depends on, or the user requests it.
 
-Each axis runs as its own reviewer so that findings from one do not mask another.
+Each axis runs in a fresh context window so that findings from one do not mask another.
 
 Resolve the absolute vstack root through the Private-mode rule once. Read `docs/vstack/issue-tracker.md` under that root in Standard mode, or `<vstack root>/config/issue-tracker.md` in Private mode. If it is missing, stop and tell the user to run `/skill:setup-vstack`. Subagents use the supplied root, never resolve it again.
 
@@ -62,7 +62,7 @@ Read the tracker workflow from the vstack configuration above. Look for the orig
 
 ### 3. Identify the standards sources
 
-Anything in the repo that documents how code is written, such as `CODING_STANDARDS.md` or `CONTRIBUTING.md`.
+Search the repo for every file that documents how code is written. Include `CODING_STANDARDS.md` and `CONTRIBUTING.md` whenever they exist.
 
 When the diff changes frontend styles or interactions, read skill://good-css. When it changes animation or motion behavior, also read skill://review-animations and its standards before judging. These conditional references apply in the coordinator and delegated review work. Motion findings belong to the existing Standards axis, with its blocking decisions and evidence requirements, not a separate gate.
 
@@ -97,6 +97,8 @@ With two or three axes, use this Fan-out line. With only Standards, use the sing
 Before this step, read skill://vstack-fan-out.
 
 Fan-out (skill://vstack-fan-out): parts: one per axis that runs. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: that axis's reviewer prompt below, the vstack root, the Scratch dir. Wait for every result. If they cannot start, stop: publish the affected axes as blocked through step 5 and report code-review as not run.
+
+Issue the reviewer calls together in the foreground and aggregate every returned report.
 
 Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the Standards reviewer prompt below, the vstack root. Wait for its result. If it cannot be spawned, stop: publish Standards as blocked through step 5 and report code-review as not run.
 

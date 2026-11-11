@@ -75,11 +75,11 @@ Prepare the normal cache clones named in `pins.yaml`, including `emil`. The help
 
 ```sh
 bun scripts/check-register.ts --json --upstreams "$CACHE"
-bun scripts/vstack-maintain.ts plan emil@a81dbca07f2217b7103e510c0f13f8d5b017afc9 --upstreams "$CACHE" --scratch "$VERIFY_RUN_DIR"
+bun scripts/vstack-maintain.ts plan emil@7cdf99421429c0a47d2cf9fbf40497b7ee0a3e5c --upstreams "$CACHE" --scratch "$VERIFY_RUN_DIR"
 bun .omp/skills/verify-vstack/scripts/frontend-maintenance.ts "$CHECKOUT" "$VERIFY_RUN_DIR/future-source" "$CACHE"
 ```
 
-The register must account for all sixteen UI-upstream items at the current Pin. All ten selected items must be adapt with matching pinned object identities and shipped artifact associations. No selected item remains deferred. The six permanent exclusions remain reject.
+The register must account for all eighteen UI-upstream items at the current Pin. All twelve selected items must be adapt with matching pinned identities and shipped artifact associations. No selected item remains deferred. The six permanent exclusions remain reject.
 
 The helper runs the real register CLI, then reads the cache's configured source URL and explicitly fetches the exact Pin and its objects into an isolated fixture remote. The normal cache may be blobless and contain only `refs/vstack/pins/*`, with no local branches. It changes an upstream timing recommendation deterministically, constructs fixture-only Git objects, and runs public `plan` and `check` commands over an isolated checkout. The resulting plan must identify the changed UI item and retain its adapted Disposition and artifact group. It compares content hashes before and after to prove the real Pin and checkout and the fixture checkout stayed unchanged. The fixture baseline commit is not a product commit. Each command's stdout, stderr, exit result, plan, and final `outcome.json` remain in the new evidence directory.
 
@@ -97,13 +97,14 @@ npm pack --ignore-scripts --json --pack-destination "$VERIFY_RUN_DIR" --cache "$
 
 Inspect the emitted tarball's file inventory and read each shipped UI guidance skill's `LICENSE` from the archive. Compare its bytes with the MIT notice at the actual Pin. Confirm the required copyright, permission, and disclaimer ship, along with required companion references. Confirm no skill directory for `animation-vocabulary`, `ask-sonner`, `pick-ui-library`, `animate-expo`, or `write-swift` entered the archive. Vstack's existing `prototype` must still ship; compare its packaged bytes with the unchanged local prototype rather than treating the name alone as the excluded upstream contribution.
 
-Run the applicable public-interface tests, focused catalog checks, changed-skill validation, and load smoke. The load summary must put all ten existing UI Utility skills in `listedSkills` and `skillCommands`, with none in `hiddenSkills`. Inspect every selected skill's SKILL.md and LICENSE in the package. Check the required companions: emil-design-eng, apple-design, and mobile-native references; break-ui/CATALOG.md; animate/RECIPES.md; review-animations/STANDARDS.md; and improve-animations/AUDIT.md and PLAN-TEMPLATE.md. Include animation-performance, find-animation-opportunities, and remove-animations in the inventory. Run final `vstack-maintain gates --scratch "$VERIFY_RUN_DIR"` after all edits. Keep every stage name, `ok` value, and raw diagnostics. A failed native/browser prerequisite stays unavailable or unmet even when the mechanical gates pass.
+Run applicable public-interface tests, focused catalog checks, changed-skill validation, and load smoke. The load summary must put all twelve UI Utility skills in `listedSkills` and `skillCommands`, with none in `hiddenSkills`. Inspect every selected skill's SKILL.md and LICENSE in the package. Check the required companions: emil-design-eng, apple-design, and mobile-native references; break-ui/CATALOG.md; animate/RECIPES.md; review-animations/STANDARDS.md; improve-animations/AUDIT.md and PLAN-TEMPLATE.md; and choreograph/RECIPES.md. Include animation-performance, find-animation-opportunities, remove-animations, and gestures in the inventory. Interrogate must also be listed and command-visible, without an Addon catalog key. Run final `vstack-maintain gates --scratch "$VERIFY_RUN_DIR"` after all edits. Keep every stage name, `ok` value, and raw diagnostics. A failed native or browser prerequisite stays unavailable or unmet even when mechanical gates pass.
 
 ## Gotchas
 
 - Adding a catalog key does not activate a non-principle Addon during implementation or automatic subagent selection. Exercise the actual conditional references.
-- The Decision register and maintainer guide identify all ten selected items as shipped adaptations, with none deferred. Keep each demonstration within its recipe's behavioral scope and preserve all six exclusions.
+- The Decision register and maintainer guide identify all twelve selected items as shipped adaptations, with none deferred. Keep each demonstration within its behavioral scope and preserve all six exclusions. Choreograph and gestures retain existing execution, review, verification, and evidence owners. Browser proof of their behavior needs real scoped interactions, not inventory checks.
 - Use a saved native skill-invocation header to establish expansion of the typed implementation entry. Literal slash text in an unexpanded user message is not proof.
 - Native models can produce a good UI without this guidance. Report the actual reads, changes, and observations; do not invent a causal quality score.
 - Record model changes, fallbacks, and incomplete captures. A successful stub transport run is not native instruction-following proof.
 - No dependency or engine claim extends beyond the fixture's actual stack and observed browser. Physical touch and additional engines require their own evidence.
+- Selection-only trigger evals across the twelve UI descriptions plus interrogate and live Addon judge evals require explicit approval before remote model use. Without approval, report selection overlap as unproven. Mechanical gates and stub load evidence do not substitute for those evals.

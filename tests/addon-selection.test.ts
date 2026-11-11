@@ -16,10 +16,10 @@ const addonPicks = (results: any[]) => results.filter(result => result?.message?
 const emilUtilities = [
   "animate", "animation-performance", "apple-design", "break-ui", "emil-design-eng",
   "find-animation-opportunities", "improve-animations", "mobile-native",
-  "remove-animations", "review-animations",
+  "remove-animations", "review-animations", "choreograph", "gestures",
 ];
 
-test("the Addon judge neither receives nor delivers the ten Emil Utility skills", async () => {
+test("the Addon judge neither receives nor delivers the twelve Emil Utility skills", async () => {
   judgeAnswers(Object.fromEntries([...emilUtilities, "principle-prove-it-works"].map(name => [name, 1])));
   const result = await fakeHost(running).callTool("inject_addons", { intent: "Build and review the mobile web interactions and prove they work." });
   expect(judge.calls).toHaveLength(1);

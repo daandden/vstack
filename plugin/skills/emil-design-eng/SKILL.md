@@ -7,7 +7,7 @@ description: "Use when building, polishing, or reviewing frontend controls, comp
 
 Apply Emil Kowalski's design-engineering guidance to the frontend task already in progress. This is reference knowledge, not another entry flow. The running vstack skill and its workers retain edits, planning, review, verification, and evidence ownership. Keep the project's stack and the user's scope.
 
-Adapted from [emilkowalski/skills](https://github.com/emilkowalski/skills/tree/a81dbca07f2217b7103e510c0f13f8d5b017afc9/skills/emil-design-eng). The [MIT notice](LICENSE) ships with this skill.
+Adapted from [emilkowalski/skills](https://github.com/emilkowalski/skills/tree/7cdf99421429c0a47d2cf9fbf40497b7ee0a3e5c/skills/emil-design-eng). The [MIT notice](LICENSE) ships with this skill.
 
 ## Decide before adding motion
 

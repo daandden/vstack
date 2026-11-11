@@ -7,7 +7,7 @@ description: "Use when reviewing existing web animation or a motion diff for tim
 
 Apply Emil Kowalski's motion-review bar inside the current review. The existing review owner retains scope, reviewer delegation, finding format, blocking decisions, verification, and evidence. This Utility skill neither starts a flow nor edits the application. Review non-motion code through the existing owner.
 
-Adapted from [emilkowalski/skills](https://github.com/emilkowalski/skills/tree/a81dbca07f2217b7103e510c0f13f8d5b017afc9/skills/review-animations). The [MIT notice](LICENSE) ships alongside the adaptation.
+Adapted from [emilkowalski/skills](https://github.com/emilkowalski/skills/tree/7cdf99421429c0a47d2cf9fbf40497b7ee0a3e5c/skills/review-animations). The [MIT notice](LICENSE) ships alongside the adaptation.
 
 Read [STANDARDS.md](STANDARDS.md) before judging motion. It supplies the frequency table, precise curves, duration budgets, spring and gesture guidance, rendering qualifications, and accessibility rules. Inspect every changed animation and any unchanged interaction needed to establish its behavior.
 
@@ -33,6 +33,8 @@ For each animation, establish its purpose, frequency, input path, and target eng
 10. Match motion to the product and component. Prefer deletion when an effect adds no useful information. Judge crossfades, blur, and stagger in the actual interface, not from a universal requirement to add them.
 
 Inspect `transition: all`, scale(0), ease-in, long UI durations, keyboard/high-frequency effects, wrong origins, restart-prone keyframes, inherited animation variables, layout properties, missing reduced motion, ungated hover, and symmetric hold/reset timing first. These are investigation triggers. Cite the applicable condition and observable harm before treating one as blocking. Do not turn a pure fade, built-in easing, or absence of stagger into a hard violation without an applicable reason.
+
+For busy-page Motion findings, distinguish shorthands before 14.2 from the accelerated HTML shorthand path in 14.2 and newer. Layout animations and the companion's other main-thread cases remain investigation candidates in every version. Before changing an older shorthand path, compare an upgrade or full transform string against the observed failure.
 
 ## Establish evidence and decide
 
