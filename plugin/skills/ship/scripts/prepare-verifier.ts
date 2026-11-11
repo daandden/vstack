@@ -2,7 +2,7 @@ import { existsSync, lstatSync, readFileSync, readlinkSync, realpathSync, unlink
 import { dirname, isAbsolute, resolve, sep } from "node:path";
 import { homedir } from "node:os";
 
-const record = { verdict: "REFUSED", head_sha: null as string | null, base_sha: null as string | null, patch_id: null as string | null, evidence: [] as string[], notes: [] as string[] };
+const record = { verdict: "REFUSED", head_sha: null as string | null, base_sha: null as string | null, patch_id: null as string | null, evidence: [] as string[], notes: [] as string[], proof_steps: [] };
 const removed: string[] = [];
 function git(repo: string, args: string[], stdin?: Uint8Array): string {
   const p = Bun.spawnSync(["git", "-C", repo, ...args], { stdin, env: { ...process.env, GIT_OPTIONAL_LOCKS: "0" } });

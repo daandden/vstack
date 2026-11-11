@@ -78,6 +78,8 @@ Re-drive every harness correction live before it lands. Tear down after the last
 
 Fix wrong or missing user-POV instructions and harness gaps that prevent driving working behavior. Keep helpers executable and show their invocation in SKILL.md, relative to its own directory. Record broken app behavior as product findings. Keep those findings out of the corrections and do not weaken expected results to pass.
 
+Maintain the required proof IDs and passing observations under `skill://ship/references/verdict-record.md`. Keep the caller-owned required set distinct from reported `proof_steps` and optional notes. Preserve failed or unavailable required outcomes, including negative probes and native journeys. A corrected instruction or later passing attempt does not change an earlier attempt's outcome. Do not remove a required step to make acceptance pass.
+
 ## 6. Commit and report
 
 For `changed`, re-read every changed file. Then, on a committing run, commit as skill://setup-app-verification step 5 says, with the same `--target`. If no title convention is visible, use `fix(verify-<app>): <feature>`, where `<feature>` names each fixed feature. If `commit.ts` refused in step 0 or refuses here, report the corrections as uncommitted.
