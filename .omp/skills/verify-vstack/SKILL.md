@@ -158,6 +158,7 @@ All paths are relative to `SKILL_DIR`.
 - `scripts/worker-lifecycle.ts <checkout> <new verify run>`: drives real isolated implementer and review-fixer patch landing, retention, and release in a fresh throwaway omp session. Use `features/worker-lifecycle.md`.
 - `scripts/flow-questions-tui.py --prompt <scenario.md> --config <isolate.yml>`: actual Session-model TUI controller for cancelled, elapsed-timeout, and empty architecture responses. See Launch and `features/architecture-agreement.md`.
 - `scripts/frontend-maintenance.ts <checkout> <new evidence directory> <upstream cache>`: drives the public register and maintenance CLIs with a deterministic future-source fixture, preserving the real Pin and local adaptations. Use `features/frontend-guidance.md`.
+- `scripts/clean-adr-isolation.ts <checkout> <fresh fixture> <new evidence directory>`: pins native project skills, agents, and the project plugin to the checkout without changing real-HOME credentials or installed packages. Run before every actual-model clean-adr fixture, then audit actual delegated reads as `features/clean-adr.md` specifies.
 
 ## Gotchas
 

@@ -27,7 +27,7 @@
 Preconditions:
 
 - Use the baseline from `README.md` and the independent Verifier's fresh real-model session with the checkout's plugin. Stub replies prove neither judgment nor instruction following.
-- Follow `architecture-agreement.md`'s actual-model runtime isolation and Session model discovery, and the checkout's `plugin/skills/skill-creator/references/evaluation.md` when using its launcher. Obtain explicit approval before a paid Headless run. This recipe itself grants no costly-run authorization.
+- Use skill-creator's Session model and thinking discovery, but use the fixture-local isolation procedure below instead of architecture-agreement's custom-directory overlay. Parent discovery and an absolute selected-skill path do not prove delegated `skill://` resolution. Obtain explicit approval before a paid Headless run. This recipe itself grants no costly-run authorization.
 - Run only in disposable fixtures under `$VERIFY_RUN_DIR/data/`. Use no production tracker, remote, or real project ADRs. Preserve prompts, overlays, transcripts, source hashes, and actual skill and agent read paths.
 - The typed command enrolls in a Flow. Use the fixture's own identity and a dedicated `--home "$VERIFY_RUN_DIR/data/<case>-flow-home"` on every Flow command. The explicit CLI-home fixture proves report publication, not normal-HOME binding behavior. Never reuse the author's binding. Export the fixture Flow and stop only a host started in that owned namespace.
 - Drive the citation cases below in Standard and Private mode. Archive/rewrite outcomes alone prove neither citation repair nor independent checks.
@@ -86,6 +86,24 @@ git -C "$F" write-tree
 ```
 
 Save HEAD, index tree, every ADR's bytes, and an inventory outside `data/` before driving. Save private bytes explicitly because git never captures them. For one context, change archived `0012` to `0020` before taking the baseline so per-directory numbering has an observable difference.
+
+### Pin the parent and scouts to the checkout
+
+Before the fixture baseline, add `.omp/` to its `.gitignore`. After the baseline, prepare each fresh fixture with this owned helper:
+
+```sh
+bun "$SKILL_DIR/scripts/clean-adr-isolation.ts" "$CHECKOUT" "$F" "$VERIFY_RUN_DIR/<case>"
+```
+
+The helper refuses an existing fixture `.omp/`. It links native project skills and agents to the checkout and stages a project-local `vstack` package link and lock entry. Native project discovery takes precedence over installed skills and user agents. The project package shadows the installed package of the same name, including its extension. This persists through delegated rediscovery without changing HOME, credentials, installed skills, or global settings. `isolation-inputs.json` records the links and dependency hashes. The overlay includes only bare checkout skill names, so differing installed aliases cannot enter the dependency list.
+
+Clear inherited `PI_*` and `OMP_*` variables, retain real `HOME` and credentials, then set `PI_CONFIG_FILES` to the helper's absolute `isolate.json` path. Pass that same file with `--config`. Launch from `F` with `--no-rules --no-context-files`, the discovered Session model and thinking level, and a persistent `--session-dir "$VERIFY_RUN_DIR/<case>/session"`. Use the project package, not `--plugin-dir` plus the installed package. Keep `/skill:clean-adr` available through the pinned native project skill and submit that exact user action. Launcher context may name only fixture paths, the supplied Scratch directory, and the isolated Flow home.
+
+Before the paid turn, inspect fresh-runtime `get_state` and the startup `available_commands_update` frame with these exact launch inputs. Require the selected skill command and `vstack-scout` tool entry. Read `skill://clean-adr` and `skill://domain-modeling` through `omp read` from `F` with the same environment to check their initial paths. Keep the effective system prompt, actual user message, and selected skill read or native expansion. During the drive, retain every scout session beside its parent session. Afterward, inspect every actual dependency read in both the parent and scouts, including nested `eval` tool calls. Resolve each returned `[Skill file: ...]` path and require it under `$CHECKOUT/plugin/skills/`. Compare its bytes with the recorded input hash and the verified head. Retain the raw results and a manifest of scout identity, requested URI, resolved file, and SHA-256. Audit script invocations and agent-definition provenance too.
+
+A parent-only discovery check, launcher prose instructing absolute reads, a passing Doctor, or matching product outputs cannot replace this audit. Any installed dependency path, changed source bytes, missing scout transcript, or missing resolution provenance leaves isolation unproven and the drive unavailable. Preserve the failed drive. Stop if a correction would require shared settings or an unsupported runtime override.
+
+### Run the fixture
 
 1. Launch the fresh actual-model session in `F` with the checkout's plugin, its scouts, and isolated dependency discovery. Submit exactly `/skill:clean-adr` as the user action. Supply only fixture paths and the isolated Flow-home constraint as launcher context, not expected verdicts or replacement content. Capture all actual tool calls and the final report.
 2. Inspect the scout returns. Every active file in every directory must have one verdict with project evidence, and the compression pair must be identified as the same decision. The raw results and the owning run's verdict and provision tables must remain in Scratch. Require a real `vstack-scout` investigation, not a fixed scripted response.
