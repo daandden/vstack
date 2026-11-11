@@ -51,5 +51,6 @@ export function blockLabel(flow: Flow, b: ReadingBlock): string {
   if (b.kind === "background") return st?.background?.jump ?? st?.background?.title ?? b.id;
   if (b.kind === "topic") return flow.topics.find((t) => t.id === b.id)?.title ?? b.id;
   if (b.kind === "assumed") return `Assumed: ${st?.assumed.find((a) => a.id === b.id)?.decision ?? b.id}`;
+  if (b.kind === "reading") return `Answer reading: ${flow.question.get(st?.readings.find(r => r.id === b.id)?.question ?? "")?.title ?? b.id}`;
   return "Summary";
 }

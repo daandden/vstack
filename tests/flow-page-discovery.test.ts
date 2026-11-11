@@ -167,7 +167,7 @@ test("describe exposes exclusive required content and validate diagnoses its omi
   }
 });
 
-const kinds = ["background", "topic", "attachment", "result", "revise", "corrects", "assumed", "round", "answer", "close", "stage", "wayfinder", "task", "blocker", "end-state", "pr", "check"];
+const kinds = ["background", "topic", "attachment", "result", "revise", "corrects", "assumed", "round", "answer", "reading", "close", "stage", "wayfinder", "task", "blocker", "end-state", "pr", "check"];
 const envelope = (...items: unknown[]) => ({ version: 1, items });
 const describeKind = (kind: string) => {
   const described = run(["describe", kind]);
@@ -205,6 +205,8 @@ test("contribution discovery covers nested questions, readings, closes, Stage st
   expect(answer.fields.response.fields.status.values).toEqual(["answered", "empty", "cancelled", "timed-out", "headless"]);
   expect(answer.fields.reading.variants.resolved.required).toEqual(["outcome", "decision", "basis"]);
   expect(answer.fields.reading.variants.unresolved.fields.outcome.values).toEqual(["question", "concern", "ambiguous"]);
+  expect(describeKind("reading").fields.reading).toEqual(answer.fields.reading);
+  expect(describeKind("reading").required).toEqual(["kind", "question", "reading"]);
   expect(describeKind("close").fields.decisions.items.required).toEqual(["question", "text"]);
   expect(describeKind("stage").fields.state.values).toEqual(["finished"]);
   for (const kind of ["task", "blocker", "pr", "check"]) {

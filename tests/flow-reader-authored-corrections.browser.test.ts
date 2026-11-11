@@ -1,0 +1,95 @@
+import { expect, test } from "bun:test";
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { chromium } from "playwright-core";
+import { ENV } from "./support/fixture.ts";
+
+const script = join(import.meta.dir, "../plugin/skills/flow-page/scripts/flow-page.ts");
+const topic = (ref: string) => ({ kind: "topic", ref, title: ref, summary: "The source remains available", body: "No permission is implied by this note.", sources: ["Local evidence"] });
+const background = (ref: string) => ({ kind: "background", ref, title: ref, summary: "The source remains uncertain", sections: [{ heading: "Evidence", body: "Keep the original record." }], sources: ["Local evidence"] });
+
+test("authored corrections show current non-consent, retained raw words, historical summaries, and reciprocal links for every target kind", async () => {
+  const root = realpathSync(mkdtempSync(join(tmpdir(), "reader-authored-corrections-")));
+  const home = join(root, "home");
+  mkdirSync(home);
+  const socket = Bun.listen({ hostname: "127.0.0.1", port: 0, socket: { data() {} } });
+  const port = socket.port;
+  socket.stop(true);
+  function cli(args: string[], items?: object[]) {
+    const child = Bun.spawnSync(["bun", script, ...args, "--home", home, "--session", "01a1cb40-9b3e-7780-ba29-caea28094b57", "--agent", "Impl466"], {
+      cwd: root, env: { ...ENV, HOME: join(root, "default-home"), VSTACK_FLOW_PORT: String(port) },
+      stdin: items ? new TextEncoder().encode(JSON.stringify({ version: 1, items })) : "ignore", stdout: "pipe", stderr: "pipe",
+    });
+    if (child.exitCode !== 0) throw new Error(child.stderr.toString());
+    return JSON.parse(child.stdout.toString()) as { flow: string; stage: string; refs: Record<string, string>; live: { url: string } };
+  }
+  const browser = await chromium.launch({ headless: true });
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  try {
+    const opened = cli(["open", "--title", "Uncertain answer correction", "--skill", "research"]);
+    const first = cli(["submit"], [background("original-background"), topic("original-topic"), { kind: "assumed", ref: "original-assumption", decision: "A reversible default", pick: "Keep default", why: "Not a user answer" }, { kind: "round", questions: [{ ref: "permission", title: "May work proceed?", description: "Is the shaft technical? Evidence is incomplete.", needs: [{ need: "Review uncertainty", kind: "prose" }], options: [{ label: "Proceed", does: "Starts work", gains: ["Progress"], costs: ["Premature action"] }, { label: "Wait", does: "Defers work", gains: ["Evidence first"], costs: ["Delay"] }] }] }]);
+    const q = first.refs.permission;
+    const close = cli(["submit"], [{ kind: "answer", question: q, response: { status: "answered", text: "possibly a technical shaft, not sure <script>alert(1)</script> &amp;" }, reading: { outcome: "resolved", decision: "Proceed with work", basis: "Misread uncertainty", maps_to: "A" } }, { kind: "close", ref: "original-summary", decisions: [{ question: q, text: "Work is authorized" }] }, { kind: "stage", state: "finished" }]);
+    cli(["open", "--flow", opened.flow, "--skill", "implement"]);
+    const reason = "The original account inferred permission from uncertainty. ".repeat(12) + "https://example.com/workspaces/review/evidence/9f8e7d6c5b4a <script>alert(1)</script>";
+    const targets = [first.refs["original-background"], first.refs["original-topic"], `${q}/context`, first.refs["original-assumption"], `${close.refs["original-summary"]}/${q}`, `${q}/reading`];
+    const replacements = ["new-background", "new-topic", "new-context", "new-assumption", `new-summary/${q}`, "withdrawal"];
+    const sent = cli(["submit"], [background("new-background"), topic("new-topic"), topic("new-context"), { kind: "assumed", ref: "new-assumption", decision: "A reversible default", pick: "Use another default", why: "Still not a user answer" }, { kind: "close", ref: "new-summary", decisions: [{ question: q, text: "The summary did not establish permission" }] }, { kind: "reading", ref: "withdrawal", question: q, reading: { outcome: "ambiguous", unresolved: "The uncertain source did not authorize work. Ask again if needed." } }, ...targets.map((target, i) => ({ kind: "corrects", target, replacement: replacements[i], reason }))]);
+    const page = await context.newPage();
+    const errors: string[] = [];
+    page.on("pageerror", error => errors.push(error.message));
+    await page.goto(`${opened.live.url}#overview`);
+    await page.locator("#overview-stages").waitFor();
+    expect(await page.locator("#overview-stages").innerText()).toContain("Unresolved after correction");
+    expect(await page.locator("#overview-stages").innerText()).not.toContain("Proceed with work");
+    for (const [i, target] of targets.entries()) {
+      const anchor = target.replace("/", "-");
+      await page.goto(`${opened.live.url}#${anchor}`);
+      const original = page.locator(`#${anchor}`);
+      await original.waitFor();
+      const warning = original.getByRole("complementary", { name: "Correction notice", exact: true }).first();
+      expect(await warning.isVisible()).toBe(true);
+      expect(await warning.innerText()).toContain(reason);
+      await warning.getByRole("link", { name: "Correction", exact: true }).click();
+      const replacement = i === 4 ? `${sent.refs["new-summary"]}-${q}` : sent.refs[replacements[i]];
+      expect(new URL(page.url()).hash).toBe(`#${replacement}`);
+      await page.locator(`#${replacement}`).getByRole("complementary", { name: "Corrects earlier content", exact: true }).getByRole("link", { name: target, exact: true }).click();
+      expect(new URL(page.url()).hash).toBe(`#${anchor}`);
+    }
+    await page.goto(`${opened.live.url}#${q}`);
+    expect(await page.locator(`#${q} .answer`).innerText()).toContain("possibly a technical shaft, not sure <script>alert(1)</script> &amp;");
+    expect(await page.locator(`#${q} .answer`).innerText()).toContain("Still to ask");
+    expect(await page.locator(`#${q} [data-picked]`).count()).toBe(0);
+    await page.getByText("Original agent reading, no longer current", { exact: true }).click();
+    expect(await page.locator(`#${q}-reading`).innerText()).toContain("Proceed with work");
+    await page.goto(`${opened.live.url}#${close.refs["original-summary"]}`);
+    const summary = page.locator(`#${close.refs["original-summary"]}`);
+    expect(await summary.innerText()).toContain("historical summary affected by Correction");
+    expect(await summary.innerText()).toContain("The uncertain source did not authorize work");
+    expect(await summary.innerText()).toContain("Work is authorized");
+    for (const theme of ["Light", "Dark"]) {
+      await page.getByRole("button", { name: theme, exact: true }).click();
+      for (const width of [320, 1280, 2560]) {
+        await page.setViewportSize({ width, height: 900 });
+        await page.goto(`${opened.live.url}#${q}`);
+        expect(await page.evaluate(() => globalThis.document.documentElement.scrollWidth - globalThis.document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+        const proof = process.env.FLOW_READER_EVIDENCE;
+        if (proof) {
+          mkdirSync(proof, { recursive: true });
+          await page.screenshot({ path: join(proof, `authored-corrections-${theme.toLowerCase()}-${width}.png`), fullPage: true });
+          writeFileSync(join(proof, `authored-corrections-${theme.toLowerCase()}-${width}.aria.txt`), await page.locator("body").ariaSnapshot());
+        }
+      }
+    }
+    await page.setViewportSize({ width: 320, height: 900 });
+    await page.evaluate(() => { globalThis.document.documentElement.style.fontSize = "200%"; });
+    expect(await page.evaluate(() => globalThis.document.documentElement.scrollWidth - globalThis.document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+    expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+    await browser.close();
+    cli(["host", "stop"]);
+    rmSync(root, { recursive: true, force: true });
+  }
+}, 120_000);

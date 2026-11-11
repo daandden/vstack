@@ -56,6 +56,7 @@ const lines = computed(() => {
 
 <template>
   <article :id="q.id" class="question grid gap-2.5" :data-state="q.answer.state" :data-next="rank >= 0 ? rank : undefined" :data-retired="q.retired ? '' : undefined" data-stop>
+    <div :id="`${q.id}-context`"><CorrectionNotice :notice="q.context" /></div>
     <h2 class="text-flow-mauve"><span class="me-2.5 tabular-nums">Q{{ q.q }}</span><span v-html="inline(q.title)" /></h2>
     <div class="grid gap-1.5" v-html="prose(q.description)" />
     <p class="flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 text-small text-muted [&_a]:no-underline">
@@ -115,6 +116,17 @@ const lines = computed(() => {
           <p v-if="o.recommended" class="text-small text-muted">Recommended: <span v-html="inline(o.recommended)" /></p>
         </li>
       </ol>
+      <section v-if="q.answer.correction || q.answer.corrects.length || q.answer.recorded_reading" :id="`${q.id}-reading`" class="grid gap-1.5">
+        <CorrectionNotice :notice="q.answer" />
+        <details v-if="q.answer.recorded_reading">
+          <summary>Original agent reading, no longer current</summary>
+          <template v-if="q.answer.recorded_reading.outcome === 'resolved'">
+            <p v-html="inline(q.answer.recorded_reading.decision)" />
+            <p v-html="inline(q.answer.recorded_reading.basis)" />
+          </template>
+          <p v-else v-html="inline(q.answer.recorded_reading.unresolved)" />
+        </details>
+      </section>
       <div v-if="lines.length" class="answer grid grid-cols-[12ch_minmax(0,1fr)] gap-x-3 gap-y-1 rounded border border-[var(--surface1)] px-3 py-2">
         <p v-for="(l, i) in lines" :key="i" class="col-span-full grid grid-cols-subgrid"><span class="font-semibold">{{ l.label }}</span><span v-html="l.html" /></p>
       </div>

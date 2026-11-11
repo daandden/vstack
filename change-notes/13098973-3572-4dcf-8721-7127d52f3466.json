@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Correct Backgrounds, Topic notes, question context, answer readings, Assumed picks, and close decisions through later Stages. Withdraw mistaken readings without changing user responses or creating consent, and mark affected historical summaries."
+  ]
+}

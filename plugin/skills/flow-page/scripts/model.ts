@@ -31,6 +31,7 @@ const NON_CONSENT = ["question", "concern", "ambiguous"] as const;
 export type NonConsent = (typeof NON_CONSENT)[number];
 export type Reading = { outcome: "resolved"; decision: string; basis: string; maps_to?: string } | { outcome: NonConsent; unresolved: string };
 export type Answer = { id?: string; question: string; time?: string; response?: AskResponse; reading?: Reading; legacy?: { other?: string; note?: string; unanswered?: string } };
+export type ReadingNote = { id: string; stage: string; question: string; time: string; reading: Reading };
 export type AnswerState = "open" | "picked" | "written" | "resolved" | "unresolved";
 export type Decision = { question: string; text: string; answer: AnswerState };
 export type Close = { id: string; stage: string; seq: number; time?: string; decisions: Decision[]; assumed: string[]; extra?: string[] };
@@ -38,7 +39,7 @@ export type Assumed = { id: string; stage: string; decision: string; pick: strin
 export type Retirement = { question: string; reason: string; time?: string };
 export type Section = { heading: string; body: string };
 export type Background = { id: string; stage: string; title: string; summary: string; sections: Section[]; sources: string[]; figures?: Figure[]; jump?: string };
-export type Topic = { id: string; title: string; summary: string; body: string; sources: string[] };
+export type Topic = { id: string; stage?: string; title: string; summary: string; body: string; sources: string[] };
 const SHAPES = ["cards", "ledger", "table", "document", "prototype", "comparison", "metrics", "code", "timeline", "quiz", "review"] as const;
 export type Shape = (typeof SHAPES)[number];
 const REVIEW_AXES = ["standards", "spec", "blast-radius"] as const;
@@ -119,13 +120,15 @@ export type Io = {
 /** One explicit lifecycle change of the whole Flow. Retention counts from the latest close; nothing else moves it. */
 export type Lifecycle = { event: "closed" | "reopened"; time: string };
 
-export type CorrectionEndpoint = { id: string; result: string; stage: string; revision: number; edit?: number; changed: number };
+export type CorrectionEndpoint = { id: string; stage: string; revision: number; edit?: number; changed: number } & (
+  { kind?: "result"; result: string } | { kind: "reading" | "background" | "topic" | "context" | "decision" | "assumed"; result?: never }
+);
 export type Correction = { id: string; stage: string; time: string; reason: string; target: CorrectionEndpoint; replacement: CorrectionEndpoint };
 export type CorrectionLink = CorrectionEndpoint & { anchor: string };
 export type CorrectionView = Omit<Correction, "target" | "replacement"> & { target: CorrectionLink; replacement: CorrectionLink; head: CorrectionLink };
 export type CorrectionNotice = { correction?: CorrectionView; corrects: CorrectionView[] };
 
-type ReadingBlock = { id: string; kind: "background" | "topic" | "question" | "result" | "assumed" | "close"; stage?: string };
+type ReadingBlock = { id: string; kind: "background" | "topic" | "question" | "result" | "assumed" | "close" | "reading"; stage?: string };
 type Publication = ReadingBlock & { position: number; publication: number };
 type ReadingOrder = { historical: ReadingBlock[]; publications: Publication[] };
 
@@ -196,6 +199,7 @@ export type State = {
   /** Earlier revisions of republished Results, oldest first. */
   history: Result[];
   corrections?: Correction[];
+  readings?: ReadingNote[];
   progress?: Progress;
   wayfinder?: WayfinderMap[];
   /** Closes and reopens, oldest first. A Flow with none, or whose latest is a reopen, is open. */
@@ -210,6 +214,7 @@ export function upgrade(s: State): State {
   s.history ??= [];
   s.lifecycle ??= [];
   s.corrections ??= [];
+  s.readings ??= [];
   s.reading ??= retainedReading(s);
   return s;
 }
@@ -368,7 +373,7 @@ function ref(o: Obj, where: string): string | undefined {
 
 export type Receipt = { refs: Record<string, string>; ask?: { questions: { id: string; question: string; options: { label: string }[]; multi?: boolean; recommended?: number }[] } };
 
-const KINDS = ["background", "topic", "attachment", "result", "revise", "corrects", "assumed", "round", "answer", "close", "stage", "wayfinder", ...PROGRESS_KINDS] as const;
+const KINDS = ["background", "topic", "attachment", "result", "revise", "corrects", "assumed", "round", "answer", "reading", "close", "stage", "wayfinder", ...PROGRESS_KINDS] as const;
 type ContributionKind = (typeof KINDS)[number];
 type PlannedIds = { id?: string; entries?: string[]; questions?: string[] };
 type ContributionHandler = { plan?: (o: Obj, where: string, ids: PlannedIds) => void; apply: (o: Obj, where: string, ids: PlannedIds) => void };
@@ -423,9 +428,12 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
     if (typeof v !== "string" || v.trim() === "") refuse(where, `must name a ${kind} by ref or id`);
     const key = v as string;
     if (refs[key] !== undefined) {
-      if (kinds[key] !== kind && !(kind === "Result or Result entry" && (kinds[key] === "result" || kinds[key] === "result entry"))) refuse(where, `ref ${key} names a ${kinds[key]}, not a ${kind}`);
+      if (kind !== "authored block" && kinds[key] !== kind && !(kind === "Result or Result entry" && (kinds[key] === "result" || kinds[key] === "result entry"))) refuse(where, `ref ${key} names a ${kinds[key]}, not a ${kind}`);
       return refs[key];
     }
+    const slash = key.indexOf("/");
+    const base = slash < 0 ? key : key.slice(0, slash);
+    if (kind === "authored block" && refs[base] !== undefined) return refs[base] + (slash < 0 ? "" : key.slice(slash));
     return key;
   };
 
@@ -452,8 +460,11 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
       },
     },
     background: {
+      plan(o, where, ids) {
+        claim(ref(o, where), (ids.id = newId(s, "background")), "background", where);
+      },
       apply(o, where, ids) {
-        fields(o, where, ["kind", "title", "summary", "sections", "sources"], ["figures"]);
+        fields(o, where, ["kind", "title", "summary", "sections", "sources"], ["figures", "ref"]);
         const other = s.backgrounds.find((b) => b.stage === stage.id);
         if (other) refuse(where, `Stage ${stage.id} already has ${other.id}; a Stage has one Background`);
         const sections = validatedMap(list(o, "sections", where), (sec, j) => {
@@ -461,10 +472,11 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
           const so = fields(sec, sw, ["heading", "body"]);
           return { heading: text(so, "heading", sw), body: text(so, "body", sw) };
         });
-        const id = newId(s, "background");
+        const id = ids.id!;
         const figures = o.figures === undefined ? undefined : validatedMap(list(o, "figures", where), (f, j) => figure(f, `${id}-figure-${j + 1}`, `${where}: figure ${j + 1}`));
         s.backgrounds.push({ id, stage: stage.id, title: text(o, "title", where), summary: text(o, "summary", where), sections, sources: texts(o, "sources", where).map((t) => sourceId(s, t)), ...(figures ? { figures } : {}) });
         publish("background", id);
+        newContent.add(id);
       },
     },
     topic: {
@@ -473,8 +485,9 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
       },
       apply(o, where, ids) {
         fields(o, where, ["kind", "title", "summary", "body", "sources"], ["ref"]);
-        s.topics.push({ id: ids.id!, title: text(o, "title", where), summary: text(o, "summary", where), body: text(o, "body", where), sources: texts(o, "sources", where).map((t) => sourceId(s, t)) });
+        s.topics.push({ id: ids.id!, stage: stage.id, title: text(o, "title", where), summary: text(o, "summary", where), body: text(o, "body", where), sources: texts(o, "sources", where).map((t) => sourceId(s, t)) });
         publish("topic", ids.id!);
+        newContent.add(ids.id!);
       },
     },
     attachment: {
@@ -557,16 +570,26 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
     corrects: {
       apply(o, where) {
         fields(o, where, ["kind", "target", "replacement", "reason"]);
-        const target = correctionEndpoint(s, resolve(o.target, "Result or Result entry", `${where}: target`), where);
-        const replacement = correctionEndpoint(s, resolve(o.replacement, "Result or Result entry", `${where}: replacement`), where);
+        const target = correctionEndpoint(s, resolve(o.target, "authored block", `${where}: target`), where);
+        const replacement = correctionEndpoint(s, resolve(o.replacement, "authored block", `${where}: replacement`), where);
         const earlier = stageOf(s, target.stage, where);
         if (earlier.order >= stage.order || earlier.state !== "finished") refuse(where, "a Correction targets content of an earlier finished Stage");
         if (replacement.stage !== stage.id || !newContent.has(replacement.id)) refuse(where, "a Correction replacement must be new ordinary content published in this contribution");
         const relations = s.corrections ??= [];
-        const overlap = (a: CorrectionEndpoint, b: CorrectionEndpoint) => a.result === b.result && (a.id === b.id || a.id === a.result || b.id === b.result);
+        const overlap = (a: CorrectionEndpoint, b: CorrectionEndpoint) => a.id === b.id || (a.result !== undefined && a.result === b.result && (a.id === a.result || b.id === b.result));
         if (relations.some(c => overlap(c.target, target))) refuse(where, "conflicting successor: this target already has a Correction; correct its replacement instead");
         if (relations.some(c => overlap(c.replacement, replacement))) refuse(where, "the replacement already belongs to a Correction");
         if (relations.some(c => overlap(c.replacement, target) && c.replacement.id !== target.id)) refuse(where, "a later Correction must target the exact preceding replacement, not an overlapping Result or entry");
+        const targetReading = readingAt(s, target.id), replacementReading = readingAt(s, replacement.id);
+        if (target.kind === "reading" || replacement.kind === "reading") {
+          const original = targetReading ?? refuse(where, "an answer reading is corrected only by a new reading of the same recorded answer");
+          const updated = replacementReading ?? refuse(where, "an answer reading is corrected only by a new reading of the same recorded answer");
+          if (original.question !== updated.question) refuse(where, "an answer reading is corrected only by a new reading of the same recorded answer");
+          if (updated.reading.outcome === "resolved" && original.reading.outcome !== "resolved") refuse(where, "a Correction cannot turn an unresolved reading into consent; ask again to obtain a new answer");
+        }
+        if (target.kind === "decision" || replacement.kind === "decision") {
+          if (target.kind !== "decision" || replacement.kind !== "decision" || target.id.split("/")[1] !== replacement.id.split("/")[1]) refuse(where, "a close decision is corrected only by a new close decision for the same question");
+        }
         relations.push({ id: newId(s, "correction"), stage: stage.id, time, reason: text(o, "reason", where), target, replacement });
       },
     },
@@ -578,6 +601,7 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
         fields(o, where, ["kind", "decision", "pick", "why"], ["ref"]);
         s.assumed.push({ id: ids.id!, stage: stage.id, decision: text(o, "decision", where), pick: text(o, "pick", where), why: text(o, "why", where) });
         publish("assumed", ids.id!);
+        newContent.add(ids.id!);
       },
     },
     round: {
@@ -600,6 +624,7 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
         assignQNumbers(s, parsed, stage.id, where);
         s.questions.push(...parsed);
         for (const q of parsed) publish("question", q.id);
+        for (const q of parsed) newContent.add(`${q.id}/context`);
         receipt.ask = {
           questions: parsed.map((q) => {
             const rec = q.options.findIndex((op) => op.recommended !== undefined);
@@ -621,9 +646,27 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
         s.answers.push({ question: qid, time, response, ...(reading ? { reading } : {}) });
       },
     },
-    close: {
+    reading: {
+      plan(o, where, ids) {
+        claim(ref(o, where), (ids.id = newId(s, "reading")), "reading", where);
+      },
       apply(o, where, ids) {
-        fields(o, where, ["kind", "decisions"], ["extra"]);
+        fields(o, where, ["kind", "question", "reading"], ["ref"]);
+        const question = resolve(o.question, "question", where);
+        const q = s.questions.find(q => q.id === question) ?? refuse(where, `question ${question} does not exist`);
+        const response = s.answers.find(a => a.question === question)?.response ?? refuse(where, "a reading needs an existing recorded response");
+        const reading = parseReading(o.reading, `${where}: reading`, q, response)!;
+        (s.readings ??= []).push({ id: ids.id!, stage: stage.id, question, time, reading });
+        newContent.add(ids.id!);
+        publish("reading", ids.id!);
+      },
+    },
+    close: {
+      plan(o, where, ids) {
+        claim(ref(o, where), (ids.id = newId(s, "close")), "close", where);
+      },
+      apply(o, where, ids) {
+        fields(o, where, ["kind", "decisions"], ["extra", "ref"]);
         if (!Array.isArray(o.decisions)) refuse(where, "decisions must be a list of { question, text }, empty when the Stage asked nothing");
         const extra = optTexts(o, "extra", where);
         const latest = latestAsks(s, stage.id);
@@ -633,17 +676,22 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
           const dobj = fields(d, dw, ["question", "text"]);
           const qid = resolve(dobj.question, "question", dw);
           const q = s.questions.find((x) => x.id === qid) ?? refuse(dw, `question ${qid} does not exist`);
-          if (q.stage !== stage.id) refuse(dw, `question ${qid} belongs to Stage ${q.stage}, not Stage ${stage.id}`);
-          if (latest.get(q.q)?.id !== q.id) refuse(dw, `${qid} is not the latest ask of Q${q.q}; decide ${latest.get(q.q)!.id}`);
-          if (named.has(q.q)) refuse(dw, `Q${q.q} already has a decision`);
-          named.set(q.q, qid);
+          if (q.stage === stage.id) {
+            if (latest.get(q.q)?.id !== q.id) refuse(dw, `${qid} is not the latest ask of Q${q.q}; decide ${latest.get(q.q)!.id}`);
+            if (named.has(q.q)) refuse(dw, `Q${q.q} already has a decision`);
+            named.set(q.q, qid);
+          } else if (!items.some(raw => isObj(raw) && raw.kind === "corrects" && resolve(raw.replacement, "authored block", dw) === `${ids.id}/${qid}`)) {
+            refuse(dw, `question ${qid} belongs to Stage ${q.stage}; a later close decision must be an atomic Correction replacement`);
+          }
+          if ((o.decisions as Obj[]).slice(0, j).some(d => resolve(d.question, "question", dw) === qid)) refuse(dw, `question ${qid} already has a decision`);
           return { question: qid, text: text(dobj, "text", dw), answer: answerState(s, qid) };
         });
         const missing = [...latest].filter(([n]) => !named.has(n)).map(([n, q]) => `Q${n} (${q.id})`);
         if (missing.length) refuse(where, `a close decides every latest ask of its Stage; ${all(missing)} ${missing.length === 1 ? "has" : "have"} no decision`);
         const assumed = visibleAssumed(s, stage.id).map((a) => a.id);
         if (decisions.length === 0 && assumed.length === 0 && extra === undefined) refuse(where, "a close with no decisions and no Assumed picks needs extra bullets");
-        s.closes.push({ id: newId(s, "close"), stage: stage.id, seq: ++s.seq, time, decisions, assumed, ...(extra ? { extra } : {}) });
+        s.closes.push({ id: ids.id!, stage: stage.id, seq: ++s.seq, time, decisions, assumed, ...(extra ? { extra } : {}) });
+        for (const d of decisions) newContent.add(`${ids.id}/${d.question}`);
         publish("close", s.closes.at(-1)!.id);
       },
     },
@@ -698,6 +746,12 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
   for (const { o, where, ids, handler } of [...planned.filter(p => p.o.kind !== "corrects"), ...planned.filter(p => p.o.kind === "corrects")]) {
     try { handler.apply(o, where, ids); }
     catch (error) { report(error); }
+  }
+  for (const id of newContent) {
+    if (id.startsWith("reading-") && !s.corrections?.some(c => c.replacement.id === id)) diagnostics.push({ code: "invalid_reference", path: locations.get(id) ?? "$", message: "a standalone reading must be the replacement in a corrects relation in this contribution" });
+  }
+  for (const close of s.closes) for (const decision of close.decisions) {
+    if (newContent.has(`${close.id}/${decision.question}`)) decision.answer = answerState(s, decision.question);
   }
   for (const f of authoredFigures) if ("attachment" in f) {
     const a = s.attachments.find((a) => a.id === f.attachment);
@@ -972,7 +1026,30 @@ export function answerState(s: State, question: string): AnswerState {
   if (a.legacy) return a.legacy.other !== undefined ? "written" : "unresolved";
   if (a.response?.status !== "answered") return "unresolved";
   if (a.response.picks) return "picked";
-  return a.reading?.outcome === "resolved" ? "resolved" : "unresolved";
+  return currentReading(s, question)?.outcome === "resolved" ? "resolved" : "unresolved";
+}
+
+function readingAt(s: State, id: string): { question: string; reading: Reading } | undefined {
+  const note = s.readings?.find(r => r.id === id);
+  if (note) return note;
+  if (!id.endsWith("/reading")) return;
+  const question = id.slice(0, -"/reading".length);
+  const reading = s.answers.find(a => a.question === question)?.reading;
+  return reading ? { question, reading } : undefined;
+}
+
+function correctionHead(s: State, id: string): string {
+  const seen = new Set<string>();
+  for (;;) {
+    const next = s.corrections?.find(c => c.target.id === id);
+    if (!next || seen.has(id)) return id;
+    seen.add(id);
+    id = next.replacement.id;
+  }
+}
+
+function currentReading(s: State, question: string): Reading | undefined {
+  return readingAt(s, correctionHead(s, `${question}/reading`))?.reading;
 }
 const settled = (state: AnswerState) => state === "picked" || state === "written" || state === "resolved";
 
@@ -1527,15 +1604,45 @@ function checkLinks(s: State, report: (id: string, suffix: string, message: stri
 }
 
 function correctionEndpoint(s: State, id: string, where: string): CorrectionEndpoint {
-  const link = resultLink(s, id) ?? refuse(where, `Correction target ${id} must name an existing Result or Result entry`);
-  const result = s.results.find(r => r.id === link.result)!;
-  return { id: link.id, result: result.id, stage: result.stage, revision: result.revision ?? 1, ...(result.edit === undefined ? {} : { edit: result.edit }), changed: link.entry ? result.entries.find(e => e.id === link.entry)!.changed : result.changed };
+  const link = resultLink(s, id);
+  if (link) {
+    const result = s.results.find(r => r.id === link.result)!;
+    return { id: link.id, result: result.id, stage: result.stage, revision: result.revision ?? 1, ...(result.edit === undefined ? {} : { edit: result.edit }), changed: link.entry ? result.entries.find(e => e.id === link.entry)!.changed : result.changed };
+  }
+  const [base, scope, ...rest] = id.split("/");
+  if (rest.length) refuse(where, `Correction target ${id} has no supported scoped selector`);
+  let kind: Exclude<CorrectionEndpoint["kind"], "result" | undefined> | undefined;
+  let stage: string | undefined;
+  if (scope === "reading" && readingAt(s, id)) {
+    kind = "reading"; stage = s.questions.find(q => q.id === base)?.stage;
+  } else if (scope === "context") {
+    kind = "context"; stage = s.questions.find(q => q.id === base)?.stage;
+  } else if (scope) {
+    const close = s.closes.find(c => c.id === base && c.decisions.some(d => d.question === scope));
+    if (close) { kind = "decision"; stage = close.stage; }
+  } else {
+    const note = s.readings?.find(r => r.id === id);
+    const background = s.backgrounds.find(b => b.id === id);
+    const topic = s.topics.find(t => t.id === id);
+    const assumed = s.assumed.find(a => a.id === id);
+    if (note) { kind = "reading"; stage = note.stage; }
+    else if (background) { kind = "background"; stage = background.stage; }
+    else if (topic) {
+      kind = "topic"; stage = topic.stage ?? s.reading.publications.find(p => p.id === id)?.stage;
+      if (!stage) refuse(where, `Topic ${id} has no recorded Stage ownership; a Correction cannot infer its original Stage`);
+    }
+    else if (assumed) { kind = "assumed"; stage = assumed.stage; }
+  }
+  if (!kind || !stage) return refuse(where, `Correction target ${id} must name a Result or Result entry, Background, Topic with recorded Stage, Assumed pick, reading, question/context, question/reading, or close/question`);
+  const publication = s.reading.publications.find(p => p.id === base)?.publication ?? 0;
+  return { id, kind, stage, revision: 1, changed: publication };
 }
 
 function correctionViews(s: State): CorrectionView[] {
   const relations = s.corrections ?? [];
   const successors = new Map(relations.map(c => [c.target.id, c]));
   const link = (e: CorrectionEndpoint): CorrectionLink => {
+    if (e.result === undefined) return { ...e, anchor: e.id.replace("/", "-") };
     const current = s.results.find(r => r.id === e.result);
     const anchor = current && (current.revision ?? 1) === e.revision && current.edit === e.edit
       ? e.result : `${e.result}-r${e.revision}${e.edit === undefined ? "" : `-edit${e.edit}`}`;
@@ -1581,8 +1688,8 @@ function codeLocation(e: Entry, anchor: string): CodeLocation {
 }
 
 /** `picks` holds option labels only for an explicit pick; `why` says why an unresolved answer is not consent. */
-export type AnswerView = { state: AnswerState; why?: ResponseStatus | NonConsent; id?: string; time?: string; response?: AskResponse; reading?: Reading; picks?: string[]; legacy?: Answer["legacy"] };
-export type QuestionView = Question & { result_links: ResultLink[]; answer: AnswerView; open: boolean; latest: boolean; retired?: { reason: string; time?: string }; decided_in?: string; asked_again_by: string[] };
+export type AnswerView = CorrectionNotice & { state: AnswerState; why?: ResponseStatus | NonConsent; id?: string; time?: string; response?: AskResponse; reading?: Reading; recorded_reading?: Reading; picks?: string[]; legacy?: Answer["legacy"] };
+export type QuestionView = Question & { context: CorrectionNotice; result_links: ResultLink[]; answer: AnswerView; open: boolean; latest: boolean; retired?: { reason: string; time?: string }; decided_in?: string; asked_again_by: string[] };
 export type DocView = {
   sections: { anchor: string; heading: string; blocks: Block[] }[];
   citations: { anchor: string; n: number; ref: string; source: string; text: string; cited_in: string[] }[]; citationsAnchor: string;
@@ -1621,14 +1728,16 @@ export type ResultView = Omit<Result, "entries" | "document" | "comparison" | "m
   shown: Attachment[];
   history: ResultView[];
 };
-export type AssumedView = Assumed & { reopened_by?: string };
+export type AssumedView = Assumed & CorrectionNotice & { reopened_by?: string };
+export type CloseView = Omit<Close, "decisions"> & { decisions: (Decision & CorrectionNotice & { current_answer: AnswerState; current_reading?: Reading; current_text: string; affected: boolean })[] };
 export type StageView = Stage & {
   label: string;
   children: string[];
-  background?: Background & { sourceTexts: string[] };
+  background?: Background & CorrectionNotice & { sourceTexts: string[] };
   results: ResultView[];
+  readings: (ReadingNote & CorrectionNotice)[];
   assumed: AssumedView[];
-  items: ({ type: "round"; round: Round; questions: QuestionView[] } | { type: "close"; close: Close; latest: boolean })[];
+  items: ({ type: "round"; round: Round; questions: QuestionView[] } | { type: "close"; close: CloseView; latest: boolean })[];
   asked: QuestionView[];
   open_questions: number;
 };
@@ -1686,7 +1795,7 @@ export type View = {
   path?: MattPath;
   wayfinder?: WayfinderMap & { history: WayfinderMap[] };
   next: string[];
-  topics: (Topic & { sourceTexts: string[]; questions: string[] })[];
+  topics: (Topic & CorrectionNotice & { sourceTexts: string[]; questions: string[] })[];
   sources: (Source & { cited_by: string[] })[];
   questions: Map<string, QuestionView>;
   attachments: (Attachment & { used_by: string[] })[];
@@ -1709,14 +1818,15 @@ function stageLabels(stages: Stage[]): Map<string, string> {
   }));
 }
 
-function answerView(s: State, q: Question): AnswerView {
+function answerView(s: State, q: Question, notice: CorrectionNotice): AnswerView {
   const a = s.answers.find((x) => x.question === q.id);
   const state = answerState(s, q.id);
-  if (!a) return { state };
-  const recorded = { ...(a.id ? { id: a.id } : {}), ...(a.time ? { time: a.time } : {}), ...(a.response ? { response: a.response } : {}), ...(a.reading ? { reading: a.reading } : {}), ...(a.legacy ? { legacy: a.legacy } : {}) };
+  if (!a) return { state, ...notice };
+  const reading = currentReading(s, q.id);
+  const recorded = { ...notice, ...(a.id ? { id: a.id } : {}), ...(a.time ? { time: a.time } : {}), ...(a.response ? { response: a.response } : {}), ...(reading ? { reading } : {}), ...(notice.correction && a.reading ? { recorded_reading: a.reading } : {}), ...(a.legacy ? { legacy: a.legacy } : {}) };
   if (state === "picked") return { state, ...recorded, picks: a.response!.picks!.map((p) => optionLabel(q, p)) };
   if (state === "resolved" || state === "written" || a.legacy) return { state, ...recorded };
-  return { state, why: a.reading && a.reading.outcome !== "resolved" ? a.reading.outcome : a.response!.status, ...recorded };
+  return { state, why: reading && reading.outcome !== "resolved" ? reading.outcome : a.response!.status, ...recorded };
 }
 
 function comparisonView(c: ComparisonBody, anchor: string): ComparisonView {
@@ -1767,6 +1877,11 @@ function metricsView(m: MetricsBody, anchor: string): MetricsView {
 }
 
 export function view(s: State): View {
+  const corrections = correctionViews(s);
+  const notice = (id: string): CorrectionNotice => ({
+    correction: corrections.find(c => c.target.id === id),
+    corrects: corrections.filter(c => c.replacement.id === id),
+  });
   const sourceText = new Map(s.sources.map((x) => [x.id, x.text]));
   const labels = stageLabels([...s.stages].sort((a, b) => a.order - b.order));
   const decidedIn = new Map<string, string>();
@@ -1774,21 +1889,16 @@ export function view(s: State): View {
   const latestIds = new Set(s.stages.flatMap((st) => [...latestAsks(s, st.id).values()].map((q) => q.id)));
   const questions = new Map<string, QuestionView>();
   for (const q of s.questions) {
-    const answer = answerView(s, q);
+    const answer = answerView(s, q, notice(`${q.id}/reading`));
     const latest = latestIds.has(q.id);
     const retired = s.retirements.find((r) => r.question === q.id);
-    const qv: QuestionView = { ...q, result_links: (q.entries ?? []).flatMap((id) => { const link = resultLink(s, id); return link ? [link] : []; }), answer, latest, open: latest && !retired && !settled(answer.state), asked_again_by: s.questions.filter((x) => x.again === q.id).map((x) => x.id) };
+    const qv: QuestionView = { ...q, context: notice(`${q.id}/context`), result_links: (q.entries ?? []).flatMap((id) => { const link = resultLink(s, id); return link ? [link] : []; }), answer, latest, open: latest && !retired && !settled(answer.state), asked_again_by: s.questions.filter((x) => x.again === q.id).map((x) => x.id) };
     if (retired) qv.retired = { reason: retired.reason, time: retired.time };
     if (decidedIn.has(q.id)) qv.decided_in = decidedIn.get(q.id);
     questions.set(q.id, qv);
   }
   const linking = (entry: string) => s.questions.filter((q) => q.entries?.includes(entry)).map((q) => q.id);
   const attachment = new Map(s.attachments.map((a) => [a.id, a]));
-  const corrections = correctionViews(s);
-  const notice = (id: string): CorrectionNotice => ({
-    correction: corrections.find(c => c.target.id === id),
-    corrects: corrections.filter(c => c.replacement.id === id),
-  });
   const resultView = (r: Result, anchor: string, current: boolean): ResultView => {
     const { document: d, comparison: c, metrics: m, ...rest } = r;
     const rv: ResultView = {
@@ -1829,18 +1939,29 @@ export function view(s: State): View {
     const seqOfRound = (r: Round) => r.seq;
     const items = [
       ...s.rounds.filter((r) => r.stage === st.id).map((round) => ({ type: "round" as const, seq: seqOfRound(round), round, questions: s.questions.filter((q) => q.round === round.id).map((q) => questions.get(q.id)!) })),
-      ...closes.map((close) => ({ type: "close" as const, seq: close.seq, close, latest: close.id === lastClose })),
+      ...closes.map((close) => ({
+        type: "close" as const, seq: close.seq, latest: close.id === lastClose,
+        close: { ...close, decisions: close.decisions.map(d => {
+          const id = `${close.id}/${d.question}`;
+          const head = correctionHead(s, id);
+          const [cid, question] = head.split("/");
+          const current = s.closes.find(c => c.id === cid)?.decisions.find(d => d.question === question);
+          const answer = questions.get(d.question)!.answer;
+          return { ...d, ...notice(id), current_answer: answer.state, ...(answer.reading ? { current_reading: answer.reading } : {}), current_text: current?.text ?? d.text, affected: head !== id || !!answer.correction };
+        }) },
+      })),
     ].sort((a, b) => a.seq - b.seq).map(({ seq: _, ...item }) => item);
     const asked = [...latestAsks(s, st.id).values()].map((q) => questions.get(q.id)!);
     return {
       ...st, label: labels.get(st.id)!, children: s.stages.filter((x) => x.parent === st.id).map((x) => x.id), results, items,
+      readings: (s.readings ?? []).filter(r => r.stage === st.id).map(r => ({ ...r, ...notice(r.id) })),
       assumed: s.assumed.filter((a) => a.stage === st.id).map((a) => {
         const by = s.questions.find((q) => q.reopens === a.id)?.id;
-        return by ? { ...a, reopened_by: by } : a;
+        return { ...a, ...notice(a.id), ...(by ? { reopened_by: by } : {}) };
       }),
       asked,
       open_questions: st.state === "in-progress" ? asked.filter((q) => q.open).length : 0,
-      ...(bg ? { background: { ...bg, sourceTexts: bg.sources.map((x) => sourceText.get(x)!) } } : {}),
+      ...(bg ? { background: { ...bg, ...notice(bg.id), sourceTexts: bg.sources.map((x) => sourceText.get(x)!) } } : {}),
     };
   });
   const citers = (id: string) => [
@@ -1855,7 +1976,7 @@ export function view(s: State): View {
     path: mattPath(s.stages),
     ...(s.wayfinder?.length ? { wayfinder: { ...s.wayfinder.at(-1)!, history: s.wayfinder.slice(0, -1) } } : {}),
     next: stages.filter((st) => st.state === "in-progress").reverse().flatMap((st) => st.asked.filter((q) => q.open).map((q) => q.id)),
-    topics: s.topics.map((t) => ({ ...t, sourceTexts: t.sources.map((x) => sourceText.get(x)!), questions: s.questions.filter((q) => q.topics?.includes(t.id)).map((q) => q.id) })),
+    topics: s.topics.map((t) => ({ ...t, ...notice(t.id), sourceTexts: t.sources.map((x) => sourceText.get(x)!), questions: s.questions.filter((q) => q.topics?.includes(t.id)).map((q) => q.id) })),
     sources: s.sources.map((x) => ({ ...x, cited_by: citers(x.id) })),
     attachments: s.attachments.map((a) => ({
       ...a,
@@ -1880,6 +2001,8 @@ export function snapshot(v: View) {
       state: st.state, order: st.order, opened: st.opened, ...(st.finished ? { finished: st.finished } : {}),
       open_questions: st.open_questions,
       background: st.background?.id,
+      background_correction: st.background?.correction, background_corrects: st.background?.corrects,
+      readings: st.readings,
       ...(st.background?.figures ? { background_figures: st.background.figures } : {}),
       results: st.results.map((r) => ({
         id: r.id, shape: r.shape, revision: r.revision, ...(r.edit === undefined ? {} : { edit: r.edit }), ...(r.captured ? { captured: r.captured } : {}), ...(r.canonical ? { canonical: r.canonical } : {}), changed: r.changed,
@@ -1918,10 +2041,11 @@ export function snapshot(v: View) {
           },
         } : {}),
       })),
-      assumed: st.assumed.map((a) => ({ id: a.id, ...(a.reopened_by ? { reopened_by: a.reopened_by } : {}) })),
+      assumed: st.assumed.map((a) => ({ id: a.id, correction: a.correction, corrects: a.corrects, ...(a.reopened_by ? { reopened_by: a.reopened_by } : {}) })),
       rounds: st.items.filter((i) => i.type === "round").map((i) => ({ id: i.round.id, n: i.round.n, time: i.round.time, questions: i.questions.map((q) => q.id) })),
       questions: st.items.flatMap((i) => (i.type === "round" ? i.questions : [])).map((q) => ({
         id: q.id, q: q.q, latest: q.latest, open: q.open, answer: q.answer, ...(q.retired ? { retired: q.retired } : {}),
+        context: q.context,
         ...(q.multi !== undefined ? { multi: q.multi } : {}),
         ...(q.again ? { again: q.again } : {}), asked_again_by: q.asked_again_by, ...(q.reopens ? { reopens: q.reopens } : {}),
         results: q.entries ?? [], result_links: q.result_links, topics: q.topics ?? [], ...(q.decided_in ? { decided_in: q.decided_in } : {}),
@@ -1930,10 +2054,10 @@ export function snapshot(v: View) {
         ...(q.options.some((o) => o.preview) ? { options: q.options.map((o) => ({ label: o.label, ...(o.preview ? { preview: o.preview } : {}) })) } : {}),
       })),
       closes: st.items.filter((i) => i.type === "close").map((i) => ({
-        id: i.close.id, time: i.close.time, decisions: i.close.decisions.map((d) => ({ question: d.question, answer: d.answer })), assumed: i.close.assumed,
+        id: i.close.id, time: i.close.time, decisions: i.close.decisions, assumed: i.close.assumed,
       })),
     })),
-    topics: v.topics.map((t) => ({ id: t.id, questions: t.questions })),
+    topics: v.topics.map((t) => ({ id: t.id, questions: t.questions, ...(t.correction ? { correction: t.correction } : {}), ...(t.corrects.length ? { corrects: t.corrects } : {}) })),
     sources: v.sources.map((x) => ({ id: x.id, cited_by: x.cited_by })),
     attachments: v.attachments.map((a) => ({
       id: a.id, stage: a.stage, type: a.type, availability: a.availability, time: a.time, used_by: a.used_by,

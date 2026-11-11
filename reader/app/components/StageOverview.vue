@@ -9,6 +9,7 @@ function shown(q: QuestionView): { cls: string; html: string } {
   if (a.picks) return { cls: "text-flow-yellow", html: inline(a.picks.join(", ")) };
   if (a.legacy?.other !== undefined) return { cls: "text-flow-yellow", html: inline(a.legacy.other) };
   if (a.reading?.outcome === "resolved") return { cls: "text-flow-teal", html: `${inline(a.reading.decision)} <span class="quiet">(read from your words)</span>` };
+  if (a.correction && a.state === "unresolved") return { cls: "text-dimmed", html: `Unresolved after correction${a.reading && a.reading.outcome !== "resolved" ? `: ${inline(a.reading.unresolved)}` : ""}` };
   if (q.retired) return { cls: "text-dimmed", html: "Retired" };
   if (a.state === "unresolved") return { cls: "text-dimmed", html: a.why === "headless" ? "Headless, not your answer" : "Not answered" };
   return { cls: "text-dimmed", html: "Open" };

@@ -134,8 +134,9 @@ const reading = {
   resolved: optional({ outcome: enumeration("resolved"), decision: string, basis: string }, { maps_to: string }),
   unresolved: object({ outcome: enumeration("question", "concern", "ambiguous"), unresolved: string }),
 };
+const readingContract = { ...union(reading), selection: "outcome=resolved selects resolved; otherwise unresolved", select: (value: Obj) => value.outcome === "resolved" ? reading.resolved : reading.unresolved };
 export const contributionKinds: Record<string, Contract> = {
-  background: item({ title: string, summary: string, sections: array(object({ heading: string, body: string })), sources: strings }, { figures: array(figure) }),
+  background: item({ title: string, summary: string, sections: array(object({ heading: string, body: string })), sources: strings }, { ref, figures: array(figure) }),
   topic: item({ title: string, summary: string, body: string, sources: strings }, { ref }),
   attachment: { ...union({ file: attachment, mermaid, artifact }), selection: "type=artifact selects artifact; type=mermaid selects mermaid; otherwise file", select: value => value.type === "artifact" ? artifact : value.type === "mermaid" ? mermaid : attachment },
   result: union(resultContracts, "shape"),
@@ -143,8 +144,9 @@ export const contributionKinds: Record<string, Contract> = {
   corrects: item({ target: ref, replacement: ref, reason: string }),
   assumed: item({ decision: string, pick: string, why: string }, { ref }),
   round: item({ questions: array(question) }),
-  answer: item({ question: ref, response: optional({ status: enumeration("answered", "empty", "cancelled", "timed-out", "headless") }, { picks: strings, text: string, note_on: string }) }, { reading: { ...union(reading), selection: "outcome=resolved selects resolved; otherwise unresolved", select: value => value.outcome === "resolved" ? reading.resolved : reading.unresolved } }),
-  close: item({ decisions: array(object({ question: ref, text: string }), 0) }, { extra: strings }),
+  answer: item({ question: ref, response: optional({ status: enumeration("answered", "empty", "cancelled", "timed-out", "headless") }, { picks: strings, text: string, note_on: string }) }, { reading: readingContract }),
+  reading: item({ question: ref, reading: readingContract }, { ref }),
+  close: item({ decisions: array(object({ question: ref, text: string }), 0) }, { ref, extra: strings }),
   stage: item({ state: enumeration("finished") }, { retire: array(object({ question: ref, reason: string })) }),
   wayfinder: item({ tickets: array(object({ id: string, title: string, url: string, state: enumeration("resolved", "frontier", "blocked", "claimed", "out-of-scope"), blockers: array(string, 0) }), 0) }),
   task: update("task", item({ title: string }, { ref, state: taskStates, evidence: strings, reason: string }), item({ task: ref }, { state: taskStates, evidence: strings, reason: string })),
