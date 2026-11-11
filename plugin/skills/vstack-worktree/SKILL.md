@@ -22,6 +22,8 @@ bun "$(realpath skill://vstack-worktree/scripts/worktree.ts)" open --repo <sourc
 
 `--new-branch` defaults its start to HEAD. It creates the branch without moving the source checkout. `--commit` opens an independent checkout through `ovnfs new`, then forces and validates the requested detached revision while keeping ignored build inputs. This also works when the source is an ovnfs checkout. Names are lowercase, backend-valid, and at most 64 characters, including a unique suffix. An existing record or new-branch collision is refused.
 
+For independent verification, add `--inputs <absolute inputs.json>` to `open --commit`. The file contains a JSON array of required relative untracked runtime paths, or `[]`. This mode removes all other carried untracked files, including ignored caches, and records the declaration as `inputs`. It preserves the requested committed source and declared dependencies without changing the source checkout. Declare a directory or symlink itself, not a path beneath a symlink. Inputs that overlap committed source, missing inputs, nested repositories outside the declaration, and a plain fallback refuse preparation. Missing inputs name the cause and leave proof unavailable. Ordinary opens without `--inputs` keep their existing carried-input behavior. The Verifier still runs ship's `prepare-verifier.ts clean-head` after construction to refuse hidden undeclared source or altered tracked bytes.
+
 Each command prints one JSON record and saves it at `--record`. Use its `path`, not a computed path. The record includes:
 
 - `repo`, `purpose`, `name`, and `path` identify the checkout and its source.

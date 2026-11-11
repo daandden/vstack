@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Prepare independent verification from committed source and declared runtime inputs, excluding unrelated caches while retaining hidden-source and missing-input refusals."
+  ]
+}
