@@ -1160,6 +1160,7 @@ originals:
   - plugin/tern/vstack-flow
   - plugin/rules/vstack-posting.md
   - plugin/rules/vstack-recovery.md
+  - plugin/skills/pick-frontend-stack
 utility:
   - plugin/skills/unslop
   - plugin/skills/technical-writing
@@ -1189,3 +1190,4 @@ utility:
   - plugin/skills/interrogate
   - plugin/skills/choreograph
   - plugin/skills/gestures
+  - plugin/skills/pick-frontend-stack
