@@ -1,7 +1,6 @@
 ---
 name: mobile-native
-description: Mobile-web guidance for touch, viewport height, safe areas, hover, input, scroll, and browser chrome.
-disable-model-invocation: true
+description: "Use when building or reviewing mobile-web touch behavior, viewport height, safe areas, hover, inputs, scrolling, or browser chrome. Not React Native, Expo, or Swift development."
 ---
 
 # Mobile web
@@ -27,6 +26,8 @@ Use CSS and platform capabilities before device sniffing or JavaScript workaroun
 Read [platform fixes](references/platform-fixes.md) before implementing any matching row. It supplies the declarations, capability caveats, and distinctions between native scrolling and custom gesture surfaces. Viewport and safe-area handling are separate checks, not alternatives.
 
 Use skill://good-css for non-animation styling, layout, accessibility, focus-visible, and control sizing. For direct manipulation, interruptibility, materials, or Apple-derived web feedback, read skill://apple-design. For motion choices, use skill://emil-design-eng under ADR 0051. These are conditional references within the existing task, not new workflows or dependency requirements.
+
+Emil-derived guidance takes precedence over skill://good-css for CSS and animation under ADR 0074, which amends ADR 0051. Reconcile disagreements among Emil skills using browser-specific behavior and observed evidence. Preserve skill://review-animations' blocking verdicts when the applicable rule and evidence justify them.
 
 ## Observe the result
 

@@ -12,8 +12,8 @@ Ordinary frontend implementation and delegated workers reach Apple-derived web j
 
 ## How to get to it (user POV)
 
-- Start the existing implementation entry on mobile-web work. Its frontend pointer reaches good-css and the applicable hidden Addons.
-- Delegate the same work through the existing vstack-worker role, with its allowed tree, vstack root, and Scratch. Leave Addon names out of the brief so existing references supply activation.
+- Start the existing implementation entry on mobile-web work. Its frontend pointer reaches good-css and the applicable UI Utility skills.
+- Delegate the same work through the existing vstack-worker role, with its allowed tree, vstack root, and Scratch. Leave Utility skill names out of the brief so description matching and existing references supply activation.
 - Use the existing public register, packaging, and maintenance interfaces from the parent frontend recipe.
 
 ## Driving it with native omp and the browser
@@ -34,8 +34,8 @@ Preconditions:
    {"type":"prompt","message":"/skill:implement Improve the existing pickup form for mobile-web use with reliable touch controls, viewport resizing and safe areas, capable desktop hover, accessible inputs, and clear save/cancel feedback. Give it deliberate typography hierarchy and a legible translucent sticky toolbar over scrolling content, with a solid fallback and immediate nonmoving press feedback. Preserve keyboard focus, cancellation, zoom, and reduced motion. Keep the existing stack and dependencies. This throwaway diagnostic has a confirmed browser seam observed by the parent. Do actual edits in the main session. No Flow, delegation, commit, branch, push, plugin edits, installation, or machine changes. The parent owns browser verification and publication."}
    ```
 
-4. In another fresh process and identical starting fixture, require a delegated vstack-worker to make the app edits through the existing single-subagent form. Pass the allowed tree, vstack root, and Scratch. Do not name UI Addons in its brief. If the worker cannot start, stop the case and report why. Retain the real worker history, handback, and resulting app rather than the coordinator's assertion.
-5. Inspect executed reads and changes. A platform-only task can correctly leave Apple material guidance unloaded. Use the explicit typography and material branch above to establish applicable Apple-derived behavior rather than requiring every UI task to load every Addon. Record unexpected extra verification, fallback, or failed attempts without erasing them.
+4. In another fresh process and identical starting fixture, require a delegated vstack-worker to make the app edits through the existing single-subagent form. Pass the allowed tree, vstack root, and Scratch. Do not name UI Utility skills in its brief. If the worker cannot start, stop the case and report why. Retain the real worker history, handback, and resulting app rather than the coordinator's assertion.
+5. Inspect executed reads and changes. A platform-only task can correctly leave Apple material guidance unloaded. Use the explicit typography and material branch above to establish applicable Apple-derived behavior rather than requiring every UI task to load every Utility skill. Record unexpected extra verification, fallback, or failed attempts without erasing them.
 
 ### Browser actions and outcomes
 

@@ -1,12 +1,11 @@
 ---
 name: animation-performance
-description: Browser-grounded diagnosis of dropped frames, rendering cost, and animation drivers.
-disable-model-invocation: true
+description: "Use when diagnosing web animation stutter, dropped frames, rendering cost, or choosing animation properties, drivers, and layers on performance grounds."
 ---
 
 # Diagnose animation performance
 
-Use this reference inside the current diagnosis or implementation task. The existing vstack owner retains probes, edits, review, verification, and evidence. Report findings without applying fixes unless the task authorizes them. This Addon creates no executor or separate animation plan.
+Use this reference inside the current diagnosis or implementation task. The existing vstack owner retains probes, edits, review, verification, and evidence. Report findings without applying fixes unless the task authorizes them. This Utility skill creates no executor or separate animation plan.
 
 Adapted from [emilkowalski/skills](https://github.com/emilkowalski/skills/tree/a81dbca07f2217b7103e510c0f13f8d5b017afc9/skills/animation-performance). The [MIT notice](LICENSE) ships here. For frequency, purpose, easing, interruption, and reduced motion, read skill://animate. Keep skill://good-css for other CSS and accessibility requirements.
 
@@ -67,9 +66,9 @@ Use `will-change` only for an observed promotion issue or measured improvement a
 
 ## Reconcile the rules with evidence
 
-Under ADR 0051, selected Emil animation guidance takes precedence over good-css's animation advice. Good-css's remaining styling and accessibility requirements still apply. Within Emil guidance, a broad transform-and-opacity-only rule does not prohibit browser-supported clip-path, filter, or intrinsic-size techniques by itself.
+Under ADR 0074, which amends ADR 0051, Emil-derived guidance takes precedence over skill://good-css for CSS and animation. Good-css's remaining styling and accessibility requirements apply where Emil guidance does not conflict. Reconcile disagreements among Emil skills using browser-specific behavior and observed evidence. Within Emil guidance, a broad transform-and-opacity-only rule does not prohibit browser-supported clip-path, filter, or intrinsic-size techniques by itself.
 
-For a disputed technique, record the applicable narrower guidance, target-engine support, observed behavior, measured cost, and any fallback or unavailable engine. Retain a blocking verdict when an applicable rule and evidence justify it. One Chromium run does not establish Safari, Firefox, a phone, or every application stack.
+For a disputed technique, record the applicable narrower guidance, target-engine support, observed behavior, measured cost, and any fallback or unavailable engine. Preserve skill://review-animations' blocking verdicts when the applicable rule and evidence justify them. One Chromium run does not establish Safari, Firefox, a phone, or every application stack.
 
 ## Return evidence to the owner
 

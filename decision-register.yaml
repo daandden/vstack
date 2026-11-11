@@ -997,7 +997,7 @@ items:
     tree: a92e36f28d741aee4ff77d1a001300d7e86e07fe
     disposition: adapt
     artifacts: [ plugin/skills/animate ]
-    reason: "Hidden motion construction guidance and companion recipes retain existing execution ownership, accessible state transitions, and ADR 0051 browser-qualified authority."
+    reason: "Visible Utility skill for motion construction and companion recipes, retaining existing execution ownership, accessible transitions, and browser-qualified Emil precedence over good-css under ADR 0074."
   - id: emil/animation-performance
     upstream: emil
     kind: skill
@@ -1005,7 +1005,7 @@ items:
     tree: 59c4651915a493803d1696d4278d2f9f980e47c8
     disposition: adapt
     artifacts: [ plugin/skills/animation-performance ]
-    reason: "Hidden measured animation diagnosis guidance uses actual dependency and browser evidence rather than unconditional acceleration claims or an independent executor."
+    reason: "Visible Utility skill for measured animation diagnosis, using actual dependency and browser evidence rather than unconditional acceleration claims or an independent executor, with Emil precedence under ADR 0074."
   - id: emil/animation-vocabulary
     upstream: emil
     kind: skill
@@ -1021,7 +1021,7 @@ items:
     tree: cd509ae729c86487d352e17a26651217a4c25711
     disposition: adapt
     artifacts: [ plugin/skills/apple-design ]
-    reason: "Hidden Apple-derived web guidance preserves vstack ownership, conditional references, dependency checks, and browser-qualified motion authority."
+    reason: "Visible Utility skill for Apple-derived web guidance, preserving vstack ownership, dependency checks, and browser-qualified Emil precedence over good-css under ADR 0074."
   - id: emil/ask-sonner
     upstream: emil
     kind: skill
@@ -1037,7 +1037,7 @@ items:
     tree: f2a3441d4cf14df060ee363e155502a4818b5f8d
     disposition: adapt
     artifacts: [ plugin/skills/break-ui ]
-    reason: "Hidden adverse-content knowledge and required catalog preserve existing implementation, review, Verify, and evidence ownership without an independent executor."
+    reason: "Visible Utility skill for adverse-content testing and its required catalog, preserving implementation, review, Verify, and evidence ownership with Emil precedence under ADR 0074."
   - id: emil/emil-design-eng
     upstream: emil
     kind: skill
@@ -1045,7 +1045,7 @@ items:
     tree: db7a20dc1d8ad26a0307dcb45ebc79fc372f5c69
     disposition: adapt
     artifacts: [plugin/skills/emil-design-eng]
-    reason: "Hidden reference-only design guidance preserves vstack execution and evidence ownership, conditional activation, and browser-qualified motion authority."
+    reason: "Visible Utility skill for reference-only design guidance, preserving vstack execution and evidence ownership with browser-qualified Emil precedence over good-css under ADR 0074."
     adr: docs/adr/0051-selected-emil-skills-govern-animation-guidance.md
   - id: emil/find-animation-opportunities
     upstream: emil
@@ -1054,7 +1054,7 @@ items:
     tree: e6443880f38e33cf78e5d678471eed35e8566763
     disposition: adapt
     artifacts: [ plugin/skills/find-animation-opportunities ]
-    reason: "Hidden opportunity guidance gates additive motion, records rejections, and returns proposals to existing explicit selection ownership."
+    reason: "Visible Utility skill for additive motion proposals, retaining purpose and frequency gates, recorded rejections, explicit selection ownership, and Emil precedence under ADR 0074."
   - id: emil/improve-animations
     upstream: emil
     kind: skill
@@ -1062,7 +1062,7 @@ items:
     tree: cf1f7aabac34c08f2cf833f039fa99af2f415183
     disposition: adapt
     artifacts: [ plugin/skills/improve-animations ]
-    reason: "Hidden read-only motion audit and companion requirements use existing selection, planning, review, and evidence owners without executor or plan-status imports."
+    reason: "Visible Utility skill for read-only motion audits and selected requirements, retaining existing selection, planning, review, and evidence owners with Emil precedence under ADR 0074."
   - id: emil/mobile-native
     upstream: emil
     kind: skill
@@ -1070,7 +1070,7 @@ items:
     tree: fdad6e6e91d8bbfda7164c7027269a8389dbadcd
     disposition: adapt
     artifacts: [ plugin/skills/mobile-native ]
-    reason: "Hidden mobile-web guidance preserves vstack ownership, capability checks, zoom and accessibility, and honest browser versus device evidence."
+    reason: "Visible Utility skill for mobile-web guidance, preserving capability checks, zoom, accessibility, vstack ownership, and honest browser versus device evidence with Emil precedence under ADR 0074."
   - id: emil/pick-ui-library
     upstream: emil
     kind: skill
@@ -1094,7 +1094,7 @@ items:
     tree: e1d06083891b6445c7fb5dae31f06b1e8b81f0dc
     disposition: adapt
     artifacts: [ plugin/skills/remove-animations ]
-    reason: "Hidden scoped subtraction guidance preserves visibility, callbacks, unmount, focus, useful motion, and separate dependency-removal approval."
+    reason: "Visible Utility skill for scoped motion subtraction, preserving visibility, callbacks, unmount, focus, useful motion, and separate dependency-removal approval with Emil precedence under ADR 0074."
   - id: emil/review-animations
     upstream: emil
     kind: skill
@@ -1102,7 +1102,7 @@ items:
     tree: 0e0d3cb3e07ca307fe946ccaf57f6c82eb75124a
     disposition: adapt
     artifacts: [ plugin/skills/review-animations ]
-    reason: "Hidden motion-review guidance and companion standards preserve evidence-backed blocking authority, browser-qualified exceptions, and existing review ownership."
+    reason: "Visible Utility skill for motion review and companion standards, preserving evidence-backed blocking authority, browser-qualified exceptions, and existing review ownership with Emil precedence under ADR 0074."
   - id: emil/write-swift
     upstream: emil
     kind: skill
@@ -1150,3 +1150,13 @@ utility:
   - plugin/skills/vstack-worktree
   - plugin/skills/in-your-own-words
   - plugin/skills/clean-wt
+  - plugin/skills/animate
+  - plugin/skills/animation-performance
+  - plugin/skills/apple-design
+  - plugin/skills/break-ui
+  - plugin/skills/emil-design-eng
+  - plugin/skills/find-animation-opportunities
+  - plugin/skills/improve-animations
+  - plugin/skills/mobile-native
+  - plugin/skills/remove-animations
+  - plugin/skills/review-animations

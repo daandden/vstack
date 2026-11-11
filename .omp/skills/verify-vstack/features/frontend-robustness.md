@@ -34,7 +34,7 @@ Preconditions:
    {"type":"prompt","message":"/skill:implement Make this workspace-member frontend robust for realistic imported member data and narrow containers. Fix unreadable text and unreachable actions, handle missing roles, Unicode names, literal user content, empty/single lists and 1,284 members. Preserve the existing preview selector and URL state. Use the existing stack without dependencies. Inspect fields and limits. Record findings before fixes; fixes are already authorized. Do actual edits in the supplied app tree. This is a throwaway diagnostic, with browser observation owned by the parent. No Flow authoring, commits, branches, installation, pushes, tracker actions, machine settings, browser opens or servers. Work in the main session without delegation."}
    ```
 
-5. In a fresh process, request the same outcome through one existing vstack-worker, using the existing single-subagent form and explicit allowed tree, vstack root, and Scratch. Keep UI Addon names out of the worker brief. If it cannot start, stop and report why. Capture actual child reads and edits, not only coordinator output.
+5. In a fresh process, request the same outcome through one existing vstack-worker, using the existing single-subagent form and explicit allowed tree, vstack root, and Scratch. Keep UI Utility skill names out of the worker brief. If it cannot start, stop and report why. Capture actual child reads and edits, not only coordinator output.
 6. Inspect expanded native implementation headers, tool calls, edits, and child histories. Identify applied decisions such as wrapping an unbroken email without hiding the action, grapheme-aware initials, omission of missing roles, intentional empty state, accurate count, and pagination. A pointer read is supporting evidence, not a behavior pass. A model can independently fix a baseline without this guidance; make no unsupported causal quality claim.
 
 ### Browser actions and boundaries
@@ -52,7 +52,7 @@ For each resulting main and delegated app:
 
 Use the public current-Pin planner, register check, packaging command, load smoke, and maintenance gates in `frontend-guidance.md`. Check the break-ui row is adapt with the pinned object identity and `plugin/skills/break-ui` association. Preserve all ten selected adaptations and all six exclusions, with no selected deferrals.
 
-Inspect `package/skills/break-ui/SKILL.md`, `CATALOG.md`, and `LICENSE` in the actual tarball. Compare the notice bytes against the MIT license at the real Pin. Check no rejected contribution entered the archive; the existing vstack prototype is expected and must remain byte-unchanged. A fresh load must classify break-ui as hidden, not listed. Run focused catalog positive and negative cases, without broadening principle-only build or Brief selection.
+Inspect `package/skills/break-ui/SKILL.md`, `CATALOG.md`, and `LICENSE` in the actual tarball. Compare the notice bytes against the real Pin's MIT license. Check no rejected contribution entered the archive; the existing vstack prototype is expected and must remain byte-unchanged. A fresh load must put break-ui in `listedSkills` and `skillCommands`, not `hiddenSkills`. Run focused catalog positive and negative cases, without broadening principle-only build or Brief selection.
 
 Run applicable public-interface tests and final `vstack-maintain gates` only after final edits. Keep every stage's `ok`, raw diagnostics, and separate native/browser outcomes. Mechanical green does not erase unavailable proof or stochastic catalog failures.
 

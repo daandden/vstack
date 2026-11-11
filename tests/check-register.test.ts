@@ -272,6 +272,19 @@ describe("Addon routes", () => {
     expect(r.code).toBe(0);
   });
 
+  test("an Addon becomes a Utility skill when its catalog question is removed", async () => {
+    const r = await runSpec(s => {
+      s.register.utility.push("plugin/skills/fixture-addon");
+      const catalog = JSON.parse(s.files["addon-questions.json"]);
+      delete catalog.questions["fixture-addon"];
+      s.files["addon-questions.json"] = JSON.stringify(catalog);
+      s.files["plugin/skills/fixture-addon/SKILL.md"] = "---\nname: fixture-addon\ndescription: Use for the fixture task.\n---\nfixture\n";
+      s.files["README.md"] = "Start /skill:fixture-addon.\n";
+    });
+    expect(r.json!.failures).toEqual([]);
+    expect(r.code).toBe(0);
+  });
+
   test("the CHANGELOG is not shipped text", async () => {
     const r = await runSpec((s) => (s.files["CHANGELOG.md"] = "Removed /skill:fixture-addon.\n"));
     expect(r.json!.failures).toEqual([]);

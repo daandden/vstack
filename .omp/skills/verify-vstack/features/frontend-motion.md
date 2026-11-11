@@ -13,7 +13,7 @@ Existing frontend implementation and diagnosis paths reach animate and animation
 ## How to get to it (user POV)
 
 - Start an existing implementation task that includes interaction motion or animation performance. Do not invoke an extra UI command.
-- Delegate the same frontend task to the existing vstack-worker role without naming UI Addons in its brief.
+- Delegate the same frontend task to the existing vstack-worker role without naming UI Utility skills in its brief.
 - For a stuttering animation investigation, use the existing diagnosing-bugs path. It conditionally reaches animation-performance while retaining diagnosis ownership.
 
 ## Driving it with native omp and the browser

@@ -1,12 +1,11 @@
 ---
 name: review-animations
-description: Evidence-backed motion review with blocking findings for applicable animation defects.
-disable-model-invocation: true
+description: "Use when reviewing existing web animation or a motion diff for timing, easing, purpose, interruption, rendering, or reduced-motion defects and evidence-backed blocking findings."
 ---
 
 # Review animations
 
-Apply Emil Kowalski's motion-review bar inside the current review. The existing review owner retains scope, reviewer delegation, finding format, blocking decisions, verification, and evidence. This Addon neither starts a flow nor edits the application. Review non-motion code through the existing owner.
+Apply Emil Kowalski's motion-review bar inside the current review. The existing review owner retains scope, reviewer delegation, finding format, blocking decisions, verification, and evidence. This Utility skill neither starts a flow nor edits the application. Review non-motion code through the existing owner.
 
 Adapted from [emilkowalski/skills](https://github.com/emilkowalski/skills/tree/a81dbca07f2217b7103e510c0f13f8d5b017afc9/skills/review-animations). The [MIT notice](LICENSE) ships alongside the adaptation.
 
@@ -16,7 +15,7 @@ Read [STANDARDS.md](STANDARDS.md) before judging motion. It supplies the frequen
 
 A transition can run correctly yet regress responsiveness, continuity, or comfort. Flag genuine defects rather than assuming that working code earns approval. A high craft bar is not permission to manufacture violations from taste.
 
-The selected Emil guidance takes precedence over good-css for animation under ADR 0051. Keep skill://good-css responsible for other CSS, focus, semantics, layout, and accessibility. Reconcile disagreements within Emil's guidance using the target browser and observed evidence. In particular, the broad transform-and-opacity preference does not by itself prohibit clip-path, blur, layout animation, or a library shorthand. Establish the actual dependency version, rendering path, support, cost, and user impact before making a performance claim. A supported technique is not automatically cheap, and a transform is not automatically composited.
+Emil-derived guidance takes precedence over skill://good-css for CSS and animation under ADR 0074, which amends ADR 0051. Keep good-css responsible for other CSS, focus, semantics, layout, and accessibility where Emil guidance does not conflict. Reconcile disagreements within Emil's guidance using browser-specific behavior and observed evidence. Preserve blocking motion-review verdicts when the applicable rule and evidence justify them. In particular, the broad transform-and-opacity preference does not by itself prohibit clip-path, blur, layout animation, or a library shorthand. Establish the actual dependency version, rendering path, support, cost, and user impact before making a performance claim. A supported technique is not automatically cheap, and a transform is not automatically composited.
 
 ## Examine the interaction
 
@@ -41,7 +40,7 @@ Use the project's existing Verify workflow and review evidence contract. Observe
 
 For uncertain feel, inspect slow playback or individual frames. A later fresh look can help, but it is not a prerequisite that postpones the current review. For a rendering claim, use appropriate trace or frame evidence; visual interpolation alone proves neither GPU compositing nor absence of dropped frames.
 
-Return each finding in the existing owner's format with its location, applicable standard, observed behavior, impact, proposed remedy, evidence, and explicit blocking decision. In code-review, use its Standards axis and `blocking` field, and retain all other axis states. The coordinator and delegated Standards reviewer both read this Addon when motion is in scope. Do not replace the owner's authoritative finding cards with a second mandatory table or independent gate. A Before | After | Why comparison can support a finding when useful.
+Return each finding in the existing owner's format with its location, applicable standard, observed behavior, impact, proposed remedy, evidence, and explicit blocking decision. In code-review, use its Standards axis and `blocking` field, and retain all other axis states. The coordinator and delegated Standards reviewer both read this Utility skill when motion is in scope. Do not replace the owner's authoritative finding cards with a second mandatory table or independent gate. A Before | After | Why comparison can support a finding when useful.
 
 Prioritize feel-breaking regressions, unnecessary motion, demonstrated performance problems, interruption/timing, origin/cohesion, and accessibility. Prefer remedies in this order when they address the defect: delete, reduce, fix easing, correct origin, preserve interruption, change the rendering approach, fix asymmetric timing, then polish. Accessibility defects remain blocking regardless of where they appear in that list.
 

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import catalogFile from "../addon-questions.json";
+import samples from "../sample-prompts.json";
 import { parseAddonCatalog } from "../plugin/extensions/addon-catalog.ts";
 import { fakeHost } from "./support/extension-host.ts";
 import { judge, judgeAnswers } from "./support/extension-mocks.ts";
@@ -11,6 +12,38 @@ const savedRun = { type: "custom_message", customType: "skill-prompt", details: 
 const running = { ...options, entries: [savedRun] };
 const stalled = () => new Promise<never>(() => {});
 const addonPicks = (results: any[]) => results.filter(result => result?.message?.customType === "vstack-addons");
+
+const emilUtilities = [
+  "animate", "animation-performance", "apple-design", "break-ui", "emil-design-eng",
+  "find-animation-opportunities", "improve-animations", "mobile-native",
+  "remove-animations", "review-animations",
+];
+
+test("the Addon judge neither receives nor delivers the ten Emil Utility skills", async () => {
+  judgeAnswers(Object.fromEntries([...emilUtilities, "principle-prove-it-works"].map(name => [name, 1])));
+  const result = await fakeHost(running).callTool("inject_addons", { intent: "Build and review the mobile web interactions and prove they work." });
+  expect(judge.calls).toHaveLength(1);
+  const asked = Object.keys(judge.calls[0]!.request.questions);
+  const delivered = result.content.map((part: any) => part.text).join("\n");
+  expect(delivered).toContain("skill://principle-prove-it-works");
+  for (const name of emilUtilities) {
+    expect(asked).not.toContain(name);
+    expect(delivered).not.toContain(`skill://${name}`);
+  }
+});
+
+test("the Addon sample corpus has no Emil Utility labels, including stored baselines", () => {
+  for (const sample of samples.prompts) {
+    const labels = [
+      ...sample.expected, ...sample.allowed,
+      ...Object.keys(sample.baseline_selected ?? {}),
+      ...Object.keys(sample.baseline_borderline ?? {}),
+    ];
+    for (const name of emilUtilities) expect({ sample: sample.id, labels }).not.toEqual({
+      sample: sample.id, labels: expect.arrayContaining([name]),
+    });
+  }
+});
 
 describe("Principle picks in subagent sessions", () => {
   const child = (name: string, id = "0-Child", parentId = "Main", entries: unknown[] = []) =>

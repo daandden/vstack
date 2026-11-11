@@ -1,12 +1,11 @@
 ---
 name: apple-design
-description: Apple-derived web interaction judgment for direct manipulation, interruptible motion, materials, typography, and feedback.
-disable-model-invocation: true
+description: "Use when building or reviewing Apple-inspired web interactions, direct manipulation, interruptible motion, translucent materials, typography, or physical feedback. Not native Swift or Expo development."
 ---
 
 # Apple design for the web
 
-Apply this knowledge to the frontend task already in progress. The running vstack skill and its workers own edits, planning, review, verification, and evidence. Keep the project's stack and scope. This Addon does not start a design flow or a native-app implementation.
+Apply this knowledge to the frontend task already in progress. The running vstack skill and its workers own edits, planning, review, verification, and evidence. Keep the project's stack and scope. This Utility skill does not start a design flow or a native-app implementation.
 
 Adapted from [emilkowalski/skills](https://github.com/emilkowalski/skills/tree/a81dbca07f2217b7103e510c0f13f8d5b017afc9/skills/apple-design), drawing on Apple's WWDC interface-design talks. The [MIT notice](LICENSE) ships with this skill.
 
@@ -45,7 +44,7 @@ Use skill://good-css for non-animation CSS, layout, semantics, focus, and access
 
 Under reduced motion, replace movement, elastic overshoot, scaling, and parallax with instant changes or brief nonmoving feedback. For reduced transparency, use solid or more opaque surfaces. For increased contrast, provide legible near-solid backgrounds and defined borders. Check support for each preference in the target engine. Avoid full-screen moving backgrounds, slow looping oscillations, and abrupt brightness changes.
 
-Animation guidance follows ADR 0051. Prefer transform and opacity where appropriate, but a blanket compositor-only rule is not a blocking verdict. Reconcile disagreements within the UI guidance using the actual browser's behavior and observed evidence. Add `will-change` only when an imminent effect and measurement justify it, then release it. Browser-supported blur or other properties need scenario-specific performance evidence.
+Emil-derived guidance takes precedence over skill://good-css for CSS and animation under ADR 0074, which amends ADR 0051. Prefer transform and opacity where appropriate, but a blanket compositor-only rule is not a blocking verdict. Reconcile disagreements within the UI guidance using browser-specific behavior and observed evidence. Preserve skill://review-animations' blocking verdicts when the applicable rule and evidence justify them. Add `will-change` only when an imminent effect and measurement justify it, then release it. Browser-supported blur or other properties need scenario-specific performance evidence.
 
 Before using a spring or component library, inspect the application's installed version and consult its applicable documentation. The references explain patterns, not a dependency installation requirement. Do not claim Apple's damping ratio is the same parameter as a library's physical damping constant or that all libraries preserve velocity automatically.
 

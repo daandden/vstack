@@ -1,7 +1,6 @@
 ---
 name: emil-design-eng
-description: Design-engineering judgment for UI polish, component interactions, and purposeful motion.
-disable-model-invocation: true
+description: "Use when building, polishing, or reviewing frontend controls, component interactions, immediate feedback, or purposeful UI motion."
 ---
 
 # Design engineering
@@ -44,7 +43,7 @@ Study a relevant working interface when the design is uncertain. Inspect what ma
 
 ## Accessibility and authority
 
-Use skill://good-css for non-animation styling, layout, focus, and accessibility requirements. This skill takes precedence for animation guidance under ADR 0051. Resolve disagreements within Emil's guidance with the target browser's behavior and observed evidence. Transform and opacity are preferred starting points, not proof that every other animated property is forbidden or that every transform is composited.
+Use skill://good-css for non-animation styling, layout, focus, and accessibility requirements. Emil-derived guidance takes precedence wherever it conflicts with good-css, for CSS and animation under ADR 0074, which amends ADR 0051. Resolve disagreements within Emil's guidance with browser-specific behavior and observed evidence. Preserve skill://review-animations' blocking verdicts when the applicable rule and evidence justify them. Transform and opacity are preferred starting points, not proof that every other animated property is forbidden or that every transform is composited.
 
 - Under `prefers-reduced-motion: reduce`, remove movement, positional effects, decorative stagger, and scaling feedback. A brief opacity or color change can remain when it helps comprehension and respects the user's preference. An instant change is valid.
 - Gate hover effects with `@media (hover: hover) and (pointer: fine)`.
