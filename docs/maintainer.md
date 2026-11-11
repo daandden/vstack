@@ -77,6 +77,8 @@ The reader uses Nuxt UI 4, Tailwind 4, and VueUse. `reader/app/assets/main.css` 
 
 Nuxt's font provider is local-only, and icons come from the installed Lucide collection with API fallback disabled. Color mode keeps the browser's existing `flow-reader:theme` preference. The prebuilt reader runs under the host's existing CSP without external font, icon, or color-mode requests.
 
+Each question shows its current outcome under its title. Explicit picks, readings of written answers, and non-consent remain distinct. Choices jumps to the options. Evidence jumps to the question's context and figures, which stay expanded. A re-asked question links directly to its latest attempt. The outcome uses the same effective answer projection as Overview and `show`, including withdrawn readings.
+
 The installed Local Flow host checks the complete runtime manifest before staging a replacement. Its stable listener keeps forwarding requests to the last good generation until the candidate starts and authenticates. Replacement retains the port, credentials, and Flow links. Failed startup or mismatched installed files leave the last good generation active. Explicit isolated development hosts keep exact-byte compatibility and require their owner's authenticated stop after code changes. Agents have no new authority to restart the normal shared host. Committed content stays committed when the host is unavailable.
 
 The reader and the SVG export share flowchart step routing and label readability rules in `plugin/skills/vstack-figures/scripts/presentation.ts`. Edge and cluster labels use a background-colored outline instead of Pele's edge-label boxes. Captured Mermaid sources get these rules on their next view without recapture. Historical SVGs retain their captured routes.

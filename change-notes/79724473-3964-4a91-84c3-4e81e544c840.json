@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Show each question's current answer near its title, with Choices, Evidence, and latest-attempt links."
+  ]
+}

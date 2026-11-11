@@ -1,19 +1,10 @@
 <script setup lang="ts">
 import { flow } from "~/composables/reader";
-import type { QuestionView } from "~/utils/flow";
+import { questionOutcome, type QuestionView } from "~/utils/flow";
 
 const f = computed(() => flow.value!);
 const label = (id: string) => f.value.stage.get(id)?.label ?? id;
-function shown(q: QuestionView): { cls: string; html: string } {
-  const a = q.answer;
-  if (a.picks) return { cls: "text-flow-yellow", html: inline(a.picks.join(", ")) };
-  if (a.legacy?.other !== undefined) return { cls: "text-flow-yellow", html: inline(a.legacy.other) };
-  if (a.reading?.outcome === "resolved") return { cls: "text-flow-teal", html: `${inline(a.reading.decision)} <span class="quiet">(read from your words)</span>` };
-  if (a.correction && a.state === "unresolved") return { cls: "text-dimmed", html: `Unresolved after correction${a.reading && a.reading.outcome !== "resolved" ? `: ${inline(a.reading.unresolved)}` : ""}` };
-  if (q.retired) return { cls: "text-dimmed", html: "Retired" };
-  if (a.state === "unresolved") return { cls: "text-dimmed", html: a.why === "headless" ? "Headless, not your answer" : "Not answered" };
-  return { cls: "text-dimmed", html: "Open" };
-}
+const shown = (q: QuestionView) => questionOutcome(q);
 </script>
 
 <template>
