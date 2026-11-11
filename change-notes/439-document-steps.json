@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "minor",
+  "entries": [
+    "Add Document steps blocks with required titles and text, numbered joined rendering, and the same inline code, links, and citations as Document prose."
+  ]
+}

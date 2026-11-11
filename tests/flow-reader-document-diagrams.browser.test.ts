@@ -56,7 +56,7 @@ test("Document Mermaid draws through the figure reader with accessible naming, a
     await page.goto(`${opened.live.url}#${submitted.refs.doc}`);
     const diagram = page.getByRole("img", { name: "Checkout decision diagram 1", exact: true });
     await diagram.locator("svg").waitFor();
-    const figure = page.locator(".document figure").first();
+    const figure = page.locator('[data-shape="document"] .doc-section > figure').first();
     expect(await figure.locator("figcaption").count()).toBe(0);
     expect(await figure.locator(".figure-title").count()).toBe(0);
     const disclosure = figure.locator("details.source");
@@ -69,7 +69,7 @@ test("Document Mermaid draws through the figure reader with accessible naming, a
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.keyboard.press("Enter");
     expect(await disclosure.evaluate((d: HTMLDetailsElement) => d.open)).toBe(false);
-    expect(await page.locator('.document > section > figure.code pre[data-language="text"] code').textContent()).toBe(plain);
+    expect(await page.locator('[data-shape="document"] .doc-section > figure.code[data-language="text"] pre code').textContent()).toBe(plain);
     expect(await page.locator("figure.code figcaption").innerText()).toBe("text · docs/example.txt:1");
     const paints = () => diagram.evaluate((host) => {
       const root = host.shadowRoot!;

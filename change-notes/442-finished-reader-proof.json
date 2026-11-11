@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Clarify that Topic notes appear in the Topics tab and that Metrics charts do not replace question-local Mermaid Data charts."
+  ]
+}

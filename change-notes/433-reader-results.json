@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Move all Flow Result shapes, Quiz controls, declarative demos, and isolated artifact viewers to Tailwind and Nuxt UI, retaining Catppuccin colors, compact spacing, revision links, and saved learning progress."
+  ]
+}

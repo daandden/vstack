@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Remove the Flow reader's legacy stylesheet. Keep shared typography and state colors in Tailwind's base layer and theme tokens, and render the remaining reading layout, Matt flow path, and Stage tree with Tailwind utilities and Nuxt UI."
+  ]
+}

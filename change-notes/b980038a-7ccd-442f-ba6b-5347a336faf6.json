@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "#423: Let the grill settle the fixed Bookkeeping list as reopenable Assumed picks and record qualifying ADRs for decisions already made without an approval question."
+  ]
+}

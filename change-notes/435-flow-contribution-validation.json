@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "minor",
+  "entries": [
+    "Add non-committing Flow contribution validation and report independent submit errors with stable codes, JSON paths, and expected values."
+  ]
+}

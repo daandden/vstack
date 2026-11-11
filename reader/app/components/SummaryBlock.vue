@@ -9,9 +9,9 @@ const assumed = computed(() => props.stage.assumed.filter((a) => props.close.ass
 </script>
 
 <template>
-  <section :id="close.id" class="summary-block" :aria-labelledby="`${close.id}-title`" data-stop>
+  <section :id="close.id" class="summary-block grid gap-2.5" :aria-labelledby="`${close.id}-title`" data-stop>
     <h2 :id="`${close.id}-title`">Summary <time v-if="close.time" :datetime="close.time">{{ formatTime(close.time) }}</time></h2>
-    <ul class="bullets">
+    <ul class="grid list-disc gap-0.5 ps-5 marker:text-dimmed">
       <li v-for="d in close.decisions" :key="d.question">
         <a :href="`#${d.question}`">Q{{ ask(d.question)?.q }}</a> <span class="quiet">({{ PROVENANCE[d.answer] }})</span>: <span v-html="inline(d.text)" />
       </li>

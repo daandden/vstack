@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Show wayfinder ticket graphs in the Flow Map panel with blocker arrows, map states, and keyboard tracker links (#427)."
+  ]
+}

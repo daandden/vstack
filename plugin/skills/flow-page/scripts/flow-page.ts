@@ -16,17 +16,23 @@ import { addAliases, aliasesOf, closeFlow, contribute, newFlow, nowIso, openStag
 import { assetsDir, createFlowFolder, flowFolders, flowsDir, folderOfId, migrationIdentity, readBinding, readState, registerFolder, registerMigration, registeredFolder, statePath, withLock, writeAtomic, writeBinding } from "./store.ts";
 import { connect, flowUrl, hostCommand, originOf } from "./live.ts";
 import { captureHistoricalImages, historicalFlows, migrateHistorical, parseHistorical } from "./migrate.ts";
+import { readComments } from "./comments.ts";
 import { Refusal } from "./fields.ts";
+import { ContributionRefusal, refusalDiagnostic, resultContracts } from "./contracts.ts";
+import { describeResult } from "./discovery.ts";
 import { registerObservation } from "./observations.ts";
 import { projectCommonDir } from "../../vstack-tmp/scripts/scratch.ts";
 
-const COMMANDS = ["open", "bind", "submit", "alias", "close", "reopen", "find", "move", "show", "bound", "target", "picker", "host", "migrate"];
+const COMMANDS = ["open", "bind", "submit", "validate", "catalog", "describe", "alias", "close", "reopen", "find", "move", "show", "bound", "target", "picker", "host", "migrate"];
 
 function usage(message: string): never {
   process.stderr.write(`flow-page.ts: ${message}
 usage: bun flow-page.ts open --skill <name> (--title <text> [--slug <slug>] | --flow <flow> [--parent <stage>]) [--ticket <id>]
        bun flow-page.ts bind --flow <flow> --stage <id>
        bun flow-page.ts submit [--flow <flow> --stage <id>] [<contribution.json> | -]
+       bun flow-page.ts validate [--flow <flow> --stage <id>] [<contribution.json> | -]
+       bun flow-page.ts catalog
+       bun flow-page.ts describe <shape> [--compact]
        bun flow-page.ts alias [--flow <flow>] <kind>:<value>...
        bun flow-page.ts close [--flow <flow>]
        bun flow-page.ts reopen --skill <name> [--flow <flow>] [--parent <stage>] [--ticket <id>]
@@ -52,7 +58,7 @@ try {
   parsed = parseArgs({
     args: Bun.argv.slice(2),
     allowPositionals: true,
-    options: Object.fromEntries(["skill", "title", "slug", "flow", "stage", "parent", "ticket", "to", "session", "agent", "home", "picker"].map((k) => [k, { type: "string" as const }])),
+    options: { ...Object.fromEntries(["skill", "title", "slug", "flow", "stage", "parent", "ticket", "to", "session", "agent", "home", "picker"].map((k) => [k, { type: "string" as const }])), compact: { type: "boolean" } },
   });
 } catch (e) {
   usage((e as Error).message);
@@ -61,12 +67,14 @@ const { values: opt, positionals } = parsed;
 const [command, ...rest] = positionals;
 if (!COMMANDS.includes(command ?? "")) usage(`give a command: ${COMMANDS.join(", ")}`);
 const allowed: Record<string, string[]> = {
-  open: ["skill", "title", "slug", "flow", "parent", "ticket"], bind: ["flow", "stage"], submit: ["flow", "stage"], alias: ["flow"], close: ["flow"], reopen: ["skill", "flow", "parent", "ticket"],
-  find: [], move: ["flow", "to"], show: ["flow"], bound: [], target: [], picker: ["picker"], host: [], migrate: [],
+  open: ["skill", "title", "slug", "flow", "parent", "ticket"], bind: ["flow", "stage"], submit: ["flow", "stage"], validate: ["flow", "stage"], alias: ["flow"], close: ["flow"], reopen: ["skill", "flow", "parent", "ticket"],
+  catalog: [], describe: ["compact"], find: [], move: ["flow", "to"], show: ["flow"], bound: [], target: [], picker: ["picker"], host: [], migrate: [],
 };
 for (const k of Object.keys(opt)) if (!["session", "agent", "home", ...allowed[command]].includes(k)) usage(`${command} takes no --${k}`);
 const positional: Record<string, [number, number, string]> = {
   submit: [0, 1, "takes no more than one contribution file"], alias: [1, Infinity, "needs one or more <kind>:<value> aliases"], find: [1, 1, "needs exactly one <kind>:<value> alias or Flow id"],
+  validate: [0, 1, "takes no more than one contribution file"],
+  describe: [1, 1, "needs exactly one Result shape"],
   host: [1, 1, "needs status or stop"],
   migrate: [1, 1, "needs exactly one Grilling page folder"],
   picker: [1, Infinity, "needs open or clear, and optional question ids"],
@@ -74,6 +82,15 @@ const positional: Record<string, [number, number, string]> = {
 const [least, most, says] = positional[command] ?? [0, 0, "takes no positional arguments"];
 if (rest.length < least || rest.length > most) usage(`${command} ${says}`);
 if (command === "picker" && (!["open", "clear"].includes(rest[0]) || !opt.picker)) usage("picker needs open or clear and --picker <id>");
+if (command === "catalog") {
+  process.stdout.write(`${JSON.stringify({ shapes: Object.entries(resultContracts).map(([shape, contract]) => ({ shape, purpose: contract.purpose })) })}\n`);
+  process.exit(0);
+}
+if (command === "describe") {
+  if (!Object.hasOwn(resultContracts, rest[0])) usage(`unknown Result shape ${JSON.stringify(rest[0])}; choose ${Object.keys(resultContracts).join(", ")}`);
+  process.stdout.write(`${describeResult(rest[0], resultContracts[rest[0]], opt.compact === true)}\n`);
+  process.exit(0);
+}
 
 const home = resolve((opt.home as string | undefined) ?? homedir());
 const dir = flowsDir(home, process.cwd());
@@ -291,6 +308,7 @@ async function main(): Promise<object> {
         return { flow: s.flow.id, stage: stage.id, revision: s.revision, bound: true };
       });
     }
+    case "validate":
     case "submit": {
       const t = target();
       let input: unknown;
@@ -298,13 +316,25 @@ async function main(): Promise<object> {
       try {
         input = JSON.parse(raw);
       } catch (e) {
-        refuse(`the contribution is not valid JSON (${(e as Error).message})`);
+        throw new ContributionRefusal([{ code: "invalid_json", path: "$", message: `the contribution is not valid JSON (${(e as Error).message})`, allowed: "JSON object" }]);
       }
-      return locked(t.flow, (folder, s) => {
-        const { revision, repeated, ...receipt } = contribute(s, t.stage, input, time, io);
-        if (!repeated) publish(folder, s);
-        return { flow: s.flow.id, stage: t.stage, revision, ...(repeated ? { repeated } : {}), ...receipt };
-      });
+      const apply = (folder: string, s: State) => {
+        try {
+          const { revision, repeated, ...receipt } = contribute(s, t.stage, input, time, io);
+          if (command === "validate") return { ok: true, diagnostics: [] };
+          if (!repeated) publish(folder, s);
+          return { flow: s.flow.id, stage: t.stage, revision, ...(repeated ? { repeated } : {}), ...receipt };
+        } catch (error) {
+          if (error instanceof ContributionRefusal) throw error;
+          throw new ContributionRefusal([refusalDiagnostic(error, input)]);
+        }
+      };
+      if (command === "validate") {
+        const { folder } = locate(t.flow);
+        const s = readState(folder) ?? refuse(`Flow ${t.flow} has no stored content`);
+        return apply(folder, s);
+      }
+      return locked(t.flow, apply);
     }
     case "alias": {
       const aliases = rest.map(parseAlias);
@@ -401,13 +431,13 @@ async function main(): Promise<object> {
     default: {
       const { folder } = locate(flowKey());
       const s = readState(folder)!;
-      return { ...snapshot(view(s)), aliases: aliasesOf(s) };
+      return { ...snapshot(view(s)), aliases: aliasesOf(s), reader_comments: readComments(folder).comments };
     }
   }
 }
 
 const unbound = ["bound", "target", "picker"].includes(command) && (!session || !readBinding(dir, session, command === "bound" ? agent : "main")) && !(command === "picker" && rest[0] === "clear");
-const live = command === "host" || unbound ? undefined : await connect(home);
+const live = command === "host" || command === "validate" || unbound ? undefined : await connect(home);
 try {
   const result = await main() as { flow?: string | { id: string }; stage?: string; target?: string | null; picker?: string | null };
   if (live && result.flow) {
@@ -434,6 +464,10 @@ try {
   process.stdout.write(`${JSON.stringify(result)}\n`);
 } catch (e) {
   if (!(e instanceof Refusal)) throw e;
+  if (["validate", "submit"].includes(command)) {
+    const diagnostics = e instanceof ContributionRefusal ? e.diagnostics : [refusalDiagnostic(e, undefined)];
+    process.stdout.write(`${JSON.stringify({ ok: false, diagnostics })}\n`);
+  }
   process.stderr.write(`flow-page.ts: ${e.message}\nNo Flow content was committed. Host lifecycle metadata may have been written.\n`);
   process.exitCode = 1;
 } finally {

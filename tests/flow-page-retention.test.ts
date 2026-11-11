@@ -129,9 +129,10 @@ test("closing needs every Stage finished, and a closed Flow takes no Stage or co
   ok(run(["submit"], w.at, "s-1", contribution(FINISH)));
   ok(run(["close"], w.at, "s-1"));
   const revision = ok(run(["show", "--flow", o.flow], w.at)).revision;
-  for (const r of [run(["close", "--flow", o.flow], w.at), run(["open", "--flow", o.flow, "--skill", "explain"], w.at, "s-2"), run(["submit", "--flow", o.flow, "--stage", o.stage], w.at, undefined, RESULT)]) {
+  for (const [i, r] of [run(["close", "--flow", o.flow], w.at), run(["open", "--flow", o.flow, "--skill", "explain"], w.at, "s-2"), run(["submit", "--flow", o.flow, "--stage", o.stage], w.at, undefined, RESULT)].entries()) {
     expect(r.code).toBe(1);
-    expect(r.stdout).toBe("");
+    if (i === 2) expect(JSON.parse(r.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
+    else expect(r.stdout).toBe("");
   }
   expect(ok(run(["show", "--flow", o.flow], w.at)).revision).toBe(revision);
   expect(run(["reopen", "--flow", ok(run(["open", "--title", "Other", "--skill", "explain"], w.at)).flow, "--skill", "explain"], w.at).code).toBe(1);
@@ -187,7 +188,8 @@ test("an expired Flow goes with its data and captured files, and its identity re
   for (const args of [["find", f.flow], ["show", "--flow", f.flow], ["open", "--flow", f.flow, "--skill", "explain"], ["reopen", "--flow", f.flow, "--skill", "explain"], ["submit", "--flow", f.flow, "--stage", f.stage]]) {
     const r = run(args, w.at, "s-1", RESULT);
     expect(r.code).toBe(1);
-    expect(r.stdout).toBe("");
+    if (args[0] === "submit") expect(JSON.parse(r.stdout)).toMatchObject({ ok: false, diagnostics: expect.any(Array) });
+    else expect(r.stdout).toBe("");
     expect(r.stderr).toContain(f.flow);
     expect(r.stderr.replaceAll(f.flow, "")).not.toBe(never.stderr.replaceAll("never-seen-000000", ""));
   }

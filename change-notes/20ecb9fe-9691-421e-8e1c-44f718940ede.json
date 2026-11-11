@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "to-spec resolves consequential gaps in a nested grill-with-docs and resumes its existing Stage, then stops at spec publication (#421)."
+  ]
+}

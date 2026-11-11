@@ -7,12 +7,12 @@ const ask = (id: string) => flow.value!.question.get(id);
 </script>
 
 <template>
-  <section :id="a.id" class="assumed" data-stop>
+  <section :id="a.id" class="assumed grid gap-2.5" data-stop>
     <span v-if="first" :id="`${stage}-assumed`" />
     <h2 v-html="inline(a.decision)" />
-    <dl class="fields">
-      <dt>Pick</dt><dd v-html="inline(a.pick)" />
-      <dt>Why</dt><dd v-html="inline(a.why)" />
+    <dl class="grid grid-cols-[fit-content(12rem)_1fr] items-baseline gap-x-4 gap-y-1 [&_dt]:text-small [&_dt]:font-semibold [&_dt]:text-toned">
+      <dt>Pick</dt><dd class="ms-0" v-html="inline(a.pick)" />
+      <dt>Why</dt><dd class="ms-0" v-html="inline(a.why)" />
     </dl>
     <p v-if="a.reopened_by" class="asks"><a :href="`#${a.reopened_by}`">Reopened in Q{{ ask(a.reopened_by)?.q }}</a></p>
   </section>

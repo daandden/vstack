@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Preserve the Map panel, Wayfinder graphs, and shared Mermaid Color roles on the Nuxt UI reader stack, including Document diagrams alongside numbered steps.",
+    "Validate Wayfinder contributions through the shared coded diagnostic contract. Renumber the reader-stack and Reader-comment decisions to ADRs 0072 and 0073."
+  ]
+}

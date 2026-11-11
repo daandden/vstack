@@ -191,14 +191,15 @@ test("a Mermaid diagram source is captured once, satisfies diagram needs, and is
   writeFileSync(join(root, "picture.svg"), '<svg xmlns="http://www.w3.org/2000/svg"/>');
   for (const [attachment, refusal] of [
     [{ ...diagram, path: "broken.mmd" }, "is not Mermaid that Pele renders"],
-    [{ ...diagram, focus: [] }, "focus must"],
+    [{ ...diagram, focus: [] }, { code: "too_few_items", path: "$.items[0].focus" }],
     [{ ...diagram, focus: ["a1", "a2", "a3"] }, "focus must"],
     [{ ...diagram, focus: ['a"]'] }, "focus must"],
     [{ ...diagram, type: "svg", path: "picture.svg" }, "focus is not a field here"],
   ] as const) {
     const refused = submit(home, attachment, round({ attachment: "flow" }));
     expect(refused.code).toBe(1);
-    expect(refused.stderr).toContain(refusal);
+    if (typeof refusal === "string") expect(refused.stderr).toContain(refusal);
+    else expect(JSON.parse(refused.stdout)).toMatchObject({ ok: false, diagnostics: expect.arrayContaining([expect.objectContaining(refusal)]) });
     expect(ok(run(home, ["show"]))).toEqual(before);
   }
   ok(run(home, ["host", "stop"]));
@@ -237,14 +238,13 @@ test.each([
       attachment,
     );
     expect(refused.code).toBe(1);
-    expect(refused.stdout).toBe("");
     const exported = Bun.spawnSync([
       process.execPath, join(import.meta.dir, "../plugin/skills/vstack-figures/scripts/render.ts"),
       join(root, "refused.mmd"), join(root, "refused.svg"), ...focus.flatMap((id) => ["--focus", id]),
     ], { stdout: "pipe", stderr: "pipe" });
     expect(exported.exitCode).toBe(1);
     expect(exported.stderr.toString()).toContain(message);
-    expect(refused.stderr).toContain(exported.stderr.toString().trim());
+    expect(JSON.parse(refused.stdout)).toMatchObject({ ok: false, diagnostics: expect.arrayContaining([expect.objectContaining({ message: expect.stringContaining(exported.stderr.toString().trim()) })]) });
     expect(ok(run(home, ["show"]))).toEqual(before);
     expect(readFileSync(join(folder, "data/state.json"), "utf8")).toBe(state);
     expect(readdirSync(join(folder, "assets"), { recursive: true })).toEqual(assets);

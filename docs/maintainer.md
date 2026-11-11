@@ -22,7 +22,32 @@ The repo scripts need Bun. Run `bun run test` and `bun scripts/check-register.ts
 | `CHANGELOG.md` | no | Dated Plugin releases. |
 | `docs/adr/`, `GLOSSARY.md` | no | Decisions and vocabulary. |
 
-Only `plugin/` ships. Upstreams are fetched when needed, never stored in this repo.
+Only `plugin/` ships. Plugin Upstreams are fetched when needed, never stored in this repo. The repo-only reader development skills below are tracked copies.
+
+### Reader development skills
+
+Six repo-only skills live under `.omp/skills/`: `nuxt-ui` from `nuxt/ui`, `vue-best-practices`, `vue-debug-guides`, `vue-testing-best-practices`, and `create-adaptable-composable` from `vuejs-ai/skills`, and `vueuse-functions` from `vueuse/skills`. `skills-lock.json` records their upstream paths and content hashes. They do not ship in `plugin/` and have no Pin or Decision register row.
+
+The skills CLI 1.7.6 has no `omp` agent target. Its `pi` target installs project skills into `.agents/skills/`. The initial installation used these commands, then moved the six directories into `.omp/skills/`:
+
+```sh
+npx --yes skills@1.7.6 add nuxt/ui --skill nuxt-ui --agent pi --copy --yes
+npx --yes skills@1.7.6 add vuejs-ai/skills --skill vue-best-practices vue-debug-guides vue-testing-best-practices create-adaptable-composable --agent pi --copy --yes
+npx --yes skills@1.7.6 add vueuse/skills --skill vueuse-functions --agent pi --copy --yes
+mv .agents/skills/nuxt-ui .agents/skills/vue-best-practices .agents/skills/vue-debug-guides .agents/skills/vue-testing-best-practices .agents/skills/create-adaptable-composable .agents/skills/vueuse-functions .omp/skills/
+rmdir .agents/skills .agents
+```
+
+The skill files are tracked, so a normal checkout already has them. To restore missing skill directories from only the lock file, run this in a clean directory containing `skills-lock.json`:
+
+```sh
+npx --yes skills@1.7.6 experimental_install --frozen-lockfile --agent pi
+mkdir -p .omp/skills
+mv .agents/skills/nuxt-ui .agents/skills/vue-best-practices .agents/skills/vue-debug-guides .agents/skills/vue-testing-best-practices .agents/skills/create-adaptable-composable .agents/skills/vueuse-functions .omp/skills/
+rmdir .agents/skills .agents
+```
+
+Frozen restoration refuses upstream content that no longer matches the recorded hash. To update, rerun the relevant `add` command in a clean directory, review the new skill files and lock entry, and replace the corresponding tracked copies together. Keep imported guidance unchanged. Repo-specific runtime and testing decisions still govern the reader.
 
 ### Typechecking
 
@@ -62,6 +87,10 @@ When the target already equals the page's URL, following dispatches the browser'
 The reader source lives under `reader/`. Its production bundle ships prebuilt under `plugin/skills/flow-page/reader/`. Installation and normal launch require no build or development server.
 
 When reader source changes, run `./node_modules/.bin/vp run reader:build` and commit its shipped output with the source. Compare the source and shipped file inventories against the prior commit to establish freshness. An integration that changes neither source nor shipped files needs no rebuild.
+
+The reader uses Nuxt UI 4, Tailwind 4, and VueUse. `reader/app/assets/main.css` loads them, and `theme.css` owns the Catppuccin Latte/Mocha palette, compact sizing, IosevkaTerm font stacks, Nuxt UI semantic colors, and Pele variables. Components use Nuxt UI and Tailwind utilities; no legacy question or Result stylesheet remains. Do not add another palette.
+
+Nuxt's font provider is local-only, and icons come from the installed Lucide collection with API fallback disabled. Color mode keeps the browser's existing `flow-reader:theme` preference. The prebuilt reader runs under the host's existing CSP without external font, icon, or color-mode requests.
 
 The Local Flow host loads its reader bytes at startup. A changed bundle makes a running host incompatible. Stop only the owned host with `bun plugin/skills/flow-page/scripts/flow-page.ts host stop`, then use `bound` or `show` to start the current host and retrieve the live URL. Stored Flow data is not a static reader. Committed content stays committed when the host is unavailable.
 

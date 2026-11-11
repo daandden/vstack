@@ -94,7 +94,7 @@ export async function drawMermaid(source: string, focus: string[]): Promise<Draw
   const { detectType, load, parse: parseModel, render } = await import("pele/lazy");
   await load(detectType(source));
   const probe = document.createElement("span");
-  probe.className = "diagram-measure";
+  probe.className = "fixed [inset-block-start:0] [inset-inline-start:0] invisible pointer-events-none whitespace-pre tracking-normal [word-spacing:normal] [font-kerning:normal] [font-variant-ligatures:none]";
   probe.setAttribute("aria-hidden", "true");
   document.body.append(probe);
   try {

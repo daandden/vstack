@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "minor",
+  "entries": [
+    "Add typed Flow table columns with numeric sorting, text and status filters, matching-row counts, accessible controls, and stable row links that reveal filtered rows."
+  ]
+}
