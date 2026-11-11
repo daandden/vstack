@@ -10,7 +10,7 @@ git ls-tree --name-only "$baseline" docs/adr/ | wc -l
 git grep -l '^>' "$baseline" -- 'docs/adr/*.md' | wc -l
 ```
 
-The archive is `archive/<date>T<HHMM>/` inside the ADR directory that the ADR came from, for example `archive/2026-11-10T1530/`. Each run uses one new run-time folder in each affected ADR directory. A run never reuses an existing folder and refuses an existing destination rather than sharing it. ADR 0067's earlier wording said `archive/<date>/`. Private mode and each context of a multi-context repo use the same layout under their own ADR directory. An archived ADR keeps its text. It gets one banner that names the replacing ADRs, or says that no part holds, and its relative links are repaired.
+The archive is `archive/<date>T<HHMM>/` inside the ADR directory that the ADR came from, for example `archive/2026-11-10T1530/`. Each run uses one new run-time folder in each affected ADR directory. A run never reuses an existing folder and refuses an existing destination rather than sharing it. This decision's earlier draft said `archive/<date>/`. Private mode and each context of a multi-context repo use the same layout under their own ADR directory. An archived ADR keeps its text. It gets one banner that names the replacing ADRs, or says that no part holds, and its relative links are repaired.
 
 No ADR number is used twice. A new ADR takes the next number after the highest one in the ADR directory and its archive, and lists the archived ADRs that it replaces. A citation of an archived number that nobody updated finds that ADR only in the archive, and the banner there leads to the replacement. The same citation under reused numbers would point at an unrelated decision.
 

@@ -167,7 +167,19 @@ First inspect the uninterrupted baseline drives above. Require an independent ch
 
 Locate `check-1/`, and any later check directories, in the actual run's Scratch entry. Preserve each check's briefs, raw returns, identities, checked-file checksums, and combined coverage table outside `data/`. Confirm that the table covers all groups, not only the most recent batch or earlier findings. A large fixture may use several Fan-outs, but those batches share one check number.
 
-Use separate disposable fixtures for fault cases, not the baseline or the delivery checkout. Keep the same seeded ADRs and project settings. Add only this operational checkpoint context to each fresh actual-model session:
+Keep the uninterrupted Standard and Private baselines evidence-poor. Configuration and policy comments do not prove runtime enforcement, offline durations, or deployed receiver capabilities. Require those unavailable claims to remain open even when source provenance and accepted policy are established. Require at most three whole-result checks, with each remaining id in the final report and each affected new ADR's banner. Save the coverage manifest, raw scout JSON, and completion-command outcome for each check. An identical second typed invocation must preserve every resulting ADR byte, including unresolved banners, rather than resume an earlier run or add late banners.
+
+Use separate disposable fixtures for fault cases, not the baseline or the delivery checkout. Keep the same seeded ADRs and project settings. For the controlled-repair case only, add executable sample-device evidence before committing its fixture baseline or invoking the skill:
+
+```sh
+bun "$SKILL_DIR/scripts/clean-adr-evidence.ts" "$F" "$VERIFY_RUN_DIR/<case>-repair-seed"
+```
+
+The helper copies maintained sample-device and receiver code into `sample-devices/` and executes it against the unchanged `settings.json`. Two devices keep readings while disconnected for seven days on an explicitly controlled clock. Their actual gzip payloads pass to separate receiver subprocesses, which decode and return the original readings. Advancing the clock beyond seven days expires the readings. The helper asserts those transitions and preserves the actual commands, exit, source hashes, and observations outside `data/`. Its evidence describes an executable sample project, not wall-clock fleet telemetry or physical-device measurements. Preserve that distinction in the fixture provenance.
+
+Require the seed command to exit 0. Inspect its implementation and observations independently before starting the model. A seed failure blocks the controlled-repair case. Do not edit settings, ADR decisions, checker outputs, or expected results to obtain a pass. If a retained claim still lacks genuine evidence, report the fixture gap rather than calling it verified.
+
+Keep the evidence-poor baseline unchanged and use it for unknown-row termination. The controlled-repair fixture's evidence supports convergence without weakening its no-open-row assertion. Add only this operational checkpoint context to each fresh actual-model fault session:
 
 > For this disposable fixture drive, save the current phase and check count, then end the turn immediately before the first independent-check task call and after each repair before the next check. Resume the same run when the controller says Continue. Do not request an answer or change the check procedure.
 

@@ -159,6 +159,7 @@ All paths are relative to `SKILL_DIR`.
 - `scripts/flow-questions-tui.py --prompt <scenario.md> --config <isolate.yml>`: actual Session-model TUI controller for cancelled, elapsed-timeout, and empty architecture responses. See Launch and `features/architecture-agreement.md`.
 - `scripts/frontend-maintenance.ts <checkout> <new evidence directory> <upstream cache>`: drives the public register and maintenance CLIs with a deterministic future-source fixture, preserving the real Pin and local adaptations. Use `features/frontend-guidance.md`.
 - `scripts/clean-adr-isolation.ts <checkout> <fresh fixture> <new evidence directory>`: pins native project skills, agents, and the project plugin to the checkout without changing real-HOME credentials or installed packages. Run before every actual-model clean-adr fixture, then audit actual delegated reads as `features/clean-adr.md` specifies.
+- `scripts/clean-adr-evidence.ts <fixture> <new evidence directory>`: seeds and executes sample devices and receiver subprocesses for the controlled-repair case in `features/clean-adr.md`. Its controlled-clock observations prove sample behavior, not physical-device telemetry. Leave the unknown-evidence baseline unseeded.
 
 ## Gotchas
 

@@ -16,7 +16,7 @@
     "scripts/**/*.ts",
     "tests/**/*.ts",
     "plugin/**/*.ts",
-    ".omp/skills/verify-vstack/scripts/**/*.ts",
+    ".omp/skills/verify-vstack/**/*.ts",
     "reader/ship.ts"
   ],
   "exclude": ["node_modules", "reader/.nuxt", "reader/.output", "plugin/skills/flow-page/reader"]
