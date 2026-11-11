@@ -462,6 +462,24 @@ Flow-page tests assert receipts, refusals, `show` snapshots, stored bytes, and e
 
 The extension tests use `tests/support/extension-host.ts` and `extension-mocks.ts` for controlled host and judge boundaries. They do not replace a fresh omp session. Use the [Verify skill](../.omp/skills/verify-vstack/SKILL.md) and its [feature map](../.omp/skills/verify-vstack/features/README.md) for live proof.
 
+### Non-browser test cost
+
+Profile the non-browser phase with its unchanged command:
+
+```sh
+bun test --timeout 30000 --path-ignore-patterns '**/*.browser.test.ts'
+```
+
+Bun reports each test's duration. Group those durations by file before choosing an optimization. Keep the command, revision, runtime, platform, exit status, and raw output for both versions. Repeat the same selection to report variation. A failed run is diagnostic evidence, not a passing baseline.
+
+The native clean-wt ownership refresh uses one `lsof` query for the union of session-lease files and process working directories. File descriptors distinguish lease records from cwd records. Every pre-removal refresh still executes. Linux retains its procfs path. To compare the affected inventory, removal, and source-fact cases:
+
+```sh
+bun test --timeout 30000 tests/clean-wt.test.ts --test-name-pattern 'unused clean linked|dirty work is removed only|shared prepared source facts'
+```
+
+The gate-timing propagation matrix uses a local compiler fixture so each outcome does not rebuild Nuxt. It still runs readiness, generation, non-browser tests, and each selected browser subprocess through the real runner. `tests/reader-proof.test.ts` retains real Nuxt and Chromium coverage of candidate-source generation and dependency failures. Full gates still execute every required phase.
+
 ## Versions and CHANGELOG
 
 A plugin change carries a Change note instead of changing the version or dated CHANGELOG headings. `prepare` writes `change-notes/<uuid>.json` with `schema: 1`, a `level` of `patch`, `minor`, or `major`, and an `entries` array of nonempty, one-line CHANGELOG entries. The shared module `scripts/lib/change-notes.ts` owns this format, reads pending notes at a ref, reports their highest level, and folds a prepared set into CHANGELOG.

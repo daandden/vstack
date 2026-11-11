@@ -203,6 +203,35 @@ test("a running process whose working directory is inside a checkout protects it
   expect(inventory()[path]).toMatchObject({ verdict: "owned", owners: [{ type: "process", pid: shell.pid }] });
 });
 
+test.skipIf(process.platform === "linux" || process.platform === "win32")("one native ownership scan protects both lease and cwd owners without treating open files as cwd owners", async () => {
+  const leased = linkedWorktree("wt-leased");
+  const active = linkedWorktree("wt-active");
+  const inactive = linkedWorktree("wt-inactive");
+  for (const holder of holders) holder.kill();
+  await Promise.all(holders.map(holder => holder.exited));
+  holders = [];
+  owners = join(inactive, "leases");
+  mkdirSync(owners);
+  await holdLease(OWN);
+  session("leased-session", leased);
+  await holdLease("leased-session", join(inactive, "README.md"));
+  const shell = Bun.spawn(["sleep", "600"], { cwd: active });
+  holders.push(shell);
+  const lsof = Bun.which("lsof")!;
+  const calls = join(dir, "lsof-calls.jsonl");
+  writeFileSync(join(dir, "bin", "lsof"), `#!${process.execPath}
+import { appendFileSync } from "node:fs";
+appendFileSync(${JSON.stringify(calls)}, JSON.stringify(process.argv.slice(2)) + "\\n");
+const result = Bun.spawnSync([${JSON.stringify(lsof)}, ...process.argv.slice(2)], { stdout: "inherit", stderr: "inherit" });
+process.exit(result.exitCode);
+`, { mode: 0o755 });
+  const inv = inventory();
+  expect(inv[leased]).toMatchObject({ verdict: "owned", owners: [{ type: "session", id: "leased-session" }] });
+  expect(inv[active]).toMatchObject({ verdict: "owned", owners: [{ type: "process", pid: shell.pid }] });
+  expect(inv[inactive]).toMatchObject({ verdict: "unused", owners: [] });
+  expect(readFileSync(calls, "utf8").trim().split("\n")).toHaveLength(1);
+});
+
 test("staged, unstaged, and untracked changes make a checkout dirty, and each is listed", () => {
   const path = linkedWorktree("wt-dirty");
   writeFileSync(join(path, "staged.txt"), "s\n");

@@ -122,7 +122,20 @@ for (const failure of ["", "FAIL_NON_BROWSER", "FAIL_BROWSER"]) test(`gate timin
     "reader/app/app.vue": "<template><h1>Candidate gate fixture</h1></template>\n",
   });
   rmSync(join(f.root, "node_modules"), { recursive: true, force: true });
-  symlinkSync(join(import.meta.dir, "../node_modules"), join(f.root, "node_modules"), "dir");
+  // Compiler correctness stays in reader-proof.test.ts. This matrix measures phase execution and failure propagation.
+  writeFiles(f.root, {
+    "node_modules/nuxt/package.json": JSON.stringify({ name: "nuxt", bin: { nuxt: "generate.mjs" } }),
+    "node_modules/nuxt/generate.mjs": `
+import { mkdirSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+if (process.argv[2] !== "generate") throw new Error("Expected generate");
+const output = join(process.argv[3], ".output/public");
+mkdirSync(join(output, "_flow-reader"), { recursive: true });
+writeFileSync(join(output, "index.html"), "<html>Gate timing fixture</html>");
+writeFileSync(join(output, "_flow-reader/app.js"), "console.log('gate timing fixture');");
+`,
+  });
+  symlinkSync(join(import.meta.dir, "../node_modules/playwright-core"), join(f.root, "node_modules/playwright-core"), "dir");
   injected.test = [process.execPath, join(import.meta.dir, "../scripts/test.ts")];
   const browsers = process.env.PLAYWRIGHT_BROWSERS_PATH ?? (process.platform === "darwin" ? join(homedir(), "Library/Caches/ms-playwright") : join(process.env.XDG_CACHE_HOME ?? join(homedir(), ".cache"), "ms-playwright"));
   const result = await f.run(f.root, ["gates", "--scratch", join(f.dir, "scratch")], { VSTACK_MAINTAIN_COMMANDS: JSON.stringify(injected), PLAYWRIGHT_BROWSERS_PATH: browsers, ...(failure ? { [failure]: "yes" } : {}) });
