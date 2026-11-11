@@ -15,18 +15,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Build supported Git
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential libssl-dev libcurl4-openssl-dev libexpat1-dev zlib1g-dev
-          archive="$RUNNER_TEMP/git-2.54.0.tar.xz"
-          curl --fail --location --silent --show-error https://www.kernel.org/pub/software/scm/git/git-2.54.0.tar.xz --output "$archive"
-          printf 'f689162364c10de79ef89aa8dbf48731eb057e34edbbd20aca510ce0154681a3  %s\n' "$archive" | sha256sum --check
-          tar -xJf "$archive" --directory "$RUNNER_TEMP"
-          make -C "$RUNNER_TEMP/git-2.54.0" -j2 prefix="$RUNNER_TEMP/supported-git" NO_TCLTK=YesPlease NO_GETTEXT=YesPlease all
-          make -C "$RUNNER_TEMP/git-2.54.0" prefix="$RUNNER_TEMP/supported-git" NO_TCLTK=YesPlease NO_GETTEXT=YesPlease install
-          echo "$RUNNER_TEMP/supported-git/bin" >> "$GITHUB_PATH"
-
       - name: Record Git hook capability
         env:
           GIT_CONFIG_GLOBAL: /dev/null
