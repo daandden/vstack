@@ -92,7 +92,7 @@ items:
     tree: b644b684781fd5baae57f6be000a180a4d4448d7
     disposition: adapt
     artifacts: [plugin/skills/setup-vstack]
-    reason: "Write, commit, and push Standard-mode config after section choices without Write it, preserving Private-mode and dirty-file boundaries."
+    reason: "Share Private mode MCP configuration across new worktrees without tracked changes or replacement of existing hooks."
   - id: matt/tdd
     upstream: matt
     kind: skill

@@ -8,6 +8,7 @@
 
 import { existsSync, readFileSync, realpathSync, statSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
+import { privateMcpState } from "./private-mcp.ts";
 
 const CONFIG_FILES = ["issue-tracker.md", "code-host.md", "triage-labels.md", "domain.md", "ci.md"];
 const CONFIG = CONFIG_FILES.map((f) => `docs/vstack/${f}`);
@@ -75,6 +76,7 @@ function repoState(cwd: string) {
     block_file: blockFile,
     block_exists: blockExists,
     block_file_dirty: blockFileDirty,
+    private_mcp: mode === "private" ? privateMcpState() : null,
   };
 }
 

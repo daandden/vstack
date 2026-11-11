@@ -123,7 +123,7 @@ Set the working directory with the bash tool's `cwd` parameter, not with `cd`. O
    Read the WebP path to look at it. Keep the ARIA snapshot next to it as a `.aria.txt` file.
 6. Write `$VERIFY_RUN_DIR/notes.md` with the feature ID, the entry point, each command, the result, and the path of each proof file. Report an entry point you did not drive as skipped, with the reason. A proof through one entry point does not prove another.
 
-The model stub stands at the model-provider boundary. Only the Scratch identity recipe adds named process-boundary fault fixtures; those run the real CLIs, and its lost-buffer fixture still runs real Git. Never prove application behavior through `tests/support/extension-host.ts`, the extension factory called in-process, or another replacement of the component under test.
+The model stub stands at the model-provider boundary. Scratch identity uses named process-boundary fault fixtures, and Private MCP verification uses an unrelated named-hook fixture to put a conflicting regular config into a newly cloned checkout. Both run the real production CLIs and Git. Never prove application behavior through `tests/support/extension-host.ts`, the extension factory called in-process, or another replacement of the component under test.
 
 ## Cleanup
 
@@ -158,6 +158,7 @@ All paths are relative to `SKILL_DIR`.
 - `scripts/worker-lifecycle.ts <checkout> <new verify run>`: drives real isolated implementer and review-fixer patch landing, retention, and release in a fresh throwaway omp session. Use `features/worker-lifecycle.md`.
 - `scripts/flow-questions-tui.py --prompt <scenario.md> --config <isolate.yml>`: actual Session-model TUI controller for cancelled, elapsed-timeout, and empty architecture responses. See Launch and `features/architecture-agreement.md`.
 - `scripts/frontend-maintenance.ts <checkout> <new evidence directory> <upstream cache>`: drives the public register and maintenance CLIs with a deterministic future-source fixture, preserving the real Pin and local adaptations. Use `features/frontend-guidance.md`.
+- `scripts/private-mcp.ts <checkout> <new evidence directory>`: drives Private MCP setup through its CLI, actual ignored-file-cloned omp creation, shared edits, and observable conflict preservation on a disposable HOME and repository. It retains exact command records and removes its owned fixture data. Use `features/private-mcp.md`.
 
 ## Gotchas
 
