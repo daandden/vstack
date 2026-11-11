@@ -751,7 +751,6 @@ describe("each failure class names the item", () => {
   }
 });
 
-// vstack-owned page lint through check-register (#456).
 describe("page templates", () => {
   const TEMPLATE = "plugin/skills/shared/templates/page.html";
 

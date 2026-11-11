@@ -30,24 +30,21 @@ import { fileURLToPath } from "node:url";
    Checks hover gating, focus outlines, and color notation in CSS files and
    HTML style blocks. Violations print as path:line and exit with code 1. */
 
-/* Blank comments, strings, and url() without moving line numbers. */
-const blank = (text, pattern) => text.replace(pattern, (match) => match.replace(/[^\n]/g, " "));
-const quiet = (css) => blank(css, /\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|url\([^)]*\)/g);
+const maskPreservingNewlines = (text, pattern) => text.replace(pattern, (match) => match.replace(/[^\n]/g, " "));
+const maskCssCommentsStringsAndUrls = (css) => maskPreservingNewlines(css, /\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|url\([^)]*\)/g);
 
-/* Everything outside <style> becomes spaces. */
-const styleBlocks = (html) => {
-  const kept = html.replace(/[^\n]/g, " ").split("");
+const extractStyleCssPreservingOffsets = (html) => {
+  const cssAtOriginalOffsets = html.replace(/[^\n]/g, " ").split("");
   for (const match of html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)) {
     const start = match.index + match[0].indexOf(">") + 1;
-    for (let index = 0; index < match[1].length; index++) kept[start + index] = match[1][index];
+    for (let index = 0; index < match[1].length; index++) cssAtOriginalOffsets[start + index] = match[1][index];
   }
-  return kept.join("");
+  return cssAtOriginalOffsets.join("");
 };
 
-/* Yields each rule and declaration with its enclosing blocks. */
-function* read(css) {
-  const text = quiet(css);
-  const blocks = [];
+function* iterateCssRulesAndDeclarations(css) {
+  const text = maskCssCommentsStringsAndUrls(css);
+  const enclosingBlocks = [];
   let chunk = "";
   let chunkLine = null;
   let line = 1;
@@ -57,8 +54,8 @@ function* read(css) {
       const source = chunk.trim();
       const at = chunkLine ?? line;
       if (char === "{") {
-        yield { type: "rule", prelude: source, line: at, blocks: [...blocks] };
-        blocks.push(source);
+        yield { type: "rule", prelude: source, line: at, blocks: [...enclosingBlocks] };
+        enclosingBlocks.push(source);
       } else {
         const colon = source.indexOf(":");
         if (colon > 0 && !source.startsWith("@")) {
@@ -67,10 +64,10 @@ function* read(css) {
             property: source.slice(0, colon).trim().toLowerCase(),
             value: source.slice(colon + 1).trim(),
             line: at,
-            blocks: [...blocks],
+            blocks: [...enclosingBlocks],
           };
         }
-        if (char === "}") blocks.pop();
+        if (char === "}") enclosingBlocks.pop();
       }
       chunk = "";
       chunkLine = null;
@@ -82,10 +79,9 @@ function* read(css) {
   }
 }
 
-/* Returns violations as { line, rule, message }. */
 export function check(css) {
   const found = [];
-  for (const node of read(css)) {
+  for (const node of iterateCssRulesAndDeclarations(css)) {
     const report = (rule, message) => found.push({ line: node.line, rule, message });
     const queries = node.blocks.filter((block) => block.startsWith("@media")).join(" ");
 
@@ -101,18 +97,17 @@ export function check(css) {
     if ((property === "outline" && /^(none|0)\b/.test(lower)) || (property === "outline-style" && lower.startsWith("none")))
       report("outline", "Never remove the outline. Style focus with `:focus-visible` and `outline`.");
 
-    /* A mask reads only the alpha of its colors. */
-    if (!/^(-webkit-)?mask(-image)?$/.test(property) && /#[0-9a-f]{3,8}(?![\w-])|(?<![\w-])(rgba?|hsla?)\(/.test(lower))
+    const isMaskProperty = property === "mask" || property === "mask-image" || property === "-webkit-mask" || property === "-webkit-mask-image";
+    if (!isMaskProperty && /#[0-9a-f]{3,8}(?![\w-])|(?<![\w-])(rgba?|hsla?)\(/.test(lower))
       report("color", "Write the color in `oklch()`, with `none` as the hue of a gray, white or black.");
   }
   return found;
 }
 
-/* Returns null when a file has no CSS this script can read. */
 export const checkFile = (path) => {
   const text = readFileSync(path, "utf8");
   if (path.endsWith(".css")) return check(text);
-  return /<style\b/i.test(text) ? check(styleBlocks(text)) : null;
+  return /<style\b/i.test(text) ? check(extractStyleCssPreservingOffsets(text)) : null;
 };
 
 if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {

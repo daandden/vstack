@@ -94,27 +94,33 @@ confirm() {
   [[ "$reply" =~ ^[Yy] ]]
 }
 
-# _existing KEY decodes values written by write_env or plain double quotes.
-_existing() {
-  [[ -f "$ENV_FILE" ]] || return 1
-  local line value sq="'\\''"; line=$(grep -E "^${1}=" "$ENV_FILE" | tail -n1) || return 1
-  value="${line#*=}"
-  if [[ "$value" == \'*\' ]]; then value="${value:1:${#value}-2}"; value="${value//"$sq"/\'}"
-  elif [[ "$value" == \"*\" ]]; then
-    value="${value:1:${#value}-2}"
-    [[ "$value" == *[\\\$\"]* ]] && return 1
-  fi
-  printf '%s' "$value"
+_bun_env() {
+  local bun
+  bun=$(command -v bun) || { warn "env-file support requires Bun" >&2; return 1; }
+  env -i "$bun" --no-env-file --env-file="$1" -e '
+    const value = process.env[process.argv[1]];
+    if (process.argv[2] === "compare") {
+      const input = Buffer.from(await Bun.stdin.arrayBuffer());
+      process.exit(value !== undefined && Buffer.from(value).equals(input) ? 0 : 1);
+    }
+    if (value !== undefined) {
+      if (/[\r\n\0]/.test(value)) process.exit(1);
+      process.stdout.write(value);
+    }
+  ' "$2" "${3:-read}" 2>/dev/null
 }
 
-# ask KEY "Prompt" offers the existing value and edits visible input with Readline.
-# EOF without input fails instead of continuing with an empty credential.
+_existing() {
+  [[ -f "$ENV_FILE" ]] || return 0
+  _bun_env "$ENV_FILE" "$1"
+}
+
 ask() {
   local key="$1" prompt="$2" current input s=$'\001' e=$'\002' p rc=0
-  current=$(_existing "$key" || true)
+  current=$(_existing "$key") || return 1
   p="  $s$BOLD$e$prompt$s$RESET$e "
-  [[ -n "$current" ]] && p+="$s$DIM$e[Enter keeps current]$s$RESET$e "
-  read -e -r -p "$p" input || rc=1
+  [[ -n "$current" ]] && p+="$s$DIM${e}[Enter keeps current]$s$RESET$e "
+  IFS= read -e -r -p "$p" input || rc=1
   if (( rc )) && [[ -z "$input" ]]; then return 1; fi
   [[ -z "$input" && -n "$current" ]] && input="$current"
   printf -v "$key" '%s' "$input"
@@ -123,29 +129,48 @@ ask() {
 # ask_secret KEY "Prompt" is like ask, but input is hidden.
 ask_secret() {
   local key="$1" prompt="$2" current input rc=0
-  current=$(_existing "$key" || true)
+  current=$(_existing "$key") || return 1
   if [[ -n "$current" ]]; then
     printf '  %s%s%s %s[Enter keeps current]%s ' "$BOLD" "$prompt" "$RESET" "$DIM" "$RESET"
   else
     printf '  %s%s%s ' "$BOLD" "$prompt" "$RESET"
   fi
-  read -rs input || rc=1
+  IFS= read -rs input || rc=1
   printf '\n'
   if (( rc )) && [[ -z "$input" ]]; then return 1; fi
   [[ -z "$input" && -n "$current" ]] && input="$current"
   printf -v "$key" '%s' "$input"
 }
 
-# write_env KEY VALUE writes a literal quoted value and sets KEY in this process.
-# New files use mode 0600. Existing modes and symlinks stay intact.
 write_env() {
-  local key="$1" value="$2" tmp sq="'\\''"
-  [[ -e "$ENV_FILE" ]] || (umask 077 && : > "$ENV_FILE")
-  tmp=$(mktemp)
-  grep -vE "^${key}=" "$ENV_FILE" > "$tmp" || true
-  printf "%s='%s'\n" "$key" "${value//\'/$sq}" >> "$tmp"
-  cat "$tmp" > "$ENV_FILE"
-  rm -f "$tmp"
+  local key="$1" value="$2" rewritten_contents encoded quote matched=0
+  if [[ "$value" == *$'\n'* || "$value" == *$'\r'* ]]; then
+    warn "env-file values must fit on one line" >&2
+    return 1
+  fi
+  command -v bun >/dev/null 2>&1 || { warn "env-file support requires Bun" >&2; return 1; }
+  encoded="${value//\$/\\\$}"
+  rewritten_contents=$(mktemp)
+  for quote in "'" '"' '`' ""; do
+    printf '%s=%s%s%s\n' "$key" "$quote" "$encoded" "$quote" > "$rewritten_contents"
+    if printf '%s' "$value" | _bun_env "$rewritten_contents" "$key" compare; then
+      matched=1
+      break
+    fi
+  done
+  if (( ! matched )); then
+    rm -f "$rewritten_contents"
+    warn "value cannot be stored literally in a Bun env-file" >&2
+    return 1
+  fi
+  if [[ ! -e "$ENV_FILE" ]]; then
+    (umask 077 && : > "$ENV_FILE")
+  fi
+  encoded=$(cat "$rewritten_contents")
+  grep -vE "^${key}=" "$ENV_FILE" > "$rewritten_contents" || true
+  printf '%s\n' "$encoded" >> "$rewritten_contents"
+  cat "$rewritten_contents" > "$ENV_FILE"
+  rm -f "$rewritten_contents"
   printf -v "$key" '%s' "$value"
   WRITTEN_ENV+=("$key")
   printf '  %s✓ wrote%s %s → %s\n' "$GREEN" "$RESET" "$key" "$ENV_FILE"
@@ -192,7 +217,6 @@ finish() {
 # Replace the example below. Set TOTAL_STAGES to match the stages you write.
 # ──────────────────────────────────────────────────────────────────────────
 
-# Parse every stage before the first prompt. Keep the final invocation below.
 run_wizard() {
 
 TOTAL_STAGES=1

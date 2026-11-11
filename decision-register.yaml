@@ -140,7 +140,7 @@ items:
     tree: e396d3ba97c723a78ffd350fb14a3c409137b306
     disposition: adapt
     artifacts: [plugin/skills/wizard]
-    reason: "Its user questions go through ask (ask-tool, #58). Secrets and variables go to the CI service, with manual instructions when its commands are absent (ADR 0034). Flow publication is conditional and chat keeps the full output (#321, ADR 0046)."
+    reason: "Its user questions go through ask (ask-tool, #58). Secrets and variables go to the CI service, with manual instructions when its commands are absent (ADR 0034). Flow publication is conditional and chat keeps the full output (#321, ADR 0046). Env-files use Bun-only literal writes and matching defaults, refusing unsupported readers and lossy values (ADR 0075)."
   - id: matt/grill-me
     upstream: matt
     kind: skill

@@ -97,7 +97,6 @@ export const BETA: Files = {
   "pack/other/ignored.md": "not an item\n",
 };
 
-/** Page template text: clean, and with a removed focus outline on line 4. */
 export const PAGE_TEMPLATE = {
   clean: "<!doctype html>\n<style>\n  .box {\n    color: oklch(0 0 none);\n  }\n</style>\n",
   violation: "<!doctype html>\n<style>\n  .box {\n    outline: none;\n  }\n</style>\n",
