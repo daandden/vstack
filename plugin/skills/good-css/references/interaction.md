@@ -1,63 +1,6 @@
-<!-- Generated from PRACTICES.md by scripts/build-skill.js. Do not edit. -->
-
-## One focus ring with `:focus-visible`
-
-Use it as the focus style for every interactive element. Never write `outline: none`.
-
-```css
-:focus-visible {
-  outline: max(2px, 0.08em) solid currentColor;
-  outline-offset: 0.25em;
-}
-```
-
-Rules:
-
-- On a filled button `currentColor` can fail contrast. Set the outline to the button's background color there.
-- A component that draws its ring with `box-shadow` keeps `outline-color: transparent`, never `outline: none`, so forced-colors mode can repaint it.
-
-Support: Chrome 86, Firefox 85, Safari 15.4.
-
-## Hover styles only where hover exists
-
-Use it on every `:hover` rule, so a tap on a touch screen does not leave the hover state stuck.
-
-```css
-@media (hover: hover) and (pointer: fine) {
-  .button:hover { background: var(--primary-hover); }
-}
-```
-
-Rules:
-
-- Tailwind v4's `hover:` variant wraps itself in `(hover: hover)` only. Write the full query by hand everywhere else.
-- Touch users still need feedback on press. Give it with `:active`, which works for every input.
-
-Support: Chrome 38, Firefox 64, Safari 9.
-
-## Press feedback
-
-Use it on every button and anything else that can be pressed.
-
-```css
-.button:active { transform: scale(0.97); }
-
-@media (prefers-reduced-motion: no-preference) {
-  .button { transition: transform 160ms var(--ease-out, ease-out); }
-}
-```
-
-Rules:
-
-- Keep the scale between 0.95 and 0.98.
-- "The reset" (`foundations.md`) removes the browser's tap highlight. Without this entry a tap gives no feedback at all.
-- When feedback needs a script, listen for `pointerdown`, not `click`.
-
-Support: every browser.
-
 ## Hit area larger than the visual
 
-Use it on icon buttons, close buttons and any target that looks smaller than 44px.
+Use a pseudo-element to enlarge a small control without changing its layout box. `--hit-size` is the project's chosen target-size token.
 
 ```css
 .icon-button { position: relative; }
@@ -65,7 +8,7 @@ Use it on icon buttons, close buttons and any target that looks smaller than 44p
 .icon-button::after {
   content: "";
   position: absolute;
-  inset: min(0px, (100% - 44px) / 2);
+  inset: min(0px, (100% - var(--hit-size)) / 2);
 }
 ```
 
@@ -113,9 +56,8 @@ Use it for cards, list rows and tiles where the whole area should navigate. It r
 Rules:
 
 - No element between the card and the link may be positioned. The overlay would size itself to that element.
-- The link's own ring is made transparent, never removed, as "One focus ring with `:focus-visible`" requires. Write the full `2px solid transparent`. Safari ignores `outline-color` on its default ring.
+- Write the link's full `2px solid transparent` outline declaration. Safari ignores `outline-color` on its default ring.
 - Text under the overlay cannot be selected. Accept it.
-- Put hover styles on `.card:hover`, inside the query from "Hover styles only where hover exists".
 
 Support: Chrome 105, Firefox 121, Safari 15.4.
 
@@ -135,7 +77,7 @@ html:has(dialog:modal) { overflow: hidden; }
 Rules:
 
 - `:modal` matches `showModal()` only, so a non-modal dialog does not lock the page.
-- Keep `scrollbar-gutter: stable` with the scroll lock. Without it the page shifts sideways when the scrollbar disappears. "The reset" (`foundations.md`) sets it.
+- Keep `scrollbar-gutter: stable` with the scroll lock. Without it the page shifts sideways when the scrollbar disappears.
 - `:has()` cannot be nested inside `:has()`.
 
 Support: Chrome 105, Firefox 121, Safari 15.4.
@@ -185,9 +127,7 @@ The height snaps to each new line. To animate it, wrap the textarea and let a `R
   overflow: clip;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .field { transition: height 0.2s var(--ease-out, ease-out); }
-}
+.field { transition: height var(--motion-duration) var(--motion-easing); }
 ```
 
 ```js

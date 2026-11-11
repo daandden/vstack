@@ -17,7 +17,7 @@ Give each fact explorer a fresh context window with its fact question and releva
 
 Apply this principle to options in Flow and chat rounds. Present material trade-offs accurately and concretely. When a cost matters to the decision and can be estimated, state its approximate size in appropriate units. If it cannot be estimated, say so. Include significant costs carried over from earlier decisions when they affect the option.
 
-For frontend motion audits or planning, read skill://good-css and its conditional audit references before gathering findings. Pass that requirement in delegated frontend exploration briefs. Keep source analysis read-only, separate defects from additive opportunities and rejected candidates, and use this owner's existing Flow round for explicit selection. Headless recommendations never authorize a selected change.
+For CSS audits or planning, read skill://good-css before gathering findings. Pass that CSS requirement in delegated exploration briefs. Keep source analysis read-only, separate defects from additive opportunities and rejected candidates, and use this owner's existing Flow round for explicit selection. Headless recommendations never authorize a selected change.
 
 Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): find the environment fact needed by the frontier question and return evidence and open questions, the vstack root. Do not wait; keep working. If it cannot be spawned, stop: the decisions that depend on the fact stay open.
 

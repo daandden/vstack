@@ -1,10 +1,10 @@
 # Frontend guidance
 
-Existing frontend work reaches the shipped UI guidance through good-css in main sessions and delegated workers. Native execution and an observed runnable UI establish behavior; a successful plugin load or a stub's scripted read does not.
+The twelve Emil-derived Utility skills expose UI guidance through their visible descriptions or direct invocation in main sessions and delegated work. Good-css supplies CSS techniques without routing to Emil. Native selection and instruction following remain unproven pending explicit approval for remote evaluations. Plugin load proof and scripted reads do not establish either behavior.
 
 ## Sub-features
 
-- `frontend-main`: an ordinary frontend implementation reads and applies the conditional design guidance without an extra UI command.
+- `frontend-main`: an ordinary frontend implementation selects and applies applicable UI Utility guidance without an extra UI command.
 - `frontend-worker`: an existing vstack-worker reaches the same guidance and makes the actual UI changes.
 - `frontend-unrelated`: an unrelated command-line task does not load frontend guidance.
 - `frontend-review`: a fresh native code-review and its delegated Standards reviewer block an observed motion defect while preserving a supported browser-specific exception.
@@ -17,8 +17,8 @@ Existing frontend work reaches the shipped UI guidance through good-css in main 
 
 ## How to get to it (user POV)
 
-- Start an existing implementation run on a frontend task. The implementation pointer reaches good-css, which reaches the shipped UI guidance when interaction work requires it.
-- Delegate frontend implementation to the existing vstack-worker role. Its own frontend pointer reaches good-css, even though automatic Brief selection remains principle-only.
+- Start an existing implementation run on a frontend task. CSS work requires good-css; UI Utility descriptions supply separate reach for applicable interaction guidance.
+- Delegate frontend implementation to the existing vstack-worker role. Its good-css requirement is CSS-only. UI Utility descriptions supply reach without changing principle-only automatic Brief selection.
 - Review a frontend motion diff through the existing code-review owner. Its coordinator and delegated Standards reviewer read review-animations and its companion standards conditionally.
 - Run public maintainer commands from the checkout. This is source accounting, not a new UI entry flow.
 
@@ -26,14 +26,15 @@ Existing frontend work reaches the shipped UI guidance through good-css in main 
 
 Preconditions:
 
-- Follow `README.md` and run Doctor before the drives.
+- Obtain explicit approval before any remote native-model or judge evaluation. Without approval, skip those cases and report selection and instruction following as unproven. Mechanical checks remain available.
+- Follow `README.md` and run Doctor before the approved drives.
 - Use the real-model isolation and provenance procedure in `flow-page.md`, under Real-model enrollment. Retain the real HOME and existing credentials. Remove inherited `PI_*` and `OMP_*` variables, set `PI_CONFIG_FILES` to the run overlay, and also pass `--config <overlay>`. Its `skills.customDirectories` contains only `$CHECKOUT/plugin/skills`.
 - Use the caller's actual Session model and thinking level. Load the complete package with `--no-extensions -e "$CHECKOUT/plugin"`; loading only the extension file loses sibling agents. Start each case in a new native RPC process with a new `--session-dir` and capture every RPC frame and saved session history. Set the recorder's line limit to at least 32 MiB.
 - Keep each runnable throwaway app and its before snapshot under the proof run. A vanilla HTML/CSS/JS fixture needs no third-party dependencies. Record its actual manifest and engine versions. Do not infer Motion, Tailwind, or component-library support from the skill text.
 
 ### Native behavior bracket
 
-1. Before changing the plugin, run a fresh main-session frontend task against a minimal working shipment form with a recipient dialog. Retain its original and resulting app, native reads, actions, and outcome. Record whether the conditional UI guidance was available and reached. A good baseline UI is not evidence of a quality regression.
+1. Before changing the plugin, run a fresh main-session frontend task against a minimal working shipment form with a recipient dialog. Retain its original and resulting app, native reads, actions, and outcome. Record which applicable UI descriptions selected guidance and which references were actually read. A good baseline UI is not evidence of a quality regression.
 2. After changing the plugin, use the same starting app in a different directory and a fresh process. Send an ordinary task through the existing implementation entry, for example:
 
    ```json
@@ -101,7 +102,7 @@ Run applicable public-interface tests, focused catalog checks, changed-skill val
 
 ## Gotchas
 
-- Adding a catalog key does not activate a non-principle Addon during implementation or automatic subagent selection. Exercise the actual conditional references.
+- Adding a catalog key does not activate a non-principle Addon during implementation or automatic subagent selection. The UI skills are visible Utilities; inspect actual description selection and any independently applicable references. Good-css has no Emil hand-off.
 - The Decision register and maintainer guide identify all twelve selected items as shipped adaptations, with none deferred. Keep each demonstration within its behavioral scope and preserve all six exclusions. Choreograph and gestures retain existing execution, review, verification, and evidence owners. Browser proof of their behavior needs real scoped interactions, not inventory checks.
 - Use a saved native skill-invocation header to establish expansion of the typed implementation entry. Literal slash text in an unexpanded user message is not proof.
 - Native models can produce a good UI without this guidance. Report the actual reads, changes, and observations; do not invent a causal quality score.

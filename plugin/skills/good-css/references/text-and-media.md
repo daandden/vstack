@@ -1,11 +1,8 @@
-<!-- Generated from PRACTICES.md by scripts/build-skill.js. Do not edit. -->
-
 ## Long text that wraps, truncates or clamps
 
-Use it on any text that comes from a user or a CMS, such as names, titles, URLs and excerpts. Decide for each one what happens when the content is longer than the design. It wraps, it is cut to one line, or it is cut to a few lines.
+Use these declarations to implement an already-chosen wrapping, ellipsis, or line-clamp treatment.
 
 ```css
-:root { overflow-wrap: break-word; }
 
 .name {
   white-space: nowrap;
@@ -24,18 +21,15 @@ Use it on any text that comes from a user or a CMS, such as names, titles, URLs 
 Rules:
 
 - Put the truncation on the element that holds the text. On a flex or grid container the text is cut and no ellipsis appears.
-- Every flex item between the row and the truncated text must be able to shrink. The reset's `min-width: 0` covers that. Without the reset, set `min-inline-size: 0` on each of them.
+- Every flex item between the row and truncated text must be able to shrink. Set `min-inline-size: 0` on those items.
 - The clamp needs all four declarations. Unprefixed `line-clamp` is in no browser yet.
 - Put padding on a wrapper, never on the clamped element. The next line shows through the bottom padding.
-- Use `break-word` on the root and not `anywhere`. `anywhere` also shrinks the minimum content width, so a box sized by its content collapses to one letter per line.
-- A table with automatic layout ignores `break-word`. Set `overflow-wrap: anywhere` on the cell.
-- Truncate only text the reader can get in full somewhere else. Never truncate text they have to read.
 
-Support: `text-overflow`, `-webkit-line-clamp` and `overflow-wrap: break-word` work everywhere. With `overflow: clip` the ellipsis and the clamp draw in Chrome 150 and Safari 27, tested on 2026-10-01. Firefox is untested, and `overflow: hidden` is the form to fall back to. `overflow-wrap: anywhere` in Chrome 80, Firefox 65, Safari 15.4.
+Support: `text-overflow` and `-webkit-line-clamp` work everywhere. With `overflow: clip` the ellipsis and clamp draw in Chrome 150 and Safari 27, tested on 2026-10-01. Firefox is untested, and `overflow: hidden` is the form to fall back to.
 
 ## Image box that holds any upload
 
-Use it on every image, video or embed whose file you do not control, such as thumbnails, cover photos and avatars. The box keeps its shape whatever the file's ratio, and it has that shape before the file loads.
+An aspect-ratio box reserves space before an image loads. The declarations below cover ratio-based media and fixed-size avatars.
 
 ```css
 .thumb {
@@ -59,9 +53,8 @@ Use it on every image, video or embed whose file you do not control, such as thu
 
 Rules:
 
-- One axis must be `auto`. A `height` attribute or a fixed height wins over the ratio. The reset sets `height: auto` on `img`, `svg` and `video`, and `block-size: auto` here does the same for an `iframe`.
+- One axis must be `auto`. A `height` attribute or fixed height wins over the ratio. `block-size: auto` also applies to an `iframe`.
 - `object-fit` does nothing until the box has both sizes or a ratio.
-- `cover` crops. Use `contain` for logos, product shots and anything that must stay whole. Move the crop with `object-position`.
 - Leave the background color off an image that has transparent areas. It shows through them.
 - A fixed-size image in a flex row needs both sizes, as the avatar has. With only a width it stretches to the height of the row.
 - In Safari a failed image ignores `aspect-ratio` and draws a square box. Where a failed load must not move the layout, put the ratio on a wrapper and give the image `inline-size: 100%` and `block-size: 100%`.
@@ -81,7 +74,6 @@ time { font-variant-numeric: tabular-nums; }
 
 Rules:
 
-- Do not set it globally. Proportional digits read better in prose.
 - The font must ship tabular figures, or nothing changes.
 
 Support: Chrome 52, Firefox 34, Safari 9.1.

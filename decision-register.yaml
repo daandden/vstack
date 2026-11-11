@@ -868,7 +868,7 @@ items:
     tree: 716c242ae3ef01743ab8e1851222260a05050763
     disposition: adapt
     artifacts: [plugin/skills/good-css]
-    reason: "Keeps non-animation CSS duties and conditionally reaches shipped construction, review, audit, opportunity, and safe subtraction guidance under ADR 0051."
+    reason: "Keeps unique CSS techniques without Emil hand-offs, conflicting rules, or repeated advice; Emil guidance holds under ADR 0074 (#459)."
     adr: docs/adr/0051-selected-emil-skills-govern-animation-guidance.md
   - id: matt/implement-spec
     upstream: matt

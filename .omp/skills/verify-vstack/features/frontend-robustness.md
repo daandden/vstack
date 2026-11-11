@@ -1,6 +1,6 @@
 # Frontend content robustness
 
-Existing main-session implementation and delegated vstack-worker UI work use break-ui through conditional references. This recipe observes realistic adverse data, authorized fixes, and usable results through the existing native frontend and browser seams.
+Break-ui's visible Utility description supplies realistic adverse-content guidance to main-session implementation and delegated UI work. Good-css has no content-guidance hand-off. Native selection and instruction following remain unproven pending explicitly approved remote evaluations. This recipe observes adverse data, authorized fixes, and usable results through the existing native frontend and browser seams.
 
 ## Sub-features
 
@@ -12,7 +12,7 @@ Existing main-session implementation and delegated vstack-worker UI work use bre
 ## How to get to it (user POV)
 
 - Start the existing implementation entry on data-bearing UI, including narrow layouts, missing fields, long values, and collection boundaries.
-- Delegate the same work to the existing vstack-worker role. Its frontend requirement reaches good-css and the content guidance.
+- Delegate the same work to the existing vstack-worker role. Leave UI Utility names out of its brief to test description selection. Its good-css requirement covers CSS only.
 - Use the project's existing Verify owner to exercise resulting behavior. No extra UI entry flow or independent audit executor is involved.
 
 ## Driving it with native omp and the browser
@@ -60,6 +60,6 @@ Run applicable public-interface tests and final `vstack-maintain gates` only aft
 
 - The dataset selector is development evidence, not a production feature requirement. Reuse the existing fixture boundary and avoid a new test-only product interface.
 - Audit-only requests stop at findings; implementation with already-authorized fixes continues under the existing owner.
-- Keep this demonstration scoped to content robustness. The companion recipes cover motion and mobile behavior; conditional pointers reach shipped guidance only when relevant.
+- Keep this demonstration scoped to content robustness. The companion recipes cover motion and mobile behavior. Inspect actual Utility selection and relevant reference reads rather than assuming good-css supplies them.
 - A preserved source catalog does not establish support for any library or browser. Verify APIs against actual installed versions, and report only exercised scenarios.
 - Keep baseline failures and unsuccessful captures. Never relabel a good baseline UI as a failed one or a text-growth proxy as browser zoom.

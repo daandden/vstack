@@ -1,6 +1,6 @@
 # Frontend motion audit and selected subtraction
 
-Existing audit and planning owners survey motion read-only, present vetted choices, and obtain explicit selection before the implementation owner changes source. Main sessions and delegated explorers reach the same conditional guidance. Selected subtraction preserves functional lifecycle and useful unselected motion through existing motion review and Verify.
+Existing audit and planning owners survey motion read-only, present vetted choices, and obtain explicit selection before the implementation owner changes source. Visible Utility descriptions supply audit guidance independently of good-css. Native main and delegated selection and instruction following remain unproven pending explicitly approved remote evaluations. Selected subtraction preserves functional lifecycle and useful unselected motion through existing motion review and Verify.
 
 ## Sub-features
 
@@ -12,8 +12,8 @@ Existing audit and planning owners survey motion read-only, present vetted choic
 
 ## How to get to it (user POV)
 
-- Start an existing grill or planning task to audit frontend motion. Good-css conditionally reaches improve-animations, its audit and selected-requirements companions, and the opportunity and subtraction guidance where relevant.
-- Delegate a source audit to the existing vstack-explorer. Its frontend pointer reaches the same references even though automatic Brief selection remains principle-only.
+- Start an existing grill or planning task to audit frontend motion. Visible Utility descriptions supply reach for improve-animations and applicable opportunity or subtraction guidance, whose own references cover their companions.
+- Delegate a source audit to the existing vstack-explorer. Its good-css requirement covers CSS only; Utility descriptions supply separate reach without changing principle-only automatic Brief selection.
 - Select a bounded finding in the current owner's Flow question round. The existing implementation owner carries that scope through ordinary review and Verify. No separate UI command, upstream execute dispatch, plan directory, or animation-status subsystem is involved.
 
 ## Driving it with native omp, the browser, and public CLIs
@@ -61,7 +61,7 @@ Run applicable typecheck, targeted public-interface tests, focused changed catal
 
 - A read-only report, publication, or top-ranked recommendation authorizes no edits. Preserve the actual explicit fixture selection as distinct evidence.
 - Removing only CSS can strand opacity zero, focus callbacks, or exit timers. Assert lifecycle and visibility through real controls.
-- A native model can identify the problem before these Addons ship. Report actual source and behavior, not an unsupported causal score.
-- Catalog selection is not delegated activation. Inspect the explorer's real conditional reads and contribution.
+- A native model can identify the problem without these Utilities. Report actual source and behavior, not an unsupported causal score.
+- Catalog selection is not delegated activation. Inspect the explorer's actual Utility selection, reference reads, and contribution.
 - Browser support and interpolation do not prove compositing, low frame cost, physical touch, Safari, or Firefox. Keep claims within the observed engine and fixture.
 - Parent Flow publication and final integrated verification remain parent-owned. This recipe exercises the three-skill audit path, not the behavioral coverage of the other shipped guidance.

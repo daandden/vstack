@@ -40,11 +40,11 @@ Provide status, completion, warning, and error feedback where each applies. Vali
 
 ## Accessibility and authority
 
-Use skill://good-css for non-animation CSS, layout, semantics, focus, and accessibility. For mobile-web viewport, safe-area, touch, hover, or input work, read skill://mobile-native. Retain zoom, keyboard operation, focus restoration, accessible names, and status announcements.
+For mobile-web viewport, safe-area, touch, hover, or input work, read skill://mobile-native. Retain zoom, keyboard operation, focus restoration, accessible names, and status announcements.
 
 Under reduced motion, replace movement, elastic overshoot, scaling, and parallax with instant changes or brief nonmoving feedback. For reduced transparency, use solid or more opaque surfaces. For increased contrast, provide legible near-solid backgrounds and defined borders. Check support for each preference in the target engine. Avoid full-screen moving backgrounds, slow looping oscillations, and abrupt brightness changes.
 
-Emil-derived guidance takes precedence over skill://good-css for CSS and animation under ADR 0074, which amends ADR 0051. Prefer transform and opacity where appropriate, but a blanket compositor-only rule is not a blocking verdict. Reconcile disagreements within the UI guidance using browser-specific behavior and observed evidence. Preserve skill://review-animations' blocking verdicts when the applicable rule and evidence justify them. Add `will-change` only when an imminent effect and measurement justify it, then release it. Browser-supported blur or other properties need scenario-specific performance evidence.
+Emil-derived guidance takes precedence over good-css for CSS and animation under ADR 0074, which amends ADR 0051. Prefer transform and opacity where appropriate, but a blanket compositor-only rule is not a blocking verdict. Reconcile disagreements within the UI guidance using browser-specific behavior and observed evidence. Preserve skill://review-animations' blocking verdicts when the applicable rule and evidence justify them. Add `will-change` only when an imminent effect and measurement justify it, then release it. Browser-supported blur or other properties need scenario-specific performance evidence.
 
 Before using a spring or component library, inspect the application's installed version and consult its applicable documentation. The references explain patterns, not a dependency installation requirement. Do not claim Apple's damping ratio is the same parameter as a library's physical damping constant or that all libraries preserve velocity automatically.
 
