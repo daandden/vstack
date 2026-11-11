@@ -14,7 +14,7 @@ test("readers select typed-table text and manage revision-bound comments across 
   socket.stop(true);
   function cli(args: string[], items?: object[]): any {
     const p = Bun.spawnSync([process.execPath, join(import.meta.dir, "../plugin/skills/flow-page/scripts/flow-page.ts"), ...args, "--home", home, "--session", "01a1c2c0-b8bd-7047-ac1f-33e7ca3c40d6", "--agent", "review-fix-428"], {
-      cwd: root, env: { ...ENV, HOME: home, VSTACK_FLOW_PORT: String(port) },
+      cwd: root, env: { ...ENV, HOME: join(root, "default-home"), VSTACK_FLOW_PORT: String(port) },
       stdin: items ? new TextEncoder().encode(JSON.stringify({ version: 1, items })) : "ignore", stdout: "pipe", stderr: "pipe",
     });
     if (p.exitCode !== 0) throw new Error(p.stderr.toString());

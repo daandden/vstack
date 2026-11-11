@@ -16,7 +16,7 @@ test("question context, choices, answers and figures keep their compact themed l
   socket.stop(true);
   function cli(args: string[], items?: object[]): any {
     const p = Bun.spawnSync([process.execPath, SCRIPT, ...args, "--home", home, "--session", "01a1c243-9218-7214-af2f-363af599ca19", "--agent", "impl-434"], {
-      cwd: root, env: { ...ENV, HOME: home, VSTACK_FLOW_PORT: String(port) },
+      cwd: root, env: { ...ENV, HOME: join(root, "default-home"), VSTACK_FLOW_PORT: String(port) },
       stdin: items ? new TextEncoder().encode(JSON.stringify({ version: 1, items })) : "ignore", stdout: "pipe", stderr: "pipe",
     });
     if (p.exitCode !== 0) throw new Error(`flow-page ${args.join(" ")}: ${p.stderr}`);

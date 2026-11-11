@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Build isolated candidate reader assets and check browser dependencies before maintainer browser proof."
+  ]
+}

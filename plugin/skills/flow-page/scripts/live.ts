@@ -1,7 +1,8 @@
 import { spawn } from "node:child_process";
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
-import { chmodSync, closeSync, mkdirSync, openSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { chmodSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, readdirSync, realpathSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join, resolve } from "node:path";
 import { withLock } from "./store.ts";
 
 export const hostDir = (home: string) => join(home, ".vstack", "host");
@@ -31,8 +32,8 @@ export const capability = (secret: string, key: string, id: string) => createHma
 export const attest = (control: string, nonce: string, version: string, instance: string) => createHmac("sha256", control).update(`flow-host-proof-v1\n${nonce}\n${version}\n${instance}`).digest("hex");
 export const flowUrl = (port: number, secret: string, key: string, id: string) => `${originOf(port)}/f/${encodeURIComponent(key)}/${id}/${capability(secret, key, id)}/`;
 
-/** The shipped Flow reader: `index.html` and the `_flow-reader/` assets it loads, built by `vp run reader:build`. */
-export const readerDir = join(import.meta.dir, "..", "reader");
+/** Browser proof may select temporary candidate assets. Normal serving uses the shipped reader. */
+export const readerDir = resolve(process.env.FLOW_READER_ASSETS ?? join(import.meta.dir, "..", "reader"));
 
 /** Every file of the shipped reader by its path relative to `readerDir`, sorted, or an error when it is not built. */
 export function readerBundle(): Map<string, Uint8Array> {
@@ -87,6 +88,10 @@ async function hello(port: number, control: string): Promise<Hello> {
 type Ready = { port: number; secret: Secrets };
 async function ensure(home: string): Promise<Ready> {
   mkdirSync(hostDir(home), { recursive: true, mode: 0o700 });
+  if (process.env.FLOW_READER_ASSETS) {
+    const normalHome = homedir();
+    if (resolve(home) === resolve(normalHome) || existsSync(normalHome) && realpathSync(home) === realpathSync(normalHome)) throw new Error("FLOW_READER_ASSETS requires an isolated --home; candidate reader proof cannot replace the normal host");
+  }
   return withLock(hostDir(home), async () => {
     const secret = secrets(home);
     const port = record(home)?.port ?? hostPort();
@@ -103,7 +108,7 @@ async function ensure(home: string): Promise<Ready> {
     let child;
     try {
       child = spawn(process.execPath, [join(import.meta.dir, "host.ts"), "--home", home, "--port", String(port), "--idle", String(idleSeconds())], {
-        cwd: hostDir(home), detached: true, stdio: ["ignore", fd, fd], env: { PATH: process.env.PATH, HOME: home },
+        cwd: hostDir(home), detached: true, stdio: ["ignore", fd, fd], env: { PATH: process.env.PATH, HOME: home, FLOW_READER_ASSETS: process.env.FLOW_READER_ASSETS },
       });
     } finally { closeSync(fd); }
     let ended: string | undefined;

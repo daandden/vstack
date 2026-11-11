@@ -1,0 +1,83 @@
+#!/usr/bin/env bun
+import { createHash } from "node:crypto";
+import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { createRequire } from "node:module";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+
+const root = process.cwd();
+const selected = process.argv.slice(2);
+const browsers = selected.length ? selected.filter(file => file.endsWith(".browser.test.ts")) : Array.from(new Bun.Glob("tests/**/*.browser.test.ts").scanSync({ cwd: root })).sort();
+const ordinary = selected.filter(file => !file.endsWith(".browser.test.ts"));
+const phases: object[] = [];
+const report = process.env.VSTACK_GATE_PHASE_REPORT;
+const persist = () => { if (report) writeFileSync(report, JSON.stringify(phases, null, 2) + "\n"); };
+function phase(name: string, command: string[], env = process.env) {
+  const startedAt = new Date().toISOString(), start = performance.now();
+  const record = { name, command, cwd: root, startedAt, outcome: "running" } as Record<string, unknown>;
+  phases.push(record); persist();
+  const result = Bun.spawnSync(command, { cwd: root, env, stdout: "pipe", stderr: "pipe" });
+  Object.assign(record, { finishedAt: new Date().toISOString(), durationMs: performance.now() - start, outcome: result.signalCode ? "interrupted" : result.exitCode === 0 ? "passed" : "failed", exitCode: result.exitCode, signal: result.signalCode, stdout: result.stdout.toString(), stderr: result.stderr.toString() });
+  persist();
+  process.stdout.write(result.stdout); process.stderr.write(result.stderr);
+  if (result.exitCode !== 0) throw new Error(`${name} failed (exit ${result.exitCode}${result.signalCode ? `, ${result.signalCode}` : ""})`);
+}
+function digest(paths: string[]) {
+  const hash = createHash("sha256");
+  const walk = (path: string, label: string) => {
+    for (const entry of readdirSync(path, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+      if ([".nuxt", ".output", "node_modules", ".data", ".cache"].includes(entry.name)) continue;
+      const file = join(path, entry.name), key = `${label}/${entry.name}`;
+      if (statSync(file).isDirectory()) walk(file, key);
+      else { const bytes = readFileSync(file); hash.update(`${key}\0${bytes.length}\0`).update(bytes); }
+    }
+  };
+  for (const path of paths) {
+    const file = resolve(root, path);
+    if (!existsSync(file)) continue;
+    if (statSync(file).isFile()) {
+      const bytes = readFileSync(file); hash.update(`${path}\0${bytes.length}\0`).update(bytes);
+    } else walk(file, path.startsWith("/") ? "" : path);
+  }
+  return hash.digest("hex");
+}
+let out: string | undefined;
+try {
+  let env = process.env;
+  if (browsers.length) {
+    const require = createRequire(join(root, "package.json"));
+    const needed = (name: string) => {
+      try {
+        if (!existsSync(join(root, "node_modules", name))) throw new Error("missing candidate dependency");
+        return require.resolve(name);
+      }
+      catch { throw new Error(`Reader proof requires ${name}; run bun install --frozen-lockfile in ${root}`); }
+    };
+    const nuxtPackage = needed("nuxt/package.json");
+    const playwright = needed("playwright-core");
+    const cli = join(dirname(nuxtPackage), JSON.parse(readFileSync(nuxtPackage, "utf8")).bin.nuxt);
+    if (!existsSync(cli)) throw new Error(`Reader proof requires the Nuxt CLI at ${cli}; run bun install --frozen-lockfile`);
+    if (!existsSync(join(root, "reader/nuxt.config.ts"))) throw new Error(`Reader proof requires candidate input ${join(root, "reader/nuxt.config.ts")}`);
+    phase("candidate-reader-readiness", [process.execPath, "--eval", `try { const { chromium } = await import(${JSON.stringify(pathToFileURL(playwright).href)}); const browser = await chromium.launch({ headless: true }); console.log(JSON.stringify({ chromium: chromium.executablePath(), version: browser.version() })); await browser.close(); } catch (error) { console.error('Reader proof requires working Playwright Chromium: ' + error.message); process.exit(1); }`]);
+    out = mkdtempSync(join(tmpdir(), "vstack-reader-proof-"));
+    const candidateReader = join(out, "reader");
+    cpSync(join(root, "reader"), candidateReader, { recursive: true, dereference: true, filter: path => ![".nuxt", ".output", "node_modules", ".data", ".cache"].includes(path.split("/").at(-1)!) });
+    symlinkSync(join(root, "node_modules"), join(candidateReader, "node_modules"), "dir");
+    const sourcePaths = ["reader", "plugin/skills/flow-page/scripts", "plugin/skills/vstack-figures/scripts", "package.json", "bun.lock"];
+    const source = { root: join(root, "reader"), paths: sourcePaths, sha256: digest(sourcePaths) };
+    env = { ...process.env, FLOW_READER_SOURCE_ROOT: root, FLOW_READER_ASSETS: join(candidateReader, ".output/public") };
+    phase("candidate-reader-build", [process.execPath, cli, "generate", candidateReader], env);
+    if (!existsSync(join(env.FLOW_READER_ASSETS!, "index.html")) || !existsSync(join(env.FLOW_READER_ASSETS!, "_flow-reader"))) throw new Error(`Reader proof requires generated index.html and _flow-reader assets in ${env.FLOW_READER_ASSETS}`);
+    cpSync(env.FLOW_READER_ASSETS!, join(out, "assets"), { recursive: true, dereference: true });
+    env.FLOW_READER_ASSETS = join(out, "assets");
+    console.log(JSON.stringify({ readerProof: { source, assets: { root: env.FLOW_READER_ASSETS, sha256: digest([resolve(env.FLOW_READER_ASSETS!)]) }, bun: Bun.version } }));
+  }
+  if (!selected.length || ordinary.length) phase("non-browser", [process.execPath, "test", "--timeout", "30000", "--path-ignore-patterns", "**/*.browser.test.ts", ...ordinary]);
+  for (const file of browsers) phase(`browser:${file}`, [process.execPath, "test", "--timeout", "30000", file], env);
+} catch (error) {
+  console.error((error as Error).message);
+  process.exitCode = 1;
+} finally {
+  if (out) rmSync(out, { recursive: true, force: true });
+}

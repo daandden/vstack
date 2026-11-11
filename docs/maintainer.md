@@ -428,7 +428,17 @@ Consult the skill instead of maintaining a second copy of its procedure here:
 
 ## Tests
 
-Run `bun run test` for the full suite. It limits discovery to `tests/` through `bunfig.toml` and sets a 30-second timeout because suites launch real `git`, `omp`, and `bun` processes. A preload's `setDefaultTimeout` applies to only one test file, so keep the timeout in the package script.
+Run `bun run test` for the full suite. It limits discovery to `tests/` through `bunfig.toml` and sets a 30-second timeout because suites launch real `git`, `omp`, and `bun` processes. A preload's `setDefaultTimeout` applies to only one test file, so the runner passes the timeout to each process.
+
+The test runner checks the candidate's Nuxt CLI, Playwright, and installed Chromium before browser execution. It builds the reader into a temporary directory and passes those assets only to browser tests. Missing tools fail with the required dependency named. The `readerProof` JSON line records source and asset SHA-256 identities alongside the runtime. Temporary build and asset directories are deleted on completion or failure. Neither `reader/.nuxt`, `reader/.output`, nor the shipped bundle is replaced.
+
+Run a focused browser file through the same preparation route:
+
+```sh
+bun scripts/test.ts tests/flow-reader-foundation.browser.test.ts
+```
+
+Direct `bun test` bypasses candidate preparation. It is suitable for focused non-browser tests, not evidence that a reader change works. `FLOW_READER_ASSETS` selects the prepared reader only for isolated `--home` hosts. The final integration still runs `bun run reader:build`, full maintainer gates, and independent verification of the final head.
 
 The script runs every `*.browser.test.ts` file in its own Bun process after the other tests. Bun 1.3.14 closes Playwright's extra Chromium stdio descriptors a second time during garbage collection, and a later test's subprocess can own those numbers by then ([microsoft/playwright#42692](https://github.com/microsoft/playwright/issues/42692)). On Linux this throws `EBADF` in an unrelated test or leaves its subprocess wait hanging.
 
