@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { VISUAL_KINDS } from "#flow/fields.ts";
 import { flow } from "~/composables/reader";
-import { entryTitle, optionLabel, sourceText, type QuestionView } from "~/utils/flow";
+import { optionLabel, sourceText, type QuestionView } from "~/utils/flow";
 
 const props = defineProps<{ q: QuestionView }>();
 const f = computed(() => flow.value!);
@@ -61,8 +61,8 @@ const lines = computed(() => {
     <p class="flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 text-small text-muted [&_a]:no-underline">
       <a v-if="st.background" :href="`#${st.background.id}`">Background: <span v-html="inline(st.background.title)" /></a>
       <a v-for="t in topics" :key="t.id" :href="`#${t.id}`">Topic: <span v-html="inline(t.title)" /></a>
-      <a v-for="ref in q.entries ?? []" :key="ref" :href="`#${ref.replace('/', '-')}`">
-        <span v-html="inline(entryTitle(f, ref)?.result ?? ref)" /> <span class="entry-id">{{ entryTitle(f, ref)?.entry }}</span>
+      <a v-for="link in q.result_links" :key="link.id" :href="`#${link.anchor}`">
+        <span v-html="inline(link.title)" /> <span v-if="link.entry" class="entry-id">{{ link.entry }}</span>
       </a>
       <a v-if="q.again" :href="`#${q.again}`">Q{{ ask(q.again)?.q }}{{ askedIn(q.again) }}, asked earlier</a>
       <a v-for="id in q.asked_again_by" :key="id" :href="`#${id}`">Q{{ ask(id)?.q }}{{ askedIn(id) }}, asked again</a>

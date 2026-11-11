@@ -20,7 +20,7 @@ Item kinds and their fields:
   - `today`: `{ text, source }` facts about how things work now, each with its file-and-line source.
   - `terms`: `{ term, text }` Term notes, one line each, for names a newcomer does not know.
   - `topics`: Topic notes it builds on.
-  - `results`: the Result entries it comes from. The page links them both ways.
+  - `results`: a list of whole Results as `<result ref or id>` and precise entries as `<result ref or id>/<entry ref or id>`. Both forms can share a list. Whole-Result links land at the header, which links back under **Asked in**. Entry links retain their precise anchors and backlinks. Code resolves the targets and derives both directions, so do not maintain reciprocal links manually. Unknown targets refuse the entire contribution and explain both forms. Assumed, not a user answer: links address the current Result revision, matching existing entry links. These links never replace self-contained question wording or required question-local visuals.
   - `example`: text that makes the question concrete.
   - `figures`: an array of `{ attachment: "<ref or id>", kind: "<Visual kind>" }` captured figure references or `{ text: "<source excerpt or output>", kind: "<Visual kind>" }` escaped text figures.
 

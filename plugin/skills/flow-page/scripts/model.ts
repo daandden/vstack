@@ -414,7 +414,7 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
     if (typeof v !== "string" || v.trim() === "") refuse(where, `must name a ${kind} by ref or id`);
     const key = v as string;
     if (refs[key] !== undefined) {
-      if (kinds[key] !== kind) refuse(where, `ref ${key} names a ${kinds[key]}, not a ${kind}`);
+      if (kinds[key] !== kind && !(kind === "Result or Result entry" && (kinds[key] === "result" || kinds[key] === "result entry"))) refuse(where, `ref ${key} names a ${kinds[key]}, not a ${kind}`);
       return refs[key];
     }
     return key;
@@ -507,7 +507,7 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
           publish("result", r.id);
           return;
         }
-        const old = s.results[i];
+        const old = s.results[i]!;
         if (r.canonical === undefined && old.canonical !== undefined) {
           if (!("file" in old.canonical)) return refuse(where, `${old.id} was captured from ${"commit" in old.canonical ? `commit ${old.canonical.commit}` : `${old.canonical.tracker} at ${old.canonical.revision}`}; give canonical again with the revision this one captures`);
           r.canonical = io.canonical(old.canonical.file, where, old.canonical.root);
@@ -1379,7 +1379,7 @@ function parseQuestion(raw: unknown, where: string, id: string, stage: string, r
   const terms = pairs("terms", "term", "text") as Term[] | undefined;
   if (terms) q.terms = terms;
   if (o.topics !== undefined) q.topics = texts(o, "topics", where).map((t) => resolve(t, "topic", `${where}: topics`));
-  if (o.results !== undefined) q.entries = texts(o, "results", where).map((t) => resolve(t, "result entry", `${where}: results`));
+  if (o.results !== undefined) q.entries = texts(o, "results", where).map((t) => resolve(t, "Result or Result entry", `${where}: results`));
   const example = optText(o, "example", where);
   if (example) q.example = example;
   const shown = [
@@ -1458,12 +1458,23 @@ export function latestAsks(s: State, stage: string): Map<number, Question> {
   return new Map([...latest].sort(([a], [b]) => a - b));
 }
 
+type ResultLink = { id: string; kind: "result" | "entry"; result: string; title: string; anchor: string; entry?: string };
+
+function resultLink(s: State, id: string): ResultLink | undefined {
+  for (const r of s.results) {
+    if (r.id === id) return { id, kind: "result", result: r.id, title: r.title, anchor: r.id };
+    const e = r.entries.find((e) => `${r.id}/${e.id}` === id);
+    if (e) return { id, kind: "entry", result: r.id, title: r.title, anchor: `${r.id}-${e.id}`, entry: e.id };
+  }
+  return undefined;
+}
+
 function checkLinks(s: State, report: (id: string, suffix: string, message: string, allowed?: string[]) => void): void {
   const topics = new Set(s.topics.map((t) => t.id));
-  const entries = new Set(s.results.flatMap((r) => r.entries.map((e) => `${r.id}/${e.id}`)));
+  const targets = s.results.flatMap((r) => [r.id, ...r.entries.map((e) => `${r.id}/${e.id}`)]);
   for (const q of s.questions) {
     for (const [i, t] of (q.topics ?? []).entries()) if (!topics.has(t)) report(q.id, `.topics[${i}]`, `topic ${t} does not exist`, [...topics]);
-    for (const [i, e] of (q.entries ?? []).entries()) if (!entries.has(e)) report(q.id, `.results[${i}]`, `result entry ${e} does not exist; name it <result ref or id>/<entry ref or id>`, [...entries]);
+    for (const [i, id] of (q.entries ?? []).entries()) if (!resultLink(s, id)) report(q.id, `.results[${i}]`, `Result or Result entry ${id} does not exist; name a whole Result as <result ref or id>, or an entry as <result ref or id>/<entry ref or id>`, targets);
     if (q.reopens === undefined) continue;
     const a = s.assumed.find((x) => x.id === q.reopens);
     if (!a) { report(q.id, ".reopens", `Assumed pick ${q.reopens} does not exist`, s.assumed.map(a => a.id)); continue; }
@@ -1516,7 +1527,7 @@ function codeLocation(e: Entry, anchor: string): CodeLocation {
 
 /** `picks` holds option labels only for an explicit pick; `why` says why an unresolved answer is not consent. */
 export type AnswerView = { state: AnswerState; why?: ResponseStatus | NonConsent; id?: string; time?: string; response?: AskResponse; reading?: Reading; picks?: string[]; legacy?: Answer["legacy"] };
-export type QuestionView = Question & { answer: AnswerView; open: boolean; latest: boolean; retired?: { reason: string; time?: string }; decided_in?: string; asked_again_by: string[] };
+export type QuestionView = Question & { result_links: ResultLink[]; answer: AnswerView; open: boolean; latest: boolean; retired?: { reason: string; time?: string }; decided_in?: string; asked_again_by: string[] };
 export type DocView = {
   sections: { anchor: string; heading: string; blocks: Block[] }[];
   citations: { anchor: string; n: number; ref: string; source: string; text: string; cited_in: string[] }[]; citationsAnchor: string;
@@ -1546,6 +1557,7 @@ export type ResultView = Omit<Result, "entries" | "document" | "comparison" | "m
   /** The id this rendering of the Result anchors at: the Result id, or `<id>-r<n>` for an earlier revision. */
   anchor: string;
   revision: number;
+  questions: string[];
   entries: (Entry & { anchor: string; questions: string[]; location?: CodeLocation })[];
   doc?: DocView;
   comparison?: ComparisonView;
@@ -1709,7 +1721,7 @@ export function view(s: State): View {
     const answer = answerView(s, q);
     const latest = latestIds.has(q.id);
     const retired = s.retirements.find((r) => r.question === q.id);
-    const qv: QuestionView = { ...q, answer, latest, open: latest && !retired && !settled(answer.state), asked_again_by: s.questions.filter((x) => x.again === q.id).map((x) => x.id) };
+    const qv: QuestionView = { ...q, result_links: (q.entries ?? []).flatMap((id) => { const link = resultLink(s, id); return link ? [link] : []; }), answer, latest, open: latest && !retired && !settled(answer.state), asked_again_by: s.questions.filter((x) => x.again === q.id).map((x) => x.id) };
     if (retired) qv.retired = { reason: retired.reason, time: retired.time };
     if (decidedIn.has(q.id)) qv.decided_in = decidedIn.get(q.id);
     questions.set(q.id, qv);
@@ -1720,15 +1732,16 @@ export function view(s: State): View {
     const { document: d, comparison: c, metrics: m, ...rest } = r;
     const rv: ResultView = {
       ...rest, anchor, revision: r.revision ?? 1, shown: attachmentsOf(r).map((a) => attachment.get(a)!), history: [],
+      questions: current ? linking(r.id) : [],
       entries: r.entries.map((e) => {
         const ea = `${anchor}-${e.id}`;
         return { ...e, anchor: ea, questions: current ? linking(`${r.id}/${e.id}`) : [], ...(r.shape === "code" ? { location: codeLocation(e, ea) } : {}) };
       }),
     };
     if (r.axes) rv.review = r.axes.flatMap((axis): ReviewRow[] => {
-      const findings = rv.entries.filter((e) => e.axis === axis.axis);
+      const findings = r.entries.filter((e) => e.axis === axis.axis);
       return findings.length ? findings.map((e) => ({
-        ...axis, finding: e.title as string, impact: e.impact as string, location: (e as Entry).location as string, blocking: e.blocking as boolean, target: e.anchor,
+        ...axis, finding: e.title as string, impact: e.impact as string, location: e.location as string, blocking: e.blocking as boolean, target: `${anchor}-${e.id}`,
       })) : [{ ...axis }];
     });
     if (d) {
@@ -1816,6 +1829,7 @@ export function snapshot(v: View) {
         revisions: [...r.history, r].filter((x, i, all) => !all.slice(i + 1).some((later) => later.revision === x.revision)).map((x) => ({ revision: x.revision, ...(x.captured ? { captured: x.captured } : {}), ...(x.canonical ? { canonical: x.canonical } : {}), attachments: x.shown.map((a) => a.id) })),
         history: r.history.map((x) => ({ anchor: x.anchor, revision: x.revision, ...(x.edit === undefined ? {} : { edit: x.edit }), ...(x.canonical ? { canonical: x.canonical } : {}), attachments: x.shown.map((a) => a.id) })),
         attachments: r.shown.map((a) => a.id),
+        questions: r.questions,
         entries: r.entries.map(({ anchor: _, ...e }) => ({ ...e, id: `${r.id}/${e.id}`, questions: e.questions })),
         ...(r.doc ? {
           document: {
@@ -1848,7 +1862,7 @@ export function snapshot(v: View) {
         id: q.id, q: q.q, latest: q.latest, open: q.open, answer: q.answer, ...(q.retired ? { retired: q.retired } : {}),
         ...(q.multi !== undefined ? { multi: q.multi } : {}),
         ...(q.again ? { again: q.again } : {}), asked_again_by: q.asked_again_by, ...(q.reopens ? { reopens: q.reopens } : {}),
-        results: q.entries ?? [], topics: q.topics ?? [], ...(q.decided_in ? { decided_in: q.decided_in } : {}),
+        results: q.entries ?? [], result_links: q.result_links, topics: q.topics ?? [], ...(q.decided_in ? { decided_in: q.decided_in } : {}),
         ...(q.figures ? { figures: q.figures } : {}),
         ...(q.needs ? { needs: q.needs } : {}),
         ...(q.options.some((o) => o.preview) ? { options: q.options.map((o) => ({ label: o.label, ...(o.preview ? { preview: o.preview } : {}) })) } : {}),

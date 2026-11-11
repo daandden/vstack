@@ -29,14 +29,6 @@ export function sourceText(flow: Flow, id: string): string {
   return flow.sources.find((x) => x.id === id)?.text ?? id;
 }
 
-export function entryTitle(flow: Flow, ref: string): { result: string; entry: string; name: string } | undefined {
-  const [rid, eid] = ref.split("/");
-  const r = flow.stages.flatMap((st) => st.results).find((x) => x.id === rid);
-  const e = r?.entries.find((x) => x.id === eid);
-  if (!r || !e) return undefined;
-  const name = r.shape === "code" ? (e.file as string) : r.shape === "ledger" ? (e.claim as string) : r.shape === "table" ? (e.cells as string[])[0] || e.id : (e.title as string);
-  return { result: r.title, entry: e.id, name };
-}
 
 export function blockLabel(flow: Flow, b: ReadingBlock): string {
   const st = b.stage ? flow.stage.get(b.stage) : undefined;
