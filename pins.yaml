@@ -31,8 +31,6 @@ upstreams:
     path: skills/good-css
     pin_kind: commit
     pin: 92d436ba1937d1b1407c47e35abb3e199eaace2e
-    # check-register runs this script at the Pin over vstack page templates (plugin/skills/*/templates/).
-    page_lint: scripts/check-css.mjs
     items:
       - { match: "skills/good-css", type: tree, kind: skill }
 

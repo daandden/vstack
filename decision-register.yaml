@@ -1126,7 +1126,7 @@ originals:
   - plugin/skills/flow-page # Reader stack: ADR 0072. Saved Reader comments: ADR 0073.
   - plugin/skills/vstack-worktree
   - plugin/skills/skill-creator
-  - plugin/skills/vstack-maintain
+  - plugin/skills/vstack-maintain # Includes vstack's page lint, scripts/check-css.mjs (#456).
   - plugin/skills/vstack-figures
   - plugin/skills/clean-wt
   - plugin/skills/tune-llm-flow

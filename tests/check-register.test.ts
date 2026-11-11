@@ -715,7 +715,7 @@ const cases: { cls: string; name: string; mutate: (s: RepoSpec) => void; expecte
   },
   {
     cls: "page-css",
-    name: "a page template that breaks the CSS upstream's lint at its Pin",
+    name: "a page template that removes the focus outline",
     mutate: (s) => (s.files["plugin/skills/shared/templates/page.html"] = PAGE_TEMPLATE.violation),
     expected: ["page-css plugin/skills/shared/templates/page.html"],
   },
@@ -738,12 +738,12 @@ describe("each failure class names the item", () => {
   }
 });
 
-// vstack page templates and the CSS upstream's lint (#61, #72).
+// vstack-owned page lint through check-register (#456).
 describe("page templates", () => {
   const TEMPLATE = "plugin/skills/shared/templates/page.html";
 
-  test("zero templates pass and fetch no lint", async () => {
-    const r = await runSpec(() => {});
+  test("zero templates pass without a lint script", async () => {
+    const r = await runSpec((s) => { delete s.files["plugin/skills/vstack-maintain/scripts/check-css.mjs"]; });
     expect(r.json!.failures).toEqual([]);
     expect(r.json!.notes).toContain("page templates: none");
   });
@@ -751,7 +751,57 @@ describe("page templates", () => {
   test("a clean template passes", async () => {
     const r = await runSpec((s) => (s.files[TEMPLATE] = PAGE_TEMPLATE.clean));
     expect(r.json!.failures).toEqual([]);
-    expect(r.json!.notes).toContain(`page templates: 1, linted with beta@${up.betaPin}:scripts/check-css.mjs`);
+    expect(r.json!.notes).toContain("page templates: 1, linted with plugin/skills/vstack-maintain/scripts/check-css.mjs");
+  });
+
+  test("a 400ms transition and physical left pass without an Upstream page lint", async () => {
+    const r = await runSpec((s) => {
+      s.files[TEMPLATE] = "<style>\n.box {\n  left: 0;\n  transition: transform 400ms;\n}\n</style>\n";
+    });
+    expect(r.code).toBe(0);
+    expect(r.json!.failures).toEqual([]);
+  });
+
+  test("ease-in, transition-all, ungated motion, and long durations pass", async () => {
+    const r = await runSpec((s) => {
+      s.files[TEMPLATE] = "<style>\n.box {\n  transform: scale(1);\n  transition: transform 400ms ease-in;\n  transition-property: all;\n  transition-duration: 900ms;\n}\n</style>\n";
+    });
+    expect(r.code).toBe(0);
+    expect(r.json!.failures).toEqual([]);
+  });
+
+  for (const [name, css, message] of [
+    ["ungated hover", ".box:hover { color: oklch(0 0 none); }", "Put this `:hover` rule inside"],
+    ["removed outline", ".box { outline: 0; }", "Never remove the outline."],
+    ["removed outline style", ".box { outline-style: none; }", "Never remove the outline."],
+    ["hex color", ".box { color: #ffffff; }", "Write the color in `oklch()`"],
+    ["rgb color", ".box { color: rgb(0 0 0); }", "Write the color in `oklch()`"],
+    ["hsl color", ".box { color: hsl(0 0% 0%); }", "Write the color in `oklch()`"],
+  ]) {
+    test(`${name} fails and names the template and line`, async () => {
+      const r = await runSpec((s) => { s.files[TEMPLATE] = `<style>\n${css}\n</style>\n`; });
+      expect(r.code).toBe(1);
+      expect(failuresOf(r)).toEqual([`page-css ${TEMPLATE}`]);
+      expect(r.json!.failures[0].message).toContain(`${TEMPLATE}:2 ${message}`);
+    });
+  }
+
+  test("gated hover, visible outlines, mask colors, and quoted CSS pass", async () => {
+    const r = await runSpec((s) => {
+      s.files[TEMPLATE] = `<style>
+/* .box:hover { outline: none; color: #fff; } */
+@media (hover: hover) and (pointer: fine) {
+  .box:hover { color: oklch(0 0 none); }
+}
+.box:focus-visible {
+  outline: 2px solid currentColor;
+  mask-image: linear-gradient(#000, #fff);
+  content: "outline: none; color: #fff;";
+}
+</style>`;
+    });
+    expect(r.code).toBe(0);
+    expect(r.json!.failures).toEqual([]);
   });
 
   test("a violation names the template and the lint's line", async () => {
@@ -760,32 +810,34 @@ describe("page templates", () => {
       s.files["plugin/skills/shared/templates/other.html"] = PAGE_TEMPLATE.clean;
     });
     expect(failuresOf(r)).toEqual([`page-css ${TEMPLATE}`]);
-    expect(r.json!.failures[0].message).toContain(`${TEMPLATE}:4 left is physical`);
+    expect(r.json!.failures[0].message).toContain(`${TEMPLATE}:4 Never remove the outline.`);
   });
 
   test("a .css template is linted too, and html outside templates/ is not", async () => {
     const r = await runSpec((s) => {
-      s.files["plugin/skills/shared/templates/page.css"] = ".box {\n  left: 0;\n}\n";
+      s.files["plugin/skills/shared/templates/page.css"] = ".box {\n  outline: none;\n}\n";
       s.files["plugin/skills/shared/assets/figure.html"] = PAGE_TEMPLATE.violation;
     });
     expect(failuresOf(r)).toEqual(["page-css plugin/skills/shared/templates/page.css"]);
+    expect(r.json!.failures[0].message).toContain("plugin/skills/shared/templates/page.css:2 Never remove the outline.");
   });
 
   test("the Flow reader's stylesheets are linted, and its components are not", async () => {
     const r = await runSpec((s) => {
-      s.files["reader/app/assets/reader.css"] = ".box {\n  left: 0;\n}\n";
+      s.files["reader/app/assets/reader.css"] = ".box {\n  outline: none;\n}\n";
       s.files["reader/app/components/Box.vue"] = PAGE_TEMPLATE.violation;
     });
     expect(failuresOf(r)).toEqual(["page-css reader/app/assets/reader.css"]);
+    expect(r.json!.failures[0].message).toContain("reader/app/assets/reader.css:2 Never remove the outline.");
   });
 
-  test("exit 2 when no Upstream names a page lint and templates exist", async () => {
+  test("exit 2 when the vstack-owned lint script is missing and templates exist", async () => {
     const spec = clone(passingSpec(up));
-    delete spec.pins.upstreams.beta.page_lint;
+    delete spec.files["plugin/skills/vstack-maintain/scripts/check-css.mjs"];
     spec.files[TEMPLATE] = PAGE_TEMPLATE.clean;
     const r = await checkout(up, spec).run();
     expect(r.code).toBe(2);
-    expect(r.stderr).toContain("page_lint");
+    expect(r.stderr).toContain("plugin/skills/vstack-maintain/scripts/check-css.mjs");
   });
 });
 
@@ -1243,7 +1295,7 @@ describe("github source (GitHub tree API)", () => {
     expect(failuresOf(r)).toEqual(["adopt-not-identical alpha/held"]);
   });
 
-  test("a page template violation fails with the lint fetched from the API", async () => {
+  test("a page template violation fails with the local lint when using the API source", async () => {
     const spec = clone(passingSpec(up));
     spec.files["plugin/skills/shared/templates/page.html"] = PAGE_TEMPLATE.violation;
     const r = await checkout(up, spec).run([], { env: env(), source: "github" });

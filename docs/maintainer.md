@@ -135,8 +135,6 @@ git -C ~/.cache/vstack/upstreams/matt fetch --tags origin
 
 Each entry's `items:` list says which tree entries at the Pin are Upstream items. `match` is a path glob from the repo root where `*` stays inside one path segment, `type` is `tree` or `blob`, and the first matching pattern sets the `kind`. For example, pstack's automations are one item each, so their nested skills get no rows.
 
-One entry, the CSS upstream, also has `page_lint: scripts/check-css.mjs`: the script `check-register` runs at that Pin over vstack's page templates (see "Page templates" below).
-
 ### UI upstream
 
 The UI upstream is `emilkowalski/skills`, keyed as `emil`, initially pinned at `a81dbca07f2217b7103e510c0f13f8d5b017afc9`. Its `skills/*` tree pattern discovers sixteen items. Ticket 339 ships `emil-design-eng`; ticket 343 adds `review-animations` with its companion standards; ticket 341 adds `break-ui` with its required adverse-content catalog; ticket 342 adds `animate` with component recipes and `animation-performance`; ticket 340 adds `apple-design` and `mobile-native` with their conditional companion references; ticket 344 adds `improve-animations` with audit and selected-requirements companions, `find-animation-opportunities`, and `remove-animations`. Each is an adapted hidden Addon with an upstream MIT notice in its skill directory. Break-ui is reference knowledge used by existing implementation and Verify owners, including delegated UI work. Apple-derived guidance is for web interactions; mobile-native is mobile-web guidance, not Expo or Swift development.
@@ -194,7 +192,7 @@ It proves that the register, `pins.yaml`, `plugin/`, and the Upstreams agree. Op
 | `--json` | | text output |
 | `--list-classes` | | prints every failure class and exits |
 
-The `github` source reads trees through the GitHub REST API (`commits/<ref>`, then `git/trees/<sha>?recursive=1`). It uses `GITHUB_TOKEN` or `GH_TOKEN` when set and `GITHUB_API_URL` as the API base. Both sources live in `scripts/lib/upstreams.ts`, which vstack-maintain reuses. Byte identity compares git blob SHAs without downloading contents. Page lint reads the CSS script only when a page template exists. The clones source uses `git cat-file`. A blobless clone fetches that blob on first read. The github source uses `contents/<path>?ref=<pin>`.
+The `github` source reads trees through the GitHub REST API (`commits/<ref>`, then `git/trees/<sha>?recursive=1`). It uses `GITHUB_TOKEN` or `GH_TOKEN` when set and `GITHUB_API_URL` as the API base. Both sources live in `scripts/lib/upstreams.ts`, which vstack-maintain reuses. Byte identity compares git blob SHAs without downloading contents. Page lint runs vstack's local script and reads no Upstream files.
 
 Exit codes: 0 pass, 1 register failures, 2 the check could not run (bad arguments, unreadable `pins.yaml` or register, a missing clone or ref, an API error). Exit 2 prints the remedy, such as the clone or fetch command.
 
@@ -233,7 +231,7 @@ Other files count even when an artifact lacks `SKILL.md`. Source inside `__pycac
 | `worktree-cmd` | adapt, merge, or original text runs `git worktree add` |
 | `tmp-path` | adapt, merge, or original text names `$TMPDIR/`, `/tmp/`, or the OS temp directory, outside a `mktemp` line |
 | `ask-tool` | any markdown artifact, adopt included, has a sentence with an `ask-tool` phrase that does not name `` `ask` `` |
-| `page-css` | a page template breaks the CSS upstream's `check-css.mjs` at its Pin; the item is the template and the message holds the script's `path:line` lines |
+| `page-css` | a page template or Flow reader stylesheet breaks vstack's hover, outline, or color check; the item is the file and the message holds the script's `path:line` lines |
 | `invalid-utility` | a `utility:` entry names no shipped skill, or names a skill with a non-reject Base upstream row |
 | `addon-slash-route` | text under `plugin/` or in `README.md` contains `/skill:<addon>`. Use `skill://<addon>` instead |
 | `addon-question-mismatch` | a key in the `questions` map of `addon-questions.json` names no shipped skill or names a Utility skill, or a shipped Addon has no such key |
@@ -263,7 +261,11 @@ A lint over shipped text starts from `lintTargets(ctx)` in `scripts/lib/checks/s
 
 ### Page templates
 
-Page templates follow good-css (#61). A page template is any `*.html` or `*.css` under `plugin/skills/<name>/templates/`. `scripts/lib/checks/pages.ts` runs the CSS Upstream's `page_lint:` script at its Pin over these files. Each flagged template reports `page-css`. With no template, the check reads nothing. Templates hold no authored figure. The caller writes Mermaid through vstack-figures and captures its source in the Flow. The host-backed reader draws it with Pele. An offline lesson instead renders an SVG and may inline its exact bytes.
+A page template is any `*.html` or `*.css` under `plugin/skills/<name>/templates/`. `scripts/lib/checks/pages.ts` also checks every `*.css` under `reader/app/`. It runs `plugin/skills/vstack-maintain/scripts/check-css.mjs`, registered as part of the vstack-maintain original, over these files. Each flagged file reports `page-css`. With no matching files, the check does not run the script.
+
+The script derives from the CSS upstream's `check-css.mjs` at `92d436ba1937d1b1407c47e35abb3e199eaace2e` and retains its MIT notice. vstack maintains this copy without Upstream fixes. It keeps the hover, outline, and color checks. It does not enforce logical properties, easing, transition property lists, reduced-motion gating, or duration limits. Pins supply no page lint.
+
+Templates hold no authored figure. The caller writes Mermaid through vstack-figures and captures its source in the Flow. The host-backed reader draws it with Pele. An offline lesson instead renders an SVG and may inline its exact bytes.
 
 ## House style
 

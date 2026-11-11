@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Own the page lint for templates and Flow reader stylesheets, retaining hover, outline, and color checks without enforcing motion or positioning choices (#456)."
+  ]
+}
