@@ -114,11 +114,11 @@ For example, an invalid option's gains can produce:
 
 The codes are `required_field`, `unknown_field`, `invalid_type`, `invalid_enum`, `invalid_union`, `too_few_items`, `too_many_items`, `invalid_length`, `out_of_range`, `invalid_value`, `invalid_reference`, and `invalid_json`. Correct every reported field, validate again, then submit the unchanged contribution. `submit` uses the same validator and returns the same diagnostics if the Flow and files have not changed.
 
-## Discover Result fields
+## Discover contribution fields
 
-Run `catalog` to list every Result shape and its one-line purpose. Run `describe <shape>` for its JSON field contract, or `describe <shape> --compact` for one line per field. These commands need no Flow binding, start no host, and write no Flow content.
+Run `catalog` to list every Result shape with its one-line purpose and every contribution kind. Run `describe <shape>` or `describe <kind>` for its JSON field contract. Add `--compact` for one line per field. For example, `describe round` includes questions and options, and `describe answer` includes responses and readings. These commands need no Flow binding, start no host, and write no Flow content.
 
-Discovery reads the same field metadata as `validate` and `submit`. JSON includes nested `fields`, `required`, enum `values`, array bounds, and `variants`. `oneOf` requires exactly one of the named fields. Recursive contracts use `$ref` paths within `contract`.
+Discovery reads the same field metadata as `validate` and `submit`. JSON includes nested `fields`, `required`, enum `values`, array bounds, and `variants`. Conditional contracts include `selection`, which says when each variant applies. Progress kinds with separate creation and update fields expose both variants. String items marked `expected: "non-empty string"` reject empty or whitespace-only values. `oneOf` requires exactly one of the named fields. Recursive contracts use `$ref` paths within `contract`.
 
 Compact lines show the field path, type, `required=true` or `required=false`, enum values, and applicable bounds. `[]` means an array item, `[*]` a record value, and `<name>` a union variant. A variant's required fields apply when that variant is selected. A field marked `oneOf` belongs to an exclusive required group even if its individual required flag is false.
 

@@ -121,7 +121,7 @@ async function ensure(home: string): Promise<Ready> {
       if (r?.pid !== child.pid) continue;
       const ready = await hello(port, secret.control);
       check(ready);
-      if (ready.state === "ours" && ready.instance === r.instance) return { port, secret };
+      if (ready.state === "ours" && ready.instance === r!.instance) return { port, secret };
     }
     child.kill("SIGTERM");
     throw new Error(`Flow host did not become ready on port ${port}; inspect ${log}`);

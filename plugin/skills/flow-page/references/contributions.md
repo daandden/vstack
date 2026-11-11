@@ -4,6 +4,8 @@ Read the relevant section before publishing a Background, Topic note, round, ans
 
 `validate [<file> | -]` checks these fields against the bound or explicitly named Flow and Stage without publishing. It leaves the contribution, Stages, assets, and Flow revision unchanged. `submit` runs the same validator before committing. Both commands report independent errors together with stable codes, JSON paths, messages, and allowed values or expected types. See [Validate without publishing](../SKILL.md#validate-without-publishing) for output and exit codes.
 
+`catalog` lists contribution kinds alongside Result shapes. `describe <kind>` exposes the same field metadata used by validation, including nested question options, response and reading variants, close decisions, Stage state, and progress creation and updates. Add `--compact` for field lines. The metadata describes field structure. The rules below also govern references and state transitions.
+
 Item kinds and their fields:
 
 - `background`: `title`, `summary` (one line), `sections` (one or more `{ heading, body }`), and `sources` (one or more strings, such as `GLOSSARY.md` or `[text](url)`). A Stage has one Background. Submit it before the Stage's first round. Optional `figures` is an array of `{ attachment: "<ref or id>" }` captured figure references.
@@ -21,6 +23,8 @@ Item kinds and their fields:
   - `results`: the Result entries it comes from. The page links them both ways.
   - `example`: text that makes the question concrete.
   - `figures`: an array of `{ attachment: "<ref or id>", kind: "<Visual kind>" }` captured figure references or `{ text: "<source excerpt or output>", kind: "<Visual kind>" }` escaped text figures.
+
+  Option `gains` and `costs` are lists with one or more nonempty strings. Empty lists, scalar strings, and empty or whitespace-only elements are refused.
 
   A newly submitted round is refused when different questions reuse the same description, need text, or option `does`, `gains`, or `costs` text, ignoring finding and question identifiers such as F01 or Q3. Reused option labels are allowed. This check catches copied wording, not whether the questions explain meaningful differences. Apply the reader-needs checklist before submission. The refusal applies only within the new round, not to stored questions, answers, or historical data.
 - `answer`: `question`, `response`, and, for words with no pick, `reading`. A question takes one answer. To reopen it, ask it again with `again`, which keeps the earlier answer beside the new one.

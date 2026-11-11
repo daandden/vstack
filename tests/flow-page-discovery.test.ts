@@ -1,7 +1,10 @@
 import { afterAll, beforeEach, expect, test } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { statePathOf } from "./support/flow-store.ts";
+import type { Contract, Diagnostic } from "../plugin/skills/flow-page/scripts/contracts.ts";
+import type { Answer, Decision, Question, Reading } from "../plugin/skills/flow-page/scripts/model.ts";
 
 const SCRIPT = join(import.meta.dir, "..", "plugin/skills/flow-page/scripts/flow-page.ts");
 const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-discovery-")));
@@ -162,4 +165,163 @@ test("describe exposes exclusive required content and validate diagnoses its omi
       allowed: item.shape === "prototype" ? ["demo", "artifact"] : ["code", "diff"],
     }));
   }
+});
+
+const kinds = ["background", "topic", "attachment", "result", "revise", "assumed", "round", "answer", "close", "stage", "wayfinder", "task", "blocker", "end-state", "pr", "check"];
+const envelope = (...items: unknown[]) => ({ version: 1, items });
+const describeKind = (kind: string) => {
+  const described = run(["describe", kind]);
+  expect(described.code).toBe(0);
+  expect(described.json.kind).toBe(kind);
+  return described.json.contract;
+};
+
+function fromRequired(contract: Contract, path = "$"): unknown {
+  if (contract.type === "literal") return contract.values!.includes("prose") ? "prose" : contract.values![0];
+  if (contract.type === "string") return path.endsWith(".title") ? "Which owner?" : `Value for ${path}`;
+  if (contract.type === "array") return Array.from({ length: path.endsWith(".options") ? 2 : contract.min! }, (_, i) => fromRequired(contract.items!, `${path}[${i}]`));
+  if (contract.type === "object") return Object.fromEntries(contract.required!.map(name => [name, fromRequired(contract.fields![name], `${path}.${name}`)]));
+  throw new Error(`Choose a variant before constructing ${path}`);
+}
+
+test("contribution discovery covers nested questions, readings, closes, Stage state, and every progress variant", () => {
+  expect(run(["catalog"]).json.kinds).toEqual(kinds);
+  for (const kind of kinds) {
+    const contract = describeKind(kind);
+    expect(contract.type).toMatch(/object|union/);
+    const compact = run(["describe", kind, "--compact"]);
+    expect(compact.code).toBe(0);
+    expect(compact.stdout).toContain('kind type=string required=true enum=');
+  }
+  const round = describeKind("round");
+  const question = round.fields.questions.items;
+  expect(question.required).toEqual(["title", "description", "needs", "options"]);
+  const option = question.fields.options.items;
+  expect(option.required).toEqual(["label", "does", "gains", "costs"]);
+  for (const name of ["gains", "costs"]) {
+    expect(option.fields[name]).toMatchObject({ type: "array", min: 1, items: { type: "string", expected: "non-empty string" } });
+  }
+  const answer = describeKind("answer");
+  expect(answer.fields.response.fields.status.values).toEqual(["answered", "empty", "cancelled", "timed-out", "headless"]);
+  expect(answer.fields.reading.variants.resolved.required).toEqual(["outcome", "decision", "basis"]);
+  expect(answer.fields.reading.variants.unresolved.fields.outcome.values).toEqual(["question", "concern", "ambiguous"]);
+  expect(describeKind("close").fields.decisions.items.required).toEqual(["question", "text"]);
+  expect(describeKind("stage").fields.state.values).toEqual(["finished"]);
+  for (const kind of ["task", "blocker", "pr", "check"]) {
+    const contract = describeKind(kind);
+    expect(Object.keys(contract.variants)).toEqual(["create", "update"]);
+    expect(contract.selection).toContain(kind);
+    expect(contract.variants.update.required).toContain(kind);
+  }
+  expect(describeKind("task").variants.create.fields.state.values).toEqual(["pending", "active", "done", "skipped", "inapplicable"]);
+  expect(describeKind("pr").variants.create.fields.state.values).toEqual(["open", "merged", "closed"]);
+  expect(describeKind("check").variants.create.fields.outcome.values).toEqual(["passed", "failed", "pending"]);
+  expect(describeKind("end-state").fields.requested.values).toEqual(["commit", "merge-ready", "shipped", "none"]);
+  expect(existsSync(join(home, ".vstack"))).toBe(false);
+});
+
+test("discovered required non-Result fields validate, diagnose omissions and bad option elements atomically, and replay unchanged", () => {
+  const contract = describeKind("round");
+  const round = fromRequired(contract) as { questions: Pick<Question, "title" | "description" | "needs" | "options">[] };
+  expect(run(["open", "--skill", "implement", "--title", "Non-Result discovery"]).code).toBe(0);
+  const before = run(["show"]).json;
+  const state = statePathOf(home, before.flow.id);
+  const beforeBytes = readFileSync(state, "utf8");
+  expect(run(["validate"], envelope(round))).toMatchObject({ code: 0, json: { ok: true, diagnostics: [] } });
+  for (const path of requiredPaths(contract, round)) {
+    const missing = structuredClone(round);
+    let parent: unknown = missing;
+    for (const key of path.slice(0, -1)) parent = (parent as Record<string | number, unknown>)[key];
+    delete (parent as Record<string | number, unknown>)[path.at(-1)!];
+    const refused = run(["validate"], envelope(missing));
+    const jsonPath = "$.items[0]" + path.map(key => typeof key === "number" ? `[${key}]` : `.${key}`).join("");
+    expect(refused.code).toBe(1);
+    expect(refused.json.diagnostics).toContainEqual(expect.objectContaining({ path: jsonPath }));
+  }
+  const invalid = structuredClone(round) as { questions: { description?: string; options: Record<string, unknown>[] }[] };
+  delete invalid.questions[0].description;
+  invalid.questions[0].options[0].gains = "scalar";
+  invalid.questions[0].options[0].costs = [];
+  invalid.questions[0].options[1].gains = [""];
+  invalid.questions[0].options[1].costs = ["   ", 42];
+  const checked = run(["validate"], envelope(invalid));
+  expect(checked.code).toBe(1);
+  expect(checked.json.diagnostics.map((d: Diagnostic) => [d.code, d.path])).toEqual(expect.arrayContaining([
+    ["required_field", "$.items[0].questions[0].description"],
+    ["invalid_type", "$.items[0].questions[0].options[0].gains"],
+    ["too_few_items", "$.items[0].questions[0].options[0].costs"],
+    ["invalid_value", "$.items[0].questions[0].options[1].gains[0]"],
+    ["invalid_value", "$.items[0].questions[0].options[1].costs[0]"],
+    ["invalid_type", "$.items[0].questions[0].options[1].costs[1]"],
+  ]));
+  expect(run(["submit"], envelope(invalid))).toMatchObject({ code: 1, json: checked.json });
+  expect(run(["show"]).json).toEqual(before);
+  expect(readFileSync(state, "utf8")).toBe(beforeBytes);
+  const submitted = run(["submit"], envelope(round));
+  expect(submitted.code).toBe(0);
+  const published = run(["show"]).json;
+  expect(published.stages[0].rounds[0].questions).toEqual([submitted.json.ask.questions[0].id]);
+  expect(run(["submit"], envelope(round)).json).toMatchObject({ revision: submitted.json.revision, repeated: true });
+  expect(run(["show"]).json).toEqual(published);
+
+  const answerContract = describeKind("answer");
+  const answer = fromRequired(answerContract) as Required<Pick<Answer, "question" | "response">> & { reading: Extract<Reading, { outcome: "resolved" }> };
+  answer.question = submitted.json.ask.questions[0].id;
+  answer.response.text = "Use the local owner.";
+  answer.reading = fromRequired(answerContract.fields.reading.variants.resolved) as typeof answer.reading;
+  answer.reading.decision = "Use the local owner.";
+  answer.reading.basis = "The response explicitly names the local owner.";
+  expect(run(["validate"], envelope(answer)).code).toBe(0);
+  expect(run(["submit"], envelope(answer)).code).toBe(0);
+  const close = fromRequired(describeKind("close")) as { decisions: Pick<Decision, "question" | "text">[] };
+  close.decisions.push({ question: answer.question, text: "Use the local owner." });
+  const stage = fromRequired(describeKind("stage"));
+  expect(run(["validate"], envelope(close, stage)).code).toBe(0);
+  expect(run(["submit"], envelope(close, stage)).code).toBe(0);
+  expect(run(["show"]).json.stages[0].state).toBe("finished");
+});
+
+test("discovered progress creation and update contracts support a complete workflow", () => {
+  expect(run(["open", "--skill", "implement", "--title", "Progress discovery"]).code).toBe(0);
+  const taskContract = describeKind("task");
+  const blockerContract = describeKind("blocker");
+  const prContract = describeKind("pr");
+  const checkContract = describeKind("check");
+  const task = { ...fromRequired(taskContract.variants.create) as Record<string, unknown>, ref: "work" };
+  const blocker = { ...fromRequired(blockerContract.variants.create) as Record<string, unknown>, ref: "blocked", tasks: ["work"] };
+  const pr = { ...fromRequired(prContract.variants.create) as Record<string, unknown>, ref: "review", url: "https://example.com/pr/1" };
+  const check = { ...fromRequired(checkContract.variants.create) as Record<string, unknown>, ref: "proof", outcome: "pending" };
+  const requested = { ...fromRequired(describeKind("end-state")) as Record<string, unknown>, requested: "commit" };
+  expect(run(["validate"], envelope(task, blocker, pr, check, requested)).code).toBe(0);
+  const created = run(["submit"], envelope(task, blocker, pr, check, requested));
+  expect(created.code).toBe(0);
+  const updates = [
+    { ...fromRequired(taskContract.variants.update) as Record<string, unknown>, task: created.json.refs.work, state: "done", evidence: ["Focused proof passed."] },
+    { ...fromRequired(blockerContract.variants.update) as Record<string, unknown>, blocker: created.json.refs.blocked, resolved: "The prerequisite is available." },
+    { ...fromRequired(prContract.variants.update) as Record<string, unknown>, pr: created.json.refs.review, state: "merged" },
+    { ...fromRequired(checkContract.variants.update) as Record<string, unknown>, check: created.json.refs.proof, outcome: "passed", evidence: ["CLI accepted the discovered fields."] },
+    { ...fromRequired(describeKind("end-state")) as Record<string, unknown>, reached: "commit", evidence: ["The requested revision is committed."] },
+  ];
+  expect(run(["validate"], envelope(...updates)).code).toBe(0);
+  expect(run(["submit"], envelope(...updates)).code).toBe(0);
+  const shown = run(["show"]).json;
+  expect(shown.progress.complete).toBe(true);
+  expect(shown.progress.tasks[0].state).toBe("done");
+  expect(shown.progress.checks[0].outcome).toBe("passed");
+});
+
+test("non-Result discovery and validation follow the same changed option constraint", () => {
+  const wrapper = join(cwd, "changed-option-contract.ts");
+  const metadata = join(import.meta.dir, "..", "plugin/skills/flow-page/scripts/contracts.ts");
+  writeFileSync(wrapper, `import { contributionKinds } from ${JSON.stringify(metadata)};\ncontributionKinds.round.fields.questions.items.fields.options.items.fields.gains.min = 2;\nawait import(${JSON.stringify(SCRIPT)});\n`);
+  const described = run(["describe", "round"], undefined, wrapper);
+  expect(described.code).toBe(0);
+  expect(described.json.contract.fields.questions.items.fields.options.items.fields.gains.min).toBe(2);
+  expect(run(["open", "--skill", "implement", "--title", "Changed option constraint"]).code).toBe(0);
+  const round = fromRequired(describeKind("round"));
+  const refused = run(["validate"], envelope(round), wrapper);
+  expect(refused.code).toBe(1);
+  expect(refused.json.diagnostics).toContainEqual(expect.objectContaining({
+    code: "too_few_items", path: "$.items[0].questions[0].options[0].gains", allowed: "at least 2 items",
+  }));
 });

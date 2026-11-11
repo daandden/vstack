@@ -509,7 +509,7 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
         }
         const old = s.results[i];
         if (r.canonical === undefined && old.canonical !== undefined) {
-          if (!("file" in old.canonical)) refuse(where, `${old.id} was captured from ${"commit" in old.canonical ? `commit ${old.canonical.commit}` : `${old.canonical.tracker} at ${old.canonical.revision}`}; give canonical again with the revision this one captures`);
+          if (!("file" in old.canonical)) return refuse(where, `${old.id} was captured from ${"commit" in old.canonical ? `commit ${old.canonical.commit}` : `${old.canonical.tracker} at ${old.canonical.revision}`}; give canonical again with the revision this one captures`);
           r.canonical = io.canonical(old.canonical.file, where, old.canonical.root);
         }
         r.revision = (old.revision ?? 1) + 1;
@@ -1728,7 +1728,7 @@ export function view(s: State): View {
     if (r.axes) rv.review = r.axes.flatMap((axis): ReviewRow[] => {
       const findings = rv.entries.filter((e) => e.axis === axis.axis);
       return findings.length ? findings.map((e) => ({
-        ...axis, finding: e.title as string, impact: e.impact as string, location: e.location as string, blocking: e.blocking as boolean, target: e.anchor,
+        ...axis, finding: e.title as string, impact: e.impact as string, location: (e as Entry).location as string, blocking: e.blocking as boolean, target: e.anchor,
       })) : [{ ...axis }];
     });
     if (d) {
