@@ -39,6 +39,15 @@ describe("ADR filenames", () => {
     expect(inventory(co.root)).toEqual(before);
   });
 
+  test("the existing 0074 pair is accepted like the 0065 pair", async () => {
+    const spec = legacySpec();
+    spec.files["docs/adr/0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css.md"] = body;
+    spec.files["docs/adr/0074-private-mcp-config-is-shared-through-links-and-a-named-hook.md"] = body;
+    const result = await checkout(up, spec).run();
+    expect(result.code).toBe(0);
+    expect(result.json!.failures).toEqual([]);
+  });
+
   test.each([
     "new-decision.md",
     "0074-new-number.md",

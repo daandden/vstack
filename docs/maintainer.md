@@ -238,7 +238,7 @@ Other files count even when an artifact lacks `SKILL.md`. Source inside `__pycac
 | `missing-change-note` | shipped `plugin/` text changed since the comparison base without a Change note added by the branch |
 | `invalid-plugin-release` | a version change or consumed note lacks a new Plugin release receipt, the version is not exactly the highest prepared level, a prepared note remains, an unrelated note is removed, or CHANGELOG does not keep every prepared entry under the dated heading |
 | `invalid-adr-name` | a file added under `docs/adr/` since the comparison base lacks a real `YYYYMMDD` date or a lowercase, hyphen-separated slug in `YYYYMMDD-slug.md` |
-| `duplicate-adr-number` | legacy numbered ADRs share a number, except the exact existing 0065 pair |
+| `duplicate-adr-number` | legacy numbered ADRs share a number, except the exact existing 0065 and 0074 pairs |
 | `invalid-house-style` | a row or rule in `house-style.yaml` lacks a field or has a bad one, a row comes after a row that rewrites its `from`, or a linted rule is missing; the item is `house-style.yaml:<id>` |
 | `house-style-leftover` | a row's `from` still matches text the row covers (see "House style" below; adopt text only against `required` rows) |
 | `migration-house-style` | setup-vstack is present but its `references/house-style.yaml` copy is missing, has invalid row fields, or differs from the root `uses: migration` rows in content or order |
@@ -265,7 +265,7 @@ A House style failure names the register row behind the artifact, or the artifac
 
 New ADRs use `YYYYMMDD-slug.md`, with a real local creation date and a lowercase slug of letters and digits separated by single hyphens. Cite the full filename stem without `.md`. The date does not change when the branch lands later. If two branches choose the same date and slug, the second branch changes its unlanded slug and references before landing. Landed filenames stay stable.
 
-The check reads files under `docs/adr/`, including untracked files. It validates names absent from the same comparison base used by the Change-note check. Existing filenames are not relinted or renamed, and prose citations are not checked. Duplicate legacy numbers are refused except for `0065-flow-figures-get-color-roles-from-the-shared-role-pass.md` and `0065-n-stays-in-the-focused-stage-and-tern-tabs-follow-their-selected-session.md`. A third 0065 file is not covered by that exception.
+The check reads files under `docs/adr/`, including untracked files. It validates names absent from the same comparison base used by the Change-note check. Existing filenames are not relinted or renamed, and prose citations are not checked. Duplicate legacy numbers are refused except for two existing pairs: `0065-flow-figures-get-color-roles-from-the-shared-role-pass.md` with `0065-n-stays-in-the-focused-stage-and-tern-tabs-follow-their-selected-session.md`, and `0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css.md` with `0074-private-mcp-config-is-shared-through-links-and-a-named-hook.md`. A third file with either number is not covered by that exception.
 
 `ADR-name base` reports the comparison commit. The check does not verify an author's clock, enforce listing order, resolve a Git conflict, or certify custom ADR tools in other projects. The authoring convention applies to their new ADRs too, in their existing location, including Private mode. See [ADR 20261111-new-adrs-are-named-by-date-and-slug](adr/20261111-new-adrs-are-named-by-date-and-slug.md).
 

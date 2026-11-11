@@ -5,9 +5,15 @@ import { git, resolveBase } from "./base.ts";
 import type { Check, Failure } from "./types.ts";
 
 const ADR_DIR = "docs/adr";
-const KNOWN_0065 = new Set([
-  "docs/adr/0065-flow-figures-get-color-roles-from-the-shared-role-pass.md",
-  "docs/adr/0065-n-stays-in-the-focused-stage-and-tern-tabs-follow-their-selected-session.md",
+const EXISTING_DUPLICATES = new Map([
+  ["0065", new Set([
+    "docs/adr/0065-flow-figures-get-color-roles-from-the-shared-role-pass.md",
+    "docs/adr/0065-n-stays-in-the-focused-stage-and-tern-tabs-follow-their-selected-session.md",
+  ])],
+  ["0074", new Set([
+    "docs/adr/0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css.md",
+    "docs/adr/0074-private-mcp-config-is-shared-through-links-and-a-named-hook.md",
+  ])],
 ]);
 
 function adrFiles(root: string, dir = ADR_DIR): string[] {
@@ -56,11 +62,12 @@ export const adrChecks: Check = {
       }
     }
     for (const [number, paths] of legacy) {
-      if (paths.length < 2 || (number === "0065" && paths.length === KNOWN_0065.size && paths.every(path => KNOWN_0065.has(path)))) continue;
+      const known = EXISTING_DUPLICATES.get(number);
+      if (paths.length < 2 || (known && paths.length === known.size && paths.every(path => known.has(path)))) continue;
       failures.push({
         class: "duplicate-adr-number",
         item: number,
-        message: `Duplicate legacy ADR number: ${paths.join(", ")}. Only the existing 0065 pair is accepted; new ADRs use YYYYMMDD-slug.md.`,
+        message: `Duplicate legacy ADR number: ${paths.join(", ")}. Only the existing ${[...EXISTING_DUPLICATES.keys()].join(" and ")} pairs are accepted; new ADRs use YYYYMMDD-slug.md.`,
       });
     }
     return failures;
