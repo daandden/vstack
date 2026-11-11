@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Keep architecture candidate problems, consequences, and ADR conflicts visible without opening Evidence."
+  ]
+}
