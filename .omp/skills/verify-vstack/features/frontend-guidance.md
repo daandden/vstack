@@ -1,10 +1,10 @@
 # Frontend guidance
 
-Existing frontend work reaches the shipped UI guidance through good-css in main sessions and delegated workers. Native execution and an observed runnable UI establish behavior; a successful plugin load or a stub's scripted read does not.
+The twelve Emil-derived Utility skills expose UI guidance through their visible descriptions or direct invocation in main sessions and delegated work. Good-css supplies CSS techniques without routing to Emil. Native selection and instruction following remain unproven pending explicit approval for remote evaluations. Plugin load proof and scripted reads do not establish either behavior.
 
 ## Sub-features
 
-- `frontend-main`: an ordinary frontend implementation reads and applies the conditional design guidance without an extra UI command.
+- `frontend-main`: an ordinary frontend implementation selects and applies applicable UI Utility guidance without an extra UI command.
 - `frontend-worker`: an existing vstack-worker reaches the same guidance and makes the actual UI changes.
 - `frontend-unrelated`: an unrelated command-line task does not load frontend guidance.
 - `frontend-review`: a fresh native code-review and its delegated Standards reviewer block an observed motion defect while preserving a supported browser-specific exception.
@@ -17,8 +17,8 @@ Existing frontend work reaches the shipped UI guidance through good-css in main 
 
 ## How to get to it (user POV)
 
-- Start an existing implementation run on a frontend task. The implementation pointer reaches good-css, which reaches the shipped UI guidance when interaction work requires it.
-- Delegate frontend implementation to the existing vstack-worker role. Its own frontend pointer reaches good-css, even though automatic Brief selection remains principle-only.
+- Start an existing implementation run on a frontend task. CSS work requires good-css; UI Utility descriptions supply separate reach for applicable interaction guidance.
+- Delegate frontend implementation to the existing vstack-worker role. Its good-css requirement is CSS-only. UI Utility descriptions supply reach without changing principle-only automatic Brief selection.
 - Review a frontend motion diff through the existing code-review owner. Its coordinator and delegated Standards reviewer read review-animations and its companion standards conditionally.
 - Run public maintainer commands from the checkout. This is source accounting, not a new UI entry flow.
 
@@ -26,21 +26,22 @@ Existing frontend work reaches the shipped UI guidance through good-css in main 
 
 Preconditions:
 
-- Follow `README.md` and run Doctor before the drives.
+- Obtain explicit approval before any remote native-model or judge evaluation. Without approval, skip those cases and report selection and instruction following as unproven. Mechanical checks remain available.
+- Follow `README.md` and run Doctor before the approved drives.
 - Use the real-model isolation and provenance procedure in `flow-page.md`, under Real-model enrollment. Retain the real HOME and existing credentials. Remove inherited `PI_*` and `OMP_*` variables, set `PI_CONFIG_FILES` to the run overlay, and also pass `--config <overlay>`. Its `skills.customDirectories` contains only `$CHECKOUT/plugin/skills`.
 - Use the caller's actual Session model and thinking level. Load the complete package with `--no-extensions -e "$CHECKOUT/plugin"`; loading only the extension file loses sibling agents. Start each case in a new native RPC process with a new `--session-dir` and capture every RPC frame and saved session history. Set the recorder's line limit to at least 32 MiB.
 - Keep each runnable throwaway app and its before snapshot under the proof run. A vanilla HTML/CSS/JS fixture needs no third-party dependencies. Record its actual manifest and engine versions. Do not infer Motion, Tailwind, or component-library support from the skill text.
 
 ### Native behavior bracket
 
-1. Before changing the plugin, run a fresh main-session frontend task against a minimal working shipment form with a recipient dialog. Retain its original and resulting app, native reads, actions, and outcome. Record whether the conditional UI guidance was available and reached. A good baseline UI is not evidence of a quality regression.
+1. Before changing the plugin, run a fresh main-session frontend task against a minimal working shipment form with a recipient dialog. Retain its original and resulting app, native reads, actions, and outcome. Record which applicable UI descriptions selected guidance and which references were actually read. A good baseline UI is not evidence of a quality regression.
 2. After changing the plugin, use the same starting app in a different directory and a fresh process. Send an ordinary task through the existing implementation entry, for example:
 
    ```json
    {"type":"prompt","message":"/skill:implement Improve this existing shipment frontend with a polished recipient dialog, useful validation, and clear completion feedback. Keep repeated keyboard use fast and touch use reliable. Use the existing stack and dependencies. This is a throwaway diagnostic with an agreed browser seam observed by the parent. Do the actual edits. No Flow, commit, branch, push, installation, or machine changes. Work in the main session without delegation. The parent owns browser verification and publication."}
    ```
 
-3. In another fresh process and identical starting app, request the same frontend outcome through a delegated vstack-worker. Require the existing role and its single-subagent form, pass the allowed tree, vstack root, and Scratch, and leave the UI Addon name out of the worker brief. If the worker cannot start, stop that case and report why. Capture the actual worker transcript and file edits, not a coordinator's claim or a stub echo.
+3. In another fresh process and identical starting app, request the same frontend outcome through a delegated vstack-worker. Require the existing role and its single-subagent form, pass the allowed tree, vstack root, and Scratch, and leave UI Utility skill names out of the worker brief. If the worker cannot start, stop that case and report why. Capture the actual worker transcript and file edits, not a coordinator's claim or a stub echo.
 4. In a separate fresh process, ask the existing implementation entry to change a command-line string normalizer to trim and lowercase a string. Retain the module execution and native read trace. Neither good-css nor the new UI guidance should load.
 5. Read actual tool executions and worker history. A loaded pointer alone is not application. Identify the resulting behavior that applies the guidance, such as instant keyboard opening, short pointer-only transitions, press feedback, focus restoration, cancellation, and nonmoving reduced-motion behavior. Preserve unexpected actions and unavailable checks rather than replacing them with a favorable retry.
 
@@ -75,11 +76,11 @@ Prepare the normal cache clones named in `pins.yaml`, including `emil`. The help
 
 ```sh
 bun scripts/check-register.ts --json --upstreams "$CACHE"
-bun scripts/vstack-maintain.ts plan emil@a81dbca07f2217b7103e510c0f13f8d5b017afc9 --upstreams "$CACHE" --scratch "$VERIFY_RUN_DIR"
+bun scripts/vstack-maintain.ts plan emil@7cdf99421429c0a47d2cf9fbf40497b7ee0a3e5c --upstreams "$CACHE" --scratch "$VERIFY_RUN_DIR"
 bun .omp/skills/verify-vstack/scripts/frontend-maintenance.ts "$CHECKOUT" "$VERIFY_RUN_DIR/future-source" "$CACHE"
 ```
 
-The register must account for all sixteen UI-upstream items at the current Pin. All ten selected items must be adapt with matching pinned object identities and shipped artifact associations. No selected item remains deferred. The six permanent exclusions remain reject.
+The register must account for all eighteen UI-upstream items at the current Pin. All twelve selected items must be adapt with matching pinned identities and shipped artifact associations. No selected item remains deferred. The six permanent exclusions remain reject.
 
 The helper runs the real register CLI, then reads the cache's configured source URL and explicitly fetches the exact Pin and its objects into an isolated fixture remote. The normal cache may be blobless and contain only `refs/vstack/pins/*`, with no local branches. It changes an upstream timing recommendation deterministically, constructs fixture-only Git objects, and runs public `plan` and `check` commands over an isolated checkout. The resulting plan must identify the changed UI item and retain its adapted Disposition and artifact group. It compares content hashes before and after to prove the real Pin and checkout and the fixture checkout stayed unchanged. The fixture baseline commit is not a product commit. Each command's stdout, stderr, exit result, plan, and final `outcome.json` remain in the new evidence directory.
 
@@ -97,13 +98,14 @@ npm pack --ignore-scripts --json --pack-destination "$VERIFY_RUN_DIR" --cache "$
 
 Inspect the emitted tarball's file inventory and read each shipped UI guidance skill's `LICENSE` from the archive. Compare its bytes with the MIT notice at the actual Pin. Confirm the required copyright, permission, and disclaimer ship, along with required companion references. Confirm no skill directory for `animation-vocabulary`, `ask-sonner`, `pick-ui-library`, `animate-expo`, or `write-swift` entered the archive. Vstack's existing `prototype` must still ship; compare its packaged bytes with the unchanged local prototype rather than treating the name alone as the excluded upstream contribution.
 
-Run the applicable public-interface tests, focused catalog checks, changed-skill validation, and load smoke. The load summary must put all ten selected UI Addons among hidden skills and exclude them from listed skills. Inspect every selected skill's SKILL.md and LICENSE in the package. Check the required companions: emil-design-eng, apple-design, and mobile-native references; break-ui/CATALOG.md; animate/RECIPES.md; review-animations/STANDARDS.md; and improve-animations/AUDIT.md and PLAN-TEMPLATE.md. Include animation-performance, find-animation-opportunities, and remove-animations in the inventory. Run final `vstack-maintain gates --scratch "$VERIFY_RUN_DIR"` after all edits. Keep every stage name, `ok` value, and raw diagnostics. A failed native/browser prerequisite stays unavailable or unmet even when the mechanical gates pass.
+Run applicable public-interface tests, focused catalog checks, changed-skill validation, and load smoke. The load summary must put all twelve UI Utility skills in `listedSkills` and `skillCommands`, with none in `hiddenSkills`. Inspect every selected skill's SKILL.md and LICENSE in the package. Check the required companions: emil-design-eng, apple-design, and mobile-native references; break-ui/CATALOG.md; animate/RECIPES.md; review-animations/STANDARDS.md; improve-animations/AUDIT.md and PLAN-TEMPLATE.md; and choreograph/RECIPES.md. Include animation-performance, find-animation-opportunities, remove-animations, and gestures in the inventory. Interrogate must also be listed and command-visible, without an Addon catalog key. Run final `vstack-maintain gates --scratch "$VERIFY_RUN_DIR"` after all edits. Keep every stage name, `ok` value, and raw diagnostics. A failed native or browser prerequisite stays unavailable or unmet even when mechanical gates pass.
 
 ## Gotchas
 
-- Adding a catalog key does not activate a non-principle Addon during implementation or automatic subagent selection. Exercise the actual conditional references.
-- The Decision register and maintainer guide identify all ten selected items as shipped adaptations, with none deferred. Keep each demonstration within its recipe's behavioral scope and preserve all six exclusions.
+- Adding a catalog key does not activate a non-principle Addon during implementation or automatic subagent selection. The UI skills are visible Utilities; inspect actual description selection and any independently applicable references. Good-css has no Emil hand-off.
+- The Decision register and maintainer guide identify all twelve selected items as shipped adaptations, with none deferred. Keep each demonstration within its behavioral scope and preserve all six exclusions. Choreograph and gestures retain existing execution, review, verification, and evidence owners. Browser proof of their behavior needs real scoped interactions, not inventory checks.
 - Use a saved native skill-invocation header to establish expansion of the typed implementation entry. Literal slash text in an unexpanded user message is not proof.
 - Native models can produce a good UI without this guidance. Report the actual reads, changes, and observations; do not invent a causal quality score.
 - Record model changes, fallbacks, and incomplete captures. A successful stub transport run is not native instruction-following proof.
 - No dependency or engine claim extends beyond the fixture's actual stack and observed browser. Physical touch and additional engines require their own evidence.
+- Selection-only trigger evals across the twelve UI descriptions plus interrogate and live Addon judge evals require explicit approval before remote model use. Without approval, report selection overlap as unproven. Mechanical gates and stub load evidence do not substitute for those evals.

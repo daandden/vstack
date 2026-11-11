@@ -1,6 +1,6 @@
 # Frontend motion audit and selected subtraction
 
-Existing audit and planning owners survey motion read-only, present vetted choices, and obtain explicit selection before the implementation owner changes source. Main sessions and delegated explorers reach the same conditional guidance. Selected subtraction preserves functional lifecycle and useful unselected motion through existing motion review and Verify.
+Existing audit and planning owners survey motion read-only, present vetted choices, and obtain explicit selection before the implementation owner changes source. Visible Utility descriptions supply audit guidance independently of good-css. Native main and delegated selection and instruction following remain unproven pending explicitly approved remote evaluations. Selected subtraction preserves functional lifecycle and useful unselected motion through existing motion review and Verify.
 
 ## Sub-features
 
@@ -12,8 +12,8 @@ Existing audit and planning owners survey motion read-only, present vetted choic
 
 ## How to get to it (user POV)
 
-- Start an existing grill or planning task to audit frontend motion. Good-css conditionally reaches improve-animations, its audit and selected-requirements companions, and the opportunity and subtraction guidance where relevant.
-- Delegate a source audit to the existing vstack-explorer. Its frontend pointer reaches the same references even though automatic Brief selection remains principle-only.
+- Start an existing grill or planning task to audit frontend motion. Visible Utility descriptions supply reach for improve-animations and applicable opportunity or subtraction guidance, whose own references cover their companions.
+- Delegate a source audit to the existing vstack-explorer. Its good-css requirement covers CSS only; Utility descriptions supply separate reach without changing principle-only automatic Brief selection.
 - Select a bounded finding in the current owner's Flow question round. The existing implementation owner carries that scope through ordinary review and Verify. No separate UI command, upstream execute dispatch, plan directory, or animation-status subsystem is involved.
 
 ## Driving it with native omp, the browser, and public CLIs
@@ -36,7 +36,7 @@ Preconditions:
 ### Audit and select through existing ownership
 
 1. After plugin edits, drive a new native `/skill:grill-with-docs` or existing planning task on an identical source copy. Request read-only motion surveying, vetted priorities, separate additive opportunities, and rejected candidates. Require a stop before selection. Keep the native entry expansion, actual reads, findings, and source hashes.
-2. In a separate fresh native run, use the existing single-explorer contract for a delegated audit. Pass the allowed tree, vstack root, Scratch, browser evidence, and read-only requirement. Leave UI Addon names out of its Brief. Inspect the actual explorer history and contribution. The coordinator must re-read cited locations before presenting priorities.
+2. In a separate fresh native run, use the existing single-explorer contract for a delegated audit. Pass the allowed tree, vstack root, Scratch, browser evidence, and read-only requirement. Leave UI Utility skill names out of its Brief. Inspect the actual explorer history and contribution. The coordinator must re-read cited locations before presenting priorities.
 3. Both paths should reach improve-animations, AUDIT.md, and the relevant opportunity/subtraction guidance. Distinguish existing-motion defects, useful existing motion, additive proposals, and rejected candidates. The Queue and keyboard Commands are unsuitable additive candidates. Rare completion feedback can be an optional proposal, not an invented defect.
 4. Compare every application source hash with the before snapshot. A report written under Scratch is permitted. No source, manifest, lockfile, or other application change is permitted before selection.
 5. Publish findings through the current owner in a production Flow. Follow flow-page's "Every ask in a Flow" contract for selection, including complete publication, current-content checks when serving, ordinary `ask`, and separate raw-response recording. For a diagnostic harness, retain the deliberate choice sent through the existing UI or later native user turn in its isolated fixture Flow. Label it a fixture selection, not an actual user's choice. A default recommendation, timeout, cancelled picker, or headless response is never selection. If using native RPC without a picker, stop the audit, then resume the saved session with a separate explicit selection turn.
@@ -53,7 +53,7 @@ Preconditions:
 
 ### Distribution and final checks
 
-Use the public maintainer and package interfaces in frontend-guidance to confirm the complete ten-adaptation, six-exclusion accounting with no selected deferrals. The three audit-path rows must retain their pinned object identities and artifact associations. Inspect the actual tarball for all three SKILL.md files, improve-animations/AUDIT.md and PLAN-TEMPLATE.md, and byte-identical pinned MIT notices. Compare vstack prototype bytes rather than rejecting that name alone.
+Use the public maintainer and package interfaces in frontend-guidance to confirm the complete twelve-adaptation, six-exclusion accounting across eighteen UI items, with no selected deferrals. The three audit-path rows retain their pinned identities and artifact associations. Inspect their SKILL.md files, improve-animations/AUDIT.md and PLAN-TEMPLATE.md, and pinned MIT notices in the tarball. Include choreograph/RECIPES.md and gestures in the visible Utility inventory. Compare vstack prototype bytes rather than rejecting that name alone.
 
 Run applicable typecheck, targeted public-interface tests, focused changed catalog cases including unrelated controls, validation, actual load smoke, and final maintenance gates. Record stdout, stderr, argv, and exit durably to files, with at least a 1200s deadline for the final gate. Run the full suite once through those gates, not during drafting. Do not rerun unchanged stochastic corpora to chase unrelated failures.
 
@@ -61,7 +61,7 @@ Run applicable typecheck, targeted public-interface tests, focused changed catal
 
 - A read-only report, publication, or top-ranked recommendation authorizes no edits. Preserve the actual explicit fixture selection as distinct evidence.
 - Removing only CSS can strand opacity zero, focus callbacks, or exit timers. Assert lifecycle and visibility through real controls.
-- A native model can identify the problem before these Addons ship. Report actual source and behavior, not an unsupported causal score.
-- Catalog selection is not delegated activation. Inspect the explorer's real conditional reads and contribution.
+- A native model can identify the problem without these Utilities. Report actual source and behavior, not an unsupported causal score.
+- Catalog selection is not delegated activation. Inspect the explorer's actual Utility selection, reference reads, and contribution.
 - Browser support and interpolation do not prove compositing, low frame cost, physical touch, Safari, or Firefox. Keep claims within the observed engine and fixture.
 - Parent Flow publication and final integrated verification remain parent-owned. This recipe exercises the three-skill audit path, not the behavioral coverage of the other shipped guidance.

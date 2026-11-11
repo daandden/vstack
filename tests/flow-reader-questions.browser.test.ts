@@ -36,9 +36,15 @@ test("question context, choices, answers and figures keep their compact themed l
       { kind: "round", questions: [
         { ref: "first", title: "Keep the reading path?", description: "Read the context and compare both routes.", topics: ["context"], terms: [{ term: "Flow", text: "Related work across Stages." }], today: [{ text: "The host serves the built reader.", source: "reader/ship.ts" }], example: "Read → compare → answer", needs: [{ need: "Follow the current path.", kind: "context-diagram" }], figures: [{ attachment: "path", kind: "context-diagram" }], options: [{ label: "Keep", does: "Retain the path.", gains: ["Familiar reading order"], costs: ["No new route"], recommended: "The path already works." }, { label: "Change", does: "Replace the path.", gains: ["Another route"], costs: ["Relearn the order"] }] },
         { ref: "second", title: "Read the next question?", description: "Keyboard navigation reaches this question.", needs: [{ need: "Understand the next choice.", kind: "prose" }], options: [{ label: "Continue", does: "Reads the next question.", gains: ["More context"], costs: ["More reading"] }] },
+        { ref: "noted", title: "Where should the cap live?", description: "The number sits in code today.", needs: [{ need: "Compare where the cap lives.", kind: "prose" }], options: [{ label: "Keep in code", does: "Keeps the constant.", gains: ["Reviewed with code"], costs: ["A deploy per change"] }, { label: "Move to config", does: "Reads it from settings.", gains: ["Ops can change it"], costs: ["Config drift"] }] },
+        { ref: "worded", title: "Should the check run on the server?", description: "Only the browser checks today.", needs: [{ need: "Compare where the check runs.", kind: "prose" }], options: [{ label: "Server too", does: "The API rejects carts.", gains: ["Cannot be bypassed"], costs: ["One more lookup"] }, { label: "Browser only", does: "Keeps the client check.", gains: ["No API change"], costs: ["A crafted request skips it"] }] },
       ] },
     ]);
-    cli(["submit"], [{ kind: "answer", question: published.refs.first, response: { status: "answered", picks: ["A"] } }]);
+    cli(["submit"], [
+      { kind: "answer", question: published.refs.first, response: { status: "answered", picks: ["A"] } },
+      { kind: "answer", question: published.refs.noted, response: { status: "answered", picks: ["A"], text: "Config would be nice later.", note_on: "B" } },
+      { kind: "answer", question: published.refs.worded, response: { status: "answered", text: "A server check worries me.", note_on: "A" }, reading: { outcome: "concern", unresolved: "Whether one more lookup fits the budget." } },
+    ]);
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
     await page.goto(`${opened.live.url}#${published.refs.first}`);
     await page.getByRole("img", { name: "Reading path" }).locator("svg").waitFor();
@@ -53,7 +59,28 @@ test("question context, choices, answers and figures keep their compact themed l
     const question = page.locator(`#${published.refs.first}`);
     expect(await question.evaluate((el) => ({ display: getComputedStyle(el).display, gap: getComputedStyle(el).gap }))).toEqual({ display: "grid", gap: "10px" });
     expect(await question.locator(".options").evaluate((el) => ({ display: getComputedStyle(el).display, list: getComputedStyle(el).listStyleType }))).toEqual({ display: "grid", list: "none" });
-    expect(await question.locator(".answer").evaluate((el) => getComputedStyle(el).borderInlineStartWidth)).toBe("2px");
+    expect(await question.locator(".answer").count()).toBe(0);
+    expect(await question.getByRole("heading", { name: /Keep.*\(your answer\)/ }).count()).toBe(1);
+    const noted = page.locator(`#${published.refs.noted}`);
+    const worded = page.locator(`#${published.refs.worded}`);
+    const lineLabels = (q: typeof noted) => q.locator(".answer p").evaluateAll((ps) => ps.map((p) => p.firstElementChild!.textContent));
+    expect(await lineLabels(noted)).toEqual(["Note on B"]);
+    expect(await lineLabels(worded)).toEqual(["Words on A", "Concern", "Still to ask"]);
+    const box = await worded.locator(".answer").evaluate((el) => {
+      const s = getComputedStyle(el);
+      const label = el.querySelector("p > :first-child")!;
+      return { border: [s.borderBlockStartWidth, s.borderBlockEndWidth, s.borderInlineStartWidth, s.borderInlineEndWidth], radius: s.borderTopLeftRadius, sameColour: getComputedStyle(label).color === s.color && getComputedStyle(label.nextElementSibling!).color === s.color };
+    });
+    expect(box).toEqual({ border: ["1px", "1px", "1px", "1px"], radius: "4px", sameColour: true });
+    const textStarts = async (q: typeof noted) => q.locator(".answer p").evaluateAll((ps) => ps.map((p) => Math.round(p.lastElementChild!.getBoundingClientRect().left - p.parentElement!.getBoundingClientRect().left)));
+    const starts = [...(await textStarts(noted)), ...(await textStarts(worded))];
+    expect(new Set(starts).size).toBe(1);
+    const gaps = await worded.evaluate((el) => {
+      const opts = [...el.querySelectorAll(".option")].map((o) => o.getBoundingClientRect());
+      const answer = el.querySelector(".answer")!.getBoundingClientRect();
+      return { lines: [...el.querySelectorAll(".option")].map((o) => getComputedStyle(o).borderBlockStartWidth), between: Math.round(opts[1]!.top - opts[0]!.bottom), toAnswer: Math.round(answer.top - opts[1]!.bottom) };
+    });
+    expect(gaps).toEqual({ lines: ["0px", "0px"], between: 16, toAnswer: 16 });
     const terms = question.locator("details").filter({ has: page.locator("summary", { hasText: /^Term notes/ }) });
     await terms.locator("summary").focus();
     await page.keyboard.press("Enter");

@@ -1,14 +1,13 @@
 ---
 name: animate
-description: Motion construction guidance for purposeful, interruptible web interactions.
-disable-model-invocation: true
+description: "Use when building web animations, choosing purposeful motion, or defining timing, interruption, and reduced-motion behavior."
 ---
 
 # Build motion
 
-Apply this knowledge inside the frontend task already in progress. The running vstack skill and its workers own implementation, planning, review, verification, and evidence. Keep the existing stack and scope. This Addon starts no separate flow or animation-plan file.
+Apply this knowledge inside the frontend task already in progress. The running vstack skill and its workers own implementation, planning, review, verification, and evidence. Keep the existing stack and scope. This Utility skill starts no separate flow or animation-plan file.
 
-Adapted from [emilkowalski/skills](https://github.com/emilkowalski/skills/tree/a81dbca07f2217b7103e510c0f13f8d5b017afc9/skills/animate). The [MIT notice](LICENSE) ships here.
+Adapted from [emilkowalski/skills](https://github.com/emilkowalski/skills/tree/7cdf99421429c0a47d2cf9fbf40497b7ee0a3e5c/skills/animate). The [MIT notice](LICENSE) ships here.
 
 ## Decide in this order
 
@@ -33,7 +32,7 @@ A spring can suit momentum and reversal. With an installed library supporting th
 - Anchor a popover's transform origin at its trigger. A centered modal is different. Confirm how the actual component exposes the origin.
 - Percentage translation uses the element's own dimensions and suits variable-height drawers.
 - Write a dragged element's transform directly when an inherited custom property would recalculate a large descendant tree.
-- Motion shorthand transforms and full transform strings can take different rendering paths. Inspect the installed version and measure under load before asserting acceleration. Read skill://animation-performance when choosing a driver or investigating stutter.
+- From Motion 14.2, `x`, `y`, `scale`, and `rotate` shorthands on HTML elements can use an accelerated transform animation. Before 14.2, investigate their main-thread frame loop under load and consider upgrading or a full transform string. Layout animations, `onUpdate`, `transformTemplate`, inertia, and motion-value-driven values remain main-thread in every version. Read skill://animation-performance for driver choices and measured acceleration evidence.
 
 ## Component recipes
 
@@ -43,7 +42,7 @@ Under `prefers-reduced-motion: reduce`, remove positional movement, scaling, and
 
 ## Authority and hand-back
 
-Selected Emil guidance takes animation precedence over skill://good-css under ADR 0051. Good-css still owns other styling and accessibility requirements. Reconcile conflicts within Emil guidance using supported browser behavior and observed evidence. A transform-and-opacity-only statement alone cannot block a supported clip-path or intrinsic-size technique. Neither property spelling nor a library name proves smoothness or compositor execution.
+Emil-derived guidance takes precedence over good-css for CSS and animation under ADR 0074, which amends ADR 0051. Reconcile conflicts within Emil guidance using browser-specific behavior and observed evidence. Preserve skill://review-animations' blocking verdicts when the applicable rule and evidence justify them. A transform-and-opacity-only statement alone cannot block a supported clip-path or intrinsic-size technique. Neither property spelling nor a library name proves smoothness or compositor execution.
 
 Before using library APIs, inspect the runnable application's installed dependencies and version, then consult matching documentation. Scope engine claims to the observed engine and scenario.
 

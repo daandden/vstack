@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Keep good-css's unique CSS techniques and remove Emil hand-offs, conflicting rules, and repeated advice. Limit its seven caller instructions to CSS and document visible UI Utility reach and unproven native selection (#459)."
+  ]
+}

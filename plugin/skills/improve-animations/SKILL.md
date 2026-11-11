@@ -1,14 +1,13 @@
 ---
 name: improve-animations
-description: Read-only motion survey, vetted priorities, and selected implementation requirements for the current planning owner.
-disable-model-invocation: true
+description: "Use when auditing existing web animations read-only, vetting defects, prioritizing improvements, or recording explicitly selected motion fixes. Not a single-diff review."
 ---
 
 # Improve animations
 
-Survey existing motion inside the current audit or planning task. This hidden Addon supplies judgment, not another user entry, executor, or planning system. The current vstack owner retains questions, Flow, scope, delegation, implementation hand-off, review, Verify, and evidence.
+Survey existing motion inside the current audit or planning task. This Utility skill supplies judgment, not another executor or planning system. The current vstack owner retains questions, Flow, scope, delegation, implementation hand-off, review, Verify, and evidence.
 
-Adapted from [emilkowalski/skills at the Pin](https://github.com/emilkowalski/skills/tree/a81dbca07f2217b7103e510c0f13f8d5b017afc9/skills/improve-animations). The [MIT notice](LICENSE) ships with the adaptation.
+Adapted from [emilkowalski/skills at the Pin](https://github.com/emilkowalski/skills/tree/7cdf99421429c0a47d2cf9fbf40497b7ee0a3e5c/skills/improve-animations). The [MIT notice](LICENSE) ships with the adaptation.
 
 Read [AUDIT.md](AUDIT.md) before surveying and [PLAN-TEMPLATE.md](PLAN-TEMPLATE.md) when recording selected work. For a single diff, use skill://review-animations through the existing review owner. For additive candidates, use skill://find-animation-opportunities. For selected subtraction, use skill://remove-animations through the existing implementation owner.
 
@@ -34,7 +33,7 @@ Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the audit a
 
 Re-read every cited location yourself. Deduplicate findings and reject misattribution, by-design behavior, unsupported performance claims, and inapplicable rules. A centered modal need not originate at a trigger. A deliberate explanatory animation may exceed an ordinary UI budget. A useful pure fade need not gain a transform.
 
-Use skill://animation-performance for rendering-cost questions and skill://review-animations for applicable motion standards. Under ADR 0051, resolve conflicting Emil rules with actual dependency and browser evidence. A transform-and-opacity preference alone does not prohibit a supported clip-path reveal. Support alone does not prove low cost or compositing.
+Use skill://animation-performance for rendering-cost questions and skill://review-animations for applicable motion standards. Emil-derived guidance takes precedence over good-css for CSS and animation under ADR 0074, which amends ADR 0051. Resolve conflicting Emil rules with browser-specific behavior and observed evidence. Preserve review-animations' blocking verdicts when the applicable rule and evidence justify them. A transform-and-opacity preference alone does not prohibit a supported clip-path reveal. Support alone does not prove low cost or compositing.
 
 Return a prioritized table with stable finding ids, severity, category, file and line, observed behavior, user impact, proposed remedy, evidence, and uncertainty. HIGH means a demonstrated responsiveness, accessibility, continuity, or rendering defect. MEDIUM means an observed mismatch with a useful remedy. LOW means optional polish. Order by impact and effort, not by novelty. Keep accessibility defects visible regardless of rank.
 

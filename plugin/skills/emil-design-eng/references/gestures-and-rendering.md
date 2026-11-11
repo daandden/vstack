@@ -26,7 +26,7 @@ A clip-path reveal, blur, or Web Animations API call is not automatically GPU-ac
 
 Changing an inherited CSS custom property on a parent can invalidate descendant styles. For a high-frequency drag, compare updating the target element's transform directly with updating an inherited variable. Avoid unnecessary descendant work, but measure the actual tree before claiming a regression.
 
-Motion libraries can animate shorthand transforms such as `x`, `y`, and `scale` through a JavaScript frame loop. An explicit transform string may use a different path in some versions. Inspect the installed version and capture behavior under main-thread load before making an acceleration claim. A library name or property spelling alone is not evidence of compositor execution.
+From Motion 14.2, shorthand transforms such as `x`, `y`, `scale`, and `rotate` on HTML elements can use an accelerated transform animation. Before 14.2, they use a main-thread frame loop; consider an upgrade or an explicit transform string when that causes stutter under load. Layout animations (`layout`, `layoutId`), `onUpdate`, `transformTemplate`, inertia, and motion-value-driven values remain main-thread in every version. Inspect the installed version and capture the actual workload. A full transform string can use an accelerated path in every version, but no property spelling proves compositor execution.
 
 Prefer CSS transitions for known state changes and use JavaScript where dynamic input or playback control requires it. CSS animation of a compositable property can continue during main-thread work, but CSS layout animation still needs main-thread work. The Web Animations API provides programmatic playback without an extra library; it has the same property-specific rendering constraints.
 

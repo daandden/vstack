@@ -70,6 +70,8 @@ Save the drafted structured description and invoke the publisher as [the publica
 
 The publisher creates tickets without readiness, installs the submitted graph, reads back fields and relationships, then activates verified tickets. The readiness value comes from the configured canonical-role mapping. GitHub uses labels. MCP reads submitted labels and readiness separately, even when readiness lives in a custom field. Local tickets use `Status:`. A parent relationship is separate from a blocking edge. Body references explain the work. Only `blockedBy` declares an edge.
 
+When the source was an existing issue, submit it as the parent so that every published ticket becomes its sub-issue through the publisher's configured tracker operation.
+
 Use the receipt's saved identities to link tracker tickets or `<directory>/<key>.md` files. If publication is blocked or interrupted, use `resume` with the same durable record. Report its category and candidate state when reconciliation is ambiguous. Keep submitted content unchanged during recovery. If anyone published tickets outside the publisher, inspect that state before resuming. A record without saved identities does not establish ownership of external tickets. Matching tickets stop creation with `duplicate-risk`, not automatic adoption. The publisher owns activation. Do not create tickets, add relationships, or apply readiness separately.
 
 Work the **frontier**: any ready ticket whose blockers are all done. Verified tickets may be ready while a blocker remains open. The existing frontier still excludes them.
@@ -108,7 +110,7 @@ The end-to-end behaviour this ticket makes work, from the user's perspective, no
 
 ## Blocked by
 
-- A reference to each blocking ticket, or "None (can start immediately)".
+- A reference to each blocking ticket, or "None (can start immediately)". Omit this section when blockers were set as native edges.
 
 </issue-template>
 

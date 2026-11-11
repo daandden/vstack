@@ -66,7 +66,7 @@ Each ticket is a child issue of the map; the tracker's issue id is its identity.
 <the decision or investigation this ticket resolves>
 ```
 
-Each ticket carries a `wayfinder:<type>` label, one of `research`, `prototype`, `grilling`, `task` (see [Ticket Types](#ticket-types)).
+Each ticket carries a `wayfinder:<type>` label, one of `research`, `prototype`, `grilling`, `task` (see [Ticket Types](#ticket-types)). Maps and their tickets carry only `wayfinder:` labels, never implementation triage labels such as `ready-for-agent`.
 
 A session claims a ticket by assigning it to the dev driving the map, first, before any work, so concurrent sessions skip it. That assignee _is_ the claim: an open, unassigned ticket is unclaimed.
 
@@ -129,7 +129,7 @@ User invokes with a loose idea.
 1. Name the destination. Use skill://grilling and skill://domain-modeling to pin down what this map is finding its way to: the spec, decision, or change. The destination fixes the scope, so it's settled first.
 2. Map the frontier. Grill again, breadth-first this time: range across the whole space rather than deep on any one thread, surfacing the open decisions and the first steps takeable now. If this surfaces no fog (the way to the destination is already clear, the whole journey small enough for one session), you don't need a map. Stop charting and use `ask` on the charting Stage to choose how to proceed.
 3. Create the map (label `wayfinder:map`): Destination and Notes filled in, Decisions-so-far empty, the fog sketched into Not yet specified. Add the map's alias and publish its Result as [The Flow page](#the-flow-page) says.
-4. Create the tickets you can specify now as child issues of the map, then wire blocking edges in a second pass (issues need ids before they can reference each other). Wiring sorts them into the frontier and the blocked; everything you can't yet specify stays in the fog: the Not yet specified section.
+4. Create the tickets you can specify now as child issues of the map, then wire blocking edges in a second pass. Write cross-references in that pass with the real issue ids. A placeholder such as `#<n>` can auto-link to an unrelated issue. Wiring sorts tickets into the frontier and the blocked; everything you cannot specify stays in Not yet specified.
 5. Fire the research runners. Claim each research ticket before work, then use Research runners below to resolve the claimed tickets.
 6. Publish the charted map and dependency Results, then finish the charting Stage. Charting is one session's work; it hand-resolves nothing.
 
@@ -139,7 +139,7 @@ User invokes with a map (URL or number). A ticket is optional: without one, you 
 
 1. Load the map: the low-res view, not every ticket body.
 2. Choose the ticket. If the user named one, use it. Otherwise take the first frontier ticket in order. Claim it: assign it to the dev driving the map before any work. Open its ticket-specific Stage on the map's Flow page.
-3. Resolve it. For a research ticket, use Research runners below instead of invoking research's background agent. For other tickets, zoom as needed: fetch the full body of any related or closed ticket on demand; use the skills the `## Notes` block names, each as a `skill://<name>` reference. If in doubt, use skill://grilling and skill://domain-modeling.
+3. Read the ticket's `wayfinder:<type>` label and resolve it as that type. The body alone does not establish the type. For a research ticket, use Research runners below instead of invoking research's background agent. For other tickets, zoom as needed: fetch the full body of any related or closed ticket on demand; use the skills the `## Notes` block names, each as a `skill://<name>` reference. If in doubt, use skill://grilling and skill://domain-modeling.
 4. Once the ticket is resolved, post the answer as a resolution comment, close the issue, and append a context pointer to the map's Decisions-so-far in the same run as the grill's close, without a next-prompt confirmation. A HITL ticket requires live answers to its questions. A headless or unanswered HITL grill writes nothing. Publish the resolution and evidence on the ticket's Stage with its canonical links. Preserve unanswered questions with explicit retirement reasons rather than claiming a decision.
 5. Add newly-surfaced tickets (create-then-wire); graduate any fog the answer has made specifiable, clearing each graduated patch from Not yet specified so it lives only as its new ticket. If the answer reveals that a ticket (this one or another) sits beyond the destination, rule it out of scope rather than resolving it on the route. If the decision invalidates other parts of the map, update or delete those tickets.
 6. Publish the refreshed map and dependency Results in this active ticket Stage, preserving the earlier charting snapshot, then finish the ticket Stage.
@@ -171,6 +171,8 @@ Spawn one `vstack-worker` via eval `agent(<prompt>, agent="vstack-worker", isola
 
 Give the runner the ticket title, URL, Question, map Destination and relevant Notes, mode, findings name, and repo notes convention. It reads skill://research and does its research steps 1â€“3 itself: investigate primary sources, write one Markdown findings file with citations, and use the repo's existing notes location (or choose a sensible location if none exists). It does not start research's background agent.
 
+Every runner starts with a fresh context window containing its brief and relevant context pointers.
+
 In Standard mode, write the findings inside the runner's own isolated clone, not through the vstack root: this branch artifact must travel in the patch, leaving the user's checkout clean (ADR 0007). Commit nothing. In Private mode, write only `<vstack root>/artifacts/<map-slug>/research/<name>.md`; these writes are immediate and outside the patch. Make no application-code changes. Return the file path, a cited answer under 300 words, a one-line gist, and all open questions. Pass the vstack root to any nested child.
 
 ### Landing (parent, one ticket at a time)
@@ -180,6 +182,8 @@ Read `patchPath` from omp's completion notice, `Isolation: changes captured at â
 In Standard mode, read skill://vstack-worktree. Require `research/<name>` not to exist in the Shared checkout; stop on a branch collision. Open a detached landing checkout at the default branch with `bun "$(realpath skill://vstack-worktree/scripts/worktree.ts)" open --repo <Shared-checkout> --purpose research-<name> --commit <default-branch> --record <absolute-Scratch-record.json>`. Use the returned `path`. Report any fallback and its reason. A plain-checkout fallback continues because landing needs only tracked files.
 
 In that checkout, create `research/<name>` with `git checkout -b research/<name>`, apply the reviewed patch with `git apply <patchPath>`, and commit the findings. Export the branch and its objects to the Shared checkout with `git push <Shared-checkout> HEAD:refs/heads/research/<name>`. This updates only the branch, not the Shared checkout's working tree or index, and also works when the fallback already shares that branch. From the Shared checkout, push `research/<name>` to the configured remote if one exists. A failed export or push leaves the ticket open; do not choose another checkout backend.
+
+Open no PR for a research branch. It records throwaway research and is never merged.
 
 Once the checkout record exists, remove the landing checkout on every exit, including a patch conflict, commit failure, export failure, or push failure: `bun "$(realpath skill://vstack-worktree/scripts/worktree.ts)" remove --record <absolute-Scratch-record.json>`. Before removal, preserve any findings or commit that has not reached the Shared checkout outside the landing checkout. Report a removal failure and keep its record. This detached open created no source branch, so removal keeps `research/<name>` while its ticket cites it. Never switch or dirty the user's checkout.
 

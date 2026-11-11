@@ -37,7 +37,7 @@ Deliberate holds can be slow while release or cancellation snaps back. Check sta
 
 Prefer transform and opacity where they preserve the effect. Investigate layout, paint, blur, `transition: all`, parent-variable invalidation, per-frame rerenders, and rAF work. Browser-managed CSS or WAAPI may avoid main-thread driver delays, but neither API guarantees compositing.
 
-The source's blanket property-only rule conflicts with its clip-path and layout examples. Resolve this through skill://animation-performance and observed target-browser behavior. Motion shorthand acceleration also depends on version and rendering path. Do not report every `x`, `y`, or `scale` prop as an established defect. Measure workload and user impact. Interpolation proves neither GPU execution nor acceptable frame cost.
+The source's blanket property-only rule conflicts with its clip-path and layout examples. Resolve this through skill://animation-performance and observed target-browser behavior. Before Motion 14.2, `x`, `y`, and `scale` shorthands use a main-thread frame loop; consider an upgrade or full transform string when busy-page behavior fails. From 14.2 the HTML shorthand path can be accelerated, so the shorthand alone is not a finding. In every version, inspect layout animations, `onUpdate`, `transformTemplate`, inertia, and motion-value-driven values as main-thread paths. Measure workload and user impact. Interpolation proves neither GPU execution nor acceptable frame cost.
 
 The source recommends keeping transient blur below 20px, especially on Safari. This is a heuristic requiring measurement, not proof that 19px is cheap or 21px always blocks.
 

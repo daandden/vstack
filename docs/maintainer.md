@@ -135,21 +135,19 @@ git -C ~/.cache/vstack/upstreams/matt fetch --tags origin
 
 Each entry's `items:` list says which tree entries at the Pin are Upstream items. `match` is a path glob from the repo root where `*` stays inside one path segment, `type` is `tree` or `blob`, and the first matching pattern sets the `kind`. For example, pstack's automations are one item each, so their nested skills get no rows.
 
-One entry, the CSS upstream, also has `page_lint: scripts/check-css.mjs`: the script `check-register` runs at that Pin over vstack's page templates (see "Page templates" below).
-
 ### UI upstream
 
-The UI upstream is `emilkowalski/skills`, keyed as `emil`, initially pinned at `a81dbca07f2217b7103e510c0f13f8d5b017afc9`. Its `skills/*` tree pattern discovers sixteen items. Ticket 339 ships `emil-design-eng`; ticket 343 adds `review-animations` with its companion standards; ticket 341 adds `break-ui` with its required adverse-content catalog; ticket 342 adds `animate` with component recipes and `animation-performance`; ticket 340 adds `apple-design` and `mobile-native` with their conditional companion references; ticket 344 adds `improve-animations` with audit and selected-requirements companions, `find-animation-opportunities`, and `remove-animations`. Each is an adapted hidden Addon with an upstream MIT notice in its skill directory. Break-ui is reference knowledge used by existing implementation and Verify owners, including delegated UI work. Apple-derived guidance is for web interactions; mobile-native is mobile-web guidance, not Expo or Swift development.
+The UI upstream is `emilkowalski/skills`, keyed as `emil`, pinned at `7cdf99421429c0a47d2cf9fbf40497b7ee0a3e5c`. Its `skills/*` pattern discovers eighteen items. Twelve ship as adapted visible Utility skills, each with an upstream MIT notice. The original ten retain their companion references and existing implementation, review, verification, and evidence owners. `choreograph` adds coordinated-motion guidance and recipes; `gestures` adds direct manipulation with Vaul guidance only for projects already using it. Apple-derived guidance and mobile-native cover web work, not Expo or Swift. Break-ui remains reference knowledge for existing implementation and Verify owners.
 
-`code-review` and good-css conditionally reach motion review guidance in the coordinator and delegated Standards reviewers. The existing review owns blocking decisions and evidence. A browser-supported clip-path effect is not blocked by the upstream's broad property preference alone. [ADR 0051](adr/0051-selected-emil-skills-govern-animation-guidance.md) governs applicability.
+`code-review` conditionally reaches motion review guidance in the coordinator and delegated Standards reviewers. The existing review owns blocking decisions and evidence. A browser-supported clip-path effect is not blocked by the upstream's broad property preference alone. [ADR 0051](adr/0051-selected-emil-skills-govern-animation-guidance.md), as amended by [ADR 0074](adr/0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css.md), governs applicability.
 
-All ten selected items now ship as adaptations. None remains deferred.
+All twelve selected items ship as adaptations. None remains deferred.
 
 The six permanent exclusions for spec 338 are `animation-vocabulary`, `ask-sonner`, `pick-ui-library`, upstream `prototype`, `animate-expo`, and `write-swift`. Vstack's own prototype remains owned by the default branch; UI integration preserves its current version.
 
 The initial registration is a consistent direct Hand edit, including the Pin, object identities, artifact associations, catalog, version, and changelog. `prepare` and target `check` read the register from HEAD. Before the bootstrap is committed, `check --take emil:skills/emil-design-eng` previews the source item, while `check-register` and `plan emil@<initial Pin>` inspect the working registration. Do not run `prepare` against the pre-bootstrap HEAD: it cannot preserve the new source. After that initial commit, use the existing Hand edit and Update commands normally. No bootstrap API or UI-specific runtime is involved.
 
-Implementation and worker pointers reach good-css, which conditionally reaches the shipped UI guidance. Catalog membership satisfies classification and supports other Matt runs; it does not broaden principle-only build or subagent selection. [ADR 0051](adr/0051-selected-emil-skills-govern-animation-guidance.md) records animation authority. Non-animation CSS responsibilities remain with good-css.
+The twelve UI skills load by description in any session or by name. They appear in the Decision register's utility list without Addon catalog questions or sample-prompt labels. They do not broaden principle-only build or subagent selection. [ADR 0074](adr/0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css.md) records Emil precedence for CSS and animation. Good-css retains unique CSS techniques without hand-offs to or from these skills. Its seven caller instructions cover CSS only. Native description selection and instruction following remain unproven until explicitly approved remote evaluations run.
 
 Use the [frontend-guidance Verify recipe](../.omp/skills/verify-vstack/features/frontend-guidance.md) for native main and delegated runs, an unrelated-task control, packaged-content inspection, and an isolated future-source planning check. Stub load proof does not establish instruction following or UI quality.
 
@@ -159,6 +157,12 @@ The [mobile-web Verify recipe](../.omp/skills/verify-vstack/features/frontend-mo
 
 The [audit-to-selected-change recipe](../.omp/skills/verify-vstack/features/frontend-motion-audit.md) covers read-only main and delegated surveys, vetted priorities, rejected additive candidates, explicit diagnostic selection, and safe scoped subtraction through existing implementation and motion review. Audit findings enter the existing Flow owner rather than upstream execute dispatch or another plan-status workflow. Source hashes bracket selection; browser observations cover visibility, unmount, callbacks, focus, and retained useful motion.
 
+The Update to Matt `v1.3.2`, pstack `c742dd61706fbacc1b95f1a20b7b988cf096ce6c`, and the UI Pin above leaves css at `92d436ba1937d1b1407c47e35abb3e199eaace2e`. Motion shorthand performance findings apply before Motion 14.2; layout animations, `onUpdate`, `transformTemplate`, inertia, and motion-value-driven values remain main-thread in every version. Browser acceleration still needs scenario-specific evidence.
+
+`interrogate` is an answer-only Utility skill, not a review axis or End state step. It uses three isolated Session-model adversaries by default, independently reruns findings, merges shared root causes, reports dropped counts, and applies no fix. Failed starts or missing isolation stop its review; only started failures drop out, with at least two substantive candidates required. Existing review and final Verifier ownership remains unchanged.
+
+Selection-only trigger evals across the twelve UI descriptions and interrogate, and live Addon judge checks, remain optional Costly seam tests requiring explicit approval. Unrun evals leave selection overlap unproven without blocking the mechanical Update gates. Do not infer native instruction following from a load smoke.
+
 ### Frontend stack Utility
 
 `pick-frontend-stack` is a vstack original and visible Utility, not the rejected UI-upstream `pick-ui-library`. Its normal description and explicit name expose Vue and Nuxt library selection and requested setup. It adds no Addon catalog key or automatic judge selection. The Flow reader's Nuxt UI and Tailwind choice remains application-specific under ADR 0072.
@@ -166,7 +170,6 @@ The [audit-to-selected-change recipe](../.omp/skills/verify-vstack/features/fron
 The skill keeps advice read-only, preserves suitable installed packages and project tooling, and installs only task-required dependencies on an explicit setup request. Its conditional recipes cover framework and manager choice, copied shadcn-vue controls adapted to UnoCSS, UnoCSS icons, and TanStack Form with omptype. Optional state and query tools stay conditional.
 
 Use the [frontend-stack Verify recipe](../.omp/skills/verify-vstack/features/frontend-stack.md) for native baseline and consumer behavior, generated Nuxt and Vue with Vite applications, actual controls and transformed form output, repeated CSP validation, and public packaging. Prose wording assertions are not a substitute for those observations.
-
 
 
 ## Decision register
@@ -203,7 +206,7 @@ It proves that the register, `pins.yaml`, `plugin/`, and the Upstreams agree. Op
 | `--json` | | text output |
 | `--list-classes` | | prints every failure class and exits |
 
-The `github` source reads trees through the GitHub REST API (`commits/<ref>`, then `git/trees/<sha>?recursive=1`). It uses `GITHUB_TOKEN` or `GH_TOKEN` when set and `GITHUB_API_URL` as the API base. Both sources live in `scripts/lib/upstreams.ts`, which vstack-maintain reuses. Byte identity compares git blob SHAs without downloading contents. Page lint reads the CSS script only when a page template exists. The clones source uses `git cat-file`. A blobless clone fetches that blob on first read. The github source uses `contents/<path>?ref=<pin>`.
+The `github` source reads trees through the GitHub REST API (`commits/<ref>`, then `git/trees/<sha>?recursive=1`). It uses `GITHUB_TOKEN` or `GH_TOKEN` when set and `GITHUB_API_URL` as the API base. Both sources live in `scripts/lib/upstreams.ts`, which vstack-maintain reuses. Byte identity compares git blob SHAs without downloading contents. Page lint runs vstack's local script and reads no Upstream files.
 
 Exit codes: 0 pass, 1 register failures, 2 the check could not run (bad arguments, unreadable `pins.yaml` or register, a missing clone or ref, an API error). Exit 2 prints the remedy, such as the clone or fetch command.
 
@@ -242,7 +245,7 @@ Other files count even when an artifact lacks `SKILL.md`. Source inside `__pycac
 | `worktree-cmd` | adapt, merge, or original text runs `git worktree add` |
 | `tmp-path` | adapt, merge, or original text names `$TMPDIR/`, `/tmp/`, or the OS temp directory, outside a `mktemp` line |
 | `ask-tool` | any markdown artifact, adopt included, has a sentence with an `ask-tool` phrase that does not name `` `ask` `` |
-| `page-css` | a page template breaks the CSS upstream's `check-css.mjs` at its Pin; the item is the template and the message holds the script's `path:line` lines |
+| `page-css` | a page template or Flow reader stylesheet breaks vstack's hover, outline, or color check; the item is the file and the message holds the script's `path:line` lines |
 | `invalid-utility` | a `utility:` entry names no shipped skill, or names a skill with a non-reject Base upstream row |
 | `addon-slash-route` | text under `plugin/` or in `README.md` contains `/skill:<addon>`. Use `skill://<addon>` instead |
 | `addon-question-mismatch` | a key in the `questions` map of `addon-questions.json` names no shipped skill or names a Utility skill, or a shipped Addon has no such key |
@@ -272,7 +275,11 @@ A lint over shipped text starts from `lintTargets(ctx)` in `scripts/lib/checks/s
 
 ### Page templates
 
-Page templates follow good-css (#61). A page template is any `*.html` or `*.css` under `plugin/skills/<name>/templates/`. `scripts/lib/checks/pages.ts` runs the CSS Upstream's `page_lint:` script at its Pin over these files. Each flagged template reports `page-css`. With no template, the check reads nothing. Templates hold no authored figure. The caller writes Mermaid through vstack-figures and captures its source in the Flow. The host-backed reader draws it with Pele. An offline lesson instead renders an SVG and may inline its exact bytes.
+A page template is any `*.html` or `*.css` under `plugin/skills/<name>/templates/`. `scripts/lib/checks/pages.ts` also checks every `*.css` under `reader/app/`. It runs `plugin/skills/vstack-maintain/scripts/check-css.mjs`, registered as part of the vstack-maintain original, over these files. Each flagged file reports `page-css`. With no matching files, the check does not run the script.
+
+The script derives from the CSS upstream's `check-css.mjs` at `92d436ba1937d1b1407c47e35abb3e199eaace2e` and retains its MIT notice. vstack maintains this copy without Upstream fixes. It keeps the hover, outline, and color checks. It does not enforce logical properties, easing, transition property lists, reduced-motion gating, or duration limits. Pins supply no page lint.
+
+Templates hold no authored figure. The caller writes Mermaid through vstack-figures and captures its source in the Flow. The host-backed reader draws it with Pele. An offline lesson instead renders an SVG and may inline its exact bytes.
 
 ## House style
 

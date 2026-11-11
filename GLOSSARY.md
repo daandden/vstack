@@ -61,7 +61,7 @@ The native judge model that omp's judge role names, which selects Addons during 
 _Avoid_: jev judge, principle judge
 
 **Utility skill**:
-A vstack skill that is not a Matt skill and that the user can use whatever the work is. unslop, technical-writing, good-css, and skill-creator set how text, styles, and skills are made. explain, how, why, and forensics answer questions about existing work. in-your-own-words restates the user's goal so that the user and the agent agree. clean-wt removes omp checkouts that nothing uses anymore. The hidden helpers are vstack-tmp, vstack-fan-out, vstack-figures, flow-page, and vstack-worktree. Other skills name these helpers by `skill://`. Utility skills can start from their descriptions, from a rule, or by name, subject to each skill's invocation settings.
+A vstack skill that is not a Matt skill and that the user can use whatever the work is. unslop, technical-writing, good-css, the skills derived from the UI upstream, and skill-creator set how text, styles, interfaces, and skills are made. explain, how, why, and forensics answer questions about existing work. interrogate reports only adversarial findings that the coordinator reproduces, without fixes. in-your-own-words restates the user's goal so that the user and the agent agree. clean-wt removes omp checkouts that nothing uses anymore. The hidden helpers are vstack-tmp, vstack-fan-out, vstack-figures, flow-page, and vstack-worktree. Other skills name these helpers by `skill://`. Utility skills can start from their descriptions, from a rule, or by name, subject to each skill's invocation settings.
 _Avoid_: standalone skill, helper skill
 
 **Command**:

@@ -5,38 +5,16 @@ description: Modern CSS techniques that replace breakpoint ladders, wrapper elem
 
 # Good CSS
 
-One declaration that adapts on its own beats a set of breakpoints, and a CSS feature beats a script. Use JavaScript only where it makes a result nicer that already works without it.
+Use these CSS techniques where they fit the project's layout, component lifecycle, and browser targets.
 
-Each technique is a set of properties and values, so it works in any authoring system. Class names in the examples are placeholders. Write the declarations in what the project already uses, whether that is a stylesheet, Tailwind utilities or StyleX objects. Where that system has no shorthand for a declaration, write it the long way, as a Tailwind arbitrary property or a rule in the project's CSS file. Do not swap the technique for a breakpoint.
-
-## Frontend interaction guidance
-
-When building or reviewing UI controls, dialogs, popovers, feedback, or motion, read skill://emil-design-eng before choosing the interaction. This applies in main sessions and delegated frontend work. Leave it unloaded for non-frontend tasks.
-
-When reviewing animation or motion changes, read skill://review-animations and its standards. Use the existing review owner's finding format and blocking authority in main and delegated reviews.
-
-When building or verifying data-bearing UI, read skill://break-ui to exercise plausible adverse content, empty and single collections, large values, and narrow containers. Apply it in main sessions and delegated frontend work through the existing implementation and Verify owners.
-
-When implementing purposeful web motion, read skill://animate. When choosing an animation driver or property on performance grounds, or diagnosing stutter, read skill://animation-performance. Follow these references in main sessions and delegated frontend work; leave them unloaded when the task does not involve motion.
-
-For mobile-web or touch-facing UI, including viewport height, safe areas, hover, or inputs, read skill://mobile-native. For Apple-derived web feedback, gesture-driven controls, interruptible sheets, materials, or typography, read skill://apple-design. These conditions apply equally to main sessions and delegated frontend workers.
-
-When auditing existing motion or planning improvements, read skill://improve-animations. For useful new-motion candidates and explicit rejections, read skill://find-animation-opportunities. For proposed or selected subtraction, read skill://remove-animations. Apply these references in main sessions and delegated audits or scoped builds. Keep audits read-only; the current vstack owner obtains explicit selection before implementation.
-
-Emil Kowalski's selected guidance is adapted from the UI upstream. Its animation guidance takes precedence over this skill under ADR 0051. Reconcile disagreements within Emil's guidance with browser-specific behavior and observed evidence. Keep this skill's non-animation CSS and accessibility responsibilities. Conditional hand-offs name shipped guidance only. The derived skills retain the upstream MIT notice.
+Each technique is a set of properties and values, so it works in any authoring system. Class names in the examples are placeholders. Write the declarations in what the project already uses, whether that is a stylesheet, Tailwind utilities, or StyleX objects. Where that system has no shorthand for a declaration, use a Tailwind arbitrary property or a rule in the project's CSS file.
 
 ## In all CSS
 
 These need no file.
 
-- Write `inline` and `block` properties in place of left, right, top and bottom. Tailwind has them too, as in `mbs-`, `pe-` and `inset-bs-`, so never write `mt-`, `pr-` or `top-`. The block ones need Tailwind 4.2. Below it, write them as arbitrary properties, as in `[margin-block-start:theme(spacing.4)]`.
 - Write colors in `oklch()`, with `none` as the hue of a gray, white or black. Derive a hover, tint or transparent version with `color-mix(in oklch, …)`.
 - Put sizes that grow with the screen in one `clamp()` token.
-- Put every `:hover` rule inside `@media (hover: hover) and (pointer: fine)`.
-- Style focus with `:focus-visible` and `outline`. Never write `outline: none`.
-- Give everything pressable an `:active` state.
-- Put a transition that moves or scales something inside `@media (prefers-reduced-motion: no-preference)`. Name its properties, never `all`, and never use `ease-in`.
-- Cut off overflow with `overflow: clip`. Keep `hidden` for an element a script scrolls.
 
 ## Read the entry before you write
 
@@ -44,14 +22,14 @@ Each file holds entries with the CSS and its rules. The rules are the conditions
 
 | Read | Before you write |
 | --- | --- |
-| `references/foundations.md` | a reset or base stylesheet, a set of color tokens, dark mode, a type or spacing scale |
+| `references/foundations.md` | scoped base styles, color tokens, dark mode, or a fluid spacing scale |
 | `references/layout.md` | a page or section container or any centered `max-width` wrapper, whether or not anything goes edge to edge, a grid of cards, cards whose parts line up, a sidebar, a component placed in slots of different widths, overlapping layers, centered content that can overflow |
 | `references/spacing-and-shape.md` | spacing between sections, elements stacked one above another, one item pushed to the far end of a row or column, nested rounded corners |
 | `references/text-and-media.md` | text or images that come from a user or a CMS, such as names, titles, excerpts, thumbnails, avatars and embeds, an icon next to a label, a label that looks off-center, numbers in a column |
-| `references/interaction.md` | the focus, hover and press states of a button, link, input or card, a small tap target, a clickable card, form validation, a textarea, a parent styled by what it contains, page scroll locked behind a modal |
-| `references/motion.md` | easing and duration tokens, one state change that drives several values, a shadow that changes on hover, a transition between pages, the indicator under an active tab |
+| `references/interaction.md` | an enlarged hit area, a clickable card, form validation, a textarea, a parent styled by what it contains, or page scroll locked behind a modal |
+| `references/motion.md` | a registered custom property, a cross-document view transition, or an anchor-positioned active indicator |
 | `references/show-and-hide.md` | a dialog, popover, dropdown menu or accordion |
-| `references/scroll-and-viewport.md` | a carousel, a row that may overflow, a modal body, chat list or drawer that scrolls between a header and a footer, in-page links under a sticky header, an app shell on desktop or on a phone |
+| `references/scroll-and-viewport.md` | carousel controls and snap alignment, a scroll area between a header and footer, overflow-dependent styling, or in-page links under a sticky header |
 
 ## Left out on purpose
 
