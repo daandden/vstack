@@ -98,6 +98,8 @@ Scratch cleanup never deletes an open Flow. It offers a closed Flow for deletion
 
 The script applies all items to the bound Stage, or refuses all of them. Give a new question, Topic note, Result, or Result entry a `ref` (lowercase letters, digits, and hyphens) when another item names it. An item can name a ref from the same contribution, or an id from an earlier receipt. Name a Result entry as `<result ref or id>/<entry ref or id>`.
 
+To correct a finished Stage's Result or entry, publish ordinary replacement content and a `corrects` item together in a later Stage. Read [Correction fields](references/contributions.md) before writing the relation. The original stays in place with a warning and link. A closed Flow must be reopened first.
+
 Submitting the Stage's latest contribution again, for example after a lost receipt, applies nothing and prints its first receipt with `repeated: true`. This deduplicates publication, not asking. If the picker lost or never showed a question and no response is recorded, apply the own-run recovery rule: resubmit the same contribution to recover its receipt, then retry `ask` once with the same generated payload. A recorded cancellation, timeout, or empty response is not an infrastructure failure. Once a non-consent response is recorded, author a linked round with `again` before asking it again; preserve the earlier attempt and Q number.
 
 ## Validate without publishing

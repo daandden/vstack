@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Publish Result and entry Corrections atomically from later Stages, preserving original content and versioned links with warning banners and reciprocal reader navigation."
+  ]
+}

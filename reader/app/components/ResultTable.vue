@@ -82,7 +82,11 @@ useEventListener(document, "flow-reveal", (event: Event) => {
         </UButton>
       </template>
       <template v-for="c in labels" :key="c.id" #[`${c.id}-cell`]="{ row }">
-        <span :id="c.index === 0 ? row.original.anchor : undefined" :class="c.index === 0 ? 'block min-h-lh' : undefined" v-html="inline(cells(row.original)[c.index] ?? '')" />
+        <div v-if="c.index === 0" :id="row.original.anchor" class="block min-h-lh">
+          <CorrectionNotice :notice="row.original" />
+          <span v-html="inline(cells(row.original)[c.index] ?? '')" />
+        </div>
+        <span v-else v-html="inline(cells(row.original)[c.index] ?? '')" />
       </template>
       <template #questions-cell="{ row }">
         <template v-for="(id, i) in row.original.questions" :key="id">{{ i ? '; ' : '' }}<a :href="`#${id}`">Q{{ ask(id)?.q }}</a>: <span v-html="inline(ask(id)?.title ?? '')" /></template>

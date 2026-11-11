@@ -167,7 +167,7 @@ test("describe exposes exclusive required content and validate diagnoses its omi
   }
 });
 
-const kinds = ["background", "topic", "attachment", "result", "revise", "assumed", "round", "answer", "close", "stage", "wayfinder", "task", "blocker", "end-state", "pr", "check"];
+const kinds = ["background", "topic", "attachment", "result", "revise", "corrects", "assumed", "round", "answer", "close", "stage", "wayfinder", "task", "blocker", "end-state", "pr", "check"];
 const envelope = (...items: unknown[]) => ({ version: 1, items });
 const describeKind = (kind: string) => {
   const described = run(["describe", kind]);

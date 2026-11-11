@@ -16,6 +16,7 @@ const attachments = (v: unknown) => ((v as string[] | undefined) ?? []).map((id)
   </ol>
   <ol v-else-if="r.shape === 'timeline'" class="grid list-decimal ps-4">
     <li v-for="e in r.entries" :id="e.anchor" :key="e.anchor" class="event border-s border-flow-line pbs-0 pbe-4 ps-3 [&>*+*]:mbs-1.5 marker:text-[var(--outcome)] marker:tabular-nums target:bg-accented" :class="e.outcome === 'succeeded' ? '[--outcome:var(--green)]' : e.outcome === 'failed' ? '[--outcome:var(--red)]' : e.outcome === 'blocked' ? '[--outcome:var(--peach)]' : e.outcome === 'noted' ? '[--outcome:var(--blue)]' : '[--outcome:var(--subtext0)]'" :data-outcome="e.outcome">
+      <CorrectionNotice :notice="e" />
       <p class="flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 text-small text-muted">
         <time v-if="e.time" :datetime="str(e.time)">{{ eventTime(str(e.time)) }}</time><span v-else class="font-semibold text-dimmed">Time not recorded</span>
         <span class="font-semibold text-[var(--outcome)]">{{ OUTCOME_LABELS[str(e.outcome)] }}</span>
@@ -31,6 +32,7 @@ const attachments = (v: unknown) => ((v as string[] | undefined) ?? []).map((id)
   </ol>
   <ol v-else-if="r.shape === 'ledger'" class="grid list-none gap-3 ps-0">
     <li v-for="e in r.entries" :id="e.anchor" :key="e.anchor" class="claim grid gap-1.5 border-be border-flow-line pbe-2 last:border-be-0 last:pbe-0 target:bg-accented" :data-status="e.status">
+      <CorrectionNotice :notice="e" />
       <h3><span class="me-2 font-bold uppercase tabular-nums">{{ e.id }}</span><span v-html="inline(str(e.claim))" /></h3>
       <p class="text-small font-semibold" :class="e.status === 'confirmed' ? 'text-error' : e.status === 'cleared' ? 'text-success' : 'text-warning'">{{ CLAIM_LABELS[str(e.status)] }}</p>
       <dl class="grid grid-cols-[fit-content(12rem)_1fr] items-baseline gap-x-4 gap-y-1 [&_dt]:text-small [&_dt]:font-semibold [&_dt]:text-toned [&_dd]:ms-0">
@@ -43,6 +45,7 @@ const attachments = (v: unknown) => ((v as string[] | undefined) ?? []).map((id)
   </ol>
   <ol v-else class="grid list-none gap-3 ps-0">
     <li v-for="e in r.entries" :id="e.anchor" :key="e.anchor" class="card grid gap-1.5 border-be border-flow-line pbe-2 last:border-be-0 last:pbe-0 target:bg-accented" :data-blocking="e.blocking ? '' : undefined">
+      <CorrectionNotice :notice="e" />
       <h3><span class="me-2 font-bold uppercase tabular-nums">{{ e.id }}</span><span v-html="inline(str(e.title))" /></h3>
       <p class="text-small font-semibold" :class="e.blocking ? 'text-error' : 'text-muted'"><span v-html="inline(str(e.label))" /> ({{ e.blocking ? "blocking" : "non-blocking" }})</p>
       <dl class="grid grid-cols-[fit-content(12rem)_1fr] items-baseline gap-x-4 gap-y-1 [&_dt]:text-small [&_dt]:font-semibold [&_dt]:text-toned [&_dd]:ms-0">

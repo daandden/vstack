@@ -119,6 +119,12 @@ export type Io = {
 /** One explicit lifecycle change of the whole Flow. Retention counts from the latest close; nothing else moves it. */
 export type Lifecycle = { event: "closed" | "reopened"; time: string };
 
+export type CorrectionEndpoint = { id: string; result: string; stage: string; revision: number; edit?: number; changed: number };
+export type Correction = { id: string; stage: string; time: string; reason: string; target: CorrectionEndpoint; replacement: CorrectionEndpoint };
+export type CorrectionLink = CorrectionEndpoint & { anchor: string };
+export type CorrectionView = Omit<Correction, "target" | "replacement"> & { target: CorrectionLink; replacement: CorrectionLink; head: CorrectionLink };
+export type CorrectionNotice = { correction?: CorrectionView; corrects: CorrectionView[] };
+
 type ReadingBlock = { id: string; kind: "background" | "topic" | "question" | "result" | "assumed" | "close"; stage?: string };
 type Publication = ReadingBlock & { position: number; publication: number };
 type ReadingOrder = { historical: ReadingBlock[]; publications: Publication[] };
@@ -189,6 +195,7 @@ export type State = {
   attachments: Attachment[];
   /** Earlier revisions of republished Results, oldest first. */
   history: Result[];
+  corrections?: Correction[];
   progress?: Progress;
   wayfinder?: WayfinderMap[];
   /** Closes and reopens, oldest first. A Flow with none, or whose latest is a reopen, is open. */
@@ -202,6 +209,7 @@ export function upgrade(s: State): State {
   s.attachments ??= [];
   s.history ??= [];
   s.lifecycle ??= [];
+  s.corrections ??= [];
   s.reading ??= retainedReading(s);
   return s;
 }
@@ -271,7 +279,7 @@ export function newFlow(id: string, slug: string, title: string, time: string): 
   return {
     schema: SCHEMA, flow: { id, slug, title, created: time }, revision: 0, next: {}, seq: 0,
     stages: [], rounds: [], questions: [], answers: [], closes: [], backgrounds: [], topics: [], results: [], assumed: [], retirements: [], sources: [],
-    aliases: [`folder:${id}`], submissions: {}, attachments: [], history: [], lifecycle: [], reading: { historical: [], publications: [] },
+    aliases: [`folder:${id}`], submissions: {}, attachments: [], history: [], corrections: [], lifecycle: [], reading: { historical: [], publications: [] },
   };
 }
 
@@ -360,7 +368,7 @@ function ref(o: Obj, where: string): string | undefined {
 
 export type Receipt = { refs: Record<string, string>; ask?: { questions: { id: string; question: string; options: { label: string }[]; multi?: boolean; recommended?: number }[] } };
 
-const KINDS = ["background", "topic", "attachment", "result", "revise", "assumed", "round", "answer", "close", "stage", "wayfinder", ...PROGRESS_KINDS] as const;
+const KINDS = ["background", "topic", "attachment", "result", "revise", "corrects", "assumed", "round", "answer", "close", "stage", "wayfinder", ...PROGRESS_KINDS] as const;
 type ContributionKind = (typeof KINDS)[number];
 type PlannedIds = { id?: string; entries?: string[]; questions?: string[] };
 type ContributionHandler = { plan?: (o: Obj, where: string, ids: PlannedIds) => void; apply: (o: Obj, where: string, ids: PlannedIds) => void };
@@ -392,6 +400,7 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
   const last = s.submissions[stage.id];
   if (last?.digest === digest) return { ...last.receipt, revision: last.revision, repeated: true };
   if (stage.state === "finished") refuse("contribution", `Stage ${stage.id} is finished, so it takes no more content; open a new Stage to continue the Flow`);
+  if (closedAt(s)) refuse("contribution", "the Flow is closed; reopen it in a new Stage before publishing a Correction");
   const rev = s.revision + 1;
 
   const published = new Set([...s.reading.historical, ...s.reading.publications].map((b) => b.id));
@@ -422,6 +431,7 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
 
   const revised = new Set<string>();
   const nextEntry = new Map<string, number>();
+  const newContent = new Set<string>();
   const authoredFigures: Figure[] = [];
   const figure = (raw: unknown, id: string, where: string): Figure => {
     const o = fields(raw, where, [], ["attachment", "text", "kind"]);
@@ -505,6 +515,8 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
           r.revision = 1;
           s.results.push(r);
           publish("result", r.id);
+          newContent.add(r.id);
+          for (const e of r.entries) newContent.add(`${r.id}/${e.id}`);
           return;
         }
         const old = s.results[i]!;
@@ -539,6 +551,23 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
       },
       apply(o, where, ids) {
         revise(s, o, where, stage.id, ids.entries, rev, time, resolve);
+        for (const id of ids.entries ?? []) newContent.add(id);
+      },
+    },
+    corrects: {
+      apply(o, where) {
+        fields(o, where, ["kind", "target", "replacement", "reason"]);
+        const target = correctionEndpoint(s, resolve(o.target, "Result or Result entry", `${where}: target`), where);
+        const replacement = correctionEndpoint(s, resolve(o.replacement, "Result or Result entry", `${where}: replacement`), where);
+        const earlier = stageOf(s, target.stage, where);
+        if (earlier.order >= stage.order || earlier.state !== "finished") refuse(where, "a Correction targets content of an earlier finished Stage");
+        if (replacement.stage !== stage.id || !newContent.has(replacement.id)) refuse(where, "a Correction replacement must be new ordinary content published in this contribution");
+        const relations = s.corrections ??= [];
+        const overlap = (a: CorrectionEndpoint, b: CorrectionEndpoint) => a.result === b.result && (a.id === b.id || a.id === a.result || b.id === b.result);
+        if (relations.some(c => overlap(c.target, target))) refuse(where, "conflicting successor: this target already has a Correction; correct its replacement instead");
+        if (relations.some(c => overlap(c.replacement, replacement))) refuse(where, "the replacement already belongs to a Correction");
+        if (relations.some(c => overlap(c.replacement, target) && c.replacement.id !== target.id)) refuse(where, "a later Correction must target the exact preceding replacement, not an overlapping Result or entry");
+        relations.push({ id: newId(s, "correction"), stage: stage.id, time, reason: text(o, "reason", where), target, replacement });
       },
     },
     assumed: {
@@ -666,7 +695,7 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
       return [];
     }
   });
-  for (const { o, where, ids, handler } of planned) {
+  for (const { o, where, ids, handler } of [...planned.filter(p => p.o.kind !== "corrects"), ...planned.filter(p => p.o.kind === "corrects")]) {
     try { handler.apply(o, where, ids); }
     catch (error) { report(error); }
   }
@@ -1497,6 +1526,32 @@ function checkLinks(s: State, report: (id: string, suffix: string, message: stri
   for (const a of s.attachments) if (!used.has(a.id)) report(a.id, "", "is attached to no Result; name it in a Result's or Timeline event's attachments or a Document figure");
 }
 
+function correctionEndpoint(s: State, id: string, where: string): CorrectionEndpoint {
+  const link = resultLink(s, id) ?? refuse(where, `Correction target ${id} must name an existing Result or Result entry`);
+  const result = s.results.find(r => r.id === link.result)!;
+  return { id: link.id, result: result.id, stage: result.stage, revision: result.revision ?? 1, ...(result.edit === undefined ? {} : { edit: result.edit }), changed: link.entry ? result.entries.find(e => e.id === link.entry)!.changed : result.changed };
+}
+
+function correctionViews(s: State): CorrectionView[] {
+  const relations = s.corrections ?? [];
+  const successors = new Map(relations.map(c => [c.target.id, c]));
+  const link = (e: CorrectionEndpoint): CorrectionLink => {
+    const current = s.results.find(r => r.id === e.result);
+    const anchor = current && (current.revision ?? 1) === e.revision && current.edit === e.edit
+      ? e.result : `${e.result}-r${e.revision}${e.edit === undefined ? "" : `-edit${e.edit}`}`;
+    return { ...e, anchor: `${anchor}${e.id === e.result ? "" : `-${e.id.slice(e.result.length + 1)}`}` };
+  };
+  return relations.map(c => {
+    let head = c.replacement;
+    const visited = new Set([c.target.id]);
+    while (successors.has(head.id) && !visited.has(head.id)) {
+      visited.add(head.id);
+      head = successors.get(head.id)!.replacement;
+    }
+    return { ...c, target: link(c.target), replacement: link(c.replacement), head: link(head) };
+  });
+}
+
 /** Every attachment a Result shows, including figures, alternatives' evidence, and event evidence. */
 export function attachmentsOf(r: Result): string[] {
   const figures = (r.document?.sections ?? []).flatMap((sec) => sec.blocks.flatMap((b) => ("figure" in b ? [b.figure] : [])));
@@ -1553,12 +1608,12 @@ export type MetricsView = Omit<MetricsBody, "measurements"> & {
   baseline?: string;
   measurements: (Omit<Measurement, "values" | "chart"> & { anchor: string; chart?: Measurement["chart"] | { max: number }; values: ValueView[] })[];
 };
-export type ResultView = Omit<Result, "entries" | "document" | "comparison" | "metrics"> & {
+export type ResultView = Omit<Result, "entries" | "document" | "comparison" | "metrics"> & CorrectionNotice & {
   /** The id this rendering of the Result anchors at: the Result id, or `<id>-r<n>` for an earlier revision. */
   anchor: string;
   revision: number;
   questions: string[];
-  entries: (Entry & { anchor: string; questions: string[]; location?: CodeLocation })[];
+  entries: (Entry & CorrectionNotice & { anchor: string; questions: string[]; location?: CodeLocation })[];
   doc?: DocView;
   comparison?: ComparisonView;
   metrics?: MetricsView;
@@ -1627,6 +1682,7 @@ function mattPath(stages: Stage[]): MattPath | undefined {
 export type View = {
   flow: State["flow"]; revision: number; stages: StageView[]; lifecycle: Lifecycle[];
   reading: ReadingOrder;
+  corrections: CorrectionView[];
   path?: MattPath;
   wayfinder?: WayfinderMap & { history: WayfinderMap[] };
   next: string[];
@@ -1728,14 +1784,19 @@ export function view(s: State): View {
   }
   const linking = (entry: string) => s.questions.filter((q) => q.entries?.includes(entry)).map((q) => q.id);
   const attachment = new Map(s.attachments.map((a) => [a.id, a]));
+  const corrections = correctionViews(s);
+  const notice = (id: string): CorrectionNotice => ({
+    correction: corrections.find(c => c.target.id === id),
+    corrects: corrections.filter(c => c.replacement.id === id),
+  });
   const resultView = (r: Result, anchor: string, current: boolean): ResultView => {
     const { document: d, comparison: c, metrics: m, ...rest } = r;
     const rv: ResultView = {
-      ...rest, anchor, revision: r.revision ?? 1, shown: attachmentsOf(r).map((a) => attachment.get(a)!), history: [],
+      ...rest, ...notice(r.id), anchor, revision: r.revision ?? 1, shown: attachmentsOf(r).map((a) => attachment.get(a)!), history: [],
       questions: current ? linking(r.id) : [],
       entries: r.entries.map((e) => {
         const ea = `${anchor}-${e.id}`;
-        return { ...e, anchor: ea, questions: current ? linking(`${r.id}/${e.id}`) : [], ...(r.shape === "code" ? { location: codeLocation(e, ea) } : {}) };
+        return { ...e, ...notice(`${r.id}/${e.id}`), anchor: ea, questions: current ? linking(`${r.id}/${e.id}`) : [], ...(r.shape === "code" ? { location: codeLocation(e, ea) } : {}) };
       }),
     };
     if (r.axes) rv.review = r.axes.flatMap((axis): ReviewRow[] => {
@@ -1790,7 +1851,7 @@ export function view(s: State): View {
   ];
   return {
     flow: s.flow, revision: s.revision, stages, questions, progress: progressView(s), lifecycle: s.lifecycle, ...(s.migrated ? { migrated: s.migrated } : {}),
-    reading: s.reading,
+    reading: s.reading, corrections,
     path: mattPath(s.stages),
     ...(s.wayfinder?.length ? { wayfinder: { ...s.wayfinder.at(-1)!, history: s.wayfinder.slice(0, -1) } } : {}),
     next: stages.filter((st) => st.state === "in-progress").reverse().flatMap((st) => st.asked.filter((q) => q.open).map((q) => q.id)),
@@ -1811,7 +1872,7 @@ export function snapshot(v: View) {
   return {
     flow: v.flow, revision: v.revision, open: v.lifecycle.at(-1)?.event !== "closed", lifecycle: v.lifecycle, ...(v.migrated ? { migrated: { from: v.migrated.from, sha256: v.migrated.sha256, time: v.migrated.time, anchors: v.migrated.anchors } } : {}),
     next: v.next,
-    reading: v.reading,
+    reading: v.reading, corrections: v.corrections,
     ...(v.path ? { path: v.path } : {}),
     ...(v.wayfinder ? { wayfinder: v.wayfinder } : {}),
     stages: v.stages.map((st) => ({
@@ -1830,6 +1891,7 @@ export function snapshot(v: View) {
         history: r.history.map((x) => ({ anchor: x.anchor, revision: x.revision, ...(x.edit === undefined ? {} : { edit: x.edit }), ...(x.canonical ? { canonical: x.canonical } : {}), attachments: x.shown.map((a) => a.id) })),
         attachments: r.shown.map((a) => a.id),
         questions: r.questions,
+        correction: r.correction, corrects: r.corrects,
         entries: r.entries.map(({ anchor: _, ...e }) => ({ ...e, id: `${r.id}/${e.id}`, questions: e.questions })),
         ...(r.doc ? {
           document: {

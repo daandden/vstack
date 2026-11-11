@@ -140,6 +140,7 @@ export const contributionKinds: Record<string, Contract> = {
   attachment: { ...union({ file: attachment, mermaid, artifact }), selection: "type=artifact selects artifact; type=mermaid selects mermaid; otherwise file", select: value => value.type === "artifact" ? artifact : value.type === "mermaid" ? mermaid : attachment },
   result: union(resultContracts, "shape"),
   revise: item({ result: ref }, { base: { ...number, integer: true, min: 1 }, set: { type: "record", items: unknown }, add: array({ type: "record", items: unknown }) }),
+  corrects: item({ target: ref, replacement: ref, reason: string }),
   assumed: item({ decision: string, pick: string, why: string }, { ref }),
   round: item({ questions: array(question) }),
   answer: item({ question: ref, response: optional({ status: enumeration("answered", "empty", "cancelled", "timed-out", "headless") }, { picks: strings, text: string, note_on: string }) }, { reading: { ...union(reading), selection: "outcome=resolved selects resolved; otherwise unresolved", select: value => value.outcome === "resolved" ? reading.resolved : reading.unresolved } }),

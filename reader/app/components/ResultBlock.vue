@@ -22,6 +22,7 @@ const earlier = computed(() => [...props.r.history].reverse());
   <component :is="historical ? 'article' : 'section'" :id="r.anchor" class="result grid gap-2.5" :class="historical ? 'border-s-2 border-default ps-3' : undefined" :data-shape="r.shape" :aria-labelledby="`${r.anchor}-title`" :data-stop="historical ? undefined : ''">
     <span v-if="r.review && !historical" :id="`${r.stage}-review`" />
     <div ref="content" class="grid min-w-0 gap-2.5">
+    <CorrectionNotice :notice="r" />
     <header class="grid gap-1">
       <h2 :id="`${r.anchor}-title`" v-html="inline(r.title)" />
       <p v-if="r.summary" class="text-toned" v-html="inline(r.summary)" />
