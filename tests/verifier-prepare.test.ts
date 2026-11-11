@@ -2,6 +2,7 @@ import { afterEach, expect, test } from "bun:test";
 import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { writeExecutable } from "./support/executable.ts";
 
 const script = resolve(import.meta.dir, "../plugin/skills/ship/scripts/prepare-verifier.ts");
 const temps: string[] = [];
@@ -34,7 +35,7 @@ function fixture() {
     declare(inputs);
     const bin = join(dir, "bin"); mkdirSync(bin);
     const fake = resolve(import.meta.dir, "support/fake-ovnfs.ts");
-    for (const name of ["ovnfs", "omp"]) writeFileSync(join(bin, name), `#!${process.execPath}\nimport ${JSON.stringify(fake)};\n`, { mode: 0o755 });
+    for (const name of ["ovnfs", "omp"]) writeExecutable(join(bin, name), "bun", `await import(${JSON.stringify(fake)});`);
     symlinkSync(Bun.which("git")!, join(bin, "git"));
     const p = Bun.spawnSync([process.execPath, resolve(import.meta.dir, "../plugin/skills/vstack-worktree/scripts/worktree.ts"), "open",
       "--repo", clone, "--purpose", "verify", "--commit", revision, "--record", recordPath, ...(cloned ? ["--inputs", inputsPath] : [])], {
@@ -52,7 +53,7 @@ test("validates an ovnfs head checkout opened and removed through the worktree C
   const f = fixture();
   const bin = join(f.dir, "bin"); mkdirSync(bin);
   const fake = resolve(import.meta.dir, "support/fake-ovnfs.ts");
-  for (const name of ["ovnfs", "omp"]) writeFileSync(join(bin, name), `#!${process.execPath}\nimport ${JSON.stringify(fake)};\n`, { mode: 0o755 });
+  for (const name of ["ovnfs", "omp"]) writeExecutable(join(bin, name), "bun", `await import(${JSON.stringify(fake)});`);
   symlinkSync(Bun.which("git")!, join(bin, "git"));
   mkdirSync(join(f.clone, "node_modules"));
   writeFileSync(join(f.clone, "node_modules/input"), "ignored dependency");
