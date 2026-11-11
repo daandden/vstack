@@ -159,6 +159,15 @@ The [mobile-web Verify recipe](../.omp/skills/verify-vstack/features/frontend-mo
 
 The [audit-to-selected-change recipe](../.omp/skills/verify-vstack/features/frontend-motion-audit.md) covers read-only main and delegated surveys, vetted priorities, rejected additive candidates, explicit diagnostic selection, and safe scoped subtraction through existing implementation and motion review. Audit findings enter the existing Flow owner rather than upstream execute dispatch or another plan-status workflow. Source hashes bracket selection; browser observations cover visibility, unmount, callbacks, focus, and retained useful motion.
 
+### Frontend stack Utility
+
+`pick-frontend-stack` is a vstack original and visible Utility, not the rejected UI-upstream `pick-ui-library`. Its normal description and explicit name expose Vue and Nuxt library selection and requested setup. It adds no Addon catalog key or automatic judge selection. The Flow reader's Nuxt UI and Tailwind choice remains application-specific under ADR 0072.
+
+The skill keeps advice read-only, preserves suitable installed packages and project tooling, and installs only task-required dependencies on an explicit setup request. Its conditional recipes cover framework and manager choice, copied shadcn-vue controls adapted to UnoCSS, UnoCSS icons, and TanStack Form with omptype. Optional state and query tools stay conditional.
+
+Use the [frontend-stack Verify recipe](../.omp/skills/verify-vstack/features/frontend-stack.md) for native baseline and consumer behavior, generated Nuxt and Vue with Vite applications, actual controls and transformed form output, repeated CSP validation, and public packaging. Prose wording assertions are not a substitute for those observations.
+
+
 
 ## Decision register
 

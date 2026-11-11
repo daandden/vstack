@@ -1134,6 +1134,7 @@ originals:
   - plugin/tern/vstack-flow
   - plugin/rules/vstack-posting.md
   - plugin/rules/vstack-recovery.md
+  - plugin/skills/pick-frontend-stack
 utility:
   - plugin/skills/unslop
   - plugin/skills/technical-writing
@@ -1150,3 +1151,4 @@ utility:
   - plugin/skills/vstack-worktree
   - plugin/skills/in-your-own-words
   - plugin/skills/clean-wt
+  - plugin/skills/pick-frontend-stack
