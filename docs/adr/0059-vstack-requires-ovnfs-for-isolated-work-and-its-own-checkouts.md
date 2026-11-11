@@ -8,6 +8,8 @@ clean-wt inventories the ovnfs checkouts omp made and applies its owner, dirty-w
 
 Amended on 2026-11-09 for ovnfs v0.3.0, whose `rm` also deletes the checkout's snapshots. clean-wt's Git guards cannot see work that exists only in a snapshot, so clean-wt keeps snapshots through `ovnfs ctl rm` with `sticky_snapshots`. It runs plain `ovnfs rm` only when the daemon rejects that field, because a daemon older than v0.3.0 never deletes snapshots. Inspecting snapshot contents before removal was rejected because it would add a second, ovnfs-specific uniqueness guard. vstack-worktree keeps plain `ovnfs rm` for the checkouts it opened, so their snapshots go with them.
 
+Amended on 2026-11-12 for ovnfs v0.4.0, which gives the source repository a git remote `ovnfs/NAME` for each live checkout unless `git_remotes: false` is set. After a fetch, `refs/remotes/ovnfs/NAME/HEAD` reaches the checkout's own commits, but ovnfs deletes that ref when it removes the checkout. clean-wt therefore never counts `refs/remotes/ovnfs/*` as a copy of a commit, and never picks an `ovnfs/` remote as the source's remote default. setup-vstack's Migration likewise skips `ovnfs/` remotes when it seeds the Code host. Requiring `git_remotes: false` through setup-vstack was rejected: it would turn off an ovnfs feature for all of the user's work, need a restart of the shared daemon, and leave the guard open whenever the setting came back on.
+
 ## Considered Options
 
 - **Support both backends and detect which one each run used**: rejected. The user chose one layout to support over keeping vstack working on machines without ovnfs.

@@ -1006,6 +1006,59 @@ test("ovnfs guards protect live owners, private Git work, ignored files, stashes
   expect(existsSync(gitDir)).toBe(false);
 });
 
+function ovnfsRemote(name: string) {
+  git(repo, "config", `remote.ovnfs/${name}.url`, join(ovnfsRoot, `${name}.git-private`));
+  git(repo, "config", `remote.ovnfs/${name}.fetch`, `+HEAD:refs/remotes/ovnfs/${name}/HEAD`);
+}
+
+test("a fetched ovnfs checkout remote never counts as a copy of a checkout's commits", () => {
+  const fetched = ovnfsCheckout("omp-fetched");
+  writeFileSync(join(fetched, "only.txt"), "commit\n");
+  git(fetched, "add", "only.txt");
+  git(fetched, "commit", "-qm", "unique");
+  const commit = git(fetched, "rev-parse", "HEAD");
+  const sibling = ovnfsCheckout("omp-sibling");
+  git(sibling, "fetch", "-q", join(ovnfsRoot, "omp-fetched.git-private"), "HEAD");
+  git(sibling, "reset", "-q", "--hard", "FETCH_HEAD");
+  const kept = ovnfsCheckout("omp-kept");
+  writeFileSync(join(kept, "kept.txt"), "kept\n");
+  git(kept, "add", "kept.txt");
+  git(kept, "commit", "-qm", "kept");
+  for (const name of ["omp-fetched", "omp-sibling", "omp-kept"]) ovnfsRemote(name);
+  git(repo, "fetch", "-q", "--all");
+  git(repo, "branch", "kept", "refs/remotes/ovnfs/omp-kept/HEAD");
+  const inv = inventory();
+  expect(inv[fetched].unique_history).toEqual([{ ref: "refs/heads/main", sha: commit }]);
+  expect(inv[sibling].unique_history).toEqual([{ ref: "refs/heads/main", sha: commit }]);
+  expect(inv[kept].unique_history).toEqual([]);
+  const out = remove("--approve", fetched, "--approve", sibling, `${fetched}=${inv[fetched].fingerprint}`, `${sibling}=${inv[sibling].fingerprint}`);
+  expect(out.removed).toEqual([]);
+  expect(existsSync(fetched) && existsSync(sibling)).toBe(true);
+});
+
+test("a detached linked worktree reachable only through an ovnfs tracking ref keeps its unique history", () => {
+  const path = linkedWorktree("wt-ovnfs-only");
+  git(path, "checkout", "-q", "--detach");
+  writeFileSync(join(path, "spike.txt"), "spike\n");
+  git(path, "add", "spike.txt");
+  git(path, "commit", "-qm", "spike");
+  const spike = git(path, "rev-parse", "HEAD");
+  git(repo, "update-ref", "refs/remotes/ovnfs/omp-spike/HEAD", spike);
+  expect(inventory()[path].unique_history).toEqual([{ ref: "HEAD", sha: spike }]);
+});
+
+test("an ovnfs checkout remote is never the source's remote default", () => {
+  const { path } = integratedDraft();
+  ovnfsCheckout("omp-beside");
+  ovnfsRemote("omp-beside");
+  const verified = { integration: { status: "verified", ref: "refs/heads/release" }, automatic: true };
+  expect(comparedCheckout(path)).toMatchObject(verified);
+  git(repo, "remote", "rename", "origin", "upstream");
+  expect(comparedCheckout(path)).toMatchObject(verified);
+  git(repo, "remote", "remove", "upstream");
+  expect(comparedCheckout(path)).toMatchObject({ integration: { status: "unresolved", reason: "the source has no unambiguous remote" }, automatic: false });
+});
+
 test("ovnfs ownership and byte guards are refreshed before removal", () => {
   const owned = ovnfsCheckout("omp-late-owner");
   const changed = ovnfsCheckout("omp-late-edit");

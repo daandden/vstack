@@ -2,6 +2,7 @@ import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, readlinkSy
 import { basename, dirname, extname, join, relative, resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { applyRows, findRow, parseReplacements, type Replacement } from "../../../../scripts/lib/house-style.ts";
+import { isOvnfsRemote } from "../../vstack-worktree/scripts/ovnfs.ts";
 
 export interface Change { path: string; after_path: string; before: string; after: string; diff: string }
 export interface Hit { path: string; line: number; text: string }
@@ -87,7 +88,7 @@ function domainFiles(root: string): string[] {
 }
 
 function codeHostSeed(root: string): { template: string; text: string } | null {
-  const remotes = git(root, "remote").split("\n").filter(Boolean);
+  const remotes = git(root, "remote").split("\n").filter(name => name && !isOvnfsRemote(name));
   const name = remotes.includes("origin") ? "origin" : remotes[0];
   if (!name) return null;
   const m = /^(?:[\w.+-]+@|(?:https?|ssh|git):\/\/(?:[^@/]+@)?)(github\.com|gitlab\.com)[:/](.+?)(?:\.git)?\/?$/.exec(git(root, "remote", "get-url", name));

@@ -4,6 +4,7 @@ import { basename, dirname, join, resolve, sep } from "node:path";
 import { parseArgs } from "node:util";
 import { createHash } from "node:crypto";
 import { checkoutEntry, checkoutLocations, cleanupOvnfsLocations, defaultCheckoutBase, ompWorktreeListing, ovnfsListing, scanCheckoutLocations, taskMarker, type CheckoutLocation, type OvnfsCleanupLocation } from "../../vstack-fan-out/scripts/checkout-locator.ts";
+import { isOvnfsRemote } from "../../vstack-worktree/scripts/ovnfs.ts";
 
 function usage(message: string): never {
   process.stderr.write(`clean-wt: ${message}\n`);
@@ -602,13 +603,17 @@ function unreached(gitArgs: string[], tips: Tip[], not: string[]): Set<string> {
   return new Set([...missing, ...present.filter((s) => listed.has(s))]);
 }
 
+// git matches `--exclude` before `--remotes` against the name below `refs/remotes/`, and before `--all` against the full ref.
+const REMOTES_EXCEPT_OVNFS = ["--exclude=ovnfs/*", "--remotes"];
+const ALL_REFS_EXCEPT_OVNFS = ["--exclude=refs/remotes/ovnfs/*", "--all"];
+
 function uniqueHistory(path: string, kind: Kind, source: Source | null): Tip[] {
   const detached = run(["git", "symbolic-ref", "-q", "HEAD"], path).code !== 0;
   const head = run(["git", "rev-parse", "HEAD"], path).out.trim();
   if (kind === "linked-worktree") {
     if (!detached || !head) return [];
     const tips = [{ ref: "HEAD", sha: head }];
-    const lost = unreached(["-C", path], tips, ["--branches", "--tags", "--remotes", ...stashShas(["-C", path])]);
+    const lost = unreached(["-C", path], tips, ["--branches", "--tags", ...REMOTES_EXCEPT_OVNFS, ...stashShas(["-C", path])]);
     return tips.filter((t) => lost.has(t.sha));
   }
   const tips: Tip[] = run(["git", "for-each-ref", "--format=%(if)%(*objectname)%(then)%(*objectname)%(else)%(objectname)%(end) %(refname)", "refs/heads", "refs/tags"], path)
@@ -617,9 +622,9 @@ function uniqueHistory(path: string, kind: Kind, source: Source | null): Tip[] {
     .map((l) => ({ sha: l.slice(0, l.indexOf(" ")), ref: l.slice(l.indexOf(" ") + 1) }));
   if (detached && head) tips.push({ ref: "HEAD", sha: head });
   stashShas(["-C", path]).forEach((sha, i) => tips.push({ ref: `stash@{${i}}`, sha }));
-  let lost = unreached(["-C", path], tips, ["--remotes"]);
+  let lost = unreached(["-C", path], tips, REMOTES_EXCEPT_OVNFS);
   if (source) {
-    const inSource = unreached([`--git-dir=${source.commonDir}`], tips.filter((t) => lost.has(t.sha)), ["--all"]);
+    const inSource = unreached([`--git-dir=${source.commonDir}`], tips.filter((t) => lost.has(t.sha)), ALL_REFS_EXCEPT_OVNFS);
     const sourceStashes = new Set(stashShas([`--git-dir=${source.commonDir}`]));
     lost = new Set([...inSource].filter((s) => !sourceStashes.has(s)));
   }
@@ -708,7 +713,7 @@ function remoteDefault(commonDir: string): RemoteDefault | string {
   const cached = remoteDefaults.get(commonDir);
   if (cached && !refreshRemote) return cached;
   const git = ["git", `--git-dir=${commonDir}`];
-  const remotes = run([...git, "remote"]).out.trim().split("\n").filter(Boolean);
+  const remotes = run([...git, "remote"]).out.trim().split("\n").filter((name) => name && !isOvnfsRemote(name));
   const remote = remotes.includes("origin") ? "origin" : remotes.length === 1 ? remotes[0] : undefined;
   let fact: RemoteDefault | string = "the source has no unambiguous remote";
   if (remote) {
