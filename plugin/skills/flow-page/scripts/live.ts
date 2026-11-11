@@ -4,6 +4,7 @@ import { chmodSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, re
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { withLock } from "./store.ts";
+import { runtimeFiles, skillsRoot } from "./generation.ts";
 
 export const hostDir = (home: string) => join(home, ".vstack", "host");
 export const originOf = (port: number) => `http://127.0.0.1:${port}`;
@@ -36,8 +37,8 @@ export const flowUrl = (port: number, secret: string, key: string, id: string) =
 export const readerDir = resolve(process.env.FLOW_READER_ASSETS ?? join(import.meta.dir, "..", "reader"));
 
 /** Every file of the shipped reader by its path relative to `readerDir`, sorted, or an error when it is not built. */
-export function readerBundle(): Map<string, Uint8Array> {
-  const files = new Map<string, Uint8Array>();
+export function readerBundle(): Map<string, Uint8Array<ArrayBuffer>> {
+  const files = new Map<string, Uint8Array<ArrayBuffer>>();
   const walk = (rel: string) => {
     for (const e of readdirSync(join(readerDir, rel), { withFileTypes: true }).sort((a, b) => (a.name < b.name ? -1 : 1))) {
       const path = rel ? `${rel}/${e.name}` : e.name;
@@ -52,8 +53,10 @@ export function readerBundle(): Map<string, Uint8Array> {
 
 /** Identifies the host code, the Bun runtime, and the exact reader bytes a host serves. */
 export function version(bundle = readerBundle()): string {
-  const hash = createHash("sha256").update(`flow-host-v2\n${Bun.version}\n`);
-  for (const name of readdirSync(import.meta.dir).sort()) if (name.endsWith(".ts")) hash.update(`script\n${name}\n`).update(readFileSync(join(import.meta.dir, name)));
+  const hash = createHash("sha256").update(`flow-host-v3\n${Bun.version}\n`);
+  for (const [path, bytes] of runtimeFiles(skillsRoot)) {
+    if (!path.startsWith("flow-page/reader/")) hash.update(`source\n${path}\n`).update(bytes);
+  }
   for (const [path, bytes] of bundle) hash.update(`reader\n${path}\n${bytes.length}\n`).update(bytes);
   return hash.digest("hex");
 }
@@ -98,16 +101,20 @@ async function ensure(home: string): Promise<Ready> {
     const expected = version();
     const check = (h: Hello) => {
       if (h.state === "other") throw new Error(`port ${port} is held by another program or another user's Flow host; choose VSTACK_FLOW_PORT, without stopping that program`);
-      if (h.state === "ours" && h.version !== expected) throw new Error(`incompatible Flow host on port ${port}: it runs other flow-page code, another reader build, or another Bun runtime; run flow-page.ts host stop, then retry`);
+      if (h.state === "ours" && h.version !== expected) throw new Error(`incompatible Flow host on port ${port}: it runs other flow-page code, another reader build, or another Bun runtime; an installed update may be incomplete or failed; isolated host owners can use host stop before retrying`);
     };
-    const h = await hello(port, secret.control);
+    let h = await hello(port, secret.control);
+    if (h.state === "ours" && h.version !== expected && existsSync(homedir()) && realpathSync(home) === realpathSync(homedir())) {
+      for (const end = Date.now() + 10_000; Date.now() < end && h.state === "ours" && h.version !== expected; await Bun.sleep(100)) h = await hello(port, secret.control);
+    }
     check(h);
     if (h.state === "ours") return { port, secret };
     const log = join(hostDir(home), "host.log");
     const fd = openSync(log, "w", 0o600);
     let child;
     try {
-      child = spawn(process.execPath, [join(import.meta.dir, "host.ts"), "--home", home, "--port", String(port), "--idle", String(idleSeconds())], {
+      const managed = existsSync(homedir()) && realpathSync(home) === realpathSync(homedir());
+      child = spawn(process.execPath, [join(import.meta.dir, managed ? "managed-host.ts" : "host.ts"), "--home", home, "--port", String(port), "--idle", String(idleSeconds())], {
         cwd: hostDir(home), detached: true, stdio: ["ignore", fd, fd], env: { PATH: process.env.PATH, HOME: home, FLOW_READER_ASSETS: process.env.FLOW_READER_ASSETS },
       });
     } finally { closeSync(fd); }

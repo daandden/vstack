@@ -18,7 +18,11 @@ try {
     let entry: string;
     try { entry = realpathSync(installed); }
     catch { throw new Error("the installed vstack Flow runtime is missing; install or link vstack in omp before using the normal host. Test worktree code with --home <isolated-directory> and a separate VSTACK_FLOW_PORT"); }
-    if (entry === canonical(import.meta.path)) await import("./cli.ts");
+    if (entry === canonical(import.meta.path)) {
+      const { coherentRuntime } = await import("./generation.ts");
+      coherentRuntime();
+      await import("./cli.ts");
+    }
     else await import(pathToFileURL(entry).href);
   }
 } catch (error) {

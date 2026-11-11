@@ -71,11 +71,13 @@ The reader source lives under `reader/`. Its production bundle ships prebuilt un
 
 When reader source changes, run `./node_modules/.bin/vp run reader:build` and commit its shipped output with the source. Compare the source and shipped file inventories against the prior commit to establish freshness. An integration that changes neither source nor shipped files needs no rebuild.
 
+After changing Flow runtime scripts or their shipped dependencies, run `bun plugin/skills/flow-page/scripts/generation.ts seal`. Commit `plugin/skills/flow-page/runtime.json` with those changes. The reader shipment command also seals this manifest after copying the complete reader. It records every Flow script, reader file, and shipped Scratch and figure script by hash. Do not seal a partial installation.
+
 The reader uses Nuxt UI 4, Tailwind 4, and VueUse. `reader/app/assets/main.css` loads them, and `theme.css` owns the Catppuccin Latte/Mocha palette, compact sizing, IosevkaTerm font stacks, Nuxt UI semantic colors, and Pele variables. Components use Nuxt UI and Tailwind utilities; no legacy question or Result stylesheet remains. Do not add another palette.
 
 Nuxt's font provider is local-only, and icons come from the installed Lucide collection with API fallback disabled. Color mode keeps the browser's existing `flow-reader:theme` preference. The prebuilt reader runs under the host's existing CSP without external font, icon, or color-mode requests.
 
-The Local Flow host loads its reader bytes at startup. A changed bundle makes a running host incompatible. Stop only the owned host with `bun plugin/skills/flow-page/scripts/flow-page.ts host stop`, then use `bound` or `show` to start the current host and retrieve the live URL. Stored Flow data is not a static reader. Committed content stays committed when the host is unavailable.
+The installed Local Flow host checks the complete runtime manifest before staging a replacement. Its stable listener keeps forwarding requests to the last good generation until the candidate starts and authenticates. Replacement retains the port, credentials, and Flow links. Failed startup or mismatched installed files leave the last good generation active. Explicit isolated development hosts keep exact-byte compatibility and require their owner's authenticated stop after code changes. Agents have no new authority to restart the normal shared host. Committed content stays committed when the host is unavailable.
 
 The reader and the SVG export share flowchart step routing and label readability rules in `plugin/skills/vstack-figures/scripts/presentation.ts`. Edge and cluster labels use a background-colored outline instead of Pele's edge-label boxes. Captured Mermaid sources get these rules on their next view without recapture. Historical SVGs retain their captured routes.
 
