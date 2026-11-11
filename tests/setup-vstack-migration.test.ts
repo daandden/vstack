@@ -42,6 +42,10 @@ test.each([
   ["private store move", '["gated/", "src/policy.ts"]'],
   ["private copy", '["docs/adr/", "GLOSSARY.md"]'],
   ["private store move", '["docs/adr/", "GLOSSARY.md"]'],
+  ["private copy", '[ "matt-pocock/docs-agents/policy.md", "docs/agents/policy.md", ".git/matt-pocock/domain/CONTEXT.md" ]'],
+  ["private store move", '[ "matt-pocock/docs-agents/policy.md", "docs/agents/policy.md", ".git/matt-pocock/domain/CONTEXT.md" ]'],
+  ["private copy", '[ "/other/.git/matt-pocock/domain/CONTEXT.md", "/other/docs-agents/policy.md" ]'],
+  ["private store move", '[ "/other/.git/matt-pocock/domain/CONTEXT.md", "/other/docs-agents/policy.md" ]'],
 ] as const)("%s seeds missing report-only paths and preserves %s", (source, paths) => {
   const r = repo();
   const line = "- clean-adr report-only paths:";
@@ -83,6 +87,50 @@ test("Private copy preserves report-only paths to retained tracked legacy files"
   expect(git(r, "rev-parse", "HEAD")).toBe(head);
   expect(git(r, "write-tree")).toBe(index);
   expect(run(r, "plan").json().items).toEqual([]);
+});
+
+test.each(["main checkout", "linked worktree"])("Private store move retargets only moved absolute report-only paths from the %s", checkout => {
+  const r = repo(), oldStore = join(r, ".git/matt-pocock"), store = join(r, ".git/vstack");
+  const moved = [
+    [join(oldStore, "domain/gated.md"), join(store, "domain/gated.md")],
+    [join(oldStore, "domain/CONTEXT.md"), join(store, "domain/GLOSSARY.md")],
+    [join(oldStore, "domain/one/CONTEXT-MAP.md"), join(store, "domain/one/GLOSSARY-MAP.md")],
+    [join(oldStore, "docs-agents/policy.md"), join(store, "config/policy.md")],
+  ] as const;
+  const retained = [
+    "matt-pocock/docs-agents/policy.md",
+    "docs/agents/policy.md",
+    "matt-pocock/docs-agents/CONTEXT.md",
+    join(r, ".git/matt-pocock-sibling/domain/policy.md"),
+    join(r, "external/matt-pocock/docs-agents/policy.md"),
+  ];
+  const paths = [...moved.map(([from]) => from), oldStore + "/", join(oldStore, "docs-agents") + "/", ...retained];
+  put(join(oldStore, "docs-agents/domain.md"), `Hand edit.\n- clean-adr report-only paths: ${JSON.stringify(paths)}\n`);
+  for (const [from] of moved) put(from, "# Protected citation of ADR 0001.\n");
+  for (const path of retained) put(path.startsWith("/") ? path : join(r, path), "# Retained citation of ADR 0001.\n");
+  git(r, "add", ".");
+  git(r, "commit", "-qm", "Tracked protected paths");
+  const tracked = retained.filter(path => !path.startsWith("/"));
+  const bytes = tracked.map(path => readFileSync(join(r, path)));
+  const index = readFileSync(join(r, ".git/index"));
+  const head = git(r, "rev-parse", "HEAD");
+  const cwd = checkout === "linked worktree" ? join(r, "linked") : r;
+  if (checkout === "linked worktree") git(r, "worktree", "add", "-qb", "linked", cwd);
+
+  const applied = apply(cwd);
+  expect(applied.code).toBe(0);
+  expect(applied.json().complete).toBe(true);
+  const config = readFileSync(join(store, "config/domain.md"), "utf8");
+  const line = config.split("\n").find(line => line.startsWith("- clean-adr report-only paths:"))!;
+  const configured = JSON.parse(line.slice(line.indexOf(":") + 1));
+  expect(configured).toEqual([...moved.map(([, to]) => to), store + "/", join(store, "config") + "/", ...retained]);
+  for (const path of configured) expect(existsSync(path.startsWith("/") ? path : join(r, path))).toBe(true);
+  for (const [, to] of moved) expect(readFileSync(to, "utf8")).toBe("# Protected citation of ADR 0001.\n");
+  expect(existsSync(oldStore)).toBe(false);
+  expect(readFileSync(join(r, ".git/index"))).toEqual(index);
+  expect(tracked.map(path => readFileSync(join(r, path)))).toEqual(bytes);
+  expect(git(r, "rev-parse", "HEAD")).toBe(head);
+  expect(run(cwd, "plan").json().items).toEqual([]);
 });
 test("nested domain files, map links and rule hits share one plan",()=>{const r=repo();put(join(r,"CONTEXT-MAP.md"),"[a](packages/a/CONTEXT.md)");put(join(r,"packages/a/CONTEXT.md"),"domain hand edit");put(join(r,".omp/rules/user.md"),"/setup-matt-pocock-skills");expect(apply(r).code).toBe(0);expect(readFileSync(join(r,"GLOSSARY-MAP.md"),"utf8")).toBe("[a](packages/a/GLOSSARY.md)");expect(readFileSync(join(r,"packages/a/GLOSSARY.md"),"utf8")).toBe("domain hand edit");expect(readFileSync(join(r,".omp/rules/user.md"),"utf8")).toBe("/skill:setup-vstack");expect(run(r,"plan").json().items).toEqual([]);});
 test("fallback private storage is mandatory and domain files follow it",()=>{const r=repo();put(join(r,".git/matt-pocock/docs-agents/domain.md"),".git/matt-pocock/domain/CONTEXT.md");put(join(r,".git/matt-pocock/domain/CONTEXT.md"),"hand domain");put(join(r,".git/matt-pocock/claims/claim.json"),"{}");const p=run(r,"plan").json();expect(p.items[0].mandatory).toBe(true);expect(apply(r,"move",[p.items[0].id]).code).toBe(2);expect(apply(r).code).toBe(0);expect(readFileSync(join(r,".git/vstack/domain/GLOSSARY.md"),"utf8")).toBe("hand domain");expect(existsSync(join(r,".git/vstack/claims/claim.json"))).toBe(true);expect(existsSync(join(r,"docs/vstack"))).toBe(false);});
