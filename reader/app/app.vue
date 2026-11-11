@@ -47,6 +47,7 @@ const stageless = computed(() => flow.value?.reading.historical.filter((b) => !b
         <section id="overview" class="panel grid gap-3 [padding-block:var(--entry-space)] border-bs border-default" data-tab="overview" :hidden="tab !== 'overview'" aria-labelledby="overview-title">
           <h2 id="overview-title">Overview</h2>
           <ProgressPanel />
+          <ChangedSinceVisit />
           <StageOverview />
           <p class="quiet">Keys: <kbd>j</kbd> <kbd>k</kbd> next and previous section, <kbd>h</kbd> <kbd>l</kbd> previous and next tab, <kbd>n</kbd> next open question, <kbd>m</kbd> Map.</p>
         </section>
