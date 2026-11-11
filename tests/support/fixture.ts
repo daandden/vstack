@@ -4,6 +4,7 @@
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
+import type { HouseStyle } from "../../scripts/lib/house-style.ts";
 
 export const SCRIPT = join(import.meta.dir, "..", "..", "scripts", "check-register.ts");
 
@@ -156,7 +157,7 @@ export interface RepoSpec {
 }
 
 /** The repo's own House style rules, so the scope fixtures run the real phrase list and scopes. */
-export const REPO_RULES = (Bun.YAML.parse(readFileSync(join(import.meta.dir, "..", "..", "house-style.yaml"), "utf8")) as { rules: any[] }).rules;
+export const REPO_RULES = (Bun.YAML.parse(readFileSync(join(import.meta.dir, "..", "..", "house-style.yaml"), "utf8")) as HouseStyle).rules;
 
 /** Fixture rows: a literal row ordered before the name row it contains, a glossary-style name row, an adapted row, a migration-only row. */
 export const FIXTURE_ROWS = [

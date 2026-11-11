@@ -1,8 +1,8 @@
-# ADR Format
+# ADR format
 
-ADRs live in `docs/adr/` and use sequential numbering: `0001-slug.md`, `0002-slug.md`, etc.
+New ADRs use `YYYYMMDD-slug.md`, such as `20261111-event-sourced-orders.md`, in `docs/adr/`. Use the local creation date, not UTC or the landing date. The date must be a real calendar date. Use lowercase letters and digits in the slug, with single hyphens between words.
 
-Create the `docs/adr/` directory lazily: only when the first ADR is needed.
+Create the directory only when the first ADR is needed. In Private mode, keep the project's existing ADR location under the vstack root's `domain/adr/`. The naming rule applies to new ADRs in every project using the plugin. Do not rename existing records or disclose private records.
 
 ## Template
 
@@ -18,13 +18,19 @@ That's it. An ADR can be a single paragraph. The value is in recording *that* a 
 
 Only include these when they add genuine value. Most ADRs won't need them.
 
-- **Status** frontmatter (`proposed | accepted | deprecated | superseded by ADR-NNNN`): useful when decisions are revisited
+- **Status** frontmatter (`proposed | accepted | deprecated | superseded by ADR <full-stem>`): useful when decisions are revisited
 - **Considered Options**: only when the rejected alternatives are worth remembering
 - **Consequences**: only when non-obvious downstream effects need to be called out
 
-## Numbering
+## Identity and citations
 
-Scan `docs/adr/` for the highest existing number and increment by one.
+Cite a new ADR by its full filename stem without `.md`, such as `ADR 20261111-event-sourced-orders`. Keep its creation date when the branch lands on a later day. Once landed, its filename is stable.
+
+If two branches choose the same date and slug, the branch that lands second chooses a different slug before landing. Update that branch's references to its new stem. Do not rename the landed record or reserve every name with a push.
+
+Existing numbered ADRs keep their filenames and citations. Identify vstack's two 0065 records by their full filenames: `0065-flow-figures-get-color-roles-from-the-shared-role-pass.md` and `0065-n-stays-in-the-focused-stage-and-tern-tabs-follow-their-selected-session.md`.
+
+Keep ordinary lexical filename order. No global sequence, random-id resolver, or citation rewrite is needed. vstack's repository check validates new filenames and refuses new duplicate legacy numbers while accepting the known 0065 pair. It does not lint prose citations or certify other projects' custom ADR tooling.
 
 ## When to record an ADR
 

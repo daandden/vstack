@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Name new ADRs by local creation date and slug, preserve legacy identities, and check new filenames and duplicate legacy numbers without linting citations."
+  ]
+}

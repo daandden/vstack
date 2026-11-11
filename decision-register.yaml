@@ -44,7 +44,7 @@ items:
     tree: ea30ee454ba264543dbe40737973b1a5afb9f0e6
     disposition: adapt
     artifacts: [plugin/skills/domain-modeling]
-    reason: "Its user questions use the shared Flow publication and ordinary ask contract (ask-tool, #58, #165). Flow publication is conditional and chat keeps the full output (#321, ADR 0046). Record qualifying decisions already made without an ADR offer, carry settled terms into the glossary, and keep new choices and terminology conflicts explicit (#423, ADR 0069)."
+    reason: "Its user questions use the shared Flow publication and ordinary ask contract (ask-tool, #58, #165). Flow publication is conditional and chat keeps the full output (#321, ADR 0046). Record qualifying decisions already made without an ADR offer, carry settled terms into the glossary, and keep new choices and terminology conflicts explicit (#423, ADR 0069). New ADRs use local creation dates and stable full-stem citations instead of Upstream sequential numbers (#462, ADR 20261111-new-adrs-are-named-by-date-and-slug)."
   - id: matt/grill-with-docs
     upstream: matt
     kind: skill
