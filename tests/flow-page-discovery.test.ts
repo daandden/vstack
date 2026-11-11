@@ -19,7 +19,7 @@ beforeEach(() => {
 });
 function run(args: string[], input?: unknown, script = SCRIPT) {
   const r = Bun.spawnSync([process.execPath, script, ...args, "--home", home, "--session", "01a1c221-74dd-757c-98ec-2e142684c638", "--agent", "impl-436"], {
-    cwd, env: { PATH: process.env.PATH!, HOME: home, VSTACK_FLOW_HOST: "off" },
+    cwd, env: { PATH: process.env.PATH!, HOME: join(root, "default-home"), VSTACK_FLOW_HOST: "off" },
     stdin: input === undefined ? "ignore" : new TextEncoder().encode(JSON.stringify(input)),
     stdout: "pipe", stderr: "pipe",
   });

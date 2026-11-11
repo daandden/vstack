@@ -29,7 +29,7 @@ function world(hostOff = false) {
     running++;
     try {
       const p = Bun.spawn([process.execPath, script, ...args, "--home", home], {
-        cwd: project, env: { ...ENV, HOME: home, VSTACK_FLOW_PORT: port, ...(hostOff ? { VSTACK_FLOW_HOST: "off" } : {}) },
+        cwd: project, env: { ...ENV, HOME: join(root, "default-home"), VSTACK_FLOW_PORT: port, ...(hostOff ? { VSTACK_FLOW_HOST: "off" } : {}) },
         stdin: input === undefined ? "ignore" : new TextEncoder().encode(JSON.stringify(input)), stdout: "pipe", stderr: "pipe",
       });
       const [stdout, stderr, code] = await Promise.all([new Response(p.stdout).text(), new Response(p.stderr).text(), p.exited]);

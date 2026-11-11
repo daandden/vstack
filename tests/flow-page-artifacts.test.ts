@@ -10,7 +10,7 @@ const root = realpathSync(mkdtempSync(join(tmpdir(), "flow-artifacts-")));
 const homes: string[] = [];
 function run(home: string, args: string[], input?: object) {
   const p = Bun.spawnSync([process.execPath, SCRIPT, ...args, "--home", home, "--session", "artifacts"], {
-    cwd: root, env: { ...ENV, VSTACK_FLOW_PORT: String(port), HOME: home },
+    cwd: root, env: { ...ENV, VSTACK_FLOW_PORT: String(port), HOME: join(root, "default-home") },
     stdin: input ? new TextEncoder().encode(JSON.stringify(input)) : "ignore", stdout: "pipe", stderr: "pipe",
   });
   return { code: p.exitCode, stdout: p.stdout.toString(), stderr: p.stderr.toString() };

@@ -16,7 +16,7 @@ function world() {
   mkdirSync(home);
   return (args: string[], items?: object[]) => {
     const process = Bun.spawnSync(["bun", script, ...args, "--home", home, "--session", "01a1cad3-9dc5-7149-8e55-3ee9a2317ac5", "--agent", "Impl464"], {
-      cwd: home, env: { ...ENV, HOME: home, VSTACK_FLOW_HOST: "off" },
+      cwd: home, env: { ...ENV, HOME: join(root, "default-home"), VSTACK_FLOW_HOST: "off" },
       stdin: items ? new TextEncoder().encode(JSON.stringify({ version: 1, items })) : "ignore", stdout: "pipe", stderr: "pipe",
     });
     return { code: process.exitCode, stdout: process.stdout.toString(), stderr: process.stderr.toString(), home };

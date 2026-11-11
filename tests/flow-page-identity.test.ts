@@ -25,7 +25,7 @@ function world() {
 type Run = { code: number; stdout: string; stderr: string; json: any };
 type Opts = { session?: string; stdin?: unknown; cwd: string; home: string; env?: Record<string, string> };
 const argv = (args: string[], o: Opts) => ["bun", SCRIPT, ...args, "--home", o.home];
-const envOf = (o: Opts) => ({ ...ENV, ...o.env, HOME: o.home, VSTACK_FLOW_HOST: "off", ...(o.session ? { PI_SESSION_ID: o.session } : {}) });
+const envOf = (o: Opts) => ({ ...ENV, ...o.env, HOME: join(root, "default-home"), VSTACK_FLOW_HOST: "off", ...(o.session ? { PI_SESSION_ID: o.session } : {}) });
 const stdinOf = (o: Opts) => (o.stdin === undefined ? "ignore" : new TextEncoder().encode(JSON.stringify(o.stdin)));
 const parse = (code: number, stdout: string, stderr: string): Run => {
   let json: any;
