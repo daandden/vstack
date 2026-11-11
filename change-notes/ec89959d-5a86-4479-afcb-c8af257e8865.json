@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Trace each ticket acceptance criterion through its decisions, fixtures, consumer capabilities, and declared blockers before publication."
+  ]
+}
