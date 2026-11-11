@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Private mode setup shares native project MCP configuration through absolute links, reconciles existing configuration without losing settings, and installs a named checkout hook with explicit Git compatibility checks."
+  ]
+}

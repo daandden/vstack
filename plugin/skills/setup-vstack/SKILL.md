@@ -76,6 +76,7 @@ Run `project.ts state`. It prints JSON:
 - `missing_default_end_state`: true when the mode's config directory has `code-host.md` and that file has no line `- Default End state: <commit|merge-ready|shipped>` with one of those three values exactly. False when the line is there or `code-host.md` is missing; a missing file is already in `missing_config`.
 - `missing_landing_method`: true when the mode's config directory has `code-host.md` and that file does not have exactly one `- Landing method: <method>` line that names one of its Code host's methods: `squash`, `merge`, or `rebase` for GitHub, `squash`, `merge`, `rebase_merge`, or `ff` for GitLab, and any lowercase method name for another host. An invalid line or a second line also makes it true. False when the one valid line is there or `code-host.md` is missing.
 - `block_file`: `CLAUDE.md` when it exists, else `AGENTS.md` when it exists, else null. `block_exists`: that file already holds a `## vstack` block. `block_file_dirty`: that file has uncommitted changes.
+- `private_mcp`: null outside Private mode. In Private mode, `pending` stays true until the main MCP link, canonical shared JSON, owned checkout hook, creator-selected Git capability, and narrow local exclusion are complete. `diagnostic` names an unresolved prerequisite without configuration values.
 
 Keep `block_file_dirty` from this first read for step 7. Edits that this run's Migration makes to the block file do not count.
 
@@ -89,7 +90,7 @@ Read `skill://vstack-tmp` and resolve the project Scratch dir once. Every worktr
 
 ### 3. Mode
 
-When `mode` is set, or Migration settled the mode, tell the user the mode and keep it. Then take the first branch that applies:
+When `mode` is set, or Migration settled the mode, tell the user the mode and keep it. In Private mode, follow [references/private-mcp.md](references/private-mcp.md) before considering any shortcut below. That procedure reconciles raw configuration through explicit conflict choices and reports incomplete setup when a prerequisite remains. Then take the first branch that applies:
 
 - `missing_config` is empty, `missing_default_end_state` and `missing_landing_method` are false, and this run's Migration changed nothing: tell the user that every config file exists and that they can edit any of them directly. Skip to step 8.
 - `missing_config` is empty, `missing_default_end_state` and `missing_landing_method` are false, and this run's Migration changed files, in Standard mode: skip steps 4 and 5. Draft only the `## vstack` block in step 6. Go on to the commit in step 7.
@@ -99,7 +100,7 @@ When `mode` is set, or Migration settled the mode, tell the user the mode and ke
 When `mode` is null, call `ask` with one question and two options:
 
 - Standard (Recommended): the config is tracked in `docs/vstack/`, with a `## vstack` block in `CLAUDE.md` or `AGENTS.md`, and setup-vstack commits and pushes it.
-- Private: the config lives in `<vstack_root>/config/`, inside the git common dir, so every worktree of this repo shares it and git never tracks it. Nothing is committed. The `vstack-private-mode` rule then sends every vstack skill there.
+- Private: the config lives in `<vstack_root>/config/`, inside the git common dir, so every worktree of this repo shares it and git never tracks it. Setup also reconciles native MCP JSON into shared private storage, links the main checkout, and installs a repository-local named checkout hook for future worktrees. This requires creator-selected Git 2.54 or later with configuration-hook support. It adds only the MCP link's local exclusion, preserves existing hooks, and commits nothing. The `vstack-private-mode` rule sends every vstack skill to the shared root.
 
 ### 4. Explore
 
@@ -272,7 +273,8 @@ Standard mode:
 Private mode:
 
 1. Write each drafted config file to `<vstack_root>/config/`: `issue-tracker.md`, `code-host.md`, `ci.md`, `triage-labels.md`, and `domain.md`, or only the missing ones on a re-run plus Section C's `code-host.md` cutover and the chosen default End state line and Landing method changes in an existing `code-host.md`. Creating that directory turns Private mode on for every worktree of this repo.
-2. Write no `## vstack` block, change no tracked file and no ignore file, and commit or push nothing.
+2. Write no `## vstack` block, change no tracked file, and commit or push nothing. The only ignore-write exception is the narrow repository-local MCP-link exclusion in the Private MCP procedure. Leave every tracked ignore file and unrelated local exclusion unchanged.
+3. Follow [references/private-mcp.md](references/private-mcp.md) if this run has not completed it. Fresh setup runs it after step 1 creates the Private config directory.
 
 In both modes, check each config that this run or its Migration wrote. For a CLI config, run its read-only Check command once. For an MCP config, call its pinned read-only Check tool exactly once with the recorded arguments. A config with no tool or an unsupported Check gets a reported gap, not an invented call.
 
@@ -281,6 +283,8 @@ On failure, print `WARN <config name>: <named tool or command and observed failu
 ### 8. Done
 
 Publish the Result described above. Tell the user whether setup is complete, in which mode, and where the config is. Repeat every machine line that still fails unchanged. Report the Migration result: applied and skipped items, remaining manual hits, and notices. When the user set up beside the Matt files, name the Matt files that remain.
+
+In Private mode, include the MCP procedure's outcome, canonical file path, recoverable-original paths, and inspected creator Git identity. A pending MCP prerequisite leaves setup incomplete even when every Markdown config exists. Tell the user to edit the canonical shared JSON file and run `/mcp reload`. Native project-scoped add, removal, enable, and disable commands can replace the link and are outside the sharing guarantee. Existing worktree MCP files stay outside this migration.
 
 List the skills that read the config:
 
