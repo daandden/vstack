@@ -40,13 +40,24 @@ export function entryTitle(flow: Flow, ref: string): { result: string; entry: st
 
 export function blockLabel(flow: Flow, b: ReadingBlock): string {
   const st = b.stage ? flow.stage.get(b.stage) : undefined;
-  if (b.kind === "question") return `Q${flow.question.get(b.id)?.q}`;
+  if (b.kind === "question") {
+    const q = flow.question.get(b.id);
+    if (!q) return b.id;
+    let count = 0;
+    let attempt = 0;
+    for (const ask of flow.questions) {
+      if (ask.stage !== q.stage || ask.q !== q.q) continue;
+      count++;
+      if (ask.id === q.id) attempt = count;
+    }
+    return count > 1 ? `Q${q.q} (attempt ${attempt})` : `Q${q.q}`;
+  }
   if (b.kind === "result") {
     const r = st?.results.find((x) => x.id === b.id);
     return r?.jump ?? r?.title ?? b.id;
   }
   if (b.kind === "background") return st?.background?.jump ?? st?.background?.title ?? b.id;
   if (b.kind === "topic") return flow.topics.find((t) => t.id === b.id)?.title ?? b.id;
-  if (b.kind === "assumed") return "Assumed";
+  if (b.kind === "assumed") return `Assumed: ${st?.assumed.find((a) => a.id === b.id)?.decision ?? b.id}`;
   return "Summary";
 }

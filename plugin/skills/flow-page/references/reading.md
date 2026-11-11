@@ -4,6 +4,8 @@ Read this reference when navigating the page or explaining its keyboard controls
 
 A sticky header stays at the top of the page. Its first row has the tabs: Overview, one tab per Stage in the order the Stages opened, and Topics when the Flow has Topic notes, then the Stages button. Its second row is the selected tab's Jump row. On a narrow screen both rows wrap. The Flow heading and the theme control sit below the header and scroll away. The theme control follows the system light or dark preference until the reader picks Light or Dark, and the page remembers that choice.
 
+The Jump row stays open. Assumed links include the decision subject. When a Stage asks the same Q number more than once, its links show `Q1 (attempt 1)`, `Q1 (attempt 2)`, and so on in publication order. A question asked once keeps its bare Q label. These labels do not change question numbers, anchors, or reading positions.
+
 When the Flow has a Matt flow path, the Map panel shows the path and current position from the recorded Stages.
 
 A link with no fragment opens the tab of the first open question in Flow-wide order, or Overview when no question is open. A fragment opens the tab that holds its target.
