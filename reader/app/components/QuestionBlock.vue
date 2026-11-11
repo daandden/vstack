@@ -17,26 +17,25 @@ const topics = computed(() => (props.q.topics ?? []).map((id) => f.value.topics.
 const reopened = computed(() => (props.q.reopens ? f.value.stages.flatMap((s) => s.assumed).find((a) => a.id === props.q.reopens) : undefined));
 const label = (letter: string) => optionLabel(props.q, letter);
 
-type Line = { label: string; html: string; state?: string };
+type Line = { label: string; html: string };
 const NOT_ASKED: Record<string, string> = {
   "timed-out": "The ask timed out. This is not your answer.",
   cancelled: "The ask was cancelled. This is not your answer.",
   empty: "The ask came back empty. This is not your answer.",
 };
-const NOT_DECIDED: Record<string, string> = { question: "Your words ask a question", concern: "Your words raise a concern", ambiguous: "Your words do not settle it" };
+const NOT_DECIDED: Record<string, string> = { question: "Question", concern: "Concern", ambiguous: "Not settled" };
 const lines = computed(() => {
   const a = props.q.answer;
   const out: Line[] = [];
-  if (a.picks) out.push({ label: "Your pick", html: inline(a.picks.join(", ")) });
   if (a.legacy) {
-    if (a.legacy.other !== undefined) out.push({ label: "Your recorded answer", html: inline(a.legacy.other) });
-    else out.push({ label: "Recorded as unanswered", html: inline(a.legacy.unanswered || "No answer was recorded.") });
-    if (a.legacy.note) out.push({ label: "Recorded note", html: inline(a.legacy.note) });
+    if (a.legacy.other !== undefined) out.push({ label: "Recorded", html: inline(a.legacy.other) });
+    else out.push({ label: "Unanswered", html: inline(a.legacy.unanswered || "No answer was recorded.") });
+    if (a.legacy.note) out.push({ label: "Note", html: inline(a.legacy.note) });
   }
   const r = a.response;
   if (r) {
-    const on = r.note_on ? ` (on ${label(r.note_on)}, not picked)` : "";
-    if (r.status === "answered" && r.text !== undefined) out.push({ label: a.picks ? `Your note${on}` : `Your words${on}`, html: inline(r.text) });
+    const on = r.note_on ? ` on ${r.note_on}` : "";
+    if (r.status === "answered" && r.text !== undefined) out.push({ label: a.picks ? `Note${on}` : r.note_on ? `Words${on}` : "Your words", html: inline(r.text) });
     if (r.status === "headless") out.push({ label: "Headless", html: `No one was asked; ${inline(r.picks!.map(label).join(", "))} stands in as the recommended answer. This is not your answer.` });
     else if (r.status !== "answered") out.push({ label: "Unanswered", html: `${NOT_ASKED[r.status]}${r.picks ? ` The automatic selection, ${inline(r.picks.map(label).join(", "))}, is ignored.` : ""}` });
   }
@@ -49,8 +48,8 @@ const lines = computed(() => {
     out.push({ label: NOT_DECIDED[rd.outcome]!, html: "Not a decision." });
     out.push({ label: "Still to ask", html: inline(rd.unresolved) });
   }
-  if (props.q.retired) out.push({ label: "Retired", html: inline(props.q.retired.reason), state: "retired" });
-  if (!out.length) out.push({ label: props.q.latest ? "Open" : "Not answered", html: props.q.open ? "Waiting for your answer." : "No answer was recorded." });
+  if (props.q.retired) out.push({ label: "Retired", html: inline(props.q.retired.reason) });
+  if (!out.length && !a.picks) out.push({ label: props.q.latest ? "Open" : "Not answered", html: props.q.open ? "Waiting for your answer." : "No answer was recorded." });
   return out;
 });
 </script>
@@ -99,24 +98,26 @@ const lines = computed(() => {
       <p class="whitespace-pre-wrap" v-html="inline(q.example)" />
     </div>
     <FigureList :figures="q.figures" />
-    <ol class="options grid list-none ps-0">
-      <li v-for="o in q.options" :key="o.label" class="option group/option grid gap-1 border-bs border-muted py-2" :data-recommended="o.recommended ? '' : undefined" :data-picked="picks.has(o.label) ? '' : undefined">
-        <h3 class="font-semibold text-info group-data-picked/option:font-bold group-data-picked/option:text-flow-yellow">
-          <span v-html="inline(o.label)" />
-          <span v-if="o.recommended" class="ms-2 font-bold text-flow-yellow" aria-hidden="true">*</span><span v-if="o.recommended" class="sr-only"> (recommended)</span>
-          <span v-if="picks.has(o.label)" class="sr-only"> (your answer)</span>
-        </h3>
-        <FigureList v-if="o.preview" :figures="[o.preview]" />
-        <p v-html="inline(o.does)" />
-        <ul class="grid list-none ps-0">
-          <li v-for="(g, i) in o.gains" :key="`g${i}`" class="relative ps-5 before:absolute before:[inset-inline-start:0] before:font-bold before:text-success before:content-['+']" v-html="inline(g)" />
-          <li v-for="(c, i) in o.costs" :key="`c${i}`" class="relative ps-5 before:absolute before:[inset-inline-start:0] before:font-bold before:text-error before:content-['−']" v-html="inline(c)" />
-        </ul>
-        <p v-if="o.recommended" class="text-small text-muted">Recommended: <span v-html="inline(o.recommended)" /></p>
-      </li>
-    </ol>
-    <div class="answer grid gap-1 [border-inline-start:2px_solid_var(--state,var(--overlay0))] py-1.5 ps-3" :data-state="q.answer.state">
-      <p v-for="(l, i) in lines" :key="i" :data-state="l.state"><span class="font-semibold" :class="l.state === 'retired' ? 'text-dimmed' : 'text-flow-state'">{{ l.label }}</span> <span v-html="l.html" /></p>
+    <div class="grid gap-4 pbs-1.5">
+      <ol class="options grid list-none gap-4 ps-0">
+        <li v-for="o in q.options" :key="o.label" class="option group/option grid gap-1" :data-recommended="o.recommended ? '' : undefined" :data-picked="picks.has(o.label) ? '' : undefined">
+          <h3 class="font-semibold text-info group-data-picked/option:font-bold group-data-picked/option:text-flow-yellow">
+            <span v-html="inline(o.label)" />
+            <span v-if="o.recommended" class="ms-2 font-bold text-flow-yellow" aria-hidden="true">*</span><span v-if="o.recommended" class="sr-only"> (recommended)</span>
+            <span v-if="picks.has(o.label)" class="sr-only"> (your answer)</span>
+          </h3>
+          <FigureList v-if="o.preview" :figures="[o.preview]" />
+          <p v-html="inline(o.does)" />
+          <ul class="grid list-none ps-0">
+            <li v-for="(g, i) in o.gains" :key="`g${i}`" class="relative ps-5 before:absolute before:[inset-inline-start:0] before:font-bold before:text-success before:content-['+']" v-html="inline(g)" />
+            <li v-for="(c, i) in o.costs" :key="`c${i}`" class="relative ps-5 before:absolute before:[inset-inline-start:0] before:font-bold before:text-error before:content-['−']" v-html="inline(c)" />
+          </ul>
+          <p v-if="o.recommended" class="text-small text-muted">Recommended: <span v-html="inline(o.recommended)" /></p>
+        </li>
+      </ol>
+      <div v-if="lines.length" class="answer grid grid-cols-[12ch_minmax(0,1fr)] gap-x-3 gap-y-1 rounded border border-[var(--surface1)] px-3 py-2">
+        <p v-for="(l, i) in lines" :key="i" class="col-span-full grid grid-cols-subgrid"><span class="font-semibold">{{ l.label }}</span><span v-html="l.html" /></p>
+      </div>
     </div>
   </article>
 </template>

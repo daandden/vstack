@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "The Flow page shows a question's answer in one thin-bordered block with short labels in one column and one text colour. The pick is no longer repeated under the highlighted option, a pick-only answer shows no block, and options are separated by spacing instead of lines."
+  ]
+}
