@@ -1,6 +1,6 @@
 # Frontend content robustness
 
-Existing main-session implementation and delegated vstack-worker UI work use break-ui through conditional references. This recipe observes realistic adverse data, authorized fixes, and usable results through the existing native frontend and browser seams.
+Break-ui's visible Utility description supplies realistic adverse-content guidance to main-session implementation and delegated UI work. Good-css has no content-guidance hand-off. Native selection and instruction following remain unproven pending explicitly approved remote evaluations. This recipe observes adverse data, authorized fixes, and usable results through the existing native frontend and browser seams.
 
 ## Sub-features
 
@@ -12,7 +12,7 @@ Existing main-session implementation and delegated vstack-worker UI work use bre
 ## How to get to it (user POV)
 
 - Start the existing implementation entry on data-bearing UI, including narrow layouts, missing fields, long values, and collection boundaries.
-- Delegate the same work to the existing vstack-worker role. Its frontend requirement reaches good-css and the content guidance.
+- Delegate the same work to the existing vstack-worker role. Leave UI Utility names out of its brief to test description selection. Its good-css requirement covers CSS only.
 - Use the project's existing Verify owner to exercise resulting behavior. No extra UI entry flow or independent audit executor is involved.
 
 ## Driving it with native omp and the browser
@@ -34,7 +34,7 @@ Preconditions:
    {"type":"prompt","message":"/skill:implement Make this workspace-member frontend robust for realistic imported member data and narrow containers. Fix unreadable text and unreachable actions, handle missing roles, Unicode names, literal user content, empty/single lists and 1,284 members. Preserve the existing preview selector and URL state. Use the existing stack without dependencies. Inspect fields and limits. Record findings before fixes; fixes are already authorized. Do actual edits in the supplied app tree. This is a throwaway diagnostic, with browser observation owned by the parent. No Flow authoring, commits, branches, installation, pushes, tracker actions, machine settings, browser opens or servers. Work in the main session without delegation."}
    ```
 
-5. In a fresh process, request the same outcome through one existing vstack-worker, using the existing single-subagent form and explicit allowed tree, vstack root, and Scratch. Keep UI Addon names out of the worker brief. If it cannot start, stop and report why. Capture actual child reads and edits, not only coordinator output.
+5. In a fresh process, request the same outcome through one existing vstack-worker, using the existing single-subagent form and explicit allowed tree, vstack root, and Scratch. Keep UI Utility skill names out of the worker brief. If it cannot start, stop and report why. Capture actual child reads and edits, not only coordinator output.
 6. Inspect expanded native implementation headers, tool calls, edits, and child histories. Identify applied decisions such as wrapping an unbroken email without hiding the action, grapheme-aware initials, omission of missing roles, intentional empty state, accurate count, and pagination. A pointer read is supporting evidence, not a behavior pass. A model can independently fix a baseline without this guidance; make no unsupported causal quality claim.
 
 ### Browser actions and boundaries
@@ -50,9 +50,9 @@ For each resulting main and delegated app:
 
 ### Source, package, and final gates
 
-Use the public current-Pin planner, register check, packaging command, load smoke, and maintenance gates in `frontend-guidance.md`. Check the break-ui row is adapt with the pinned object identity and `plugin/skills/break-ui` association. Preserve all ten selected adaptations and all six exclusions, with no selected deferrals.
+Use the public current-Pin planner, register check, packaging command, load smoke, and maintenance gates in `frontend-guidance.md`. Check the break-ui row is adapt with the pinned identity and `plugin/skills/break-ui` association. Preserve all twelve selected adaptations and six exclusions across eighteen UI items, with no selected deferrals.
 
-Inspect `package/skills/break-ui/SKILL.md`, `CATALOG.md`, and `LICENSE` in the actual tarball. Compare the notice bytes against the MIT license at the real Pin. Check no rejected contribution entered the archive; the existing vstack prototype is expected and must remain byte-unchanged. A fresh load must classify break-ui as hidden, not listed. Run focused catalog positive and negative cases, without broadening principle-only build or Brief selection.
+Inspect `package/skills/break-ui/SKILL.md`, `CATALOG.md`, and `LICENSE` in the actual tarball. Compare the notice bytes against the real Pin's MIT license. Check no rejected contribution entered the archive; the existing vstack prototype is expected and must remain byte-unchanged. A fresh load must put break-ui in `listedSkills` and `skillCommands`, not `hiddenSkills`. Run focused catalog positive and negative cases, without broadening principle-only build or Brief selection.
 
 Run applicable public-interface tests and final `vstack-maintain gates` only after final edits. Keep every stage's `ok`, raw diagnostics, and separate native/browser outcomes. Mechanical green does not erase unavailable proof or stochastic catalog failures.
 
@@ -60,6 +60,6 @@ Run applicable public-interface tests and final `vstack-maintain gates` only aft
 
 - The dataset selector is development evidence, not a production feature requirement. Reuse the existing fixture boundary and avoid a new test-only product interface.
 - Audit-only requests stop at findings; implementation with already-authorized fixes continues under the existing owner.
-- Keep this demonstration scoped to content robustness. The companion recipes cover motion and mobile behavior; conditional pointers reach shipped guidance only when relevant.
+- Keep this demonstration scoped to content robustness. The companion recipes cover motion and mobile behavior. Inspect actual Utility selection and relevant reference reads rather than assuming good-css supplies them.
 - A preserved source catalog does not establish support for any library or browser. Verify APIs against actual installed versions, and report only exercised scenarios.
 - Keep baseline failures and unsuccessful captures. Never relabel a good baseline UI as a failed one or a text-growth proxy as browser zoom.

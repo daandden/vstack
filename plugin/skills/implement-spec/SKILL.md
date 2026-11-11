@@ -14,6 +14,8 @@ The goal is the entire spec implemented on a single **integration branch**, with
 
 The tickets are not a list of steps. They are a **task graph** with blocking relationships between them. This means there is always a **frontier** of tickets which are ready to be grabbed.
 
+Start every subagent with a fresh context window containing its brief and relevant context pointers, not the orchestrator's conversation history.
+
 Communication to and from subagents should be sparse. Communicate primarily through **context pointers**: to the spec, tickets, research notes, and previous commits. Don't duplicate information already available via pointers.
 
 **Implementer subagents** run in the background for maximum concurrency. You are the orchestrator. You read the task graph, start subagents, act on their results, and route questions by END-STATE.md's "Question timing". Put questions to the user through `ask` under `skill://flow-page`'s "Every ask in a Flow" contract. Publish each complete round through the Flow CLI and record the observed response separately. You never build or merge a ticket yourself.

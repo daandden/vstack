@@ -110,6 +110,7 @@ Look at the repo to understand its starting state. Read whatever exists; do not 
 - The MCP servers this session reaches (tools named `mcp__<server>_<tool>`, top-level or under `xd://`), when the remote is not GitHub or GitLab. A server for the Code host is a likely tool for it.
 - `CLAUDE.md` and `AGENTS.md` at the repo root, and the `## vstack` block in one of them.
 - `GLOSSARY.md` and `GLOSSARY-MAP.md` at the repo root, and in Private mode also under `<vstack_root>/domain/`.
+- Check for the legacy context-file names listed in `references/house-style.yaml`, at the repo root and in Private-mode domain storage. If one exists without its glossary destination, offer its rename and the corresponding `domain.md` reference changes through `ask`. Keep an existing glossary intact and ask how to reconcile a collision. Do not propose renaming a glossary to itself.
 - `docs/adr/` and any `src/*/docs/adr/` directories.
 - The config from an earlier run: `docs/vstack/` in Standard mode, `<vstack_root>/config/` in Private mode.
 - `.scratch/`: a sign that a local-markdown issue tracker is already in use.
@@ -133,6 +134,8 @@ Recommend GitHub when a remote points at GitHub, GitLab when a remote points at 
 - Other, such as Jira or Linear: the user names, through the picker's custom answer, the MCP server or CLI already set up for this project, or says that there is no tool.
 
 The GitHub and GitLab templates carry a "PRs as a request surface" flag, off by default. Leave it off and do not raise it. A user who wants external PRs in the triage queue can change the flag in the file later.
+
+A GitHub or GitLab tracker needs a reachable repo. If no remote points at the chosen host, collect the repo URL through `ask` and settle the required initialization or remote change before making it. Run `gh repo view` or `glab repo view` from this checkout and require it to print the chosen project before continuing. If it cannot, stop and report the missing access or configuration.
 
 For Other with an MCP server, follow MCP discovery. Draft `issue-tracker.md` with the tracker and one pin, Check.
 
@@ -197,6 +200,8 @@ For Other with an MCP server, follow MCP discovery. Draft `ci.md` with the CI se
 `ci-logs`, `set-secret`, and `set-variable` stay unpinned. The project facts include values such as the Jenkins URL and job folder. A folder is not a substitute for the failed check's build link. Jenkins uses Other; there is no Jenkins template.
 
 Section D, triage labels. This section runs whenever `triage-labels.md` is missing, whatever the tracker, because triage always ships. Call `ask` with one question, whether to keep the default triage labels, and the options Keep the defaults (Recommended) and Use other names. The defaults are the five canonical roles, each label string equal to its name: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. Only on Use other names (usually because the tracker already uses other names, such as `bug:triage` for `needs-triage`), call `ask` once more with one round containing one question per role to collect the names, so triage applies the existing labels instead of creating duplicates.
+
+For GitHub or GitLab, include creation of missing configured triage labels in this section's choice. After that choice, create only the labels the tracker lacks with `gh label create` or `glab label create`. Use their current help for the arguments. Report a failed creation rather than claiming the labels exist.
 
 Section E, domain docs. Default to single-context: one `GLOSSARY.md` plus `docs/adr/` at the repo root. This fits almost every repo; write it without a question. Only when exploration found monorepo signals, call `ask` with single-context and multi-context (a root `GLOSSARY-MAP.md` that points to one `GLOSSARY.md` per context).
 

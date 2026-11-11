@@ -1,0 +1,3 @@
+# Wizard env-files use Bun literal semantics
+
+Bash quote concatenation corrupts credentials in Bun, and escaping dollars for Bun changes the bytes Node's dotenv reader returns. The user chose Bun-only env-file support, with matching defaults and refusal before destination mutation when Bun is absent or a value has no lossless single-line representation. Wizard authors establish Bun as the actual project reader and decline other env-file destinations, while CI-secret and manual-only procedures remain unrestricted by this choice. Reader-aware profiles and adapters were rejected to keep one explicit persisted format rather than maintain multiple reader contracts.

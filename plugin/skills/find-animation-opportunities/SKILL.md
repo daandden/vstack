@@ -1,12 +1,11 @@
 ---
 name: find-animation-opportunities
-description: Read-only proposals for useful new motion, with explicit rejection of unsuitable candidates.
-disable-model-invocation: true
+description: "Use when surveying unanimated web interactions for useful new motion and rejecting candidates that fail purpose, frequency, speed, or function checks. Proposals only."
 ---
 
 # Find animation opportunities
 
-Filter additive motion candidates inside the current audit or planning task. Restraint is the default. This Addon reports; the existing vstack owner handles selection, Flow, implementation, review, Verify, and evidence. For defects in existing motion use skill://improve-animations, or skill://review-animations for a diff.
+Filter additive motion candidates inside the current audit or planning task. Restraint is the default. This Utility skill reports; the existing vstack owner handles selection, Flow, implementation, review, Verify, and evidence. For defects in existing motion use skill://improve-animations, or skill://review-animations for a diff.
 
 Adapted from [emilkowalski/skills at the Pin](https://github.com/emilkowalski/skills/tree/a81dbca07f2217b7103e510c0f13f8d5b017afc9/skills/find-animation-opportunities). The [MIT notice](LICENSE) ships with the adaptation.
 
@@ -32,7 +31,7 @@ Inspect these classes and record candidates or why the class does not apply:
 - Gestures. Existing drags may benefit from velocity-preserving springs, appropriate dismissal velocity, and rising boundary friction. Inspect the real coordinate units and library API before prescribing source examples such as duration 0.5, bounce 0.2 or a roughly 0.11 units/ms velocity threshold.
 - Rare completion. Onboarding and meaningful first success can earn restrained delight. Ordinary empty states or every repeated success do not automatically qualify.
 
-Use skill://animate for implementation feasibility and skill://animation-performance for driver, property, or cost questions. Under ADR 0051, a property preference does not ban a browser-supported clip-path or layout technique without applicable evidence. Support alone does not establish performance. Reduced motion may be instant or retain useful opacity/color feedback. Hover motion requires fine-pointer hover gating. Keep good-css's non-animation accessibility responsibilities.
+Use skill://animate for implementation feasibility and skill://animation-performance for driver, property, or cost questions. Emil-derived guidance takes precedence over good-css for CSS and animation under ADR 0074, which amends ADR 0051. Reconcile disagreements among Emil skills using browser-specific behavior and observed evidence. Preserve skill://review-animations' blocking verdicts when the applicable rule and evidence justify them. A property preference does not ban a browser-supported clip-path or layout technique without applicable evidence. Support alone does not establish performance. Reduced motion may be instant or retain useful opacity/color feedback. Hover motion requires fine-pointer hover gating.
 
 ## Report and return to the owner
 

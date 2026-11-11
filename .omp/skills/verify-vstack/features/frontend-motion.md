@@ -1,6 +1,6 @@
 # Frontend motion
 
-Existing frontend implementation and diagnosis paths reach animate and animation-performance conditionally through good-css. Native main and delegated work must apply that guidance to a runnable interaction, with browser observations rather than property-name assertions.
+Visible Utility descriptions supply animate and animation-performance guidance for frontend work. Diagnosing-bugs also retains its direct animation-performance reference. Good-css has no motion hand-off. Native main and delegated selection and instruction following remain unproven pending explicitly approved remote evaluations; a runnable interaction and browser observations are required beyond property-name assertions.
 
 ## Sub-features
 
@@ -13,7 +13,7 @@ Existing frontend implementation and diagnosis paths reach animate and animation
 ## How to get to it (user POV)
 
 - Start an existing implementation task that includes interaction motion or animation performance. Do not invoke an extra UI command.
-- Delegate the same frontend task to the existing vstack-worker role without naming UI Addons in its brief.
+- Delegate the same frontend task to the existing vstack-worker role without naming UI Utility skills in its brief.
 - For a stuttering animation investigation, use the existing diagnosing-bugs path. It conditionally reaches animation-performance while retaining diagnosis ownership.
 
 ## Driving it with native omp and the browser
@@ -35,8 +35,8 @@ Preconditions:
    {"type":"prompt","message":"/skill:implement Polish this existing delivery frontend. Give the occasional Delivery options disclosure purposeful short interruptible motion, instant keyboard use, and reduced motion. Evaluate a supported clip-path reveal that keeps text unscaled. Fix the tracking-preview stutter without changing its 1500ms duration or final 300px position. Preserve semantics and cancellation. Keep the vanilla stack, no packages. This throwaway task has an agreed browser seam observed by the parent. Do actual main-session edits without delegation. No Flow, commit, branch, push, installation, or machine changes. The parent owns browser measurement and publication."}
    ```
 
-5. Run another identical copy in a fresh native session. Have the existing owner delegate edits to one vstack-worker with its existing single-subagent form. Pass the allowed fixture tree, resolved vstack root, and Scratch. Leave Addon names out of the worker brief. If the worker cannot start, report that path unmet rather than doing its work in the coordinator.
-6. Preserve the typed implementation expansion and actual native tool executions. Inspect the worker's saved history as well as the coordinator's frames. Identify actual reads of good-css, animate, its relevant recipes, and animation-performance, plus the resulting edits. A pointer list is not enough.
+5. Run another identical copy in a fresh native session. Have the existing owner delegate edits to one vstack-worker with its existing single-subagent form. Pass the allowed fixture tree, resolved vstack root, and Scratch. Leave UI Utility names out of the worker brief. If the worker cannot start, report that path unmet rather than doing its work in the coordinator.
+6. Preserve the typed implementation expansion and actual native tool executions. Inspect the worker's saved history as well as the coordinator's frames. Record description selection, actual reads of animate, applicable recipes, and animation-performance, plus resulting edits. Record good-css reads separately for CSS work; it does not route to the motion skills. A pointer list is not enough.
 
 ### Observe behavior and performance
 
@@ -52,7 +52,7 @@ Preconditions:
 
 1. Prepare a separate disposable variant of the original delivery app before native execution. Add a required calculation over editable delivery amounts to the same scheduled work function as the existing useless 90ms spin. Require the UI to show the exact total in integer minor units for the current input before reporting Delivered. Keep the tracking preview's 1500ms duration, 300px endpoint, semantic controls, and cancellation contract. State these requirements in the task, not merely in fixture comments.
 2. Freeze the actual calculation, inputs, expected outputs, and their provenance under the proof run. Use at least two distinct inputs with different expected totals. Independently calculate and retain each expected total before native edits. Preserve the original empty spin as the deliberately introduced blocking problem, with the required calculation alongside it. This tests selective removal, not whether the useful calculation alone is expensive. Retain the original variant and its blocking evidence. Record the fixed input sizes and hashes before the repair, and keep those inputs unchanged across native consumers.
-3. Use the existing implementation entry for fresh main edits and the actual delegated vstack-worker path described above. Give both byte-identical copies of this variant and the same required-result task, without naming Addons or prescribing the optimization. The parent owns browser observation and publication. Retain actual guidance reads, edits, native histories, and worker history. Do not manually repair either result.
+3. Use the existing implementation entry for fresh main edits and the actual delegated vstack-worker path described above. Give both byte-identical copies of this variant and the same required-result task, without naming UI Utility skills or prescribing the optimization. The parent owns browser observation and publication. Retain actual guidance reads, edits, native histories, and worker history. Do not manually repair either result.
 4. In the browser, enter each retained input through the real controls and start tracking. Compare the displayed integer total with that input's retained independent expected output. Require exact equality, the current input, and Delivered only after the required result exists. A deleted calculation, fixed answer, missing output, or stale result fails even if frame gaps improve.
 5. Measure rAF gaps from activation through both playback and required-result completion, including any deferred computation after playback. Require a maximum gap of 50ms and preserve 1500ms playback and the 300px endpoint under normal motion. Retain the complete measurement window, raw samples, observed result, and status transitions. Report removed workload separately from the cost of retained calculation. If required work and the performance target conflict, retain the failure and report the conflict rather than weakening either criterion.
 6. Exercise the same interruption, keyboard, cancellation, reduced-motion, and preference-change observations above for both native outputs. Change the amounts and retrigger before completion. Only the latest run may publish its result or Delivered status. Under reduced motion, retain the required computation and honest completion without positional movement. Capture the displayed outputs, ARIA, full-resolution lossless WebP, and traces with the actual engine and dependency scope. A faster measurement without these preserved results does not pass this countercase.
@@ -68,5 +68,5 @@ Run the existing public register, preparation, catalog, validation, test, load, 
 - Inspect actual fixture dependencies before making Motion, React, Base UI, or other library claims. Vanilla browser APIs require no third-party runtime.
 - Native baseline and changed runs can choose different valid implementations. Preserve what each actually did rather than claiming a causal quality score.
 - A missing browser, model, worker history, or engine stays unavailable or unmet. Do not replace it with stub echoes, source assertions, or repeated unchanged stochastic runs.
-- Keep principle-only implementation and worker judge scopes unchanged. Only existing conditional skill references activate this non-principle guidance.
+- Keep principle-only implementation and worker judge scopes unchanged. Visible Utility descriptions supply reach; the existing diagnosis and review owners also keep their direct specialized references.
 - Close only this run's tabs and servers. Keep raw evidence outside the clone for the delivery owner.

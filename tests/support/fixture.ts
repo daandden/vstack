@@ -90,32 +90,16 @@ export const ALPHA_V2: Files = (() => {
   return f;
 })();
 
-/** A stand-in for good-css's `scripts/check-css.mjs` with the same CLI: `path:line message` per violation, exit 1. */
-export const FIXTURE_PAGE_LINT = [
-  'import { readFileSync } from "node:fs";',
-  "let count = 0;",
-  "for (const path of process.argv.slice(2)) {",
-  '  readFileSync(path, "utf8").split("\\n").forEach((line, i) => {',
-  '    if (/^\\s*left\\s*:/.test(line)) { console.log(path + ":" + (i + 1) + " left is physical. Write inset-inline-start."); count++; }',
-  "  });",
-  "}",
-  "if (count) process.exit(1);",
-  'console.log("No violations.");',
-  "",
-].join("\n");
-
 export const BETA: Files = {
   "README.md": "beta\n",
   "pack/skills/adapted/SKILL.md": "---\nname: adapted\ndescription: adapted\n---\nadapted\n",
   "pack/playbooks/runbook.md": "# Runbook\n",
   "pack/other/ignored.md": "not an item\n",
-  "scripts/check-css.mjs": FIXTURE_PAGE_LINT,
 };
 
-/** Page template text: clean, and with one physical property on line 4. */
 export const PAGE_TEMPLATE = {
-  clean: "<!doctype html>\n<style>\n  .box {\n    inset-inline-start: 0;\n  }\n</style>\n",
-  violation: "<!doctype html>\n<style>\n  .box {\n    left: 0;\n  }\n</style>\n",
+  clean: "<!doctype html>\n<style>\n  .box {\n    color: oklch(0 0 none);\n  }\n</style>\n",
+  violation: "<!doctype html>\n<style>\n  .box {\n    outline: none;\n  }\n</style>\n",
 };
 
 export interface Upstreams {
@@ -172,7 +156,7 @@ export interface RepoSpec {
 }
 
 /** The repo's own House style rules, so the scope fixtures run the real phrase list and scopes. */
-export const REPO_RULES: any[] = Bun.YAML.parse(readFileSync(join(import.meta.dir, "..", "..", "house-style.yaml"), "utf8")).rules;
+export const REPO_RULES = (Bun.YAML.parse(readFileSync(join(import.meta.dir, "..", "..", "house-style.yaml"), "utf8")) as { rules: any[] }).rules;
 
 /** Fixture rows: a literal row ordered before the name row it contains, a glossary-style name row, an adapted row, a migration-only row. */
 export const FIXTURE_ROWS = [
@@ -218,7 +202,6 @@ export function passingSpec(up: Upstreams): RepoSpec {
           pin_kind: "commit",
           path: "pack",
           pin: up.betaPin,
-          page_lint: "scripts/check-css.mjs",
           items: [
             { match: "pack/skills/*", type: "tree", kind: "skill" },
             { match: "pack/playbooks/*.md", type: "blob", kind: "playbook" },
@@ -244,8 +227,8 @@ export function passingSpec(up: Upstreams): RepoSpec {
         style("asks", []),
         style("renamed", []),
       ],
-      originals: ["plugin/rules/fx-rule.md", "plugin/agents/fx-agent.md", "plugin/agents/vstack-explorer.md", "plugin/skills/fixture-helper", "plugin/skills/fixture-addon"],
-      utility: ["plugin/skills/fixture-helper"],
+      originals: ["plugin/rules/fx-rule.md", "plugin/agents/fx-agent.md", "plugin/agents/vstack-explorer.md", "plugin/skills/fixture-helper", "plugin/skills/fixture-addon", "plugin/skills/vstack-maintain"],
+      utility: ["plugin/skills/fixture-helper", "plugin/skills/vstack-maintain"],
     },
     manifest: { name: "vstack", version: "0.1.0", private: true, omp: {} },
     houseStyle: { replacements: clone(FIXTURE_ROWS), rules: clone(REPO_RULES) },
@@ -256,6 +239,8 @@ export function passingSpec(up: Upstreams): RepoSpec {
       "plugin/skills/gone/SKILL.md": GONE_TEXT,
       "plugin/skills/fixture-helper/SKILL.md": "---\nname: fixture-helper\ndescription: helper\n---\nhelper\n",
       "plugin/skills/fixture-addon/SKILL.md": "---\nname: fixture-addon\ndescription: addon\ndisable-model-invocation: true\n---\naddon\n",
+      "plugin/skills/vstack-maintain/SKILL.md": "---\nname: vstack-maintain\ndescription: maintenance helper\n---\nMaintain the fixture.\n",
+      "plugin/skills/vstack-maintain/scripts/check-css.mjs": readFileSync(join(import.meta.dir, "..", "..", "plugin/skills/vstack-maintain/scripts/check-css.mjs"), "utf8"),
       "addon-questions.json": JSON.stringify({ preamble: "Judge the fixture request.", brief_preamble: "Judge the fixture brief.", questions: { "fixture-addon": { type: "noul", instructions: "Pick this Addon for the fixture task.", criteria: { true: "The task needs it.", false: "The task does not need it." } } } }),
       "plugin/skills/shared/SKILL.md": "---\nname: shared\ndescription: merged\n---\nmerged\n",
       "plugin/rules/fx-rule.md": "---\nalwaysApply: true\n---\nrule\n",

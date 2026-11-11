@@ -1,19 +1,19 @@
 # Mobile-web guidance
 
-Ordinary frontend implementation and delegated workers reach Apple-derived web judgment and mobile platform guidance through good-css. This recipe adds capability-specific proof to [frontend guidance](frontend-guidance.md), not another native-session driver or a separate mobile workflow.
+Apple-derived web judgment and mobile platform guidance have visible Utility descriptions for ordinary frontend implementation and delegated work. Good-css supplies CSS techniques, not a hand-off. Native selection and instruction following remain unproven pending explicitly approved remote evaluations. This recipe adds capability-specific proof to [frontend guidance](frontend-guidance.md), not another native-session driver or mobile workflow.
 
 ## Sub-features
 
 - `mobile-main`: a fresh main-session implementation applies applicable mobile-web guidance and observes the actual result.
-- `mobile-worker`: an existing vstack-worker reaches the guidance from its frontend references and edits the runnable app.
+- `mobile-worker`: an existing vstack-worker selects applicable Utility guidance and edits the runnable app.
 - `mobile-platform`: touch, viewport, safe areas, hover, and inputs each have exercised behavior or a specific non-applicability reason.
 - `mobile-apple`: immediate feedback, cancellation, legible materials, and type hierarchy apply Apple-derived web judgment without adding native-app dependencies.
 - `mobile-scope`: retained browser and dependency facts distinguish web observations, synthetic insets, and unavailable hardware checks.
 
 ## How to get to it (user POV)
 
-- Start the existing implementation entry on mobile-web work. Its frontend pointer reaches good-css and the applicable hidden Addons.
-- Delegate the same work through the existing vstack-worker role, with its allowed tree, vstack root, and Scratch. Leave Addon names out of the brief so existing references supply activation.
+- Start the existing implementation entry on mobile-web work. Visible Utility descriptions supply reach for applicable UI guidance, independently of good-css.
+- Delegate the same work through the existing vstack-worker role, with its allowed tree, vstack root, and Scratch. Leave Utility skill names out of the brief to test description selection rather than a prescribed read.
 - Use the existing public register, packaging, and maintenance interfaces from the parent frontend recipe.
 
 ## Driving it with native omp and the browser
@@ -27,15 +27,15 @@ Preconditions:
 ### Native red and green
 
 1. Before changing the guidance, retain a working pickup form with a recipient dialog. Include contact, email, telephone, and postal-code fields, Save and Cancel, a bottom or sticky surface, and narrow-screen content. A small target, ungated hover, 14px input font, fixed-width dialog, or `100vh` shell provides observable defects without mocking a skill response.
-2. Run a fresh native main task against a copy of that fixture. Retain reads, edits, saved native history, and resulting UI. Record missing guidance separately from UI quality because a model can make good changes without the new Addons.
+2. Run a fresh native main task against a copy of that fixture. Retain reads, edits, saved native history, and resulting UI. Record missing guidance separately from UI quality because a model can make good changes without the Utilities.
 3. After the change, start from the same original in another directory and fresh native process. Send an ordinary task through the existing entry, for example:
 
    ```json
    {"type":"prompt","message":"/skill:implement Improve the existing pickup form for mobile-web use with reliable touch controls, viewport resizing and safe areas, capable desktop hover, accessible inputs, and clear save/cancel feedback. Give it deliberate typography hierarchy and a legible translucent sticky toolbar over scrolling content, with a solid fallback and immediate nonmoving press feedback. Preserve keyboard focus, cancellation, zoom, and reduced motion. Keep the existing stack and dependencies. This throwaway diagnostic has a confirmed browser seam observed by the parent. Do actual edits in the main session. No Flow, delegation, commit, branch, push, plugin edits, installation, or machine changes. The parent owns browser verification and publication."}
    ```
 
-4. In another fresh process and identical starting fixture, require a delegated vstack-worker to make the app edits through the existing single-subagent form. Pass the allowed tree, vstack root, and Scratch. Do not name UI Addons in its brief. If the worker cannot start, stop the case and report why. Retain the real worker history, handback, and resulting app rather than the coordinator's assertion.
-5. Inspect executed reads and changes. A platform-only task can correctly leave Apple material guidance unloaded. Use the explicit typography and material branch above to establish applicable Apple-derived behavior rather than requiring every UI task to load every Addon. Record unexpected extra verification, fallback, or failed attempts without erasing them.
+4. In another fresh process and identical starting fixture, require a delegated vstack-worker to make the app edits through the existing single-subagent form. Pass the allowed tree, vstack root, and Scratch. Do not name UI Utility skills in its brief. If the worker cannot start, stop the case and report why. Retain the real worker history, handback, and resulting app rather than the coordinator's assertion.
+5. Inspect executed reads and changes. A platform-only task can correctly leave Apple material guidance unloaded. Use the explicit typography and material branch above to establish applicable Apple-derived behavior rather than requiring every UI task to load every Utility skill. Record unexpected extra verification, fallback, or failed attempts without erasing them.
 
 ### Browser actions and outcomes
 
@@ -49,7 +49,7 @@ Use the real controls on both main and delegated results. Keep ARIA snapshots an
 | Hover | In coarse-pointer mode, hover or tap must not leave hover-only styling active. In a precise-pointer, hover-capable desktop scenario, observe the hover change and separate press feedback. Retain actual media-query values and computed states. |
 | Inputs | Focus and enter data through visible labelled inputs. Exercise empty and invalid email submission, successful save, Cancel, Escape, and saved-value restoration. Record actual input font size, type, autocomplete and keyboard hints, zoom metadata, focus containment, and return focus. A hint attribute does not prove a mobile keyboard or absence of iOS input zoom. |
 | Apple-derived judgment | Observe press feedback before commitment, cancellation without false success, stable spatial relationships, and legible type hierarchy. Scroll beneath translucent chrome where used. Exercise reduced transparency or contrast when supported and observe the solid fallback. Springs, custom gestures, haptics, or sound absent from the app are not applicable; do not add them solely to satisfy an example. |
-| Accessibility | Exercise keyboard-only operation and reduced motion. Keep semantic modal behavior, visible focus, readable/selectable content, and user zoom. Increase text size and inspect action reachability. Preserve good-css's non-animation responsibilities. |
+| Accessibility | Exercise keyboard-only operation and reduced motion. Keep semantic modal behavior, visible focus, readable/selectable content, and user zoom. Increase text size and inspect action reachability. Apply Emil precedence where guidance overlaps or conflicts. |
 
 Record the actual fixture dependency manifest and engine capabilities. No Motion, Tailwind, Next.js, Expo, or Swift claim follows from a zero-dependency web fixture. Before using a library-specific API, inspect the installed version and consult that version's documentation.
 
@@ -57,7 +57,7 @@ Close only the tabs, protocol sessions, and servers created by this proof. Keep 
 
 ### Mechanical and distribution checks
 
-Follow [frontend guidance](frontend-guidance.md)'s packaging and final gate commands. Inspect apple-design and mobile-native, all required references, and each MIT notice in the emitted archive. Verify their hidden load classification and matching catalog questions. Preserve all ten selected adaptations, all six exclusions, the existing prototype bytes, and principle-only automatic scopes. No selected item remains deferred. Keep focused catalog failures separate from mechanical gate results. Do not rerun unchanged stochastic corpora solely to obtain green.
+Follow [frontend guidance](frontend-guidance.md)'s packaging and final gate commands. Inspect apple-design and mobile-native, all required references, and each MIT notice in the archive. Verify they are visible Utility skills in `listedSkills` and `skillCommands`, absent from `hiddenSkills` and the Addon catalog. Preserve all twelve selected adaptations, including choreograph and gestures, all six exclusions, the existing prototype bytes, and principle-only automatic scopes. No selected item remains deferred. Keep focused catalog failures separate from mechanical gate results. Do not rerun unchanged stochastic corpora solely to obtain green.
 
 ## Gotchas
 
