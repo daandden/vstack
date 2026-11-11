@@ -41,6 +41,10 @@ if (process.env.FAIL_STAGE === stage) process.exit(7);`);
       expect(phase.command).toEqual(logical.name === "validate" ? [...injected.validate, join(f.root, "plugin/skills/wording")] : logical.name === "smoke" ? [...injected.smoke, join(f.root, "plugin"), phase.command.at(-1)] : injected[logical.name]);
       expect(phase.exitCode).toBe(logical.name === failure ? 7 : 0);
       expect(phase.outcome).toBe(logical.name === failure ? "failed" : "passed");
+      expect(phase.shadow?.mode).toBe("shadow");
+      expect(phase.shadow?.predictedReuse).toBe(false);
+      expect(phase.shadow?.reusablePass).toBe(false);
+      expect(phase.shadow?.unknown).toContain("command override");
       expect(readFileSync(phase.stdout, "utf8")).toContain(`${logical.name} stdout`);
       expect(readFileSync(phase.stderr, "utf8")).toContain(`${logical.name} stderr`);
     }

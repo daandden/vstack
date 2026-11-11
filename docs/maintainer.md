@@ -350,6 +350,12 @@ Reports begin with `outcome: "running"` before the first phase and update after 
 
 `durationMs` is elapsed time for one invocation. `phaseOccupancyMs` sums its top-level measured stages without counting nested phases twice. Summing occupancy across concurrent invocations measures consumed command time, not elapsed delivery time. Compare the same commands and runtime environment before claiming an improvement. The dominant historical cost is the non-browser suite, not browser scheduling. Timings do not authorize skipping any gate.
 
+Each phase also records a `shadow` receipt with its input hashes, unknown inputs, predicted reuse, fresh result, and reusable-pass eligibility. The comparison uses a conservative dependency superset: the complete checkout, including ignored source, documents, examples, and templates, plus installed dependency and browser trees. Git metadata and the reader's generated working directories are excluded from source discovery. Their relevant identities are recorded separately. Commands, runtime binaries, platform, environment, Git head and base, Upstream commit and tree objects, and prepared candidate-reader bytes participate in the comparison. The output-only `VSTACK_GATE_PHASE_REPORT` destination does not affect the environment hash.
+
+The run hashes inputs before execution and checks their bytes and file-change timestamps again afterward. Unknown identities, command overrides, changed inputs, missing or altered diagnostics, and failed, interrupted, or partial evidence prevent reusable passes. The previous receipt and its evidence must remain complete. The checkout's Git metadata stores only a pointer and hash for the latest Scratch receipt. Deleting Scratch evidence makes a later comparison miss.
+
+Shadow predictions never skip commands or authorize delivery. The final integrated head still requires complete fresh gates and independent Verifier proof. Enabling actual reuse requires a separate decision.
+
 `plan`, `merge`, and `check` are read-only fact-finding for the grill. They make no branch, worktree, or write in any checkout. Scratch and the Upstream cache must stay outside every checkout. The script refuses a `--scratch` dir or an `--upstreams` cache inside a checkout. `prepare` and `gates` serve implement. implement drafts every Update and Hand edit in one isolated drafting worker and applies the gated patch.
 
 | Option | Env | Default or use |

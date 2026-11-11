@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, writeFileSync, writeSync } from "node:fs";
 import { cpus, release } from "node:os";
 import { dirname, join } from "node:path";
+import { GateShadow, type ShadowReceipt } from "./gate-shadow.ts";
 
 export interface GatePhase {
   name: string;
@@ -19,6 +20,7 @@ export interface GatePhase {
   stdout?: string;
   stderr?: string;
   phases?: GatePhase[];
+  shadow?: ShadowReceipt;
 }
 
 const hash = (value: string | Buffer) => createHash("sha256").update(value).digest("hex");
@@ -40,11 +42,17 @@ export class GateReport {
   private interruption?: NodeJS.Signals;
   private finishedAt?: string;
   private durationMs?: number;
+  private readonly shadow: GateShadow;
   private readonly onSignal = (signal: NodeJS.Signals) => {
     this.interruption = signal;
     for (const [phase, start] of this.active) {
       phase.outcome = "interrupted";
       phase.ok = false;
+      if (phase.shadow) {
+        phase.shadow.freshResult = "interrupted";
+        phase.shadow.reusablePass = false;
+        phase.shadow.reasons.push("interrupted execution");
+      }
       phase.signal = signal;
       phase.durationMs = performance.now() - start;
     }
@@ -57,7 +65,7 @@ export class GateReport {
     }
   };
 
-  constructor(readonly root: string, readonly file: string, base?: string, private readonly phasesOnly = false) {
+  constructor(readonly root: string, readonly file: string, base?: string, private readonly phasesOnly = false, upstreams?: string) {
     mkdirSync(dirname(file), { recursive: true });
     const environment = Object.fromEntries(Object.entries(process.env).sort(([a], [b]) => a.localeCompare(b)));
     this.identity = {
@@ -73,6 +81,7 @@ export class GateReport {
         installedLockSha256: fileHash(root, "node_modules/.bun/lock"),
       },
     };
+    this.shadow = new GateShadow(root, file, base, upstreams);
     process.on("SIGINT", this.onSignal);
     process.on("SIGTERM", this.onSignal);
     this.save();
@@ -97,9 +106,10 @@ export class GateReport {
     renameSync(temporary, this.file);
   }
 
-  async phase(name: string, action: (phase: GatePhase) => Promise<void> | void, parent?: GatePhase, command?: string[]): Promise<GatePhase> {
+  async phase(name: string, action: (phase: GatePhase) => Promise<void> | void, parent?: GatePhase, command?: string[], env: NodeJS.ProcessEnv = process.env): Promise<GatePhase> {
     const phase: GatePhase = { name, ok: false, outcome: "running", startedAt: new Date().toISOString(), cwd: this.root, output: "", command };
     (parent ? parent.phases ??= [] : this.stages).push(phase);
+    this.shadow.begin(phase, env);
     const start = performance.now();
     this.active.set(phase, start);
     this.save();
@@ -118,6 +128,7 @@ export class GateReport {
       phase.durationMs = performance.now() - start;
       phase.finishedAt = new Date().toISOString();
       phase.ok = phase.outcome === "passed";
+      this.shadow.end(phase, env);
       this.save();
     }
     return phase;
@@ -150,13 +161,15 @@ export class GateReport {
         closeSync(stdout); closeSync(stderr);
         phase.output = readFileSync(phase.stdout, "utf8") + readFileSync(phase.stderr, "utf8");
       }
-    }, parent, command);
+    }, parent, command, env);
   }
 
   finish() {
     this.finishedAt = new Date().toISOString();
     this.durationMs = performance.now() - this.start;
+    this.shadow.finish(this.stages, !this.interrupted && this.stages.every(stage => stage.ok));
     this.save();
+    this.shadow.remember();
     process.off("SIGINT", this.onSignal);
     process.off("SIGTERM", this.onSignal);
     return this.snapshot();

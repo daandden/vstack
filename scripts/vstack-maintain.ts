@@ -720,7 +720,7 @@ function changedSkills(root: string): string[] {
 async function gates(root: string, opts: UpstreamOptions, scratch: string | undefined) {
   const commands: Record<string, string[]> = JSON.parse(process.env.VSTACK_MAINTAIN_COMMANDS ?? "{}");
   const retained = maintainEntry(root, scratch);
-  const report = new GateReport(root, join(retained, "report.json"), defaultBase(root));
+  const report = new GateReport(root, join(retained, "report.json"), defaultBase(root), false, opts.upstreams);
   try {
     for (const skill of changedSkills(root)) {
       if (report.interrupted) break;

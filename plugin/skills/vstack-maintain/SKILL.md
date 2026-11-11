@@ -127,6 +127,8 @@ The Change note records patch for a Hand edit, minor for an Update, and major wh
 
 Run `gates` after the last change in your clone. It validates changed skill folders with skill-creator's quick_validate, prepares the required Upstream cache and checks the register, runs the full test command, and runs the load smoke. Every invocation retains its `report.json` and command stdout and stderr in one Scratch entry of kind `maintain`. The report names each phase's duration and outcome, command, revision, and runtime environment. Test subphases report non-browser tests, browser tests, and candidate-reader preparation when present. The smoke runs outside the home directory, always removes its temporary directory, and retains failed smoke artifacts in that same entry.
 
+Each phase's `shadow` receipt records input hashes, predicted reuse, and the fresh outcome. Read unknown-input and evidence-completeness reasons as ineligibility, not permission to omit proof. Shadow hits never skip work or authorize delivery. Complete fresh gates and independent Verifier proof remain required for the final integrated head. Actual reuse needs a separate decision.
+
 Any failure, interruption, or incomplete required phase blocks the patch. A background acknowledgement is not a completed runtime. Fix the cause and rerun `gates` after the final fix. Compare the same commands and environment when measuring improvements. Summed phase occupancy across concurrent invocations is not elapsed delivery time. The non-browser suite is the measured optimization target, and browser parallelism alone does not address that cost. No judge or sample corpus runs in this gate.
 
 ## Plugin release
