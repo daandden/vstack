@@ -4,7 +4,7 @@ why reads active ADRs and the ADR archive as evidence for a decision. domain-mod
 
 ## Sub-features
 
-- `aah-why` answers a motivation question with a citation to an ADR found only in a dated archive folder.
+- `aah-why` answers a motivation question with a citation to an ADR found only in an `archive/<date>T<HHMM>/` run-time folder.
 - `aah-number` creates `0005` after active ADRs `0001` through `0003` and archived ADR `0004`.
 - `aah-layout` repeats both behaviors in Standard and Private layouts and in a context-scoped ADR directory.
 - `aah-setup` fresh setup drafts and Private-mode Migration config name the ADR archive.
@@ -36,12 +36,12 @@ Create one new Git fixture per row. Set `F` to its absolute path, then run `git 
 For each fixture, create the same evidence with these commands:
 
 ```sh
-mkdir -p "$A/archive/2026-11-09" "$C" "$F/src"
+mkdir -p "$A/archive/2026-11-09T0900" "$C" "$F/src"
 printf '# Domain docs\n\nRead ADRs in %s.\n' "$A" > "$C/domain.md"
 printf '# Retain the offline queue\n\nOrders remain queued during outages.\n' > "$A/0001-offline-queue.md"
 printf '# Acknowledge local writes\n\nA local durable write acknowledges enqueueing.\n' > "$A/0002-local-ack.md"
 printf '# Keep queue entries private\n\nQueue entries stay on this device.\n' > "$A/0003-private-queue.md"
-printf '> Archived. No part holds: the serial vendor protocol was retired.\n\n# Serial queue constraint\n\nThe first queue sent one order at a time because the vendor serial protocol could not distinguish simultaneous acknowledgements.\n' > "$A/archive/2026-11-09/0004-serial-queue.md"
+printf '> Archived on 2026-11-09T0900. No part holds: the serial vendor protocol was retired.\n\n# Serial queue constraint\n\nThe first queue sent one order at a time because the vendor serial protocol could not distinguish simultaneous acknowledgements.\n' > "$A/archive/2026-11-09T0900/0004-serial-queue.md"
 printf 'export const historicalQueueLimit = 1;\n' > "$F/src/queue.ts"
 git -C "$F" add .
 git -C "$F" -c user.name=Verifier -c user.email=verifier@example.invalid commit -qm 'Add queue fixture'
@@ -50,11 +50,11 @@ git -C "$F" -c user.name=Verifier -c user.email=verifier@example.invalid commit 
 For each context case, also write a `GLOSSARY-MAP.md` at the domain root. Point it to an Orders glossary alongside the selected context's ADR directory, and name that directory in the glossary. In Private mode the domain root is `$F/.git/vstack/domain/`. In Standard mode it is `$F`. Keep system-wide and context-scoped directories distinct.
 
 1. Start the fresh session in `F`. Ask `/skill:why Why did the original queue send one order at a time? Investigate the local repository only.` Do not name the archive or reveal the expected rationale in the prompt.
-2. Retain the answer and the source reads. Require a citation to `A/archive/2026-11-09/0004-serial-queue.md` and the vendor acknowledgement rationale. The answer must treat the retired serial constraint as history, not as a current rule. Missing Code host or tracker config is a reported gap, not a reason to omit local ADR evidence. Save the answer and its actual cited lines as `aah-why-<case>.md`.
+2. Retain the answer and the source reads. Require a citation to `A/archive/2026-11-09T0900/0004-serial-queue.md` and the vendor acknowledgement rationale. The answer must treat the retired serial constraint as history, not as a current rule. Missing Code host or tracker config is a reported gap, not a reason to omit local ADR evidence. Save the answer and its actual cited lines as `aah-why-<case>.md`.
 3. In the same fixture, ask `Use domain-modeling to record this accepted decision in this context's ADR directory: retain queued orders for seven days because devices must complete week-long offline expeditions. We reject a hosted queue because devices have no network during those expeditions. Write the ADR; do not change application code.` Name the context for the context cases. Do not supply an ADR number.
-4. Save the resulting file inventory and new ADR. Require exactly one new ADR with prefix `0005-` inside `A`, while `0001` through `0003` remain active and `0004` remains at its dated path with its original bytes. Check the new ADR records the supplied decision and rationale. A proposed filename without a written ADR does not pass. Save the inventory and before/after bytes as `aah-number-<case>.json`.
-5. For a Private fixture, add a separate tracked `docs/adr/archive/2026-11-09/0007-device-limit.md` with a different historical rationale. Ask a new why question about that decision and require a citation to the tracked archive. This proves Private mode also reads the repo's own domain docs. Do not use `0007` to renumber an ADR in the private directory.
-6. Run `bun test --timeout 30000 tests/setup-vstack-migration.test.ts` from `CHECKOUT` and retain its output. Its fixture projects cover Private copy and legacy private-store Migration, including archive paths and preserved hand edits. For fresh setup proof, drive `/skill:setup-vstack` in a separate empty fixture through its draft step. Check the actual Standard and Private domain drafts name `archive/<date>/` inside their ADR directories. Confirm writes only through the real setup approval, or report the draft-only limit. Retain the drafts and transcript, not an assertion on the skill's wording.
+4. Save the resulting file inventory and new ADR. Require exactly one new ADR with prefix `0005-` inside `A`, while `0001` through `0003` remain active and `0004` remains at its run-time path with its original bytes. Check the new ADR records the supplied decision and rationale. A proposed filename without a written ADR does not pass. Save the inventory and before/after bytes as `aah-number-<case>.json`.
+5. For a Private fixture, add a separate tracked `docs/adr/archive/2026-11-09T0900/0007-device-limit.md` with a different historical rationale. Ask a new why question about that decision and require a citation to the tracked archive. This proves Private mode also reads the repo's own domain docs. Do not use `0007` to renumber an ADR in the private directory.
+6. Run `bun test --timeout 30000 tests/setup-vstack-migration.test.ts` from `CHECKOUT` and retain its output. Its fixture projects cover Private copy and legacy private-store Migration, including archive paths and preserved hand edits. For fresh setup proof, drive `/skill:setup-vstack` in a separate empty fixture through its draft step. Check the actual Standard and Private domain drafts name `archive/<date>T<HHMM>/` inside their ADR directories, with a new run-time folder per run and refusal of existing destinations. Confirm writes only through the real setup approval, or report the draft-only limit. Retain the drafts and transcript, not an assertion on the skill's wording.
 7. Record each case, commands, source reads, written ADR, and outcome in `$VERIFY_RUN_DIR/notes.md`. Preserve failures and unavailable cases. Copy evidence out of `data/` before the Verify skill's Cleanup. Close and stop only the fixture's own Flow resources when used.
 
 ## Gotchas

@@ -58,7 +58,7 @@ function files(root: string): string[] {
 }
 
 function hits(path: string, t: string, replacements: Replacement[]): Hit[] {
-  return t.split("\n").flatMap((line, i) => /matt-pocock|docs-agents/.test(line) || replacements.some(r => findRow(line, r).length)
+  return t.split("\n").flatMap((line, i) => !line.startsWith("- clean-adr report-only paths:") && (/matt-pocock|docs-agents/.test(line) || replacements.some(r => findRow(line, r).length))
     ? [{ path, line: i + 1, text: line }] : []);
 }
 
@@ -69,12 +69,15 @@ function change(path: string, afterPath: string, before: string, after: string):
 }
 
 function rewrite(t: string, common: string, commonIsOrdinaryGit: boolean, replacements: Replacement[]) {
-  const from = join(common, "matt-pocock"), to = join(common, "vstack");
-  for (const [a, b] of [[from + "/docs-agents", to + "/config"], [from, to]]) {
-    const escaped = a!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    t = t.replace(new RegExp(escaped + "(?=$|[/\\s\"'`<>),;])", "g"), () => b!);
-  }
-  return applyRows(t, replacements.filter(r => commonIsOrdinaryGit || !r.id.startsWith("mig-")));
+  return t.split(/^(- clean-adr report-only paths:.*)$/m).map((part, i) => {
+    if (i % 2) return part;
+    const from = join(common, "matt-pocock"), to = join(common, "vstack");
+    for (const [a, b] of [[from + "/docs-agents", to + "/config"], [from, to]]) {
+      const escaped = a!.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      part = part.replace(new RegExp(escaped + "(?=$|[/\\s\"'`<>),;])", "g"), () => b!);
+    }
+    return applyRows(part, replacements.filter(r => commonIsOrdinaryGit || !r.id.startsWith("mig-")));
+  }).join("");
 }
 
 function domainFiles(root: string): string[] {
@@ -101,7 +104,7 @@ function codeHostSeed(root: string): { template: string; text: string } | null {
 
 function adrArchiveNote(store: string, domain: string): string {
   const paths = /^- clean-adr report-only paths:/m.test(domain) ? "" : "\n- clean-adr report-only paths: []\n";
-  return `\nThe ADR archive lives in ${store}/domain/adr/archive/<date>/, docs/adr/archive/<date>/, and archive/<date>/ inside each context's ADR directory. It is history read for why, never a rule.\n\n## clean-adr citation repair\n${paths}\nThe optional \`clean-adr report-only paths\` line is a JSON array of literal file or directory paths. Directory entries include descendants. Relative paths start at the checkout root, even in this private config; absolute paths can name private files. clean-adr leaves citations and links under these paths unchanged and reports their file, line, and new target instead. An absent or empty list means direct citation repair everywhere. List text with a separate change process here.\n`;
+  return `\nThe ADR archive lives in ${store}/domain/adr/archive/<date>T<HHMM>/, docs/adr/archive/<date>T<HHMM>/, and archive/<date>T<HHMM>/ inside each context's ADR directory. Each run uses a new run-time folder and refuses an existing destination. It is history read for why, never a rule.\n\n## clean-adr citation repair\n${paths}\nThe optional \`clean-adr report-only paths\` line is a JSON array of literal file or directory paths. Directory entries include descendants. Relative paths start at the checkout root, even in this private config; absolute paths can name private files. clean-adr leaves citations and links under these paths unchanged and reports their file, line, and new target instead. An absent or empty list means direct citation repair everywhere. List text with a separate change process here.\n`;
 }
 
 function privateMovePlan(common: string, worktrees: string[], commonIsOrdinaryGit: boolean, replacements: Replacement[]): Item {

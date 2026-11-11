@@ -53,26 +53,26 @@ Keep a fully holding ADR in place with its number and original bytes unless cita
 
 For each source directory, plan new ADRs that state only the settled provisions that hold. Merge ADRs describing one decision into one replacement within that directory. Related decisions across directories remain in their own contexts. An ADR with no holding provisions needs no replacement. Preserve the rationale for the holding decision, but introduce no new decision, inferred constraint, or unsupported justification.
 
-Allocate each new number after the highest number anywhere in its source ADR directory and all dated folders under its `archive/`. Reserve numbers for the whole plan before writing, incrementing for each new ADR. Never reuse a number or derive a private context's number from a tracked or neighboring directory.
+Allocate each new number after the highest number anywhere in its source ADR directory and all run-time folders under its `archive/`. Reserve numbers for the whole plan before writing, incrementing for each new ADR. Never reuse a number or derive a private context's number from a tracked or neighboring directory.
 
-Use one run date, `YYYY-MM-DD`, for `archive/<date>/` inside each affected source directory. Keep the original basenames. If that date already exists, preserve its files and refuse a destination collision rather than overwrite history. Prepare a complete mapping of original paths to archive paths and replacing ADR paths. One original may have several replacements. A retired decision instead records `no part holds` and its evidence-backed reason.
+Use one run-time stamp, `YYYY-MM-DDTHHMM`, for `archive/<date>T<HHMM>/` inside each affected source directory, for example `archive/2026-11-10T1530/`. Use one new folder per run in each directory. Never reuse an existing folder, even if empty or none of its filenames collide. Refuse the existing destination rather than sharing it. Keep the original basenames. Prepare a complete mapping of original paths to archive paths and replacing ADR paths. One original may have several replacements. A retired decision instead records `no part holds` and its evidence-backed reason.
 
 Write a provision coverage table. Every provision of every file to archive must map to a replacement provision or an explicit dropped reason. Each replacement statement must map back to its source. Each replacement ADR lists and links all archived ADRs it replaces. Save this plan before any move.
 
-Validate the plan with read-only file checks before execution. Check that every source still matches its inventoried checksum, every archive destination is free, every reserved number is unused, every replacement has sources, and each archived provision has a disposition. Save the command and its outcome. On a failed check, refresh the affected inventory and reconcile the plan before proceeding. Preserve user changes. Never overwrite a file changed since investigation under an earlier plan.
+Validate the plan with read-only file checks before execution. Check that every source still matches its inventoried checksum, every run-time archive folder is absent, every reserved number is unused, every replacement has sources, and each archived provision has a disposition. Save the command and its outcome. On a failed check, refresh the affected inventory and reconcile the plan before proceeding. Preserve user changes. Never overwrite a file changed since investigation under an earlier plan.
 
 ## 4. Archive and write what holds
 
-Write the planned replacement ADRs at their real target paths. Move each planned original to its own directory's dated archive folder. Preserve its historical body, including existing supersession quotes. Add exactly one new archive banner above it:
+Write the planned replacement ADRs at their real target paths. Create each planned run-time archive folder exclusively, refusing an existing destination before moving files into it. Move each planned original to its own directory's new archive folder. Preserve its historical body, including existing supersession quotes. Add exactly one new archive banner above it, using the folder's run-time stamp:
 
 ```md
-> Archived on YYYY-MM-DD. Replaced by [ADR NNNN](../../NNNN-slug.md).
+> Archived on YYYY-MM-DDTHHMM. Replaced by [ADR NNNN](../../NNNN-slug.md).
 ```
 
 List every replacing ADR in the banner. When no part holds, use this form with the actual reason:
 
 ```md
-> Archived on YYYY-MM-DD. No part holds: <evidence-backed reason>.
+> Archived on YYYY-MM-DDTHHMM. No part holds: <evidence-backed reason>.
 ```
 
 Repair outgoing relative links in archived bodies without rewriting their historical wording or cited numbers. Resolve each link from the file's original parent, then express its actual destination relative to its new parent. If the destination also moved, use its archive path from the complete link map, not its replacement. Preserve fragments, query suffixes, link labels, and image syntax. Cover inline links, reference definitions, and relative HTML link or image destinations. Leave external URLs and absolute paths alone. A same-file fragment remains a same-file fragment.

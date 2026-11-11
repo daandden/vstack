@@ -5,13 +5,13 @@
 ## Sub-features
 
 - `cadr-judge` scouts return a verdict, provision evidence, and same-decision ADRs for every active file, including files without supersession banners.
-- `cadr-archive` fully superseded, partly superseded, and merged files move to one dated folder per source directory with one new archive banner and working outgoing relative links.
+- `cadr-archive` fully superseded, partly superseded, and merged files move to one new `archive/<date>T<HHMM>/` folder per run in each source directory, with one new archive banner and working outgoing relative links. Existing destinations are refused, never shared.
 - `cadr-rewrite` replacement ADRs state only holding provisions, list their archived sources, and use numbers above the highest active or archived number.
 - `cadr-hold` a holding ADR with no citations remains byte for byte, and a second run does not rewrite settled decisions.
 - `cadr-layout` Standard, Private plus tracked, and multiple contexts keep separate archive locations and number sequences. Git sees no private file changes.
 - `cadr-run` the actual skill uses scouts, asks no question, saves evidence, and leaves HEAD and the index unchanged.
 - `cadr-citations` holding ADRs and other live text cite replacements without changing their own ADR numbers.
-- `cadr-history` plain history citations keep their bytes, and history links keep old numbered labels while opening dated archive files.
+- `cadr-history` plain history citations keep their bytes, and history links keep old numbered labels while opening run-time archive files.
 - `cadr-retired` live citations with no replacement keep their numbers, link into the archive, and appear in the report.
 - `cadr-report-only` listed paths stay byte for byte and get file, line, and new-target report rows. Omitting the list permits direct repairs.
 - `cadr-check-coverage` fresh scouts account for every archived provision and every new statement, detect missing reasons and unsupported statements, and independently test the rewrite against the project.
@@ -60,7 +60,7 @@ bun - "$F" "$A" <<'BUN'
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
 const [root, adr] = process.argv.slice(2);
-mkdirSync(join(adr, 'archive/2026-11-01'), { recursive: true });
+mkdirSync(join(adr, 'archive/2026-11-01T0900'), { recursive: true });
 const protocol = relative(adr, join(root, 'docs/protocol.md')).split('\\').join('/');
 const files = {
   '0001-remote-polling.md': `# Use remote polling\n\nPoll the remote service for updates because the first device had no local event source.\n\nSee [protocol](${protocol}#protocol).\n`,
@@ -68,7 +68,7 @@ const files = {
   '0003-compression.md': '# Compress payloads\n\nUse gzip for payloads because deployed receivers understand gzip.\n',
   '0004-receiver-format.md': '# Receiver compression format\n\nUse gzip for payloads to remain compatible with deployed receivers.\n',
   '0005-retries.md': '# Bound retries\n\nRetry at most three times to bound battery use.\n',
-  'archive/2026-11-01/0012-retired-device.md': '> Archived on 2026-11-01. No part holds: the original device was retired.\n\n# Original device\n\nSupport the original device only.\n',
+  'archive/2026-11-01T0900/0012-retired-device.md': '> Archived on 2026-11-01T0900. No part holds: the original device was retired.\n\n# Original device\n\nSupport the original device only.\n',
 };
 for (const [name, text] of Object.entries(files)) writeFileSync(join(adr, name), text);
 BUN
@@ -89,14 +89,16 @@ Save HEAD, index tree, every ADR's bytes, and an inventory outside `data/` befor
 
 1. Launch the fresh actual-model session in `F` with the checkout's plugin, its scouts, and isolated dependency discovery. Submit exactly `/skill:clean-adr` as the user action. Supply only fixture paths and the isolated Flow-home constraint as launcher context, not expected verdicts or replacement content. Capture all actual tool calls and the final report.
 2. Inspect the scout returns. Every active file in every directory must have one verdict with project evidence, and the compression pair must be identified as the same decision. The raw results and the owning run's verdict and provision tables must remain in Scratch. Require a real `vstack-scout` investigation, not a fixed scripted response.
-3. Independently inspect each ADR directory. Require `0001` through `0004` under one new `archive/<run-date>/` folder in that same directory, and no active copies with those numbers. Keep the pre-existing archive file unchanged except for incoming link destinations repaired by the citation cases. Require `0005-retries.md` to match its saved bytes exactly. Each moved file has exactly one added archive banner. `0001` names no holding provision and gives a reason tied to disabled polling. The remaining banners link to the appropriate new ADRs.
+3. Independently inspect each ADR directory. Require `0001` through `0004` under one new `archive/<date>T<HHMM>/` folder in that same directory, and no active copies with those numbers. Require a stamp such as `2026-11-10T1530`, with the same stamp in each added archive banner. Keep the pre-existing archive file unchanged except for incoming link destinations repaired by the citation cases. Require `0005-retries.md` to match its saved bytes exactly. Each moved file has exactly one added archive banner. `0001` names no holding provision and gives a reason tied to disabled polling. The remaining banners link to the appropriate new ADRs.
 4. Inspect replacement meanings, not filenames or phrasing. Require the seven-day retention decision and rationale, with the ten-entry limit dropped. Require one replacement for the two gzip ADRs, retaining receiver compatibility. Every new ADR lists and links all archived sources that it replaces. Reject newly invented decisions such as declaring the current 20-entry setting an accepted architectural constraint without an archived source. Require fresh numbers beginning above `0012`, or above `0020` in the changed context, with no duplicate number in that directory and its archive.
 5. Resolve every relative link in the archived bodies and banners from their new locations. The protocol link must still reach `docs/protocol.md#protocol`. Compare archived bodies against saved originals, allowing only the added banner and repaired relative-link destinations. Add a reference-style link and a link between the two merging files in one fixture before its baseline to prove both move-aware destinations. Historical link labels and numbers must remain unchanged.
 6. For `private`, inspect the private and tracked directories separately. Require each archive inside its source directory, both sets judged, and independent number allocation. Save `git -C "$F" status --short --untracked-files=all`, `git -C "$F" rev-parse HEAD`, and `git -C "$F" write-tree`. Only tracked-domain changes may appear in status. HEAD and the index tree must equal the baseline. The private filesystem inventory, not a clean git status, proves private changes.
 7. For `contexts`, require complete coverage of all three directories without moving any decision to another context. Preserve evidence that the context with historical `0020` allocates above it while the other directories allocate above `0012`.
 8. Inspect the transcript for zero question-tool calls, zero stage or commit operations in git, and no modification of fixture application config. Require the report to distinguish tracked and private changes and to name every failure or unavailable phase. Check the actual Flow Result and export without publishing private fixture bodies to any production Flow.
 9. Save all resulting ADR bytes, inventories, relevant git output, and the report outside `data/`. Invoke `/skill:clean-adr` again in the same fixture and save a second before/after inventory. Require no further archive moves, new numbers, or rewording when nothing changed. Treat any extra move as a behavioral failure rather than weakening the expectation.
-10. Record each sub-feature, case, command, observed outcome, and proof path in `$VERIFY_RUN_DIR/notes.md`. Preserve failed attempts and unavailable cases. Export and deliberately finish only owned fixture Flows. Stop only their isolated hosts through the authenticated Flow CLI, then run the Verify skill's Cleanup.
+10. In a separate same-day case, complete a first run and save all archive bytes and its folder stamp. Change `retryLimit` in `settings.json` to `5`. In each ADR directory, add a later ADR at the next unused number that replaces the three-retry bound with at most five retries to support slower reconnects. At a later minute on the same calendar day, invoke `/skill:clean-adr` again. Require `0005-retries.md` under a second `archive/<date>T<HHMM>/` folder in each affected source directory, with the same date and a different `HHMM`. The second run must not share the first folder or change its existing files. Retain both transcripts, stamps, and before/after inventories.
+11. In separate collision fixtures, give the fresh actual-model session only this operational checkpoint instruction alongside the usual launcher context. Save the archive plan and end the turn immediately before creating any archive folder. At the observed checkpoint, create the proposed run-time destination. Seed one case with an empty folder and another with a noncolliding sentinel filename, then resume the same run. Require refusal of that destination without moving files into it or changing its contents. If the run replans with a later stamp, require a new absent destination and preserve the refusal evidence. Report unavailable checkpoint control rather than claiming collision proof.
+12. Record each sub-feature, case, command, observed outcome, and proof path in `$VERIFY_RUN_DIR/notes.md`. Preserve failed attempts and unavailable cases. Export and deliberately finish only owned fixture Flows. Stop only their isolated hosts through the authenticated Flow CLI, then run the Verify skill's Cleanup.
 
 ### Citation cases
 
@@ -118,8 +120,8 @@ Create these incoming citations before taking the baseline. When one file cites 
 |---|---|---|
 | `docs/live-citations.md` | A live inline link labelled `ADR 0002`, a live reference-style link labelled `ADR-0004`, and a live HTML link labelled `ADR 0002`. | Each number and destination names the appropriate cache or compression replacement. |
 | `src/policy.ts` | A code comment citing plain `ADR 0004` and naming its ADR directory. | The comment names the compression replacement, not the archived number. |
-| `docs/retired.md` | A live link labelled `ADR 0001` and a plain live `ADR 0001` citation. | Keep both numbers. Retarget the link to the retired original in the dated archive. Report both occurrences and their archived targets. |
-| `CHANGELOG.md` | A release entry with an inline link labelled `ADR 0002`. | Keep the old number and entry wording. Only the destination changes to the dated archive. |
+| `docs/retired.md` | A live link labelled `ADR 0001` and a plain live `ADR 0001` citation. | Keep both numbers. Retarget the link to the retired original in the run-time archive folder. Report both occurrences and their archived targets. |
+| `CHANGELOG.md` | A release entry with an inline link labelled `ADR 0002`. | Keep the old number and entry wording. Only the destination changes to the run-time archive folder. |
 | `research/plain.md` | A past-research statement citing plain `ADR 0004`. | Keep every byte. |
 | `research/links.md` | A past-research statement with a reference-style link labelled `ADR 0004`. | Keep the old number. Retarget its reference definition to the archived original. |
 | `gated/policy.md` | A live link labelled `ADR 0002`, plain live `ADR 0004`, and a historical link labelled `ADR 0001`. | With `gated/` listed as report-only, keep every byte. Report each occurrence with its file, original line, and concrete replacement or archive target. |

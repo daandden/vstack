@@ -27,9 +27,10 @@ test.each(["private copy", "private store move"])("%s names the ADR archives in 
   expect(apply(r, source === "private copy" ? "private" : "move").code).toBe(0);
   const config = readFileSync(join(r, ".git/vstack/config/domain.md"), "utf8");
   expect(config).toStartWith(before);
-  expect(config).toContain(join(r, ".git/vstack/domain/adr/archive/<date>/"));
-  expect(config).toContain("docs/adr/archive/<date>/");
+  expect(config).toContain(join(r, ".git/vstack/domain/adr/archive/<date>T<HHMM>/"));
+  expect(config).toContain("docs/adr/archive/<date>T<HHMM>/");
   expect(config).toContain("each context's ADR directory");
+  expect(config).toContain("Each run uses a new run-time folder and refuses an existing destination.");
   expect(config).toContain("history read for why, never a rule");
   expect(run(r, "plan").json().items).toEqual([]);
 });
@@ -56,6 +57,31 @@ test.each([
   const config = readFileSync(join(r, ".git/vstack/config/domain.md"), "utf8");
   expect(config).toStartWith(before);
   expect(config.split("\n").filter(l => l.startsWith(line))).toEqual([`${line} ${paths ?? "[]"}`]);
+  expect(run(r, "plan").json().items).toEqual([]);
+});
+
+test("Private copy preserves report-only paths to retained tracked legacy files", () => {
+  const r = repo();
+  const paths = ["docs/agents/policy.md", "CONTEXT.md"];
+  const before = `Read CONTEXT.md and docs/agents/policy.md.\n- clean-adr report-only paths: ${JSON.stringify(paths)}\n`;
+  put(join(r, "docs/agents/domain.md"), before);
+  put(join(r, paths[0]!), "A gated citation of ADR 0001.\n");
+  put(join(r, paths[1]!), "# Tracked domain\n");
+  git(r, "add", ".");
+  git(r, "commit", "-qm", "Tracked legacy policy");
+  const head = git(r, "rev-parse", "HEAD");
+  const index = git(r, "write-tree");
+
+  expect(apply(r, "private").code).toBe(0);
+
+  const config = readFileSync(join(r, ".git/vstack/config/domain.md"), "utf8");
+  expect(config).toContain(`- clean-adr report-only paths: ${JSON.stringify(paths)}\n`);
+  expect(config).toContain(`Read ${join(r, ".git/vstack/domain/GLOSSARY.md")} and docs/vstack/policy.md.`);
+  expect(readFileSync(join(r, "docs/agents/domain.md"), "utf8")).toBe(before);
+  expect(readFileSync(join(r, paths[0]!), "utf8")).toBe("A gated citation of ADR 0001.\n");
+  expect(readFileSync(join(r, paths[1]!), "utf8")).toBe("# Tracked domain\n");
+  expect(git(r, "rev-parse", "HEAD")).toBe(head);
+  expect(git(r, "write-tree")).toBe(index);
   expect(run(r, "plan").json().items).toEqual([]);
 });
 test("nested domain files, map links and rule hits share one plan",()=>{const r=repo();put(join(r,"CONTEXT-MAP.md"),"[a](packages/a/CONTEXT.md)");put(join(r,"packages/a/CONTEXT.md"),"domain hand edit");put(join(r,".omp/rules/user.md"),"/setup-matt-pocock-skills");expect(apply(r).code).toBe(0);expect(readFileSync(join(r,"GLOSSARY-MAP.md"),"utf8")).toBe("[a](packages/a/GLOSSARY.md)");expect(readFileSync(join(r,"packages/a/GLOSSARY.md"),"utf8")).toBe("domain hand edit");expect(readFileSync(join(r,".omp/rules/user.md"),"utf8")).toBe("/skill:setup-vstack");expect(run(r,"plan").json().items).toEqual([]);});

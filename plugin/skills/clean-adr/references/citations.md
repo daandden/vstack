@@ -35,7 +35,7 @@ Use these rules for every inventoried occurrence, including ones under report-on
 | Passage | Number and wording | Link destination or target for a plain citation |
 |---|---|---|
 | Live, with a replacement | Name the replacing ADR for the provision being cited. | The replacing ADR. |
-| Historical, or explicit archived-source provenance | Keep the old number and historical wording. | The archived file in its dated folder. |
+| Historical, or explicit archived-source provenance | Keep the old number and historical wording. | The archived file in its run-time folder under `archive/<date>T<HHMM>/`. |
 | Live, with no replacement because no part holds | Keep the old number. | The archived file and its retirement banner. Also report this live citation. |
 
 When a source has several replacements, read the cited provision and link the replacement that carries it. If the citation covers several surviving provisions, name and link every relevant replacement. A holding ADR keeps its own number and stays in place; only its affected citations and destinations change. Do not archive the citing ADR merely because one of its citations changed.
@@ -46,7 +46,7 @@ For a plain historical citation, change nothing. For a plain live citation with 
 
 Finish the occurrence-to-target table before editing. For every occurrence under a report-only path, save a report row with the file, line, old citation or link, intended new ADR number when any, and concrete new target path or URL. State whether that target is a replacement or an archived original. Include plain citations as well as links. Leave the file's bytes unchanged.
 
-Apply the other planned changes without changing unrelated text or user edits. Repair incoming history links even though their old numbered labels stay unchanged. The outgoing links repaired during the archive phase already point at historical destinations; do not redirect those to replacements. Include incoming links from pre-existing dated archive folders and links between files moved in this run.
+Apply the other planned changes without changing unrelated text or user edits. Repair incoming history links even though their old numbered labels stay unchanged. The outgoing links repaired during the archive phase already point at historical destinations; do not redirect those to replacements. Include incoming links from pre-existing run-time archive folders and links between files moved in this run.
 
 Resolve every affected link outside report-only paths from its final citing location. Check that the file exists and any fragment reaches its intended provision. Search again for each original path and archived number. Account for every remaining occurrence as history, explicit provenance, a reported live citation with no replacement, a report-only row, or an unresolved failure. A live citation with a replacement is complete only when its number and link both name the replacement. Record pre-existing broken links separately from failures introduced by this run.
 
