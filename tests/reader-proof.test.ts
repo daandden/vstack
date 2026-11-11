@@ -5,7 +5,7 @@ import { homedir } from "node:os";
 import { lifecycleFixture } from "./support/update-lifecycle-fixture.ts";
 import { writeFiles } from "./support/fixture.ts";
 
-type GateStage = { name: string; ok: boolean; output: string };
+type GateStage = { name: string; ok: boolean; output: string; phases: CommandPhase[] };
 type GateReport = { stages: GateStage[] };
 type ReaderProof = { source: { root: string; sha256: string }; assets: { root: string; sha256: string } };
 type CommandPhase = { name: string; outcome: string; exitCode: number; durationMs: number; command: string[] };
@@ -52,7 +52,7 @@ test('rendered behavior comes from candidate source', async () => {
   if (dependencies) symlinkSync(join(repo, "node_modules"), join(f.root, "node_modules"), "dir");
   const commands = Object.fromEntries(["validate", "check", "smoke"].map(name => [name, [process.execPath, join(f.root, "pass.ts")]]));
   const browsers = process.env.PLAYWRIGHT_BROWSERS_PATH ?? (process.platform === "darwin" ? join(homedir(), "Library/Caches/ms-playwright") : join(process.env.XDG_CACHE_HOME ?? join(homedir(), ".cache"), "ms-playwright"));
-  return { ...f, env: { VSTACK_MAINTAIN_COMMANDS: JSON.stringify(commands), PLAYWRIGHT_BROWSERS_PATH: browsers, VSTACK_GATE_PHASE_REPORT: join(f.dir, "phases.json") } };
+  return { ...f, env: { VSTACK_MAINTAIN_COMMANDS: JSON.stringify(commands), PLAYWRIGHT_BROWSERS_PATH: browsers } };
 }
 
 test("maintainer gates render candidate source despite stale shipped assets and retain its identity", async () => {
@@ -72,7 +72,7 @@ test("maintainer gates render candidate source despite stale shipped assets and 
   expect(existsSync(join(f.root, "reader/.output"))).toBe(false);
   expect(readFileSync(join(f.root, "plugin/skills/flow-page/reader/index.html"), "utf8")).toBe(shipped);
   expect(existsSync(join(f.root, "ordinary-ran"))).toBe(true);
-  const phases: CommandPhase[] = JSON.parse(readFileSync(join(f.dir, "phases.json"), "utf8"));
+  const phases = stage.phases;
   expect(phases.map(phase => phase.name)).toEqual(["candidate-reader-readiness", "candidate-reader-build", "non-browser", "browser:tests/candidate.browser.test.ts"]);
   for (const phase of phases) {
     expect(phase.outcome).toBe("passed");

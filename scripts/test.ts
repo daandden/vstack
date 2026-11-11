@@ -1,27 +1,21 @@
 #!/usr/bin/env bun
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { GateReport } from "./lib/gate-report.ts";
 
 const root = process.cwd();
 const selected = process.argv.slice(2);
 const browsers = selected.length ? selected.filter(file => file.endsWith(".browser.test.ts")) : Array.from(new Bun.Glob("tests/**/*.browser.test.ts").scanSync({ cwd: root })).sort();
 const ordinary = selected.filter(file => !file.endsWith(".browser.test.ts"));
-const phases: object[] = [];
-const report = process.env.VSTACK_GATE_PHASE_REPORT;
-const persist = () => { if (report) writeFileSync(report, JSON.stringify(phases, null, 2) + "\n"); };
-function phase(name: string, command: string[], env = process.env) {
-  const startedAt = new Date().toISOString(), start = performance.now();
-  const record = { name, command, cwd: root, startedAt, outcome: "running" } as Record<string, unknown>;
-  phases.push(record); persist();
-  const result = Bun.spawnSync(command, { cwd: root, env, stdout: "pipe", stderr: "pipe" });
-  Object.assign(record, { finishedAt: new Date().toISOString(), durationMs: performance.now() - start, outcome: result.signalCode ? "interrupted" : result.exitCode === 0 ? "passed" : "failed", exitCode: result.exitCode, signal: result.signalCode, stdout: result.stdout.toString(), stderr: result.stderr.toString() });
-  persist();
-  process.stdout.write(result.stdout); process.stderr.write(result.stderr);
-  if (result.exitCode !== 0) throw new Error(`${name} failed (exit ${result.exitCode}${result.signalCode ? `, ${result.signalCode}` : ""})`);
+const temporary = process.env.VSTACK_GATE_PHASE_REPORT ? undefined : mkdtempSync(join(tmpdir(), "vstack-tests-"));
+const report = new GateReport(root, process.env.VSTACK_GATE_PHASE_REPORT ?? join(temporary!, "phases.json"), undefined, true);
+async function phase(name: string, command: string[], env = process.env) {
+  const result = await report.command(name, command, undefined, env, true);
+  if (!result.ok || report.interrupted) throw new Error(`${name} ${result.outcome}${result.exitCode === undefined ? "" : ` (exit ${result.exitCode})`}`);
 }
 function digest(paths: string[]) {
   const hash = createHash("sha256");
@@ -59,7 +53,7 @@ try {
     const cli = join(dirname(nuxtPackage), JSON.parse(readFileSync(nuxtPackage, "utf8")).bin.nuxt);
     if (!existsSync(cli)) throw new Error(`Reader proof requires the Nuxt CLI at ${cli}; run bun install --frozen-lockfile`);
     if (!existsSync(join(root, "reader/nuxt.config.ts"))) throw new Error(`Reader proof requires candidate input ${join(root, "reader/nuxt.config.ts")}`);
-    phase("candidate-reader-readiness", [process.execPath, "--eval", `try { const { chromium } = await import(${JSON.stringify(pathToFileURL(playwright).href)}); const browser = await chromium.launch({ headless: true }); console.log(JSON.stringify({ chromium: chromium.executablePath(), version: browser.version() })); await browser.close(); } catch (error) { console.error('Reader proof requires working Playwright Chromium: ' + error.message); process.exit(1); }`]);
+    await phase("candidate-reader-readiness", [process.execPath, "--eval", `try { const { chromium } = await import(${JSON.stringify(pathToFileURL(playwright).href)}); const browser = await chromium.launch({ headless: true }); console.log(JSON.stringify({ chromium: chromium.executablePath(), version: browser.version() })); await browser.close(); } catch (error) { console.error('Reader proof requires working Playwright Chromium: ' + error.message); process.exit(1); }`]);
     out = mkdtempSync(join(tmpdir(), "vstack-reader-proof-"));
     const candidateReader = join(out, "reader");
     cpSync(join(root, "reader"), candidateReader, { recursive: true, dereference: true, filter: path => ![".nuxt", ".output", "node_modules", ".data", ".cache"].includes(path.split("/").at(-1)!) });
@@ -67,17 +61,20 @@ try {
     const sourcePaths = ["reader", "plugin/skills/flow-page/scripts", "plugin/skills/vstack-figures/scripts", "package.json", "bun.lock"];
     const source = { root: join(root, "reader"), paths: sourcePaths, sha256: digest(sourcePaths) };
     env = { ...process.env, FLOW_READER_SOURCE_ROOT: root, FLOW_READER_ASSETS: join(candidateReader, ".output/public") };
-    phase("candidate-reader-build", [process.execPath, cli, "generate", candidateReader], env);
+    await phase("candidate-reader-build", [process.execPath, cli, "generate", candidateReader], env);
     if (!existsSync(join(env.FLOW_READER_ASSETS!, "index.html")) || !existsSync(join(env.FLOW_READER_ASSETS!, "_flow-reader"))) throw new Error(`Reader proof requires generated index.html and _flow-reader assets in ${env.FLOW_READER_ASSETS}`);
     cpSync(env.FLOW_READER_ASSETS!, join(out, "assets"), { recursive: true, dereference: true });
     env.FLOW_READER_ASSETS = join(out, "assets");
     console.log(JSON.stringify({ readerProof: { source, assets: { root: env.FLOW_READER_ASSETS, sha256: digest([resolve(env.FLOW_READER_ASSETS!)]) }, bun: Bun.version } }));
   }
-  if (!selected.length || ordinary.length) phase("non-browser", [process.execPath, "test", "--timeout", "30000", "--path-ignore-patterns", "**/*.browser.test.ts", ...ordinary]);
-  for (const file of browsers) phase(`browser:${file}`, [process.execPath, "test", "--timeout", "30000", file], env);
+  if (!selected.length || ordinary.length) await phase("non-browser", [process.execPath, "test", "--timeout", "30000", "--path-ignore-patterns", "**/*.browser.test.ts", ...ordinary]);
+  for (const file of browsers) await phase(`browser:${file}`, [process.execPath, "test", "--timeout", "30000", file], env);
 } catch (error) {
   console.error((error as Error).message);
-  process.exitCode = 1;
+  if (report.stages.every(stage => stage.ok)) await report.phase("test-runner", () => { throw error; });
 } finally {
   if (out) rmSync(out, { recursive: true, force: true });
+  const result = report.finish();
+  process.exitCode = result.ok ? 0 : 1;
+  if (temporary) rmSync(temporary, { recursive: true, force: true });
 }

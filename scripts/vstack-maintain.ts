@@ -5,7 +5,8 @@ import { cpSync, existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, re
 import { homedir, tmpdir } from "node:os";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { buildPlan, PLAN_SCHEMA, type PlanBody, type UpstreamRun } from "./lib/update-plan.ts";
-import { loadGate, run } from "./lib/update-gates.ts";
+import { checkLoadSmoke, run } from "./lib/update-gates.ts";
+import { GateReport } from "./lib/gate-report.ts";
 import { applyRows, findRow, parseHouseStyle, selectRows, type MatchKind, type Replacement, type TextDisposition } from "./lib/house-style.ts";
 import { asText, cloneSource, githubSource, defaultUpstreamRemote, defaultUpstreamsDir, fetchRefs, readBlobs, writeEntry, syncClone, newestTag, newestCommit, compareSemverTags, hasTag, resolveRef, isAncestor, gitBlobSha, type UpstreamSource, type UpstreamTree } from "./lib/upstreams.ts";
 import { artifactFiles, loadPins, loadRegister, loadHouseStyle, NEVER_SHIPPED, parseRegister, upstreamItems, type Pin, type Register } from "./lib/vstack-repo.ts";
@@ -718,31 +719,58 @@ function changedSkills(root: string): string[] {
 }
 async function gates(root: string, opts: UpstreamOptions, scratch: string | undefined) {
   const commands: Record<string, string[]> = JSON.parse(process.env.VSTACK_MAINTAIN_COMMANDS ?? "{}");
-  const stages: { name: string; ok: boolean; output: string; exitCode?: number }[] = [];
-  const execute = (name: string, cmd: string[]) => {
-    const r = Bun.spawnSync(cmd, { cwd: root, stdout: "pipe", stderr: "pipe" });
-    const stage = { name, ok: r.exitCode === 0, exitCode: r.exitCode, output: r.stdout.toString() + r.stderr.toString() }; stages.push(stage); return stage;
-  };
-  for (const skill of changedSkills(root)) execute("validate", [...(commands.validate ?? [process.execPath, join(root, "plugin/skills/skill-creator/scripts/quick_validate.ts")]), join(root, skill)]);
-  if (!commands.check) clones(root, opts);
-  execute("check", commands.check ?? [process.execPath, join(root, "scripts/check-register.ts"), "--root", root, "--source", "clones", "--upstreams", opts.upstreams ?? defaultUpstreamsDir(), "--json"]);
-  execute("test", commands.test ?? [process.execPath, "run", "test"]);
-  const out = mkdtempSync(join(tmpdir(), "vstack-maintain-load-"));
-  let smoke: (typeof stages)[number];
+  const retained = maintainEntry(root, scratch);
+  const report = new GateReport(root, join(retained, "report.json"), defaultBase(root));
   try {
-    if (commands.smoke) smoke = execute("smoke", [...commands.smoke, join(root, "plugin"), out]);
-    else {
-      try { const summary = loadGate(root, out, join(root, "scripts/load-smoke.sh")); smoke = { name: "smoke", ok: true, output: JSON.stringify(summary) }; }
-      catch (e) { smoke = { name: "smoke", ok: false, output: (e as Error).message }; }
-      stages.push(smoke);
+    for (const skill of changedSkills(root)) {
+      if (report.interrupted) break;
+      await report.command("validate", [...(commands.validate ?? [process.execPath, join(root, "plugin/skills/skill-creator/scripts/quick_validate.ts")]), join(root, skill)]);
     }
-    if (!smoke.ok) {
-      const retained = maintainEntry(root, scratch);
-      cpSync(out, retained, { recursive: true, filter: src => !/[/\\]\.omp[/\\]natives$/.test(src) });
-      smoke.output += `\nSmoke output retained at ${retained}`;
+    if (report.interrupted) return report.finish();
+    let cacheFailed = false;
+    await report.phase("check", async stage => {
+      if (!commands.check) {
+        const cache = await report.phase("cache", () => { clones(root, opts); }, stage, [process.execPath, ...process.argv.slice(1)]);
+        cacheFailed = !cache.ok;
+        if (cacheFailed) return;
+      }
+      const check = await report.command("register", commands.check ?? [process.execPath, join(root, "scripts/check-register.ts"), "--root", root, "--source", "clones", "--upstreams", opts.upstreams ?? defaultUpstreamsDir(), "--json"], stage);
+      stage.output = check.output;
+      stage.exitCode = check.exitCode;
+    });
+    if (cacheFailed || report.interrupted) return report.finish();
+    const phaseFile = join(retained, "test-phases.json");
+    const tests = await report.command("test", commands.test ?? [process.execPath, "run", "test"], undefined, { ...process.env, VSTACK_GATE_PHASE_REPORT: phaseFile });
+    if (existsSync(phaseFile)) {
+      const phases = JSON.parse(readFileSync(phaseFile, "utf8"));
+      if (!Array.isArray(phases)) throw new Error(`Invalid test phase report: ${phaseFile}`);
+      tests.phases = phases;
+      if (phases.some(phase => phase.outcome !== "passed" || phase.ok === false)) {
+        tests.ok = false;
+        tests.outcome = phases.some(phase => phase.outcome === "interrupted" || phase.outcome === "running") ? "interrupted" : "failed";
+      }
+      report.save();
     }
-  } finally { rmSync(out, { recursive: true, force: true }); }
-  return { ok: stages.every(s => s.ok), stages };
+    if (report.interrupted) return report.finish();
+    const out = mkdtempSync(join(tmpdir(), "vstack-maintain-load-"));
+    try {
+      const smoke = commands.smoke
+        ? await report.command("smoke", [...commands.smoke, join(root, "plugin"), out])
+        : await report.phase("smoke", async stage => {
+          const load = await report.command("load", [join(root, "scripts/load-smoke.sh"), join(root, "plugin"), out], stage);
+          stage.output = load.output;
+          stage.exitCode = load.exitCode;
+          if (load.ok) checkLoadSmoke(root, JSON.parse(readFileSync(load.stdout!, "utf8")));
+        });
+      if (!smoke.ok) {
+        cpSync(out, retained, { recursive: true, filter: src => !/[/\\]\.omp[/\\]natives$/.test(src) });
+        smoke.output += `\nSmoke output retained at ${retained}`;
+      }
+    } finally { rmSync(out, { recursive: true, force: true }); }
+  } catch (error) {
+    await report.phase("reporting", () => { throw error; });
+  }
+  return report.finish();
 }
 
 const USAGE = `Usage: bun scripts/vstack-maintain.ts <command> [options]

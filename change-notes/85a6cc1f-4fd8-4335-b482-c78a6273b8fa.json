@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Report gate phase durations, commands, revision and environment identity, and retain failed or interrupted gate evidence."
+  ]
+}
