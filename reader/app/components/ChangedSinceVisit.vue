@@ -49,6 +49,13 @@ const changes = computed(() => {
   ];
 });
 const label = (b: ReadingBlock) => b.kind === "question" ? `${blockLabel(flow.value!, b)}. ${flow.value!.question.get(b.id)?.title ?? b.id}` : blockLabel(flow.value!, b);
+function destination(b: ReadingBlock, status: string): string {
+  if (b.kind !== "result" || status !== "Revised") return b.id;
+  const result = flow.value?.stages.flatMap(st => st.results).find(r => r.id === b.id);
+  const seen = Number(previous.value?.blocks[b.id]);
+  const snapshot = result?.history.find(h => h.changed === seen) ?? result?.history.at(-1);
+  return snapshot ? `${b.id}-changes-${snapshot.changed}` : b.id;
+}
 
 onMounted(() => {
   watch(flow, f => {
@@ -77,7 +84,7 @@ onMounted(() => {
       <p class="quiet">Since revision {{ previous.revision }}. Viewing state stays in this browser and never answers a question.</p>
       <ul v-if="changes.length" class="grid gap-1.5 list-disc ps-5 marker:text-dimmed">
         <li v-for="b in changes" :key="b.id">
-          <a :href="`#${b.id}`" class="[overflow-wrap:anywhere]">{{ label(b) }} <span class="text-muted">{{ b.status }} · {{ b.stage ? flow?.stage.get(b.stage)?.label : 'Topic notes' }}<template v-if="b.historical"> · Historical, retained order</template></span></a>
+          <a :href="`#${destination(b, b.status)}`" class="[overflow-wrap:anywhere]">{{ label(b) }} <span class="text-muted">{{ b.status }} · {{ b.stage ? flow?.stage.get(b.stage)?.label : 'Topic notes' }}<template v-if="b.historical"> · Historical, retained order</template></span></a>
         </li>
       </ul>
       <p v-else class="quiet">No new or revised blocks since your last visit.</p>

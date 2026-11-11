@@ -42,6 +42,7 @@ const earlier = computed(() => [...props.r.history].reverse());
       <AttachmentFigure v-for="a in listed" :key="a.id" :a="a" :anchor="`${r.anchor}-${a.id}`" />
     </div>
     </div>
+    <ResultChanges v-if="!historical && r.history.length" :r="r" />
     <ResultComments :r="r" :content="content" />
     <details v-if="r.history.length" class="text-small open:grid open:gap-4 [&>:not(summary)]:text-body">
       <summary>Earlier revisions ({{ r.history.length }})</summary>

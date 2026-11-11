@@ -85,7 +85,7 @@ test("returning readers find new and revised blocks in place without authoring o
     page = await context.newPage();
     await page.goto(`${opened.live.url}#overview`);
     await index(page).getByRole("link", { name: /Recovery evidence, revised/ }).waitFor();
-    expect(await links(page)).toEqual(["#old-question", `#${seed.refs.report}`, `#${seed.refs.route}`, `#${changed.refs.new}`]);
+    expect(await links(page)).toEqual(["#old-question", `#${seed.refs.report}-changes-${seed.revision}`, `#${seed.refs.route}`, `#${changed.refs.new}`]);
     expect(await index(page).getByRole("listitem").first().innerText()).toContain("Historical");
     expect(await index(page).getByRole("listitem").first().innerText()).not.toContain("New");
     expect(await index(page).getByRole("listitem").last().innerText()).toContain("New");
