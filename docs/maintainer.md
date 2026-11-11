@@ -408,6 +408,10 @@ The script runs every `*.browser.test.ts` file in its own Bun process after the 
 
 Tests use temporary repos, homes, fixture Upstreams, and process boundaries. Machine setup tests need `omp` and skip without it. Never use real credentials or the user's omp home in a fixture.
 
+Private MCP tests require Git 2.54 or later on PATH and check actual configuration-hook dispatch before running success cases. Unsupported-Git coverage uses an isolated executable boundary that refuses its version query and delegates repository operations to real Git. It does not assume a system Git version. The workstation Verify recipe separately inspects Apple Git.
+
+CI builds the official Git 2.54.0 archive under the ephemeral job's `RUNNER_TEMP`, checks its SHA-256 against [kernel.org's release checksums](https://www.kernel.org/pub/software/scm/git/sha256sums.asc), and records the selected version and actual named-hook capability. The build follows [Git's installation instructions](https://github.com/git/git/blob/v2.54.0/INSTALL), with one consistent private prefix for build and install. It changes only that job's PATH, not a maintainer's Git installation.
+
 Flow-page tests assert receipts, refusals, `show` snapshots, stored bytes, and element ids, never page wording or markup. Prove browser and native omp behavior through the linked Verify recipes.
 
 The extension tests use `tests/support/extension-host.ts` and `extension-mocks.ts` for controlled host and judge boundaries. They do not replace a fresh omp session. Use the [Verify skill](../.omp/skills/verify-vstack/SKILL.md) and its [feature map](../.omp/skills/verify-vstack/features/README.md) for live proof.

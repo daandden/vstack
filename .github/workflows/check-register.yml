@@ -15,6 +15,31 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Build supported Git
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libssl-dev libcurl4-openssl-dev libexpat1-dev zlib1g-dev
+          archive="$RUNNER_TEMP/git-2.54.0.tar.xz"
+          curl --fail --location --silent --show-error https://www.kernel.org/pub/software/scm/git/git-2.54.0.tar.xz --output "$archive"
+          printf 'f689162364c10de79ef89aa8dbf48731eb057e34edbbd20aca510ce0154681a3  %s\n' "$archive" | sha256sum --check
+          tar -xJf "$archive" --directory "$RUNNER_TEMP"
+          make -C "$RUNNER_TEMP/git-2.54.0" -j2 prefix="$RUNNER_TEMP/supported-git" NO_TCLTK=YesPlease NO_GETTEXT=YesPlease all
+          make -C "$RUNNER_TEMP/git-2.54.0" prefix="$RUNNER_TEMP/supported-git" NO_TCLTK=YesPlease NO_GETTEXT=YesPlease install
+          echo "$RUNNER_TEMP/supported-git/bin" >> "$GITHUB_PATH"
+
+      - name: Record Git hook capability
+        env:
+          GIT_CONFIG_GLOBAL: /dev/null
+          GIT_CONFIG_NOSYSTEM: "1"
+        run: |
+          command -v git
+          git --version
+          mkdir "$RUNNER_TEMP/empty-git-template"
+          git init --template="$RUNNER_TEMP/empty-git-template" -q "$RUNNER_TEMP/git-hook-capability"
+          observed=$(git -C "$RUNNER_TEMP/git-hook-capability" -c hook.ci-capability.event=post-checkout -c 'hook.ci-capability.command=printf vstack-ci-config-hook' hook run --ignore-missing post-checkout -- 0000000000000000000000000000000000000000 0000000000000000000000000000000000000000 1 2>&1)
+          test "$observed" = vstack-ci-config-hook
+          printf '%s\nConfiguration hook dispatch: passed\n' "$(git --version)" | tee -a "$GITHUB_STEP_SUMMARY"
+
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.4

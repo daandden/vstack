@@ -64,8 +64,9 @@ Keep implementation details out of the map. Name only user paths, stable handles
 - [Isolated-worker lifecycle](./worker-lifecycle.md): a parent preserves useful work, retains workers with unresolved needs, releases settled children through omp, and proves clone disappearance without deleting unrelated owned work.
 - [Architecture agreement](./architecture-agreement.md): actual isolated grill evaluations cover assessment, grounding, visual alternatives, agreement provenance, the brief, and the stop. A separate live human checkpoint proves consent. Whole-feature evaluation consumes the other Matt entry points' separate proof.
 - [Tern Flow links and following](./vstack-flow.md): the packaged `vstack-flow` plugin loads as ready, preserves Cmd-click routing, and follows each tab's selected native omp session to its Stage or newly asked question. The isolated two-session, two-tab recipe covers typing holds, unrelated sessions, picker closure and expiry, and tab isolation.
+- [Private MCP setup](./private-mcp.md): isolated production CLI reconciliation, conservative installed-hook dispatch, creator Git compatibility, and actual ignored-file-cloned omp creation with shared edits and conflict preservation.
 
 ## Not mapped yet
 
 - The maintainer CLIs `scripts/check-register.ts`, `scripts/vstack-maintain.ts`, and the by-hand jev check `scripts/addon-judge-check.ts`. `docs/maintainer.md` documents their commands and exit codes.
-- The setup-vstack scripts (`machine.ts`, `project.ts`, and the Migration helper `migrate.ts`). They change omp configuration and git state, so a recipe needs a throwaway `HOME` and a throwaway repo.
+- The setup-vstack machine and Migration helpers. They change omp configuration and Git state, so a recipe needs a throwaway `HOME` and repository. Private MCP and project-state behavior have the isolated recipe above.
