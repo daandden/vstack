@@ -1,4 +1,5 @@
 import { flow } from "~/composables/reader";
+import { savedState } from "~/composables/reload";
 
 export const current = ref<string>();
 export const mapOpen = ref(false);
@@ -161,28 +162,27 @@ export function captureReadingPlace() {
   };
 }
 
-export async function restoreReadingPlace(saved: unknown): Promise<boolean> {
-  if (!saved || typeof saved !== "object" || !("hash" in saved) || saved.hash !== location.hash ||
-    !("tab" in saved) || typeof saved.tab !== "string" || !("y" in saved) || typeof saved.y !== "number") return false;
+export async function restoreReadingPlace(value: unknown): Promise<boolean> {
+  const saved = savedState(value, { hash: "string", tab: "string", y: "number" }, { current: "string", details: "list", focus: "string", selection: "number pair", anchor: "string", top: "number" });
+  if (!saved || saved.hash !== location.hash) return false;
   if (!tabs().includes(saved.tab)) return false;
   tab.value = saved.tab;
-  if ("current" in saved && typeof saved.current === "string") current.value = saved.current;
+  if (saved.current !== undefined) current.value = saved.current;
   await nextTick();
-  if ("details" in saved && Array.isArray(saved.details)) {
+  if (saved.details) {
     const details = saved.details;
     document.querySelectorAll("details").forEach((el, i) => { el.open = details.includes(i); });
   }
   await document.fonts.ready;
   await new Promise<void>(done => requestAnimationFrame(() => requestAnimationFrame(() => done())));
   measureHeader();
-  if ("focus" in saved && typeof saved.focus === "string") {
+  if (saved.focus !== undefined) {
     const field = document.getElementById(saved.focus);
     field?.focus({ preventScroll: true });
-    if (field instanceof HTMLTextAreaElement && "selection" in saved && Array.isArray(saved.selection) &&
-      typeof saved.selection[0] === "number" && typeof saved.selection[1] === "number") field.setSelectionRange(saved.selection[0], saved.selection[1]);
+    if (field instanceof HTMLTextAreaElement && saved.selection) field.setSelectionRange(saved.selection[0], saved.selection[1]);
   }
   scrollTo({ top: saved.y, behavior: "instant" });
-  if ("anchor" in saved && typeof saved.anchor === "string" && "top" in saved && typeof saved.top === "number") {
+  if (saved.anchor !== undefined && saved.top !== undefined) {
     const el = document.getElementById(saved.anchor);
     if (el) restoreReadingAnchor({ el, top: saved.top });
   }

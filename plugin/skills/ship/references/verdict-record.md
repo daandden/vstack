@@ -1,6 +1,6 @@
 # Verdict records and required proof
 
-The caller owns the required proof set. Before delegating, save `expected.json` in the attempt's Scratch entry and give the Verifier its contents. Include every required build, test, Doctor, Launch, journey, negative probe, parent-versus-head comparison, and cleanup step selected from the ticket and Verify skill. Give each step a unique stable ID and describe its action and passing observation in the brief. Required native proof stays required when the native runtime is unavailable.
+The caller owns the required proof set. Before delegating, save `expected.json` in the attempt's Scratch entry and give the Verifier its contents. Include every required build, test, Doctor, Launch, journey, negative probe, parent-versus-head comparison, and cleanup step selected from the ticket and Verify skill. Give each step a unique stable ID and describe its action and passing observation in the brief. Required native proof stays required when the native runtime is unavailable, and a local substitute cannot pass it.
 
 The expected record has full `head_sha` and `base_sha` strings, the caller's computed stable `patch_id`, and a nonempty `required_steps` array of unique nonempty string IDs. An empty diff has an empty string patch id. For example:
 

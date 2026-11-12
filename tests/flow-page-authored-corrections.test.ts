@@ -59,6 +59,9 @@ test("a later reading withdraws false authorization without changing raw answers
   expect(w.state().closes).toEqual(before.closes);
   expect(w.state().stages[0]).toEqual(before.stages[0]);
   expect(shown.stages[0].questions[0].answer).toMatchObject({ state: "unresolved", reading: withdrawn, recorded_reading: resolved, response: before.answers[0].response, correction: { head: { id: sent.refs.withdrawal } } });
+  expect(shown.stages[0]).toMatchObject({ state: "finished", open_questions: 0 });
+  expect(shown.stages[0].questions[0].open).toBe(false);
+  expect(shown.next).toEqual([]);
   expect(shown.stages[0].closes[0].decisions[0]).toMatchObject({ answer: "resolved", current_answer: "unresolved", affected: true, current_reading: withdrawn });
   expect(shown.stages[1].readings[0]).toMatchObject({ id: sent.refs.withdrawal, corrects: [{ target: { id: `${first.refs.permission}/reading` } }] });
   const asked = w.ok(["submit"], [{ kind: "round", questions: [question("retry", first.refs.permission)] }]);
@@ -108,6 +111,19 @@ test.each(["picked", "empty", "cancelled", "timed-out", "headless"])("a Correcti
   expect(run.code).toBe(1);
   expect(readFileSync(w.statePath, "utf8")).toBe(before);
   expect(w.shown().stages[0].questions[0].answer.state).toBe(status === "picked" ? "picked" : "unresolved");
+});
+
+test("a Correction of a resolved reading only withdraws it and cannot substitute another decision", () => {
+  const w = world();
+  const first = original(w);
+  w.next();
+  const before = readFileSync(w.statePath, "utf8");
+  const other = { outcome: "resolved", decision: "Wait for evidence", basis: "Reread as caution", maps_to: "B" };
+  const run = w.cli(["submit"], [{ kind: "reading", ref: "other", question: first.refs.permission, reading: other }, { kind: "corrects", target: `${first.refs.permission}/reading`, replacement: "other", reason: "Swap the decision" }]);
+  expect(run.code).toBe(1);
+  expect(run.stderr).toContain("only withdraws");
+  expect(readFileSync(w.statePath, "utf8")).toBe(before);
+  expect(w.shown().stages[0].questions[0].answer).toMatchObject({ state: "resolved", reading: resolved });
 });
 
 test("reading chains retain their history, reject orphan readings and renewed consent, and require reopen before correcting a closed Flow", () => {

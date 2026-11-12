@@ -1,16 +1,17 @@
 import { createHash, randomBytes } from "node:crypto";
 import { mkdirSync, realpathSync, rmSync, statSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { parseArgs } from "node:util";
 import { coherentRuntime, skillsRoot, stageRuntime } from "./generation.ts";
 import { attest, hostDir, originOf, record, recordPath, same, secrets, type HostRecord } from "./live.ts";
 import { writeAtomic } from "./store.ts";
+import { installedSkills, isNormalHome } from "./home.ts";
 
 const { values } = parseArgs({ args: Bun.argv.slice(2), options: { home: { type: "string" }, port: { type: "string" }, idle: { type: "string" } }, strict: true });
 const home = values.home!, port = Number(values.port), idle = Number(values.idle);
 if (!home || !Number.isInteger(port) || !Number.isFinite(idle) || idle <= 0) throw new Error("managed host needs --home, --port, and positive --idle");
-const source = join(home, ".omp/plugins/node_modules/vstack/skills");
-if (realpathSync(source) !== realpathSync(skillsRoot) || resolve(home) !== resolve(process.env.HOME!)) throw new Error("only the installed runtime can own the normal Flow host");
+const source = installedSkills(home);
+if (realpathSync(source) !== realpathSync(skillsRoot) || !isNormalHome(home)) throw new Error("only the installed runtime can own the normal Flow host");
 const secret = secrets(home), instance = randomBytes(16).toString("hex"), started = new Date().toISOString();
 const generations = join(hostDir(home), "generations");
 mkdirSync(generations, { recursive: true, mode: 0o700 });

@@ -66,7 +66,9 @@ test("corrected Results and every entry shape show warnings before original text
       expect(new URL(page.url()).hash).toBe(`#${replacementAnchor}`);
       const replacement = page.locator(`#${replacementAnchor}`);
       expect(await replacement.isVisible()).toBe(true);
-      const back = replacement.getByRole("complementary", { name: "Corrects earlier content", exact: true }).getByRole("link", { name: first.refs[target], exact: true });
+      const titles = ["Original report", "Cards", "Review", "Ledger", "Table", "Code", "Timeline"];
+      const named = i === 0 ? titles[0]! : `${titles[i]}, entry ${first.refs[target]!.split("/")[1]}`;
+      const back = replacement.getByRole("complementary", { name: "Corrects earlier content", exact: true }).getByRole("link", { name: named, exact: true });
       await back.click();
       expect(new URL(page.url()).hash).toBe(`#${anchor}`);
       expect(await warning.evaluate(el => el.getBoundingClientRect().top)).toBeGreaterThanOrEqual(await page.locator(".bar").evaluate(el => el.getBoundingClientRect().bottom) - 1);

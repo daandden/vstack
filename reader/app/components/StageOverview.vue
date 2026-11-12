@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { flow } from "~/composables/reader";
-import { questionOutcome, type QuestionView } from "~/utils/flow";
+import { questionOutcome } from "~/utils/flow";
 
 const f = computed(() => flow.value!);
 const label = (id: string) => f.value.stage.get(id)?.label ?? id;
-const shown = (q: QuestionView) => questionOutcome(q);
 </script>
 
 <template>
@@ -14,7 +13,7 @@ const shown = (q: QuestionView) => questionOutcome(q);
       <p v-if="st.parent" class="quiet">Parent <a :href="`#${st.parent}`">{{ label(st.parent) }}</a></p>
       <p v-if="st.children.length" class="quiet">Continued in <template v-for="(id, i) in st.children" :key="id">{{ i ? ", " : "" }}<a :href="`#${id}`">{{ label(id) }}</a></template></p>
       <ul v-if="st.asked.length" class="bullets">
-        <li v-for="q in st.asked" :key="q.id"><a :href="`#${q.id}`">Q{{ q.q }}</a> <span v-html="inline(q.title)" /> <span :class="shown(q).cls" v-html="shown(q).html" /></li>
+        <li v-for="q in st.asked" :key="q.id"><a :href="`#${q.id}`">Q{{ q.q }}</a> <span v-html="inline(q.title)" /> <span :class="questionOutcome(q).cls" v-html="questionOutcome(q).html" /></li>
       </ul>
     </li>
   </ol>

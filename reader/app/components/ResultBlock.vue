@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { flow } from "~/composables/reader";
-import type { ResultView } from "~/utils/flow";
+import { askLabel, type ResultView } from "~/utils/flow";
 
 const props = withDefaults(defineProps<{ r: ResultView; historical?: boolean }>(), { historical: false });
 const content = useTemplateRef<HTMLElement>("content");
@@ -27,7 +27,7 @@ const earlier = computed(() => [...props.r.history].reverse());
       <h2 :id="`${r.anchor}-title`" v-html="inline(r.title)" />
       <p v-if="r.summary" class="text-toned" v-html="inline(r.summary)" />
       <p class="text-small text-muted">Revision {{ r.revision }}<template v-if="r.edit !== undefined"> · Edit {{ r.edit }}</template><template v-if="r.captured">, <time :datetime="r.captured">{{ formatTime(r.captured) }}</time></template><span v-html="canonical" /></p>
-      <p v-if="r.questions.length" class="text-small text-muted">Asked in <template v-for="(id, i) in r.questions" :key="id">{{ i ? ", " : "" }}<a :href="`#${id}`">Q{{ f.question.get(id)?.q }}<template v-if="f.question.get(id)?.stage !== r.stage"> in {{ f.stage.get(f.question.get(id)!.stage)?.label }}</template></a></template></p>
+      <p v-if="r.questions.length" class="text-small text-muted">Asked in <template v-for="(id, i) in r.questions" :key="id">{{ i ? ", " : "" }}<a :href="`#${id}`">{{ askLabel(f, id) }}<template v-if="f.question.get(id)?.stage !== r.stage"> in {{ f.stage.get(f.question.get(id)!.stage)?.label }}</template></a></template></p>
     </header>
     <ReviewSummary v-if="r.review" :rows="r.review" />
     <DocumentBody v-if="r.doc" :r="r" :doc="r.doc" :historical="historical" />

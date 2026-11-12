@@ -13,7 +13,7 @@ const doc = (text: string, inserted = false) => ({ kind: "result", ref: "doc", s
 ], citations: [{ ref: "run", source: "Local recovery run" }], limitations: ["Local evidence only."] });
 const table = (value: string, added = false) => ({ kind: "result", ref: "table", shape: "table", title: "Recovery timings", columns: [{ label: "Route", type: "text" }, { label: "Latency", type: "number" }], rows: [
   ...(added ? [{ ref: "new", cells: ["New route", "0"] }] : []),
-  { ref: "same", cells: ["Unchanged route", "100"] }, { ref: "changed", cells: ["Candidate", value] },
+  { ref: "same", cells: ["Unchanged route", "100"] }, { ref: "changed", cells: ["Candidate", value] }, { ref: "throughput", cells: ["Throughput", added ? "1180" : "1210"] },
   ...(!added ? [{ ref: "removed", cells: ["Removed route", "42"] }] : []),
   ...Array.from({ length: 1000 }, (_, i) => ({ cells: [`operations/recovery/customer-feedback-from-enterprise-onboarding-${i}`, String(i)] })),
 ] });
@@ -78,6 +78,8 @@ test("readers compare known Document and typed edits without losing snapshots or
         expect(await view.innerText()).toContain("Removed route");
         expect(await view.innerText()).toContain("New route");
         expect(await view.innerText()).not.toContain("Unchanged route");
+        expect(await view.locator("del").allTextContents()).toContain("1210");
+        expect(await view.locator("ins").allTextContents()).toContain("1180");
       }
       if (proof) { await view.screenshot({ path: join(proof, `${ref}.png`) }); writeFileSync(join(proof, `${ref}.aria.txt`), await view.ariaSnapshot()); }
     }
@@ -87,10 +89,15 @@ test("readers compare known Document and typed edits without losing snapshots or
     const changes = page.getByRole("region", { name: "Changes to Recovery timings, checked", exact: true });
     const selector = changes.getByRole("combobox", { name: "Earlier snapshot", exact: true });
     if (!await selector.isVisible()) await changes.getByText("Compare revisions", { exact: true }).click();
-    await selector.selectOption(String(authored.revision));
+    const pick = async (snapshot: string | RegExp) => {
+      await selector.click();
+      await page.getByRole("option", { name: snapshot, exact: typeof snapshot === "string" }).click();
+      await changes.locator("p.font-semibold").filter({ hasText: typeof snapshot === "string" ? new RegExp(`^${snapshot} →`) : snapshot }).waitFor();
+    };
+    await pick("Revision 2");
     expect(await changes.innerText()).toContain("Revision 2 → Revision 2 · Edit");
     expect(await changes.locator("ins").allTextContents()).not.toContain("10");
-    await selector.selectOption(String(first.revision));
+    await pick("Revision 1");
     expect(await changes.locator("ins").allTextContents()).toContain("10");
     for (const theme of ["Light", "Dark"]) {
       await page.getByRole("button", { name: theme, exact: true }).click();
@@ -106,7 +113,7 @@ test("readers compare known Document and typed edits without losing snapshots or
     expect(cli(["show"]).revision).toBe(second.revision);
     await page.evaluate(() => { document.documentElement.style.fontSize = ""; });
     const identical = submit([{ ...table("10", true), title: "Recovery timings, checked", revises: first.refs.table }]);
-    await changes.getByRole("combobox", { name: "Earlier snapshot", exact: true }).selectOption(String(second.revision));
+    await pick(/^Revision 2 · Edit/);
     await changes.getByText("No content changes between these snapshots.", { exact: true }).waitFor();
     expect(cli(["show"]).revision).toBe(identical.revision);
   } finally { await context.close(); await browser.close(); cli(["host", "stop"]); rmSync(root, { recursive: true, force: true }); }

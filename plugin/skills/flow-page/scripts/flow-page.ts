@@ -1,20 +1,16 @@
 import { realpathSync } from "node:fs";
 import { homedir } from "node:os";
-import { join, resolve } from "node:path";
+import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
-
-const canonical = (path: string) => {
-  try { return realpathSync(path); } catch { return resolve(path); }
-};
+import { canonical, installedSkills, isNormalHome } from "./home.ts";
 
 try {
   const { values } = parseArgs({ args: Bun.argv.slice(2), options: { home: { type: "string" } }, strict: false, allowPositionals: true });
-  const normalHome = canonical(homedir());
-  if (typeof values.home === "string" && canonical(values.home) !== normalHome) {
+  if (typeof values.home === "string" && !isNormalHome(values.home)) {
     await import("./cli.ts");
   } else {
-    const installed = join(normalHome, ".omp", "plugins", "node_modules", "vstack", "skills", "flow-page", "scripts", "flow-page.ts");
+    const installed = join(installedSkills(canonical(homedir())), "flow-page", "scripts", "flow-page.ts");
     let entry: string;
     try { entry = realpathSync(installed); }
     catch { throw new Error("the installed vstack Flow runtime is missing; install or link vstack in omp before using the normal host. Test worktree code with --home <isolated-directory> and a separate VSTACK_FLOW_PORT"); }

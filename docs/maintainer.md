@@ -358,6 +358,8 @@ Each phase also records a `shadow` receipt with its input hashes, unknown inputs
 
 The run hashes inputs before execution and checks their bytes and file-change timestamps again afterward. Unknown identities, command overrides, changed inputs, missing or altered diagnostics, and failed, interrupted, or partial evidence prevent reusable passes. The previous receipt and its evidence must remain complete. The checkout's Git metadata stores only a pointer and hash for the latest Scratch receipt. Deleting Scratch evidence makes a later comparison miss.
 
+Only gates captures shadow inputs. It hands the test runner its capture and the previous run's test subphases through `VSTACK_GATE_SHADOW`, so the runner hashes nothing again and gates evaluates and remembers every subphase. A plain `bun run test` captures nothing and writes no pointer.
+
 Shadow predictions never skip commands or authorize delivery. The final integrated head still requires complete fresh gates and independent Verifier proof. Enabling actual reuse requires a separate decision.
 
 `plan`, `merge`, and `check` are read-only fact-finding for the grill. They make no branch, worktree, or write in any checkout. Scratch and the Upstream cache must stay outside every checkout. The script refuses a `--scratch` dir or an `--upstreams` cache inside a checkout. `prepare` and `gates` serve implement. implement drafts every Update and Hand edit in one isolated drafting worker and applies the gated patch.

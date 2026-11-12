@@ -739,8 +739,9 @@ async function gates(root: string, opts: UpstreamOptions, scratch: string | unde
       stage.exitCode = check.exitCode;
     });
     if (cacheFailed || report.interrupted) return report.finish();
-    const phaseFile = join(retained, "test-phases.json");
-    const tests = await report.command("test", commands.test ?? [process.execPath, "run", "test"], undefined, { ...process.env, VSTACK_GATE_PHASE_REPORT: phaseFile });
+    const phaseFile = join(retained, "test-phases.json"), shadowFile = join(retained, "shadow-inputs.json");
+    report.shareShadow(shadowFile);
+    const tests = await report.command("test", commands.test ?? [process.execPath, "run", "test"], undefined, { ...process.env, VSTACK_GATE_PHASE_REPORT: phaseFile, VSTACK_GATE_SHADOW: shadowFile });
     if (existsSync(phaseFile)) {
       const phases = JSON.parse(readFileSync(phaseFile, "utf8"));
       if (!Array.isArray(phases)) throw new Error(`Invalid test phase report: ${phaseFile}`);

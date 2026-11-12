@@ -2,7 +2,7 @@
 import type { CommentAnchor, ReaderComment } from "#flow/comments.ts";
 import type { ResultView } from "~/utils/flow";
 import { readerComments, saveComment, editComment, removeComment } from "~/composables/comments";
-import { onReaderReload, readReloadState } from "~/composables/reload";
+import { onReaderReload, readReloadState, savedState } from "~/composables/reload";
 
 const props = defineProps<{ r: ResultView; content: HTMLElement | null }>();
 const open = shallowRef(false);
@@ -23,11 +23,8 @@ onReaderReload(reloadKey, () => {
   return open.value ? { target: target.value, draft: draft.value, editing: editing.value, passage: passage.value, revision: revision.value, edit: edit.value } : null;
 });
 onMounted(() => {
-  const saved = readReloadState(reloadKey);
-  if (!saved || typeof saved !== "object" || !("target" in saved) || typeof saved.target !== "string" ||
-    !("draft" in saved) || typeof saved.draft !== "string" || !("editing" in saved) || typeof saved.editing !== "string" ||
-    !("passage" in saved) || typeof saved.passage !== "string" || !("revision" in saved) || typeof saved.revision !== "number" ||
-    !("edit" in saved) || (saved.edit !== null && typeof saved.edit !== "number")) return;
+  const saved = savedState(readReloadState(reloadKey), { target: "string", draft: "string", editing: "string", passage: "string", revision: "number", edit: "number or null" });
+  if (!saved) return;
   target.value = saved.target;
   draft.value = saved.draft;
   editing.value = saved.editing;

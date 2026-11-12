@@ -100,7 +100,7 @@ try {
       if (record.backend === "omp-wt" && record.cloned !== true) throw new Error("Committed-input preparation requires worktree.clone and /skill:setup-vstack; never install dependencies as a fallback.");
       const tracked = (await checked(record.path, ["git", "ls-files", "-z"])).split("\0").filter(Boolean);
       for (const input of inputs) {
-        if (tracked.some(name => name === input || name.startsWith(input + "/"))) throw new Error(`Runtime input ${JSON.stringify(input)} overlaps committed source. Declare only untracked dependency or runtime inputs.`);
+        if (tracked.some(name => declaredInput(name, [input]))) throw new Error(`Runtime input ${JSON.stringify(input)} overlaps committed source. Declare only untracked dependency or runtime inputs.`);
         if (!existsSync(resolve(record.path, input))) throw new Error(`Required runtime input ${JSON.stringify(input)} is missing from the created head. Proof is unavailable; check worktree.clone and /skill:setup-vstack.`);
       }
       const paths = await run(record.path, ["git", "ls-files", "--others", "-z", "--", ".", ...inputs.map(input => `:(exclude,literal)${input}`)]);

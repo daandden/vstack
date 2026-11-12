@@ -93,7 +93,7 @@ try {
     validateTracked(worktree);
     const tracked = new Set(git(worktree, ["ls-files", "-z"]).split("\0").filter(Boolean));
     for (const input of requiredInputs) {
-      if ([...tracked].some(name => name === input || name.startsWith(input + "/"))) throw new Error(`Runtime input ${JSON.stringify(input)} overlaps committed source.`);
+      if ([...tracked].some(name => declaredInput(name, [input]))) throw new Error(`Runtime input ${JSON.stringify(input)} overlaps committed source.`);
       if (!existsSync(resolve(worktree, input))) throw new Error(`Required runtime input ${JSON.stringify(input)} is missing. Proof is unavailable; check worktree.clone and /skill:setup-vstack.`);
     }
     const runtimeExclusions = [".", ...requiredInputs.map(input => `:(exclude,literal)${input}`)];

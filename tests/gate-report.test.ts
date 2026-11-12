@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import type { GatePhase } from "../scripts/lib/gate-report.ts";
 import { lifecycleFixture } from "./support/update-lifecycle-fixture.ts";
-import { git, writeFiles } from "./support/fixture.ts";
+import { ENV, git, writeFiles } from "./support/fixture.ts";
 
 const fixtures: ReturnType<typeof lifecycleFixture>[] = [];
 const fixture = () => { const f = lifecycleFixture(); fixtures.push(f); return f; };
@@ -152,4 +152,19 @@ writeFileSync(join(output, "_flow-reader/app.js"), "console.log('gate timing fix
   expect(tests.phases.every((phase: GatePhase) => phase.durationMs !== undefined && phase.durationMs > 0)).toBe(true);
   expect(tests.output).toContain(failure ? "1 fail" : "1 pass");
   expect(report.stages.at(-1).name).toBe("smoke");
+  if (!failure) {
+    const store = git(f.root, "rev-parse", "--path-format=absolute", "--git-path", "vstack-gate-shadow");
+    expect(existsSync(join(store, "report.json"))).toBe(true);
+    expect(existsSync(join(store, "test-phases.json"))).toBe(false);
+    const shared = ({ command: _c, environment: _e, readerAssets: _r, ...rest }: Record<string, string>) => rest;
+    for (const phase of tests.phases as GatePhase[]) expect(shared(phase.shadow!.inputs)).toEqual(shared(tests.shadow.inputs));
+  }
+}, 30000);
+
+test("a plain test run captures no shadow inputs and leaves no reuse pointer", () => {
+  const f = fixture();
+  writeFiles(f.root, { "tests/unit.test.ts": 'import { test } from "bun:test"; test("unit", () => {});\n' });
+  const run = Bun.spawnSync([process.execPath, join(import.meta.dir, "../scripts/test.ts"), "tests/unit.test.ts"], { cwd: f.root, env: { ...ENV }, stdout: "pipe", stderr: "pipe" });
+  expect(run.exitCode, run.stderr.toString()).toBe(0);
+  expect(existsSync(git(f.root, "rev-parse", "--path-format=absolute", "--git-path", "vstack-gate-shadow"))).toBe(false);
 }, 30000);

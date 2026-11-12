@@ -2,7 +2,7 @@
 import type { TableColumn } from "@nuxt/ui";
 import { useEventListener } from "@vueuse/core";
 import { flow } from "~/composables/reader";
-import type { ResultView } from "~/utils/flow";
+import { askLabel, type ResultView } from "~/utils/flow";
 
 type Entry = ResultView["entries"][number];
 const props = defineProps<{ r: ResultView }>();
@@ -15,6 +15,7 @@ const labels = computed(() => (props.r.columns ?? []).map((c, i) => ({
 })));
 const cells = (entry: Entry) => entry.cells as string[];
 const linked = computed(() => props.r.entries.some(e => e.questions.length));
+const askName = (id: string) => askLabel(flow.value!, id);
 const ask = (id: string) => flow.value?.question.get(id);
 const columns = computed<TableColumn<Entry>[]>(() => [
   ...labels.value.map(c => ({
@@ -89,7 +90,7 @@ useEventListener(document, "flow-reveal", (event: Event) => {
         <span v-else v-html="inline(cells(row.original)[c.index] ?? '')" />
       </template>
       <template #questions-cell="{ row }">
-        <template v-for="(id, i) in row.original.questions" :key="id">{{ i ? '; ' : '' }}<a :href="`#${id}`">Q{{ ask(id)?.q }}</a>: <span v-html="inline(ask(id)?.title ?? '')" /></template>
+        <template v-for="(id, i) in row.original.questions" :key="id">{{ i ? '; ' : '' }}<a :href="`#${id}`">{{ askName(id) }}</a>: <span v-html="inline(ask(id)?.title ?? '')" /></template>
       </template>
     </UTable>
   </div>

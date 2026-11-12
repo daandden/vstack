@@ -28,9 +28,9 @@ Cite a new ADR by its full filename stem without `.md`, such as `ADR 20261111-ev
 
 If two branches choose the same date and slug, the branch that lands second chooses a different slug before landing. Update that branch's references to its new stem. Do not rename the landed record or reserve every name with a push.
 
-Existing numbered ADRs keep their filenames and citations. Identify vstack's two 0065 records and two 0074 records by their full filenames: `0065-flow-figures-get-color-roles-from-the-shared-role-pass.md`, `0065-n-stays-in-the-focused-stage-and-tern-tabs-follow-their-selected-session.md`, `0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css.md`, and `0074-private-mcp-config-is-shared-through-links-and-a-named-hook.md`.
+Existing numbered ADRs keep their filenames and citations.
 
-Keep ordinary lexical filename order. No global sequence, random-id resolver, or citation rewrite is needed. vstack's repository check validates new filenames and refuses new duplicate legacy numbers while accepting the known 0065 and 0074 pairs. It does not lint prose citations or certify other projects' custom ADR tooling.
+Keep ordinary lexical filename order. No global sequence, random-id resolver, or citation rewrite is needed.
 
 ## When to record an ADR
 

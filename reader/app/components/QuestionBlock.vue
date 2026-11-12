@@ -70,7 +70,7 @@ const lines = computed(() => {
 <template>
   <article :id="q.id" class="question grid gap-2.5" :data-state="q.answer.state" :data-next="rank >= 0 ? rank : undefined" :data-retired="q.retired ? '' : undefined" data-stop>
     <div :id="`${q.id}-context`"><CorrectionNotice :notice="q.context" /></div>
-    <h2 class="text-flow-mauve"><span class="me-2.5 tabular-nums">Q{{ q.q }}</span><span v-html="inline(q.title)" /></h2>
+    <h2 class="text-flow-mauve"><span class="me-2.5 tabular-nums">Q{{ q.q }}</span><span class="sr-only">: </span><span v-html="inline(q.title)" /></h2>
     <section aria-label="Current outcome" class="grid gap-1 text-small">
       <p :class="outcome.cls" v-html="outcome.html" />
       <nav aria-label="Question details" class="flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5">

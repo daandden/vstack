@@ -118,7 +118,7 @@ The codes are `required_field`, `unknown_field`, `invalid_type`, `invalid_enum`,
 
 ## Discover contribution fields
 
-Run `catalog` to list every Result shape with its one-line purpose and every contribution kind. Run `describe <shape>` or `describe <kind>` for its JSON field contract. Add `--compact` for one line per field. For example, `describe round` includes questions and options, and `describe answer` includes responses and readings. These commands need no Flow binding, start no host, and write no Flow content.
+Run `catalog` to list every Result shape with its one-line purpose and every contribution kind. Run `describe <shape>` or `describe <kind>` for its JSON field contract. Add `--compact` for one line per field. For example, `describe round` includes questions and options, and `describe answer` includes responses and readings. These commands need no Flow binding, start no host, and write no Flow content. Without `--home`, `describe` and `catalog` run the installed runtime, so an older install lacks newer kinds until the plugin is updated.
 
 Discovery reads the same field metadata as `validate` and `submit`. JSON includes nested `fields`, `required`, enum `values`, array bounds, and `variants`. Conditional contracts include `selection`, which says when each variant applies. Progress kinds with separate creation and update fields expose both variants. String items marked `expected: "non-empty string"` reject empty or whitespace-only values. `oneOf` requires exactly one of the named fields. Recursive contracts use `$ref` paths within `contract`.
 

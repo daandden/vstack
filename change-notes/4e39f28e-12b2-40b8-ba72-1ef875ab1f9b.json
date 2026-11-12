@@ -3,6 +3,7 @@
   "level": "patch",
   "entries": [
     "Expose contribution-kind contracts through Flow describe and keep discovery tied to validation, including option gains and costs.",
-    "Keep Flow CLI option types and projected record types consistent with their existing runtime behavior."
+    "Keep Flow CLI option types and projected record types consistent with their existing runtime behavior.",
+    "Explain that describe and catalog without --home run the installed runtime, so an older install lacks newer kinds."
   ]
 }

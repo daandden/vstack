@@ -53,7 +53,7 @@ Ground every section in the repo. Leave no placeholders:
 
 The generated Evidence section resolves a fresh run entry at `<Scratch dir>/verify/<app>-<run-id>/`. Evidence and notes go at its top level. Throwaway app data goes in `data/`. Both modes use this Scratch path, never committed. Cleanup can remove disposable data, but must preserve evidence and notes at the named paths.
 
-Give each mandatory proof action a stable step ID, its required preconditions, and its passing observation. Distinguish optional observations from required journeys and negative probes before execution. Follow `skill://ship/references/verdict-record.md`: callers retain the expected required set, and Verifiers report each step's `passed`, `failed`, or `unavailable` outcome with evidence in `proof_steps`. Missing native or other mandatory proof stays unavailable; a local substitute or optional note cannot satisfy it. Keep failed attempts and corrective follow-ups in separate records.
+Give each mandatory proof action a stable step ID, its required preconditions, and its passing observation. Distinguish optional observations from required journeys and negative probes before execution. Callers and Verifiers use these IDs under `skill://ship/references/verdict-record.md`.
 
 For browser screenshots, capture full-resolution PNG with `tab.screenshot({ format: "png", silent: true })`. Convert it losslessly in eval and read the WebP path:
 

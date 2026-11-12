@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { flow } from "~/composables/reader";
 import { blockLabel, type Flow, type ReadingBlock } from "~/utils/flow";
-import { onReaderReload, readReloadState } from "~/composables/reload";
+import { onReaderReload, readReloadState, savedState } from "~/composables/reload";
 
 type Visit = { revision: number; blocks: Record<string, string> };
 const previous = shallowRef<Visit>();
@@ -27,15 +27,14 @@ function readVisit(value: string | null, revision: number): Visit | undefined {
   if (!value) return;
   let parsed: unknown;
   try { parsed = JSON.parse(value); } catch { return; }
-  if (!parsed || typeof parsed !== "object" || !("revision" in parsed) || !("blocks" in parsed)) return;
-  if (typeof parsed.revision !== "number" || !Number.isSafeInteger(parsed.revision) || parsed.revision < 0 || parsed.revision > revision) return;
-  if (!parsed.blocks || typeof parsed.blocks !== "object" || Array.isArray(parsed.blocks)) return;
+  const saved = savedState(parsed, { revision: "number", blocks: "record" });
+  if (!saved || !Number.isSafeInteger(saved.revision) || saved.revision < 0 || saved.revision > revision) return;
   const blocks: Record<string, string> = {};
-  for (const [id, token] of Object.entries(parsed.blocks)) {
+  for (const [id, token] of Object.entries(saved.blocks)) {
     if (typeof token !== "string") return;
     blocks[id] = token;
   }
-  return { revision: parsed.revision, blocks };
+  return { revision: saved.revision, blocks };
 }
 
 const current = computed(() => flow.value ? tokens(flow.value) : {});

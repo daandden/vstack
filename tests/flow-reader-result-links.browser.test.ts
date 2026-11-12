@@ -57,6 +57,16 @@ test("whole Results link to question headers both ways while entries and earlier
     await history.locator(":scope > summary").click();
     expect(await page.locator(`#${sent.refs.document}-r1 header`).innerText()).not.toContain("Asked in");
     expect(await page.locator(`#${sent.refs.document}-r1`).innerText()).toContain("Saved responses survive reconnects");
+    const again = cli(["submit"], [{ kind: "round", questions: [{ ...linkedQuestion([sent.refs.document!]), ref: "retry", again: sent.refs.decision }] }]);
+    await page.goto(`${opened.live.url}#${sent.refs.document}`);
+    const asked = page.locator(`#${sent.refs.document} > div > header`);
+    await asked.getByRole("link", { name: "Q1 (attempt 2)", exact: true }).waitFor();
+    expect(await asked.getByRole("link", { name: "Q1 (attempt 1)", exact: true }).getAttribute("href")).toBe(`#${sent.refs.decision}`);
+    expect(await asked.getByRole("link", { name: "Q1 (attempt 2)", exact: true }).getAttribute("href")).toBe(`#${again.refs.retry}`);
+    await page.goto(`${opened.live.url}#${again.refs.retry}`);
+    await page.locator(`#${again.refs.retry}`).getByRole("heading", { name: /^Q1\s*:\s*Keep saved responses after reconnecting\?$/ }).waitFor();
+    await page.goto(`${opened.live.url}#${sent.refs.cards}`);
+    await page.locator(`#${sent.refs.cards}`).getByRole("heading", { name: /^e1\s*:\s*\S/ }).waitFor();
     for (const theme of ["Light", "Dark"]) {
       await page.getByRole("button", { name: theme, exact: true }).click();
       for (const width of [320, 1280]) {

@@ -49,20 +49,23 @@ export function questionOutcome(q: QuestionView): { cls: string; html: string } 
   return { cls: "text-muted", html: "Open" };
 }
 
+/** A question's Q number, with its attempt when its Stage asked that Q number more than once: "Q1 (attempt 2)". */
+export function askLabel(flow: Flow, id: string): string {
+  const q = flow.question.get(id);
+  if (!q) return id;
+  let count = 0;
+  let attempt = 0;
+  for (const ask of flow.questions) {
+    if (ask.stage !== q.stage || ask.q !== q.q) continue;
+    count++;
+    if (ask.id === q.id) attempt = count;
+  }
+  return count > 1 ? `Q${q.q} (attempt ${attempt})` : `Q${q.q}`;
+}
+
 export function blockLabel(flow: Flow, b: ReadingBlock): string {
   const st = b.stage ? flow.stage.get(b.stage) : undefined;
-  if (b.kind === "question") {
-    const q = flow.question.get(b.id);
-    if (!q) return b.id;
-    let count = 0;
-    let attempt = 0;
-    for (const ask of flow.questions) {
-      if (ask.stage !== q.stage || ask.q !== q.q) continue;
-      count++;
-      if (ask.id === q.id) attempt = count;
-    }
-    return count > 1 ? `Q${q.q} (attempt ${attempt})` : `Q${q.q}`;
-  }
+  if (b.kind === "question") return askLabel(flow, b.id);
   if (b.kind === "result") {
     const r = st?.results.find((x) => x.id === b.id);
     return r?.jump ?? r?.title ?? b.id;

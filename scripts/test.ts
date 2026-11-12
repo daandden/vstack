@@ -1,32 +1,32 @@
 #!/usr/bin/env bun
 import { createHash } from "node:crypto";
-import { cpSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, symlinkSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, statSync, symlinkSync } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { GateReport } from "./lib/gate-report.ts";
+import { browserPhase, browserTests, NON_BROWSER, READER_PREPARATION } from "./lib/test-phases.ts";
+import { walkFiles } from "../plugin/skills/flow-page/scripts/files.ts";
 
 const root = process.cwd();
 const selected = process.argv.slice(2);
-const browsers = selected.length ? selected.filter(file => file.endsWith(".browser.test.ts")) : Array.from(new Bun.Glob("tests/**/*.browser.test.ts").scanSync({ cwd: root })).sort();
+const browsers = selected.length ? selected.filter(file => file.endsWith(".browser.test.ts")) : browserTests(root);
 const ordinary = selected.filter(file => !file.endsWith(".browser.test.ts"));
 const temporary = process.env.VSTACK_GATE_PHASE_REPORT ? undefined : mkdtempSync(join(tmpdir(), "vstack-tests-"));
-const report = new GateReport(root, process.env.VSTACK_GATE_PHASE_REPORT ?? join(temporary!, "phases.json"), undefined, true);
+// Shadow reuse predictions belong to gates: a plain run captures nothing, and a run inside gates reuses the gate's capture.
+const shadow = !process.env.VSTACK_GATE_PHASE_REPORT ? "off" : process.env.VSTACK_GATE_SHADOW ? { shared: process.env.VSTACK_GATE_SHADOW } : "own";
+const report = new GateReport(root, process.env.VSTACK_GATE_PHASE_REPORT ?? join(temporary!, "phases.json"), undefined, true, undefined, shadow);
 async function phase(name: string, command: string[], env = process.env) {
   const result = await report.command(name, command, undefined, env, true);
   if (!result.ok || report.interrupted) throw new Error(`${name} ${result.outcome}${result.exitCode === undefined ? "" : ` (exit ${result.exitCode})`}`);
 }
+const BUILD_DIRS = [".nuxt", ".output", "node_modules", ".data", ".cache"];
 function digest(paths: string[]) {
   const hash = createHash("sha256");
-  const walk = (path: string, label: string) => {
-    for (const entry of readdirSync(path, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
-      if ([".nuxt", ".output", "node_modules", ".data", ".cache"].includes(entry.name)) continue;
-      const file = join(path, entry.name), key = `${label}/${entry.name}`;
-      if (statSync(file).isDirectory()) walk(file, key);
-      else { const bytes = readFileSync(file); hash.update(`${key}\0${bytes.length}\0`).update(bytes); }
-    }
-  };
+  const walk = (path: string, label: string) => walkFiles(path, (rel, file) => {
+    const bytes = readFileSync(file); hash.update(`${label}/${rel}\0${bytes.length}\0`).update(bytes);
+  }, { order: (a, b) => a.localeCompare(b), skip: name => BUILD_DIRS.includes(name), follow: true });
   for (const path of paths) {
     const file = resolve(root, path);
     if (!existsSync(file)) continue;
@@ -53,22 +53,22 @@ try {
     const cli = join(dirname(nuxtPackage), JSON.parse(readFileSync(nuxtPackage, "utf8")).bin.nuxt);
     if (!existsSync(cli)) throw new Error(`Reader proof requires the Nuxt CLI at ${cli}; run bun install --frozen-lockfile`);
     if (!existsSync(join(root, "reader/nuxt.config.ts"))) throw new Error(`Reader proof requires candidate input ${join(root, "reader/nuxt.config.ts")}`);
-    await phase("candidate-reader-readiness", [process.execPath, "--eval", `try { const { chromium } = await import(${JSON.stringify(pathToFileURL(playwright).href)}); const browser = await chromium.launch({ headless: true }); console.log(JSON.stringify({ chromium: chromium.executablePath(), version: browser.version() })); await browser.close(); } catch (error) { console.error('Reader proof requires working Playwright Chromium: ' + error.message); process.exit(1); }`]);
+    await phase(READER_PREPARATION[0], [process.execPath, "--eval", `try { const { chromium } = await import(${JSON.stringify(pathToFileURL(playwright).href)}); const browser = await chromium.launch({ headless: true }); console.log(JSON.stringify({ chromium: chromium.executablePath(), version: browser.version() })); await browser.close(); } catch (error) { console.error('Reader proof requires working Playwright Chromium: ' + error.message); process.exit(1); }`]);
     out = mkdtempSync(join(tmpdir(), "vstack-reader-proof-"));
     const candidateReader = join(out, "reader");
-    cpSync(join(root, "reader"), candidateReader, { recursive: true, dereference: true, filter: path => ![".nuxt", ".output", "node_modules", ".data", ".cache"].includes(path.split("/").at(-1)!) });
+    cpSync(join(root, "reader"), candidateReader, { recursive: true, dereference: true, filter: path => !BUILD_DIRS.includes(path.split("/").at(-1)!) });
     symlinkSync(join(root, "node_modules"), join(candidateReader, "node_modules"), "dir");
     const sourcePaths = ["reader", "plugin/skills/flow-page/scripts", "plugin/skills/vstack-figures/scripts", "package.json", "bun.lock"];
     const source = { root: join(root, "reader"), paths: sourcePaths, sha256: digest(sourcePaths) };
     env = { ...process.env, FLOW_READER_SOURCE_ROOT: root, FLOW_READER_ASSETS: join(candidateReader, ".output/public") };
-    await phase("candidate-reader-build", [process.execPath, cli, "generate", candidateReader], env);
+    await phase(READER_PREPARATION[1], [process.execPath, cli, "generate", candidateReader], env);
     if (!existsSync(join(env.FLOW_READER_ASSETS!, "index.html")) || !existsSync(join(env.FLOW_READER_ASSETS!, "_flow-reader"))) throw new Error(`Reader proof requires generated index.html and _flow-reader assets in ${env.FLOW_READER_ASSETS}`);
     cpSync(env.FLOW_READER_ASSETS!, join(out, "assets"), { recursive: true, dereference: true });
     env.FLOW_READER_ASSETS = join(out, "assets");
     console.log(JSON.stringify({ readerProof: { source, assets: { root: env.FLOW_READER_ASSETS, sha256: digest([resolve(env.FLOW_READER_ASSETS!)]) }, bun: Bun.version } }));
   }
-  if (!selected.length || ordinary.length) await phase("non-browser", [process.execPath, "test", "--timeout", "30000", "--path-ignore-patterns", "**/*.browser.test.ts", ...ordinary]);
-  for (const file of browsers) await phase(`browser:${file}`, [process.execPath, "test", "--timeout", "30000", file], env);
+  if (!selected.length || ordinary.length) await phase(NON_BROWSER, [process.execPath, "test", "--timeout", "30000", "--path-ignore-patterns", "**/*.browser.test.ts", ...ordinary]);
+  for (const file of browsers) await phase(browserPhase(file), [process.execPath, "test", "--timeout", "30000", file], env);
 } catch (error) {
   console.error((error as Error).message);
   if (report.stages.every(stage => stage.ok)) await report.phase("test-runner", () => { throw error; });

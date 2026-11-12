@@ -1,23 +1,18 @@
-import { createHash } from "node:crypto";
-import { mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
+import { sha256 as digest, walkFiles } from "./files.ts";
 
 const roots = ["flow-page/scripts", "flow-page/reader", "vstack-tmp/scripts", "vstack-figures/scripts"];
 export const skillsRoot = resolve(import.meta.dir, "../..");
 export function runtimeFiles(base = skillsRoot): Map<string, Buffer> {
   const files = new Map<string, Buffer>();
-  const walk = (path: string) => {
-    for (const entry of readdirSync(join(base, path), { withFileTypes: true }).sort((a, b) => a.name < b.name ? -1 : 1)) {
-      const name = `${path}/${entry.name}`;
-      if (entry.isDirectory()) walk(name);
-      else if (entry.isFile()) files.set(name, readFileSync(join(base, name)));
-      else throw new Error(`Flow runtime contains a non-file: ${name}`);
-    }
-  };
-  for (const path of roots) walk(path);
+  for (const root of roots) {
+    walkFiles(join(base, root), (path, full) => files.set(`${root}/${path}`, readFileSync(full)), {
+      other: (path) => { throw new Error(`Flow runtime contains a non-file: ${root}/${path}`); },
+    });
+  }
   return files;
 }
-const digest = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex");
 export function coherentRuntime(base = skillsRoot): Map<string, Buffer> {
   const manifest: unknown = JSON.parse(readFileSync(join(base, "flow-page/runtime.json"), "utf8"));
   if (!manifest || typeof manifest !== "object" || !("version" in manifest) || manifest.version !== 1 || !("files" in manifest) || !manifest.files || typeof manifest.files !== "object") throw new Error("invalid Flow runtime manifest");

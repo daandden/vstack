@@ -1,9 +1,9 @@
 import { spawn, type ChildProcess } from "node:child_process";
-import { createHash } from "node:crypto";
 import { closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, writeFileSync, writeSync } from "node:fs";
 import { cpus, release } from "node:os";
 import { dirname, join } from "node:path";
-import { GateShadow, type ShadowReceipt } from "./gate-shadow.ts";
+import { GateShadow, git, type ShadowReceipt } from "./gate-shadow.ts";
+import { sha256 as hash } from "../../plugin/skills/flow-page/scripts/files.ts";
 
 export interface GatePhase {
   name: string;
@@ -23,11 +23,6 @@ export interface GatePhase {
   shadow?: ShadowReceipt;
 }
 
-const hash = (value: string | Buffer) => createHash("sha256").update(value).digest("hex");
-const git = (root: string, ...args: string[]) => {
-  const result = Bun.spawnSync(["git", ...args], { cwd: root, stdout: "pipe", stderr: "pipe" });
-  return result.exitCode === 0 ? result.stdout.toString().trim() : null;
-};
 const fileHash = (root: string, file: string) => existsSync(join(root, file)) ? hash(readFileSync(join(root, file))) : null;
 
 export class GateReport {
@@ -41,7 +36,7 @@ export class GateReport {
   private interruption?: NodeJS.Signals;
   private finishedAt?: string;
   private durationMs?: number;
-  private readonly shadow: GateShadow;
+  private readonly shadow?: GateShadow;
   private readonly onSignal = (signal: NodeJS.Signals) => {
     this.interruption = signal;
     for (const [phase, start] of this.active) {
@@ -64,7 +59,8 @@ export class GateReport {
     }
   };
 
-  constructor(readonly root: string, readonly file: string, base?: string, private readonly phasesOnly = false, upstreams?: string) {
+  /** `shadow` captures this run's own inputs, is off, or reuses an outer gate run's shared capture file. */
+  constructor(readonly root: string, readonly file: string, base?: string, private readonly phasesOnly = false, upstreams?: string, shadow: "own" | "off" | { shared: string } = "own") {
     mkdirSync(dirname(file), { recursive: true });
     const environment = Object.fromEntries(Object.entries(process.env).sort(([a], [b]) => a.localeCompare(b)));
     this.identity = {
@@ -80,11 +76,14 @@ export class GateReport {
         installedLockSha256: fileHash(root, "node_modules/.bun/lock"),
       },
     };
-    this.shadow = new GateShadow(root, file, base, upstreams);
+    if (shadow !== "off") this.shadow = new GateShadow(root, file, base, upstreams, shadow === "own" ? undefined : shadow.shared);
     process.on("SIGINT", this.onSignal);
     process.on("SIGTERM", this.onSignal);
     this.save();
   }
+
+  /** Lets a nested test runner reuse this run's shadow capture; see `scripts/test.ts`. */
+  shareShadow(file: string) { this.shadow?.share(file); }
 
   get interrupted() { return this.interruption !== undefined; }
 
@@ -108,7 +107,7 @@ export class GateReport {
   async phase(name: string, action: (phase: GatePhase) => Promise<void> | void, parent?: GatePhase, command?: string[], env: NodeJS.ProcessEnv = process.env): Promise<GatePhase> {
     const phase: GatePhase = { name, ok: false, outcome: "running", startedAt: new Date().toISOString(), cwd: this.root, output: "", command };
     (parent ? parent.phases ??= [] : this.stages).push(phase);
-    this.shadow.begin(phase, env);
+    this.shadow?.begin(phase, env);
     const start = performance.now();
     this.active.set(phase, start);
     this.save();
@@ -127,7 +126,7 @@ export class GateReport {
       phase.durationMs = performance.now() - start;
       phase.finishedAt = new Date().toISOString();
       phase.ok = phase.outcome === "passed";
-      this.shadow.end(phase, env);
+      this.shadow?.end(phase, env);
       this.save();
     }
     return phase;
@@ -166,9 +165,9 @@ export class GateReport {
   finish() {
     this.finishedAt = new Date().toISOString();
     this.durationMs = performance.now() - this.start;
-    this.shadow.finish(this.stages, !this.interrupted && this.stages.every(stage => stage.ok));
+    this.shadow?.finish(this.stages, !this.interrupted && this.stages.every(stage => stage.ok));
     this.save();
-    this.shadow.remember();
+    this.shadow?.remember();
     process.off("SIGINT", this.onSignal);
     process.off("SIGTERM", this.onSignal);
     return this.snapshot();

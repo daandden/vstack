@@ -124,9 +124,24 @@ export type CorrectionEndpoint = { id: string; stage: string; revision: number; 
   { kind?: "result"; result: string } | { kind: "reading" | "background" | "topic" | "context" | "decision" | "assumed"; result?: never }
 );
 export type Correction = { id: string; stage: string; time: string; reason: string; target: CorrectionEndpoint; replacement: CorrectionEndpoint };
-export type CorrectionLink = CorrectionEndpoint & { anchor: string };
+/** `title` names a Result endpoint by the corrected snapshot's title. */
+export type CorrectionLink = CorrectionEndpoint & { anchor: string; title?: string };
 export type CorrectionView = Omit<Correction, "target" | "replacement"> & { target: CorrectionLink; replacement: CorrectionLink; head: CorrectionLink };
 export type CorrectionNotice = { correction?: CorrectionView; corrects: CorrectionView[] };
+/** A ref kind a field accepts, named in diagnostics by `label`. */
+type Wanted = { label: string; kinds: readonly string[] };
+const RESULT_OR_ENTRY: Wanted = { label: "Result or Result entry", kinds: ["result", "result entry"] };
+/** Where a correctable block lives: a block of its own (a Result, Result entry, Background, Topic, Assumed pick, or reading), a question's reading or context, or one question's close decision. */
+export type EndpointKey = { kind: "block"; id: string } | { kind: "reading" | "context"; question: string } | { kind: "decision"; close: string; question: string };
+/** The stored id of an endpoint, as Corrections and receipts record it. */
+export const endpointId = (k: EndpointKey): string => k.kind === "block" ? k.id : k.kind === "decision" ? `${k.close}/${k.question}` : `${k.question}/${k.kind}`;
+/** Reads a stored id that is not a Result entry; `undefined` when it has more than one scope. */
+function endpointKey(id: string): EndpointKey | undefined {
+  const [base, scope, ...rest] = id.split("/");
+  if (rest.length) return undefined;
+  if (scope === undefined) return { kind: "block", id };
+  return scope === "reading" || scope === "context" ? { kind: scope, question: base! } : { kind: "decision", close: base!, question: scope };
+}
 
 type ReadingBlock = { id: string; kind: "background" | "topic" | "question" | "result" | "assumed" | "close" | "reading"; stage?: string };
 type Publication = ReadingBlock & { position: number; publication: number };
@@ -424,17 +439,25 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
     refs[r] = id;
     kinds[r] = kind;
   };
-  const resolve = (v: unknown, kind: string, where: string): string => {
-    if (typeof v !== "string" || v.trim() === "") refuse(where, `must name a ${kind} by ref or id`);
+  /** Resolves a ref of this contribution or a stored id to an id; `wanted` names the accepted kinds. */
+  const resolve = (v: unknown, wanted: string | Wanted, where: string): string => {
+    const { label, kinds: accepted } = typeof wanted === "string" ? { label: wanted, kinds: [wanted] } : wanted;
+    if (typeof v !== "string" || v.trim() === "") refuse(where, `must name a ${label} by ref or id`);
     const key = v as string;
     if (refs[key] !== undefined) {
-      if (kind !== "authored block" && kinds[key] !== kind && !(kind === "Result or Result entry" && (kinds[key] === "result" || kinds[key] === "result entry"))) refuse(where, `ref ${key} names a ${kinds[key]}, not a ${kind}`);
+      if (!accepted.includes(kinds[key]!)) refuse(where, `ref ${key} names a ${kinds[key]}, not a ${label}`);
       return refs[key];
     }
+    return key;
+  };
+  /** Resolves a Correction endpoint: any ref of this contribution, optionally scoped as `<ref>/<scope>`, or a stored id. */
+  const resolveEndpoint = (v: unknown, where: string): string => {
+    if (typeof v !== "string" || v.trim() === "") refuse(where, "must name a authored block by ref or id");
+    const key = v as string;
+    if (refs[key] !== undefined) return refs[key];
     const slash = key.indexOf("/");
     const base = slash < 0 ? key : key.slice(0, slash);
-    if (kind === "authored block" && refs[base] !== undefined) return refs[base] + (slash < 0 ? "" : key.slice(slash));
-    return key;
+    return refs[base] !== undefined ? refs[base] + (slash < 0 ? "" : key.slice(slash)) : key;
   };
 
   const revised = new Set<string>();
@@ -570,8 +593,8 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
     corrects: {
       apply(o, where) {
         fields(o, where, ["kind", "target", "replacement", "reason"]);
-        const target = correctionEndpoint(s, resolve(o.target, "authored block", `${where}: target`), where);
-        const replacement = correctionEndpoint(s, resolve(o.replacement, "authored block", `${where}: replacement`), where);
+        const target = correctionEndpoint(s, resolveEndpoint(o.target, `${where}: target`), where);
+        const replacement = correctionEndpoint(s, resolveEndpoint(o.replacement, `${where}: replacement`), where);
         const earlier = stageOf(s, target.stage, where);
         if (earlier.order >= stage.order || earlier.state !== "finished") refuse(where, "a Correction targets content of an earlier finished Stage");
         if (replacement.stage !== stage.id || !newContent.has(replacement.id)) refuse(where, "a Correction replacement must be new ordinary content published in this contribution");
@@ -586,9 +609,11 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
           const updated = replacementReading ?? refuse(where, "an answer reading is corrected only by a new reading of the same recorded answer");
           if (original.question !== updated.question) refuse(where, "an answer reading is corrected only by a new reading of the same recorded answer");
           if (updated.reading.outcome === "resolved" && original.reading.outcome !== "resolved") refuse(where, "a Correction cannot turn an unresolved reading into consent; ask again to obtain a new answer");
+          if (updated.reading.outcome === "resolved") refuse(where, "a Correction of a resolved reading only withdraws it: the replacement must be unresolved; ask again to obtain a different decision");
         }
         if (target.kind === "decision" || replacement.kind === "decision") {
-          if (target.kind !== "decision" || replacement.kind !== "decision" || target.id.split("/")[1] !== replacement.id.split("/")[1]) refuse(where, "a close decision is corrected only by a new close decision for the same question");
+          const question = (e: CorrectionEndpoint) => { const k = endpointKey(e.id); return k?.kind === "decision" ? k.question : undefined; };
+          if (target.kind !== "decision" || replacement.kind !== "decision" || question(target) !== question(replacement)) refuse(where, "a close decision is corrected only by a new close decision for the same question");
         }
         relations.push({ id: newId(s, "correction"), stage: stage.id, time, reason: text(o, "reason", where), target, replacement });
       },
@@ -624,7 +649,7 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
         assignQNumbers(s, parsed, stage.id, where);
         s.questions.push(...parsed);
         for (const q of parsed) publish("question", q.id);
-        for (const q of parsed) newContent.add(`${q.id}/context`);
+        for (const q of parsed) newContent.add(endpointId({ kind: "context", question: q.id }));
         receipt.ask = {
           questions: parsed.map((q) => {
             const rec = q.options.findIndex((op) => op.recommended !== undefined);
@@ -680,7 +705,7 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
             if (latest.get(q.q)?.id !== q.id) refuse(dw, `${qid} is not the latest ask of Q${q.q}; decide ${latest.get(q.q)!.id}`);
             if (named.has(q.q)) refuse(dw, `Q${q.q} already has a decision`);
             named.set(q.q, qid);
-          } else if (!items.some(raw => isObj(raw) && raw.kind === "corrects" && resolve(raw.replacement, "authored block", dw) === `${ids.id}/${qid}`)) {
+          } else if (!items.some(raw => isObj(raw) && raw.kind === "corrects" && resolveEndpoint(raw.replacement, dw) === endpointId({ kind: "decision", close: ids.id!, question: qid }))) {
             refuse(dw, `question ${qid} belongs to Stage ${q.stage}; a later close decision must be an atomic Correction replacement`);
           }
           if ((o.decisions as Obj[]).slice(0, j).some(d => resolve(d.question, "question", dw) === qid)) refuse(dw, `question ${qid} already has a decision`);
@@ -691,7 +716,7 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
         const assumed = visibleAssumed(s, stage.id).map((a) => a.id);
         if (decisions.length === 0 && assumed.length === 0 && extra === undefined) refuse(where, "a close with no decisions and no Assumed picks needs extra bullets");
         s.closes.push({ id: ids.id!, stage: stage.id, seq: ++s.seq, time, decisions, assumed, ...(extra ? { extra } : {}) });
-        for (const d of decisions) newContent.add(`${ids.id}/${d.question}`);
+        for (const d of decisions) newContent.add(endpointId({ kind: "decision", close: ids.id!, question: d.question }));
         publish("close", s.closes.at(-1)!.id);
       },
     },
@@ -751,7 +776,7 @@ function applyContribution(s: State, stageId: string, input: unknown, time: stri
     if (id.startsWith("reading-") && !s.corrections?.some(c => c.replacement.id === id)) diagnostics.push({ code: "invalid_reference", path: locations.get(id) ?? "$", message: "a standalone reading must be the replacement in a corrects relation in this contribution" });
   }
   for (const close of s.closes) for (const decision of close.decisions) {
-    if (newContent.has(`${close.id}/${decision.question}`)) decision.answer = answerState(s, decision.question);
+    if (newContent.has(endpointId({ kind: "decision", close: close.id, question: decision.question }))) decision.answer = answerState(s, decision.question);
   }
   for (const f of authoredFigures) if ("attachment" in f) {
     const a = s.attachments.find((a) => a.id === f.attachment);
@@ -1032,24 +1057,30 @@ export function answerState(s: State, question: string): AnswerState {
 function readingAt(s: State, id: string): { question: string; reading: Reading } | undefined {
   const note = s.readings?.find(r => r.id === id);
   if (note) return note;
-  if (!id.endsWith("/reading")) return;
-  const question = id.slice(0, -"/reading".length);
+  const key = endpointKey(id);
+  if (key?.kind !== "reading") return;
+  const question = key.question;
   const reading = s.answers.find(a => a.question === question)?.reading;
   return reading ? { question, reading } : undefined;
 }
 
-function correctionHead(s: State, id: string): string {
-  const seen = new Set<string>();
-  for (;;) {
-    const next = s.corrections?.find(c => c.target.id === id);
-    if (!next || seen.has(id)) return id;
-    seen.add(id);
-    id = next.replacement.id;
+/** The last Correction in the chain that starts by correcting `id`, or `undefined` when nothing corrects it. */
+function lastCorrection(successors: Map<string, Correction>, id: string): Correction | undefined {
+  const visited = new Set<string>();
+  let last: Correction | undefined;
+  for (let next = successors.get(id); next && !visited.has(next.target.id); next = successors.get(next.replacement.id)) {
+    visited.add(next.target.id);
+    last = next;
   }
+  return last;
+}
+const successorsOf = (s: State) => new Map((s.corrections ?? []).map(c => [c.target.id, c]));
+function correctionHead(s: State, id: string): string {
+  return lastCorrection(successorsOf(s), id)?.replacement.id ?? id;
 }
 
 function currentReading(s: State, question: string): Reading | undefined {
-  return readingAt(s, correctionHead(s, `${question}/reading`))?.reading;
+  return readingAt(s, correctionHead(s, endpointId({ kind: "reading", question })))?.reading;
 }
 const settled = (state: AnswerState) => state === "picked" || state === "written" || state === "resolved";
 
@@ -1457,7 +1488,7 @@ export function readerNeeds(raw: unknown, where: string): ReaderNeed[] {
   });
 }
 
-function parseQuestion(raw: unknown, where: string, id: string, stage: string, round: string, resolve: (v: unknown, kind: string, where: string) => string, figure: (raw: unknown, id: string, where: string) => Figure): Question {
+function parseQuestion(raw: unknown, where: string, id: string, stage: string, round: string, resolve: (v: unknown, wanted: string | Wanted, where: string) => string, figure: (raw: unknown, id: string, where: string) => Figure): Question {
   const o = fields(raw, where, ["title", "description", "options", "needs"], ["ref", "again", "reopens", "today", "terms", "topics", "results", "example", "figures", "multi"]);
   if (o.multi !== undefined && typeof o.multi !== "boolean") refuse(where, "multi must be true or false");
   const options = validatedMap(list(o, "options", where), (op, i) => {
@@ -1485,7 +1516,7 @@ function parseQuestion(raw: unknown, where: string, id: string, stage: string, r
   const terms = pairs("terms", "term", "text") as Term[] | undefined;
   if (terms) q.terms = terms;
   if (o.topics !== undefined) q.topics = texts(o, "topics", where).map((t) => resolve(t, "topic", `${where}: topics`));
-  if (o.results !== undefined) q.entries = texts(o, "results", where).map((t) => resolve(t, "Result or Result entry", `${where}: results`));
+  if (o.results !== undefined) q.entries = texts(o, "results", where).map((t) => resolve(t, RESULT_OR_ENTRY, `${where}: results`));
   const example = optText(o, "example", where);
   if (example) q.example = example;
   const shown = [
@@ -1609,18 +1640,18 @@ function correctionEndpoint(s: State, id: string, where: string): CorrectionEndp
     const result = s.results.find(r => r.id === link.result)!;
     return { id: link.id, result: result.id, stage: result.stage, revision: result.revision ?? 1, ...(result.edit === undefined ? {} : { edit: result.edit }), changed: link.entry ? result.entries.find(e => e.id === link.entry)!.changed : result.changed };
   }
-  const [base, scope, ...rest] = id.split("/");
-  if (rest.length) refuse(where, `Correction target ${id} has no supported scoped selector`);
+  const key = endpointKey(id) ?? refuse(where, `Correction target ${id} has no supported scoped selector`);
+  const base = key.kind === "block" ? key.id : key.kind === "decision" ? key.close : key.question;
   let kind: Exclude<CorrectionEndpoint["kind"], "result" | undefined> | undefined;
   let stage: string | undefined;
-  if (scope === "reading" && readingAt(s, id)) {
-    kind = "reading"; stage = s.questions.find(q => q.id === base)?.stage;
-  } else if (scope === "context") {
-    kind = "context"; stage = s.questions.find(q => q.id === base)?.stage;
-  } else if (scope) {
-    const close = s.closes.find(c => c.id === base && c.decisions.some(d => d.question === scope));
+  if (key.kind === "reading" && readingAt(s, id)) {
+    kind = "reading"; stage = s.questions.find(q => q.id === key.question)?.stage;
+  } else if (key.kind === "context") {
+    kind = "context"; stage = s.questions.find(q => q.id === key.question)?.stage;
+  } else if (key.kind === "decision") {
+    const close = s.closes.find(c => c.id === key.close && c.decisions.some(d => d.question === key.question));
     if (close) { kind = "decision"; stage = close.stage; }
-  } else {
+  } else if (key.kind === "block") {
     const note = s.readings?.find(r => r.id === id);
     const background = s.backgrounds.find(b => b.id === id);
     const topic = s.topics.find(t => t.id === id);
@@ -1640,23 +1671,16 @@ function correctionEndpoint(s: State, id: string, where: string): CorrectionEndp
 
 function correctionViews(s: State): CorrectionView[] {
   const relations = s.corrections ?? [];
-  const successors = new Map(relations.map(c => [c.target.id, c]));
+  const successors = successorsOf(s);
   const link = (e: CorrectionEndpoint): CorrectionLink => {
     if (e.result === undefined) return { ...e, anchor: e.id.replace("/", "-") };
     const current = s.results.find(r => r.id === e.result);
-    const anchor = current && (current.revision ?? 1) === e.revision && current.edit === e.edit
-      ? e.result : `${e.result}-r${e.revision}${e.edit === undefined ? "" : `-edit${e.edit}`}`;
-    return { ...e, anchor: `${anchor}${e.id === e.result ? "" : `-${e.id.slice(e.result.length + 1)}`}` };
+    const same = (r: Result) => r.id === e.result && (r.revision ?? 1) === e.revision && r.edit === e.edit;
+    const anchor = current && same(current) ? e.result : `${e.result}-r${e.revision}${e.edit === undefined ? "" : `-edit${e.edit}`}`;
+    const title = (current && same(current) ? current : s.history.find(same) ?? current)?.title;
+    return { ...e, anchor: `${anchor}${e.id === e.result ? "" : `-${e.id.slice(e.result.length + 1)}`}`, ...(title === undefined ? {} : { title }) };
   };
-  return relations.map(c => {
-    let head = c.replacement;
-    const visited = new Set([c.target.id]);
-    while (successors.has(head.id) && !visited.has(head.id)) {
-      visited.add(head.id);
-      head = successors.get(head.id)!.replacement;
-    }
-    return { ...c, target: link(c.target), replacement: link(c.replacement), head: link(head) };
-  });
+  return relations.map(c => ({ ...c, target: link(c.target), replacement: link(c.replacement), head: link(lastCorrection(successors, c.target.id)!.replacement) }));
 }
 
 /** Every attachment a Result shows, including figures, alternatives' evidence, and event evidence. */
@@ -1887,12 +1911,13 @@ export function view(s: State): View {
   const decidedIn = new Map<string, string>();
   for (const c of [...s.closes].sort((a, b) => a.seq - b.seq)) for (const d of c.decisions) decidedIn.set(d.question, c.id);
   const latestIds = new Set(s.stages.flatMap((st) => [...latestAsks(s, st.id).values()].map((q) => q.id)));
+  const inProgress = new Set(s.stages.filter((st) => st.state === "in-progress").map((st) => st.id));
   const questions = new Map<string, QuestionView>();
   for (const q of s.questions) {
-    const answer = answerView(s, q, notice(`${q.id}/reading`));
+    const answer = answerView(s, q, notice(endpointId({ kind: "reading", question: q.id })));
     const latest = latestIds.has(q.id);
     const retired = s.retirements.find((r) => r.question === q.id);
-    const qv: QuestionView = { ...q, context: notice(`${q.id}/context`), result_links: (q.entries ?? []).flatMap((id) => { const link = resultLink(s, id); return link ? [link] : []; }), answer, latest, open: latest && !retired && !settled(answer.state), asked_again_by: s.questions.filter((x) => x.again === q.id).map((x) => x.id) };
+    const qv: QuestionView = { ...q, context: notice(endpointId({ kind: "context", question: q.id })), result_links: (q.entries ?? []).flatMap((id) => { const link = resultLink(s, id); return link ? [link] : []; }), answer, latest, open: latest && inProgress.has(q.stage) && !retired && !settled(answer.state), asked_again_by: s.questions.filter((x) => x.again === q.id).map((x) => x.id) };
     if (retired) qv.retired = { reason: retired.reason, time: retired.time };
     if (decidedIn.has(q.id)) qv.decided_in = decidedIn.get(q.id);
     questions.set(q.id, qv);
@@ -1942,10 +1967,9 @@ export function view(s: State): View {
       ...closes.map((close) => ({
         type: "close" as const, seq: close.seq, latest: close.id === lastClose,
         close: { ...close, decisions: close.decisions.map(d => {
-          const id = `${close.id}/${d.question}`;
-          const head = correctionHead(s, id);
-          const [cid, question] = head.split("/");
-          const current = s.closes.find(c => c.id === cid)?.decisions.find(d => d.question === question);
+          const id = endpointId({ kind: "decision", close: close.id, question: d.question });
+          const head = correctionHead(s, id), key = endpointKey(head);
+          const current = key?.kind === "decision" ? s.closes.find(c => c.id === key.close)?.decisions.find(d => d.question === key.question) : undefined;
           const answer = questions.get(d.question)!.answer;
           return { ...d, ...notice(id), current_answer: answer.state, ...(answer.reading ? { current_reading: answer.reading } : {}), current_text: current?.text ?? d.text, affected: head !== id || !!answer.correction };
         }) },

@@ -1,14 +1,17 @@
-import { createHash } from "node:crypto";
 import { existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, readlinkSync, realpathSync, statSync, writeFileSync } from "node:fs";
 import { homedir, release } from "node:os";
 import { basename, join } from "node:path";
 import type { GatePhase } from "./gate-report.ts";
 import { loadPins, loadRegister } from "./vstack-repo.ts";
 import { defaultUpstreamsDir } from "./upstreams.ts";
+import { browserTests, requiredTestPhases } from "./test-phases.ts";
+import { sha256 as hash } from "../../plugin/skills/flow-page/scripts/files.ts";
 
-const hash = (value: string | Buffer) => createHash("sha256").update(value).digest("hex");
 const digest = (value: unknown) => hash(JSON.stringify(value));
-const git = (root: string, ...args: string[]) => {
+/** Variables naming per-run gate files; they never change what a phase proves. */
+const GATE_PLUMBING = ["VSTACK_GATE_PHASE_REPORT", "VSTACK_GATE_SHADOW"];
+/** Trimmed stdout of a Git command in `root`, or null when it fails. */
+export const git = (root: string, ...args: string[]) => {
   const result = Bun.spawnSync(["git", ...args], { cwd: root, stdout: "pipe", stderr: "pipe" });
   return result.exitCode === 0 ? result.stdout.toString().trim() : null;
 };
@@ -48,17 +51,41 @@ function inventory(root: string, exclude: Set<string> = new Set()) {
   return { inventoryHash: digest(files.map(([file]) => file)), contentHash: digest(files), stabilityHash: digest(stability), count: files.length };
 }
 
+type Capture = { inputs: Record<string, string>; unknown: string[]; stability: string };
+/** What an outer gate run hands its test runner: its input capture and the previous run's test subphases. */
+type Shared = Capture & { previous: GatePhase[] };
+const isStrings = (value: unknown): value is string[] => Array.isArray(value) && value.every(item => typeof item === "string");
+function readShared(file: string): Shared | undefined {
+  try {
+    const value: unknown = JSON.parse(readFileSync(file, "utf8"));
+    if (typeof value !== "object" || value === null || !("inputs" in value) || !("unknown" in value) || !("stability" in value) || !("previous" in value)) return undefined;
+    const { inputs, unknown, stability, previous } = value;
+    if (typeof inputs !== "object" || inputs === null || !Object.values(inputs).every(item => typeof item === "string") || !isStrings(unknown) || typeof stability !== "string" || !Array.isArray(previous)) return undefined;
+    return { inputs: inputs as Record<string, string>, unknown, stability, previous: previous as GatePhase[] };
+  } catch { return undefined; }
+}
+
 export class GateShadow {
-  private readonly initial;
+  private readonly initial: Capture;
   private readonly previous = new Map<string, GatePhase>();
   private readonly store: string | null;
+  private readonly shared: boolean;
+  private priorTests: GatePhase[] = [];
   private serial = 0;
   private readonly requiredTestPhases: string[];
-  constructor(private readonly root: string, private readonly evidence: string, private readonly base: string | undefined, private readonly upstreams = defaultUpstreamsDir()) {
+  /** With `sharedFile`, reuse an outer gate run's capture and leave evaluation and memory to that run. */
+  constructor(private readonly root: string, private readonly evidence: string, private readonly base: string | undefined, private readonly upstreams = defaultUpstreamsDir(), sharedFile?: string) {
+    this.requiredTestPhases = requiredTestPhases(root);
+    const shared = sharedFile === undefined ? undefined : readShared(sharedFile);
+    this.shared = shared !== undefined;
+    if (shared) {
+      this.store = null;
+      shared.previous.forEach((phase, i) => this.previous.set(`${i + 1}:${phase.name}`, phase));
+      this.initial = { inputs: shared.inputs, unknown: shared.unknown, stability: shared.stability };
+      return;
+    }
     const store = git(root, "rev-parse", "--path-format=absolute", "--git-path", "vstack-gate-shadow");
     this.store = store ? join(store, basename(evidence)) : null;
-    const browsers = Array.from(new Bun.Glob("tests/**/*.browser.test.ts").scanSync({ cwd: root })).sort();
-    this.requiredTestPhases = [...(browsers.length ? ["candidate-reader-readiness", "candidate-reader-build"] : []), "non-browser", ...browsers.map(file => `browser:${file}`)];
     if (this.store) {
       try {
         const saved: unknown = JSON.parse(readFileSync(join(this.store, "latest.json"), "utf8"));
@@ -69,11 +96,19 @@ export class GateShadow {
           let serial = 0;
           const visit = (phases: GatePhase[]) => { for (const phase of phases) { this.previous.set(`${++serial}:${phase.name}`, phase); visit(phase.phases ?? []); } };
           if (Array.isArray(prior)) visit(prior);
-          else if (prior.ok && prior.outcome === "passed" && prior.finishedAt) visit(prior.stages ?? []);
+          else if (prior.ok && prior.outcome === "passed" && prior.finishedAt) {
+            visit(prior.stages ?? []);
+            this.priorTests = prior.stages?.find(stage => stage.name === "test")?.phases ?? [];
+          }
         }
       } catch {}
     }
     this.initial = this.capture();
+  }
+  /** Writes this run's capture and previous test subphases for a nested test runner to reuse. */
+  share(file: string) {
+    const shared: Shared = { ...this.initial, previous: this.priorTests };
+    writeFileSync(file, JSON.stringify(shared));
   }
   private capture() {
     const inputs: Record<string, string> = {}, unknown: string[] = [], stability: string[] = [];
@@ -114,14 +149,13 @@ export class GateShadow {
       }
       return refs;
     });
-    const browsers = Array.from(new Bun.Glob("tests/**/*.browser.test.ts").scanSync({ cwd: this.root }));
-    if (browsers.length && !process.env.VSTACK_MAINTAIN_COMMANDS) tree("browser", process.env.PLAYWRIGHT_BROWSERS_PATH ?? (process.platform === "darwin" ? join(homedir(), "Library/Caches/ms-playwright") : join(process.env.XDG_CACHE_HOME ?? join(homedir(), ".cache"), "ms-playwright")));
+    if (browserTests(this.root).length && !process.env.VSTACK_MAINTAIN_COMMANDS) tree("browser", process.env.PLAYWRIGHT_BROWSERS_PATH ?? (process.platform === "darwin" ? join(homedir(), "Library/Caches/ms-playwright") : join(process.env.XDG_CACHE_HOME ?? join(homedir(), ".cache"), "ms-playwright")));
     if (process.env.SMOKE_HOME_SEED) tree("smokeHomeSeed", process.env.SMOKE_HOME_SEED);
     if (process.env.VSTACK_MAINTAIN_COMMANDS) unknown.push("command override");
     return { inputs, unknown, stability: digest(stability) };
   }
   begin(phase: GatePhase, env: NodeJS.ProcessEnv) {
-    const inputs: Record<string, string> = { ...this.initial.inputs, command: digest(phase.command ?? null), environment: digest(Object.entries(env).filter(([key]) => key !== "VSTACK_GATE_PHASE_REPORT").sort(([a], [b]) => a.localeCompare(b))) };
+    const inputs: Record<string, string> = { ...this.initial.inputs, command: digest(phase.command ?? null), environment: digest(Object.entries(env).filter(([key]) => !GATE_PLUMBING.includes(key)).sort(([a], [b]) => a.localeCompare(b))) };
     const unknown = [...this.initial.unknown];
     if (env.FLOW_READER_ASSETS) {
       try { inputs.readerAssets = inventory(env.FLOW_READER_ASSETS).contentHash; }
@@ -143,6 +177,7 @@ export class GateShadow {
     }
   }
   finish(phases: GatePhase[], complete: boolean) {
+    if (this.shared) return;
     const final = this.capture();
     const stable = digest(final.inputs) === digest(this.initial.inputs) && final.stability === this.initial.stability && !final.unknown.length;
     const requiredComplete = (items: GatePhase[]): boolean => items.every(item =>

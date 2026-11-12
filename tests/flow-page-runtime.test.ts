@@ -80,6 +80,8 @@ test("differing worktree CLIs author and serve through installed code with calle
   const homeAlias = join(root, "normal-home-alias");
   symlinkSync(w.home, homeAlias);
   expect(ok<HostReceipt>(await cli(b, w.home, w.cwd, w.port, ["host", "status", `--home=${homeAlias}`])).host.state).toBe("running");
+  expect(ok<HostReceipt>(await cli(b, homeAlias, w.cwd, w.port, ["host", "status"])).host).toEqual(ok<HostReceipt>(await cli(a, w.home, w.cwd, w.port, ["host", "status"])).host);
+  expect(ok(await cli(a, homeAlias, cwdA, w.port, ["bound", "--agent", "a"])).live.url).toBe(first.live.url);
   expect(first.live.state).toBe("serving");
   const before = ok<HostReceipt>(await cli(a, w.home, w.cwd, w.port, ["host", "status"])).host;
   const credentials = readFileSync(join(w.home, ".vstack/host/secrets.json"));

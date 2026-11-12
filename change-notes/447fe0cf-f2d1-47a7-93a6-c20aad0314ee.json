@@ -2,6 +2,7 @@
   "schema": 1,
   "level": "patch",
   "entries": [
-    "Route normal Flow CLI copies through the installed plugin while preserving caller identities. Keep candidate worktree code in explicit isolated homes, including when its reader build is broken."
+    "Route normal Flow CLI copies through the installed plugin while preserving caller identities. Keep candidate worktree code in explicit isolated homes, including when its reader build is broken.",
+    "Recognize the normal home through symbolic links the same way in the Flow CLI, the live host, and the managed host."
   ]
 }
