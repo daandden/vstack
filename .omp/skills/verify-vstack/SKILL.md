@@ -37,9 +37,20 @@ Reasoning-led skill behavior is an exception to the stub-model isolation below. 
 
 The Tern plugin recipe uses `scripts/tern-verify`, ported from `tern-plugins`. It links only the checkout's `plugin/tern/vstack-flow` into a new config directory, with separate daemon and control sockets. Read `features/README.md`'s Tern baseline and `features/vstack-flow.md` for Launch, Doctor, Drive, Evidence, and Cleanup. Every Tern command uses the helper. A bare `tern` command can act on the user's working window.
 
+## Proof step IDs
+
+Every required proof step starts with the word Step, its ID in code formatting, and a colon. A caller copies the IDs it requires into `expected.json`, and the Verifier reports one `proof_steps` outcome per ID, as `skill://ship/references/verdict-record.md` describes. `features/README.md` defines the feature-step convention and the uniqueness check. This file owns four shared steps:
+
+- `reader-build`: Launch's reader build, when the change touches `reader/`.
+- `tests`: `bun run test` in `CHECKOUT`, as Gotchas says.
+- `doctor`: the Doctor check.
+- `cleanup`: every Cleanup item.
+
+Parent-versus-head comparisons are feature steps with their own IDs, such as `ticket-publication-parent-vs-head`.
+
 ## Launch
 
-Nothing builds at launch: the Flow reader is committed prebuilt. When the change touches `reader/`, run `bun run reader:build` in `CHECKOUT` first. It generates and ships the bundle under `plugin/skills/flow-page/reader/`. The reader uses Nuxt UI, Tailwind utilities, and Catppuccin theme tokens, with base typography in Tailwind's base layer and no separate `reader.css`. For scripted smoke proof, a launch is one drive: `scripts/drive.ts` links the plugin into the run's home, starts a stub model, starts `omp --mode rpc` (or `--mode rpc-ui` with `--rpc-ui`), sends the RPC commands you give it, and stops both processes before it exits. The real-model enrollment recipe launches its own fresh native process from `CHECKOUT`.
+Nothing builds at launch: the Flow reader is committed prebuilt. Step `reader-build`: When the change touches `reader/`, run `bun run reader:build` in `CHECKOUT` first. It generates and ships the bundle under `plugin/skills/flow-page/reader/`. The reader uses Nuxt UI, Tailwind utilities, and Catppuccin theme tokens, with base typography in Tailwind's base layer and no separate `reader.css`. For scripted smoke proof, a launch is one drive: `scripts/drive.ts` links the plugin into the run's home, starts a stub model, starts `omp --mode rpc` (or `--mode rpc-ui` with `--rpc-ui`), sends the RPC commands you give it, and stops both processes before it exits. The real-model enrollment recipe launches its own fresh native process from `CHECKOUT`.
 
 ```sh
 bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN_DIR" --name <drive> \
@@ -83,7 +94,7 @@ Exit 0 prints `{"load_gate":"passed",...}` and writes it to `$VERIFY_RUN_DIR/plu
 
 ## Doctor
 
-Run Doctor first, and again whenever a result looks wrong. It is read-only.
+Step `doctor`: Run Doctor first, and again whenever a result looks wrong. It is read-only.
 
 ```sh
 bash "$SKILL_DIR/scripts/doctor.sh" "$CHECKOUT" "$VERIFY_RUN_DIR"
@@ -127,6 +138,8 @@ The model stub stands at the model-provider boundary. Scratch identity uses name
 
 ## Cleanup
 
+Step `cleanup`: Do all three items below.
+
 1. Close every browser tab this run opened, by the name you gave it: `await browser.tab("<name>").close()`.
 2. Run the cleanup script:
 
@@ -164,7 +177,7 @@ All paths are relative to `SKILL_DIR`.
 
 - A drive starts a new omp process, so it sees the plugin files as they are on disk now, uncommitted edits included. Your own session does not.
 - `omp plugin link` in the run's home replaces the link each drive. To compare two checkouts, use two run dirs.
-- Run tests with `bun run test`, or pass `--timeout 30000` when naming files. Bun's default 5000 ms timeout fails slow tests such as `tests/clean-wt.test.ts` that pass under the repo's declared command.
+- Step `tests`: Run tests with `bun run test`, or pass `--timeout 30000` when naming files. Bun's default 5000 ms timeout fails slow tests such as `tests/clean-wt.test.ts` that pass under the repo's declared command.
 - The stub model does not think. It answers with `--replies` in order, one per model request. A tool call needs a second reply for the turn after the tool result.
 - Startup tool-routing compression requests are logged but do not consume `--replies`. The helper recognizes only tool-less requests whose user text starts with `Compress into one routing hint`.
 - `get_state` holds the whole system prompt (about 40 KB). The summary shows only its size. Read fields from `rpc.jsonl` with `jq`.

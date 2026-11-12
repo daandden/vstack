@@ -33,7 +33,7 @@ Use `"$V" shot "$RUN" <name>` for full-resolution lossless WebP and layout evide
 - Session proof is the drive's `summary.json`, the matching frames in `rpc.jsonl`, and the matching request in `model-requests.jsonl`.
 - CLI proof is the command, stdout, stderr, the exit code, and a separate listing of the files it wrote or deleted.
 - Page proof is an ARIA snapshot and a full-resolution lossless WebP screenshot, made as `../SKILL.md` Evidence step 5 says.
-- Record the feature ID and the entry point with every proof file in `$VERIFY_RUN_DIR/notes.md`.
+- Record the feature ID, the step ID, and the entry point with every proof file in `$VERIFY_RUN_DIR/notes.md`.
 - Report an entry point you did not drive as skipped, with the command you tried and the precondition that was missing. Never report it as verified through another entry point.
 - Record the actual browser backend and engine. Required coverage for an unavailable engine stays unavailable or unmet, never verified through another engine.
 
@@ -43,10 +43,22 @@ Each feature file starts with an H1 title and one paragraph on the user-visible 
 
 1. `Sub-features` lists short IDs with one line for each behavior.
 2. `How to get to it (user POV)` lists every user entry point.
-3. `Driving it with <harness>` starts with `Preconditions:` and pairs each user action with an exact command and the observable result.
+3. `Driving it with <harness>` starts with `Preconditions:` and pairs each user action with an exact command and the observable result. Each required step starts with its step ID.
 4. `Gotchas` lists traps that waste or invalidate a run.
 
 Keep implementation details out of the map. Name only user paths, stable handles, required state, commands, and observable proof.
+
+## Proof step IDs
+
+A required step starts with the word Step, its ID in code formatting, and a colon. This covers every build, test, Launch, journey, negative probe, parent-versus-head comparison, and cleanup step a caller can require. A feature step's ID starts with its feature file's name, such as `plugin-load-gate` in `plugin-load.md`. `../SKILL.md` owns the shared `reader-build`, `tests`, `doctor`, and `cleanup` IDs. Preconditions and explanatory notes carry no ID.
+
+An ID is unique across the map and `../SKILL.md`. Keep an ID when its step's wording changes. Give a new step a new ID, and never reuse a removed ID for another action. A caller copies the IDs it requires into `expected.json` under `skill://ship/references/verdict-record.md`. List every ID, and check that none repeats:
+
+```sh
+grep -ho 'Step `[^`]*`' "$SKILL_DIR/SKILL.md" "$SKILL_DIR"/features/*.md | sort | uniq -d
+```
+
+Drop `| uniq -d` to print the full list. The check prints nothing when every ID is unique.
 
 ## Features
 
