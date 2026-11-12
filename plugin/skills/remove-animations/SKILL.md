@@ -57,6 +57,6 @@ Until explicit diagnostic or user selection is recorded by the current owner, ke
 
 Reuse the owner's tests and Verify recipe. Observe open/closed visibility, entry focus, immediate or reduced exit/unmount, callbacks, rapid reversal, reduced motion, and deliberately retained useful motion where affected. Use skill://animation-performance for cost claims and skill://review-animations within the existing review path. Preserve evidence-backed blocking authority for regressions. A property name or a successful build is not browser proof.
 
-Every browser open uses `app: { tern: false }`, including delegated diagnostics, and records returned backend and engine. Retain ARIA, full-resolution lossless WebP, observations, actual dependency facts, and unassessed engines under the owner's Scratch.
+Every browser open uses `app: { tern: false }`, including delegated diagnostics, and records returned backend and engine. Retain ARIA, full-resolution screenshots, observations, actual dependency facts, and unassessed engines under the owner's Scratch.
 
 Return removed/reduced rows with location, previous effect, exact change, deciding branch, authorization, and evidence. Include a kept section naming the useful motion and documented decisions preserved, plus retained-but-flawed motion left for another task. Name obsolete code removed, dependencies inspected, any proposed uninstall awaiting approval, actual checks, and remaining uncertainty. Do not inflate source inspection into a claim of observed behavior.

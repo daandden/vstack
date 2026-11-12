@@ -38,7 +38,7 @@ For busy-page Motion findings, distinguish shorthands before 14.2 from the accel
 
 ## Establish evidence and decide
 
-Use the project's existing Verify workflow and review evidence contract. Observe the ordinary input path, keyboard path, reduced motion, and interruption when relevant. Retain browser identity, actions and outcomes, ARIA, and full-resolution lossless WebP evidence under the owner's Scratch. Every verification browser open uses `app: { tern: false }`; record the returned backend and engine. Claim only the stack, browser, and scenario actually exercised. Missing browser access or an unreadable dependency stays unavailable, not clean.
+Use the project's existing Verify workflow and review evidence contract. Observe the ordinary input path, keyboard path, reduced motion, and interruption when relevant. Retain browser identity, actions and outcomes, ARIA, and full-resolution screenshots under the owner's Scratch. Every verification browser open uses `app: { tern: false }`; record the returned backend and engine. Claim only the stack, browser, and scenario actually exercised. Missing browser access or an unreadable dependency stays unavailable, not clean.
 
 For uncertain feel, inspect slow playback or individual frames. A later fresh look can help, but it is not a prerequisite that postpones the current review. For a rendering claim, use appropriate trace or frame evidence; visual interpolation alone proves neither GPU compositing nor absence of dropped frames.
 

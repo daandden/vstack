@@ -113,17 +113,17 @@ await tab.evaluate(() => {
 	document.querySelector("#<question-id> .diagram").shadowRoot.querySelector("svg").setAttribute("data-capture-question", "<question-id>");
 });
 const pngPath = await tab.screenshot({selector: 'pierce/svg[data-capture-question="<question-id>"]', format: "png", silent: true});
-const out = "<run>/<side>/renders/<id>/figure.webp";
-await Bun.write(out, await new Bun.Image(await Bun.file(pngPath).bytes()).webp({lossless: true}).bytes());
+const out = "<run>/<side>/renders/<id>/figure.png";
+await Bun.write(out, Bun.file(pngPath));
 ```
 
-Retain the PNG in the same render directory as `figure.png`. Read the WebP to confirm it contains the complete SVG. Keep scale factor 1.25 for every image. Record missing SVGs, browser failures, unavailable fonts, and clipped captures in a render log. A bad figure stays bad for judging. A failed capture is a measurement failure, not a low-quality drawing.
+Read `figure.png` at full resolution to confirm it contains the complete SVG. Keep scale factor 1.25 for every image. Record missing SVGs, browser failures, unavailable fonts, and clipped captures in a render log. A bad figure stays bad for judging. A failed capture is a measurement failure, not a low-quality drawing.
 
 ## 5. Pair and blind
 
-In brief-id order, use `random.Random(234)` in Python. For each pair, shuffle a fresh list `["baseline", "candidate"]`. Copy its first side's WebP to `<run>/pairs/<id>/A.webp` and its second side's WebP to `B.webp`. Then stage the swapped order: copy the same two WebPs to `<run>/pairs-swapped/<id>/`, with the first side's WebP as `B.webp` and the second side's as `A.webp`. Copy the fixed brief to both directories as `brief.txt` and the rubric as `RUBRIC.md`.
+In brief-id order, use `random.Random(234)` in Python. For each pair, shuffle a fresh list `["baseline", "candidate"]`. Copy its first side's PNG to `<run>/pairs/<id>/A.png` and its second side's PNG to `B.png`. Then stage the swapped order: copy the same two PNGs to `<run>/pairs-swapped/<id>/`, with the first side's PNG as `B.png` and the second side's as `A.png`. Copy the fixed brief to both directories as `brief.txt` and the rubric as `RUBRIC.md`.
 
-Write `<run>/key.json` with the seed and each id's A-to-side and B-to-side mapping for both orders. Keep the key, side directories, Mermaid sources, SVGs, transcripts, and cost files outside each judge's working directory and prompt. Use copies, not symlinks that reveal the side. Neutral filenames and identical image conversion keep side identity out of the judge's inputs.
+Write `<run>/key.json` with the seed and each id's A-to-side and B-to-side mapping for both orders. Keep the key, side directories, Mermaid sources, SVGs, transcripts, and cost files outside each judge's working directory and prompt. Use copies, not symlinks that reveal the side. Neutral filenames and identical capture settings keep side identity out of the judge's inputs.
 
 Judges lean toward position A when a pair is close, and one seeded order can put the candidate in A for few pairs. Judging both orders keeps position from deciding a pair.
 
@@ -133,7 +133,7 @@ Read `cfg://task/agentModelOverrides` again before judging. If `vstack-explorer`
 
 Before this step, read skill://vstack-fan-out.
 
-Fan-out (skill://vstack-fan-out): parts: one per pair directory in `pairs/` and `pairs-swapped/`, 36 in all. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: act as the blind judge, read only the pair directory's `RUBRIC.md`, `brief.txt`, `A.webp`, and `B.webp`, and return the rubric's JSON verdict for its brief id, the vstack root, the Scratch dir. Wait for every result. If they cannot start, stop: record each unstarted judge and its failure reason, restore the original explorer override, and report the run as incomplete.
+Fan-out (skill://vstack-fan-out): parts: one per pair directory in `pairs/` and `pairs-swapped/`, 36 in all. One `task` call; `tasks[]` has one item per part, each with `agent: "vstack-explorer"`. Each `task`: act as the blind judge, read only the pair directory's `RUBRIC.md`, `brief.txt`, `A.png`, and `B.png`, and return the rubric's JSON verdict for its brief id, the vstack root, the Scratch dir. Wait for every result. If they cannot start, stop: record each unstarted judge and its failure reason, restore the original explorer override, and report the run as incomplete.
 
 After all started judges settle, restore the original explorer value through `cfg://task/agentModelOverrides`, using session-only scope again. If the original entry was absent, remove the temporary entry. Preserve the other current entries. Restore the value even when judging fails, and record whether restoration succeeded. If a judge cannot read both images, record the failure and no verdict for that pair.
 

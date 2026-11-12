@@ -53,13 +53,7 @@ Ground every section in the repo. Leave no placeholders:
 
 The generated Evidence section resolves a fresh run entry at `<Scratch dir>/verify/<app>-<run-id>/`. Evidence and notes go at its top level. Throwaway app data goes in `data/`. Both modes use this Scratch path, never committed. Cleanup can remove disposable data, but must preserve evidence and notes at the named paths.
 
-For browser screenshots, capture full-resolution PNG with `tab.screenshot({ format: "png", silent: true })`. Convert it losslessly in eval and read the WebP path:
-
-```js
-await Bun.write(out, await new Bun.Image(await Bun.file(pngPath).bytes()).webp({ lossless: true }).bytes());
-```
-
-Set `out` to the capture path with `.webp`. Add `selector` or `fullPage` when needed. Select the `iframe` element for iframe content. The final proof image is lossless WebP, with no resize.
+For browser screenshots, use `tab.screenshot({ format: "png" })` without `silent`. Inspect the auto-attached copy. Save the full-resolution PNG from the returned path to a `.png` evidence path, without resizing or conversion. If a detail is unreadable in the attached copy, capture that region with `selector` instead of reading the full-resolution file. Add `fullPage` when needed. Select the `iframe` element for iframe content.
 
 ## 3. Seed the feature map
 

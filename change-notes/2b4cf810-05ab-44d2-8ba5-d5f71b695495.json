@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Align shipped skill evidence steps with vstack-images: remove PNG-to-WebP conversions, keep full-resolution PNG proof in evals, and use attached screenshot previews for routine verification (#495)."
+  ]
+}

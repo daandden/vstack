@@ -26,7 +26,7 @@ This Notes app and its `control-notes` harness are examples, not commands for th
 ## Proof and skip reporting
 
 - Capture the user action and the resulting state, not only the final screen.
-- UI proof includes an ARIA snapshot and a full-resolution lossless WebP screenshot with the app identity visible. Capture PNG first, then convert losslessly in eval as described in setup-app-verification. Read the WebP path. Preserve evidence after cleanup.
+- UI proof includes an ARIA snapshot and a full-resolution PNG screenshot with the app identity visible. Preserve evidence after cleanup.
 - CLI proof includes the command, stdout, stderr, and exit code.
 - Mutation proof includes a read-only second view of the stored value.
 - Record the feature ID and entry point used with every artifact.
