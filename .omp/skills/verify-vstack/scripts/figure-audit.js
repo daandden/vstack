@@ -39,9 +39,11 @@
   assert(box('Wrap').height > box('Small').height, 'Smaller formatted label did not wrap to fewer lines');
   const scripts = [...document.querySelectorAll('#readability tspan[baseline-shift]')].map(e => getComputedStyle(e).fontSize);
   assert(scripts.length > 0 && scripts.every(size => size === '12px'), 'Explicit 75% script sizing changed');
-  const loose = document.querySelector('#one .pele-edge-label text');
-  assert(getComputedStyle(loose).paintOrder.split(' ')[0] === 'stroke' && getComputedStyle(loose).stroke === 'rgb(30, 30, 46)', 'Loose-label outline failed');
-  const second = document.querySelector('#two .pele-edge-label text');
+  const cluster = document.querySelector('#one .pele-cluster-label');
+  assert(getComputedStyle(cluster).paintOrder.split(' ')[0] === 'stroke' && getComputedStyle(cluster).stroke === 'rgb(30, 30, 46)', 'Cluster-label outline failed');
+  const edgeBox = document.querySelector('#one .pele-edge-label > rect'), edgeText = document.querySelector('#one .pele-edge-label text');
+  assert(getComputedStyle(edgeBox).display !== 'none' && getComputedStyle(edgeBox).fill === 'rgb(30, 30, 46)' && getComputedStyle(edgeText).stroke === 'none', 'Edge label lost its Base box');
+  const second = document.querySelector('#two .pele-cluster-label');
   const before = getComputedStyle(second).strokeWidth;
   const firstStyle = document.querySelector('#one style'), next = firstStyle.nextSibling, owner = firstStyle.parentNode;
   firstStyle.remove();
@@ -62,5 +64,5 @@
       }
     }
   }
-  return { ok: true, paints, scripts, stops, roles: roleProof, categories: new Set(reference).size, font: getComputedStyle(text('readability', 'Plain')).fontFamily, checks: ['group and figure isolation', 'border-only multi-mark focus', 'seven 22% role fills and ordinary labels', 'native Sankey modes', 'category reorder/insertion/process/family stability', '13 accents and collisions', 'geometry and 75% sizing', 'outline independence', 'computed Mocha paints'] };
+  return { ok: true, paints, scripts, stops, roles: roleProof, categories: new Set(reference).size, font: getComputedStyle(text('readability', 'Plain')).fontFamily, checks: ['group and figure isolation', 'border-only multi-mark focus', 'seven 22% role fills and ordinary labels', 'native Sankey modes', 'category reorder/insertion/process/family stability', '13 accents and collisions', 'geometry and 75% sizing', 'Base edge-label boxes', 'outline independence', 'computed Mocha paints'] };
 })()

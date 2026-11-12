@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Draw edge labels in Pele's background-colored boxes again on the Flow page and in exports, so lines stop at the label. Cluster, Wardley, and Venn label outlines widen from 0.12em to 0.3em."
+  ]
+}

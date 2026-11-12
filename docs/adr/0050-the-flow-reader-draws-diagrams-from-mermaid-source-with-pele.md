@@ -2,7 +2,7 @@
 
 > This decision amends [ADR 0040](0040-figures-are-mermaid-rendered-by-pele.md) and [ADR 0044](0044-structured-flow-data-drives-server-rendered-pages.md) for diagrams. It reverses the Mocha-only figure palette that [ADR 0027](0027-diagram-design-ships-one-fixed-catppuccin-style.md) recorded and ADR 0040 kept.
 
-> [ADR 0065-flow-figures-get-color-roles-from-the-shared-role-pass](0065-flow-figures-get-color-roles-from-the-shared-role-pass.md) amends this decision. The reader runs the shared role pass, draws step edges and outlined labels like the export, and draws `mermaid` code blocks in Documents. Submit runs the export's full check on `mermaid` attachments.
+> [ADR 0065-flow-figures-get-color-roles-from-the-shared-role-pass](0065-flow-figures-get-color-roles-from-the-shared-role-pass.md) amends this decision. The reader runs the shared role pass, draws step edges, boxed edge labels, and outlined cluster labels like the export, and draws `mermaid` code blocks in Documents. Submit runs the export's full check on `mermaid` attachments.
 
 The user chose this design in Flow questions 26 to 28 of spec #309 on 2026-11-01, after the #315 review found the prototype-review diagram unreadable in the light theme (question 25). The user knowingly accepts that a drawn diagram's layout can change with the pinned Pele version.
 
