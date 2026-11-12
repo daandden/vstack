@@ -59,7 +59,7 @@ test("corrected Results and every entry shape show warnings before original text
       const warning = original.getByRole("complementary", { name: "Correction notice", exact: true }).first();
       expect(await warning.isVisible()).toBe(true);
       expect(await warning.innerText()).toContain(reason);
-      const relation = warning.getByRole("link", { name: "Correction", exact: true });
+      const relation = warning.getByRole("link", { name: `Corrected by Correction ${i + 1}, revision 1`, exact: true });
       await relation.focus();
       await page.keyboard.press("Enter");
       const replacementAnchor = `${sent.refs[`correction-${i}`]}${i === 0 ? "-r1" : ""}`;

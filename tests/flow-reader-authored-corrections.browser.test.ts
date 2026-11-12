@@ -34,9 +34,10 @@ test("authored corrections show current non-consent, retained raw words, histori
     cli(["open", "--flow", opened.flow, "--skill", "implement"]);
     const reason = "The original account inferred permission from uncertainty. ".repeat(12) + "https://example.com/workspaces/review/evidence/9f8e7d6c5b4a <script>alert(1)</script>";
     const targets = [first.refs["original-background"], first.refs["original-topic"], `${q}/context`, first.refs["original-assumption"], `${close.refs["original-summary"]}/${q}`, `${q}/reading`];
-    const replacements = ["new-background", "new-topic", "new-context", "new-assumption", `new-summary/${q}`, "withdrawal"];
+    const replacements = ["new-background", "new-topic", "new-context/claim", "new-assumption", `new-summary/${q}`, "withdrawal"];
     const names = ["original-background", "original-topic", "Context for Q1", "Assumed: Keep captured evidence for review", "Summary decision for Q1", "Answer reading for Q1"];
-    const sent = cli(["submit"], [background("new-background"), topic("new-topic"), topic("new-context"), { kind: "assumed", ref: "new-assumption", decision: "A reversible default", pick: "Use another default", why: "Still not a user answer" }, { kind: "close", ref: "new-summary", decisions: [{ question: q, text: "The summary did not establish permission" }] }, { kind: "reading", ref: "withdrawal", question: q, reading: { outcome: "ambiguous", unresolved: "The uncertain source did not authorize work. Ask again if needed." } }, ...targets.map((target, i) => ({ kind: "corrects", target, replacement: replacements[i], reason }))]);
+    const sent = cli(["submit"], [background("new-background"), topic("new-topic"), { kind: "result", ref: "new-context", shape: "cards", title: "Corrected context", entries: [{ ref: "claim", title: "Replacement evidence", label: "Finding", blocking: false, impact: "No permission established", action: "Ask again", evidence: "The source remains uncertain." }] }, { kind: "assumed", ref: "new-assumption", decision: "Keep `reversible defaults` for review", pick: "Use another default", why: "Still not a user answer" }, { kind: "close", ref: "new-summary", decisions: [{ question: q, text: "The summary did not establish permission" }] }, { kind: "reading", ref: "withdrawal", question: q, reading: { outcome: "ambiguous", unresolved: "The uncertain source did not authorize work. Ask again if needed." } }, ...targets.map((target, i) => ({ kind: "corrects", target, replacement: replacements[i], reason }))]);
+    const replacementNames = ["new-background", "new-topic", `Corrected context, entry ${sent.refs["new-context/claim"]!.split("/")[1]}`, "Assumed: Keep reversible defaults for review", "Summary decision for Q1", "Answer reading for Q1"];
     const page = await context.newPage();
     const errors: string[] = [];
     page.on("pageerror", error => errors.push(error.message));
@@ -52,8 +53,12 @@ test("authored corrections show current non-consent, retained raw words, histori
       const warning = original.getByRole("complementary", { name: "Correction notice", exact: true }).first();
       expect(await warning.isVisible()).toBe(true);
       expect(await warning.innerText()).toContain(reason);
-      await warning.getByRole("link", { name: "Correction", exact: true }).click();
-      const replacement = i === 4 ? `${sent.refs["new-summary"]}-${q}` : sent.refs[replacements[i]];
+      const forward = warning.getByRole("link", { name: /^Corrected by/ });
+      expect(await forward.innerText()).toBe(`Corrected by ${replacementNames[i]}, revision 1`);
+      expect(await forward.innerText()).not.toContain("`");
+      if (i === 3) expect(await forward.locator("code").allInnerTexts()).toEqual(["reversible defaults"]);
+      await forward.click();
+      const replacement = (i === 4 ? `${sent.refs["new-summary"]}/${q}` : sent.refs[replacements[i]]!).replace("/", "-");
       expect(new URL(page.url()).hash).toBe(`#${replacement}`);
       const back = page.locator(`#${replacement}`).getByRole("complementary", { name: "Corrects earlier content", exact: true }).locator(`a[href="#${anchor}"]`);
       if (i === 3) {
