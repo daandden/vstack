@@ -55,13 +55,7 @@ The generated Evidence section resolves a fresh run entry at `<Scratch dir>/veri
 
 Give each mandatory proof action a stable step ID, its required preconditions, and its passing observation. Distinguish optional observations from required journeys and negative probes before execution. Callers and Verifiers use these IDs under `skill://ship/references/verdict-record.md`.
 
-For browser screenshots, capture full-resolution PNG with `tab.screenshot({ format: "png", silent: true })`. Convert it losslessly in eval and read the WebP path:
-
-```js
-await Bun.write(out, await new Bun.Image(await Bun.file(pngPath).bytes()).webp({ lossless: true }).bytes());
-```
-
-Set `out` to the capture path with `.webp`. Add `selector` or `fullPage` when needed. Select the `iframe` element for iframe content. The final proof image is lossless WebP, with no resize.
+For browser screenshots, use `tab.screenshot({ format: "png" })` without `silent`. Inspect the auto-attached copy. Save the full-resolution PNG from the returned path to a `.png` evidence path, without resizing or conversion. If a detail is unreadable in the attached copy, capture that region with `selector` instead of reading the full-resolution file. Add `fullPage` when needed. Select the `iframe` element for iframe content.
 
 ## 3. Seed the feature map
 
