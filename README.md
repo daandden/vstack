@@ -28,7 +28,9 @@ Setup handles existing Matt configurations through Migration. See the [setup gui
 
 To update, run `git pull` and `bun install --frozen-lockfile` in the clone, then start a new omp session.
 
-If a running Local Flow host reports an incompatible reader after an update, stop that owned host with `bun plugin/skills/flow-page/scripts/flow-page.ts host stop`. The next Flow command starts the refreshed reader.
+After the update, the running Local Flow host replaces itself. It keeps serving the last good version until the updated version starts, and Flow links stay the same. An incomplete or failing update leaves the last good version serving. Open Flow pages reload to the new reader and keep unsent Reader comments and the reading position.
+
+A host started by a vstack version from before this behavior cannot replace itself. If it reports an incompatible reader after the update, stop it with `bun plugin/skills/flow-page/scripts/flow-page.ts host stop`. The next Flow command starts the updated host on the same links.
 
 ## Use
 
