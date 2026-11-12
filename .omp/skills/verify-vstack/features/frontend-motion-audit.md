@@ -23,7 +23,7 @@ Preconditions:
 - Follow [frontend guidance](frontend-guidance.md) for Doctor, fresh native sessions, caller Session model and thinking, complete-plugin loading, isolated discovery, actual transcript capture, public maintenance commands, packaging, and final gates.
 - Keep every fixture and before snapshot under the proof run. No new package is needed for a vanilla HTML/CSS/JS application. Record its actual dependency declarations and browser capabilities.
 - Give each diagnostic app its own fixture Git project and fixture vstack root, not the production project's root or ticket aliases. Use an explicit isolated Flow `--home` under the proof run on every diagnostic authoring command, with the native process's own session and agent. Pass that isolation to delegated briefs. Keep real model credentials available through the native launcher, but never use production Flow bindings for test Results, questions, selections, or Stage completion. Inspect actual calls and receipts before accepting the trace. A model-written test record in a production Flow is a retained side effect, not a production decision; stop further writes and repair isolation without deleting the record.
-- Every browser open, including diagnostics and delegated calls, explicitly passes `app: { tern: false }`. Record the returned backend and engine, inspect actual tool calls, retain full-resolution lossless WebP and ARIA, and close only owned resources.
+- Every browser open, including diagnostics and delegated calls, explicitly passes `app: "chromium"`. Record the returned backend and engine, inspect actual tool calls, retain full-resolution lossless WebP and ARIA, and close only owned resources.
 
 ### Establish the failing behavior
 

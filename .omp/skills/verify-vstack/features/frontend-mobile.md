@@ -22,7 +22,7 @@ Preconditions:
 
 - Follow [frontend guidance](frontend-guidance.md)'s Doctor, fresh native RPC, Session model, credential, isolation, and capture procedure. Reuse its driver interface rather than copying a second native runner.
 - Keep each fixture and proof under the run's Scratch. Use a real runnable frontend with its actual manifest. A vanilla HTML/CSS/JavaScript app needs no third-party packages.
-- Open every browser tab with a unique name, `app: { tern: false }`, and explicit viewport. Record the returned backend, engine, version, and media capabilities for every scenario.
+- Open every browser tab with a unique name, `app: "chromium"`, and explicit viewport. Record the returned backend, engine, version, and media capabilities for every scenario.
 
 ### Native red and green
 

@@ -45,7 +45,7 @@ Step `frontend-stack-scripts`: Run each generated app's actual package scripts, 
 
 ### Observe the actual applications
 
-Step `frontend-stack-launch`: Launch each app's documented production preview with a uniquely named owned server. Open each browser with `app: { tern: false }` and an explicit viewport. Record the returned backend, engine, policy, and actual app URL.
+Step `frontend-stack-launch`: Launch each app's documented production preview with a uniquely named owned server. Open each browser with `app: "chromium"` and an explicit viewport. Record the returned backend, engine, policy, and actual app URL.
 
 1. Step `frontend-stack-dialog`: Open the dialog with Enter, press Escape, and confirm focus returns to its trigger. Open the menu by keyboard, move through items, choose a theme, and repeat Escape and focus return.
 2. Step `frontend-stack-form`: Submit invalid nested values and read actual field-level messages and ARIA associations. Correct the focused field, then press Enter before blurring it to expose stale validation-timing errors. Submit valid input with padded name text and observe trimmed output at the local submission consumer. Repeat the invalid and valid cycle.

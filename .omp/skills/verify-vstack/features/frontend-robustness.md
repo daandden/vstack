@@ -21,7 +21,7 @@ Preconditions:
 
 - Follow `frontend-guidance.md` for Doctor, native real-HOME isolation, caller Session model, full-package loading, provenance, and recording. Keep each process fresh and capture saved native histories, not stub echoes.
 - Keep fixtures, original snapshots, commands, ARIA, screenshots, and raw outcomes under a new proof run. Use the actual stack and installed dependency versions. A vanilla HTML/CSS/JS fixture needs no third-party dependencies.
-- Browser opens always use a unique name, `app: { tern: false }`, and an explicit viewport. Record the returned backend and engine. Retain full-resolution lossless WebP and ARIA using `../SKILL.md`, and close only owned tabs and servers.
+- Browser opens always use a unique name, `app: "chromium"`, and an explicit viewport. Record the returned backend and engine. Retain full-resolution lossless WebP and ARIA using `../SKILL.md`, and close only owned tabs and servers.
 
 ### Red and green native tasks
 

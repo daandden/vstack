@@ -59,7 +59,7 @@ Preconditions:
    - `figure-readability.test.ts`: "labels use fixed-font cell widths", "wrapping follows visible cells", "default flowchart edges", and prior-output preservation.
    - `figure-types.test.ts`: every documented keyword and alias uses `plugin/skills/vstack-figures/references/examples/<keyword>.mmd`.
 
-3. Step `figure-render-consumer-audit`: Open `figures/consumer.html` in a named browser tab with `app: { tern: false }` and a 1280 by 900 viewport. Follow the parent skill's browser policy for every open, including diagnostics, retries, recovery, and delegated verification. Evaluate the complete text of `scripts/figure-audit.js` in that page:
+3. Step `figure-render-consumer-audit`: Open `figures/consumer.html` in a named browser tab with `app: "chromium"` and a 1280 by 900 viewport. Follow the parent skill's browser policy for every open, including diagnostics, retries, recovery, and delegated verification. Evaluate the complete text of `scripts/figure-audit.js` in that page:
 
    ```js
    const audit = await tab.evaluate(await Bun.file(`${SKILL_DIR}/scripts/figure-audit.js`).text());

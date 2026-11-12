@@ -22,7 +22,7 @@ Preconditions:
 
 - Follow [frontend guidance](frontend-guidance.md) for Doctor, fresh native RPC processes, complete-plugin loading, Session model provenance, isolated skill discovery, public maintenance commands, packaging, and final gates.
 - Keep fixtures, original snapshots, full native histories, RPC frames, commands, and observations under the proof run. Use no new dependencies without approval.
-- Open every browser tab with a unique name, `app: { tern: false }`, and an explicit viewport. Record the actual backend and engine. Capture full-resolution lossless WebP and ARIA using `../SKILL.md`.
+- Open every browser tab with a unique name, `app: "chromium"`, and an explicit viewport. Record the actual backend and engine. Capture full-resolution lossless WebP and ARIA using `../SKILL.md`.
 
 ### Build and diagnose through existing paths
 

@@ -24,7 +24,7 @@ Use `"$V" shot "$RUN" <name>` for full-resolution lossless WebP and layout evide
 - Run scripted session behavior through `scripts/drive.ts`. Use the feature ID as `--name`, so each drive has its own evidence dir. drive.ts refuses a name that the run already used. Retry with a new name such as `<feature>-retry1`, and read the proof from that new dir. For model instruction following, use the real-model enrollment or architecture-agreement recipe rather than the stub.
 - Run a skill's Bun CLI from `$CHECKOUT/plugin/skills/<skill>/scripts/`, not through `skill://...`.
 - Pass `--home "$VERIFY_RUN_DIR/data/<name>"` to direct isolated CLI fixtures. In a native enrollment run, keep the model's CLI and the extension in the same normal HOME namespace, as `flow-page.md` specifies.
-- In the browser, open tabs with a name, `app: { tern: false }`, and a 1280 by 900 `viewport`. Apply the parent skill's browser policy on every open, including diagnostics, retries, recovery, and delegated verification. Act by ARIA role and name.
+- In the browser, open tabs with a name, `app: "chromium"`, and a 1280 by 900 `viewport`. Apply the parent skill's browser policy on every open, including diagnostics, retries, recovery, and delegated verification. Act by ARIA role and name.
 - Treat every command as literal. Keep quoted names and flags as they are.
 
 ## Proof and skip reporting
