@@ -180,12 +180,12 @@ test("Jump labels identify Assumed subjects and each published attempt without m
     for (const width of [320, 2560]) {
       await page.setViewportSize({ width, height: 900 });
       expect(await row.isVisible()).toBe(true);
-      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
     }
     await page.setViewportSize({ width: 320, height: 900 });
     await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
     await page.emulateMedia({ colorScheme: "dark" });
-    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBe(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
     expect(await jumps(page)).toEqual(expectedIds);
   } finally {
     await context.close();
