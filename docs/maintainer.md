@@ -77,7 +77,7 @@ Nuxt's font provider is local-only, and icons come from the installed Lucide col
 
 The Local Flow host loads its reader bytes at startup. A changed bundle makes a running host incompatible. Stop only the owned host with `bun plugin/skills/flow-page/scripts/flow-page.ts host stop`, then use `bound` or `show` to start the current host and retrieve the live URL. Stored Flow data is not a static reader. Committed content stays committed when the host is unavailable.
 
-The reader and the SVG export share flowchart step routing and label readability rules in `plugin/skills/vstack-figures/scripts/presentation.ts`. Edge and cluster labels use a background-colored outline instead of Pele's edge-label boxes. Captured Mermaid sources get these rules on their next view without recapture. Historical SVGs retain their captured routes.
+The reader and the SVG export share flowchart step routing and label readability rules in `plugin/skills/vstack-figures/scripts/presentation.ts`. Edge labels keep Pele's background-colored label boxes. Cluster labels use a background-colored outline. Captured Mermaid sources get these rules on their next view without recapture. Historical SVGs retain their captured routes.
 
 ## Addon judge
 

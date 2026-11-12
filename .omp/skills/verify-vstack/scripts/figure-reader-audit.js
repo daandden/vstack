@@ -33,13 +33,19 @@
     });
     const edges = [...root.querySelectorAll('.pele-edge > path:first-child')].map(path => path.getAttribute('d'));
     assert(edges.length > 0 && edges.every(path => !/[Cc]/.test(path)), 'Reader lost step routing');
-    const outlined = [...root.querySelectorAll('.pele-edge-label text, text.pele-cluster-label')].map(text => {
+    const outlined = [...root.querySelectorAll('text.pele-cluster-label')].map(text => {
       const style = getComputedStyle(text);
-      assert(style.paintOrder.split(' ')[0] === 'stroke' && near(rgb(style.stroke), rgb(colors.base)) && parseFloat(style.strokeWidth) > 0, 'Reader lost Base label outlines');
+      assert(style.paintOrder.split(' ')[0] === 'stroke' && near(rgb(style.stroke), rgb(colors.base)) && parseFloat(style.strokeWidth) > 0, 'Reader lost Base cluster-label outlines');
       return { text: text.textContent, stroke: rgb(style.stroke), width: style.strokeWidth, order: style.paintOrder };
     });
-    assert(outlined.length >= 4, 'Missing edge or cluster labels');
-    diagrams.push({ name: host.getAttribute('aria-label'), focused, nodes, edges, outlined, clientWidth: host.clientWidth, scrollWidth: host.scrollWidth });
+    assert(outlined.length >= 1, 'Missing cluster labels');
+    const boxed = [...root.querySelectorAll('.pele-edge-label')].map(label => {
+      const box = getComputedStyle(label.querySelector('rect')), text = label.querySelector('text');
+      assert(box.display !== 'none' && near(rgb(box.fill), rgb(colors.base)) && getComputedStyle(text).stroke === 'none', 'Reader lost Base edge-label boxes');
+      return { text: text.textContent, fill: rgb(box.fill), display: box.display };
+    });
+    assert(boxed.length >= 3, 'Missing edge labels');
+    diagrams.push({ name: host.getAttribute('aria-label'), focused, nodes, edges, outlined, boxed, clientWidth: host.clientWidth, scrollWidth: host.scrollWidth });
   }
   assert(diagrams.length >= 2 && diagrams.some(diagram => !diagram.focused) && diagrams.some(diagram => diagram.focused), 'Expected both captured Mermaid and Document code diagrams');
   return { ok: true, theme, diagrams, pageOverflow: document.documentElement.scrollWidth > innerWidth };
