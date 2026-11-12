@@ -51,7 +51,7 @@ Observe the real container width, 320px, and the widest supported layout. Check 
 | Large list stalls | Too much rendered content | Existing pagination or virtualization, with observed evidence |
 | User content becomes markup or escapes twice | Wrong rendering boundary | Render user text as text, escaped exactly once |
 
-Validate causes in the actual component before prescribing a fix. For visual interaction judgment, use skill://emil-design-eng. Where Emil-derived guidance and good-css disagree, Emil guidance takes precedence for CSS and animation under ADR 0074, which amends ADR 0051. Reconcile disagreements among Emil skills using browser-specific behavior and observed evidence. Preserve skill://review-animations' blocking verdicts when the applicable rule and evidence justify them. The running owner's review contract still applies; this skill does not require an unshipped motion skill.
+Validate causes in the actual component before prescribing a fix. For visual interaction judgment, use skill://emil-design-eng. Where Emil-derived guidance and good-css disagree, Emil guidance takes precedence for CSS and animation under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css, which amends ADR 0051. Reconcile disagreements among Emil skills using browser-specific behavior and observed evidence. Preserve skill://review-animations' blocking verdicts when the applicable rule and evidence justify them. The running owner's review contract still applies; this skill does not require an unshipped motion skill.
 
 ### Choose per field
 

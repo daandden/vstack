@@ -66,7 +66,7 @@ Use `will-change` only for an observed promotion issue or measured improvement a
 
 ## Reconcile the rules with evidence
 
-Under ADR 0074, which amends ADR 0051, Emil-derived guidance takes precedence over good-css for CSS and animation. Reconcile disagreements among Emil skills using browser-specific behavior and observed evidence. Within Emil guidance, a broad transform-and-opacity-only rule does not prohibit browser-supported clip-path, filter, or intrinsic-size techniques by itself.
+Under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css, which amends ADR 0051, Emil-derived guidance takes precedence over good-css for CSS and animation. Reconcile disagreements among Emil skills using browser-specific behavior and observed evidence. Within Emil guidance, a broad transform-and-opacity-only rule does not prohibit browser-supported clip-path, filter, or intrinsic-size techniques by itself.
 
 For a disputed technique, record the applicable narrower guidance, target-engine support, observed behavior, measured cost, and any fallback or unavailable engine. Preserve skill://review-animations' blocking verdicts when the applicable rule and evidence justify them. One Chromium run does not establish Safari, Firefox, a phone, or every application stack.
 

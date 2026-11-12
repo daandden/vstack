@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Cite the duplicated legacy ADRs 0065 and 0074 by their full file stems in shipped skills, docs, and the Decision register, so each citation names one decision."
+  ]
+}

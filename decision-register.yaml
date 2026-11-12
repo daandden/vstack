@@ -868,7 +868,7 @@ items:
     tree: 716c242ae3ef01743ab8e1851222260a05050763
     disposition: adapt
     artifacts: [plugin/skills/good-css]
-    reason: "Keeps unique CSS techniques without Emil hand-offs, conflicting rules, or repeated advice; Emil guidance holds under ADR 0074 (#459)."
+    reason: "Keeps unique CSS techniques without Emil hand-offs, conflicting rules, or repeated advice; Emil guidance holds under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css (#459)."
     adr: docs/adr/0051-selected-emil-skills-govern-animation-guidance.md
   - id: matt/implement-spec
     upstream: matt
@@ -997,7 +997,7 @@ items:
     tree: fe46ac61092a8cf086dce6a907fc98295a600d3d
     disposition: adapt
     artifacts: [ plugin/skills/animate ]
-    reason: "Visible Utility skill for motion construction and companion recipes, retaining existing execution ownership, accessible transitions, and browser-qualified Emil precedence over good-css under ADR 0074."
+    reason: "Visible Utility skill for motion construction and companion recipes, retaining existing execution ownership, accessible transitions, and browser-qualified Emil precedence over good-css under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css."
   - id: emil/animation-performance
     upstream: emil
     kind: skill
@@ -1005,7 +1005,7 @@ items:
     tree: a0261dde73fb2206d71b014450ce1c0c297d2c6a
     disposition: adapt
     artifacts: [ plugin/skills/animation-performance ]
-    reason: "Visible Utility skill for measured animation diagnosis, using actual dependency and browser evidence rather than unconditional acceleration claims or an independent executor, with Emil precedence under ADR 0074."
+    reason: "Visible Utility skill for measured animation diagnosis, using actual dependency and browser evidence rather than unconditional acceleration claims or an independent executor, with Emil precedence under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css."
   - id: emil/animation-vocabulary
     upstream: emil
     kind: skill
@@ -1021,7 +1021,7 @@ items:
     tree: cd509ae729c86487d352e17a26651217a4c25711
     disposition: adapt
     artifacts: [ plugin/skills/apple-design ]
-    reason: "Visible Utility skill for Apple-derived web guidance, preserving vstack ownership, dependency checks, and browser-qualified Emil precedence over good-css under ADR 0074."
+    reason: "Visible Utility skill for Apple-derived web guidance, preserving vstack ownership, dependency checks, and browser-qualified Emil precedence over good-css under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css."
   - id: emil/ask-sonner
     upstream: emil
     kind: skill
@@ -1037,7 +1037,7 @@ items:
     tree: f2a3441d4cf14df060ee363e155502a4818b5f8d
     disposition: adapt
     artifacts: [ plugin/skills/break-ui ]
-    reason: "Visible Utility skill for adverse-content testing and its required catalog, preserving implementation, review, Verify, and evidence ownership with Emil precedence under ADR 0074."
+    reason: "Visible Utility skill for adverse-content testing and its required catalog, preserving implementation, review, Verify, and evidence ownership with Emil precedence under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css."
   - id: emil/emil-design-eng
     upstream: emil
     kind: skill
@@ -1045,7 +1045,7 @@ items:
     tree: e79b9cc03e06efe8d40349bc39df0ed4a9d5deff
     disposition: adapt
     artifacts: [plugin/skills/emil-design-eng]
-    reason: "Visible Utility skill for reference-only design guidance, preserving vstack execution and evidence ownership with browser-qualified Emil precedence over good-css under ADR 0074."
+    reason: "Visible Utility skill for reference-only design guidance, preserving vstack execution and evidence ownership with browser-qualified Emil precedence over good-css under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css."
     adr: docs/adr/0051-selected-emil-skills-govern-animation-guidance.md
   - id: emil/find-animation-opportunities
     upstream: emil
@@ -1054,7 +1054,7 @@ items:
     tree: e6443880f38e33cf78e5d678471eed35e8566763
     disposition: adapt
     artifacts: [ plugin/skills/find-animation-opportunities ]
-    reason: "Visible Utility skill for additive motion proposals, retaining purpose and frequency gates, recorded rejections, explicit selection ownership, and Emil precedence under ADR 0074."
+    reason: "Visible Utility skill for additive motion proposals, retaining purpose and frequency gates, recorded rejections, explicit selection ownership, and Emil precedence under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css."
   - id: emil/improve-animations
     upstream: emil
     kind: skill
@@ -1062,7 +1062,7 @@ items:
     tree: d3ce6f348009d830b89e7a830cc958245aea2ad6
     disposition: adapt
     artifacts: [ plugin/skills/improve-animations ]
-    reason: "Visible Utility skill for read-only motion audits and selected requirements, retaining existing selection, planning, review, and evidence owners with Emil precedence under ADR 0074."
+    reason: "Visible Utility skill for read-only motion audits and selected requirements, retaining existing selection, planning, review, and evidence owners with Emil precedence under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css."
   - id: emil/mobile-native
     upstream: emil
     kind: skill
@@ -1070,7 +1070,7 @@ items:
     tree: fdad6e6e91d8bbfda7164c7027269a8389dbadcd
     disposition: adapt
     artifacts: [ plugin/skills/mobile-native ]
-    reason: "Visible Utility skill for mobile-web guidance, preserving capability checks, zoom, accessibility, vstack ownership, and honest browser versus device evidence with Emil precedence under ADR 0074."
+    reason: "Visible Utility skill for mobile-web guidance, preserving capability checks, zoom, accessibility, vstack ownership, and honest browser versus device evidence with Emil precedence under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css."
   - id: emil/pick-ui-library
     upstream: emil
     kind: skill
@@ -1094,7 +1094,7 @@ items:
     tree: e1d06083891b6445c7fb5dae31f06b1e8b81f0dc
     disposition: adapt
     artifacts: [ plugin/skills/remove-animations ]
-    reason: "Visible Utility skill for scoped motion subtraction, preserving visibility, callbacks, unmount, focus, useful motion, and separate dependency-removal approval with Emil precedence under ADR 0074."
+    reason: "Visible Utility skill for scoped motion subtraction, preserving visibility, callbacks, unmount, focus, useful motion, and separate dependency-removal approval with Emil precedence under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css."
   - id: emil/review-animations
     upstream: emil
     kind: skill
@@ -1102,7 +1102,7 @@ items:
     tree: bede4e1924423cea207f67ffe7a742b8d6ad753e
     disposition: adapt
     artifacts: [ plugin/skills/review-animations ]
-    reason: "Visible Utility skill for motion review and companion standards, preserving evidence-backed blocking authority, browser-qualified exceptions, and existing review ownership with Emil precedence under ADR 0074."
+    reason: "Visible Utility skill for motion review and companion standards, preserving evidence-backed blocking authority, browser-qualified exceptions, and existing review ownership with Emil precedence under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css."
   - id: emil/write-swift
     upstream: emil
     kind: skill
@@ -1127,7 +1127,7 @@ items:
     disposition: adapt
     artifacts:
       - plugin/skills/choreograph
-    reason: Visible Utility skill for coordinated web motion, preserving existing execution, review, verification, and evidence owners with Emil precedence under ADR 0074 (#458).
+    reason: Visible Utility skill for coordinated web motion, preserving existing execution, review, verification, and evidence owners with Emil precedence under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css (#458).
   - id: emil/gestures
     upstream: emil
     kind: skill
@@ -1136,7 +1136,7 @@ items:
     disposition: adapt
     artifacts:
       - plugin/skills/gestures
-    reason: Visible Utility skill for direct-manipulation web gestures with dependency-conditional Vaul guidance, preserving existing execution, review, verification, and evidence owners with Emil precedence under ADR 0074 (#458).
+    reason: Visible Utility skill for direct-manipulation web gestures with dependency-conditional Vaul guidance, preserving existing execution, review, verification, and evidence owners with Emil precedence under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css (#458).
 originals:
   - plugin/agents/vstack-explorer.md
   - plugin/agents/vstack-verifier.md

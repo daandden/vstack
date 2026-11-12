@@ -36,7 +36,7 @@ Only remove an effect or make the same effect smaller. Do not add replacement mo
 | Excessive stagger | Cap at 30ms/item or remove delays, without blocking use |
 | Persistent decorative loop | Remove repeats or keep a static end state |
 
-If subtraction would remove the only useful continuity cue or expose a layout jump, keep that motion and report the separate issue. Preserve useful unselected motion. An instant reduced-motion state is valid. Emil-derived guidance takes precedence over good-css for CSS and animation under ADR 0074, which amends ADR 0051. Reconcile disagreements among Emil skills using browser-specific behavior and observed evidence rather than declaring every non-transform property invalid. Preserve skill://review-animations' blocking verdicts when the applicable rule and evidence justify them.
+If subtraction would remove the only useful continuity cue or expose a layout jump, keep that motion and report the separate issue. Preserve useful unselected motion. An instant reduced-motion state is valid. Emil-derived guidance takes precedence over good-css for CSS and animation under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css, which amends ADR 0051. Reconcile disagreements among Emil skills using browser-specific behavior and observed evidence rather than declaring every non-transform property invalid. Preserve skill://review-animations' blocking verdicts when the applicable rule and evidence justify them.
 
 ## Check removal hazards before editing
 
