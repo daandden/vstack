@@ -1,7 +1,7 @@
 import { existsSync, lstatSync, readFileSync, readlinkSync, realpathSync, unlinkSync } from "node:fs";
 import { dirname, isAbsolute, resolve, sep } from "node:path";
 import { homedir } from "node:os";
-import { declaredInput, readInputs } from "../../vstack-worktree/scripts/inputs.ts";
+import { declaredInput, readInputs, refuseCommittedOverlap } from "../../vstack-worktree/scripts/inputs.ts";
 
 const record = { verdict: "REFUSED", head_sha: null as string | null, base_sha: null as string | null, patch_id: null as string | null, evidence: [] as string[], notes: [] as string[], proof_steps: [] };
 const removed: string[] = [];
@@ -52,6 +52,7 @@ try {
     if (!sha || !/^(?:[a-f0-9]{40}|[a-f0-9]{64})$/.test(sha) || git(repo, ["rev-parse", "--verify", `${sha}^{commit}`]).trim() !== sha) throw new Error(`A full valid ${key.slice(2)} commit SHA is required.`);
     record[field] = sha;
   }
+  refuseCommittedOverlap(git(repo, ["ls-tree", "-r", "-z", "--name-only", "--full-tree", record.head_sha!]).split("\0").filter(Boolean), requiredInputs);
   const diff = git(repo, ["diff", "--no-ext-diff", "--no-textconv", `${record.base_sha}...${record.head_sha}`]);
   record.patch_id = git(repo, ["patch-id", "--stable"], Buffer.from(diff)).trim().split(/\s+/)[0];
   const common = realpathSync(git(repo, ["rev-parse", "--path-format=absolute", "--git-common-dir"]).trim());
@@ -93,7 +94,6 @@ try {
     validateTracked(worktree);
     const tracked = new Set(git(worktree, ["ls-files", "-z"]).split("\0").filter(Boolean));
     for (const input of requiredInputs) {
-      if ([...tracked].some(name => declaredInput(name, [input]))) throw new Error(`Runtime input ${JSON.stringify(input)} overlaps committed source.`);
       if (!existsSync(resolve(worktree, input))) throw new Error(`Required runtime input ${JSON.stringify(input)} is missing. Proof is unavailable; check worktree.clone and /skill:setup-vstack.`);
     }
     const runtimeExclusions = [".", ...requiredInputs.map(input => `:(exclude,literal)${input}`)];

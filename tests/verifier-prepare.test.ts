@@ -300,6 +300,25 @@ test("changed declarations and committed-source declarations cannot widen carrie
   expect(() => other.create(other.head, true, ["app.ts"])).toThrow("overlaps committed source");
 });
 
+test("preflight refuses a declared input that overlaps committed source at the head commit", () => {
+  const f = fixture();
+  mkdirSync(join(f.shared, "plugin")); writeFileSync(join(f.shared, "plugin/run.ts"), "committed\n");
+  git(f.shared, "add", "."); git(f.shared, "commit", "-qm", "plugin");
+  const head = git(f.shared, "rev-parse", "HEAD"); git(f.clone, "fetch", "-q", "origin");
+  const args = f.args.map(x => x === f.head ? head : x);
+  for (const inputs of [["node_modules", "plugin"], ["plugin/run.ts"], ["plugin/run.ts/cache"]]) {
+    f.declare(inputs);
+    const result = f.run("preflight", args);
+    expect(result.code).toBe(2); expect(result.record.verdict).toBe("REFUSED");
+    expect(result.record.notes.join(" ")).toContain(`Runtime input ${JSON.stringify(inputs.at(-1))} overlaps committed source`);
+  }
+  for (const inputs of [["node_modules"], ["node_modules", "plugin/cache"]]) {
+    f.declare(inputs);
+    const allowed = f.run("preflight", args);
+    expect(allowed.code).toBe(0); expect(allowed.record.inputs).toEqual(inputs);
+  }
+});
+
 test.each(["../outside", ".git/info/exclude", ".", "", "/absolute", "cache//deps"])("preflight refuses unsafe runtime declaration %j", input => {
   const f = fixture(); f.declare([input]);
   const result = f.run("preflight");

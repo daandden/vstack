@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Verifier preflight refuses a declared runtime input that overlaps committed source at the head commit, naming the input, before any checkout is created."
+  ]
+}

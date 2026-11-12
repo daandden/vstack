@@ -14,3 +14,11 @@ export function readInputs(path: string | undefined): string[] {
 export function declaredInput(path: string, inputs: string[]): boolean {
   return inputs.some(input => path === input || path.startsWith(input + "/"));
 }
+
+export function refuseCommittedOverlap(tracked: string[], inputs: string[]): void {
+  for (const input of inputs) {
+    if (tracked.some(name => declaredInput(name, [input]) || declaredInput(input, [name]))) {
+      throw new Error(`Runtime input ${JSON.stringify(input)} overlaps committed source. Declare only untracked dependency or runtime inputs.`);
+    }
+  }
+}
