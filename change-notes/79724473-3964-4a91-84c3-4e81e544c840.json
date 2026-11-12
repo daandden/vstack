@@ -2,6 +2,6 @@
   "schema": 1,
   "level": "patch",
   "entries": [
-    "Show each question's current answer near its title, with Choices, Evidence, and latest-attempt links. An unanswered attempt that was asked again reads Re-asked and shows the latest attempt's answer beside its link."
+    "Show each question's current answer near its title, with Choices, Evidence, and latest-attempt links. Every re-asked attempt reads Re-asked and shows the latest attempt's answer beside its link, including across finished Stages after a Correction. Keep the earlier attempt's Correction or non-consent status as secondary history without prompting for another answer."
   ]
 }

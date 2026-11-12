@@ -16,7 +16,7 @@ test("question outcomes keep current readings and direct evidence, choices, and 
   const port = listener.port;
   listener.stop(true);
   function cli(args: string[], items?: object[]) {
-    const child = Bun.spawnSync([process.execPath, script, ...args, "--home", home, "--session", "01a1cba1-54b5-7369-8ac7-9a330fb9e8d8", "--agent", "Impl473"], {
+    const child = Bun.spawnSync([process.execPath, script, ...args, "--home", home, "--session", "01a1cf9b-7357-7275-a7cc-46e155c3a3e2", "--agent", "VerifyRepair2"], {
       cwd: root, env: { ...ENV, HOME: join(root, "default-home"), VSTACK_FLOW_PORT: String(port) },
       stdin: items ? new TextEncoder().encode(JSON.stringify({ version: 1, items })) : "ignore", stdout: "pipe", stderr: "pipe",
     });
@@ -56,7 +56,7 @@ test("question outcomes keep current readings and direct evidence, choices, and 
     const corrected = cli(["submit"], [
       { kind: "reading", ref: "withdrawn", question: q.corrected, reading: { outcome: "ambiguous", unresolved: "Uncertainty is not permission. Ask again before deployment." } },
       { kind: "corrects", target: `${q.corrected}/reading`, replacement: "withdrawn", reason: "The old reading invented permission." },
-      { kind: "round", questions: [{ ...question("retry"), again: q.corrected }] },
+      { kind: "round", questions: [{ ...question("retry"), again: q.corrected, options: [...question("retry").options, { label: "Ask before deployment", does: "Requires an explicit deployment decision.", gains: ["No inferred permission"], costs: ["Another review"] }] }] },
     ]);
     await summary(q.corrected).filter({ hasText: "Unresolved after correction" }).waitFor();
     expect(await summary(q.corrected).innerText()).not.toContain("Proceed with deployment");
@@ -98,8 +98,35 @@ test("question outcomes keep current readings and direct evidence, choices, and 
     const shown = cli(["show", "--flow", opened.flow]) as unknown as { stages: { questions: { id: string; open: boolean }[] }[] };
     expect(shown.stages[0]!.questions.find(x => x.id === q.reasked)?.open).toBe(false);
     await page.goto(`${opened.live.url}#overview`);
-    expect(await page.locator("#overview-stages").innerText()).toContain("Unresolved after correction");
+    expect(await page.locator("#overview-stages").innerText()).toContain("Re-asked");
     expect(await page.locator("#overview-stages").innerText()).not.toContain("Proceed with deployment");
+    cli(["submit"], [{ kind: "answer", question: corrected.refs.retry, response: { status: "answered", picks: ["B"] } }]);
+    const timedOutRetry = cli(["submit"], [{ kind: "round", questions: [{ ...question("timeout-retry"), again: q["timed-out"] }] }]).refs["timeout-retry"]!;
+    cli(["submit"], [{ kind: "answer", question: timedOutRetry, response: { status: "answered", picks: ["A"] } }]);
+    cli(["submit"], [{ kind: "stage", state: "finished" }]);
+    await page.goto(`${opened.live.url}#${q.corrected}`);
+    const correctedOutcome = summary(q.corrected);
+    await correctedOutcome.filter({ hasText: "Your pick: B. Ask before deployment" }).waitFor();
+    const proof = process.env.FLOW_READER_EVIDENCE;
+    if (proof) {
+      mkdirSync(proof, { recursive: true });
+      writeFileSync(join(proof, "reasked-cross-stage.aria.txt"), await article.ariaSnapshot());
+    }
+    expect(await correctedOutcome.locator("p").first().innerText()).toBe("Re-asked");
+    expect(await correctedOutcome.getByRole("link", { name: "Latest attempt: Q1 in Implement", exact: true }).getAttribute("href")).toBe(`#${corrected.refs.retry}`);
+    expect(await correctedOutcome.innerText()).toContain("Unresolved after correction: Uncertainty is not permission. Ask again before deployment.");
+    expect(await article.innerText()).not.toMatch(/\bOpen\b|Not answered|Still to ask/);
+    await correctedOutcome.getByRole("link", { name: /Latest attempt/ }).click();
+    expect(new URL(page.url()).hash).toBe(`#${corrected.refs.retry}`);
+    expect(await summary(corrected.refs.retry).innerText()).toContain("Your pick: B. Ask before deployment");
+    expect(await summary(corrected.refs.retry).innerText()).not.toContain("Re-asked");
+    await page.goto(`${opened.live.url}#${q["timed-out"]}`);
+    const timedOutOutcome = summary(q["timed-out"]);
+    expect(await timedOutOutcome.locator("p").first().innerText()).toBe("Re-asked");
+    expect(await timedOutOutcome.locator("p").nth(1).innerText()).toContain("Timed out, not your answer");
+    expect(await timedOutOutcome.innerText()).toContain("Your pick: A. Keep the recorded evidence");
+    expect(await timedOutOutcome.getByRole("link", { name: "Latest attempt: Q2 in Implement", exact: true }).getAttribute("href")).toBe(`#${timedOutRetry}`);
+    expect(await page.locator(`#${q["timed-out"]}`).innerText()).not.toMatch(/\bOpen\b|Not answered|Still to ask/);
     for (const theme of ["Light", "Dark"]) {
       await page.getByRole("button", { name: theme, exact: true }).click();
       for (const width of [320, 1280, 2560]) {

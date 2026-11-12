@@ -60,7 +60,7 @@ const lines = computed(() => {
     if (rd.maps_to) out.push({ label: "Matches", html: `${inline(label(rd.maps_to))}, which you did not pick` });
   } else if (rd) {
     out.push({ label: NOT_DECIDED[rd.outcome]!, html: "Not a decision." });
-    out.push({ label: "Still to ask", html: inline(rd.unresolved) });
+    out.push({ label: props.q.asked_again_by.length ? "Unresolved at this attempt" : "Still to ask", html: inline(rd.unresolved) });
   }
   if (props.q.retired) out.push({ label: "Retired", html: inline(props.q.retired.reason) });
   if (!out.length && !a.picks) {
@@ -77,6 +77,7 @@ const lines = computed(() => {
     <h2 class="text-flow-mauve"><span class="me-2.5 tabular-nums">Q{{ q.q }}</span><span class="sr-only">: </span><span v-html="inline(q.title)" /></h2>
     <section aria-label="Current outcome" class="grid gap-1 text-small">
       <p :class="outcome.cls" v-html="outcome.html" />
+      <p v-if="outcome.previous" :class="outcome.previous.cls" v-html="outcome.previous.html" />
       <nav aria-label="Question details" class="flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5">
         <a :href="`#${q.id}-choices`">Choices</a>
         <a :href="`#${q.id}-evidence`">Evidence</a>

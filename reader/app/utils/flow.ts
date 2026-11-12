@@ -30,7 +30,20 @@ export function sourceText(flow: Flow, id: string): string {
   return flow.sources.find((x) => x.id === id)?.text ?? id;
 }
 
-export function questionOutcome(q: QuestionView): { cls: string; html: string } {
+type QuestionOutcome = { cls: string; html: string };
+
+export function questionOutcome(q: QuestionView): QuestionOutcome & { previous?: QuestionOutcome } {
+  if (q.asked_again_by.length) {
+    return {
+      cls: "text-muted",
+      html: "Re-asked",
+      previous: q.answer.state === "open" ? undefined : answerOutcome(q),
+    };
+  }
+  return answerOutcome(q);
+}
+
+function answerOutcome(q: QuestionView): QuestionOutcome {
   const a = q.answer;
   if (a.picks) return { cls: "text-flow-yellow", html: `Your pick: ${inline(a.picks.join(", "))}` };
   if (a.legacy?.other !== undefined) return { cls: "text-flow-yellow", html: `Recorded answer: ${inline(a.legacy.other)}` };
@@ -42,11 +55,10 @@ export function questionOutcome(q: QuestionView): { cls: string; html: string } 
       : status === "cancelled" ? "Cancelled, not your answer"
       : status === "timed-out" ? "Timed out, not your answer"
       : status === "empty" ? "Empty response, not your answer"
-      : a.reading && a.reading.outcome !== "resolved" ? `Unresolved: ${inline(a.reading.unresolved)}` : "Not answered";
+      : a.reading && a.reading.outcome !== "resolved" ? `Unresolved: ${inline(a.reading.unresolved)}` : q.asked_again_by.length ? "No decision recorded at this attempt" : "Not answered";
     return { cls: "text-muted", html: `${q.retired ? "Retired: " : ""}${nonConsent}` };
   }
   if (q.retired) return { cls: "text-muted", html: "Retired" };
-  if (q.asked_again_by.length) return { cls: "text-muted", html: "Re-asked" };
   return { cls: "text-muted", html: "Open" };
 }
 
