@@ -1161,6 +1161,8 @@ originals:
   - plugin/rules/vstack-posting.md
   - plugin/rules/vstack-recovery.md
   - plugin/skills/pick-frontend-stack
+  - plugin/rules/vstack-python.md
+  - plugin/rules/vstack-images.md
 utility:
   - plugin/skills/unslop
   - plugin/skills/technical-writing
