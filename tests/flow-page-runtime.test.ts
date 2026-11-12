@@ -247,7 +247,7 @@ test("the installed host stages coherent replacements while its last good genera
   expect(await generations(url)).toEqual(after);
   expect(Buffer.from(await (await fetch(new URL(asset, url))).arrayBuffer()).equals(goodAsset)).toBe(true);
   writeFileSync(assetFile, goodAsset);
-  writeFileSync(reader, html + "\n<!-- complete next reader -->\n");
+  writeFileSync(reader, readFileSync(join(skills, "flow-page/reader/index.html"), "utf8") + "\n<!-- complete next reader -->\n");
   seal(w.script);
   const next = await changed(url, after);
   expect(next.revision).toBe(before.revision);

@@ -23,6 +23,7 @@ const hostVersion = version(reader);
 const readerGeneration = createHash("sha256");
 for (const [path, bytes] of reader) readerGeneration.update(path).update(bytes);
 const readerVersion = readerGeneration.digest("hex");
+const readerShell = new TextDecoder().decode(reader.get("index.html")).replace("</head>", `<meta name="flow-host-generation" content="${instance}"><meta name="flow-reader-generation" content="${readerVersion}"></head>`);
 const origin = originOf(port);
 let active = 0;
 let last = Date.now();
@@ -206,7 +207,7 @@ async function route(req: Request): Promise<Response> {
     return response(JSON.stringify(result.body), result.status, { "Content-Type": "application/json" });
   }
   if (req.method !== "GET" && req.method !== "HEAD") return response("Read-only host.", 405, { Allow: "GET, HEAD" });
-  if (m[4] === "/") return response(req.method === "HEAD" ? null : reader.get("index.html")!, 200, {
+  if (m[4] === "/") return response(req.method === "HEAD" ? null : readerShell, 200, {
     "Content-Type": "text/html; charset=utf-8", "Content-Security-Policy": csp,
     "Set-Cookie": `flow_learning=${progressToken}; Path=${url.pathname}; HttpOnly; SameSite=Strict; Max-Age=31536000`,
   });

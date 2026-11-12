@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { flow } from "~/composables/reader";
 import { blockLabel, type Flow, type ReadingBlock } from "~/utils/flow";
+import { onReaderReload, readReloadState } from "~/composables/reload";
 
 type Visit = { revision: number; blocks: Record<string, string> };
 const previous = shallowRef<Visit>();
@@ -56,6 +57,7 @@ function destination(b: ReadingBlock, status: string): string {
   const snapshot = result?.history.find(h => h.changed === seen) ?? result?.history.at(-1);
   return snapshot ? `${b.id}-changes-${snapshot.changed}` : b.id;
 }
+onReaderReload("visit", () => previous.value ?? null);
 
 onMounted(() => {
   watch(flow, f => {
@@ -64,7 +66,8 @@ onMounted(() => {
     try {
       if (nextKey !== key) {
         key = nextKey;
-        previous.value = readVisit(localStorage.getItem(key), f.revision);
+        const restored = readReloadState("visit");
+        previous.value = readVisit(restored === undefined ? localStorage.getItem(key) : JSON.stringify(restored), f.revision);
       }
       localStorage.setItem(key, JSON.stringify({ revision: f.revision, blocks: current.value } satisfies Visit));
       storageUnavailable.value = false;

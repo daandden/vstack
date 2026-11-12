@@ -2,6 +2,7 @@
 import type { CommentAnchor, ReaderComment } from "#flow/comments.ts";
 import type { ResultView } from "~/utils/flow";
 import { readerComments, saveComment, editComment, removeComment } from "~/composables/comments";
+import { onReaderReload, readReloadState } from "~/composables/reload";
 
 const props = defineProps<{ r: ResultView; content: HTMLElement | null }>();
 const open = shallowRef(false);
@@ -16,6 +17,25 @@ const revision = shallowRef(props.r.revision);
 const edit = shallowRef(props.r.edit ?? null);
 const form = useTemplateRef<HTMLFormElement>("form");
 const add = useTemplateRef<{ $el: HTMLButtonElement }>("add");
+const reloadKey = `comment:${props.r.anchor}`;
+onReaderReload(reloadKey, () => {
+  if (pending.value) throw new Error("Reader comment write in progress");
+  return open.value ? { target: target.value, draft: draft.value, editing: editing.value, passage: passage.value, revision: revision.value, edit: edit.value } : null;
+});
+onMounted(() => {
+  const saved = readReloadState(reloadKey);
+  if (!saved || typeof saved !== "object" || !("target" in saved) || typeof saved.target !== "string" ||
+    !("draft" in saved) || typeof saved.draft !== "string" || !("editing" in saved) || typeof saved.editing !== "string" ||
+    !("passage" in saved) || typeof saved.passage !== "string" || !("revision" in saved) || typeof saved.revision !== "number" ||
+    !("edit" in saved) || (saved.edit !== null && typeof saved.edit !== "number")) return;
+  target.value = saved.target;
+  draft.value = saved.draft;
+  editing.value = saved.editing;
+  passage.value = saved.passage;
+  revision.value = saved.revision;
+  edit.value = saved.edit;
+  open.value = true;
+});
 async function begin(comment?: ReaderComment, quote = "") {
   editing.value = comment?.id ?? "";
   revision.value = props.r.revision;
@@ -50,6 +70,7 @@ const saved = computed(() => readerComments.value.filter((c) => c.result === pro
 const targets = computed(() => [
   { label: "Whole Result block", value: "" },
   ...props.r.entries.map((e) => ({ label: `${e.id}: ${String(e.title ?? e.claim ?? e.file ?? (e.cells as string[] | undefined)?.[0] ?? e.id)}`, value: e.id })),
+  ...(target.value && !props.r.entries.some(e => e.id === target.value) ? [{ label: `${target.value}: original draft target`, value: target.value }] : []),
 ]);
 async function save() {
   if (pending.value || !draft.value.trim()) return;
@@ -97,6 +118,7 @@ async function save() {
       <ResultTextSelection :key="`${r.revision}-${r.edit ?? ''}`" :content="content" @select="begin(undefined, $event)" />
     </template>
     <form v-else ref="form" class="grid min-w-0 gap-3" @submit.prevent="save">
+      <p class="text-muted">Draft for Revision {{ revision }}<template v-if="edit != null"> · Edit {{ edit }}</template>. Saving is a separate action.</p>
       <blockquote v-if="passage" class="whitespace-pre-wrap border-s-2 border-default ps-3">{{ passage }}</blockquote>
       <UFormField v-else-if="!editing" label="Comment target" :name="`${r.anchor}-target`">
         <USelect v-model="target" :items="targets" class="w-full pointer-coarse:min-h-[44px]" :disabled="pending" />

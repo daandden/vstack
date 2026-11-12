@@ -81,6 +81,8 @@ Each question shows its current outcome under its title. Explicit picks, reading
 
 The installed Local Flow host checks the complete runtime manifest before staging a replacement. Its stable listener keeps forwarding requests to the last good generation until the candidate starts and authenticates. Replacement retains the port, credentials, and Flow links. Failed startup or mismatched installed files leave the last good generation active. Explicit isolated development hosts keep exact-byte compatibility and require their owner's authenticated stop after code changes. Agents have no new authority to restart the normal shared host. Committed content stays committed when the host is unavailable.
 
+Open readers detect host replacement separately from authored revisions and refresh content after reconnect. A changed reader generation reloads the page automatically. The reader saves open Reader comment drafts, their original Result revision and target, the fragment, disclosures, and reading position in tab-local session storage before reload. Restoring a draft never submits it. An in-flight comment write or unavailable recovery storage delays reload and keeps the current page and drafts visible. Automatic reload also retains the visit comparison's original baseline; an ordinary later visit still uses the normal browser-local visit marker.
+
 The reader and the SVG export share flowchart step routing and label readability rules in `plugin/skills/vstack-figures/scripts/presentation.ts`. Edge and cluster labels use a background-colored outline instead of Pele's edge-label boxes. Captured Mermaid sources get these rules on their next view without recapture. Historical SVGs retain their captured routes.
 
 ## Addon judge

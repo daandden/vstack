@@ -149,6 +149,46 @@ export function restoreReadingAnchor(anchor: ReturnType<typeof readingAnchor>) {
   }
   keepSelectionAtCurrentScroll();
 }
+export function captureReadingPlace() {
+  const anchor = readingAnchor();
+  const focused = document.activeElement;
+  return {
+    hash: location.hash, tab: tab.value, current: current.value, y: scrollY,
+    anchor: anchor?.el.id, top: anchor?.top,
+    details: [...document.querySelectorAll("details")].flatMap((el, i) => el.open ? [i] : []),
+    focus: focused instanceof HTMLElement ? focused.id : "",
+    selection: focused instanceof HTMLTextAreaElement ? [focused.selectionStart, focused.selectionEnd] : undefined,
+  };
+}
+
+export async function restoreReadingPlace(saved: unknown): Promise<boolean> {
+  if (!saved || typeof saved !== "object" || !("hash" in saved) || saved.hash !== location.hash ||
+    !("tab" in saved) || typeof saved.tab !== "string" || !("y" in saved) || typeof saved.y !== "number") return false;
+  if (!tabs().includes(saved.tab)) return false;
+  tab.value = saved.tab;
+  if ("current" in saved && typeof saved.current === "string") current.value = saved.current;
+  await nextTick();
+  if ("details" in saved && Array.isArray(saved.details)) {
+    const details = saved.details;
+    document.querySelectorAll("details").forEach((el, i) => { el.open = details.includes(i); });
+  }
+  await document.fonts.ready;
+  await new Promise<void>(done => requestAnimationFrame(() => requestAnimationFrame(() => done())));
+  measureHeader();
+  if ("focus" in saved && typeof saved.focus === "string") {
+    const field = document.getElementById(saved.focus);
+    field?.focus({ preventScroll: true });
+    if (field instanceof HTMLTextAreaElement && "selection" in saved && Array.isArray(saved.selection) &&
+      typeof saved.selection[0] === "number" && typeof saved.selection[1] === "number") field.setSelectionRange(saved.selection[0], saved.selection[1]);
+  }
+  scrollTo({ top: saved.y, behavior: "instant" });
+  if ("anchor" in saved && typeof saved.anchor === "string" && "top" in saved && typeof saved.top === "number") {
+    const el = document.getElementById(saved.anchor);
+    if (el) restoreReadingAnchor({ el, top: saved.top });
+  }
+  keepSelectionAtCurrentScroll();
+  return true;
+}
 
 export function keepPlaceNow(change: () => void) {
   const anchor = readingAnchor();
