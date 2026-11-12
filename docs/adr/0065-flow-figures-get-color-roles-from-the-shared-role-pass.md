@@ -10,7 +10,9 @@ A role fill is its accent tinted to about 22% over the background, with a solid 
 
 Focus is a 2.5px Mauve border on every focal node and never recolors the label. Mauve text on a solid role fill read at 1.04:1 to 1.6:1.
 
-The reader draws flowcharts with step edges and outlines edge and cluster labels, as the export does. This redraws existing Flow flowcharts with new edge routes.
+The reader draws flowcharts with step edges and outlines cluster labels, as the export does. This redraws existing Flow flowcharts with new edge routes.
+
+Edge labels keep Pele's label boxes in both the reader and the export. The user chose this on 2026-11-12 after comparing the boxes with a `0.3em` outline in both themes on the Flow page. The outline hid the line behind the letters but not in the spaces between words, so a label such as `~77 calls` still read as struck through.
 
 The reader draws a Document code block whose language is `mermaid` through the same pipeline and keeps its text in a Source disclosure. Submit checks such a block with Pele's parser only, because the block is text meant for GitHub and may carry its author's paint lines.
 
@@ -21,7 +23,8 @@ Submit runs the export's full check on `mermaid` attachments: unknown roles, two
 - **Reader CSS for role classes**: rejected. Pele copies `:::ok` onto the node group, so CSS can find it. But only class-marked nodes would get colors, intrinsic kinds and charts would differ from exports, and Pele's automatic label contrast applies only to fills written in the source.
 - **Render at capture and store the SVG**: rejected. It reverses ADR 0050's page-font measurement, and figures captured before the change would stay neutral.
 - **Solid fills in the light theme**: rejected for the text contrast above. Solid in Mocha with tints in Latte was also rejected in favor of one fill rule.
-- **Keep the reader's curved edges and boxed labels**: rejected so that a figure looks the same on the page and in an export. Mermaid's own default curve is `basis`, and both Mermaid and Pele box edge labels, so this is a vstack choice, not Mermaid practice.
+- **Keep the reader's curved edges**: rejected so that a figure looks the same on the page and in an export. Mermaid's own default curve is `basis`, so this is a vstack choice, not Mermaid practice.
+- **Outline edge labels instead of boxing them**: shipped with this decision, then reversed on 2026-11-12. Both Mermaid and Pele box edge labels.
 - **Full check on Document code blocks too**: rejected. It would refuse spec drafts whose Mermaid carries GitHub styling.
 
 ## Consequences
