@@ -45,7 +45,7 @@ Preconditions:
 2. Exercise the remaining precise consumer regression scenarios through their real CLI calls:
 
    ```sh
-   bun run test tests/figure-render.test.ts tests/figure-readability.test.ts tests/figure-bindings.test.ts tests/figure-entities.test.ts tests/figure-schedules.test.ts tests/figure-spatial.test.ts tests/figure-chart-colors.test.ts tests/figure-workflows.test.ts tests/figure-types.test.ts
+   bun test --timeout 30000 tests/figure-render.test.ts tests/figure-readability.test.ts tests/figure-bindings.test.ts tests/figure-entities.test.ts tests/figure-schedules.test.ts tests/figure-spatial.test.ts tests/figure-chart-colors.test.ts tests/figure-workflows.test.ts tests/figure-types.test.ts
    ```
 
    Expect no failures. The inputs are the literal sources in each named test, not workstation-only research files. Use these scenario names to locate a source for an individual replay:
@@ -80,7 +80,7 @@ Preconditions:
    bun "$SKILL_DIR/scripts/figure-flow.ts" "$CHECKOUT" "$VERIFY_RUN_DIR" "$FLOW_SESSION" "$FLOW_AGENT"
    ```
 
-   Expect `ok: true` in `figure-flow/summary.json`. This uses only `data/figure-home` and a labelled disposable Stage. It captures `figures/one.svg` as a historical Pele attachment, the retained seven-role Mermaid source with `cart` focus, and that same source as a Document `mermaid` code block. Both attachments appear on a question with Reader needs. Source and SVG hashes remain unchanged after the originals change. The missing-visual question, unknown role, authored paint, and text-only focus refuse with empty success stdout and unchanged stored state. Inspect their raw refusals. Open the live URL and inspect the question's Reader needs. Inspect `figure-flow/captured.svg` separately for export paints.
+   Expect `ok: true` in `figure-flow/summary.json`. This uses only `data/figure-home` and a labelled disposable Stage. It captures `figures/one.svg` as a historical Pele attachment, the retained seven-role Mermaid source with `cart` focus, and that same source as a Document `mermaid` code block. Both attachments appear on a question with Reader needs. Source and SVG hashes remain unchanged after the originals change. The missing-visual question, unknown role, authored paint, and text-only focus refuse with `ok: false` diagnostics on stdout and unchanged stored state. Inspect their raw refusals. Open the live URL and inspect the question's Reader needs. Inspect `figure-flow/captured.svg` separately for export paints.
 
    Select Light, Dark, then Light. Evaluate the complete text of `scripts/figure-reader-audit.js` after each selection and save its returned JSON:
 

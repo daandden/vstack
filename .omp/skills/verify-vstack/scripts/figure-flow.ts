@@ -16,7 +16,7 @@ async function command(args: string[], expected = 0) {
   const [code, stdout, stderr] = await Promise.all([p.exited, new Response(p.stdout).text(), new Response(p.stderr).text()]);
   logs.push({ argv, code, stdout, stderr }); writeFileSync(join(evidence, "commands.json"), JSON.stringify(logs, null, 2));
   assert.equal(code, expected, stderr);
-  if (code) { assert.equal(stdout, ""); return; }
+  if (code) { const refused = JSON.parse(stdout); assert.equal(refused.ok, false); assert(refused.diagnostics.length > 0); return refused; }
   return JSON.parse(stdout);
 }
 const opened = await command(["open", "--skill", "grill-with-docs", "--title", "Disposable isolated-home figure verification"]);
