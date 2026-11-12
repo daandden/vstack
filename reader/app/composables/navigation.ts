@@ -1,4 +1,5 @@
 import { flow } from "~/composables/reader";
+import { savedState } from "~/composables/reload";
 
 export const current = ref<string>();
 export const mapOpen = ref(false);
@@ -148,6 +149,45 @@ export function restoreReadingAnchor(anchor: ReturnType<typeof readingAnchor>) {
     scrollBy({ top: moved, behavior: "instant" });
   }
   keepSelectionAtCurrentScroll();
+}
+export function captureReadingPlace() {
+  const anchor = readingAnchor();
+  const focused = document.activeElement;
+  return {
+    hash: location.hash, tab: tab.value, current: current.value, y: scrollY,
+    anchor: anchor?.el.id, top: anchor?.top,
+    details: [...document.querySelectorAll("details")].flatMap((el, i) => el.open ? [i] : []),
+    focus: focused instanceof HTMLElement ? focused.id : "",
+    selection: focused instanceof HTMLTextAreaElement ? [focused.selectionStart, focused.selectionEnd] : undefined,
+  };
+}
+
+export async function restoreReadingPlace(value: unknown): Promise<boolean> {
+  const saved = savedState(value, { hash: "string", tab: "string", y: "number" }, { current: "string", details: "list", focus: "string", selection: "number pair", anchor: "string", top: "number" });
+  if (!saved || saved.hash !== location.hash) return false;
+  if (!tabs().includes(saved.tab)) return false;
+  tab.value = saved.tab;
+  if (saved.current !== undefined) current.value = saved.current;
+  await nextTick();
+  if (saved.details) {
+    const details = saved.details;
+    document.querySelectorAll("details").forEach((el, i) => { el.open = details.includes(i); });
+  }
+  await document.fonts.ready;
+  await new Promise<void>(done => requestAnimationFrame(() => requestAnimationFrame(() => done())));
+  measureHeader();
+  if (saved.focus !== undefined) {
+    const field = document.getElementById(saved.focus);
+    field?.focus({ preventScroll: true });
+    if (field instanceof HTMLTextAreaElement && saved.selection) field.setSelectionRange(saved.selection[0], saved.selection[1]);
+  }
+  scrollTo({ top: saved.y, behavior: "instant" });
+  if (saved.anchor !== undefined && saved.top !== undefined) {
+    const el = document.getElementById(saved.anchor);
+    if (el) restoreReadingAnchor({ el, top: saved.top });
+  }
+  keepSelectionAtCurrentScroll();
+  return true;
 }
 
 export function keepPlaceNow(change: () => void) {

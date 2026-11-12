@@ -22,7 +22,7 @@ socket.stop(true);
 
 function cli(args: string[], input?: object) {
   const p = Bun.spawnSync([process.execPath, SCRIPT, ...args, "--home", home, "--session", "diagrams"], {
-    cwd: root, env: { ...ENV, VSTACK_FLOW_PORT: String(port), HOME: home },
+    cwd: root, env: { ...ENV, VSTACK_FLOW_PORT: String(port), HOME: join(root, "default-home") },
     stdin: input ? new TextEncoder().encode(JSON.stringify(input)) : "ignore", stdout: "pipe", stderr: "pipe",
   });
   const stderr = p.stderr.toString();

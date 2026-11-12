@@ -1,6 +1,7 @@
 import { flowOf, type Content, type Flow, type Observations } from "~/utils/flow";
 import { goTo, readingAnchor, restoreReadingAnchor, tab } from "~/composables/navigation";
 import { refreshComments } from "~/composables/comments";
+import { reloadReader } from "~/composables/reload";
 
 export const flow = shallowRef<Flow>();
 export const observations = shallowRef<Observations>();
@@ -8,6 +9,7 @@ export const observations = shallowRef<Observations>();
 export const failure = ref<string>();
 /** `live` after a successful poll, `reconnecting` while the host is unavailable. */
 export const connection = ref<"connecting" | "live" | "reconnecting">("connecting");
+export const updateFailure = shallowRef<string>();
 
 const here = (path: string) => new URL(path, location.href);
 
@@ -28,10 +30,23 @@ async function keepPlace(change: () => void) {
 
 export function startReader() {
   let seenObservations: string | undefined;
+  let seenHost = document.querySelector<HTMLMetaElement>('meta[name="flow-host-generation"]')?.content;
+  const loadedReader = document.querySelector<HTMLMetaElement>('meta[name="flow-reader-generation"]')?.content;
+  let seenReader = loadedReader;
   const poll = async () => {
     try {
-      const versions = await fetchJson<{ revision: number; observationVersion: string }>("versions");
-      if (!flow.value || versions.revision > flow.value.revision) {
+      const versions = await fetchJson<{ revision: number; observationVersion: string; hostGeneration: string; readerGeneration: string }>("versions");
+      if (seenReader && versions.readerGeneration !== seenReader) {
+        try {
+          reloadReader();
+          return;
+        } catch {
+          updateFailure.value = "The reader update is waiting until Reader comments finish saving and browser-local recovery state can be saved. Your drafts remain on this page.";
+        }
+      } else updateFailure.value = undefined;
+      seenReader ??= versions.readerGeneration;
+      const replaced = seenHost !== undefined && versions.hostGeneration !== seenHost;
+      if (!flow.value || replaced || versions.revision > flow.value.revision) {
         const next = await fetchJson<Content>("content");
         if (!flow.value || next.revision >= flow.value.revision) {
           const previous = flow.value;
@@ -41,7 +56,8 @@ export function startReader() {
           if (question) await goTo(question, true, true);
         }
       }
-      if (versions.observationVersion !== seenObservations) {
+      seenHost = versions.hostGeneration;
+      if (replaced || versions.observationVersion !== seenObservations) {
         const next = await fetchJson<Observations>("observations");
         await keepPlace(() => { observations.value = next; });
         seenObservations = versions.observationVersion;

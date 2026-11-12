@@ -21,7 +21,7 @@ Preconditions:
 - The baseline from `README.md` and Doctor pass.
 - No Jira credentials are needed. The transport uses captured tool schemas and results serialized offline by mcp-atlassian package 0.23.1. The captured server reports FastMCP version 3.4.11. No live tracker writes are allowed for this recipe.
 
-Run the actual public API, using the documentation's binding as input:
+Step `ticket-publication-mcp`: Run the actual public API, using the documentation's binding as input:
 
 ```sh
 bun "$SKILL_DIR/scripts/ticket-publication.ts" "$CHECKOUT" "$VERIFY_RUN_DIR/publication-mcp"
@@ -29,13 +29,13 @@ bun "$SKILL_DIR/scripts/ticket-publication.ts" "$CHECKOUT" "$VERIFY_RUN_DIR/publ
 
 The evidence directory must not exist. The command prints a complete receipt, a successful resume, and two readback issues. `receipt.json`, `resume.json`, and `readback.json` retain the evidence. Both issues have system labels `["task"]` and custom readiness values `["unrelated", "available"]`. The dependent has parent `DEMO-99` and the foundation as its inward-side blocker. The durable record is `publication.json`.
 
-Run boundary cases through the same public interface:
+Step `ticket-publication-boundaries`: Run boundary cases through the same public interface:
 
 ```sh
 bun test --timeout 30000 tests/mcp-publication.test.ts tests/ticket-publisher.test.ts
 ```
 
-For parent-versus-head proof, extract only the base commit's publisher scripts under a disposable directory without checking out the base. Run the head's helper with the base directory as its first argument, the head checkout as its fixture argument, and `blocked` as its expected outcome:
+Step `ticket-publication-parent-vs-head`: For parent-versus-head proof, extract only the base commit's publisher scripts under a disposable directory without checking out the base. Run the head's helper with the base directory as its first argument, the head checkout as its fixture argument, and `blocked` as its expected outcome:
 
 ```sh
 bun "$SKILL_DIR/scripts/ticket-publication.ts" "$BASE_SOURCE_DIR" "$VERIFY_RUN_DIR/publication-base" "$CHECKOUT" blocked

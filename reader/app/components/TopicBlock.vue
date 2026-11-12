@@ -6,6 +6,7 @@ defineProps<{ topic: Flow["topics"][number] }>();
 
 <template>
   <article :id="topic.id" class="topic grid gap-2.5" data-stop>
+    <CorrectionNotice :notice="topic" />
     <h2 v-html="inline(topic.title)" />
     <p class="text-toned" v-html="inline(topic.summary)" />
     <div class="grid gap-1.5" v-html="prose(topic.body)" />

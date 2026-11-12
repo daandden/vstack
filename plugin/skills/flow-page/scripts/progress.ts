@@ -156,7 +156,7 @@ export const progressHandlers: Record<ProgressKind, ProgressHandler> = {
   },
 };
 
-export type ProgressView = Progress & {
+export type ProgressView = Omit<Progress, "tasks"> & {
   tasks: (Task & { blocked_by: string[] })[];
   stages: { finished: number; total: number };
   /** Unfinished tasks, then open blockers. */

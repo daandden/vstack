@@ -28,4 +28,4 @@ vstack-update and vstack-edit follow this model. They give the grill the cases t
 - The Addon pointer must be written into specs and tickets. A pointer that is missing means that implement works without the Addon.
 - Open decisions on the redesign map (label `wayfinder:map`) decide how this ADR applies to principles, the always-on rules, the scripts, and each remaining Addon.
 - Amended by ADR 0019: a skill with a key in `addon-questions.json` is an Addon even when it has a Base upstream row, so session carries Matt's retro and stays an Addon. The Matt flow gains implement-spec.
-- Amended by [ADR 0074](0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css.md). The skills derived from the UI upstream are visible Utility skills, not Addons.
+- Amended by [ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css](0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css.md). The skills derived from the UI upstream are visible Utility skills, not Addons.

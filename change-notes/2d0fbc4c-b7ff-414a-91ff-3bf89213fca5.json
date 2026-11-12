@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Let questions cite whole Results alongside precise entries, with model-resolved links and Asked in backlinks.",
+    "Label Asked in links by attempt when a question was asked again."
+  ]
+}

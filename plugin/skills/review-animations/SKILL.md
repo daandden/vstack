@@ -15,7 +15,7 @@ Read [STANDARDS.md](STANDARDS.md) before judging motion. It supplies the frequen
 
 A transition can run correctly yet regress responsiveness, continuity, or comfort. Flag genuine defects rather than assuming that working code earns approval. A high craft bar is not permission to manufacture violations from taste.
 
-Emil-derived guidance takes precedence over good-css for CSS and animation under ADR 0074, which amends ADR 0051. Reconcile disagreements within Emil's guidance using browser-specific behavior and observed evidence. Preserve blocking motion-review verdicts when the applicable rule and evidence justify them. In particular, the broad transform-and-opacity preference does not by itself prohibit clip-path, blur, layout animation, or a library shorthand. Establish the actual dependency version, rendering path, support, cost, and user impact before making a performance claim. A supported technique is not automatically cheap, and a transform is not automatically composited.
+Emil-derived guidance takes precedence over good-css for CSS and animation under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css, which amends ADR 0051. Reconcile disagreements within Emil's guidance using browser-specific behavior and observed evidence. Preserve blocking motion-review verdicts when the applicable rule and evidence justify them. In particular, the broad transform-and-opacity preference does not by itself prohibit clip-path, blur, layout animation, or a library shorthand. Establish the actual dependency version, rendering path, support, cost, and user impact before making a performance claim. A supported technique is not automatically cheap, and a transform is not automatically composited.
 
 ## Examine the interaction
 

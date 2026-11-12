@@ -37,7 +37,7 @@ function spawn(cmd: string[], cwd: string, env: Record<string, string>, stdin?: 
   return { code: r.exitCode, stdout, stderr: r.stderr.toString(), json };
 }
 const run = (args: string[], at: At, session?: string, stdin?: unknown) =>
-  spawn([process.execPath, SCRIPT, ...args, "--home", at.home], at.cwd, { ...ENV, HOME: at.home, VSTACK_FLOW_HOST: "off", ...(session ? { PI_SESSION_ID: session } : {}) }, stdin);
+  spawn([process.execPath, SCRIPT, ...args, "--home", at.home], at.cwd, { ...ENV, HOME: join(root, "default-home"), VSTACK_FLOW_HOST: "off", ...(session ? { PI_SESSION_ID: session } : {}) }, stdin);
 const clean = (at: At, from: number, days: number, ...args: string[]) =>
   spawn([process.execPath, CLEAN, "--home", at.home, "--now", new Date(from + days * DAY).toISOString(), ...args], at.cwd, ENV);
 const ok = (r: Run): any => {

@@ -16,4 +16,4 @@ The popup cost one keypress before every question round, and it covered the scre
 - Add a `/btw`-style input to the popup for side questions. `/btw` already does this from the composer.
 - Keep the panel until the user's next prompt, or for as long as the session is bound to a Flow. Both widen ADR 0047's rule that only question handoffs show the link.
 
-[ADR 0065](0065-n-stays-in-the-focused-stage-and-tern-tabs-follow-their-selected-session.md) points the panel link at the first asked question and adds a Picker presence on the Local Flow host while the picker is open.
+[ADR 0065-n-stays-in-the-focused-stage-and-tern-tabs-follow-their-selected-session](0065-n-stays-in-the-focused-stage-and-tern-tabs-follow-their-selected-session.md) points the panel link at the first asked question and adds a Picker presence on the Local Flow host while the picker is open.

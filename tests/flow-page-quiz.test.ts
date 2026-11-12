@@ -24,7 +24,7 @@ function world() {
 }
 function run(w: ReturnType<typeof world>, args: string[], input?: unknown) {
   const p = Bun.spawnSync(["bun", script, ...args, "--home", w.home], {
-    cwd: w.cwd, env: { ...ENV, HOME: w.home, PI_SESSION_ID: "quiz", VSTACK_FLOW_PORT: String(w.port) },
+    cwd: w.cwd, env: { ...ENV, HOME: join(root, "default-home"), PI_SESSION_ID: "quiz", VSTACK_FLOW_PORT: String(w.port) },
     stdin: input === undefined ? "ignore" : new TextEncoder().encode(JSON.stringify(input)), stdout: "pipe", stderr: "pipe",
   });
   return { code: p.exitCode, stdout: p.stdout.toString(), stderr: p.stderr.toString() };

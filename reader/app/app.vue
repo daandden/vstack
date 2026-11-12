@@ -1,7 +1,10 @@
 <script setup lang="ts">
-import { connection, failure, flow, startReader } from "~/composables/reader";
-import { goTo, onClick, onFocusIn, onFocusOut, onHashChange, onKey, onScroll, openFirstOpenQuestionTab, tab } from "~/composables/navigation";
+import { connection, failure, flow, startReader, updateFailure } from "~/composables/reader";
+import { captureReadingPlace, restoreReadingPlace, goTo, onClick, onFocusIn, onFocusOut, onHashChange, onKey, onScroll, openFirstOpenQuestionTab, tab } from "~/composables/navigation";
 import { startLearning } from "~/composables/learning";
+import { finishReaderRestore, onReaderReload, readReloadState } from "~/composables/reload";
+
+onReaderReload("place", captureReadingPlace);
 
 useHead(() => ({ title: flow.value ? `Flow: ${flow.value.flow.title}` : "Flow" }));
 
@@ -22,7 +25,8 @@ watch(flow, async (f) => {
   arrived = true;
   startLearning(f.flow.id);
   await nextTick();
-  if (!(await goTo(fragment(), false))) await openFirstOpenQuestionTab();
+  if (!(await restoreReadingPlace(readReloadState("place"))) && !(await goTo(fragment(), false))) await openFirstOpenQuestionTab();
+  try { finishReaderRestore(); } catch {}
 });
 
 const stageless = computed(() => flow.value?.reading.historical.filter((b) => !b.stage) ?? []);
@@ -42,11 +46,13 @@ const stageless = computed(() => flow.value?.reading.historical.filter((b) => !b
       <p v-if="connection === 'reconnecting'" class="notice" role="status">
         The Local Flow host stopped answering. This page keeps what it showed and reconnects when the host is back.
       </p>
+      <p v-if="updateFailure" class="notice" role="status">{{ updateFailure }}</p>
       <ContextNotes />
       <main id="reading" class="grid" aria-label="Flow content">
         <section id="overview" class="panel grid gap-3 [padding-block:var(--entry-space)] border-bs border-default" data-tab="overview" :hidden="tab !== 'overview'" aria-labelledby="overview-title">
           <h2 id="overview-title">Overview</h2>
           <ProgressPanel />
+          <ChangedSinceVisit />
           <StageOverview />
           <p class="quiet">Keys: <kbd>j</kbd> <kbd>k</kbd> next and previous section, <kbd>h</kbd> <kbd>l</kbd> previous and next tab, <kbd>n</kbd> next open question, <kbd>m</kbd> Map.</p>
         </section>

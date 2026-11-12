@@ -53,6 +53,8 @@ Ground every section in the repo. Leave no placeholders:
 
 The generated Evidence section resolves a fresh run entry at `<Scratch dir>/verify/<app>-<run-id>/`. Evidence and notes go at its top level. Throwaway app data goes in `data/`. Both modes use this Scratch path, never committed. Cleanup can remove disposable data, but must preserve evidence and notes at the named paths.
 
+Give each mandatory proof action a stable step ID, its required preconditions, and its passing observation. Distinguish optional observations from required journeys and negative probes before execution. Callers and Verifiers use these IDs under `skill://ship/references/verdict-record.md`.
+
 For browser screenshots, use `tab.screenshot({ format: "png" })` without `silent`. Inspect the auto-attached copy. Save the full-resolution PNG from the returned path to a `.png` evidence path, without resizing or conversion. If a detail is unreadable in the attached copy, capture that region with `selector` instead of reading the full-resolution file. Add `fullPage` when needed. Select the `iframe` element for iframe content.
 
 ## 3. Seed the feature map

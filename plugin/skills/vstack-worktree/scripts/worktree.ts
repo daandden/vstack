@@ -1,8 +1,9 @@
-import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, rmdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, isAbsolute, join, resolve } from "node:path";
 import { randomUUID } from "node:crypto";
 import { resolveOvnfs } from "./ovnfs.ts";
+import { declaredInput, readInputs, refuseCommittedOverlap } from "./inputs.ts";
 
 async function run(cwd: string, command: string[]) {
   const p = Bun.spawn(command, { cwd, stdin: "ignore", stdout: "pipe", stderr: "pipe" });
@@ -19,6 +20,7 @@ type Record = {
   repo: string; path: string; name: string; purpose: string; backend: "ovnfs" | "omp-wt";
   fallback: boolean; fallbackReason: string | null; cloned: boolean | null;
   branch: string | null; branchCreated: boolean; removed: boolean;
+  inputs?: string[];
 };
 const args = process.argv.slice(2);
 const command = args.shift();
@@ -27,7 +29,7 @@ let pending: { repo: string; name: string; path?: string; backend: "ovnfs" | "om
 try {
   while (args.length) {
     const key = args.shift()!; const value = args.shift();
-    if (!["--repo", "--purpose", "--commit", "--branch", "--new-branch", "--ref", "--record"].includes(key) || !value || flags.has(key)) throw new Error(`Invalid argument ${key}`);
+    if (!["--repo", "--purpose", "--commit", "--branch", "--new-branch", "--ref", "--record", "--inputs"].includes(key) || !value || flags.has(key)) throw new Error(`Invalid argument ${key}`);
     flags.set(key, value);
   }
   const recordArg = flags.get("--record");
@@ -41,6 +43,8 @@ try {
     const branch = flags.get("--new-branch") ?? flags.get("--branch") ?? null;
     const branchCreated = flags.has("--new-branch");
     if (["--commit", "--branch", "--new-branch"].filter(key => flags.has(key)).length !== 1 || (flags.has("--ref") && !branchCreated)) throw new Error("Choose --commit, --branch, or --new-branch with an optional --ref");
+    const inputs = flags.has("--inputs") ? readInputs(flags.get("--inputs")) : undefined;
+    if (inputs && !flags.has("--commit")) throw new Error("--inputs requires a detached --commit checkout.");
     const binary = resolveOvnfs(undefined, repo);
     if (branch) await checked(repo, ["git", "check-ref-format", "--branch", branch]);
     if (branchCreated && !(await run(repo, ["git", "show-ref", "--verify", `refs/heads/${branch}`])).code) throw new Error(`Branch already exists: ${branch}`);
@@ -91,6 +95,37 @@ try {
       pending = { repo, name, path, backend: "omp-wt", binary, branch: branchCreated ? branch : null };
       const stdout = await checked(repo, ["omp", "wt", "add", ...checkoutArgs]);
       record = { repo, purpose, name, path, backend: "omp-wt", fallback: true, fallbackReason: result.stderr.trim() || result.stdout.trim() || `ovnfs new exited ${result.code}`, cloned: /^Cloned from .+ via .+$/m.test(stdout), branch, branchCreated, removed: false };
+    }
+    if (inputs) {
+      if (record.backend === "omp-wt" && record.cloned !== true) throw new Error("Committed-input preparation requires worktree.clone and /skill:setup-vstack; never install dependencies as a fallback.");
+      const tracked = (await checked(record.path, ["git", "ls-files", "-z"])).split("\0").filter(Boolean);
+      refuseCommittedOverlap(tracked, inputs);
+      for (const input of inputs) {
+        if (!existsSync(resolve(record.path, input))) throw new Error(`Required runtime input ${JSON.stringify(input)} is missing from the created head. Proof is unavailable; check worktree.clone and /skill:setup-vstack.`);
+      }
+      const paths = await run(record.path, ["git", "ls-files", "--others", "-z", "--", ".", ...inputs.map(input => `:(exclude,literal)${input}`)]);
+      if (paths.code) throw new Error(`Cannot enumerate carried inputs: ${paths.stderr.trim()}`);
+      const unwanted = paths.stdout.split("\0").filter(Boolean);
+      for (const path of unwanted) {
+        if (declaredInput(path, inputs)) throw new Error(`Cannot exclude declared input ${JSON.stringify(path)} safely.`);
+        const stat = lstatSync(resolve(record.path, path));
+        if (path.split("/").some(part => part.toLowerCase() === ".git") || (!stat.isFile() && !stat.isSymbolicLink())) {
+          throw new Error(`Untracked nested repository or directory ${JSON.stringify(path)} cannot be cleaned safely.`);
+        }
+      }
+      for (const path of unwanted) {
+        unlinkSync(resolve(record.path, path));
+        for (let parent = dirname(resolve(record.path, path)); parent !== record.path; parent = dirname(parent)) {
+          try { rmdirSync(parent); } catch (error) {
+            if (["ENOTEMPTY", "EEXIST", "ENOENT"].includes((error as NodeJS.ErrnoException).code ?? "")) break;
+            throw error;
+          }
+        }
+      }
+      for (const input of inputs) {
+        if (!existsSync(resolve(record.path, input))) throw new Error(`Required runtime input ${JSON.stringify(input)} is unavailable after preparation. Declare the symlink itself, not a path beneath it.`);
+      }
+      record.inputs = inputs;
     }
     mkdirSync(dirname(recordPath), { recursive: true });
     writeFileSync(recordPath, `${JSON.stringify(record)}\n`, { flag: "wx" });

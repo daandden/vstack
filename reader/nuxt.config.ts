@@ -1,4 +1,7 @@
 import { fileURLToPath } from "node:url";
+import { join } from "node:path";
+
+const sourceRoot = process.env.FLOW_READER_SOURCE_ROOT ?? fileURLToPath(new URL("..", import.meta.url));
 
 export default defineNuxtConfig({
   ssr: false,
@@ -15,8 +18,8 @@ export default defineNuxtConfig({
   colorMode: { preference: "system", fallback: "light", classSuffix: "", dataValue: "theme", storageKey: "flow-reader:theme" },
   css: ["~/assets/main.css"],
   alias: {
-    "#flow": fileURLToPath(new URL("../plugin/skills/flow-page/scripts", import.meta.url)),
-    "#figures": fileURLToPath(new URL("../plugin/skills/vstack-figures/scripts", import.meta.url)),
+    "#flow": join(sourceRoot, "plugin/skills/flow-page/scripts"),
+    "#figures": join(sourceRoot, "plugin/skills/vstack-figures/scripts"),
   },
   app: {
     buildAssetsDir: "/_flow-reader/",

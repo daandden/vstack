@@ -18,7 +18,7 @@ test("Today facts stay readable while their matching sources toggle by keyboard 
   socket.stop(true);
   function cli(args: string[], input?: object): any {
     const p = Bun.spawnSync([process.execPath, SCRIPT, ...args, "--home", home, "--session", "reader-sources", "--agent", "fixture"], {
-      cwd: root, env: { ...ENV, HOME: home, VSTACK_FLOW_PORT: String(port) },
+      cwd: root, env: { ...ENV, HOME: join(root, "default-home"), VSTACK_FLOW_PORT: String(port) },
       stdin: input ? new TextEncoder().encode(JSON.stringify(input)) : "ignore", stdout: "pipe", stderr: "pipe",
     });
     if (p.exitCode !== 0) throw new Error(`flow-page ${args.join(" ")}: ${p.stderr}`);
