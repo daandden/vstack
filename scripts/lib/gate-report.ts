@@ -30,7 +30,6 @@ const git = (root: string, ...args: string[]) => {
 };
 const fileHash = (root: string, file: string) => existsSync(join(root, file)) ? hash(readFileSync(join(root, file))) : null;
 
-/** Records real process completion, including partial evidence before an interruption. */
 export class GateReport {
   readonly stages: GatePhase[] = [];
   readonly startedAt = new Date().toISOString();

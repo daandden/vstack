@@ -118,7 +118,6 @@ interface Checkout {
   source_git_dir?: string;
 }
 
-/** Inventories the base. Evidence gaps make every checkout uncertain, so only a test that sets `expectGaps` may see them. */
 function inventory(env: Record<string, string | undefined> = {}, expectGaps = false): Record<string, Checkout> {
   const r = cleanWt(["inventory"], env);
   expect(r.stderr).toBe("");

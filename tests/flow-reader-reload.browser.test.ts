@@ -29,11 +29,10 @@ test("served generation swaps refresh unchanged content and reload readers witho
   const listener = Bun.listen({ hostname: "127.0.0.1", port: 0, socket: { data() {} } });
   const port = listener.port;
   listener.stop(true);
-  // The gate's candidate assets are already installed above; a normal-home host refuses FLOW_READER_ASSETS by design.
-  const { FLOW_READER_ASSETS: _candidate, ...inherited } = ENV;
+  const { FLOW_READER_ASSETS: _candidate, ...envWithoutCandidateReader } = ENV;
   const cli = (args: string[], input?: object): Receipt => {
     const child = Bun.spawnSync([process.execPath, join(skills, "flow-page/scripts/flow-page.ts"), ...args, "--session", "reload-fixture", "--agent", "fixture"], {
-      cwd: project, env: { ...inherited, HOME: home, PATH: `${bin}:${ENV.PATH}`, VSTACK_FLOW_PORT: String(port) },
+      cwd: project, env: { ...envWithoutCandidateReader, HOME: home, PATH: `${bin}:${ENV.PATH}`, VSTACK_FLOW_PORT: String(port) },
       stdin: input ? new TextEncoder().encode(JSON.stringify(input)) : "ignore", stdout: "pipe", stderr: "pipe",
     });
     if (child.exitCode) throw new Error(child.stderr.toString());

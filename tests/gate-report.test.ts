@@ -126,7 +126,6 @@ for (const failure of ["", "FAIL_NON_BROWSER", "FAIL_BROWSER"]) test(`gate timin
     "reader/app/app.vue": "<template><h1>Candidate gate fixture</h1></template>\n",
   });
   rmSync(join(f.root, "node_modules"), { recursive: true, force: true });
-  // Compiler correctness stays in reader-proof.test.ts. This matrix measures phase execution and failure propagation.
   writeFiles(f.root, {
     "node_modules/nuxt/package.json": JSON.stringify({ name: "nuxt", bin: { nuxt: "generate.mjs" } }),
     "node_modules/nuxt/generate.mjs": `

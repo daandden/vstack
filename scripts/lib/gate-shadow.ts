@@ -27,7 +27,6 @@ export interface ShadowReceipt {
   evidenceHashes?: Record<string, string>;
 }
 
-// The whole checkout is a conservative dependency superset, including prose and fixtures.
 function inventory(root: string, exclude: Set<string> = new Set()) {
   const files: [string, string][] = [], stability: [string, number, number][] = [];
   const visited = new Set<string>();
@@ -72,7 +71,7 @@ export class GateShadow {
           if (Array.isArray(prior)) visit(prior);
           else if (prior.ok && prior.outcome === "passed" && prior.finishedAt) visit(prior.stages ?? []);
         }
-      } catch { /* Missing or malformed receipts are misses. */ }
+      } catch {}
     }
     this.initial = this.capture();
   }
@@ -133,7 +132,7 @@ export class GateShadow {
     const inputHash = digest(inputs);
     let evidenceComplete = false;
     try { evidenceComplete = !!previous?.evidenceHashes && Object.entries(previous.evidenceHashes).length > 0 && Object.entries(previous.evidenceHashes).every(([file, expected]) => existsSync(file) && hash(readFileSync(file)) === expected); }
-    catch { /* A removed evidence file invalidates the prediction. */ }
+    catch {}
     phase.shadow = { mode: "shadow", inputs, inputHash, unknown, predictedReuse: !unknown.length && previous?.reusablePass === true && previous.inputHash === inputHash && !!evidenceComplete, previousEvidence: previous?.evidence, evidence: this.evidence, freshResult: "running", reusablePass: false, reasons: unknown.length ? unknown : !evidenceComplete ? ["no complete prior evidence"] : previous?.inputHash !== inputHash ? ["changed inputs"] : [] };
   }
   end(phase: GatePhase, env: NodeJS.ProcessEnv) {

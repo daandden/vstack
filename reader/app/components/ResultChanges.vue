@@ -84,18 +84,20 @@ function difference(before: ObjectValue, after: ObjectValue): Change[] {
       if (!equal(oldOrder, newOrder)) leaf(oldOrder.join(", "), newOrder.join(", "), [...path, "Order"]);
       return;
     }
-    // Exact unchanged items separate edited runs, so inserting a paragraph does not mark its successors as new.
+    visitChangedRunsBetweenUnchangedItems(a, b, path);
+  }
+  function visitChangedRunsBetweenUnchangedItems(before: unknown[], after: unknown[], path: string[]) {
     let i = 0, j = 0;
-    while (i < a.length || j < b.length) {
-      if (i < a.length && j < b.length && equal(a[i], b[j])) { i++; j++; continue; }
-      let oldMatch = a.length, newMatch = b.length;
-      for (let x = i; x < a.length; x++) {
-        const y = b.findIndex((v, n) => n >= j && equal(a[x], v));
-        if (y !== -1) { oldMatch = x; newMatch = y; break; }
+    while (i < before.length || j < after.length) {
+      if (i < before.length && j < after.length && equal(before[i], after[j])) { i++; j++; continue; }
+      let nextUnchangedBefore = before.length, nextUnchangedAfter = after.length;
+      for (let x = i; x < before.length; x++) {
+        const y = after.findIndex((v, n) => n >= j && equal(before[x], v));
+        if (y !== -1) { nextUnchangedBefore = x; nextUnchangedAfter = y; break; }
       }
-      const size = Math.max(oldMatch - i, newMatch - j);
-      for (let n = 0; n < size; n++) visit(i + n < oldMatch ? a[i + n] : undefined, j + n < newMatch ? b[j + n] : undefined, [...path, String(j + n + 1)]);
-      i = oldMatch; j = newMatch;
+      const size = Math.max(nextUnchangedBefore - i, nextUnchangedAfter - j);
+      for (let n = 0; n < size; n++) visit(i + n < nextUnchangedBefore ? before[i + n] : undefined, j + n < nextUnchangedAfter ? after[j + n] : undefined, [...path, String(j + n + 1)]);
+      i = nextUnchangedBefore; j = nextUnchangedAfter;
     }
   }
   visit(before, after, []);

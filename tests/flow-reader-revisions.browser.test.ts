@@ -81,7 +81,6 @@ test("readers compare known Document and typed edits without losing snapshots or
       }
       if (proof) { await view.screenshot({ path: join(proof, `${ref}.png`) }); writeFileSync(join(proof, `${ref}.aria.txt`), await view.ariaSnapshot()); }
     }
-    // Focused edits keep their own snapshot even when the whole-Result revision is unchanged.
     const second = submit([{ kind: "revise", result: first.refs.table, base: authored.revision, set: { title: "Recovery timings, checked" } }]);
     await page.goto(`${opened.live.url}#${first.refs.table}`);
     await page.getByRole("heading", { name: "Recovery timings, checked", exact: true }).waitFor();

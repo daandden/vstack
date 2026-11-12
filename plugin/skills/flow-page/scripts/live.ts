@@ -33,7 +33,6 @@ export const capability = (secret: string, key: string, id: string) => createHma
 export const attest = (control: string, nonce: string, version: string, instance: string) => createHmac("sha256", control).update(`flow-host-proof-v1\n${nonce}\n${version}\n${instance}`).digest("hex");
 export const flowUrl = (port: number, secret: string, key: string, id: string) => `${originOf(port)}/f/${encodeURIComponent(key)}/${id}/${capability(secret, key, id)}/`;
 
-/** Browser proof may select temporary candidate assets. Normal serving uses the shipped reader. */
 export const readerDir = resolve(process.env.FLOW_READER_ASSETS ?? join(import.meta.dir, "..", "reader"));
 
 /** Every file of the shipped reader by its path relative to `readerDir`, sorted, or an error when it is not built. */
