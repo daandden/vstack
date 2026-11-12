@@ -105,6 +105,7 @@ test("question outcomes keep current readings and direct evidence, choices, and 
     cli(["submit"], [{ kind: "answer", question: timedOutRetry, response: { status: "answered", picks: ["A"] } }]);
     cli(["submit"], [{ kind: "stage", state: "finished" }]);
     await page.goto(`${opened.live.url}#${q.corrected}`);
+    await page.reload();
     const correctedOutcome = summary(q.corrected);
     await correctedOutcome.filter({ hasText: "Your pick: B. Ask before deployment" }).waitFor();
     const proof = process.env.FLOW_READER_EVIDENCE;
@@ -122,6 +123,7 @@ test("question outcomes keep current readings and direct evidence, choices, and 
     expect(await summary(corrected.refs.retry).innerText()).not.toContain("Re-asked");
     await page.goto(`${opened.live.url}#${q["timed-out"]}`);
     const timedOutOutcome = summary(q["timed-out"]);
+    await timedOutOutcome.getByRole("link", { name: "Latest attempt: Q2 in Implement", exact: true }).waitFor();
     expect(await timedOutOutcome.locator("p").first().innerText()).toBe("Re-asked");
     expect(await timedOutOutcome.locator("p").nth(1).innerText()).toContain("Timed out, not your answer");
     expect(await timedOutOutcome.innerText()).toContain("Your pick: A. Keep the recorded evidence");
