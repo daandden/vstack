@@ -124,8 +124,8 @@ export type CorrectionEndpoint = { id: string; stage: string; revision: number; 
   { kind?: "result"; result: string } | { kind: "reading" | "background" | "topic" | "context" | "decision" | "assumed"; result?: never }
 );
 export type Correction = { id: string; stage: string; time: string; reason: string; target: CorrectionEndpoint; replacement: CorrectionEndpoint };
-/** `title` names a Result endpoint by the corrected snapshot's title. */
-export type CorrectionLink = CorrectionEndpoint & { anchor: string; title?: string };
+/** `title` names the endpoint for a reader: a Result by the corrected snapshot's title (with its entry), a question's reading, context, or summary decision by its Q number and attempt, and a Background, Topic, or Assumed pick by its title or decision. */
+export type CorrectionLink = CorrectionEndpoint & { anchor: string; title: string };
 export type CorrectionView = Omit<Correction, "target" | "replacement"> & { target: CorrectionLink; replacement: CorrectionLink; head: CorrectionLink };
 export type CorrectionNotice = { correction?: CorrectionView; corrects: CorrectionView[] };
 /** A ref kind a field accepts, named in diagnostics by `label`. */
@@ -1672,13 +1672,31 @@ function correctionEndpoint(s: State, id: string, where: string): CorrectionEndp
 function correctionViews(s: State): CorrectionView[] {
   const relations = s.corrections ?? [];
   const successors = successorsOf(s);
+  const ask = (id: string): string => {
+    const q = s.questions.find(x => x.id === id);
+    if (!q) return id;
+    const asks = s.questions.filter(x => x.stage === q.stage && x.q === q.q);
+    return asks.length > 1 ? `Q${q.q} (attempt ${asks.indexOf(q) + 1})` : `Q${q.q}`;
+  };
+  const named = (e: CorrectionEndpoint): string => {
+    const key = endpointKey(e.id);
+    if (key?.kind === "reading") return `Answer reading for ${ask(key.question)}`;
+    if (key?.kind === "context") return `Context for ${ask(key.question)}`;
+    if (key?.kind === "decision") return `Summary decision for ${ask(key.question)}`;
+    if (e.kind === "reading") return `Answer reading for ${ask(s.readings?.find(r => r.id === e.id)?.question ?? e.id)}`;
+    if (e.kind === "background") return s.backgrounds.find(b => b.id === e.id)?.title ?? e.id;
+    if (e.kind === "topic") return s.topics.find(t => t.id === e.id)?.title ?? e.id;
+    if (e.kind === "assumed") return `Assumed: ${s.assumed.find(a => a.id === e.id)?.decision ?? e.id}`;
+    return e.id;
+  };
   const link = (e: CorrectionEndpoint): CorrectionLink => {
-    if (e.result === undefined) return { ...e, anchor: e.id.replace("/", "-") };
+    if (e.result === undefined) return { ...e, anchor: e.id.replace("/", "-"), title: named(e) };
     const current = s.results.find(r => r.id === e.result);
     const same = (r: Result) => r.id === e.result && (r.revision ?? 1) === e.revision && r.edit === e.edit;
     const anchor = current && same(current) ? e.result : `${e.result}-r${e.revision}${e.edit === undefined ? "" : `-edit${e.edit}`}`;
+    const entry = e.id === e.result ? undefined : e.id.slice(e.result.length + 1);
     const title = (current && same(current) ? current : s.history.find(same) ?? current)?.title;
-    return { ...e, anchor: `${anchor}${e.id === e.result ? "" : `-${e.id.slice(e.result.length + 1)}`}`, ...(title === undefined ? {} : { title }) };
+    return { ...e, anchor: `${anchor}${entry === undefined ? "" : `-${entry}`}`, title: title === undefined ? e.id : entry === undefined ? title : `${title}, entry ${entry}` };
   };
   return relations.map(c => ({ ...c, target: link(c.target), replacement: link(c.replacement), head: link(lastCorrection(successors, c.target.id)!.replacement) }));
 }

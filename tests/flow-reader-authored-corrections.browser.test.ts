@@ -35,6 +35,7 @@ test("authored corrections show current non-consent, retained raw words, histori
     const reason = "The original account inferred permission from uncertainty. ".repeat(12) + "https://example.com/workspaces/review/evidence/9f8e7d6c5b4a <script>alert(1)</script>";
     const targets = [first.refs["original-background"], first.refs["original-topic"], `${q}/context`, first.refs["original-assumption"], `${close.refs["original-summary"]}/${q}`, `${q}/reading`];
     const replacements = ["new-background", "new-topic", "new-context", "new-assumption", `new-summary/${q}`, "withdrawal"];
+    const names = ["original-background", "original-topic", "Context for Q1", "Assumed: A reversible default", "Summary decision for Q1", "Answer reading for Q1"];
     const sent = cli(["submit"], [background("new-background"), topic("new-topic"), topic("new-context"), { kind: "assumed", ref: "new-assumption", decision: "A reversible default", pick: "Use another default", why: "Still not a user answer" }, { kind: "close", ref: "new-summary", decisions: [{ question: q, text: "The summary did not establish permission" }] }, { kind: "reading", ref: "withdrawal", question: q, reading: { outcome: "ambiguous", unresolved: "The uncertain source did not authorize work. Ask again if needed." } }, ...targets.map((target, i) => ({ kind: "corrects", target, replacement: replacements[i], reason }))]);
     const page = await context.newPage();
     const errors: string[] = [];
@@ -54,7 +55,7 @@ test("authored corrections show current non-consent, retained raw words, histori
       await warning.getByRole("link", { name: "Correction", exact: true }).click();
       const replacement = i === 4 ? `${sent.refs["new-summary"]}-${q}` : sent.refs[replacements[i]];
       expect(new URL(page.url()).hash).toBe(`#${replacement}`);
-      await page.locator(`#${replacement}`).getByRole("complementary", { name: "Corrects earlier content", exact: true }).getByRole("link", { name: target, exact: true }).click();
+      await page.locator(`#${replacement}`).getByRole("complementary", { name: "Corrects earlier content", exact: true }).getByRole("link", { name: names[i], exact: true }).click();
       expect(new URL(page.url()).hash).toBe(`#${anchor}`);
     }
     await page.goto(`${opened.live.url}#${q}`);

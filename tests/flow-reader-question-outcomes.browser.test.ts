@@ -35,7 +35,7 @@ test("question outcomes keep current readings and direct evidence, choices, and 
       { kind: "result", ref: "evidence", shape: "document", title: "Deployment evidence", attachments: ["diagram"], sections: [{ heading: "Assessment", blocks: [{ prose: "Permission needs an explicit decision." }] }] },
       { kind: "round", questions: [
         { ...question("corrected"), title: "Can the deployment proceed after the assessment of incomplete source evidence?", needs: [{ need: "Compare all recorded evidence", kind: "context-diagram" }], figures: Array.from({ length: 8 }, () => ({ attachment: "diagram", kind: "context-diagram" })) },
-        question("picked"), question("written"), question("headless"), question("cancelled"), question("empty"), question("timed-out"), question("open"),
+        question("picked"), question("written"), question("headless"), question("cancelled"), question("empty"), question("timed-out"), question("open"), question("reasked"),
       ] },
     ]);
     const q = first.refs;
@@ -45,6 +45,8 @@ test("question outcomes keep current readings and direct evidence, choices, and 
       { kind: "answer", question: q.written, response: { status: "answered", text: "Keep the complete audit trail" }, reading: { outcome: "resolved", decision: "Retain the audit trail", basis: "The words settle retention" } },
       ...["headless", "cancelled", "empty", "timed-out"].map(status => ({ kind: "answer", question: q[status], response: { status, ...(status === "empty" ? {} : { picks: ["A"] }) } })),
     ]);
+    const reasked = cli(["submit"], [{ kind: "round", questions: [{ ...question("reasked-again"), again: q.reasked }] }]).refs["reasked-again"]!;
+    cli(["submit"], [{ kind: "answer", question: reasked, response: { status: "answered", picks: ["A"] } }]);
     await page.goto(`${opened.live.url}#${q.corrected}`);
     const summary = (id: string) => page.locator(`#${id}`).getByRole("region", { name: "Current outcome", exact: true });
     await summary(q.corrected).waitFor({ timeout: 5000 });
@@ -86,6 +88,15 @@ test("question outcomes keep current readings and direct evidence, choices, and 
     for (const [ref, text] of Object.entries({ picked: "Your pick: A. Keep the recorded evidence", written: "Retain the audit trail", headless: "Headless, not your answer", cancelled: "Cancelled, not your answer", empty: "Empty response, not your answer", "timed-out": "Timed out, not your answer", open: "Retired" })) {
       expect(await summary(q[ref]).innerText()).toContain(text);
     }
+    const earlier = summary(q.reasked);
+    expect(await earlier.innerText()).toContain("Re-asked");
+    expect(await earlier.innerText()).not.toContain("Open");
+    expect(await earlier.getByRole("link", { name: "Latest attempt: Q9 (attempt 2)", exact: true }).isVisible()).toBe(true);
+    expect(await earlier.innerText()).toContain("Your pick: A. Keep the recorded evidence");
+    expect(await page.locator(`#${q.reasked} .answer`).innerText()).toContain("Re-asked");
+    expect(await page.locator(`#${q.reasked} .answer`).innerText()).not.toContain("Not answered");
+    const shown = cli(["show", "--flow", opened.flow]) as unknown as { stages: { questions: { id: string; open: boolean }[] }[] };
+    expect(shown.stages[0]!.questions.find(x => x.id === q.reasked)?.open).toBe(false);
     await page.goto(`${opened.live.url}#overview`);
     expect(await page.locator("#overview-stages").innerText()).toContain("Unresolved after correction");
     expect(await page.locator("#overview-stages").innerText()).not.toContain("Proceed with deployment");

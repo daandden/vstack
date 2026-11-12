@@ -120,6 +120,26 @@ test("ordinary historical Results do not acquire inferred correction links", () 
   expect(w.shown().stages[0].results[0].corrects).toEqual([]);
 });
 
+test("non-Result Correction targets carry their title, with the question's attempt label when the Stage asked it again", () => {
+  const w = world();
+  const option = { label: "Proceed", does: "Starts work", gains: ["Progress"], costs: ["Premature action"] };
+  const ask = (ref: string, title: string, again?: string) => ({ ref, title, description: "Evidence is incomplete.", needs: [{ need: "Review uncertainty", kind: "prose" }], options: [option], ...(again ? { again } : {}) });
+  const first = w.ok(["submit"], [{ kind: "round", questions: [ask("go", "May work proceed?")] }]);
+  const q = first.refs.go;
+  w.ok(["submit"], [{ kind: "answer", question: q, response: { status: "answered", text: "probably fine" }, reading: { outcome: "resolved", decision: "Proceed", basis: "Read as consent" } }]);
+  const again = w.ok(["submit"], [{ kind: "round", questions: [ask("again", "May work proceed now?", q)] }]);
+  w.ok(["submit"], [{ kind: "answer", question: again.refs.again, response: { status: "answered", picks: ["A"] } }, { kind: "stage", state: "finished" }]);
+  w.next();
+  w.ok(["submit"], [
+    { kind: "reading", ref: "withdrawal", question: q, reading: { outcome: "ambiguous", unresolved: "Uncertainty is not permission." } },
+    { kind: "topic", ref: "new-context", title: "Corrected context", summary: "The source is incomplete", body: "No permission is implied.", sources: ["Local evidence"] },
+    { kind: "corrects", target: `${q}/reading`, replacement: "withdrawal", reason: "The reading invented permission." },
+    { kind: "corrects", target: `${q}/context`, replacement: "new-context", reason: "The context overstated the evidence." },
+  ]);
+  const titles = Object.fromEntries(w.shown().corrections.map(c => [c.target.id, c.target.title]));
+  expect(titles).toEqual({ [`${q}/reading`]: "Answer reading for Q1 (attempt 1)", [`${q}/context`]: "Context for Q1 (attempt 1)" });
+});
+
 test("entry replacements and forward refs resolve through the same discovery and validation contract without writing", () => {
   const w = world();
   const description = w.ok<{ fields: Record<string, unknown> }>(["describe", "corrects"]);

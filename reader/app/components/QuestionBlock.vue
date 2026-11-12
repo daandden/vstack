@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { VISUAL_KINDS } from "#flow/fields.ts";
 import { flow } from "~/composables/reader";
-import { optionLabel, questionOutcome, sourceText, type QuestionView } from "~/utils/flow";
+import { askLabel, optionLabel, questionOutcome, sourceText, type QuestionView } from "~/utils/flow";
 
 const props = defineProps<{ q: QuestionView }>();
 const f = computed(() => flow.value!);
@@ -28,6 +28,7 @@ const latestAttempt = computed(() => {
   }
   return latest;
 });
+const latestOutcome = computed(() => latestAttempt.value && questionOutcome(latestAttempt.value));
 const earlierAttempts = computed(() => props.q.asked_again_by.filter(id => id !== latestAttempt.value?.id));
 
 type Line = { label: string; html: string };
@@ -62,7 +63,10 @@ const lines = computed(() => {
     out.push({ label: "Still to ask", html: inline(rd.unresolved) });
   }
   if (props.q.retired) out.push({ label: "Retired", html: inline(props.q.retired.reason) });
-  if (!out.length && !a.picks) out.push({ label: props.q.latest ? "Open" : "Not answered", html: props.q.open ? "Waiting for your answer." : "No answer was recorded." });
+  if (!out.length && !a.picks) {
+    if (props.q.asked_again_by.length) out.push({ label: "Re-asked", html: "This attempt was asked again before an answer was recorded." });
+    else out.push({ label: props.q.latest ? "Open" : "Not answered", html: props.q.open ? "Waiting for your answer." : "No answer was recorded." });
+  }
   return out;
 });
 </script>
@@ -76,7 +80,8 @@ const lines = computed(() => {
       <nav aria-label="Question details" class="flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5">
         <a :href="`#${q.id}-choices`">Choices</a>
         <a :href="`#${q.id}-evidence`">Evidence</a>
-        <a v-if="latestAttempt" :href="`#${latestAttempt.id}`">Latest attempt: Q{{ latestAttempt.q }}{{ askedIn(latestAttempt.id) }}</a>
+        <a v-if="latestAttempt" :href="`#${latestAttempt.id}`">Latest attempt: {{ askLabel(f, latestAttempt.id) }}{{ askedIn(latestAttempt.id) }}</a>
+        <span v-if="latestOutcome" :class="latestOutcome.cls" v-html="latestOutcome.html" />
       </nav>
     </section>
     <section :id="`${q.id}-evidence`" aria-label="Question evidence" class="grid gap-2.5">

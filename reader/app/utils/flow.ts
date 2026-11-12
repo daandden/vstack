@@ -46,6 +46,7 @@ export function questionOutcome(q: QuestionView): { cls: string; html: string } 
     return { cls: "text-muted", html: `${q.retired ? "Retired: " : ""}${nonConsent}` };
   }
   if (q.retired) return { cls: "text-muted", html: "Retired" };
+  if (q.asked_again_by.length) return { cls: "text-muted", html: "Re-asked" };
   return { cls: "text-muted", html: "Open" };
 }
 
