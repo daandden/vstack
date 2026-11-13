@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Make the ten existing Emil-derived skills visible Utility skills, remove their Addon questions and sample labels, and record their CSS and animation precedence over good-css in ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css."
+  ]
+}

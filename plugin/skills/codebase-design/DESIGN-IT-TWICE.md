@@ -24,6 +24,8 @@ Draft designs 1–3 below in every run. Add design 4 when cross-seam dependencie
 
 Write one technical brief (file paths, coupling details, dependency category from [DEEPENING.md](DEEPENING.md), what sits behind the seam). The brief is independent of the user-facing problem-space explanation in Step 1. Give each design a different design constraint:
 
+Give each design a fresh context window containing only its brief and the supplied context pointers.
+
 - Design 1: "Minimize the interface: aim for 1–3 entry points max. Maximise leverage per entry point."
 - Design 2: "Maximise flexibility: support many use cases and extension."
 - Design 3: "Optimise for the most common caller: make the default case trivial."

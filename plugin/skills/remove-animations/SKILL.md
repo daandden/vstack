@@ -1,12 +1,11 @@
 ---
 name: remove-animations
-description: Scoped motion subtraction and lifecycle hazard checks for the existing audit and implementation owners.
-disable-model-invocation: true
+description: "Use when identifying unnecessary web animation, removing or reducing explicitly selected motion, or checking subtraction hazards in visibility, callbacks, unmount, and focus."
 ---
 
 # Remove animations
 
-Identify unnecessary motion and guide only authorized subtraction through the existing implementation owner. During an audit this Addon is read-only. The current owner retains explicit selection, edits, delegation, Flow, review, Verify, and delivery. This is neither a separate executor nor permission to remove every animation.
+Identify unnecessary motion and guide only authorized subtraction through the existing implementation owner. During an audit this Utility skill is read-only. The current owner retains explicit selection, edits, delegation, Flow, review, Verify, and delivery. This is neither a separate executor nor permission to remove every animation.
 
 Adapted from [emilkowalski/skills at the Pin](https://github.com/emilkowalski/skills/tree/a81dbca07f2217b7103e510c0f13f8d5b017afc9/skills/remove-animations). The [MIT notice](LICENSE) ships with the adaptation.
 
@@ -37,7 +36,7 @@ Only remove an effect or make the same effect smaller. Do not add replacement mo
 | Excessive stagger | Cap at 30ms/item or remove delays, without blocking use |
 | Persistent decorative loop | Remove repeats or keep a static end state |
 
-If subtraction would remove the only useful continuity cue or expose a layout jump, keep that motion and report the separate issue. Preserve useful unselected motion. An instant reduced-motion state is valid. Use ADR 0051's browser-qualified guidance rather than declaring every non-transform property invalid.
+If subtraction would remove the only useful continuity cue or expose a layout jump, keep that motion and report the separate issue. Preserve useful unselected motion. An instant reduced-motion state is valid. Emil-derived guidance takes precedence over good-css for CSS and animation under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css, which amends ADR 0051. Reconcile disagreements among Emil skills using browser-specific behavior and observed evidence rather than declaring every non-transform property invalid. Preserve skill://review-animations' blocking verdicts when the applicable rule and evidence justify them.
 
 ## Check removal hazards before editing
 
@@ -58,6 +57,6 @@ Until explicit diagnostic or user selection is recorded by the current owner, ke
 
 Reuse the owner's tests and Verify recipe. Observe open/closed visibility, entry focus, immediate or reduced exit/unmount, callbacks, rapid reversal, reduced motion, and deliberately retained useful motion where affected. Use skill://animation-performance for cost claims and skill://review-animations within the existing review path. Preserve evidence-backed blocking authority for regressions. A property name or a successful build is not browser proof.
 
-Every browser open uses `app: { tern: false }`, including delegated diagnostics, and records returned backend and engine. Retain ARIA, full-resolution lossless WebP, observations, actual dependency facts, and unassessed engines under the owner's Scratch.
+Every browser open uses `app: { tern: false }`, including delegated diagnostics, and records returned backend and engine. Retain ARIA, full-resolution screenshots, observations, actual dependency facts, and unassessed engines under the owner's Scratch.
 
 Return removed/reduced rows with location, previous effect, exact change, deciding branch, authorization, and evidence. Include a kept section naming the useful motion and documented decisions preserved, plus retained-but-flawed motion left for another task. Name obsolete code removed, dependencies inspected, any proposed uninstall awaiting approval, actual checks, and remaining uncertainty. Do not inflate source inspection into a claim of observed behavior.

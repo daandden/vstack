@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "bun test --timeout 30000 --path-ignore-patterns '**/*.browser.test.ts' && for file in tests/*.browser.test.ts; do bun test --timeout 30000 \"$file\" || exit; done",
+    "test": "bun scripts/test.ts",
     "check-register": "bun scripts/check-register.ts",
     "typecheck": "bun --bun tsc --project tsconfig.bun.json",
     "reader:prepare": "bun --bun nuxt prepare reader",

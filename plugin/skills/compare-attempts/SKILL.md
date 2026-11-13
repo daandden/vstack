@@ -62,7 +62,7 @@ Isolation: changes captured at `<absolute patch path>` (apply=false). Not applie
 
 Read that path as `patchPath`. Read the patch itself before treating it as a candidate; never invent a path from an agent id. If structured output hides the notice, read the full completion with the handle's `output()` or `agent://<id>`. If the path still cannot be recovered, report that candidate as unavailable rather than applying an unknown patch.
 
-A failed runner or one that produces no artifact drops out. For `tree`, an empty patch is no artifact. For `reply`, a substantive answer still counts when its evidence patch is empty. Note every dropout and continue with N−1. With fewer than two candidates left, stop and report.
+Only a runner that started and then failed or produced no artifact drops out. For `tree`, an empty patch is no artifact. For `reply`, a substantive answer still counts when its evidence patch is empty. Report each dropout and continue only while at least two candidates remain. Otherwise stop and report. A runner that cannot start, or missing isolation, still stops the step under the Fan-out line; neither is a dropout.
 
 ## Phase C: Cross-judge
 

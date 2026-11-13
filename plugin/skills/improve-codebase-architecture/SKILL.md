@@ -26,6 +26,8 @@ Read the project's domain glossary (`GLOSSARY.md`) and any ADRs in the area you'
 
 Resolve the absolute vstack root once: the git common directory's `vstack/` when its `config/` exists (Private mode), otherwise the main checkout root (Standard mode). Read domain documents and ADRs from that mode's configured paths.
 
+Give the explorer a fresh context window with the scoped brief and its context pointers.
+
 Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): walk the scoped codebase using the brief below and return evidence-backed candidates and open questions without editing or asking, the vstack root. Wait for its result. If it cannot be spawned, stop: report the architecture review as not run, with no candidates.
 
 Don't follow rigid heuristics; explore organically and note where you experience friction:
@@ -51,15 +53,15 @@ Write one `result` item with `shape: "cards"`. Give each candidate one entry wit
 - `title`: the deepening, named in the domain and architecture vocabulary.
 - `label`: the recommendation strength, one of `Strong`, `Worth exploring`, or `Speculative`.
 - `blocking`: `false`.
-- `evidence`: the files and modules involved, then the problem: why the current architecture causes friction.
+- `evidence`: only source file and line references for the modules involved.
 - `action`: the solution, a plain English description of what changes.
-- `impact`: the benefits in terms of locality and leverage, and how the tests improve.
+- `impact`: the current architectural problem and its consequences, then the expected benefits in locality and leverage, and how the tests improve.
 
 Capture the before and after Mermaid sources as `mermaid` attachments. Publish a companion Document with a section for each candidate and its two `figure` blocks. Name this candidate Result's entries in the pick question's `results`; the script creates reciprocal links. Put the top recommendation in the Result's `summary` line.
 
 Use GLOSSARY.md vocabulary for the domain, and the `skill://codebase-design` vocabulary for the architecture. If `GLOSSARY.md` defines "Order," talk about "the Order intake module," not "the FooBarHandler," and not "the Order service."
 
-ADR conflicts: if a candidate contradicts an existing ADR, only surface it when the friction is real enough to warrant revisiting the ADR. Start the card's `evidence` with the conflict, such as _"Contradicts ADR-0007, but worth reopening because…"_. Don't list every theoretical refactor an ADR forbids.
+ADR conflicts: if a candidate contradicts an existing ADR, only surface it when the friction is real enough to warrant revisiting the ADR. Start the card's `impact` with the conflict, such as _"Contradicts ADR-0007, but worth reopening because…"_. Don't list every theoretical refactor an ADR forbids.
 
 Do not propose interfaces yet. Publish the candidate Result, figure attachments, Document, and complete pick round in one Flow CLI contribution, then call `ask` with the receipt's generated questions under flow-page's "Every ask in a Flow" contract. The first round asks which candidate to explore, with one option per entry in entry order and the top recommendation as recommended. Its question's `results` names every candidate entry. Its `needs` includes comparing the candidates' before and after shapes. The Document does not satisfy that need, so repeat its captured Mermaid attachment references in the question's `figures`, each with `kind: "before-after"`, in candidate order. Record the response through the common contract.
 

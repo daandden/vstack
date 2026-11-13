@@ -15,6 +15,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Record Git hook capability
+        env:
+          GIT_CONFIG_GLOBAL: /dev/null
+          GIT_CONFIG_NOSYSTEM: "1"
+        run: |
+          command -v git
+          git --version
+          mkdir "$RUNNER_TEMP/empty-git-template"
+          git init --template="$RUNNER_TEMP/empty-git-template" -q "$RUNNER_TEMP/git-hook-capability"
+          observed=$(git -C "$RUNNER_TEMP/git-hook-capability" -c hook.ci-capability.event=post-checkout -c 'hook.ci-capability.command=printf vstack-ci-config-hook' hook run --ignore-missing post-checkout -- 0000000000000000000000000000000000000000 0000000000000000000000000000000000000000 1 2>&1)
+          test "$observed" = vstack-ci-config-hook
+          printf '%s\nConfiguration hook dispatch: passed\n' "$(git --version)" | tee -a "$GITHUB_STEP_SUMMARY"
+
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.4

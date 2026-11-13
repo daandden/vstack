@@ -36,11 +36,12 @@ function compact(contract: Description): string {
     if (required !== undefined) {
       const details = [`${path} type=${typeOf(field)} required=${required}`];
       if (field.values) details.push(`enum=${JSON.stringify(field.values)}`);
-      for (const key of ["min", "max", "integer", "expected", "discriminator", "oneOf"]) {
+      for (const key of ["min", "max", "integer", "expected", "discriminator", "oneOf", "selection"]) {
         if (field[key] !== undefined) details.push(`${key}=${JSON.stringify(field[key])}`);
       }
       lines.push(details.join(" "));
     }
+    if (required === undefined && field.selection) lines.push(`${path} selection=${JSON.stringify(field.selection)}`);
     for (const [name, child] of Object.entries(field.fields ?? {})) {
       visit({ ...(child as Description), ...(field.oneOf?.includes(name) ? { oneOf: field.oneOf } : {}) }, `${path}.${name}`, field.required?.includes(name) ?? false);
     }
@@ -54,4 +55,9 @@ function compact(contract: Description): string {
 export function describeResult(shape: string, contract: Contract, short: boolean): string {
   const described = describe(contract);
   return short ? compact(described) : JSON.stringify({ shape, purpose: contract.purpose, contract: described });
+}
+
+export function describeContribution(kind: string, contract: Contract, short: boolean): string {
+  const described = describe(contract);
+  return short ? compact(described) : JSON.stringify({ kind, contract: described });
 }

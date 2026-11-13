@@ -3,7 +3,6 @@
   "level": "patch",
   "entries": [
     "Keep unavailable or unknown clean-adr evidence rows open, derive completion from raw coverage, and preserve unchanged repeat runs (#453).",
-    "Renumber the unshipped clean-adr decision to ADR 0074 after integration without changing the separate grill-continuation ADR 0067.",
     "Keep evidence-poor clean-adr baselines and add executable sample-device evidence only to controlled-repair verification fixtures."
   ]
 }

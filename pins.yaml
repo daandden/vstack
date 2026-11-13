@@ -9,7 +9,7 @@ upstreams:
     repo: mattpocock/skills
     path: ""
     pin_kind: tag
-    pin: v1.3.1
+    pin: v1.3.2
     items:
       - { match: "skills/*/*", type: tree, kind: skill }
   pstack:
@@ -17,30 +17,28 @@ upstreams:
     repo: cursor/plugins
     path: pstack
     pin_kind: commit
-    pin: e73df471cd4bd918367e99f3dd9c51bd53ddf5f0
+    pin: c742dd61706fbacc1b95f1a20b7b988cf096ce6c
     items:
       - { match: "pstack/skills/principle-*", type: tree, kind: principle }
       - { match: "pstack/skills/*", type: tree, kind: skill }
       - { match: "pstack/skills/poteto-mode/playbooks/*.md", type: blob, kind: playbook }
       - { match: "pstack/agents/*.md", type: blob, kind: agent }
       - { match: "pstack/automations/*", type: tree, kind: agent }
-
+  
   css:
     role: CSS
     repo: vojtaholik/good-css
     path: skills/good-css
     pin_kind: commit
     pin: 92d436ba1937d1b1407c47e35abb3e199eaace2e
-    # check-register runs this script at the Pin over vstack page templates (plugin/skills/*/templates/).
-    page_lint: scripts/check-css.mjs
     items:
       - { match: "skills/good-css", type: tree, kind: skill }
-
+  
   emil:
     role: UI
     repo: emilkowalski/skills
     path: skills
     pin_kind: commit
-    pin: a81dbca07f2217b7103e510c0f13f8d5b017afc9
+    pin: 7cdf99421429c0a47d2cf9fbf40497b7ee0a3e5c
     items:
       - { match: "skills/*", type: tree, kind: skill }

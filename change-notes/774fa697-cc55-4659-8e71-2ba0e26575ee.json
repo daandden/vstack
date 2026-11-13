@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Automatically reload updated Flow readers while retaining unsent Reader comment drafts, their original targets, and reading position."
+  ]
+}

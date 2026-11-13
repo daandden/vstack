@@ -17,7 +17,7 @@ socket.stop(true);
 
 function cli(args: string[], input?: object) {
   const p = Bun.spawnSync([process.execPath, SCRIPT, ...args, "--home", home, "--session", "tabs", "--agent", "main"], {
-    cwd: root, env: { ...ENV, VSTACK_FLOW_PORT: String(port), HOME: home },
+    cwd: root, env: { ...ENV, VSTACK_FLOW_PORT: String(port), HOME: join(root, "default-home") },
     stdin: input ? new TextEncoder().encode(JSON.stringify(input)) : "ignore", stdout: "pipe", stderr: "pipe",
   });
   if (p.exitCode !== 0) throw new Error(`flow-page ${args.join(" ")} exited ${p.exitCode}: ${p.stderr.toString()}`);
@@ -120,6 +120,73 @@ test("Stage tabs show each Stage's own content in first-publication order under 
     });
     expect(ring.stop).toBe(true);
     expect(ring.color).toBe("rgba(0, 0, 0, 0)");
+  } finally {
+    await context.close();
+  }
+}, 120_000);
+
+test("Jump labels identify Assumed subjects and each published attempt without moving their destinations", async () => {
+  const opened = cli(["open", "--skill", "grill-me", "--title", "Long decision history"]);
+  const subjects = [
+    "Keep `captured evidence`",
+    "Preserve Đặng Thị Ngọc Hân's review notes",
+    "Retain the deployment configuration for the European production environment",
+    "Retain the deployment configuration for the European staging environment",
+    ...Array.from({ length: 8 }, (_, i) => `Keep the recorded compatibility decision for service ${i + 1}`),
+  ];
+  const first = submit(opened.flow, opened.stage, [
+    ...subjects.map((decision, i) => ({ kind: "assumed", ref: `choice-${i}`, decision, pick: "Keep the existing choice", why: "The agreed behavior stays unchanged." })),
+    doc("long", "Decision evidence", 30),
+    { kind: "round", questions: [question("original", "Keep the deployment route?"), question("single", "Keep the fallback?")] },
+  ]);
+  const second = submit(opened.flow, opened.stage, [{ kind: "round", questions: [{ ...question("retry", "Keep the deployment route?"), again: first.refs.original }] }]);
+  const third = submit(opened.flow, opened.stage, [{ kind: "round", questions: [{ ...question("retry", "Keep the deployment route?"), again: second.refs.retry }] }]);
+  const fourth = submit(opened.flow, opened.stage, [{ kind: "round", questions: [{ ...question("retry", "Revisit the original deployment route?"), again: first.refs.original }] }]);
+  const attempts: string[] = [first.refs.original, second.refs.retry, third.refs.retry, fourth.refs.retry];
+  const expectedIds: string[] = [...subjects.map((_, i) => first.refs[`choice-${i}`]), first.refs.long, first.refs.original, first.refs.single, ...attempts.slice(1)];
+  const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  try {
+    const page = await context.newPage();
+    await page.goto(`${opened.live.url}#${opened.stage}`);
+    await page.locator(".bar .jump-row").waitFor();
+    expect(await jumps(page)).toEqual(expectedIds);
+    expect(await shownBlocks(page)).toEqual(expectedIds);
+    const row = page.locator(".bar .jump-row");
+    expect(await row.locator(`a[href="#${first.refs["choice-0"]}"]`).innerText()).toBe("Assumed: Keep captured evidence");
+    for (let i = 1; i < subjects.length; i++) {
+      expect(await row.locator(`a[href="#${first.refs[`choice-${i}`]}"]`).innerText()).toBe(`Assumed: ${subjects[i]}`);
+    }
+    expect(await row.locator(`a[href="#${first.refs.single}"]`).innerText()).toBe("Q2");
+    for (const [i, id] of attempts.entries()) {
+      const link = row.getByRole("link", { name: `Q1 (attempt ${i + 1})`, exact: true });
+      expect(await link.getAttribute("href")).toBe(`#${id}`);
+      await link.click();
+      expect(await hash(page)).toBe(id);
+      expect(await selected(page)).toBe(opened.stage);
+      expect(await row.locator("a[aria-current]").getAttribute("href")).toBe(`#${id}`);
+      expect(await page.locator(`#${id}`).evaluate((el) => el.getBoundingClientRect().top - document.querySelector(".bar")!.getBoundingClientRect().bottom)).toBeGreaterThanOrEqual(-1);
+    }
+    await row.getByRole("link", { name: "Assumed: Keep captured evidence", exact: true }).click();
+    expect(await hash(page)).toBe(first.refs["choice-0"]);
+    await page.keyboard.press("j");
+    expect(await hash(page)).toBe(first.refs["choice-1"]);
+    await page.keyboard.press("k");
+    expect(await hash(page)).toBe(first.refs["choice-0"]);
+    await page.keyboard.press("m");
+    await page.getByRole("dialog", { name: "Map" }).waitFor();
+    await page.keyboard.press("Escape");
+    expect(await page.getByRole("dialog", { name: "Map" }).isVisible()).toBe(false);
+    expect(await hash(page)).toBe(first.refs["choice-0"]);
+    for (const width of [320, 2560]) {
+      await page.setViewportSize({ width, height: 900 });
+      expect(await row.isVisible()).toBe(true);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+    }
+    await page.setViewportSize({ width: 320, height: 900 });
+    await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
+    await page.emulateMedia({ colorScheme: "dark" });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+    expect(await jumps(page)).toEqual(expectedIds);
   } finally {
     await context.close();
   }

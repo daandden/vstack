@@ -14,3 +14,8 @@ export function resolveOvnfs(configured?: string | null, cwd = process.cwd()): s
   if (!binary) throw new Error(`ovnfs is not executable at ${path}. Run /skill:setup-vstack to install and configure it.`);
   return binary;
 }
+
+/** From v0.4.0, ovnfs gives a source repository one remote `ovnfs/NAME` per live checkout of it. */
+export function isOvnfsRemote(name: string): boolean {
+  return name.startsWith("ovnfs/");
+}

@@ -17,7 +17,7 @@ beforeEach(() => {
 });
 function run(args: string[], session: string, items?: object[]) {
   const p = Bun.spawnSync(["bun", SCRIPT, ...args, "--home", home, "--session", session], {
-    cwd, env: { PATH: process.env.PATH!, HOME: home, VSTACK_FLOW_HOST: "off" },
+    cwd, env: { PATH: process.env.PATH!, HOME: join(root, "default-home"), VSTACK_FLOW_HOST: "off" },
     stdin: items ? new TextEncoder().encode(JSON.stringify({ version: 1, items })) : "ignore",
     stdout: "pipe", stderr: "pipe",
   });
@@ -81,7 +81,7 @@ test("parallel wayfinder ticket Results retain both resolutions and a separate b
   const b = run(["open", "--flow", map.flow, "--skill", "wayfinder", "--ticket", "retention"], "b");
   async function publish(session: string, stage: string, decision: string) {
     const p = Bun.spawn(["bun", SCRIPT, "submit", "--flow", map.flow, "--stage", stage, "--home", home, "--session", session], {
-      cwd, env: { PATH: process.env.PATH!, HOME: home, VSTACK_FLOW_HOST: "off" },
+      cwd, env: { PATH: process.env.PATH!, HOME: join(root, "default-home"), VSTACK_FLOW_HOST: "off" },
       stdin: new TextEncoder().encode(JSON.stringify({ version: 1, items: [{ kind: "result", shape: "document", title: "Resolution", sections: [{ heading: "Decision", blocks: [{ prose: decision }] }] }, { kind: "stage", state: "finished" }] })),
       stdout: "pipe", stderr: "pipe",
     });

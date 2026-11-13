@@ -20,12 +20,12 @@ Preconditions:
 
 - The baseline from `README.md`.
 
-- Run the command. Send it as a prompt. Run `bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN_DIR" --name skill-command '{"type":"prompt","message":"/skill:vstack-tmp where does Scratch go"}'`. Exit 0, and `summary.json` shows the prompt with `"status": "completed"`.
-- Body and directory. Read the user message that contains the skill invocation, not the last message, because extensions can append guidance. Run `jq -r --arg skill "vstack-tmp" '.body.messages[] | select(.role=="user") | .content | if type=="array" then map(.text // "") | join("") else . end | select(contains("User invoked the \"" + $skill + "\" skill"))' "$VERIFY_RUN_DIR/skill-command/model-requests.jsonl" > "$VERIFY_RUN_DIR/skill-command-prompt.txt"`. The file holds `User invoked the "vstack-tmp" skill`, the line `# vstack-tmp` from the body, and `[Skill directory: $VERIFY_RUN_DIR/data/home/.omp/plugins/node_modules/vstack/skills/vstack-tmp]`. That path is the plugin link in the run's home. Doctor shows that the link points to `$CHECKOUT/plugin`.
-- No frontmatter. `grep -c '^name: vstack-tmp' "$VERIFY_RUN_DIR/skill-command-prompt.txt"` prints `0`.
-- Arguments. The same file ends with the line `User: where does Scratch go`.
-- Hidden skill. Repeat with a skill whose frontmatter has `disable-model-invocation: true`, for example `/skill:grill-me`, and `--name skill-command-hidden`. The model gets that body as well.
-- Your change. For an edited skill, run its command the same way and `grep -F` a line you added in the prompt file. That proves the session used the edited file.
+- Step `skill-command-run`: Run the command. Send it as a prompt. Run `bun "$SKILL_DIR/scripts/drive.ts" --plugin "$CHECKOUT/plugin" --run "$VERIFY_RUN_DIR" --name skill-command '{"type":"prompt","message":"/skill:vstack-tmp where does Scratch go"}'`. Exit 0, and `summary.json` shows the prompt with `"status": "completed"`.
+- Step `skill-command-body`: Body and directory. Read the user message that contains the skill invocation, not the last message, because extensions can append guidance. Run `jq -r --arg skill "vstack-tmp" '.body.messages[] | select(.role=="user") | .content | if type=="array" then map(.text // "") | join("") else . end | select(contains("User invoked the \"" + $skill + "\" skill"))' "$VERIFY_RUN_DIR/skill-command/model-requests.jsonl" > "$VERIFY_RUN_DIR/skill-command-prompt.txt"`. The file holds `User invoked the "vstack-tmp" skill`, the line `# vstack-tmp` from the body, and `[Skill directory: $VERIFY_RUN_DIR/data/home/.omp/plugins/node_modules/vstack/skills/vstack-tmp]`. That path is the plugin link in the run's home. Doctor shows that the link points to `$CHECKOUT/plugin`.
+- Step `skill-command-no-frontmatter`: No frontmatter. `grep -c '^name: vstack-tmp' "$VERIFY_RUN_DIR/skill-command-prompt.txt"` prints `0`.
+- Step `skill-command-args`: Arguments. The same file ends with the line `User: where does Scratch go`.
+- Step `skill-command-hidden`: Hidden skill. Repeat with a skill whose frontmatter has `disable-model-invocation: true`, for example `/skill:grill-me`, and `--name skill-command-hidden`. The model gets that body as well.
+- Step `skill-command-change`: Your change. For an edited skill, run its command the same way and `grep -F` a line you added in the prompt file. That proves the session used the edited file.
 - Session-bound script. A skill whose script checks the running session, such as clean-wt, needs `--session`. `clean-wt.md` gives that recipe, with and without `--session`.
 
 ## Gotchas

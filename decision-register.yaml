@@ -9,7 +9,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/engineering/ask-matt
-    tree: da068f2392e1144469cbc602ffff96ef47881a88
+    tree: d6a0d9bf3cdc78cbfcbd6466ac5fd3deffb52877
     disposition: reject
     artifacts: []
     reason: "vstack has one way in, through the Matt flow (ADR 0015)."
@@ -17,7 +17,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/engineering/code-review
-    tree: d8e341cee7980127dddda05159bedf25dc853615
+    tree: a8ef561571acbb611de8ff19ba6da75b197c63a8
     disposition: adapt
     artifacts: [plugin/skills/code-review]
     reason: "PR pinning accepts MCP Code hosts without operation rows, selects read-pr by descriptions and schemas, and fetches exact commits through project facts. It retains CLI rows and review axes and fetches originating tracker keys and comments through current descriptions, schemas, and recorded facts (#204, #207, ADR 0035). Flow publication is conditional and chat keeps the full output (#321, ADR 0046)."
@@ -25,7 +25,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/engineering/codebase-design
-    tree: 07ba1cd60efc12d0d3a083005c1d9651cf15e39a
+    tree: 4cbe1c131e1ea54109cb1e4e5f3c505810db6606
     disposition: merge
     artifacts: [plugin/skills/codebase-design]
     reason: "DESIGN-IT-TWICE runs a Fan-out of vstack agents (#36), and improve-codebase-architecture runs it after every pick. Adds proportionate visual grounding, screening and rationale for grill-with-docs without weakening that detailed-design workflow (#334, ADR 0053)."
@@ -33,7 +33,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/engineering/diagnosing-bugs
-    tree: de4236cf34757c4e9ea7afe78d46c023213ff254
+    tree: 5fdd6cc53385395441910b026c72d71768e993d4
     disposition: adapt
     artifacts: [plugin/skills/diagnosing-bugs]
     reason: "Its user questions go through ask (ask-tool, #58). Flow publication is conditional and chat keeps the full output (#321, ADR 0046). Reject vacuous loop passes and require symptom-based red and green proof when a fix removes the assertion's observation channel (#259). Cost-free hypotheses run alone before a lasting-cost fix is chosen through ask, and the hand-back reports actual hypothesis runs (#258)."
@@ -44,7 +44,7 @@ items:
     tree: ea30ee454ba264543dbe40737973b1a5afb9f0e6
     disposition: adapt
     artifacts: [plugin/skills/domain-modeling]
-    reason: "Its user questions use the shared Flow publication and ordinary ask contract (ask-tool, #58, #165). Flow publication is conditional and chat keeps the full output (#321, ADR 0046). Record qualifying decisions already made without an ADR offer, carry settled terms into the glossary, and keep new choices and terminology conflicts explicit (#423, ADR 0069). Counts the ADR archive when choosing the next ADR number, so no number is reused (ADR 0074, #450)."
+    reason: "Its user questions use the shared Flow publication and ordinary ask contract (ask-tool, #58, #165). Flow publication is conditional and chat keeps the full output (#321, ADR 0046). Record qualifying decisions already made without an ADR offer, carry settled terms into the glossary, and keep new choices and terminology conflicts explicit (#423, ADR 0069). New ADRs use local creation dates and stable full-stem citations instead of Upstream sequential numbers (#462, ADR 20261111-new-adrs-are-named-by-date-and-slug)."
   - id: matt/grill-with-docs
     upstream: matt
     kind: skill
@@ -57,7 +57,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/engineering/implement
-    tree: f07d230f645fc9ac390cf13a450bbff12ad791a3
+    tree: 4804b466ab26c9b9d8d42917547db133d1f20a9f
     disposition: adapt
     artifacts: [plugin/skills/implement]
     reason: "Settles End states from user words, the ticket, project default, then ask through live MCP discovery and Code host routing. The agent picks test seams by tdd's rule and asks only for a Costly seam (ADR 0062), and goes red per slice (#183, ADR 0035, ADR 0038). Preserves tune-llm-flow kept-round and eval commits (ADR 0041). Shared step 6b independently verifies committed HEAD at every End state and gates reached progress (ADR 0043). It owns Shared checkout briefs, REFUSED and cleanup_error availability checks, and unchanged-clone verification safety. Preserves supplied architecture agreements while leaving coding choices to implementation; consequential departures remain open until the user resolves them (#336, ADR 0053). Frontend tasks and delegated briefs conditionally reach good-css and its shipped UI guidance (#339, ADR 0051). The Conflict owner merges the target in and asks the user before resolving a hunk that chooses between behaviors (ADR 0033). Recovers run-owned clone preparation and stale branch state once while preserving proof, SHA guards, and the existing FAIL or DRIFT limit (#424, ADR 0070)."
@@ -65,7 +65,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/engineering/improve-codebase-architecture
-    tree: 39bd9cc130f7dfcc4e3ea0b3613f6ebed0d0ad2b
+    tree: 587147dd230da299cc5e84971cb0a33f6676f8a6
     disposition: adapt
     artifacts: [plugin/skills/improve-codebase-architecture]
     reason: "Its sub-agent spawn names a vstack agent (ADR 0004); its candidates go on the Flow page as a cards Result, not an HTML report (#169); it runs Design It Twice after every pick and shows the designs as Document and Comparison Results before grilling (#267)."
@@ -81,7 +81,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/engineering/research
-    tree: 0a6796c5667e95ed2301ba7381c123b4acb2ae1a
+    tree: 2f8f36af48796faed5c687c75bb650071631a984
     disposition: adapt
     artifacts: [plugin/skills/research]
     reason: "Background agent names a vstack agent (#36). Flow publication is conditional and chat keeps the full output (#321, ADR 0046). A standalone run closes the Flow it created (#322)."
@@ -89,15 +89,15 @@ items:
     upstream: matt
     kind: skill
     path: skills/engineering/setup-matt-pocock-skills
-    tree: b1568cde855a189b16e5d7dd8a0fa4c3f156bc2e
+    tree: b644b684781fd5baae57f6be000a180a4d4448d7
     disposition: adapt
     artifacts: [plugin/skills/setup-vstack]
-    reason: "Write, commit, and push Standard-mode config after section choices without Write it, preserving Private-mode and dirty-file boundaries. Names the ADR archive in fresh domain drafts and Private-mode Migration config (ADR 0074, #450). Documents the optional clean-adr report-only path list in fresh and Private-mode Migration config and preserves its checkout-relative paths (#452)."
+    reason: "Share Private mode MCP configuration across new worktrees without tracked changes or replacement of existing hooks. Names the ADR archive in fresh domain drafts and Private-mode Migration config (ADR 20261110-clean-adr-archives-adrs-and-rewrites-what-holds, #450). Documents the optional clean-adr report-only path list in fresh and Private-mode Migration config and preserves its checkout-relative paths (#452)."
   - id: matt/tdd
     upstream: matt
     kind: skill
     path: skills/engineering/tdd
-    tree: bf1bf5ffcd63aa8abce830f2955a853c121fb463
+    tree: 667dbdd00c09d0e2189e082986e6a4d61a67c2a6
     disposition: adapt
     artifacts: [plugin/skills/tdd]
     reason: "The agent picks test seams by tdd's rule and asks only for a Costly seam through the shared Flow publication and ordinary ask contract (ADR 0062). Points at `skill://codebase-design` and `skill://code-review` (#209). Flow publication is conditional and chat keeps the full output (#321, ADR 0046)."
@@ -113,7 +113,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/engineering/to-tickets
-    tree: b32c94e5a51c24ee9c41fcb7fe9ea9fff9af6369
+    tree: 2dee20ad722a31c04ededf9f2d83842473573045
     disposition: adapt
     artifacts: [plugin/skills/to-tickets]
     reason: "Publish the drift-checked breakdown and drafted MCP binding without approval, retaining publisher guards under ADR 0068. Save Standard-mode publication records in Scratch (ADR 0066)."
@@ -129,7 +129,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/engineering/wayfinder
-    tree: 8ec0462658381bd1606d3f9db14ffc67df6a2a43
+    tree: 25da74eadc3e388b2f2a2cc716f3d44b2fb9dfe0
     disposition: adapt
     artifacts: [plugin/skills/wayfinder]
     reason: "Publish complete ticket graph snapshots during charting and each claimed ticket Stage."
@@ -137,10 +137,10 @@ items:
     upstream: matt
     kind: skill
     path: skills/engineering/wizard
-    tree: 0a163daf092c6f361158ca9627e81f2cb5230574
+    tree: e396d3ba97c723a78ffd350fb14a3c409137b306
     disposition: adapt
     artifacts: [plugin/skills/wizard]
-    reason: "Its user questions go through ask (ask-tool, #58). Secrets and variables go to the CI service, with manual instructions when its commands are absent (ADR 0034). Flow publication is conditional and chat keeps the full output (#321, ADR 0046)."
+    reason: "Its user questions go through ask (ask-tool, #58). Secrets and variables go to the CI service, with manual instructions when its commands are absent (ADR 0034). Flow publication is conditional and chat keeps the full output (#321, ADR 0046). Env-files use Bun-only literal writes and matching defaults, refusing unsupported readers and lossy values (ADR 0075)."
   - id: matt/grill-me
     upstream: matt
     kind: skill
@@ -153,7 +153,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/productivity/grilling
-    tree: f0732035b8b1b60ae39454e4191caef32fa91903
+    tree: f551b6e0d219fdda0b6abf277f8f915b3127d1e9
     disposition: adapt
     artifacts: [plugin/skills/grilling]
     reason: "Sub-agent spawn names a vstack agent; one round is one ask; the Flow page lives in flow-page (#267); pushback reopens its decision; a session writes into its flow's page as a Stage, and ask options carry labels only; the grill keeps the default summary-only close while honoring caller-owned same-turn continuations and their consent guards (#420, ADR 0067); reversible, non-taste, cited decisions are settled in an Assumed table that a note can reopen (#42, #58, #145, #165, #225, ADR 0032, ADR 0037). Flow publication is conditional and chat keeps the full output (#321, ADR 0046). Present material trade-offs accurately and concretely in Flow and chat rounds, give approximate sizes for decision-relevant costs when estimable, state when they cannot be estimated, and include significant inherited costs (#257, correction of #374). The fixed Bookkeeping list settles without a cited repo fact, records reopenable Assumed picks, and preserves ADR 0037 for every other decision (#423, ADR 0069). Recovers run-owned publication and picker failures once without treating non-consent as infrastructure failure (#424, ADR 0070)."
@@ -161,7 +161,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/productivity/handoff
-    tree: 2242e8f05424b8c2ae94194a90d97b88d16108ec
+    tree: ce24892bd2d4b9e7fd5ac9b95c03175e18bef388
     disposition: adapt
     artifacts: [plugin/skills/handoff]
     reason: "Saves to Scratch under ~/.vstack/tmp instead of the OS temp dir, and carries the Flow's id, Stage, and page link (tmp-path, #57, #171, #267)."
@@ -169,7 +169,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/productivity/teach
-    tree: 2ab11f2f51f3c29771edb5d4258d807a49462491
+    tree: 3fd617b610e59acbb99644de1ef37e394ff53cd1
     disposition: adapt
     artifacts: [plugin/skills/teach]
     reason: "Its user questions use the shared Flow publication and ordinary ask contract in a teach Stage (ask-tool, #58, #172)."
@@ -201,7 +201,7 @@ items:
     upstream: matt
     kind: skill
     path: skills/in-progress/claude-handoff
-    tree: 6845c30e62e1c0c2c0fbdea8307379197f0b4dc4
+    tree: 57d198aca08eddccb113632d52c6c13f1f3066ac
     disposition: reject
     artifacts: []
     reason: "in-progress bucket, not in Matt's plugin manifest; revisit if moved into engineering or productivity."
@@ -289,7 +289,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/arena
-    tree: 849b0b1191f81144ea3a7c7f117011f54d5c872f
+    tree: 276eb958ee333a81105a66ef3f417b72ddf88126
     disposition: adapt
     artifacts: [plugin/skills/compare-attempts]
     reason: "Renamed for independent attempts on the Session model, only when the user asks for several attempts (ADR 0015)."
@@ -345,10 +345,10 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/interrogate
-    tree: 9768af06553215b2381710d5813796c4ddefe91f
-    disposition: reject
-    artifacts: []
-    reason: "Its signal is model diversity; its merged verdict contradicts code-review's separate axes."
+    tree: 3a49e73a4ffd56f682288dd145be9345bfec7434
+    disposition: adapt
+    artifacts: [ plugin/skills/interrogate ]
+    reason: "Visible answer-only Utility for run-proven adversarial review, using isolated Session-model workers and independent coordinator reruns without fixes or changes to review and final Verifier ownership (#458, ADR 0004, ADR 0043)."
   - id: pstack/maintain-verification-skill
     upstream: pstack
     kind: skill
@@ -377,7 +377,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/poteto-mode
-    tree: 9015b70a220b67bb808a06ff5bcbcffc8ebf57eb
+    tree: 432d3d07ede504b492a3711443f5a0a602a8b811
     disposition: reject
     artifacts: []
     reason: "Sticky Cursor mode; its Playbooks are registered separately and its principle index goes to jev delivery."
@@ -585,7 +585,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/setup-pstack
-    tree: d533da1671e44234a9f72d1d4db8043cedd25eb2
+    tree: 800811ddcb1d1d1831bfd853cfad14429a3d6842
     disposition: reject
     artifacts: []
     reason: "Per-role model configuration is out of scope."
@@ -665,7 +665,7 @@ items:
     upstream: pstack
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/autonomous-run.md
-    tree: e6b88703cf327a76bcdd424429345ac0efeca67e
+    tree: af3bf11609a24020f678f859f13a65710ab67fbd
     disposition: reject
     artifacts: []
     reason: "Needs Cursor /loop; revisit if omp documents goal mode."
@@ -673,7 +673,7 @@ items:
     upstream: pstack
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/autopilot-full.md
-    tree: 068882379d9bdc2298052e7762d67ac795715baf
+    tree: bbc5b3751ad789cfbd92f8937a2e84de365509ad
     disposition: reject
     artifacts: []
     reason: "Without fleets, implement already drives open-pr, babysit, and ship to its settled End state (ADR 0015)."
@@ -681,7 +681,7 @@ items:
     upstream: pstack
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/autopilot-stack.md
-    tree: d7bdc289e045e8bc7da97b4ddfccc8d6c9ed0800
+    tree: 819862c8fe7b756c8571eed410a30a09625673d9
     disposition: reject
     artifacts: []
     reason: "Same reason as autopilot-full."
@@ -689,7 +689,7 @@ items:
     upstream: pstack
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/babysit.md
-    tree: 51549ab2da11e5905342bbb3aadb93685c8ac348
+    tree: 14d5783d447ba3530d038c9dffa514f2492a54e0
     disposition: adapt
     artifacts: [plugin/skills/babysit]
     reason: "Hidden drive-mode knowledge takes the failed build only from the check's link, selects MCP logs from current tool descriptions, and permits reruns only through the configured CLI command or MCP rerun pin (ADR 0015, ADR 0034, ADR 0035)."
@@ -737,7 +737,7 @@ items:
     upstream: pstack
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/multi-phase-plan.md
-    tree: 27e99947bd20575e2ff503dbfba985a4f0fa298e
+    tree: 7101aa71dbc08f2b84baa227a7bd589f800f13e8
     disposition: reject
     artifacts: []
     reason: "Competing planning path with the opposite position on file paths."
@@ -745,7 +745,7 @@ items:
     upstream: pstack
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/opening-a-pr.md
-    tree: d729a7a06c5b67e406b081e1777114bc03b66f4a
+    tree: 4a92c501f184ea24392d59a9889ce2f08e8e9201
     disposition: adapt
     artifacts: [plugin/skills/open-pr]
     reason: "Opens a ready PR through code-host.md. The body follows skill://pr, with Blast Radius findings and an Evidence section citing the accepted Verdict. Publishes the draft and delivery facts on the Flow page (ADR 0020, ADR 0043)."
@@ -753,7 +753,7 @@ items:
     upstream: pstack
     kind: playbook
     path: pstack/skills/poteto-mode/playbooks/orchestrate.md
-    tree: 4ccb24d76c5e190125cecc99d4a9b5c9eb2932d9
+    tree: b6e5f5661a1e6b4778845de53f331cee3486905b
     disposition: reject
     artifacts: []
     reason: "Fleet scale, cloud workers, different-family verifiers."
@@ -868,13 +868,13 @@ items:
     tree: 716c242ae3ef01743ab8e1851222260a05050763
     disposition: adapt
     artifacts: [plugin/skills/good-css]
-    reason: "Keeps non-animation CSS duties and conditionally reaches shipped construction, review, audit, opportunity, and safe subtraction guidance under ADR 0051."
+    reason: "Keeps unique CSS techniques without Emil hand-offs, conflicting rules, or repeated advice; Emil guidance holds under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css (#459)."
     adr: docs/adr/0051-selected-emil-skills-govern-animation-guidance.md
   - id: matt/implement-spec
     upstream: matt
     kind: skill
     path: skills/engineering/implement-spec
-    tree: 0cfefc751d0cb64f0c948ffcb17e13b94e778f08
+    tree: 200830c5d204c1fd29129af9d392c8a4c258b1b5
     disposition: adapt
     artifacts: [plugin/skills/implement-spec]
     reason: "Runs isolated ticket implementers and mergers, preserving one commit per ticket and final review fixes. Uses one Flow Stage for coordinator asks and Results. The agent picks test seams by tdd's rule and asks only for a Costly seam, without holding non-costly patches and with approved costly tests added by a follow-up implementer (ADR 0062). Resolves the MCP task graph through current descriptions, schemas, directional blockers, and close transition. Tickets and spec close only after shared step 6b accepts the committed-head Verdict (ADR 0019, ADR 0022, ADR 0035, ADR 0038, ADR 0043, #167, #207). Carries agreed architecture through existing spec and ticket pointers, holding consequential departures through the existing open-question path (#336, ADR 0053)."
@@ -930,7 +930,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/poteto-help
-    tree: f0f51d567a4c1e57465470f7b3a4c8a24c38e97c
+    tree: f0670fe669e944b4a42f027bd440aa21d50e46f8
     disposition: reject
     artifacts: []
     reason: "pstack's own help; vstack routes through ask-vstack."
@@ -938,7 +938,7 @@ items:
     upstream: pstack
     kind: principle
     path: pstack/skills/principle-explain-the-number
-    tree: 2f468162c9ce85478f1fb1198149646a2ef0f735
+    tree: 7d97b8efd90780774b38ccb9dad1aa232bd51ff9
     disposition: adopt
     artifacts: [plugin/skills/principle-explain-the-number]
     reason: "Keeps its text as a hidden Addon that jev selects during a Matt run (ADR 0018)."
@@ -946,7 +946,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/create-formal-verification-skill
-    tree: d0dde8b2a927266f7783e4e06bc9e1a395a09b11
+    tree: 091f2a26d46f7bed511d0532a1329532a45899e0
     disposition: reject
     artifacts: []
     reason: "Deferred at e73df471cd4bd918367e99f3dd9c51bd53ddf5f0: formal verification needs a toolchain and figure decision."
@@ -954,7 +954,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/ketchup-video
-    tree: 88d708fb6f91555d8216d018d3e81b8fb093045d
+    tree: 73f013af52a35306c4bb5b484dae72bf1c8f9edd
     disposition: reject
     artifacts: []
     reason: "Deferred at e73df471cd4bd918367e99f3dd9c51bd53ddf5f0: video recap over ketchup; no renderer ships."
@@ -978,7 +978,7 @@ items:
     upstream: pstack
     kind: skill
     path: pstack/skills/statechart
-    tree: b6373798ceb3e9caf951241f152512cce5de6721
+    tree: a79a48c6970be3b63d6efefb0a306b7c87de88d0
     disposition: reject
     artifacts: []
     reason: "Deferred at e73df471cd4bd918367e99f3dd9c51bd53ddf5f0: formal verification needs a toolchain and figure decision."
@@ -994,18 +994,18 @@ items:
     upstream: emil
     kind: skill
     path: skills/animate
-    tree: a92e36f28d741aee4ff77d1a001300d7e86e07fe
+    tree: fe46ac61092a8cf086dce6a907fc98295a600d3d
     disposition: adapt
     artifacts: [ plugin/skills/animate ]
-    reason: "Hidden motion construction guidance and companion recipes retain existing execution ownership, accessible state transitions, and ADR 0051 browser-qualified authority."
+    reason: "Visible Utility skill for motion construction and companion recipes, retaining existing execution ownership, accessible transitions, and browser-qualified Emil precedence over good-css under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css."
   - id: emil/animation-performance
     upstream: emil
     kind: skill
     path: skills/animation-performance
-    tree: 59c4651915a493803d1696d4278d2f9f980e47c8
+    tree: a0261dde73fb2206d71b014450ce1c0c297d2c6a
     disposition: adapt
     artifacts: [ plugin/skills/animation-performance ]
-    reason: "Hidden measured animation diagnosis guidance uses actual dependency and browser evidence rather than unconditional acceleration claims or an independent executor."
+    reason: "Visible Utility skill for measured animation diagnosis, using actual dependency and browser evidence rather than unconditional acceleration claims or an independent executor, with Emil precedence under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css."
   - id: emil/animation-vocabulary
     upstream: emil
     kind: skill
@@ -1021,7 +1021,7 @@ items:
     tree: cd509ae729c86487d352e17a26651217a4c25711
     disposition: adapt
     artifacts: [ plugin/skills/apple-design ]
-    reason: "Hidden Apple-derived web guidance preserves vstack ownership, conditional references, dependency checks, and browser-qualified motion authority."
+    reason: "Visible Utility skill for Apple-derived web guidance, preserving vstack ownership, dependency checks, and browser-qualified Emil precedence over good-css under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css."
   - id: emil/ask-sonner
     upstream: emil
     kind: skill
@@ -1037,15 +1037,15 @@ items:
     tree: f2a3441d4cf14df060ee363e155502a4818b5f8d
     disposition: adapt
     artifacts: [ plugin/skills/break-ui ]
-    reason: "Hidden adverse-content knowledge and required catalog preserve existing implementation, review, Verify, and evidence ownership without an independent executor."
+    reason: "Visible Utility skill for adverse-content testing and its required catalog, preserving implementation, review, Verify, and evidence ownership with Emil precedence under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css."
   - id: emil/emil-design-eng
     upstream: emil
     kind: skill
     path: skills/emil-design-eng
-    tree: db7a20dc1d8ad26a0307dcb45ebc79fc372f5c69
+    tree: e79b9cc03e06efe8d40349bc39df0ed4a9d5deff
     disposition: adapt
     artifacts: [plugin/skills/emil-design-eng]
-    reason: "Hidden reference-only design guidance preserves vstack execution and evidence ownership, conditional activation, and browser-qualified motion authority."
+    reason: "Visible Utility skill for reference-only design guidance, preserving vstack execution and evidence ownership with browser-qualified Emil precedence over good-css under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css."
     adr: docs/adr/0051-selected-emil-skills-govern-animation-guidance.md
   - id: emil/find-animation-opportunities
     upstream: emil
@@ -1054,15 +1054,15 @@ items:
     tree: e6443880f38e33cf78e5d678471eed35e8566763
     disposition: adapt
     artifacts: [ plugin/skills/find-animation-opportunities ]
-    reason: "Hidden opportunity guidance gates additive motion, records rejections, and returns proposals to existing explicit selection ownership."
+    reason: "Visible Utility skill for additive motion proposals, retaining purpose and frequency gates, recorded rejections, explicit selection ownership, and Emil precedence under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css."
   - id: emil/improve-animations
     upstream: emil
     kind: skill
     path: skills/improve-animations
-    tree: cf1f7aabac34c08f2cf833f039fa99af2f415183
+    tree: d3ce6f348009d830b89e7a830cc958245aea2ad6
     disposition: adapt
     artifacts: [ plugin/skills/improve-animations ]
-    reason: "Hidden read-only motion audit and companion requirements use existing selection, planning, review, and evidence owners without executor or plan-status imports."
+    reason: "Visible Utility skill for read-only motion audits and selected requirements, retaining existing selection, planning, review, and evidence owners with Emil precedence under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css."
   - id: emil/mobile-native
     upstream: emil
     kind: skill
@@ -1070,7 +1070,7 @@ items:
     tree: fdad6e6e91d8bbfda7164c7027269a8389dbadcd
     disposition: adapt
     artifacts: [ plugin/skills/mobile-native ]
-    reason: "Hidden mobile-web guidance preserves vstack ownership, capability checks, zoom and accessibility, and honest browser versus device evidence."
+    reason: "Visible Utility skill for mobile-web guidance, preserving capability checks, zoom, accessibility, vstack ownership, and honest browser versus device evidence with Emil precedence under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css."
   - id: emil/pick-ui-library
     upstream: emil
     kind: skill
@@ -1094,15 +1094,15 @@ items:
     tree: e1d06083891b6445c7fb5dae31f06b1e8b81f0dc
     disposition: adapt
     artifacts: [ plugin/skills/remove-animations ]
-    reason: "Hidden scoped subtraction guidance preserves visibility, callbacks, unmount, focus, useful motion, and separate dependency-removal approval."
+    reason: "Visible Utility skill for scoped motion subtraction, preserving visibility, callbacks, unmount, focus, useful motion, and separate dependency-removal approval with Emil precedence under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css."
   - id: emil/review-animations
     upstream: emil
     kind: skill
     path: skills/review-animations
-    tree: 0e0d3cb3e07ca307fe946ccaf57f6c82eb75124a
+    tree: bede4e1924423cea207f67ffe7a742b8d6ad753e
     disposition: adapt
     artifacts: [ plugin/skills/review-animations ]
-    reason: "Hidden motion-review guidance and companion standards preserve evidence-backed blocking authority, browser-qualified exceptions, and existing review ownership."
+    reason: "Visible Utility skill for motion review and companion standards, preserving evidence-backed blocking authority, browser-qualified exceptions, and existing review ownership with Emil precedence under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css."
   - id: emil/write-swift
     upstream: emil
     kind: skill
@@ -1111,6 +1111,32 @@ items:
     disposition: reject
     artifacts: []
     reason: "Native Swift work is outside the selected web UI scope of spec 338."
+  - id: matt/chief-of-staff
+    upstream: matt
+    kind: skill
+    path: skills/in-progress/chief-of-staff
+    tree: e27d538afafcd3dc55b7787e1476101b2f1f319e
+    disposition: reject
+    artifacts: []
+    reason: in-progress bucket, not in Matt's plugin manifest; revisit if moved into engineering or productivity.
+  - id: emil/choreograph
+    upstream: emil
+    kind: skill
+    path: skills/choreograph
+    tree: a3766de3feddecbb5565d6eb41d32349c916ca4e
+    disposition: adapt
+    artifacts:
+      - plugin/skills/choreograph
+    reason: Visible Utility skill for coordinated web motion, preserving existing execution, review, verification, and evidence owners with Emil precedence under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css (#458).
+  - id: emil/gestures
+    upstream: emil
+    kind: skill
+    path: skills/gestures
+    tree: d30dfa5756b880d26c07adfb364d8506f963e6e6
+    disposition: adapt
+    artifacts:
+      - plugin/skills/gestures
+    reason: Visible Utility skill for direct-manipulation web gestures with dependency-conditional Vaul guidance, preserving existing execution, review, verification, and evidence owners with Emil precedence under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css (#458).
 originals:
   - plugin/agents/vstack-explorer.md
   - plugin/agents/vstack-verifier.md
@@ -1126,7 +1152,7 @@ originals:
   - plugin/skills/flow-page # Reader stack: ADR 0072. Saved Reader comments: ADR 0073.
   - plugin/skills/vstack-worktree
   - plugin/skills/skill-creator
-  - plugin/skills/vstack-maintain
+  - plugin/skills/vstack-maintain # Includes vstack's page lint, scripts/check-css.mjs (#456).
   - plugin/skills/vstack-figures
   - plugin/skills/clean-wt
   - plugin/skills/tune-llm-flow
@@ -1135,6 +1161,9 @@ originals:
   - plugin/skills/clean-adr
   - plugin/rules/vstack-posting.md
   - plugin/rules/vstack-recovery.md
+  - plugin/skills/pick-frontend-stack
+  - plugin/rules/vstack-python.md
+  - plugin/rules/vstack-images.md
 utility:
   - plugin/skills/unslop
   - plugin/skills/technical-writing
@@ -1152,3 +1181,17 @@ utility:
   - plugin/skills/in-your-own-words
   - plugin/skills/clean-wt
   - plugin/skills/clean-adr
+  - plugin/skills/animate
+  - plugin/skills/animation-performance
+  - plugin/skills/apple-design
+  - plugin/skills/break-ui
+  - plugin/skills/emil-design-eng
+  - plugin/skills/find-animation-opportunities
+  - plugin/skills/improve-animations
+  - plugin/skills/mobile-native
+  - plugin/skills/remove-animations
+  - plugin/skills/review-animations
+  - plugin/skills/interrogate
+  - plugin/skills/choreograph
+  - plugin/skills/gestures
+  - plugin/skills/pick-frontend-stack

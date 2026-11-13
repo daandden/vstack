@@ -20,22 +20,22 @@
       "id": "workspace-member-content-boundaries",
       "split": "tune",
       "prompt": "Make the workspace member list robust to long emails, Unicode names, missing roles and translated action labels in a narrow desktop sidebar. Exercise empty, single-member and 1,284-member states, and fix clipped content or displaced row actions.",
-      "expected": ["break-ui"],
-      "allowed": ["emil-design-eng", "principle-experience-first", "principle-prove-it-works"]
+      "expected": [],
+      "allowed": ["principle-experience-first", "principle-prove-it-works"]
     },
     {
       "id": "mobile-web-platform",
       "split": "tune",
       "prompt": "Make this phone-facing web pickup form work with touch, changing viewport height, safe areas, desktop hover, and accessible email and telephone inputs. Keep the existing web stack.",
-      "expected": ["mobile-native", "emil-design-eng"],
+      "expected": [],
       "allowed": ["principle-experience-first", "principle-prove-it-works"]
     },
     {
       "id": "apple-web-interaction",
       "split": "tune",
       "prompt": "Polish this web sheet with direct pointer tracking, interruptible reversal, immediate press feedback, a legible translucent toolbar, and a deliberate typography hierarchy.",
-      "expected": ["apple-design", "emil-design-eng"],
-      "allowed": ["mobile-native", "principle-experience-first", "principle-prove-it-works"]
+      "expected": [],
+      "allowed": ["principle-experience-first", "principle-prove-it-works"]
     },
     {
       "id": "readme-typo",
@@ -110,7 +110,6 @@
       "prompt": "Add a CSV export button to the reports page.",
       "expected": [],
       "allowed": [
-        "emil-design-eng",
         "principle-experience-first",
         "principle-prove-it-works"
       ],
@@ -301,7 +300,6 @@
       "split": "tune",
       "prompt": "Add drag-to-reorder cards to the kanban board (React + TypeScript). We have nothing like it yet.",
       "expected": [
-        "emil-design-eng",
         "principle-experience-first"
       ],
       "allowed": [
@@ -381,7 +379,6 @@
         "principle-experience-first"
       ],
       "allowed": [
-        "emil-design-eng",
         "principle-subtract-before-you-add"
       ],
       "baseline_selected": {
@@ -929,7 +926,6 @@
         "principle-experience-first"
       ],
       "allowed": [
-        "emil-design-eng",
         "principle-prove-it-works"
       ],
       "baseline_selected": {
@@ -1082,7 +1078,7 @@
       "id": "h-add-tooltip",
       "split": "holdout1",
       "prompt": "Add a tooltip to the export button that says \"Download as CSV\".",
-      "expected": ["emil-design-eng"],
+      "expected": [],
       "allowed": [
         "principle-experience-first"
       ],
@@ -1136,7 +1132,6 @@
       "prompt": "Add date and author filters to the search page. Filters on the other list pages already use the FilterBar component.",
       "expected": [],
       "allowed": [
-        "emil-design-eng",
         "principle-experience-first",
         "principle-prove-it-works"
       ],
@@ -1297,7 +1292,6 @@
         "principle-encode-the-domain"
       ],
       "allowed": [
-        "emil-design-eng",
         "principle-prove-it-works",
         "principle-redesign-from-first-principles",
         "principle-type-system-discipline"
@@ -2362,7 +2356,6 @@
       "prompt": "You want to add a button to the reports page that lets users export report data as a CSV file, making it easy to download and use in spreadsheets or other tools.",
       "expected": [],
       "allowed": [
-        "emil-design-eng",
         "principle-experience-first",
         "principle-prove-it-works"
       ],
@@ -2574,7 +2567,6 @@
       "restated": true,
       "prompt": "You want to add drag-and-drop reordering to your React + TypeScript kanban board so users can rearrange cards visually. Since there’s no existing drag-and-drop functionality, this needs to be built from scratch, including the drag interaction and updating the board’s state to reflect the new card order.",
       "expected": [
-        "emil-design-eng",
         "principle-experience-first"
       ],
       "allowed": [
@@ -2655,7 +2647,6 @@
         "principle-experience-first"
       ],
       "allowed": [
-        "emil-design-eng",
         "principle-subtract-before-you-add"
       ],
       "baseline_selected": {
@@ -3242,7 +3233,6 @@
         "principle-experience-first"
       ],
       "allowed": [
-        "emil-design-eng",
         "principle-prove-it-works"
       ],
       "baseline_selected": {
@@ -3407,7 +3397,7 @@
       "split": "restated",
       "restated": true,
       "prompt": "You want the export button to show a tooltip reading “Download as CSV” so users know what the button does.",
-      "expected": ["emil-design-eng"],
+      "expected": [],
       "allowed": [
         "principle-experience-first"
       ],
@@ -3469,7 +3459,6 @@
       "prompt": "You want to add date and author filters to the search page, reusing the FilterBar component already used on other list pages so the filtering interface stays consistent across the app.",
       "expected": [],
       "allowed": [
-        "emil-design-eng",
         "principle-experience-first",
         "principle-prove-it-works"
       ],
@@ -3653,7 +3642,6 @@
         "principle-encode-the-domain"
       ],
       "allowed": [
-        "emil-design-eng",
         "principle-prove-it-works",
         "principle-redesign-from-first-principles",
         "principle-type-system-discipline"
@@ -4559,7 +4547,7 @@
       "id": "ui-motion-review-blocking",
       "split": "tune",
       "prompt": "Review this frontend motion diff for approval. The command palette now slides in for 900ms on every keyboard shortcut. Check reduced motion and give evidence-backed blocking findings.",
-      "expected": ["review-animations", "emil-design-eng"],
+      "expected": [],
       "allowed": ["principle-experience-first", "principle-prove-it-works"],
       "baseline_selected": {},
       "baseline_borderline": {}
@@ -4568,7 +4556,7 @@
       "id": "ui-motion-review-supported-clip",
       "split": "tune",
       "prompt": "Review the existing occasional pointer reveal animation before approving it. It uses clip-path in our supported Chromium. Judge actual interruption and reduced-motion behavior rather than banning every property except transform and opacity.",
-      "expected": ["review-animations", "emil-design-eng"],
+      "expected": [],
       "allowed": ["principle-experience-first", "principle-prove-it-works"],
       "baseline_selected": {},
       "baseline_borderline": {}
@@ -4577,7 +4565,7 @@
       "id": "ui-motion-disclosure",
       "split": "tune",
       "prompt": "Animate this occasional web disclosure with a short interruptible reveal. Keep keyboard use instant and respect reduced motion.",
-      "expected": ["animate", "emil-design-eng"],
+      "expected": [],
       "allowed": ["principle-experience-first", "principle-prove-it-works"],
       "baseline_selected": {},
       "baseline_borderline": {}
@@ -4586,8 +4574,8 @@
       "id": "ui-motion-stutter",
       "split": "tune",
       "prompt": "Diagnose why this web animation stutters during hydration. Measure the browser workload and compare the driver fix without changing duration or distance.",
-      "expected": ["animation-performance"],
-      "allowed": ["emil-design-eng", "perf-issue", "benchmark-checklist", "principle-fix-root-causes", "principle-prove-it-works"],
+      "expected": [],
+      "allowed": ["perf-issue", "benchmark-checklist", "principle-fix-root-causes", "principle-prove-it-works"],
       "baseline_selected": {},
       "baseline_borderline": {}
     },
@@ -4595,8 +4583,8 @@
       "id": "ui-motion-audit-selection",
       "split": "tune",
       "prompt": "Audit our dispatch dashboard's existing animations read-only, vet the source findings and prioritize which unnecessary effects to remove. Keep the occasional useful reveal. Present evidence-backed choices, but do not implement before explicit selection.",
-      "expected": ["improve-animations", "remove-animations"],
-      "allowed": ["emil-design-eng", "review-animations", "animation-performance", "principle-experience-first", "principle-prove-it-works"],
+      "expected": [],
+      "allowed": ["principle-experience-first", "principle-prove-it-works"],
       "baseline_selected": {},
       "baseline_borderline": {}
     },
@@ -4604,8 +4592,8 @@
       "id": "ui-motion-opportunities-rejections",
       "split": "tune",
       "prompt": "Find useful new animation opportunities in this web dashboard. Gate them by purpose and frequency, and explicitly reject motion on the keyboard command palette and the functional data table. Propose only, no edits.",
-      "expected": ["find-animation-opportunities"],
-      "allowed": ["emil-design-eng", "improve-animations", "principle-experience-first"],
+      "expected": [],
+      "allowed": ["principle-experience-first"],
       "baseline_selected": {},
       "baseline_borderline": {}
     },
@@ -4613,8 +4601,8 @@
       "id": "ui-motion-selected-subtraction",
       "split": "tune",
       "prompt": "I explicitly select only removal of this command palette's entry and exit animation. Make open and close immediate, remove hidden initial styles, move completion callbacks and focus with the lifecycle, and preserve the separate preview reveal. Do not uninstall dependencies.",
-      "expected": ["remove-animations"],
-      "allowed": ["emil-design-eng", "animate", "review-animations", "principle-experience-first", "principle-prove-it-works"],
+      "expected": [],
+      "allowed": ["principle-experience-first", "principle-prove-it-works"],
       "baseline_selected": {},
       "baseline_borderline": {}
     }

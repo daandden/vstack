@@ -20,7 +20,7 @@ Use the platform's system font unless the project has a reason for another face.
 
 Treat size, weight, leading, and tracking as one hierarchy. Large headings often benefit from tighter leading and slightly negative tracking, such as `-0.02em`. Leave body tracking near zero, with comfortable leading such as 1.5. Small text can need more tracking. Adjust for the actual font and writing system rather than applying one value globally.
 
-Use relative units for text and surrounding spacing. Exercise larger text and zoom so controls and labels remain usable. A display heading can start at `clamp(2rem, 5vw, 4rem)` with leading near 1.05, while body text remains readable. These examples are starting points, not a replacement for good-css's layout and accessibility rules.
+Use relative units for text and surrounding spacing. Exercise larger text and zoom so controls and labels remain usable. A display heading can start at `clamp(2rem, 5vw, 4rem)` with leading near 1.05, while body text remains readable. Adjust these starting points to the actual layout and accessibility requirements.
 
 ## Multimodal feedback
 

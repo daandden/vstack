@@ -20,7 +20,7 @@ function world() {
 }
 function cli(w: ReturnType<typeof world>, args: string[], items?: object[]) {
   const p = Bun.spawnSync([process.execPath, script, ...args, "--home", w.home, "--session", "01a1c2c0-b8bd-7047-ac1f-33e7ca3c40d6", "--agent", "review-fix-428"], {
-    cwd: w.cwd, env: { ...ENV, HOME: w.home, VSTACK_FLOW_PORT: String(w.port) },
+    cwd: w.cwd, env: { ...ENV, HOME: join(root, "default-home"), VSTACK_FLOW_PORT: String(w.port) },
     stdin: items ? new TextEncoder().encode(JSON.stringify({ version: 1, items })) : "ignore", stdout: "pipe", stderr: "pipe",
   });
   expect(p.stderr.toString()).toBe("");

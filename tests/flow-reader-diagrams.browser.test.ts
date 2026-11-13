@@ -22,7 +22,7 @@ socket.stop(true);
 
 function cli(args: string[], input?: object) {
   const p = Bun.spawnSync([process.execPath, SCRIPT, ...args, "--home", home, "--session", "diagrams"], {
-    cwd: root, env: { ...ENV, VSTACK_FLOW_PORT: String(port), HOME: home },
+    cwd: root, env: { ...ENV, VSTACK_FLOW_PORT: String(port), HOME: join(root, "default-home") },
     stdin: input ? new TextEncoder().encode(JSON.stringify(input)) : "ignore", stdout: "pipe", stderr: "pipe",
   });
   const stderr = p.stderr.toString();
@@ -94,7 +94,7 @@ async function drawnIn(figure: Locator, decoder: Page, scheme: "latte" | "mocha"
   throw new Error(`the figure did not show ${scheme}: ${JSON.stringify(seen)}`);
 }
 
-test("stored flowcharts redraw with export step routes and theme-colored label outlines", async () => {
+test("stored flowcharts redraw with export step routes, boxed edge labels, and theme-colored cluster outlines", async () => {
   const opened = cli(["open", "--skill", "grill-me", "--title", "Stored flowchart readability"]);
   const historical = readFileSync(join(import.meta.dir, "fixtures", "flow-page-diagrams", "release-cascade.mmd"), "utf8");
   const grouped = "flowchart TD\n subgraph Run[Review run]\n A[Read] -->|continue| B[Answer]\n A --> C[Inspect]\n C --> B\n end\n";
@@ -135,14 +135,19 @@ test("stored flowcharts redraw with export step routes and theme-colored label o
           return {
             sameDrawing: !previous || previous === svg,
             edges: [...svg.querySelectorAll(".pele-edge > path:first-child")].map((p) => p.getAttribute("d")!.replace(/[^a-z]/gi, "")),
-            labels: [...svg.querySelectorAll(".pele-edge-label text, .pele-cluster-label")].map((label) => {
+            labels: [...svg.querySelectorAll(".pele-cluster-label")].map((label) => {
               const style = getComputedStyle(label);
               paint.fillStyle = style.stroke;
               paint.fillRect(0, 0, 1, 1);
               return { stroke: [...paint.getImageData(0, 0, 1, 1).data].slice(0, 3), width: parseFloat(style.strokeWidth), fontSize: parseFloat(style.fontSize), order: style.paintOrder, join: style.strokeLinejoin };
             }),
-            clusters: svg.querySelectorAll(".pele-cluster-label").length,
-            boxes: [...svg.querySelectorAll(".pele-edge-label > rect")].map((box) => getComputedStyle(box).display),
+            boxes: [...svg.querySelectorAll(".pele-edge-label > rect")].map((box) => {
+              const style = getComputedStyle(box);
+              paint.fillStyle = style.fill;
+              paint.fillRect(0, 0, 1, 1);
+              return { display: style.display, fill: [...paint.getImageData(0, 0, 1, 1).data].slice(0, 3) };
+            }),
+            edgeTextStroke: [...svg.querySelectorAll(".pele-edge-label text")].map((text) => getComputedStyle(text).stroke),
           };
         });
         expect(drawing.sameDrawing).toBe(true);
@@ -152,14 +157,14 @@ test("stored flowcharts redraw with export step routes and theme-colored label o
         expect(exported[name]!.length).toBe(drawing.edges.length);
         expect(exported[name]!.every((d) => !/[CSA]/i.test(d))).toBe(true);
         expect(exported[name]!.some((d) => /[LHV].*[LHV].*[LHV]/i.test(d))).toBe(true);
-        expect(drawing.labels.length).toBeGreaterThan(0);
         for (const label of drawing.labels) {
           expect(label).toMatchObject({ stroke: background, order: "stroke", join: "round" });
-          expect(label.width).toBeCloseTo(label.fontSize * 0.12, 3);
+          expect(label.width).toBeCloseTo(label.fontSize * 0.3, 3);
         }
         expect(drawing.boxes.length).toBeGreaterThan(0);
-        expect(drawing.boxes.every((display) => display === "none")).toBe(true);
-        if (name === "grouped") expect(drawing.clusters).toBeGreaterThan(0);
+        for (const box of drawing.boxes) expect(box).toEqual({ display: "inline", fill: background });
+        expect(drawing.edgeTextStroke.every((stroke) => stroke === "none")).toBe(true);
+        if (name === "grouped") expect(drawing.labels.length).toBeGreaterThan(0);
       }
     }
     const model = await (await fetch(new URL("content", opened.live.url))).json() as any;

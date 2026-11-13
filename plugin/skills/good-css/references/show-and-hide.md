@@ -1,8 +1,6 @@
-<!-- Generated from PRACTICES.md by scripts/build-skill.js. Do not edit. -->
-
 ## Enter and exit transitions from `display: none`
 
-Use it for dialogs, popovers and anything else toggled with `display`. It replaces a script that adds classes and waits for `transitionend`.
+For an existing display-toggled component, `allow-discrete` retains its box during an exit transition. Use this when the target browser and component lifecycle support it.
 
 ```css
 dialog,
@@ -10,7 +8,6 @@ dialog,
   opacity: 0;
   transition:
     opacity 0.2s var(--ease-out, ease-out),
-    translate 0.2s var(--ease-out, ease-out),
     display 0.2s allow-discrete,
     overlay 0.2s allow-discrete;
 }
@@ -34,25 +31,11 @@ dialog[open]::backdrop { opacity: 1; }
   dialog[open]::backdrop { opacity: 0; }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  dialog,
-  [popover] { translate: 0 0.5rem; }
-
-  dialog[open] { translate: 0 0; }
-
-  [popover]:popover-open { translate: 0 0; }
-
-  @starting-style {
-    dialog[open],
-    [popover]:popover-open { translate: 0 0.5rem; }
-  }
-}
 ```
 
 Rules:
 
 - Put `@starting-style` after the open-state rule. It has no extra weight in the cascade.
-- Never start from `scale(0)`. If the element scales in, start at `scale(0.95)` with `opacity: 0`.
 - The dialog's `::backdrop` needs the same three states and its own transition, as in the block. Without them it snaps while the dialog fades.
 - Write no fallback. Where the exit is not supported the element closes at once.
 - Keep `[popover]:popover-open` out of the selector list that opens the dialog. A browser that does not know one selector in a list drops the whole rule, and the dialog would open at `opacity: 0`. Inside `@starting-style` the shared list is safe, because every browser that reads the block knows the selector.
@@ -61,7 +44,7 @@ Support: both directions in Chrome 117. In Safari 27 the entry animates and `<di
 
 ## Popover anchored to its trigger
 
-Use it for dropdown menus and other popovers opened by a click. It replaces a positioning library or a script that reads `getBoundingClientRect()`.
+For a native popover already used by the project, anchor positioning can place it relative to its trigger without measuring its rectangle in a script.
 
 ```html
 <button popovertarget="menu">Options</button>
@@ -93,7 +76,7 @@ Support: Chrome 133, Firefox 147, Safari 26.
 
 ## Accordion that animates its height
 
-Use it for FAQs and any other disclosure. `<details>` already gives you the toggle, keyboard support and find-in-page. These rules animate the open and the close with no JavaScript.
+For an existing `<details>` disclosure, `::details-content` and intrinsic-size interpolation can animate its content height.
 
 ```css
 :root { interpolate-size: allow-keywords; }
@@ -105,12 +88,10 @@ details::details-content {
 
 details[open]::details-content { height: auto; }
 
-@media (prefers-reduced-motion: no-preference) {
-  details::details-content {
-    transition:
-      height 0.3s var(--ease-out, ease-out),
-      content-visibility 0.3s allow-discrete;
-  }
+details::details-content {
+  transition:
+    height var(--motion-duration) var(--motion-easing),
+    content-visibility var(--motion-duration) allow-discrete;
 }
 ```
 
@@ -125,7 +106,7 @@ Support: `::details-content` in Chrome 131, Safari 18.4, Firefox 143. `interpola
 
 ## Reveal with `clip-path`
 
-Use it for dropdowns, menus and panels that open over the page and whose height is not known. It unrolls the panel without animating `height`, and it works in every browser.
+For an overlapping panel whose height is unknown, `clip-path` can reveal its content without changing its dimensions.
 
 ```css
 .menu {
@@ -138,12 +119,10 @@ Use it for dropdowns, menus and panels that open over the page and whose height 
   visibility: visible;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .menu {
-    transition:
-      clip-path 0.25s var(--ease-out, ease-out),
-      visibility 0.25s;
-  }
+.menu {
+  transition:
+    clip-path var(--motion-duration) var(--motion-easing),
+    visibility var(--motion-duration);
 }
 ```
 

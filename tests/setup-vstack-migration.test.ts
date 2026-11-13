@@ -186,6 +186,12 @@ test("any other remote, or no remote, gets a Code host notice and no code-host i
   const none = repo();
   expect(run(none,"plan").json().notices.some((n:string)=>n.includes("code-host.md"))).toBe(false);
 });
+test("Code host seeding skips ovnfs checkout remotes, which list before upstream", () => {
+  const r = repo(); matt(r);
+  git(r,"remote","add","upstream","git@github.com:acme/app.git");
+  git(r,"config","remote.ovnfs/omp-a.url",join(r,"checkout.git"));
+  expect(run(r,"plan").json().items.find((i:any)=>i.kind==="code-host")?.to).toBe(join(r,"docs/vstack/code-host.md"));
+});
 test("a code-host.md that Migration moves or copies keeps its hand edits instead of the template seed", () => {
   const hand = "# Code host: Bitbucket\nTool: hand-mapped MCP\n";
   for (const mode of ["move","private"]) {

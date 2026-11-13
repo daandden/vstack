@@ -1,14 +1,13 @@
 ---
 name: animation-performance
-description: Browser-grounded diagnosis of dropped frames, rendering cost, and animation drivers.
-disable-model-invocation: true
+description: "Use when diagnosing web animation stutter, dropped frames, rendering cost, or choosing animation properties, drivers, and layers on performance grounds."
 ---
 
 # Diagnose animation performance
 
-Use this reference inside the current diagnosis or implementation task. The existing vstack owner retains probes, edits, review, verification, and evidence. Report findings without applying fixes unless the task authorizes them. This Addon creates no executor or separate animation plan.
+Use this reference inside the current diagnosis or implementation task. The existing vstack owner retains probes, edits, review, verification, and evidence. Report findings without applying fixes unless the task authorizes them. This Utility skill creates no executor or separate animation plan.
 
-Adapted from [emilkowalski/skills](https://github.com/emilkowalski/skills/tree/a81dbca07f2217b7103e510c0f13f8d5b017afc9/skills/animation-performance). The [MIT notice](LICENSE) ships here. For frequency, purpose, easing, interruption, and reduced motion, read skill://animate. Keep skill://good-css for other CSS and accessibility requirements.
+Adapted from [emilkowalski/skills](https://github.com/emilkowalski/skills/tree/7cdf99421429c0a47d2cf9fbf40497b7ee0a3e5c/skills/animation-performance). The [MIT notice](LICENSE) ships here. For frequency, purpose, easing, interruption, and reduced motion, read skill://animate.
 
 ## Measure the symptom first
 
@@ -33,7 +32,7 @@ Example: an empty comparison spin is removable when its load is not required. A 
 | Stutter during navigation, loading, or hydration | Long tasks competing with a JavaScript frame loop |
 | Hand-rolled React animation | State updates causing a render on every frame |
 | Drag cost grows with content | Inherited custom-property updates invalidating descendants, or too many animated nodes |
-| Motion shorthand stalls under load | The installed version's driver and acceleration eligibility |
+| Motion shorthand stalls under load | Before Motion 14.2, consider an upgrade or full transform string; in newer versions inspect the actual effect and acceleration eligibility |
 | Large blur is slow | Filter area and engine-specific raster cost |
 | A visible pixel shift at promotion | Layer changes, then a targeted `will-change` experiment |
 
@@ -53,7 +52,7 @@ A `requestAnimationFrame` callback competes with other main-thread JavaScript. C
 
 For predetermined motion, prefer an existing CSS or WAAPI path when it removes a frame-loop bottleneck. Preserve dynamic input and interruption requirements. Gesture springs can justify a library even when a simpler predetermined effect would not.
 
-Inspect installed library versions and consult matching documentation before changing APIs. Motion shorthand values such as `x`, `y`, and `scale`, full transform strings, and library `animate()` calls can use different paths across versions. Do not declare all React Motion playback main-thread or all full transform strings accelerated from the spelling alone. No library installation is required by this reference.
+Inspect installed library versions and consult matching documentation before changing APIs. Motion can hand eligible opacity, transform, clip-path, and filter animations to WAAPI, including `motion/react` components. From Motion 14.2, `x`, `y`, `scale`, and `rotate` on HTML elements combine into one accelerated transform animation. Before 14.2, those shorthands use a main-thread frame loop; use a full transform string or upgrade when that path causes busy-page stutter. In every version, layout animations (`layout`, `layoutId`), `onUpdate`, `transformTemplate`, inertia, and values driven each frame by a motion value, including drag and `useTransform`, remain main-thread. A full transform string can take the accelerated path in every version, but browsers can decline acceleration. Confirm the actual effect under load. This reference requires no library installation.
 
 ### React and inherited custom properties
 
@@ -67,9 +66,9 @@ Use `will-change` only for an observed promotion issue or measured improvement a
 
 ## Reconcile the rules with evidence
 
-Under ADR 0051, selected Emil animation guidance takes precedence over good-css's animation advice. Good-css's remaining styling and accessibility requirements still apply. Within Emil guidance, a broad transform-and-opacity-only rule does not prohibit browser-supported clip-path, filter, or intrinsic-size techniques by itself.
+Under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css, which amends ADR 0051, Emil-derived guidance takes precedence over good-css for CSS and animation. Reconcile disagreements among Emil skills using browser-specific behavior and observed evidence. Within Emil guidance, a broad transform-and-opacity-only rule does not prohibit browser-supported clip-path, filter, or intrinsic-size techniques by itself.
 
-For a disputed technique, record the applicable narrower guidance, target-engine support, observed behavior, measured cost, and any fallback or unavailable engine. Retain a blocking verdict when an applicable rule and evidence justify it. One Chromium run does not establish Safari, Firefox, a phone, or every application stack.
+For a disputed technique, record the applicable narrower guidance, target-engine support, observed behavior, measured cost, and any fallback or unavailable engine. Preserve skill://review-animations' blocking verdicts when the applicable rule and evidence justify them. One Chromium run does not establish Safari, Firefox, a phone, or every application stack.
 
 ## Return evidence to the owner
 

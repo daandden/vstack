@@ -9,7 +9,7 @@ A discipline for hard bugs. Skip phases only when explicitly justified.
 
 When exploring the codebase, read `GLOSSARY.md` (if it exists) to get a clear mental model of the relevant modules, and check ADRs in the area you're touching.
 
-For a frontend animation that stutters or drops frames, read skill://good-css and skill://animation-performance before selecting probes or changing the driver. This applies to main sessions and delegated diagnosis. Keep this skill's diagnosis loop and evidence ownership; unrelated failures do not need frontend guidance.
+For CSS diagnosis or changes, read skill://good-css. For a frontend animation that stutters or drops frames, read skill://animation-performance before selecting probes or changing the driver. These conditions apply to main sessions and delegated diagnosis. Keep this skill's diagnosis loop and evidence ownership; unrelated failures do not need frontend guidance.
 
 ## Record the investigation
 
@@ -136,7 +136,7 @@ A correct seam is one where the test exercises the **real bug pattern** as it oc
 If a correct seam exists:
 
 1. Turn the minimised repro into a failing test at that seam.
-2. Watch it fail.
+2. Watch it fail. If you forced the red by mutating code or a fixture, diff against a pristine copy to prove the mutation landed before trusting it.
 3. Apply the fix.
 4. Watch it pass.
 5. Re-run the Phase 1 feedback loop against the original (un-minimised) scenario.

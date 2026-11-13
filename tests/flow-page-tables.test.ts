@@ -10,7 +10,7 @@ test("typed table columns validate, persist, and describe their types without ch
   mkdirSync(home);
   function run(args: string[], items?: object[]) {
     const p = Bun.spawnSync([process.execPath, SCRIPT, ...args, "--home", home, "--session", "01a1c256-243a-73a5-9de5-66b7edb80d21", "--agent", "impl-437"], {
-      cwd: root, env: { PATH: process.env.PATH!, HOME: home, VSTACK_FLOW_HOST: "off" },
+      cwd: root, env: { PATH: process.env.PATH!, HOME: join(root, "default-home"), VSTACK_FLOW_HOST: "off" },
       stdin: items ? new TextEncoder().encode(JSON.stringify({ version: 1, items })) : "ignore", stdout: "pipe", stderr: "pipe",
     });
     return { code: p.exitCode, json: JSON.parse(p.stdout.toString()), stderr: p.stderr.toString() };

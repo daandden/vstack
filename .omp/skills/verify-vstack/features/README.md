@@ -24,7 +24,7 @@ Use `"$V" shot "$RUN" <name>` for full-resolution lossless WebP and layout evide
 - Run scripted session behavior through `scripts/drive.ts`. Use the feature ID as `--name`, so each drive has its own evidence dir. drive.ts refuses a name that the run already used. Retry with a new name such as `<feature>-retry1`, and read the proof from that new dir. For model instruction following, use the real-model enrollment or architecture-agreement recipe rather than the stub.
 - Run a skill's Bun CLI from `$CHECKOUT/plugin/skills/<skill>/scripts/`, not through `skill://...`.
 - Pass `--home "$VERIFY_RUN_DIR/data/<name>"` to direct isolated CLI fixtures. In a native enrollment run, keep the model's CLI and the extension in the same normal HOME namespace, as `flow-page.md` specifies.
-- In the browser, open tabs with a name, `app: { tern: false }`, and a 1280 by 900 `viewport`. Apply the parent skill's browser policy on every open, including diagnostics, retries, recovery, and delegated verification. Act by ARIA role and name.
+- In the browser, open tabs with a name, `app: "chromium"`, and a 1280 by 900 `viewport`. Apply the parent skill's browser policy on every open, including diagnostics, retries, recovery, and delegated verification. Act by ARIA role and name.
 - Treat every command as literal. Keep quoted names and flags as they are.
 
 ## Proof and skip reporting
@@ -33,7 +33,7 @@ Use `"$V" shot "$RUN" <name>` for full-resolution lossless WebP and layout evide
 - Session proof is the drive's `summary.json`, the matching frames in `rpc.jsonl`, and the matching request in `model-requests.jsonl`.
 - CLI proof is the command, stdout, stderr, the exit code, and a separate listing of the files it wrote or deleted.
 - Page proof is an ARIA snapshot and a full-resolution lossless WebP screenshot, made as `../SKILL.md` Evidence step 5 says.
-- Record the feature ID and the entry point with every proof file in `$VERIFY_RUN_DIR/notes.md`.
+- Record the feature ID, the step ID, and the entry point with every proof file in `$VERIFY_RUN_DIR/notes.md`.
 - Report an entry point you did not drive as skipped, with the command you tried and the precondition that was missing. Never report it as verified through another entry point.
 - Record the actual browser backend and engine. Required coverage for an unavailable engine stays unavailable or unmet, never verified through another engine.
 
@@ -43,10 +43,22 @@ Each feature file starts with an H1 title and one paragraph on the user-visible 
 
 1. `Sub-features` lists short IDs with one line for each behavior.
 2. `How to get to it (user POV)` lists every user entry point.
-3. `Driving it with <harness>` starts with `Preconditions:` and pairs each user action with an exact command and the observable result.
+3. `Driving it with <harness>` starts with `Preconditions:` and pairs each user action with an exact command and the observable result. Each required step starts with its step ID.
 4. `Gotchas` lists traps that waste or invalidate a run.
 
 Keep implementation details out of the map. Name only user paths, stable handles, required state, commands, and observable proof.
+
+## Proof step IDs
+
+A required step starts with the word Step, its ID in code formatting, and a colon. This covers every build, test, Launch, journey, negative probe, parent-versus-head comparison, and cleanup step a caller can require. A feature step's ID starts with its feature file's name, such as `plugin-load-gate` in `plugin-load.md`. `../SKILL.md` owns the shared `reader-build`, `tests`, `doctor`, and `cleanup` IDs. Preconditions and explanatory notes carry no ID.
+
+An ID is unique across the map and `../SKILL.md`. Keep an ID when its step's wording changes. Give a new step a new ID, and never reuse a removed ID for another action. A caller copies the IDs it requires into `expected.json` under `skill://ship/references/verdict-record.md`. List every ID, and check that none repeats:
+
+```sh
+grep -ho 'Step `[^`]*`' "$SKILL_DIR/SKILL.md" "$SKILL_DIR"/features/*.md | sort | uniq -d
+```
+
+Drop `| uniq -d` to print the full list. The check prints nothing when every ID is unique.
 
 ## Features
 
@@ -54,7 +66,8 @@ Keep implementation details out of the map. Name only user paths, stable handles
 - [Skill commands](./skill-command.md): `/skill:<name>` puts that skill's text from the checkout into the prompt the model gets.
 - [Ticket publication](./ticket-publication.md): the public publisher API validates approved MCP bindings, publishes and resumes a directed graph, preserves labels and custom readiness, and refuses duplicate or changed content using provider fixtures only.
 - [Addon tools](./addon-tools.md): typed Matt runs display intent-gathering instructions, and agent-called tools select Addons. The stub proves tool completion without a native judge, not native selection.
-- [Frontend guidance](./frontend-guidance.md): fresh native main and delegated frontend builds apply conditional UI knowledge, native motion review preserves evidence-backed blocking decisions and browser-qualified exceptions, an unrelated task leaves guidance unloaded, and public maintenance and packaging interfaces retain source accounting and notices.
+- [Frontend guidance](./frontend-guidance.md): recipes for visible UI Utility selection and instruction following in fresh main and delegated runs, native motion review, an unrelated-task control, and source accounting and packaging. Native behavioral proof remains pending explicit remote-evaluation approval.
+- [Frontend stack selection](./frontend-stack.md): visible Utility discovery, read-only package reuse, native Nuxt and Vue with Vite setup, copied controls adapted to UnoCSS, and TanStack Form with omptype under a recorded policy.
 - [Mobile-web guidance](./frontend-mobile.md): Apple-derived web feedback and mobile touch, viewport, safe-area, hover, and input behavior through the existing native main and worker paths, with actual browser and dependency limits.
 - [Motion audit and selected subtraction](./frontend-motion-audit.md): existing main and delegated audits preserve read-only source until explicit selection, then the implementation and review owners carry a scoped lifecycle-safe removal.
 - [Scratch dir](./scratch-dir.md): the vstack-tmp scripts make and list Scratch entries. The `/vstack-clean` Command previews expired entries and deletes only confirmed choices.
@@ -66,8 +79,9 @@ Keep implementation details out of the map. Name only user paths, stable handles
 - [Isolated-worker lifecycle](./worker-lifecycle.md): a parent preserves useful work, retains workers with unresolved needs, releases settled children through omp, and proves clone disappearance without deleting unrelated owned work.
 - [Architecture agreement](./architecture-agreement.md): actual isolated grill evaluations cover assessment, grounding, visual alternatives, agreement provenance, the brief, and the stop. A separate live human checkpoint proves consent. Whole-feature evaluation consumes the other Matt entry points' separate proof.
 - [Tern Flow links and following](./vstack-flow.md): the packaged `vstack-flow` plugin loads as ready, preserves Cmd-click routing, and follows each tab's selected native omp session to its Stage or newly asked question. The isolated two-session, two-tab recipe covers typing holds, unrelated sessions, picker closure and expiry, and tab isolation.
+- [Private MCP setup](./private-mcp.md): isolated production CLI reconciliation, conservative installed-hook dispatch, creator Git compatibility, and actual ignored-file-cloned omp creation with shared edits and conflict preservation.
 
 ## Not mapped yet
 
 - The maintainer CLIs `scripts/check-register.ts`, `scripts/vstack-maintain.ts`, and the by-hand jev check `scripts/addon-judge-check.ts`. `docs/maintainer.md` documents their commands and exit codes.
-- The setup-vstack scripts (`machine.ts`, `project.ts`, and the Migration helper `migrate.ts`). They change omp configuration and git state, so a recipe needs a throwaway `HOME` and a throwaway repo.
+- The setup-vstack machine and Migration helpers. They change omp configuration and Git state, so a recipe needs a throwaway `HOME` and repository. Private MCP and project-state behavior have the isolated recipe above.

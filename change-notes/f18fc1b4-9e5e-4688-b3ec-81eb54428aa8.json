@@ -2,6 +2,6 @@
   "schema": 1,
   "level": "patch",
   "entries": [
-    "Treat the ADR archive as history for why, count archived ADR numbers in domain-modeling, and name the archive in fresh setup and Private-mode Migration config (#450, ADR 0074)."
+    "Treat the ADR archive as history for why, count archived ADR numbers in domain-modeling, and name the archive in fresh setup and Private-mode Migration config (#450, ADR 20261110-clean-adr-archives-adrs-and-rewrites-what-holds)."
   ]
 }

@@ -1,8 +1,6 @@
-<!-- Generated from PRACTICES.md by scripts/build-skill.js. Do not edit. -->
+## Carousel snap alignment and controls
 
-## Carousel on native scroll
-
-Use it for any horizontal row of cards. The carousel is a real scroll container, so swipe, trackpad, keyboard and momentum all work before any script loads.
+For an existing scrolling row, align its snap positions with the content padding and synchronize the arrow controls with its scroll position.
 
 ```css
 .carousel {
@@ -12,7 +10,6 @@ Use it for any horizontal row of cards. The carousel is a real scroll container,
   scroll-snap-type: x mandatory;
   scroll-padding-inline: 1.5rem;
   padding-inline: 1.5rem;
-  overscroll-behavior-x: contain;
   scrollbar-width: none;
 }
 
@@ -21,9 +18,6 @@ Use it for any horizontal row of cards. The carousel is a real scroll container,
   scroll-snap-align: start;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .carousel { scroll-behavior: smooth; }
-}
 ```
 
 Arrow buttons are the one part that needs a script.
@@ -58,7 +52,6 @@ sync();
 
 Rules:
 
-- Never move slides with `transform`, and never handle wheel or touch events yourself.
 - Match `scroll-padding-inline` to `padding-inline` so a snapped card lines up with the page content.
 - Chrome 135 can draw the arrows and dots in CSS with `::scroll-button()` and `::scroll-marker`. Firefox and Safari have neither, so use the script.
 
@@ -76,7 +69,6 @@ Use it for the body of a modal, a chat list, a drawer or a sidebar. The panel gr
 .panel-body {
   flex: 1;
   overflow-y: auto;
-  overscroll-behavior: contain;
   scrollbar-gutter: stable;
 }
 
@@ -172,53 +164,12 @@ Use it on any page with in-page links and a fixed or sticky header.
 
 ```css
 html { scroll-padding-block-start: 5rem; }
-
-@media (prefers-reduced-motion: no-preference) {
-  html { scroll-behavior: smooth; }
-}
 ```
 
 Rules:
 
-- Keep the offset outside the motion query, so people who ask for reduced motion still get it.
+- The offset works independently of any smooth-scroll effect.
 - Tie the value to the header's height. Share one custom property between the two.
 
 Support: Chrome 69, Firefox 68, Safari 14.1.
 
-## No rubber-band bounce on desktop
-
-Use it on app-like pages with fixed UI, such as a sidebar or a sticky header. On macOS a trackpad scroll stretches the whole page past its edge and drags the fixed UI along.
-
-```css
-html { overscroll-behavior-y: none; }
-
-@media (any-pointer: coarse) {
-  html { overscroll-behavior-y: auto; }
-}
-```
-
-Rules:
-
-- Set it on `html`. The viewport takes its overscroll behavior from the root element.
-- Use the `-y` longhand. `overscroll-behavior-x: none` also turns off swipe to go back.
-- Give inner scroll containers, such as a sheet, a chat list or a sidebar, `overscroll-behavior: contain`. They keep their own bounce and stop the page behind them from moving. Never use a `touchmove` listener with `preventDefault()` for this.
-
-## Content clear of the notch
-
-Use it on fixed headers, bottom bars, toasts and sheets in anything that should feel like an app on a phone. Add `viewport-fit=cover` to the viewport meta tag, then pad those elements by the safe-area insets.
-
-```css
-.app-header { padding-block-start: env(safe-area-inset-top, 0px); }
-
-.bottom-bar { padding-block-end: env(safe-area-inset-bottom, 0px); }
-
-.sheet { padding-block-end: calc(1rem + env(safe-area-inset-bottom, 0px)); }
-```
-
-Rules:
-
-- Without `viewport-fit=cover` every inset is `0px` and the padding does nothing.
-- Give `env()` a fallback of `0px` wherever it sits inside `calc()`.
-- Normal page content needs none of this. The header's padding covers it.
-
-Support: Chrome 69, Firefox 65, Safari 11.1.

@@ -1,0 +1,15 @@
+export const linkedResults = () => [
+  { kind: "result", ref: "document", shape: "document", title: "Document: reconnect evidence for Aleksandra Wiśniewska-Kowalczyk & <reader>", sections: [{ heading: "Evidence", blocks: [{ prose: "Saved responses survive reconnects [@local]." }] }], citations: [{ ref: "local", source: "Local fixture" }], limitations: ["Local fixture only."], sources: ["Local fixture"] },
+  { kind: "result", ref: "comparison", shape: "comparison", title: "Comparison", alternatives: [{ ref: "keep", name: "Keep" }, { ref: "drop", name: "Drop" }], criteria: [{ ref: "durability", name: "Durability" }], assessments: [{ alternative: "keep", criterion: "durability", finding: "Saved responses remain available." }], verdict: { outcome: "chosen", alternative: "keep", reason: "Responses must survive reconnects." } },
+  { kind: "result", ref: "metrics", shape: "metrics", title: "Metrics", workload: "30 reconnects", outcome: "No lost responses", series: [{ ref: "saved", label: "Saved" }], measurements: [{ ref: "lost", name: "Lost responses", unit: "responses", values: [{ series: "saved", value: 0 }] }] },
+  { kind: "result", ref: "prototype", shape: "prototype", title: "Prototype", demo: { states: [{ name: "ready", label: "Ready" }], start: "ready", actions: [{ name: "stay", label: "Stay ready", transitions: [{ from: ["ready"], to: "ready" }] }] } },
+  { kind: "result", ref: "quiz", shape: "quiz", title: "Quiz", questions: [{ ref: "authority", prompt: "What authorizes work?", choices: [{ ref: "ask", label: "A real ask" }, { ref: "quiz", label: "A quiz click" }], answer: { choice: "ask" }, explanation: "A learning answer is not consent." }] },
+  { kind: "result", ref: "cards", shape: "cards", title: "Findings", entries: [{ ref: "saved", title: "Keep saved responses", label: "issue", blocking: true, impact: "Readers lose responses.", action: "Keep them after reconnecting.", evidence: "Local reconnect fixture." }, { ref: "unused", title: "Unrelated finding", label: "note", blocking: false, impact: "No impact.", action: "No change.", evidence: "Control." }] },
+];
+export const mixedTargets = ["document", "comparison", "metrics", "prototype", "quiz", "cards", "cards/saved"];
+export const linkedQuestion = (results = mixedTargets) => ({
+  ref: "decision", title: "Keep saved responses after reconnecting?", description: "Choose whether reconnecting should retain the previously saved response. The local fixture found a lost response; retaining it avoids asking the same decision again.",
+  needs: [{ need: "Understand the saved-response decision.", kind: "source-excerpt" }],
+  figures: [{ text: "Before reconnect: saved response A\nAfter reconnect: no response", kind: "source-excerpt" }],
+  options: [{ label: "Retain", does: "Keep the response on reconnect.", gains: ["Readers keep their decision."], costs: ["Retained data needs storage."] }, { label: "Discard", does: "Start again on reconnect.", gains: ["No retained storage."], costs: ["Readers must answer again."] }], results,
+});

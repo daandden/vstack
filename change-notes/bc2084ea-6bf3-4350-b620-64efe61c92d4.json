@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Add the visible pick-frontend-stack Utility for read-only Vue and Nuxt library choices and explicitly requested, task-scoped project setup."
+  ]
+}

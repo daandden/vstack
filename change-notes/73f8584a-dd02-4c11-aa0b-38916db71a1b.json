@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "clean-wt no longer treats ovnfs checkout remotes as a copy of a checkout's commits. ovnfs v0.4.0 adds a remote `ovnfs/NAME` per live checkout, and after a fetch its tracking ref reaches the checkout's commits until ovnfs deletes it with the checkout. clean-wt's unique-history guard ignores those refs, and neither clean-wt's remote default nor setup-vstack's Code host seeding picks an `ovnfs/` remote (ADR 0059, #490)."
+  ]
+}

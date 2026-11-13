@@ -54,6 +54,7 @@ const rendered = computed(() => {
 
 <template>
   <li :id="e.anchor" class="grid gap-2">
+    <CorrectionNotice :notice="e" />
     <p class="flex flex-wrap items-baseline gap-x-3.5 gap-y-0.5 text-small text-muted">
       <span class="me-2 font-bold uppercase tabular-nums">{{ e.id }}</span>
       <span class="font-semibold text-flow-teal">{{ kind }}</span>

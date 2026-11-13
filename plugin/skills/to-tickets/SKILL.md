@@ -40,15 +40,17 @@ Break the work into **tracer bullet** tickets.
 
 Give each ticket its **blocking edges**: the other tickets that must complete before it can start. A ticket with no blockers can start immediately.
 
+Trace each acceptance criterion to the decisions, shared fixtures, and consumer capabilities needed to satisfy it. Name what already exists and what a ticket must supply. For each prerequisite supplied by another ticket, declare a direct or transitive blocking path to that ticket. Requirement coverage, parent membership, and body references do not establish that path. Keep unresolved human decisions explicit rather than treating their assignment as an answer.
+
 Write no `skill://<addon>` pointers in tickets, and drop any inherited from the spec. Build sessions pick Addons fresh.
 
 **Wide refactors are the exception to vertical slicing.** A **wide refactor** is one mechanical change (rename a column, retype a shared symbol) whose **blast radius** fans across the whole codebase, so a single edit breaks thousands of call sites at once and no vertical slice can land green. Don't force it into a tracer bullet; sequence it as **expand–contract**. First expand: add the new form beside the old so nothing breaks. Then migrate the call sites over in batches sized by blast radius (per package, per directory), each batch its own ticket blocked by the expand, keeping CI green batch to batch because the old form still exists. Finally contract: delete the old form once no caller remains, in a ticket blocked by every migrate batch. When even the batches can't stay green alone, keep the sequence but let them share an integration branch that all block a final integrate-and-verify ticket; green is promised only there.
 
 Before you show the breakdown, check the draft against what the user decided, as skill://to-spec/DRIFT-CHECK.md says. Its source is the spec that this run breaks down, with its comments. Covered in names a ticket, and the table Result goes on the to-tickets Stage. Fix a miss by changing a ticket or adding one.
 
-Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the close decisions and Assumed picks, the spec, the draft tickets with their blocking edges, and the Checker brief from DRIFT-CHECK.md, the vstack root. Wait for its result. If it cannot be spawned, stop: report the tickets as not published.
+Spawn one `vstack-explorer` via `task` (`agent: "vstack-explorer"`): the close decisions and Assumed picks with their provenance, the spec and comments, the draft tickets with their acceptance criteria, prerequisite trace, and blocking edges, any evidence of existing prerequisites, and the Checker brief from DRIFT-CHECK.md including its ticket acceptance check, the vstack root. Wait for its result. If it cannot be spawned, stop: report the tickets as not published.
 
-Fix the draft and show the coverage table as DRIFT-CHECK.md's "Fix and show" says.
+Fix the draft and show the coverage and acceptance prerequisite tables as DRIFT-CHECK.md's "Fix and show" says. Recheck the corrected draft before publication. Continue only when every criterion is feasible with the declared blockers and every coverage miss or contradiction is fixed. Resolve a real decision conflict through the existing question procedure, not a separate breakdown-approval stop.
 
 For MCP, read the configured server's live tool list, descriptions, and input schemas. Draft `tracker.binding` in the structured description as [the MCP binding contract](references/publication.md#mcp-binding) specifies. Include argument templates, result paths, issue readback paths, directed blocking semantics, and the readiness field. Keep tool names in this input, not per-operation rows in `issue-tracker.md`.
 
@@ -69,6 +71,8 @@ Continue to publication without asking for breakdown or binding approval. If the
 Save the drafted structured description and invoke the publisher as [the publication Interface](references/publication.md) describes. Use `scripts/publish.ts` for CLI and local publication, or the public Bun `publish` and `resume` functions with a live connection for MCP. Keep stable local keys, drafted bodies and labels, parent membership, directed `blockedBy` edges, tracker facts, the MCP binding when applicable, and configured readiness in that description. Use numbered local keys such as `01-foundation` for local files. In Private mode, save the input, durable record, and local tickets under `<vstack root>/artifacts/<feature-slug>/`. In Standard mode, save the input and durable record under `<feature-slug>/` in the dir that `bun "$(realpath skill://vstack-tmp/scripts/path.ts)" to-tickets` prints, for every tracker mode, and local tickets under `.scratch/<feature-slug>/` in the checkout the session runs in (ADR 0066).
 
 The publisher creates tickets without readiness, installs the submitted graph, reads back fields and relationships, then activates verified tickets. The readiness value comes from the configured canonical-role mapping. GitHub uses labels. MCP reads submitted labels and readiness separately, even when readiness lives in a custom field. Local tickets use `Status:`. A parent relationship is separate from a blocking edge. Body references explain the work. Only `blockedBy` declares an edge.
+
+When the source was an existing issue, submit it as the parent so that every published ticket becomes its sub-issue through the publisher's configured tracker operation.
 
 Use the receipt's saved identities to link tracker tickets or `<directory>/<key>.md` files. If publication is blocked or interrupted, use `resume` with the same durable record. Report its category and candidate state when reconciliation is ambiguous. Keep submitted content unchanged during recovery. If anyone published tickets outside the publisher, inspect that state before resuming. A record without saved identities does not establish ownership of external tickets. Matching tickets stop creation with `duplicate-risk`, not automatic adoption. The publisher owns activation. Do not create tickets, add relationships, or apply readiness separately.
 
@@ -108,7 +112,7 @@ The end-to-end behaviour this ticket makes work, from the user's perspective, no
 
 ## Blocked by
 
-- A reference to each blocking ticket, or "None (can start immediately)".
+- A reference to each blocking ticket, or "None (can start immediately)". Omit this section when blockers were set as native edges.
 
 </issue-template>
 

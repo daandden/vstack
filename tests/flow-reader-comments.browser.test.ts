@@ -13,8 +13,8 @@ test("readers select typed-table text and manage revision-bound comments across 
   const port = socket.port;
   socket.stop(true);
   function cli(args: string[], items?: object[]): any {
-    const p = Bun.spawnSync([process.execPath, join(import.meta.dir, "../plugin/skills/flow-page/scripts/flow-page.ts"), ...args, "--home", home, "--session", "01a1c2c0-b8bd-7047-ac1f-33e7ca3c40d6", "--agent", "review-fix-428"], {
-      cwd: root, env: { ...ENV, HOME: home, VSTACK_FLOW_PORT: String(port) },
+    const p = Bun.spawnSync([process.execPath, join(import.meta.dir, "../plugin/skills/flow-page/scripts/flow-page.ts"), ...args, "--home", home, "--session", "01a1cafe-75ab-7240-8f02-fa78a82d6123", "--agent", "Impl476"], {
+      cwd: root, env: { ...ENV, HOME: join(root, "default-home"), VSTACK_FLOW_PORT: String(port) },
       stdin: items ? new TextEncoder().encode(JSON.stringify({ version: 1, items })) : "ignore", stdout: "pipe", stderr: "pipe",
     });
     if (p.exitCode !== 0) throw new Error(p.stderr.toString());
@@ -132,13 +132,13 @@ test("readers select typed-table text and manage revision-bound comments across 
     const focused = cli(["submit"], [{ kind: "revise", result: sent.refs["evidence/restart"], base: sent.revision, set: { cells: ["Changed restart"] } }]);
     await page.getByRole("cell", { name: "Changed restart", exact: true }).waitFor();
     await comments.getByRole("button", { name: "Save comment", exact: true }).click();
-    expect(await page.locator(`#${sent.refs.evidence} > section[aria-label]`).innerText()).not.toContain("Confirm the host restart.");
+    expect(await page.locator(`#${sent.refs.evidence} > [aria-label="Reader comments on Restart evidence"]`).innerText()).not.toContain("Confirm the host restart.");
     await page.getByText("Earlier revisions (1)", { exact: true }).click();
     comments = page.locator(`#${sent.refs.evidence}-r1`).getByRole("region", { name: "Reader comments on Restart evidence", exact: true });
     await comments.getByText("Saved after the focused edit.", { exact: true }).waitFor();
     const added = cli(["submit"], [{ kind: "revise", result: sent.refs.evidence, add: [{ ref: "added", cells: ["New proof"] }] }]);
     await page.getByRole("cell", { name: "New proof", exact: true }).waitFor();
-    const currentComments = page.locator(`#${sent.refs.evidence} > section[aria-label]`);
+    const currentComments = page.locator(`#${sent.refs.evidence} > [aria-label="Reader comments on Restart evidence"]`);
     await currentComments.getByRole("button", { name: "Add Reader comment", exact: true }).click();
     await currentComments.getByRole("textbox", { name: "Comment" }).fill("Comment on the appended version.");
     await currentComments.getByRole("button", { name: "Save comment", exact: true }).click();

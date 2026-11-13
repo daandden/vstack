@@ -4,9 +4,8 @@
 // - clones: the cached clones under `~/.cache/vstack/upstreams/<key>` (or `VSTACK_UPSTREAMS`), read with
 //   `git ls-tree`. Blobless clones are enough: only trees and blob SHAs are read, never blob contents.
 // - github: the GitHub REST API (`commits/<ref>`, then `git/trees/<sha>?recursive=1`), used in CI.
-// Both return git object SHAs, so byte identity is checked by comparing blob SHAs. `file()` reads one blob's
-// contents, for the one check that runs an Upstream script (the CSS upstream's page lint); a blobless clone
-// fetches that blob from its remote on first read.
+// Both return git object SHAs, so byte identity compares blob SHAs. Maintenance commands use `file()`
+// to read one blob's contents. A blobless clone fetches that blob from its remote on first read.
 //
 
 import { homedir } from "node:os";

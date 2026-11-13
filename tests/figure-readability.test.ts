@@ -68,12 +68,15 @@ test("default flowchart edges have angular step presentation", async () => {
   expect(paths.every((d) => !/[CSA]/i.test(d))).toBe(true);
 });
 
-test("exports outline edge and cluster labels instead of displaying label boxes", async () => {
+test("exports edge labels in Pele's boxes and outlines cluster labels", async () => {
   const svg = await figure("flowchart TD\n subgraph Run[Review run]\n A[Read] -->|continue| B[Answer]\n end\n");
-  expect(svg).toContain('class="pele-edge-label"');
+  expect(svg).toMatch(/<g class="pele-edge-label"[^>]*><rect\b[^>]*fill="var\(--_bg\)"/);
+  expect(svg).toContain("--_bg:var(--pele-bg)");
+  expect(svg).toContain("--pele-bg: #1e1e2e");
   expect(svg).toContain('class="pele-cluster-label"');
-  expect(svg).toMatch(/\.pele-edge-label > rect\s*\{\s*display: none;/);
-  expect(svg).toContain("paint-order: stroke fill; stroke: #1e1e2e; stroke-width: 0.12em; stroke-linejoin: round;");
+  expect(svg).not.toMatch(/\.pele-edge-label > rect\s*\{\s*display: none;/);
+  expect(svg).not.toContain(".pele-edge-label text");
+  expect(svg).toContain("paint-order: stroke fill; stroke: #1e1e2e; stroke-width: 0.3em; stroke-linejoin: round;");
 });
 
 test("a failed render leaves a prior successful SVG unchanged and reports no output", async () => {

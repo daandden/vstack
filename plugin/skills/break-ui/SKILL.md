@@ -1,12 +1,11 @@
 ---
 name: break-ui
-description: Exercise realistic adverse UI content, collection boundaries, and environments, then report observable failures and scoped fixes.
-disable-model-invocation: true
+description: "Use when testing or fixing UI robustness with realistic adverse content, long labels, missing fields, empty or large collections, narrow layouts, zoom, or RTL."
 ---
 
 # Breaking UI
 
-Use this knowledge inside the frontend implementation, review, or Verify work already in progress. Existing vstack owners retain planning, edits, execution, review, verification, and evidence. Keep the project's stack and the user's scope. This Addon starts no flow or independent executor.
+Use this knowledge inside the frontend implementation, review, or Verify work already in progress. Existing vstack owners retain planning, edits, execution, review, verification, and evidence. Keep the project's stack and the user's scope. This Utility skill starts no flow or independent executor.
 
 Adapted from [emilkowalski/skills](https://github.com/emilkowalski/skills/tree/a81dbca07f2217b7103e510c0f13f8d5b017afc9/skills/break-ui). The [MIT notice](LICENSE) ships with this skill.
 
@@ -52,7 +51,7 @@ Observe the real container width, 320px, and the widest supported layout. Check 
 | Large list stalls | Too much rendered content | Existing pagination or virtualization, with observed evidence |
 | User content becomes markup or escapes twice | Wrong rendering boundary | Render user text as text, escaped exactly once |
 
-Validate causes in the actual component before prescribing a fix. Prefer skill://good-css for CSS, layout, and accessibility. For visual interaction judgment, use skill://emil-design-eng. Motion advice remains subject to ADR 0051 and the running owner's review contract; this skill does not require an unshipped motion skill.
+Validate causes in the actual component before prescribing a fix. For visual interaction judgment, use skill://emil-design-eng. Where Emil-derived guidance and good-css disagree, Emil guidance takes precedence for CSS and animation under ADR 0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css, which amends ADR 0051. Reconcile disagreements among Emil skills using browser-specific behavior and observed evidence. Preserve skill://review-animations' blocking verdicts when the applicable rule and evidence justify them. The running owner's review contract still applies; this skill does not require an unshipped motion skill.
 
 ### Choose per field
 

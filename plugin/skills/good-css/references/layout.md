@@ -125,7 +125,7 @@ Use it for any component that appears in slots of different widths. The componen
 ```css
 .slot { container-type: inline-size; }
 
-.card h2 { font-size: clamp(1.25rem, 1rem + 2cqi, 2rem); }
+.card { padding: clamp(1rem, 0.5rem + 2cqi, 2rem); }
 
 @container (width > 30rem) {
   .card {
@@ -139,7 +139,7 @@ Rules:
 
 - The container must be an ancestor. An element cannot query itself.
 - A container cannot take its width from its content. Never put `container-type` on a shrink-to-fit element, or it collapses to zero.
-- With no container ancestor the query never matches. Kevin Powell makes `header`, `main` and `footer` containers in his reset, so most components need none of their own.
+- With no container ancestor the query never matches.
 - A container cannot also be a subgrid. "Subgrid rows shared across cards" and this entry need separate elements.
 - Container units are different from queries. With no container above the element, `cqi` measures the viewport, so one token written with `cqi` serves the page and every slot.
 - Never register a fluid token that uses `cqi` with `@property`. A registered length computes once on `:root`, where there is no container, and every slot then gets the viewport's value.
@@ -182,18 +182,3 @@ Rules:
 
 Support: Chrome 115, Firefox 63, Safari 17.6.
 
-## `overflow: clip` over `hidden`
-
-Use it whenever you want to cut off overflow and do not need scrolling.
-
-```css
-.hero { overflow-x: clip; }
-```
-
-Rules:
-
-- Put it on the element that overflows, not on `html` or `body`.
-- Keep `hidden` or `auto` for elements a script scrolls. `clip` blocks that too.
-- Keep `hidden` or `auto` on an element with `resize`. With `clip` the browser draws no resize handle.
-
-Support: Chrome 90, Firefox 81, Safari 16.
