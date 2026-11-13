@@ -1,6 +1,6 @@
-# Frontend stack selection and setup
+# Web stack selection and setup
 
-The visible `web-fullstack` Utility recommends task-specific Vue and Nuxt libraries without changing an advice-only app. Explicit setup produces a real project with task-required integrations, not a dependency bundle.
+The visible `web-fullstack` Utility recommends task-specific Vue and Nuxt libraries without changing an advice-only app. Explicit setup produces a real frontend or fullstack Nuxt project. Cloudflare setup proves local execution without account requests.
 
 ## Sub-features
 
@@ -11,12 +11,16 @@ The visible `web-fullstack` Utility recommends task-specific Vue and Nuxt librar
 - `stack-controls`: copied shadcn-vue controls use UnoCSS and UnoCSS icons without a parallel Tailwind pipeline.
 - `stack-form`: TanStack Form and omptype show nested errors, transformed submission output, and repeated validation under a recorded policy.
 - `stack-tooling`: existing lint and format tooling stays intact. Absent tooling uses antfu with appropriate Nuxt ESLint composition.
+- `stack-fullstack`: a fresh native consumer creates a Nuxt app with SSR pages and server routes, NuxtHub D1, reviewed migrations, and a deploy checklist.
+- `stack-local-d1`: the generated app writes and reads local D1 through a browser in both Nuxt dev and built workerd.
+- `stack-cloudflare-boundary`: setup makes no remote Cloudflare request. Static-only output uses assets without server Worker code. Other hosts and fullstack Vite stay uncurated.
 
 ## How to get to it (user POV)
 
 - Ask which library fits a Vue or Nuxt task, or type `/skill:web-fullstack` with that task.
 - Explicitly request a new application or an existing app's scoped setup. Advice alone authorizes no installation.
 - Use ordinary conditional references from the skill when controls, schemas, or setup are needed.
+- Request a fullstack Nuxt site on Cloudflare with the desired page, server behavior, and data. A build request is not a deploy request.
 
 ## Driving it with native omp, the browser, and public CLIs
 
@@ -45,13 +49,29 @@ Run each generated app's actual package scripts, for example `bun run build`, `b
 
 ### Observe the actual applications
 
-Launch each app's documented production preview with a uniquely named owned server. Open each browser with `app: { tern: false }` and an explicit viewport. Record the returned backend, engine, policy, and actual app URL.
+Launch each app's documented production preview with a uniquely named owned server. Open each browser with `app: "own"` and an explicit viewport, keeping it outside Tern. Record the returned backend, engine, policy, and actual app URL. Current browser tools take a string, not the older `app: { tern: false }` form in the shared baseline.
 
 1. Open the dialog with Enter, press Escape, and confirm focus returns to its trigger. Open the menu by keyboard, move through items, choose a theme, and repeat Escape and focus return.
 2. Submit invalid nested values and read actual field-level messages and ARIA associations. Correct the focused field, then press Enter before blurring it to expose stale validation-timing errors. Submit valid input with padded name text and observe trimmed output at the local submission consumer. Repeat the invalid and valid cycle.
 3. Test at 1280px and 320px in both themes. Include realistic long names, emails, text enlargement as a labelled proxy, and markup-looking input rendered as text. Capture portalled content, icon paint, visible focus, and page overflow. Use only applicable collection cases when a collection is rendered.
 4. Repeat schema validation beyond the compiler threshold under the actual target CSP. If no deployment policy was specified, use a separately labelled production-asset CSP fixture with self-only scripts and no `unsafe-eval`. Keep policy, repeated results, error paths, transformed output, browser errors, and CSP diagnostics. omptype can catch a CSP-blocked code-generation `EvalError` and interpret successfully. Report that diagnostic separately from functional failure. Never loosen policy.
 5. Retain ARIA, actions, computed evidence, and full-resolution lossless WebP using `../SKILL.md`'s PNG conversion procedure. Close only owned tabs and stop only owned named servers.
+
+### Build and observe the fullstack branch
+
+Use the same native isolation procedure and recorded authorization as the frontend cases. Keep the existing frontend proof above. This branch adds local fullstack proof, not remote deployment.
+
+1. Before drafting, retain the current skill and reference inventory and fresh native read-only advice for the same fullstack task. Missing shipped server and data knowledge is the prose baseline, not a meaningful failing unit test. Do not add source-string assertions.
+2. After drafting, start a fresh native consumer on an empty app directory under `$VERIFY_RUN_DIR/data/`. Request a Nuxt SSR page and a server route that creates and lists records through NuxtHub D1. Require local setup only, no sign-in, no KV or R2 unless the task needs them, and a written deploy checklist. Capture actual description discovery separately from explicit skill consumption. A manually authored replacement app does not prove native output.
+3. Inspect the generated manifest, lockfile, schema, reviewed migration SQL, Nuxt config, and Wrangler output. Record actual Node, Nuxt, Nitro, NuxtHub, Drizzle, and Wrangler versions. Require explicit `driver: 'd1'`, `cloudflare_module`, and a simulated local `DB` identifier rather than a created Cloudflare resource. A local libsql database is not a D1 pass.
+4. Before development, apply the skill's process-scoped telemetry, error-reporting, and metadata-fetch settings. Inspect the effective config for remote bindings and proxies. Retain sanitized command traces and network evidence covering the actual setup processes, including child workerd. Use a local egress guard where available and retain both its policy and any denied attempts. A missing deploy command does not prove absence of account requests. Keep fixture package downloads separate from the no-Cloudflare-account runtime proof.
+5. Start the generated app's Nuxt dev command with an owned named server. Record Nitro's Cloudflare emulation and the local D1 state directory. In a browser, create a record through the page, observe the server response and list, and reload to verify persistence. Save ARIA, actions, requests, console errors, and full-resolution lossless WebP. Exercise empty input, a realistic long record, and markup-looking text through the real form, plus narrow-layout and collection cases applicable under skill://break-ui.
+6. Stop only that owned server. Run the generated app's production build, typecheck, and configured lint. Inspect `.output/server/wrangler.json` for `DB`, `_hub_migrations`, and a migration path containing the reviewed SQL. With D1, do not run `nuxt db migrate`, which uses an HTTP client. Apply migrations with the chosen manager's equivalent of `wrangler d1 migrations apply DB --local --config .output/server/wrangler.json --persist-to <absolute-local-state>`.
+7. Start `wrangler dev --local --config .output/server/wrangler.json --persist-to <same-absolute-local-state>` with an owned named server. Repeat the browser create/list/reload proof against this built Worker. Do not assume Nuxt dev shares this state directory. Keep the actual backend and engine on every browser open, using `app: "own"` and an explicit viewport as above.
+8. Read the generated checklist. It must name login, each required resource, runtime variables and secret names if any, the separate remote D1 migration, and deployment, all not run. Minimal D1 alone requires a binding, not a Cloudflare API token. Confirm setup made no account-discovery, login, creation, secret-write, remote-migration, or deploy request. Report denied or unexpected network attempts rather than hiding them.
+9. In read-only native turns, check that fullstack Vite gets the Nuxt recommendation and is uncurated if retained, other hosts are uncurated, and a static-only Nuxt target uses `nuxt generate` with assets and no server Worker code. Retain unchanged file hashes. Do not rebuild unrelated frontend fixtures for an advice-only branch.
+
+The seam catches generated server/data wiring, local migration errors, and Workers runtime incompatibility. It misses real account binding IDs, remote migration behavior, secrets, and the live URL. No Cloudflare account, deployment, resource creation, or secret write belongs in this branch. An unavailable native session, browser, or network observation remains an explicit proof gap. Local success does not establish account-side compatibility.
 
 ### Package and finish
 

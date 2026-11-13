@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Extend web-fullstack with Nuxt server routes and NuxtHub D1 on Cloudflare Workers with Static Assets, local migration and workerd proof, and a setup-only deploy checklist."
+  ]
+}

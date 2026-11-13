@@ -1,9 +1,9 @@
 ---
 name: web-fullstack
-description: Choose task-specific libraries for Vue or Nuxt, or set up a Vue or Nuxt project when requested.
+description: Choose frontend libraries, set up Vue or Nuxt projects, or build fullstack Nuxt sites on Cloudflare Workers.
 ---
 
-# Pick a frontend stack
+# Choose and set up a web stack
 
 Give one applicable choice with a short reason, not a library survey. Start with the supplied task. This Utility supplies selection and setup knowledge to the current work owner, not an independent executor.
 
@@ -19,6 +19,12 @@ Read the application's `package.json`, `packageManager`, lockfile, framework con
 
 Prefer built-in Vue, Nuxt, browser, or installed UI capabilities when they cover the task. Keep an existing suitable library instead of adding another for the same job. Preserve existing framework, runtime, package manager, linting, formatting, and icon artwork unless migration is requested.
 
+Keep the target app's declared package manager and lockfile, or the user's explicit manager choice. Resolve conflicting declarations through the shared question contract before installation. Use Bun only when no manager or convention is declared or requested. Report an unavailable manager instead of installing it globally or substituting another. The installer does not change the application's runtime.
+
+For new applications, default to Nuxt. Keep Vue with Vite for frontend-only requests, embedded widgets, and component libraries. Fullstack is curated for Nuxt only because its pages and server routes share one Worker. Recommend Nuxt for a fullstack Vite request. If the user keeps Vite, label that path uncurated rather than adding a second curated server stack.
+
+Cloudflare Workers with Static Assets is the only curated host. Label Vercel, Netlify, and self-hosted Node hosting uncurated. Preserve an existing app's framework and host unless migration is requested. Choose rendering from the task's requirements rather than inferring it from the framework.
+
 Read [curated choices](references/choices.md) for the requested task. These are vstack defaults, not an Anthony Fu endorsement. Mark work outside that list as **uncurated**. Research an uncurated choice only when needed, and label the recommendation accordingly.
 
 ## Recommend or set up
@@ -26,6 +32,8 @@ Read [curated choices](references/choices.md) for the requested task. These are 
 Recommendation-only requests are read-only. State the choice, why it fits this app, and any compatibility prerequisite. Do not install, configure, scaffold, or migrate from a request for advice.
 
 For explicitly requested setup, read [project setup](references/setup.md). Install only task-required packages. Before wiring integrations, consult current compatible APIs and framework documentation. Read [UnoCSS and copied controls](references/unocss-controls.md) when setting up shadcn-vue or UnoCSS icons. Read [forms and schemas](references/forms.md) when integrating TanStack Form with omptype.
+
+For server routes or persistent data, read [server and data setup](references/server-data.md). For Cloudflare hosting, read [the Cloudflare boundary and deploy checklist](references/cloudflare-deploy.md), including static-only sites. These references apply to advice without granting setup permission. Setup stays local and makes no Cloudflare account request. It ends with local runtime proof and a written deploy checklist, never an implicit deploy.
 
 For styles and controls, use skill://good-css and its conditional interaction guidance. For data-bearing UI proof, use skill://break-ui within the current Verify work. Existing implementation, review, and Verify owners keep their responsibilities.
 

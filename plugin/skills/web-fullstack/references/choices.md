@@ -4,7 +4,7 @@ Use the row for the task, after checking built-ins and suitable installed altern
 
 | Task | Default and boundary |
 | --- | --- |
-| New application | Nuxt. Honor explicit Vue with Vite requests. Use Vue with Vite for embedded widgets and component-library deliverables. Framework choice does not settle rendering or deployment. |
+| New application | Nuxt by default. Vue with Vite stays curated for frontend-only requests, embedded widgets, and component libraries. Apply the [shared framework rules](../SKILL.md#inspect-the-target-application). |
 | UI controls | shadcn-vue copied components, owned by the project. Adapt their styling with the [UnoCSS recipe](unocss-controls.md). Native controls or existing components may be enough. |
 | Styling | UnoCSS. Use `@unocss/nuxt` for Nuxt and `unocss/vite` for Vite. Preserve an existing suitable CSS system. |
 | Icons | UnoCSS `presetIcons` and the required local Iconify collection package, retaining the project's artwork. `@nuxt/icon` is a conditional Nuxt alternative for its component integration, not a second default renderer. |
@@ -17,7 +17,7 @@ Use the row for the task, after checking built-ins and suitable installed altern
 | Library-driven motion | `motion-v` when built-in CSS or Vue transitions do not cover the motion task. Respect reduced motion and component lifetimes. |
 | 3D | TresJS, with compatible `@tresjs/core` and `three`. For Nuxt, check the current `@tresjs/nuxt` integration and client-only canvas boundary. Do not execute browser-only rendering during SSR. |
 | Reactive browser utilities | VueUse, with `@vueuse/nuxt` in Nuxt or `@vueuse/core` in Vue. Choose the relevant composable and respect SSR and permission boundaries. |
-| Images | `@nuxt/image` for Nuxt image processing. Check the selected provider and deployment compatibility. |
+| Images | `@nuxt/image` for Nuxt image processing. Check the selected provider and deployment compatibility. On Workers, follow [the provider boundary](server-data.md#check-worker-compatibility). |
 | Fonts | `@nuxt/fonts`, the published package name. `@nuxt/font` is not the curated identity. Check font sources and local-serving requirements. |
 | Color mode | `@nuxtjs/color-mode` in Nuxt. Align its preference, SSR fallback, and class or attribute with the app's theme tokens. |
 | Internationalization | `@nuxtjs/i18n` for Nuxt's locale routing and integration. `vue-i18n` for standalone Vue. Native `Intl` is enough for number or date formatting alone. |
@@ -27,5 +27,10 @@ Use the row for the task, after checking built-ins and suitable installed altern
 | Nuxt development inspection | Nuxt DevTools, or `@nuxt/devtools` when the installed Nuxt version needs it. Inspect built-in activation before adding a duplicate. |
 | Nuxt tests | `@nuxt/test-utils` when testing is requested. Keep it a development dependency, not a production runtime dependency. |
 | Linting and formatting | `@antfu/eslint-config` when tooling is absent or migration is explicit. Compose with generated `@nuxt/eslint` where applicable. Keep existing policy otherwise, with one formatting owner per file type. |
+| Server routes and SSR | Nuxt server routes in the same Worker as pages, using Nitro `cloudflare_module` on Workers with Static Assets. See [server and data setup](server-data.md). |
+| Relational data | NuxtHub 0.10 or later with D1 and Drizzle through `@nuxthub/db`. Schemas live in `server/db/`. See [local migration rules](server-data.md#generate-and-apply-local-migrations). |
+| Key-value storage | NuxtHub KV with Workers KV only when the task needs key-value storage. No default KV or cache namespace. |
+| File storage | NuxtHub blob with R2 only when the task needs file storage. |
+| Hosting | Cloudflare Workers with Static Assets only. Static-only Nuxt uses `nuxt generate` and assets without server Worker code. See [the Cloudflare checklist](cloudflare-deploy.md). |
 
 Nuxt-specific modules are conditional Nuxt integrations. Do not insert them into a standalone Vue application. Check peer versions, module registration, styles, providers, and SSR constraints for every package actually installed. No setup is complete until its relevant command and consumer behavior succeed.
