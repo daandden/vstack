@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "The installed Flow host now copies its npm packages into each staged runtime generation. Before, a generation could not find `pele` when the home directory contained an unrelated `node_modules`, so the normal host failed to start with \"Cannot find package 'pele'\". In homes without one, Bun downloaded an unpinned `pele` instead."
+  ]
+}
