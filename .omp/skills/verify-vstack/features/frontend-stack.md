@@ -1,6 +1,6 @@
 # Frontend stack selection and setup
 
-The visible `pick-frontend-stack` Utility recommends task-specific Vue and Nuxt libraries without changing an advice-only app. Explicit setup produces a real project with task-required integrations, not a dependency bundle.
+The visible `web-fullstack` Utility recommends task-specific Vue and Nuxt libraries without changing an advice-only app. Explicit setup produces a real project with task-required integrations, not a dependency bundle.
 
 ## Sub-features
 
@@ -14,7 +14,7 @@ The visible `pick-frontend-stack` Utility recommends task-specific Vue and Nuxt 
 
 ## How to get to it (user POV)
 
-- Ask which library fits a Vue or Nuxt task, or type `/skill:pick-frontend-stack` with that task.
+- Ask which library fits a Vue or Nuxt task, or type `/skill:web-fullstack` with that task.
 - Explicitly request a new application or an existing app's scoped setup. Advice alone authorizes no installation.
 - Use ordinary conditional references from the skill when controls, schemas, or setup are needed.
 
@@ -61,7 +61,7 @@ From `$CHECKOUT/plugin`, run:
 npm pack --ignore-scripts --json --pack-destination "$VERIFY_RUN_DIR" --cache "$VERIFY_RUN_DIR/data/npm-cache"
 ```
 
-Read the actual tarball inventory and the new skill and references in it. Inspect fresh native discovery and the final load-smoke inventory for visible `pick-frontend-stack`, with no Addon catalog key. Preserve Pins and the rejected Emil picker row. Run maintenance `prepare` with only the confirmed add target and normal patch Change-note entry. Run `gates --scratch <Scratch dir>` last after every final edit and scoped proof. Keep every stage name, `ok`, exit state, and output. A passing maintenance gate does not replace a failed native or browser criterion.
+Read the actual tarball inventory and the skill and references in it. Inspect fresh native discovery and the final load-smoke inventory for visible `web-fullstack`, with no Addon catalog key. Preserve Pins and the rejected Emil picker row. Run maintenance `prepare` with the confirmed Hand edit targets and their Change-note entries. A rename uses a `rename` target and a major Change note. Run `gates --scratch <Scratch dir>` last after every final edit and scoped proof. Keep every stage name, `ok`, exit state, and output. A passing maintenance gate does not replace a failed native or browser criterion.
 
 ## Gotchas
 

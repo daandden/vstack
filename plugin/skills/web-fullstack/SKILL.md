@@ -1,5 +1,5 @@
 ---
-name: pick-frontend-stack
+name: web-fullstack
 description: Choose task-specific libraries for Vue or Nuxt, or set up a Vue or Nuxt project when requested.
 ---
 

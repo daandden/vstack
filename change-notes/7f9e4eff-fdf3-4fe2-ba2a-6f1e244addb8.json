@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "major",
+  "entries": [
+    "Rename the visible pick-frontend-stack Utility to web-fullstack with frontend advice and setup unchanged. Update live references and record the agreed fullstack direction in its ADR."
+  ]
+}

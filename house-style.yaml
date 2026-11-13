@@ -160,6 +160,14 @@ replacements:
     match: literal
     upstream: any
     uses: [migration]
+  - id: rename-pick-frontend-stack
+    from: pick-frontend-stack
+    match: name
+    to: web-fullstack
+    upstream: any
+    scope: required
+    uses:
+      - update
 
 rules:
   - id: fan-out

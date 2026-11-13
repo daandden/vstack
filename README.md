@@ -41,7 +41,7 @@ The [Flow page](plugin/skills/flow-page/SKILL.md) keeps questions, answers, resu
 
 Run `/vstack-clean [age]` to preview expired Scratch entries. The default is `90d`. Deletion requires UI confirmation. Open Flows stay protected. See the [Scratch guide](plugin/skills/vstack-tmp/SKILL.md).
 
-Use `/skill:pick-frontend-stack <task>` for one task-specific Vue or Nuxt library choice. It checks the target app and keeps suitable installed solutions. Advice is read-only. Explicit setup defaults new applications to Nuxt, honors Vue with Vite requests, and uses Bun only without an existing or requested manager. The [curated choices](plugin/skills/pick-frontend-stack/references/choices.md) stay conditional rather than becoming a scaffold dependency bundle.
+Use `/skill:web-fullstack <task>` for one task-specific Vue or Nuxt library choice. It checks the target app and keeps suitable installed solutions. Advice is read-only. Explicit setup defaults new applications to Nuxt, honors Vue with Vite requests, and uses Bun only without an existing or requested manager. The [curated choices](plugin/skills/web-fullstack/references/choices.md) stay conditional rather than becoming a scaffold dependency bundle.
 
 The twelve Emil-derived skills are visible Utility skills. They can load by description in any session or by name, without Addon judge selection. Their guidance takes precedence over good-css for CSS and animation under [ADR 0074](docs/adr/0074-emil-derived-skills-are-visible-utility-skills-and-hold-over-good-css.md). [Choreograph](plugin/skills/choreograph/SKILL.md) coordinates several moving elements; [gestures](plugin/skills/gestures/SKILL.md) covers direct manipulation and suggests Vaul only when the project already depends on it.
 
