@@ -14,6 +14,7 @@ The visible `web-fullstack` Utility recommends task-specific Vue and Nuxt librar
 - `stack-fullstack`: a fresh native consumer creates a Nuxt app with SSR pages and server routes, NuxtHub D1, reviewed migrations, and a deploy checklist.
 - `stack-local-d1`: the generated app writes and reads local D1 through a browser in both Nuxt dev and built workerd.
 - `stack-cloudflare-boundary`: setup makes no remote Cloudflare request. Static-only output uses assets without server Worker code. Other hosts and fullstack Vite stay uncurated.
+- `stack-auth`: a sign-in task uses the Better Auth Nuxt module and generated NuxtHub schema, with private local env loading and browser authorization proof in Nuxt dev and built workerd.
 
 ## How to get to it (user POV)
 
@@ -72,6 +73,21 @@ Use the same native isolation procedure and recorded authorization as the fronte
 9. In read-only native turns, check that fullstack Vite gets the Nuxt recommendation and is uncurated if retained, other hosts are uncurated, and a static-only Nuxt target uses `nuxt generate` with assets and no server Worker code. Retain unchanged file hashes. Do not rebuild unrelated frontend fixtures for an advice-only branch.
 
 The seam catches generated server/data wiring, local migration errors, and Workers runtime incompatibility. It misses real account binding IDs, remote migration behavior, secrets, and the live URL. No Cloudflare account, deployment, resource creation, or secret write belongs in this branch. An unavailable native session, browser, or network observation remains an explicit proof gap. Local success does not establish account-side compatibility.
+
+### Add sign-in to the fullstack branch
+
+Run this branch when the changed task includes auth, retaining the no-sign-in case above as the conditional control. Use a fresh native consumer with an empty app directory and the same approved Session model, install allowance, checkout overlay, and captures. Request an SSR app with email/password sign-up, sign-in, sign-out, and a protected server route on NuxtHub D1. The consumer must generate the actual app. Keep the same local-only process and network guard, including loopback and Unix-domain IPC needed by Nuxt development forwarding.
+
+1. Retain the pre-edit auth-knowledge inventory and read-only native baseline. Prose has no meaningful failing unit test.
+2. Inspect installed module and peer versions against current docs. Require `@nuxthub/core >= 0.10.5`, matching `auth` and `better-auth`, and NuxtHub before the auth module. Inspect generated schema and reviewed SQL rather than accepting manually created duplicate auth tables. Confirm `CF-Connecting-IP` is the configured trusted client-IP header. Shared rate-limit storage, when requested, needs its generated migration too.
+3. Have the consumer generate the local secret directly into a git-ignored env file without printing it. Capture only its name, accepted variable name, ignore result, and successful runtime loading, never its contents. Keep that file out of RPC read results, broad snapshots, screenshots, and packaged evidence. Confirm Nuxt dev and built Wrangler read the same source. For generated Wrangler config, inspect the explicit env-file selection and any `.dev.vars` shadowing.
+4. Confirm Nuxt declares `runtimeConfig.public.siteUrl` and the root and built Worker configuration contain nonsecret `NUXT_PUBLIC_SITE_URL`. The checklist must require replacement of an unresolved prospective origin with the actual production origin before deploy, including for `workers.dev`. Local workerd must use its actual loopback origin through the ignored local env source. Confirm Better Auth's `secret` and `baseURL` are module-injected, not hand-set.
+5. Generate and review auth migrations, build, and exercise Nuxt dev with local D1. In the browser, request the protected route while signed out and observe 401. Sign up, observe session state and private server data, reload, sign out, and observe 401 again. Explicitly sign in with the same account and observe private server data again. Use real forms and keyboard submission, not only helper calls.
+6. Stop that owned server, run the generated app's production build, typecheck, and configured lint, then apply the reviewed auth migrations with explicit Wrangler `--local` and the built runtime's absolute persistence directory. Start built `wrangler dev --local` with that same directory and its explicit local env source. Repeat the full browser sequence, including explicit sign-in after sign-out, persisted sessions, and signed-out server refusal.
+7. Save sanitized request methods, paths, response statuses, session-state observations, ARIA, console errors, and full-resolution lossless WebP. Keep cookie values, session tokens, passwords, and the auth-secret value out of evidence. Observe realistic long names and emails, invalid credentials, keyboard use, and 320px layout under skill://break-ui. Local proof does not establish Cloudflare proxy header replacement or distributed rate-limit enforcement.
+8. Read the final checklist for the secret name, required live-origin runtime variable, separate remote migrations, and read-only live auth check. Mark production sign-in unrun and separately confirmed. Confirm no Cloudflare account request, resource creation, deployment, remote migration, or remote secret write occurred.
+
+This seam catches auth schema integration, local env loading, production-mode origin initialization, HTTP session flows, and server authorization in workerd. It misses account-side bindings, remote secrets and migrations, and live-origin behavior. Those remain outside this local branch.
 
 ### Package and finish
 

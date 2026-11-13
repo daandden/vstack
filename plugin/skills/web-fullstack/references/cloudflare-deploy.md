@@ -25,6 +25,8 @@ If the task needs no request-time server behavior, run `nuxt generate` instead o
 
 Write a project-specific checklist in the generated app. Name the actual local commands and observed results first. Mark remote work as not run. List every required runtime variable, its purpose, and whether it is secret, without secret values. For a minimal D1-only app there may be no additional runtime variables. D1 is a `DB` binding, not an API token to put in the browser.
 
+For an app with sign-in, list the accepted auth-secret name and nonsecret `NUXT_PUBLIC_SITE_URL`. Require the Worker's live origin as that runtime variable, including on `workers.dev`, because Workers supplies no `CF_PAGES_URL`. Confirm it is in the root and generated Worker configuration. The module injects `baseURL`. Follow [the auth recipe](auth.md#keep-secrets-private-and-origins-explicit) for local env loading instead of setting `baseURL` by hand.
+
 The checklist covers these later actions, each outside setup:
 
 - Identify and confirm the target Cloudflare account, production Worker name, and live origin. Missing credentials are a prerequisite, not a reason to change host.
@@ -34,5 +36,6 @@ The checklist covers these later actions, each outside setup:
 - Rebuild and inspect the generated Worker configuration, bindings, assets, runtime variables, and migration paths. Resolve resource IDs explicitly. Wrangler deployment must not silently provision missing resources.
 - Apply reviewed D1 migrations with `wrangler d1 migrations apply DB --remote --config .output/server/wrangler.json` as its own confirmed step. `wrangler deploy` does not apply them.
 - Run `wrangler deploy` from the user's machine to one production Worker only after a separate deploy confirmation. Report the resulting live URL and which checks remain.
+- For sign-in apps, check the live auth session endpoint against that origin after deploy. A signed-out `GET /api/auth/get-session` may return null, but must initialize without an error. A real production sign-up or sign-in requires separate confirmation because it uses or creates a production account. Otherwise list it as unchecked.
 
 An explicit deploy request is required before any account work, followed by confirmation through [the shared question contract](../SKILL.md#flow-and-questions) for the account and each remote action. A refused or failed remote step stops that work. A retry of a remote migration or deploy needs new confirmation. The checklist is not that confirmation. This setup reference does not supply the remote execution procedure. CI deployment, Workers Builds, staging, preview environments, Cloudflare Pages, and other hosts are outside this curated path.

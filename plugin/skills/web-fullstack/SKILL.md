@@ -35,6 +35,8 @@ For explicitly requested setup, read [project setup](references/setup.md). Insta
 
 For server routes or persistent data, read [server and data setup](references/server-data.md). For Cloudflare hosting, read [the Cloudflare boundary and deploy checklist](references/cloudflare-deploy.md), including static-only sites. These references apply to advice without granting setup permission. Setup stays local and makes no Cloudflare account request. It ends with local runtime proof and a written deploy checklist, never an implicit deploy.
 
+When the task needs sign-in, read [Better Auth setup](references/auth.md). It supplies the curated Nuxt module, NuxtHub schema, session, and Worker-origin recipe. Apps without sign-in get no auth library.
+
 For styles and controls, use skill://good-css and its conditional interaction guidance. For data-bearing UI proof, use skill://break-ui within the current Verify work. Existing implementation, review, and Verify owners keep their responsibilities.
 
 Finish advice with the recommendation, without a canned waiting response. Finish setup with the actual files and commands, observed results, and any unmet prerequisite. Installed packages or generated files alone do not establish a working integration.

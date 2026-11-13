@@ -28,6 +28,8 @@ For UnoCSS, shadcn-vue, and icons, follow [the controls recipe](unocss-controls.
 
 For server routes or data, follow [server and data setup](server-data.md). For a Cloudflare target, also follow [the local boundary and deploy checklist](cloudflare-deploy.md). Frontend-only setup does not load either reference unless the task needs it.
 
+For sign-in, also follow [Better Auth setup](auth.md). Keep auth absent for tasks without sign-in.
+
 ## Keep one lint and format policy
 
 Preserve existing ESLint, Prettier, Biome, or other tooling unless migration is explicit. When tooling is absent, use compatible ESLint and `@antfu/eslint-config` development dependencies. In Nuxt, compose antfu with the generated Nuxt configuration rather than creating a parallel Vue or TypeScript ruleset:
