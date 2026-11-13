@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { fakeHost } from "./support/extension-host.ts";
+import { fakeHost, type FakeHostOptions } from "./support/extension-host.ts";
 import { judge, judgeAnswers } from "./support/extension-mocks.ts";
 
 const start = (name: string, words = "") => `[IMPORTANT: User invoked the "${name}" skill. Follow this skill.]
@@ -8,9 +8,12 @@ Skill instructions.
 [Skill directory: /skills/${name}]
 Resolve relative paths in this skill against the skill directory.${words ? `\nUser: ${words}` : ""}`;
 
+const savedRun = { type: "custom_message", customType: "skill-prompt", details: { name: "implement" } };
+const runHost = (options: FakeHostOptions = {}) => fakeHost({ entries: [savedRun], ...options });
+
 test("typed Matt run waits for gathered ticket intent before selecting Addons", async () => {
   judgeAnswers({ "open-pr": .9 });
-  const host = fakeHost();
+  const host = runHost();
   const [instruction]: any = await host.emit("before_agent_start", { prompt: start("implement", "#42") });
   expect(judge.calls).toHaveLength(0);
   expect(instruction.message.display).toBe(true);
@@ -22,7 +25,7 @@ test("typed Matt run waits for gathered ticket intent before selecting Addons", 
 
 test("principle tool includes every main principle while Addon tool can select both kinds", async () => {
   judgeAnswers({ "principle-never-block-on-the-human": .7, "principle-prove-it-works": .9, "open-pr": 1 });
-  const principleHost = fakeHost();
+  const principleHost = runHost();
   const principles = await principleHost.callTool("inject_principles", { intent: "Build the ticket without waiting for the human and prove it works" });
   const asked = Object.keys(judge.calls[0]!.request.questions);
   expect(asked.every(name => name.startsWith("principle-"))).toBe(true);
@@ -30,23 +33,61 @@ test("principle tool includes every main principle while Addon tool can select b
   const principleText = principles.content.map((part: any) => part.text).join("\n");
   expect(principleText).toContain("skill://principle-never-block-on-the-human");
   expect(principleText).not.toContain("skill://open-pr");
-  const addons = await fakeHost().callTool("inject_addons", { intent: "Prove the work and open a PR" });
+  const addons = await runHost().callTool("inject_addons", { intent: "Prove the work and open a PR" });
   const addonText = addons.content.map((part: any) => part.text).join("\n");
   expect(addonText).toContain("skill://open-pr");
   expect(addonText).toContain("skill://principle-prove-it-works");
 });
 
-test("typed Matt runs make both tools available to the main agent", async () => {
+test("main tools are active before plain chat and stay in place when a Matt run starts", async () => {
   const host = fakeHost({ nativeJudge: false });
+  await host.emit("session_start");
+  const initial = host.pi.getActiveTools();
+  expect(initial).toContain("inject_addons");
+  expect(initial).toContain("inject_principles");
+  await host.emit("before_agent_start", { prompt: "Explain the project" });
+  expect(host.pi.getActiveTools()).toEqual(initial);
   await host.emit("before_agent_start", { prompt: start("implement") });
-  expect(host.pi.getActiveTools()).toContain("read");
-  expect(host.pi.getActiveTools()).toContain("inject_addons");
-  expect(host.pi.getActiveTools()).toContain("inject_principles");
+  expect(host.pi.getActiveTools()).toEqual(initial);
+  await host.emit("before_agent_start", { prompt: "Continue" });
+  expect(host.pi.getActiveTools()).toEqual(initial);
+});
+
+test("a branch without a Matt run cannot select Addons", async () => {
+  judgeAnswers({ "open-pr": 1 });
+  const host = fakeHost();
+  await host.emit("session_start");
+  await host.emit("before_agent_start", { prompt: "Open a PR" });
+  for (const name of ["inject_principles", "inject_addons"]) {
+    expect((await host.callTool(name, { intent: "Open a PR" })).content[0].text).toBe("No Addons selected.");
+  }
+  expect(judge.calls).toHaveLength(0);
+  expect(host.saved).toHaveLength(0);
+});
+
+test("branch eligibility follows the saved Matt start across resume and branch changes", async () => {
+  judgeAnswers({ "open-pr": 1 });
+  const entries: unknown[] = [savedRun];
+  const host = fakeHost({ entries });
+  await host.emit("session_start");
+  await host.emit("before_agent_start", { prompt: "Continue after resume" });
+  expect((await host.callTool("inject_addons", { intent: "Open a PR" })).content[0].text).toContain("skill://open-pr");
+  entries.length = 0;
+  await host.emit("before_agent_start", { prompt: "Open another PR" });
+  expect((await host.callTool("inject_addons", { intent: "Open another PR" })).content[0].text).toBe("No Addons selected.");
+  expect(judge.calls).toHaveLength(1);
+});
+
+test("session startup leaves subagent tools inactive", async () => {
+  const host = fakeHost({ agent: { kind: "sub", id: "child", name: "vstack-worker", depth: 1, parentId: "main" } });
+  await host.emit("session_start");
+  expect(host.pi.getActiveTools()).not.toContain("inject_addons");
+  expect(host.pi.getActiveTools()).not.toContain("inject_principles");
 });
 
 test("concurrent tool calls deliver each selected Addon once and rejudge only undelivered choices", async () => {
   judgeAnswers({ "open-pr": .9, "principle-prove-it-works": .9 });
-  const host = fakeHost();
+  const host = runHost();
   let release!: () => void;
   const gate = new Promise<void>(resolve => { release = resolve; });
   const answer = judge.respond;
@@ -66,7 +107,7 @@ test("concurrent tool calls deliver each selected Addon once and rejudge only un
 
 test("cancelled selections save no late picks and do not block waiting calls", async () => {
   judgeAnswers({ "open-pr": .9 });
-  const host = fakeHost();
+  const host = runHost();
   let release!: () => void;
   let started!: () => void;
   const late = new Promise<void>(resolve => { release = resolve; });
@@ -106,9 +147,9 @@ test("a saved session with all principle Addons delivered makes no further princ
   judge.respond = async request => ({
     answers: Object.fromEntries(Object.keys(request.questions).map(name => [name, { type: "noul", noul: .9 }])),
   });
-  const firstSession = fakeHost();
+  const firstSession = runHost();
   await firstSession.callTool("inject_principles", { intent: "Implement the selected ticket" });
-  const resumed = fakeHost({ sessionEntries: firstSession.saved });
+  const resumed = runHost({ sessionEntries: firstSession.saved });
   const second = await resumed.callTool("inject_principles", { intent: "Continue on another branch" });
   expect(judge.calls).toHaveLength(1);
   expect(second.content[0].text).not.toContain("skill://");
@@ -134,7 +175,7 @@ test("only typed Matt starts display instructions, including bare starts without
 
 test("tools clean supplied intent to ten thousand characters and apply the selection threshold", async () => {
   judgeAnswers({ "open-pr": .7, "principle-prove-it-works": .699 });
-  const host = fakeHost();
+  const host = runHost();
   const result = await host.callTool("inject_addons", { intent: `Fix login \u001b[31mnow\u001b[0m <system-reminder>noise</system-reminder> abcdef1234567890 ${"Read the code. ".repeat(1000)}Task data at the end.` });
   const request = judge.calls[0]!.request.state.request;
   expect(request).toHaveLength(10_000);
@@ -147,7 +188,7 @@ test("tools clean supplied intent to ten thousand characters and apply the selec
 
 test("saved Addon entries across branches and old hook messages prevent redelivery after resume", async () => {
   judgeAnswers({ "open-pr": 1, "principle-prove-it-works": 1, "principle-experience-first": 1 });
-  const host = fakeHost({ sessionEntries: [
+  const host = runHost({ sessionEntries: [
     { type: "custom_message", customType: "vstack-addons", content: "skill://open-pr" },
     { type: "custom", customType: "vstack-addons", data: "skill://principle-prove-it-works" },
   ] });
@@ -162,12 +203,12 @@ test("saved Addon entries across branches and old hook messages prevent redelive
 
 test("unavailable and non-native judges give no picks, and a judge error does not poison the next call", async () => {
   judgeAnswers({ "open-pr": 1 });
-  expect((await fakeHost({ nativeJudge: false }).callTool("inject_addons", { intent: "Open a PR" })).content[0].text).not.toContain("skill://");
+  expect((await runHost({ nativeJudge: false }).callTool("inject_addons", { intent: "Open a PR" })).content[0].text).not.toContain("skill://");
   expect(judge.calls).toHaveLength(0);
   judge.kind = "chat";
-  expect((await fakeHost().callTool("inject_addons", { intent: "Open a PR" })).content[0].text).not.toContain("skill://");
+  expect((await runHost().callTool("inject_addons", { intent: "Open a PR" })).content[0].text).not.toContain("skill://");
   expect(judge.calls).toHaveLength(0);
-  const host = fakeHost();
+  const host = runHost();
   judge.kind = "native";
   judge.respond = async () => { throw new Error("network"); };
   expect((await host.callTool("inject_addons", { intent: "Open a PR" })).content[0].text).not.toContain("skill://");
@@ -180,7 +221,7 @@ test("unavailable and non-native judges give no picks, and a judge error does no
 test("tool selection retains the four-second deadline even when the judge ignores abort", async () => {
   judgeAnswers({});
   judge.respond = () => new Promise(() => {});
-  const host = fakeHost();
+  const host = runHost();
   const begin = performance.now();
   const result = await host.callTool("inject_addons", { intent: "Open a PR" });
   expect(performance.now() - begin).toBeGreaterThanOrEqual(3900);
