@@ -12,7 +12,7 @@ function fixture() {
 	dirs.push(dir);
 	return dir;
 }
-const owned = { id: "retention-runtime", source: "archive/0002-cache.md:5", affectedAdrs: ["0013-retention.md"] };
+const owned = { id: "retention-runtime", kind: "archived", source: "archive/0002-cache.md:5", affectedAdrs: ["0013-retention.md"] };
 const verified = {
 	id: owned.id, disposition: "restated", replacement: "0013-retention.md:3",
 	evidence: { status: "verified", references: ["src/cache.ts:12-20"], detail: "The cache removes entries older than seven days." },
@@ -140,4 +140,84 @@ test("a prior open row needs an explicit evidence-backed resolution before closu
 	const second = await check(dir, { rows: [verified] }, 2, save(dir, "outcome-1.json", first.outcome));
 	expect(second.outcome.action).toBe("recheck");
 	expect(second.outcome.openRewriteRows[0].problems).toContain("Missing resolution of the previous open row");
+});
+
+const invented = { ...owned, id: "maintenance-window", kind: "new", source: "0013-retention.md:5" };
+const removed = {
+	id: invented.id, disposition: "removed", removedFrom: ["0013-retention.md"],
+	evidence: { status: "verified", references: ["0013-retention.md:1-8"], detail: "The current ADR contains retention only. The maintenance-window statement is absent from every new ADR." },
+	problem: null,
+};
+
+test("a removed new statement closes with current ADR evidence and retains its kind", async () => {
+	const result = await check(fixture(), { rows: [removed] }, 1, undefined, [invented]);
+	expect(result.code).toBe(0);
+	expect(result.outcome.action).toBe("finish");
+	expect(result.outcome.coverage).toEqual([{ ...invented, group: "retention" }]);
+	expect(result.outcome.openRewriteRows).toEqual([]);
+});
+
+test("a removed previously open statement needs a resolution and can close without repeating ownership", async () => {
+	const dir = fixture();
+	const first = await check(dir, { rows: [{ ...removed, disposition: "missing", evidence: { status: "unknown" } }] }, 1, undefined, [invented]);
+	const previous = save(dir, "outcome-1.json", first.outcome);
+	const unresolved = await check(dir, { rows: [removed] }, 2, previous, []);
+	expect(unresolved.outcome.action).toBe("recheck");
+	expect(unresolved.outcome.openRewriteRows[0].kind).toBe("new");
+	const closed = await check(dir, { rows: [{ ...removed, resolution: "Read all current replacements; the unsupported maintenance-window requirement has been deleted." }] }, 2, previous, []);
+	expect(closed.outcome.action).toBe("finish");
+	expect(closed.outcome.coverage).toEqual([{ ...invented, group: "retention" }]);
+});
+
+test("removing an archived provision cannot close its coverage", async () => {
+	const result = await check(fixture(), { rows: [{ ...removed, id: owned.id }] });
+	expect(result.code).toBe(0);
+	expect(result.outcome.action).toBe("recheck");
+	expect(result.outcome.openRewriteRows[0].problems.length).toBeGreaterThan(0);
+});
+
+test.each(["unknown", "unavailable"])("a removed statement with %s evidence stays open", async (status) => {
+	const result = await check(fixture(), { rows: [{ ...removed, evidence: { ...removed.evidence, status } }] }, 1, undefined, [invented]);
+	expect(result.code).toBe(0);
+	expect(result.outcome.action).toBe("recheck");
+	expect(result.outcome.openRewriteRows).toHaveLength(1);
+});
+
+test.each([
+	{ ...removed, removedFrom: undefined },
+	{ ...removed, removedFrom: [] },
+	{ ...removed, removedFrom: ["0014-format.md"] },
+	{ ...removed, evidence: { ...removed.evidence, references: ["0013-retention.md.backup:1"] } },
+	{ ...removed, evidence: { ...removed.evidence, detail: "" } },
+	{ ...removed, problem: "The requirement survives in another new ADR." },
+	{ ...removed, problem: undefined },
+	{ ...removed, disposition: "dropped", droppedReason: "The parent deleted the statement." },
+])("incomplete removal or dropped relabelling stays open: %j", async (row) => {
+	const result = await check(fixture(), { rows: [row] }, 1, undefined, [invented]);
+	expect(result.code).toBe(0);
+	expect(result.outcome.action).toBe("recheck");
+	expect(result.outcome.openRewriteRows).toHaveLength(1);
+});
+
+test.each([undefined, "", "statement"])("invalid ownership kind %s exits 2 without an outcome", async (kind) => {
+	const result = await check(fixture(), { rows: [verified] }, 1, undefined, [{ ...owned, kind: kind as string }]);
+	expect(result.code).toBe(2);
+	expect(result.stdout).toBe("");
+});
+
+test("changing an existing row kind exits 2", async () => {
+	const dir = fixture();
+	const first = await check(dir, { rows: [verified] });
+	const result = await check(dir, { rows: [verified] }, 2, save(dir, "outcome-1.json", first.outcome), [{ ...owned, kind: "new" }]);
+	expect(result.code).toBe(2);
+	expect(result.stdout).toBe("");
+});
+
+test("previous coverage without a valid kind exits 2", async () => {
+	const dir = fixture();
+	const first = await check(dir, { rows: [verified] });
+	delete first.outcome.coverage[0].kind;
+	const result = await check(dir, { rows: [verified] }, 2, save(dir, "outcome-1.json", first.outcome));
+	expect(result.code).toBe(2);
+	expect(result.stdout).toBe("");
 });

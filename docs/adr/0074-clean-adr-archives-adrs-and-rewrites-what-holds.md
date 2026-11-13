@@ -20,6 +20,10 @@ The typed command authorizes the whole run, with no approval question. Scouts ju
 
 The always-apply Private-mode rule states what the archive means, because that rule already says where ADRs live and reaches projects whose `domain.md` predates the archive. Only the skills whose behavior changes get edits. why reads the archive, and domain-modeling counts archived numbers.
 
+Coverage distinguishes archived provisions from new statements with a required, stable `kind`. An archived provision closes only as restated or dropped with the original judge's evidence-backed reason. A later fix can delete an invented new statement without abandoning an archived decision. Its stable row then closes as `removed`, with its former new ADR paths, verified current-ADR evidence of absence from every new ADR, no problem, and a resolution if previously open. Unknown or unavailable evidence stays open. This avoids relabelling a deleted invention as an abandoned source provision.
+
+Coverage owns claims actually asserted in archived or new ADR text. Runtime, rationale, and acceptance evidence gaps in those claims remain separate open rows. An unasserted question about motivation, history, or comparison is not an additional provision. For example, the written seven-day boundary-delivery rationale needs evidence, but no row asks why seven rather than eight days unless an ADR asserts that comparison.
+
 ## Considered options
 
 - Move only fully superseded ADRs. At baseline commit `4de7c8a875d9561f00c81be6f51b299ce3b01134`, the active set would shrink by 4 files of 67 and still hold superseded provisions behind banners. Regenerate the fully superseded count with `git grep -l -E '^> (Superseded by|.*None of this ADR still stands)' 4de7c8a875d9561f00c81be6f51b299ce3b01134 -- 'docs/adr/*.md' | wc -l`. The total uses the `git ls-tree` command above.

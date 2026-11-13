@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 
 type ObjectValue = Record<string, unknown>;
-type OwnedRow = { id: string; source: string; affectedAdrs: string[]; group: string };
+type OwnedRow = { id: string; kind: "archived" | "new"; source: string; affectedAdrs: string[]; group: string };
 const object = (value: unknown): ObjectValue => {
 	if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Expected a JSON object");
 	return value as ObjectValue;
@@ -14,7 +14,8 @@ const load = (path: string): ObjectValue => object(JSON.parse(readFileSync(path,
 function ownership(value: unknown, group: string): OwnedRow {
 	const row = object(value);
 	if (!text(row.id) || !text(row.source) || !strings(row.affectedAdrs)) throw new Error("Each owned row needs id, source, and affectedAdrs");
-	return { id: row.id, source: row.source, affectedAdrs: row.affectedAdrs, group };
+	if (row.kind !== "archived" && row.kind !== "new") throw new Error("Each owned row needs kind archived or new");
+	return { id: row.id, kind: row.kind, source: row.source, affectedAdrs: row.affectedAdrs, group };
 }
 
 try {
@@ -53,6 +54,7 @@ try {
 		for (const value of group.rows) {
 			const row = ownership(value, group.id);
 			if (ids.has(row.id) || (owned.has(row.id) && owned.get(row.id)!.group !== group.id)) throw new Error(`Duplicate or reassigned row ${row.id}`);
+			if (owned.has(row.id) && owned.get(row.id)!.kind !== row.kind) throw new Error(`Changed kind for row ${row.id}`);
 			ids.add(row.id);
 			owned.set(row.id, row);
 		}
@@ -82,11 +84,20 @@ try {
 			if (result.disposition === "restated") {
 				if (!text(result.replacement)) problems.push("Missing replacement provision location");
 			} else if (result.disposition === "dropped") {
+				if (row.kind !== "archived") problems.push("Only archived provisions can be dropped with the original judge's reason");
 				if (!text(result.droppedReason)) problems.push("Missing evidence-backed dropped reason");
+			} else if (result.disposition === "removed") {
+				if (row.kind !== "new") problems.push("Only new statements can be removed; archived provisions need restated or dropped");
+				if (!strings(result.removedFrom) || !result.removedFrom.length) problems.push("Removed statement needs its former new ADR paths in removedFrom");
 			} else problems.push("Missing provision disposition or archived source");
 			const evidence = result.evidence && typeof result.evidence === "object" && !Array.isArray(result.evidence) ? object(result.evidence) : {};
 			if (evidence.status !== "verified") problems.push(`Independent evidence is ${text(evidence.status) ? evidence.status : "unknown"}: ${text(evidence.detail) ? evidence.detail : "no evidence supplied"}`);
 			else if (!strings(evidence.references) || !evidence.references.length || !text(evidence.detail)) problems.push("Verified evidence needs independent references and a finding");
+			if (result.disposition === "removed" && strings(result.removedFrom) && result.removedFrom.length && evidence.status === "verified" && strings(evidence.references)) {
+				for (const path of result.removedFrom) {
+					if (!evidence.references.some((reference) => reference === path || reference.startsWith(`${path}:`) || reference.startsWith(`${path}#`))) problems.push(`Removed statement needs current ADR evidence for ${path}`);
+				}
+			}
 			if (text(result.problem)) problems.push(result.problem);
 			else if (result.problem !== null) problems.push("Missing explicit problem assessment");
 			if (!problems.length && previouslyOpen.has(row.id) && !text(result.resolution)) problems.push("Missing resolution of the previous open row");

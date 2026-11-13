@@ -1,39 +1,67 @@
-import { deepStrictEqual, equal } from "node:assert/strict";
-import { readFileSync, writeFileSync } from "node:fs";
+import { deepStrictEqual, equal, notEqual } from "node:assert/strict";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { Device } from "./device.ts";
+import { join, resolve } from "node:path";
 
-const settings = JSON.parse(readFileSync(new URL("../settings.json", import.meta.url), "utf8"));
+const root = new URL("../../", import.meta.url).pathname;
+const output = resolve(Bun.argv[2] ?? join(root, "evidence/actors"));
+mkdirSync(output, { recursive: true });
+const settings = JSON.parse(readFileSync(join(root, "settings.json"), "utf8"));
 const day = 86_400_000;
-let now = Date.UTC(2026, 0, 1);
-const start = now;
-const devices = [new Device(settings.cache, () => now), new Device(settings.cache, () => now)];
-const receiver = new URL("./receiver.ts", import.meta.url).pathname;
-const observations = [];
-for (const [index, device] of devices.entries()) device.store(`reading-${index}`);
-now += 7 * day;
-for (const [index, device] of devices.entries()) {
-	const wire = device.payload();
-	equal(wire[0], 0x1f);
-	equal(wire[1], 0x8b);
-	const proc = Bun.spawn([process.execPath, receiver], { stdin: wire, stdout: "pipe", stderr: "pipe" });
-	const [stdout, stderr, code] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text(), proc.exited]);
-	equal(code, 0, stderr);
-	deepStrictEqual(JSON.parse(stdout), [{ createdAt: start, value: `reading-${index}` }]);
-	observations.push({ device: index, storedAt: start, deliveredAt: now, disconnectedMilliseconds: now - start, wireSha256: createHash("sha256").update(wire).digest("hex"), receiverExit: code, received: JSON.parse(stdout) });
+const executions: unknown[] = [];
+async function execute(name: string, program: string, args: string[], input: Uint8Array) {
+	const command = [process.execPath, new URL(program, import.meta.url).pathname, ...args];
+	const proc = Bun.spawn(command, { cwd: root, stdin: input, stdout: "pipe", stderr: "pipe" });
+	const [stdout, stderr, exit] = await Promise.all([new Response(proc.stdout).bytes(), new Response(proc.stderr).text(), proc.exited]);
+	writeFileSync(join(output, name + ".stdin"), input);
+	writeFileSync(join(output, name + ".stdout"), stdout);
+	writeFileSync(join(output, name + ".stderr"), stderr);
+	executions.push({ name, command, exit, input: name + ".stdin", stdout: name + ".stdout", stderr: name + ".stderr", sha256: createHash("sha256").update(stdout).digest("hex") });
+	writeFileSync(join(output, "executions.json"), JSON.stringify(executions, null, 2) + "\n");
+	return { stdout, stderr, exit };
 }
-now += 1;
-for (const device of devices) {
-	const proc = Bun.spawn([process.execPath, receiver], { stdin: device.payload(), stdout: "pipe", stderr: "pipe" });
-	const [stdout, stderr, code] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text(), proc.exited]);
-	equal(code, 0, stderr);
-	deepStrictEqual(JSON.parse(stdout), []);
+const observations: unknown[] = [];
+for (const [name, deliverAt] of [["seven-days", 7 * day], ["expired-empty", 7 * day + 1]] as const) {
+	const input = { stores: [{ at: 0, value: "reading" }], deliverAt };
+	const wire = await execute(name + "-producer", "./producer.ts", [], Buffer.from(JSON.stringify(input)));
+	equal(wire.exit, 0, wire.stderr);
+	deepStrictEqual(JSON.parse(wire.stderr).attemptSlots, [1, 2, 3]);
+	const receiver = await execute(name + "-receiver", "./receiver.ts", [], wire.stdout);
+	equal(receiver.exit, 0, receiver.stderr);
+	const entries = JSON.parse(Buffer.from(receiver.stdout).toString());
+	deepStrictEqual(entries, name === "seven-days" ? [{ createdAt: 0, value: "reading" }] : []);
+	observations.push({ name, input, entries, producerExit: wire.exit, receiverExit: receiver.exit });
 }
-const evidence = {
-	clock: "Explicitly controlled sample-device clock, not wall-clock telemetry or physical-device measurements",
-	start, reconnectedAt: start + 7 * day, expiredAt: now,
-	settings,
-	observations,
-};
-writeFileSync(new URL("./observations.json", import.meta.url), JSON.stringify(evidence, null, 2) + "\n");
-console.log(JSON.stringify(evidence, null, 2));
+const stores = Array.from({ length: settings.cache.maxEntries + 1 }, (_, index) => ({ at: 0, value: `reading-${index}` }));
+const capacity = await execute("capacity-producer", "./producer.ts", [], Buffer.from(JSON.stringify({ stores, deliverAt: 0 })));
+const capacityReceived = await execute("capacity-receiver", "./receiver.ts", [], capacity.stdout);
+const capacityEntries = JSON.parse(Buffer.from(capacityReceived.stdout).toString());
+equal(capacity.exit, 0, capacity.stderr);
+equal(capacityReceived.exit, 0, capacityReceived.stderr);
+deepStrictEqual(capacityEntries, stores.slice(1).map(entry => ({ createdAt: entry.at, value: entry.value })));
+observations.push({ name: "configured-capacity", inputCount: stores.length, received: capacityEntries });
+const journal = join(output, "journal.jsonl");
+const local = { at: 0, value: "local" };
+const remote = { at: 0, value: "remote", source: "remote" };
+writeFileSync(journal, "");
+const navigationInput = { stores: [local, remote], deliverAt: 0, journal };
+const policy = await execute("policy-producer", "./producer.ts", [], Buffer.from(JSON.stringify(navigationInput)));
+const policyReceived = await execute("policy-receiver", "./receiver.ts", [], policy.stdout);
+equal(policy.exit, 0, policy.stderr);
+equal(policyReceived.exit, 0, policyReceived.stderr);
+deepStrictEqual(JSON.parse(Buffer.from(policyReceived.stdout).toString()), [{ createdAt: 0, value: "local" }]);
+equal(readFileSync(journal, "utf8"), JSON.stringify(local) + "\n");
+observations.push({ name: "polling-disabled-and-synchronous-journal", input: navigationInput, received: JSON.parse(Buffer.from(policyReceived.stdout).toString()), journal: readFileSync(journal, "utf8") });
+const alternateInput = Buffer.from(JSON.stringify([{ createdAt: 0, value: "alternate" }]));
+const encoded = await execute("zstd-encoder", "./alternate.ts", ["encode"], alternateInput);
+equal(encoded.exit, 0, encoded.stderr);
+const decoded = await execute("zstd-decoder", "./alternate.ts", ["decode"], encoded.stdout);
+equal(decoded.exit, 0, decoded.stderr);
+deepStrictEqual(Buffer.from(decoded.stdout), alternateInput);
+const rejected = await execute("zstd-gzip-receiver", "./receiver.ts", [], encoded.stdout);
+notEqual(rejected.exit, 0, "The gzip receiver must reject a valid zstd packet");
+equal(rejected.stdout.length, 0);
+observations.push({ name: "valid-zstd-rejected-by-gzip-receiver", decoded: JSON.parse(Buffer.from(decoded.stdout).toString()), encoderExit: encoded.exit, decoderExit: decoded.exit, receiverExit: rejected.exit, receiverError: rejected.stderr });
+const result = { scope: "Complete Bun simulator. Logical-clock payload selection and named software codecs only. No hardware, deployment fleet, physical offline interval, or memory measurement claims.", settings, observations, executions };
+writeFileSync(join(output, "observations.json"), JSON.stringify(result, null, 2) + "\n");
+console.log(JSON.stringify(result, null, 2));

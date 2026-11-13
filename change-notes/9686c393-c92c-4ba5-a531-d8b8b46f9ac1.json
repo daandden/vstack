@@ -1,0 +1,7 @@
+{
+  "schema": 1,
+  "level": "patch",
+  "entries": [
+    "Distinguish archived provisions from new statements in clean-adr coverage, verify deleted inventions as removed, and keep evidence-gap rows tied to claims actually asserted in ADR text."
+  ]
+}
