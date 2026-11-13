@@ -25,6 +25,7 @@ const port = () => {
 function copy(name: string) {
   const plugin = join(root, name);
   for (const skill of ["flow-page", "vstack-tmp", "vstack-figures"]) cpSync(join(skills, skill), join(plugin, "skills", skill), { recursive: true });
+  symlinkSync(join(import.meta.dir, "../node_modules"), join(plugin, "node_modules"));
   return join(plugin, "skills/flow-page/scripts/flow-page.ts");
 }
 function cli(script: string, home: string, cwd: string, port: number, args: string[], input?: object) {
@@ -47,7 +48,7 @@ function ok<T = FlowReceipt>(result: Awaited<ReturnType<typeof cli>>): T {
 }
 function world() {
   const base = join(root, `world-${serial++}`), home = join(base, "home"), cwd = join(base, "project");
-  mkdirSync(home, { recursive: true });
+  mkdirSync(join(home, "node_modules"), { recursive: true });
   mkdirSync(cwd, { recursive: true });
   git(cwd, "init", "-q");
   const script = copy(`installed-${serial}`), installed = join(home, ".omp/plugins/node_modules");

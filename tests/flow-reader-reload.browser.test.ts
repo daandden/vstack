@@ -18,6 +18,7 @@ test("served generation swaps refresh unchanged content and reload readers witho
     rmSync(join(skills, "flow-page/reader"), { recursive: true });
     cpSync(process.env.FLOW_READER_ASSETS, join(skills, "flow-page/reader"), { recursive: true });
   }
+  symlinkSync(join(import.meta.dir, "../node_modules"), join(root, "plugin/node_modules"));
   const installed = join(home, ".omp/plugins/node_modules");
   mkdirSync(installed, { recursive: true });
   symlinkSync(join(root, "plugin"), join(installed, "vstack"));

@@ -1,8 +1,8 @@
 import { createHash, randomBytes } from "node:crypto";
-import { mkdirSync, realpathSync, rmSync, statSync } from "node:fs";
+import { mkdirSync, readFileSync, realpathSync, rmSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
-import { coherentRuntime, skillsRoot, stageRuntime } from "./generation.ts";
+import { coherentRuntime, runtimePackages, skillsRoot, stageRuntime } from "./generation.ts";
 import { attest, hostDir, originOf, record, recordPath, same, secrets, type HostRecord } from "./live.ts";
 import { writeAtomic } from "./store.ts";
 import { installedSkills, isNormalHome } from "./home.ts";
@@ -40,14 +40,15 @@ async function prepare() {
   preparing = true;
   let worker: Candidate | undefined, folder: string | undefined;
   try {
-    const files = coherentRuntime(source), executable = runtime();
+    const files = coherentRuntime(source), packages = runtimePackages(source), executable = runtime();
     const fingerprint = createHash("sha256").update(executable.identity);
     for (const [name, bytes] of files) fingerprint.update(name).update(bytes);
+    for (const [name, root] of packages) fingerprint.update(name).update(readFileSync(join(root, "package.json")));
     const signature = fingerprint.digest("hex");
     if (signature === attempted) return;
     attempted = signature;
     folder = join(generations, randomBytes(12).toString("hex"));
-    stageRuntime(files, folder);
+    stageRuntime(files, packages, folder);
     const check = coherentRuntime(source);
     if (check.size !== files.size || [...files].some(([name, bytes]) => !check.get(name)?.equals(bytes)) || runtime().identity !== executable.identity) throw new Error("installed Flow runtime changed during preparation");
     let ready: { port: number; version: string } | undefined;

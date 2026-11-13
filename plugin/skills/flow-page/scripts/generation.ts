@@ -1,8 +1,9 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { sha256 as digest, walkFiles } from "./files.ts";
 
 const roots = ["flow-page/scripts", "flow-page/reader", "vstack-tmp/scripts", "vstack-figures/scripts"];
+const packages = ["pele"];
 export const skillsRoot = resolve(import.meta.dir, "../..");
 export function runtimeFiles(base = skillsRoot): Map<string, Buffer> {
   const files = new Map<string, Buffer>();
@@ -24,12 +25,19 @@ export function sealRuntime(base = skillsRoot): void {
   const files = Object.fromEntries([...runtimeFiles(base)].map(([path, bytes]) => [path, digest(bytes)]));
   writeFileSync(join(base, "flow-page/runtime.json"), JSON.stringify({ version: 1, files }, null, 2) + "\n");
 }
-export function stageRuntime(files: Map<string, Buffer>, destination: string): void {
+/** Folder of each npm package the runtime imports by bare name, resolved as the installed plugin resolves it. */
+export function runtimePackages(base = skillsRoot): Map<string, string> {
+  const from = realpathSync(base);
+  return new Map(packages.map(name => [name, dirname(Bun.resolveSync(`${name}/package.json`, from))]));
+}
+/** Writes `files` and a copy of each package under `destination`, so the generation resolves imports without the installed plugin. */
+export function stageRuntime(files: Map<string, Buffer>, packages: Map<string, string>, destination: string): void {
   for (const [path, bytes] of files) {
     const out = join(destination, path);
     mkdirSync(dirname(out), { recursive: true, mode: 0o700 });
     writeFileSync(out, bytes, { mode: 0o600 });
   }
+  for (const [name, folder] of packages) cpSync(folder, join(destination, "node_modules", name), { recursive: true });
   sealRuntime(destination);
 }
 if (import.meta.main) {
