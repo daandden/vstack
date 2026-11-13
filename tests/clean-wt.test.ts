@@ -952,6 +952,49 @@ test.each([
   expect(git(repo, "status", "--porcelain")).toBe("");
 });
 
+test.each(["delayed", "never"])("ovnfs removal checks a %s directory teardown after the checkout leaves the listing", async (teardown) => {
+  const path = ovnfsCheckout("omp-teardown-123");
+  const state = join(ovnfsRoot, "checkouts.json");
+  const listed = join(dir, "removal-listed");
+  const c = inventory()[path];
+  writeExecutable(join(dir, "bin", "ovnfs"), "bun", `import { readFileSync, writeFileSync } from "node:fs";
+const args = process.argv.slice(2);
+if (args[0] === "ctl" && args[1] === "rm") {
+  writeFileSync(${JSON.stringify(state)}, "[]");
+  console.log("{}");
+} else {
+  if (args.includes("ls") && readFileSync(${JSON.stringify(state)}, "utf8") === "[]") {
+    writeFileSync(${JSON.stringify(listed)}, "ready");
+  }
+  await import(${JSON.stringify(FAKE_OVNFS)});
+}`);
+  let worker: Subprocess | undefined;
+  if (teardown === "delayed") {
+    worker = Bun.spawn(["bun", "-e", `import { existsSync, rmSync } from "node:fs";
+const deadline = performance.now() + 10000;
+while (!existsSync(${JSON.stringify(listed)})) {
+  if (performance.now() >= deadline) process.exit(1);
+  Bun.sleepSync(10);
+}
+Bun.sleepSync(500);
+rmSync(${JSON.stringify(path)}, { recursive: true, force: true });`], { cwd: dir, stdout: "ignore", stderr: "pipe" });
+    holders.push(worker);
+  }
+  const out = cleanWt(["remove", `${path}=${c.fingerprint}`]);
+  if (worker) expect(await worker.exited).toBe(0);
+  expect(out.code).toBe(0);
+  expect(out.stderr).toBe("");
+  expect(existsSync(listed)).toBe(true);
+  expect(JSON.parse(readFileSync(state, "utf8"))).toEqual([]);
+  if (teardown === "delayed") {
+    expect(out.json).toEqual({ removed: [{ path, method: "ovnfs rm" }], skipped: [], failed: [] });
+    expect(existsSync(path)).toBe(false);
+  } else {
+    expect(out.json).toEqual({ removed: [], skipped: [], failed: [{ path, error: "the directory still exists after removal" }] });
+    expect(existsSync(path)).toBe(true);
+  }
+});
+
 test("ovnfs inventory and removal use the configured executable despite a different PATH binary", () => {
   const path = ovnfsCheckout("omp-configured-123");
   const configured = join(dir, "configured-ovnfs");

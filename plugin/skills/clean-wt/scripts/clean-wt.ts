@@ -907,6 +907,8 @@ function removeAll() {
         if (result.code !== 0) throw new Error(result.err.trim() || `ovnfs rm exit ${result.code}`);
         const after = ovnfsListing();
         if (!after.ok || after.checkouts.some((checkout) => checkout.name === c.ovnfs!.name || checkout.path === c.path)) throw new Error("ovnfs removal could not be verified");
+        const deadline = performance.now() + 3000;
+        while (lstat(c.entry) && performance.now() < deadline) Bun.sleepSync(50);
       } else if (c.kind === "linked-worktree") {
         const commonDir = run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], c.path).out.trim();
         const force = c.state !== "clean";

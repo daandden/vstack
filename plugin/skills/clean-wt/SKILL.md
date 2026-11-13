@@ -45,6 +45,8 @@ The JSON contains `base`, `evidence_gaps`, and `checkouts`. Each checkout has:
 
 ovnfs checkouts pass the same Git work-state and history guards inside their checkout and private Git directory. ovnfs's dirty flag or `diff` output never proves a checkout clean. An inactive ovnfs checkout is removed only through ovnfs's `rm` operation, followed by listing and directory checks. Keep using these guards for legacy APFS copies. `omp worktree clear` is not a substitute.
 
+After ovnfs confirms removal in its listing, the script checks every 50 milliseconds for up to three seconds for the mount directory to disappear. A directory that remains produces a failed row. Other checkout kinds keep the immediate directory check.
+
 The removal keeps the checkout's ovnfs snapshots. From ovnfs v0.3.0, `ovnfs rm` deletes them by default, and a snapshot can hold work that the Git guards never see, such as edits saved with `ovnfs snap` and then reset. The script sends `ovnfs ctl rm` with `sticky_snapshots`. A daemon older than v0.3.0 rejects that field and never deletes snapshots, so the script then runs plain `ovnfs rm`.
 
 `inventory --prepare-source` prepares source facts once per distinct source Git directory without scanning checkout contents. Save its raw JSON as `source-facts.json` in this run's Scratch entry. Its `source_facts` array contains `{source_git_dir, remote, url, ref, sha}` records, or `{source_git_dir, reason}` when verification fails. These are per-run evidence, not a persistent cache or deletion authority.
